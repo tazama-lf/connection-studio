@@ -6,8 +6,8 @@ import Dashboard from '../features/dashboard/pages/Dashboard';
 import DEMSModule from '../features/dems/pages/DEMSModule';
 import CRONModule from '../features/cron/pages/CRONModule';
 import DataEnrichmentModule from '../features/data-enrichment/pages/DataEnrichmentModule';
-import { ROUTES } from '../config/routes.config';
-import { APP_CONFIG } from '../config/app.config';
+import { ROUTES } from '../shared/config/routes.config';
+import { APP_CONFIG } from '../shared/config/app.config';
 
 const ProtectedRoute = ({
   children

@@ -1,9 +1,9 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AuthHeader } from '../../shared/components/AuthHeader';
+import { AuthHeader } from '../../../shared/components/AuthHeader';
 import { ActivityIcon, DatabaseIcon, ClockIcon } from 'lucide-react';
-import { NAVIGATION, ROUTES } from '../../../config/routes.config';
-import { APP_CONFIG } from '../../../config/app.config';
+import { NAVIGATION } from '../../../shared/config/routes.config';
+import { APP_CONFIG } from '../../../shared/config/app.config';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();

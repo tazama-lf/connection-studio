@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { AuthHeader } from '../../shared/components/AuthHeader';
-import EndpointTable from '../../shared/components/EndpointTable';
-import SearchBar from '../../shared/components/SearchBar';
-import { Button } from '../../shared/components/Button';
+import { AuthHeader } from '../../../shared/components/AuthHeader';
+import EndpointTable from '../../../shared/components/EndpointTable';
+import SearchBar from '../../../shared/components/SearchBar';
+import { Button } from '../../../shared/components/Button';
 import { PlusIcon, AlertTriangleIcon } from 'lucide-react';
-import EditEndpointModal from '../../shared/components/EditEndpointModal';
-import ValidationLogsTable from '../../shared/components/ValidationLogsTable';
+import EditEndpointModal from '../../../shared/components/EditEndpointModal';
+import ValidationLogsTable from '../../../shared/components/ValidationLogsTable';
 type Endpoint = {
   id: number;
   path: string;

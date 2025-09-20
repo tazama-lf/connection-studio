@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AuthHeader } from '../../shared/components/AuthHeader';
+import { AuthHeader } from '../../../shared/components/AuthHeader';
 import { CronTabNavigation } from '../components/CronTabNavigation';
 import { CronJobForm } from '../components/CronJobForm';
 import { CronJobList } from '../components/CronJobList';

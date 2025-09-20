@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { HelpCircleIcon } from 'lucide-react';
 export const CronJobForm: React.FC = () => {
-  const [jobType] = useState<'pull'>('pull');
+  const [_jobType] = useState<'pull'>('pull');
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     console.log('Form submitted');

@@ -213,7 +213,7 @@ const AddFormulaModal: React.FC<AddFormulaModalProps> = ({
 export const PayloadEditor: React.FC<PayloadEditorProps> = ({
   value,
   onChange,
-  isNewEndpoint = false,
+  isNewEndpoint: _isNewEndpoint = false,
   transactionType = 'transfers',
   onTransactionTypeChange
 }) => {
@@ -239,107 +239,6 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
         onChange(content);
       };
       reader.readAsText(file);
-    }
-  };
-  const inferFieldsFromJson = (json: string) => {
-    try {
-      const parsed = JSON.parse(json);
-      const fields: InferredField[] = [];
-      const processObject = (obj: any, path: string = '', level: number = 0, parent: string = '') => {
-        // Add the object itself if it's a root level object
-        if (level === 0) {
-          fields.push({
-            path,
-            type: 'Object',
-            level
-          });
-        }
-        Object.entries(obj).forEach(([key, value]) => {
-          const currentPath = path ? `${path}.${key}` : key;
-          const valueType = typeof value;
-          if (valueType === 'object') {
-            if (value === null) {
-              fields.push({
-                path: currentPath,
-                type: 'String',
-                parent: path,
-                level: level + 1
-              });
-            } else if (Array.isArray(value)) {
-              fields.push({
-                path: currentPath,
-                type: 'Array',
-                parent: path,
-                level: level + 1
-              });
-              // Process the first item in the array if available
-              if (value.length > 0 && typeof value[0] === 'object') {
-                processObject(value[0], currentPath, level + 1, path);
-              }
-            } else {
-              fields.push({
-                path: currentPath,
-                type: 'Object',
-                parent: path,
-                level: level + 1
-              });
-              processObject(value, currentPath, level + 1, path);
-            }
-          } else {
-            fields.push({
-              path: currentPath,
-              type: valueType === 'string' ? 'String' : valueType === 'number' ? 'Number' : valueType === 'boolean' ? 'Boolean' : 'String',
-              parent: path,
-              level: level + 1
-            });
-          }
-        });
-      };
-      processObject(parsed);
-      return fields;
-    } catch (error) {
-      console.error('Error parsing JSON:', error);
-      return [];
-    }
-  };
-  const inferFieldsFromXml = (xml: string) => {
-    // A very basic XML parser - for production use, consider using a proper XML parser library
-    try {
-      // For demo purposes, we'll create some sample fields based on the XML structure
-      const fields: InferredField[] = [];
-      // Extract tag names from XML
-      const tagRegex = /<(\w+)[^>]*>(?:[^<]*)<\/\1>|<(\w+)[^>]*\/>/g;
-      const matches = [...xml.matchAll(tagRegex)];
-      // Create a simple hierarchy based on XML structure
-      const rootTag = matches[0]?.[1] || matches[0]?.[2];
-      if (rootTag) {
-        fields.push({
-          path: rootTag,
-          type: 'Object',
-          level: 0
-        });
-        // Extract child tags
-        const childTagRegex = new RegExp(`<${rootTag}[^>]*>(.*)<\\/${rootTag}>`, 's');
-        const childContent = xml.match(childTagRegex)?.[1] || '';
-        const childMatches = [...childContent.matchAll(tagRegex)];
-        const processedTags = new Set<string>();
-        childMatches.forEach(match => {
-          const tagName = match[1] || match[2];
-          if (tagName && !processedTags.has(tagName)) {
-            processedTags.add(tagName);
-            fields.push({
-              path: `${rootTag}.${tagName}`,
-              type: 'String',
-              parent: rootTag,
-              level: 1
-            });
-          }
-        });
-      }
-      return fields;
-    } catch (error) {
-      console.error('Error parsing XML:', error);
-      return [];
     }
   };
   const handleGenerateFields = () => {

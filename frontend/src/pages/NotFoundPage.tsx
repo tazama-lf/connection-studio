@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button } from '../features/shared/components/Button';
-import { ROUTES } from '../config/routes.config';
+import { Button } from '../shared/components/Button';
+import { ROUTES } from '../shared/config/routes.config';
 
 const NotFoundPage: React.FC = () => {
   const navigate = useNavigate();

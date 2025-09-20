@@ -1,5 +1,5 @@
-import { apiClient } from "../../shared/services/apiClient";
-import { API_CONFIG } from "../../../config/api.config";
+import { apiClient } from "../../../shared/services/apiClient";
+import { API_CONFIG } from "../../../shared/config/api.config";
 
 // Types for DEMS
 export interface Endpoint {
@@ -11,13 +11,19 @@ export interface Endpoint {
   lastValidated: string;
 }
 
+export interface ValidationError {
+  message: string;
+  type: "error" | "warning";
+}
+
 export interface ValidationLog {
-  id: string;
-  endpointId: string;
+  id: number;
   timestamp: string;
-  status: "success" | "failure";
-  responseTime: number;
-  message?: string;
+  endpoint: string;
+  status: "ERROR" | "WARNING" | "SUCCESS";
+  errorCount?: number;
+  errors?: ValidationError[];
+  payload?: object;
 }
 
 export interface EndpointHistory {

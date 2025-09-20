@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { AuthHeader } from '../../shared/components/AuthHeader';
-import EndpointTable from '../../shared/components/EndpointTable';
-import SearchBar from '../../shared/components/SearchBar';
-import { JsonDataModal } from '../../shared/components/JsonDataModal';
-import { DataEnrichmentFormModal } from '../../shared/components/DataEnrichmentFormModal';
-import { Button } from '../../shared/components/Button';
+import { AuthHeader } from '../../../shared/components/AuthHeader';
+import EndpointTable from '../../../shared/components/EndpointTable';
+import SearchBar from '../../../shared/components/SearchBar';
+import { JsonDataModal } from '../../../shared/components/JsonDataModal';
+import { DataEnrichmentFormModal } from '../../../shared/components/DataEnrichmentFormModal';
+import { Button } from '../../../shared/components/Button';
 import { PlusIcon } from 'lucide-react';
 type Endpoint = {
   id: number;
@@ -245,9 +245,6 @@ const sampleJsonData = {
     setEndpoints(endpoints.filter(endpoint => endpoint.id !== id));
   };
   const handleView = (id: number) => {
-    // Find the endpoint to get its path for the modal title
-    const endpoint = endpoints.find(ep => ep.id === id);
-    const endpointPath = endpoint ? endpoint.path : 'Unknown Endpoint';
     setViewingJsonData({
       id,
       data: sampleJsonData[id as keyof typeof sampleJsonData] || {

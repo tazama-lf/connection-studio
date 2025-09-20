@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Button } from './Button';
-import { EditIcon, MoreVerticalIcon, ClockIcon, PlayIcon, PauseIcon, HistoryIcon, EyeIcon, CheckCircleIcon, DownloadIcon, UploadIcon, CopyIcon } from 'lucide-react';
+import { MoreVerticalIcon, ClockIcon, PlayIcon, PauseIcon, HistoryIcon, EyeIcon, CheckCircleIcon, DownloadIcon, UploadIcon, CopyIcon } from 'lucide-react';
 import { EndpointHistoryModal } from './EndpointHistoryModal';
 interface Endpoint {
   id: number;
@@ -25,7 +25,7 @@ interface EndpointTableProps {
  const EndpointTable: React.FC<EndpointTableProps> = ({
   endpoints,
   onEdit,
-  onDelete,
+  onDelete: _onDelete,
   onClone,
   showStatusColumn = true,
   createdTimeLabel = 'Created Time',

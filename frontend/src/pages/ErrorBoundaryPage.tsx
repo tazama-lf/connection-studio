@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button } from '../features/shared/components/Button';
+import { Button } from '../shared/components/Button';
 
 interface ErrorBoundaryPageProps {
   error?: Error;

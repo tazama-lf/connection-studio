@@ -12,7 +12,7 @@ interface VersionHistory {
   author: string;
 }
 export const EndpointHistoryModal: React.FC<EndpointHistoryModalProps> = ({
-  endpointId,
+  endpointId: _endpointId,
   onClose
 }) => {
   // Sample version history data

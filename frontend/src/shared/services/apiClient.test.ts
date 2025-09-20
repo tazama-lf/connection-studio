@@ -1,7 +1,7 @@
 import { apiClient } from "./apiClient";
 
 // Mock the API_CONFIG
-jest.mock("../../../config/api.config", () => ({
+jest.mock("../config/api.config", () => ({
   API_CONFIG: {
     BASE_URL: "https://api.example.com",
     DEFAULT_HEADERS: {

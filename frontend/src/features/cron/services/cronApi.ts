@@ -1,5 +1,5 @@
-import { apiClient } from "../../shared/services/apiClient";
-import { API_CONFIG } from "../../../config/api.config";
+import { apiClient } from "../../../shared/services/apiClient";
+import { API_CONFIG } from "../../../shared/config/api.config";
 
 // Types for CRON
 export interface CronJob {

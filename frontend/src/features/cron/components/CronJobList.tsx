@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { PlayIcon, PauseIcon, EditIcon, TrashIcon, EyeIcon } from 'lucide-react';
-import SearchBar from '../../shared/components/SearchBar';
+import SearchBar from '../../../shared/components/SearchBar';
 export const CronJobList: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   // Sample data for jobs

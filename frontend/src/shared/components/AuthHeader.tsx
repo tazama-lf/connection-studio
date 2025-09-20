@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogOutIcon, ChevronLeftIcon } from 'lucide-react';
-import { useAuth } from '../../auth/contexts/AuthContext';
+import { useAuth } from '../../features/auth/contexts/AuthContext';
 import { Button } from './Button';
 interface AuthHeaderProps {
   title: string;

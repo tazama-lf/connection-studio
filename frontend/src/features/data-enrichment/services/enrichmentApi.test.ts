@@ -1,12 +1,12 @@
 import { dataEnrichmentApi, DataEnrichmentApiService } from "./enrichmentApi";
-import { apiClient } from "../../shared/services/apiClient";
+import { apiClient } from "../../../shared/services/apiClient";
 
 // Mock the apiClient
-jest.mock("../../shared/services/apiClient");
+jest.mock("../../../shared/services/apiClient");
 const mockedApiClient = apiClient as jest.Mocked<typeof apiClient>;
 
 // Mock API_CONFIG
-jest.mock("../../../config/api.config", () => ({
+jest.mock("../../../shared/config/api.config", () => ({
   API_CONFIG: {
     ENDPOINTS: {
       DATA_ENRICHMENT: {
