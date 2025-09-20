@@ -29,6 +29,23 @@ The Tazama Connection Studio (TCS) is a comprehensive web-based platform designe
 - **API versioning** and backward compatibility
 - **Security policies** and access control configuration
 - **Performance monitoring** and analytics
+- **Enhanced Validation Logs** with detailed error tracking and expandable error details
+
+## 🆕 Recent Updates
+
+### Validation Logs Enhancement
+- **Interactive Error Display**: Click to expand/collapse detailed error information
+- **Error Stack Visualization**: Clear hierarchy of validation errors with visual indicators
+- **Failed Payload Display**: JSON payload highlighting in dark theme code blocks
+- **Advanced Filtering**: Search across endpoints and error messages
+- **Time-based Filters**: Filter logs by time periods (24H, 7D, 30D)
+- **Export Functionality**: Export validation logs for external analysis
+
+### Folder Structure Modernization
+- **Feature-based Architecture**: Migrated to domain-driven folder organization
+- **Shared Resources**: Centralized common components and utilities
+- **Improved Maintainability**: Clear separation of concerns and consistent structure
+- **Enhanced Testing**: Comprehensive Jest test coverage (30/30 tests passing)
 
 ## 🚀 Quick Start
 
@@ -44,6 +61,10 @@ cd connection-studio/frontend
 
 # Install dependencies
 npm install
+
+# Setup environment variables
+cp .env.template .env
+# Edit .env file with your configuration
 
 # Start development server
 npm run dev
@@ -88,32 +109,88 @@ npm run type-check
 
 ```
 src/
-├── components/          # Reusable UI components
-├── pages/              # Page components and layouts
-├── features/           # Feature-specific modules
+├── features/           # Feature-specific modules (domain-driven architecture)
 │   ├── auth/          # Authentication management
+│   │   ├── contexts/  # Auth context providers
+│   │   ├── pages/     # Login and auth pages
+│   │   └── services/  # Auth API services
 │   ├── cron/          # CRON job scheduling
-│   ├── data-enrichment/ # Data transformation
-│   ├── dashboard/     # Main dashboard
-│   ├── dems/          # Endpoint management
-│   └── shared/        # Shared utilities and services
-├── config/            # Configuration files
-├── contexts/          # React context providers
-├── router/            # Application routing
-├── styles/            # Global styles and themes
-└── test/              # Test utilities and setup
+│   │   ├── components/ # CRON-specific components
+│   │   ├── pages/     # CRON module pages
+│   │   └── services/  # CRON API services
+│   ├── data-enrichment/ # Data transformation workflows
+│   │   ├── pages/     # Data enrichment pages
+│   │   └── services/  # Enrichment API services
+│   ├── dashboard/     # Main dashboard module
+│   │   └── pages/     # Dashboard pages
+│   ├── dems/          # Dynamic Endpoint Monitoring Service
+│   │   ├── pages/     # DEMS module pages
+│   │   └── services/  # Endpoint API services
+│   └── shared/        # Shared feature utilities
+│       └── services/  # Common API services
+├── shared/            # Shared application resources
+│   ├── components/    # Reusable UI components
+│   │   ├── AuthHeader.tsx        # Authentication header
+│   │   ├── Button.tsx            # Custom button component
+│   │   ├── ValidationLogsTable.tsx # Validation logs display
+│   │   ├── EndpointTable.tsx     # Endpoint management table
+│   │   ├── PayloadEditor.tsx     # JSON/XML payload editor
+│   │   └── ...                   # Other shared components
+│   ├── config/        # Application configuration
+│   │   ├── api.config.ts         # API endpoints configuration
+│   │   ├── app.config.ts         # App-wide settings
+│   │   ├── environment.config.ts # Environment variables
+│   │   └── routes.config.ts      # Routing configuration
+│   ├── constants/     # Application constants
+│   ├── providers/     # React context providers
+│   ├── services/      # Shared API services
+│   └── styles/        # Global styles and themes
+├── pages/             # General application pages
+│   ├── ErrorBoundaryPage.tsx # Error handling
+│   ├── LoadingPage.tsx       # Loading states
+│   └── NotFoundPage.tsx      # 404 page
+├── router/            # Application routing configuration
+├── test/              # Test utilities and setup
+│   ├── jest.d.ts      # Jest type definitions
+│   ├── setup.ts       # Test environment setup
+│   ├── setupTests.ts  # Testing library configuration
+│   └── test-utils.tsx # Custom testing utilities
+├── App.tsx            # Main application component
+├── main.tsx           # Application entry point
+└── vite-env.d.ts      # Vite type definitions
 ```
+
+### Architecture Highlights
+
+- **Feature-Based Organization**: Each feature module is self-contained with its own components, pages, and services
+- **Shared Resources**: Common components, configurations, and utilities are centralized in the `shared/` directory
+- **Clean Separation**: Clear boundaries between features promote maintainability and scalability
+- **Consistent Structure**: Each feature follows the same organizational pattern for predictability
 
 ## 🔧 Configuration
 
 ### Environment Variables
-Create a `.env` file in the project root:
+Copy the `.env.template` file to `.env` and configure your environment:
 
-```env
-VITE_API_BASE_URL=http://localhost:3000/api
-VITE_APP_NAME=Tazama Connection Studio
-VITE_NODE_ENV=development
+```bash
+# Copy the template
+cp .env.template .env
 ```
+
+The `.env.template` contains:
+```env
+# Frontend Environment Variables
+VITE_API_BASE_URL=http://localhost:3000
+VITE_APP_NAME=Tazama Connection Studio
+VITE_APP_VERSION=0.0.1
+```
+
+**Environment Variables Explained:**
+- `VITE_API_BASE_URL`: Backend API server URL
+- `VITE_APP_NAME`: Application display name
+- `VITE_APP_VERSION`: Current application version
+
+> **Note**: All environment variables for Vite must be prefixed with `VITE_` to be accessible in the client code.
 
 ### API Configuration
 The application communicates with the backend API through a centralized client located in `src/config/api.config.ts`. Modify this file to adjust API endpoints and authentication settings.
