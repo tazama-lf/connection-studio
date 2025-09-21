@@ -5,6 +5,10 @@ import { ConfigModule } from '@nestjs/config';
 import { validate } from './config/env.validation';
 import { AuthModule } from './auth/auth.module';
 import { LoggerModule } from './logger-service/logger-service.module';
+import { KnexModule } from '../knex/knex.module';
+import { EndpointsModule } from './endpoints/endpoints.module';
+import { SchemasModule } from './schemas/schemas.module';
+import { AuditModule } from './audit/audit.module';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { TokenExpiryInterceptor } from './auth/token-expiry.interceptor';
 
@@ -15,8 +19,12 @@ import { TokenExpiryInterceptor } from './auth/token-expiry.interceptor';
       isGlobal: true,
       validate,
     }),
+    KnexModule,
     AuthModule,
     LoggerModule,
+    EndpointsModule,
+    SchemasModule,
+    AuditModule,
   ],
   controllers: [AppController],
   providers: [
