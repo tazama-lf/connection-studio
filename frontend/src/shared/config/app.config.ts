@@ -1,11 +1,11 @@
-import { ENV } from "./environment.config";
+import { ENV } from './environment.config';
 
 // App configuration constants
 export const APP_CONFIG = {
-  name: "Tazama Connection Studio",
-  version: "1.0.0",
-  defaultRoute: "/dashboard",
-  loginRoute: "/login",
+  name: 'Tazama Connection Studio',
+  version: '1.0.0',
+  defaultRoute: '/dashboard',
+  loginRoute: '/login',
 } as const;
 
 // API configuration (when you integrate APIs later)
@@ -18,19 +18,19 @@ export const API_CONFIG = {
 // UI configuration
 export const UI_CONFIG = {
   themes: {
-    primary: "blue",
-    secondary: "gray",
-    success: "green",
-    warning: "yellow",
-    danger: "red",
+    primary: 'blue',
+    secondary: 'gray',
+    success: 'green',
+    warning: 'yellow',
+    danger: 'red',
   },
   pagination: {
     defaultPageSize: 10,
     pageSizeOptions: [5, 10, 20, 50],
   },
   modals: {
-    defaultWidth: "max-w-4xl",
-    overlayOpacity: "bg-opacity-10",
+    defaultWidth: 'max-w-4xl',
+    overlayOpacity: 'bg-opacity-10',
   },
 } as const;
 

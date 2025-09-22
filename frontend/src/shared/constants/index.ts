@@ -1,9 +1,9 @@
 // Status constants used across features
 export const ENDPOINT_STATUS = {
-  IN_PROGRESS: "In-Progress",
-  READY_FOR_APPROVAL: "Ready for Approval",
-  SUSPENDED: "Suspended",
-  CLONED: "Cloned",
+  IN_PROGRESS: 'In-Progress',
+  READY_FOR_APPROVAL: 'Ready for Approval',
+  SUSPENDED: 'Suspended',
+  CLONED: 'Cloned',
 } as const;
 
 export type EndpointStatus =
@@ -11,8 +11,8 @@ export type EndpointStatus =
 
 // Workflow status
 export const WORKFLOW_STATUS = {
-  ACTIVE: "active",
-  PAUSED: "paused",
+  ACTIVE: 'active',
+  PAUSED: 'paused',
 } as const;
 
 export type WorkflowStatus =
@@ -20,8 +20,8 @@ export type WorkflowStatus =
 
 // Configuration types
 export const CONFIGURATION_TYPE = {
-  PULL: "pull",
-  PUSH: "push",
+  PULL: 'pull',
+  PUSH: 'push',
 } as const;
 
 export type ConfigurationType =
@@ -29,25 +29,25 @@ export type ConfigurationType =
 
 // Source types for data enrichment
 export const SOURCE_TYPE = {
-  SFTP: "sftp",
-  HTTP: "http",
+  SFTP: 'sftp',
+  HTTP: 'http',
 } as const;
 
 export type SourceType = (typeof SOURCE_TYPE)[keyof typeof SOURCE_TYPE];
 
 // File formats
 export const FILE_FORMAT = {
-  CSV: "csv",
-  JSON: "json",
-  XML: "xml",
+  CSV: 'csv',
+  JSON: 'json',
+  XML: 'xml',
 } as const;
 
 export type FileFormat = (typeof FILE_FORMAT)[keyof typeof FILE_FORMAT];
 
 // Transaction types
 export const TRANSACTION_TYPE = {
-  TRANSFERS: "transfers",
-  PAYMENTS: "payments",
+  TRANSFERS: 'transfers',
+  PAYMENTS: 'payments',
 } as const;
 
 export type TransactionType =

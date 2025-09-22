@@ -1,5 +1,5 @@
-import { apiClient } from "../../../shared/services/apiClient";
-import { API_CONFIG } from "../../../shared/config/api.config";
+import { apiClient } from '../../../shared/services/apiClient';
+import { API_CONFIG } from '../../../shared/config/api.config';
 
 // Types for DEMS
 export interface Endpoint {
@@ -7,20 +7,20 @@ export interface Endpoint {
   name: string;
   url: string;
   method: string;
-  status: "active" | "inactive";
+  status: 'active' | 'inactive';
   lastValidated: string;
 }
 
 export interface ValidationError {
   message: string;
-  type: "error" | "warning";
+  type: 'error' | 'warning';
 }
 
 export interface ValidationLog {
   id: number;
   timestamp: string;
   endpoint: string;
-  status: "ERROR" | "WARNING" | "SUCCESS";
+  status: 'ERROR' | 'WARNING' | 'SUCCESS';
   errorCount?: number;
   errors?: ValidationError[];
   payload?: object;
@@ -41,7 +41,7 @@ export class DemsApiService {
     return apiClient.get<Endpoint[]>(API_CONFIG.ENDPOINTS.DEMS.ENDPOINTS);
   }
 
-  async createEndpoint(endpoint: Omit<Endpoint, "id">): Promise<Endpoint> {
+  async createEndpoint(endpoint: Omit<Endpoint, 'id'>): Promise<Endpoint> {
     return apiClient.post<Endpoint>(
       API_CONFIG.ENDPOINTS.DEMS.ENDPOINTS,
       endpoint,

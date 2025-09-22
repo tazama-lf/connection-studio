@@ -1,7 +1,7 @@
-import "@testing-library/jest-dom";
+import '@testing-library/jest-dom';
 
 // Mock IntersectionObserver
-Object.defineProperty(window, "IntersectionObserver", {
+Object.defineProperty(window, 'IntersectionObserver', {
   writable: true,
   configurable: true,
   value: class {
@@ -12,7 +12,7 @@ Object.defineProperty(window, "IntersectionObserver", {
 });
 
 // Mock ResizeObserver
-Object.defineProperty(window, "ResizeObserver", {
+Object.defineProperty(window, 'ResizeObserver', {
   writable: true,
   configurable: true,
   value: class {
@@ -37,4 +37,4 @@ const localStorageMock: Storage = {
 global.localStorage = localStorageMock;
 
 // Mock environment variables
-process.env.NODE_ENV = "test";
+process.env.NODE_ENV = 'test';

@@ -1,5 +1,5 @@
-import { apiClient } from "../../../shared/services/apiClient";
-import { API_CONFIG } from "../../../shared/config/api.config";
+import { apiClient } from '../../../shared/services/apiClient';
+import { API_CONFIG } from '../../../shared/config/api.config';
 
 // Types for Data Enrichment
 export interface MappingRule {
@@ -39,7 +39,7 @@ export class DataEnrichmentApiService {
     );
   }
 
-  async createMappingRule(rule: Omit<MappingRule, "id">): Promise<MappingRule> {
+  async createMappingRule(rule: Omit<MappingRule, 'id'>): Promise<MappingRule> {
     return apiClient.post<MappingRule>(
       API_CONFIG.ENDPOINTS.DATA_ENRICHMENT.MAPPINGS,
       rule,
@@ -70,7 +70,7 @@ export class DataEnrichmentApiService {
   }
 
   async createTemplate(
-    template: Omit<EnrichmentTemplate, "id" | "createdAt">,
+    template: Omit<EnrichmentTemplate, 'id' | 'createdAt'>,
   ): Promise<EnrichmentTemplate> {
     return apiClient.post<EnrichmentTemplate>(
       API_CONFIG.ENDPOINTS.DATA_ENRICHMENT.TEMPLATES,

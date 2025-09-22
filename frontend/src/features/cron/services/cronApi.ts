@@ -1,5 +1,5 @@
-import { apiClient } from "../../../shared/services/apiClient";
-import { API_CONFIG } from "../../../shared/config/api.config";
+import { apiClient } from '../../../shared/services/apiClient';
+import { API_CONFIG } from '../../../shared/config/api.config';
 
 // Types for CRON
 export interface CronJob {
@@ -10,14 +10,14 @@ export interface CronJob {
   isActive: boolean;
   lastRun?: string;
   nextRun: string;
-  status: "running" | "stopped" | "error";
+  status: 'running' | 'stopped' | 'error';
 }
 
 export interface CronJobLog {
   id: string;
   jobId: string;
   executionTime: string;
-  status: "success" | "failure";
+  status: 'success' | 'failure';
   output?: string;
   errorMessage?: string;
   duration: number;
@@ -37,7 +37,7 @@ export class CronApiService {
   }
 
   async createCronJob(
-    job: Omit<CronJob, "id" | "lastRun" | "nextRun" | "status">,
+    job: Omit<CronJob, 'id' | 'lastRun' | 'nextRun' | 'status'>,
   ): Promise<CronJob> {
     return apiClient.post<CronJob>(API_CONFIG.ENDPOINTS.CRON.JOBS, job);
   }

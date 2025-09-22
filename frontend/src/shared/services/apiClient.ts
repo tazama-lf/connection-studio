@@ -1,4 +1,4 @@
-import { API_CONFIG } from "../config/api.config";
+import { API_CONFIG } from '../config/api.config';
 
 interface RequestConfig {
   headers?: Record<string, string>;
@@ -21,7 +21,7 @@ class ApiClient {
     config: RequestConfig = {},
   ): Promise<T> {
     const url = `${this.baseURL}${endpoint}`;
-    const token = localStorage.getItem("authToken");
+    const token = localStorage.getItem('authToken');
 
     const headers = {
       ...this.defaultHeaders,
@@ -31,15 +31,15 @@ class ApiClient {
 
     try {
       const response = await fetch(url, {
-        method: config.method || "GET",
+        method: config.method || 'GET',
         headers,
         body: config.body,
       });
 
       if (response.status === 401) {
-        localStorage.removeItem("authToken");
-        window.location.href = "/login";
-        throw new Error("Unauthorized");
+        localStorage.removeItem('authToken');
+        window.location.href = '/login';
+        throw new Error('Unauthorized');
       }
 
       if (!response.ok) {
@@ -48,13 +48,13 @@ class ApiClient {
 
       return await response.json();
     } catch (error) {
-      console.error("API request failed:", error);
+      console.error('API request failed:', error);
       throw error;
     }
   }
 
   async get<T>(endpoint: string, headers?: Record<string, string>): Promise<T> {
-    return this.request<T>(endpoint, { method: "GET", headers });
+    return this.request<T>(endpoint, { method: 'GET', headers });
   }
 
   async post<T>(
@@ -63,7 +63,7 @@ class ApiClient {
     headers?: Record<string, string>,
   ): Promise<T> {
     return this.request<T>(endpoint, {
-      method: "POST",
+      method: 'POST',
       headers,
       body: data ? JSON.stringify(data) : undefined,
     });
@@ -75,7 +75,7 @@ class ApiClient {
     headers?: Record<string, string>,
   ): Promise<T> {
     return this.request<T>(endpoint, {
-      method: "PUT",
+      method: 'PUT',
       headers,
       body: data ? JSON.stringify(data) : undefined,
     });
@@ -87,7 +87,7 @@ class ApiClient {
     headers?: Record<string, string>,
   ): Promise<T> {
     return this.request<T>(endpoint, {
-      method: "PATCH",
+      method: 'PATCH',
       headers,
       body: data ? JSON.stringify(data) : undefined,
     });
@@ -97,7 +97,7 @@ class ApiClient {
     endpoint: string,
     headers?: Record<string, string>,
   ): Promise<T> {
-    return this.request<T>(endpoint, { method: "DELETE", headers });
+    return this.request<T>(endpoint, { method: 'DELETE', headers });
   }
 }
 

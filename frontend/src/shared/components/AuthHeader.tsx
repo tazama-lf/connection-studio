@@ -23,6 +23,10 @@ interface AuthHeaderProps {
   const handleBack = () => {
     navigate(-1);
   };
+
+  // Debug logging
+  console.log('AuthHeader - Current user:', user);
+
   return <header className="bg-white shadow" data-id="element-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4" data-id="element-21">
         <div className="flex justify-between items-center" data-id="element-22">
@@ -32,16 +36,29 @@ interface AuthHeaderProps {
               </Button>}
             <h1 className="text-2xl font-bold text-gray-800" data-id="element-26">{title}</h1>
           </div>
-          {user && <div className="flex items-center space-x-4" data-id="element-27">
-              <div className="text-sm text-gray-700" data-id="element-28">
-                <span className="font-medium" data-id="element-29">{user.name}</span>
-                <span className="mx-1" data-id="element-30">-</span>
-                <span data-id="element-31">{user.role}</span>
+          {user && (
+            <div className="flex items-center space-x-4">
+              <div className="text-sm text-gray-700">
+                <span className="font-medium">{user.username}</span>
+                {user.claims && user.claims.length > 0 && (
+                  <>
+                    <span className="mx-1">-</span>
+                    <span>{user.claims.includes('approver') ? 'Approver' : 
+                           user.claims.includes('editor') ? 'Editor' : 
+                           user.claims.includes('publisher') ? 'Publisher' : 'User'}</span>
+                  </>
+                )}
               </div>
-              <Button variant="secondary" size="sm" onClick={handleLogout} icon={<LogOutIcon size={16} data-id="element-33" />} data-id="element-32">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleLogout}
+                icon={<LogOutIcon size={16} />}
+              >
                 Logout
               </Button>
-            </div>}
+            </div>
+          )}
         </div>
       </div>
     </header>;
