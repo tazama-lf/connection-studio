@@ -16,4 +16,5 @@ import knex, { Knex } from 'knex';
   ],
   exports: ['KNEX_CONNECTION'],
 })
-export class KnexModule {}
+export class KnexModule { }
+
