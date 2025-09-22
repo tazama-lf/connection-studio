@@ -12,7 +12,6 @@ import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { AuthService } from './auth.service';
 import { User } from './user.decorator';
 import { TazamaAuthGuard } from './tazama-auth.guard';
-import { RequireClaims } from './auth.decorator';
 
 @Controller('auth')
 export class AuthController {
@@ -46,17 +45,12 @@ export class AuthController {
   }
 
   @UseGuards(TazamaAuthGuard)
-  @RequireClaims('view-profile') // <-- Add this line
   @Get('me')
   getMe(@User() user: any) {
     return user;
   }
 
   @UseGuards(TazamaAuthGuard)
-  @RequireClaims('view-profile')
   @Get('audit-logs')
-  async getAuditLogs(
-    @Query('limit') _limit = 50,
-    @Query('offset') _offset = 0,
-  ) {}
+  async getAuditLogs(@Query('limit') limit = 50, @Query('offset') offset = 0) {}
 }

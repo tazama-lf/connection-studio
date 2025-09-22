@@ -33,9 +33,9 @@ export const RequireClaim = (claim: string) => SetMetadata(CLAIMS_KEY, [claim]);
  * Common Tazama claims for convenience
  */
 export const TazamaClaims = {
-  EDITOR: 'editor',
-  APPROVER: 'approver',
-  PUBLISHER: 'publisher',
+  EDITOR: 'EDITOR',
+  APPROVER: 'APPROVER',
+  PUBLISHER: 'PUBLISHER',
   MANAGE_ACCOUNT: 'manage-account',
   MANAGE_ACCOUNT_LINKS: 'manage-account-links',
   VIEW_PROFILE: 'view-profile',
