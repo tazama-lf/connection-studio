@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { XIcon, PlayIcon, DatabaseIcon, CheckCircleIcon, UploadIcon, DownloadIcon, CodeIcon } from 'lucide-react';
 import { Button } from './Button';
+import { dataEnrichmentApi } from '../../features/data-enrichment/services/enrichmentApi';
+import type { ScheduleResponse } from '../../features/data-enrichment/types';
 interface DataEnrichmentFormModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -13,6 +15,16 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
 }) => {
   const [currentStep, setCurrentStep] = useState<'config' | 'preview' | 'summary'>('config');
   const [configurationType, setConfigurationType] = useState<'pull' | 'push'>('pull');
+  
+  // Schedule selection state
+  const [availableSchedules, setAvailableSchedules] = useState<ScheduleResponse[]>([]);
+  const [schedulesLoading, setSchedulesLoading] = useState(false);
+  const [selectedScheduleId, setSelectedScheduleId] = useState<number | null>(null);
+  
+  // Form submission state
+  const [isCreating, setIsCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+  
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -71,6 +83,25 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
   }
 }`);
   const [inferredSchema, setInferredSchema] = useState<string>('');
+
+  // Load available schedules when modal opens
+  useEffect(() => {
+    const loadSchedules = async () => {
+      if (!isOpen) return;
+      
+      try {
+        setSchedulesLoading(true);
+        const schedules = await dataEnrichmentApi.getAllSchedules();
+        setAvailableSchedules(schedules);
+      } catch (error) {
+        console.error('Failed to load schedules:', error);
+      } finally {
+        setSchedulesLoading(false);
+      }
+    };
+
+    loadSchedules();
+  }, [isOpen]);
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const {
       name,
@@ -168,15 +199,102 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
       setInferredSchema('Error: Invalid JSON payload');
     }
   };
-  const handleSave = () => {
-    onSave({
-      ...formData,
-      configurationType,
-      status: 'In-Progress',
-      createdOn: new Date().toISOString().split('T')[0],
-      lastUpdated: new Date().toISOString().split('T')[0]
-    });
-    onClose();
+  const handleSave = async () => {
+    try {
+      setIsCreating(true);
+      setCreateError(null);
+      
+      // Validate required fields
+      if (!formData.name || !formData.description || !selectedScheduleId) {
+        setCreateError('Please fill in all required fields including selecting a schedule');
+        return;
+      }
+
+      // Validate source-specific fields
+      if (formData.sourceType === 'http') {
+        if (!formData.host) {
+          setCreateError('Please provide a URL for HTTP configuration');
+          return;
+        }
+      } else if (formData.sourceType === 'sftp') {
+        if (!formData.host || !formData.username || !formData.password) {
+          setCreateError('Please fill in all SFTP connection details (host, username, password)');
+          return;
+        }
+      }
+
+      // Build the request payload based on source type
+      const basePayload = {
+        config_type: (configurationType === 'pull' ? 'Pull' : 'Push') as 'Pull' | 'Push',
+        endpoint_name: formData.name,
+        schedule_id: selectedScheduleId,
+        source_type: formData.sourceType.toUpperCase() as 'HTTP' | 'SFTP',
+        description: formData.description,
+        table_name: formData.targetTable || formData.name.toLowerCase().replace(/\s+/g, '_')
+      };
+
+      let payload: any;
+
+      if (formData.sourceType === 'http') {
+        // HTTP configuration
+        let headers = { 'content-type': 'application/json' };
+        
+        if (formData.headers && formData.headers.trim()) {
+          try {
+            headers = JSON.parse(formData.headers);
+            // Validate that parsed result is an object
+            if (typeof headers !== 'object' || headers === null || Array.isArray(headers)) {
+              setCreateError('Headers must be a valid JSON object, not an array or null.');
+              return;
+            }
+          } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown JSON error';
+            setCreateError(`Invalid JSON format in headers: ${errorMessage}. Please check your JSON syntax.`);
+            return;
+          }
+        }
+        payload = {
+          ...basePayload,
+          source_type: 'HTTP' as const,
+          connection: {
+            url: formData.host, // Using host field for URL in HTTP case
+            headers
+          }
+        };
+      } else {
+        // SFTP configuration
+        payload = {
+          ...basePayload,
+          source_type: 'SFTP' as const,
+          connection: {
+            host: formData.host,
+            port: parseInt(formData.port) || 22,
+            auth_type: 'USERNAME_PASSWORD' as const,
+            user_name: formData.username,
+            password: formData.password
+          },
+          file: {
+            path: formData.pathPattern || '/data.csv',
+            file_type: formData.fileFormat.toUpperCase() as 'CSV' | 'JSON' | 'TSV',
+            delimiter: formData.delimiter || ',',
+            header: formData.hasHeaderRow,
+            encoding: formData.encoding as 'utf-8' | 'ascii' | 'latin1' | 'utf16le'
+          }
+        };
+      }
+
+      // Create the endpoint using the API
+      const response = await dataEnrichmentApi.createJob(payload);
+      
+      // Call the parent's onSave with the created endpoint
+      onSave(response);
+      onClose();
+    } catch (error) {
+      console.error('Failed to create endpoint:', error);
+      setCreateError('Failed to create endpoint. Please check your configuration and try again.');
+    } finally {
+      setIsCreating(false);
+    }
   };
   const renderConfigTypeSelector = () => <div className="mb-6" data-id="element-806">
       <label className="block text-sm font-medium text-gray-700 mb-2" data-id="element-807">
@@ -226,6 +344,40 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
         </label>
         <textarea id="description" name="description" value={formData.description} onChange={handleInputChange} rows={2} className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="Enter endpoint description" data-id="element-830" />
       </div>
+      
+      {/* Schedule Selection */}
+      <div>
+        <label htmlFor="schedule" className="block text-sm font-medium text-gray-700 mb-1">
+          Associated Schedule *
+        </label>
+        {schedulesLoading ? (
+          <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-500">
+            Loading schedules...
+          </div>
+        ) : (
+          <select
+            id="schedule"
+            name="schedule"
+            value={selectedScheduleId || ''}
+            onChange={(e) => setSelectedScheduleId(e.target.value ? parseInt(e.target.value) : null)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            required
+          >
+            <option value="">Select a schedule</option>
+            {availableSchedules.map((schedule) => (
+              <option key={schedule.id} value={schedule.id}>
+                {schedule.name} - {schedule.cron} ({schedule.iterations} iterations)
+              </option>
+            ))}
+          </select>
+        )}
+        {availableSchedules.length === 0 && !schedulesLoading && (
+          <p className="text-sm text-red-600 mt-1">
+            No schedules available. Please create a schedule in CRON Job Management first.
+          </p>
+        )}
+      </div>
+      
       <div className="bg-blue-50 p-4 rounded-md" data-id="element-831">
         <h3 className="text-md font-medium text-blue-900 mb-3" data-id="element-832">
           Connection Settings
@@ -272,10 +424,40 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
                 </div>}
             </>}
           {formData.sourceType === 'http' && <div className="md:col-span-2" data-id="element-854">
-              <label htmlFor="headers" className="block text-sm font-medium text-gray-700 mb-1" data-id="element-855">
-                Headers (JSON format)
-              </label>
-              <textarea id="headers" name="headers" value={formData.headers} onChange={handleInputChange} rows={3} className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder='{"Authorization": "Bearer token", "Content-Type": "application/json"}' data-id="element-856" />
+              <div className="flex justify-between items-center mb-1">
+                <label htmlFor="headers" className="block text-sm font-medium text-gray-700" data-id="element-855">
+                  Headers (JSON format)
+                </label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setFormData({...formData, headers: '{\n  "content-type": "application/json"\n}'})}
+                    className="text-xs text-blue-600 hover:text-blue-800"
+                  >
+                    Basic JSON
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({...formData, headers: '{\n  "content-type": "application/json",\n  "Authorization": "Bearer your-token-here"\n}'})}
+                    className="text-xs text-blue-600 hover:text-blue-800"
+                  >
+                    With Auth
+                  </button>
+                </div>
+              </div>
+              <textarea 
+                id="headers" 
+                name="headers" 
+                value={formData.headers} 
+                onChange={handleInputChange} 
+                rows={3} 
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 font-mono text-sm" 
+                placeholder='{\n  "content-type": "application/json",\n  "Authorization": "Bearer your-token"\n}' 
+                data-id="element-856" 
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                Enter headers as valid JSON. Example: <code>{`{"content-type": "application/json"}`}</code>
+              </p>
             </div>}
         </div>
       </div>
@@ -698,18 +880,23 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
           and all changes will be audit-logged.
         </p>
       </div>
+      {createError && (
+        <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded" data-id="error-message">
+          {createError}
+        </div>
+      )}
       <div className="flex justify-end space-x-4" data-id="element-1043">
-        <Button variant="secondary" onClick={() => setCurrentStep('preview')} data-id="element-1044">
+        <Button variant="secondary" onClick={() => setCurrentStep('preview')} disabled={isCreating} data-id="element-1044">
           Back
         </Button>
-        <Button variant="primary" onClick={handleSave} data-id="element-1045">
-          Create Endpoint
+        <Button variant="primary" onClick={handleSave} disabled={isCreating} data-id="element-1045">
+          {isCreating ? 'Creating Endpoint...' : 'Create Endpoint'}
         </Button>
       </div>
     </div>;
   if (!isOpen) return null;
-  return <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center" data-id="element-1046">
-      <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden" data-id="element-1047">
+  return <div className="fixed inset-0 z-50 flex items-center justify-center p-4" data-id="element-1046">
+      <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden relative z-10" data-id="element-1047">
         <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200" data-id="element-1048">
           <h2 className="text-xl font-semibold text-gray-800" data-id="element-1049">
             Define New Data Enrichment Endpoint

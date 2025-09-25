@@ -50,7 +50,7 @@ const AddConstantModal: React.FC<AddConstantModalProps> = ({
     onAdd(field);
     onClose();
   };
-  return <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center" data-id="element-346">
+  return <div className="fixed inset-0 z-50 flex items-center justify-center" data-id="element-346">
       <div className="bg-white rounded-lg w-full max-w-md p-6" data-id="element-347">
         <div className="flex justify-between items-center mb-4" data-id="element-348">
           <h3 className="text-lg font-medium text-gray-900" data-id="element-349">
@@ -131,7 +131,7 @@ const AddFormulaModal: React.FC<AddFormulaModalProps> = ({
       });
     }
   };
-  return <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center" data-id="element-369">
+  return <div className="fixed inset-0 z-50 flex items-center justify-center" data-id="element-369">
       <div className="bg-white rounded-lg w-full max-w-md p-6" data-id="element-370">
         <div className="flex justify-between items-center mb-6" data-id="element-371">
           <h3 className="text-lg font-medium text-gray-900" data-id="element-372">

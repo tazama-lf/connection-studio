@@ -358,7 +358,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
   };
   const renderAddMappingModal = () => {
     if (!showAddMapping) return null;
-    return <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center" data-id="element-188">
+    return <div className="fixed inset-0 z-50 flex items-center justify-center" data-id="element-188">
         <div className="bg-white rounded-lg w-full max-w-6xl p-6 max-h-[90vh] overflow-auto" data-id="element-189">
           <div className="flex justify-between items-center mb-6" data-id="element-190">
             <h3 className="text-lg font-medium text-gray-900" data-id="element-191">
@@ -469,7 +469,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
   };
   const renderAddExtensionModal = () => {
     if (!showAddExtension) return null;
-    return <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center" data-id="element-238">
+    return <div className="fixed inset-0 z-50 flex items-center justify-center" data-id="element-238">
         <div className="bg-white rounded-lg w-full max-w-md p-6" data-id="element-239">
           <div className="flex justify-between items-center mb-6" data-id="element-240">
             <h3 className="text-lg font-medium text-gray-900" data-id="element-241">

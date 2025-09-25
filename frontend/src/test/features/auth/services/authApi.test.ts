@@ -1,20 +1,23 @@
 import { authApi } from '../../../../features/auth/services/authApi';
 
-// Mock the API client
-jest.mock('../../../../shared/services/apiClient', () => ({
-  apiClient: {
-    post: jest.fn(),
-    get: jest.fn(),
-  },
-}));
+// Mock fetch globally
+global.fetch = jest.fn();
+const mockFetch = fetch as jest.MockedFunction<typeof fetch>;
 
-import { apiClient } from '../../../../shared/services/apiClient';
-
-const mockApiClient = apiClient as jest.Mocked<typeof apiClient>;
+// Mock localStorage
+const mockLocalStorage = {
+  getItem: jest.fn(),
+  setItem: jest.fn(),
+  removeItem: jest.fn(),
+};
+Object.defineProperty(window, 'localStorage', {
+  value: mockLocalStorage,
+});
 
 describe('AuthApiService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockLocalStorage.getItem.mockReturnValue('test-token');
   });
 
   describe('login', () => {
@@ -24,32 +27,39 @@ describe('AuthApiService', () => {
         token: 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.test.token',
       };
 
-      mockApiClient.post.mockResolvedValue(mockResponse);
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => mockResponse,
+      } as Response);
 
       const credentials = { username: 'testuser', password: 'testpass' };
       const result = await authApi.login(credentials);
 
-      expect(mockApiClient.post).toHaveBeenCalledWith(
-        '/auth/login',
-        credentials,
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:3000/auth/login',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify(credentials),
+        }),
       );
       expect(result).toEqual(mockResponse);
     });
 
     it('should handle login failure', async () => {
-      const mockError = new Error('Invalid credentials');
-      mockApiClient.post.mockRejectedValue(mockError);
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 401,
+        json: async () => ({ error: 'Invalid credentials' }),
+      } as Response);
 
       const credentials = { username: 'invalid', password: 'invalid' };
 
-      await expect(authApi.login(credentials)).rejects.toThrow(
-        'Invalid credentials',
-      );
+      await expect(authApi.login(credentials)).rejects.toThrow('Unauthorized');
     });
 
     it('should handle network errors', async () => {
-      const networkError = new Error('Network error');
-      mockApiClient.post.mockRejectedValue(networkError);
+      mockFetch.mockRejectedValue(new TypeError('Network error'));
 
       const credentials = { username: 'testuser', password: 'testpass' };
 
@@ -59,18 +69,26 @@ describe('AuthApiService', () => {
 
   describe('logout', () => {
     it('should call logout endpoint', async () => {
-      mockApiClient.post.mockResolvedValue(undefined);
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({}),
+      } as Response);
 
       await authApi.logout();
 
-      expect(mockApiClient.post).toHaveBeenCalledWith('/auth/logout');
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:3000/auth/logout',
+        expect.objectContaining({
+          method: 'POST',
+        }),
+      );
     });
 
     it('should handle logout errors gracefully', async () => {
-      const mockError = new Error('Logout failed');
-      mockApiClient.post.mockRejectedValue(mockError);
+      mockFetch.mockRejectedValue(new TypeError('Network error'));
 
-      await expect(authApi.logout()).rejects.toThrow('Logout failed');
+      await expect(authApi.logout()).rejects.toThrow('Network error');
     });
   });
 
@@ -82,11 +100,20 @@ describe('AuthApiService', () => {
         email: 'test@example.com',
       };
 
-      mockApiClient.get.mockResolvedValue(mockProfile);
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => mockProfile,
+      } as Response);
 
       const result = await authApi.getProfile();
 
-      expect(mockApiClient.get).toHaveBeenCalledWith('/auth/profile');
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:3000/auth/profile',
+        expect.objectContaining({
+          method: 'GET',
+        }),
+      );
       expect(result).toEqual(mockProfile);
     });
   });
@@ -224,11 +251,20 @@ describe('AuthApiService', () => {
         token: 'new.jwt.token',
       };
 
-      mockApiClient.post.mockResolvedValue(mockResponse);
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => mockResponse,
+      } as Response);
 
       const result = await authApi.refreshToken();
 
-      expect(mockApiClient.post).toHaveBeenCalledWith('/auth/refresh');
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:3000/auth/refresh',
+        expect.objectContaining({
+          method: 'POST',
+        }),
+      );
       expect(result).toEqual(mockResponse);
     });
   });

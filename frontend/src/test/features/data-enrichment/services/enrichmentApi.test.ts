@@ -3,6 +3,11 @@ import {
   DataEnrichmentApiService,
 } from '../../../../features/data-enrichment/services/enrichmentApi';
 import { apiClient } from '../../../../shared/services/apiClient';
+import type {
+  SftpDataEnrichmentJob,
+  HttpDataEnrichmentJob,
+  JobListResponse,
+} from '../../../../features/data-enrichment/types';
 
 // Mock the apiClient
 jest.mock('../../../../shared/services/apiClient');
@@ -16,6 +21,7 @@ jest.mock('../../../../shared/config/api.config', () => ({
         MAPPINGS: '/api/enrichment/mappings',
         TEMPLATES: '/api/enrichment/templates',
         TRANSFORM: '/api/enrichment/transform',
+        JOBS: '/job',
       },
     },
   },
@@ -298,6 +304,225 @@ describe('DataEnrichmentApiService', () => {
     });
   });
 
+  describe('Job Management', () => {
+    describe('getAllJobs', () => {
+      it('should fetch all jobs with pagination', async () => {
+        const mockResponse: JobListResponse = {
+          jobs: [
+            {
+              id: 1,
+              endpoint_name: 'Test Endpoint',
+              description: 'Test Description',
+              table_name: 'test_table',
+              job_status: 'PENDING',
+              config_type: 'Pull',
+              source_type: 'HTTP',
+              schedule_id: 1,
+              connection: {
+                url: 'http://test.com',
+                headers: {},
+              },
+              created_at: '2023-01-01T00:00:00Z',
+              updated_at: '2023-01-01T00:00:00Z',
+            },
+          ],
+          total: 1,
+          page: 1,
+          limit: 10,
+          totalPages: 1,
+        };
+
+        mockedApiClient.get.mockResolvedValue(mockResponse);
+
+        const result = await service.getAllJobs(1, 10);
+
+        expect(mockedApiClient.get).toHaveBeenCalledWith(
+          '/job/all?page=1&limit=10',
+        );
+        expect(result).toEqual(mockResponse);
+      });
+
+      it('should handle empty job list', async () => {
+        const mockResponse: JobListResponse = {
+          jobs: [],
+          total: 0,
+          page: 1,
+          limit: 10,
+          totalPages: 0,
+        };
+
+        mockedApiClient.get.mockResolvedValue(mockResponse);
+
+        const result = await service.getAllJobs();
+
+        expect(result).toEqual(mockResponse);
+      });
+    });
+
+    describe('createJob', () => {
+      it('should create a new HTTP job successfully', async () => {
+        const mockJobData: Omit<HttpDataEnrichmentJob, 'id' | 'job_status'> = {
+          endpoint_name: 'New HTTP Endpoint',
+          description: 'New HTTP job description',
+          table_name: 'new_table',
+          config_type: 'Pull' as const,
+          source_type: 'HTTP' as const,
+          schedule_id: 1,
+          connection: {
+            url: 'https://api.example.com/data',
+            headers: {
+              Authorization: 'Bearer token123',
+              'Content-Type': 'application/json',
+            },
+          },
+        };
+
+        const mockResponse = {
+          id: 1,
+          job_status: 'PENDING' as const,
+          created_at: '2023-01-01T00:00:00Z',
+          updated_at: '2023-01-01T00:00:00Z',
+          ...mockJobData,
+        };
+
+        mockedApiClient.post.mockResolvedValue(mockResponse);
+
+        const result = await service.createJob(mockJobData);
+
+        expect(mockedApiClient.post).toHaveBeenCalledWith(
+          '/job/create',
+          mockJobData,
+        );
+        expect(result).toEqual(mockResponse);
+      });
+
+      it('should create a new SFTP job successfully', async () => {
+        const mockJobData: Omit<SftpDataEnrichmentJob, 'id' | 'job_status'> = {
+          endpoint_name: 'New SFTP Endpoint',
+          description: 'New SFTP job description',
+          table_name: 'sftp_table',
+          config_type: 'Push' as const,
+          source_type: 'SFTP' as const,
+          schedule_id: 1,
+          connection: {
+            host: 'sftp.example.com',
+            port: 22,
+            auth_type: 'USERNAME_PASSWORD' as const,
+            user_name: 'testuser',
+            password: 'testpass',
+          },
+          file: {
+            path: '/data/export.csv',
+            file_type: 'CSV' as const,
+            delimiter: ',',
+            header: true,
+            encoding: 'utf-8' as const,
+          },
+        };
+
+        const mockResponse = {
+          id: 2,
+          job_status: 'PENDING' as const,
+          created_at: '2023-01-01T00:00:00Z',
+          updated_at: '2023-01-01T00:00:00Z',
+          ...mockJobData,
+        };
+
+        mockedApiClient.post.mockResolvedValue(mockResponse);
+
+        const result = await service.createJob(mockJobData);
+
+        expect(mockedApiClient.post).toHaveBeenCalledWith(
+          '/job/create',
+          mockJobData,
+        );
+        expect(result).toEqual(mockResponse);
+      });
+    });
+
+    describe('getJobById', () => {
+      it('should fetch job by ID successfully', async () => {
+        const mockJob = {
+          id: 1,
+          endpoint_name: 'Test Endpoint',
+          description: 'Test Description',
+          table_name: 'test_table',
+          job_status: 'PENDING' as const,
+          config_type: 'Pull' as const,
+          source_type: 'HTTP' as const,
+          schedule_id: 1,
+          connection: {
+            url: 'http://test.com',
+            headers: {},
+          },
+          created_at: '2023-01-01T00:00:00Z',
+          updated_at: '2023-01-01T00:00:00Z',
+        };
+
+        mockedApiClient.get.mockResolvedValue(mockJob);
+
+        const result = await service.getJobById(1);
+
+        expect(mockedApiClient.get).toHaveBeenCalledWith('/job/1');
+        expect(result).toEqual(mockJob);
+      });
+    });
+
+    describe('updateJob', () => {
+      it('should update job successfully', async () => {
+        const mockJobData = {
+          endpoint_name: 'Updated Endpoint',
+          description: 'Updated description',
+          table_name: 'updated_table',
+          config_type: 'Push' as const,
+          source_type: 'HTTP' as const,
+          schedule_id: 1,
+          connection: {
+            url: 'https://updated.example.com',
+            headers: {},
+          },
+        };
+
+        const mockResponse = {
+          id: 1,
+          job_status: 'PENDING' as const,
+          created_at: '2023-01-01T00:00:00Z',
+          updated_at: '2023-01-01T01:00:00Z',
+          ...mockJobData,
+        };
+
+        mockedApiClient.put.mockResolvedValue(mockResponse);
+
+        const result = await service.updateJob(1, mockJobData);
+
+        expect(mockedApiClient.put).toHaveBeenCalledWith('/job/1', mockJobData);
+        expect(result).toEqual(mockResponse);
+      });
+    });
+
+    describe('deleteJob', () => {
+      it('should delete job successfully', async () => {
+        mockedApiClient.delete.mockResolvedValue(undefined);
+
+        await service.deleteJob(1);
+
+        expect(mockedApiClient.delete).toHaveBeenCalledWith('/job/1');
+      });
+    });
+
+    describe('executeJob', () => {
+      it('should execute job successfully', async () => {
+        const mockResponse = { message: 'Job execution started' };
+        mockedApiClient.post.mockResolvedValue(mockResponse);
+
+        const result = await service.executeJob(1);
+
+        expect(mockedApiClient.post).toHaveBeenCalledWith('/job/1/execute');
+        expect(result).toEqual(mockResponse);
+      });
+    });
+  });
+
   describe('dataEnrichmentApi singleton', () => {
     it('should export a singleton instance', () => {
       expect(dataEnrichmentApi).toBeInstanceOf(DataEnrichmentApiService);
@@ -313,6 +538,13 @@ describe('DataEnrichmentApiService', () => {
       expect(typeof dataEnrichmentApi.updateTemplate).toBe('function');
       expect(typeof dataEnrichmentApi.deleteTemplate).toBe('function');
       expect(typeof dataEnrichmentApi.transformData).toBe('function');
+      // New job management methods
+      expect(typeof dataEnrichmentApi.getAllJobs).toBe('function');
+      expect(typeof dataEnrichmentApi.createJob).toBe('function');
+      expect(typeof dataEnrichmentApi.getJobById).toBe('function');
+      expect(typeof dataEnrichmentApi.updateJob).toBe('function');
+      expect(typeof dataEnrichmentApi.deleteJob).toBe('function');
+      expect(typeof dataEnrichmentApi.executeJob).toBe('function');
     });
   });
 });

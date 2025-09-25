@@ -52,8 +52,8 @@ interface EditEndpointModalProps {
     // Here you would implement the actual save functionality
   };
   if (!isOpen) return null;
-  return <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center" data-id="element-726">
-      <div className="bg-white rounded-lg w-full max-w-6xl max-h-[90vh] overflow-hidden" data-id="element-727">
+  return <div className="fixed inset-0 z-50 flex items-center justify-center p-4" data-id="element-726">
+      <div className="bg-white rounded-lg w-full max-w-6xl max-h-[90vh] overflow-hidden relative z-10" data-id="element-727">
         <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200" data-id="element-728">
           <h2 className="text-xl font-semibold text-gray-800" data-id="element-729">
             {isNewEndpoint ? 'Create New Connection' : 'Edit Endpoint'}

@@ -29,8 +29,8 @@ export const EndpointHistoryModal: React.FC<EndpointHistoryModalProps> = ({
     changes: ['Initial implementation', 'Basic field mappings', 'Standard validation rules'],
     author: 'Jane Smith'
   }];
-  return <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center" data-id="element-1053">
-    <div className="bg-white rounded-lg w-full max-w-3xl max-h-[90vh] overflow-hidden" data-id="element-1054">
+  return <div className="fixed inset-0 z-50 flex items-center justify-center p-4" data-id="element-1053">
+    <div className="bg-white rounded-lg w-full max-w-3xl max-h-[90vh] overflow-hidden relative z-10" data-id="element-1054">
       <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200" data-id="element-1055">
         <h2 className="text-xl font-semibold text-gray-800" data-id="element-1056">
           Version History

@@ -1,8 +1,10 @@
 // Helper function to safely access environment variables
-const getApiBaseUrl = () => {
+const getApiBaseUrl = (service: 'auth' | 'default' = 'default') => {
   // For test environment, use the fallback
   if (typeof process !== 'undefined' && process.env.NODE_ENV === 'test') {
-    return 'http://localhost:3000';
+    return service === 'auth'
+      ? 'http://localhost:3000'
+      : 'http://localhost:3001';
   }
 
   // For production/development, check if we have Vite environment
@@ -10,12 +12,13 @@ const getApiBaseUrl = () => {
     return process.env.VITE_API_BASE_URL;
   }
 
-  return 'http://localhost:3000';
+  return service === 'auth' ? 'http://localhost:3000' : 'http://localhost:3001';
 };
 
 export const API_CONFIG = {
   // Base configuration
-  BASE_URL: getApiBaseUrl(),
+  BASE_URL: getApiBaseUrl('default'), // Default for data enrichment and other services
+  AUTH_BASE_URL: getApiBaseUrl('auth'), // Separate base URL for auth services
   TIMEOUT: 30000,
 
   // API versions
@@ -53,6 +56,14 @@ export const API_CONFIG = {
       MAPPINGS: '/enrichment/mappings',
       TRANSFORM: '/enrichment/transform',
       TEMPLATES: '/enrichment/templates',
+      JOBS: '/job',
+    },
+
+    // Schedule endpoints
+    SCHEDULE: {
+      CREATE: '/schedule/create',
+      ALL: '/schedule/all',
+      DELETE: '/schedule',
     },
 
     // CRON endpoints

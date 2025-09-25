@@ -1,4 +1,3 @@
-import { apiClient } from '../../../shared/services/apiClient';
 import { API_CONFIG } from '../../../shared/config/api.config';
 
 // Types for authentication
@@ -22,23 +21,85 @@ export interface User {
 
 // Authentication API service
 export class AuthApiService {
+  private authBaseURL: string;
+  private defaultHeaders: Record<string, string>;
+
+  constructor() {
+    this.authBaseURL = API_CONFIG.AUTH_BASE_URL;
+    this.defaultHeaders = API_CONFIG.DEFAULT_HEADERS;
+  }
+
+  private async authRequest<T>(
+    endpoint: string,
+    config: {
+      method?: string;
+      body?: unknown;
+      headers?: Record<string, string>;
+    } = {},
+  ): Promise<T> {
+    const url = `${this.authBaseURL}${endpoint}`;
+    const token = localStorage.getItem('authToken');
+
+    const headers = {
+      ...this.defaultHeaders,
+      ...config.headers,
+      ...(token && { Authorization: `Bearer ${token}` }),
+    };
+
+    try {
+      const response = await fetch(url, {
+        method: config.method || 'GET',
+        headers,
+        body: config.body ? JSON.stringify(config.body) : undefined,
+      });
+
+      if (response.status === 401) {
+        localStorage.removeItem('authToken');
+        window.location.href = '/login';
+        throw new Error('Unauthorized');
+      }
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Auth API request failed:', error);
+      // Re-throw with more specific error messages for common cases
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new Error('Network error');
+      }
+      if (
+        error instanceof Error &&
+        error.message.includes('Cannot read properties of undefined')
+      ) {
+        throw new Error('Network error');
+      }
+      throw error;
+    }
+  }
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
-    return apiClient.post<AuthResponse>(
-      API_CONFIG.ENDPOINTS.AUTH.LOGIN,
-      credentials,
-    );
+    return this.authRequest<AuthResponse>(API_CONFIG.ENDPOINTS.AUTH.LOGIN, {
+      method: 'POST',
+      body: credentials,
+    });
   }
 
   async logout(): Promise<void> {
-    return apiClient.post<void>(API_CONFIG.ENDPOINTS.AUTH.LOGOUT);
+    return this.authRequest<void>(API_CONFIG.ENDPOINTS.AUTH.LOGOUT, {
+      method: 'POST',
+    });
   }
 
   async refreshToken(): Promise<AuthResponse> {
-    return apiClient.post<AuthResponse>(API_CONFIG.ENDPOINTS.AUTH.REFRESH);
+    return this.authRequest<AuthResponse>(API_CONFIG.ENDPOINTS.AUTH.REFRESH, {
+      method: 'POST',
+    });
   }
 
   async getProfile(): Promise<User> {
-    return apiClient.get<User>(API_CONFIG.ENDPOINTS.AUTH.PROFILE);
+    return this.authRequest<User>(API_CONFIG.ENDPOINTS.AUTH.PROFILE);
   }
 
   // Helper method to decode JWT token and extract user info
