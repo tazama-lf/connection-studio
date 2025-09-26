@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { PlayIcon, PauseIcon, EditIcon, TrashIcon, EyeIcon } from 'lucide-react';
 import SearchBar from '../../../shared/components/SearchBar';
+import { Pagination } from '../../data-enrichment/components/Pagination';
 import { dataEnrichmentApi } from '../../data-enrichment/services/enrichmentApi';
 import type { DataEnrichmentJobResponse, ScheduleResponse } from '../../data-enrichment/types';
 export const CronJobList: React.FC = () => {
@@ -9,6 +10,11 @@ export const CronJobList: React.FC = () => {
   const [schedules, setSchedules] = useState<ScheduleResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(5);
+  const [totalItems, setTotalItems] = useState(0);
 
   // Load jobs and schedules on component mount
   useEffect(() => {
@@ -47,6 +53,22 @@ export const CronJobList: React.FC = () => {
     job.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
     job.source_type.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Calculate pagination for filtered results
+  const totalFilteredItems = filteredJobs.length;
+  const totalPages = Math.ceil(totalFilteredItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedJobs = filteredJobs.slice(startIndex, endIndex);
+
+  // Update total items when filtered jobs change
+  useEffect(() => {
+    setTotalItems(totalFilteredItems);
+    // Reset to first page if current page is beyond available pages
+    if (currentPage > Math.ceil(totalFilteredItems / itemsPerPage) && totalFilteredItems > 0) {
+      setCurrentPage(1);
+    }
+  }, [totalFilteredItems, currentPage, itemsPerPage]);
   return <div data-id="element-116">
       <div className="flex justify-between items-center mb-6" data-id="element-117">
         <h2 className="text-xl font-semibold text-gray-800" data-id="element-118">
@@ -98,7 +120,7 @@ export const CronJobList: React.FC = () => {
                 </td>
               </tr>
             ) : (
-              filteredJobs.map(job => {
+              paginatedJobs.map(job => {
                 const schedule = getScheduleForJob(job.schedule_id);
                 return (
                   <tr key={job.id} className="hover:bg-gray-50">
@@ -153,5 +175,20 @@ export const CronJobList: React.FC = () => {
           </tbody>
         </table>
       </div>
+
+      {/* Pagination */}
+      {totalItems > 0 && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          itemsPerPage={itemsPerPage}
+          onPageChange={setCurrentPage}
+          onItemsPerPageChange={(newItemsPerPage) => {
+            setItemsPerPage(newItemsPerPage);
+            setCurrentPage(1); // Reset to first page when changing items per page
+          }}
+        />
+      )}
     </div>;
 };

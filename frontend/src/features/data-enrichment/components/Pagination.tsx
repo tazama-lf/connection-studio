@@ -89,7 +89,7 @@ export const Pagination: React.FC<PaginationProps> = ({
           
           <div className="flex items-center space-x-2">
             <label htmlFor="items-per-page" className="text-sm text-gray-700">
-              Items per page:
+              :
             </label>
             <select
               id="items-per-page"

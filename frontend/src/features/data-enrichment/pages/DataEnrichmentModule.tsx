@@ -17,7 +17,7 @@ const DataEnrichmentModule: React.FC = () => {
   const [jobsLoading, setJobsLoading] = useState(false);
   const [showJobForm, setShowJobForm] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [itemsPerPage, setItemsPerPage] = useState(5);
   const [totalItems, setTotalItems] = useState(0);
   
   // Job details modal state

@@ -6,8 +6,8 @@ import Dashboard from '../features/dashboard/pages/Dashboard';
 import DEMSModule from '../features/dems/pages/DEMSModule';
 import CRONModule from '../features/cron/pages/CRONModule';
 import DataEnrichmentModule from '../features/data-enrichment/pages/DataEnrichmentModule';
+import NotFoundPage from '../pages/NotFoundPage';
 import { ROUTES } from '../shared/config/routes.config';
-import { APP_CONFIG } from '../shared/config/app.config';
 
 const ProtectedRoute = ({
   children
@@ -45,7 +45,7 @@ export const AppRoutes: React.FC = () => {
           <CRONModule />
         </ProtectedRoute>
       } />
-      <Route path="*" element={<Navigate to={APP_CONFIG.defaultRoute} />} />
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
 };

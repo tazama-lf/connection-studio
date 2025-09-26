@@ -63,7 +63,7 @@ export const API_CONFIG = {
     SCHEDULE: {
       CREATE: '/schedule/create',
       ALL: '/schedule/all',
-      DELETE: '/schedule',
+      DELETE: '/schedule/delete',
     },
 
     // CRON endpoints

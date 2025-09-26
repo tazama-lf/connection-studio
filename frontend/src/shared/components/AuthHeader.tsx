@@ -34,6 +34,11 @@ interface AuthHeaderProps {
             {showBackButton && <Button variant="secondary" size="sm" className="mr-4" onClick={handleBack} icon={<ChevronLeftIcon size={16} data-id="element-25" />} data-id="element-24">
                 Back
               </Button>}
+            <img
+              className="h-8 w-auto mr-3"
+              src="/logo.png"
+              alt="Tazama Logo"
+            />
             <h1 className="text-2xl font-bold text-gray-800" data-id="element-26">{title}</h1>
           </div>
           {user && (
