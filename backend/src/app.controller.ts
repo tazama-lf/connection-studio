@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, UseGuards } from '@nestjs/common';
 import { AppService } from './app.service';
 import { RequireClaim, TazamaClaims } from './auth/auth.decorator';
 import { TazamaAuthGuard } from './auth/tazama-auth.guard';
