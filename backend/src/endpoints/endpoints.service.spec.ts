@@ -1,4 +1,3 @@
-/* eslint-disable */
 import { Test, TestingModule } from '@nestjs/testing';
 import { EndpointsService } from './endpoints.service';
 import { EndpointsRepository } from './endpoints.repository';
@@ -147,21 +146,19 @@ describe('EndpointsService', () => {
 
     (schemaInferenceService.validateSchema as jest.Mock).mockReturnValue({
       isValid: false,
+      // eslint-disable-next-line quotes
       errors: ["Duplicate field path 'user.name' detected."],
     });
 
     const result = await service.validateSchema(fields, 'editor1');
     expect(result.isValid).toBe(false);
     expect(result.errors).toContain(
+      // eslint-disable-next-line quotes
       "Duplicate field path 'user.name' detected.",
     );
     expect(auditService.logSchemaValidated).toHaveBeenCalledWith(
       'editor1',
       'manual-validation',
-      {
-        isValid: false,
-        errorsCount: 1,
-      },
     );
   });
 
@@ -184,6 +181,7 @@ describe('EndpointsService', () => {
     (schemaInferenceService.validateSchema as jest.Mock).mockReturnValue({
       isValid: false,
       errors: [
+        // eslint-disable-next-line quotes
         "Path conflict - 'user' cannot be type 'string' because child path 'user.name' exists.",
       ],
     });
@@ -211,7 +209,10 @@ describe('EndpointsService', () => {
       validSchema,
       'editor1',
     );
-    expect(auditService.logDraftSaved).toHaveBeenCalled();
+    expect(auditService.logDraftSaved).toHaveBeenCalledWith(
+      'editor1',
+      'endpoint-1',
+    );
   });
 
   it('should reject saving draft with invalid schema', async () => {
@@ -287,10 +288,6 @@ describe('EndpointsService', () => {
     expect(auditService.logSchemaInferred).toHaveBeenCalledWith(
       'editor1',
       'temp',
-      {
-        contentType: ContentType.JSON,
-        fieldsInferred: 1,
-      },
     );
   });
 });

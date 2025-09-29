@@ -72,7 +72,7 @@ export class EndpointsRepository {
       .insert({
         endpoint_id: endpointId,
         version: await this.getNextSchemaVersion(endpointId),
-        schema_definition: JSON.stringify(schema),
+        schema_definition: JSON.stringify(schema), // Explicitly stringify for JSONB column
         created_by: createdBy,
       })
       .returning('id');
@@ -92,9 +92,28 @@ export class EndpointsRepository {
 
     if (!schemaVersion) return null;
 
+    if (!schemaVersion) return null;
+
+    // Parse the schema_definition JSON string
+    let parsedSchema: SchemaField[];
+    try {
+      // With explicit JSON.stringify on insert, we should always get a string back
+      if (typeof schemaVersion.schema_definition === 'string') {
+        parsedSchema = JSON.parse(schemaVersion.schema_definition);
+      } else {
+        // Fallback for case where DB driver auto-parsed (shouldn't happen with our approach)
+        parsedSchema = Array.isArray(schemaVersion.schema_definition)
+          ? schemaVersion.schema_definition
+          : [];
+      }
+    } catch {
+      // Return a safe fallback if schema parsing fails
+      parsedSchema = [];
+    }
+
     return {
       version: schemaVersion.version,
-      fields: JSON.parse(schemaVersion.schema_definition),
+      fields: parsedSchema,
       createdBy: schemaVersion.created_by,
       createdAt: schemaVersion.created_at,
     };

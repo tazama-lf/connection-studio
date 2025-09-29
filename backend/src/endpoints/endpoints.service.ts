@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+﻿import { Injectable } from '@nestjs/common';
 import { EndpointsRepository } from './endpoints.repository';
 import { SchemaInferenceService } from '../schemas/schema-inference.service';
 import { AuditService } from '../audit/audit.service';
@@ -26,10 +26,7 @@ export class EndpointsService {
       dto.payload,
       dto.contentType,
     );
-    await this.auditService.logSchemaInferred(editorIdentity, 'temp', {
-      contentType: dto.contentType,
-      fieldsInferred: schema.length,
-    });
+    await this.auditService.logSchemaInferred(editorIdentity, 'temp');
     return schema;
   }
 
@@ -45,7 +42,7 @@ export class EndpointsService {
     const validation = this.schemaInferenceService.validateSchema(schema);
     if (!validation.isValid) {
       throw new Error(
-        `Schema validation failed: ${validation.errors.join(', ')}`,
+        'Schema validation failed: ' + validation.errors.join(', '),
       );
     }
 
@@ -65,12 +62,7 @@ export class EndpointsService {
       createdBy,
     );
 
-    await this.auditService.logEndpointCreated(createdBy, dto.path, {
-      method: dto.method,
-      version: dto.version,
-      transactionType: dto.transactionType,
-      fieldsCount: schema.length,
-    });
+    await this.auditService.logEndpointCreated(createdBy, dto.path, 1);
 
     return { endpointId, schema };
   }
@@ -84,43 +76,9 @@ export class EndpointsService {
     await this.auditService.logSchemaValidated(
       editorIdentity,
       'manual-validation',
-      {
-        isValid: validation.isValid,
-        errorsCount: validation.errors.length,
-      },
     );
 
     return validation;
-  }
-
-  async saveEndpointDraft(
-    endpointId: number,
-    schema: SchemaField[],
-    notes: string,
-    editorIdentity: string,
-  ): Promise<void> {
-    const validation = this.schemaInferenceService.validateSchema(schema);
-    if (!validation.isValid) {
-      throw new Error(
-        `Cannot save draft with invalid schema: ${validation.errors.join(', ')}`,
-      );
-    }
-
-    const schemaVersionId = await this.endpointsRepository.createSchemaVersion(
-      endpointId,
-      schema,
-      editorIdentity,
-    );
-
-    await this.auditService.logDraftSaved(
-      editorIdentity,
-      `endpoint-${endpointId}`,
-      {
-        schemaVersionId,
-        notes,
-        fieldsCount: schema.length,
-      },
-    );
   }
 
   async getEndpointById(id: number): Promise<Endpoint | null> {
@@ -141,6 +99,32 @@ export class EndpointsService {
     return await this.endpointsRepository.findEndpointsByCreator(createdBy);
   }
 
+  async saveEndpointDraft(
+    endpointId: number,
+    schema: SchemaField[],
+    notes: string,
+    editorIdentity: string,
+  ): Promise<void> {
+    const validation = this.schemaInferenceService.validateSchema(schema);
+    if (!validation.isValid) {
+      throw new Error(
+        'Cannot save draft with invalid schema: ' +
+          validation.errors.join(', '),
+      );
+    }
+
+    await this.endpointsRepository.createSchemaVersion(
+      endpointId,
+      schema,
+      editorIdentity,
+    );
+
+    await this.auditService.logDraftSaved(
+      editorIdentity,
+      'endpoint-' + endpointId,
+    );
+  }
+
   async updateEndpointStatus(
     endpointId: number,
     status: EndpointStatus,
@@ -150,9 +134,8 @@ export class EndpointsService {
 
     await this.auditService.logAction({
       action: 'STATUS_UPDATED',
-      editorIdentity,
-      endpointName: `endpoint-${endpointId}`,
-      details: { newStatus: status },
+      actor: editorIdentity,
+      endpointName: 'endpoint-' + endpointId,
     });
   }
 
@@ -179,16 +162,15 @@ export class EndpointsService {
 
     await this.auditService.logAction({
       action: 'SUBMITTED_FOR_APPROVAL',
-      editorIdentity,
-      endpointName: `endpoint-${endpointId}`,
-      details: { previousStatus: EndpointStatus.IN_PROGRESS },
+      actor: editorIdentity,
+      endpointName: 'endpoint-' + endpointId,
     });
   }
 
   async approveEndpoint(
     endpointId: number,
     approverIdentity: string,
-    comments?: string,
+    _comments?: string,
   ): Promise<void> {
     const endpoint =
       await this.endpointsRepository.findEndpointById(endpointId);
@@ -202,24 +184,20 @@ export class EndpointsService {
 
     await this.endpointsRepository.updateEndpointStatus(
       endpointId,
-      EndpointStatus.APPROVED,
+      EndpointStatus.READY_FOR_DEPLOYMENT,
     );
 
     await this.auditService.logAction({
       action: 'ENDPOINT_APPROVED',
-      editorIdentity: approverIdentity,
-      endpointName: `endpoint-${endpointId}`,
-      details: {
-        comments: comments || 'No comments provided',
-        approvedBy: approverIdentity,
-      },
+      actor: approverIdentity,
+      endpointName: 'endpoint-' + endpointId,
     });
   }
 
   async rejectEndpoint(
     endpointId: number,
     approverIdentity: string,
-    reason: string,
+    _reason: string,
   ): Promise<void> {
     const endpoint =
       await this.endpointsRepository.findEndpointById(endpointId);
@@ -238,12 +216,8 @@ export class EndpointsService {
 
     await this.auditService.logAction({
       action: 'ENDPOINT_REJECTED',
-      editorIdentity: approverIdentity,
-      endpointName: `endpoint-${endpointId}`,
-      details: {
-        reason,
-        rejectedBy: approverIdentity,
-      },
+      actor: approverIdentity,
+      endpointName: 'endpoint-' + endpointId,
     });
   }
 
@@ -257,8 +231,8 @@ export class EndpointsService {
       throw new Error('Endpoint not found');
     }
 
-    if (endpoint.status !== EndpointStatus.APPROVED) {
-      throw new Error('Only approved endpoints can be published');
+    if (endpoint.status !== EndpointStatus.READY_FOR_DEPLOYMENT) {
+      throw new Error('Only ready for deployment endpoints can be published');
     }
 
     await this.endpointsRepository.updateEndpointStatus(
@@ -268,12 +242,8 @@ export class EndpointsService {
 
     await this.auditService.logAction({
       action: 'ENDPOINT_PUBLISHED',
-      editorIdentity: publisherIdentity,
-      endpointName: `endpoint-${endpointId}`,
-      details: {
-        publishedBy: publisherIdentity,
-        publishedAt: new Date().toISOString(),
-      },
+      actor: publisherIdentity,
+      endpointName: 'endpoint-' + endpointId,
     });
   }
 
@@ -285,7 +255,7 @@ export class EndpointsService {
 
   async getApprovedEndpoints(): Promise<Endpoint[]> {
     return await this.endpointsRepository.findEndpointsByStatus(
-      EndpointStatus.APPROVED,
+      EndpointStatus.READY_FOR_DEPLOYMENT,
     );
   }
 
@@ -332,16 +302,6 @@ export class EndpointsService {
       schema,
       editorIdentity,
     );
-
-    await this.auditService.logDraftSaved(
-      editorIdentity,
-      `endpoint_${endpointId}`,
-      {
-        action: 'field_updated',
-        fieldName: schema[fieldIndex].name,
-        changes: dto,
-      },
-    );
   }
 
   async toggleFieldRequired(
@@ -374,16 +334,6 @@ export class EndpointsService {
       endpointId,
       schema,
       editorIdentity,
-    );
-
-    await this.auditService.logDraftSaved(
-      editorIdentity,
-      `endpoint_${endpointId}`,
-      {
-        action: 'field_required_toggled',
-        fieldName: schema[fieldIndex].name,
-        changes: { isRequired },
-      },
     );
   }
 
@@ -418,16 +368,6 @@ export class EndpointsService {
       editorIdentity,
     );
 
-    await this.auditService.logDraftSaved(
-      editorIdentity,
-      `endpoint_${endpointId}`,
-      {
-        action: 'field_added',
-        fieldName: newField.name,
-        field: newField,
-      },
-    );
-
     return newField;
   }
 
@@ -454,22 +394,12 @@ export class EndpointsService {
       throw new Error('Field not found');
     }
 
-    const removedField = schema.splice(fieldIndex, 1)[0];
+    schema.splice(fieldIndex, 1);
 
     await this.endpointsRepository.createSchemaVersion(
       endpointId,
       schema,
       editorIdentity,
-    );
-
-    await this.auditService.logDraftSaved(
-      editorIdentity,
-      `endpoint_${endpointId}`,
-      {
-        action: 'field_removed',
-        fieldName: removedField.name,
-        field: removedField,
-      },
     );
   }
 
@@ -495,7 +425,7 @@ export class EndpointsService {
     const maxIndex = schema.length;
     const invalidIds = fieldIds.filter((id) => id < 1 || id > maxIndex);
     if (invalidIds.length > 0) {
-      throw new Error(`Invalid field IDs: ${invalidIds.join(', ')}`);
+      throw new Error('Invalid field IDs: ' + invalidIds.join(', '));
     }
 
     const reorderedSchema = fieldIds.map((id) => schema[id - 1]);
@@ -504,15 +434,6 @@ export class EndpointsService {
       endpointId,
       reorderedSchema,
       editorIdentity,
-    );
-
-    await this.auditService.logDraftSaved(
-      editorIdentity,
-      `endpoint_${endpointId}`,
-      {
-        action: 'fields_reordered',
-        newOrder: fieldIds,
-      },
     );
   }
 }

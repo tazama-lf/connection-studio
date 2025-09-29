@@ -1,11 +1,21 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { Knex } from 'knex';
+import { randomUUID } from 'crypto';
 
 export interface AuditLogEntry {
   action: string;
-  editorIdentity: string;
-  endpointName: string;
-  details?: any;
+  actor: string;
+  endpointName?: string;
+  mappingName?: string;
+  version?: number;
+}
+
+export interface MappingAuditLogEntry {
+  action: 'CREATE' | 'UPDATE' | 'DELETE' | 'ROLLBACK' | 'APPROVE' | 'PUBLISH';
+  actor: string;
+  mappingName?: string;
+  endpointName?: string;
+  version?: number;
 }
 
 @Injectable()
@@ -15,66 +25,68 @@ export class AuditService {
   async logAction(entry: AuditLogEntry): Promise<void> {
     try {
       await this.knex('audit_logs').insert({
+        id: randomUUID(),
         action: entry.action,
-        editor_identity: entry.editorIdentity,
-        endpoint_name: entry.endpointName,
-        details: entry.details ? JSON.stringify(entry.details) : null,
+        actor: entry.actor,
+        endpoint_name: entry.endpointName || entry.mappingName || 'UNKNOWN',
+        version: entry.version,
         timestamp: new Date(),
       });
     } catch (error) {
       console.error('Failed to log audit entry:', error);
+      console.error('Entry data:', entry);
     }
   }
 
   async logEndpointCreated(
-    editorIdentity: string,
+    actor: string,
     endpointName: string,
-    details: any,
+    version?: number,
   ): Promise<void> {
     await this.logAction({
       action: 'ENDPOINT_CREATED',
-      editorIdentity,
+      actor,
       endpointName,
-      details,
+      version,
     });
   }
 
   async logSchemaInferred(
-    editorIdentity: string,
+    actor: string,
     endpointName: string,
-    details: any,
+    version?: number,
   ): Promise<void> {
     await this.logAction({
       action: 'SCHEMA_INFERRED',
-      editorIdentity,
+      actor,
       endpointName,
-      details,
+      version,
     });
   }
 
   async logDraftSaved(
-    editorIdentity: string,
+    actor: string,
     endpointName: string,
-    details: any,
+    version?: number,
   ): Promise<void> {
     await this.logAction({
       action: 'DRAFT_SAVED',
-      editorIdentity,
+      actor,
       endpointName,
-      details,
+      version,
     });
   }
 
   async logSchemaValidated(
-    editorIdentity: string,
+    actor: string,
     endpointName: string,
-    details: any,
+    version?: number,
   ): Promise<void> {
     await this.logAction({
       action: 'SCHEMA_VALIDATED',
-      editorIdentity,
+      actor,
       endpointName,
-      details,
+      version,
     });
   }
 
@@ -89,5 +101,35 @@ export class AuditService {
     }
 
     return await query;
+  }
+
+  /**
+   * Log mapping-related actions with simplified audit trail
+   */
+  async logMappingAction(entry: MappingAuditLogEntry): Promise<void> {
+    try {
+      await this.knex('audit_logs').insert({
+        id: randomUUID(),
+        action: entry.action,
+        actor: entry.actor,
+        endpoint_name: entry.endpointName || entry.mappingName || 'UNKNOWN',
+        version: entry.version,
+        timestamp: new Date(),
+      });
+    } catch (error) {
+      console.error('Failed to log mapping audit entry:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get audit logs by endpoint or mapping name
+   */
+  async getAuditLogsByName(name: string, limit = 100): Promise<any[]> {
+    return await this.knex('audit_logs')
+      .select('action', 'actor', 'endpoint_name', 'version', 'timestamp')
+      .where('endpoint_name', name)
+      .orderBy('timestamp', 'desc')
+      .limit(limit);
   }
 }
