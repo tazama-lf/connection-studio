@@ -22,7 +22,6 @@ import { AuditInterceptor } from './audit/audit.interceptor';
       isGlobal: true,
       validate,
     }),
-    KnexModule,
     AuthModule,
     LoggerModule,
     EndpointsModule,

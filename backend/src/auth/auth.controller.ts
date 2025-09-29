@@ -55,8 +55,5 @@ export class AuthController {
   @UseGuards(TazamaAuthGuard)
   @RequireClaims(TazamaClaims.VIEW_PROFILE)
   @Get('audit-logs')
-  async getAuditLogs(
-    @Query('limit') _limit = 50,
-    @Query('offset') _offset = 0,
-  ) {}
+  async getAuditLogs(@Query('limit') limit = 50, @Query('offset') offset = 0) {}
 }
