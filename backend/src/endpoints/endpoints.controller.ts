@@ -185,9 +185,11 @@ export class EndpointsController {
   ) {
     const userIdentity =
       user.token.clientId || user.token.sub || 'unknown-user';
+    const tenantId = user.token.tenantId;
     const result = await this.endpointsService.createEndpoint(
       dto,
       userIdentity,
+      tenantId,
     );
     return {
       success: true,
@@ -222,11 +224,13 @@ export class EndpointsController {
   ) {
     const userIdentity =
       user.token.clientId || user.token.sub || 'unknown-user';
+    const tenantId = user.token.tenantId;
     await this.endpointsService.saveEndpointDraft(
       endpointId,
       dto.schema,
       dto.notes,
       userIdentity,
+      tenantId,
     );
     return {
       success: true,
@@ -242,9 +246,11 @@ export class EndpointsController {
   ) {
     const userIdentity =
       user.token.clientId || user.token.sub || 'unknown-user';
+    const tenantId = user.token.tenantId;
     await this.endpointsService.submitEndpointForApproval(
       endpointId,
       userIdentity,
+      tenantId,
     );
     return {
       success: true,
@@ -261,9 +267,11 @@ export class EndpointsController {
   ) {
     const userIdentity =
       user.token.clientId || user.token.sub || 'unknown-user';
+    const tenantId = user.token.tenantId;
     await this.endpointsService.approveEndpoint(
       endpointId,
       userIdentity,
+      tenantId,
       dto.comments,
     );
     return {
@@ -281,9 +289,11 @@ export class EndpointsController {
   ) {
     const userIdentity =
       user.token.clientId || user.token.sub || 'unknown-user';
+    const tenantId = user.token.tenantId;
     await this.endpointsService.rejectEndpoint(
       endpointId,
       userIdentity,
+      tenantId,
       dto.reason,
     );
     return {
@@ -300,7 +310,12 @@ export class EndpointsController {
   ) {
     const userIdentity =
       user.token.clientId || user.token.sub || 'unknown-user';
-    await this.endpointsService.publishEndpoint(endpointId, userIdentity);
+    const tenantId = user.token.tenantId;
+    await this.endpointsService.publishEndpoint(
+      endpointId,
+      userIdentity,
+      tenantId,
+    );
     return {
       success: true,
       message: 'Endpoint published to production',
@@ -309,8 +324,10 @@ export class EndpointsController {
 
   @Get('pending-approval')
   @RequireAnyClaims(TazamaClaims.APPROVER, TazamaClaims.PUBLISHER)
-  async getPendingApprovalEndpoints(@User() _user: AuthenticatedUser) {
-    const endpoints = await this.endpointsService.getPendingApprovalEndpoints();
+  async getPendingApprovalEndpoints(@User() user: AuthenticatedUser) {
+    const tenantId = user.token.tenantId;
+    const endpoints =
+      await this.endpointsService.getPendingApprovalEndpoints(tenantId);
     return {
       success: true,
       data: endpoints,
@@ -319,8 +336,10 @@ export class EndpointsController {
 
   @Get('approved')
   @RequireClaim(TazamaClaims.PUBLISHER)
-  async getApprovedEndpoints(@User() _user: AuthenticatedUser) {
-    const endpoints = await this.endpointsService.getApprovedEndpoints();
+  async getApprovedEndpoints(@User() user: AuthenticatedUser) {
+    const tenantId = user.token.tenantId;
+    const endpoints =
+      await this.endpointsService.getApprovedEndpoints(tenantId);
     return {
       success: true,
       data: endpoints,
@@ -333,8 +352,12 @@ export class EndpointsController {
     TazamaClaims.APPROVER,
     TazamaClaims.PUBLISHER,
   )
-  async getEndpoint(@Param('id', ParseIntPipe) id: number) {
-    const endpoint = await this.endpointsService.getEndpointById(id);
+  async getEndpoint(
+    @Param('id', ParseIntPipe) id: number,
+    @User() user: AuthenticatedUser,
+  ) {
+    const tenantId = user.token.tenantId;
+    const endpoint = await this.endpointsService.getEndpointById(id, tenantId);
     if (!endpoint) {
       return {
         success: false,
@@ -352,8 +375,11 @@ export class EndpointsController {
   async getMyEndpoints(@User() user: AuthenticatedUser) {
     const userIdentity =
       user.token.clientId || user.token.sub || 'unknown-user';
-    const endpoints =
-      await this.endpointsService.getEndpointsByCreator(userIdentity);
+    const tenantId = user.token.tenantId;
+    const endpoints = await this.endpointsService.getEndpointsByCreator(
+      userIdentity,
+      tenantId,
+    );
     return {
       success: true,
       data: endpoints,
@@ -363,8 +389,15 @@ export class EndpointsController {
   // Field editing endpoints
   @Get(':id/schema/fields')
   @RequireClaim(TazamaClaims.EDITOR)
-  async getSchemaFields(@Param('id', ParseIntPipe) endpointId: number) {
-    const fields = await this.endpointsService.getSchemaFields(endpointId);
+  async getSchemaFields(
+    @Param('id', ParseIntPipe) endpointId: number,
+    @User() user: AuthenticatedUser,
+  ) {
+    const tenantId = user.token.tenantId;
+    const fields = await this.endpointsService.getSchemaFields(
+      endpointId,
+      tenantId,
+    );
     return {
       success: true,
       data: fields,
@@ -381,11 +414,13 @@ export class EndpointsController {
   ) {
     const userIdentity =
       user.token.clientId || user.token.sub || 'unknown-user';
+    const tenantId = user.token.tenantId;
     await this.endpointsService.updateSchemaField(
       endpointId,
       fieldId,
       dto,
       userIdentity,
+      tenantId,
     );
     return {
       success: true,
@@ -403,11 +438,13 @@ export class EndpointsController {
   ) {
     const userIdentity =
       user.token.clientId || user.token.sub || 'unknown-user';
+    const tenantId = user.token.tenantId;
     await this.endpointsService.toggleFieldRequired(
       endpointId,
       fieldId,
       dto.isRequired,
       userIdentity,
+      tenantId,
     );
     return {
       success: true,
@@ -424,10 +461,12 @@ export class EndpointsController {
   ) {
     const userIdentity =
       user.token.clientId || user.token.sub || 'unknown-user';
+    const tenantId = user.token.tenantId;
     const field = await this.endpointsService.addSchemaField(
       endpointId,
       dto,
       userIdentity,
+      tenantId,
     );
     return {
       success: true,
@@ -445,10 +484,12 @@ export class EndpointsController {
   ) {
     const userIdentity =
       user.token.clientId || user.token.sub || 'unknown-user';
+    const tenantId = user.token.tenantId;
     await this.endpointsService.removeSchemaField(
       endpointId,
       fieldId,
       userIdentity,
+      tenantId,
     );
     return {
       success: true,
@@ -465,10 +506,12 @@ export class EndpointsController {
   ) {
     const userIdentity =
       user.token.clientId || user.token.sub || 'unknown-user';
+    const tenantId = user.token.tenantId;
     await this.endpointsService.reorderSchemaFields(
       endpointId,
       dto.fieldIds,
       userIdentity,
+      tenantId,
     );
     return {
       success: true,

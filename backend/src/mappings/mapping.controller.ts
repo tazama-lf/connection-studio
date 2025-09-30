@@ -30,34 +30,46 @@ export class MappingController {
   ) {
     const userIdentity =
       user.token.clientId || user.token.sub || 'unknown-user';
+    const tenantId = user.token.tenantId;
     return await this.mappingService.createMapping(
       createMappingDto,
       userIdentity,
+      tenantId,
     );
   }
   @Get()
   @RequireClaim(TazamaClaims.EDITOR)
-  async findAll() {
-    return await this.mappingService.findAll();
+  async findAll(@User() user: AuthenticatedUser) {
+    const tenantId = user.token.tenantId;
+    return await this.mappingService.findAll(tenantId);
   }
   @Get(':id')
   @RequireClaim(TazamaClaims.EDITOR)
-  async findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return await this.mappingService.findOne(id);
+  async findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+    @User() user: AuthenticatedUser,
+  ) {
+    const tenantId = user.token.tenantId;
+    return await this.mappingService.findOne(id, tenantId);
   }
   @Get('name/:name')
   @RequireClaim(TazamaClaims.EDITOR)
-  async findByName(@Param('name') name: string) {
-    return await this.mappingService.findByName(name);
+  async findByName(
+    @Param('name') name: string,
+    @User() user: AuthenticatedUser,
+  ) {
+    const tenantId = user.token.tenantId;
+    return await this.mappingService.findByName(name, tenantId);
   }
   @Put(':id')
   @RequireClaim(TazamaClaims.EDITOR)
   async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateMappingDto: UpdateMappingDto,
-    @User() _user: AuthenticatedUser,
+    @User() user: AuthenticatedUser,
   ) {
-    return await this.mappingService.update(id, updateMappingDto);
+    const tenantId = user.token.tenantId;
+    return await this.mappingService.update(id, updateMappingDto, tenantId);
   }
   @Delete(':id')
   @RequireClaim(TazamaClaims.EDITOR)
@@ -67,7 +79,8 @@ export class MappingController {
   ) {
     const userIdentity =
       user.token.clientId || user.token.sub || 'unknown-user';
-    await this.mappingService.remove(id, userIdentity);
+    const tenantId = user.token.tenantId;
+    await this.mappingService.remove(id, userIdentity, tenantId);
     return { message: 'Mapping deleted successfully' };
   }
   @Post('validate')
@@ -81,8 +94,12 @@ export class MappingController {
   }
   @Get('history/:name')
   @RequireClaim(TazamaClaims.EDITOR)
-  async getMappingHistory(@Param('name') name: string) {
-    return await this.mappingService.getMappingHistory(name);
+  async getMappingHistory(
+    @Param('name') name: string,
+    @User() user: AuthenticatedUser,
+  ) {
+    const tenantId = user.token.tenantId;
+    return await this.mappingService.getMappingHistory(name, tenantId);
   }
   @Put(':id/status')
   @RequireClaim(TazamaClaims.APPROVER)
@@ -93,10 +110,12 @@ export class MappingController {
   ) {
     const userIdentity =
       user.token.clientId || user.token.sub || 'unknown-user';
+    const tenantId = user.token.tenantId;
     return await this.mappingService.updateStatus(
       id,
       statusData.status,
       userIdentity,
+      tenantId,
     );
   }
   @Post(':id/approve')
@@ -107,10 +126,12 @@ export class MappingController {
   ) {
     const userIdentity =
       user.token.clientId || user.token.sub || 'unknown-user';
+    const tenantId = user.token.tenantId;
     return await this.mappingService.updateStatus(
       id,
       MappingStatus.READY_FOR_DEPLOYMENT,
       userIdentity,
+      tenantId,
     );
   }
   @Post(':id/publish')
@@ -121,10 +142,12 @@ export class MappingController {
   ) {
     const userIdentity =
       user.token.clientId || user.token.sub || 'unknown-user';
+    const tenantId = user.token.tenantId;
     return await this.mappingService.updateStatus(
       id,
       MappingStatus.PUBLISHED,
       userIdentity,
+      tenantId,
     );
   }
   @Post('simulate')
@@ -146,10 +169,12 @@ export class MappingController {
   ) {
     const userIdentity =
       user.token.clientId || user.token.sub || 'unknown-user';
+    const tenantId = user.token.tenantId;
     return await this.mappingService.rollbackMapping(
       id,
       rollbackData.targetVersion,
       userIdentity,
+      tenantId,
     );
   }
   @Get(':id/audit-logs')
@@ -158,8 +183,15 @@ export class MappingController {
     @Param('id', ParseUUIDPipe) id: string,
     @Query('limit', ParseIntPipe) limit: number = 50,
     @Query('offset', ParseIntPipe) offset: number = 0,
+    @User() user: AuthenticatedUser,
   ) {
-    return await this.mappingService.getMappingAuditLogs(id, limit, offset);
+    const tenantId = user.token.tenantId;
+    return await this.mappingService.getMappingAuditLogs(
+      id,
+      tenantId,
+      limit,
+      offset,
+    );
   }
   @Get(':id/export')
   @RequireClaim(TazamaClaims.EDITOR)
@@ -169,7 +201,12 @@ export class MappingController {
   ) {
     const userIdentity =
       user.token.clientId || user.token.sub || 'unknown-user';
-    return await this.mappingService.exportMappingConfig(id, userIdentity);
+    const tenantId = user.token.tenantId;
+    return await this.mappingService.exportMappingConfig(
+      id,
+      userIdentity,
+      tenantId,
+    );
   }
   @Post('import')
   @RequireClaim(TazamaClaims.EDITOR)
@@ -179,9 +216,11 @@ export class MappingController {
   ) {
     const userIdentity =
       user.token.clientId || user.token.sub || 'unknown-user';
+    const tenantId = user.token.tenantId;
     return await this.mappingService.importMappingConfig(
       configData,
       userIdentity,
+      tenantId,
     );
   }
 }

@@ -96,7 +96,7 @@ describe('EndpointsService', () => {
     });
     (endpointsRepository.createEndpoint as jest.Mock).mockResolvedValue(1);
     (endpointsRepository.createSchemaVersion as jest.Mock).mockResolvedValue(1);
-    const result = await service.createEndpoint(dto, 'editor1');
+    const result = await service.createEndpoint(dto, 'editor1', 'test-tenant');
     expect(result.endpointId).toBe(1);
     expect(result.schema).toEqual([
       { name: 'foo', path: 'foo', type: 'number', isRequired: true },
@@ -123,9 +123,9 @@ describe('EndpointsService', () => {
       isValid: false,
       errors: ['bad'],
     });
-    await expect(service.createEndpoint(dto, 'editor1')).rejects.toThrow(
-      /Schema validation failed/,
-    );
+    await expect(
+      service.createEndpoint(dto, 'editor1', 'test-tenant'),
+    ).rejects.toThrow(/Schema validation failed/);
   });
 
   it('should validate schema with duplicate path detection', async () => {
@@ -159,6 +159,7 @@ describe('EndpointsService', () => {
     expect(auditService.logSchemaValidated).toHaveBeenCalledWith(
       'editor1',
       'manual-validation',
+      'system',
     );
   });
 
@@ -202,16 +203,24 @@ describe('EndpointsService', () => {
     });
     (endpointsRepository.createSchemaVersion as jest.Mock).mockResolvedValue(1);
 
-    await service.saveEndpointDraft(1, validSchema, 'Test notes', 'editor1');
+    await service.saveEndpointDraft(
+      1,
+      validSchema,
+      'Test notes',
+      'editor1',
+      'test-tenant',
+    );
 
     expect(endpointsRepository.createSchemaVersion).toHaveBeenCalledWith(
       1,
       validSchema,
       'editor1',
+      'test-tenant',
     );
     expect(auditService.logDraftSaved).toHaveBeenCalledWith(
       'editor1',
       'endpoint-1',
+      'test-tenant',
     );
   });
 
@@ -226,7 +235,13 @@ describe('EndpointsService', () => {
     });
 
     await expect(
-      service.saveEndpointDraft(1, invalidSchema, 'Test notes', 'editor1'),
+      service.saveEndpointDraft(
+        1,
+        invalidSchema,
+        'Test notes',
+        'editor1',
+        'test-tenant',
+      ),
     ).rejects.toThrow(/Cannot save draft with invalid schema/);
   });
 
@@ -288,6 +303,7 @@ describe('EndpointsService', () => {
     expect(auditService.logSchemaInferred).toHaveBeenCalledWith(
       'editor1',
       'temp',
+      'system',
     );
   });
 });

@@ -265,7 +265,11 @@ describe('MappingService', () => {
       };
       mockMappingRepository.findById.mockResolvedValue(mockMapping);
       mockAuditService.logMappingAction.mockResolvedValue(undefined);
-      const result = await service.exportMappingConfig(mappingId, userId);
+      const result = await service.exportMappingConfig(
+        mappingId,
+        userId,
+        'test-tenant',
+      );
       expect(result.success).toBe(true);
       expect(result.data).toBeDefined();
       expect(result.data?.package).toBeDefined();
@@ -279,7 +283,11 @@ describe('MappingService', () => {
       const mappingId = 'non-existent-id';
       const userId = 'test-user';
       mockMappingRepository.findById.mockResolvedValue(null);
-      const result = await service.exportMappingConfig(mappingId, userId);
+      const result = await service.exportMappingConfig(
+        mappingId,
+        userId,
+        'test-tenant',
+      );
       expect(result.success).toBe(false);
       expect(result.data).toBeNull();
       expect(result.message).toContain('not found');
@@ -389,7 +397,11 @@ describe('MappingService', () => {
       };
       mockMappingRepository.create.mockResolvedValue(newMapping);
       mockAuditService.logMappingAction.mockResolvedValue(undefined);
-      const result = await service.importMappingConfig(packageData, userId);
+      const result = await service.importMappingConfig(
+        packageData,
+        userId,
+        'test-tenant',
+      );
       expect(result.success).toBe(true);
       expect(result.data).toBeDefined();
       expect(result.data?.name).toBe('Original Mapping (Imported)');
@@ -399,7 +411,11 @@ describe('MappingService', () => {
     it('should reject package with invalid structure', async () => {
       const userId = 'import-user';
       const invalidPackage = {};
-      const result = await service.importMappingConfig(invalidPackage, userId);
+      const result = await service.importMappingConfig(
+        invalidPackage,
+        userId,
+        'test-tenant',
+      );
       expect(result.success).toBe(false);
       expect(result.data).toBeNull();
       expect(result.validationErrors.length).toBeGreaterThan(0);
@@ -476,12 +492,19 @@ describe('MappingService', () => {
         ...createDto,
       };
       mockMappingRepository.create.mockResolvedValue(expectedMapping);
-      const result = await service.createMapping(createDto, 'test-user');
-      expect(repository.create).toHaveBeenCalledWith({
-        ...createDto,
-        status: MappingStatus.IN_PROGRESS,
-        createdBy: 'test-user',
-      });
+      const result = await service.createMapping(
+        createDto,
+        'test-user',
+        'test-tenant',
+      );
+      expect(mockMappingRepository.create).toHaveBeenCalledWith(
+        {
+          ...createDto,
+          status: MappingStatus.IN_PROGRESS,
+          createdBy: 'test-user',
+        },
+        'test-tenant',
+      );
       expect(result.action).toBe('CREATE');
       expect(result.userId).toBe('test-user');
     });
@@ -494,7 +517,7 @@ describe('MappingService', () => {
         createdBy: 'test-user',
       };
       await expect(
-        service.createMapping(invalidDto, 'test-user'),
+        service.createMapping(invalidDto, 'test-user', 'test-tenant'),
       ).rejects.toThrow(BadRequestException);
     });
   });
@@ -528,16 +551,24 @@ describe('MappingService', () => {
         'uuid-123',
         updateDto,
         'editor-user',
+        'test-tenant',
       );
-      expect(repository.findById).toHaveBeenCalledWith('uuid-123');
-      expect(repository.update).toHaveBeenCalledWith('uuid-123', updateDto);
+      expect(mockMappingRepository.findById).toHaveBeenCalledWith(
+        'uuid-123',
+        'test-tenant',
+      );
+      expect(mockMappingRepository.update).toHaveBeenCalledWith(
+        'uuid-123',
+        updateDto,
+        'test-tenant',
+      );
       expect(result.action).toBe('UPDATE');
       expect(result.userId).toBe('editor-user');
     });
     it('should throw NotFoundException for non-existent mapping', async () => {
       mockMappingRepository.findById.mockResolvedValue(null);
       await expect(
-        service.updateMapping('non-existent', {}, 'user'),
+        service.updateMapping('non-existent', {}, 'user', 'test-tenant'),
       ).rejects.toThrow(NotFoundException);
     });
     it('should throw ConflictException for non-IN_PROGRESS mapping', async () => {
@@ -547,7 +578,7 @@ describe('MappingService', () => {
       };
       mockMappingRepository.findById.mockResolvedValue(approvedMapping);
       await expect(
-        service.updateMapping('uuid-123', {}, 'user'),
+        service.updateMapping('uuid-123', {}, 'user', 'test-tenant'),
       ).rejects.toThrow(ConflictException);
     });
   });
@@ -573,15 +604,21 @@ describe('MappingService', () => {
         { ...baseMapping, version: 1 },
       ];
       mockMappingRepository.findByName.mockResolvedValue(mappingHistory);
-      const result = await service.getMappingHistory('Test Mapping');
-      expect(repository.findByName).toHaveBeenCalledWith('Test Mapping');
+      const result = await service.getMappingHistory(
+        'Test Mapping',
+        'test-tenant',
+      );
+      expect(mockMappingRepository.findByName).toHaveBeenCalledWith(
+        'Test Mapping',
+        'test-tenant',
+      );
       expect(result).toEqual(mappingHistory);
     });
     it('should throw NotFoundException for non-existent mapping name', async () => {
       mockMappingRepository.findByName.mockResolvedValue([]);
-      await expect(service.getMappingHistory('Non Existent')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.getMappingHistory('Non Existent', 'test-tenant'),
+      ).rejects.toThrow(NotFoundException);
     });
   });
   describe('rollbackMapping', () => {
@@ -630,16 +667,20 @@ describe('MappingService', () => {
         'uuid-current',
         1,
         'rollback-user',
+        'test-tenant',
       );
-      expect(repository.create).toHaveBeenCalledWith({
-        name: targetMapping.name,
-        sourceFields: targetMapping.sourceFields,
-        destinationFields: targetMapping.destinationFields,
-        transformation: targetMapping.transformation,
-        constants: undefined,
-        status: MappingStatus.IN_PROGRESS,
-        createdBy: 'rollback-user',
-      });
+      expect(mockMappingRepository.create).toHaveBeenCalledWith(
+        {
+          name: targetMapping.name,
+          sourceFields: targetMapping.sourceFields,
+          destinationFields: targetMapping.destinationFields,
+          transformation: targetMapping.transformation,
+          constants: undefined,
+          status: MappingStatus.IN_PROGRESS,
+          createdBy: 'rollback-user',
+        },
+        'test-tenant',
+      );
       expect(result.action).toBe('ROLLBACK');
       expect(result.userId).toBe('rollback-user');
     });
@@ -648,7 +689,7 @@ describe('MappingService', () => {
       mockMappingRepository.findById.mockResolvedValue(currentMapping);
       mockMappingRepository.findByName.mockResolvedValue(mappingHistory);
       await expect(
-        service.rollbackMapping('uuid-current', 5, 'user'),
+        service.rollbackMapping('uuid-current', 5, 'user', 'test-tenant'),
       ).rejects.toThrow(NotFoundException);
     });
   });
@@ -748,7 +789,7 @@ describe('MappingService', () => {
         createdBy: 'test-user',
       };
       mockMappingRepository.create.mockResolvedValue(existingMapping);
-      const result = await service.create(createDto);
+      const result = await service.create(createDto, 'test-tenant');
       expect(result.id).toEqual(existingMapping.id);
       expect(result.name).toEqual(existingMapping.name);
       expect(result.version).toEqual(existingMapping.version);
@@ -757,21 +798,30 @@ describe('MappingService', () => {
     it('should maintain backward compatibility for findAll', async () => {
       const expectedMappings = [existingMapping];
       mockMappingRepository.findAll.mockResolvedValue(expectedMappings);
-      const result = await service.findAll();
+      const result = await service.findAll('test-tenant');
       expect(repository.findAll).toHaveBeenCalled();
       expect(result).toEqual(expectedMappings);
     });
     it('should maintain backward compatibility for findOne', async () => {
       mockMappingRepository.findById.mockResolvedValue(existingMapping);
-      const result = await service.findOne('uuid-123');
-      expect(repository.findById).toHaveBeenCalledWith('uuid-123');
+      const result = await service.findOne('uuid-123', 'test-tenant');
+      expect(mockMappingRepository.findById).toHaveBeenCalledWith(
+        'uuid-123',
+        'test-tenant',
+      );
       expect(result).toEqual(existingMapping);
     });
     it('should maintain backward compatibility for getNextVersion', async () => {
       const expectedVersion = 2;
       mockMappingRepository.getNextVersion.mockResolvedValue(expectedVersion);
-      const result = await service.getNextVersion('Test Mapping');
-      expect(repository.getNextVersion).toHaveBeenCalledWith('Test Mapping');
+      const result = await service.getNextVersion(
+        'Test Mapping',
+        'test-tenant',
+      );
+      expect(mockMappingRepository.getNextVersion).toHaveBeenCalledWith(
+        'Test Mapping',
+        'test-tenant',
+      );
       expect(result).toBe(expectedVersion);
     });
   });

@@ -52,10 +52,15 @@ export class MappingService {
   async createMapping(
     dto: CreateMappingDto,
     userId: string,
+    tenantId: string,
   ): Promise<AuditFriendlyMapping> {
     if (dto.endpointId) {
       const endpointValidationErrors =
-        await this.validateMappingAgainstEndpoint(dto, dto.endpointId);
+        await this.validateMappingAgainstEndpoint(
+          dto,
+          dto.endpointId,
+          tenantId,
+        );
       if (endpointValidationErrors.length > 0) {
         throw new BadRequestException({
           message: 'Mapping validation against endpoint schema failed',
@@ -75,12 +80,13 @@ export class MappingService {
       status: MappingStatus.IN_PROGRESS,
       createdBy: userId,
     };
-    const mapping = await this.mappingRepository.create(mappingData);
+    const mapping = await this.mappingRepository.create(mappingData, tenantId);
     let endpointName = 'UNKNOWN_ENDPOINT';
     if (mapping.endpointId) {
       try {
         const endpoint = await this.endpointsService.getEndpointById(
           mapping.endpointId,
+          tenantId,
         );
         if (endpoint) {
           endpointName = `${endpoint.method} ${endpoint.path} v${endpoint.version}`;
@@ -92,6 +98,7 @@ export class MappingService {
     await this.auditService.logMappingAction({
       action: 'CREATE',
       actor: userId,
+      tenantId,
       mappingName: mapping.name,
       endpointName,
       version: mapping.version,
@@ -110,8 +117,9 @@ export class MappingService {
     id: string,
     dto: UpdateMappingDto,
     userId: string,
+    tenantId: string,
   ): Promise<AuditFriendlyMapping> {
-    const existingMapping = await this.mappingRepository.findById(id);
+    const existingMapping = await this.mappingRepository.findById(id, tenantId);
     if (!existingMapping) {
       throw new NotFoundException(`Mapping with id ${id} not found`);
     }
@@ -143,13 +151,17 @@ export class MappingService {
         ...completeDto,
         createdBy: userId,
       };
-      updatedMapping = await this.mappingRepository.create(newMappingDto);
+      updatedMapping = await this.mappingRepository.create(
+        newMappingDto,
+        tenantId,
+      );
     } else {
-      updatedMapping = await this.mappingRepository.update(id, dto);
+      updatedMapping = await this.mappingRepository.update(id, dto, tenantId);
     }
     await this.auditService.logMappingAction({
       action: 'UPDATE',
       actor: userId,
+      tenantId,
       mappingName: updatedMapping.name,
       version: updatedMapping.version,
     });
@@ -163,8 +175,8 @@ export class MappingService {
   /**
    * Gets complete mapping history for a given name, sorted by version descending
    */
-  async getMappingHistory(name: string): Promise<Mapping[]> {
-    const mappings = await this.mappingRepository.findByName(name);
+  async getMappingHistory(name: string, tenantId: string): Promise<Mapping[]> {
+    const mappings = await this.mappingRepository.findByName(name, tenantId);
     if (mappings.length === 0) {
       throw new NotFoundException(`No mappings found with name: ${name}`);
     }
@@ -177,12 +189,16 @@ export class MappingService {
     id: string,
     targetVersion: number,
     userId: string,
+    tenantId: string,
   ): Promise<AuditFriendlyMapping> {
-    const currentMapping = await this.mappingRepository.findById(id);
+    const currentMapping = await this.mappingRepository.findById(id, tenantId);
     if (!currentMapping) {
       throw new NotFoundException(`Mapping with id ${id} not found`);
     }
-    const mappingHistory = await this.getMappingHistory(currentMapping.name);
+    const mappingHistory = await this.getMappingHistory(
+      currentMapping.name,
+      tenantId,
+    );
     const targetMapping = mappingHistory.find(
       (m) => m.version === targetVersion,
     );
@@ -205,10 +221,14 @@ export class MappingService {
       status: MappingStatus.IN_PROGRESS,
       createdBy: userId,
     };
-    const rolledBackMapping = await this.mappingRepository.create(rollbackDto);
+    const rolledBackMapping = await this.mappingRepository.create(
+      rollbackDto,
+      tenantId,
+    );
     await this.auditService.logMappingAction({
       action: 'ROLLBACK',
       actor: userId,
+      tenantId,
       mappingName: rolledBackMapping.name,
       version: rolledBackMapping.version,
     });
@@ -399,46 +419,53 @@ export class MappingService {
   }
   async create(
     createMappingDto: CreateMappingDto,
+    tenantId: string,
   ): Promise<AuditFriendlyMapping> {
     const result = await this.createMapping(
       createMappingDto,
       createMappingDto.createdBy || 'system',
+      tenantId,
     );
     return result;
   }
-  async findAll(): Promise<Mapping[]> {
-    return this.mappingRepository.findAll();
+  async findAll(tenantId: string): Promise<Mapping[]> {
+    return this.mappingRepository.findAll(tenantId);
   }
-  async findOne(id: string): Promise<Mapping | null> {
-    return await this.mappingRepository.findById(id);
+  async findOne(id: string, tenantId: string): Promise<Mapping | null> {
+    return await this.mappingRepository.findById(id, tenantId);
   }
-  async findByName(name: string): Promise<Mapping[]> {
-    return await this.mappingRepository.findByName(name);
+  async findByName(name: string, tenantId: string): Promise<Mapping[]> {
+    return await this.mappingRepository.findByName(name, tenantId);
   }
-  async findLatestByName(name: string): Promise<Mapping | null> {
-    return this.mappingRepository.findLatestByName(name);
+  async findLatestByName(
+    name: string,
+    tenantId: string,
+  ): Promise<Mapping | null> {
+    return this.mappingRepository.findLatestByName(name, tenantId);
   }
   async update(
     id: string,
     updateMappingDto: UpdateMappingDto,
+    tenantId: string,
   ): Promise<Mapping> {
-    return this.mappingRepository.update(id, updateMappingDto);
+    return this.mappingRepository.update(id, updateMappingDto, tenantId);
   }
-  async remove(id: string, userId: string): Promise<void> {
-    const mapping = await this.mappingRepository.findById(id);
+  async remove(id: string, userId: string, tenantId: string): Promise<void> {
+    const mapping = await this.mappingRepository.findById(id, tenantId);
     if (!mapping) {
       throw new NotFoundException(`Mapping with id ${id} not found`);
     }
-    await this.mappingRepository.delete(id);
+    await this.mappingRepository.delete(id, tenantId);
     await this.auditService.logMappingAction({
       action: 'DELETE',
       actor: userId,
+      tenantId,
       mappingName: mapping.name,
       version: mapping.version,
     });
   }
-  async getNextVersion(name: string): Promise<number> {
-    return this.mappingRepository.getNextVersion(name);
+  async getNextVersion(name: string, tenantId: string): Promise<number> {
+    return this.mappingRepository.getNextVersion(name, tenantId);
   }
   /**
    * Updates mapping status with audit logging
@@ -447,13 +474,18 @@ export class MappingService {
     id: string,
     status: MappingStatus,
     userId: string,
+    tenantId: string,
   ): Promise<AuditFriendlyMapping> {
-    const existingMapping = await this.mappingRepository.findById(id);
+    const existingMapping = await this.mappingRepository.findById(id, tenantId);
     if (!existingMapping) {
       throw new NotFoundException(`Mapping with id ${id} not found`);
     }
     const updateDto: UpdateMappingDto = { status };
-    const updatedMapping = await this.mappingRepository.update(id, updateDto);
+    const updatedMapping = await this.mappingRepository.update(
+      id,
+      updateDto,
+      tenantId,
+    );
     let action: 'APPROVE' | 'PUBLISH' = 'APPROVE';
     if (status === MappingStatus.PUBLISHED) {
       action = 'PUBLISH';
@@ -461,6 +493,7 @@ export class MappingService {
     await this.auditService.logMappingAction({
       action,
       actor: userId,
+      tenantId,
       mappingName: updatedMapping.name,
       version: updatedMapping.version,
     });
@@ -476,10 +509,11 @@ export class MappingService {
    */
   async getMappingAuditLogs(
     mappingId: string,
+    tenantId: string,
     limit = 50,
     _offset = 0,
   ): Promise<any[]> {
-    return this.auditService.getAuditLogsByName(mappingId, limit);
+    return this.auditService.getAuditLogsByName(mappingId, tenantId, limit);
   }
   /**
    * Simulates mapping transformation on a given payload
@@ -506,6 +540,7 @@ export class MappingService {
       schemaValidationErrors = await this.validateMappingAgainstEndpoint(
         mappingDto,
         mappingDto.endpointId,
+        'system',
       );
     }
     if (mappingValidationErrors.length > 0) {
@@ -732,6 +767,7 @@ export class MappingService {
   async exportMappingConfig(
     id: string,
     userId: string,
+    tenantId: string,
   ): Promise<{
     success: boolean;
     data: {
@@ -742,7 +778,7 @@ export class MappingService {
     message: string;
   }> {
     try {
-      const mapping = await this.mappingRepository.findById(id);
+      const mapping = await this.mappingRepository.findById(id, tenantId);
       if (!mapping) {
         throw new NotFoundException(`Mapping with id ${id} not found`);
       }
@@ -795,6 +831,7 @@ export class MappingService {
       await this.auditService.logMappingAction({
         action: 'CREATE',
         actor: userId,
+        tenantId,
         mappingName: mapping.name,
         version: mapping.version,
       });
@@ -822,6 +859,7 @@ export class MappingService {
   async importMappingConfig(
     packageData: any,
     userId: string,
+    tenantId: string,
   ): Promise<{
     success: boolean;
     data: AuditFriendlyMapping | null;
@@ -883,10 +921,14 @@ export class MappingService {
           validationErrors: mappingValidationErrors,
         };
       }
-      const newMapping = await this.mappingRepository.create(createDto);
+      const newMapping = await this.mappingRepository.create(
+        createDto,
+        tenantId,
+      );
       await this.auditService.logMappingAction({
         action: 'CREATE',
         actor: userId,
+        tenantId,
         mappingName: newMapping.name,
         version: newMapping.version,
       });
@@ -968,10 +1010,14 @@ export class MappingService {
   private async validateMappingAgainstEndpoint(
     dto: CreateMappingDto,
     endpointId: number,
+    tenantId: string,
   ): Promise<ValidationError[]> {
     const errors: ValidationError[] = [];
     try {
-      const endpoint = await this.endpointsService.getEndpointById(endpointId);
+      const endpoint = await this.endpointsService.getEndpointById(
+        endpointId,
+        tenantId,
+      );
       if (!endpoint) {
         errors.push({
           field: 'endpointId',
@@ -1248,6 +1294,7 @@ export class MappingService {
       await this.auditService.logMappingAction({
         action: 'CREATE',
         actor: userId,
+        tenantId: 'system',
         mappingName: `custom-field-${dto.name}`,
         version: 1,
       });
@@ -1332,6 +1379,7 @@ export class MappingService {
       await this.auditService.logMappingAction({
         action: 'UPDATE',
         actor: userId,
+        tenantId: 'system',
         mappingName: `custom-field-${fieldPath}`,
         version: 1,
       });
@@ -1419,7 +1467,10 @@ export class MappingService {
     endpointId: number,
   ): Promise<SchemaTreeResponseDto> {
     try {
-      const endpoint = await this.endpointsService.getEndpointById(endpointId);
+      const endpoint = await this.endpointsService.getEndpointById(
+        endpointId,
+        'system',
+      );
       if (!endpoint?.currentSchema) {
         throw new NotFoundException(
           `Endpoint ${endpointId} or its schema not found`,
@@ -1469,6 +1520,7 @@ export class MappingService {
     try {
       const sourceEndpoint = await this.endpointsService.getEndpointById(
         dto.sourceEndpointId,
+        'system',
       );
       if (!sourceEndpoint?.currentSchema) {
         throw new NotFoundException(
@@ -1479,6 +1531,7 @@ export class MappingService {
       if (dto.destinationEndpointId) {
         const destEndpoint = await this.endpointsService.getEndpointById(
           dto.destinationEndpointId,
+          'system',
         );
         if (!destEndpoint?.currentSchema) {
           throw new NotFoundException(

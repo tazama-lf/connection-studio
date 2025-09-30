@@ -10,12 +10,14 @@ import { SchemasModule } from './schemas/schemas.module';
 import { AuditModule } from './audit/audit.module';
 import { MappingModule } from './mappings/mapping.module';
 import { DataModelExtensionModule } from './data-model-extensions/data-model-extension.module';
+import { KnexModule } from '../knex/knex.module';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { TokenExpiryInterceptor } from './auth/token-expiry.interceptor';
 import { AuditInterceptor } from './audit/audit.interceptor';
 
 @Module({
   imports: [
+    KnexModule,
     ConfigModule.forRoot({
       envFilePath: '.env',
       isGlobal: true,

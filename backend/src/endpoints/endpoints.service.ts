@@ -26,13 +26,16 @@ export class EndpointsService {
       dto.payload,
       dto.contentType,
     );
-    await this.auditService.logSchemaInferred(editorIdentity, 'temp');
+
+    await this.auditService.logSchemaInferred(editorIdentity, 'temp', 'system');
+
     return schema;
   }
 
   async createEndpoint(
     dto: CreateEndpointDto,
     createdBy: string,
+    tenantId: string,
   ): Promise<{ endpointId: number; schema: SchemaField[] }> {
     const schema = await this.schemaInferenceService.inferSchemaFromPayload(
       dto.samplePayload,
@@ -46,23 +49,27 @@ export class EndpointsService {
       );
     }
 
-    const endpointId = await this.endpointsRepository.createEndpoint({
-      path: dto.path,
-      method: dto.method,
-      version: dto.version,
-      transactionType: dto.transactionType,
-      status: EndpointStatus.IN_PROGRESS,
-      description: dto.description,
-      createdBy,
-    });
+    const endpointId = await this.endpointsRepository.createEndpoint(
+      {
+        path: dto.path,
+        method: dto.method,
+        version: dto.version,
+        transactionType: dto.transactionType,
+        status: EndpointStatus.IN_PROGRESS,
+        description: dto.description,
+        createdBy,
+      },
+      tenantId,
+    );
 
     await this.endpointsRepository.createSchemaVersion(
       endpointId,
       schema,
       createdBy,
+      tenantId,
     );
 
-    await this.auditService.logEndpointCreated(createdBy, dto.path, 1);
+    await this.auditService.logEndpointCreated(createdBy, dto.path, tenantId);
 
     return { endpointId, schema };
   }
@@ -76,17 +83,24 @@ export class EndpointsService {
     await this.auditService.logSchemaValidated(
       editorIdentity,
       'manual-validation',
+      'system',
     );
 
     return validation;
   }
 
-  async getEndpointById(id: number): Promise<Endpoint | null> {
-    const endpoint = await this.endpointsRepository.findEndpointById(id);
+  async getEndpointById(
+    id: number,
+    tenantId: string,
+  ): Promise<Endpoint | null> {
+    const endpoint = await this.endpointsRepository.findEndpointById(
+      id,
+      tenantId,
+    );
 
     if (endpoint) {
       const latestSchema =
-        await this.endpointsRepository.getLatestSchemaVersion(id);
+        await this.endpointsRepository.getLatestSchemaVersion(id, tenantId);
       if (latestSchema) {
         endpoint.currentSchema = latestSchema;
       }
@@ -95,8 +109,14 @@ export class EndpointsService {
     return endpoint;
   }
 
-  async getEndpointsByCreator(createdBy: string): Promise<Endpoint[]> {
-    return await this.endpointsRepository.findEndpointsByCreator(createdBy);
+  async getEndpointsByCreator(
+    createdBy: string,
+    tenantId: string,
+  ): Promise<Endpoint[]> {
+    return await this.endpointsRepository.findEndpointsByCreator(
+      createdBy,
+      tenantId,
+    );
   }
 
   async saveEndpointDraft(
@@ -104,6 +124,7 @@ export class EndpointsService {
     schema: SchemaField[],
     notes: string,
     editorIdentity: string,
+    tenantId: string,
   ): Promise<void> {
     const validation = this.schemaInferenceService.validateSchema(schema);
     if (!validation.isValid) {
@@ -117,11 +138,13 @@ export class EndpointsService {
       endpointId,
       schema,
       editorIdentity,
+      tenantId,
     );
 
     await this.auditService.logDraftSaved(
       editorIdentity,
       'endpoint-' + endpointId,
+      tenantId,
     );
   }
 
@@ -129,22 +152,31 @@ export class EndpointsService {
     endpointId: number,
     status: EndpointStatus,
     editorIdentity: string,
+    tenantId: string,
   ): Promise<void> {
-    await this.endpointsRepository.updateEndpointStatus(endpointId, status);
+    await this.endpointsRepository.updateEndpointStatus(
+      endpointId,
+      status,
+      tenantId,
+    );
 
     await this.auditService.logAction({
       action: 'STATUS_UPDATED',
       actor: editorIdentity,
       endpointName: 'endpoint-' + endpointId,
+      tenantId,
     });
   }
 
   async submitEndpointForApproval(
     endpointId: number,
     editorIdentity: string,
+    tenantId: string,
   ): Promise<void> {
-    const endpoint =
-      await this.endpointsRepository.findEndpointById(endpointId);
+    const endpoint = await this.endpointsRepository.findEndpointById(
+      endpointId,
+      tenantId,
+    );
     if (!endpoint) {
       throw new Error('Endpoint not found');
     }
@@ -158,22 +190,27 @@ export class EndpointsService {
     await this.endpointsRepository.updateEndpointStatus(
       endpointId,
       EndpointStatus.PENDING_APPROVAL,
+      tenantId,
     );
 
     await this.auditService.logAction({
       action: 'SUBMITTED_FOR_APPROVAL',
       actor: editorIdentity,
       endpointName: 'endpoint-' + endpointId,
+      tenantId,
     });
   }
 
   async approveEndpoint(
     endpointId: number,
     approverIdentity: string,
+    tenantId: string,
     _comments?: string,
   ): Promise<void> {
-    const endpoint =
-      await this.endpointsRepository.findEndpointById(endpointId);
+    const endpoint = await this.endpointsRepository.findEndpointById(
+      endpointId,
+      tenantId,
+    );
     if (!endpoint) {
       throw new Error('Endpoint not found');
     }
@@ -185,22 +222,27 @@ export class EndpointsService {
     await this.endpointsRepository.updateEndpointStatus(
       endpointId,
       EndpointStatus.READY_FOR_DEPLOYMENT,
+      tenantId,
     );
 
     await this.auditService.logAction({
       action: 'ENDPOINT_APPROVED',
       actor: approverIdentity,
       endpointName: 'endpoint-' + endpointId,
+      tenantId,
     });
   }
 
   async rejectEndpoint(
     endpointId: number,
     approverIdentity: string,
+    tenantId: string,
     _reason: string,
   ): Promise<void> {
-    const endpoint =
-      await this.endpointsRepository.findEndpointById(endpointId);
+    const endpoint = await this.endpointsRepository.findEndpointById(
+      endpointId,
+      tenantId,
+    );
     if (!endpoint) {
       throw new Error('Endpoint not found');
     }
@@ -212,21 +254,26 @@ export class EndpointsService {
     await this.endpointsRepository.updateEndpointStatus(
       endpointId,
       EndpointStatus.IN_PROGRESS,
+      tenantId,
     );
 
     await this.auditService.logAction({
       action: 'ENDPOINT_REJECTED',
       actor: approverIdentity,
       endpointName: 'endpoint-' + endpointId,
+      tenantId,
     });
   }
 
   async publishEndpoint(
     endpointId: number,
     publisherIdentity: string,
+    tenantId: string,
   ): Promise<void> {
-    const endpoint =
-      await this.endpointsRepository.findEndpointById(endpointId);
+    const endpoint = await this.endpointsRepository.findEndpointById(
+      endpointId,
+      tenantId,
+    );
     if (!endpoint) {
       throw new Error('Endpoint not found');
     }
@@ -238,36 +285,47 @@ export class EndpointsService {
     await this.endpointsRepository.updateEndpointStatus(
       endpointId,
       EndpointStatus.PUBLISHED,
+      tenantId,
     );
 
     await this.auditService.logAction({
       action: 'ENDPOINT_PUBLISHED',
       actor: publisherIdentity,
       endpointName: 'endpoint-' + endpointId,
+      tenantId,
     });
   }
 
-  async getPendingApprovalEndpoints(): Promise<Endpoint[]> {
+  async getPendingApprovalEndpoints(tenantId: string): Promise<Endpoint[]> {
     return await this.endpointsRepository.findEndpointsByStatus(
       EndpointStatus.PENDING_APPROVAL,
+      tenantId,
     );
   }
 
-  async getApprovedEndpoints(): Promise<Endpoint[]> {
+  async getApprovedEndpoints(tenantId: string): Promise<Endpoint[]> {
     return await this.endpointsRepository.findEndpointsByStatus(
       EndpointStatus.READY_FOR_DEPLOYMENT,
+      tenantId,
     );
   }
 
-  async getSchemaFields(endpointId: number): Promise<SchemaField[]> {
-    const endpoint =
-      await this.endpointsRepository.findEndpointById(endpointId);
+  async getSchemaFields(
+    endpointId: number,
+    tenantId: string,
+  ): Promise<SchemaField[]> {
+    const endpoint = await this.endpointsRepository.findEndpointById(
+      endpointId,
+      tenantId,
+    );
     if (!endpoint) {
       throw new Error('Endpoint not found');
     }
 
-    const latestSchema =
-      await this.endpointsRepository.getLatestSchemaVersion(endpointId);
+    const latestSchema = await this.endpointsRepository.getLatestSchemaVersion(
+      endpointId,
+      tenantId,
+    );
     return latestSchema?.fields || [];
   }
 
@@ -276,15 +334,20 @@ export class EndpointsService {
     fieldId: number,
     dto: UpdateFieldDto,
     editorIdentity: string,
+    tenantId: string,
   ): Promise<void> {
-    const endpoint =
-      await this.endpointsRepository.findEndpointById(endpointId);
+    const endpoint = await this.endpointsRepository.findEndpointById(
+      endpointId,
+      tenantId,
+    );
     if (!endpoint) {
       throw new Error('Endpoint not found');
     }
 
-    const latestSchema =
-      await this.endpointsRepository.getLatestSchemaVersion(endpointId);
+    const latestSchema = await this.endpointsRepository.getLatestSchemaVersion(
+      endpointId,
+      tenantId,
+    );
     if (!latestSchema) {
       throw new Error('No schema found for endpoint');
     }
@@ -301,6 +364,7 @@ export class EndpointsService {
       endpointId,
       schema,
       editorIdentity,
+      tenantId,
     );
   }
 
@@ -309,15 +373,20 @@ export class EndpointsService {
     fieldId: number,
     isRequired: boolean,
     editorIdentity: string,
+    tenantId: string,
   ): Promise<void> {
-    const endpoint =
-      await this.endpointsRepository.findEndpointById(endpointId);
+    const endpoint = await this.endpointsRepository.findEndpointById(
+      endpointId,
+      tenantId,
+    );
     if (!endpoint) {
       throw new Error('Endpoint not found');
     }
 
-    const latestSchema =
-      await this.endpointsRepository.getLatestSchemaVersion(endpointId);
+    const latestSchema = await this.endpointsRepository.getLatestSchemaVersion(
+      endpointId,
+      tenantId,
+    );
     if (!latestSchema) {
       throw new Error('No schema found for endpoint');
     }
@@ -334,6 +403,7 @@ export class EndpointsService {
       endpointId,
       schema,
       editorIdentity,
+      tenantId,
     );
   }
 
@@ -341,15 +411,20 @@ export class EndpointsService {
     endpointId: number,
     dto: AddFieldDto,
     editorIdentity: string,
+    tenantId: string,
   ): Promise<SchemaField> {
-    const endpoint =
-      await this.endpointsRepository.findEndpointById(endpointId);
+    const endpoint = await this.endpointsRepository.findEndpointById(
+      endpointId,
+      tenantId,
+    );
     if (!endpoint) {
       throw new Error('Endpoint not found');
     }
 
-    const latestSchema =
-      await this.endpointsRepository.getLatestSchemaVersion(endpointId);
+    const latestSchema = await this.endpointsRepository.getLatestSchemaVersion(
+      endpointId,
+      tenantId,
+    );
     const schema = latestSchema?.fields || [];
 
     const newField: SchemaField = {
@@ -366,6 +441,7 @@ export class EndpointsService {
       endpointId,
       schema,
       editorIdentity,
+      tenantId,
     );
 
     return newField;
@@ -375,15 +451,20 @@ export class EndpointsService {
     endpointId: number,
     fieldId: number,
     editorIdentity: string,
+    tenantId: string,
   ): Promise<void> {
-    const endpoint =
-      await this.endpointsRepository.findEndpointById(endpointId);
+    const endpoint = await this.endpointsRepository.findEndpointById(
+      endpointId,
+      tenantId,
+    );
     if (!endpoint) {
       throw new Error('Endpoint not found');
     }
 
-    const latestSchema =
-      await this.endpointsRepository.getLatestSchemaVersion(endpointId);
+    const latestSchema = await this.endpointsRepository.getLatestSchemaVersion(
+      endpointId,
+      tenantId,
+    );
     if (!latestSchema) {
       throw new Error('No schema found for endpoint');
     }
@@ -400,6 +481,7 @@ export class EndpointsService {
       endpointId,
       schema,
       editorIdentity,
+      tenantId,
     );
   }
 
@@ -407,15 +489,20 @@ export class EndpointsService {
     endpointId: number,
     fieldIds: number[],
     editorIdentity: string,
+    tenantId: string,
   ): Promise<void> {
-    const endpoint =
-      await this.endpointsRepository.findEndpointById(endpointId);
+    const endpoint = await this.endpointsRepository.findEndpointById(
+      endpointId,
+      tenantId,
+    );
     if (!endpoint) {
       throw new Error('Endpoint not found');
     }
 
-    const latestSchema =
-      await this.endpointsRepository.getLatestSchemaVersion(endpointId);
+    const latestSchema = await this.endpointsRepository.getLatestSchemaVersion(
+      endpointId,
+      tenantId,
+    );
     if (!latestSchema) {
       throw new Error('No schema found for endpoint');
     }
@@ -434,6 +521,7 @@ export class EndpointsService {
       endpointId,
       reorderedSchema,
       editorIdentity,
+      tenantId,
     );
   }
 }

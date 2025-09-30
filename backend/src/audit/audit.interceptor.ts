@@ -18,6 +18,7 @@ export class AuditInterceptor implements NestInterceptor {
     // Extract user information
     const user = request.user;
     const actor = user?.token?.clientId || user?.token?.sub || 'unknown-user';
+    const tenantId = user?.token?.tenantId || 'unknown-tenant';
 
     // Extract request details
     const method = request.method;
@@ -63,6 +64,7 @@ export class AuditInterceptor implements NestInterceptor {
           const auditEntry = {
             action,
             actor,
+            tenantId,
             mappingName,
             endpointName,
             version: version || responseData?.data?.version,

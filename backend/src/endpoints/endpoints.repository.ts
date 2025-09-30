@@ -13,6 +13,7 @@ export class EndpointsRepository {
 
   async createEndpoint(
     endpointData: Omit<Endpoint, 'id' | 'createdAt' | 'updatedAt'>,
+    tenantId: string,
   ): Promise<number> {
     const [endpoint] = await this.knex('endpoints')
       .insert({
@@ -23,31 +24,46 @@ export class EndpointsRepository {
         status: endpointData.status,
         description: endpointData.description,
         created_by: endpointData.createdBy,
+        tenant_id: tenantId,
       })
       .returning('id');
 
     return endpoint.id;
   }
 
-  async findEndpointById(id: number): Promise<Endpoint | null> {
-    const endpoint = await this.knex('endpoints').where('id', id).first();
+  async findEndpointById(
+    id: number,
+    tenantId: string,
+  ): Promise<Endpoint | null> {
+    const endpoint = await this.knex('endpoints')
+      .where('id', id)
+      .where('tenant_id', tenantId)
+      .first();
 
     if (!endpoint) return null;
 
     return this.mapToEndpoint(endpoint);
   }
 
-  async findEndpointsByCreator(createdBy: string): Promise<Endpoint[]> {
+  async findEndpointsByCreator(
+    createdBy: string,
+    tenantId: string,
+  ): Promise<Endpoint[]> {
     const endpoints = await this.knex('endpoints')
       .where('created_by', createdBy)
+      .where('tenant_id', tenantId)
       .orderBy('created_at', 'desc');
 
     return endpoints.map(this.mapToEndpoint);
   }
 
-  async findEndpointsByStatus(status: EndpointStatus): Promise<Endpoint[]> {
+  async findEndpointsByStatus(
+    status: EndpointStatus,
+    tenantId: string,
+  ): Promise<Endpoint[]> {
     const endpoints = await this.knex('endpoints')
       .where('status', status)
+      .where('tenant_id', tenantId)
       .orderBy('created_at', 'desc');
 
     return endpoints.map(this.mapToEndpoint);
@@ -56,41 +72,47 @@ export class EndpointsRepository {
   async updateEndpointStatus(
     id: number,
     status: EndpointStatus,
+    tenantId: string,
   ): Promise<void> {
-    await this.knex('endpoints').where('id', id).update({
-      status,
-      updated_at: new Date(),
-    });
+    await this.knex('endpoints')
+      .where('id', id)
+      .where('tenant_id', tenantId)
+      .update({
+        status,
+        updated_at: new Date(),
+      });
   }
 
   async createSchemaVersion(
     endpointId: number,
     schema: SchemaField[],
     createdBy: string,
+    tenantId: string,
   ): Promise<number> {
     const [schemaVersion] = await this.knex('schema_versions')
       .insert({
         endpoint_id: endpointId,
-        version: await this.getNextSchemaVersion(endpointId),
+        version: await this.getNextSchemaVersion(endpointId, tenantId),
         schema_definition: JSON.stringify(schema), // Explicitly stringify for JSONB column
         created_by: createdBy,
+        tenant_id: tenantId,
       })
       .returning('id');
 
-    await this.insertSchemaFields(schemaVersion.id, schema);
+    await this.insertSchemaFields(schemaVersion.id, schema, tenantId);
 
     return schemaVersion.id;
   }
 
   async getLatestSchemaVersion(
     endpointId: number,
+    tenantId: string,
   ): Promise<EndpointSchema | null> {
     const schemaVersion = await this.knex('schema_versions')
       .where('endpoint_id', endpointId)
+      .where('tenant_id', tenantId)
       .orderBy('version', 'desc')
       .first();
-
-    if (!schemaVersion) return null;
 
     if (!schemaVersion) return null;
 
@@ -119,9 +141,13 @@ export class EndpointsRepository {
     };
   }
 
-  private async getNextSchemaVersion(endpointId: number): Promise<number> {
+  private async getNextSchemaVersion(
+    endpointId: number,
+    tenantId: string,
+  ): Promise<number> {
     const result = await this.knex('schema_versions')
       .where('endpoint_id', endpointId)
+      .where('tenant_id', tenantId)
       .max('version as maxVersion')
       .first();
 
@@ -131,6 +157,7 @@ export class EndpointsRepository {
   private async insertSchemaFields(
     schemaVersionId: number,
     fields: SchemaField[],
+    tenantId: string,
     parentFieldId?: number,
   ): Promise<void> {
     for (let i = 0; i < fields.length; i++) {
@@ -146,6 +173,7 @@ export class EndpointsRepository {
           array_element_type: field.arrayElementType,
           validation_rules: null,
           field_order: i,
+          tenant_id: tenantId,
         })
         .returning('id');
 
@@ -153,6 +181,7 @@ export class EndpointsRepository {
         await this.insertSchemaFields(
           schemaVersionId,
           field.children,
+          tenantId,
           insertedField.id,
         );
       }

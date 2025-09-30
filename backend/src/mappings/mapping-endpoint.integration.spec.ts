@@ -93,8 +93,15 @@ describe('MappingService - Endpoint Integration Tests', () => {
       };
       mockEndpointsService.getEndpointById.mockResolvedValue(mockEndpoint);
       mockMappingRepository.create.mockResolvedValue(mockMapping);
-      const result = await service.createMapping(createDto, 'test-user');
-      expect(endpointsService.getEndpointById).toHaveBeenCalledWith(1);
+      const result = await service.createMapping(
+        createDto,
+        'test-user',
+        'test-tenant',
+      );
+      expect(endpointsService.getEndpointById).toHaveBeenCalledWith(
+        1,
+        'test-tenant',
+      );
       expect(mappingRepository.create).toHaveBeenCalled();
       expect(result.endpointId).toBe(1);
     });
@@ -111,9 +118,12 @@ describe('MappingService - Endpoint Integration Tests', () => {
       };
       mockEndpointsService.getEndpointById.mockResolvedValue(null);
       await expect(
-        service.createMapping(createDto, 'test-user'),
+        service.createMapping(createDto, 'test-user', 'test-tenant'),
       ).rejects.toThrow(BadRequestException);
-      expect(endpointsService.getEndpointById).toHaveBeenCalledWith(999);
+      expect(endpointsService.getEndpointById).toHaveBeenCalledWith(
+        999,
+        'test-tenant',
+      );
     });
     it('should throw BadRequestException when source field not in endpoint schema', async () => {
       const mockEndpoint = {
@@ -146,7 +156,7 @@ describe('MappingService - Endpoint Integration Tests', () => {
       };
       mockEndpointsService.getEndpointById.mockResolvedValue(mockEndpoint);
       await expect(
-        service.createMapping(createDto, 'test-user'),
+        service.createMapping(createDto, 'test-user', 'test-tenant'),
       ).rejects.toThrow(BadRequestException);
     });
   });

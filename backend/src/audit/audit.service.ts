@@ -5,6 +5,7 @@ import { randomUUID } from 'crypto';
 export interface AuditLogEntry {
   action: string;
   actor: string;
+  tenantId: string;
   endpointName?: string;
   mappingName?: string;
   version?: number;
@@ -13,6 +14,7 @@ export interface AuditLogEntry {
 export interface MappingAuditLogEntry {
   action: 'CREATE' | 'UPDATE' | 'DELETE' | 'ROLLBACK' | 'APPROVE' | 'PUBLISH';
   actor: string;
+  tenantId: string;
   mappingName?: string;
   endpointName?: string;
   version?: number;
@@ -30,6 +32,7 @@ export class AuditService {
         actor: entry.actor,
         endpoint_name: entry.endpointName || entry.mappingName || 'UNKNOWN',
         version: entry.version,
+        tenant_id: entry.tenantId,
         timestamp: new Date(),
       });
     } catch (error) {
@@ -41,12 +44,14 @@ export class AuditService {
   async logEndpointCreated(
     actor: string,
     endpointName: string,
+    tenantId: string,
     version?: number,
   ): Promise<void> {
     await this.logAction({
       action: 'ENDPOINT_CREATED',
       actor,
       endpointName,
+      tenantId,
       version,
     });
   }
@@ -54,12 +59,14 @@ export class AuditService {
   async logSchemaInferred(
     actor: string,
     endpointName: string,
+    tenantId: string,
     version?: number,
   ): Promise<void> {
     await this.logAction({
       action: 'SCHEMA_INFERRED',
       actor,
       endpointName,
+      tenantId,
       version,
     });
   }
@@ -67,12 +74,14 @@ export class AuditService {
   async logDraftSaved(
     actor: string,
     endpointName: string,
+    tenantId: string,
     version?: number,
   ): Promise<void> {
     await this.logAction({
       action: 'DRAFT_SAVED',
       actor,
       endpointName,
+      tenantId,
       version,
     });
   }
@@ -80,19 +89,26 @@ export class AuditService {
   async logSchemaValidated(
     actor: string,
     endpointName: string,
+    tenantId: string,
     version?: number,
   ): Promise<void> {
     await this.logAction({
       action: 'SCHEMA_VALIDATED',
       actor,
       endpointName,
+      tenantId,
       version,
     });
   }
 
-  async getAuditLogs(endpointName?: string, limit = 100): Promise<any[]> {
+  async getAuditLogs(
+    tenantId: string,
+    endpointName?: string,
+    limit = 100,
+  ): Promise<any[]> {
     const query = this.knex('audit_logs')
       .select('*')
+      .where('tenant_id', tenantId)
       .orderBy('timestamp', 'desc')
       .limit(limit);
 
@@ -114,6 +130,7 @@ export class AuditService {
         actor: entry.actor,
         endpoint_name: entry.endpointName || entry.mappingName || 'UNKNOWN',
         version: entry.version,
+        tenant_id: entry.tenantId,
         timestamp: new Date(),
       });
     } catch (error) {
@@ -125,10 +142,15 @@ export class AuditService {
   /**
    * Get audit logs by endpoint or mapping name
    */
-  async getAuditLogsByName(name: string, limit = 100): Promise<any[]> {
+  async getAuditLogsByName(
+    name: string,
+    tenantId: string,
+    limit = 100,
+  ): Promise<any[]> {
     return await this.knex('audit_logs')
       .select('action', 'actor', 'endpoint_name', 'version', 'timestamp')
       .where('endpoint_name', name)
+      .where('tenant_id', tenantId)
       .orderBy('timestamp', 'desc')
       .limit(limit);
   }

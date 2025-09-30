@@ -6,8 +6,14 @@ import { CreateMappingDto, UpdateMappingDto } from './mapping.dto';
 @Injectable()
 export class MappingRepository {
   constructor(@Inject('KNEX_CONNECTION') private readonly knex: Knex) {}
-  async create(createMappingDto: CreateMappingDto): Promise<Mapping> {
-    const nextVersion = await this.getNextVersion(createMappingDto.name);
+  async create(
+    createMappingDto: CreateMappingDto,
+    tenantId: string,
+  ): Promise<Mapping> {
+    const nextVersion = await this.getNextVersion(
+      createMappingDto.name,
+      tenantId,
+    );
     const id = uuidv4();
     const now = new Date();
     const sourceFieldsPlain = createMappingDto.sourceFields.map((field) => ({
@@ -33,6 +39,7 @@ export class MappingRepository {
       transformation: createMappingDto.transformation,
       constants: createMappingDto.constants || {},
       created_by: createMappingDto.createdBy || 'system',
+      tenant_id: tenantId,
       created_at: now,
       updated_at: now,
     };
@@ -40,9 +47,9 @@ export class MappingRepository {
       `
       INSERT INTO mappings (
         id, name, version, status, endpoint_id, source_fields, destination_fields, 
-        transformation, constants, created_by, created_at, updated_at
+        transformation, constants, created_by, tenant_id, created_at, updated_at
       ) VALUES (
-        ?, ?, ?, ?, ?, ?::jsonb, ?::jsonb, ?, ?::jsonb, ?, ?, ?
+        ?, ?, ?, ?, ?, ?::jsonb, ?::jsonb, ?, ?::jsonb, ?, ?, ?, ?
       )
     `,
       [
@@ -56,38 +63,49 @@ export class MappingRepository {
         mappingData.transformation,
         JSON.stringify(mappingData.constants),
         mappingData.created_by,
+        mappingData.tenant_id,
         mappingData.created_at,
         mappingData.updated_at,
       ],
     );
-    const mapping = await this.findById(id);
+    const mapping = await this.findById(id, tenantId);
     if (!mapping) {
       throw new Error('Failed to create mapping');
     }
     return mapping;
   }
-  async findAll(): Promise<Mapping[]> {
+  async findAll(tenantId: string): Promise<Mapping[]> {
     const rows = await this.knex('mappings')
       .select('*')
+      .where('tenant_id', tenantId)
       .orderBy('created_at', 'desc');
     return rows.map(this.mapToMapping);
   }
-  async findById(id: string): Promise<Mapping | null> {
-    const row = await this.knex('mappings').select('*').where('id', id).first();
+  async findById(id: string, tenantId: string): Promise<Mapping | null> {
+    const row = await this.knex('mappings')
+      .select('*')
+      .where('id', id)
+      .where('tenant_id', tenantId)
+      .first();
     if (!row) return null;
     return this.mapToMapping(row);
   }
-  async findByName(name: string): Promise<Mapping[]> {
+  async findByName(name: string, tenantId: string): Promise<Mapping[]> {
     const rows = await this.knex('mappings')
       .select('*')
       .where('name', name)
+      .where('tenant_id', tenantId)
       .orderBy('version', 'desc');
     return rows.map(this.mapToMapping);
   }
-  async findLatestByName(name: string): Promise<Mapping | null> {
+  async findLatestByName(
+    name: string,
+    tenantId: string,
+  ): Promise<Mapping | null> {
     const row = await this.knex('mappings')
       .select('*')
       .where('name', name)
+      .where('tenant_id', tenantId)
       .orderBy('version', 'desc')
       .first();
     if (!row) return null;
@@ -96,6 +114,7 @@ export class MappingRepository {
   async update(
     id: string,
     updateMappingDto: UpdateMappingDto,
+    tenantId: string,
   ): Promise<Mapping> {
     const updateData: any = {
       updated_at: new Date(),
@@ -121,20 +140,27 @@ export class MappingRepository {
     if (updateMappingDto.constants !== undefined) {
       updateData.constants = updateMappingDto.constants || null;
     }
-    await this.knex('mappings').where('id', id).update(updateData);
-    const mapping = await this.findById(id);
+    await this.knex('mappings')
+      .where('id', id)
+      .where('tenant_id', tenantId)
+      .update(updateData);
+    const mapping = await this.findById(id, tenantId);
     if (!mapping) {
       throw new Error('Mapping not found after update');
     }
     return mapping;
   }
-  async delete(id: string): Promise<void> {
-    await this.knex('mappings').where('id', id).del();
+  async delete(id: string, tenantId: string): Promise<void> {
+    await this.knex('mappings')
+      .where('id', id)
+      .where('tenant_id', tenantId)
+      .del();
   }
-  async getNextVersion(name: string): Promise<number> {
+  async getNextVersion(name: string, tenantId: string): Promise<number> {
     const result = await this.knex('mappings')
       .select(this.knex.raw('MAX(version) as max_version'))
       .where('name', name)
+      .where('tenant_id', tenantId)
       .first();
     return result?.max_version ? result.max_version + 1 : 1;
   }
