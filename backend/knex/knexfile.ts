@@ -1,31 +1,31 @@
 import type { Knex } from 'knex';
 import path from 'path';
-
 const config: { [key: string]: Knex.Config } = {
   development: {
-    client: 'pg',
-    connection: {
-      host: process.env.DB_HOST,
-      user: process.env.DB_USER,
-      password: process.env.DB_PASS,
-      database: process.env.DB_NAME,
-      port: parseInt(process.env.DB_PORT || '5432'),
-    },
+    client: process.env.USE_SQLITE === 'true' ? 'sqlite3' : 'pg',
+    connection:
+      process.env.USE_SQLITE === 'true'
+        ? {
+            filename: path.join(__dirname, '..', 'dev.db'),
+          }
+        : {
+            host: process.env.DB_HOST || 'localhost',
+            user: process.env.DB_USER || 'postgres',
+            password: process.env.DB_PASS || 'newpassword',
+            database: process.env.DB_NAME || 'postgres',
+            port: parseInt(process.env.DB_PORT || '5432', 10),
+          },
     pool: {
-      min: 4, // minimum idle connections
-      max: 20, // maximum connections
-      acquireTimeoutMillis: 30000, // 30 seconds
-      idleTimeoutMillis: 30000, // 30 seconds
-      reapIntervalMillis: 1000, // 1 second
-      createRetryIntervalMillis: 200,
-      propagateCreateError: false,
+      min: 0,
+      max: 10,
+      acquireTimeoutMillis: 30000,
+      idleTimeoutMillis: 10000,
     },
-    acquireConnectionTimeout: 30000,
     migrations: {
       directory: path.join(__dirname, 'migrations'),
-      extension: 'js',
+      extension: 'js', // using compiled JS files
     },
-    // Enable logging for connection pool debugging
+    useNullAsDefault: process.env.USE_SQLITE === 'true', // Required for SQLite
     log: {
       warn(message: string) {
         console.warn('Knex Warning:', message);
@@ -43,7 +43,6 @@ const config: { [key: string]: Knex.Config } = {
       },
     },
   },
-
   production: {
     client: 'pg',
     connection: {
@@ -51,23 +50,18 @@ const config: { [key: string]: Knex.Config } = {
       user: process.env.DB_USER,
       password: process.env.DB_PASS,
       database: process.env.DB_NAME,
-      port: parseInt(process.env.DB_PORT || '5432'),
+      port: parseInt(process.env.DB_PORT || '5432', 10),
     },
     pool: {
-      min: 2, // minimum idle connections for production
-      max: 30, // maximum connections for production
-      acquireTimeoutMillis: 30000, // 30 seconds
-      idleTimeoutMillis: 60000, // 60 seconds for production
-      reapIntervalMillis: 1000, // 1 second
-      createRetryIntervalMillis: 200,
-      propagateCreateError: false,
+      min: 2,
+      max: 30, // production pool, safe for Postgres defaults
+      acquireTimeoutMillis: 30000,
+      idleTimeoutMillis: 60000, // hold idle connections longer in prod
     },
-    acquireConnectionTimeout: 30000,
     migrations: {
       directory: path.join(__dirname, 'migrations'),
-      extension: 'js',
+      extension: 'ts',
     },
-    // Enable error logging for production
     log: {
       warn(message: string) {
         console.warn('Knex Warning:', message);

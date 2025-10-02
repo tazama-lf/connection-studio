@@ -1,22 +1,29 @@
-import { Module, forwardRef } from '@nestjs/common';
-import { APP_INTERCEPTOR } from '@nestjs/core';
-import { MappingService } from './mapping.service';
-import { MappingController } from './mapping.controller';
-import { MappingRepository } from './mapping.repository';
-import { AuditModule } from '../audit/audit.module';
+import { Module } from '@nestjs/common';
+import { TazamaDataModelService } from './tazama-data-model.service';
+import { DestinationFieldExtensionsRepository } from './destination-field-extensions.repository';
+// Multi-field mapping components
+import { MultiFieldMappingService } from './multi-field-mapping.service';
+import { MultiFieldMappingsRepository } from './multi-field-mappings.repository';
+import { MultiFieldMappingController } from './multi-field-mapping.controller';
 import { EndpointsModule } from '../endpoints/endpoints.module';
-import { AuditInterceptor } from '../audit/audit.interceptor';
+import { AuditModule } from '../audit/audit.module';
+
 @Module({
-  imports: [AuditModule, forwardRef(() => EndpointsModule)],
-  controllers: [MappingController],
+  imports: [EndpointsModule, AuditModule],
+  controllers: [MultiFieldMappingController],
   providers: [
-    MappingService,
-    MappingRepository,
-    {
-      provide: APP_INTERCEPTOR,
-      useClass: AuditInterceptor,
-    },
+    TazamaDataModelService,
+    DestinationFieldExtensionsRepository,
+    // Multi-field mapping services
+    MultiFieldMappingService,
+    MultiFieldMappingsRepository,
   ],
-  exports: [MappingService],
+  exports: [
+    TazamaDataModelService,
+    DestinationFieldExtensionsRepository,
+    // Multi-field mapping services
+    MultiFieldMappingService,
+    MultiFieldMappingsRepository,
+  ],
 })
 export class MappingModule {}

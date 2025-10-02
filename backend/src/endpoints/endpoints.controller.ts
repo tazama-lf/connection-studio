@@ -14,15 +14,14 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { EndpointsService } from './endpoints.service';
 import {
-  CreateEndpointDto,
-  InferSchemaDto,
-  SchemaFieldDto,
-  UpdateFieldDto,
-  ToggleFieldRequiredDto,
-  AddFieldDto,
-  ReorderFieldsDto,
-} from '../common/dto';
-import { FileUploadDto } from '../common/file-upload.dto';
+  ParsePayloadDto,
+  CreateEndpointWithSchemaDto,
+  EndpointLifecycleTransitionDto,
+  ParsedSchemaResponseDto,
+  EndpointCreationResponseDto,
+  ConstantFieldDto,
+  FormulaFieldDto,
+} from '../common/schema-workflow.dto';
 import { FileParsingService } from '../common/file-parsing.service';
 import { TazamaAuthGuard } from '../auth/tazama-auth.guard';
 import {
@@ -33,11 +32,6 @@ import {
 import { User } from '../auth/user.decorator';
 import type { AuthenticatedUser } from '../auth/auth.types';
 
-interface SaveDraftDto {
-  schema: SchemaFieldDto[];
-  notes: string;
-}
-
 @Controller('endpoints')
 @UseGuards(TazamaAuthGuard)
 export class EndpointsController {
@@ -46,476 +40,265 @@ export class EndpointsController {
     private readonly fileParsingService: FileParsingService,
   ) {}
 
-  @Post('infer-schema')
+  // ================================
+  // USER STORY #300 ENDPOINTS
+  // ================================
+
+  /**
+   * User Story #300: Parse payload and generate schema (no persistence)
+   * Allows Editor to paste JSON/XML and see generated schema before saving
+   */
+  @Post('parse-payload')
   @RequireClaim(TazamaClaims.EDITOR)
-  async inferSchema(
-    @Body() dto: InferSchemaDto,
+  async parsePayloadAndGenerateSchema(
+    @Body() dto: ParsePayloadDto,
     @User() user: AuthenticatedUser,
-  ) {
-    const userIdentity =
-      user.token.clientId || user.token.sub || 'unknown-user';
-    const schema = await this.endpointsService.inferSchemaFromPayload(
+  ): Promise<ParsedSchemaResponseDto> {
+    const tenantId = user.token.tenantId;
+
+    return await this.endpointsService.parsePayloadAndGenerateSchema(
       dto,
-      userIdentity,
+      tenantId,
     );
-    return {
-      success: true,
-      data: {
-        schema,
-        fieldsCount: schema.length,
-      },
-    };
   }
 
-  @Post('upload-payload')
+  /**
+   * User Story #300: Create endpoint with generated schema
+   * Saves schema_json with only source fields in endpoints table
+   */
+  @Post('create-with-generated-schema')
   @RequireClaim(TazamaClaims.EDITOR)
-  @UseInterceptors(
-    FileInterceptor('file', {
-      fileFilter: (req, file, callback) => {
-        const allowedMimeTypes = FileParsingService.getAllowedMimeTypes();
-        if (allowedMimeTypes.includes(file.mimetype)) {
-          callback(null, true);
-        } else {
-          callback(
-            new Error(
-              'Invalid file type. Only JSON and XML files are allowed.',
-            ),
-            false,
-          );
-        }
-      },
-    }),
-  )
-  async uploadPayload(
-    @UploadedFile() file: Express.Multer.File,
-    @Body() dto: FileUploadDto,
+  async createEndpointWithGeneratedSchema(
+    @Body() dto: CreateEndpointWithSchemaDto,
     @User() user: AuthenticatedUser,
-  ) {
-    const userIdentity =
-      user.token.clientId || user.token.sub || 'unknown-user';
-
-    const parsedFile = this.fileParsingService.parseUploadedFile(
-      file,
-      dto.contentType,
-    );
-
-    const schema = await this.endpointsService.inferSchemaFromPayload(
-      {
-        payload: parsedFile.content,
-        contentType: parsedFile.contentType,
-      },
-      userIdentity,
-    );
-
-    return {
-      success: true,
-      data: {
-        schema,
-        fieldsCount: schema.length,
-        fileInfo: {
-          originalName: parsedFile.originalName,
-          size: parsedFile.size,
-          contentType: parsedFile.contentType,
-        },
-      },
-    };
-  }
-
-  @Post('upload-payload-auto-detect')
-  @RequireClaim(TazamaClaims.EDITOR)
-  @UseInterceptors(
-    FileInterceptor('file', {
-      fileFilter: (req, file, callback) => {
-        const allowedMimeTypes = FileParsingService.getAllowedMimeTypes();
-        if (allowedMimeTypes.includes(file.mimetype)) {
-          callback(null, true);
-        } else {
-          callback(
-            new Error(
-              'Invalid file type. Only JSON and XML files are allowed.',
-            ),
-            false,
-          );
-        }
-      },
-    }),
-  )
-  async uploadPayloadAutoDetect(
-    @UploadedFile() file: Express.Multer.File,
-    @User() user: AuthenticatedUser,
-  ) {
-    const userIdentity =
-      user.token.clientId || user.token.sub || 'unknown-user';
-
-    const detectedContentType = this.fileParsingService.detectContentType(file);
-
-    const parsedFile = this.fileParsingService.parseUploadedFile(
-      file,
-      detectedContentType,
-    );
-
-    const schema = await this.endpointsService.inferSchemaFromPayload(
-      {
-        payload: parsedFile.content,
-        contentType: parsedFile.contentType,
-      },
-      userIdentity,
-    );
-
-    return {
-      success: true,
-      data: {
-        schema,
-        fieldsCount: schema.length,
-        fileInfo: {
-          originalName: parsedFile.originalName,
-          size: parsedFile.size,
-          contentType: parsedFile.contentType,
-          detectedContentType: detectedContentType,
-        },
-      },
-    };
-  }
-
-  @Post()
-  @RequireClaim(TazamaClaims.EDITOR)
-  async createEndpoint(
-    @Body() dto: CreateEndpointDto,
-    @User() user: AuthenticatedUser,
-  ) {
-    const userIdentity =
-      user.token.clientId || user.token.sub || 'unknown-user';
+  ): Promise<EndpointCreationResponseDto> {
     const tenantId = user.token.tenantId;
-    const result = await this.endpointsService.createEndpoint(
+    const userIdentity =
+      user.token.clientId || user.token.sub || 'unknown-user';
+
+    return await this.endpointsService.createEndpointWithGeneratedSchema(
       dto,
-      userIdentity,
       tenantId,
+      userIdentity,
     );
-    return {
-      success: true,
-      data: result,
-    };
   }
 
-  @Post('validate-schema')
+  /**
+   * User Story #300: Update endpoint source fields with adjustments
+   * Allow Editor to modify types and isRequired flags
+   */
+  @Put(':id/source-fields/bulk-update')
   @RequireClaim(TazamaClaims.EDITOR)
-  async validateSchema(
-    @Body() fields: SchemaFieldDto[],
-    @User() user: AuthenticatedUser,
-  ) {
-    const userIdentity =
-      user.token.clientId || user.token.sub || 'unknown-user';
-    const validation = await this.endpointsService.validateSchema(
-      fields,
-      userIdentity,
-    );
-    return {
-      success: validation.isValid,
-      data: validation,
-    };
-  }
-
-  @Put(':id/draft')
-  @RequireClaim(TazamaClaims.EDITOR)
-  async saveDraft(
+  async updateEndpointSourceFields(
     @Param('id', ParseIntPipe) endpointId: number,
-    @Body() dto: SaveDraftDto,
+    @Body()
+    fieldAdjustments: { path: string; type: string; isRequired: boolean }[],
     @User() user: AuthenticatedUser,
-  ) {
+  ): Promise<{ success: boolean; message: string }> {
+    const tenantId = user.token.tenantId;
     const userIdentity =
       user.token.clientId || user.token.sub || 'unknown-user';
-    const tenantId = user.token.tenantId;
-    await this.endpointsService.saveEndpointDraft(
+
+    return await this.endpointsService.updateEndpointSourceFields(
       endpointId,
-      dto.schema,
-      dto.notes,
-      userIdentity,
+      fieldAdjustments,
       tenantId,
-    );
-    return {
-      success: true,
-      message: 'Draft saved successfully',
-    };
-  }
-
-  @Post(':id/submit-for-approval')
-  @RequireClaim(TazamaClaims.EDITOR)
-  async submitForApproval(
-    @Param('id', ParseIntPipe) endpointId: number,
-    @User() user: AuthenticatedUser,
-  ) {
-    const userIdentity =
-      user.token.clientId || user.token.sub || 'unknown-user';
-    const tenantId = user.token.tenantId;
-    await this.endpointsService.submitEndpointForApproval(
-      endpointId,
       userIdentity,
-      tenantId,
     );
-    return {
-      success: true,
-      message: 'Endpoint submitted for approval',
-    };
   }
 
-  @Post(':id/approve')
-  @RequireClaim(TazamaClaims.APPROVER)
-  async approveEndpoint(
-    @Param('id', ParseIntPipe) endpointId: number,
-    @Body() dto: { comments?: string },
-    @User() user: AuthenticatedUser,
-  ) {
-    const userIdentity =
-      user.token.clientId || user.token.sub || 'unknown-user';
-    const tenantId = user.token.tenantId;
-    await this.endpointsService.approveEndpoint(
-      endpointId,
-      userIdentity,
-      tenantId,
-      dto.comments,
-    );
-    return {
-      success: true,
-      message: 'Endpoint approved successfully',
-    };
-  }
-
-  @Post(':id/reject')
-  @RequireClaim(TazamaClaims.APPROVER)
-  async rejectEndpoint(
-    @Param('id', ParseIntPipe) endpointId: number,
-    @Body() dto: { reason: string },
-    @User() user: AuthenticatedUser,
-  ) {
-    const userIdentity =
-      user.token.clientId || user.token.sub || 'unknown-user';
-    const tenantId = user.token.tenantId;
-    await this.endpointsService.rejectEndpoint(
-      endpointId,
-      userIdentity,
-      tenantId,
-      dto.reason,
-    );
-    return {
-      success: true,
-      message: 'Endpoint rejected',
-    };
-  }
-
-  @Post(':id/publish')
-  @RequireClaim(TazamaClaims.PUBLISHER)
-  async publishEndpoint(
-    @Param('id', ParseIntPipe) endpointId: number,
-    @User() user: AuthenticatedUser,
-  ) {
-    const userIdentity =
-      user.token.clientId || user.token.sub || 'unknown-user';
-    const tenantId = user.token.tenantId;
-    await this.endpointsService.publishEndpoint(
-      endpointId,
-      userIdentity,
-      tenantId,
-    );
-    return {
-      success: true,
-      message: 'Endpoint published to production',
-    };
-  }
-
-  @Get('pending-approval')
-  @RequireAnyClaims(TazamaClaims.APPROVER, TazamaClaims.PUBLISHER)
-  async getPendingApprovalEndpoints(@User() user: AuthenticatedUser) {
-    const tenantId = user.token.tenantId;
-    const endpoints =
-      await this.endpointsService.getPendingApprovalEndpoints(tenantId);
-    return {
-      success: true,
-      data: endpoints,
-    };
-  }
-
-  @Get('approved')
-  @RequireClaim(TazamaClaims.PUBLISHER)
-  async getApprovedEndpoints(@User() user: AuthenticatedUser) {
-    const tenantId = user.token.tenantId;
-    const endpoints =
-      await this.endpointsService.getApprovedEndpoints(tenantId);
-    return {
-      success: true,
-      data: endpoints,
-    };
-  }
-
-  @Get(':id')
+  /**
+   * User Story #300: Implement endpoint lifecycle transitions
+   * IN_PROGRESS → UNDER_REVIEW → PENDING_APPROVAL → READY_FOR_DEPLOYMENT → DEPLOYED
+   */
+  @Post(':id/transition-status')
   @RequireAnyClaims(
     TazamaClaims.EDITOR,
     TazamaClaims.APPROVER,
     TazamaClaims.PUBLISHER,
   )
-  async getEndpoint(
-    @Param('id', ParseIntPipe) id: number,
+  async transitionEndpointStatus(
+    @Param('id', ParseIntPipe) endpointId: number,
+    @Body() dto: EndpointLifecycleTransitionDto,
     @User() user: AuthenticatedUser,
-  ) {
+  ): Promise<{ success: boolean; message: string; newStatus?: string }> {
     const tenantId = user.token.tenantId;
-    const endpoint = await this.endpointsService.getEndpointById(id, tenantId);
-    if (!endpoint) {
+    const userIdentity =
+      user.token.clientId || user.token.sub || 'unknown-user';
+    const userRoles = user.token.claims || [];
+
+    return await this.endpointsService.transitionEndpointStatus(
+      endpointId,
+      dto,
+      tenantId,
+      userIdentity,
+      userRoles,
+    );
+  }
+
+  /**
+   * User Story #300: Get endpoints with tenant isolation
+   */
+  @Get('by-tenant')
+  @RequireClaim(TazamaClaims.EDITOR)
+  async getEndpointsByTenant(
+    @User() user: AuthenticatedUser,
+  ): Promise<{ success: boolean; endpoints: any[] }> {
+    const tenantId = user.token.tenantId;
+
+    const endpoints =
+      await this.endpointsService.getEndpointsByTenant(tenantId);
+
+    return {
+      success: true,
+      endpoints,
+    };
+  }
+
+  /**
+   * User Story #300: Get endpoint with schema validation
+   */
+  @Get(':id/with-validation')
+  @RequireClaim(TazamaClaims.EDITOR)
+  async getEndpointWithValidation(
+    @Param('id', ParseIntPipe) endpointId: number,
+    @User() user: AuthenticatedUser,
+  ): Promise<{ success: boolean; endpoint?: any; validation?: any }> {
+    const tenantId = user.token.tenantId;
+
+    const result = await this.endpointsService.getEndpointWithSchema(
+      endpointId,
+      tenantId,
+    );
+
+    return {
+      success: result.endpoint !== null,
+      endpoint: result.endpoint,
+      validation: result.validation,
+    };
+  }
+
+  /**
+   * User Story #300: File upload with payload parsing
+   */
+  @Post('upload-and-parse')
+  @RequireClaim(TazamaClaims.EDITOR)
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadFileAndParsePayload(
+    @UploadedFile() file: Express.Multer.File,
+    @Body() dto: { contentType: string },
+    @User() user: AuthenticatedUser,
+  ): Promise<ParsedSchemaResponseDto> {
+    const tenantId = user.token.tenantId;
+
+    if (!file) {
       return {
         success: false,
-        message: 'Endpoint not found',
+        validation: {
+          success: false,
+          errors: ['No file uploaded'],
+          warnings: [],
+        },
       };
     }
-    return {
-      success: true,
-      data: endpoint,
+
+    const parseDto: ParsePayloadDto = {
+      payload: file.buffer.toString('utf-8'),
+      contentType: dto.contentType as any,
+      filename: file.originalname,
     };
+
+    return await this.endpointsService.parsePayloadAndGenerateSchema(
+      parseDto,
+      tenantId,
+    );
   }
 
-  @Get()
+  /**
+   * User Story #300: Add constant field to endpoint schema
+   */
+  @Post(':id/constant-fields')
   @RequireClaim(TazamaClaims.EDITOR)
-  async getMyEndpoints(@User() user: AuthenticatedUser) {
+  async addConstantField(
+    @Param('id', ParseIntPipe) endpointId: number,
+    @Body() constantFieldDto: ConstantFieldDto,
+    @User() user: AuthenticatedUser,
+  ): Promise<{ success: boolean; message: string }> {
+    const tenantId = user.token.tenantId;
     const userIdentity =
       user.token.clientId || user.token.sub || 'unknown-user';
-    const tenantId = user.token.tenantId;
-    const endpoints = await this.endpointsService.getEndpointsByCreator(
-      userIdentity,
-      tenantId,
-    );
-    return {
-      success: true,
-      data: endpoints,
-    };
-  }
 
-  // Field editing endpoints
-  @Get(':id/schema/fields')
-  @RequireClaim(TazamaClaims.EDITOR)
-  async getSchemaFields(
-    @Param('id', ParseIntPipe) endpointId: number,
-    @User() user: AuthenticatedUser,
-  ) {
-    const tenantId = user.token.tenantId;
-    const fields = await this.endpointsService.getSchemaFields(
+    return await this.endpointsService.addConstantField(
       endpointId,
+      constantFieldDto,
       tenantId,
+      userIdentity,
     );
-    return {
-      success: true,
-      data: fields,
-    };
   }
 
-  @Put(':id/schema/fields/:fieldId')
+  /**
+   * User Story #300: Add formula field to endpoint schema
+   */
+  @Post(':id/formula-fields')
   @RequireClaim(TazamaClaims.EDITOR)
-  async updateSchemaField(
+  async addFormulaField(
     @Param('id', ParseIntPipe) endpointId: number,
-    @Param('fieldId', ParseIntPipe) fieldId: number,
-    @Body() dto: UpdateFieldDto,
+    @Body() formulaFieldDto: FormulaFieldDto,
     @User() user: AuthenticatedUser,
-  ) {
+  ): Promise<{ success: boolean; message: string }> {
+    const tenantId = user.token.tenantId;
     const userIdentity =
       user.token.clientId || user.token.sub || 'unknown-user';
-    const tenantId = user.token.tenantId;
-    await this.endpointsService.updateSchemaField(
+
+    return await this.endpointsService.addFormulaField(
       endpointId,
-      fieldId,
-      dto,
-      userIdentity,
+      formulaFieldDto,
       tenantId,
+      userIdentity,
     );
-    return {
-      success: true,
-      message: 'Field updated successfully',
-    };
   }
 
-  @Put(':id/schema/fields/:fieldId/toggle-required')
+  /**
+   * User Story #300: Remove constant field from endpoint schema
+   */
+  @Delete(':id/constant-fields/:fieldPath')
   @RequireClaim(TazamaClaims.EDITOR)
-  async toggleFieldRequired(
+  async removeConstantField(
     @Param('id', ParseIntPipe) endpointId: number,
-    @Param('fieldId', ParseIntPipe) fieldId: number,
-    @Body() dto: ToggleFieldRequiredDto,
+    @Param('fieldPath') fieldPath: string,
     @User() user: AuthenticatedUser,
-  ) {
+  ): Promise<{ success: boolean; message: string }> {
+    const tenantId = user.token.tenantId;
     const userIdentity =
       user.token.clientId || user.token.sub || 'unknown-user';
-    const tenantId = user.token.tenantId;
-    await this.endpointsService.toggleFieldRequired(
+
+    return await this.endpointsService.removeConstantField(
       endpointId,
-      fieldId,
-      dto.isRequired,
-      userIdentity,
+      decodeURIComponent(fieldPath),
       tenantId,
+      userIdentity,
     );
-    return {
-      success: true,
-      message: 'Field requirement status updated successfully',
-    };
   }
 
-  @Post(':id/schema/fields')
+  /**
+   * User Story #300: Remove formula field from endpoint schema
+   */
+  @Delete(':id/formula-fields/:fieldPath')
   @RequireClaim(TazamaClaims.EDITOR)
-  async addSchemaField(
+  async removeFormulaField(
     @Param('id', ParseIntPipe) endpointId: number,
-    @Body() dto: AddFieldDto,
+    @Param('fieldPath') fieldPath: string,
     @User() user: AuthenticatedUser,
-  ) {
+  ): Promise<{ success: boolean; message: string }> {
+    const tenantId = user.token.tenantId;
     const userIdentity =
       user.token.clientId || user.token.sub || 'unknown-user';
-    const tenantId = user.token.tenantId;
-    const field = await this.endpointsService.addSchemaField(
-      endpointId,
-      dto,
-      userIdentity,
-      tenantId,
-    );
-    return {
-      success: true,
-      message: 'Field added successfully',
-      data: field,
-    };
-  }
 
-  @Delete(':id/schema/fields/:fieldId')
-  @RequireClaim(TazamaClaims.EDITOR)
-  async removeSchemaField(
-    @Param('id', ParseIntPipe) endpointId: number,
-    @Param('fieldId', ParseIntPipe) fieldId: number,
-    @User() user: AuthenticatedUser,
-  ) {
-    const userIdentity =
-      user.token.clientId || user.token.sub || 'unknown-user';
-    const tenantId = user.token.tenantId;
-    await this.endpointsService.removeSchemaField(
+    return await this.endpointsService.removeFormulaField(
       endpointId,
-      fieldId,
-      userIdentity,
+      decodeURIComponent(fieldPath),
       tenantId,
-    );
-    return {
-      success: true,
-      message: 'Field removed successfully',
-    };
-  }
-
-  @Put(':id/schema/fields/reorder')
-  @RequireClaim(TazamaClaims.EDITOR)
-  async reorderSchemaFields(
-    @Param('id', ParseIntPipe) endpointId: number,
-    @Body() dto: ReorderFieldsDto,
-    @User() user: AuthenticatedUser,
-  ) {
-    const userIdentity =
-      user.token.clientId || user.token.sub || 'unknown-user';
-    const tenantId = user.token.tenantId;
-    await this.endpointsService.reorderSchemaFields(
-      endpointId,
-      dto.fieldIds,
       userIdentity,
-      tenantId,
     );
-    return {
-      success: true,
-      message: 'Fields reordered successfully',
-    };
   }
 }

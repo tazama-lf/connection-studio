@@ -1,17 +1,5 @@
-import {
-  IsString,
-  IsEnum,
-  IsOptional,
-  IsNotEmpty,
-  IsBoolean,
-  IsNumber,
-} from 'class-validator';
-import {
-  TransactionType,
-  HttpMethod,
-  ContentType,
-  FieldType,
-} from './interfaces';
+import { IsString, IsEnum, IsOptional, IsNotEmpty } from 'class-validator';
+import { TransactionType, HttpMethod, ContentType } from './interfaces';
 
 export class CreateEndpointDto {
   @IsString()
@@ -49,77 +37,19 @@ export class InferSchemaDto {
   contentType: ContentType;
 }
 
-export class SchemaFieldDto {
-  @IsString()
-  @IsNotEmpty()
-  name: string;
-
-  @IsString()
-  @IsNotEmpty()
-  path: string;
-
-  @IsEnum(FieldType)
-  type: FieldType;
-
-  @IsBoolean()
-  isRequired: boolean = false;
+// File upload DTO (moved from file-upload.dto.ts)
+export class FileUploadDto {
+  @IsEnum(ContentType)
+  contentType: ContentType;
 
   @IsOptional()
-  children?: SchemaFieldDto[];
-
-  @IsOptional()
-  @IsEnum(FieldType)
-  arrayElementType?: FieldType;
+  @IsString()
+  description?: string;
 }
 
-export class UpdateFieldDto {
-  @IsOptional()
-  @IsString()
-  name?: string;
-
-  @IsOptional()
-  @IsEnum(FieldType)
-  type?: FieldType;
-
-  @IsOptional()
-  @IsBoolean()
-  isRequired?: boolean;
-
-  @IsOptional()
-  @IsEnum(FieldType)
-  arrayElementType?: FieldType;
-}
-
-export class ToggleFieldRequiredDto {
-  @IsBoolean()
-  isRequired: boolean;
-}
-
-export class AddFieldDto {
-  @IsString()
-  @IsNotEmpty()
-  name: string;
-
-  @IsString()
-  @IsNotEmpty()
-  path: string;
-
-  @IsEnum(FieldType)
-  type: FieldType;
-
-  @IsBoolean()
-  isRequired: boolean = false;
-
-  @IsOptional()
-  @IsNumber()
-  parentFieldId?: number;
-
-  @IsOptional()
-  @IsEnum(FieldType)
-  arrayElementType?: FieldType;
-}
-
-export class ReorderFieldsDto {
-  @IsNumber({}, { each: true })
-  fieldIds: number[];
+export interface ParsedFileResult {
+  content: string;
+  contentType: ContentType;
+  originalName: string;
+  size: number;
 }

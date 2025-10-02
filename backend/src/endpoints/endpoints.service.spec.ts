@@ -1,309 +1,289 @@
-import { Test, TestingModule } from '@nestjs/testing';
+﻿import { Test, TestingModule } from '@nestjs/testing';
 import { EndpointsService } from './endpoints.service';
 import { EndpointsRepository } from './endpoints.repository';
-import { SchemaInferenceService } from '../schemas/schema-inference.service';
+import { PayloadParsingService } from './payload-parsing.service';
 import { AuditService } from '../audit/audit.service';
-import { CreateEndpointDto, InferSchemaDto } from '../common/dto';
-import { ContentType, HttpMethod, TransactionType } from '../common/interfaces';
-import { FieldType, SchemaField } from '../common/interfaces';
+import {
+  ParsePayloadDto,
+  CreateEndpointWithSchemaDto,
+} from '../common/schema-workflow.dto';
+import {
+  ContentType,
+  HttpMethod,
+  TransactionType,
+  FieldType,
+  EndpointStatus,
+  SchemaField,
+  Endpoint,
+} from '../common/interfaces';
 
 describe('EndpointsService', () => {
   let service: EndpointsService;
-  let endpointsRepository: EndpointsRepository;
-  let schemaInferenceService: SchemaInferenceService;
-  let auditService: AuditService;
+  let endpointsRepository: jest.Mocked<EndpointsRepository>;
+  let payloadParsingService: jest.Mocked<PayloadParsingService>;
+
+  const mockSchemaFields: SchemaField[] = [
+    {
+      name: 'amount',
+      path: 'amount',
+      type: FieldType.NUMBER,
+      isRequired: true,
+      children: undefined,
+    },
+  ];
+
+  const mockEndpoint: Endpoint = {
+    id: 1,
+    path: '/test',
+    method: HttpMethod.POST,
+    version: 'v1',
+    transactionType: TransactionType.TRANSFERS,
+    status: EndpointStatus.DEPLOYED,
+    description: 'Test endpoint',
+    createdBy: 'user-1',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    tenantId: 'test-tenant',
+    schemaJson: {
+      sourceFields: mockSchemaFields,
+      version: 1,
+      lastUpdated: new Date(),
+      createdBy: 'user-1',
+    },
+  };
 
   beforeEach(async () => {
+    const mockEndpointsRepository = {
+      createEndpoint: jest.fn(),
+      findEndpointById: jest.fn(),
+      updateEndpoint: jest.fn(),
+      deleteEndpoint: jest.fn(),
+      findEndpointsByTenant: jest.fn(),
+    };
+
+    const mockPayloadParsingService = {
+      parsePayloadToSchema: jest.fn(),
+      applyFieldAdjustments: jest.fn(),
+    };
+
+    const mockAuditService = {
+      logAction: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         EndpointsService,
         {
           provide: EndpointsRepository,
-          useValue: {
-            createEndpoint: jest.fn(),
-            createSchemaVersion: jest.fn(),
-            findEndpointById: jest.fn(),
-            getLatestSchemaVersion: jest.fn(),
-          },
+          useValue: mockEndpointsRepository,
         },
         {
-          provide: SchemaInferenceService,
-          useValue: {
-            inferSchemaFromPayload: jest.fn(),
-            validateSchema: jest.fn(),
-          },
+          provide: PayloadParsingService,
+          useValue: mockPayloadParsingService,
         },
         {
           provide: AuditService,
-          useValue: {
-            logSchemaInferred: jest.fn(),
-            logEndpointCreated: jest.fn(),
-            logSchemaValidated: jest.fn(),
-            logDraftSaved: jest.fn(),
-            logAction: jest.fn(),
-          },
+          useValue: mockAuditService,
         },
       ],
     }).compile();
 
     service = module.get<EndpointsService>(EndpointsService);
-    endpointsRepository = module.get<EndpointsRepository>(EndpointsRepository);
-    schemaInferenceService = module.get<SchemaInferenceService>(
-      SchemaInferenceService,
-    );
-    auditService = module.get<AuditService>(AuditService);
+    endpointsRepository = module.get(EndpointsRepository);
+    payloadParsingService = module.get(PayloadParsingService);
   });
 
   it('should be defined', () => {
     expect(service).toBeDefined();
   });
 
-  it('should infer schema from payload', async () => {
-    const dto: InferSchemaDto = {
-      payload: '{"foo":1}',
-      contentType: ContentType.JSON,
-    };
-    (
-      schemaInferenceService.inferSchemaFromPayload as jest.Mock
-    ).mockResolvedValue([
-      { name: 'foo', path: 'foo', type: 'number', isRequired: true },
-    ]);
-    const result = await service.inferSchemaFromPayload(dto, 'editor1');
-    expect(result).toEqual([
-      { name: 'foo', path: 'foo', type: 'number', isRequired: true },
-    ]);
-    expect(auditService.logSchemaInferred).toHaveBeenCalled();
-  });
+  describe('parsePayloadAndGenerateSchema', () => {
+    it('should parse payload and return schema', async () => {
+      const dto: ParsePayloadDto = {
+        payload: '{"amount":100}',
+        contentType: ContentType.JSON,
+      };
 
-  it('should create endpoint and validate schema', async () => {
-    const dto: CreateEndpointDto = {
-      path: '/test',
-      method: HttpMethod.POST,
-      version: 'v1',
-      transactionType: TransactionType.TRANSFERS,
-      description: 'desc',
-      samplePayload: '{"foo":1}',
-      contentType: ContentType.JSON,
-    };
-    (
-      schemaInferenceService.inferSchemaFromPayload as jest.Mock
-    ).mockResolvedValue([
-      { name: 'foo', path: 'foo', type: 'number', isRequired: true },
-    ]);
-    (schemaInferenceService.validateSchema as jest.Mock).mockReturnValue({
-      isValid: true,
-      errors: [],
-    });
-    (endpointsRepository.createEndpoint as jest.Mock).mockResolvedValue(1);
-    (endpointsRepository.createSchemaVersion as jest.Mock).mockResolvedValue(1);
-    const result = await service.createEndpoint(dto, 'editor1', 'test-tenant');
-    expect(result.endpointId).toBe(1);
-    expect(result.schema).toEqual([
-      { name: 'foo', path: 'foo', type: 'number', isRequired: true },
-    ]);
-    expect(auditService.logEndpointCreated).toHaveBeenCalled();
-  });
-
-  it('should throw error if schema validation fails on create', async () => {
-    const dto: CreateEndpointDto = {
-      path: '/test',
-      method: HttpMethod.POST,
-      version: 'v1',
-      transactionType: TransactionType.TRANSFERS,
-      description: 'desc',
-      samplePayload: '{"foo":1}',
-      contentType: ContentType.JSON,
-    };
-    (
-      schemaInferenceService.inferSchemaFromPayload as jest.Mock
-    ).mockResolvedValue([
-      { name: 'foo', path: 'foo', type: 'number', isRequired: true },
-    ]);
-    (schemaInferenceService.validateSchema as jest.Mock).mockReturnValue({
-      isValid: false,
-      errors: ['bad'],
-    });
-    await expect(
-      service.createEndpoint(dto, 'editor1', 'test-tenant'),
-    ).rejects.toThrow(/Schema validation failed/);
-  });
-
-  it('should validate schema with duplicate path detection', async () => {
-    const fields: SchemaField[] = [
-      {
-        name: 'name',
-        path: 'user.name',
-        type: FieldType.STRING,
-        isRequired: true,
-      },
-      {
-        name: 'name2',
-        path: 'user.name',
-        type: FieldType.STRING,
-        isRequired: true,
-      },
-    ];
-
-    (schemaInferenceService.validateSchema as jest.Mock).mockReturnValue({
-      isValid: false,
-      // eslint-disable-next-line quotes
-      errors: ["Duplicate field path 'user.name' detected."],
-    });
-
-    const result = await service.validateSchema(fields, 'editor1');
-    expect(result.isValid).toBe(false);
-    expect(result.errors).toContain(
-      // eslint-disable-next-line quotes
-      "Duplicate field path 'user.name' detected.",
-    );
-    expect(auditService.logSchemaValidated).toHaveBeenCalledWith(
-      'editor1',
-      'manual-validation',
-      'system',
-    );
-  });
-
-  it('should validate schema with path conflicts', async () => {
-    const fields: SchemaField[] = [
-      {
-        name: 'user',
-        path: 'user',
-        type: FieldType.STRING,
-        isRequired: true,
-      },
-      {
-        name: 'name',
-        path: 'user.name',
-        type: FieldType.STRING,
-        isRequired: true,
-      },
-    ];
-
-    (schemaInferenceService.validateSchema as jest.Mock).mockReturnValue({
-      isValid: false,
-      errors: [
-        // eslint-disable-next-line quotes
-        "Path conflict - 'user' cannot be type 'string' because child path 'user.name' exists.",
-      ],
-    });
-
-    const result = await service.validateSchema(fields, 'editor1');
-    expect(result.isValid).toBe(false);
-    expect(result.errors[0]).toContain('Path conflict');
-  });
-
-  it('should save draft only with valid schema', async () => {
-    const validSchema: any[] = [
-      { name: 'name', path: 'name', type: 'string', isRequired: true },
-    ];
-
-    (schemaInferenceService.validateSchema as jest.Mock).mockReturnValue({
-      isValid: true,
-      errors: [],
-    });
-    (endpointsRepository.createSchemaVersion as jest.Mock).mockResolvedValue(1);
-
-    await service.saveEndpointDraft(
-      1,
-      validSchema,
-      'Test notes',
-      'editor1',
-      'test-tenant',
-    );
-
-    expect(endpointsRepository.createSchemaVersion).toHaveBeenCalledWith(
-      1,
-      validSchema,
-      'editor1',
-      'test-tenant',
-    );
-    expect(auditService.logDraftSaved).toHaveBeenCalledWith(
-      'editor1',
-      'endpoint-1',
-      'test-tenant',
-    );
-  });
-
-  it('should reject saving draft with invalid schema', async () => {
-    const invalidSchema: any[] = [
-      { name: '', path: '', type: 'string', isRequired: true },
-    ];
-
-    (schemaInferenceService.validateSchema as jest.Mock).mockReturnValue({
-      isValid: false,
-      errors: ['Field has empty name'],
-    });
-
-    await expect(
-      service.saveEndpointDraft(
-        1,
-        invalidSchema,
-        'Test notes',
-        'editor1',
-        'test-tenant',
-      ),
-    ).rejects.toThrow(/Cannot save draft with invalid schema/);
-  });
-
-  it('should handle complex schema inference with nested objects', async () => {
-    const dto: InferSchemaDto = {
-      payload: JSON.stringify({
-        transaction: {
-          id: 'txn-123',
-          participants: [{ name: 'Alice', role: 'sender' }],
+      const mockResult = {
+        success: true,
+        sourceFields: mockSchemaFields,
+        metadata: {
+          totalFields: 1,
+          requiredFields: 1,
+          optionalFields: 0,
+          nestedLevels: 1,
+          originalSize: 100,
+          processingTime: 50,
         },
-      }),
-      contentType: ContentType.JSON,
-    };
+        validation: {
+          success: true,
+          errors: [],
+          warnings: [],
+        },
+      };
 
-    const complexSchema = [
-      {
-        name: 'transaction',
-        path: 'transaction',
-        type: 'object',
-        isRequired: true,
-        children: [
-          {
-            name: 'id',
-            path: 'transaction.id',
-            type: 'string',
-            isRequired: true,
-          },
-          {
-            name: 'participants',
-            path: 'transaction.participants',
-            type: 'array',
-            isRequired: true,
-            arrayElementType: 'object',
-            children: [
-              {
-                name: 'name',
-                path: 'transaction.participants[0].name',
-                type: 'string',
-                isRequired: true,
-              },
-              {
-                name: 'role',
-                path: 'transaction.participants[0].role',
-                type: 'string',
-                isRequired: true,
-              },
-            ],
-          },
-        ],
-      },
-    ];
+      payloadParsingService.parsePayloadToSchema.mockResolvedValue(mockResult);
 
-    (
-      schemaInferenceService.inferSchemaFromPayload as jest.Mock
-    ).mockResolvedValue(complexSchema);
+      const result = await service.parsePayloadAndGenerateSchema(
+        dto,
+        'test-tenant',
+      );
 
-    const result = await service.inferSchemaFromPayload(dto, 'editor1');
-    expect(result).toEqual(complexSchema);
-    expect(auditService.logSchemaInferred).toHaveBeenCalledWith(
-      'editor1',
-      'temp',
-      'system',
-    );
+      expect(result.schema?.sourceFields).toEqual(mockSchemaFields);
+      expect(result.success).toBe(true);
+      expect(payloadParsingService.parsePayloadToSchema).toHaveBeenCalledWith(
+        '{"amount":100}',
+        ContentType.JSON,
+        undefined,
+      );
+    });
+
+    it('should handle parsing errors', async () => {
+      const dto: ParsePayloadDto = {
+        payload: 'invalid json',
+        contentType: ContentType.JSON,
+      };
+
+      const mockResult = {
+        success: false,
+        sourceFields: [],
+        metadata: {
+          totalFields: 0,
+          requiredFields: 0,
+          optionalFields: 0,
+          nestedLevels: 0,
+          originalSize: 0,
+          processingTime: 0,
+        },
+        validation: {
+          success: false,
+          errors: ['Invalid JSON format'],
+          warnings: [],
+        },
+      };
+
+      payloadParsingService.parsePayloadToSchema.mockResolvedValue(mockResult);
+
+      const result = await service.parsePayloadAndGenerateSchema(
+        dto,
+        'test-tenant',
+      );
+
+      expect(result.validation.errors).toContain('Invalid JSON format');
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe('createEndpointWithGeneratedSchema', () => {
+    it('should create endpoint with schema', async () => {
+      const dto: CreateEndpointWithSchemaDto = {
+        name: 'Test Endpoint',
+        path: '/test',
+        method: HttpMethod.POST,
+        version: 'v1',
+        transactionType: TransactionType.TRANSFERS,
+        payload: '{"amount":100}',
+        contentType: ContentType.JSON,
+      };
+
+      const mockParseResult = {
+        success: true,
+        sourceFields: mockSchemaFields,
+        metadata: {
+          totalFields: 1,
+          requiredFields: 1,
+          optionalFields: 0,
+          nestedLevels: 1,
+          originalSize: 100,
+          processingTime: 50,
+        },
+        validation: {
+          success: true,
+          errors: [],
+          warnings: [],
+        },
+      };
+
+      payloadParsingService.parsePayloadToSchema.mockResolvedValue(
+        mockParseResult,
+      );
+      endpointsRepository.createEndpoint.mockResolvedValue(1);
+
+      const result = await service.createEndpointWithGeneratedSchema(
+        dto,
+        'test-tenant',
+        'user-1',
+      );
+
+      expect(result.endpointId).toBe(1);
+      expect(result.success).toBe(true);
+      expect(result.message).toContain('Endpoint created successfully');
+      expect(endpointsRepository.createEndpoint).toHaveBeenCalled();
+    });
+
+    it('should return error when parsing fails', async () => {
+      const dto: CreateEndpointWithSchemaDto = {
+        name: 'Test Endpoint',
+        path: '/test',
+        method: HttpMethod.POST,
+        version: 'v1',
+        transactionType: TransactionType.TRANSFERS,
+        payload: 'invalid',
+        contentType: ContentType.JSON,
+      };
+
+      const mockParseResult = {
+        success: false,
+        sourceFields: [],
+        metadata: {
+          totalFields: 0,
+          requiredFields: 0,
+          optionalFields: 0,
+          nestedLevels: 0,
+          originalSize: 0,
+          processingTime: 0,
+        },
+        validation: {
+          success: false,
+          errors: ['Parse error'],
+          warnings: [],
+        },
+      };
+
+      payloadParsingService.parsePayloadToSchema.mockResolvedValue(
+        mockParseResult,
+      );
+
+      const result = await service.createEndpointWithGeneratedSchema(
+        dto,
+        'test-tenant',
+        'user-1',
+      );
+
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('Failed to parse payload');
+    });
+  });
+
+  describe('getEndpointById', () => {
+    it('should return endpoint by id', async () => {
+      endpointsRepository.findEndpointById.mockResolvedValue(mockEndpoint);
+
+      const result = await service.getEndpointById(1, 'test-tenant');
+
+      expect(result).toEqual(mockEndpoint);
+      expect(endpointsRepository.findEndpointById).toHaveBeenCalledWith(
+        1,
+        'test-tenant',
+      );
+    });
+
+    it('should return null if endpoint not found', async () => {
+      endpointsRepository.findEndpointById.mockResolvedValue(null);
+
+      const result = await service.getEndpointById(999, 'test-tenant');
+
+      expect(result).toBeNull();
+    });
   });
 });

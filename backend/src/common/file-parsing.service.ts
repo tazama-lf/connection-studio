@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { ContentType } from '../common/interfaces';
-import { ParsedFileResult } from '../common/file-upload.dto';
+import { ParsedFileResult } from '../common/dto';
 
 @Injectable()
 export class FileParsingService {

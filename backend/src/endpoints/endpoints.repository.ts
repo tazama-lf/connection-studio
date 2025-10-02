@@ -2,17 +2,20 @@ import { Injectable, Inject } from '@nestjs/common';
 import { Knex } from 'knex';
 import {
   Endpoint,
-  EndpointSchema,
   SchemaField,
   EndpointStatus,
+  UnifiedSchema,
+  SourceSchema,
+  FieldType,
 } from '../common/interfaces';
+import { CreateEndpointWithSourceFieldsDto } from '../common/schema-workflow.dto';
 
 @Injectable()
 export class EndpointsRepository {
   constructor(@Inject('KNEX_CONNECTION') private readonly knex: Knex) {}
 
   async createEndpoint(
-    endpointData: Omit<Endpoint, 'id' | 'createdAt' | 'updatedAt'>,
+    endpointData: Omit<Endpoint, 'id' | 'createdAt' | 'updatedAt' | 'tenantId'>,
     tenantId: string,
   ): Promise<number> {
     const [endpoint] = await this.knex('endpoints')
@@ -25,10 +28,57 @@ export class EndpointsRepository {
         description: endpointData.description,
         created_by: endpointData.createdBy,
         tenant_id: tenantId,
+        schema_json: endpointData.schemaJson
+          ? JSON.stringify(endpointData.schemaJson)
+          : null,
+        schema_version: endpointData.schemaVersion || 1,
       })
       .returning('id');
 
     return endpoint.id;
+  }
+
+  // User Story #300: Create endpoint with source fields only
+  async createEndpointWithSourceSchema(
+    dto: CreateEndpointWithSourceFieldsDto,
+    sourceSchema: SourceSchema,
+    createdBy: string,
+    tenantId: string,
+  ): Promise<number> {
+    const [endpoint] = await this.knex('endpoints')
+      .insert({
+        name: dto.name,
+        path: dto.path,
+        method: dto.method,
+        version: dto.version,
+        transaction_type: dto.transactionType,
+        status: EndpointStatus.IN_PROGRESS,
+        description: dto.description,
+        created_by: createdBy,
+        tenant_id: tenantId,
+        schema_json: JSON.stringify(sourceSchema),
+        schema_version: sourceSchema.version,
+      })
+      .returning('id');
+
+    return endpoint.id;
+  }
+
+  // User Story #300: Update endpoint with source schema only
+  async updateEndpointSourceSchema(
+    endpointId: number,
+    sourceSchema: SourceSchema,
+    createdBy: string,
+    tenantId: string,
+  ): Promise<void> {
+    await this.knex('endpoints')
+      .where('id', endpointId)
+      .where('tenant_id', tenantId)
+      .update({
+        schema_json: JSON.stringify(sourceSchema),
+        schema_version: sourceSchema.version,
+        updated_at: this.knex.fn.now(),
+      });
   }
 
   async findEndpointById(
@@ -83,61 +133,129 @@ export class EndpointsRepository {
       });
   }
 
-  async createSchemaVersion(
+  async updateEndpointUnifiedSchema(
+    endpointId: number,
+    unifiedSchema: UnifiedSchema,
+    tenantId: string,
+  ): Promise<void> {
+    await this.knex('endpoints')
+      .where('id', endpointId)
+      .where('tenant_id', tenantId)
+      .update({
+        schema_json: JSON.stringify(unifiedSchema),
+        updated_at: this.knex.fn.now(),
+      });
+  }
+
+  async updateEndpointSchema(
     endpointId: number,
     schema: SchemaField[],
     createdBy: string,
     tenantId: string,
-  ): Promise<number> {
-    const [schemaVersion] = await this.knex('schema_versions')
-      .insert({
-        endpoint_id: endpointId,
-        version: await this.getNextSchemaVersion(endpointId, tenantId),
-        schema_definition: JSON.stringify(schema), // Explicitly stringify for JSONB column
-        created_by: createdBy,
-        tenant_id: tenantId,
-      })
-      .returning('id');
+  ): Promise<void> {
+    const nextVersion = await this.getNextSchemaVersion(endpointId, tenantId);
 
-    await this.insertSchemaFields(schemaVersion.id, schema, tenantId);
-
-    return schemaVersion.id;
+    await this.knex('endpoints')
+      .where('id', endpointId)
+      .where('tenant_id', tenantId)
+      .update({
+        schema_json: JSON.stringify(schema),
+        schema_version: nextVersion,
+        updated_at: new Date(),
+      });
   }
 
-  async getLatestSchemaVersion(
+  /**
+   * User Story #300: Update endpoint with enhanced schema (supports constant/formula fields)
+   */
+  async updateEndpointEnhancedSchema(
+    endpointId: number,
+    schema: any, // EnhancedSourceSchema
+    createdBy: string,
+    tenantId: string,
+  ): Promise<void> {
+    const nextVersion = await this.getNextSchemaVersion(endpointId, tenantId);
+
+    // Update the schema version inside the JSON object to match database version
+    const schemaWithUpdatedVersion = {
+      ...schema,
+      version: nextVersion,
+      lastUpdated: new Date(),
+      createdBy,
+    };
+
+    await this.knex('endpoints')
+      .where('id', endpointId)
+      .where('tenant_id', tenantId)
+      .update({
+        schema_json: JSON.stringify(schemaWithUpdatedVersion),
+        schema_version: nextVersion,
+        updated_at: new Date(),
+      });
+  }
+
+  async getEndpointSchema(
     endpointId: number,
     tenantId: string,
-  ): Promise<EndpointSchema | null> {
-    const schemaVersion = await this.knex('schema_versions')
-      .where('endpoint_id', endpointId)
+  ): Promise<SchemaField[] | null> {
+    const endpoint = await this.knex('endpoints')
+      .where('id', endpointId)
       .where('tenant_id', tenantId)
-      .orderBy('version', 'desc')
+      .select('schema_json')
       .first();
 
-    if (!schemaVersion) return null;
+    if (!endpoint?.schema_json) return null;
 
-    // Parse the schema_definition JSON string
-    let parsedSchema: SchemaField[];
     try {
-      // With explicit JSON.stringify on insert, we should always get a string back
-      if (typeof schemaVersion.schema_definition === 'string') {
-        parsedSchema = JSON.parse(schemaVersion.schema_definition);
-      } else {
-        // Fallback for case where DB driver auto-parsed (shouldn't happen with our approach)
-        parsedSchema = Array.isArray(schemaVersion.schema_definition)
-          ? schemaVersion.schema_definition
-          : [];
-      }
-    } catch {
-      // Return a safe fallback if schema parsing fails
-      parsedSchema = [];
+      return typeof endpoint.schema_json === 'string'
+        ? JSON.parse(endpoint.schema_json)
+        : endpoint.schema_json;
+    } catch (error) {
+      console.warn(
+        `Failed to parse schema JSON for endpoint ${endpointId}:`,
+        error,
+      );
+      return null;
     }
+  }
+
+  validateSchemaStructure(schema: SchemaField[]): {
+    isValid: boolean;
+    errors: string[];
+  } {
+    const errors: string[] = [];
+    const paths = new Set<string>();
+
+    const validateField = (field: SchemaField, _parentPath = ''): void => {
+      if (paths.has(field.path)) {
+        errors.push(`Duplicate path found: ${field.path}`);
+      } else {
+        paths.add(field.path);
+      }
+
+      if (!field.name || !field.path || !field.type) {
+        errors.push('Invalid field structure: missing required properties');
+      }
+
+      if (field.children && Array.isArray(field.children)) {
+        if (field.type !== FieldType.OBJECT) {
+          errors.push(
+            `Field ${field.path} has children but type is not 'object'`,
+          );
+        }
+        field.children.forEach((child) => validateField(child, field.path));
+      }
+
+      if (field.type === FieldType.ARRAY && !field.arrayElementType) {
+        errors.push(`Array field ${field.path} missing arrayElementType`);
+      }
+    };
+
+    schema.forEach((field) => validateField(field));
 
     return {
-      version: schemaVersion.version,
-      fields: parsedSchema,
-      createdBy: schemaVersion.created_by,
-      createdAt: schemaVersion.created_at,
+      isValid: errors.length === 0,
+      errors,
     };
   }
 
@@ -145,50 +263,58 @@ export class EndpointsRepository {
     endpointId: number,
     tenantId: string,
   ): Promise<number> {
-    const result = await this.knex('schema_versions')
-      .where('endpoint_id', endpointId)
+    const result = await this.knex('endpoints')
+      .where('id', endpointId)
       .where('tenant_id', tenantId)
-      .max('version as maxVersion')
+      .select('schema_version')
       .first();
 
-    return (result?.maxVersion || 0) + 1;
-  }
-
-  private async insertSchemaFields(
-    schemaVersionId: number,
-    fields: SchemaField[],
-    tenantId: string,
-    parentFieldId?: number,
-  ): Promise<void> {
-    for (let i = 0; i < fields.length; i++) {
-      const field = fields[i];
-      const [insertedField] = await this.knex('schema_fields')
-        .insert({
-          schema_version_id: schemaVersionId,
-          name: field.name,
-          path: field.path,
-          type: field.type,
-          is_required: field.isRequired,
-          parent_field_id: parentFieldId,
-          array_element_type: field.arrayElementType,
-          validation_rules: null,
-          field_order: i,
-          tenant_id: tenantId,
-        })
-        .returning('id');
-
-      if (field.children && field.children.length > 0) {
-        await this.insertSchemaFields(
-          schemaVersionId,
-          field.children,
-          tenantId,
-          insertedField.id,
-        );
-      }
-    }
+    return (result?.schema_version || 0) + 1;
   }
 
   private mapToEndpoint(row: any): Endpoint {
+    let schemaJson: SourceSchema | undefined;
+
+    if (row.schema_json) {
+      try {
+        const parsedSchema =
+          typeof row.schema_json === 'string'
+            ? JSON.parse(row.schema_json)
+            : row.schema_json;
+
+        // Check if it's a SourceSchema, UnifiedSchema, or legacy SchemaField[]
+        if (Array.isArray(parsedSchema)) {
+          // Legacy format - convert to SourceSchema (User Story #300)
+          schemaJson = {
+            sourceFields: parsedSchema,
+            version: 1,
+            lastUpdated: new Date(),
+            createdBy: row.created_by,
+          };
+        } else if (
+          parsedSchema.sourceFields &&
+          !parsedSchema.destinationFields
+        ) {
+          // New SourceSchema format (User Story #300)
+          schemaJson = parsedSchema;
+        } else {
+          // Legacy UnifiedSchema - extract only source fields for User Story #300
+          schemaJson = {
+            sourceFields: parsedSchema.sourceFields || [],
+            version: parsedSchema.version || 1,
+            lastUpdated: parsedSchema.lastUpdated || new Date(),
+            createdBy: parsedSchema.createdBy || row.created_by,
+          };
+        }
+      } catch (error) {
+        console.warn(
+          `Failed to parse schema JSON for endpoint ${row.id}:`,
+          error,
+        );
+        schemaJson = undefined;
+      }
+    }
+
     return {
       id: row.id,
       path: row.path,
@@ -200,6 +326,9 @@ export class EndpointsRepository {
       createdBy: row.created_by,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
+      tenantId: row.tenant_id,
+      schemaJson,
+      schemaVersion: row.schema_version,
     };
   }
 }

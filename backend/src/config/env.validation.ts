@@ -7,14 +7,16 @@ import {
 } from 'class-validator';
 
 enum NodeEnv {
-  DEVELOPMENT = 'dev',
-  PRODUCTION = 'prod',
+  DEVELOPMENT = 'development',
+  PRODUCTION = 'production',
   TEST = 'test',
+  DEV = 'dev',
+  PROD = 'prod',
 }
 
 class EnvironmentVariables {
   @IsEnum(NodeEnv)
-  NODE_ENV: NodeEnv;
+  NODE_ENV: NodeEnv = NodeEnv.DEVELOPMENT;
 
   @IsNumberString()
   MAX_CPU: string;
@@ -49,7 +51,7 @@ export const validate = (config: Record<string, unknown>) => {
     enableImplicitConversion: true,
   });
   const errors = validateSync(validatedConfig, {
-    skipMissingProperties: false,
+    skipMissingProperties: true,
   });
 
   if (errors.length > 0) {
