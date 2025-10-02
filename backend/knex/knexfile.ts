@@ -1,5 +1,6 @@
 import type { Knex } from 'knex';
 import path from 'path';
+
 const config: { [key: string]: Knex.Config } = {
   development: {
     client: process.env.USE_SQLITE === 'true' ? 'sqlite3' : 'pg',
@@ -23,7 +24,8 @@ const config: { [key: string]: Knex.Config } = {
     },
     migrations: {
       directory: path.join(__dirname, 'migrations'),
-      extension: 'js', // using compiled JS files
+      extension: 'ts', // Changed from 'js' to 'ts'
+      loadExtensions: ['.ts'], // Add this to load TypeScript files
     },
     useNullAsDefault: process.env.USE_SQLITE === 'true', // Required for SQLite
     log: {
@@ -61,6 +63,7 @@ const config: { [key: string]: Knex.Config } = {
     migrations: {
       directory: path.join(__dirname, 'migrations'),
       extension: 'ts',
+      loadExtensions: ['.ts'],
     },
     log: {
       warn(message: string) {
