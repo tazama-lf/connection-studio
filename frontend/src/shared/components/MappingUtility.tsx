@@ -16,7 +16,29 @@ interface DataModelExtension {
 }
 interface MappingUtilityProps {
   onMappingChange: (isValid: boolean) => void;
+  onMappingDataChange?: (mappingData: MappingData) => void;
+  sourceSchema?: Array<{
+    name: string;
+    path: string;
+    type: string;
+    isRequired: boolean;
+  }>;
   templateType?: string;
+}
+
+interface MappingData {
+  sourceFields: Array<{
+    path: string;
+    type: string;
+    isRequired: boolean;
+  }>;
+  destinationFields: Array<{
+    path: string;
+    type: string;
+    isRequired: boolean;
+  }>;
+  transformation: 'NONE' | 'CONCAT' | 'SUM' | 'SPLIT';
+  constants: { [key: string]: any };
 }
 interface TreeNode {
   id: string;
@@ -26,7 +48,9 @@ interface TreeNode {
   path: string[];
 }
 export const MappingUtility: React.FC<MappingUtilityProps> = ({
-  onMappingChange
+  onMappingChange,
+  onMappingDataChange,
+  sourceSchema
 }) => {
   // Sample hierarchical source data structure
   const sourceTree: TreeNode[] = [{

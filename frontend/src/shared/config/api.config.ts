@@ -12,7 +12,7 @@ const getApiBaseUrl = (service: 'auth' | 'default' = 'default') => {
     return process.env.VITE_API_BASE_URL;
   }
 
-  return service === 'auth' ? 'http://localhost:3000' : 'http://localhost:3001';
+  return 'http://localhost:3000'; // All services running on port 3000
 };
 
 export const API_CONFIG = {

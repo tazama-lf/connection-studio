@@ -4,9 +4,18 @@ import { AuthHeader } from '../../../shared/components/AuthHeader';
 import { ActivityIcon, DatabaseIcon, ClockIcon } from 'lucide-react';
 import { NAVIGATION } from '../../../shared/config/routes.config';
 import { APP_CONFIG } from '../../../shared/config/app.config';
+import { useAuth } from '../../auth/contexts/AuthContext';
+import { isApprover } from '../../../utils/roleUtils';
+import ApproverDashboard from '../../approver/pages/ApproverDashboard';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  
+  // Check if user is an approver and show approver-specific dashboard
+  if (user && user.claims && isApprover(user.claims)) {
+    return <ApproverDashboard />;
+  }
   
   const modules = NAVIGATION.mainModules.map(module => ({
     ...module,
