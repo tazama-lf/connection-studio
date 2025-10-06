@@ -23,9 +23,9 @@ const config: { [key: string]: Knex.Config } = {
       idleTimeoutMillis: 10000,
     },
     migrations: {
-      directory: path.join(__dirname, 'migrations'),
-      extension: 'ts', // Changed from 'js' to 'ts'
-      loadExtensions: ['.ts'], // Add this to load TypeScript files
+      directory: path.resolve(__dirname, 'migrations'),
+      extension: 'js', // Changed from 'ts' to 'js'
+      loadExtensions: ['.js'], // Changed from '.ts' to '.js'
     },
     useNullAsDefault: process.env.USE_SQLITE === 'true', // Required for SQLite
     log: {
@@ -61,9 +61,9 @@ const config: { [key: string]: Knex.Config } = {
       idleTimeoutMillis: 60000, // hold idle connections longer in prod
     },
     migrations: {
-      directory: path.join(__dirname, 'migrations'),
-      extension: 'ts',
-      loadExtensions: ['.ts'],
+      directory: path.resolve(__dirname, 'migrations'),
+      extension: 'js',
+      loadExtensions: ['.js'],
     },
     log: {
       warn(message: string) {

@@ -37,7 +37,6 @@ export class InferSchemaDto {
   contentType: ContentType;
 }
 
-// File upload DTO (moved from file-upload.dto.ts)
 export class FileUploadDto {
   @IsEnum(ContentType)
   contentType: ContentType;

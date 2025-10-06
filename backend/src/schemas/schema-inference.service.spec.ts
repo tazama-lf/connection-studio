@@ -124,7 +124,6 @@ describe('SchemaInferenceService', () => {
   });
 
   it('should detect conflicting field paths - parent/child conflict', () => {
-    // Create a flat structure that will trigger path conflicts
     const fields: SchemaField[] = [
       { name: 'user', path: 'user', type: FieldType.STRING, isRequired: true },
       {
@@ -339,7 +338,6 @@ describe('SchemaInferenceService', () => {
     expect(schema[0].children).toBeDefined();
     expect(schema[0].children!.length).toBe(4);
 
-    // Validate the schema
     const result = service.validateSchema(schema);
     expect(result.isValid).toBe(true);
   });
@@ -370,7 +368,6 @@ describe('SchemaInferenceService', () => {
     expect(schema).toBeDefined();
     expect(schema.length).toBeGreaterThan(0);
 
-    // Validate the schema
     const result = service.validateSchema(schema);
     expect(result.isValid).toBe(true);
   });
@@ -392,7 +389,6 @@ describe('SchemaInferenceService', () => {
       '<data><count>42</count><price>19.99</price><active>true</active><name>test</name></data>';
     const schema = await service['inferFromXml'](xml);
 
-    // Get the children of the root 'data' element
     const dataField = schema.find(
       (f) =>
         f.name === 'count' ||
@@ -415,7 +411,6 @@ describe('SchemaInferenceService', () => {
         FieldType.STRING,
       );
     } else {
-      // If structure is different, just validate that we have the expected fields
       expect(schema.length).toBeGreaterThan(0);
     }
   });
@@ -425,7 +420,6 @@ describe('SchemaInferenceService', () => {
     const schema = service['inferFromJson'](payload);
 
     expect(schema[0].type).toBe(FieldType.ARRAY);
-    // Empty arrays default to string element type in our implementation
     expect(schema[0].arrayElementType).toBeDefined();
   });
 

@@ -1,6 +1,5 @@
 import { FieldType } from './interfaces';
 
-// Core field mapping interfaces
 export interface SourceField {
   path: string;
   type: FieldType;
@@ -15,19 +14,15 @@ export interface DestinationField {
 }
 
 export interface TransformationConfig {
-  // For CONCAT transformation
   separator?: string;
   concatFields?: string[]; // Source field paths to concatenate
 
-  // For SUM transformation
   operation?: 'SUM' | 'AVERAGE' | 'COUNT';
   sumFields?: string[]; // Source field paths to sum
 
-  // For SPLIT transformation
   delimiter?: string;
   targetFields?: string[]; // Destination field paths for split results
 
-  // Custom transformation logic
   customLogic?: string;
 }
 
@@ -46,7 +41,6 @@ export type MappingAction =
   | 'ACTIVATE'
   | 'DEACTIVATE';
 
-// Multi-field mapping entity
 export interface MultiFieldMappingEntity {
   id?: number;
   endpointId: number;
@@ -67,7 +61,6 @@ export interface MultiFieldMappingEntity {
   updatedAt?: Date;
 }
 
-// Mapping history entity
 export interface MultiFieldMappingHistoryEntity {
   id?: number;
   mappingId: number;
@@ -79,7 +72,6 @@ export interface MultiFieldMappingHistoryEntity {
   changedAt?: Date;
 }
 
-// Validation interfaces
 export interface ValidationError {
   field: string;
   message: string;
@@ -92,7 +84,6 @@ export interface ValidationResult {
   warnings?: ValidationError[];
 }
 
-// Simulation interfaces
 export interface SimulationInput {
   mappingId: number;
   testPayload: Record<string, any>;
@@ -108,7 +99,6 @@ export interface SimulationResult {
   processingTime: number;
 }
 
-// Tree view interfaces for UI
 export interface MappingTreeNode {
   id: string;
   name: string;

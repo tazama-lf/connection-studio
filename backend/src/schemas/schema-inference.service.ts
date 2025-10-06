@@ -160,7 +160,6 @@ export class SchemaInferenceService {
           field.children = this.analyzeObject(firstElement, `${path}[0]`);
         }
       } else {
-        // Default type for empty arrays
         field.arrayElementType = FieldType.STRING;
       }
     }
@@ -219,21 +218,18 @@ export class SchemaInferenceService {
     const seenPaths = new Set<string>();
 
     for (const field of fields) {
-      // Validate field name
       if (!field.name || field.name.trim() === '') {
         errors.push(
           `Validation error: Field at path '${field.path ?? ''}' has empty name.`,
         );
       }
 
-      // Validate field type
       if (!field.type || !Object.values(FieldType).includes(field.type)) {
         errors.push(
           `Validation error: Field '${field.path ?? ''}' has invalid type '${field.type ?? ''}'.`,
         );
       }
 
-      // Check for duplicate field paths within current level
       if (field.path) {
         if (seenPaths.has(field.path)) {
           errors.push(
@@ -243,11 +239,9 @@ export class SchemaInferenceService {
           seenPaths.add(field.path);
         }
 
-        // Check for conflicting field paths
         this.validatePathConflicts(field.path, field.type, allPaths, errors);
       }
 
-      // Validate array element type
       if (field.type === FieldType.ARRAY && field.arrayElementType) {
         if (!Object.values(FieldType).includes(field.arrayElementType)) {
           errors.push(
@@ -256,7 +250,6 @@ export class SchemaInferenceService {
         }
       }
 
-      // Recursively validate child fields
       if (field.type === FieldType.OBJECT && field.children) {
         this.validateFields(field.children, allPaths, errors, field.path);
       }

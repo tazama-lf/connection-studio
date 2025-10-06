@@ -11,15 +11,6 @@ import {
 import { Type } from 'class-transformer';
 import { FieldType, ContentType } from './interfaces';
 
-/**
- * Schema Workflow DTOs
- *
- * This file contains all DTOs related to schema generation, endpoint creation workflows,
- * field management, and advanced parsing operations. These DTOs support the complete
- * workflow from payload parsing to endpoint creation with schema validation.
- */
-
-// DTO for parsing payload input
 export class ParsePayloadDto {
   @IsString()
   @IsNotEmpty()
@@ -33,7 +24,6 @@ export class ParsePayloadDto {
   filename?: string;
 }
 
-// DTO for field adjustment during schema generation
 export class AdjustFieldDto {
   @IsString()
   @IsNotEmpty()
@@ -46,46 +36,6 @@ export class AdjustFieldDto {
   isRequired: boolean;
 }
 
-// DTO for creating constant fields
-export class ConstantFieldDto {
-  @IsString()
-  @IsNotEmpty()
-  path: string;
-
-  @IsEnum(FieldType)
-  type: FieldType;
-
-  @IsNotEmpty()
-  value: any;
-
-  @IsOptional()
-  @IsString()
-  description?: string;
-}
-
-// DTO for creating formula fields
-export class FormulaFieldDto {
-  @IsString()
-  @IsNotEmpty()
-  path: string;
-
-  @IsEnum(FieldType)
-  type: FieldType;
-
-  @IsString()
-  @IsNotEmpty()
-  formula: string;
-
-  @IsOptional()
-  @IsString()
-  description?: string;
-
-  @IsArray()
-  @IsString({ each: true })
-  referencedFields: string[];
-}
-
-// DTO for creating endpoint with complete schema workflow
 export class CreateEndpointWithSchemaDto {
   @IsString()
   @IsNotEmpty()
@@ -123,21 +73,8 @@ export class CreateEndpointWithSchemaDto {
   @ValidateNested({ each: true })
   @Type(() => AdjustFieldDto)
   fieldAdjustments?: AdjustFieldDto[];
-
-  @IsOptional()
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => ConstantFieldDto)
-  constantFields?: ConstantFieldDto[];
-
-  @IsOptional()
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => FormulaFieldDto)
-  formulaFields?: FormulaFieldDto[];
 }
 
-// DTO for schema validation response
 export class SchemaValidationResultDto {
   success: boolean;
   errors: string[];
@@ -147,7 +84,6 @@ export class SchemaValidationResultDto {
   conflictingPaths?: string[];
 }
 
-// DTO for endpoint lifecycle transition
 export class EndpointLifecycleTransitionDto {
   @IsString()
   @IsNotEmpty()
@@ -158,7 +94,6 @@ export class EndpointLifecycleTransitionDto {
   comment?: string;
 }
 
-// DTO for generating source fields from payload
 export class GenerateSourceFieldsDto {
   @IsString()
   @IsNotEmpty()
@@ -168,7 +103,6 @@ export class GenerateSourceFieldsDto {
   contentType: ContentType;
 }
 
-// DTO for creating endpoint with generated source fields
 export class CreateEndpointWithSourceFieldsDto {
   @IsString()
   @IsNotEmpty()
@@ -194,7 +128,6 @@ export class CreateEndpointWithSourceFieldsDto {
   @IsString()
   description?: string;
 
-  // Source fields generated from payload
   sourceFields: SchemaFieldDto[];
 
   @IsEnum(ContentType)
@@ -224,7 +157,6 @@ export class SchemaFieldDto {
   arrayElementType?: FieldType;
 }
 
-// DTO for advanced file upload with validation
 export class AdvancedFileUploadDto {
   @IsEnum(ContentType)
   expectedContentType: ContentType;
@@ -234,7 +166,6 @@ export class AdvancedFileUploadDto {
   autoDetectType?: boolean;
 }
 
-// Field management DTOs
 export class UpdateFieldDto {
   @IsOptional()
   @IsString()
@@ -287,7 +218,6 @@ export class ReorderFieldsDto {
   fieldIds: number[];
 }
 
-// Response DTOs
 export class ParsedSchemaResponseDto {
   success: boolean;
   schema?: {

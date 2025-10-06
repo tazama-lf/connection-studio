@@ -1,3 +1,5 @@
+import { JSONSchema } from './json-schema.interfaces';
+
 export enum TransactionType {
   TRANSFERS = 'Transfers',
   PAYMENTS = 'Payments',
@@ -22,6 +24,7 @@ export enum FieldType {
   BOOLEAN = 'BOOLEAN',
   OBJECT = 'OBJECT',
   ARRAY = 'ARRAY',
+  DATE = 'DATE',
 }
 
 export enum EndpointStatus {
@@ -44,32 +47,6 @@ export interface SchemaField {
   arrayElementType?: FieldType;
 }
 
-// Extension fields for constant and formula fields
-export interface ConstantField {
-  path: string;
-  type: FieldType;
-  value: any;
-  description?: string;
-}
-
-export interface FormulaField {
-  path: string;
-  type: FieldType;
-  formula: string;
-  description?: string;
-  referencedFields: string[]; // List of field paths referenced in the formula
-}
-
-// Enhanced schema structure for User Story #300 with extensions
-export interface EnhancedSourceSchema {
-  version: number;
-  sourceFields: SchemaField[];
-  constantFields: ConstantField[];
-  formulaFields: FormulaField[];
-  lastUpdated: Date;
-  createdBy: string;
-}
-
 export interface FieldMapping {
   sourceField: {
     path: string;
@@ -85,13 +62,11 @@ export interface FieldMapping {
   constants?: any;
 }
 
-// Transformation types for field mappings
 export type TransformationType = 'NONE' | 'CONCAT' | 'SUM' | 'SPLIT';
 export type MappingStatus = 'ACTIVE' | 'INACTIVE' | 'DEPRECATED';
 export type ExtensionFieldStatus = 'DRAFT' | 'ACTIVE' | 'DEPRECATED';
 export type ExtensionFieldCategory = 'CUSTOM' | 'REGULATORY' | 'BUSINESS';
 
-// Modern field mapping entity (stored in field_mappings table)
 export interface FieldMappingEntity {
   id?: number;
   endpointId: number;
@@ -113,7 +88,6 @@ export interface FieldMappingEntity {
   updatedAt?: Date;
 }
 
-// Destination field extension entity (stored in destination_field_extensions table)
 export interface DestinationFieldExtension {
   id?: number;
   name: string;
@@ -126,7 +100,7 @@ export interface DestinationFieldExtension {
   category: ExtensionFieldCategory;
   collection?: string;
   status: ExtensionFieldStatus;
-  version: number;
+  version: string;
   tenantId: string;
   createdBy: string;
   updatedBy?: string;
@@ -135,21 +109,24 @@ export interface DestinationFieldExtension {
   children?: DestinationFieldExtension[];
 }
 
-// Source Schema - stored in endpoints.schema_json (User Story #300)
 export interface SourceSchema {
-  sourceFields: SchemaField[];
-  version: number;
+  schema: JSONSchema;
+  version: string;
   lastUpdated: Date;
   createdBy: string;
+  metadata?: {
+    originalFormat?: string;
+    parsedAt?: Date;
+    fieldCount?: number;
+  };
 }
 
-// Legacy UnifiedSchema - now used only for mapping operations
 export interface UnifiedSchema {
   sourceFields: SchemaField[];
   destinationFields: SchemaField[];
   mappings: FieldMapping[];
   extensions: SchemaField[];
-  version: number;
+  version: string;
   lastUpdated: Date;
   createdBy: string;
 }
@@ -166,7 +143,6 @@ export interface Endpoint {
   createdAt: Date;
   updatedAt: Date;
   tenantId: string;
-  // User Story #300: Store only source fields in schema_json
   schemaJson?: SourceSchema;
   schemaVersion?: number;
 }
