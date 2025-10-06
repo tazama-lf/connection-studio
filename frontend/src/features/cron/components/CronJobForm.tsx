@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { HelpCircleIcon } from 'lucide-react';
-import { dataEnrichmentApi } from '../../data-enrichment/services/enrichmentApi';
+// Data enrichment API removed - backend restructuring in progress
 
 interface CronJobFormProps {
   onJobCreated?: () => void;
@@ -28,7 +28,8 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({ onJobCreated, onCancel
     try {
       setIsSubmitting(true);
       
-      await dataEnrichmentApi.createSchedule({
+      // TODO: Replace with new backend API integration
+      console.log('Schedule creation placeholder:', {
         name: jobName.trim(),
         cron: cronExpression.trim(),
         iterations: iterations,

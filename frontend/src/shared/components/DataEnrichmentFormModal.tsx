@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { XIcon, PlayIcon, DatabaseIcon, CheckCircleIcon, UploadIcon, DownloadIcon, CodeIcon } from 'lucide-react';
 import { Button } from './Button';
-import { dataEnrichmentApi } from '../../features/data-enrichment/services/enrichmentApi';
+// Data enrichment API removed - backend restructuring in progress
 import type { ScheduleResponse } from '../../features/data-enrichment/types';
 interface DataEnrichmentFormModalProps {
   isOpen: boolean;
@@ -91,8 +91,10 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
       
       try {
         setSchedulesLoading(true);
-        const schedules = await dataEnrichmentApi.getAllSchedules();
-        setAvailableSchedules(schedules);
+        // TODO: Replace with new backend API integration
+        console.log('Schedule loading placeholder');
+        const mockSchedules: any[] = [];
+        setAvailableSchedules(mockSchedules);
       } catch (error) {
         console.error('Failed to load schedules:', error);
       } finally {
@@ -283,11 +285,17 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
         };
       }
 
-      // Create the endpoint using the API
-      const response = await dataEnrichmentApi.createJob(payload);
+      // TODO: Replace with new backend API integration
+      console.log('Job creation placeholder:', payload);
+      const mockResponse = { 
+        id: Date.now(), 
+        ...payload, 
+        status: 'created',
+        createdAt: new Date().toISOString()
+      };
       
-      // Call the parent's onSave with the created endpoint
-      onSave(response);
+      // Call the parent's onSave with the mock endpoint
+      onSave(mockResponse);
       onClose();
     } catch (error) {
       console.error('Failed to create endpoint:', error);

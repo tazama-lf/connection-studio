@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { PlayIcon, PauseIcon, EditIcon, TrashIcon, EyeIcon } from 'lucide-react';
 import SearchBar from '../../../shared/components/SearchBar';
 import { Pagination } from '../../data-enrichment/components/Pagination';
-import { dataEnrichmentApi } from '../../data-enrichment/services/enrichmentApi';
+// Data enrichment API removed - backend restructuring in progress
 import type { DataEnrichmentJobResponse, ScheduleResponse } from '../../data-enrichment/types';
 export const CronJobList: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -23,14 +23,13 @@ export const CronJobList: React.FC = () => {
         setLoading(true);
         setError(null);
         
-        // Load both jobs and schedules to show schedule details
-        const [jobsData, schedulesData] = await Promise.all([
-          dataEnrichmentApi.getAllJobs(),
-          dataEnrichmentApi.getAllSchedules()
-        ]);
+        // TODO: Replace with new backend API integration
+        console.log('Jobs and schedules loading placeholder');
+        const mockJobsData = { jobs: [] };
+        const mockSchedulesData: ScheduleResponse[] = [];
         
-        setJobs(jobsData.jobs || []);
-        setSchedules(schedulesData || []);
+        setJobs(mockJobsData.jobs || []);
+        setSchedules(mockSchedulesData || []);
       } catch (err) {
         console.error('Failed to load jobs:', err);
         setError('Failed to load jobs. Please try again.');

@@ -1,4 +1,2 @@
-export * from './apiClient';
-
-// Re-export shared API utilities
-export { apiClient as default } from './apiClient';
+// Shared services are removed - backend restructuring
+// Only auth services remain in features/auth/services/

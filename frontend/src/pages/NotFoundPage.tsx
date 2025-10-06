@@ -23,10 +23,10 @@ const NotFoundPage: React.FC = () => {
         </p>
         <div className="space-y-4">
           <Button 
-            onClick={() => navigate(ROUTES.DASHBOARD)}
+            onClick={() => navigate(ROUTES.LOGIN)}
             className="w-full"
           >
-            Go to Dashboard
+            Go to Login
           </Button>
           <Button 
             variant="secondary"

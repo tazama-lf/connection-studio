@@ -8,7 +8,7 @@ import JobList from '../components/JobList';
 import Pagination from '../components/Pagination';
 import JobDetailsModal from '../components/JobDetailsModal';
 import { DataEnrichmentFormModal } from '../../../shared/components/DataEnrichmentFormModal';
-import { dataEnrichmentApi } from '../services/enrichmentApi';
+// Data enrichment API removed - backend restructuring in progress
 import type { DataEnrichmentJobResponse, CreateDataEnrichmentJobRequest, JobListResponse } from '../types';
 
 const DataEnrichmentModule: React.FC = () => {
@@ -34,11 +34,18 @@ const DataEnrichmentModule: React.FC = () => {
     console.log('loadJobs called, currentPage:', currentPage, 'itemsPerPage:', itemsPerPage);
     setJobsLoading(true);
     try {
-      const response: JobListResponse = await dataEnrichmentApi.getAllJobs(currentPage, itemsPerPage);
-      console.log('API response received:', response);
-      setJobs(response.jobs || []);
-      setTotalItems(response.total || 0);
-      console.log('Jobs set to state:', response.jobs?.length || 0, 'total items:', response.total);
+      // TODO: Replace with new backend API integration
+      const mockResponse: JobListResponse = {
+        jobs: [],
+        total: 0,
+        page: currentPage,
+        limit: itemsPerPage,
+        totalPages: 1
+      };
+      console.log('API response received (placeholder):', mockResponse);
+      setJobs(mockResponse.jobs || []);
+      setTotalItems(mockResponse.total || 0);
+      console.log('Jobs set to state (placeholder):', mockResponse.jobs?.length || 0, 'total items:', mockResponse.total);
     } catch (error) {
       console.error('Failed to load jobs:', error);
       setJobs([]); // Ensure jobs is always an array even on error
@@ -51,7 +58,8 @@ const DataEnrichmentModule: React.FC = () => {
   const handleCreateJob = async (jobData: CreateDataEnrichmentJobRequest) => {
     try {
       setJobsLoading(true);
-      await dataEnrichmentApi.createJob(jobData);
+      // TODO: Replace with new backend API integration
+      console.log('Job creation placeholder:', jobData);
       setShowJobForm(false);
       await loadJobs(); // Reload the jobs list
       // Show success message
@@ -68,10 +76,11 @@ const DataEnrichmentModule: React.FC = () => {
     try {
       setJobDetailsLoading(true);
       setShowJobDetails(true);
-      console.log('Calling API to get job details...');
-      const jobDetails = await dataEnrichmentApi.getJobById(jobId);
-      console.log('Job details received:', jobDetails);
-      setSelectedJob(jobDetails);
+      console.log('Job details placeholder for jobId:', jobId);
+      // TODO: Replace with new backend API integration
+      const mockJobDetails = null; // Placeholder until backend is restructured
+      console.log('Job details received (placeholder):', mockJobDetails);
+      setSelectedJob(mockJobDetails);
     } catch (error) {
       console.error('Failed to load job details:', error);
       // Show error message

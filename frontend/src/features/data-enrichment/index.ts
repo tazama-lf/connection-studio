@@ -6,8 +6,7 @@ export { default as JobCreationForm } from './components/JobCreationForm';
 export { default as JobList } from './components/JobList';
 export { default as Pagination } from './components/Pagination';
 
-// Data Enrichment Services
-export { dataEnrichmentApi } from './services/enrichmentApi';
+// Data Enrichment Services - Removed due to backend restructuring
 
 // Data Enrichment Types
 export * from './types';
