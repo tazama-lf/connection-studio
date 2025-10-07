@@ -223,4 +223,151 @@ export class DataModelController {
       fieldInfo,
     };
   }
+
+  /**
+   * Get mapping suggestions for a destination field
+   * Returns recommended transformation types based on field type
+   */
+  @Get('mapping-suggestions/:destinationPath')
+  async getMappingSuggestions(
+    @Param('destinationPath') destinationPath: string,
+    @User() _user: AuthenticatedUser,
+  ) {
+    const fieldType = this.tazamaDataModelService.getFieldType(destinationPath);
+    const description =
+      this.tazamaDataModelService.getFieldDescription(destinationPath);
+    const example =
+      this.tazamaDataModelService.getFieldExample(destinationPath);
+    const required =
+      this.tazamaDataModelService.isFieldRequired(destinationPath);
+
+    // Suggest transformation types based on field type
+    const suggestions = this.getSuggestedTransformations(fieldType);
+
+    return {
+      success: true,
+      destinationPath,
+      fieldInfo: {
+        type: fieldType,
+        description,
+        example,
+        required,
+      },
+      suggestedTransformations: suggestions,
+    };
+  }
+
+  /**
+   * Helper method to suggest transformations based on field type
+   */
+  private getSuggestedTransformations(fieldType: string | null) {
+    if (!fieldType) {
+      return [];
+    }
+
+    const suggestions: Array<{
+      transformation: string;
+      description: string;
+      sourceType: 'single' | 'multiple';
+      example: string;
+    }> = [];
+
+    // NONE is always available
+    suggestions.push({
+      transformation: 'NONE',
+      description: 'Direct 1-to-1 mapping (copy value as-is)',
+      sourceType: 'single',
+      example: 'source: "transactionId" → destination value',
+    });
+
+    // STRING type suggestions
+    if (fieldType === 'STRING') {
+      suggestions.push({
+        transformation: 'CONCAT',
+        description: 'Combine multiple source fields with a delimiter',
+        sourceType: 'multiple',
+        example: 'sources: ["firstName", "lastName"] + " " → "John Doe"',
+      });
+      suggestions.push({
+        transformation: 'SPLIT',
+        description: 'Split one source field into multiple parts',
+        sourceType: 'single',
+        example: 'source: "fullName" split by " " → ["John", "Doe"]',
+      });
+    }
+
+    // NUMBER type suggestions
+    if (fieldType === 'NUMBER') {
+      suggestions.push({
+        transformation: 'SUM',
+        description: 'Sum multiple numeric source fields',
+        sourceType: 'multiple',
+        example: 'sources: [100, 200, 50] → 350',
+      });
+    }
+
+    return suggestions;
+  }
+
+  /**
+   * Get destination fields grouped by collection with stats
+   */
+  @Get('destination-fields-grouped')
+  async getDestinationFieldsGrouped(@User() user: AuthenticatedUser) {
+    const baseOptions = this.tazamaDataModelService.getDestinationOptions();
+    const extensions = await this.dataModelExtensionService.getAllExtensions(
+      user.tenantId,
+    );
+
+    // Group by collection
+    const grouped: Record<string, any[]> = {};
+
+    // Add base fields
+    for (const option of baseOptions) {
+      if (!grouped[option.collection]) {
+        grouped[option.collection] = [];
+      }
+      grouped[option.collection].push({
+        ...option,
+        isExtension: false,
+      });
+    }
+
+    // Add extension fields
+    for (const ext of extensions) {
+      if (!grouped[ext.collection]) {
+        grouped[ext.collection] = [];
+      }
+      grouped[ext.collection].push({
+        value: `${ext.collection}.${ext.fieldName}`,
+        label: `${ext.collection}.${ext.fieldName}`,
+        collection: ext.collection,
+        field: ext.fieldName,
+        type: ext.fieldType,
+        required: ext.isRequired || false,
+        description: ext.description,
+        isExtension: true,
+      });
+    }
+
+    // Calculate stats
+    const stats = {
+      totalCollections: Object.keys(grouped).length,
+      totalFields: Object.values(grouped).reduce(
+        (sum, fields) => sum + fields.length,
+        0,
+      ),
+      totalBaseFields: baseOptions.length,
+      totalExtensions: extensions.length,
+      requiredFields: Object.values(grouped)
+        .flat()
+        .filter((f: any) => f.required).length,
+    };
+
+    return {
+      success: true,
+      grouped,
+      stats,
+    };
+  }
 }

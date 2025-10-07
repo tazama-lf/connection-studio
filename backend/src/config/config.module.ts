@@ -26,6 +26,7 @@ import { DataModelController } from '../common/data-model.controller';
   exports: [
     ConfigService,
     ConfigRepository,
+    PayloadParsingService,
     TazamaDataModelService,
     DataModelExtensionService,
   ],

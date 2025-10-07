@@ -8,6 +8,7 @@ import { LoggerModule } from './logger-service/logger-service.module';
 import { SchemasModule } from './schemas/schemas.module';
 import { AuditModule } from './audit/audit.module';
 import { ConfigModule } from './config/config.module';
+import { SimulationModule } from './simulation/simulation.module';
 import { KnexModule } from '../knex/knex.module';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { TokenExpiryInterceptor } from './auth/token-expiry.interceptor';
@@ -26,6 +27,7 @@ import { AuditInterceptor } from './audit/audit.interceptor';
     SchemasModule,
     AuditModule,
     ConfigModule,
+    SimulationModule,
   ],
   controllers: [AppController],
   providers: [
