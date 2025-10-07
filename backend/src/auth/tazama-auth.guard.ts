@@ -134,6 +134,8 @@ export class TazamaAuthGuard implements CanActivate {
         token: decodedToken,
         validated,
         validClaims,
+        tenantId: decodedToken.tenantId || '',
+        userId: decodedToken.clientId || '',
       };
 
       // Attach user to request for use in controllers

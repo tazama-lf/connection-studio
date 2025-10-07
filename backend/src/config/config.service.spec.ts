@@ -41,12 +41,12 @@ describe('ConfigService', () => {
     version: 'v1',
     contentType: ContentType.JSON,
     schema: mockJSONSchema,
-    mapping: null,
+    mapping: undefined,
     status: ConfigStatus.IN_PROGRESS,
     tenantId: 'test-tenant',
     createdBy: 'user-123',
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   };
 
   beforeEach(async () => {
@@ -428,7 +428,6 @@ describe('ConfigService', () => {
       const mappingDto: AddMappingDto = {
         sources: ['firstName', 'lastName'],
         destination: 'fullName',
-        separator: ' ',
       };
 
       repository.findConfigById.mockResolvedValue(mockConfig);
@@ -436,9 +435,10 @@ describe('ConfigService', () => {
         ...mockConfig,
         mapping: [
           {
-            sources: ['firstName', 'lastName'],
+            source: ['firstName', 'lastName'],
             destination: 'fullName',
-            separator: ' ',
+            transformation: 'CONCAT' as const,
+            delimiter: ' ',
           },
         ],
       };

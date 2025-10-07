@@ -4,6 +4,8 @@ export interface AuthenticatedUser {
   token: TazamaToken;
   validated: ClaimValidationResult;
   validClaims: string[];
+  tenantId: string;
+  userId: string;
 }
 
 export interface AuthenticatedRequest extends Request {

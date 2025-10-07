@@ -48,17 +48,10 @@ export interface SchemaField {
 }
 
 export interface FieldMapping {
-  sourceField: {
-    path: string;
-    type: string;
-    isRequired: boolean;
-  };
-  destinationField: {
-    path: string;
-    type: string;
-    isRequired: boolean;
-  };
-  transformation: 'NONE' | 'CONCAT' | 'SUM' | 'SPLIT';
+  source: string | string[];
+  destination: string | string[];
+  transformation?: 'NONE' | 'CONCAT' | 'SUM' | 'SPLIT';
+  delimiter?: string; // Used for one-to-many mapping to split source value
   constants?: any;
 }
 

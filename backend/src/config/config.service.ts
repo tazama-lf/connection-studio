@@ -14,7 +14,6 @@ import {
   UpdateConfigDto,
   ConfigResponseDto,
   FieldMapping,
-  isConcatMapping,
   ContentType,
   ConfigStatus,
   TransactionType,
@@ -116,7 +115,7 @@ export class ConfigService {
         version,
         contentType: dto.contentType || ContentType.JSON,
         schema: parsingResult.jsonSchema,
-        mapping: dto.mapping || null,
+        mapping: dto.mapping,
         status: ConfigStatus.IN_PROGRESS,
         tenantId,
         createdBy: userId,
@@ -381,9 +380,9 @@ export class ConfigService {
         );
       }
       return {
-        sources: dto.sources,
+        source: dto.sources,
         destination: dto.destination,
-        separator: dto.separator || ' ',
+        delimiter: dto.delimiter || ' ',
       };
     }
 
@@ -402,8 +401,8 @@ export class ConfigService {
   private validateMapping(mapping: FieldMapping, schema: JSONSchema): void {
     const allPaths = this.extractAllPathsFromSchema(schema);
 
-    if (isConcatMapping(mapping)) {
-      for (const source of mapping.sources) {
+    if (Array.isArray(mapping.source)) {
+      for (const source of mapping.source) {
         if (!allPaths.includes(source)) {
           throw new BadRequestException(
             `Source field '${source}' not found in schema`,
@@ -411,7 +410,10 @@ export class ConfigService {
         }
       }
     } else {
-      if (!allPaths.includes(mapping.source)) {
+      if (
+        typeof mapping.source === 'string' &&
+        !allPaths.includes(mapping.source)
+      ) {
         throw new BadRequestException(
           `Source field '${mapping.source}' not found in schema`,
         );
