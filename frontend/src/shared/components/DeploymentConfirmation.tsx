@@ -2,7 +2,7 @@ import React from 'react';
 import { CheckCircleIcon } from 'lucide-react';
 interface DeploymentConfirmationProps {
   endpointPath: string;
-  transactionType?: 'transfers' | 'payments';
+  transactionType?: string;
 }
 export const DeploymentConfirmation: React.FC<DeploymentConfirmationProps> = ({
   endpointPath,

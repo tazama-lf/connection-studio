@@ -1,103 +1,137 @@
 import React, { useState } from 'react';
 import { AuthHeader } from '../../../shared/components/AuthHeader';
-import EndpointTable from '../../../shared/components/EndpointTable';
-import SearchBar from '../../../shared/components/SearchBar';
+import { ConfigList } from '../../config/components/ConfigList';
+import VersionHistoryModal from '../../config/components/VersionHistoryModal';
 import { Button } from '../../../shared/components/Button';
-import { PlusIcon, AlertTriangleIcon } from 'lucide-react';
+import { PlusIcon, SearchIcon, AlertTriangleIcon } from 'lucide-react';
 import EditEndpointModal from '../../../shared/components/EditEndpointModal';
 import ValidationLogsTable from '../../../shared/components/ValidationLogsTable';
-type Endpoint = {
-  id: number;
-  path: string;
-  createdOn: string;
-  lastUpdated: string;
-  status: "In-Progress" | "Ready for Approval" | "Suspended" | "Cloned";
-  tenantId: string;
-  workflowStatus?: "active" | "paused";
-};
-
-const initialEndpoints: Endpoint[] = [{
-  id: 1,
-  path: '/v1/evaluate/ACM102/iso20022/pacs.008.001.011-transfers',
-  createdOn: '2023-10-15',
-  lastUpdated: '2023-11-02',
-  status: 'Ready for Approval',
-  tenantId: 'ACM102',
-  workflowStatus: "active"
-}, {
-  id: 2,
-  path: '/v1/evaluate/FIN345/iso8583/0200-payments',
-  createdOn: '2023-11-05',
-  lastUpdated: '2023-11-05',
-  status: 'In-Progress',
-  tenantId: 'FIN345',
-  workflowStatus: 'active'
-}, {
-  id: 3,
-  path: '/v1/evaluate/BNK123/iso20022/pacs.002.001.011-transfers',
-  createdOn: '2023-08-30',
-  lastUpdated: '2023-10-28',
-  status: 'Ready for Approval',
-  tenantId: 'BNK123',
-  workflowStatus: 'active'
-}, {
-  id: 4,
-  path: '/v1/evaluate/GLB789/iso20022/pain.013.001.010-payments',
-  createdOn: '2023-07-12',
-  lastUpdated: '2023-09-18',
-  status: 'Ready for Approval',
-  tenantId: 'GLB789',
-  workflowStatus: 'active'
-}, {
-  id: 5,
-  path: '/v1/evaluate/PAY456/iso20022/pacs.008.001.011-payments',
-  createdOn: '2023-11-01',
-  lastUpdated: '2023-11-01',
-  status: 'Suspended',
-  tenantId: 'PAY456',
-  workflowStatus: 'active'
-}, {
-  id: 6,
-  path: '/v2/evaluate/ACM102/iso20022/pacs.008.001.011-transfers',
-  createdOn: '2023-11-12',
-  lastUpdated: '2023-11-12',
-  status: 'Cloned',
-  tenantId: 'ACM102',
-  workflowStatus: 'active'
-}];
- const DEMSModule: React.FC = () => {
-  const [endpoints, setEndpoints] = useState<Endpoint[]>(initialEndpoints);
-  const [searchTerm, setSearchTerm] = useState('');
+import type { Config } from '../../config/index';
+// DEMS Module now uses real backend configurations instead of mock data
+const DEMSModule: React.FC = () => {
   const [editingEndpointId, setEditingEndpointId] = useState<number | null>(null);
   const [showValidationLogs, setShowValidationLogs] = useState(false);
-  const filteredEndpoints = endpoints.filter(endpoint => endpoint.path.toLowerCase().includes(searchTerm.toLowerCase()));
-  const handleDelete = (id: number) => {
-    setEndpoints(endpoints.filter(endpoint => endpoint.id !== id));
-  };
-  const handleEdit = (id: number) => {
-    setEditingEndpointId(id);
-  };
+  const [showVersionHistoryModal, setShowVersionHistoryModal] = useState(false);
+  const [selectedConfig, setSelectedConfig] = useState<Config | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [searchTerm, setSearchTerm] = useState('');
+
   const handleAddNew = () => {
     setEditingEndpointId(-1);
   };
-  return <div className="min-h-screen bg-gray-50" data-id="element-1171">
-      <AuthHeader title="Dynamic Endpoint Monitoring Service" showBackButton={true} data-id="element-1172" />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6" data-id="element-1173">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4" data-id="element-1174">
-          <div className="flex items-center space-x-4" data-id="element-1175">
-            <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} placeholder="Search endpoints..." data-id="element-1176" />
-            <Button variant="secondary" onClick={() => setShowValidationLogs(!showValidationLogs)} icon={<AlertTriangleIcon size={16} data-id="element-1178" />} data-id="element-1177">
+
+  const handleCloseModal = () => {
+    setEditingEndpointId(null);
+    // Refresh the config list when modal closes
+    setRefreshKey(prev => prev + 1);
+  };
+
+  const handleConfigSuccess = () => {
+    // Refresh immediately when config is saved/updated
+    setRefreshKey(prev => prev + 1);
+  };
+
+  const handleViewDetails = (config: Config) => {
+    // Open EditEndpointModal for viewing/editing - same workflow for both
+    setEditingEndpointId(config.id);
+  };
+
+  const handleEditConfig = (config: Config) => {
+    // Same as view - both use EditEndpointModal workflow
+    setEditingEndpointId(config.id);
+  };
+
+
+
+  const handleViewHistory = (config: Config) => {
+    setSelectedConfig(config);
+    setShowVersionHistoryModal(true);
+  };
+
+  const handleCloseVersionHistoryModal = () => {
+    setShowVersionHistoryModal(false);
+    setSelectedConfig(null);
+  };
+
+  const handleRefresh = () => {
+    setRefreshKey(prev => prev + 1);
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <AuthHeader title="Dynamic Endpoint Monitoring Service" showBackButton={true} />
+      
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Header Section */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+          <div className="flex items-center space-x-4">
+            {/* Search Bar */}
+            <div className="relative">
+              <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search endpoints..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 pr-4 py-2 w-80 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            
+            <Button 
+              variant="secondary" 
+              onClick={() => setShowValidationLogs(!showValidationLogs)} 
+              icon={<AlertTriangleIcon size={16} />}
+            >
               Validation Logs
             </Button>
           </div>
-          <Button onClick={handleAddNew} icon={<PlusIcon size={16} data-id="element-1180" />} data-id="element-1179">
+          <Button 
+            onClick={handleAddNew} 
+            icon={<PlusIcon size={16} />}
+          >
             Create New Connection
           </Button>
         </div>
-        {showValidationLogs ? <ValidationLogsTable data-id="element-1181" /> : <EndpointTable endpoints={filteredEndpoints} onEdit={handleEdit} onDelete={handleDelete} data-id="element-1182" />}
+
+        {/* Content Section */}
+        {showValidationLogs ? (
+          <ValidationLogsTable />
+        ) : (
+          <div className="bg-white rounded-lg shadow">
+            <ConfigList
+              key={refreshKey}
+              searchTerm={searchTerm}
+              onViewDetails={handleViewDetails}
+              onConfigEdit={handleEditConfig}
+              onViewHistory={handleViewHistory}
+              onRefresh={handleRefresh}
+            />
+          </div>
+        )}
       </div>
-      <EditEndpointModal isOpen={editingEndpointId !== null} onClose={() => setEditingEndpointId(null)} endpointId={editingEndpointId!} data-id="element-1183" />
-    </div>;
+
+      {/* Create/Edit Modal */}
+      {editingEndpointId !== null && (
+        <EditEndpointModal
+          isOpen={editingEndpointId !== null}
+          onClose={handleCloseModal}
+          endpointId={editingEndpointId}
+          onSuccess={handleConfigSuccess}
+        />
+      )}
+
+
+
+      {/* Version History Modal */}
+      {showVersionHistoryModal && selectedConfig && (
+        <VersionHistoryModal
+          isOpen={showVersionHistoryModal}
+          onClose={handleCloseVersionHistoryModal}
+          config={selectedConfig}
+        />
+      )}
+    </div>
+  );
 };
 
 export default DEMSModule;

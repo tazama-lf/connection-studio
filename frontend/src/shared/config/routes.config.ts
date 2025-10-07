@@ -24,7 +24,7 @@ export const NAVIGATION = {
       id: 'dems',
       name: 'Dynamic Endpoint Monitoring Service',
       description:
-        'Monitor and manage API endpoints across your infrastructure',
+        'Monitor and manage API endpoints, configurations, and field mappings',
       path: ROUTES.DEMS,
       icon: 'ActivityIcon',
       color: 'bg-blue-100 text-blue-600',

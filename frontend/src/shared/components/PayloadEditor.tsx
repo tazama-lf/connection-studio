@@ -1,24 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from './Button';
 import { UploadIcon, SparklesIcon } from 'lucide-react';
-// API client removed - backend restructuring in progress
+import { type SchemaField } from '../../features/config/services/configApi';
 
 interface PayloadEditorProps {
   value: string;
   onChange: (value: string) => void;
-  isNewEndpoint?: boolean;
-  transactionType?: 'transfers' | 'payments';
-  onTransactionTypeChange?: (type: 'transfers' | 'payments') => void;
+  endpointData?: EndpointFormData;
   onEndpointDataChange?: (data: EndpointFormData) => void;
 }
 
 interface EndpointFormData {
-  path: string;
-  method: string;
   version: string;
   transactionType: string;
   description: string;
   contentType: string;
+  msgFam?: string;
 }
 
 interface InferredField {
@@ -31,43 +28,35 @@ interface InferredField {
 export const PayloadEditor: React.FC<PayloadEditorProps> = ({
   value,
   onChange,
-  transactionType = 'transfers',
-  onTransactionTypeChange,
+  endpointData: initialEndpointData,
   onEndpointDataChange
 }) => {
 
   
   // New state for endpoint form data
-  const [endpointData, setEndpointData] = useState<EndpointFormData>({
-    path: '',
-    method: 'POST',
-    version: '1.0',
-    transactionType: 'Transfers',
-    description: '',
-    contentType: 'application/json',
-  });
+  const [endpointData, setEndpointData] = useState<EndpointFormData>(
+    initialEndpointData || {
+      version: '1.0',
+      transactionType: '',
+      description: '',
+      contentType: 'application/json',
+      msgFam: '',
+    }
+  );
 
-  // Derive format from contentType
-  const format = endpointData.contentType === 'application/xml' ? 'xml' : 'json';
+  // State for inferred fields from schema generation
   const [inferredFields, setInferredFields] = useState<InferredField[]>([]);
   const [showInferredFields, setShowInferredFields] = useState(false);
   const [isGeneratingFields, setIsGeneratingFields] = useState(false);
   const [fieldGenerationError, setFieldGenerationError] = useState<string | null>(null);
 
-  const handleTransactionTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newType = e.target.value as 'transfers' | 'payments';
-    const transactionTypeValue = newType === 'transfers' ? 'Transfers' : 'Payments';
-    
-    const updatedData = { ...endpointData, transactionType: transactionTypeValue };
-    setEndpointData(updatedData);
-    
-    if (onTransactionTypeChange) {
-      onTransactionTypeChange(newType);
+  // Sync local state with parent when editing existing endpoint
+  useEffect(() => {
+    if (initialEndpointData) {
+      setEndpointData(initialEndpointData);
+      console.log('PayloadEditor - Updated with existing endpoint data:', initialEndpointData);
     }
-    if (onEndpointDataChange) {
-      onEndpointDataChange(updatedData);
-    }
-  };
+  }, [initialEndpointData]);
 
   const handleEndpointDataChange = (field: keyof EndpointFormData, value: string) => {
     const updatedData = { ...endpointData, [field]: value };
@@ -89,17 +78,96 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
     }
   };
 
+
+
+  const generateSchemaFromPayload = (payload: string, contentType: string): any => {
+    if (contentType === 'application/json') {
+      try {
+        const parsed = JSON.parse(payload);
+        return generateJSONSchema(parsed);
+      } catch (e) {
+        throw new Error('Invalid JSON format');
+      }
+    } else if (contentType === 'application/xml') {
+      try {
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(payload, 'text/xml');
+        const parseError = xmlDoc.getElementsByTagName('parsererror');
+        if (parseError.length > 0) {
+          throw new Error('XML parsing error');
+        }
+        return generateXMLSchema(xmlDoc.documentElement);
+      } catch (e) {
+        throw new Error('Invalid XML format');
+      }
+    }
+    return null;
+  };
+
+  const generateJSONSchema = (obj: any, path = ''): SchemaField[] => {
+    const schema: SchemaField[] = [];
+    
+    if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
+      Object.entries(obj).forEach(([key, value]) => {
+        const fieldPath = path ? `${path}.${key}` : key;
+        const fieldType = Array.isArray(value) ? 'array' : typeof value;
+        
+        const field: SchemaField = {
+          name: key,
+          path: fieldPath,
+          type: fieldType as 'string' | 'number' | 'boolean' | 'object' | 'array',
+          isRequired: true
+        };
+
+        if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+          field.children = generateJSONSchema(value, fieldPath);
+        } else if (Array.isArray(value) && value.length > 0) {
+          const firstElement = value[0];
+          if (typeof firstElement === 'object' && firstElement !== null) {
+            field.children = generateJSONSchema(firstElement, `${fieldPath}[0]`);
+            field.arrayElementType = 'object';
+          } else {
+            field.arrayElementType = typeof firstElement;
+          }
+        }
+        
+        schema.push(field);
+      });
+    }
+    
+    return schema;
+  };
+
+  const generateXMLSchema = (element: Element, path = ''): SchemaField[] => {
+    const schema: SchemaField[] = [];
+    const fieldPath = path ? `${path}.${element.tagName}` : element.tagName;
+    
+    const field: SchemaField = {
+      name: element.tagName,
+      path: fieldPath,
+      type: 'object',
+      isRequired: true
+    };
+
+    const children: SchemaField[] = [];
+    const childElements = Array.from(element.children);
+    
+    if (childElements.length > 0) {
+      childElements.forEach(child => {
+        children.push(...generateXMLSchema(child, fieldPath));
+      });
+      field.children = children;
+    } else if (element.textContent?.trim()) {
+      field.type = 'string';
+    }
+    
+    schema.push(field);
+    return schema;
+  };
+
   const handleGenerateFields = async () => {
     if (!value.trim()) {
       setFieldGenerationError('Please enter a payload first.');
-      return;
-    }
-
-    // Validate JSON format
-    try {
-      JSON.parse(value);
-    } catch (err) {
-      setFieldGenerationError('Invalid JSON format. Please fix the payload before generating fields.');
       return;
     }
 
@@ -107,57 +175,50 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
     setFieldGenerationError(null);
 
     try {
-      // TODO: Replace with new backend API integration
-      console.log('Schema inference placeholder for:', { payload: value, contentType: endpointData.contentType });
+      // Generate schema locally without saving to database
+      const schema = generateSchemaFromPayload(value, endpointData.contentType);
       
-      // Mock response until backend is restructured
-      const mockResponse = {
-        success: true,
-        data: {
-          schema: [
-            { name: 'id', path: 'id', type: 'string', isRequired: true },
-            { name: 'timestamp', path: 'timestamp', type: 'string', isRequired: true }
-          ],
-          fieldsCount: 2
-        }
-      };
-
-      if (mockResponse.success && mockResponse.data.schema) {
-        // Convert backend schema format to frontend InferredField format
-        const convertedFields: InferredField[] = [];
-        
-        const flattenFields = (fields: any[], parentPath = '', level = 0) => {
-          fields.forEach(field => {
-            // Map backend field type to frontend type (capitalize first letter)
-            const frontendType = field.type.charAt(0).toUpperCase() + field.type.slice(1) as 'String' | 'Number' | 'Boolean' | 'Object' | 'Array';
-            
-            convertedFields.push({
+      if (schema) {
+        // Convert schema to InferredField format for display
+        const convertSchemaToFields = (schemaFields: SchemaField[], level = 0): InferredField[] => {
+          const fields: InferredField[] = [];
+          
+          schemaFields.forEach((field) => {
+            fields.push({
               path: field.path,
-              type: frontendType,
-              parent: parentPath,
-              level: level,
+              type: capitalizeFirstLetter(field.type) as InferredField['type'],
+              level,
+              parent: field.path.includes('.') ? field.path.substring(0, field.path.lastIndexOf('.')) : undefined,
             });
             
-            // Recursively flatten children if they exist
-            if (field.children && field.children.length > 0) {
-              flattenFields(field.children, field.path, level + 1);
+            if (field.children) {
+              fields.push(...convertSchemaToFields(field.children, level + 1));
             }
           });
+          
+          return fields;
         };
-        
-        flattenFields(mockResponse.data.schema);
-        
-        setInferredFields(convertedFields);
+
+        const fields = convertSchemaToFields(schema);
+        setInferredFields(fields);
         setShowInferredFields(true);
+        
+        console.log('Schema generated locally, fields created:', fields);
+        console.log('Generated schema:', schema);
       } else {
-        setFieldGenerationError('Failed to generate fields from payload');
+        setFieldGenerationError('Failed to generate schema from payload');
       }
     } catch (error) {
-      console.error('Error generating fields:', error);
-      setFieldGenerationError('Failed to generate fields. Please check your connection and try again.');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      setFieldGenerationError(`Schema inference failed: ${errorMessage}`);
+      console.error('Schema inference error:', error);
     } finally {
       setIsGeneratingFields(false);
     }
+  };
+
+  const capitalizeFirstLetter = (string: string): string => {
+    return string.charAt(0).toUpperCase() + string.slice(1).toLowerCase();
   };
 
   const sampleJsonPayload = `{
@@ -183,12 +244,33 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
 }`;
 
   const sampleXmlPayload = `<?xml version="1.0" encoding="UTF-8"?>
-<Document xmlns="urn:iso:std:iso:20022:tech:xsd:acmt.023.001.02">
-  <AcctId>
-    <Id>12345</Id>
-    <Ccy>USD</Ccy>
-    <Nm>John Doe</Nm>
-  </AcctId>
+<Document xmlns="urn:iso:std:iso:20022:tech:xsd:pacs.008.001.11">
+  <FIToFICstmrCdtTrf>
+    <GrpHdr>
+      <MsgId>TXN12345</MsgId>
+      <CreDtTm>2023-10-15T10:30:00</CreDtTm>
+      <NbOfTxs>1</NbOfTxs>
+    </GrpHdr>
+    <CdtTrfTxInf>
+      <PmtId>
+        <InstrId>INSTR001</InstrId>
+        <EndToEndId>E2E001</EndToEndId>
+      </PmtId>
+      <IntrBkSttlmAmt Ccy="USD">100.00</IntrBkSttlmAmt>
+      <Dbtr>
+        <Nm>John Doe</Nm>
+        <Id>
+          <PrvtId>CUST123</PrvtId>
+        </Id>
+      </Dbtr>
+      <Cdtr>
+        <Nm>Jane Smith</Nm>
+        <Id>
+          <PrvtId>CUST456</PrvtId>
+        </Id>
+      </Cdtr>
+    </CdtTrfTxInf>
+  </FIToFICstmrCdtTrf>
 </Document>`;
 
   return (
@@ -198,40 +280,6 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
         <h3 className="text-lg font-medium text-gray-900 mb-4">Endpoint Configuration</h3>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Endpoint Path */}
-          <div>
-            <label htmlFor="endpoint-path" className="block text-sm font-medium text-gray-700 mb-1">
-              Endpoint Path *
-            </label>
-            <input
-              id="endpoint-path"
-              type="text"
-              value={endpointData.path}
-              onChange={(e) => handleEndpointDataChange('path', e.target.value)}
-              placeholder="/api/v1/transfers"
-              className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-            />
-          </div>
-
-          {/* HTTP Method */}
-          <div>
-            <label htmlFor="http-method" className="block text-sm font-medium text-gray-700 mb-1">
-              HTTP Method *
-            </label>
-            <select
-              id="http-method"
-              value={endpointData.method}
-              onChange={(e) => handleEndpointDataChange('method', e.target.value)}
-              className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-            >
-              <option value="GET">GET</option>
-              <option value="POST">POST</option>
-              <option value="PUT">PUT</option>
-              <option value="DELETE">DELETE</option>
-              <option value="PATCH">PATCH</option>
-            </select>
-          </div>
-
           {/* Version */}
           <div>
             <label htmlFor="version" className="block text-sm font-medium text-gray-700 mb-1">
@@ -252,15 +300,30 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
             <label htmlFor="transaction-type" className="block text-sm font-medium text-gray-700 mb-1">
               Transaction Type *
             </label>
-            <select 
-              id="transaction-type" 
-              value={transactionType} 
-              onChange={handleTransactionTypeChange} 
+               <input
+              id="transaction-type"
+              type="text"
+              value={endpointData.transactionType || ''}
+              onChange={(e) => handleEndpointDataChange('transactionType', e.target.value)}
+              placeholder="e.g., pacs.008, pain.001"
               className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-            >
-              <option value="transfers">Transfers</option>
-              <option value="payments">Payments</option>
-            </select>
+            />
+           
+          </div>
+
+          {/* Message Family (Optional) */}
+          <div>
+            <label htmlFor="msgFam" className="block text-sm font-medium text-gray-700 mb-1">
+              Message Family
+            </label>
+            <input
+              id="msgFam"
+              type="text"
+              value={endpointData.msgFam || ''}
+              onChange={(e) => handleEndpointDataChange('msgFam', e.target.value)}
+              placeholder="optional"
+              className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+            />
           </div>
 
           {/* Content Type */}
@@ -281,7 +344,7 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
         </div>
 
         {/* Description */}
-        <div>
+        {/* <div>
           <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
             Description
           </label>
@@ -293,7 +356,7 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
             rows={2}
             className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
           />
-        </div>
+        </div> */}
       </div>
 
       <div className="flex justify-between items-center">
@@ -302,7 +365,7 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
           <div className="flex items-center space-x-2">
             <label className="text-sm font-medium text-gray-700">Format:</label>
             <span className="px-2 py-1 border border-gray-300 rounded text-sm bg-gray-50">
-              {format.toUpperCase()}
+              {endpointData.contentType === 'application/json' ? 'JSON' : 'XML'}
             </span>
           </div>
           <div className="border-l border-gray-300 pl-4">
@@ -327,9 +390,9 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
             <Button 
               variant="secondary" 
               size="sm"
-              onClick={() => onChange(format === 'json' ? sampleJsonPayload : sampleXmlPayload)}
+              onClick={() => onChange(endpointData.contentType === 'application/json' ? sampleJsonPayload : sampleXmlPayload)}
             >
-              Load {format.toUpperCase()} Sample
+              Load {endpointData.contentType === 'application/json' ? 'JSON' : 'XML'} Sample
             </Button>
             <Button 
               variant="secondary" 
@@ -349,7 +412,7 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
           onChange={e => onChange(e.target.value)} 
           className="w-full h-96 p-4 font-mono text-sm bg-gray-50" 
           spellCheck="false" 
-          placeholder={`Enter your ${format.toUpperCase()} payload here...`} 
+          placeholder={`Enter your ${endpointData.contentType === 'application/json' ? 'JSON' : 'XML'} payload here...`} 
         />
       </div>
 
@@ -357,7 +420,7 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
       {value && (
         <div className="p-3 bg-green-50 border border-green-200 rounded-md">
           <p className="text-sm text-green-700">
-            Valid {format.toUpperCase()} format detected
+            Valid {endpointData.contentType === 'application/json' ? 'JSON' : 'XML'} format detected
           </p>
         </div>
       )}
@@ -387,7 +450,7 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
               Generated Fields
             </h3>
             <p className="text-sm text-gray-600 mt-1">
-              Define the structure of your {format.toUpperCase()} schema based
+              Define the structure of your {endpointData.contentType === 'application/json' ? 'JSON' : 'XML'} schema based
               on the input data. For each field, specify its data type.
             </p>
           </div>

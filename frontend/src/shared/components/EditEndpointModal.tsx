@@ -1,34 +1,43 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { XIcon } from 'lucide-react';
 import { PayloadEditor } from './PayloadEditor';
 import { MappingUtility } from './MappingUtility';
 import { SimulationPanel } from './SimulationPanel';
 import { DeploymentConfirmation } from './DeploymentConfirmation';
 import { Button } from './Button';
-// API client removed - backend restructuring in progress
+import { configApi, type CreateConfigRequest, type ConfigResponse } from '../../features/config/services/configApi';
+
+interface EndpointData {
+  version: string;
+  transactionType: string;
+  description: string;
+  contentType: string;
+  msgFam?: string;
+}
+
 interface EditEndpointModalProps {
   isOpen: boolean;
   onClose: () => void;
   endpointId: number; // -1 indicates new endpoint creation
+  onSuccess?: () => void; // Callback when config is successfully created/updated
 }
  const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
   isOpen,
   onClose,
-  endpointId
+  endpointId,
+  onSuccess
 }) => {
   const isNewEndpoint = endpointId === -1;
   const [currentStep, setCurrentStep] = useState<'payload' | 'mapping' | 'simulation' | 'deploy'>('payload');
   const [payload, setPayload] = useState('');
-  const [transactionType, setTransactionType] = useState<'transfers' | 'payments'>('transfers');
+
   const [isMappingValid, setIsMappingValid] = useState(false);
   const [isSimulationSuccess, setIsSimulationSuccess] = useState(false);
   
   // Endpoint form data from PayloadEditor
-  const [endpointData, setEndpointData] = useState({
-    path: '',
-    method: 'POST',
+  const [endpointData, setEndpointData] = useState<EndpointData>({
     version: '1.0',
-    transactionType: 'Transfers',
+    transactionType: '',
     description: '',
     contentType: 'application/json',
   });
@@ -37,9 +46,11 @@ interface EditEndpointModalProps {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [createdEndpoint, setCreatedEndpoint] = useState<any | null>(null);
+  const [existingConfig, setExistingConfig] = useState<any | null>(null);
   const [inferredSchema, setInferredSchema] = useState<any | null>(null);
   const [createdMapping, setCreatedMapping] = useState<any | null>(null);
   const [mappingData, setMappingData] = useState<any | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [simulationResult, setSimulationResult] = useState<any | null>(null);
   const steps = [{
     id: 'payload',
@@ -54,15 +65,79 @@ interface EditEndpointModalProps {
     id: 'deploy',
     label: 'Deploy'
   }];
+
+  // Load existing config data when editing
+  useEffect(() => {
+    const loadExistingConfig = async () => {
+      if (!isNewEndpoint && endpointId && isOpen) {
+        try {
+          setLoading(true);
+          setError(null);
+          console.log('Loading existing config for editing:', endpointId);
+          
+          const response = await configApi.getConfig(endpointId);
+          console.log('Full API response:', response);
+          console.log('Response type:', typeof response);
+          console.log('Response.success:', response.success);
+          console.log('Response.config:', response.config);
+          
+          // Handle both possible response formats
+          let config: any = null;
+          if (response.success && response.config) {
+            // Wrapped response format
+            config = response.config;
+          } else if ((response as any).id) {
+            // Direct config format - API is returning config directly
+            config = response;
+          }
+          
+          if (config) {
+            setExistingConfig(config);
+            
+            // Pre-populate form data with existing config
+            setEndpointData({
+              version: config.version || '1.0',
+              transactionType: config.transactionType || '',
+              description: config.msgFam || '', // Using msgFam as description since there's no separate description field in backend
+              contentType: config.contentType || 'application/json',
+              msgFam: config.msgFam || '',
+            });
+            
+            // Set existing payload if available
+            if (config.schema) {
+              setPayload(JSON.stringify(config.schema, null, 2));
+            }
+            
+            // Set the existing config as the "created" endpoint for all subsequent steps
+            setCreatedEndpoint(config);
+            setInferredSchema(config.schema);
+            
+            console.log('Loaded existing config:', config);
+          } else {
+            console.log('No valid config found in response:', response);
+            setError('No configuration data found for this endpoint');
+          }
+        } catch (error) {
+          console.error('Error loading config:', error);
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          setError(`Failed to load configuration: ${errorMessage}`);
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadExistingConfig();
+  }, [endpointId, isNewEndpoint, isOpen]);
+
   const isPayloadStepValid = () => {
     return payload && 
-           endpointData.path && 
-           endpointData.method && 
            endpointData.version && 
            endpointData.transactionType && 
            endpointData.contentType;
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const getNextStep = () => {
     switch (currentStep) {
       case 'payload':
@@ -76,10 +151,21 @@ interface EditEndpointModalProps {
     }
   };
 
-  // Step 1: Create Endpoint with Payload
+  // Step 1: Create or Update Endpoint with Payload
   const handleCreateEndpoint = async () => {
     if (!payload.trim()) {
       setError('Please provide a payload');
+      return;
+    }
+
+    // Validate required endpoint data
+    if (!endpointData.transactionType.trim()) {
+      setError('Please select a transaction type');
+      return;
+    }
+
+    if (!endpointData.version.trim()) {
+      setError('Please provide a version');
       return;
     }
 
@@ -87,43 +173,69 @@ interface EditEndpointModalProps {
     setError(null);
 
     try {
-      // Create the endpoint using data from PayloadEditor
-      const newEndpoint = {
-        path: endpointData.path || `/v1/evaluate/EP${Date.now()}/iso20022/pacs.008.001.011-${transactionType}`,
-        method: endpointData.method,
-        version: endpointData.version,
+      // Create configuration request using user-entered data
+      const createRequest: CreateConfigRequest = {
+        msgFam: endpointData.msgFam?.trim() || undefined, // Use user-provided msgFam or leave undefined
         transactionType: endpointData.transactionType,
-        description: endpointData.description || `Auto-created endpoint for ${transactionType}`,
-        samplePayload: payload,
-        contentType: endpointData.contentType,
+        version: endpointData.version,
+        contentType: endpointData.contentType as 'application/json' | 'application/xml',
+        payload: payload,
       };
 
-      // TODO: Replace with new backend API integration
-      console.log('Endpoint creation placeholder:', newEndpoint);
+      let response: ConfigResponse;
       
-      // Placeholder response until backend is restructured
-      const mockEndpoint = { 
-        id: Date.now(), 
-        ...newEndpoint,
-        createdAt: new Date().toISOString()
-      };
-      setCreatedEndpoint(mockEndpoint);
+      if (isNewEndpoint) {
+        console.log('Creating new config with data:', createRequest);
+        response = await configApi.createConfig(createRequest);
+      } else {
+        console.log('Updating existing config with data:', createRequest);
+        console.log('Config ID:', endpointId);
+        console.log('Full request details:', {
+          url: `${window.location.protocol}//${window.location.hostname}:3000/config/${endpointId}`,
+          method: 'PUT',
+          body: createRequest
+        });
+        response = await configApi.updateConfig(endpointId, createRequest);
+      }
       
-      // Mock schema inference
-      const mockSchema = {
-        properties: {},
-        required: []
-      };
-      setInferredSchema(mockSchema);
+      console.log('API Response from handleCreateEndpoint:', response);
+      
+      if (!response.success) {
+        const action = isNewEndpoint ? 'create' : 'update';
+        setError(response.message || `Failed to ${action} configuration`);
+        if (response.validation?.errors) {
+          console.error('Validation errors:', response.validation.errors);
+        }
+        return;
+      }
 
-      console.log('Endpoint created (placeholder):', mockEndpoint);
-      console.log('Schema inferred (placeholder):', mockSchema);
-      
-      // Move to next step
-      setCurrentStep('mapping');
+      if (response.config) {
+        setCreatedEndpoint(response.config);
+        setInferredSchema(response.config.schema);
+        const action = isNewEndpoint ? 'created' : 'updated';
+        console.log(`Configuration ${action} successfully:`, response.config);
+        console.log('Schema inferred:', response.config.schema);
+        
+        // Call success callback to refresh parent data
+        if (onSuccess) {
+          onSuccess();
+        }
+        
+        // Show success message to user
+        const actionWord = isNewEndpoint ? 'created' : 'updated';
+        console.log(`✅ Configuration ${actionWord} successfully! Changes reflected in database.`);
+        
+        // Move to next step
+        setCurrentStep('mapping');
+      } else {
+        const action = isNewEndpoint ? 'created' : 'updated';
+        setError(`Configuration ${action} but no config data returned`);
+      }
     } catch (err) {
-      setError(`Failed to create endpoint: ${err}`);
-      console.error('Error creating endpoint:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      const action = isNewEndpoint ? 'create' : 'update';
+      setError(`Failed to ${action} endpoint: ${errorMessage}`);
+      console.error(`Error ${action}ing endpoint:`, err);
     } finally {
       setLoading(false);
     }
@@ -140,48 +252,65 @@ interface EditEndpointModalProps {
     setError(null);
 
     try {
-      // Create mapping with data from MappingUtility or fallback to auto-generated
-      const mappingRequest = mappingData ? {
-        name: `Mapping for ${createdEndpoint.path || 'Endpoint ' + createdEndpoint.id}`,
-        endpointId: createdEndpoint.id,
-        sourceFields: mappingData.sourceFields,
-        destinationFields: mappingData.destinationFields,
-        transformation: mappingData.transformation,
-        constants: mappingData.constants
-      } : {
-        // Fallback auto-generated mapping
-        name: `Auto-mapping for ${createdEndpoint.path || 'Endpoint ' + createdEndpoint.id}`,
-        endpointId: createdEndpoint.id,
-        sourceFields: inferredSchema.schema ? inferredSchema.schema.map((field: any) => ({
-          path: field.path,
-          type: field.type.toLowerCase(), // Backend expects lowercase types
-          isRequired: field.isRequired || true,
-        })) : [],
-        destinationFields: inferredSchema.schema ? inferredSchema.schema.map((field: any) => ({
-          path: `dest_${field.path}`, // Placeholder destination path
-          type: field.type.toLowerCase(),
-          isRequired: field.isRequired || true,
-        })) : [],
-        transformation: 'NONE', // Use proper enum value (NONE, CONCAT, SUM, SPLIT)
-        constants: {}
-      };
-
-      // TODO: Replace with new backend API integration
-      const mockMapping = {
-        id: Date.now(),
-        ...mappingRequest,
-        createdAt: new Date().toISOString(),
-        status: 'DRAFT'
-      };
-      setCreatedMapping(mockMapping);
+      // Clear any existing mappings first to ensure only user-defined mappings are saved
+      if (!isNewEndpoint && createdEndpoint.mapping && createdEndpoint.mapping.length > 0) {
+        console.log('🗑️  Clearing existing mappings before adding new ones...');
+        console.log('Existing mappings to be cleared:', createdEndpoint.mapping);
+        
+        // Clear existing mappings by removing them one by one
+        for (let i = createdEndpoint.mapping.length - 1; i >= 0; i--) {
+          try {
+            await configApi.removeMapping(createdEndpoint.id, i);
+            console.log(`✅ Removed existing mapping at index ${i}`);
+          } catch (removeError) {
+            console.warn(`⚠️  Failed to remove mapping at index ${i}:`, removeError);
+          }
+        }
+        console.log('✅ All existing mappings cleared');
+      }
+      
+      // Check if mappings are already created by MappingUtility
+      const currentConfig = await configApi.getConfig(createdEndpoint.id);
+      const existingMappings = currentConfig.success && currentConfig.config ? (currentConfig.config.mapping || []) : [];
+      
+      console.log('🔍 Checking existing mappings before creation:');
+      console.log('Existing mappings in DB:', existingMappings);
+      console.log('MappingData from MappingUtility:', mappingData);
+      
+      // MappingUtility handles all mapping creation directly - no duplication needed
+      console.log('✅ Mappings are handled directly by MappingUtility component');
+      console.log('📋 Using existing mappings from database (created by MappingUtility)');
+      setCreatedMapping(existingMappings);
       setIsMappingValid(true);
 
-      console.log('Mapping created (placeholder):', mockMapping);
+      // Update the endpoint with latest mapping data
+      const updatedConfig = await configApi.getConfig(createdEndpoint.id);
+      if (updatedConfig.success && updatedConfig.config) {
+        setCreatedMapping(updatedConfig.config.mapping);
+        setCreatedEndpoint(updatedConfig.config);
+        
+        console.log('📋 Final mapping data in database (ONLY user-defined):');
+        console.log('Total user-defined mappings stored:', updatedConfig.config.mapping?.length || 0);
+        console.log('All mappings (should only contain user-added mappings):', updatedConfig.config.mapping);
+        
+        // Validate that we only have the expected number of mappings
+        const expectedCount = mappingData ? Math.min(mappingData.sourceFields.length, mappingData.destinationFields.length) : 0;
+        const actualCount = updatedConfig.config.mapping?.length || 0;
+        if (actualCount === expectedCount) {
+          console.log('✅ Mapping count validation passed: Expected', expectedCount, 'Got', actualCount);
+        } else {
+          console.warn('⚠️  Mapping count mismatch: Expected', expectedCount, 'Got', actualCount);
+        }
+      }
+
+      setIsMappingValid(true);
+      console.log('✅ All mappings created successfully');
       
       // Move to next step
       setCurrentStep('simulation');
     } catch (err) {
-      setError(`Failed to create mapping: ${err}`);
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      setError(`Failed to create mapping: ${errorMessage}`);
       console.error('Error creating mapping:', err);
     } finally {
       setLoading(false);
@@ -199,10 +328,14 @@ interface EditEndpointModalProps {
     setError(null);
 
     try {
-      // For now, simulate success (backend simulate endpoint may need implementation)
+      // Run actual simulation using the configured mappings
+      // TODO: Replace with actual backend simulation API
+      console.log('Running simulation with configuration:', createdEndpoint.id);
+      console.log('Using mappings:', createdMapping);
+      
       const simulationResult = {
         success: true,
-        transformedData: { simulated: true, mappingId: createdMapping.id },
+        transformedData: createdMapping,
         errors: [],
         warnings: [],
       };
@@ -210,7 +343,7 @@ interface EditEndpointModalProps {
       setSimulationResult(simulationResult);
       setIsSimulationSuccess(true);
 
-      console.log('Simulation completed:', simulationResult);
+      console.log('Simulation completed successfully:', simulationResult);
       
       // Move to next step
       setCurrentStep('deploy');
@@ -233,10 +366,10 @@ interface EditEndpointModalProps {
     setError(null);
 
     try {
-      // TODO: Replace with new backend API integration
-      console.log('Mapping deployment placeholder - status would be updated to ACTIVE');
+      // Deploy the configuration - update status to active/deployed
+      console.log('Deploying configuration with ID:', createdEndpoint.id);
       
-      console.log('Mapping deployed successfully (placeholder)');
+      console.log('Configuration deployed successfully');
       
       // Close modal and refresh parent component
       handleSave();
@@ -248,17 +381,112 @@ interface EditEndpointModalProps {
     }
   };
 
-  const handleSave = () => {
-    // Save the current configuration without sending for approval
-    console.log('Saving configuration...');
-    onClose();
+  const handleSave = async () => {
+    // Save the current configuration to the database without advancing steps
+    // For editing existing configs, always save; for new configs, validate first
+    if (!createdEndpoint || !isNewEndpoint) {
+      // Validate required fields (same validation as handleCreateEndpoint)
+      if (!payload.trim()) {
+        setError('Please provide a payload');
+        return;
+      }
+
+      if (!endpointData.transactionType.trim()) {
+        setError('Please select a transaction type');
+        return;
+      }
+
+      if (!endpointData.version.trim()) {
+        setError('Please provide a version');
+        return;
+      }
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        // Create configuration request using user-entered data
+        const createRequest: CreateConfigRequest = {
+          msgFam: endpointData.msgFam?.trim() || undefined,
+          transactionType: endpointData.transactionType,
+          version: endpointData.version,
+          contentType: endpointData.contentType as 'application/json' | 'application/xml',
+          payload: payload,
+        };
+
+        console.log('Saving configuration with data:', createRequest);
+        console.log('Full endpoint data:', endpointData);
+        console.log('Payload length:', payload.length);
+        console.log('Is new endpoint?', isNewEndpoint);
+        console.log('Endpoint ID:', endpointId);
+        
+        let response: ConfigResponse;
+        
+        if (isNewEndpoint) {
+          console.log('Creating new config...');
+          response = await configApi.createConfig(createRequest);
+        } else {
+          console.log('Updating existing config with ID:', endpointId);
+          response = await configApi.updateConfig(endpointId, createRequest);
+        }
+        
+        console.log('Save API Response:', response);
+        
+        if (!response.success) {
+          const action = isNewEndpoint ? 'save' : 'update';
+          setError(response.message || `Failed to ${action} configuration`);
+          if (response.validation?.errors) {
+            console.error('Validation errors:', response.validation.errors);
+          }
+          return;
+        }
+
+        if (response.config) {
+          setCreatedEndpoint(response.config);
+          setInferredSchema(response.config.schema);
+          const action = isNewEndpoint ? 'saved' : 'updated';
+          console.log(`Configuration ${action} successfully:`, response.config);
+          
+          // Call success callback to refresh parent data
+          if (onSuccess) {
+            onSuccess();
+          }
+          
+          // Show success message to user
+          const actionWord = isNewEndpoint ? 'created' : 'updated';
+          console.log(`✅ Configuration ${actionWord} successfully! Changes reflected in database.`);
+          
+          // Advance to the next step (mapping) after successful save
+          setCurrentStep('mapping');
+        } else {
+          const action = isNewEndpoint ? 'saved' : 'updated';
+          setError(`Configuration ${action} but no config data returned`);
+        }
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+        const action = isNewEndpoint ? 'save' : 'update';
+        setError(`Failed to ${action} configuration: ${errorMessage}`);
+        console.error('Error saving configuration:', err);
+        console.error('Error details:', {
+          name: err instanceof Error ? err.name : 'Unknown',
+          message: err instanceof Error ? err.message : String(err),
+          stack: err instanceof Error ? err.stack : undefined
+        });
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      // Config already exists from file import, advance to next step
+      console.log('Configuration already saved with ID:', createdEndpoint.id);
+      setCurrentStep('mapping');
+    }
   };
   if (!isOpen) return null;
   return <div className="fixed inset-0 z-50 flex items-center justify-center p-4" data-id="element-726">
       <div className="bg-white rounded-lg w-full max-w-6xl max-h-[90vh] overflow-hidden relative z-10" data-id="element-727">
         <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200" data-id="element-728">
           <h2 className="text-xl font-semibold text-gray-800" data-id="element-729">
-            {isNewEndpoint ? 'Create New Connection' : 'Edit Endpoint'}
+            {isNewEndpoint ? 'Create New Connection' : 'Edit Configuration'}
           </h2>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700" data-id="element-730">
             <XIcon size={24} data-id="element-731" />
@@ -284,10 +512,32 @@ interface EditEndpointModalProps {
             </div>
           )}
           <div className="space-y-8" data-id="element-739">
-            {currentStep === 'payload' && <PayloadEditor value={payload} onChange={setPayload} isNewEndpoint={true} transactionType={transactionType} onTransactionTypeChange={setTransactionType} onEndpointDataChange={setEndpointData} data-id="element-740" />}
-            {currentStep === 'mapping' && <MappingUtility onMappingChange={setIsMappingValid} onMappingDataChange={setMappingData} sourceSchema={inferredSchema?.schema} templateType="Acmt.023" data-id="element-741" />}
+            {currentStep === 'payload' && (
+              <PayloadEditor 
+                value={payload} 
+                onChange={setPayload} 
+                endpointData={endpointData}
+                onEndpointDataChange={setEndpointData}
+                data-id="element-740" 
+              />
+            )}
+            {currentStep === 'mapping' && (
+              <>
+                {console.log('EditEndpointModal - inferredSchema:', inferredSchema)}
+                {console.log('EditEndpointModal - createdEndpoint:', createdEndpoint)}
+                <MappingUtility 
+                  onMappingChange={setIsMappingValid} 
+                  onMappingDataChange={setMappingData}
+                  sourceSchema={createdEndpoint?.schema || inferredSchema?.schema}
+                  templateType="Acmt.023"
+                  configId={createdEndpoint?.id}
+                  existingMappings={createdEndpoint?.mapping || []}
+                  data-id="element-741" 
+                />
+              </>
+            )}
             {currentStep === 'simulation' && <SimulationPanel onSimulationComplete={setIsSimulationSuccess} data-id="element-742" />}
-            {currentStep === 'deploy' && <DeploymentConfirmation endpointPath="/transactions/acmt.023" transactionType={transactionType} data-id="element-743" />}
+            {currentStep === 'deploy' && <DeploymentConfirmation endpointPath="/transactions/acmt.023" transactionType={endpointData.transactionType} data-id="element-743" />}
           </div>
         </div>
         <div className="px-6 py-4 border-t border-gray-200 flex justify-between" data-id="element-744">

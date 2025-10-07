@@ -1,6 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowRightIcon, PlusIcon, XIcon, ChevronRightIcon, FolderIcon, DatabaseIcon, LayersIcon, ServerIcon } from 'lucide-react';
 import { Button } from './Button';
+import { configApi, type AddMappingRequest, type FieldMapping } from '../../features/config/services/configApi';
+
+/**
+ * MappingUtility Component - Updated for Tazama Integration
+ * 
+ * Features implemented:
+ * 1. Dynamic source fields from generated payload schema
+ * 2. Tazama destination data model (payer, payee, transaction, routing, riskData)
+ * 3. Real backend API integration (POST /config/:id/mapping)
+ * 4. Proper error handling and user feedback
+ * 5. Console logging for debugging
+ * 
+ * Usage: Select source fields → Select destination fields → Click "Add Mapping"
+ * The mapping will be saved to the backend and associated with the config ID.
+ */
 interface MappingField {
   source: string[];
   destination: string[];
@@ -22,8 +37,10 @@ interface MappingUtilityProps {
     path: string;
     type: string;
     isRequired: boolean;
-  }>;
+  }> | any; // Accept both array format and JSON schema object
   templateType?: string;
+  configId?: number; // ID of the configuration to add mappings to
+  existingMappings?: FieldMapping[]; // Existing mappings from backend
 }
 
 interface MappingData {
@@ -50,17 +67,221 @@ interface TreeNode {
 export const MappingUtility: React.FC<MappingUtilityProps> = ({
   onMappingChange,
   onMappingDataChange,
-  sourceSchema
+  sourceSchema,
+  configId,
+  existingMappings = []
 }) => {
-  // Sample hierarchical source data structure
-  const sourceTree: TreeNode[] = [{
+  // State for managing mappings
+  const [mappingError, setMappingError] = useState<string | null>(null);
+  const [savingMapping, setSavingMapping] = useState(false);
+  const [currentMappings, setCurrentMappings] = useState<FieldMapping[]>(existingMappings);
+
+  // Load existing mappings on component mount
+  useEffect(() => {
+    setCurrentMappings(existingMappings);
+  }, [existingMappings]);
+
+  // Function to save mapping to backend
+  const saveMapping = async (mapping: MappingField): Promise<boolean> => {
+    if (!configId) {
+      setMappingError('No configuration ID provided');
+      return false;
+    }
+
+    setSavingMapping(true);
+    setMappingError(null);
+
+    try {
+      const mappingRequest: AddMappingRequest = {
+        source: mapping.transformFunction === 'concatenate' ? undefined : mapping.source[0],
+        destination: mapping.destination[0],
+        sources: mapping.transformFunction === 'concatenate' ? mapping.source : undefined,
+        separator: mapping.transformFunction === 'concatenate' ? ' ' : undefined,
+      };
+
+      console.log('Saving mapping to backend:', mappingRequest);
+      const response = await configApi.addMapping(configId, mappingRequest);
+      
+      if (response.success && response.config) {
+        // Update local state with new mappings
+        setCurrentMappings(response.config.mapping || []);
+        onMappingChange(true);
+        
+        // Update parent component with mapping data
+        if (onMappingDataChange && response.config) {
+          const config = response.config;
+          onMappingDataChange({
+            sourceFields: config.schema?.properties ? 
+              Object.keys(config.schema.properties).map(key => ({
+                path: key,
+                type: config.schema.properties?.[key]?.type || 'string',
+                isRequired: Array.isArray(config.schema?.required) && config.schema.required.includes(key) || false,
+              })) : [],
+            destinationFields: (config.mapping || []).map((m: FieldMapping) => ({
+              path: m.destination || '',
+              type: 'string',
+              isRequired: false,
+            })),
+            transformation: 'NONE',
+            constants: {},
+          });
+        }
+        
+        console.log('Mapping saved successfully');
+        return true;
+      } else {
+        setMappingError(response.message || 'Failed to save mapping');
+        return false;
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      setMappingError(`Failed to save mapping: ${errorMessage}`);
+      console.error('Error saving mapping:', error);
+      return false;
+    } finally {
+      setSavingMapping(false);
+    }
+  };
+
+  // Function to remove mapping from backend
+  const removeMappingFromBackend = async (index: number) => {
+    if (!configId) {
+      setMappingError('No configuration ID provided');
+      return false;
+    }
+
+    setSavingMapping(true);
+    setMappingError(null);
+
+    try {
+      const response = await configApi.removeMapping(configId, index);
+      
+      if (response.success && response.config) {
+        setCurrentMappings(response.config.mapping || []);
+        console.log('Mapping removed successfully');
+        return true;
+      } else {
+        setMappingError(response.message || 'Failed to remove mapping');
+        return false;
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      setMappingError(`Failed to remove mapping: ${errorMessage}`);
+      console.error('Error removing mapping:', error);
+      return false;
+    } finally {
+      setSavingMapping(false);
+    }
+  };
+
+  // Convert JSON schema to hierarchical tree structure
+  const buildSourceTreeFromSchema = (schema: any, parentPath: string[] = []): TreeNode[] => {
+    if (!schema) return [];
+    
+    const nodes: TreeNode[] = [];
+    
+    // Handle JSON schema properties
+    if (schema.properties && typeof schema.properties === 'object') {
+      Object.entries(schema.properties).forEach(([key, value]: [string, any]) => {
+        const path = parentPath.length > 0 ? [...parentPath, key] : [key];
+        const id = path.join('.');
+        
+        const node: TreeNode = {
+          id,
+          name: key,
+          path,
+          type: value.type || 'string'
+        };
+        
+        // If the property has nested properties, create children
+        if (value.properties) {
+          node.children = buildSourceTreeFromSchema(value, path);
+        } else if (value.items && value.items.properties) {
+          // Handle array items with properties
+          node.children = buildSourceTreeFromSchema(value.items, path);
+        }
+        
+        nodes.push(node);
+      });
+    }
+    
+    return nodes;
+  };
+
+  // Convert array format to tree structure (fallback for different schema formats)
+  const buildSourceTreeFromArray = (schemaArray: any[]): TreeNode[] => {
+    if (!schemaArray || !Array.isArray(schemaArray)) return [];
+    
+    return schemaArray.map((field) => {
+      const pathParts = field.path ? field.path.split('.') : [field.name || 'unknown'];
+      
+      const node: TreeNode = {
+        id: field.path || field.name || 'unknown',
+        name: field.name || pathParts[pathParts.length - 1] || 'unknown',
+        path: pathParts,
+        type: field.type?.toLowerCase() || 'string'
+      };
+      
+      return node;
+    });
+  };
+
+  // Generate source tree from the provided schema
+  const sourceTree: TreeNode[] = (() => {
+    console.log('MappingUtility sourceSchema:', sourceSchema);
+    console.log('MappingUtility sourceSchema type:', typeof sourceSchema);
+    console.log('MappingUtility configId:', configId);
+    
+    if (!sourceSchema) {
+      console.log('No sourceSchema provided');
+      return [{
+        id: 'payload',
+        name: 'Generated Fields',
+        path: ['payload'],
+        children: [{
+          id: 'payload.noFields',
+          name: 'No fields generated yet - Click "Generate Fields" first',
+          path: ['payload', 'noFields'],
+          type: 'info'
+        }]
+      }];
+    }
+    
+    // If sourceSchema is an array (from our interface)
+    if (Array.isArray(sourceSchema)) {
+      console.log('Processing array sourceSchema:', sourceSchema);
+      return buildSourceTreeFromArray(sourceSchema);
+    }
+    
+    // If sourceSchema is a JSON schema object
+    if (sourceSchema.properties || sourceSchema.type === 'object') {
+      console.log('Processing JSON schema object:', sourceSchema);
+      return buildSourceTreeFromSchema(sourceSchema);
+    }
+    
+    // Fallback
+    console.log('Using fallback schema processing for:', sourceSchema);
+    return [{
+      id: 'schema',
+      name: 'Schema Data',
+      path: ['schema'],
+      children: Object.keys(sourceSchema).map(key => ({
+        id: `schema.${key}`,
+        name: key,
+        path: ['schema', key],
+        type: typeof sourceSchema[key] === 'string' ? 'string' : 'object'
+      }))
+    }];
+  })();
+  // Tazama destination data model - Internal data structure for fraud monitoring
+  const destinationTree: TreeNode[] = [{
     id: 'transaction',
-    name: 'transaction',
+    name: 'Transaction Data',
     path: ['transaction'],
     children: [{
-      id: 'transaction.id',
-      name: 'id',
-      path: ['transaction', 'id'],
+      id: 'transaction.transactionId',
+      name: 'transactionId',
+      path: ['transaction', 'transactionId'],
       type: 'string'
     }, {
       id: 'transaction.amount',
@@ -73,132 +294,170 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       path: ['transaction', 'currency'],
       type: 'string'
     }, {
-      id: 'transaction.status',
-      name: 'status',
-      path: ['transaction', 'status'],
-      type: 'string'
-    }, {
-      id: 'transaction.details',
-      name: 'details',
-      path: ['transaction', 'details'],
-      children: [{
-        id: 'transaction.details.type',
-        name: 'type',
-        path: ['transaction', 'details', 'type'],
-        type: 'string'
-      }, {
-        id: 'transaction.details.description',
-        name: 'description',
-        path: ['transaction', 'details', 'description'],
-        type: 'string'
-      }]
-    }]
-  }, {
-    id: 'customer',
-    name: 'customer',
-    path: ['customer'],
-    children: [{
-      id: 'customer.id',
-      name: 'id',
-      path: ['customer', 'id'],
-      type: 'string'
-    }, {
-      id: 'customer.name',
-      name: 'name',
-      path: ['customer', 'name'],
-      type: 'string'
-    }, {
-      id: 'customer.email',
-      name: 'email',
-      path: ['customer', 'email'],
-      type: 'string'
-    }, {
-      id: 'customer.address',
-      name: 'address',
-      path: ['customer', 'address'],
-      children: [{
-        id: 'customer.address.street',
-        name: 'street',
-        path: ['customer', 'address', 'street'],
-        type: 'string'
-      }, {
-        id: 'customer.address.city',
-        name: 'city',
-        path: ['customer', 'address', 'city'],
-        type: 'string'
-      }, {
-        id: 'customer.address.country',
-        name: 'country',
-        path: ['customer', 'address', 'country'],
-        type: 'string'
-      }]
-    }]
-  }];
-  // Sample destination data model
-  const destinationTree: TreeNode[] = [{
-    id: 'accounts',
-    name: 'accounts',
-    path: ['accounts'],
-    children: [{
-      id: 'accounts.id',
-      name: 'id',
-      path: ['accounts', 'id'],
-      type: 'string'
-    }, {
-      id: 'accounts.fullName',
-      name: 'fullName',
-      path: ['accounts', 'fullName'],
-      type: 'string'
-    }, {
-      id: 'accounts.email',
-      name: 'email',
-      path: ['accounts', 'email'],
-      type: 'string'
-    }, {
-      id: 'accounts.balance',
-      name: 'balance',
-      path: ['accounts', 'balance'],
-      type: 'number'
-    }, {
-      id: 'accounts.status',
-      name: 'status',
-      path: ['accounts', 'status'],
-      type: 'string'
-    }]
-  }, {
-    id: 'transactions',
-    name: 'transactions',
-    path: ['transactions'],
-    children: [{
-      id: 'transactions.id',
-      name: 'id',
-      path: ['transactions', 'id'],
-      type: 'string'
-    }, {
-      id: 'transactions.accountId',
-      name: 'accountId',
-      path: ['transactions', 'accountId'],
-      type: 'string'
-    }, {
-      id: 'transactions.amount',
-      name: 'amount',
-      path: ['transactions', 'amount'],
-      type: 'number'
-    }, {
-      id: 'transactions.currency',
-      name: 'currency',
-      path: ['transactions', 'currency'],
-      type: 'string'
-    }, {
-      id: 'transactions.type',
-      name: 'type',
-      path: ['transactions', 'type'],
-      type: 'string'
-    }, {
-      id: 'transactions.timestamp',
+      id: 'transaction.timestamp',
       name: 'timestamp',
-      path: ['transactions', 'timestamp'],
+      path: ['transaction', 'timestamp'],
       type: 'date'
+    }, {
+      id: 'transaction.messageType',
+      name: 'messageType',
+      path: ['transaction', 'messageType'],
+      type: 'string'
+    }, {
+      id: 'transaction.endToEndId',
+      name: 'endToEndId',
+      path: ['transaction', 'endToEndId'],
+      type: 'string'
+    }]
+  }, {
+    id: 'payer',
+    name: 'Payer Information',
+    path: ['payer'],
+    children: [{
+      id: 'payer.accountId',
+      name: 'accountId',
+      path: ['payer', 'accountId'],
+      type: 'string'
+    }, {
+      id: 'payer.name',
+      name: 'name',
+      path: ['payer', 'name'],
+      type: 'string'
+    }, {
+      id: 'payer.bankId',
+      name: 'bankId',
+      path: ['payer', 'bankId'],
+      type: 'string'
+    }, {
+      id: 'payer.address',
+      name: 'address',
+      path: ['payer', 'address'],
+      children: [{
+        id: 'payer.address.addressLine1',
+        name: 'addressLine1',
+        path: ['payer', 'address', 'addressLine1'],
+        type: 'string'
+      }, {
+        id: 'payer.address.city',
+        name: 'city',
+        path: ['payer', 'address', 'city'],
+        type: 'string'
+      }, {
+        id: 'payer.address.country',
+        name: 'country',
+        path: ['payer', 'address', 'country'],
+        type: 'string'
+      }, {
+        id: 'payer.address.postalCode',
+        name: 'postalCode',
+        path: ['payer', 'address', 'postalCode'],
+        type: 'string'
+      }]
+    }]
+  }, {
+    id: 'payee',
+    name: 'Payee Information',
+    path: ['payee'],
+    children: [{
+      id: 'payee.accountId',
+      name: 'accountId',
+      path: ['payee', 'accountId'],
+      type: 'string'
+    }, {
+      id: 'payee.name',
+      name: 'name',
+      path: ['payee', 'name'],
+      type: 'string'
+    }, {
+      id: 'payee.bankId',
+      name: 'bankId',
+      path: ['payee', 'bankId'],
+      type: 'string'
+    }, {
+      id: 'payee.address',
+      name: 'address',
+      path: ['payee', 'address'],
+      children: [{
+        id: 'payee.address.addressLine1',
+        name: 'addressLine1',
+        path: ['payee', 'address', 'addressLine1'],
+        type: 'string'
+      }, {
+        id: 'payee.address.city',
+        name: 'city',
+        path: ['payee', 'address', 'city'],
+        type: 'string'
+      }, {
+        id: 'payee.address.country',
+        name: 'country',
+        path: ['payee', 'address', 'country'],
+        type: 'string'
+      }, {
+        id: 'payee.address.postalCode',
+        name: 'postalCode',
+        path: ['payee', 'address', 'postalCode'],
+        type: 'string'
+      }]
+    }]
+  }, {
+    id: 'routing',
+    name: 'Routing Information',
+    path: ['routing'],
+    children: [{
+      id: 'routing.sourceChannel',
+      name: 'sourceChannel',
+      path: ['routing', 'sourceChannel'],
+      type: 'string'
+    }, {
+      id: 'routing.destinationChannel',
+      name: 'destinationChannel',
+      path: ['routing', 'destinationChannel'],
+      type: 'string'
+    }, {
+      id: 'routing.processingCode',
+      name: 'processingCode',
+      path: ['routing', 'processingCode'],
+      type: 'string'
+    }, {
+      id: 'routing.networkId',
+      name: 'networkId',
+      path: ['routing', 'networkId'],
+      type: 'string'
+    }]
+  }, {
+    id: 'riskData',
+    name: 'Risk Assessment Data',
+    path: ['riskData'],
+    children: [{
+      id: 'riskData.riskScore',
+      name: 'riskScore',
+      path: ['riskData', 'riskScore'],
+      type: 'number'
+    }, {
+      id: 'riskData.fraudIndicators',
+      name: 'fraudIndicators',
+      path: ['riskData', 'fraudIndicators'],
+      type: 'array'
+    }, {
+      id: 'riskData.deviceFingerprint',
+      name: 'deviceFingerprint',
+      path: ['riskData', 'deviceFingerprint'],
+      type: 'string'
+    }, {
+      id: 'riskData.geolocation',
+      name: 'geolocation',
+      path: ['riskData', 'geolocation'],
+      children: [{
+        id: 'riskData.geolocation.latitude',
+        name: 'latitude',
+        path: ['riskData', 'geolocation', 'latitude'],
+        type: 'number'
+      }, {
+        id: 'riskData.geolocation.longitude',
+        name: 'longitude',
+        path: ['riskData', 'geolocation', 'longitude'],
+        type: 'number'
+      }]
     }]
   }];
   // Valkey cache sample data
@@ -269,6 +528,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
     setSelectedDestinations([]);
     setSelectedDestinationType('database');
     setSelectedTransformation('none');
+    setMappingError(null); // Clear any previous errors
     setShowAddMapping(true);
   };
   const addNewExtension = () => {
@@ -312,6 +572,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
   const handleSourceSelect = (path: string[]) => {
     // Toggle selection
     const pathStr = path.join('.');
+    console.log('Source field selected:', pathStr);
     if (selectedSources.includes(pathStr)) {
       setSelectedSources(selectedSources.filter(p => p !== pathStr));
     } else {
@@ -321,6 +582,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
   const handleDestinationSelect = (path: string[], type: 'database' | 'valkey' | 'model') => {
     // Toggle selection for destinations
     const pathStr = path.join('.');
+    console.log('Destination field selected:', pathStr, 'Type:', type);
     if (selectedDestinations.includes(pathStr)) {
       setSelectedDestinations(selectedDestinations.filter(p => p !== pathStr));
     } else {
@@ -328,7 +590,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
     }
     setSelectedDestinationType(type);
   };
-  const handleSaveMapping = () => {
+  const handleSaveMapping = async () => {
     if (selectedSources.length > 0 && selectedDestinations.length > 0) {
       const newMapping: MappingField = {
         source: selectedSources,
@@ -336,9 +598,21 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
         destinationType: selectedDestinationType,
         transformFunction: selectedTransformation
       };
-      setMappings([...mappings, newMapping]);
-      setShowAddMapping(false);
-      validateMappings([...mappings, newMapping]);
+      
+      // Save to backend API
+      const success = await saveMapping(newMapping);
+      if (success) {
+        // Update local state only if backend save was successful
+        setMappings([...mappings, newMapping]);
+        setShowAddMapping(false);
+        validateMappings([...mappings, newMapping]);
+        console.log('Mapping saved successfully to backend');
+      } else {
+        console.error('Failed to save mapping to backend');
+        // Show error to user but don't close modal
+      }
+    } else {
+      setMappingError('Please select at least one source and one destination field');
     }
   };
   const handleSaveExtension = () => {
@@ -480,12 +754,24 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
               </div>
             </div>
           </div>
+          {/* Error Display */}
+          {mappingError && (
+            <div className="bg-red-50 border border-red-200 rounded-md p-3 mt-4">
+              <div className="text-red-800 text-sm">{mappingError}</div>
+            </div>
+          )}
+          
           <div className="flex justify-end space-x-3 mt-6" data-id="element-235">
             <Button variant="secondary" onClick={() => setShowAddMapping(false)} data-id="element-236">
               Cancel
             </Button>
-            <Button variant="primary" onClick={handleSaveMapping} disabled={selectedSources.length === 0 || selectedDestinations.length === 0} data-id="element-237">
-              Add Mapping
+            <Button 
+              variant="primary" 
+              onClick={handleSaveMapping} 
+              disabled={selectedSources.length === 0 || selectedDestinations.length === 0 || savingMapping} 
+              data-id="element-237"
+            >
+              {savingMapping ? 'Saving...' : 'Add Mapping'}
             </Button>
           </div>
         </div>
@@ -557,6 +843,44 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       </div>;
   };
   return <div className="space-y-6" data-id="element-271">
+      {/* Error Display */}
+      {mappingError && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-md">
+          <div className="text-red-800 text-sm">{mappingError}</div>
+        </div>
+      )}
+      
+      {/* Current Mappings Display */}
+      {currentMappings.length > 0 && (
+        <div className="bg-green-50 border border-green-200 rounded-md p-4">
+          <h4 className="text-sm font-medium text-green-800 mb-2">Current Mappings ({currentMappings.length})</h4>
+          <div className="space-y-2">
+            {currentMappings.map((mapping, index) => (
+              <div key={index} className="flex items-center justify-between bg-white p-2 rounded border">
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-gray-600">
+                    {mapping.sources ? mapping.sources.join(' + ') : mapping.source} 
+                    <ArrowRightIcon size={16} className="inline mx-2" />
+                    {mapping.destination}
+                  </span>
+                  {mapping.separator && (
+                    <span className="text-xs text-gray-500">({mapping.separator})</span>
+                  )}
+                </div>
+                <Button 
+                  variant="secondary" 
+                  size="sm" 
+                  onClick={() => removeMappingFromBackend(index)}
+                  disabled={savingMapping}
+                >
+                  Remove
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      
       <div className="flex justify-between items-center" data-id="element-272">
         <h3 className="text-lg font-medium text-gray-900" data-id="element-273">Field Mapping</h3>
         <div className="flex space-x-2" data-id="element-274">

@@ -26,7 +26,7 @@ export const API_CONFIG = {
     Accept: 'application/json',
   },
 
-  // Endpoints - Only authentication endpoints
+  // Endpoints - Authentication and Configuration endpoints
   ENDPOINTS: {
     // Auth endpoints
     AUTH: {
@@ -34,6 +34,19 @@ export const API_CONFIG = {
       LOGOUT: '/auth/logout',
       REFRESH: '/auth/refresh',
       PROFILE: '/auth/profile',
+    },
+    // Configuration endpoints
+    CONFIG: {
+      CREATE: '/config',
+      UPLOAD: '/config/upload',
+      GET_BY_ID: '/config/:id',
+      GET_ALL: '/config',
+      UPDATE: '/config/:id',
+      DELETE: '/config/:id',
+      ADD_MAPPING: '/config/:id/mapping',
+      REMOVE_MAPPING: '/config/:id/mapping/:index',
+      GET_BY_TRANSACTION_TYPE: '/config/transaction/:type',
+      GET_BY_ENDPOINT: '/config/endpoint',
     },
   },
 } as const;
