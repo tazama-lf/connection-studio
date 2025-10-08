@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowRightIcon, PlusIcon, XIcon, ChevronRightIcon, FolderIcon, DatabaseIcon, LayersIcon, ServerIcon } from 'lucide-react';
+import { ArrowRightIcon, PlusIcon, XIcon, ChevronRightIcon, FolderIcon, DatabaseIcon, ServerIcon } from 'lucide-react';
 import { Button } from './Button';
 import { configApi, type AddMappingRequest, type FieldMapping } from '../../features/config/services/configApi';
+import { dataModelApi, type DestinationOption, ExtensionManagement } from '../../features/data-model';
 
 /**
  * MappingUtility Component - Updated for Tazama Integration
@@ -22,16 +23,11 @@ interface MappingField {
   destinationType: 'database' | 'valkey' | 'model';
   transformFunction: 'concatenate' | 'sum' | 'split' | 'none';
 }
-interface DataModelExtension {
-  collection: string;
-  field: string;
-  type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'date';
-  required: boolean;
-  defaultValue?: string;
-}
+
 interface MappingUtilityProps {
   onMappingChange: (isValid: boolean) => void;
   onMappingDataChange?: (mappingData: MappingData) => void;
+  onCurrentMappingsChange?: (mappings: FieldMapping[]) => void; // NEW: Expose current mappings to parent
   sourceSchema?: Array<{
     name: string;
     path: string;
@@ -67,6 +63,7 @@ interface TreeNode {
 export const MappingUtility: React.FC<MappingUtilityProps> = ({
   onMappingChange,
   onMappingDataChange,
+  onCurrentMappingsChange,
   sourceSchema,
   configId,
   existingMappings = []
@@ -75,11 +72,56 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
   const [mappingError, setMappingError] = useState<string | null>(null);
   const [savingMapping, setSavingMapping] = useState(false);
   const [currentMappings, setCurrentMappings] = useState<FieldMapping[]>(existingMappings);
+  
+  // State for dynamic destination tree from API
+  const [destinationTree, setDestinationTree] = useState<TreeNode[]>([]);
+  const [loadingDestinations, setLoadingDestinations] = useState(true);
+  const [destinationError, setDestinationError] = useState<string | null>(null);
 
   // Load existing mappings on component mount
   useEffect(() => {
+    console.log('🔄 MappingUtility - existingMappings changed:', existingMappings);
+    console.log('🔄 MappingUtility - existingMappings length:', existingMappings.length);
     setCurrentMappings(existingMappings);
+    validateMappings(existingMappings);
   }, [existingMappings]);
+
+  // Expose current mappings to parent component whenever they change
+  useEffect(() => {
+    console.log('📤 MappingUtility - Sending current mappings to parent:', currentMappings);
+    if (onCurrentMappingsChange) {
+      onCurrentMappingsChange(currentMappings);
+    }
+  }, [currentMappings, onCurrentMappingsChange]);
+
+  // Function to fetch destination options (can be reused)
+  const fetchDestinationOptions = async () => {
+    try {
+      setLoadingDestinations(true);
+      setDestinationError(null);
+      
+      const response = await dataModelApi.getDestinationOptions();
+      // Backend returns {success: true, options: [...]}
+      if (response.success && response.options) {
+        const treeNodes = convertDestinationOptionsToTree(response.options);
+        setDestinationTree(treeNodes);
+      } else {
+        throw new Error(response.message || 'Failed to fetch destination options');
+      }
+    } catch (error) {
+      console.error('Error fetching destination options:', error);
+      setDestinationError('Failed to load destination fields. Please try again.');
+      // Fallback to empty array on error
+      setDestinationTree([]);
+    } finally {
+      setLoadingDestinations(false);
+    }
+  };
+
+  // Load destination options from API on mount
+  useEffect(() => {
+    fetchDestinationOptions();
+  }, []);
 
   // Function to save mapping to backend
   const saveMapping = async (mapping: MappingField): Promise<boolean> => {
@@ -93,9 +135,13 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
 
     try {
       const mappingRequest: AddMappingRequest = {
-        source: mapping.transformFunction === 'concatenate' ? undefined : mapping.source[0],
-        destination: mapping.destination[0],
+        // Handle different transformation types
+        source: mapping.transformFunction === 'split' ? mapping.source[0] : 
+                mapping.transformFunction === 'concatenate' ? undefined : mapping.source[0],
+        destination: mapping.transformFunction === 'split' ? undefined : mapping.destination[0],
         sources: mapping.transformFunction === 'concatenate' ? mapping.source : undefined,
+        destinations: mapping.transformFunction === 'split' ? mapping.destination : undefined,
+        delimiter: mapping.transformFunction === 'split' ? delimiter : undefined,
         separator: mapping.transformFunction === 'concatenate' ? ' ' : undefined,
       };
 
@@ -104,8 +150,9 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       
       if (response.success && response.config) {
         // Update local state with new mappings
-        setCurrentMappings(response.config.mapping || []);
-        onMappingChange(true);
+        const newMappings = response.config.mapping || [];
+        setCurrentMappings(newMappings);
+        validateMappings(newMappings);
         
         // Update parent component with mapping data
         if (onMappingDataChange && response.config) {
@@ -157,7 +204,9 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       const response = await configApi.removeMapping(configId, index);
       
       if (response.success && response.config) {
-        setCurrentMappings(response.config.mapping || []);
+        const newMappings = response.config.mapping || [];
+        setCurrentMappings(newMappings);
+        validateMappings(newMappings);
         console.log('Mapping removed successfully');
         return true;
       } else {
@@ -273,193 +322,29 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       }))
     }];
   })();
-  // Tazama destination data model - Internal data structure for fraud monitoring
-  const destinationTree: TreeNode[] = [{
-    id: 'transaction',
-    name: 'Transaction Data',
-    path: ['transaction'],
-    children: [{
-      id: 'transaction.transactionId',
-      name: 'transactionId',
-      path: ['transaction', 'transactionId'],
-      type: 'string'
-    }, {
-      id: 'transaction.amount',
-      name: 'amount',
-      path: ['transaction', 'amount'],
-      type: 'number'
-    }, {
-      id: 'transaction.currency',
-      name: 'currency',
-      path: ['transaction', 'currency'],
-      type: 'string'
-    }, {
-      id: 'transaction.timestamp',
-      name: 'timestamp',
-      path: ['transaction', 'timestamp'],
-      type: 'date'
-    }, {
-      id: 'transaction.messageType',
-      name: 'messageType',
-      path: ['transaction', 'messageType'],
-      type: 'string'
-    }, {
-      id: 'transaction.endToEndId',
-      name: 'endToEndId',
-      path: ['transaction', 'endToEndId'],
-      type: 'string'
-    }]
-  }, {
-    id: 'payer',
-    name: 'Payer Information',
-    path: ['payer'],
-    children: [{
-      id: 'payer.accountId',
-      name: 'accountId',
-      path: ['payer', 'accountId'],
-      type: 'string'
-    }, {
-      id: 'payer.name',
-      name: 'name',
-      path: ['payer', 'name'],
-      type: 'string'
-    }, {
-      id: 'payer.bankId',
-      name: 'bankId',
-      path: ['payer', 'bankId'],
-      type: 'string'
-    }, {
-      id: 'payer.address',
-      name: 'address',
-      path: ['payer', 'address'],
-      children: [{
-        id: 'payer.address.addressLine1',
-        name: 'addressLine1',
-        path: ['payer', 'address', 'addressLine1'],
-        type: 'string'
-      }, {
-        id: 'payer.address.city',
-        name: 'city',
-        path: ['payer', 'address', 'city'],
-        type: 'string'
-      }, {
-        id: 'payer.address.country',
-        name: 'country',
-        path: ['payer', 'address', 'country'],
-        type: 'string'
-      }, {
-        id: 'payer.address.postalCode',
-        name: 'postalCode',
-        path: ['payer', 'address', 'postalCode'],
-        type: 'string'
-      }]
-    }]
-  }, {
-    id: 'payee',
-    name: 'Payee Information',
-    path: ['payee'],
-    children: [{
-      id: 'payee.accountId',
-      name: 'accountId',
-      path: ['payee', 'accountId'],
-      type: 'string'
-    }, {
-      id: 'payee.name',
-      name: 'name',
-      path: ['payee', 'name'],
-      type: 'string'
-    }, {
-      id: 'payee.bankId',
-      name: 'bankId',
-      path: ['payee', 'bankId'],
-      type: 'string'
-    }, {
-      id: 'payee.address',
-      name: 'address',
-      path: ['payee', 'address'],
-      children: [{
-        id: 'payee.address.addressLine1',
-        name: 'addressLine1',
-        path: ['payee', 'address', 'addressLine1'],
-        type: 'string'
-      }, {
-        id: 'payee.address.city',
-        name: 'city',
-        path: ['payee', 'address', 'city'],
-        type: 'string'
-      }, {
-        id: 'payee.address.country',
-        name: 'country',
-        path: ['payee', 'address', 'country'],
-        type: 'string'
-      }, {
-        id: 'payee.address.postalCode',
-        name: 'postalCode',
-        path: ['payee', 'address', 'postalCode'],
-        type: 'string'
-      }]
-    }]
-  }, {
-    id: 'routing',
-    name: 'Routing Information',
-    path: ['routing'],
-    children: [{
-      id: 'routing.sourceChannel',
-      name: 'sourceChannel',
-      path: ['routing', 'sourceChannel'],
-      type: 'string'
-    }, {
-      id: 'routing.destinationChannel',
-      name: 'destinationChannel',
-      path: ['routing', 'destinationChannel'],
-      type: 'string'
-    }, {
-      id: 'routing.processingCode',
-      name: 'processingCode',
-      path: ['routing', 'processingCode'],
-      type: 'string'
-    }, {
-      id: 'routing.networkId',
-      name: 'networkId',
-      path: ['routing', 'networkId'],
-      type: 'string'
-    }]
-  }, {
-    id: 'riskData',
-    name: 'Risk Assessment Data',
-    path: ['riskData'],
-    children: [{
-      id: 'riskData.riskScore',
-      name: 'riskScore',
-      path: ['riskData', 'riskScore'],
-      type: 'number'
-    }, {
-      id: 'riskData.fraudIndicators',
-      name: 'fraudIndicators',
-      path: ['riskData', 'fraudIndicators'],
-      type: 'array'
-    }, {
-      id: 'riskData.deviceFingerprint',
-      name: 'deviceFingerprint',
-      path: ['riskData', 'deviceFingerprint'],
-      type: 'string'
-    }, {
-      id: 'riskData.geolocation',
-      name: 'geolocation',
-      path: ['riskData', 'geolocation'],
-      children: [{
-        id: 'riskData.geolocation.latitude',
-        name: 'latitude',
-        path: ['riskData', 'geolocation', 'latitude'],
-        type: 'number'
-      }, {
-        id: 'riskData.geolocation.longitude',
-        name: 'longitude',
-        path: ['riskData', 'geolocation', 'longitude'],
-        type: 'number'
-      }]
-    }]
-  }];
+  // Helper function to convert API destination options to TreeNode format
+  const convertDestinationOptionsToTree = (options: DestinationOption[]): TreeNode[] => {
+    // Group options by collection to create a hierarchical structure
+    const collections = new Map<string, DestinationOption[]>();
+    
+    options.forEach(option => {
+      const existing = collections.get(option.collection) || [];
+      existing.push(option);
+      collections.set(option.collection, existing);
+    });
+
+    return Array.from(collections.entries()).map(([collectionName, fields]) => ({
+      id: collectionName,
+      name: collectionName.charAt(0).toUpperCase() + collectionName.slice(1),
+      path: [collectionName],
+      children: fields.map(field => ({
+        id: field.value,
+        name: field.field,
+        path: [collectionName, field.field],
+        type: field.type.toLowerCase() as 'string' | 'number' | 'boolean' | 'date' | 'object' | 'array'
+      }))
+    }));
+  };
   // Valkey cache sample data
   const valkeyTree: TreeNode[] = [{
     id: 'valkey',
@@ -487,40 +372,30 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       type: 'object'
     }]
   }];
-  const [mappings, setMappings] = useState<MappingField[]>([{
-    source: ['customer.name'],
-    destination: ['accounts.fullName'],
-    destinationType: 'database',
-    transformFunction: 'none'
-  }, {
-    source: ['transaction.amount', 'transaction.currency'],
-    destination: ['transactions.amount', 'transactions.currency'],
-    destinationType: 'database',
-    transformFunction: 'none'
-  }, {
-    source: ['transaction.id'],
-    destination: ['valkey.lastTransaction'],
-    destinationType: 'valkey',
-    transformFunction: 'none'
-  }]);
-  const [dataModelExtensions, setDataModelExtensions] = useState<DataModelExtension[]>([{
-    collection: 'accounts',
-    field: 'verificationStatus',
-    type: 'string',
-    required: false,
-    defaultValue: 'PENDING'
-  }]);
-  const [expandedSourceNodes, setExpandedSourceNodes] = useState<string[]>(['transaction', 'customer']);
-  const [expandedDestNodes, setExpandedDestNodes] = useState<string[]>(['accounts', 'transactions']);
+  const [expandedSourceNodes, setExpandedSourceNodes] = useState<string[]>([]);
+  const [expandedDestNodes, setExpandedDestNodes] = useState<string[]>([]);
   const [showAddMapping, setShowAddMapping] = useState(false);
-  const [showAddExtension, setShowAddExtension] = useState(false);
   const [selectedSources, setSelectedSources] = useState<string[]>([]);
   const [selectedDestinations, setSelectedDestinations] = useState<string[]>([]);
   const [selectedDestinationType, setSelectedDestinationType] = useState<'database' | 'valkey' | 'model'>('database');
   const [activeTab, setActiveTab] = useState<'mapping' | 'extensions'>('mapping');
   const [selectedTransformation, setSelectedTransformation] = useState<'concatenate' | 'sum' | 'split' | 'none'>('none');
-  const validateMappings = (newMappings: MappingField[]) => {
-    const isValid = newMappings.every(mapping => mapping.source.length > 0 && mapping.destination.length > 0);
+  const [delimiter, setDelimiter] = useState<string>(' ');
+  
+  // Helper function to check if current selection is valid for the transformation type
+  const isCurrentMappingValid = () => {
+    if (selectedTransformation === 'concatenate') {
+      return selectedSources.length >= 2 && selectedDestinations.length === 1;
+    } else if (selectedTransformation === 'split') {
+      return selectedSources.length === 1 && selectedDestinations.length >= 2;
+    } else if (selectedTransformation === 'none') {
+      return selectedSources.length === 1 && selectedDestinations.length === 1;
+    }
+    return selectedSources.length > 0 && selectedDestinations.length > 0;
+  };
+  
+  const validateMappings = (newMappings: FieldMapping[]) => {
+    const isValid = newMappings.every(mapping => mapping.source || mapping.sources);
     onMappingChange(isValid);
   };
   const addNewMapping = () => {
@@ -528,33 +403,23 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
     setSelectedDestinations([]);
     setSelectedDestinationType('database');
     setSelectedTransformation('none');
+    setDelimiter(' '); // Reset delimiter to default
     setMappingError(null); // Clear any previous errors
     setShowAddMapping(true);
   };
-  const addNewExtension = () => {
-    setShowAddExtension(true);
-  };
-  const removeMapping = (index: number) => {
-    const newMappings = mappings.filter((_, i) => i !== index);
-    setMappings(newMappings);
-    validateMappings(newMappings);
-  };
-  const removeExtension = (index: number) => {
-    const newExtensions = dataModelExtensions.filter((_, i) => i !== index);
-    setDataModelExtensions(newExtensions);
-  };
-  const updateMapping = (index: number, field: 'source' | 'destination' | 'destinationType' | 'transformFunction', value: any) => {
-    const newMappings = [...mappings];
-    if (field === 'transformFunction') {
-      newMappings[index][field] = value as 'concatenate' | 'sum' | 'split' | 'none';
-    } else if (field === 'destinationType') {
-      newMappings[index][field] = value as 'database' | 'valkey' | 'model';
-    } else if (field === 'source' || field === 'destination') {
-      newMappings[index][field] = Array.isArray(value) ? value : [value];
+
+
+  // Handle extension changes - refresh destination options when extensions are modified
+  const handleExtensionChange = async () => {
+    try {
+      // Refresh destination options to include new/updated extensions
+      await fetchDestinationOptions();
+      console.log('Destination options refreshed after extension change');
+    } catch (error) {
+      console.error('Error refreshing destination options:', error);
     }
-    setMappings(newMappings);
-    validateMappings(newMappings);
   };
+
   const toggleSourceNode = (nodeId: string) => {
     if (expandedSourceNodes.includes(nodeId)) {
       setExpandedSourceNodes(expandedSourceNodes.filter(id => id !== nodeId));
@@ -591,41 +456,58 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
     setSelectedDestinationType(type);
   };
   const handleSaveMapping = async () => {
-    if (selectedSources.length > 0 && selectedDestinations.length > 0) {
-      const newMapping: MappingField = {
-        source: selectedSources,
-        destination: selectedDestinations,
-        destinationType: selectedDestinationType,
-        transformFunction: selectedTransformation
-      };
-      
-      // Save to backend API
-      const success = await saveMapping(newMapping);
-      if (success) {
-        // Update local state only if backend save was successful
-        setMappings([...mappings, newMapping]);
-        setShowAddMapping(false);
-        validateMappings([...mappings, newMapping]);
-        console.log('Mapping saved successfully to backend');
-      } else {
-        console.error('Failed to save mapping to backend');
-        // Show error to user but don't close modal
+    // Validate based on transformation type
+    let validationError = '';
+    
+    if (selectedTransformation === 'concatenate') {
+      if (selectedSources.length < 2) {
+        validationError = 'Concatenate requires at least 2 source fields';
+      } else if (selectedDestinations.length !== 1) {
+        validationError = 'Concatenate requires exactly 1 destination field';
+      }
+    } else if (selectedTransformation === 'split') {
+      if (selectedSources.length !== 1) {
+        validationError = 'Split requires exactly 1 source field';
+      } else if (selectedDestinations.length < 2) {
+        validationError = 'Split requires at least 2 destination fields';
+      }
+    } else if (selectedTransformation === 'none') {
+      if (selectedSources.length !== 1) {
+        validationError = 'Direct mapping requires exactly 1 source field';
+      } else if (selectedDestinations.length !== 1) {
+        validationError = 'Direct mapping requires exactly 1 destination field';
       }
     } else {
-      setMappingError('Please select at least one source and one destination field');
+      if (selectedSources.length === 0 || selectedDestinations.length === 0) {
+        validationError = 'Please select at least one source and one destination field';
+      }
+    }
+
+    if (validationError) {
+      setMappingError(validationError);
+      return;
+    }
+
+    const newMapping: MappingField = {
+      source: selectedSources,
+      destination: selectedDestinations,
+      destinationType: selectedDestinationType,
+      transformFunction: selectedTransformation
+    };
+    
+    // Save to backend API
+    const success = await saveMapping(newMapping);
+    if (success) {
+      // Close modal only if backend save was successful
+      // currentMappings is updated automatically in saveMapping function
+      setShowAddMapping(false);
+      console.log('Mapping saved successfully to backend');
+    } else {
+      console.error('Failed to save mapping to backend');
+      // Show error to user but don't close modal
     }
   };
-  const handleSaveExtension = () => {
-    // This would normally save the new extension from a form
-    const newExtension: DataModelExtension = {
-      collection: 'accounts',
-      field: 'customField' + (dataModelExtensions.length + 1),
-      type: 'string',
-      required: false
-    };
-    setDataModelExtensions([...dataModelExtensions, newExtension]);
-    setShowAddExtension(false);
-  };
+
   const renderTree = (nodes: TreeNode[], expanded: string[], toggleFn: (id: string) => void, onSelect: (path: string[], type?: any) => void, selectedPaths: string[] = [], type: 'source' | 'destination' | 'valkey' = 'source') => {
     return <div className="space-y-1" data-id="element-176">
         {nodes.map(node => {
@@ -695,6 +577,26 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                     <option value="split" data-id="element-209">Split</option>
                   </select>
                 </div>
+                {(selectedTransformation === 'split' || selectedTransformation === 'concatenate') && (
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      {selectedTransformation === 'split' ? 'Split Delimiter' : 'Separator'}
+                    </label>
+                    <input 
+                      type="text" 
+                      value={delimiter} 
+                      onChange={e => setDelimiter(e.target.value)}
+                      placeholder={selectedTransformation === 'split' ? ' ' : ' '}
+                      className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      {selectedTransformation === 'split' 
+                        ? 'Character(s) to split by (e.g., space " " or comma ",")'
+                        : 'Character(s) to join with (e.g., space " " or comma ",")'
+                      }
+                    </p>
+                  </div>
+                )}
                 <div className="flex-1 flex items-center justify-center" data-id="element-210">
                   {selectedTransformation === 'concatenate' && <div className="text-center p-4 bg-gray-50 rounded-md" data-id="element-211">
                       <h5 className="font-medium text-gray-700 mb-2" data-id="element-212">
@@ -742,8 +644,14 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
             <div className="space-y-4" data-id="element-229">
               <h4 className="font-medium text-gray-700" data-id="element-230">Destination</h4>
               <div className="border border-gray-200 rounded-md p-3 h-96 overflow-auto" data-id="element-231">
-                <div className="mb-2 text-sm text-gray-500" data-id="element-232">Data Model</div>
-                {renderTree(destinationTree, expandedDestNodes, toggleDestNode, (path, type) => handleDestinationSelect(path, type as 'database' | 'valkey' | 'model'), selectedDestinations, 'destination')}
+                <div className="mb-2 text-sm text-gray-500" data-id="element-232">Tazama Data Model</div>
+                {loadingDestinations ? (
+                  <div className="text-sm text-gray-500 py-4">Loading destination fields...</div>
+                ) : destinationError ? (
+                  <div className="text-sm text-red-500 py-4">{destinationError}</div>
+                ) : (
+                  renderTree(destinationTree, expandedDestNodes, toggleDestNode, (path, type) => handleDestinationSelect(path, type as 'database' | 'valkey' | 'model'), selectedDestinations, 'destination')
+                )}
                 <div className="mt-4 mb-2 text-sm text-gray-500" data-id="element-233">
                   Valkey Cache (Update)
                 </div>
@@ -768,7 +676,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
             <Button 
               variant="primary" 
               onClick={handleSaveMapping} 
-              disabled={selectedSources.length === 0 || selectedDestinations.length === 0 || savingMapping} 
+              disabled={!isCurrentMappingValid() || savingMapping} 
               data-id="element-237"
             >
               {savingMapping ? 'Saving...' : 'Add Mapping'}
@@ -777,71 +685,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
         </div>
       </div>;
   };
-  const renderAddExtensionModal = () => {
-    if (!showAddExtension) return null;
-    return <div className="fixed inset-0 z-50 flex items-center justify-center" data-id="element-238">
-        <div className="bg-white rounded-lg w-full max-w-md p-6" data-id="element-239">
-          <div className="flex justify-between items-center mb-6" data-id="element-240">
-            <h3 className="text-lg font-medium text-gray-900" data-id="element-241">
-              Add Data Model Extension
-            </h3>
-            <button onClick={() => setShowAddExtension(false)} className="text-gray-500 hover:text-gray-700" data-id="element-242">
-              <XIcon size={20} data-id="element-243" />
-            </button>
-          </div>
-          <div className="space-y-4" data-id="element-244">
-            <div data-id="element-245">
-              <label className="block text-sm font-medium text-gray-700 mb-1" data-id="element-246">
-                Collection
-              </label>
-              <select className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" data-id="element-247">
-                <option value="accounts" data-id="element-248">accounts</option>
-                <option value="transactions" data-id="element-249">transactions</option>
-              </select>
-            </div>
-            <div data-id="element-250">
-              <label className="block text-sm font-medium text-gray-700 mb-1" data-id="element-251">
-                Field Name
-              </label>
-              <input type="text" className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="e.g., verificationStatus" data-id="element-252" />
-            </div>
-            <div data-id="element-253">
-              <label className="block text-sm font-medium text-gray-700 mb-1" data-id="element-254">
-                Field Type
-              </label>
-              <select className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" data-id="element-255">
-                <option value="string" data-id="element-256">String</option>
-                <option value="number" data-id="element-257">Number</option>
-                <option value="boolean" data-id="element-258">Boolean</option>
-                <option value="object" data-id="element-259">Object</option>
-                <option value="array" data-id="element-260">Array</option>
-                <option value="date" data-id="element-261">Date</option>
-              </select>
-            </div>
-            <div className="flex items-center" data-id="element-262">
-              <input type="checkbox" id="required-field" className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" data-id="element-263" />
-              <label htmlFor="required-field" className="ml-2 block text-sm text-gray-900" data-id="element-264">
-                Required field
-              </label>
-            </div>
-            <div data-id="element-265">
-              <label className="block text-sm font-medium text-gray-700 mb-1" data-id="element-266">
-                Default Value (optional)
-              </label>
-              <input type="text" className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="e.g., PENDING" data-id="element-267" />
-            </div>
-          </div>
-          <div className="flex justify-end space-x-3 mt-6" data-id="element-268">
-            <Button variant="secondary" onClick={() => setShowAddExtension(false)} data-id="element-269">
-              Cancel
-            </Button>
-            <Button variant="primary" onClick={handleSaveExtension} data-id="element-270">
-              Add Extension
-            </Button>
-          </div>
-        </div>
-      </div>;
-  };
+
   return <div className="space-y-6" data-id="element-271">
       {/* Error Display */}
       {mappingError && (
@@ -898,155 +742,37 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
               Add Mapping
             </Button>
           </div>
-          <div className="space-y-6" data-id="element-280">
-            {mappings.map((mapping, index) => <div key={index} className="p-4 bg-gray-50 border border-gray-200 rounded-lg relative" data-id="element-281">
-                <button onClick={() => removeMapping(index)} className="absolute top-2 right-2 text-gray-400 hover:text-gray-600" data-id="element-282">
-                  <XIcon size={16} data-id="element-283" />
-                </button>
-                <div className="grid grid-cols-3 gap-4 items-start" data-id="element-284">
-                  {/* Source Fields */}
-                  <div className="space-y-2" data-id="element-285">
-                    <label className="block text-sm font-medium text-gray-700" data-id="element-286">
-                      Source Fields
-                    </label>
-                    <div className="p-3 bg-white border border-gray-200 rounded-md" data-id="element-287">
-                      {mapping.source.map((source, i) => <div key={i} className="flex items-center mb-1 last:mb-0" data-id="element-288">
-                          {source.startsWith('valkey.') ? <ServerIcon size={14} className="mr-2 text-purple-500" data-id="element-289" /> : <FolderIcon size={14} className="mr-2 text-blue-500" data-id="element-290" />}
-                          <span className="text-sm" data-id="element-291">{source}</span>
-                        </div>)}
-                    </div>
-                  </div>
-                  {/* Transformation */}
-                  <div className="flex flex-col items-center justify-center space-y-4" data-id="element-292">
-                    <ArrowRightIcon className="text-gray-400" size={20} data-id="element-293" />
-                    <select value={mapping.transformFunction} onChange={e => updateMapping(index, 'transformFunction', e.target.value)} className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" data-id="element-294">
-                      <option value="none" data-id="element-295">No Transformation</option>
-                      <option value="concatenate" data-id="element-296">Concatenate</option>
-                      <option value="sum" data-id="element-297">Sum</option>
-                      <option value="split" data-id="element-298">Split</option>
-                    </select>
-                  </div>
-                  {/* Destination Fields */}
-                  <div className="space-y-2" data-id="element-299">
-                    <label className="block text-sm font-medium text-gray-700" data-id="element-300">
-                      Destination
-                    </label>
-                    <div className="p-3 bg-white border border-gray-200 rounded-md" data-id="element-301">
-                      {mapping.destination.map((dest, i) => <div key={i} className="flex items-center mb-1 last:mb-0" data-id="element-302">
-                          {mapping.destinationType === 'valkey' ? <ServerIcon size={14} className="mr-2 text-purple-500" data-id="element-303" /> : <DatabaseIcon size={14} className="mr-2 text-green-500" data-id="element-304" />}
-                          <span className="text-sm" data-id="element-305">{dest}</span>
-                        </div>)}
-                      <div className="mt-2 pt-2 border-t border-gray-200 text-xs text-gray-500" data-id="element-306">
-                        {mapping.destinationType === 'valkey' ? 'Valkey Cache' : 'Database'}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>)}
-          </div>
-        </> : <>
-          <div className="flex justify-end mb-4" data-id="element-307">
-            <Button variant="secondary" size="sm" onClick={addNewExtension} icon={<PlusIcon size={16} data-id="element-309" />} data-id="element-308">
-              Add Data Model Extension
-            </Button>
-          </div>
-          <div className="bg-white border border-gray-200 rounded-lg overflow-hidden" data-id="element-310">
-            <table className="min-w-full divide-y divide-gray-200" data-id="element-311">
-              <thead className="bg-gray-50" data-id="element-312">
-                <tr data-id="element-313">
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" data-id="element-314">
-                    Collection
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" data-id="element-315">
-                    Field
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" data-id="element-316">
-                    Type
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" data-id="element-317">
-                    Required
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" data-id="element-318">
-                    Default Value
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" data-id="element-319">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200" data-id="element-320">
-                {dataModelExtensions.map((ext, index) => <tr key={index} data-id="element-321">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" data-id="element-322">
-                      {ext.collection}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" data-id="element-323">
-                      {ext.field}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" data-id="element-324">
-                      {ext.type}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" data-id="element-325">
-                      {ext.required ? 'Yes' : 'No'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" data-id="element-326">
-                      {ext.defaultValue || '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500" data-id="element-327">
-                      <button onClick={() => removeExtension(index)} className="text-red-500 hover:text-red-700" data-id="element-328">
-                        <XIcon size={16} data-id="element-329" />
-                      </button>
-                    </td>
-                  </tr>)}
-                {dataModelExtensions.length === 0 && <tr data-id="element-330">
-                    <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500" data-id="element-331">
-                      No data model extensions defined
-                    </td>
-                  </tr>}
-              </tbody>
-            </table>
-          </div>
-          <div className="p-4 bg-blue-50 border border-blue-200 rounded-md" data-id="element-332">
-            <div className="flex items-start" data-id="element-333">
-              <LayersIcon className="h-5 w-5 text-blue-500 mr-2 mt-0.5" data-id="element-334" />
-              <div data-id="element-335">
-                <h4 className="text-sm font-medium text-blue-700" data-id="element-336">
-                  About Data Model Extensions
-                </h4>
-                <p className="mt-1 text-sm text-blue-600" data-id="element-337">
-                  Extensions define new fields to be added to the data model.
-                  When this connection is published, these changes will be
-                  executed in the database. Make sure to define appropriate
-                  default values for required fields.
-                </p>
-              </div>
+          {currentMappings.length === 0 ? (
+            <div className="text-center py-12 text-gray-500">
+              <p className="text-sm">No mappings created yet.</p>
+              <p className="text-xs mt-1">Click "Add Mapping" to get started.</p>
             </div>
-          </div>
+          ) : null}
+        </> : <>
+          <ExtensionManagement onExtensionChange={handleExtensionChange} />
         </>}
       {/* Mapping Summary */}
-      {activeTab === 'mapping' && mappings.length > 0 && <div className="mt-6 p-4 bg-gray-50 rounded-md border border-gray-200" data-id="element-338">
+      {activeTab === 'mapping' && currentMappings.length > 0 && <div className="mt-6 p-4 bg-gray-50 rounded-md border border-gray-200" data-id="element-338">
           <h4 className="text-sm font-medium text-gray-700 mb-2" data-id="element-339">
             Mapping Summary
           </h4>
           <div className="space-y-2" data-id="element-340">
-            {mappings.map((mapping, index) => <div key={index} className="text-sm text-gray-600" data-id="element-341">
-                <span className="font-medium" data-id="element-342">{mapping.source.join(', ')}</span>
-                {mapping.transformFunction !== 'none' && <span className="text-gray-400" data-id="element-343">
+            {currentMappings.map((mapping, index) => <div key={index} className="text-sm text-gray-600" data-id="element-341">
+                <span className="font-medium" data-id="element-342">
+                  {mapping.sources ? mapping.sources.join(' + ') : mapping.source}
+                </span>
+                {mapping.separator && <span className="text-gray-400" data-id="element-343">
                     {' '}
-                    ({mapping.transformFunction}){' '}
+                    ({mapping.separator}){' '}
                   </span>}
                 →{' '}
                 <span className="font-medium" data-id="element-344">
-                  {mapping.destination.join(', ')}
-                </span>
-                <span className="text-gray-400 ml-2" data-id="element-345">
-                  ({mapping.destinationType})
+                  {mapping.destination}
                 </span>
               </div>)}
           </div>
         </div>}
       {/* Add Mapping Modal */}
       {renderAddMappingModal()}
-      {/* Add Extension Modal */}
-      {renderAddExtensionModal()}
     </div>;
 };

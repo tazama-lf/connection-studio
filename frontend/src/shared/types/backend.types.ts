@@ -1,5 +1,3 @@
-// Backend-aligned types for integration
-
 export const TransactionType = {
   TRANSFERS: 'Transfers',
   PAYMENTS: 'Payments',

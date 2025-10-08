@@ -97,6 +97,7 @@ export const ConfigDetails: React.FC<ConfigDetailsProps> = ({
       setError(null);
       
       // Create update payload with correct types for API
+      // IMPORTANT: Preserve existing mapping when updating form fields only
       const updatePayload: any = {
         msgFam: editForm.msgFam,
         transactionType: editForm.transactionType,
@@ -104,6 +105,8 @@ export const ConfigDetails: React.FC<ConfigDetailsProps> = ({
         contentType: editForm.contentType as 'application/json' | 'application/xml' | undefined,
         endpointPath: editForm.endpointPath,
         status: editForm.status,
+        // Preserve the existing mapping to prevent it from being cleared
+        mapping: config.mapping,
       };
       
       console.log('Updating config:', config.id, updatePayload);

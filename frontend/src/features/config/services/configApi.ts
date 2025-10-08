@@ -47,7 +47,9 @@ export interface AddMappingRequest {
   source?: string;
   destination?: string;
   sources?: string[];
-  separator?: string;
+  destinations?: string[];
+  delimiter?: string;
+  separator?: string; // Keeping for backward compatibility with concatenate
 }
 
 export interface SchemaField {

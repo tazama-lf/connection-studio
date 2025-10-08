@@ -50,6 +50,7 @@ interface EditEndpointModalProps {
   const [inferredSchema, setInferredSchema] = useState<any | null>(null);
   const [createdMapping, setCreatedMapping] = useState<any | null>(null);
   const [mappingData, setMappingData] = useState<any | null>(null);
+  const [currentMappings, setCurrentMappings] = useState<any[]>([]); // Current mappings from MappingUtility
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [simulationResult, setSimulationResult] = useState<any | null>(null);
   const steps = [{
@@ -92,6 +93,12 @@ interface EditEndpointModalProps {
           }
           
           if (config) {
+            console.log('🔍 Loaded existing config - mapping analysis:');
+            console.log('  - config.mapping:', config.mapping);
+            console.log('  - typeof mapping:', typeof config.mapping);
+            console.log('  - isArray:', Array.isArray(config.mapping));
+            console.log('  - mapping length:', config.mapping?.length);
+            
             setExistingConfig(config);
             
             // Pre-populate form data with existing config
@@ -181,6 +188,39 @@ interface EditEndpointModalProps {
         contentType: endpointData.contentType as 'application/json' | 'application/xml',
         payload: payload,
       };
+      
+      console.log('🔍 Config request details for endpoint path generation:');
+      console.log('  - msgFam:', createRequest.msgFam);
+      console.log('  - transactionType:', createRequest.transactionType);
+      console.log('  - version:', createRequest.version);
+      console.log('  - Expected endpoint format: /tenantId/version/msgFam/transactionType');
+      console.log('  - Will generate: /[tenantId]/' + createRequest.version + '/' + (createRequest.msgFam || '') + '/' + createRequest.transactionType);
+
+      // MAPPING PERSISTENCE STRATEGY: Include mappings from MappingUtility or existing config
+      console.log('🔍 Mapping persistence debugging:');
+      console.log('  - currentMappings from MappingUtility:', currentMappings);
+      console.log('  - currentMappings type:', typeof currentMappings);
+      console.log('  - currentMappings length:', currentMappings?.length);
+      console.log('  - existingConfig.mapping:', existingConfig?.mapping);
+      console.log('  - existingConfig.mapping length:', existingConfig?.mapping?.length);
+      
+      // Strategy: Use current mappings if available, otherwise use existing config mappings
+      let mappingsToInclude = null;
+      
+      if (currentMappings && Array.isArray(currentMappings) && currentMappings.length > 0) {
+        mappingsToInclude = currentMappings;
+        console.log('✅ Using current mappings from MappingUtility:', mappingsToInclude.length, 'mappings');
+      } else if (!isNewEndpoint && existingConfig?.mapping && Array.isArray(existingConfig.mapping) && existingConfig.mapping.length > 0) {
+        mappingsToInclude = existingConfig.mapping;
+        console.log('🔄 Using existing config mappings as fallback:', mappingsToInclude.length, 'mappings');
+      } else {
+        console.log('� No mappings found - creating config without mappings');
+      }
+      
+      if (mappingsToInclude) {
+        createRequest.mapping = mappingsToInclude;
+        console.log('� Including mappings in config request:', mappingsToInclude);
+      }
 
       let response: ConfigResponse;
       
@@ -188,14 +228,35 @@ interface EditEndpointModalProps {
         console.log('Creating new config with data:', createRequest);
         response = await configApi.createConfig(createRequest);
       } else {
-        console.log('Updating existing config with data:', createRequest);
-        console.log('Config ID:', endpointId);
-        console.log('Full request details:', {
-          url: `${window.location.protocol}//${window.location.hostname}:3000/config/${endpointId}`,
-          method: 'PUT',
-          body: createRequest
-        });
-        response = await configApi.updateConfig(endpointId, createRequest);
+        // EDITING EXISTING CONFIG: Always create new config to preserve original and update endpoint path
+        console.log('🔄 Editing existing config - will create new config for version/endpoint path update');
+        
+        // Use the version entered by the user (from endpointData.version)
+        const finalVersion = endpointData.version || existingConfig?.version || '1.0';
+        
+        const newConfigRequest = {
+          ...createRequest,
+          version: finalVersion
+        };
+        
+        console.log('🆕 Creating new config (preserving original):');
+        console.log('  - Original config ID:', endpointId);
+        console.log('  - Original version:', existingConfig?.version);
+        console.log('  - Original endpoint path:', existingConfig?.endpointPath);
+        console.log('  - New version:', finalVersion);
+        console.log('  - New request:', newConfigRequest);
+        console.log('  - Backend will generate new endpoint path based on new version');
+        
+        // ALWAYS call createConfig for edits to ensure endpoint path regeneration
+        response = await configApi.createConfig(newConfigRequest);
+        
+        console.log('🎉 New config created:');
+        console.log('  - Response success:', response.success);
+        if (response.success && response.config) {
+          console.log('  - New config ID:', response.config.id);
+          console.log('  - New endpoint path:', response.config.endpointPath);
+          console.log('  - Endpoint path updated:', existingConfig?.endpointPath !== response.config.endpointPath);
+        }
       }
       
       console.log('API Response from handleCreateEndpoint:', response);
@@ -513,13 +574,37 @@ interface EditEndpointModalProps {
           )}
           <div className="space-y-8" data-id="element-739">
             {currentStep === 'payload' && (
-              <PayloadEditor 
-                value={payload} 
-                onChange={setPayload} 
-                endpointData={endpointData}
-                onEndpointDataChange={setEndpointData}
-                data-id="element-740" 
-              />
+              <>
+                <PayloadEditor 
+                  value={payload} 
+                  onChange={setPayload} 
+                  endpointData={endpointData}
+                  onEndpointDataChange={setEndpointData}
+                  data-id="element-740" 
+                />
+                
+                {/* Versioning info for existing configs */}
+                {!isNewEndpoint && (
+                  <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-4 h-4 rounded-full bg-green-500 flex items-center justify-center">
+                        <span className="text-white text-xs">✓</span>
+                      </div>
+                      <span className="text-sm font-medium text-green-900">
+                        Versioning Enabled
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs text-green-700">
+                      Editing this config will create a new version <strong>(v{endpointData.version || existingConfig?.version || '1.0'})</strong> preserving the original config.
+                      <br />
+                      Original config <strong>(v{existingConfig?.version || '1.0'})</strong> will remain unchanged in the database.
+                    </p>
+                    <div className="mt-2 text-xs text-green-600">
+                      <strong>Current approach:</strong> Create new row → Preserve history → No data loss
+                    </div>
+                  </div>
+                )}
+              </>
             )}
             {currentStep === 'mapping' && (
               <>
@@ -528,10 +613,17 @@ interface EditEndpointModalProps {
                 <MappingUtility 
                   onMappingChange={setIsMappingValid} 
                   onMappingDataChange={setMappingData}
-                  sourceSchema={createdEndpoint?.schema || inferredSchema?.schema}
+                  onCurrentMappingsChange={setCurrentMappings}
+                  sourceSchema={createdEndpoint?.schema || inferredSchema?.schema || existingConfig?.schema}
                   templateType="Acmt.023"
-                  configId={createdEndpoint?.id}
-                  existingMappings={createdEndpoint?.mapping || []}
+                  configId={createdEndpoint?.id || existingConfig?.id}
+                  existingMappings={
+                    // For editing existing config: use existingConfig.mapping
+                    // For new config after creation: use createdEndpoint.mapping
+                    !isNewEndpoint && existingConfig?.mapping 
+                      ? existingConfig.mapping 
+                      : createdEndpoint?.mapping || []
+                  }
                   data-id="element-741" 
                 />
               </>
