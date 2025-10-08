@@ -44,7 +44,9 @@ export interface ScheduleResponse {
   name: string;
   cron: string;
   iterations: number;
-  created_at: string;
+  schedule_status: string;
+  next_time: string | null;
+  created_at?: string;
 }
 
 // Base Data Enrichment Job
@@ -74,18 +76,35 @@ export interface SftpDataEnrichmentJob extends DataEnrichmentJobBase {
 // Union type for all job types
 export type DataEnrichmentJob = HttpDataEnrichmentJob | SftpDataEnrichmentJob;
 
-// Job creation request (without id and status)
-export type CreateDataEnrichmentJobRequest = Omit<
-  DataEnrichmentJob,
-  'id' | 'job_status'
->;
+// Backend DTO types (matching actual API structure)
+export interface CreatePullJobDto {
+  endpoint_name: string;
+  schedule_id: number;
+  source_type: SourceType;
+  description: string;
+  connection: HttpConnection | SftpConnection;
+  file?: FileConfig; // Only for SFTP
+  table_name: string;
+  mode?: 'append' | 'replace';
+}
+
+export interface CreatePushJobDto {
+  endpoint_name: string;
+  path: string; // Push jobs use path instead of connection/source_type
+  description: string;
+  table_name: string;
+  mode?: 'append' | 'replace';
+}
+
+// Job creation request (without id and status) - Legacy for compatibility
+export type CreateDataEnrichmentJobRequest = CreatePullJobDto | CreatePushJobDto;
 
 // Job response with ID and metadata - using intersection instead of extends
 export type DataEnrichmentJobResponse = DataEnrichmentJob & {
-  id: number; // Backend uses number ID
-  job_status: JobStatus;
-  created_at: string; // Backend returns dates as strings
-  updated_at: string;
+  id: string; // Backend uses UUID string ID
+  job_status?: JobStatus; // Optional in response
+  created_at?: string; // Backend returns dates as strings
+  updated_at?: string;
 };
 
 // Pagination for job listing
