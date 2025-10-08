@@ -4,6 +4,8 @@ import { ConfigRepository } from './config.repository';
 import { PayloadParsingService } from '../common/payload-parsing.service';
 import { AuditService } from '../audit/audit.service';
 import { JSONSchemaConverterService } from '../schemas/json-schema-converter.service';
+import { TazamaDataModelService } from '../common/tazama-data-model.service';
+import { DataModelExtensionService } from '../common/data-model-extension.service';
 import {
   Config,
   ContentType,
@@ -74,6 +76,19 @@ describe('ConfigService', () => {
       convertFromJSONSchema: jest.fn(),
     };
 
+    const mockTazamaDataModelService = {
+      validateDestinationPath: jest.fn(),
+      getDestinationPaths: jest.fn(),
+      getMappingSuggestions: jest.fn(),
+    };
+
+    const mockDataModelExtensionService = {
+      createExtension: jest.fn(),
+      getExtensions: jest.fn(),
+      updateExtension: jest.fn(),
+      deleteExtension: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ConfigService,
@@ -92,6 +107,14 @@ describe('ConfigService', () => {
         {
           provide: JSONSchemaConverterService,
           useValue: mockJSONSchemaConverter,
+        },
+        {
+          provide: TazamaDataModelService,
+          useValue: mockTazamaDataModelService,
+        },
+        {
+          provide: DataModelExtensionService,
+          useValue: mockDataModelExtensionService,
         },
       ],
     }).compile();

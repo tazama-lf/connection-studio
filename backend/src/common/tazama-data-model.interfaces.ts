@@ -35,7 +35,7 @@ export interface TazamaCollectionSchema {
 }
 
 export interface TazamaDataModelExtension {
-  id: string;
+  id: number;
   collection: TazamaCollectionName;
   fieldName: string;
   fieldType: TazamaFieldType;

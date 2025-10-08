@@ -1,65 +1,54 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
 import { Knex } from 'knex';
-import { v4 as uuidv4 } from 'uuid';
 import {
   TazamaDataModelExtension,
   TazamaCollectionName,
   TazamaFieldType,
 } from './tazama-data-model.interfaces';
-
 @Injectable()
 export class DataModelExtensionRepository {
   private readonly logger = new Logger(DataModelExtensionRepository.name);
   private readonly tableName = 'data_model_extensions';
-
   constructor(@Inject('KNEX_CONNECTION') private readonly knex: Knex) {}
-
   async create(
     extension: Omit<TazamaDataModelExtension, 'id' | 'createdAt'>,
-  ): Promise<string> {
+  ): Promise<number> {
     this.logger.log(
       `Creating data model extension: ${extension.collection}.${extension.fieldName}`,
     );
-
-    // Generate UUID for the id
-    const id = uuidv4();
-
-    await this.knex(this.tableName).insert({
-      id: id,
-      collection: extension.collection,
-      field_name: extension.fieldName,
-      field_type: extension.fieldType,
-      description: extension.description,
-      is_required: extension.isRequired || false,
-      default_value: extension.defaultValue
-        ? JSON.stringify(extension.defaultValue)
-        : null,
-      validation: extension.validation
-        ? JSON.stringify(extension.validation)
-        : null,
-      tenant_id: extension.tenantId,
-      created_by: extension.createdBy,
-      version: extension.version || 1,
-    });
-
-    return id;
+    // Insert without specifying id to let auto-increment handle it
+    const [result] = await this.knex(this.tableName)
+      .insert({
+        collection: extension.collection,
+        field_name: extension.fieldName,
+        field_type: extension.fieldType,
+        description: extension.description,
+        is_required: extension.isRequired || false,
+        default_value: extension.defaultValue
+          ? JSON.stringify(extension.defaultValue)
+          : null,
+        validation: extension.validation
+          ? JSON.stringify(extension.validation)
+          : null,
+        tenant_id: extension.tenantId,
+        created_by: extension.createdBy,
+        version: extension.version || 1,
+      })
+      .returning('id');
+    return result.id;
   }
-
   async findById(
-    id: string,
+    id: number,
     tenantId: string,
   ): Promise<TazamaDataModelExtension | null> {
     const result = await this.knex(this.tableName)
       .where({ id, tenant_id: tenantId })
       .first();
-
     if (!result) {
       return null;
     }
-
     return this.mapToExtension(result);
   }
-
   async findByCollection(
     collection: TazamaCollectionName,
     tenantId: string,
@@ -67,10 +56,8 @@ export class DataModelExtensionRepository {
     const results = await this.knex(this.tableName)
       .where({ collection, tenant_id: tenantId })
       .orderBy('created_at', 'desc');
-
     return results.map((row) => this.mapToExtension(row));
   }
-
   async findByCollectionAndField(
     collection: TazamaCollectionName,
     fieldName: string,
@@ -83,29 +70,23 @@ export class DataModelExtensionRepository {
         tenant_id: tenantId,
       })
       .first();
-
     if (!result) {
       return null;
     }
-
     return this.mapToExtension(result);
   }
-
   async findAllByTenant(tenantId: string): Promise<TazamaDataModelExtension[]> {
     const results = await this.knex(this.tableName)
       .where({ tenant_id: tenantId })
       .orderBy(['collection', 'field_name']);
-
     return results.map((row) => this.mapToExtension(row));
   }
-
   async update(
-    id: string,
+    id: number,
     tenantId: string,
     updates: Partial<TazamaDataModelExtension>,
   ): Promise<void> {
     const updateData: any = {};
-
     if (updates.description !== undefined)
       updateData.description = updates.description;
     if (updates.isRequired !== undefined)
@@ -114,16 +95,13 @@ export class DataModelExtensionRepository {
       updateData.default_value = JSON.stringify(updates.defaultValue);
     if (updates.validation !== undefined)
       updateData.validation = JSON.stringify(updates.validation);
-
     await this.knex(this.tableName)
       .where({ id, tenant_id: tenantId })
       .update(updateData);
   }
-
-  async delete(id: string, tenantId: string): Promise<void> {
+  async delete(id: number, tenantId: string): Promise<void> {
     await this.knex(this.tableName).where({ id, tenant_id: tenantId }).delete();
   }
-
   private mapToExtension(row: any): TazamaDataModelExtension {
     return {
       id: row.id,

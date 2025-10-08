@@ -21,18 +21,15 @@ import {
   DataModelExtensionResponseDto,
 } from './data-model-extension.dto';
 import type { TazamaCollectionName } from './tazama-data-model.interfaces';
-
 @Controller('data-model')
 @UseGuards(TazamaAuthGuard)
 @RequireEditorRole()
 export class DataModelController {
   private readonly logger = new Logger(DataModelController.name);
-
   constructor(
     private readonly dataModelExtensionService: DataModelExtensionService,
     private readonly tazamaDataModelService: TazamaDataModelService,
   ) {}
-
   /**
    * Get the complete Tazama data model schema
    */
@@ -44,7 +41,6 @@ export class DataModelController {
       schemas,
     };
   }
-
   /**
    * Get all available destination paths for mapping
    */
@@ -59,7 +55,6 @@ export class DataModelController {
       paths,
     };
   }
-
   /**
    * Get destination options formatted for UI dropdowns
    */
@@ -69,7 +64,6 @@ export class DataModelController {
     const extensions = await this.dataModelExtensionService.getAllExtensions(
       user.tenantId,
     );
-
     const extensionOptions = extensions.map((ext) => ({
       value: `${ext.collection}.${ext.fieldName}`,
       label: `${ext.collection}.${ext.fieldName}`,
@@ -80,7 +74,6 @@ export class DataModelController {
       description: ext.description,
       isExtension: true,
     }));
-
     return {
       success: true,
       options: [...baseOptions, ...extensionOptions].sort((a, b) =>
@@ -88,7 +81,6 @@ export class DataModelController {
       ),
     };
   }
-
   /**
    * Get all data model extensions for the tenant
    */
@@ -102,7 +94,6 @@ export class DataModelController {
       extensions,
     };
   }
-
   /**
    * Get extensions for a specific collection
    */
@@ -121,15 +112,21 @@ export class DataModelController {
       extensions,
     };
   }
-
   /**
    * Get a specific extension by ID
    */
   @Get('extensions/:id')
   async getExtensionById(
-    @Param('id') id: string,
+    @Param('id') idStr: string,
     @User() user: AuthenticatedUser,
   ) {
+    const id = parseInt(idStr, 10);
+    if (isNaN(id)) {
+      return {
+        success: false,
+        message: 'Invalid extension ID',
+      };
+    }
     const extension = await this.dataModelExtensionService.getExtensionById(
       id,
       user.tenantId,
@@ -139,7 +136,6 @@ export class DataModelController {
       extension,
     };
   }
-
   /**
    * Create a new data model extension
    */
@@ -154,16 +150,22 @@ export class DataModelController {
       user.userId,
     );
   }
-
   /**
    * Update an existing data model extension
    */
   @Put('extensions/:id')
   async updateExtension(
-    @Param('id') id: string,
+    @Param('id') idStr: string,
     @Body() dto: UpdateDataModelExtensionDto,
     @User() user: AuthenticatedUser,
   ): Promise<DataModelExtensionResponseDto> {
+    const id = parseInt(idStr, 10);
+    if (isNaN(id)) {
+      return {
+        success: false,
+        message: 'Invalid extension ID',
+      };
+    }
     return this.dataModelExtensionService.updateExtension(
       id,
       dto,
@@ -171,22 +173,27 @@ export class DataModelController {
       user.userId,
     );
   }
-
   /**
    * Delete a data model extension
    */
   @Delete('extensions/:id')
   async deleteExtension(
-    @Param('id') id: string,
+    @Param('id') idStr: string,
     @User() user: AuthenticatedUser,
   ): Promise<DataModelExtensionResponseDto> {
+    const id = parseInt(idStr, 10);
+    if (isNaN(id)) {
+      return {
+        success: false,
+        message: 'Invalid extension ID',
+      };
+    }
     return this.dataModelExtensionService.deleteExtension(
       id,
       user.tenantId,
       user.userId,
     );
   }
-
   /**
    * Validate a destination path
    */
@@ -199,7 +206,6 @@ export class DataModelController {
       body.path,
       user.tenantId,
     );
-
     let fieldInfo: any = null;
     if (isValid) {
       const fieldType = this.tazamaDataModelService.getFieldType(body.path);
@@ -208,7 +214,6 @@ export class DataModelController {
       );
       const example = this.tazamaDataModelService.getFieldExample(body.path);
       const required = this.tazamaDataModelService.isFieldRequired(body.path);
-
       fieldInfo = {
         type: fieldType,
         description,
@@ -216,14 +221,12 @@ export class DataModelController {
         required,
       };
     }
-
     return {
       success: true,
       isValid,
       fieldInfo,
     };
   }
-
   /**
    * Get mapping suggestions for a destination field
    * Returns recommended transformation types based on field type
@@ -240,10 +243,8 @@ export class DataModelController {
       this.tazamaDataModelService.getFieldExample(destinationPath);
     const required =
       this.tazamaDataModelService.isFieldRequired(destinationPath);
-
     // Suggest transformation types based on field type
     const suggestions = this.getSuggestedTransformations(fieldType);
-
     return {
       success: true,
       destinationPath,
@@ -256,7 +257,6 @@ export class DataModelController {
       suggestedTransformations: suggestions,
     };
   }
-
   /**
    * Helper method to suggest transformations based on field type
    */
@@ -264,14 +264,12 @@ export class DataModelController {
     if (!fieldType) {
       return [];
     }
-
     const suggestions: Array<{
       transformation: string;
       description: string;
       sourceType: 'single' | 'multiple';
       example: string;
     }> = [];
-
     // NONE is always available
     suggestions.push({
       transformation: 'NONE',
@@ -279,7 +277,6 @@ export class DataModelController {
       sourceType: 'single',
       example: 'source: "transactionId" → destination value',
     });
-
     // STRING type suggestions
     if (fieldType === 'STRING') {
       suggestions.push({
@@ -295,7 +292,6 @@ export class DataModelController {
         example: 'source: "fullName" split by " " → ["John", "Doe"]',
       });
     }
-
     // NUMBER type suggestions
     if (fieldType === 'NUMBER') {
       suggestions.push({
@@ -305,10 +301,8 @@ export class DataModelController {
         example: 'sources: [100, 200, 50] → 350',
       });
     }
-
     return suggestions;
   }
-
   /**
    * Get destination fields grouped by collection with stats
    */
@@ -318,10 +312,8 @@ export class DataModelController {
     const extensions = await this.dataModelExtensionService.getAllExtensions(
       user.tenantId,
     );
-
     // Group by collection
     const grouped: Record<string, any[]> = {};
-
     // Add base fields
     for (const option of baseOptions) {
       if (!grouped[option.collection]) {
@@ -332,7 +324,6 @@ export class DataModelController {
         isExtension: false,
       });
     }
-
     // Add extension fields
     for (const ext of extensions) {
       if (!grouped[ext.collection]) {
@@ -349,7 +340,6 @@ export class DataModelController {
         isExtension: true,
       });
     }
-
     // Calculate stats
     const stats = {
       totalCollections: Object.keys(grouped).length,
@@ -363,7 +353,6 @@ export class DataModelController {
         .flat()
         .filter((f: any) => f.required).length,
     };
-
     return {
       success: true,
       grouped,

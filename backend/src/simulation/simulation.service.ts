@@ -254,14 +254,18 @@ export class SimulationService {
           applied++;
         }
       } catch (error: any) {
+        const sourcePath = mapping.source
+          ? Array.isArray(mapping.source)
+            ? mapping.source.join(', ')
+            : mapping.source
+          : 'constant';
+
         errors.push({
           field: Array.isArray(mapping.destination)
             ? mapping.destination.join(', ')
             : mapping.destination,
           message: `Mapping error: ${error.message}`,
-          path: Array.isArray(mapping.source)
-            ? mapping.source.join(', ')
-            : mapping.source,
+          path: sourcePath,
         });
       }
     }
@@ -282,6 +286,8 @@ export class SimulationService {
       destination,
       transformation = 'NONE',
       delimiter = ' ',
+      constantValue,
+      operator = 'ADD',
     } = mapping;
 
     const transformationType = transformation;
@@ -321,6 +327,22 @@ export class SimulationService {
           destination as string,
         );
 
+      case 'MATH':
+        return this.applyMathMapping(
+          sourcePayload,
+          result,
+          source as string[],
+          destination as string,
+          operator,
+        );
+
+      case 'CONSTANT':
+        return this.applyConstantMapping(
+          result,
+          destination as string,
+          constantValue,
+        );
+
       default:
         throw new Error(
           `Unknown transformation type: ${String(transformationType)}`,
@@ -328,9 +350,6 @@ export class SimulationService {
     }
   }
 
-  /**
-   * ONE-TO-ONE: Direct copy (NONE transformation)
-   */
   private applyNoneMapping(
     sourcePayload: any,
     result: any,
@@ -345,9 +364,6 @@ export class SimulationService {
     return false;
   }
 
-  /**
-   * MANY-TO-ONE: Combine multiple fields (CONCAT transformation)
-   */
   private applyConcatMapping(
     sourcePayload: any,
     result: any,
@@ -430,6 +446,88 @@ export class SimulationService {
 
     if (hasValues) {
       this.setNestedValue(result, destinationPath, sum);
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * MANY-TO-ONE: Mathematical operations on multiple numeric fields (MATH transformation)
+   */
+  private applyMathMapping(
+    sourcePayload: any,
+    result: any,
+    sourcePaths: string[],
+    destinationPath: string,
+    operator: 'ADD' | 'SUBTRACT' | 'MULTIPLY' | 'DIVIDE',
+  ): boolean {
+    const values: number[] = [];
+
+    // Collect all numeric values
+    for (const sourcePath of sourcePaths) {
+      const value = this.getNestedValue(sourcePayload, sourcePath);
+      if (value !== undefined && value !== null) {
+        const numValue = Number(value);
+        if (!isNaN(numValue)) {
+          values.push(numValue);
+        }
+      }
+    }
+
+    // Need at least 2 values for most operations, 1 for some
+    if (values.length === 0) {
+      return false;
+    }
+
+    let result_value: number;
+
+    switch (operator) {
+      case 'ADD':
+        result_value = values.reduce((acc, val) => acc + val, 0);
+        break;
+
+      case 'SUBTRACT':
+        if (values.length < 2) {
+          throw new Error('SUBTRACT operation requires at least 2 values');
+        }
+        result_value = values.reduce((acc, val, index) =>
+          index === 0 ? val : acc - val,
+        );
+        break;
+
+      case 'MULTIPLY':
+        result_value = values.reduce((acc, val) => acc * val, 1);
+        break;
+
+      case 'DIVIDE':
+        if (values.length < 2) {
+          throw new Error('DIVIDE operation requires at least 2 values');
+        }
+        result_value = values.reduce((acc, val, index) => {
+          if (index === 0) return val;
+          if (val === 0) {
+            throw new Error('Division by zero is not allowed');
+          }
+          return acc / val;
+        });
+        break;
+
+      default:
+        throw new Error(`Unknown operator: ${String(operator)}`);
+    }
+
+    this.setNestedValue(result, destinationPath, result_value);
+    return true;
+  }
+
+  private applyConstantMapping(
+    result: any,
+    destinationPath: string,
+    constantValue: any,
+  ): boolean {
+    if (constantValue !== undefined && constantValue !== null) {
+      this.setNestedValue(result, destinationPath, constantValue);
       return true;
     }
 

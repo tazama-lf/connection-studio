@@ -17,11 +17,12 @@ export interface UpdateConfigDto {
   mapping?: FieldMapping[];
 }
 export interface FieldMapping {
-  source: string | string[];
+  source?: string | string[]; // Optional when using constants
   destination: string | string[];
-  transformation?: 'NONE' | 'CONCAT' | 'SUM' | 'SPLIT';
+  transformation?: 'NONE' | 'CONCAT' | 'SUM' | 'SPLIT' | 'CONSTANT' | 'MATH';
   delimiter?: string; // Used for one-to-many mapping to split source value
-  constants?: any;
+  constantValue?: any; // Fixed value to map to destination (replaces constants)
+  operator?: 'ADD' | 'SUBTRACT' | 'MULTIPLY' | 'DIVIDE'; // Mathematical operators for MATH transformation
 }
 import { JSONSchema } from './json-schema.interfaces';
 
