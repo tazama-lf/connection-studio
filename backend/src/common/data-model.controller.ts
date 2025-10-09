@@ -243,7 +243,6 @@ export class DataModelController {
       this.tazamaDataModelService.getFieldExample(destinationPath);
     const required =
       this.tazamaDataModelService.isFieldRequired(destinationPath);
-    // Suggest transformation types based on field type
     const suggestions = this.getSuggestedTransformations(fieldType);
     return {
       success: true,
@@ -270,14 +269,12 @@ export class DataModelController {
       sourceType: 'single' | 'multiple';
       example: string;
     }> = [];
-    // NONE is always available
     suggestions.push({
       transformation: 'NONE',
       description: 'Direct 1-to-1 mapping (copy value as-is)',
       sourceType: 'single',
       example: 'source: "transactionId" → destination value',
     });
-    // STRING type suggestions
     if (fieldType === 'STRING') {
       suggestions.push({
         transformation: 'CONCAT',
@@ -292,7 +289,6 @@ export class DataModelController {
         example: 'source: "fullName" split by " " → ["John", "Doe"]',
       });
     }
-    // NUMBER type suggestions
     if (fieldType === 'NUMBER') {
       suggestions.push({
         transformation: 'SUM',
@@ -312,9 +308,7 @@ export class DataModelController {
     const extensions = await this.dataModelExtensionService.getAllExtensions(
       user.tenantId,
     );
-    // Group by collection
     const grouped: Record<string, any[]> = {};
-    // Add base fields
     for (const option of baseOptions) {
       if (!grouped[option.collection]) {
         grouped[option.collection] = [];
@@ -324,7 +318,6 @@ export class DataModelController {
         isExtension: false,
       });
     }
-    // Add extension fields
     for (const ext of extensions) {
       if (!grouped[ext.collection]) {
         grouped[ext.collection] = [];
@@ -340,7 +333,6 @@ export class DataModelController {
         isExtension: true,
       });
     }
-    // Calculate stats
     const stats = {
       totalCollections: Object.keys(grouped).length,
       totalFields: Object.values(grouped).reduce(

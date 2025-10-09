@@ -28,7 +28,6 @@ export class DataModelExtensionService {
       `Creating data model extension: ${dto.collection}.${dto.fieldName} for tenant ${tenantId}`,
     );
     try {
-      // Validate collection exists
       const collectionSchema = this.tazamaDataModelService.getCollectionSchema(
         dto.collection,
       );
@@ -38,7 +37,6 @@ export class DataModelExtensionService {
           message: `Invalid collection: ${dto.collection}`,
         };
       }
-      // Check if field already exists in base schema
       const existingField = collectionSchema.fields.find(
         (f) => f.name === dto.fieldName,
       );
@@ -48,7 +46,6 @@ export class DataModelExtensionService {
           message: `Field '${dto.fieldName}' already exists in the base schema for collection '${dto.collection}'`,
         };
       }
-      // Check if extension already exists for this tenant
       const existingExtension =
         await this.extensionRepository.findByCollectionAndField(
           dto.collection,
@@ -61,7 +58,6 @@ export class DataModelExtensionService {
           message: `Extension for field '${dto.fieldName}' in collection '${dto.collection}' already exists`,
         };
       }
-      // Validate field name (no special characters except underscore)
       if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(dto.fieldName)) {
         return {
           success: false,
@@ -83,6 +79,7 @@ export class DataModelExtensionService {
         };
       const extensionId = await this.extensionRepository.create(extensionData);
       await this.auditService.logAction({
+        entityType: 'DATA_MODEL_EXTENSION',
         action: 'CREATE_DATA_MODEL_EXTENSION',
         actor: userId,
         tenantId,
@@ -142,6 +139,7 @@ export class DataModelExtensionService {
     }
     await this.extensionRepository.update(id, tenantId, dto);
     await this.auditService.logAction({
+      entityType: 'DATA_MODEL_EXTENSION',
       action: 'UPDATE_DATA_MODEL_EXTENSION',
       actor: userId,
       tenantId,
@@ -170,6 +168,7 @@ export class DataModelExtensionService {
     }
     await this.extensionRepository.delete(id, tenantId);
     await this.auditService.logAction({
+      entityType: 'DATA_MODEL_EXTENSION',
       action: 'DELETE_DATA_MODEL_EXTENSION',
       actor: userId,
       tenantId,
@@ -200,11 +199,9 @@ export class DataModelExtensionService {
     path: string,
     tenantId: string,
   ): Promise<boolean> {
-    // Check base schema first
     if (this.tazamaDataModelService.isValidDestinationPath(path)) {
       return true;
     }
-    // Check extensions
     const [collection, fieldName] = path.split('.');
     if (!collection || !fieldName) {
       return false;

@@ -1,10 +1,8 @@
 import { JSONSchema } from './json-schema.interfaces';
-
 export enum TransactionType {
   TRANSFERS = 'Transfers',
   PAYMENTS = 'Payments',
 }
-
 export enum HttpMethod {
   GET = 'GET',
   POST = 'POST',
@@ -12,12 +10,10 @@ export enum HttpMethod {
   DELETE = 'DELETE',
   PATCH = 'PATCH',
 }
-
 export enum ContentType {
   JSON = 'application/json',
   XML = 'application/xml',
 }
-
 export enum FieldType {
   STRING = 'STRING',
   NUMBER = 'NUMBER',
@@ -26,7 +22,6 @@ export enum FieldType {
   ARRAY = 'ARRAY',
   DATE = 'DATE',
 }
-
 export enum EndpointStatus {
   IN_PROGRESS = 'IN_PROGRESS',
   PENDING_APPROVAL = 'PENDING_APPROVAL',
@@ -37,7 +32,6 @@ export enum EndpointStatus {
   PUBLISHED = 'PUBLISHED',
   DEPRECATED = 'DEPRECATED',
 }
-
 export interface SchemaField {
   name: string;
   path: string;
@@ -46,20 +40,17 @@ export interface SchemaField {
   children?: SchemaField[];
   arrayElementType?: FieldType;
 }
-
 export interface FieldMapping {
   source: string | string[];
   destination: string | string[];
   transformation?: 'NONE' | 'CONCAT' | 'SUM' | 'SPLIT';
-  delimiter?: string; // Used for one-to-many mapping to split source value
+  delimiter?: string;
   constants?: any;
 }
-
 export type TransformationType = 'NONE' | 'CONCAT' | 'SUM' | 'SPLIT';
 export type MappingStatus = 'ACTIVE' | 'INACTIVE' | 'DEPRECATED';
 export type ExtensionFieldStatus = 'DRAFT' | 'ACTIVE' | 'DEPRECATED';
 export type ExtensionFieldCategory = 'CUSTOM' | 'REGULATORY' | 'BUSINESS';
-
 export interface FieldMappingEntity {
   id?: number;
   endpointId: number;
@@ -80,7 +71,6 @@ export interface FieldMappingEntity {
   createdAt?: Date;
   updatedAt?: Date;
 }
-
 export interface DestinationFieldExtension {
   id?: number;
   name: string;
@@ -101,7 +91,6 @@ export interface DestinationFieldExtension {
   updatedAt?: Date;
   children?: DestinationFieldExtension[];
 }
-
 export interface SourceSchema {
   schema: JSONSchema;
   version: string;
@@ -113,7 +102,6 @@ export interface SourceSchema {
     fieldCount?: number;
   };
 }
-
 export interface UnifiedSchema {
   sourceFields: SchemaField[];
   destinationFields: SchemaField[];
@@ -123,7 +111,6 @@ export interface UnifiedSchema {
   lastUpdated: Date;
   createdBy: string;
 }
-
 export interface Endpoint {
   id: number;
   path: string;

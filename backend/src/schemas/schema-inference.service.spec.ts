@@ -1,13 +1,10 @@
 import { SchemaInferenceService } from './schema-inference.service';
 import { FieldType, SchemaField, ContentType } from '../common/interfaces';
-
 describe('SchemaInferenceService', () => {
   let service: SchemaInferenceService;
-
   beforeEach(() => {
     service = new SchemaInferenceService();
   });
-
   it('should infer schema from simple JSON', () => {
     const payload = JSON.stringify({ name: 'John', age: 30, active: true });
     const schema = service['inferFromJson'](payload);
@@ -22,7 +19,6 @@ describe('SchemaInferenceService', () => {
       },
     ]);
   });
-
   it('should infer schema from nested JSON', () => {
     const payload = JSON.stringify({
       user: { id: 1, info: { email: 'a@b.com' } },
@@ -31,7 +27,6 @@ describe('SchemaInferenceService', () => {
     expect(schema[0].children).toBeDefined();
     expect(schema[0].children![1].children).toBeDefined();
   });
-
   it('should infer schema from array JSON', () => {
     const payload = JSON.stringify({ items: [{ id: 1, value: 'A' }] });
     const schema = service['inferFromJson'](payload);
@@ -39,13 +34,11 @@ describe('SchemaInferenceService', () => {
     expect(schema[0].arrayElementType).toBe(FieldType.OBJECT);
     expect(schema[0].children).toBeDefined();
   });
-
   it('should throw error for invalid JSON', () => {
     expect(() => service['inferFromJson']('not-json')).toThrow(
       /Invalid JSON payload/,
     );
   });
-
   it('should infer schema from simple XML', async () => {
     const xml =
       '<user><name>John</name><age>30</age><active>true</active></user>';
@@ -56,25 +49,21 @@ describe('SchemaInferenceService', () => {
       FieldType.BOOLEAN,
     ); // now infers boolean
   });
-
   it('should infer schema from nested XML', async () => {
     const xml = '<user><info><email>a@b.com</email></info></user>';
     const schema = await service['inferFromXml'](xml);
     expect(schema.find((f) => f.name === 'info')?.children).toBeDefined();
   });
-
   it('should infer schema from array XML', async () => {
     const xml = '<root><item><id>1</id></item><item><id>2</id></item></root>';
     const schema = await service['inferFromXml'](xml);
     expect(schema.find((f) => f.name === 'item')?.type).toBe(FieldType.ARRAY);
   });
-
   it('should throw error for invalid XML', async () => {
     await expect(service['inferFromXml']('<not-xml')).rejects.toThrow(
       /Invalid XML payload/,
     );
   });
-
   it('should validate a correct schema', () => {
     const fields: SchemaField[] = [
       { name: 'name', path: 'name', type: FieldType.STRING, isRequired: true },
@@ -84,7 +73,6 @@ describe('SchemaInferenceService', () => {
     expect(result.isValid).toBe(true);
     expect(result.errors.length).toBe(0);
   });
-
   it('should catch empty name and invalid type in validation', () => {
     const fields: SchemaField[] = [
       { name: '', path: 'name', type: FieldType.STRING, isRequired: true },
@@ -100,7 +88,6 @@ describe('SchemaInferenceService', () => {
     expect(result.errors.some((e) => e.includes('empty name'))).toBe(true);
     expect(result.errors.some((e) => e.includes('invalid type'))).toBe(true);
   });
-
   it('should detect duplicate field paths', () => {
     const fields: SchemaField[] = [
       {
@@ -122,7 +109,6 @@ describe('SchemaInferenceService', () => {
       true,
     );
   });
-
   it('should detect conflicting field paths - parent/child conflict', () => {
     const fields: SchemaField[] = [
       { name: 'user', path: 'user', type: FieldType.STRING, isRequired: true },
@@ -137,7 +123,6 @@ describe('SchemaInferenceService', () => {
     expect(result.isValid).toBe(false);
     expect(result.errors.some((e) => e.includes('Path conflict'))).toBe(true);
   });
-
   it('should detect array index conflicts', () => {
     const fields: SchemaField[] = [
       { name: 'items', path: 'items', type: FieldType.ARRAY, isRequired: true },
@@ -154,7 +139,6 @@ describe('SchemaInferenceService', () => {
       true,
     );
   });
-
   it('should allow valid nested object structures', () => {
     const fields: SchemaField[] = [
       {
@@ -182,7 +166,6 @@ describe('SchemaInferenceService', () => {
     expect(result.isValid).toBe(true);
     expect(result.errors.length).toBe(0);
   });
-
   it('should allow valid array structures', () => {
     const fields: SchemaField[] = [
       {
@@ -211,7 +194,6 @@ describe('SchemaInferenceService', () => {
     expect(result.isValid).toBe(true);
     expect(result.errors.length).toBe(0);
   });
-
   it('should validate invalid array element types', () => {
     const fields: SchemaField[] = [
       {
@@ -228,7 +210,6 @@ describe('SchemaInferenceService', () => {
       result.errors.some((e) => e.includes('invalid array element type')),
     ).toBe(true);
   });
-
   it('should handle complex nested structures with validation', () => {
     const fields: SchemaField[] = [
       {
@@ -271,7 +252,6 @@ describe('SchemaInferenceService', () => {
     expect(result.isValid).toBe(true);
     expect(result.errors.length).toBe(0);
   });
-
   it('should detect multiple validation errors', () => {
     const fields: SchemaField[] = [
       { name: '', path: '', type: FieldType.STRING, isRequired: true }, // empty name and path
@@ -299,7 +279,6 @@ describe('SchemaInferenceService', () => {
     expect(result.isValid).toBe(false);
     expect(result.errors.length).toBeGreaterThanOrEqual(3);
   });
-
   it('should handle edge case with undefined paths', () => {
     const fields: SchemaField[] = [
       {
@@ -313,7 +292,6 @@ describe('SchemaInferenceService', () => {
     expect(result.isValid).toBe(false);
     expect(result.errors.some((e) => e.includes('empty name'))).toBe(true);
   });
-
   it('should infer schema from complex nested JSON with arrays', () => {
     const payload = JSON.stringify({
       transaction: {
@@ -330,18 +308,15 @@ describe('SchemaInferenceService', () => {
       },
     });
     const schema = service['inferFromJson'](payload);
-
     expect(schema).toBeDefined();
     expect(schema.length).toBe(1);
     expect(schema[0].name).toBe('transaction');
     expect(schema[0].type).toBe(FieldType.OBJECT);
     expect(schema[0].children).toBeDefined();
     expect(schema[0].children!.length).toBe(4);
-
     const result = service.validateSchema(schema);
     expect(result.isValid).toBe(true);
   });
-
   it('should infer schema from complex XML with multiple levels', async () => {
     const xml = `
       <transaction>
@@ -364,31 +339,25 @@ describe('SchemaInferenceService', () => {
       </transaction>
     `;
     const schema = await service['inferFromXml'](xml);
-
     expect(schema).toBeDefined();
     expect(schema.length).toBeGreaterThan(0);
-
     const result = service.validateSchema(schema);
     expect(result.isValid).toBe(true);
   });
-
   it('should handle malformed JSON gracefully', () => {
     expect(() => service['inferFromJson']('{"invalid": json}')).toThrow(
       /Invalid JSON payload/,
     );
   });
-
   it('should handle malformed XML gracefully', async () => {
     await expect(
       service['inferFromXml']('<invalid><xml></invalid>'),
     ).rejects.toThrow(/Invalid XML payload/);
   });
-
   it('should infer correct types from XML string values', async () => {
     const xml =
       '<data><count>42</count><price>19.99</price><active>true</active><name>test</name></data>';
     const schema = await service['inferFromXml'](xml);
-
     const dataField = schema.find(
       (f) =>
         f.name === 'count' ||
@@ -414,24 +383,19 @@ describe('SchemaInferenceService', () => {
       expect(schema.length).toBeGreaterThan(0);
     }
   });
-
   it('should handle empty arrays in JSON', () => {
     const payload = JSON.stringify({ items: [] });
     const schema = service['inferFromJson'](payload);
-
     expect(schema[0].type).toBe(FieldType.ARRAY);
     expect(schema[0].arrayElementType).toBeDefined();
   });
-
   it('should handle null values in JSON', () => {
     const payload = JSON.stringify({ nullable: null, data: { inner: null } });
     const schema = service['inferFromJson'](payload);
-
     expect(schema.find((f) => f.name === 'nullable')?.type).toBe(
       FieldType.STRING,
     );
   });
-
   it('should support public inferSchemaFromPayload method', async () => {
     const jsonPayload = '{"name": "test", "count": 5}';
     const jsonSchema = await service.inferSchemaFromPayload(
@@ -439,7 +403,6 @@ describe('SchemaInferenceService', () => {
       ContentType.JSON,
     );
     expect(jsonSchema.length).toBe(2);
-
     const xmlPayload = '<root><name>test</name><count>5</count></root>';
     const xmlSchema = await service.inferSchemaFromPayload(
       xmlPayload,
@@ -447,7 +410,6 @@ describe('SchemaInferenceService', () => {
     );
     expect(xmlSchema.length).toBeGreaterThan(0);
   });
-
   it('should throw error for unsupported content type', async () => {
     await expect(
       service.inferSchemaFromPayload('data', 'unsupported' as ContentType),

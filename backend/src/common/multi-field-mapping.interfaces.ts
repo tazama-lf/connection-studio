@@ -1,37 +1,29 @@
 import { FieldType } from './interfaces';
-
 export interface SourceField {
   path: string;
   type: FieldType;
   isRequired: boolean;
 }
-
 export interface DestinationField {
   path: string;
   type: FieldType;
   isRequired: boolean;
   isExtension: boolean; // Flag for data model extensions
 }
-
 export interface TransformationConfig {
   separator?: string;
   concatFields?: string[]; // Source field paths to concatenate
-
   operation?: 'SUM' | 'AVERAGE' | 'COUNT';
   sumFields?: string[]; // Source field paths to sum
-
   delimiter?: string;
   targetFields?: string[]; // Destination field paths for split results
-
   customLogic?: string;
 }
-
 export interface ConstantValue {
   path: string; // Destination field path
   value: any; // Constant value to inject
   type: FieldType;
 }
-
 export type TransformationType = 'NONE' | 'CONCAT' | 'SUM' | 'SPLIT';
 export type MultiFieldMappingStatus = 'ACTIVE' | 'INACTIVE' | 'DRAFT';
 export type MappingAction =
@@ -40,7 +32,6 @@ export type MappingAction =
   | 'DELETE'
   | 'ACTIVATE'
   | 'DEACTIVATE';
-
 export interface MultiFieldMappingEntity {
   id?: number;
   endpointId: number;
@@ -60,7 +51,6 @@ export interface MultiFieldMappingEntity {
   createdAt?: Date;
   updatedAt?: Date;
 }
-
 export interface MultiFieldMappingHistoryEntity {
   id?: number;
   mappingId: number;
@@ -71,25 +61,21 @@ export interface MultiFieldMappingHistoryEntity {
   changeReason?: string;
   changedAt?: Date;
 }
-
 export interface ValidationError {
   field: string;
   message: string;
   code: string;
 }
-
 export interface ValidationResult {
   isValid: boolean;
   errors: ValidationError[];
   warnings?: ValidationError[];
 }
-
 export interface SimulationInput {
   mappingId: number;
   testPayload: Record<string, any>;
   tenantId: string;
 }
-
 export interface SimulationResult {
   success: boolean;
   transformedOutput: Record<string, any>;
@@ -98,7 +84,6 @@ export interface SimulationResult {
   appliedConstants: string[];
   processingTime: number;
 }
-
 export interface MappingTreeNode {
   id: string;
   name: string;
@@ -111,7 +96,6 @@ export interface MappingTreeNode {
   children?: MappingTreeNode[];
   parentId?: string;
 }
-
 export interface MappingTreeView {
   mappingId: number;
   mappingName: string;

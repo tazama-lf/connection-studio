@@ -1,14 +1,12 @@
 /**
  * Tazama Internal Data Model Interfaces
  */
-
 export type TazamaCollectionName =
   | 'entities'
   | 'accounts'
   | 'account_holder'
   | 'transactionRelationship'
   | 'transactionHistory';
-
 export type TazamaFieldType =
   | 'STRING'
   | 'NUMBER'
@@ -16,9 +14,7 @@ export type TazamaFieldType =
   | 'DATE'
   | 'OBJECT'
   | 'ARRAY';
-
 export type TazamaDestinationPath = string;
-
 export interface TazamaField {
   name: string;
   type: 'string' | 'number' | 'boolean' | 'date' | 'object';
@@ -26,14 +22,12 @@ export interface TazamaField {
   description?: string;
   example?: any;
 }
-
 export interface TazamaCollectionSchema {
   name: TazamaCollectionName;
   type: 'node' | 'edge';
   description: string;
   fields: TazamaField[];
 }
-
 export interface TazamaDataModelExtension {
   id: number;
   collection: TazamaCollectionName;
@@ -53,7 +47,6 @@ export interface TazamaDataModelExtension {
   createdAt: Date | string;
   version: number;
 }
-
 export const TAZAMA_DATA_MODEL_SCHEMAS: TazamaCollectionSchema[] = [
   {
     name: 'entities',

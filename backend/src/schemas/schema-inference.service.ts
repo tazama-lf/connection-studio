@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { SchemaField, ContentType, FieldType } from '../common/interfaces';
 import { parseStringPromise } from 'xml2js';
-
 @Injectable()
 export class SchemaInferenceService {
   async inferSchemaFromPayload(
@@ -11,14 +10,11 @@ export class SchemaInferenceService {
     if (contentType === ContentType.JSON) {
       return this.inferFromJson(payload);
     }
-
     if (contentType === ContentType.XML) {
       return await this.inferFromXml(payload);
     }
-
     throw new Error(`Unsupported content type: ${String(contentType)}`);
   }
-
   private inferFromJson(jsonString: string): SchemaField[] {
     try {
       const parsed = JSON.parse(jsonString);
@@ -27,7 +23,6 @@ export class SchemaInferenceService {
       throw new Error(`Invalid JSON payload: ${error.message}`);
     }
   }
-
   private async inferFromXml(xmlString: string): Promise<SchemaField[]> {
     try {
       const parsed = await parseStringPromise(xmlString, {
@@ -42,7 +37,6 @@ export class SchemaInferenceService {
       throw new Error(`Invalid XML payload: ${error.message}`);
     }
   }
-
   private analyzeXmlObject(
     obj: any,
     name: string,
@@ -100,7 +94,6 @@ export class SchemaInferenceService {
     }
     return fields;
   }
-
   private inferXmlType(value: any): FieldType {
     if (Array.isArray(value)) {
       return FieldType.ARRAY;
@@ -125,7 +118,6 @@ export class SchemaInferenceService {
     }
     return FieldType.STRING;
   }
-
   private analyzeObject(obj: any, parentPath: string): SchemaField[] {
     const fields: SchemaField[] = [];
     for (const [key, value] of Object.entries(obj)) {
@@ -135,7 +127,6 @@ export class SchemaInferenceService {
     }
     return fields;
   }
-
   private createSchemaField(
     name: string,
     path: string,
@@ -165,7 +156,6 @@ export class SchemaInferenceService {
     }
     return field;
   }
-
   private inferType(value: any): FieldType {
     if (Array.isArray(value)) {
       return FieldType.ARRAY;
@@ -181,23 +171,19 @@ export class SchemaInferenceService {
     }
     return FieldType.STRING;
   }
-
   validateSchema(fields: SchemaField[]): {
     isValid: boolean;
     errors: string[];
   } {
     const errors: string[] = [];
     const paths = new Set<string>();
-
     this.collectAllPaths(fields, paths);
     this.validateFields(fields, paths, errors);
-
     return {
       isValid: errors.length === 0,
       errors,
     };
   }
-
   private collectAllPaths(fields: SchemaField[], paths: Set<string>) {
     for (const field of fields) {
       if (field.path) {
@@ -208,7 +194,6 @@ export class SchemaInferenceService {
       }
     }
   }
-
   private validateFields(
     fields: SchemaField[],
     allPaths: Set<string>,
@@ -216,20 +201,17 @@ export class SchemaInferenceService {
     _parentPath = '',
   ) {
     const seenPaths = new Set<string>();
-
     for (const field of fields) {
       if (!field.name || field.name.trim() === '') {
         errors.push(
           `Validation error: Field at path '${field.path ?? ''}' has empty name.`,
         );
       }
-
       if (!field.type || !Object.values(FieldType).includes(field.type)) {
         errors.push(
           `Validation error: Field '${field.path ?? ''}' has invalid type '${field.type ?? ''}'.`,
         );
       }
-
       if (field.path) {
         if (seenPaths.has(field.path)) {
           errors.push(
@@ -238,10 +220,8 @@ export class SchemaInferenceService {
         } else {
           seenPaths.add(field.path);
         }
-
         this.validatePathConflicts(field.path, field.type, allPaths, errors);
       }
-
       if (field.type === FieldType.ARRAY && field.arrayElementType) {
         if (!Object.values(FieldType).includes(field.arrayElementType)) {
           errors.push(
@@ -249,13 +229,11 @@ export class SchemaInferenceService {
           );
         }
       }
-
       if (field.type === FieldType.OBJECT && field.children) {
         this.validateFields(field.children, allPaths, errors, field.path);
       }
     }
   }
-
   private validatePathConflicts(
     currentPath: string,
     currentType: FieldType,
@@ -286,7 +264,6 @@ export class SchemaInferenceService {
       }
     }
   }
-
   private hasArrayIndexConflict(path1: string, path2: string): boolean {
     const arrayIndexRegex = /\[\d+\]/g;
     const path1WithoutIndex = path1.replace(arrayIndexRegex, '');

@@ -7,11 +7,10 @@ import {
 } from '../common/schema-workflow.dto';
 import { JSONSchemaConverterService } from '../schemas/json-schema-converter.service';
 import * as xml2js from 'xml2js';
-
 export interface PayloadParsingResult {
   success: boolean;
-  jsonSchema: JSONSchema; // NEW: JSON Schema format
-  sourceFields: SchemaField[]; // Keep temporarily for migration
+  jsonSchema: JSONSchema;
+  sourceFields: SchemaField[];
   metadata: {
     totalFields: number;
     requiredFields: number;
@@ -22,27 +21,22 @@ export interface PayloadParsingResult {
   };
   validation: SchemaValidationResultDto;
 }
-
 @Injectable()
 export class PayloadParsingService {
   private readonly logger = new Logger(PayloadParsingService.name);
-
   constructor(
     private readonly jsonSchemaConverter: JSONSchemaConverterService,
   ) {}
-
   async parsePayloadToSchema(
     payload: string,
     contentType: ContentType,
     _filename?: string,
   ): Promise<PayloadParsingResult> {
     const startTime = Date.now();
-
     try {
       this.logger.log(
         `Parsing ${contentType} payload for User Story #300 schema generation`,
       );
-
       const structureValidation = await this.validatePayloadStructure(
         payload,
         contentType,
@@ -56,28 +50,21 @@ export class PayloadParsingService {
           validation: structureValidation,
         };
       }
-
       const parsedData = await this.parsePayloadToObject(payload, contentType);
-
       const sourceFields = this.generateHierarchicalSchema(parsedData, '');
-
       const validation = this.validateGeneratedSchema(sourceFields);
-
       const metadata = this.calculateSchemaMetadata(
         sourceFields,
         payload,
         Date.now() - startTime,
       );
-
       const jsonSchema = this.jsonSchemaConverter.convertToJSONSchema(
         sourceFields,
         'Generated Schema',
       );
-
       this.logger.log(
         `Successfully generated schema with ${sourceFields.length} root fields`,
       );
-
       return {
         success: true,
         jsonSchema,
@@ -103,7 +90,6 @@ export class PayloadParsingService {
       };
     }
   }
-
   applyFieldAdjustments(
     sourceFields: SchemaField[],
     adjustments: AdjustFieldDto[],
@@ -111,26 +97,21 @@ export class PayloadParsingService {
     if (!adjustments || adjustments.length === 0) {
       return sourceFields;
     }
-
     const adjustmentMap = new Map(adjustments.map((adj) => [adj.path, adj]));
-
     return this.applyAdjustmentsRecursively(sourceFields, adjustmentMap);
   }
-
   private async validatePayloadStructure(
     payload: string,
     contentType: ContentType,
   ): Promise<SchemaValidationResultDto> {
     const errors: string[] = [];
     const warnings: string[] = [];
-
     if (!payload || payload.trim().length === 0) {
       errors.push(
         'Payload is empty. Please provide a valid JSON or XML payload.',
       );
       return { success: false, errors, warnings };
     }
-
     const sizeInMB = payload.length / (1024 * 1024);
     if (sizeInMB > 10) {
       warnings.push(
@@ -141,7 +122,6 @@ export class PayloadParsingService {
         `Payload size is ${sizeInMB.toFixed(1)}MB. Consider optimizing for better performance.`,
       );
     }
-
     try {
       if (contentType === ContentType.JSON) {
         const parsed = JSON.parse(payload);
@@ -157,21 +137,18 @@ export class PayloadParsingService {
     } catch (error) {
       this.addStructureError(error, contentType, errors);
     }
-
     return {
       success: errors.length === 0,
       errors,
       warnings,
     };
   }
-
   private addStructureError(
     error: any,
     contentType: ContentType,
     errors: string[],
   ): void {
     const errorMessage = error.message || 'Unknown parsing error';
-
     if (contentType === ContentType.JSON) {
       if (errorMessage.includes('Unexpected token')) {
         const match = errorMessage.match(
@@ -212,7 +189,6 @@ export class PayloadParsingService {
       }
     }
   }
-
   private validateJsonStructure(
     parsed: any,
     errors: string[],
@@ -224,7 +200,6 @@ export class PayloadParsingService {
       );
       return;
     }
-
     if (
       typeof parsed === 'string' ||
       typeof parsed === 'number' ||
@@ -234,19 +209,16 @@ export class PayloadParsingService {
         'JSON payload is a primitive value. Consider wrapping in an object for better schema generation.',
       );
     }
-
     if (Array.isArray(parsed) && parsed.length === 0) {
       warnings.push(
         'JSON array is empty. Schema generation will be limited without sample data.',
       );
     }
-
     if (typeof parsed === 'object' && Object.keys(parsed).length === 0) {
       warnings.push(
         'JSON object is empty. Schema generation will be limited without properties.',
       );
     }
-
     const maxDepth = this.calculateObjectDepth(parsed);
     if (maxDepth > 10) {
       warnings.push(
@@ -254,7 +226,6 @@ export class PayloadParsingService {
       );
     }
   }
-
   private validateXmlStructure(
     xmlString: string,
     errors: string[],
@@ -265,13 +236,11 @@ export class PayloadParsingService {
         'XML contains DOCTYPE declaration. DTD validation is not performed.',
       );
     }
-
     if (xmlString.includes('xmlns:')) {
       warnings.push(
         'XML contains namespaces. Namespace prefixes will be included in field names.',
       );
     }
-
     const elementCount = (xmlString.match(/<\w+/g) || []).length;
     if (elementCount > 1000) {
       warnings.push(
@@ -279,12 +248,10 @@ export class PayloadParsingService {
       );
     }
   }
-
   private calculateObjectDepth(obj: any, currentDepth = 0): number {
     if (typeof obj !== 'object' || obj === null) {
       return currentDepth;
     }
-
     if (Array.isArray(obj)) {
       return obj.reduce(
         (maxDepth: number, item: any) =>
@@ -292,7 +259,6 @@ export class PayloadParsingService {
         currentDepth,
       );
     }
-
     let maxChildDepth = currentDepth;
     for (const value of Object.values(obj)) {
       const childDepth = this.calculateObjectDepth(value, currentDepth + 1);
@@ -300,7 +266,6 @@ export class PayloadParsingService {
     }
     return maxChildDepth;
   }
-
   private async parsePayloadToObject(
     payload: string,
     contentType: ContentType,
@@ -318,18 +283,15 @@ export class PayloadParsingService {
       throw new Error(`Unsupported content type: ${String(contentType)}`);
     }
   }
-
   private generateHierarchicalSchema(
     obj: any,
     parentPath: string,
     level: number = 0,
   ): SchemaField[] {
     const fields: SchemaField[] = [];
-
     if (obj === null || obj === undefined) {
       return fields;
     }
-
     if (Array.isArray(obj)) {
       if (obj.length > 0) {
         const elementSchema = this.generateHierarchicalSchema(
@@ -341,21 +303,17 @@ export class PayloadParsingService {
       }
       return fields;
     }
-
     if (typeof obj === 'object') {
       for (const [key, value] of Object.entries(obj)) {
         const fieldPath = parentPath ? `${parentPath}.${key}` : key;
         const field = this.createSchemaField(key, fieldPath, value, level);
-
         if (field) {
           fields.push(field);
         }
       }
     }
-
     return fields;
   }
-
   private createSchemaField(
     name: string,
     path: string,
@@ -367,45 +325,40 @@ export class PayloadParsingService {
         name,
         path,
         type: FieldType.STRING,
-        isRequired: false, // Null values suggest optional
+        isRequired: false,
       };
     }
-
     if (Array.isArray(value)) {
       const children =
         value.length > 0
           ? this.generateHierarchicalSchema(value[0], path, level + 1)
           : [];
-
       return {
         name,
         path,
         type: FieldType.ARRAY,
-        isRequired: true, // Default to required, can be adjusted
+        isRequired: true,
         children: children.length > 0 ? children : undefined,
         arrayElementType: this.inferArrayElementType(value),
       };
     }
-
     if (typeof value === 'object') {
       const children = this.generateHierarchicalSchema(value, path, level + 1);
       return {
         name,
         path,
         type: FieldType.OBJECT,
-        isRequired: true, // Default to required, can be adjusted
+        isRequired: true,
         children: children.length > 0 ? children : undefined,
       };
     }
-
     return {
       name,
       path,
       type: this.inferPrimitiveType(value),
-      isRequired: true, // Default to required, can be adjusted
+      isRequired: true,
     };
   }
-
   private inferPrimitiveType(value: any): FieldType {
     if (typeof value === 'string') {
       return FieldType.STRING;
@@ -414,19 +367,16 @@ export class PayloadParsingService {
     } else if (typeof value === 'boolean') {
       return FieldType.BOOLEAN;
     } else {
-      return FieldType.STRING; // Default fallback
+      return FieldType.STRING;
     }
   }
-
   private inferArrayElementType(array: any[]): FieldType {
     if (array.length === 0) return FieldType.STRING;
-
     const firstElement = array[0];
     if (Array.isArray(firstElement)) return FieldType.ARRAY;
     if (typeof firstElement === 'object') return FieldType.OBJECT;
     return this.inferPrimitiveType(firstElement);
   }
-
   private validateGeneratedSchema(
     fields: SchemaField[],
   ): SchemaValidationResultDto {
@@ -435,21 +385,17 @@ export class PayloadParsingService {
     const duplicateFields: string[] = [];
     const invalidTypes: string[] = [];
     const conflictingPaths: string[] = [];
-
     const allPaths = this.collectAllPaths(fields);
     const pathCounts = new Map<string, number>();
-
     allPaths.forEach((path) => {
       pathCounts.set(path, (pathCounts.get(path) || 0) + 1);
     });
-
     pathCounts.forEach((count, path) => {
       if (count > 1) {
         duplicateFields.push(path);
         errors.push(`Duplicate field path: ${path}`);
       }
     });
-
     this.validateFieldsRecursively(
       fields,
       errors,
@@ -457,7 +403,6 @@ export class PayloadParsingService {
       invalidTypes,
       conflictingPaths,
     );
-
     return {
       success: errors.length === 0,
       errors,
@@ -468,7 +413,6 @@ export class PayloadParsingService {
         conflictingPaths.length > 0 ? conflictingPaths : undefined,
     };
   }
-
   private validateFieldsRecursively(
     fields: SchemaField[],
     errors: string[],
@@ -481,7 +425,6 @@ export class PayloadParsingService {
         invalidTypes.push(field.path);
         errors.push(`Invalid field type for ${field.path}: ${field.type}`);
       }
-
       if (
         field.type === FieldType.ARRAY &&
         field.arrayElementType === FieldType.STRING
@@ -490,7 +433,6 @@ export class PayloadParsingService {
           `Array field ${field.path} with string elements may need special handling`,
         );
       }
-
       if (field.children) {
         this.validateFieldsRecursively(
           field.children,
@@ -502,20 +444,16 @@ export class PayloadParsingService {
       }
     }
   }
-
   private collectAllPaths(fields: SchemaField[]): string[] {
     const paths: string[] = [];
-
     for (const field of fields) {
       paths.push(field.path);
       if (field.children) {
         paths.push(...this.collectAllPaths(field.children));
       }
     }
-
     return paths;
   }
-
   private applyAdjustmentsRecursively(
     fields: SchemaField[],
     adjustmentMap: Map<string, AdjustFieldDto>,
@@ -523,7 +461,6 @@ export class PayloadParsingService {
     return fields.map((field) => {
       const adjustment = adjustmentMap.get(field.path);
       const adjustedField = { ...field };
-
       if (adjustment) {
         adjustedField.type = adjustment.type;
         adjustedField.isRequired = adjustment.isRequired;
@@ -531,18 +468,15 @@ export class PayloadParsingService {
           `Applied adjustment to field ${field.path}: type=${adjustment.type}, required=${adjustment.isRequired}`,
         );
       }
-
       if (field.children) {
         adjustedField.children = this.applyAdjustmentsRecursively(
           field.children,
           adjustmentMap,
         );
       }
-
       return adjustedField;
     });
   }
-
   private calculateSchemaMetadata(
     fields: SchemaField[],
     originalPayload: string,
@@ -551,7 +485,6 @@ export class PayloadParsingService {
     const flatFields = this.flattenFields(fields);
     const requiredFields = flatFields.filter((f) => f.isRequired).length;
     const nestedLevels = this.calculateMaxNestedLevels(fields);
-
     return {
       totalFields: flatFields.length,
       requiredFields,
@@ -561,26 +494,21 @@ export class PayloadParsingService {
       processingTime,
     };
   }
-
   private flattenFields(fields: SchemaField[]): SchemaField[] {
     const flattened: SchemaField[] = [];
-
     for (const field of fields) {
       flattened.push(field);
       if (field.children) {
         flattened.push(...this.flattenFields(field.children));
       }
     }
-
     return flattened;
   }
-
   private calculateMaxNestedLevels(
     fields: SchemaField[],
     currentLevel: number = 0,
   ): number {
     let maxLevel = currentLevel;
-
     for (const field of fields) {
       if (field.children) {
         const childLevel = this.calculateMaxNestedLevels(
@@ -590,10 +518,8 @@ export class PayloadParsingService {
         maxLevel = Math.max(maxLevel, childLevel);
       }
     }
-
     return maxLevel;
   }
-
   private createEmptyMetadata(
     payload: string,
     processingTime: number,
@@ -607,7 +533,6 @@ export class PayloadParsingService {
       processingTime,
     };
   }
-
   private createEmptyJSONSchema(): JSONSchema {
     return {
       $schema: 'https://json-schema.org/draft/2020-12/schema',

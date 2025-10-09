@@ -11,7 +11,6 @@ export interface JSONSchema {
   definitions?: { [key: string]: JSONSchemaProperty };
   examples?: any[];
 }
-
 export interface JSONSchemaProperty {
   type?:
     | 'object'
@@ -45,7 +44,6 @@ export interface JSONSchemaProperty {
   allOf?: JSONSchemaProperty[];
   not?: JSONSchemaProperty;
 }
-
 export interface SourceSchemaJSON {
   schema: JSONSchema;
   version: number;
@@ -57,7 +55,6 @@ export interface SourceSchemaJSON {
     fieldCount?: number;
   };
 }
-
 export interface JSONSchemaValidationResult {
   valid: boolean;
   errors: Array<{
@@ -69,7 +66,6 @@ export interface JSONSchemaValidationResult {
   }>;
   warnings?: string[];
 }
-
 export enum JSONSchemaType {
   STRING = 'string',
   NUMBER = 'number',
@@ -79,7 +75,6 @@ export enum JSONSchemaType {
   ARRAY = 'array',
   NULL = 'null',
 }
-
 export enum JSONSchemaFormat {
   DATE_TIME = 'date-time',
   DATE = 'date',

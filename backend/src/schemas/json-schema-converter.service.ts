@@ -6,44 +6,49 @@ import {
   JSONSchemaFormat,
 } from '../common/json-schema.interfaces';
 import { SchemaField, FieldType } from '../common/interfaces';
-
+import { AuditService } from '../audit/audit.service';
 @Injectable()
 export class JSONSchemaConverterService {
   private readonly logger = new Logger(JSONSchemaConverterService.name);
 
+  constructor(private readonly auditService: AuditService) {}
+
   convertToJSONSchema(fields: SchemaField[], _rootTitle?: string): JSONSchema {
     this.logger.log('Converting custom schema to JSON Schema format');
-
     const properties: { [key: string]: JSONSchemaProperty } = {};
     const required: string[] = [];
-
     for (const field of fields) {
       properties[field.name] = this.convertFieldToProperty(field);
       if (field.isRequired) {
         required.push(field.name);
       }
     }
-
     const schema: JSONSchema = {
       type: 'object',
       properties,
       additionalProperties: false,
     };
-
     if (required.length > 0) {
       schema.required = required;
     }
-
     this.logger.log(
       `Generated JSON Schema with ${Object.keys(properties).length} properties, ${required.length} required`,
     );
 
+    this.auditService.logAction({
+      entityType: 'SCHEMA',
+      action: 'CONVERT_TO_JSON_SCHEMA',
+      actor: 'SYSTEM',
+      tenantId: 'default-tenant',
+      details: `Converted ${fields.length} fields to JSON Schema with ${Object.keys(properties).length} properties`,
+      status: 'SUCCESS',
+      severity: 'LOW',
+    });
+
     return schema;
   }
-
   private convertFieldToProperty(field: SchemaField): JSONSchemaProperty {
     const property: JSONSchemaProperty = {};
-
     switch (field.type) {
       case FieldType.STRING:
         property.type = JSONSchemaType.STRING;
@@ -103,15 +108,12 @@ export class JSONSchemaConverterService {
       default:
         property.type = JSONSchemaType.STRING;
     }
-
     return property;
   }
-
   private convertElementTypeToProperty(
     elementType: FieldType,
   ): JSONSchemaProperty {
     const property: JSONSchemaProperty = {};
-
     switch (elementType) {
       case FieldType.STRING:
         property.type = JSONSchemaType.STRING;
@@ -133,10 +135,8 @@ export class JSONSchemaConverterService {
       default:
         property.type = JSONSchemaType.STRING;
     }
-
     return property;
   }
-
   private extractFieldName(fullPath: string, parentPath?: string): string {
     if (parentPath) {
       const remaining = fullPath.replace(`${parentPath}.`, '');
@@ -146,17 +146,13 @@ export class JSONSchemaConverterService {
     const parts = fullPath.split('.');
     return parts[parts.length - 1];
   }
-
   convertFromJSONSchema(schema: JSONSchema): SchemaField[] {
     this.logger.log('Converting JSON Schema to custom SchemaField format');
-
     if (schema.type !== 'object' || !schema.properties) {
       throw new Error('JSON Schema must be of type "object" with properties');
     }
-
     const fields: SchemaField[] = [];
     const required = schema.required || [];
-
     for (const [name, property] of Object.entries(schema.properties)) {
       const field = this.convertPropertyToField(
         name,
@@ -166,11 +162,9 @@ export class JSONSchemaConverterService {
       );
       fields.push(field);
     }
-
     this.logger.log(`Converted JSON Schema to ${fields.length} fields`);
     return fields;
   }
-
   private convertPropertyToField(
     name: string,
     path: string,
@@ -183,7 +177,6 @@ export class JSONSchemaConverterService {
       type: this.mapJSONSchemaTypeToFieldType(property),
       isRequired,
     };
-
     if (property.type === 'object' && property.properties) {
       field.children = [];
       const childRequired = property.required || [];
@@ -200,7 +193,6 @@ export class JSONSchemaConverterService {
         field.children.push(childField);
       }
     }
-
     if (property.type === 'array' && property.items) {
       if (typeof property.items === 'object' && property.items.type) {
         if (property.items.type === 'object' && property.items.properties) {
@@ -225,17 +217,14 @@ export class JSONSchemaConverterService {
         }
       }
     }
-
     return field;
   }
-
   private mapJSONSchemaTypeToFieldType(
     property: JSONSchemaProperty,
   ): FieldType {
     if (!property.type) {
       return FieldType.STRING;
     }
-
     switch (property.type) {
       case 'string':
         if (
@@ -259,53 +248,40 @@ export class JSONSchemaConverterService {
         return FieldType.STRING;
     }
   }
-
   validateJSONSchema(schema: any): { valid: boolean; errors: string[] } {
     const errors: string[] = [];
-
     if (!schema || typeof schema !== 'object') {
       errors.push('Schema must be an object');
       return { valid: false, errors };
     }
-
     if (!schema.type) {
       errors.push('Schema must have a "type" property');
     }
-
     if (schema.type === 'object' && !schema.properties) {
       errors.push('Object schema must have "properties"');
     }
-
     if (schema.type === 'array' && !schema.items) {
       errors.push('Array schema must have "items"');
     }
-
     return { valid: errors.length === 0, errors };
   }
-
   generateExampleFromSchema(schema: JSONSchema): any {
     if (schema.type !== 'object' || !schema.properties) {
       return {};
     }
-
     const example: any = {};
-
     for (const [name, property] of Object.entries(schema.properties)) {
       example[name] = this.generateExampleValue(property);
     }
-
     return example;
   }
-
   private generateExampleValue(property: JSONSchemaProperty): any {
     if (property.examples && property.examples.length > 0) {
       return property.examples[0];
     }
-
     if (property.default !== undefined) {
       return property.default;
     }
-
     switch (property.type) {
       case 'string':
         if (property.format === 'date-time') {

@@ -16,7 +16,6 @@ export class DataModelExtensionRepository {
     this.logger.log(
       `Creating data model extension: ${extension.collection}.${extension.fieldName}`,
     );
-    // Insert without specifying id to let auto-increment handle it
     const [result] = await this.knex(this.tableName)
       .insert({
         collection: extension.collection,

@@ -3,19 +3,14 @@ import path from 'path';
 
 const config: { [key: string]: Knex.Config } = {
   development: {
-    client: process.env.USE_SQLITE === 'true' ? 'sqlite3' : 'pg',
-    connection:
-      process.env.USE_SQLITE === 'true'
-        ? {
-            filename: path.join(__dirname, '..', 'dev.db'),
-          }
-        : {
-            host: process.env.DB_HOST || 'localhost',
-            user: process.env.DB_USER || 'postgres',
-            password: process.env.DB_PASS || 'newpassword',
-            database: process.env.DB_NAME || 'postgres',
-            port: parseInt(process.env.DB_PORT || '5432', 10),
-          },
+    client: 'pg',
+    connection: {
+      host: process.env.DB_HOST || 'localhost',
+      user: process.env.DB_USER || 'postgres',
+      password: process.env.DB_PASS || 'newpassword',
+      database: process.env.DB_NAME || 'postgres',
+      port: parseInt(process.env.DB_PORT || '5432', 10),
+    },
     pool: {
       min: 0,
       max: 10,
@@ -24,10 +19,9 @@ const config: { [key: string]: Knex.Config } = {
     },
     migrations: {
       directory: path.resolve(__dirname, 'migrations'),
-      extension: 'js', // Changed from 'ts' to 'js'
-      loadExtensions: ['.js'], // Changed from '.ts' to '.js'
+      extension: 'js',
+      loadExtensions: ['.js'],
     },
-    useNullAsDefault: process.env.USE_SQLITE === 'true', // Required for SQLite
     log: {
       warn(message: string) {
         console.warn('Knex Warning:', message);
@@ -56,9 +50,9 @@ const config: { [key: string]: Knex.Config } = {
     },
     pool: {
       min: 2,
-      max: 30, // production pool, safe for Postgres defaults
+      max: 30,
       acquireTimeoutMillis: 30000,
-      idleTimeoutMillis: 60000, // hold idle connections longer in prod
+      idleTimeoutMillis: 60000,
     },
     migrations: {
       directory: path.resolve(__dirname, 'migrations'),

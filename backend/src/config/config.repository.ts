@@ -2,20 +2,16 @@ import { Injectable, Logger, Inject } from '@nestjs/common';
 import { Knex } from 'knex';
 import { Config, FieldMapping } from '../common/config.interfaces';
 import { JSONSchema } from '../common/json-schema.interfaces';
-
 @Injectable()
 export class ConfigRepository {
   private readonly logger = new Logger(ConfigRepository.name);
-
   constructor(@Inject('KNEX_CONNECTION') private readonly knex: Knex) {}
-
   async createConfig(
     config: Omit<Config, 'id' | 'createdAt' | 'updatedAt'>,
   ): Promise<number> {
     this.logger.log(
       `Creating config for ${config.msgFam} - ${config.transactionType}`,
     );
-
     const [result] = await this.knex('config')
       .insert({
         msg_fam: config.msgFam,
@@ -30,22 +26,17 @@ export class ConfigRepository {
         created_by: config.createdBy,
       })
       .returning('id');
-
     return result.id;
   }
-
   async findConfigById(id: number, tenantId: string): Promise<Config | null> {
     const result = await this.knex('config')
       .where({ id, tenant_id: tenantId })
       .first();
-
     if (!result) {
       return null;
     }
-
     return this.mapToConfig(result);
   }
-
   async findConfigByEndpoint(
     endpointPath: string,
     version: string,
@@ -58,22 +49,17 @@ export class ConfigRepository {
         tenant_id: tenantId,
       })
       .first();
-
     if (!result) {
       return null;
     }
-
     return this.mapToConfig(result);
   }
-
   async findConfigsByTenant(tenantId: string): Promise<Config[]> {
     const results = await this.knex('config')
       .where({ tenant_id: tenantId })
       .orderBy('created_at', 'desc');
-
     return results.map((row) => this.mapToConfig(row));
   }
-
   async findConfigsByTransactionType(
     transactionType: string,
     tenantId: string,
@@ -84,10 +70,8 @@ export class ConfigRepository {
         tenant_id: tenantId,
       })
       .orderBy('created_at', 'desc');
-
     return results.map((row) => this.mapToConfig(row));
   }
-
   async findConfigByVersionAndTransactionType(
     version: string,
     transactionType: string,
@@ -100,10 +84,8 @@ export class ConfigRepository {
         tenant_id: tenantId,
       })
       .first();
-
     return result ? this.mapToConfig(result) : null;
   }
-
   async updateConfig(
     id: number,
     tenantId: string,
@@ -118,7 +100,6 @@ export class ConfigRepository {
     },
   ): Promise<void> {
     const updateData: any = {};
-
     if (updates.msgFam !== undefined) updateData.msg_fam = updates.msgFam;
     if (updates.transactionType !== undefined)
       updateData.transaction_type = updates.transactionType;
@@ -131,16 +112,13 @@ export class ConfigRepository {
       updateData.schema = JSON.stringify(updates.schema);
     if (updates.mapping !== undefined)
       updateData.mapping = JSON.stringify(updates.mapping);
-
     await this.knex('config')
       .where({ id, tenant_id: tenantId })
       .update(updateData);
   }
-
   async deleteConfig(id: number, tenantId: string): Promise<void> {
     await this.knex('config').where({ id, tenant_id: tenantId }).delete();
   }
-
   private mapToConfig(row: any): Config {
     return {
       id: row.id,

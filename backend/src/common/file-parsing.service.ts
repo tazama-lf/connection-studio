@@ -1,43 +1,61 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { ContentType } from '../common/interfaces';
 import { ParsedFileResult } from '../common/dto';
-
+import { AuditService } from '../audit/audit.service';
 @Injectable()
 export class FileParsingService {
+  constructor(private readonly auditService: AuditService) {}
   parseUploadedFile(
     file: Express.Multer.File,
     expectedContentType: ContentType,
   ): ParsedFileResult {
     if (!file) {
+      this.auditService.logError(
+        'SYSTEM',
+        'default-tenant',
+        'No file uploaded',
+        'File upload failed',
+      );
       throw new BadRequestException('No file uploaded');
     }
-
     const content = file.buffer.toString('utf8');
-
     const isValidFile = this.validateFileType(
       file,
       expectedContentType,
       content,
     );
     if (!isValidFile.isValid) {
+      this.auditService.logError(
+        'SYSTEM',
+        'default-tenant',
+        isValidFile.error || 'Unknown validation error',
+        'File validation failed',
+      );
       throw new BadRequestException(isValidFile.error);
     }
-
-    return {
+    const result = {
       content,
       contentType: expectedContentType,
       originalName: file.originalname,
       size: file.size,
     };
+    this.auditService.logAction({
+      entityType: 'FILE_PARSING',
+      action: 'PARSE_FILE',
+      actor: 'SYSTEM',
+      tenantId: 'default-tenant',
+      details: `Parsed file: ${file.originalname} (${file.size} bytes, ${expectedContentType})`,
+      status: 'SUCCESS',
+      severity: 'LOW',
+    });
+    return result;
   }
-
   private validateFileType(
     file: Express.Multer.File,
     expectedContentType: ContentType,
     content: string,
   ): { isValid: boolean; error?: string } {
     const filename = file.originalname.toLowerCase();
-
     if (expectedContentType === ContentType.JSON) {
       if (!filename.endsWith('.json')) {
         return {
@@ -45,7 +63,6 @@ export class FileParsingService {
           error: 'File must have .json extension for JSON content type',
         };
       }
-
       try {
         JSON.parse(content);
       } catch (error) {
@@ -61,7 +78,6 @@ export class FileParsingService {
           error: 'File must have .xml extension for XML content type',
         };
       }
-
       if (!content.trim().startsWith('<') || !content.trim().endsWith('>')) {
         return {
           isValid: false,
@@ -69,33 +85,25 @@ export class FileParsingService {
         };
       }
     }
-
     return { isValid: true };
   }
-
   detectContentType(file: Express.Multer.File): ContentType {
     const filename = file.originalname.toLowerCase();
     const content = file.buffer.toString('utf8').trim();
-
     if (filename.endsWith('.json')) {
       return ContentType.JSON;
     }
-
     if (filename.endsWith('.xml')) {
       return ContentType.XML;
     }
-
     if (content.startsWith('{') || content.startsWith('[')) {
       return ContentType.JSON;
     }
-
     if (content.startsWith('<')) {
       return ContentType.XML;
     }
-
     return ContentType.JSON;
   }
-
   static getAllowedMimeTypes(): string[] {
     return [
       'application/json',

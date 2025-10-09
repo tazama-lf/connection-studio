@@ -5,7 +5,6 @@ import {
   IsNumberString,
   validateSync,
 } from 'class-validator';
-
 enum NodeEnv {
   DEVELOPMENT = 'development',
   PRODUCTION = 'production',
@@ -13,39 +12,28 @@ enum NodeEnv {
   DEV = 'dev',
   PROD = 'prod',
 }
-
 class EnvironmentVariables {
   @IsEnum(NodeEnv)
   NODE_ENV: NodeEnv = NodeEnv.DEVELOPMENT;
-
   @IsNumberString()
   MAX_CPU: string;
-
   @IsString()
   FUNCTION_NAME: string;
-
   @IsString()
   TAZAMA_AUTH_URL: string;
-
   @IsString()
   AUTH_PUBLIC_KEY_PATH: string;
-
   @IsString()
   CERT_PATH_PUBLIC: string;
-
   @IsString()
   CONFIGURATION_DATABASE_URL: string;
-
   @IsString()
   CONFIGURATION_DATABASE: string;
-
   @IsString()
   CONFIGURATION_DATABASE_USER: string;
-
   @IsString()
   CONFIGURATION_DATABASE_PASSWORD: string;
 }
-
 export const validate = (config: Record<string, unknown>) => {
   const validatedConfig = plainToClass(EnvironmentVariables, config, {
     enableImplicitConversion: true,
@@ -53,10 +41,8 @@ export const validate = (config: Record<string, unknown>) => {
   const errors = validateSync(validatedConfig, {
     skipMissingProperties: true,
   });
-
   if (errors.length > 0) {
     throw new Error(errors.toString());
   }
-
   return validatedConfig;
 };

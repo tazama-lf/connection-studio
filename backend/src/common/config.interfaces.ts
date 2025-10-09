@@ -6,7 +6,6 @@ export interface CreateConfigDto {
   payload?: string;
   mapping?: FieldMapping[];
 }
-
 export interface UpdateConfigDto {
   msgFam?: string;
   transactionType?: TransactionType;
@@ -25,29 +24,23 @@ export interface FieldMapping {
   operator?: 'ADD' | 'SUBTRACT' | 'MULTIPLY' | 'DIVIDE'; // Mathematical operators for MATH transformation
 }
 import { JSONSchema } from './json-schema.interfaces';
-
 export enum ContentType {
   JSON = 'application/json',
   XML = 'application/xml',
 }
-
 export type TransactionType = string;
-
 export enum ConfigStatus {
   DRAFT = 'draft',
   IN_PROGRESS = 'inprogress',
   COMPLETED = 'completed',
   FAILED = 'failed',
 }
-
 export interface MappingSource {
   field: string; // Field path in source schema
 }
-
 export interface MappingDestination {
   field: string; // Field path in destination schema
 }
-
 export interface Config {
   id: number;
   msgFam: string; // Message family (pain.001, pacs.008, etc.)
@@ -63,7 +56,6 @@ export interface Config {
   createdAt?: string;
   updatedAt?: string;
 }
-
 export interface AddMappingDto {
   source?: string;
   destination?: string;
@@ -71,7 +63,6 @@ export interface AddMappingDto {
   sources?: string[];
   delimiter?: string;
 }
-
 export interface ConfigResponseDto {
   success: boolean;
   message: string;

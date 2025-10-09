@@ -10,7 +10,6 @@ import { TazamaDataModelService } from '../common/tazama-data-model.service';
 import { DataModelExtensionService } from '../common/data-model-extension.service';
 import { DataModelExtensionRepository } from '../common/data-model-extension.repository';
 import { DataModelController } from '../common/data-model.controller';
-
 @Module({
   imports: [SchemasModule, AuditModule],
   controllers: [ConfigController, DataModelController],

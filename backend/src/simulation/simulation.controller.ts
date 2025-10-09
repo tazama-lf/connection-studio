@@ -7,15 +7,12 @@ import type {
 import { TazamaAuthGuard } from '../auth/tazama-auth.guard';
 import { RequireEditorRole } from '../auth/auth.decorator';
 import { User } from '../auth/user.decorator';
-
 @Controller('simulation')
 @UseGuards(TazamaAuthGuard)
 @RequireEditorRole()
 export class SimulationController {
   private readonly logger = new Logger(SimulationController.name);
-
   constructor(private readonly simulationService: SimulationService) {}
-
   /**
    * POST /simulation/run
    *
@@ -48,7 +45,6 @@ export class SimulationController {
     this.logger.log(
       `Simulation requested for endpoint ${dto.endpointId} by user ${user?.id || 'unknown'}`,
     );
-
     const userId = user?.id || user?.sub;
     const tenantId =
       user?.tenantId ||
@@ -60,20 +56,16 @@ export class SimulationController {
     if (!tenantId) {
       throw new Error('Tenant ID not found in user context');
     }
-
     const result = await this.simulationService.simulateMapping(
       dto,
       tenantId,
       userId,
     );
-
     this.logger.log(
       `Simulation completed with status: ${result.status}, errors: ${result.errors.length}`,
     );
-
     return result;
   }
-
   /**
    * POST /simulation/validate
    *
@@ -86,7 +78,6 @@ export class SimulationController {
     @User() user?: any,
   ): Promise<{ valid: boolean; errors: any[] }> {
     this.logger.log(`Validation requested for endpoint ${dto.endpointId}`);
-
     const userId = user?.id || user?.sub;
     const tenantId =
       user?.tenantId ||
@@ -98,13 +89,11 @@ export class SimulationController {
     if (!tenantId) {
       throw new Error('Tenant ID not found in user context');
     }
-
     const result = await this.simulationService.simulateMapping(
       dto,
       tenantId,
       userId,
     );
-
     return {
       valid: result.summary.validationSteps.schemaValidation === 'PASSED',
       errors: result.errors.filter(
