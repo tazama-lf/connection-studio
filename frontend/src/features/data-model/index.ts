@@ -10,5 +10,5 @@ export type {
   DataModelExtension,
   CreateDataModelExtensionRequest,
   UpdateDataModelExtensionRequest,
-  DataModelApiResponse
+  DataModelApiResponse,
 } from './services/dataModelApi';

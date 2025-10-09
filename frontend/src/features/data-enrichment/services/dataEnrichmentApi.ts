@@ -1,45 +1,59 @@
 import { ENV } from '../../../shared/config/environment.config';
-import type { 
+import type {
   CreatePullJobDto,
   CreatePushJobDto,
-  DataEnrichmentJobResponse, 
-  ScheduleResponse, 
-  ScheduleRequest 
+  DataEnrichmentJobResponse,
+  ScheduleResponse,
+  ScheduleRequest,
 } from '../types';
 
 const DATA_ENRICHMENT_BASE_URL = ENV.DATA_ENRICHMENT_SERVICE_URL;
 
 export const dataEnrichmentApi = {
   // Job endpoints
-  createPullJob: async (data: CreatePullJobDto): Promise<DataEnrichmentJobResponse> => {
-    const response = await fetch(`${DATA_ENRICHMENT_BASE_URL}/job/create/pull`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
+  createPullJob: async (
+    data: CreatePullJobDto,
+  ): Promise<DataEnrichmentJobResponse> => {
+    const response = await fetch(
+      `${DATA_ENRICHMENT_BASE_URL}/job/create/pull`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
       },
-      body: JSON.stringify(data),
-    });
+    );
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `Failed to create pull job: ${response.status}`);
+      throw new Error(
+        errorData.message || `Failed to create pull job: ${response.status}`,
+      );
     }
 
     return response.json();
   },
 
-  createPushJob: async (data: CreatePushJobDto): Promise<DataEnrichmentJobResponse> => {
-    const response = await fetch(`${DATA_ENRICHMENT_BASE_URL}/job/create/push`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
+  createPushJob: async (
+    data: CreatePushJobDto,
+  ): Promise<DataEnrichmentJobResponse> => {
+    const response = await fetch(
+      `${DATA_ENRICHMENT_BASE_URL}/job/create/push`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
       },
-      body: JSON.stringify(data),
-    });
+    );
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `Failed to create push job: ${response.status}`);
+      throw new Error(
+        errorData.message || `Failed to create push job: ${response.status}`,
+      );
     }
 
     return response.json();
@@ -64,7 +78,7 @@ export const dataEnrichmentApi = {
   createSchedule: async (data: ScheduleRequest): Promise<ScheduleResponse> => {
     const url = `${DATA_ENRICHMENT_BASE_URL}/schedule/create`;
     console.log('Creating schedule at:', url, 'with data:', data);
-    
+
     const response = await fetch(url, {
       method: 'POST',
       headers: {
@@ -78,7 +92,9 @@ export const dataEnrichmentApi = {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       console.error('Create schedule API error:', errorData);
-      throw new Error(errorData.message || `Failed to create schedule: ${response.status}`);
+      throw new Error(
+        errorData.message || `Failed to create schedule: ${response.status}`,
+      );
     }
 
     const responseData = await response.json();
@@ -86,10 +102,13 @@ export const dataEnrichmentApi = {
     return responseData;
   },
 
-  getAllSchedules: async (page = 1, limit = 50): Promise<ScheduleResponse[]> => {
+  getAllSchedules: async (
+    page = 1,
+    limit = 50,
+  ): Promise<ScheduleResponse[]> => {
     const url = `${DATA_ENRICHMENT_BASE_URL}/schedule/all?page=${page}&limit=${limit}`;
     console.log('Fetching schedules from:', url);
-    
+
     const response = await fetch(url, {
       method: 'GET',
       headers: {
@@ -102,7 +121,9 @@ export const dataEnrichmentApi = {
     if (!response.ok) {
       const errorText = await response.text();
       console.error('Schedule API error:', errorText);
-      throw new Error(`Failed to fetch schedules: ${response.status} - ${errorText}`);
+      throw new Error(
+        `Failed to fetch schedules: ${response.status} - ${errorText}`,
+      );
     }
 
     const data = await response.json();
@@ -126,21 +147,28 @@ export const dataEnrichmentApi = {
   },
 
   // Test endpoints for validation
-  testConnection: async (connectionData: Partial<CreatePullJobDto | CreatePushJobDto>): Promise<{ success: boolean; message: string }> => {
+  testConnection: async (
+    connectionData: Partial<CreatePullJobDto | CreatePushJobDto>,
+  ): Promise<{ success: boolean; message: string }> => {
     // This would be a test endpoint to validate connection before creating job
-    const response = await fetch(`${DATA_ENRICHMENT_BASE_URL}/job/test/connection`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
+    const response = await fetch(
+      `${DATA_ENRICHMENT_BASE_URL}/job/test/connection`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(connectionData),
       },
-      body: JSON.stringify(connectionData),
-    });
+    );
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `Connection test failed: ${response.status}`);
+      throw new Error(
+        errorData.message || `Connection test failed: ${response.status}`,
+      );
     }
 
     return response.json();
-  }
+  },
 };

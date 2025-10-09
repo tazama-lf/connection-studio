@@ -97,7 +97,9 @@ export interface CreatePushJobDto {
 }
 
 // Job creation request (without id and status) - Legacy for compatibility
-export type CreateDataEnrichmentJobRequest = CreatePullJobDto | CreatePushJobDto;
+export type CreateDataEnrichmentJobRequest =
+  | CreatePullJobDto
+  | CreatePushJobDto;
 
 // Job response with ID and metadata - using intersection instead of extends
 export type DataEnrichmentJobResponse = DataEnrichmentJob & {

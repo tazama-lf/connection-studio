@@ -5,20 +5,20 @@ import { globalTokenManager } from './tokenManager';
 export interface SimulatePayloadRequest {
   endpointId: number;
   payloadType: 'application/json' | 'application/xml';
-  payload: any;
+  payload: Record<string, unknown>;
 }
 
 export interface SimulationError {
   field: string;
   message: string;
   path?: string;
-  value?: any;
+  value?: unknown;
 }
 
 export interface SimulationResult {
   status: 'PASSED' | 'FAILED';
   errors: SimulationError[];
-  transformedPayload: any;
+  transformedPayload: Record<string, unknown>;
   summary: {
     endpointId: number;
     tenantId: string;
@@ -103,9 +103,14 @@ export class SimulationApiService {
    * Validate payload against schema only (no mapping execution)
    * Useful for quick schema validation checks
    */
-  async validatePayload(data: SimulatePayloadRequest): Promise<ValidationResult> {
+  async validatePayload(
+    data: SimulatePayloadRequest,
+  ): Promise<ValidationResult> {
     try {
-      console.log('Validating payload against schema for endpoint:', data.endpointId);
+      console.log(
+        'Validating payload against schema for endpoint:',
+        data.endpointId,
+      );
 
       const response = await fetch(`${this.baseURL}/simulation/validate`, {
         method: 'POST',

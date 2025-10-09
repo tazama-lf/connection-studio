@@ -10,7 +10,7 @@ class GlobalTokenManager {
 
   public subscribe(handler: TokenExpirationHandler): () => void {
     this.handlers.add(handler);
-    
+
     // Return unsubscribe function
     return () => {
       this.handlers.delete(handler);
@@ -30,7 +30,7 @@ class GlobalTokenManager {
     localStorage.removeItem('user');
 
     // Notify all handlers
-    this.handlers.forEach(handler => {
+    this.handlers.forEach((handler) => {
       try {
         handler.onTokenExpired();
       } catch (error) {
@@ -45,7 +45,7 @@ class GlobalTokenManager {
   }
 
   public isAnyModalOpen(): boolean {
-    return Array.from(this.handlers).some(handler => handler.isModalOpen);
+    return Array.from(this.handlers).some((handler) => handler.isModalOpen);
   }
 }
 
@@ -55,13 +55,13 @@ export const globalTokenManager = new GlobalTokenManager();
 // Enhanced API request function with token expiration handling
 export async function apiRequest<T>(
   url: string,
-  config: RequestInit = {}
+  config: RequestInit = {},
 ): Promise<T> {
   const token = localStorage.getItem('authToken');
-  
+
   const headers = new Headers(config.headers);
   headers.set('Content-Type', 'application/json');
-  
+
   if (token) {
     headers.set('Authorization', `Bearer ${token}`);
   }
@@ -69,7 +69,7 @@ export async function apiRequest<T>(
   try {
     const response = await fetch(url, {
       ...config,
-      headers
+      headers,
     });
 
     // Handle token expiration
@@ -103,10 +103,10 @@ export function isTokenLikelyExpired(): boolean {
     // Basic JWT token validation (checking if it's expired)
     const payload = JSON.parse(atob(token.split('.')[1]));
     const currentTime = Date.now() / 1000;
-    
+
     // Check if token expires within the next 30 seconds
-    return payload.exp && payload.exp < (currentTime + 30);
-  } catch (error) {
+    return payload.exp && payload.exp < currentTime + 30;
+  } catch {
     // If we can't parse the token, consider it expired
     return true;
   }

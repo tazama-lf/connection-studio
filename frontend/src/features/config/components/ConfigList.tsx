@@ -42,7 +42,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(10);
+  const [itemsPerPage] = useState(5);
   const [openDropdown, setOpenDropdown] = useState<number | null>(null);
 
   // Use external search term if provided, otherwise use empty string
@@ -99,16 +99,16 @@ export const ConfigList: React.FC<ConfigListProps> = ({
     switch (status.toLowerCase()) {
       case 'active':
       case 'ready for approval':
-        return 'bg-green-100 text-green-800';
+        return 'bg-green-50 text-green-600 border border-green-200';
       case 'in-progress':
       case 'draft':
-        return 'bg-yellow-100 text-yellow-800';
+        return 'bg-yellow-50 text-yellow-600 border border-yellow-200';
       case 'suspended':
-        return 'bg-red-100 text-red-800';
+        return 'bg-red-50 text-red-600 border border-red-200';
       case 'cloned':
-        return 'bg-purple-100 text-purple-800';
+        return 'bg-purple-50 text-purple-600 border border-purple-200';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-gray-50 text-gray-600 border border-gray-200';
     }
   };
 
@@ -117,6 +117,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
       case 'active':
         return 'Ready for Approval';
       case 'draft':
+      case 'in-progress':
         return 'In-Progress';
       case 'suspended':
         return 'Suspended';
@@ -185,7 +186,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
   }
 
   return (
-    <div className="bg-white">
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200">
       {/* Error Display */}
       {error && (
         <div className="px-6 py-4 bg-red-50 border-l-4 border-red-400">
@@ -196,21 +197,21 @@ export const ConfigList: React.FC<ConfigListProps> = ({
       {/* Table */}
       <div className="overflow-x-auto">
         <table className="min-w-full">
-          <thead className="bg-gray-50 border-b border-gray-200">
+          <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                 ENDPOINT PATH
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                 TENANT ID
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                 STATUS
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                 CREATED TIME
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                 ACTIONS
               </th>
             </tr>
@@ -224,16 +225,16 @@ export const ConfigList: React.FC<ConfigListProps> = ({
               </tr>
             ) : (
               paginatedConfigs.map((config) => (
-                <tr key={config.id} className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="px-6 py-4 text-sm text-gray-900">
+                <tr key={config.id} className="border-b border-gray-200 hover:bg-gray-50">
+                  <td className="px-6 py-4 text-sm font-medium text-gray-900">
                     {config.endpointPath}
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">
+                  <td className="px-6 py-4 text-sm font-medium text-gray-700">
                     {config.tenantId}
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(config.status)}`}>
-                      <span className="w-1.5 h-1.5 rounded-full bg-current mr-1"></span>
+                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${getStatusBadge(config.status)}`}>
+                      <span className="w-2 h-2 rounded-full bg-current mr-2"></span>
                       {getStatusText(config.status)}
                     </span>
                   </td>
@@ -249,7 +250,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
                     <div className="flex items-center space-x-3">
                       <button
                         onClick={() => handleViewConfig(config)}
-                        className="flex items-center text-sm text-gray-600 hover:text-blue-600"
+                        className="flex items-center text-sm text-gray-500 hover:text-gray-700 font-medium"
                       >
                         <EyeIcon className="w-4 h-4 mr-1" />
                         View
@@ -258,7 +259,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
                         <Button
                           variant="primary"
                           size="sm"
-                          className="px-3 py-1 flex items-center"
+                          className="px-3 py-1.5 flex items-center text-sm font-medium"
                           onClick={() => setOpenDropdown(openDropdown === config.id ? null : config.id)}
                         >
                           Actions

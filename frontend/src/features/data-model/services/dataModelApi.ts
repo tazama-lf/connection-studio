@@ -3,7 +3,7 @@ import { globalTokenManager } from '../../../shared/services/tokenManager';
 
 export type TazamaCollectionName =
   | 'entities'
-  | 'accounts' 
+  | 'accounts'
   | 'account_holder'
   | 'transactionRelationship'
   | 'transactionHistory';
@@ -21,7 +21,7 @@ export interface TazamaField {
   type: 'string' | 'number' | 'boolean' | 'date' | 'object';
   required: boolean;
   description?: string;
-  example?: any;
+  example?: unknown;
 }
 
 export interface TazamaCollectionSchema {
@@ -39,7 +39,7 @@ export interface DestinationOption {
   type: TazamaFieldType;
   required: boolean;
   description?: string;
-  example?: any;
+  example?: unknown;
   isExtension?: boolean; // true for custom extensions
 }
 
@@ -50,12 +50,12 @@ export interface DataModelExtension {
   fieldType: TazamaFieldType;
   description?: string;
   isRequired: boolean;
-  defaultValue?: any;
+  defaultValue?: unknown;
   validation?: {
     pattern?: string;
     min?: number;
     max?: number;
-    enum?: any[];
+    enum?: unknown[];
   };
   tenantId: string;
   createdBy: string;
@@ -69,28 +69,28 @@ export interface CreateDataModelExtensionRequest {
   fieldType: TazamaFieldType;
   description?: string;
   isRequired?: boolean;
-  defaultValue?: any;
+  defaultValue?: unknown;
   validation?: {
     pattern?: string;
     min?: number;
     max?: number;
-    enum?: any[];
+    enum?: unknown[];
   };
 }
 
 export interface UpdateDataModelExtensionRequest {
   description?: string;
   isRequired?: boolean;
-  defaultValue?: any;
+  defaultValue?: unknown;
   validation?: {
     pattern?: string;
     min?: number;
     max?: number;
-    enum?: any[];
+    enum?: unknown[];
   };
 }
 
-export interface DataModelApiResponse<T = any> {
+export interface DataModelApiResponse<T = unknown> {
   success: boolean;
   message?: string;
   schemas?: TazamaCollectionSchema[];
@@ -149,7 +149,9 @@ class DataModelApiService {
         method: 'GET',
         headers: this.getAuthHeaders(),
       });
-      return this.handleResponse<DataModelApiResponse<TazamaCollectionSchema[]>>(response);
+      return this.handleResponse<
+        DataModelApiResponse<TazamaCollectionSchema[]>
+      >(response);
     } catch (error) {
       console.error('Error fetching data model schema:', error);
       throw error;
@@ -161,10 +163,13 @@ class DataModelApiService {
    */
   async getDestinationPaths(): Promise<DataModelApiResponse<string[]>> {
     try {
-      const response = await fetch(`${this.baseURL}/data-model/destination-paths`, {
-        method: 'GET',
-        headers: this.getAuthHeaders(),
-      });
+      const response = await fetch(
+        `${this.baseURL}/data-model/destination-paths`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+      );
       return this.handleResponse<DataModelApiResponse<string[]>>(response);
     } catch (error) {
       console.error('Error fetching destination paths:', error);
@@ -175,13 +180,20 @@ class DataModelApiService {
   /**
    * Get destination options formatted for UI dropdowns (includes base model + extensions)
    */
-  async getDestinationOptions(): Promise<DataModelApiResponse & { options?: DestinationOption[] }> {
+  async getDestinationOptions(): Promise<
+    DataModelApiResponse & { options?: DestinationOption[] }
+  > {
     try {
-      const response = await fetch(`${this.baseURL}/data-model/destination-options`, {
-        method: 'GET',
-        headers: this.getAuthHeaders(),
-      });
-      return this.handleResponse<DataModelApiResponse & { options?: DestinationOption[] }>(response);
+      const response = await fetch(
+        `${this.baseURL}/data-model/destination-options`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+      );
+      return this.handleResponse<
+        DataModelApiResponse & { options?: DestinationOption[] }
+      >(response);
     } catch (error) {
       console.error('Error fetching destination options:', error);
       throw error;
@@ -191,13 +203,17 @@ class DataModelApiService {
   /**
    * Get all data model extensions for the tenant
    */
-  async getAllExtensions(): Promise<DataModelApiResponse<DataModelExtension[]>> {
+  async getAllExtensions(): Promise<
+    DataModelApiResponse<DataModelExtension[]>
+  > {
     try {
       const response = await fetch(`${this.baseURL}/data-model/extensions`, {
         method: 'GET',
         headers: this.getAuthHeaders(),
       });
-      return this.handleResponse<DataModelApiResponse<DataModelExtension[]>>(response);
+      return this.handleResponse<DataModelApiResponse<DataModelExtension[]>>(
+        response,
+      );
     } catch (error) {
       console.error('Error fetching data model extensions:', error);
       throw error;
@@ -207,13 +223,20 @@ class DataModelApiService {
   /**
    * Get extensions for a specific collection
    */
-  async getExtensionsByCollection(collection: TazamaCollectionName): Promise<DataModelApiResponse<DataModelExtension[]>> {
+  async getExtensionsByCollection(
+    collection: TazamaCollectionName,
+  ): Promise<DataModelApiResponse<DataModelExtension[]>> {
     try {
-      const response = await fetch(`${this.baseURL}/data-model/extensions/collection/${collection}`, {
-        method: 'GET',
-        headers: this.getAuthHeaders(),
-      });
-      return this.handleResponse<DataModelApiResponse<DataModelExtension[]>>(response);
+      const response = await fetch(
+        `${this.baseURL}/data-model/extensions/collection/${collection}`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+      );
+      return this.handleResponse<DataModelApiResponse<DataModelExtension[]>>(
+        response,
+      );
     } catch (error) {
       console.error('Error fetching extensions by collection:', error);
       throw error;
@@ -223,13 +246,20 @@ class DataModelApiService {
   /**
    * Get a specific extension by ID
    */
-  async getExtensionById(id: string): Promise<DataModelApiResponse<DataModelExtension>> {
+  async getExtensionById(
+    id: string,
+  ): Promise<DataModelApiResponse<DataModelExtension>> {
     try {
-      const response = await fetch(`${this.baseURL}/data-model/extensions/${id}`, {
-        method: 'GET',
-        headers: this.getAuthHeaders(),
-      });
-      return this.handleResponse<DataModelApiResponse<DataModelExtension>>(response);
+      const response = await fetch(
+        `${this.baseURL}/data-model/extensions/${id}`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+      );
+      return this.handleResponse<DataModelApiResponse<DataModelExtension>>(
+        response,
+      );
     } catch (error) {
       console.error('Error fetching extension by ID:', error);
       throw error;
@@ -239,28 +269,36 @@ class DataModelApiService {
   /**
    * Create a new data model extension
    */
-  async createExtension(request: CreateDataModelExtensionRequest): Promise<DataModelApiResponse<DataModelExtension>> {
+  async createExtension(
+    request: CreateDataModelExtensionRequest,
+  ): Promise<DataModelApiResponse<DataModelExtension>> {
     try {
       console.log('🚀 DataModelApi - Creating extension:', request);
-      console.log('🚀 DataModelApi - API endpoint:', `${this.baseURL}/data-model/extensions`);
+      console.log(
+        '🚀 DataModelApi - API endpoint:',
+        `${this.baseURL}/data-model/extensions`,
+      );
       console.log('🚀 DataModelApi - Request headers:', this.getAuthHeaders());
-      
+
       const response = await fetch(`${this.baseURL}/data-model/extensions`, {
         method: 'POST',
         headers: this.getAuthHeaders(),
         body: JSON.stringify(request),
       });
-      
+
       console.log('📡 DataModelApi - Response status:', response.status);
       console.log('📡 DataModelApi - Response ok:', response.ok);
-      
+
       if (!response.ok) {
         const errorText = await response.text();
         console.error('❌ DataModelApi - Error response:', errorText);
         throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
-      
-      const result = await this.handleResponse<DataModelApiResponse<DataModelExtension>>(response);
+
+      const result =
+        await this.handleResponse<DataModelApiResponse<DataModelExtension>>(
+          response,
+        );
       console.log('✅ DataModelApi - Extension created successfully:', result);
       return result;
     } catch (error) {
@@ -272,14 +310,22 @@ class DataModelApiService {
   /**
    * Update an existing data model extension
    */
-  async updateExtension(id: number, request: UpdateDataModelExtensionRequest): Promise<DataModelApiResponse<DataModelExtension>> {
+  async updateExtension(
+    id: number,
+    request: UpdateDataModelExtensionRequest,
+  ): Promise<DataModelApiResponse<DataModelExtension>> {
     try {
-      const response = await fetch(`${this.baseURL}/data-model/extensions/${id}`, {
-        method: 'PUT',
-        headers: this.getAuthHeaders(),
-        body: JSON.stringify(request),
-      });
-      return this.handleResponse<DataModelApiResponse<DataModelExtension>>(response);
+      const response = await fetch(
+        `${this.baseURL}/data-model/extensions/${id}`,
+        {
+          method: 'PUT',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify(request),
+        },
+      );
+      return this.handleResponse<DataModelApiResponse<DataModelExtension>>(
+        response,
+      );
     } catch (error) {
       console.error('Error updating data model extension:', error);
       throw error;
@@ -291,10 +337,13 @@ class DataModelApiService {
    */
   async deleteExtension(id: number): Promise<DataModelApiResponse> {
     try {
-      const response = await fetch(`${this.baseURL}/data-model/extensions/${id}`, {
-        method: 'DELETE',
-        headers: this.getAuthHeaders(),
-      });
+      const response = await fetch(
+        `${this.baseURL}/data-model/extensions/${id}`,
+        {
+          method: 'DELETE',
+          headers: this.getAuthHeaders(),
+        },
+      );
       return this.handleResponse<DataModelApiResponse>(response);
     } catch (error) {
       console.error('Error deleting data model extension:', error);
@@ -305,14 +354,21 @@ class DataModelApiService {
   /**
    * Validate a destination path
    */
-  async validateDestination(path: string): Promise<DataModelApiResponse<{ isValid: boolean; message?: string }>> {
+  async validateDestination(
+    path: string,
+  ): Promise<DataModelApiResponse<{ isValid: boolean; message?: string }>> {
     try {
-      const response = await fetch(`${this.baseURL}/data-model/validate-destination`, {
-        method: 'POST',
-        headers: this.getAuthHeaders(),
-        body: JSON.stringify({ path }),
-      });
-      return this.handleResponse<DataModelApiResponse<{ isValid: boolean; message?: string }>>(response);
+      const response = await fetch(
+        `${this.baseURL}/data-model/validate-destination`,
+        {
+          method: 'POST',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify({ path }),
+        },
+      );
+      return this.handleResponse<
+        DataModelApiResponse<{ isValid: boolean; message?: string }>
+      >(response);
     } catch (error) {
       console.error('Error validating destination path:', error);
       throw error;

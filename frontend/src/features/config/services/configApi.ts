@@ -9,6 +9,14 @@ export interface CreateConfigRequest {
   contentType?: 'application/json' | 'application/xml';
   payload: string;
   mapping?: FieldMapping[];
+  fieldAdjustments?: FieldAdjustment[];
+}
+
+export interface CloneConfigRequest {
+  sourceConfigId: number;
+  newTransactionType: string;
+  newVersion?: string;
+  newMsgFam?: string;
 }
 
 export interface FieldMapping {
@@ -59,6 +67,12 @@ export interface SchemaField {
   isRequired: boolean;
   children?: SchemaField[];
   arrayElementType?: string;
+}
+
+export interface FieldAdjustment {
+  path: string;
+  type: 'STRING' | 'NUMBER' | 'BOOLEAN' | 'OBJECT' | 'ARRAY';
+  isRequired: boolean;
 }
 
 // Configuration API service
@@ -135,6 +149,25 @@ export class ConfigApiService {
         name: error instanceof Error ? error.name : 'Unknown',
         message: error instanceof Error ? error.message : String(error),
       });
+      throw error;
+    }
+  }
+
+  async cloneConfig(data: CloneConfigRequest): Promise<ConfigResponse> {
+    try {
+      console.log('Cloning config:', data);
+
+      const response = await fetch(`${this.baseURL}/config/clone`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(data),
+      });
+
+      const result = await this.handleResponse<ConfigResponse>(response);
+      console.log('Clone response:', result);
+      return result;
+    } catch (error) {
+      console.error('Config clone failed:', error);
       throw error;
     }
   }

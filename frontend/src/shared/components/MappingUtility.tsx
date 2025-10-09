@@ -86,6 +86,13 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
     validateMappings(existingMappings);
   }, [existingMappings]);
 
+  // Fetch current mappings from backend on component mount if configId is available
+  useEffect(() => {
+    if (configId) {
+      fetchCurrentMappings();
+    }
+  }, [configId]);
+
   // Expose current mappings to parent component whenever they change
   useEffect(() => {
     console.log('📤 MappingUtility - Sending current mappings to parent:', currentMappings);
@@ -93,6 +100,31 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       onCurrentMappingsChange(currentMappings);
     }
   }, [currentMappings, onCurrentMappingsChange]);
+
+  // Function to fetch current config and refresh mappings
+  const fetchCurrentMappings = async () => {
+    if (!configId) {
+      console.warn('🔄 MappingUtility - No configId provided, cannot fetch mappings');
+      return;
+    }
+
+    try {
+      console.log('🔄 MappingUtility - Fetching current config and mappings for configId:', configId);
+      const response = await configApi.getConfig(configId);
+      
+      if (response.success && response.config) {
+        const mappings = response.config.mapping || [];
+        console.log('🔄 MappingUtility - Fetched mappings from backend:', mappings);
+        console.log('🔄 MappingUtility - Mappings count:', mappings.length);
+        setCurrentMappings(mappings);
+        validateMappings(mappings);
+      } else {
+        console.error('🔄 MappingUtility - Failed to fetch config:', response.message);
+      }
+    } catch (error) {
+      console.error('🔄 MappingUtility - Error fetching config:', error);
+    }
+  };
 
   // Function to fetch destination options (can be reused)
   const fetchDestinationOptions = async () => {
@@ -151,8 +183,13 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       if (response.success && response.config) {
         // Update local state with new mappings
         const newMappings = response.config.mapping || [];
+        console.log('🔄 MappingUtility - Setting new mappings after successful save:', newMappings);
+        console.log('🔄 MappingUtility - New mappings length:', newMappings.length);
         setCurrentMappings(newMappings);
         validateMappings(newMappings);
+        
+        // Also fetch fresh data from backend to ensure we have the latest state
+        await fetchCurrentMappings();
         
         // Update parent component with mapping data
         if (onMappingDataChange && response.config) {
@@ -207,6 +244,10 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
         const newMappings = response.config.mapping || [];
         setCurrentMappings(newMappings);
         validateMappings(newMappings);
+        
+        // Also fetch fresh data from backend to ensure we have the latest state
+        await fetchCurrentMappings();
+        
         console.log('Mapping removed successfully');
         return true;
       } else {
@@ -695,6 +736,11 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       )}
       
       {/* Current Mappings Display */}
+      {(() => {
+        console.log('🎨 MappingUtility RENDER - currentMappings:', currentMappings);
+        console.log('🎨 MappingUtility RENDER - currentMappings.length:', currentMappings.length);
+        return null;
+      })()}
       {currentMappings.length > 0 && (
         <div className="bg-green-50 border border-green-200 rounded-md p-4">
           <h4 className="text-sm font-medium text-green-800 mb-2">Current Mappings ({currentMappings.length})</h4>
@@ -737,7 +783,15 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
         </div>
       </div>
       {activeTab === 'mapping' ? <>
-          <div className="flex justify-end mb-4" data-id="element-277">
+          <div className="flex justify-between items-center mb-4" data-id="element-277">
+            <Button 
+              variant="secondary" 
+              size="sm" 
+              onClick={fetchCurrentMappings}
+              disabled={!configId}
+            >
+              Refresh Mappings
+            </Button>
             <Button variant="secondary" size="sm" onClick={addNewMapping} icon={<PlusIcon size={16} data-id="element-279" />} data-id="element-278">
               Add Mapping
             </Button>

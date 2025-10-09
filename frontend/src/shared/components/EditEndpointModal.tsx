@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { XIcon } from 'lucide-react';
 import { PayloadEditor } from './PayloadEditor';
 import { MappingUtility } from './MappingUtility';
 import { SimulationPanel } from './SimulationPanel';
 import { DeploymentConfirmation } from './DeploymentConfirmation';
 import { Button } from './Button';
-import { configApi, type CreateConfigRequest, type ConfigResponse, type FieldAdjustment } from '../../features/config/services/configApi';
+import { configApi, type CreateConfigRequest,type FieldAdjustment, type ConfigResponse } from '../../features/config/services/configApi';
+import { useToast } from '../providers/ToastProvider';
 
 interface EndpointData {
   version: string;
@@ -20,14 +21,19 @@ interface EditEndpointModalProps {
   onClose: () => void;
   endpointId: number; // -1 indicates new endpoint creation
   onSuccess?: () => void; // Callback when config is successfully created/updated
+  isCloneMode?: boolean; // When true, load config data but treat as new config creation
 }
  const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
   isOpen,
   onClose,
   endpointId,
-  onSuccess
+  onSuccess,
+  isCloneMode = false
 }) => {
   const isNewEndpoint = endpointId === -1;
+  const isCloning = isCloneMode && endpointId !== -1;
+  const shouldCreateNew = isNewEndpoint || isCloning; // Either truly new or cloning
+  const { showSuccess, showError, showWarning } = useToast();
   const [currentStep, setCurrentStep] = useState<'payload' | 'mapping' | 'simulation' | 'deploy'>('payload');
   const [payload, setPayload] = useState('');
 
@@ -45,13 +51,14 @@ interface EditEndpointModalProps {
   // Backend integration state
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
   const [createdEndpoint, setCreatedEndpoint] = useState<any | null>(null);
   const [existingConfig, setExistingConfig] = useState<any | null>(null);
   const [inferredSchema, setInferredSchema] = useState<any | null>(null);
   const [createdMapping, setCreatedMapping] = useState<any | null>(null);
   const [mappingData, setMappingData] = useState<any | null>(null);
   const [currentMappings, setCurrentMappings] = useState<any[]>([]); // Current mappings from MappingUtility
-  const [fieldAdjustments, setFieldAdjustments] = useState<FieldAdjustment[]>([]); // Field adjustments from PayloadEditor
+
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [simulationResult, setSimulationResult] = useState<any | null>(null);
   const steps = [{
@@ -74,7 +81,7 @@ interface EditEndpointModalProps {
       if (!isNewEndpoint && endpointId && isOpen) {
         try {
           setLoading(true);
-          setError(null);
+
           console.log('Loading existing config for editing:', endpointId);
           
           const response = await configApi.getConfig(endpointId);
@@ -103,9 +110,11 @@ interface EditEndpointModalProps {
             setExistingConfig(config);
             
             // Pre-populate form data with existing config
+            // For clone mode, adjust version and transaction type to indicate it's a clone
+            const isCloning = isCloneMode && endpointId !== -1;
             setEndpointData({
-              version: config.version || '1.0',
-              transactionType: config.transactionType || '',
+              version: isCloning ? '1.0' : (config.version || '1.0'), // Reset version for clones
+              transactionType: isCloning ? `${config.transactionType}_COPY` : (config.transactionType || ''),
               description: config.msgFam || '', // Using msgFam as description since there's no separate description field in backend
               contentType: config.contentType || 'application/json',
               msgFam: config.msgFam || '',
@@ -123,12 +132,12 @@ interface EditEndpointModalProps {
             console.log('Loaded existing config:', config);
           } else {
             console.log('No valid config found in response:', response);
-            setError('No configuration data found for this endpoint');
+            showError('Configuration Error', 'No configuration data found for this endpoint');
           }
         } catch (error) {
           console.error('Error loading config:', error);
           const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-          setError(`Failed to load configuration: ${errorMessage}`);
+          showError('Failed to Load Configuration', errorMessage);
         } finally {
           setLoading(false);
         }
@@ -162,18 +171,18 @@ interface EditEndpointModalProps {
   // Step 1: Create or Update Endpoint with Payload
   const handleCreateEndpoint = async () => {
     if (!payload.trim()) {
-      setError('Please provide a payload');
+      showError('Validation Error', 'Please provide a payload');
       return;
     }
 
     // Validate required endpoint data
     if (!endpointData.transactionType.trim()) {
-      setError('Please select a transaction type');
+      showError('Validation Error', 'Please select a transaction type');
       return;
     }
 
     if (!endpointData.version.trim()) {
-      setError('Please provide a version');
+      showError('Validation Error', 'Please provide a version');
       return;
     }
 
@@ -188,7 +197,6 @@ interface EditEndpointModalProps {
         version: endpointData.version,
         contentType: endpointData.contentType as 'application/json' | 'application/xml',
         payload: payload,
-        fieldAdjustments: fieldAdjustments.length > 0 ? fieldAdjustments : undefined, // Include field adjustments if available
       };
       
       console.log('🔍 Config request details for endpoint path generation:');
@@ -226,8 +234,8 @@ interface EditEndpointModalProps {
 
       let response: ConfigResponse;
       
-      if (isNewEndpoint) {
-        console.log('Creating new config with data:', createRequest);
+      if (shouldCreateNew) {
+        console.log(isCloning ? 'Cloning config with data:' : 'Creating new config with data:', createRequest);
         response = await configApi.createConfig(createRequest);
       } else {
         // EDITING EXISTING CONFIG: Always create new config to preserve original and update endpoint path
@@ -239,7 +247,6 @@ interface EditEndpointModalProps {
         const newConfigRequest = {
           ...createRequest,
           version: finalVersion,
-          fieldAdjustments: fieldAdjustments.length > 0 ? fieldAdjustments : undefined, // Include field adjustments for edits
         };
         
         console.log('🆕 Creating new config (preserving original):');
@@ -265,7 +272,7 @@ interface EditEndpointModalProps {
       console.log('API Response from handleCreateEndpoint:', response);
       
       if (!response.success) {
-        const action = isNewEndpoint ? 'create' : 'update';
+        const action = shouldCreateNew ? 'create' : 'update';
         setError(response.message || `Failed to ${action} configuration`);
         if (response.validation?.errors) {
           console.error('Validation errors:', response.validation.errors);
@@ -276,7 +283,7 @@ interface EditEndpointModalProps {
       if (response.config) {
         setCreatedEndpoint(response.config);
         setInferredSchema(response.config.schema);
-        const action = isNewEndpoint ? 'created' : 'updated';
+        const action = shouldCreateNew ? 'created' : 'updated';
         console.log(`Configuration ${action} successfully:`, response.config);
         console.log('Schema inferred:', response.config.schema);
         
@@ -305,7 +312,7 @@ interface EditEndpointModalProps {
     }
   };
 
-  // Step 2: Create Mapping
+  // Step 2: Create Mapping - Navigate to next step
   const handleCreateMapping = async () => {
     if (!createdEndpoint || !inferredSchema) {
       setError('Endpoint must be created first');
@@ -316,59 +323,31 @@ interface EditEndpointModalProps {
     setError(null);
 
     try {
-      // Clear any existing mappings first to ensure only user-defined mappings are saved
-      if (!isNewEndpoint && createdEndpoint.mapping && createdEndpoint.mapping.length > 0) {
-        console.log('🗑️  Clearing existing mappings before adding new ones...');
-        console.log('Existing mappings to be cleared:', createdEndpoint.mapping);
-        
-        // Clear existing mappings by removing them one by one
-        for (let i = createdEndpoint.mapping.length - 1; i >= 0; i--) {
-          try {
-            await configApi.removeMapping(createdEndpoint.id, i);
-            console.log(`✅ Removed existing mapping at index ${i}`);
-          } catch (removeError) {
-            console.warn(`⚠️  Failed to remove mapping at index ${i}:`, removeError);
-          }
-        }
-        console.log('✅ All existing mappings cleared');
-      }
-      
-      // Check if mappings are already created by MappingUtility
+      // Get current mappings from the database (no clearing - MappingUtility manages all mapping operations)
       const currentConfig = await configApi.getConfig(createdEndpoint.id);
       const existingMappings = currentConfig.success && currentConfig.config ? (currentConfig.config.mapping || []) : [];
       
-      console.log('🔍 Checking existing mappings before creation:');
+      console.log('🔍 Checking existing mappings for navigation:');
       console.log('Existing mappings in DB:', existingMappings);
-      console.log('MappingData from MappingUtility:', mappingData);
       
-      // MappingUtility handles all mapping creation directly - no duplication needed
+      // MappingUtility handles all mapping CRUD operations directly - we just need to validate and proceed
       console.log('✅ Mappings are handled directly by MappingUtility component');
-      console.log('📋 Using existing mappings from database (created by MappingUtility)');
+      console.log('📋 Proceeding with existing mappings from database');
       setCreatedMapping(existingMappings);
       setIsMappingValid(true);
 
       // Update the endpoint with latest mapping data
-      const updatedConfig = await configApi.getConfig(createdEndpoint.id);
-      if (updatedConfig.success && updatedConfig.config) {
-        setCreatedMapping(updatedConfig.config.mapping);
-        setCreatedEndpoint(updatedConfig.config);
+      if (currentConfig.success && currentConfig.config) {
+        setCreatedMapping(currentConfig.config.mapping);
+        setCreatedEndpoint(currentConfig.config);
         
-        console.log('📋 Final mapping data in database (ONLY user-defined):');
-        console.log('Total user-defined mappings stored:', updatedConfig.config.mapping?.length || 0);
-        console.log('All mappings (should only contain user-added mappings):', updatedConfig.config.mapping);
-        
-        // Validate that we only have the expected number of mappings
-        const expectedCount = mappingData ? Math.min(mappingData.sourceFields.length, mappingData.destinationFields.length) : 0;
-        const actualCount = updatedConfig.config.mapping?.length || 0;
-        if (actualCount === expectedCount) {
-          console.log('✅ Mapping count validation passed: Expected', expectedCount, 'Got', actualCount);
-        } else {
-          console.warn('⚠️  Mapping count mismatch: Expected', expectedCount, 'Got', actualCount);
-        }
+        console.log('📋 Current mapping data in database:');
+        console.log('Total mappings stored:', currentConfig.config.mapping?.length || 0);
+        console.log('All mappings:', currentConfig.config.mapping);
       }
 
       setIsMappingValid(true);
-      console.log('✅ All mappings created successfully');
+      console.log('✅ Ready to proceed to simulation step');
       
       // Move to next step
       setCurrentStep('simulation');
@@ -449,7 +428,6 @@ interface EditEndpointModalProps {
           version: endpointData.version,
           contentType: endpointData.contentType as 'application/json' | 'application/xml',
           payload: payload,
-          fieldAdjustments: fieldAdjustments.length > 0 ? fieldAdjustments : undefined, // Include field adjustments
         };
 
         console.log('Saving configuration with data:', createRequest);
@@ -520,11 +498,19 @@ interface EditEndpointModalProps {
     }
   };
   if (!isOpen) return null;
-  return <div className="fixed inset-0 z-50 flex items-center justify-center p-4" data-id="element-726">
-      <div className="bg-white rounded-lg w-full max-w-6xl max-h-[90vh] overflow-hidden relative z-10" data-id="element-727">
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Dimmed Backdrop - Very light overlay to keep background fully visible */}
+      <div 
+        className="fixed inset-0 bg-black bg-opacity-10 z-40" 
+        onClick={onClose}
+      />
+      
+      {/* Modal Content - Higher z-index to appear above backdrop */}
+      <div className="bg-white rounded-lg w-full max-w-6xl max-h-[90vh] overflow-hidden relative z-50" data-id="element-727">
         <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200" data-id="element-728">
           <h2 className="text-xl font-semibold text-gray-800" data-id="element-729">
-            {isNewEndpoint ? 'Create New Connection' : 'Edit Configuration'}
+            {isNewEndpoint ? 'Create New Connection' : isCloning ? 'Clone Configuration' : 'Edit Configuration'}
           </h2>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700" data-id="element-730">
             <XIcon size={24} data-id="element-731" />
@@ -544,11 +530,7 @@ interface EditEndpointModalProps {
                 </div>)}
             </div>
           </div>
-          {error && (
-            <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-4">
-              <div className="text-red-800 text-sm">{error}</div>
-            </div>
-          )}
+
           <div className="space-y-8" data-id="element-739">
             {currentStep === 'payload' && (
               <>
@@ -557,7 +539,7 @@ interface EditEndpointModalProps {
                   onChange={setPayload} 
                   endpointData={endpointData}
                   onEndpointDataChange={setEndpointData}
-                  onFieldAdjustmentsChange={setFieldAdjustments}
+
                   configId={createdEndpoint?.id || existingConfig?.id}
                   data-id="element-740" 
                 />
@@ -650,7 +632,8 @@ interface EditEndpointModalProps {
           </div>
         </div>
       </div>
-    </div>;
+    </div>
+  );
 };
 
 export default EditEndpointModal;

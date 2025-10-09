@@ -118,7 +118,18 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
         if (parseError.length > 0) {
           throw new Error('XML parsing error');
         }
-        return generateXMLSchema(xmlDoc.documentElement);
+        
+        // Generate comprehensive XML schema starting from root
+        // xml2js creates: { "Document": { "xmlns": "...", "FIToFICstmrCdtTrf": {...} } }
+        // But validation expects the Document's children to be at the root level
+        const rootSchema = generateXMLSchema(xmlDoc.documentElement);
+        
+        // Extract the children from the Document element to match xml2js + validation expectations
+        if (rootSchema.length > 0 && rootSchema[0].children) {
+          return rootSchema[0].children;
+        }
+        
+        return rootSchema;
       } catch (e) {
         throw new Error('Invalid XML format');
       }
@@ -155,8 +166,10 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
         } else if (Array.isArray(value) && value.length > 0) {
           const firstElement = value[0];
           if (typeof firstElement === 'object' && firstElement !== null) {
-            // Generate schema for array elements with [0] notation
-            field.children = generateJSONSchema(firstElement, `${fieldPath}[0]`);
+            // Generate schema for array elements
+            // For array children, generate paths relative to the array element
+            // This will create paths like: fieldPath.childName which extractFieldName can handle
+            field.children = generateJSONSchema(firstElement, fieldPath);
             field.arrayElementType = 'object';
           } else {
             field.arrayElementType = typeof firstElement;
@@ -174,6 +187,7 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
     const schema: SchemaField[] = [];
     const fieldPath = path ? `${path}.${element.tagName}` : element.tagName;
     
+    // Create the main element field
     const field: SchemaField = {
       name: element.tagName,
       path: fieldPath,
@@ -182,15 +196,68 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
     };
 
     const children: SchemaField[] = [];
-    const childElements = Array.from(element.children);
     
-    if (childElements.length > 0) {
-      childElements.forEach(child => {
-        children.push(...generateXMLSchema(child, fieldPath));
+    // Handle XML attributes - xml2js mergeAttrs puts these as properties of the element
+    if (element.attributes && element.attributes.length > 0) {
+      Array.from(element.attributes).forEach(attr => {
+        children.push({
+          name: attr.name,
+          path: `${fieldPath}.${attr.name}`,
+          type: 'string',
+          isRequired: true
+        });
       });
-      field.children = children;
-    } else if (element.textContent?.trim()) {
+    }
+    
+    // Handle child elements - xml2js makes these properties too
+    const childElements = Array.from(element.children);
+    if (childElements.length > 0) {
+      // Group elements by tag name to handle multiple elements with same name
+      const elementGroups = new Map<string, Element[]>();
+      childElements.forEach(child => {
+        const tagName = child.tagName;
+        if (!elementGroups.has(tagName)) {
+          elementGroups.set(tagName, []);
+        }
+        elementGroups.get(tagName)!.push(child);
+      });
+      
+      elementGroups.forEach((elements, tagName) => {
+        if (elements.length === 1) {
+          // Single element - xml2js creates direct property
+          const childSchemas = generateXMLSchema(elements[0], fieldPath);
+          children.push(...childSchemas);
+        } else {
+          // Multiple elements with same name - xml2js creates array
+          const arrayField: SchemaField = {
+            name: tagName,
+            path: `${fieldPath}.${tagName}`,
+            type: 'array',
+            isRequired: true,
+            arrayElementType: 'object'
+          };
+          
+          if (elements.length > 0) {
+            // Use first element as template for array items
+            const templateSchema = generateXMLSchema(elements[0], `${fieldPath}.${tagName}[0]`);
+            if (templateSchema.length > 0) {
+              arrayField.children = templateSchema[0].children;
+            }
+          }
+          
+          children.push(arrayField);
+        }
+      });
+    }
+    
+    // Handle text content for leaf nodes
+    if (element.textContent?.trim() && childElements.length === 0) {
       field.type = 'string';
+    }
+    
+    // Add children if we have any
+    if (children.length > 0) {
+      field.children = children;
     }
     
     schema.push(field);
@@ -589,7 +656,7 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
                       type="text" 
                       value={field.path} 
                       readOnly 
-                      className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" 
+                      className="block w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md shadow-sm cursor-not-allowed sm:text-sm" 
                     />
                   </div>
                   <div>
