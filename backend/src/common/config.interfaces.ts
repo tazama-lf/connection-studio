@@ -1,3 +1,6 @@
+import { JSONSchema } from './json-schema.interfaces';
+import { AdjustFieldDto } from './schema-workflow.dto';
+
 export interface CreateConfigDto {
   msgFam?: string;
   transactionType: TransactionType;
@@ -5,7 +8,17 @@ export interface CreateConfigDto {
   contentType?: ContentType;
   payload?: string;
   mapping?: FieldMapping[];
+  fieldAdjustments?: AdjustFieldDto[];
 }
+
+export interface CloneConfigDto {
+  sourceConfigId: number;
+  newTransactionType: TransactionType;
+  newVersion?: string;
+  newMsgFam?: string;
+  fieldAdjustments?: AdjustFieldDto[];
+}
+
 export interface UpdateConfigDto {
   msgFam?: string;
   transactionType?: TransactionType;
@@ -14,6 +27,7 @@ export interface UpdateConfigDto {
   contentType?: ContentType;
   schema?: JSONSchema;
   mapping?: FieldMapping[];
+  fieldAdjustments?: AdjustFieldDto[];
 }
 export interface FieldMapping {
   source?: string | string[]; // Optional when using constants
@@ -23,7 +37,7 @@ export interface FieldMapping {
   constantValue?: any; // Fixed value to map to destination (replaces constants)
   operator?: 'ADD' | 'SUBTRACT' | 'MULTIPLY' | 'DIVIDE'; // Mathematical operators for MATH transformation
 }
-import { JSONSchema } from './json-schema.interfaces';
+
 export enum ContentType {
   JSON = 'application/json',
   XML = 'application/xml',
