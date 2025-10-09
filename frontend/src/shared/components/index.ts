@@ -12,3 +12,5 @@ export { DeploymentConfirmation } from './DeploymentConfirmation';
 export { DataEnrichmentFormModal } from './DataEnrichmentFormModal';
 export { JsonDataModal } from './JsonDataModal';
 export { EndpointHistoryModal } from './EndpointHistoryModal';
+export { TokenExpirationModal } from './TokenExpirationModal';
+export { TokenExpirationChecker } from './TokenExpirationChecker';

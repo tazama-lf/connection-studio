@@ -1,4 +1,5 @@
 import { API_CONFIG } from '../../../shared/config/api.config';
+import { globalTokenManager } from '../../../shared/services/tokenManager';
 
 export type TazamaCollectionName =
   | 'entities'
@@ -118,14 +119,8 @@ class DataModelApiService {
 
   private async handleResponse<T>(response: Response): Promise<T> {
     if (response.status === 401) {
-      localStorage.removeItem('authToken');
-      if (
-        typeof window !== 'undefined' &&
-        window.location &&
-        !window.location.href.includes('localhost')
-      ) {
-        window.location.href = '/login';
-      }
+      // Use global token manager for consistent token expiration handling
+      globalTokenManager.handleTokenExpiration();
       const errorData = await response
         .json()
         .catch(() => ({ success: false, message: 'Unauthorized' }));

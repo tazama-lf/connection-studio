@@ -1,4 +1,5 @@
 import { API_CONFIG } from '../../../shared/config/api.config';
+import { globalTokenManager } from '../../../shared/services/tokenManager';
 
 // Types for authentication
 export interface LoginCredentials {
@@ -54,8 +55,8 @@ export class AuthApiService {
       });
 
       if (response.status === 401) {
-        localStorage.removeItem('authToken');
-        window.location.href = '/login';
+        // Use global token manager instead of direct redirect
+        globalTokenManager.handleTokenExpiration();
         throw new Error('Unauthorized');
       }
 

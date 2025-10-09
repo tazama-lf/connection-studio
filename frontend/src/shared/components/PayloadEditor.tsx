@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from './Button';
-import { UploadIcon, SparklesIcon } from 'lucide-react';
-import { type SchemaField } from '../../features/config/services/configApi';
+import { UploadIcon, SparklesIcon, SaveIcon } from 'lucide-react';
+import { type SchemaField, configApi, type FieldAdjustment } from '../../features/config/services/configApi';
 
 interface PayloadEditorProps {
   value: string;
   onChange: (value: string) => void;
   endpointData?: EndpointFormData;
   onEndpointDataChange?: (data: EndpointFormData) => void;
+  configId?: number; // Optional config ID for schema updates
+  onFieldAdjustmentsChange?: (fieldAdjustments: FieldAdjustment[]) => void; // Callback for field adjustments
 }
 
 interface EndpointFormData {
@@ -23,13 +25,16 @@ interface InferredField {
   type: 'String' | 'Number' | 'Boolean' | 'Object' | 'Array';
   parent?: string;
   level: number;
+  required: boolean;
 }
 
 export const PayloadEditor: React.FC<PayloadEditorProps> = ({
   value,
   onChange,
   endpointData: initialEndpointData,
-  onEndpointDataChange
+  onEndpointDataChange,
+  configId,
+  onFieldAdjustmentsChange
 }) => {
 
   
@@ -49,6 +54,11 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
   const [showInferredFields, setShowInferredFields] = useState(false);
   const [isGeneratingFields, setIsGeneratingFields] = useState(false);
   const [fieldGenerationError, setFieldGenerationError] = useState<string | null>(null);
+  
+  // State for saving schema updates
+  const [isSavingSchema, setIsSavingSchema] = useState(false);
+  const [schemaSaveError, setSchemaSaveError] = useState<string | null>(null);
+  const [schemaSaveSuccess, setSchemaSaveSuccess] = useState(false);
 
   // Sync local state with parent when editing existing endpoint
   useEffect(() => {
@@ -57,6 +67,18 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
       console.log('PayloadEditor - Updated with existing endpoint data:', initialEndpointData);
     }
   }, [initialEndpointData]);
+
+  // Notify parent component when field adjustments change
+  useEffect(() => {
+    if (onFieldAdjustmentsChange && inferredFields.length > 0) {
+      const fieldAdjustments = inferredFields.map(field => ({
+        path: field.path,
+        type: field.type.toUpperCase() as 'STRING' | 'NUMBER' | 'BOOLEAN' | 'OBJECT' | 'ARRAY',
+        isRequired: field.required
+      }));
+      onFieldAdjustmentsChange(fieldAdjustments);
+    }
+  }, [inferredFields, onFieldAdjustmentsChange]);
 
   const handleEndpointDataChange = (field: keyof EndpointFormData, value: string) => {
     const updatedData = { ...endpointData, [field]: value };
@@ -110,7 +132,15 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
     if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
       Object.entries(obj).forEach(([key, value]) => {
         const fieldPath = path ? `${path}.${key}` : key;
-        const fieldType = Array.isArray(value) ? 'array' : typeof value;
+        let fieldType: string;
+        
+        if (Array.isArray(value)) {
+          fieldType = 'array';
+        } else if (value && typeof value === 'object') {
+          fieldType = 'object';
+        } else {
+          fieldType = typeof value;
+        }
         
         const field: SchemaField = {
           name: key,
@@ -120,10 +150,12 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
         };
 
         if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+          // Handle nested objects
           field.children = generateJSONSchema(value, fieldPath);
         } else if (Array.isArray(value) && value.length > 0) {
           const firstElement = value[0];
           if (typeof firstElement === 'object' && firstElement !== null) {
+            // Generate schema for array elements with [0] notation
             field.children = generateJSONSchema(firstElement, `${fieldPath}[0]`);
             field.arrayElementType = 'object';
           } else {
@@ -165,6 +197,94 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
     return schema;
   };
 
+  // Convert InferredField array back to SchemaField array for API updates
+  const convertInferredFieldsToSchemaFields = (fields: InferredField[]): SchemaField[] => {
+    const schemaFields: SchemaField[] = [];
+    
+    // Process only root level fields first
+    const rootFields = fields.filter(f => f.level === 0);
+    
+    rootFields.forEach(rootField => {
+      const schemaField: SchemaField = {
+        name: rootField.path.split('.').pop() || rootField.path,
+        path: rootField.path,
+        type: rootField.type.toLowerCase() as 'string' | 'number' | 'boolean' | 'object' | 'array',
+        isRequired: rootField.required,
+      };
+
+      // Find direct children for this field
+      const directChildren = fields.filter(f => 
+        f.path !== rootField.path && 
+        f.path.startsWith(rootField.path + '.') &&
+        f.level === rootField.level + 1
+      );
+
+      if (directChildren.length > 0) {
+        // Recursively process children
+        schemaField.children = convertInferredFieldsToSchemaFields(
+          fields.filter(f => f.path.startsWith(rootField.path + '.'))
+        );
+      }
+
+      schemaFields.push(schemaField);
+    });
+
+    return schemaFields;
+  };
+
+  // Save updated schema to backend
+  const handleSaveSchema = async () => {
+    if (!configId) {
+      setSchemaSaveError('No configuration ID provided for saving schema');
+      return;
+    }
+
+    if (!inferredFields.length) {
+      setSchemaSaveError('No fields to save');
+      return;
+    }
+
+    setIsSavingSchema(true);
+    setSchemaSaveError(null);
+    setSchemaSaveSuccess(false);
+
+    try {
+      // Convert InferredFields to FieldAdjustments format for the backend API
+      const buildFieldAdjustments = (): FieldAdjustment[] => {
+        return inferredFields.map(field => ({
+          path: field.path,
+          type: field.type.toUpperCase() as 'STRING' | 'NUMBER' | 'BOOLEAN' | 'OBJECT' | 'ARRAY',
+          isRequired: field.required
+        }));
+      };
+
+      const fieldAdjustments = buildFieldAdjustments();
+
+      // Debug: Log the field adjustments to verify correct structure
+      console.log('Field Adjustments:', JSON.stringify(fieldAdjustments, null, 2));
+
+      // Create update request with fieldAdjustments
+      const updateData = {
+        fieldAdjustments: fieldAdjustments
+      };
+
+      // Update the configuration with the new schema
+      const response = await configApi.updateConfig(configId, updateData);
+
+      if (response.success) {
+        setSchemaSaveSuccess(true);
+        // Auto-hide success message after 3 seconds
+        setTimeout(() => setSchemaSaveSuccess(false), 3000);
+      } else {
+        setSchemaSaveError(response.message || 'Failed to save schema');
+      }
+    } catch (error) {
+      setSchemaSaveError(error instanceof Error ? error.message : 'Failed to save schema');
+    } finally {
+      setIsSavingSchema(false);
+    }
+  };
+
   const handleGenerateFields = async () => {
     if (!value.trim()) {
       setFieldGenerationError('Please enter a payload first.');
@@ -180,7 +300,7 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
       
       if (schema) {
         // Convert schema to InferredField format for display
-        const convertSchemaToFields = (schemaFields: SchemaField[], level = 0): InferredField[] => {
+        const convertSchemaToFields = (schemaFields: SchemaField[], level = 0, parentPath = ''): InferredField[] => {
           const fields: InferredField[] = [];
           
           schemaFields.forEach((field) => {
@@ -188,11 +308,12 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
               path: field.path,
               type: capitalizeFirstLetter(field.type) as InferredField['type'],
               level,
-              parent: field.path.includes('.') ? field.path.substring(0, field.path.lastIndexOf('.')) : undefined,
+              parent: parentPath || (field.path.includes('.') ? field.path.substring(0, field.path.lastIndexOf('.')) : undefined),
+              required: field.isRequired,
             });
             
             if (field.children) {
-              fields.push(...convertSchemaToFields(field.children, level + 1));
+              fields.push(...convertSchemaToFields(field.children, level + 1, field.path));
             }
           });
           
@@ -459,7 +580,7 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
           <div className="space-y-4">
             {inferredFields.map((field, index) => (
               <div key={index} className={`${field.level > 0 ? 'ml-' + (field.level * 4) + ' border-l-2 border-gray-200 pl-4' : ''}`}>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Field Path
@@ -491,10 +612,65 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
                       <option value="Array">Array</option>
                     </select>
                   </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Required
+                    </label>
+                    <div className="flex items-center pt-2">
+                      <input 
+                        type="checkbox" 
+                        checked={field.required}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        onChange={(e) => {
+                          const updatedFields = [...inferredFields];
+                          updatedFields[index].required = e.target.checked;
+                          setInferredFields(updatedFields);
+                        }}
+                      />
+                      <span className="ml-2 text-sm text-gray-600">
+                        {field.required ? 'Required' : 'Optional'}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
             ))}
           </div>
+
+          {/* Save Schema Messages */}
+          {configId && (
+            <div className="mt-6 flex flex-col space-y-3">
+              {/* Success Message */}
+              {schemaSaveSuccess && (
+                <div className="p-3 bg-green-50 border border-green-200 rounded-md text-sm text-green-700">
+                  Schema updated successfully!
+                </div>
+              )}
+
+              {/* Error Message */}
+              {schemaSaveError && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-700">
+                  {schemaSaveError}
+                </div>
+              )}
+
+              {/* Save Schema Button - Only for updating existing configs */}
+              <div>
+                <p className="text-xs text-gray-600 mb-2">
+                  Note: For new endpoints, field changes are automatically included when you proceed to the next step. 
+                  This button is only needed when updating existing configurations.
+                </p>
+                <Button
+                  variant="primary"
+                  icon={<SaveIcon size={18} />}
+                  onClick={handleSaveSchema}
+                  disabled={isSavingSchema}
+                >
+                  {isSavingSchema ? 'Saving...' : 'Update Existing Schema'}
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

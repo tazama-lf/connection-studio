@@ -5,7 +5,7 @@ import { MappingUtility } from './MappingUtility';
 import { SimulationPanel } from './SimulationPanel';
 import { DeploymentConfirmation } from './DeploymentConfirmation';
 import { Button } from './Button';
-import { configApi, type CreateConfigRequest, type ConfigResponse } from '../../features/config/services/configApi';
+import { configApi, type CreateConfigRequest, type ConfigResponse, type FieldAdjustment } from '../../features/config/services/configApi';
 
 interface EndpointData {
   version: string;
@@ -51,6 +51,7 @@ interface EditEndpointModalProps {
   const [createdMapping, setCreatedMapping] = useState<any | null>(null);
   const [mappingData, setMappingData] = useState<any | null>(null);
   const [currentMappings, setCurrentMappings] = useState<any[]>([]); // Current mappings from MappingUtility
+  const [fieldAdjustments, setFieldAdjustments] = useState<FieldAdjustment[]>([]); // Field adjustments from PayloadEditor
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [simulationResult, setSimulationResult] = useState<any | null>(null);
   const steps = [{
@@ -187,6 +188,7 @@ interface EditEndpointModalProps {
         version: endpointData.version,
         contentType: endpointData.contentType as 'application/json' | 'application/xml',
         payload: payload,
+        fieldAdjustments: fieldAdjustments.length > 0 ? fieldAdjustments : undefined, // Include field adjustments if available
       };
       
       console.log('🔍 Config request details for endpoint path generation:');
@@ -236,7 +238,8 @@ interface EditEndpointModalProps {
         
         const newConfigRequest = {
           ...createRequest,
-          version: finalVersion
+          version: finalVersion,
+          fieldAdjustments: fieldAdjustments.length > 0 ? fieldAdjustments : undefined, // Include field adjustments for edits
         };
         
         console.log('🆕 Creating new config (preserving original):');
@@ -378,42 +381,15 @@ interface EditEndpointModalProps {
     }
   };
 
-  // Step 3: Run Simulation
+  // Step 3: Navigate to Deploy (simulation is handled by SimulationPanel)
   const handleRunSimulation = async () => {
-    if (!createdMapping) {
-      setError('Mapping must be created first');
+    if (!isSimulationSuccess) {
+      setError('Please run the simulation first and ensure it passes');
       return;
     }
 
-    setLoading(true);
-    setError(null);
-
-    try {
-      // Run actual simulation using the configured mappings
-      // TODO: Replace with actual backend simulation API
-      console.log('Running simulation with configuration:', createdEndpoint.id);
-      console.log('Using mappings:', createdMapping);
-      
-      const simulationResult = {
-        success: true,
-        transformedData: createdMapping,
-        errors: [],
-        warnings: [],
-      };
-      
-      setSimulationResult(simulationResult);
-      setIsSimulationSuccess(true);
-
-      console.log('Simulation completed successfully:', simulationResult);
-      
-      // Move to next step
-      setCurrentStep('deploy');
-    } catch (err) {
-      setError(`Simulation failed: ${err}`);
-      console.error('Error running simulation:', err);
-    } finally {
-      setLoading(false);
-    }
+    // Simply move to the next step since simulation is handled by SimulationPanel
+    setCurrentStep('deploy');
   };
 
   // Step 4: Deploy/Publish
@@ -473,6 +449,7 @@ interface EditEndpointModalProps {
           version: endpointData.version,
           contentType: endpointData.contentType as 'application/json' | 'application/xml',
           payload: payload,
+          fieldAdjustments: fieldAdjustments.length > 0 ? fieldAdjustments : undefined, // Include field adjustments
         };
 
         console.log('Saving configuration with data:', createRequest);
@@ -580,6 +557,8 @@ interface EditEndpointModalProps {
                   onChange={setPayload} 
                   endpointData={endpointData}
                   onEndpointDataChange={setEndpointData}
+                  onFieldAdjustmentsChange={setFieldAdjustments}
+                  configId={createdEndpoint?.id || existingConfig?.id}
                   data-id="element-740" 
                 />
                 
@@ -628,7 +607,14 @@ interface EditEndpointModalProps {
                 />
               </>
             )}
-            {currentStep === 'simulation' && <SimulationPanel onSimulationComplete={setIsSimulationSuccess} data-id="element-742" />}
+            {currentStep === 'simulation' && (
+              <SimulationPanel 
+                endpointId={createdEndpoint?.id || existingConfig?.id}
+                contentType={endpointData.contentType as 'application/json' | 'application/xml'}
+                onSimulationComplete={setIsSimulationSuccess} 
+                data-id="element-742" 
+              />
+            )}
             {currentStep === 'deploy' && <DeploymentConfirmation endpointPath="/transactions/acmt.023" transactionType={endpointData.transactionType} data-id="element-743" />}
           </div>
         </div>

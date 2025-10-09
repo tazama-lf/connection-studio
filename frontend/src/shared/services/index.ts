@@ -1,2 +1,3 @@
-// Shared services are removed - backend restructuring
-// Only auth services remain in features/auth/services/
+// Shared services
+export * from './simulationApi';
+export * from './tokenManager';

@@ -1,5 +1,7 @@
 import React, { useEffect, useState, createContext, useContext } from 'react';
 import { authApi, type User } from '../services/authApi';
+import { globalTokenManager } from '../../../shared/services/tokenManager';
+import { TokenExpirationModal } from '../../../shared/components/TokenExpirationModal';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -27,6 +29,7 @@ const AuthProvider: React.FC<{
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showTokenExpiredModal, setShowTokenExpiredModal] = useState(false);
 
   // Check if user is already logged in (from localStorage)
   useEffect(() => {
@@ -50,6 +53,22 @@ const AuthProvider: React.FC<{
 
     initializeAuth();
   }, []);
+
+  // Register with global token manager for token expiration handling
+  useEffect(() => {
+    const tokenHandler = {
+      onTokenExpired: () => {
+        console.log('Token expired, showing modal and logging out');
+        setShowTokenExpiredModal(true);
+        setUser(null);
+        setIsAuthenticated(false);
+      },
+      isModalOpen: showTokenExpiredModal
+    };
+
+    const unsubscribe = globalTokenManager.subscribe(tokenHandler);
+    return unsubscribe;
+  }, [showTokenExpiredModal]);
 
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
@@ -97,6 +116,12 @@ const AuthProvider: React.FC<{
     });
   };
 
+  const handleTokenExpiredLoginRedirect = () => {
+    setShowTokenExpiredModal(false);
+    // Force a page reload to clear any stale state and redirect to login
+    window.location.href = '/';
+  };
+
   return (
     <AuthContext.Provider value={{
       isAuthenticated,
@@ -106,6 +131,12 @@ const AuthProvider: React.FC<{
       logout
     }}>
       {children}
+      
+      {/* Token Expiration Modal */}
+      <TokenExpirationModal
+        isOpen={showTokenExpiredModal}
+        onLoginRedirect={handleTokenExpiredLoginRedirect}
+      />
     </AuthContext.Provider>
   );
 };
