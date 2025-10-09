@@ -22,6 +22,7 @@ import type { AuthenticatedUser } from '../auth/auth.types';
 import {
   type CreateConfigDto,
   type UpdateConfigDto,
+  type CloneConfigDto,
   type AddMappingDto,
   type ConfigResponseDto,
   type Config,
@@ -172,6 +173,18 @@ export class ConfigController {
   ): Promise<ConfigResponseDto> {
     return this.configService.updateConfig(
       id,
+      dto,
+      getTenantId(user),
+      getUserId(user),
+    );
+  }
+  @Post('clone')
+  @RequireClaims(TazamaClaims.EDITOR)
+  async cloneConfig(
+    @Body() dto: CloneConfigDto,
+    @User() user: AuthenticatedUser,
+  ): Promise<ConfigResponseDto> {
+    return this.configService.cloneConfig(
       dto,
       getTenantId(user),
       getUserId(user),

@@ -243,14 +243,12 @@ export class ConfigService {
         const existingSourceFields =
           this.jsonSchemaConverter.convertFromJSONSchema(sourceConfig.schema);
 
-        // Apply field adjustments
         const adjustedSourceFields =
           this.payloadParsingService.applyFieldAdjustments(
             existingSourceFields,
             dto.fieldAdjustments,
           );
 
-        // Regenerate JSON schema with adjusted fields
         finalSchema =
           this.jsonSchemaConverter.convertToJSONSchema(adjustedSourceFields);
 
@@ -258,7 +256,6 @@ export class ConfigService {
           'Successfully applied field adjustments to cloned config',
         );
 
-        // Validate the adjusted schema
         const validation = this.validateSchema(finalSchema);
         if (!validation.success) {
           return {
@@ -269,7 +266,6 @@ export class ConfigService {
         }
       }
 
-      // Create the new config with cloned data
       const newConfigData: Omit<Config, 'id' | 'createdAt' | 'updatedAt'> = {
         msgFam: newMsgFam,
         transactionType: dto.newTransactionType,
