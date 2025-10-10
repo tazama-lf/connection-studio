@@ -16,7 +16,7 @@ export const JsonDataModal: React.FC<JsonDataModalProps> = ({
   // Format the JSON with indentation for better readability
   const formattedJson = JSON.stringify(data, null, 2);
   return <div className="fixed inset-0 z-50 flex items-center justify-center p-4" data-id="element-1074">
-        <div className="fixed inset-0 transition-opacity" aria-hidden="true" onClick={onClose} data-id="element-1076">
+        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm transition-opacity" aria-hidden="true" onClick={onClose} data-id="element-1076">
         </div>
         <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col relative z-10" data-id="element-1078">
           <div className="flex justify-between items-center p-6 border-b border-gray-200" data-id="element-1079">

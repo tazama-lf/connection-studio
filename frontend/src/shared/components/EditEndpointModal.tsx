@@ -121,7 +121,13 @@ interface EditEndpointModalProps {
             });
             
             // Set existing payload if available
-            if (config.schema) {
+            // Note: We store AJV schema in DB, not original payload
+            // For now, show the schema - user can modify or replace it
+            if (config.payload) {
+              // If original payload is stored, use it
+              setPayload(config.payload);
+            } else if (config.schema) {
+              // Otherwise, show the schema (user will need to replace with actual payload for editing)
               setPayload(JSON.stringify(config.schema, null, 2));
             }
             
@@ -500,9 +506,9 @@ interface EditEndpointModalProps {
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Dimmed Backdrop - Very light overlay to keep background fully visible */}
+      {/* Blurred backdrop */}
       <div 
-        className="fixed inset-0 bg-black bg-opacity-10 z-40" 
+        className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-40" 
         onClick={onClose}
       />
       
@@ -539,8 +545,62 @@ interface EditEndpointModalProps {
                   onChange={setPayload} 
                   endpointData={endpointData}
                   onEndpointDataChange={setEndpointData}
-
                   configId={createdEndpoint?.id || existingConfig?.id}
+                  existingSchemaFields={existingConfig?.schema ? (() => {
+                    // Convert AJV schema to SchemaField array for editing
+                    const convertAjvToSchemaFields = (ajvSchema: any, parentPath = ''): any[] => {
+                      if (!ajvSchema || typeof ajvSchema !== 'object') return [];
+                      
+                      const schemaFields: any[] = [];
+                      
+                      if (ajvSchema.properties) {
+                        Object.entries(ajvSchema.properties).forEach(([fieldName, fieldSchema]: [string, any]) => {
+                          const fieldPath = parentPath ? `${parentPath}.${fieldName}` : fieldName;
+                          
+                          let fieldType: string = 'string';
+                          if (fieldSchema.type) {
+                            switch (fieldSchema.type) {
+                              case 'string': fieldType = 'string'; break;
+                              case 'number':
+                              case 'integer': fieldType = 'number'; break;
+                              case 'boolean': fieldType = 'boolean'; break;
+                              case 'object': fieldType = 'object'; break;
+                              case 'array': fieldType = 'array'; break;
+                              default: fieldType = 'string';
+                            }
+                          }
+                          
+                          const schemaField: any = {
+                            name: fieldName,
+                            path: fieldPath,
+                            type: fieldType,
+                            isRequired: ajvSchema.required?.includes(fieldName) || false
+                          };
+                          
+                          // Handle nested objects
+                          if (fieldType === 'object' && fieldSchema.properties) {
+                            schemaField.children = convertAjvToSchemaFields(fieldSchema, fieldPath);
+                          }
+                          
+                          // Handle arrays with object items
+                          if (fieldType === 'array' && fieldSchema.items) {
+                            if (fieldSchema.items.type === 'object' && fieldSchema.items.properties) {
+                              schemaField.arrayElementType = 'object';
+                              schemaField.children = convertAjvToSchemaFields(fieldSchema.items, fieldPath);
+                            } else {
+                              schemaField.arrayElementType = fieldSchema.items.type || 'string';
+                            }
+                          }
+                          
+                          schemaFields.push(schemaField);
+                        });
+                      }
+                      
+                      return schemaFields;
+                    };
+                    
+                    return convertAjvToSchemaFields(existingConfig.schema);
+                  })() : undefined}
                   data-id="element-740" 
                 />
                 

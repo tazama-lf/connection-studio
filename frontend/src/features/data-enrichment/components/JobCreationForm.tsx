@@ -8,11 +8,10 @@ import type {
   FileConfig,
   AuthType,
   FileType,
-  EncodingType,
   ScheduleResponse,
 } from '../types';
 import { Button } from '../../../shared/components/Button';
-import { dataEnrichmentApi } from '../services/enrichmentApi';
+import { dataEnrichmentApi } from '../services/dataEnrichmentApi';
 
 interface JobFormProps {
   onSubmit: (jobData: CreateDataEnrichmentJobRequest) => void;
@@ -55,9 +54,9 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
 
   // HTTP specific fields
   const [httpUrl, setHttpUrl] = useState('');
-  const [httpHeaders, setHttpHeaders] = useState<Record<string, string>>({
+  const httpHeaders = {
     'content-type': 'application/json',
-  });
+  };
 
   // SFTP specific fields
   const [sftpHost, setSftpHost] = useState('');
@@ -72,22 +71,33 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
   const [fileType, setFileType] = useState<FileType>('CSV');
   const [fileDelimiter, setFileDelimiter] = useState(',');
   const [fileHasHeader, setFileHasHeader] = useState(true);
-  const [fileEncoding, setFileEncoding] = useState<EncodingType>('utf-8');
 
-  const addHttpHeader = () => {
-    const key = prompt('Header name:');
-    const value = prompt('Header value:');
-    if (key && value) {
-      setHttpHeaders(prev => ({ ...prev, [key]: value }));
+  // Validation function to check if all required fields are filled
+  const isFormValid = () => {
+    // Basic required fields
+    if (!endpointName.trim() || !description.trim() || !tableName.trim() || !selectedScheduleId) {
+      return false;
     }
-  };
 
-  const removeHttpHeader = (key: string) => {
-    setHttpHeaders(prev => {
-      const newHeaders = { ...prev };
-      delete newHeaders[key];
-      return newHeaders;
-    });
+    // Source type specific validation
+    if (sourceType === 'HTTP') {
+      return httpUrl.trim() !== '';
+    } else if (sourceType === 'SFTP') {
+      // SFTP requires host, username, and either password or private key based on auth type
+      if (!sftpHost.trim() || !sftpUsername.trim() || !filePath.trim()) {
+        return false;
+      }
+      
+      if (sftpAuthType === 'USERNAME_PASSWORD' && !sftpPassword.trim()) {
+        return false;
+      }
+      
+      if (sftpAuthType === 'PRIVATE_KEY' && !sftpPrivateKey.trim()) {
+        return false;
+      }
+    }
+
+    return true;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -135,8 +145,6 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
           path: filePath,
           file_type: fileType,
           delimiter: fileDelimiter,
-          header: fileHasHeader,
-          encoding: fileEncoding,
         };
 
         const jobData: CreateDataEnrichmentJobRequest = {
@@ -167,7 +175,7 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Endpoint Name *
+                Endpoint Name <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -181,7 +189,7 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Table Name *
+                Table Name <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -196,12 +204,13 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Description
+              Description <span className="text-red-500">*</span>
             </label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
+              required
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Describe what this job does..."
             />
@@ -209,7 +218,7 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Source Type *
+              Source Type <span className="text-red-500">*</span>
             </label>
             <select
               value={sourceType}
@@ -228,7 +237,7 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
           
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Select Schedule *
+              Select Schedule <span className="text-red-500">*</span>
             </label>
             {schedulesLoading ? (
               <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-500">
@@ -265,7 +274,7 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  URL *
+                  URL <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -278,44 +287,7 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Headers
-              </label>
-              <div className="space-y-2">
-                {Object.entries(httpHeaders).map(([key, value]) => (
-                  <div key={key} className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={key}
-                      readOnly
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md bg-gray-50"
-                    />
-                    <span className="text-gray-500">:</span>
-                    <input
-                      type="text"
-                      value={value}
-                      onChange={(e) => setHttpHeaders(prev => ({ ...prev, [key]: e.target.value }))}
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeHttpHeader(key)}
-                      className="px-2 py-1 text-red-600 hover:bg-red-50 rounded"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={addHttpHeader}
-                  className="text-blue-600 hover:text-blue-800 text-sm"
-                >
-                  + Add Header
-                </button>
-              </div>
-            </div>
+
           </div>
         )}
 
@@ -327,7 +299,7 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Host *
+                  Host <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -341,7 +313,7 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Port *
+                  Port <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="number"
@@ -356,7 +328,7 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Authentication Type *
+                Authentication Type <span className="text-red-500">*</span>
               </label>
               <select
                 value={sftpAuthType}
@@ -371,7 +343,7 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Username *
+                  Username <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -385,7 +357,7 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
               {sftpAuthType === 'USERNAME_PASSWORD' ? (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Password *
+                    Password <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="password"
@@ -398,7 +370,7 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
               ) : (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Private Key *
+                    Private Key <span className="text-red-500">*</span>
                   </label>
                   <textarea
                     value={sftpPrivateKey}
@@ -419,7 +391,7 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    File Path *
+                    File Path <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -433,7 +405,7 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    File Type *
+                    File Type <span className="text-red-500">*</span>
                   </label>
                   <select
                     value={fileType}
@@ -448,7 +420,7 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
               </div>
 
               {fileType === 'CSV' && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Delimiter
@@ -460,22 +432,6 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder=","
                     />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Encoding
-                    </label>
-                    <select
-                      value={fileEncoding}
-                      onChange={(e) => setFileEncoding(e.target.value as EncodingType)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="utf-8">utf-8</option>
-                      <option value="utf16le">utf16le</option>
-                      <option value="ascii">ascii</option>
-                      <option value="latin1">latin1</option>
-                    </select>
                   </div>
 
                   <div className="flex items-end">
@@ -505,13 +461,18 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
           >
             Cancel
           </Button>
-          <Button
-            type="submit"
-            variant="primary"
-            disabled={isLoading}
+          <div 
+            className="relative"
+            title={!isFormValid() ? 'Please fill all required fields' : ''}
           >
-            {isLoading ? 'Creating...' : 'Create Job'}
-          </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              disabled={isLoading || !isFormValid()}
+            >
+              {isLoading ? 'Creating...' : 'Create Job'}
+            </Button>
+          </div>
         </div>
       </form>
     </div>

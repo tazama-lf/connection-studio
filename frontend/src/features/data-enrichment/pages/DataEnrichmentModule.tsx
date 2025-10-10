@@ -8,8 +8,8 @@ import JobList from '../components/JobList';
 import Pagination from '../components/Pagination';
 import JobDetailsModal from '../components/JobDetailsModal';
 import { DataEnrichmentFormModal } from '../../../shared/components/DataEnrichmentFormModal';
-// Data enrichment API removed - backend restructuring in progress
-import type { DataEnrichmentJobResponse, CreateDataEnrichmentJobRequest, JobListResponse } from '../types';
+import { dataEnrichmentApi } from '../services/dataEnrichmentApi';
+import type { DataEnrichmentJobResponse } from '../types';
 
 const DataEnrichmentModule: React.FC = () => {
   // Job management state
@@ -24,6 +24,9 @@ const DataEnrichmentModule: React.FC = () => {
   const [showJobDetails, setShowJobDetails] = useState(false);
   const [selectedJob, setSelectedJob] = useState<DataEnrichmentJobResponse | null>(null);
   const [jobDetailsLoading, setJobDetailsLoading] = useState(false);
+  
+  // Success message state
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Load jobs on component mount and when pagination changes
   useEffect(() => {
@@ -34,53 +37,56 @@ const DataEnrichmentModule: React.FC = () => {
     console.log('loadJobs called, currentPage:', currentPage, 'itemsPerPage:', itemsPerPage);
     setJobsLoading(true);
     try {
-      // TODO: Replace with new backend API integration
-      const mockResponse: JobListResponse = {
-        jobs: [],
-        total: 0,
-        page: currentPage,
-        limit: itemsPerPage,
-        totalPages: 1
-      };
-      console.log('API response received (placeholder):', mockResponse);
-      setJobs(mockResponse.jobs || []);
-      setTotalItems(mockResponse.total || 0);
-      console.log('Jobs set to state (placeholder):', mockResponse.jobs?.length || 0, 'total items:', mockResponse.total);
+      // Fetch jobs from the data enrichment service
+      const response = await dataEnrichmentApi.getAllJobs(currentPage, itemsPerPage);
+      console.log('API response received:', response);
+      setJobs(response.jobs || []);
+      setTotalItems(response.total || 0);
+      console.log('Jobs set to state:', response.jobs?.length || 0, 'total items:', response.total);
     } catch (error) {
       console.error('Failed to load jobs:', error);
       setJobs([]); // Ensure jobs is always an array even on error
       setTotalItems(0);
+      
+      // Show user-friendly error message
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        console.warn('Cannot connect to data enrichment service. Using empty job list.');
+      }
     } finally {
       setJobsLoading(false);
     }
   };
 
-  const handleCreateJob = async (jobData: CreateDataEnrichmentJobRequest) => {
+  const handleCreateJob = async (jobResponse: any) => {
     try {
-      setJobsLoading(true);
-      // TODO: Replace with new backend API integration
-      console.log('Job creation placeholder:', jobData);
-      setShowJobForm(false);
-      await loadJobs(); // Reload the jobs list
-      // Show success message
+      console.log('Job created successfully:', jobResponse);
+      // The DataEnrichmentFormModal already shows its own success message
+      // We just need to refresh the jobs list
+      await loadJobs();
+      
+      // Show additional success message in the main module
+      const jobName = jobResponse?.endpoint_name || 'New endpoint';
+      setSuccessMessage(`${jobName} has been successfully deployed and is now available!`);
+      
+      // Clear success message after 5 seconds
+      setTimeout(() => {
+        setSuccessMessage(null);
+      }, 5000);
     } catch (error) {
-      console.error('Failed to create job:', error);
-      // Show error message
-    } finally {
-      setJobsLoading(false);
+      console.error('Failed to handle job creation:', error);
     }
   };
 
-  const handleViewJobDetails = async (jobId: number) => {
+  const handleViewJobDetails = async (jobId: string) => {
     console.log('handleViewJobDetails called with jobId:', jobId);
     try {
       setJobDetailsLoading(true);
       setShowJobDetails(true);
-      console.log('Job details placeholder for jobId:', jobId);
-      // TODO: Replace with new backend API integration
-      const mockJobDetails = null; // Placeholder until backend is restructured
-      console.log('Job details received (placeholder):', mockJobDetails);
-      setSelectedJob(mockJobDetails);
+      
+      // Fetch job details from the API
+      const jobDetails = await dataEnrichmentApi.getJob(jobId);
+      console.log('Job details received:', jobDetails);
+      setSelectedJob(jobDetails);
     } catch (error) {
       console.error('Failed to load job details:', error);
       // Show error message
@@ -124,6 +130,38 @@ const DataEnrichmentModule: React.FC = () => {
             Define New Endpoint
           </Button>
         </div>
+        
+        {/* Success Message */}
+        {successMessage && (
+          <div className="mb-6 bg-green-50 border border-green-200 rounded-md p-4">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm font-medium text-green-800">
+                  {successMessage}
+                </p>
+              </div>
+              <div className="ml-auto pl-3">
+                <div className="-mx-1.5 -my-1.5">
+                  <button
+                    type="button"
+                    className="inline-flex bg-green-50 rounded-md p-1.5 text-green-500 hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-green-50 focus:ring-green-600"
+                    onClick={() => setSuccessMessage(null)}
+                  >
+                    <span className="sr-only">Dismiss</span>
+                    <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
         
         <JobList
           jobs={jobs}

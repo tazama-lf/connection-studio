@@ -3,6 +3,7 @@ import type {
   CreatePullJobDto,
   CreatePushJobDto,
   DataEnrichmentJobResponse,
+  JobListResponse,
   ScheduleResponse,
   ScheduleRequest,
 } from '../types';
@@ -14,6 +15,7 @@ export const dataEnrichmentApi = {
   createPullJob: async (
     data: CreatePullJobDto,
   ): Promise<DataEnrichmentJobResponse> => {
+    console.log('Creating pull job with data:', JSON.stringify(data, null, 2));
     const response = await fetch(
       `${DATA_ENRICHMENT_BASE_URL}/job/create/pull`,
       {
@@ -26,10 +28,18 @@ export const dataEnrichmentApi = {
     );
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(
-        errorData.message || `Failed to create pull job: ${response.status}`,
-      );
+      const errorText = await response.text();
+      console.error('Create pull job error response:', errorText);
+      try {
+        const errorData = JSON.parse(errorText);
+        throw new Error(
+          errorData.message || `Failed to create pull job: ${response.status} - ${errorText}`,
+        );
+      } catch (parseError) {
+        throw new Error(
+          `Failed to create pull job: ${response.status} - ${errorText}`,
+        );
+      }
     }
 
     return response.json();
@@ -38,6 +48,7 @@ export const dataEnrichmentApi = {
   createPushJob: async (
     data: CreatePushJobDto,
   ): Promise<DataEnrichmentJobResponse> => {
+    console.log('Creating push job with data:', JSON.stringify(data, null, 2));
     const response = await fetch(
       `${DATA_ENRICHMENT_BASE_URL}/job/create/push`,
       {
@@ -50,16 +61,50 @@ export const dataEnrichmentApi = {
     );
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(
-        errorData.message || `Failed to create push job: ${response.status}`,
-      );
+      const errorText = await response.text();
+      console.error('Create push job error response:', errorText);
+      try {
+        const errorData = JSON.parse(errorText);
+        throw new Error(
+          errorData.message || `Failed to create push job: ${response.status} - ${errorText}`,
+        );
+      } catch (parseError) {
+        throw new Error(
+          `Failed to create push job: ${response.status} - ${errorText}`,
+        );
+      }
     }
 
     return response.json();
   },
 
-  getJob: async (id: number): Promise<DataEnrichmentJobResponse> => {
+  getAllJobs: async (page?: number, limit?: number): Promise<JobListResponse> => {
+    const queryParams = new URLSearchParams();
+    if (page) queryParams.append('page', page.toString());
+    if (limit) queryParams.append('limit', limit.toString());
+    
+    const url = `${DATA_ENRICHMENT_BASE_URL}/job/all${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    console.log('Fetching all jobs from:', url);
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Get all jobs error response:', errorText);
+      throw new Error(`Failed to fetch jobs: ${response.status} - ${errorText}`);
+    }
+
+    const result = await response.json();
+    console.log('Jobs fetched successfully:', result);
+    return result;
+  },
+
+  getJob: async (id: string): Promise<DataEnrichmentJobResponse> => {
     const response = await fetch(`${DATA_ENRICHMENT_BASE_URL}/job/${id}`, {
       method: 'GET',
       headers: {

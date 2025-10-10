@@ -10,6 +10,7 @@ interface PayloadEditorProps {
   onEndpointDataChange?: (data: EndpointFormData) => void;
   configId?: number; // Optional config ID for schema updates
   onFieldAdjustmentsChange?: (fieldAdjustments: FieldAdjustment[]) => void; // Callback for field adjustments
+  existingSchemaFields?: SchemaField[]; // Existing schema fields when editing
 }
 
 interface EndpointFormData {
@@ -34,7 +35,8 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
   endpointData: initialEndpointData,
   onEndpointDataChange,
   configId,
-  onFieldAdjustmentsChange
+  onFieldAdjustmentsChange,
+  existingSchemaFields
 }) => {
 
   
@@ -60,6 +62,42 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
   const [schemaSaveError, setSchemaSaveError] = useState<string | null>(null);
   const [schemaSaveSuccess, setSchemaSaveSuccess] = useState(false);
 
+  // Helper function for capitalizing strings
+  const capitalizeFirstLetter = (string: string): string => {
+    return string.charAt(0).toUpperCase() + string.slice(1).toLowerCase();
+  };
+
+
+
+  // Convert SchemaField array to InferredField array for editing existing configs
+  const convertSchemaFieldsToInferredFields = (schemaFields: SchemaField[]): InferredField[] => {
+    const convertFields = (fields: SchemaField[], level = 0): InferredField[] => {
+      const inferredFields: InferredField[] = [];
+      
+      fields.forEach(field => {
+        const inferredField: InferredField = {
+          path: field.path,
+          type: capitalizeFirstLetter(field.type) as InferredField['type'],
+          level,
+          parent: field.path.includes('.') ? field.path.substring(0, field.path.lastIndexOf('.')) : undefined,
+          required: field.isRequired
+        };
+        
+        inferredFields.push(inferredField);
+        
+        // Recursively convert child fields
+        if (field.children && field.children.length > 0) {
+          const childFields = convertFields(field.children, level + 1);
+          inferredFields.push(...childFields);
+        }
+      });
+      
+      return inferredFields;
+    };
+    
+    return convertFields(schemaFields);
+  };
+
   // Sync local state with parent when editing existing endpoint
   useEffect(() => {
     if (initialEndpointData) {
@@ -67,6 +105,20 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
       console.log('PayloadEditor - Updated with existing endpoint data:', initialEndpointData);
     }
   }, [initialEndpointData]);
+
+  // Initialize with existing schema fields when editing
+  useEffect(() => {
+    if (existingSchemaFields && existingSchemaFields.length > 0) {
+      console.log('PayloadEditor - Converting existing schema fields:', existingSchemaFields);
+      const inferredFields = convertSchemaFieldsToInferredFields(existingSchemaFields);
+      setInferredFields(inferredFields);
+      setShowInferredFields(true);
+      console.log('PayloadEditor - Initialized with existing schema fields:', inferredFields);
+      console.log(`PayloadEditor - Total fields loaded: ${inferredFields.length}`);
+    } else {
+      console.log('PayloadEditor - No existing schema fields provided');
+    }
+  }, [existingSchemaFields]);
 
   // Notify parent component when field adjustments change
   useEffect(() => {
@@ -405,10 +457,6 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
     }
   };
 
-  const capitalizeFirstLetter = (string: string): string => {
-    return string.charAt(0).toUpperCase() + string.slice(1).toLowerCase();
-  };
-
   const sampleJsonPayload = `{
   "transaction": {
     "id": "TX12345",
@@ -420,15 +468,7 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
     "id": "C789",
     "name": "John Doe",
     "email": "john@example.com"
-  },
-  "items": [
-    {
-      "id": "ITEM-1",
-      "name": "Product A",
-      "quantity": 2,
-      "price": 45.25
-    }
-  ]
+  }
 }`;
 
   const sampleXmlPayload = `<?xml version="1.0" encoding="UTF-8"?>
@@ -635,11 +675,13 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
         <div className="mt-8 space-y-4">
           <div>
             <h3 className="text-lg font-medium text-gray-900">
-              Generated Fields
+              {configId ? 'Schema Fields (Loaded from Configuration)' : 'Generated Fields'}
             </h3>
             <p className="text-sm text-gray-600 mt-1">
-              Define the structure of your {endpointData.contentType === 'application/json' ? 'JSON' : 'XML'} schema based
-              on the input data. For each field, specify its data type.
+              {configId 
+                ? `Loaded existing schema fields from your saved configuration. You can modify the field types and requirements below.`
+                : `Define the structure of your ${endpointData.contentType === 'application/json' ? 'JSON' : 'XML'} schema based on the input data. For each field, specify its data type.`
+              }
             </p>
           </div>
           

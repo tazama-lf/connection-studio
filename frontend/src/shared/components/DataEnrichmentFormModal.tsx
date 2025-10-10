@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { XIcon, PlayIcon, DatabaseIcon, CheckCircleIcon, UploadIcon, DownloadIcon } from 'lucide-react';
 import { Button } from './Button';
 import { dataEnrichmentApi } from '../../features/data-enrichment/services';
-import type { ScheduleResponse, CreateDataEnrichmentJobRequest, SftpConnection, HttpConnection, FileConfig } from '../../features/data-enrichment/types';
+import type { ScheduleResponse } from '../../features/data-enrichment/types';
 interface DataEnrichmentFormModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -48,16 +48,16 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
     password: '',
     authType: 'password',
     privateKey: '',
-    headers: '',
+
     pathPattern: '',
     fileFormat: 'csv',
     delimiter: ',',
-    encoding: 'utf8',
+
     // Push configuration fields
     endpointPath: '',
     ingestMode: 'append',
     // Common fields
-    targetSchema: '',
+
     targetTable: '',
     targetCollection: ''
   });
@@ -115,9 +115,17 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
       setAvailableSchedules(prev => [...prev, createdSchedule]);
       setSelectedScheduleId(createdSchedule.id);
       
+      // Show success message
+      setCreateSuccess(`Schedule "${createdSchedule.name}" created successfully!`);
+      
       // Reset form and close
       setNewSchedule({ name: '', cron: '', iterations: 1 });
       setShowCreateSchedule(false);
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => {
+        setCreateSuccess(null);
+      }, 3000);
     } catch (error) {
       console.error('Failed to create schedule:', error);
       setCreateError(error instanceof Error ? error.message : 'Failed to create schedule');
@@ -125,6 +133,43 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
       setIsCreatingSchedule(false);
     }
   };
+
+  // Form validation function
+  const isFormValid = () => {
+    // Required fields for both configurations
+    if (!formData.name || !formData.description || !formData.sourceType) {
+      return false;
+    }
+
+    if (configurationType === 'pull') {
+      // Required fields for pull configuration
+      if (!formData.host || !formData.targetTable) {
+        return false;
+      }
+
+      // SFTP specific validations
+      if (formData.sourceType === 'sftp') {
+        if (!formData.pathPattern || !formData.username) {
+          return false;
+        }
+        // Validate authentication based on type
+        if (formData.authType === 'password' && !formData.password) {
+          return false;
+        }
+        if (formData.authType === 'key' && !formData.privateKey) {
+          return false;
+        }
+      }
+    } else if (configurationType === 'push') {
+      // Required fields for push configuration
+      if (!formData.endpointPath || !formData.targetCollection) {
+        return false;
+      }
+    }
+
+    return true;
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const {
       name,
@@ -132,13 +177,39 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
       type
     } = e.target;
     const checked = (e.target as HTMLInputElement).checked;
+    
     if (name === 'configurationType') {
       setConfigurationType(value as 'pull' | 'push');
     }
-    setFormData({
-      ...formData,
-      [name]: type === 'checkbox' ? checked : value
-    });
+    
+    // If switching source type, clear irrelevant fields
+    if (name === 'sourceType') {
+      const updatedFormData = { ...formData };
+      
+      if (value === 'http') {
+        // Clear SFTP-specific fields when switching to HTTP
+        updatedFormData.port = '';
+        updatedFormData.username = '';
+        updatedFormData.password = '';
+        updatedFormData.authType = 'password';
+        updatedFormData.privateKey = '';
+        updatedFormData.pathPattern = '';
+        updatedFormData.fileFormat = 'csv';
+        updatedFormData.delimiter = ',';
+      } else if (value === 'sftp') {
+        // Clear HTTP-specific fields when switching to SFTP (none currently)
+        // Set default auth type for SFTP
+        updatedFormData.authType = 'password';
+      }
+      
+      updatedFormData[name] = value;
+      setFormData(updatedFormData);
+    } else {
+      setFormData({
+        ...formData,
+        [name]: type === 'checkbox' ? checked : value
+      });
+    }
   };
   const handleTestRun = async () => {
     try {
@@ -157,14 +228,6 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
 
       if (formData.sourceType === 'http') {
         let headers = { 'content-type': 'application/json' };
-        if (formData.headers && formData.headers.trim()) {
-          try {
-            headers = JSON.parse(formData.headers);
-          } catch (error) {
-            setCreateError('Invalid JSON format in headers. Please check your JSON syntax.');
-            return;
-          }
-        }
         Object.assign(testPayload, {
           connection: {
             url: formData.host,
@@ -176,15 +239,14 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
           connection: {
             host: formData.host,
             port: parseInt(formData.port) || 22,
-            auth_type: 'USERNAME_PASSWORD' as const,
+            auth_type: formData.authType === 'key' ? 'PRIVATE_KEY' as const : 'USERNAME_PASSWORD' as const,
             user_name: formData.username,
-            password: formData.password
+            ...(formData.authType === 'password' ? { password: formData.password } : { private_key: formData.privateKey.replace(/\\n/g, '\n') })
           },
           file: {
             path: formData.pathPattern || '/data.csv',
             file_type: formData.fileFormat.toUpperCase() as 'CSV' | 'JSON' | 'TSV',
-            delimiter: formData.delimiter || ',',
-            encoding: 'utf8' as 'utf8'
+            delimiter: formData.delimiter || ','
           }
         });
       }
@@ -211,9 +273,9 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
           ]
         };
         setPreviewData(mockPreviewData);
-        setCurrentStep('preview');
+        setCurrentStep('summary');
       } catch (testError) {
-        // If the test endpoint doesn't exist, fall back to preview with a warning
+        // If the test endpoint doesn't exist, fall back to summary with a warning
         console.warn('Test endpoint not available, proceeding with mock preview:', testError);
         
         const mockPreviewData = {
@@ -232,7 +294,7 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
           ]
         };
         setPreviewData(mockPreviewData);
-        setCurrentStep('preview');
+        setCurrentStep('summary');
       }
     } catch (error) {
       console.error('Connection test failed:', error);
@@ -284,12 +346,18 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
       // Build the request payload based on source type
       const basePayload = {
         endpoint_name: formData.name,
-        schedule_id: selectedScheduleId,
+        schedule_id: selectedScheduleId || 1, // Fallback to schedule ID 1 if none selected
         source_type: formData.sourceType.toUpperCase() as 'HTTP' | 'SFTP',
         description: formData.description,
         table_name: formData.targetTable || formData.name.toLowerCase().replace(/\s+/g, '_'),
         mode: formData.ingestMode as 'append' | 'replace'
       };
+      
+      // Additional validation
+      if (!basePayload.endpoint_name || !basePayload.description || !basePayload.table_name) {
+        setCreateError('Missing required fields: endpoint_name, description, or table_name');
+        return;
+      }
 
       let payload: any;
 
@@ -305,21 +373,6 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
       } else if (formData.sourceType === 'http') {
         // Pull HTTP configuration
         let headers = { 'content-type': 'application/json' };
-        
-        if (formData.headers && formData.headers.trim()) {
-          try {
-            headers = JSON.parse(formData.headers);
-            // Validate that parsed result is an object
-            if (typeof headers !== 'object' || headers === null || Array.isArray(headers)) {
-              setCreateError('Headers must be a valid JSON object, not an array or null.');
-              return;
-            }
-          } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : 'Unknown JSON error';
-            setCreateError(`Invalid JSON format in headers: ${errorMessage}. Please check your JSON syntax.`);
-            return;
-          }
-        }
         payload = {
           ...basePayload,
           source_type: 'HTTP' as const,
@@ -327,6 +380,7 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
             url: formData.host, // Using host field for URL in HTTP case
             headers
           }
+          // Note: No 'file' field for HTTP requests
         };
       } else {
         // Pull SFTP configuration
@@ -336,19 +390,21 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
           connection: {
             host: formData.host,
             port: parseInt(formData.port) || 22,
-            auth_type: 'USERNAME_PASSWORD' as const,
+            auth_type: formData.authType === 'key' ? 'PRIVATE_KEY' as const : 'USERNAME_PASSWORD' as const,
             user_name: formData.username,
-            password: formData.password
+            ...(formData.authType === 'password' ? { password: formData.password } : { private_key: formData.privateKey.replace(/\\n/g, '\n') })
           },
           file: {
             path: formData.pathPattern || '/data.csv',
             file_type: formData.fileFormat.toUpperCase() as 'CSV' | 'JSON' | 'TSV',
-            delimiter: formData.delimiter || ',',
-            encoding: 'utf8' as 'utf8' | 'ascii' | 'latin1' | 'utf16le' // Use 'utf8' not 'utf-8'
+            delimiter: formData.delimiter || ','
           }
         };
       }
 
+      // Validate payload before sending
+      console.log('Final payload being sent:', JSON.stringify(payload, null, 2));
+      
       // Create the job using the API
       const response = configurationType === 'pull' 
         ? await dataEnrichmentApi.createPullJob(payload)
@@ -366,7 +422,12 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
       }, 1500);
     } catch (error) {
       console.error('Failed to create endpoint:', error);
-      setCreateError('Failed to create endpoint. Please check your configuration and try again.');
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        setCreateError('Cannot connect to data enrichment service. Please ensure the service is running on http://localhost:3001');
+      } else {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+        setCreateError(`Failed to create endpoint: ${errorMessage}`);
+      }
     } finally {
       setIsCreating(false);
     }
@@ -399,13 +460,13 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6" data-id="element-819">
         <div data-id="element-820">
           <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1" data-id="element-821">
-            Endpoint Name
+            Endpoint Name <span className="text-red-500">*</span>
           </label>
           <input type="text" id="name" name="name" value={formData.name} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="Enter endpoint name" required data-id="element-822" />
         </div>
         <div data-id="element-823">
           <label htmlFor="sourceType" className="block text-sm font-medium text-gray-700 mb-1" data-id="element-824">
-            Source Type
+            Source Type <span className="text-red-500">*</span>
           </label>
           <select id="sourceType" name="sourceType" value={formData.sourceType} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required data-id="element-825">
             <option value="sftp" data-id="element-826">SFTP</option>
@@ -415,7 +476,7 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
       </div>
       <div data-id="element-828">
         <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1" data-id="element-829">
-          Description
+          Description <span className="text-red-500">*</span>
         </label>
         <textarea id="description" name="description" value={formData.description} onChange={handleInputChange} rows={2} className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="Enter endpoint description" data-id="element-830" />
       </div>
@@ -423,7 +484,7 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
       {/* Schedule Selection */}
       <div>
         <label htmlFor="schedule" className="block text-sm font-medium text-gray-700 mb-1">
-          Associated Schedule *
+          Associated Schedule <span className="text-red-500">*</span>
         </label>
         {schedulesLoading ? (
           <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-500">
@@ -537,80 +598,104 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6" data-id="element-833">
           <div data-id="element-834">
             <label htmlFor="host" className="block text-sm font-medium text-gray-700 mb-1" data-id="element-835">
-              {formData.sourceType === 'sftp' ? 'Host' : 'URL'}
+              {formData.sourceType === 'sftp' ? 'Host' : 'URL'} <span className="text-red-500">*</span>
             </label>
-            <input type="text" id="host" name="host" value={formData.host} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder={formData.sourceType === 'sftp' ? 'sftp.example.com' : 'https://api.example.com/data'} required data-id="element-836" />
+            <input 
+              type="text" 
+              id="host" 
+              name="host" 
+              value={formData.host} 
+              onChange={handleInputChange} 
+              className={`w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${formData.sourceType !== 'sftp' && formData.sourceType !== 'http' ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+              placeholder={formData.sourceType === 'sftp' ? '10.10.80.37' : 'https://dummyjson.com/users'} 
+              required 
+              data-id="element-836" 
+            />
           </div>
-          {formData.sourceType === 'sftp' && <div data-id="element-837">
-              <label htmlFor="port" className="block text-sm font-medium text-gray-700 mb-1" data-id="element-838">
-                Port
+          <div data-id="element-837">
+            <label htmlFor="port" className="block text-sm font-medium text-gray-700 mb-1" data-id="element-838">
+              Port
+            </label>
+            <input 
+              type="number" 
+              id="port" 
+              name="port" 
+              value={formData.port} 
+              onChange={handleInputChange} 
+              className={`w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${formData.sourceType !== 'sftp' ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+              placeholder="2222" 
+              disabled={formData.sourceType !== 'sftp'}
+              data-id="element-839" 
+            />
+          </div>
+          <div data-id="element-840">
+            <label htmlFor="authType" className="block text-sm font-medium text-gray-700 mb-1" data-id="element-841">
+              Authentication Type {formData.sourceType === 'sftp' && <span className="text-red-500">*</span>}
+            </label>
+            <select 
+              id="authType" 
+              name="authType" 
+              value={formData.authType} 
+              onChange={handleInputChange} 
+              className={`w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${formData.sourceType !== 'sftp' ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
+              disabled={formData.sourceType !== 'sftp'}
+              required={formData.sourceType === 'sftp'}
+              data-id="element-842"
+            >
+              <option value="password" data-id="element-843">Username & Password</option>
+              <option value="key" data-id="element-844">Username & Private Key</option>
+            </select>
+          </div>
+          <div data-id="element-845">
+            <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1" data-id="element-846">
+              Username {formData.sourceType === 'sftp' && <span className="text-red-500">*</span>}
+            </label>
+            <input 
+              type="text" 
+              id="username" 
+              name="username" 
+              value={formData.username} 
+              onChange={handleInputChange} 
+              className={`w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${formData.sourceType !== 'sftp' ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+              placeholder="Enter username" 
+              disabled={formData.sourceType !== 'sftp'}
+              required={formData.sourceType === 'sftp'}
+              data-id="element-847" 
+            />
+          </div>
+          {formData.authType === 'password' && formData.sourceType === 'sftp' ? (
+            <div data-id="element-848">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1" data-id="element-849">
+                Password <span className="text-red-500">*</span>
               </label>
-              <input type="text" id="port" name="port" value={formData.port} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="22" data-id="element-839" />
-            </div>}
-          {formData.sourceType === 'sftp' && <>
-              <div data-id="element-840">
-                <label htmlFor="authType" className="block text-sm font-medium text-gray-700 mb-1" data-id="element-841">
-                  Authentication Type
-                </label>
-                <select id="authType" name="authType" value={formData.authType} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" data-id="element-842">
-                  <option value="password" data-id="element-843">Username & Password</option>
-                  <option value="key" data-id="element-844">Username & Private Key</option>
-                </select>
-              </div>
-              <div data-id="element-845">
-                <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1" data-id="element-846">
-                  Username
-                </label>
-                <input type="text" id="username" name="username" value={formData.username} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="Enter username" required data-id="element-847" />
-              </div>
-              {formData.authType === 'password' ? <div data-id="element-848">
-                  <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1" data-id="element-849">
-                    Password
-                  </label>
-                  <input type="password" id="password" name="password" value={formData.password} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="Enter password" data-id="element-850" />
-                </div> : <div className="md:col-span-2" data-id="element-851">
-                  <label htmlFor="privateKey" className="block text-sm font-medium text-gray-700 mb-1" data-id="element-852">
-                    Private Key
-                  </label>
-                  <textarea id="privateKey" name="privateKey" value={formData.privateKey} onChange={handleInputChange} rows={3} className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="Enter private key" data-id="element-853" />
-                </div>}
-            </>}
-          {formData.sourceType === 'http' && <div className="md:col-span-2" data-id="element-854">
-              <div className="flex justify-between items-center mb-1">
-                <label htmlFor="headers" className="block text-sm font-medium text-gray-700" data-id="element-855">
-                  Headers (JSON format)
-                </label>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setFormData({...formData, headers: '{\n  "content-type": "application/json"\n}'})}
-                    className="text-xs text-blue-600 hover:text-blue-800"
-                  >
-                    Basic JSON
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFormData({...formData, headers: '{\n  "content-type": "application/json",\n  "Authorization": "Bearer your-token-here"\n}'})}
-                    className="text-xs text-blue-600 hover:text-blue-800"
-                  >
-                    With Auth
-                  </button>
-                </div>
-              </div>
+              <input 
+                type="password" 
+                id="password" 
+                name="password" 
+                value={formData.password} 
+                onChange={handleInputChange} 
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" 
+                placeholder="Enter password" 
+                required
+                data-id="element-850" 
+              />
+            </div>
+          ) : formData.authType === 'key' && formData.sourceType === 'sftp' && (
+            <div className="md:col-span-2" data-id="element-851">
               <textarea 
-                id="headers" 
-                name="headers" 
-                value={formData.headers} 
+                id="privateKey" 
+                name="privateKey" 
+                value={formData.privateKey} 
                 onChange={handleInputChange} 
                 rows={3} 
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 font-mono text-sm" 
-                placeholder='{\n  "content-type": "application/json",\n  "Authorization": "Bearer your-token"\n}' 
-                data-id="element-856" 
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" 
+                placeholder="Enter private key"
+                required
+                data-id="element-853" 
               />
-              <p className="mt-1 text-xs text-gray-500">
-                Enter headers as valid JSON. Example: <code>{`{"content-type": "application/json"}`}</code>
-              </p>
-            </div>}
+            </div>
+          )}
+
         </div>
       </div>
       <div className="bg-green-50 p-4 rounded-md" data-id="element-857">
@@ -620,53 +705,68 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6" data-id="element-859">
           <div data-id="element-860">
             <label htmlFor="pathPattern" className="block text-sm font-medium text-gray-700 mb-1" data-id="element-861">
-              {formData.sourceType === 'sftp' ? 'Path/Pattern' : 'Endpoint Path'}
+              {formData.sourceType === 'sftp' ? 'Path/Pattern' : 'Endpoint Path'} {formData.sourceType === 'sftp' && <span className="text-red-500">*</span>}
             </label>
-            <input type="text" id="pathPattern" name="pathPattern" value={formData.pathPattern} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder={formData.sourceType === 'sftp' ? '/inbound/*.csv' : '/api/data'} required data-id="element-862" />
+            <input 
+              type="text" 
+              id="pathPattern" 
+              name="pathPattern" 
+              value={formData.pathPattern} 
+              onChange={handleInputChange} 
+              className={`w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${formData.sourceType !== 'sftp' ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+              placeholder={formData.sourceType === 'sftp' ? '/inbound/*.csv' : '/api/data'} 
+              disabled={formData.sourceType !== 'sftp'}
+              required={formData.sourceType === 'sftp'} 
+              data-id="element-862" 
+            />
           </div>
           <div data-id="element-863">
             <label htmlFor="fileFormat" className="block text-sm font-medium text-gray-700 mb-1" data-id="element-864">
               File Format
             </label>
-            <select id="fileFormat" name="fileFormat" value={formData.fileFormat} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" data-id="element-865">
+            <select 
+              id="fileFormat" 
+              name="fileFormat" 
+              value={formData.fileFormat} 
+              onChange={handleInputChange} 
+              className={`w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${formData.sourceType !== 'sftp' ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
+              disabled={formData.sourceType !== 'sftp'}
+              data-id="element-865"
+            >
               <option value="csv" data-id="element-866">CSV</option>
               <option value="tsv" data-id="element-867">TSV</option>
               <option value="json" data-id="element-868">JSON</option>
             </select>
           </div>
-          {formData.fileFormat === 'csv' && <div data-id="element-869">
-                <label htmlFor="delimiter" className="block text-sm font-medium text-gray-700 mb-1" data-id="element-870">
-                  Delimiter
-                </label>
-                <input type="text" id="delimiter" name="delimiter" value={formData.delimiter} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="," maxLength={1} data-id="element-871" />
-              </div>}
-              <div data-id="element-875">
-                <label htmlFor="encoding" className="block text-sm font-medium text-gray-700 mb-1" data-id="element-876">
-                  Encoding
-                </label>
-                <select id="encoding" name="encoding" value={formData.encoding} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" data-id="element-877">
-                  <option value="utf8" data-id="element-878">UTF-8</option>
-                  <option value="ascii" data-id="element-879">ASCII</option>
-                  <option value="latin1" data-id="element-880">Latin-1</option>
-                  <option value="utf16le" data-id="element-881">UTF-16</option>
-                </select>
-              </div>
+          {formData.fileFormat === 'csv' && formData.sourceType === 'sftp' && (
+            <div data-id="element-869">
+              <label htmlFor="delimiter" className="block text-sm font-medium text-gray-700 mb-1" data-id="element-870">
+                Delimiter
+              </label>
+              <input 
+                type="text" 
+                id="delimiter" 
+                name="delimiter" 
+                value={formData.delimiter} 
+                onChange={handleInputChange} 
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" 
+                placeholder="," 
+                maxLength={1} 
+                data-id="element-871" 
+              />
+            </div>
+          )}
+
         </div>
       </div>
       <div className="bg-purple-50 p-4 rounded-md" data-id="element-882">
         <h3 className="text-md font-medium text-purple-900 mb-3" data-id="element-883">
           Target PostgreSQL Settings
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6" data-id="element-884">
-          <div data-id="element-885">
-            <label htmlFor="targetSchema" className="block text-sm font-medium text-gray-700 mb-1" data-id="element-886">
-              Schema
-            </label>
-            <input type="text" id="targetSchema" name="targetSchema" value={formData.targetSchema} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="public" required data-id="element-887" />
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-1 gap-6" data-id="element-884">
           <div data-id="element-888">
             <label htmlFor="targetTable" className="block text-sm font-medium text-gray-700 mb-1" data-id="element-889">
-              Table
+              Table <span className="text-red-500">*</span>
             </label>
             <input type="text" id="targetTable" name="targetTable" value={formData.targetTable} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="customers" required data-id="element-890" />
           </div>
@@ -679,7 +779,7 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
         <div className="space-y-4">
           <div>
             <label htmlFor="ingestMode" className="block text-sm font-medium text-gray-700 mb-1">
-              Ingest Mode
+              Ingest Mode  <span className="text-red-500">*</span>
             </label>
             <select id="ingestMode" name="ingestMode" value={formData.ingestMode} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
               <option value="append">
@@ -700,13 +800,13 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6" data-id="element-892">
         <div data-id="element-893">
           <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1" data-id="element-894">
-            Endpoint Name
+            Endpoint Name <span className="text-red-500">*</span>
           </label>
           <input type="text" id="name" name="name" value={formData.name} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="Enter endpoint name" required data-id="element-895" />
         </div>
         <div data-id="element-896">
           <label htmlFor="endpointPath" className="block text-sm font-medium text-gray-700 mb-1" data-id="element-897">
-            API Path Pattern
+            API Path Pattern <span className="text-red-500">*</span>
           </label>
           <div className="flex items-center" data-id="element-898">
             <span className="text-gray-500 mr-1" data-id="element-899">/v1/enrich/</span>
@@ -716,7 +816,7 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
       </div>
       <div data-id="element-901">
         <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1" data-id="element-902">
-          Description
+          Description <span className="text-red-500">*</span>
         </label>
         <textarea id="description" name="description" value={formData.description} onChange={handleInputChange} rows={2} className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="Enter endpoint description" data-id="element-903" />
       </div>
@@ -745,7 +845,7 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6" data-id="element-926">
             <div data-id="element-927">
               <label htmlFor="targetCollection" className="block text-sm font-medium text-gray-700 mb-1" data-id="element-928">
-                Target Collection
+                Target Collection <span className="text-red-500">*</span>
               </label>
               <input type="text" id="targetCollection" name="targetCollection" value={formData.targetCollection} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="customers" required data-id="element-929" />
             </div>
@@ -761,117 +861,125 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
         <Button variant="secondary" onClick={onClose} data-id="element-942">
           Cancel
         </Button>
-        <Button variant="primary" icon={<PlayIcon size={16} data-id="element-944" />} onClick={handleTestRun} disabled={isTestingConnection} data-id="element-943">
-          {isTestingConnection ? 'Testing Connection...' : 'Test Run'}
-        </Button>
+        {!isFormValid() ? (
+          <div title="Please fill all required fields">
+            <Button variant="primary" icon={<PlayIcon size={16} data-id="element-944" />} onClick={handleTestRun} disabled={true} data-id="element-943">
+              {isTestingConnection ? 'Testing Connection...' : 'Test Run'}
+            </Button>
+          </div>
+        ) : (
+          <Button variant="primary" icon={<PlayIcon size={16} data-id="element-944" />} onClick={handleTestRun} disabled={isTestingConnection} data-id="element-943">
+            {isTestingConnection ? 'Testing Connection...' : 'Test Run'}
+          </Button>
+        )}
       </div>
     </div>;
-  const renderPreviewStep = () => <div className="space-y-6" data-id="element-945">
-      <div className="bg-green-50 p-4 rounded-md" data-id="element-946">
-        <h3 className="text-md font-medium text-green-900 mb-3" data-id="element-947">
-          Test Run Results
-        </h3>
-        <div className="grid grid-cols-3 gap-4 mb-4" data-id="element-948">
-          <div className="bg-white p-3 rounded-md shadow-sm" data-id="element-949">
-            <p className="text-sm text-gray-500" data-id="element-950">Total Rows</p>
-            <p className="text-xl font-semibold" data-id="element-951">{previewData.totalRows}</p>
-          </div>
-          <div className="bg-white p-3 rounded-md shadow-sm" data-id="element-952">
-            <p className="text-sm text-gray-500" data-id="element-953">Valid Rows</p>
-            <p className="text-xl font-semibold text-green-600" data-id="element-954">
-              {previewData.validRows}
-            </p>
-          </div>
-          <div className="bg-white p-3 rounded-md shadow-sm" data-id="element-955">
-            <p className="text-sm text-gray-500" data-id="element-956">Invalid Rows</p>
-            <p className="text-xl font-semibold text-red-600" data-id="element-957">
-              {previewData.invalidRows}
-            </p>
-          </div>
-        </div>
-      </div>
-      {previewData.validationErrors.length > 0 && <div className="bg-red-50 p-4 rounded-md" data-id="element-958">
-          <h3 className="text-md font-medium text-red-900 mb-3" data-id="element-959">
-            Validation Errors
-          </h3>
-          <div className="max-h-40 overflow-y-auto" data-id="element-960">
-            <table className="min-w-full divide-y divide-gray-200" data-id="element-961">
-              <thead className="bg-gray-50" data-id="element-962">
-                <tr data-id="element-963">
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" data-id="element-964">
-                    Row
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" data-id="element-965">
-                    Field
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" data-id="element-966">
-                    Error
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200" data-id="element-967">
-                {previewData.validationErrors.map((error: any, index: number) => <tr key={index} data-id="element-968">
-                    <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-500" data-id="element-969">
-                      {error.row}
-                    </td>
-                    <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-500" data-id="element-970">
-                      {error.field}
-                    </td>
-                    <td className="px-6 py-2 whitespace-nowrap text-sm text-red-500" data-id="element-971">
-                      {error.error}
-                    </td>
-                  </tr>)}
-              </tbody>
-            </table>
-          </div>
-        </div>}
-      <div className="bg-white p-4 rounded-md shadow border border-gray-200" data-id="element-972">
-        <h3 className="text-md font-medium text-gray-900 mb-3" data-id="element-973">Data Preview</h3>
-        <div className="overflow-x-auto" data-id="element-974">
-          <table className="min-w-full divide-y divide-gray-200" data-id="element-975">
-            <thead className="bg-gray-50" data-id="element-976">
-              <tr data-id="element-977">
-                {previewData.previewRows.length > 0 && Object.keys(previewData.previewRows[0]).map(header => <th key={header} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" data-id="element-978">
-                      {header}
-                    </th>)}
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200" data-id="element-979">
-              {previewData.previewRows.map((row: Record<string, any>, rowIndex: number) => <tr key={rowIndex} data-id="element-980">
-                  {Object.values(row).map((value, colIndex) => <td key={colIndex} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500" data-id="element-981">
-                      {String(value)}
-                    </td>)}
-                </tr>)}
-            </tbody>
-          </table>
-        </div>
-      </div>
-      {configurationType === 'push' && <div className="bg-blue-50 p-4 rounded-md" data-id="element-982">
-          <h3 className="text-md font-medium text-blue-900 mb-3" data-id="element-983">
-            API Response Example
-          </h3>
-          <pre className="bg-white p-3 rounded border border-gray-200 text-sm font-mono overflow-x-auto" data-id="element-984">
-            {`{
-  "success": true,
-  "correlationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-  "stats": {
-    "accepted": ${previewData.validRows},
-    "rejected": ${previewData.invalidRows},
-    "total": ${previewData.totalRows}
-  },
-  "timestamp": "${new Date().toISOString()}"
-}`}
-          </pre>
-        </div>}
-      <div className="flex justify-end space-x-4" data-id="element-985">
-        <Button variant="secondary" onClick={() => setCurrentStep('config')} data-id="element-986">
-          Back to Configuration
-        </Button>
-        <Button variant="primary" icon={<DatabaseIcon size={16} data-id="element-988" />} onClick={() => setCurrentStep('summary')} data-id="element-987">
-          Continue
-        </Button>
-      </div>
-    </div>;
+//   const renderPreviewStep = () => <div className="space-y-6" data-id="element-945">
+//       <div className="bg-green-50 p-4 rounded-md" data-id="element-946">
+//         <h3 className="text-md font-medium text-green-900 mb-3" data-id="element-947">
+//           Test Run Results
+//         </h3>
+//         <div className="grid grid-cols-3 gap-4 mb-4" data-id="element-948">
+//           <div className="bg-white p-3 rounded-md shadow-sm" data-id="element-949">
+//             <p className="text-sm text-gray-500" data-id="element-950">Total Rows</p>
+//             <p className="text-xl font-semibold" data-id="element-951">{previewData.totalRows}</p>
+//           </div>
+//           <div className="bg-white p-3 rounded-md shadow-sm" data-id="element-952">
+//             <p className="text-sm text-gray-500" data-id="element-953">Valid Rows</p>
+//             <p className="text-xl font-semibold text-green-600" data-id="element-954">
+//               {previewData.validRows}
+//             </p>
+//           </div>
+//           <div className="bg-white p-3 rounded-md shadow-sm" data-id="element-955">
+//             <p className="text-sm text-gray-500" data-id="element-956">Invalid Rows</p>
+//             <p className="text-xl font-semibold text-red-600" data-id="element-957">
+//               {previewData.invalidRows}
+//             </p>
+//           </div>
+//         </div>
+//       </div>
+//       {previewData.validationErrors.length > 0 && <div className="bg-red-50 p-4 rounded-md" data-id="element-958">
+//           <h3 className="text-md font-medium text-red-900 mb-3" data-id="element-959">
+//             Validation Errors
+//           </h3>
+//           <div className="max-h-40 overflow-y-auto" data-id="element-960">
+//             <table className="min-w-full divide-y divide-gray-200" data-id="element-961">
+//               <thead className="bg-gray-50" data-id="element-962">
+//                 <tr data-id="element-963">
+//                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" data-id="element-964">
+//                     Row
+//                   </th>
+//                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" data-id="element-965">
+//                     Field
+//                   </th>
+//                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" data-id="element-966">
+//                     Error
+//                   </th>
+//                 </tr>
+//               </thead>
+//               <tbody className="bg-white divide-y divide-gray-200" data-id="element-967">
+//                 {previewData.validationErrors.map((error: any, index: number) => <tr key={index} data-id="element-968">
+//                     <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-500" data-id="element-969">
+//                       {error.row}
+//                     </td>
+//                     <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-500" data-id="element-970">
+//                       {error.field}
+//                     </td>
+//                     <td className="px-6 py-2 whitespace-nowrap text-sm text-red-500" data-id="element-971">
+//                       {error.error}
+//                     </td>
+//                   </tr>)}
+//               </tbody>
+//             </table>
+//           </div>
+//         </div>}
+//       <div className="bg-white p-4 rounded-md shadow border border-gray-200" data-id="element-972">
+//         <h3 className="text-md font-medium text-gray-900 mb-3" data-id="element-973">Data Preview</h3>
+//         <div className="overflow-x-auto" data-id="element-974">
+//           <table className="min-w-full divide-y divide-gray-200" data-id="element-975">
+//             <thead className="bg-gray-50" data-id="element-976">
+//               <tr data-id="element-977">
+//                 {previewData.previewRows.length > 0 && Object.keys(previewData.previewRows[0]).map(header => <th key={header} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" data-id="element-978">
+//                       {header}
+//                     </th>)}
+//               </tr>
+//             </thead>
+//             <tbody className="bg-white divide-y divide-gray-200" data-id="element-979">
+//               {previewData.previewRows.map((row: Record<string, any>, rowIndex: number) => <tr key={rowIndex} data-id="element-980">
+//                   {Object.values(row).map((value, colIndex) => <td key={colIndex} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500" data-id="element-981">
+//                       {String(value)}
+//                     </td>)}
+//                 </tr>)}
+//             </tbody>
+//           </table>
+//         </div>
+//       </div>
+//       {configurationType === 'push' && <div className="bg-blue-50 p-4 rounded-md" data-id="element-982">
+//           <h3 className="text-md font-medium text-blue-900 mb-3" data-id="element-983">
+//             API Response Example
+//           </h3>
+//           <pre className="bg-white p-3 rounded border border-gray-200 text-sm font-mono overflow-x-auto" data-id="element-984">
+//             {`{
+//   "success": true,
+//   "correlationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+//   "stats": {
+//     "accepted": ${previewData.validRows},
+//     "rejected": ${previewData.invalidRows},
+//     "total": ${previewData.totalRows}
+//   },
+//   "timestamp": "${new Date().toISOString()}"
+// }`}
+//           </pre>
+//         </div>}
+//       <div className="flex justify-end space-x-4" data-id="element-985">
+//         <Button variant="secondary" onClick={() => setCurrentStep('config')} data-id="element-986">
+//           Back to Configuration
+//         </Button>
+//         <Button variant="primary" icon={<DatabaseIcon size={16} data-id="element-988" />} onClick={() => setCurrentStep('summary')} data-id="element-987">
+//           Continue
+//         </Button>
+//       </div>
+//     </div>;
   const renderSummaryStep = () => <div className="space-y-6" data-id="element-989">
       <div className="flex items-center justify-center py-4" data-id="element-990">
         <div className="bg-green-100 rounded-full p-3" data-id="element-991">
@@ -951,7 +1059,7 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
                 <div className="col-span-1 text-sm font-medium text-gray-500" data-id="element-1020">
                   Target:
                 </div>
-                <div className="col-span-2 text-sm text-gray-900" data-id="element-1021">{`${formData.targetSchema}.${formData.targetTable}`}</div>
+                <div className="col-span-2 text-sm text-gray-900" data-id="element-1021">{formData.targetTable}</div>
               </div>
             </> : <>
               <div className="grid grid-cols-3 gap-4" data-id="element-1022">
@@ -976,14 +1084,7 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
                   {formData.targetCollection}
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-4" data-id="element-1031">
-                <div className="col-span-1 text-sm font-medium text-gray-500" data-id="element-1032">
-                  Schema:
-                </div>
-                <div className="col-span-2 text-sm text-gray-900" data-id="element-1033">
-                  <span className="text-green-600" data-id="element-1034">Defined and validated</span>
-                </div>
-              </div>
+
             </>}
           <div className="grid grid-cols-3 gap-4" data-id="element-1035">
             <div className="col-span-1 text-sm font-medium text-gray-500" data-id="element-1036">
@@ -1024,6 +1125,8 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
     </div>;
   if (!isOpen) return null;
   return <div className="fixed inset-0 z-50 flex items-center justify-center p-4" data-id="element-1046">
+      {/* Blurred backdrop */}
+      <div className="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-sm" onClick={onClose}></div>
       <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden relative z-10" data-id="element-1047">
         <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200" data-id="element-1048">
           <h2 className="text-xl font-semibold text-gray-800" data-id="element-1049">

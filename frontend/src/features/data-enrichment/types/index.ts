@@ -23,13 +23,11 @@ export interface SftpConnection {
   private_key?: string; // Only for PRIVATE_KEY auth
 }
 
-// File Configuration for SFTP
+// File Configuration for SFTP - Matching backend FileSettingDto
 export interface FileConfig {
   path: string;
   file_type: FileType;
   delimiter: string;
-  header: boolean;
-  encoding: EncodingType;
 }
 
 // Schedule types
@@ -83,7 +81,7 @@ export interface CreatePullJobDto {
   source_type: SourceType;
   description: string;
   connection: HttpConnection | SftpConnection;
-  file?: FileConfig; // Only for SFTP
+  file?: FileConfig; // Only required for SFTP
   table_name: string;
   mode?: 'append' | 'replace';
 }
