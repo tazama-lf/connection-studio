@@ -80,6 +80,20 @@ export class SimulationService {
           message: `Failed to parse ${dto.payloadType}: ${parseError.message}`,
           value: dto.payload,
         });
+        let validationPayload = parsedPayload;
+        if (dto.payloadType === 'application/xml' && parsedPayload) {
+          const rootKeys = Object.keys(parsedPayload);
+          if (rootKeys.length === 1) {
+            validationPayload = parsedPayload[rootKeys[0]];
+          }
+        }
+        const schemaValidation = this.validateSchema(
+          validationPayload,
+          config.schema,
+        );
+        if (!schemaValidation.valid) {
+          errors.push(...schemaValidation.errors);
+        }
         return this.createFailedResult(
           dto,
           timestamp,
@@ -163,9 +177,7 @@ export class SimulationService {
   ): Promise<Config | null> {
     return this.configRepository.findConfigById(endpointId, tenantId);
   }
-  /**
-   * Parse payload based on content type
-   */
+
   private async parsePayload(payload: any, payloadType: string): Promise<any> {
     if (payloadType === 'application/xml') {
       if (typeof payload === 'object') {
@@ -183,9 +195,7 @@ export class SimulationService {
     }
     return payload;
   }
-  /**
-   * Validate payload against JSON schema
-   */
+
   private validateSchema(
     payload: any,
     schema: any,
@@ -210,9 +220,7 @@ export class SimulationService {
     );
     return { valid: false, errors };
   }
-  /**
-   * Apply field mappings with transformations
-   */
+
   private applyMappings(
     sourcePayload: any,
     mappings: FieldMapping[],
@@ -247,9 +255,7 @@ export class SimulationService {
     }
     return { result, applied, errors };
   }
-  /**
-   * Apply a single mapping transformation
-   */
+
   private applyMapping(
     sourcePayload: any,
     result: any,
@@ -349,9 +355,7 @@ export class SimulationService {
     }
     return false;
   }
-  /**
-   * ONE-TO-MANY: Split one field into multiple (SPLIT transformation)
-   */
+
   private applySplitMapping(
     sourcePayload: any,
     result: any,
@@ -376,9 +380,7 @@ export class SimulationService {
     }
     return false;
   }
-  /**
-   * MANY-TO-ONE: Sum multiple numeric fields (SUM transformation)
-   */
+
   private applySumMapping(
     sourcePayload: any,
     result: any,
@@ -403,9 +405,7 @@ export class SimulationService {
     }
     return false;
   }
-  /**
-   * MANY-TO-ONE: Mathematical operations on multiple numeric fields (MATH transformation)
-   */
+
   private applyMathMapping(
     sourcePayload: any,
     result: any,
@@ -471,17 +471,13 @@ export class SimulationService {
     }
     return false;
   }
-  /**
-   * Get nested value from object using dot notation
-   */
+
   private getNestedValue(obj: any, path: string): any {
     return path.split('.').reduce((current, key) => {
       return current && current[key] !== undefined ? current[key] : undefined;
     }, obj);
   }
-  /**
-   * Set nested value in object using dot notation
-   */
+
   private setNestedValue(obj: any, path: string, value: any): void {
     const keys = path.split('.');
     let current = obj;
@@ -494,9 +490,7 @@ export class SimulationService {
     }
     current[keys[keys.length - 1]] = value;
   }
-  /**
-   * Validate transformed payload against Tazama data model
-   */
+
   private async validateTazamaModel(
     transformedPayload: any,
   ): Promise<{ valid: boolean; errors: SimulationError[] }> {
@@ -521,9 +515,7 @@ export class SimulationService {
       };
     }
   }
-  /**
-   * Recursively validate fields against Tazama data model
-   */
+
   private validateTazamaFields(
     obj: any,
     basePath: string,
