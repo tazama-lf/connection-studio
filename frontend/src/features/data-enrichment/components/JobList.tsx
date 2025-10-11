@@ -6,7 +6,7 @@ import { Button } from '../../../shared/components/Button';
 interface JobListProps {
   jobs: DataEnrichmentJobResponse[];
   isLoading?: boolean;
-  onViewLogs?: (jobId: number) => void;
+  onViewLogs?: (jobId: string) => void;
   onRefresh?: () => void;
 }
 

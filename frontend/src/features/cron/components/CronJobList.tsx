@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { PlayIcon, PauseIcon, EditIcon, TrashIcon, EyeIcon } from 'lucide-react';
 import SearchBar from '../../../shared/components/SearchBar';
-import { Pagination } from '../../data-enrichment/components/Pagination';
 import { dataEnrichmentApi } from '../../data-enrichment/services';
 import type { DataEnrichmentJobResponse, ScheduleResponse } from '../../data-enrichment/types';
 export const CronJobList: React.FC = () => {
@@ -13,8 +12,7 @@ export const CronJobList: React.FC = () => {
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(5);
-  const [totalItems, setTotalItems] = useState(0);
+  const [itemsPerPage] = useState(5);
 
   // Load jobs and schedules on component mount
   useEffect(() => {
@@ -23,14 +21,13 @@ export const CronJobList: React.FC = () => {
         setLoading(true);
         setError(null);
         
-        // Load schedules from data-enrichment-service
-        const schedulesData = await dataEnrichmentApi.getAllSchedules(currentPage, itemsPerPage);
+        // Load schedules from data-enrichment-service (get all schedules for client-side pagination)
+        const schedulesData = await dataEnrichmentApi.getAllSchedules(1, 1000);
         setSchedules(schedulesData || []);
         
         // For now, we'll focus on schedules since jobs would need a separate API
         // that might not be implemented yet in the data-enrichment-service
         setJobs([]);
-        setTotalItems(schedulesData.length || 0);
       } catch (err) {
         console.error('Failed to load data:', err);
         setError('Failed to load schedules. Please try again.');
@@ -60,14 +57,21 @@ export const CronJobList: React.FC = () => {
   const endIndex = startIndex + itemsPerPage;
   const paginatedSchedules = filteredSchedules.slice(startIndex, endIndex);
 
-  // Update total items when filtered jobs change
+  // Reset to first page if current page is beyond available pages
   useEffect(() => {
-    setTotalItems(totalFilteredItems);
-    // Reset to first page if current page is beyond available pages
     if (currentPage > Math.ceil(totalFilteredItems / itemsPerPage) && totalFilteredItems > 0) {
       setCurrentPage(1);
     }
   }, [totalFilteredItems, currentPage, itemsPerPage]);
+
+  const handlePreviousPage = () => {
+    setCurrentPage(prev => Math.max(prev - 1, 1));
+  };
+
+  const handleNextPage = () => {
+    setCurrentPage(prev => Math.min(prev + 1, totalPages));
+  };
+
   return <div data-id="element-116">
       <div className="flex justify-between items-center mb-6" data-id="element-117">
         <h2 className="text-xl font-semibold text-gray-800" data-id="element-118">
@@ -171,18 +175,31 @@ export const CronJobList: React.FC = () => {
       </div>
 
       {/* Pagination */}
-      {totalItems > 0 && (
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          totalItems={totalItems}
-          itemsPerPage={itemsPerPage}
-          onPageChange={setCurrentPage}
-          onItemsPerPageChange={(newItemsPerPage) => {
-            setItemsPerPage(newItemsPerPage);
-            setCurrentPage(1); // Reset to first page when changing items per page
-          }}
-        />
+      {totalFilteredItems > 0 && (
+        <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+          <div className="text-sm text-gray-700">
+            Showing {startIndex + 1} to {Math.min(endIndex, totalFilteredItems)} of {totalFilteredItems} results
+          </div>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={handlePreviousPage}
+              disabled={currentPage === 1}
+              className="px-3 py-1 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            >
+              Previous
+            </button>
+            <span className="text-sm text-gray-700">
+              Page {currentPage} of {totalPages}
+            </span>
+            <button
+              onClick={handleNextPage}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            >
+              Next
+            </button>
+          </div>
+        </div>
       )}
     </div>;
 };

@@ -22,8 +22,18 @@ const ProtectedRoute = ({
 };
 
 export const AppRoutes: React.FC = () => {
+  const { isAuthenticated, loading } = useAuth();
+
+  // Show loading while checking authentication
+  if (loading) {
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+  }
+
   return (
     <Routes>
+      <Route path="/" element={
+        isAuthenticated ? <Navigate to={ROUTES.DASHBOARD} /> : <Navigate to={ROUTES.LOGIN} />
+      } />
       <Route path={ROUTES.LOGIN} element={<Login />} />
       <Route path={ROUTES.DASHBOARD} element={
         <ProtectedRoute>

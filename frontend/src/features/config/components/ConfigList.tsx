@@ -296,7 +296,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
       </div>
 
       {/* Pagination */}
-      {totalPages > 1 && (
+      {filteredConfigs.length > 0 && (
         <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
           <div className="text-sm text-gray-700">
             Showing {startIndex + 1} to {Math.min(endIndex, filteredConfigs.length)} of {filteredConfigs.length} results

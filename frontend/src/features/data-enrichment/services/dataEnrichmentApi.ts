@@ -79,29 +79,43 @@ export const dataEnrichmentApi = {
   },
 
   getAllJobs: async (page?: number, limit?: number): Promise<JobListResponse> => {
+    console.log('=== getAllJobs API CALL ===');
+    console.log('Input parameters - page:', page, 'limit:', limit);
+    
     const queryParams = new URLSearchParams();
     if (page) queryParams.append('page', page.toString());
     if (limit) queryParams.append('limit', limit.toString());
     
     const url = `${DATA_ENRICHMENT_BASE_URL}/job/all${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
-    console.log('Fetching all jobs from:', url);
+    console.log('Base URL:', DATA_ENRICHMENT_BASE_URL);
+    console.log('Final request URL:', url);
 
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Get all jobs error response:', errorText);
-      throw new Error(`Failed to fetch jobs: ${response.status} - ${errorText}`);
+      console.log('Response status:', response.status);
+      console.log('Response OK:', response.ok);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Get all jobs error response:', errorText);
+        throw new Error(`Failed to fetch jobs: ${response.status} - ${errorText}`);
+      }
+
+      const result = await response.json();
+      console.log('Raw API response:', result);
+      console.log('Jobs in response:', result?.jobs?.length || 0);
+      console.log('Total in response:', result?.total);
+      return result;
+    } catch (fetchError) {
+      console.error('Fetch error:', fetchError);
+      throw fetchError;
     }
-
-    const result = await response.json();
-    console.log('Jobs fetched successfully:', result);
-    return result;
   },
 
   getJob: async (id: string): Promise<DataEnrichmentJobResponse> => {

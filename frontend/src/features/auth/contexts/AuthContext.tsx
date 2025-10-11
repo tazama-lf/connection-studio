@@ -37,18 +37,53 @@ const AuthProvider: React.FC<{
       const storedToken = localStorage.getItem('authToken');
       const storedUser = localStorage.getItem('user');
       
+      console.log('=== AUTH INITIALIZATION ===');
+      console.log('Stored token exists:', !!storedToken);
+      console.log('Stored user exists:', !!storedUser);
+      
       if (storedToken && storedUser) {
         try {
-          const userData = JSON.parse(storedUser);
-          setUser(userData);
-          setIsAuthenticated(true);
+          // Validate the token by decoding it
+          const tokenUserData = authApi.decodeToken(storedToken);
+          console.log('Token validation result:', !!tokenUserData);
+          
+          if (tokenUserData) {
+            // Check if token is expired
+            const tokenPayload = JSON.parse(atob(storedToken.split('.')[1]));
+            const currentTime = Math.floor(Date.now() / 1000);
+            const isTokenExpired = tokenPayload.exp && tokenPayload.exp < currentTime;
+            
+            console.log('Token expiration check:', {
+              exp: tokenPayload.exp,
+              current: currentTime,
+              expired: isTokenExpired
+            });
+            
+            if (!isTokenExpired) {
+              const userData = JSON.parse(storedUser);
+              console.log('Setting user authenticated:', userData.username);
+              setUser(userData);
+              setIsAuthenticated(true);
+            } else {
+              console.log('Token expired, clearing storage');
+              localStorage.removeItem('authToken');
+              localStorage.removeItem('user');
+            }
+          } else {
+            console.log('Token invalid, clearing storage');
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('user');
+          }
         } catch (error) {
-          console.warn('Failed to parse stored user data, removing from localStorage');
+          console.warn('Failed to validate stored auth data, removing from localStorage:', error);
           localStorage.removeItem('authToken');
           localStorage.removeItem('user');
         }
+      } else {
+        console.log('No stored auth data found');
       }
       setLoading(false);
+      console.log('=== AUTH INITIALIZATION COMPLETE ===');
     };
 
     initializeAuth();

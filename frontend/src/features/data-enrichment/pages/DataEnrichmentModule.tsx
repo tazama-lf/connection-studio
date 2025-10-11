@@ -5,7 +5,6 @@ import { Plus } from 'lucide-react';
 
 // New job management components
 import JobList from '../components/JobList';
-import Pagination from '../components/Pagination';
 import JobDetailsModal from '../components/JobDetailsModal';
 import { DataEnrichmentFormModal } from '../../../shared/components/DataEnrichmentFormModal';
 import { dataEnrichmentApi } from '../services/dataEnrichmentApi';
@@ -17,7 +16,7 @@ const DataEnrichmentModule: React.FC = () => {
   const [jobsLoading, setJobsLoading] = useState(false);
   const [showJobForm, setShowJobForm] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(5);
+  const [itemsPerPage] = useState(5);
   const [totalItems, setTotalItems] = useState(0);
   
   // Job details modal state
@@ -34,17 +33,35 @@ const DataEnrichmentModule: React.FC = () => {
   }, [currentPage, itemsPerPage]);
 
   const loadJobs = async () => {
+    console.log('=== LOAD JOBS DEBUG ===');
     console.log('loadJobs called, currentPage:', currentPage, 'itemsPerPage:', itemsPerPage);
     setJobsLoading(true);
     try {
       // Fetch jobs from the data enrichment service
       const response = await dataEnrichmentApi.getAllJobs(currentPage, itemsPerPage);
-      console.log('API response received:', response);
+      console.log('=== API RESPONSE ===');
+      console.log('Full response:', response);
+      console.log('Jobs array length:', response.jobs?.length || 0);
+      console.log('Total items from API:', response.total);
+      console.log('Current page from API:', response.page);
+      console.log('Limit from API:', response.limit);
+      console.log('Total pages from API:', response.totalPages);
+      
       setJobs(response.jobs || []);
       setTotalItems(response.total || 0);
-      console.log('Jobs set to state:', response.jobs?.length || 0, 'total items:', response.total);
+      
+      console.log('=== STATE UPDATE ===');
+      console.log('Jobs set to state:', response.jobs?.length || 0);
+      console.log('Total items set to state:', response.total || 0);
+      
+      // Calculate pagination values
+      const calculatedTotalPages = Math.ceil((response.total || 0) / itemsPerPage);
+      console.log('Calculated total pages:', calculatedTotalPages);
+      console.log('Current pagination state - currentPage:', currentPage, 'itemsPerPage:', itemsPerPage);
     } catch (error) {
-      console.error('Failed to load jobs:', error);
+      console.error('=== ERROR LOADING JOBS ===');
+      console.error('Error details:', error);
+      console.error('Error message:', error instanceof Error ? error.message : 'Unknown error');
       setJobs([]); // Ensure jobs is always an array even on error
       setTotalItems(0);
       
@@ -54,6 +71,7 @@ const DataEnrichmentModule: React.FC = () => {
       }
     } finally {
       setJobsLoading(false);
+      console.log('=== LOAD JOBS COMPLETE ===');
     }
   };
 
@@ -100,8 +118,17 @@ const DataEnrichmentModule: React.FC = () => {
     setSelectedJob(null);
   };
 
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
 
+  const handlePreviousPage = () => {
+    setCurrentPage(prev => Math.max(prev - 1, 1));
+  };
 
+  const handleNextPage = () => {
+    setCurrentPage(prev => Math.min(prev + 1, totalPages));
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -170,18 +197,32 @@ const DataEnrichmentModule: React.FC = () => {
           onRefresh={loadJobs}
         />
         
+        {/* Pagination */}
         {totalItems > 0 && (
-          <Pagination
-            currentPage={currentPage}
-            totalPages={Math.ceil(totalItems / itemsPerPage)}
-            totalItems={totalItems}
-            itemsPerPage={itemsPerPage}
-            onPageChange={setCurrentPage}
-            onItemsPerPageChange={(newItemsPerPage) => {
-              setItemsPerPage(newItemsPerPage);
-              setCurrentPage(1); // Reset to first page when changing items per page
-            }}
-          />
+          <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between bg-white rounded-b-md">
+            <div className="text-sm text-gray-700">
+              Showing {startIndex + 1} to {Math.min(endIndex, totalItems)} of {totalItems} results
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={handlePreviousPage}
+                disabled={currentPage === 1}
+                className="px-3 py-1 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+              >
+                Previous
+              </button>
+              <span className="text-sm text-gray-700">
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                onClick={handleNextPage}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+              >
+                Next
+              </button>
+            </div>
+          </div>
         )}
 
         {/* Modal for creating new jobs */}

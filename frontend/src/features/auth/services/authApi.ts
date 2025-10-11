@@ -55,6 +55,11 @@ export class AuthApiService {
       });
 
       if (response.status === 401) {
+        console.log('=== 401 UNAUTHORIZED RESPONSE ===');
+        console.log('URL:', url);
+        console.log('Method:', config.method || 'GET');
+        console.log('Headers:', headers);
+        
         // Use global token manager instead of direct redirect
         globalTokenManager.handleTokenExpiration();
         throw new Error('Unauthorized');
