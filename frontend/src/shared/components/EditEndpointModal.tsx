@@ -47,6 +47,9 @@ interface EditEndpointModalProps {
     description: '',
     contentType: 'application/json',
   });
+  
+  // Current schema from PayloadEditor
+  const [currentSchema, setCurrentSchema] = useState<any>(null);
 
   // Backend integration state
   const [loading, setLoading] = useState(false);
@@ -436,11 +439,22 @@ interface EditEndpointModalProps {
           payload: payload,
         };
 
-        console.log('Saving configuration with data:', createRequest);
-        console.log('Full endpoint data:', endpointData);
-        console.log('Payload length:', payload.length);
-        console.log('Is new endpoint?', isNewEndpoint);
-        console.log('Endpoint ID:', endpointId);
+        // CRITICAL: Use the current schema from PayloadEditor (includes user edits)
+        if (!isNewEndpoint && currentSchema) {
+          createRequest.schema = currentSchema;
+          console.log('🔄 Using current edited schema from PayloadEditor:', currentSchema);
+        } else if (!isNewEndpoint && existingConfig?.schema) {
+          createRequest.schema = existingConfig.schema;
+          console.log('🔒 Preserving existing schema (no current edits):', existingConfig.schema);
+        }
+
+        console.log('🔥 EditEndpointModal.handleSave - Saving configuration:');
+        console.log('📦 Create request data:', createRequest);
+        console.log('📊 Full endpoint data:', endpointData);
+        console.log('📄 Payload length:', payload.length);
+        console.log('🆕 Is new endpoint?', isNewEndpoint);
+        console.log('🆔 Endpoint ID:', endpointId);
+        console.log('⚠️  NOTE: This request does NOT include schema - backend will auto-generate from payload!');
         
         let response: ConfigResponse;
         
@@ -506,14 +520,14 @@ interface EditEndpointModalProps {
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Blurred backdrop */}
+      {/* Enhanced blurred backdrop */}
       <div 
-        className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-40" 
+        className="fixed inset-0 backdrop-blur-sm backdrop-saturate-150 z-40" 
         onClick={onClose}
       />
       
       {/* Modal Content - Higher z-index to appear above backdrop */}
-      <div className="bg-white rounded-lg w-full max-w-6xl max-h-[90vh] overflow-hidden relative z-50" data-id="element-727">
+      <div className="bg-white rounded-lg w-full max-w-6xl max-h-[90vh] overflow-hidden relative z-50 shadow-2xl" data-id="element-727">
         <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200" data-id="element-728">
           <h2 className="text-xl font-semibold text-gray-800" data-id="element-729">
             {isNewEndpoint ? 'Create New Connection' : isCloning ? 'Clone Configuration' : 'Edit Configuration'}
@@ -545,6 +559,7 @@ interface EditEndpointModalProps {
                   onChange={setPayload} 
                   endpointData={endpointData}
                   onEndpointDataChange={setEndpointData}
+                  onSchemaChange={setCurrentSchema}
                   configId={createdEndpoint?.id || existingConfig?.id}
                   existingSchemaFields={existingConfig?.schema ? (() => {
                     // Convert AJV schema to SchemaField array for editing

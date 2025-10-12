@@ -70,23 +70,23 @@ export const JobList: React.FC<JobListProps> = ({
     );
   }
 
-  if (!jobs || jobs.length === 0) {
-    return (
-      <div className="text-center py-8">
-        <div className="text-gray-500 mb-4">No jobs found</div>
-        {onRefresh && (
-          <Button onClick={onRefresh} variant="secondary">
-            Refresh
-          </Button>
-        )}
-      </div>
-    );
-  }
+  // if (!jobs || jobs.length === 0) {
+  //   return (
+  //     <div className="text-center py-8">
+  //       <div className="text-gray-500 mb-4">No jobs found</div>
+  //       {onRefresh && (
+  //         <Button onClick={onRefresh} variant="secondary">
+  //           Refresh
+  //         </Button>
+  //       )}
+  //     </div>
+  //   );
+  // }
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="min-w-full">
+        {/* <table className="min-w-full">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
@@ -192,7 +192,7 @@ export const JobList: React.FC<JobListProps> = ({
               </tr>
             ))}
           </tbody>
-        </table>
+        </table> */}
       </div>
     </div>
   );

@@ -1,4 +1,5 @@
 import { ENV } from '../../../shared/config/environment.config';
+import { apiRequest } from '../../../shared/services/tokenManager';
 import type {
   CreatePullJobDto,
   CreatePushJobDto,
@@ -16,66 +17,36 @@ export const dataEnrichmentApi = {
     data: CreatePullJobDto,
   ): Promise<DataEnrichmentJobResponse> => {
     console.log('Creating pull job with data:', JSON.stringify(data, null, 2));
-    const response = await fetch(
-      `${DATA_ENRICHMENT_BASE_URL}/job/create/pull`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      },
-    );
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Create pull job error response:', errorText);
-      try {
-        const errorData = JSON.parse(errorText);
-        throw new Error(
-          errorData.message || `Failed to create pull job: ${response.status} - ${errorText}`,
-        );
-      } catch (parseError) {
-        throw new Error(
-          `Failed to create pull job: ${response.status} - ${errorText}`,
-        );
-      }
+    try {
+      return await apiRequest<DataEnrichmentJobResponse>(
+        `${DATA_ENRICHMENT_BASE_URL}/job/create/pull`,
+        {
+          method: 'POST',
+          body: JSON.stringify(data),
+        }
+      );
+    } catch (error) {
+      console.error('Create pull job error:', error);
+      throw error;
     }
-
-    return response.json();
   },
 
   createPushJob: async (
     data: CreatePushJobDto,
   ): Promise<DataEnrichmentJobResponse> => {
     console.log('Creating push job with data:', JSON.stringify(data, null, 2));
-    const response = await fetch(
-      `${DATA_ENRICHMENT_BASE_URL}/job/create/push`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      },
-    );
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Create push job error response:', errorText);
-      try {
-        const errorData = JSON.parse(errorText);
-        throw new Error(
-          errorData.message || `Failed to create push job: ${response.status} - ${errorText}`,
-        );
-      } catch (parseError) {
-        throw new Error(
-          `Failed to create push job: ${response.status} - ${errorText}`,
-        );
-      }
+    try {
+      return await apiRequest<DataEnrichmentJobResponse>(
+        `${DATA_ENRICHMENT_BASE_URL}/job/create/push`,
+        {
+          method: 'POST',
+          body: JSON.stringify(data),
+        }
+      );
+    } catch (error) {
+      console.error('Create push job error:', error);
+      throw error;
     }
-
-    return response.json();
   },
 
   getAllJobs: async (page?: number, limit?: number): Promise<JobListResponse> => {
@@ -91,46 +62,24 @@ export const dataEnrichmentApi = {
     console.log('Final request URL:', url);
 
     try {
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      console.log('Response status:', response.status);
-      console.log('Response OK:', response.ok);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Get all jobs error response:', errorText);
-        throw new Error(`Failed to fetch jobs: ${response.status} - ${errorText}`);
-      }
-
-      const result = await response.json();
+      const result = await apiRequest<JobListResponse>(url);
       console.log('Raw API response:', result);
       console.log('Jobs in response:', result?.jobs?.length || 0);
       console.log('Total in response:', result?.total);
       return result;
-    } catch (fetchError) {
-      console.error('Fetch error:', fetchError);
-      throw fetchError;
+    } catch (error) {
+      console.error('Get all jobs error:', error);
+      throw error;
     }
   },
 
   getJob: async (id: string): Promise<DataEnrichmentJobResponse> => {
-    const response = await fetch(`${DATA_ENRICHMENT_BASE_URL}/job/${id}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch job: ${response.status}`);
+    try {
+      return await apiRequest<DataEnrichmentJobResponse>(`${DATA_ENRICHMENT_BASE_URL}/job/${id}`);
+    } catch (error) {
+      console.error(`Failed to fetch job ${id}:`, error);
+      throw error;
     }
-
-    return response.json();
   },
 
   // Schedule endpoints
@@ -209,25 +158,47 @@ export const dataEnrichmentApi = {
   testConnection: async (
     connectionData: Partial<CreatePullJobDto | CreatePushJobDto>,
   ): Promise<{ success: boolean; message: string }> => {
-    // This would be a test endpoint to validate connection before creating job
-    const response = await fetch(
-      `${DATA_ENRICHMENT_BASE_URL}/job/test/connection`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(connectionData),
-      },
-    );
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(
-        errorData.message || `Connection test failed: ${response.status}`,
+    try {
+      return await apiRequest<{ success: boolean; message: string }>(
+        `${DATA_ENRICHMENT_BASE_URL}/job/test/connection`,
+        {
+          method: 'POST',
+          body: JSON.stringify(connectionData),
+        }
       );
+    } catch (error) {
+      console.error('Connection test failed:', error);
+      throw error;
     }
+  },
 
-    return response.json();
+  // Preview data from connection
+  previewData: async (
+    connectionData: Partial<CreatePullJobDto | CreatePushJobDto>,
+  ): Promise<{
+    totalRows: number;
+    validRows: number;
+    invalidRows: number;
+    previewRows: Record<string, any>[];
+    validationErrors: Array<{ row: number; field: string; error: string }>;
+  }> => {
+    try {
+      return await apiRequest<{
+        totalRows: number;
+        validRows: number;
+        invalidRows: number;
+        previewRows: Record<string, any>[];
+        validationErrors: Array<{ row: number; field: string; error: string }>;
+      }>(
+        `${DATA_ENRICHMENT_BASE_URL}/job/preview`,
+        {
+          method: 'POST',
+          body: JSON.stringify(connectionData),
+        }
+      );
+    } catch (error) {
+      console.error('Data preview failed:', error);
+      throw error;
+    }
   },
 };

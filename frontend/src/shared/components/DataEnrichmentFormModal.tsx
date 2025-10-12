@@ -251,50 +251,56 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
         });
       }
 
-      // Try to test the connection
+      // Try to test the connection and get preview data
       try {
+        // First test the connection
         await dataEnrichmentApi.testConnection(testPayload);
+        console.log('Connection test passed, fetching preview data...');
         
-        // If connection test succeeds, show mock preview data
-        // TODO: In future, the test endpoint should return actual preview data
-        const mockPreviewData = {
-          totalRows: 156,
-          validRows: 148,
-          invalidRows: 8,
-          previewRows: [
-            { id: '001', name: 'John Smith', email: 'john@example.com', status: 'active' },
-            { id: '002', name: 'Jane Doe', email: 'jane@example.com', status: 'active' },
-            { id: '003', name: 'Bob Johnson', email: 'bob@example.com', status: 'inactive' }
-          ],
-          validationErrors: [
-            { row: 45, field: 'email', error: 'Invalid email format' },
-            { row: 67, field: 'status', error: 'Value not in allowed list' },
-            { row: 89, field: 'id', error: 'Duplicate ID' }
-          ]
-        };
-        setPreviewData(mockPreviewData);
-        setCurrentStep('summary');
+        // If connection succeeds, fetch real preview data
+        try {
+          const previewData = await dataEnrichmentApi.previewData(testPayload);
+          setPreviewData(previewData);
+          setCurrentStep('summary');
+        } catch (previewError) {
+          console.warn('Preview endpoint not available, using connection test success:', previewError);
+          
+          // If preview fails but connection test passed, show basic success info
+          const basicPreviewData = {
+            totalRows: 0,
+            validRows: 0,
+            invalidRows: 0,
+            previewRows: [],
+            validationErrors: [],
+            connectionSuccess: true
+          };
+          setPreviewData(basicPreviewData);
+          setCurrentStep('summary');
+        }
       } catch (testError) {
-        // If the test endpoint doesn't exist, fall back to summary with a warning
-        console.warn('Test endpoint not available, proceeding with mock preview:', testError);
+        console.warn('Test endpoint not available, attempting preview directly:', testError);
         
-        const mockPreviewData = {
-          totalRows: 156,
-          validRows: 148,
-          invalidRows: 8,
-          previewRows: [
-            { id: '001', name: 'John Smith', email: 'john@example.com', status: 'active' },
-            { id: '002', name: 'Jane Doe', email: 'jane@example.com', status: 'active' },
-            { id: '003', name: 'Bob Johnson', email: 'bob@example.com', status: 'inactive' }
-          ],
-          validationErrors: [
-            { row: 45, field: 'email', error: 'Invalid email format' },
-            { row: 67, field: 'status', error: 'Value not in allowed list' },
-            { row: 89, field: 'id', error: 'Duplicate ID' }
-          ]
-        };
-        setPreviewData(mockPreviewData);
-        setCurrentStep('summary');
+        // If test endpoint doesn't exist, try preview directly
+        try {
+          const previewData = await dataEnrichmentApi.previewData(testPayload);
+          setPreviewData(previewData);
+          setCurrentStep('summary');
+        } catch (previewError) {
+          console.warn('Neither test nor preview endpoints available, using fallback data:', previewError);
+          
+          // Last resort: use fallback data with clear indication it's not real
+          const fallbackPreviewData = {
+            totalRows: 0,
+            validRows: 0,
+            invalidRows: 0,
+            previewRows: [],
+            validationErrors: [],
+            isDemo: true,
+            message: 'Preview not available - backend endpoint not implemented'
+          };
+          setPreviewData(fallbackPreviewData);
+          setCurrentStep('summary');
+        }
       }
     } catch (error) {
       console.error('Connection test failed:', error);
@@ -1086,16 +1092,6 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
               </div>
 
             </>}
-          <div className="grid grid-cols-3 gap-4" data-id="element-1035">
-            <div className="col-span-1 text-sm font-medium text-gray-500" data-id="element-1036">
-              Validation:
-            </div>
-            <div className="col-span-2 text-sm text-gray-900" data-id="element-1037">
-              {previewData.invalidRows === 0 ? <span className="text-green-600" data-id="element-1038">All rows valid</span> : <span className="text-yellow-600" data-id="element-1039">
-                  {previewData.invalidRows} invalid rows
-                </span>}
-            </div>
-          </div>
         </div>
       </div>
       <div className="bg-blue-50 p-4 rounded-md" data-id="element-1040">
@@ -1115,7 +1111,7 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
         </div>
       )}
       <div className="flex justify-end space-x-4" data-id="element-1043">
-        <Button variant="secondary" onClick={() => setCurrentStep('preview')} disabled={isCreating} data-id="element-1044">
+        <Button variant="secondary" onClick={() => setCurrentStep('config')} disabled={isCreating} data-id="element-1044">
           Back
         </Button>
         <Button variant="primary" onClick={handleSave} disabled={isCreating} data-id="element-1045">
@@ -1125,9 +1121,9 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
     </div>;
   if (!isOpen) return null;
   return <div className="fixed inset-0 z-50 flex items-center justify-center p-4" data-id="element-1046">
-      {/* Blurred backdrop */}
-      <div className="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-sm" onClick={onClose}></div>
-      <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden relative z-10" data-id="element-1047">
+      {/* Enhanced blurred backdrop */}
+      <div className="absolute inset-0 backdrop-blur-sm backdrop-saturate-150" onClick={onClose}></div>
+      <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden relative z-10 shadow-2xl" data-id="element-1047">
         <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200" data-id="element-1048">
           <h2 className="text-xl font-semibold text-gray-800" data-id="element-1049">
             Define New Data Enrichment Endpoint
@@ -1138,7 +1134,6 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
         </div>
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]" data-id="element-1052">
           {currentStep === 'config' && renderConfigStep()}
-          {currentStep === 'preview' && renderPreviewStep()}
           {currentStep === 'summary' && renderSummaryStep()}
         </div>
       </div>

@@ -105,6 +105,40 @@ const AuthProvider: React.FC<{
     return unsubscribe;
   }, [showTokenExpiredModal]);
 
+  // Periodic token expiration check for idle users
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const checkTokenExpiration = () => {
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        console.log('No token found, logging out user');
+        logout();
+        return;
+      }
+
+      try {
+        // Check if token is expired
+        const tokenPayload = JSON.parse(atob(token.split('.')[1]));
+        const currentTime = Math.floor(Date.now() / 1000);
+        const isTokenExpired = tokenPayload.exp && tokenPayload.exp < currentTime;
+        
+        if (isTokenExpired) {
+          console.log('Token expired during idle check, triggering logout');
+          globalTokenManager.handleTokenExpiration();
+        }
+      } catch (error) {
+        console.error('Error checking token expiration:', error);
+        logout();
+      }
+    };
+
+    // Check every 30 seconds
+    const interval = setInterval(checkTokenExpiration, 30000);
+    
+    return () => clearInterval(interval);
+  }, [isAuthenticated]);
+
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
       setLoading(true);

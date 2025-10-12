@@ -8,6 +8,7 @@ export interface CreateConfigRequest {
   version?: string;
   contentType?: 'application/json' | 'application/xml';
   payload: string;
+  schema?: any; // Complete JSON Schema object
   mapping?: FieldMapping[];
   fieldAdjustments?: FieldAdjustment[];
 }
@@ -326,15 +327,31 @@ export class ConfigApiService {
     data: Partial<CreateConfigRequest>,
   ): Promise<ConfigResponse> {
     try {
+      console.log('🚀 configApi.updateConfig called:');
+      console.log('  - Config ID:', id);
+      console.log('  - Update data:', JSON.stringify(data, null, 2));
+      console.log('  - API URL:', `${this.baseURL}/config/${id}`);
+      
+      const headers = this.getAuthHeaders();
+      console.log('  - Request headers:', headers);
+
       const response = await fetch(`${this.baseURL}/config/${id}`, {
         method: 'PUT',
-        headers: this.getAuthHeaders(),
+        headers,
         body: JSON.stringify(data),
       });
 
-      return await this.handleResponse<ConfigResponse>(response);
+      console.log('📨 Response received:');
+      console.log('  - Status:', response.status);
+      console.log('  - Status text:', response.statusText);
+      console.log('  - Response headers:', Object.fromEntries(response.headers.entries()));
+
+      const result = await this.handleResponse<ConfigResponse>(response);
+      console.log('✅ Processed response:', result);
+      
+      return result;
     } catch (error) {
-      console.error('Config update failed:', error);
+      console.error('💥 Config update failed:', error);
       throw error;
     }
   }

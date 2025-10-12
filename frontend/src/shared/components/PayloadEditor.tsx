@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from './Button';
-import { UploadIcon, SparklesIcon, SaveIcon } from 'lucide-react';
-import { type SchemaField, configApi, type FieldAdjustment } from '../../features/config/services/configApi';
+import { UploadIcon, SaveIcon, SparklesIcon } from 'lucide-react';
+import { type SchemaField, type FieldAdjustment } from '../../features/config/services/configApi';
 
 interface PayloadEditorProps {
   value: string;
@@ -10,6 +10,7 @@ interface PayloadEditorProps {
   onEndpointDataChange?: (data: EndpointFormData) => void;
   configId?: number; // Optional config ID for schema updates
   onFieldAdjustmentsChange?: (fieldAdjustments: FieldAdjustment[]) => void; // Callback for field adjustments
+  onSchemaChange?: (schema: any) => void; // Callback for current schema
   existingSchemaFields?: SchemaField[]; // Existing schema fields when editing
 }
 
@@ -36,6 +37,7 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
   onEndpointDataChange,
   configId,
   onFieldAdjustmentsChange,
+  onSchemaChange,
   existingSchemaFields
 }) => {
 
@@ -54,17 +56,65 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
   // State for inferred fields from schema generation
   const [inferredFields, setInferredFields] = useState<InferredField[]>([]);
   const [showInferredFields, setShowInferredFields] = useState(false);
-  const [isGeneratingFields, setIsGeneratingFields] = useState(false);
+
   const [fieldGenerationError, setFieldGenerationError] = useState<string | null>(null);
+  const [isGeneratingFields, setIsGeneratingFields] = useState(false);
+  const [hasUserMadeEdits, setHasUserMadeEdits] = useState(false);
   
-  // State for saving schema updates
-  const [isSavingSchema, setIsSavingSchema] = useState(false);
-  const [schemaSaveError, setSchemaSaveError] = useState<string | null>(null);
-  const [schemaSaveSuccess, setSchemaSaveSuccess] = useState(false);
+  // Add field form state
+  const [showAddFieldForm, setShowAddFieldForm] = useState(false);
+  const [newField, setNewField] = useState({
+    path: '',
+    type: 'String' as InferredField['type'],
+    required: false
+  });
 
   // Helper function for capitalizing strings
   const capitalizeFirstLetter = (string: string): string => {
     return string.charAt(0).toUpperCase() + string.slice(1).toLowerCase();
+  };
+
+  // Handle adding a new field manually
+  const handleAddField = () => {
+    if (!newField.path.trim()) {
+      return; // Don't add empty paths
+    }
+
+    // Check if field already exists
+    const existsAlready = inferredFields.some(f => f.path === newField.path.trim());
+    if (existsAlready) {
+      return; // Don't add duplicates
+    }
+
+    // Calculate the level based on dots in path
+    const level = (newField.path.match(/\./g) || []).length;
+    
+    // Determine parent path
+    const pathParts = newField.path.split('.');
+    const parent = pathParts.length > 1 ? pathParts.slice(0, -1).join('.') : undefined;
+
+    // Create new field
+    const fieldToAdd: InferredField = {
+      path: newField.path.trim(),
+      type: newField.type,
+      level,
+      parent,
+      required: newField.required
+    };
+
+    // Add to fields list
+    setInferredFields(prev => [...prev, fieldToAdd].sort((a, b) => a.path.localeCompare(b.path)));
+    setHasUserMadeEdits(true);
+    
+    // Reset form
+    setNewField({
+      path: '',
+      type: 'String',
+      required: false
+    });
+    setShowAddFieldForm(false);
+    
+    console.log('✅ Added new field manually:', fieldToAdd);
   };
 
 
@@ -106,19 +156,35 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
     }
   }, [initialEndpointData]);
 
-  // Initialize with existing schema fields when editing
+  // Initialize with existing schema fields when editing, but don't overwrite user edits
   useEffect(() => {
-    if (existingSchemaFields && existingSchemaFields.length > 0) {
-      console.log('PayloadEditor - Converting existing schema fields:', existingSchemaFields);
+    // Only initialize if user hasn't made manual edits yet
+    if (!hasUserMadeEdits && existingSchemaFields && existingSchemaFields.length > 0) {
+      console.log('PayloadEditor - Converting existing schema fields (initial load):', existingSchemaFields);
       const inferredFields = convertSchemaFieldsToInferredFields(existingSchemaFields);
       setInferredFields(inferredFields);
       setShowInferredFields(true);
       console.log('PayloadEditor - Initialized with existing schema fields:', inferredFields);
       console.log(`PayloadEditor - Total fields loaded: ${inferredFields.length}`);
-    } else {
+    } else if (!hasUserMadeEdits && configId && (!existingSchemaFields || existingSchemaFields.length === 0)) {
+      // When editing existing config but no schema fields exist, show empty schema editor
+      console.log('PayloadEditor - Showing empty schema editor for existing config');
+      setShowInferredFields(true);
+      setInferredFields([]);
+    } else if (!hasUserMadeEdits && !configId) {
       console.log('PayloadEditor - No existing schema fields provided');
+      // For new endpoints, also show the schema editor
+      setShowInferredFields(true);
+      setInferredFields([]);
+    } else if (hasUserMadeEdits) {
+      console.log('🔒 User has made manual edits - preserving current schema fields');
     }
-  }, [existingSchemaFields]);
+  }, [existingSchemaFields, configId, hasUserMadeEdits]);
+
+  // Always show the schema fields section (no auto-generation)
+  useEffect(() => {
+    setShowInferredFields(true);
+  }, []); // Only run once on component mount
 
   // Notify parent component when field adjustments change
   useEffect(() => {
@@ -131,6 +197,71 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
       onFieldAdjustmentsChange(fieldAdjustments);
     }
   }, [inferredFields, onFieldAdjustmentsChange]);
+
+  // Notify parent component when schema changes
+  useEffect(() => {
+    if (onSchemaChange && inferredFields.length > 0) {
+      const currentSchema = convertInferredFieldsToJsonSchema(inferredFields);
+      if (currentSchema) {
+        onSchemaChange(currentSchema);
+      }
+    }
+  }, [inferredFields, onSchemaChange]);
+
+
+
+  // Manual generation function for new connections
+  const handleGenerateFields = async () => {
+    if (!value.trim()) {
+      setFieldGenerationError('Please enter a payload first.');
+      return;
+    }
+
+    setIsGeneratingFields(true);
+    setFieldGenerationError(null);
+
+    try {
+      // Generate schema from the current payload
+      const schema = generateSchemaFromPayload(value, endpointData.contentType);
+      
+      if (schema) {
+        // Convert schema to InferredField format for display
+        const convertSchemaToFields = (schemaFields: SchemaField[], level = 0, parentPath = ''): InferredField[] => {
+          const fields: InferredField[] = [];
+          
+          schemaFields.forEach((field) => {
+            fields.push({
+              path: field.path,
+              type: capitalizeFirstLetter(field.type) as InferredField['type'],
+              level,
+              parent: parentPath || (field.path.includes('.') ? field.path.substring(0, field.path.lastIndexOf('.')) : undefined),
+              required: field.isRequired,
+            });
+            
+            if (field.children) {
+              fields.push(...convertSchemaToFields(field.children, level + 1, field.path));
+            }
+          });
+          
+          return fields;
+        };
+
+        const fields = convertSchemaToFields(schema);
+        setInferredFields(fields);
+        setShowInferredFields(true);
+        
+        console.log('Manually generated schema from payload:', fields);
+      } else {
+        setFieldGenerationError('Failed to generate schema from payload');
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      setFieldGenerationError(`Schema inference failed: ${errorMessage}`);
+      console.error('Schema inference error:', error);
+    } finally {
+      setIsGeneratingFields(false);
+    }
+  };
 
   const handleEndpointDataChange = (field: keyof EndpointFormData, value: string) => {
     const updatedData = { ...endpointData, [field]: value };
@@ -351,111 +482,75 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
     return schemaFields;
   };
 
-  // Save updated schema to backend
-  const handleSaveSchema = async () => {
-    if (!configId) {
-      setSchemaSaveError('No configuration ID provided for saving schema');
-      return;
+  // Convert inferred fields to proper JSON Schema format
+  const convertInferredFieldsToJsonSchema = (fields: InferredField[]): any => {
+    console.log('🔄 Converting inferred fields to JSON Schema:', fields);
+
+    if (fields.length === 0) {
+      return null;
     }
 
-    if (!inferredFields.length) {
-      setSchemaSaveError('No fields to save');
-      return;
-    }
+    // Group fields by their root level (no dots in path)
+    const rootFields = fields.filter(f => !f.path.includes('.'));
+    const nestedFields = fields.filter(f => f.path.includes('.'));
 
-    setIsSavingSchema(true);
-    setSchemaSaveError(null);
-    setSchemaSaveSuccess(false);
+    const properties: any = {};
+    const required: string[] = [];
 
-    try {
-      // Convert InferredFields to FieldAdjustments format for the backend API
-      const buildFieldAdjustments = (): FieldAdjustment[] => {
-        return inferredFields.map(field => ({
-          path: field.path,
-          type: field.type.toUpperCase() as 'STRING' | 'NUMBER' | 'BOOLEAN' | 'OBJECT' | 'ARRAY',
-          isRequired: field.required
-        }));
-      };
-
-      const fieldAdjustments = buildFieldAdjustments();
-
-      // Debug: Log the field adjustments to verify correct structure
-      console.log('Field Adjustments:', JSON.stringify(fieldAdjustments, null, 2));
-
-      // Create update request with fieldAdjustments
-      const updateData = {
-        fieldAdjustments: fieldAdjustments
-      };
-
-      // Update the configuration with the new schema
-      const response = await configApi.updateConfig(configId, updateData);
-
-      if (response.success) {
-        setSchemaSaveSuccess(true);
-        // Auto-hide success message after 3 seconds
-        setTimeout(() => setSchemaSaveSuccess(false), 3000);
-      } else {
-        setSchemaSaveError(response.message || 'Failed to save schema');
-      }
-    } catch (error) {
-      setSchemaSaveError(error instanceof Error ? error.message : 'Failed to save schema');
-    } finally {
-      setIsSavingSchema(false);
-    }
-  };
-
-  const handleGenerateFields = async () => {
-    if (!value.trim()) {
-      setFieldGenerationError('Please enter a payload first.');
-      return;
-    }
-
-    setIsGeneratingFields(true);
-    setFieldGenerationError(null);
-
-    try {
-      // Generate schema locally without saving to database
-      const schema = generateSchemaFromPayload(value, endpointData.contentType);
+    // Process root level fields
+    rootFields.forEach(field => {
+      const fieldName = field.path;
       
-      if (schema) {
-        // Convert schema to InferredField format for display
-        const convertSchemaToFields = (schemaFields: SchemaField[], level = 0, parentPath = ''): InferredField[] => {
-          const fields: InferredField[] = [];
-          
-          schemaFields.forEach((field) => {
-            fields.push({
-              path: field.path,
-              type: capitalizeFirstLetter(field.type) as InferredField['type'],
-              level,
-              parent: parentPath || (field.path.includes('.') ? field.path.substring(0, field.path.lastIndexOf('.')) : undefined),
-              required: field.isRequired,
-            });
-            
-            if (field.children) {
-              fields.push(...convertSchemaToFields(field.children, level + 1, field.path));
-            }
-          });
-          
-          return fields;
-        };
-
-        const fields = convertSchemaToFields(schema);
-        setInferredFields(fields);
-        setShowInferredFields(true);
+      // Find nested fields for this root field
+      const childFields = nestedFields.filter(f => f.path.startsWith(fieldName + '.'));
+      
+      if (field.type === 'Object' && childFields.length > 0) {
+        // Convert child fields for nested object
+        const childInferredFields = childFields.map(cf => ({
+          ...cf,
+          path: cf.path.substring(fieldName.length + 1), // Remove the parent path
+          level: cf.level - 1
+        }));
         
-        console.log('Schema generated locally, fields created:', fields);
-        console.log('Generated schema:', schema);
+        const nestedSchema = convertInferredFieldsToJsonSchema(childInferredFields);
+        properties[fieldName] = {
+          type: 'object',
+          ...nestedSchema,
+          additionalProperties: false
+        };
+      } else if (field.type === 'Array') {
+        properties[fieldName] = {
+          type: 'array',
+          items: { type: 'string' } // Default array item type, can be enhanced
+        };
       } else {
-        setFieldGenerationError('Failed to generate schema from payload');
+        properties[fieldName] = {
+          type: field.type.toLowerCase()
+        };
       }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      setFieldGenerationError(`Schema inference failed: ${errorMessage}`);
-      console.error('Schema inference error:', error);
-    } finally {
-      setIsGeneratingFields(false);
+      
+      if (field.required) {
+        required.push(fieldName);
+      }
+    });
+
+    const schema: any = {
+      type: 'object',
+      properties,
+      additionalProperties: false
+    };
+
+    if (required.length > 0) {
+      schema.required = required;
     }
+
+    console.log('✅ Generated JSON Schema:', JSON.stringify(schema, null, 2));
+    return schema;
   };
+
+
+
+
 
   const sampleJsonPayload = `{
   "transaction": {
@@ -588,7 +683,9 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
       </div>
 
       <div className="flex justify-between items-center">
-        <h3 className="text-lg font-medium text-gray-900">Sample Payload</h3>
+        <h3 className="text-lg font-medium text-gray-900">
+          {configId ? 'Configuration Schema' : 'Configuration Payload'}
+        </h3>
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-2">
             <label className="text-sm font-medium text-gray-700">Format:</label>
@@ -634,13 +731,29 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
       )}
 
       {/* Code Editor */}
-      <div className="border rounded-md">
+      <div className="border rounded-md relative">
+        {configId && (
+          <div className="absolute top-2 right-2 z-10">
+            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-200 text-gray-700">
+              🔒 Read-Only
+            </span>
+          </div>
+        )}
         <textarea 
           value={value} 
-          onChange={e => onChange(e.target.value)} 
-          className="w-full h-96 p-4 font-mono text-sm bg-gray-50" 
+          onChange={configId ? undefined : (e => onChange(e.target.value))} 
+          className={`w-full h-96 p-4 font-mono text-sm ${
+            configId 
+              ? 'bg-gray-100 text-gray-600 cursor-not-allowed' 
+              : 'bg-gray-50'
+          }`}
           spellCheck="false" 
-          placeholder={`Enter your ${endpointData.contentType === 'application/json' ? 'JSON' : 'XML'} payload here...`} 
+          placeholder={
+            configId 
+              ? `Payload (read-only in edit mode) - use field editor below to modify schema`
+              : `Enter your ${endpointData.contentType === 'application/json' ? 'JSON' : 'XML'} payload here...`
+          }
+          readOnly={!!configId}
         />
       </div>
 
@@ -653,130 +766,429 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
         </div>
       )}
 
-      {/* Generate Schema Button */}
-      <div className="flex flex-col items-center my-6">
+      {/* Schema Generation Info */}
+      <div className="my-6">
         {fieldGenerationError && (
           <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-700 text-center">
             {fieldGenerationError}
           </div>
         )}
-        <Button 
-          variant="primary" 
-          icon={<SparklesIcon size={18} />} 
-          onClick={handleGenerateFields}
-          disabled={isGeneratingFields || !value.trim()}
-        >
-          {isGeneratingFields ? 'Generating...' : 'Generate Fields'}
-        </Button>
+        
+        {/* Show Generate Fields button only for new configs (no configId) */}
+        {!configId && value && (
+          <div className="text-center mb-4">
+            <Button
+              variant="primary"
+              onClick={handleGenerateFields}
+              disabled={isGeneratingFields || !value.trim()}
+              icon={<SparklesIcon size={16} />}
+            >
+              {isGeneratingFields ? 'Generating...' : 'Generate Fields'}
+            </Button>
+          </div>
+        )}
+        
+        <div className="text-center">
+          <p className="text-sm text-gray-600">
+            {configId 
+              ? 'Payload is read-only in edit mode. Use the field editor below to add, remove, or modify schema fields.'
+              : value.trim() 
+                ? 'Click "Generate Fields from Payload" to create schema fields from your payload above.'
+                : 'Enter a payload above, then click "Generate Fields from Payload" to create schema fields.'
+            }
+          </p>
+        </div>
       </div>
 
-      {/* Inferred Fields Section */}
-      {showInferredFields && inferredFields.length > 0 && (
+      {/* Schema Fields Section */}
+      {showInferredFields && (
         <div className="mt-8 space-y-4">
           <div>
-            <h3 className="text-lg font-medium text-gray-900">
-              {configId ? 'Schema Fields (Loaded from Configuration)' : 'Generated Fields'}
-            </h3>
-            <p className="text-sm text-gray-600 mt-1">
-              {configId 
-                ? `Loaded existing schema fields from your saved configuration. You can modify the field types and requirements below.`
-                : `Define the structure of your ${endpointData.contentType === 'application/json' ? 'JSON' : 'XML'} schema based on the input data. For each field, specify its data type.`
-              }
-            </p>
+            <div className="flex justify-between items-start">
+              <div>
+                <h3 className="text-lg font-medium text-gray-900">
+                  Schema Fields {configId ? '(Manual Editing)' : '(Payload-Generated)'}
+                </h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  {configId 
+                    ? 'Manually add, remove, and edit schema fields below. The payload above is read-only in edit mode.'
+                    : 'Generate schema fields from your payload above, then adjust field types and requirements below.'
+                  }
+                </p>
+              </div>
+              
+              {/* Generate Fields Button - Only for new configs */}
+              {!configId && value.trim() && endpointData.contentType && (
+                <Button
+                  variant="secondary"
+                  icon={<SparklesIcon size={16} />}
+                  onClick={handleGenerateFields}
+                  disabled={isGeneratingFields}
+                  size="sm"
+                >
+                  {isGeneratingFields ? 'Generating...' : 'Generate Fields from Payload'}
+                </Button>
+              )}
+            </div>
           </div>
           
-          {/* Dynamic Fields from Schema */}
-          <div className="space-y-4">
-            {inferredFields.map((field, index) => (
-              <div key={index} className={`${field.level > 0 ? 'ml-' + (field.level * 4) + ' border-l-2 border-gray-200 pl-4' : ''}`}>
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Field Path
-                    </label>
-                    <input 
-                      type="text" 
-                      value={field.path} 
-                      readOnly 
-                      className="block w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md shadow-sm cursor-not-allowed sm:text-sm" 
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Type
-                    </label>
-                    <select 
-                      value={field.type} 
-                      className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                      onChange={(e) => {
-                        const updatedFields = [...inferredFields];
-                        updatedFields[index].type = e.target.value as 'String' | 'Number' | 'Boolean' | 'Object' | 'Array';
-                        setInferredFields(updatedFields);
-                      }}
-                    >
-                      <option value="String">String</option>
-                      <option value="Number">Number</option>
-                      <option value="Boolean">Boolean</option>
-                      <option value="Object">Object</option>
-                      <option value="Array">Array</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Required
-                    </label>
-                    <div className="flex items-center pt-2">
-                      <input 
-                        type="checkbox" 
-                        checked={field.required}
-                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                        onChange={(e) => {
-                          const updatedFields = [...inferredFields];
-                          updatedFields[index].required = e.target.checked;
-                          setInferredFields(updatedFields);
-                        }}
-                      />
-                      <span className="ml-2 text-sm text-gray-600">
-                        {field.required ? 'Required' : 'Optional'}
-                      </span>
+          {/* Field Editor Content */}
+              {inferredFields.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <p className="text-sm">No schema fields generated yet.</p>
+                  <p className="text-xs mt-1">
+                    {configId 
+                      ? 'Use the field editor to manually add schema fields for this config:'
+                      : 'Enter a valid JSON or XML payload above, then click "Generate Fields from Payload" to create schema fields.'
+                    }
+                  </p>
+                  
+                  {/* Add Field Button for Empty State - Only in edit mode */}
+                  {configId && (
+                    <div className="mt-4">
+                    {!showAddFieldForm ? (
+                      <button
+                        onClick={() => setShowAddFieldForm(true)}
+                        className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                      >
+                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                        Add Your First Field
+                      </button>
+                    ) : (
+                      <div className="max-w-md mx-auto p-4 border border-gray-300 rounded-lg bg-gray-50 text-left">
+                        <h4 className="text-sm font-medium text-gray-900 mb-3 text-center">Add Your First Field</h4>
+                        <div className="space-y-3">
+                          {/* Field Path Input */}
+                          <div>
+                            <label htmlFor="empty-field-path" className="block text-xs font-medium text-gray-700 mb-1">
+                              Field Path *
+                            </label>
+                            <input
+                              id="empty-field-path"
+                              type="text"
+                              value={newField.path}
+                              onChange={(e) => setNewField(prev => ({ ...prev, path: e.target.value }))}
+                              placeholder="e.g., user.name or address.street"
+                              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">Use dots for nested fields (parent.child)</p>
+                          </div>
+
+                          {/* Field Type Select */}
+                          <div>
+                            <label htmlFor="empty-field-type" className="block text-xs font-medium text-gray-700 mb-1">
+                              Type
+                            </label>
+                            <select
+                              id="empty-field-type"
+                              value={newField.type}
+                              onChange={(e) => setNewField(prev => ({ ...prev, type: e.target.value as InferredField['type'] }))}
+                              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm"
+                            >
+                              <option value="String">📝 String</option>
+                              <option value="Number">🔢 Number</option>
+                              <option value="Boolean">☑️ Boolean</option>
+                              <option value="Object">📦 Object</option>
+                              <option value="Array">📋 Array</option>
+                              <option value="Date">📅 Date</option>
+                            </select>
+                          </div>
+
+                          {/* Required Checkbox */}
+                          <div className="flex items-center">
+                            <input
+                              id="empty-field-required"
+                              type="checkbox"
+                              checked={newField.required}
+                              onChange={(e) => setNewField(prev => ({ ...prev, required: e.target.checked }))}
+                              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                            />
+                            <label htmlFor="empty-field-required" className="ml-2 text-sm text-gray-700">
+                              Required field
+                            </label>
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="flex justify-center space-x-2 mt-4">
+                            <button
+                              onClick={() => {
+                                setShowAddFieldForm(false);
+                                setNewField({ path: '', type: 'String', required: false });
+                              }}
+                              className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded-md hover:bg-gray-50"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              onClick={handleAddField}
+                              disabled={!newField.path.trim()}
+                              className="px-3 py-1 text-sm bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                            >
+                              Add Field
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                     </div>
+                  )}
+                </div>
+              ) : (
+            <>
+              {/* Field Summary */}
+              <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center space-x-4">
+                    <span className="font-medium text-blue-900">
+                      Total Fields: {inferredFields.length}
+                    </span>
+                    <span className="text-blue-700">
+                      Required: {inferredFields.filter(f => f.required).length}
+                    </span>
+                    <span className="text-blue-700">
+                      Optional: {inferredFields.filter(f => !f.required).length}
+                    </span>
+                  </div>
+                  <div className="text-xs text-blue-600">
+                    {hasUserMadeEdits && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full bg-green-100 text-green-800">
+                        ✏️ Edited
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
+
+              {/* Add Field Section - Only show when editing existing configs */}
+              {configId && (
+                <div className="mb-4">
+                  {!showAddFieldForm ? (
+                    <button
+                      onClick={() => setShowAddFieldForm(true)}
+                      className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    >
+                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                      </svg>
+                      Add Field Manually
+                    </button>
+                ) : (
+                  <div className="p-4 border border-gray-300 rounded-lg bg-gray-50">
+                    <h4 className="text-sm font-medium text-gray-900 mb-3">Add New Field</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                      {/* Field Path Input */}
+                      <div className="md:col-span-2">
+                        <label htmlFor="new-field-path" className="block text-xs font-medium text-gray-700 mb-1">
+                          Field Path *
+                        </label>
+                        <input
+                          id="new-field-path"
+                          type="text"
+                          value={newField.path}
+                          onChange={(e) => setNewField(prev => ({ ...prev, path: e.target.value }))}
+                          placeholder="e.g., user.name or address.street"
+                          className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Use dots for nested fields (parent.child)</p>
+                      </div>
+
+                      {/* Field Type Select */}
+                      <div>
+                        <label htmlFor="new-field-type" className="block text-xs font-medium text-gray-700 mb-1">
+                          Type
+                        </label>
+                        <select
+                          id="new-field-type"
+                          value={newField.type}
+                          onChange={(e) => setNewField(prev => ({ ...prev, type: e.target.value as InferredField['type'] }))}
+                          className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        >
+                          <option value="String">📝 String</option>
+                          <option value="Number">🔢 Number</option>
+                          <option value="Boolean">☑️ Boolean</option>
+                          <option value="Object">📦 Object</option>
+                          <option value="Array">📋 Array</option>
+                          <option value="Date">📅 Date</option>
+                        </select>
+                      </div>
+
+                      {/* Required Checkbox */}
+                      <div className="flex items-end">
+                        <div className="flex items-center h-10">
+                          <input
+                            id="new-field-required"
+                            type="checkbox"
+                            checked={newField.required}
+                            onChange={(e) => setNewField(prev => ({ ...prev, required: e.target.checked }))}
+                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                          />
+                          <label htmlFor="new-field-required" className="ml-2 text-sm text-gray-700">
+                            Required
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex justify-end space-x-2 mt-4">
+                      <button
+                        onClick={() => {
+                          setShowAddFieldForm(false);
+                          setNewField({ path: '', type: 'String', required: false });
+                        }}
+                        className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded-md hover:bg-gray-50"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleAddField}
+                        disabled={!newField.path.trim()}
+                        className="px-3 py-1 text-sm bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                      >
+                        Add Field
+                      </button>
+                    </div>
+                  </div>
+                )}
+                </div>
+              )}
+
+              <div className="space-y-3">
+                {inferredFields.map((field, index) => (
+                <div key={index} className={`${field.level > 0 ? 'ml-' + (field.level * 6) + ' border-l-4 border-blue-200 pl-6' : ''} p-4 bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow`}>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Field Path
+                      </label>
+                      <div className="flex items-center">
+                        <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${
+                          field.level === 0 ? 'bg-blue-100 text-blue-800' : 
+                          field.level === 1 ? 'bg-green-100 text-green-800' : 
+                          'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          Level {field.level}
+                        </span>
+                        <input 
+                          type="text" 
+                          value={field.path} 
+                          readOnly 
+                          className="ml-2 flex-1 px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm cursor-not-allowed text-sm text-gray-900 font-mono" 
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Data Type
+                      </label>
+                      <div className="relative">
+                        <select
+                          value={field.type}
+                          onChange={(e) => {
+                            console.log(`🔄 Type changed for field "${field.path}": ${field.type} → ${e.target.value}`);
+                            const updatedFields = [...inferredFields];
+                            updatedFields[index] = { ...field, type: e.target.value as InferredField['type'] };
+                            console.log('📊 Updated fields after type change:', updatedFields.map(f => ({ path: f.path, type: f.type, required: f.required })));
+                            setInferredFields(updatedFields);
+                            setHasUserMadeEdits(true);
+                          }}
+                          className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm font-medium"
+                        >
+                          <option value="String">📝 String</option>
+                          <option value="Number">🔢 Number</option>
+                          <option value="Boolean">☑️ Boolean</option>
+                          <option value="Object">📦 Object</option>
+                          <option value="Array">📋 Array</option>
+                          <option value="Date">📅 Date</option>
+                        </select>
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                          <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                            <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/>
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-4">
+                        {/* Required Toggle */}
+                        <div className="flex items-center">
+                          <input 
+                            type="checkbox" 
+                            id={`required-${index}`}
+                            checked={field.required}
+                            onChange={(e) => {
+                              console.log(`☑️ Required changed for field "${field.path}": ${field.required} → ${e.target.checked}`);
+                              const updatedFields = [...inferredFields];
+                              
+                              // Update current field
+                              updatedFields[index] = { ...field, required: e.target.checked };
+                              
+                              // Update all child fields with same required status
+                              updatedFields.forEach((f, i) => {
+                                if (f.path.startsWith(field.path + '.')) {
+                                  updatedFields[i] = { ...f, required: e.target.checked };
+                                }
+                              });
+                              
+                              console.log('📊 Updated fields after required change (with children):', updatedFields.map(f => ({ path: f.path, type: f.type, required: f.required })));
+                              setInferredFields(updatedFields);
+                              setHasUserMadeEdits(true);
+                            }}
+                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                          />
+                          <label htmlFor={`required-${index}`} className="ml-2 text-sm font-medium text-gray-700 cursor-pointer">
+                            {field.required ? 'Required' : 'Optional'}
+                          </label>
+                        </div>
+                      </div>
+                      
+                      {/* Remove Button - Only show when editing existing configs */}
+                      {configId && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            console.log(`🗑️ Deleting field "${field.path}" and all children`);
+                            // Remove this field and any child fields
+                            const updatedFields = inferredFields.filter(f => 
+                              f.path !== field.path && !f.path.startsWith(field.path + '.')
+                            );
+                            console.log('📊 Updated fields after deletion:', updatedFields.map(f => ({ path: f.path, type: f.type, required: f.required })));
+                            setInferredFields(updatedFields);
+                            setHasUserMadeEdits(true);
+                          }}
+                          className="inline-flex items-center px-3 py-1 border border-red-300 text-xs font-medium rounded-md text-red-700 bg-red-50 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
+                          title={`Remove ${field.path} and all its children`}
+                        >
+                          <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" clipRule="evenodd" />
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                          </svg>
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                </div>
+              </div>
             ))}
-          </div>
+              </div>
+            </>
+          )}
 
-          {/* Save Schema Messages */}
-          {configId && (
-            <div className="mt-6 flex flex-col space-y-3">
-              {/* Success Message */}
-              {schemaSaveSuccess && (
-                <div className="p-3 bg-green-50 border border-green-200 rounded-md text-sm text-green-700">
-                  Schema updated successfully!
+          {/* Schema Edit Info */}
+          {configId && inferredFields.length > 0 && (
+            <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center gap-2">
+                <div className="text-blue-600">
+                  <SaveIcon size={16} />
                 </div>
-              )}
-
-              {/* Error Message */}
-              {schemaSaveError && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-700">
-                  {schemaSaveError}
+                <div>
+                  <h4 className="text-sm font-medium text-blue-900">Schema Changes Ready</h4>
+                  <p className="text-xs text-blue-700 mt-1">
+                    Your schema field changes will be saved when you click the main "Save" button above.
+                  </p>
                 </div>
-              )}
-
-              {/* Save Schema Button - Only for updating existing configs */}
-              <div>
-                <p className="text-xs text-gray-600 mb-2">
-                  Note: For new endpoints, field changes are automatically included when you proceed to the next step. 
-                  This button is only needed when updating existing configurations.
-                </p>
-                <Button
-                  variant="primary"
-                  icon={<SaveIcon size={18} />}
-                  onClick={handleSaveSchema}
-                  disabled={isSavingSchema}
-                >
-                  {isSavingSchema ? 'Saving...' : 'Update Existing Schema'}
-                </Button>
               </div>
             </div>
           )}
