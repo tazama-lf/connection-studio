@@ -26,7 +26,7 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({ onJobCreated, onCancel
     setSuccessMessage(null);
     
     if (!jobName.trim() || !cronExpression.trim()) {
-      setError('Please fill in all required fields');
+      setError('Please provide both a job name and a valid CRON expression to continue.');
       return;
     }
 
@@ -50,9 +50,25 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({ onJobCreated, onCancel
       setSuccessMessage(`Schedule "${createdSchedule.name}" created successfully! ID: ${createdSchedule.id}`);
       onJobCreated?.();
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to create schedule:', error);
-      setError('Failed to create schedule. Please check your settings and try again.');
+      
+      // Provide user-friendly error messages based on error type
+      let errorMessage = 'We encountered an issue while creating your schedule. Please try again.';
+      
+      if (error?.response?.status === 400) {
+        errorMessage = 'The CRON expression or job details are invalid. Please check your input and try again.';
+      } else if (error?.response?.status === 409) {
+        errorMessage = 'A schedule with this name already exists. Please choose a different name.';
+      } else if (error?.response?.status === 401 || error?.response?.status === 403) {
+        errorMessage = 'You do not have permission to create schedules. Please contact your administrator.';
+      } else if (error?.response?.status >= 500) {
+        errorMessage = 'Our service is temporarily unavailable. Please try again in a few minutes.';
+      } else if (error?.message?.includes('fetch') || error?.message?.includes('network')) {
+        errorMessage = 'Unable to connect to the service. Please check your internet connection and try again.';
+      }
+      
+      setError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }

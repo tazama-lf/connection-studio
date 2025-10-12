@@ -40,10 +40,12 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
     const loadSchedules = async () => {
       try {
         setSchedulesLoading(true);
+        setErrorMessage(null);
         const schedules = await dataEnrichmentApi.getAllSchedules();
         setAvailableSchedules(schedules);
       } catch (error) {
         console.error('Failed to load schedules:', error);
+        setErrorMessage('Unable to load available schedules. Please refresh the page or try again later.');
       } finally {
         setSchedulesLoading(false);
       }
@@ -72,6 +74,92 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
   const [fileDelimiter, setFileDelimiter] = useState(',');
   const [fileHasHeader, setFileHasHeader] = useState(true);
 
+  // Error handling
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Helper function to convert backend errors to user-friendly messages
+  const getErrorMessage = (error: any): string => {
+    // Clear any existing error first
+    setErrorMessage(null);
+
+    // Handle different types of errors
+    if (error?.response?.status) {
+      switch (error.response.status) {
+        case 400:
+          return 'The information you provided is incomplete or incorrect. Please check all fields and try again.';
+        case 401:
+          return 'You are not authorized to perform this action. Please log in again.';
+        case 403:
+          return 'You do not have permission to create jobs. Please contact your administrator.';
+        case 404:
+          return 'The service is currently unavailable. Please try again later.';
+        case 409:
+          return 'A job with this name already exists. Please choose a different name.';
+        case 422:
+          return 'The data you entered is not valid. Please review your settings and try again.';
+        case 500:
+          return 'We are experiencing technical difficulties. Please try again in a few minutes.';
+        case 503:
+          return 'The service is temporarily unavailable. Please try again later.';
+        default:
+          return 'Something went wrong while creating your job. Please try again or contact support if the problem persists.';
+      }
+    }
+
+    // Handle network errors
+    if (error?.message?.includes('fetch') || error?.message?.includes('network')) {
+      return 'Unable to connect to the service. Please check your internet connection and try again.';
+    }
+
+    // Handle timeout errors
+    if (error?.message?.includes('timeout')) {
+      return 'The request is taking too long. Please try again.';
+    }
+
+    // Handle validation errors
+    if (error?.message?.includes('validation') || error?.message?.includes('invalid')) {
+      return 'Please check your input and make sure all required fields are filled correctly.';
+    }
+
+    // Default error message
+    return 'We encountered an issue while processing your request. Please try again or contact support if the problem continues.';
+  };
+
+  // Helper function to validate file format matches file extension
+  const validateFileFormat = () => {
+    if (sourceType !== 'SFTP' || !filePath.trim()) {
+      return { isValid: true, error: '' };
+    }
+
+    const fileName = filePath.trim();
+    const fileExtension = fileName.split('.').pop()?.toLowerCase();
+    
+    if (!fileExtension) {
+      return { isValid: false, error: 'Please specify a file with a valid extension (e.g., .csv, .tsv, .json)' };
+    }
+
+    // Map file extensions to allowed formats
+    const extensionFormatMap: { [key: string]: FileType[] } = {
+      'csv': ['CSV'],
+      'tsv': ['TSV'],
+      'json': ['JSON'],
+      'txt': ['CSV', 'TSV'] // Text files can be either CSV or TSV
+    };
+
+    const allowedFormats = extensionFormatMap[fileExtension];
+    
+    if (!allowedFormats) {
+      return { isValid: false, error: `Unsupported file extension: .${fileExtension}. Supported extensions: .csv, .tsv, .json` };
+    }
+
+    if (!allowedFormats.includes(fileType)) {
+      const formatName = fileType === 'CSV' ? 'CSV' : fileType === 'TSV' ? 'TSV' : 'JSON';
+      return { isValid: false, error: `File format mismatch: .${fileExtension} files must use ${allowedFormats.join(' or ')} format, not ${formatName}` };
+    }
+
+    return { isValid: true, error: '' };
+  };
+
   // Validation function to check if all required fields are filled
   const isFormValid = () => {
     // Basic required fields
@@ -95,6 +183,12 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
       if (sftpAuthType === 'PRIVATE_KEY' && !sftpPrivateKey.trim()) {
         return false;
       }
+
+      // Check file format validation
+      const formatValidation = validateFileFormat();
+      if (!formatValidation.isValid) {
+        return false;
+      }
     }
 
     return true;
@@ -102,10 +196,20 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null);
     
     if (!selectedScheduleId) {
-      alert('Please select a schedule first');
+      setErrorMessage('Please select a schedule before creating the job.');
       return;
+    }
+
+    // Validate file format for SFTP jobs
+    if (sourceType === 'SFTP') {
+      const formatValidation = validateFileFormat();
+      if (!formatValidation.isValid) {
+        setErrorMessage(formatValidation.error);
+        return;
+      }
     }
     
     try {
@@ -158,14 +262,44 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
       }
     } catch (error) {
       console.error('Failed to create job:', error);
-      // You can add error handling here (show toast, alert, etc.)
-      alert('Failed to create job. Please check your settings and try again.');
+      const friendlyErrorMessage = getErrorMessage(error);
+      setErrorMessage(friendlyErrorMessage);
     }
   };
 
   return (
     <div className="max-w-4xl mx-auto p-6 bg-white rounded-lg shadow-md">
       <h2 className="text-2xl font-bold mb-6">Create Data Enrichment Job</h2>
+      
+      {/* Error Message Display */}
+      {errorMessage && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-md">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm font-medium text-red-800">{errorMessage}</p>
+            </div>
+            <div className="ml-auto pl-3">
+              <div className="-mx-1.5 -my-1.5">
+                <button
+                  type="button"
+                  onClick={() => setErrorMessage(null)}
+                  className="inline-flex bg-red-50 rounded-md p-1.5 text-red-500 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-red-50 focus:ring-red-600"
+                >
+                  <span className="sr-only">Dismiss</span>
+                  <svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Basic Job Information */}
@@ -258,8 +392,11 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
                 ))}
               </select>
             )}
-            {availableSchedules.length === 0 && !schedulesLoading && (
-              <p className="text-sm text-red-600 mt-1">
+            {availableSchedules.length === 0 && !schedulesLoading && !errorMessage && (
+              <p className="text-sm text-amber-600 mt-1 flex items-center">
+                <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
                 No schedules available. Please create a schedule in CRON Job Management first.
               </p>
             )}
@@ -416,6 +553,12 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
                     <option value="JSON">JSON</option>
                     <option value="TSV">TSV</option>
                   </select>
+                  {sourceType === 'SFTP' && filePath.trim() && (() => {
+                    const formatValidation = validateFileFormat();
+                    return !formatValidation.isValid ? (
+                      <p className="mt-1 text-sm text-red-600">{formatValidation.error}</p>
+                    ) : null;
+                  })()}
                 </div>
               </div>
 
@@ -463,14 +606,14 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
           </Button>
           <div 
             className="relative"
-            title={!isFormValid() ? 'Please fill all required fields' : ''}
+            title={!isFormValid() ? 'Please complete all required fields to create the job' : ''}
           >
             <Button
               type="submit"
               variant="primary"
               disabled={isLoading || !isFormValid()}
             >
-              {isLoading ? 'Creating...' : 'Create Job'}
+              {isLoading ? 'Creating Job...' : 'Create Job'}
             </Button>
           </div>
         </div>

@@ -167,7 +167,52 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
       }
     }
 
+    // File format validation for SFTP
+    if (configurationType === 'pull' && formData.sourceType === 'sftp') {
+      const fileFormatValidation = validateFileFormat();
+      if (!fileFormatValidation.isValid) {
+        return false;
+      }
+    }
+
     return true;
+  };
+
+  // Helper function to validate file format matches file extension
+  const validateFileFormat = () => {
+    if (!formData.pathPattern || !formData.pathPattern.trim()) {
+      return { isValid: true, error: '' };
+    }
+
+    const filePath = formData.pathPattern.trim();
+    // Extract filename from path (handle wildcards like *.csv)
+    const fileName = filePath.includes('*') ? filePath.split('*')[1] : filePath.split('/').pop() || '';
+    const fileExtension = fileName.split('.').pop()?.toLowerCase();
+    
+    if (!fileExtension) {
+      return { isValid: false, error: 'Please specify a file with a valid extension (e.g., .csv, .tsv, .json)' };
+    }
+
+    // Map file extensions to allowed formats
+    const extensionFormatMap: { [key: string]: string[] } = {
+      'csv': ['csv'],
+      'tsv': ['tsv'],
+      'json': ['json'],
+      'txt': ['csv', 'tsv'] // Text files can be either CSV or TSV
+    };
+
+    const allowedFormats = extensionFormatMap[fileExtension];
+    
+    if (!allowedFormats) {
+      return { isValid: false, error: `Unsupported file extension: .${fileExtension}. Supported extensions: .csv, .tsv, .json` };
+    }
+
+    if (!allowedFormats.includes(formData.fileFormat.toLowerCase())) {
+      const formatName = formData.fileFormat.toUpperCase();
+      return { isValid: false, error: `File format mismatch: .${fileExtension} files must use ${allowedFormats.map(f => f.toUpperCase()).join(' or ')} format, not ${formatName}` };
+    }
+
+    return { isValid: true, error: '' };
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -344,6 +389,13 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
         } else if (formData.sourceType === 'sftp') {
           if (!formData.host || !formData.username || !formData.password) {
             setCreateError('Please fill in all SFTP connection details (host, username, password)');
+            return;
+          }
+          
+          // Validate file format matches file extension
+          const formatValidation = validateFileFormat();
+          if (!formatValidation.isValid) {
+            setCreateError(formatValidation.error);
             return;
           }
         }
@@ -743,6 +795,12 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
               <option value="tsv" data-id="element-867">TSV</option>
               <option value="json" data-id="element-868">JSON</option>
             </select>
+            {configurationType === 'pull' && formData.sourceType === 'sftp' && formData.pathPattern && formData.pathPattern.trim() && (() => {
+              const formatValidation = validateFileFormat();
+              return !formatValidation.isValid ? (
+                <p className="mt-1 text-sm text-red-600">{formatValidation.error}</p>
+              ) : null;
+            })()}
           </div>
           {formData.fileFormat === 'csv' && formData.sourceType === 'sftp' && (
             <div data-id="element-869">

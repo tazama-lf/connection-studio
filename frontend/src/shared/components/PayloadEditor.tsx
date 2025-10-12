@@ -887,12 +887,12 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
                               onChange={(e) => setNewField(prev => ({ ...prev, type: e.target.value as InferredField['type'] }))}
                               className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm"
                             >
-                              <option value="String">📝 String</option>
-                              <option value="Number">🔢 Number</option>
-                              <option value="Boolean">☑️ Boolean</option>
-                              <option value="Object">📦 Object</option>
-                              <option value="Array">📋 Array</option>
-                              <option value="Date">📅 Date</option>
+                              <option value="String">Text</option>
+                              <option value="Number">Number</option>
+                              <option value="Boolean">Boolean</option>
+                              <option value="Object">Object</option>
+                              <option value="Array">Array</option>
+                              <option value="Date">Date</option>
                             </select>
                           </div>
 
@@ -938,26 +938,27 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
               ) : (
             <>
               {/* Field Summary */}
-              <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                <div className="flex items-center justify-between text-sm">
-                  <div className="flex items-center space-x-4">
-                    <span className="font-medium text-blue-900">
-                      Total Fields: {inferredFields.length}
+              <div className="mb-3 p-2 bg-slate-50 rounded border border-slate-200">
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-3">
+                    <span className="font-medium text-slate-700">
+                      {inferredFields.length} fields
                     </span>
-                    <span className="text-blue-700">
-                      Required: {inferredFields.filter(f => f.required).length}
+                    <span className="text-slate-600">
+                      {inferredFields.filter(f => f.required).length} required
                     </span>
-                    <span className="text-blue-700">
-                      Optional: {inferredFields.filter(f => !f.required).length}
+                    <span className="text-slate-600">
+                      {inferredFields.filter(f => !f.required).length} optional
                     </span>
                   </div>
-                  <div className="text-xs text-blue-600">
-                    {hasUserMadeEdits && (
-                      <span className="inline-flex items-center px-2 py-1 rounded-full bg-green-100 text-green-800">
-                        ✏️ Edited
-                      </span>
-                    )}
-                  </div>
+                  {hasUserMadeEdits && (
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-green-100 text-green-700 text-xs">
+                      <svg className="w-2.5 h-2.5 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/>
+                      </svg>
+                      Modified
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -967,181 +968,153 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
                   {!showAddFieldForm ? (
                     <button
                       onClick={() => setShowAddFieldForm(true)}
-                      className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                      className="inline-flex items-center px-3 py-1.5 border border-dashed border-gray-300 rounded text-sm text-gray-600 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
-                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                       </svg>
-                      Add Field Manually
+                      Add Field
                     </button>
                 ) : (
-                  <div className="p-4 border border-gray-300 rounded-lg bg-gray-50">
-                    <h4 className="text-sm font-medium text-gray-900 mb-3">Add New Field</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                  <div className="p-3 border border-gray-200 rounded bg-gray-50">
+                    <div className="grid grid-cols-12 gap-2 items-center">
                       {/* Field Path Input */}
-                      <div className="md:col-span-2">
-                        <label htmlFor="new-field-path" className="block text-xs font-medium text-gray-700 mb-1">
-                          Field Path *
-                        </label>
+                      <div className="col-span-5">
                         <input
-                          id="new-field-path"
                           type="text"
                           value={newField.path}
                           onChange={(e) => setNewField(prev => ({ ...prev, path: e.target.value }))}
-                          placeholder="e.g., user.name or address.street"
-                          className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm"
+                          placeholder="Field path (e.g., user.name)"
+                          className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         />
-                        <p className="text-xs text-gray-500 mt-1">Use dots for nested fields (parent.child)</p>
                       </div>
 
                       {/* Field Type Select */}
-                      <div>
-                        <label htmlFor="new-field-type" className="block text-xs font-medium text-gray-700 mb-1">
-                          Type
-                        </label>
+                      <div className="col-span-2">
                         <select
-                          id="new-field-type"
                           value={newField.type}
                           onChange={(e) => setNewField(prev => ({ ...prev, type: e.target.value as InferredField['type'] }))}
-                          className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm"
+                          className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         >
-                          <option value="String">📝 String</option>
-                          <option value="Number">🔢 Number</option>
-                          <option value="Boolean">☑️ Boolean</option>
-                          <option value="Object">📦 Object</option>
-                          <option value="Array">📋 Array</option>
-                          <option value="Date">📅 Date</option>
+                          <option value="String">Text</option>
+                          <option value="Number">Number</option>
+                          <option value="Boolean">Boolean</option>
+                          <option value="Object">Object</option>
+                          <option value="Array">Array</option>
+                          <option value="Date">Date</option>
                         </select>
                       </div>
 
                       {/* Required Checkbox */}
-                      <div className="flex items-end">
-                        <div className="flex items-center h-10">
-                          <input
-                            id="new-field-required"
-                            type="checkbox"
-                            checked={newField.required}
-                            onChange={(e) => setNewField(prev => ({ ...prev, required: e.target.checked }))}
-                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                          />
-                          <label htmlFor="new-field-required" className="ml-2 text-sm text-gray-700">
-                            Required
-                          </label>
-                        </div>
+                      <div className="col-span-2 flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={newField.required}
+                          onChange={(e) => setNewField(prev => ({ ...prev, required: e.target.checked }))}
+                          className="h-3.5 w-3.5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                        <label className="ml-1.5 text-xs text-gray-600">
+                          Required
+                        </label>
                       </div>
-                    </div>
 
-                    {/* Action Buttons */}
-                    <div className="flex justify-end space-x-2 mt-4">
-                      <button
-                        onClick={() => {
-                          setShowAddFieldForm(false);
-                          setNewField({ path: '', type: 'String', required: false });
-                        }}
-                        className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded-md hover:bg-gray-50"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        onClick={handleAddField}
-                        disabled={!newField.path.trim()}
-                        className="px-3 py-1 text-sm bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
-                      >
-                        Add Field
-                      </button>
+                      {/* Action Buttons */}
+                      <div className="col-span-3 flex justify-end gap-1">
+                        <button
+                          onClick={() => {
+                            setShowAddFieldForm(false);
+                            setNewField({ path: '', type: 'String', required: false });
+                          }}
+                          className="px-2 py-1 text-xs text-gray-600 hover:text-gray-800 border border-gray-300 rounded hover:bg-gray-50"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={handleAddField}
+                          disabled={!newField.path.trim()}
+                          className="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                        >
+                          Add
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
                 </div>
               )}
 
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {inferredFields.map((field, index) => (
-                <div key={index} className={`${field.level > 0 ? 'ml-' + (field.level * 6) + ' border-l-4 border-blue-200 pl-6' : ''} p-4 bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow`}>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Field Path
-                      </label>
-                      <div className="flex items-center">
-                        <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${
-                          field.level === 0 ? 'bg-blue-100 text-blue-800' : 
-                          field.level === 1 ? 'bg-green-100 text-green-800' : 
-                          'bg-yellow-100 text-yellow-800'
+                <div key={index} className={`${field.level > 0 ? 'ml-' + (field.level * 4) + ' border-l-2 border-gray-300 pl-3' : ''} p-3 bg-white rounded border border-gray-200 hover:border-gray-300 transition-colors`}>
+                  <div className="grid grid-cols-12 gap-3 items-center">
+                    <div className="col-span-6">
+                      <div className="flex items-center gap-2">
+                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium border ${
+                          field.level === 0 ? 'bg-slate-50 text-slate-600 border-slate-200' : 
+                          field.level === 1 ? 'bg-gray-50 text-gray-500 border-gray-200' : 
+                          'bg-neutral-50 text-neutral-500 border-neutral-200'
                         }`}>
-                          Level {field.level}
+                          L{field.level}
                         </span>
                         <input 
                           type="text" 
                           value={field.path} 
                           readOnly 
-                          className="ml-2 flex-1 px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm cursor-not-allowed text-sm text-gray-900 font-mono" 
+                          className="flex-1 px-2 py-1.5 bg-gray-50 border border-gray-200 rounded text-sm text-gray-900 font-mono text-xs" 
+                          title={field.path}
                         />
                       </div>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Data Type
-                      </label>
-                      <div className="relative">
-                        <select
-                          value={field.type}
+                    <div className="col-span-2">
+                      <select
+                        value={field.type}
+                        onChange={(e) => {
+                          console.log(`🔄 Type changed for field "${field.path}": ${field.type} → ${e.target.value}`);
+                          const updatedFields = [...inferredFields];
+                          updatedFields[index] = { ...field, type: e.target.value as InferredField['type'] };
+                          console.log('📊 Updated fields after type change:', updatedFields.map(f => ({ path: f.path, type: f.type, required: f.required })));
+                          setInferredFields(updatedFields);
+                          setHasUserMadeEdits(true);
+                        }}
+                        className="w-full px-2 py-1.5 bg-white border border-gray-200 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        <option value="String">Text</option>
+                        <option value="Number">Number</option>
+                        <option value="Boolean">Boolean</option>
+                        <option value="Object">Object</option>
+                        <option value="Array">Array</option>
+                        <option value="Date">Date</option>
+                      </select>
+                    </div>
+                    <div className="col-span-3 flex items-center justify-between">
+                      <div className="flex items-center">
+                        <input 
+                          type="checkbox" 
+                          id={`required-${index}`}
+                          checked={field.required}
                           onChange={(e) => {
-                            console.log(`🔄 Type changed for field "${field.path}": ${field.type} → ${e.target.value}`);
+                            console.log(`☑️ Required changed for field "${field.path}": ${field.required} → ${e.target.checked}`);
                             const updatedFields = [...inferredFields];
-                            updatedFields[index] = { ...field, type: e.target.value as InferredField['type'] };
-                            console.log('📊 Updated fields after type change:', updatedFields.map(f => ({ path: f.path, type: f.type, required: f.required })));
+                            
+                            // Update current field
+                            updatedFields[index] = { ...field, required: e.target.checked };
+                            
+                            // Update all child fields with same required status
+                            updatedFields.forEach((f, i) => {
+                              if (f.path.startsWith(field.path + '.')) {
+                                updatedFields[i] = { ...f, required: e.target.checked };
+                              }
+                            });
+                            
+                            console.log('📊 Updated fields after required change (with children):', updatedFields.map(f => ({ path: f.path, type: f.type, required: f.required })));
                             setInferredFields(updatedFields);
                             setHasUserMadeEdits(true);
                           }}
-                          className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm font-medium"
-                        >
-                          <option value="String">📝 String</option>
-                          <option value="Number">🔢 Number</option>
-                          <option value="Boolean">☑️ Boolean</option>
-                          <option value="Object">📦 Object</option>
-                          <option value="Array">📋 Array</option>
-                          <option value="Date">📅 Date</option>
-                        </select>
-                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                          <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                            <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/>
-                          </svg>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-4">
-                        {/* Required Toggle */}
-                        <div className="flex items-center">
-                          <input 
-                            type="checkbox" 
-                            id={`required-${index}`}
-                            checked={field.required}
-                            onChange={(e) => {
-                              console.log(`☑️ Required changed for field "${field.path}": ${field.required} → ${e.target.checked}`);
-                              const updatedFields = [...inferredFields];
-                              
-                              // Update current field
-                              updatedFields[index] = { ...field, required: e.target.checked };
-                              
-                              // Update all child fields with same required status
-                              updatedFields.forEach((f, i) => {
-                                if (f.path.startsWith(field.path + '.')) {
-                                  updatedFields[i] = { ...f, required: e.target.checked };
-                                }
-                              });
-                              
-                              console.log('📊 Updated fields after required change (with children):', updatedFields.map(f => ({ path: f.path, type: f.type, required: f.required })));
-                              setInferredFields(updatedFields);
-                              setHasUserMadeEdits(true);
-                            }}
-                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                          />
-                          <label htmlFor={`required-${index}`} className="ml-2 text-sm font-medium text-gray-700 cursor-pointer">
-                            {field.required ? 'Required' : 'Optional'}
-                          </label>
-                        </div>
+                          className="h-3.5 w-3.5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                        <label htmlFor={`required-${index}`} className="ml-1.5 text-xs text-gray-600 cursor-pointer">
+                          {field.required ? 'Required' : 'Optional'}
+                        </label>
                       </div>
                       
                       {/* Remove Button - Only show when editing existing configs */}
@@ -1158,14 +1131,12 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
                             setInferredFields(updatedFields);
                             setHasUserMadeEdits(true);
                           }}
-                          className="inline-flex items-center px-3 py-1 border border-red-300 text-xs font-medium rounded-md text-red-700 bg-red-50 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
+                          className="inline-flex items-center px-2 py-1 border border-red-200 text-xs rounded text-red-600 bg-red-50 hover:bg-red-100 focus:outline-none focus:ring-1 focus:ring-red-300 transition-colors"
                           title={`Remove ${field.path} and all its children`}
                         >
-                          <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" clipRule="evenodd" />
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
                           </svg>
-                          Remove
                         </button>
                       )}
                     </div>

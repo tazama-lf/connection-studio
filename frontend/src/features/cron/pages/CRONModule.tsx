@@ -14,7 +14,13 @@ type TabType = 'create' | 'manage';
         </p>
         <CronTabNavigation activeTab={activeTab} setActiveTab={setActiveTab} data-id="element-1144" />
         <div className="mt-6" data-id="element-1145">
-          {activeTab === 'create' && <CronJobForm data-id="element-1146" />}
+          {activeTab === 'create' && (
+            <CronJobForm 
+              onJobCreated={() => setActiveTab('manage')} 
+              onCancel={() => setActiveTab('manage')}
+              data-id="element-1146" 
+            />
+          )}
           {activeTab === 'manage' && <CronJobList data-id="element-1147" />}
         </div>
       </div>
