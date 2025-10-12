@@ -24,6 +24,7 @@ import {
   type UpdateConfigDto,
   type CloneConfigDto,
   type AddMappingDto,
+  type AddFunctionDto,
   type ConfigResponseDto,
   type Config,
   ContentType,
@@ -227,6 +228,53 @@ export class ConfigController {
     return this.configService.removeMapping(
       id,
       index,
+      getTenantId(user),
+      getUserId(user),
+    );
+  }
+
+  @Post(':id/function')
+  @RequireClaims(TazamaClaims.EDITOR)
+  async addFunction(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: AddFunctionDto,
+    @User() user: AuthenticatedUser,
+  ): Promise<ConfigResponseDto> {
+    return this.configService.addFunction(
+      id,
+      dto,
+      getTenantId(user),
+      getUserId(user),
+    );
+  }
+
+  @Delete(':id/function/:index')
+  @RequireClaims(TazamaClaims.EDITOR)
+  async removeFunction(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('index', ParseIntPipe) index: number,
+    @User() user: AuthenticatedUser,
+  ): Promise<ConfigResponseDto> {
+    return this.configService.removeFunction(
+      id,
+      index,
+      getTenantId(user),
+      getUserId(user),
+    );
+  }
+
+  @Put(':id/function/:index')
+  @RequireClaims(TazamaClaims.EDITOR)
+  async updateFunction(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('index', ParseIntPipe) index: number,
+    @Body() dto: AddFunctionDto,
+    @User() user: AuthenticatedUser,
+  ): Promise<ConfigResponseDto> {
+    return this.configService.updateFunction(
+      id,
+      index,
+      dto,
       getTenantId(user),
       getUserId(user),
     );

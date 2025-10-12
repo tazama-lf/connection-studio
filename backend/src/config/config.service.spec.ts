@@ -13,12 +13,15 @@ import {
   CreateConfigDto,
   UpdateConfigDto,
   AddMappingDto,
+  AddFunctionDto,
+  AllowedFunctionName,
 } from './config.interfaces';
 describe('ConfigService', () => {
   let service: ConfigService;
   let repository: jest.Mocked<ConfigRepository>;
   let payloadParsingService: jest.Mocked<PayloadParsingService>;
   let auditService: jest.Mocked<AuditService>;
+  let jsonSchemaConverter: jest.Mocked<JSONSchemaConverterService>;
   const mockJSONSchema: JSONSchema = {
     $schema: 'https://json-schema.org/draft/2020-12/schema',
     type: 'object',
@@ -112,6 +115,7 @@ describe('ConfigService', () => {
     repository = module.get(ConfigRepository);
     payloadParsingService = module.get(PayloadParsingService);
     auditService = module.get(AuditService);
+    jsonSchemaConverter = module.get(JSONSchemaConverterService);
   });
   it('should be defined', () => {
     expect(service).toBeDefined();
@@ -506,6 +510,180 @@ describe('ConfigService', () => {
       await expect(
         service.deleteConfig(999, 'test-tenant', 'user-123'),
       ).rejects.toThrow('Config with ID 999 not found');
+    });
+  });
+
+  describe('addFunction', () => {
+    it('should add function successfully', async () => {
+      const mockConfigWithFunction = {
+        ...mockConfig,
+        functions: [
+          {
+            params: ['dbtrAcctId', 'tenantId'],
+            sources: ['amount', 'currency'],
+            functionName: 'addAccount' as AllowedFunctionName,
+          },
+        ],
+      };
+
+      const mockSourceFields = [
+        {
+          path: 'amount',
+          name: 'amount',
+          type: 'number' as any,
+          isRequired: true,
+        },
+        {
+          path: 'currency',
+          name: 'currency',
+          type: 'string' as any,
+          isRequired: false,
+        },
+        {
+          path: 'firstName',
+          name: 'firstName',
+          type: 'string' as any,
+          isRequired: false,
+        },
+        {
+          path: 'lastName',
+          name: 'lastName',
+          type: 'string' as any,
+          isRequired: false,
+        },
+      ];
+
+      repository.findConfigById.mockResolvedValue(mockConfig);
+      repository.findConfigById
+        .mockResolvedValueOnce(mockConfig)
+        .mockResolvedValueOnce(mockConfigWithFunction);
+
+      // Mock the JSON schema converter to return mock fields
+      jsonSchemaConverter.convertFromJSONSchema.mockReturnValue(
+        mockSourceFields,
+      );
+
+      const functionDto: AddFunctionDto = {
+        params: ['dbtrAcctId', 'tenantId'],
+        sources: ['amount', 'currency'],
+        functionName: 'addAccount',
+      };
+
+      const result = await service.addFunction(
+        1,
+        functionDto,
+        'test-tenant',
+        'user-123',
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.message).toBe('Function added successfully');
+      expect(result.config?.functions).toBeDefined();
+      expect(result.config?.functions?.length).toBe(1);
+      expect(repository.updateConfig).toHaveBeenCalledWith(1, 'test-tenant', {
+        functions: expect.arrayContaining([
+          expect.objectContaining({
+            functionName: 'addAccount',
+            params: ['dbtrAcctId', 'tenantId'],
+            sources: ['amount', 'currency'],
+          }),
+        ]),
+      });
+      expect(auditService.logAction).toHaveBeenCalledWith({
+        entityType: 'FUNCTION',
+        action: 'ADD_FUNCTION',
+        actor: 'user-123',
+        tenantId: 'test-tenant',
+        endpointName: 'Config 1',
+      });
+    });
+
+    it('should throw error if config not found', async () => {
+      repository.findConfigById.mockResolvedValue(null);
+
+      const functionDto: AddFunctionDto = {
+        params: ['dbtrAcctId'],
+        sources: ['amount'],
+        functionName: 'addAccount',
+      };
+
+      await expect(
+        service.addFunction(999, functionDto, 'test-tenant', 'user-123'),
+      ).rejects.toThrow('Config with ID 999 not found');
+    });
+
+    it('should validate function data', async () => {
+      repository.findConfigById.mockResolvedValue(mockConfig);
+
+      const invalidFunctionDto: AddFunctionDto = {
+        params: [],
+        sources: ['amount'],
+        functionName: 'addAccount',
+      };
+
+      await expect(
+        service.addFunction(1, invalidFunctionDto, 'test-tenant', 'user-123'),
+      ).rejects.toThrow('Function must have at least one parameter');
+    });
+
+    it('should validate function name is one of allowed values', async () => {
+      repository.findConfigById.mockResolvedValue(mockConfig);
+
+      const invalidFunctionDto = {
+        params: ['param1'],
+        sources: ['amount'],
+        functionName: 'invalidFunction' as any,
+      };
+
+      await expect(
+        service.addFunction(1, invalidFunctionDto, 'test-tenant', 'user-123'),
+      ).rejects.toThrow(
+        'Invalid function name. Only the following functions are allowed: addAccount, handleTransaction, AddEntity',
+      );
+    });
+  });
+
+  describe('removeFunction', () => {
+    it('should remove function successfully', async () => {
+      const configWithFunction = {
+        ...mockConfig,
+        functions: [
+          {
+            params: ['dbtrAcctId'],
+            sources: ['amount'],
+            functionName: 'addAccount' as AllowedFunctionName,
+          },
+        ],
+      };
+
+      repository.findConfigById.mockResolvedValue(configWithFunction);
+      repository.findConfigById
+        .mockResolvedValueOnce(configWithFunction)
+        .mockResolvedValueOnce({
+          ...configWithFunction,
+          functions: [],
+        });
+
+      const result = await service.removeFunction(
+        1,
+        0,
+        'test-tenant',
+        'user-123',
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.message).toBe('Function removed successfully');
+      expect(repository.updateConfig).toHaveBeenCalledWith(1, 'test-tenant', {
+        functions: [],
+      });
+    });
+
+    it('should throw error for invalid function index', async () => {
+      repository.findConfigById.mockResolvedValue(mockConfig);
+
+      await expect(
+        service.removeFunction(1, 0, 'test-tenant', 'user-123'),
+      ).rejects.toThrow('Invalid function index');
     });
   });
 });

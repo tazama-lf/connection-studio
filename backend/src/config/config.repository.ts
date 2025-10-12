@@ -1,6 +1,6 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
 import { Knex } from 'knex';
-import { Config, FieldMapping } from './config.interfaces';
+import { Config, FieldMapping, FunctionDefinition } from './config.interfaces';
 import { JSONSchema } from '@tazama-lf/tcs-lib';
 @Injectable()
 export class ConfigRepository {
@@ -21,6 +21,7 @@ export class ConfigRepository {
         content_type: config.contentType,
         schema: JSON.stringify(config.schema),
         mapping: config.mapping ? JSON.stringify(config.mapping) : null,
+        functions: config.functions ? JSON.stringify(config.functions) : null,
         status: config.status,
         tenant_id: config.tenantId,
         created_by: config.createdBy,
@@ -97,6 +98,7 @@ export class ConfigRepository {
       contentType?: string;
       schema?: JSONSchema;
       mapping?: FieldMapping[];
+      functions?: FunctionDefinition[];
     },
   ): Promise<void> {
     const updateData: any = {};
@@ -112,6 +114,8 @@ export class ConfigRepository {
       updateData.schema = JSON.stringify(updates.schema);
     if (updates.mapping !== undefined)
       updateData.mapping = JSON.stringify(updates.mapping);
+    if (updates.functions !== undefined)
+      updateData.functions = JSON.stringify(updates.functions);
     await this.knex('config')
       .where({ id, tenant_id: tenantId })
       .update(updateData);
@@ -135,6 +139,12 @@ export class ConfigRepository {
           : typeof row.mapping === 'string'
             ? JSON.parse(row.mapping)
             : row.mapping,
+      functions:
+        row.functions === null
+          ? null
+          : typeof row.functions === 'string'
+            ? JSON.parse(row.functions)
+            : row.functions,
       status: row.status,
       tenantId: row.tenant_id,
       createdBy: row.created_by,

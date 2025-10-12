@@ -35,6 +35,12 @@ export interface MappingAuditLogEntry {
 export class AuditService {
   constructor(@Inject('KNEX_CONNECTION') private readonly knex: Knex) {}
 
+  // Simple log method for compatibility with external services
+  log(): void {
+    // This method is required for compatibility with external FileParsingService
+    // but can be a no-op since we use logAction for actual audit logging
+  }
+
   async logAction(entry: AuditLogEntry): Promise<void> {
     try {
       await this.knex('audit_logs').insert({

@@ -6,8 +6,8 @@ import {
   JSONSchemaFormat,
   SchemaField,
   FieldType,
-  AuditService,
 } from '@tazama-lf/tcs-lib';
+import { AuditService } from '../audit/audit.service';
 @Injectable()
 export class JSONSchemaConverterService {
   private readonly logger = new Logger(JSONSchemaConverterService.name);
