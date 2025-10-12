@@ -4,9 +4,10 @@ import {
   JSONSchemaProperty,
   JSONSchemaType,
   JSONSchemaFormat,
-} from '../common/json-schema.interfaces';
-import { SchemaField, FieldType } from '../common/interfaces';
-import { AuditService } from '../audit/audit.service';
+  SchemaField,
+  FieldType,
+  AuditService,
+} from '@tazama-lf/tcs-lib';
 @Injectable()
 export class JSONSchemaConverterService {
   private readonly logger = new Logger(JSONSchemaConverterService.name);

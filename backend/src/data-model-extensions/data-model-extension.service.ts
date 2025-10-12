@@ -11,14 +11,17 @@ import {
   TazamaDataModelExtension,
   TazamaCollectionName,
 } from './tazama-data-model.interfaces';
+
 @Injectable()
 export class DataModelExtensionService {
   private readonly logger = new Logger(DataModelExtensionService.name);
+
   constructor(
     private readonly extensionRepository: DataModelExtensionRepository,
     private readonly tazamaDataModelService: TazamaDataModelService,
     private readonly auditService: AuditService,
   ) {}
+
   async createExtension(
     dto: CreateDataModelExtensionDto,
     tenantId: string,
@@ -27,6 +30,7 @@ export class DataModelExtensionService {
     this.logger.log(
       `Creating data model extension: ${dto.collection}.${dto.fieldName} for tenant ${tenantId}`,
     );
+
     try {
       const collectionSchema = this.tazamaDataModelService.getCollectionSchema(
         dto.collection,
@@ -37,6 +41,7 @@ export class DataModelExtensionService {
           message: `Invalid collection: ${dto.collection}`,
         };
       }
+
       const existingField = collectionSchema.fields.find(
         (f) => f.name === dto.fieldName,
       );
@@ -46,6 +51,7 @@ export class DataModelExtensionService {
           message: `Field '${dto.fieldName}' already exists in the base schema for collection '${dto.collection}'`,
         };
       }
+
       const existingExtension =
         await this.extensionRepository.findByCollectionAndField(
           dto.collection,
@@ -58,12 +64,14 @@ export class DataModelExtensionService {
           message: `Extension for field '${dto.fieldName}' in collection '${dto.collection}' already exists`,
         };
       }
+
       if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(dto.fieldName)) {
         return {
           success: false,
           message: `Invalid field name: '${dto.fieldName}'. Must start with a letter or underscore and contain only alphanumeric characters and underscores.`,
         };
       }
+
       const extensionData: Omit<TazamaDataModelExtension, 'id' | 'createdAt'> =
         {
           collection: dto.collection,
@@ -77,7 +85,9 @@ export class DataModelExtensionService {
           createdBy: userId,
           version: 1,
         };
+
       const extensionId = await this.extensionRepository.create(extensionData);
+
       await this.auditService.logAction({
         entityType: 'DATA_MODEL_EXTENSION',
         action: 'CREATE_DATA_MODEL_EXTENSION',
@@ -85,13 +95,16 @@ export class DataModelExtensionService {
         tenantId,
         endpointName: `Extension: ${dto.collection}.${dto.fieldName}`,
       });
+
       const extension = await this.extensionRepository.findById(
         extensionId,
         tenantId,
       );
+
       this.logger.log(
         `Successfully created data model extension ${extensionId}`,
       );
+
       return {
         success: true,
         message: 'Data model extension created successfully',
@@ -108,23 +121,27 @@ export class DataModelExtensionService {
       };
     }
   }
+
   async getExtensionById(
     id: number,
     tenantId: string,
   ): Promise<TazamaDataModelExtension | null> {
     return this.extensionRepository.findById(id, tenantId);
   }
+
   async getExtensionsByCollection(
     collection: TazamaCollectionName,
     tenantId: string,
   ): Promise<TazamaDataModelExtension[]> {
     return this.extensionRepository.findByCollection(collection, tenantId);
   }
+
   async getAllExtensions(
     tenantId: string,
   ): Promise<TazamaDataModelExtension[]> {
     return this.extensionRepository.findAllByTenant(tenantId);
   }
+
   async updateExtension(
     id: number,
     dto: UpdateDataModelExtensionDto,
@@ -137,7 +154,9 @@ export class DataModelExtensionService {
         `Data model extension with ID ${id} not found`,
       );
     }
+
     await this.extensionRepository.update(id, tenantId, dto);
+
     await this.auditService.logAction({
       entityType: 'DATA_MODEL_EXTENSION',
       action: 'UPDATE_DATA_MODEL_EXTENSION',
@@ -145,16 +164,19 @@ export class DataModelExtensionService {
       tenantId,
       endpointName: `Extension ${id}`,
     });
+
     const updatedExtension = await this.extensionRepository.findById(
       id,
       tenantId,
     );
+
     return {
       success: true,
       message: 'Data model extension updated successfully',
       extension: updatedExtension,
     };
   }
+
   async deleteExtension(
     id: number,
     tenantId: string,
@@ -166,7 +188,9 @@ export class DataModelExtensionService {
         `Data model extension with ID ${id} not found`,
       );
     }
+
     await this.extensionRepository.delete(id, tenantId);
+
     await this.auditService.logAction({
       entityType: 'DATA_MODEL_EXTENSION',
       action: 'DELETE_DATA_MODEL_EXTENSION',
@@ -174,11 +198,13 @@ export class DataModelExtensionService {
       tenantId,
       endpointName: `Extension ${id}: ${extension.collection}.${extension.fieldName}`,
     });
+
     return {
       success: true,
       message: 'Data model extension deleted successfully',
     };
   }
+
   /**
    * Get all available destination paths including extensions
    */
@@ -192,6 +218,7 @@ export class DataModelExtensionService {
     );
     return [...basePaths, ...extensionPaths].sort();
   }
+
   /**
    * Validate if a destination path is valid (including extensions)
    */
@@ -202,10 +229,12 @@ export class DataModelExtensionService {
     if (this.tazamaDataModelService.isValidDestinationPath(path)) {
       return true;
     }
+
     const [collection, fieldName] = path.split('.');
     if (!collection || !fieldName) {
       return false;
     }
+
     const extension = await this.extensionRepository.findByCollectionAndField(
       collection as TazamaCollectionName,
       fieldName,

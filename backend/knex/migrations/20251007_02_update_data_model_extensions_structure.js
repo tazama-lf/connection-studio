@@ -1,8 +1,4 @@
-/**
- * Migration: Update data_model_extensions table structure
- * 
- * Adds missing columns: description, validation
- */
+
 
 exports.up = async function (knex) {
   const hasTable = await knex.schema.hasTable('data_model_extensions');
@@ -40,15 +36,12 @@ exports.down = async function (knex) {
     return;
   }
   
-  // Drop the columns we added
-  const hasDescription = await knex.schema.hasColumn('data_model_extensions', 'description');
-  const hasValidation = await knex.schema.hasColumn('data_model_extensions', 'validation');
-  
   await knex.schema.alterTable('data_model_extensions', (table) => {
-    if (hasDescription) {
+    // Only drop columns if they exist
+    if (knex.schema.hasColumn('data_model_extensions', 'description')) {
       table.dropColumn('description');
     }
-    if (hasValidation) {
+    if (knex.schema.hasColumn('data_model_extensions', 'validation')) {
       table.dropColumn('validation');
     }
   });

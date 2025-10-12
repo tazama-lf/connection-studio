@@ -24,8 +24,8 @@ import type { TazamaCollectionName } from './tazama-data-model.interfaces';
 @Controller('data-model')
 @UseGuards(TazamaAuthGuard)
 @RequireEditorRole()
-export class DataModelController {
-  private readonly logger = new Logger(DataModelController.name);
+export class DataModelExtensionController {
+  private readonly logger = new Logger(DataModelExtensionController.name);
   constructor(
     private readonly dataModelExtensionService: DataModelExtensionService,
     private readonly tazamaDataModelService: TazamaDataModelService,

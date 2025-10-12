@@ -4,30 +4,17 @@ import { ConfigService } from './config.service';
 import { ConfigRepository } from './config.repository';
 import { SchemasModule } from '../schemas/schemas.module';
 import { AuditModule } from '../audit/audit.module';
-import { PayloadParsingService } from '../common/payload-parsing.service';
-import { FileParsingService } from '../common/file-parsing.service';
-import { TazamaDataModelService } from '../common/tazama-data-model.service';
-import { DataModelExtensionService } from '../common/data-model-extension.service';
-import { DataModelExtensionRepository } from '../common/data-model-extension.repository';
-import { DataModelController } from '../common/data-model.controller';
+import { PayloadParsingService, FileParsingService } from '@tazama-lf/tcs-lib';
+import { DataModelExtensionModule } from '../data-model-extensions/data-model-extension.module';
 @Module({
-  imports: [SchemasModule, AuditModule],
-  controllers: [ConfigController, DataModelController],
+  imports: [SchemasModule, AuditModule, DataModelExtensionModule],
+  controllers: [ConfigController],
   providers: [
     ConfigService,
     ConfigRepository,
     PayloadParsingService,
     FileParsingService,
-    TazamaDataModelService,
-    DataModelExtensionService,
-    DataModelExtensionRepository,
   ],
-  exports: [
-    ConfigService,
-    ConfigRepository,
-    PayloadParsingService,
-    TazamaDataModelService,
-    DataModelExtensionService,
-  ],
+  exports: [ConfigService, ConfigRepository, PayloadParsingService],
 })
 export class ConfigModule {}

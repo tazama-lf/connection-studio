@@ -9,6 +9,7 @@ import { SchemasModule } from './schemas/schemas.module';
 import { AuditModule } from './audit/audit.module';
 import { ConfigModule } from './config/config.module';
 import { SimulationModule } from './simulation/simulation.module';
+import { DataModelExtensionModule } from './data-model-extensions/data-model-extension.module';
 import { KnexModule } from '../knex/knex.module';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { TokenExpiryInterceptor } from './auth/token-expiry.interceptor';
@@ -28,6 +29,7 @@ import { AuditInterceptor } from './audit/audit.interceptor';
     AuditModule,
     ConfigModule,
     SimulationModule,
+    DataModelExtensionModule,
   ],
   controllers: [AppController],
   providers: [

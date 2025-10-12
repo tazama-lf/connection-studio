@@ -6,6 +6,7 @@ import {
   TazamaFieldType,
   TAZAMA_DATA_MODEL_SCHEMAS,
 } from './tazama-data-model.interfaces';
+
 /**
  * Service for managing the Tazama Internal Data Model
  *
@@ -17,6 +18,7 @@ import {
 @Injectable()
 export class TazamaDataModelService {
   private readonly logger = new Logger(TazamaDataModelService.name);
+
   /**
    * Get all available destination paths for mapping
    * Returns a flat list of collection.field paths
@@ -33,6 +35,7 @@ export class TazamaDataModelService {
     }
     return paths.sort();
   }
+
   /**
    * Get destination paths grouped by collection
    */
@@ -48,6 +51,7 @@ export class TazamaDataModelService {
     }
     return grouped as Record<TazamaCollectionName, TazamaDestinationPath[]>;
   }
+
   /**
    * Validate if a destination path exists in the data model
    */
@@ -64,6 +68,7 @@ export class TazamaDataModelService {
     }
     return schema.fields.some((f) => f.name === fieldName);
   }
+
   /**
    * Get schema for a specific collection
    */
@@ -74,12 +79,14 @@ export class TazamaDataModelService {
       TAZAMA_DATA_MODEL_SCHEMAS.find((s) => s.name === collectionName) || null
     );
   }
+
   /**
    * Get all collection schemas
    */
   getAllCollectionSchemas(): TazamaCollectionSchema[] {
     return TAZAMA_DATA_MODEL_SCHEMAS;
   }
+
   /**
    * Get field type from a destination path
    */
@@ -94,6 +101,7 @@ export class TazamaDataModelService {
     const field = schema.fields.find((f) => f.name === fieldName);
     return field?.type ? (field.type.toUpperCase() as TazamaFieldType) : null;
   }
+
   /**
    * Check if a field is required in the data model
    */
@@ -108,6 +116,7 @@ export class TazamaDataModelService {
     const field = schema.fields.find((f) => f.name === fieldName);
     return field?.required || false;
   }
+
   /**
    * Get all required fields for a collection
    */
@@ -118,6 +127,7 @@ export class TazamaDataModelService {
     }
     return schema.fields.filter((f) => f.required).map((f) => f.name);
   }
+
   /**
    * Get field description from destination path
    */
@@ -132,6 +142,7 @@ export class TazamaDataModelService {
     const field = schema.fields.find((f) => f.name === fieldName);
     return field?.description || null;
   }
+
   /**
    * Get example value for a field
    */
@@ -146,6 +157,7 @@ export class TazamaDataModelService {
     const field = schema.fields.find((f) => f.name === fieldName);
     return field?.example || null;
   }
+
   /**
    * Get searchable/filterable destination options for UI dropdowns
    */
@@ -169,6 +181,7 @@ export class TazamaDataModelService {
       description?: string;
       example?: any;
     }> = [];
+
     for (const schema of TAZAMA_DATA_MODEL_SCHEMAS) {
       for (const field of schema.fields) {
         if (field.name === '_id' || field.name === '_rev') {
@@ -189,6 +202,7 @@ export class TazamaDataModelService {
     }
     return options.sort((a, b) => a.label.localeCompare(b.label));
   }
+
   /**
    * Extract collection name from destination path
    */
@@ -208,6 +222,7 @@ export class TazamaDataModelService {
     }
     return null;
   }
+
   /**
    * Extract field name from destination path
    */

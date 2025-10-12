@@ -1,11 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from './config.service';
 import { ConfigRepository } from './config.repository';
-import { PayloadParsingService } from '../common/payload-parsing.service';
+import { PayloadParsingService, JSONSchema } from '@tazama-lf/tcs-lib';
 import { AuditService } from '../audit/audit.service';
 import { JSONSchemaConverterService } from '../schemas/json-schema-converter.service';
-import { TazamaDataModelService } from '../common/tazama-data-model.service';
-import { DataModelExtensionService } from '../common/data-model-extension.service';
+import { TazamaDataModelService } from '../data-model-extensions/tazama-data-model.service';
+import { DataModelExtensionService } from '../data-model-extensions/data-model-extension.service';
 import {
   Config,
   ContentType,
@@ -13,8 +13,7 @@ import {
   CreateConfigDto,
   UpdateConfigDto,
   AddMappingDto,
-} from '../common/config.interfaces';
-import { JSONSchema } from '../common/json-schema.interfaces';
+} from './config.interfaces';
 describe('ConfigService', () => {
   let service: ConfigService;
   let repository: jest.Mocked<ConfigRepository>;

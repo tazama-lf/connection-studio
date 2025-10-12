@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { SchemaField, ContentType, FieldType } from '../common/interfaces';
+import { SchemaField, ContentType, FieldType } from '@tazama-lf/tcs-lib';
 import { parseStringPromise } from 'xml2js';
 @Injectable()
 export class SchemaInferenceService {

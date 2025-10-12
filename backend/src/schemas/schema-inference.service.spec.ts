@@ -1,5 +1,5 @@
 import { SchemaInferenceService } from './schema-inference.service';
-import { FieldType, SchemaField, ContentType } from '../common/interfaces';
+import { FieldType, SchemaField, ContentType } from '@tazama-lf/tcs-lib';
 describe('SchemaInferenceService', () => {
   let service: SchemaInferenceService;
   beforeEach(() => {

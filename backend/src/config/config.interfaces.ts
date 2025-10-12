@@ -1,5 +1,4 @@
-import { JSONSchema } from './json-schema.interfaces';
-import { AdjustFieldDto } from './schema-workflow.dto';
+import { JSONSchema, AdjustFieldDto } from '@tazama-lf/tcs-lib';
 
 export interface CreateConfigDto {
   msgFam?: string;

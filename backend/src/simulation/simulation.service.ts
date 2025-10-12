@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigRepository } from '../config/config.repository';
-import { TazamaDataModelService } from '../common/tazama-data-model.service';
-import { FieldMapping, Config } from '../common/config.interfaces';
+import { TazamaDataModelService } from '../data-model-extensions/tazama-data-model.service';
+import { FieldMapping, Config } from '../config/config.interfaces';
 import { AuditService } from '../audit/audit.service';
 import Ajv, { ErrorObject } from 'ajv';
 import addFormats from 'ajv-formats';

@@ -28,9 +28,9 @@ import {
   type Config,
   ContentType,
   type TransactionType,
-} from '../common/config.interfaces';
+} from './config.interfaces';
 import { RequireClaims, TazamaClaims } from '../auth/auth.decorator';
-import { FileParsingService } from '../common/file-parsing.service';
+import { FileParsingService } from '@tazama-lf/tcs-lib';
 function getTenantId(user: AuthenticatedUser): string {
   return user.token.tenantId || 'default';
 }

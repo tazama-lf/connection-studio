@@ -5,11 +5,13 @@ import {
   TazamaCollectionName,
   TazamaFieldType,
 } from './tazama-data-model.interfaces';
+
 @Injectable()
 export class DataModelExtensionRepository {
   private readonly logger = new Logger(DataModelExtensionRepository.name);
   private readonly tableName = 'data_model_extensions';
   constructor(@Inject('KNEX_CONNECTION') private readonly knex: Knex) {}
+
   async create(
     extension: Omit<TazamaDataModelExtension, 'id' | 'createdAt'>,
   ): Promise<number> {
@@ -36,6 +38,7 @@ export class DataModelExtensionRepository {
       .returning('id');
     return result.id;
   }
+
   async findById(
     id: number,
     tenantId: string,
@@ -48,6 +51,7 @@ export class DataModelExtensionRepository {
     }
     return this.mapToExtension(result);
   }
+
   async findByCollection(
     collection: TazamaCollectionName,
     tenantId: string,
@@ -57,6 +61,7 @@ export class DataModelExtensionRepository {
       .orderBy('created_at', 'desc');
     return results.map((row) => this.mapToExtension(row));
   }
+
   async findByCollectionAndField(
     collection: TazamaCollectionName,
     fieldName: string,
@@ -74,12 +79,14 @@ export class DataModelExtensionRepository {
     }
     return this.mapToExtension(result);
   }
+
   async findAllByTenant(tenantId: string): Promise<TazamaDataModelExtension[]> {
     const results = await this.knex(this.tableName)
       .where({ tenant_id: tenantId })
       .orderBy(['collection', 'field_name']);
     return results.map((row) => this.mapToExtension(row));
   }
+
   async update(
     id: number,
     tenantId: string,
@@ -94,13 +101,16 @@ export class DataModelExtensionRepository {
       updateData.default_value = JSON.stringify(updates.defaultValue);
     if (updates.validation !== undefined)
       updateData.validation = JSON.stringify(updates.validation);
+
     await this.knex(this.tableName)
       .where({ id, tenant_id: tenantId })
       .update(updateData);
   }
+
   async delete(id: number, tenantId: string): Promise<void> {
     await this.knex(this.tableName).where({ id, tenant_id: tenantId }).delete();
   }
+
   private mapToExtension(row: any): TazamaDataModelExtension {
     return {
       id: row.id,

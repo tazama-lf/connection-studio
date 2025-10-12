@@ -1,7 +1,7 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
 import { Knex } from 'knex';
-import { Config, FieldMapping } from '../common/config.interfaces';
-import { JSONSchema } from '../common/json-schema.interfaces';
+import { Config, FieldMapping } from './config.interfaces';
+import { JSONSchema } from '@tazama-lf/tcs-lib';
 @Injectable()
 export class ConfigRepository {
   private readonly logger = new Logger(ConfigRepository.name);
