@@ -42,7 +42,6 @@ export interface FieldMapping {
 
 export interface FunctionDefinition {
   params: string[]; // Array of parameter names
-  sources: (string | string[])[]; // Array of source field paths, can be single string or array for complex mappings
   functionName: 'addAccount' | 'handleTransaction' | 'AddEntity'; // Only these three functions are allowed
 }
 
@@ -94,7 +93,6 @@ export interface AddMappingDto {
 
 export interface AddFunctionDto {
   params: string[];
-  sources: (string | string[])[];
   functionName: AllowedFunctionName;
 }
 export interface ConfigResponseDto {

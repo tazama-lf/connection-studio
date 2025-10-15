@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:flowable="http://flowable.org/bpmn"
+             targetNamespace="http://connection-studio.tazama.org">
+
+  <process id="config-approval-process" name="Configuration Approval Process" isExecutable="true">
+    
+    <startEvent id="startEvent" name="Start"/>
+    
+    <userTask id="approveConfigTask" name="Approve Configuration" flowable:candidateGroups="approvers"/>
+    
+    <exclusiveGateway id="approvalDecisionGateway" name="Approved?"/>
+    
+    <serviceTask id="publishConfigTask" name="Publish Configuration" 
+                 flowable:class="org.flowable.engine.impl.bpmn.behavior.NoneExecutionListener"/>
+    
+    <endEvent id="endEventApproved" name="Approved"/>
+    
+    <endEvent id="endEventRejected" name="Rejected"/>
+    
+    <sequenceFlow id="flow1" sourceRef="startEvent" targetRef="approveConfigTask"/>
+    <sequenceFlow id="flow2" sourceRef="approveConfigTask" targetRef="approvalDecisionGateway"/>
+    <sequenceFlow id="flow3" name="Approved" sourceRef="approvalDecisionGateway" targetRef="publishConfigTask">
+      <conditionExpression>${approved == true}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow4" sourceRef="publishConfigTask" targetRef="endEventApproved"/>
+    <sequenceFlow id="flow5" name="Rejected" sourceRef="approvalDecisionGateway" targetRef="endEventRejected">
+      <conditionExpression>${approved == false}</conditionExpression>
+    </sequenceFlow>
+    
+  </process>
+
+</definitions>

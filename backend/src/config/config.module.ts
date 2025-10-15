@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ConfigController } from './config.controller';
 import { ConfigService } from './config.service';
 import { ConfigRepository } from './config.repository';
@@ -8,9 +8,15 @@ import { PayloadParsingService, FileParsingService } from '@tazama-lf/tcs-lib';
 import { JSONSchemaConverterService } from '../schemas/json-schema-converter.service';
 import { AuditService } from '../audit/audit.service';
 import { DataModelExtensionModule } from '../data-model-extensions/data-model-extension.module';
+import { FlowableModule } from '../flowable/flowable.module';
 
 @Module({
-  imports: [SchemasModule, AuditModule, DataModelExtensionModule],
+  imports: [
+    SchemasModule,
+    AuditModule,
+    DataModelExtensionModule,
+    forwardRef(() => FlowableModule),
+  ],
   controllers: [ConfigController],
   providers: [
     ConfigService,

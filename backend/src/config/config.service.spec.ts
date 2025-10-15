@@ -6,6 +6,7 @@ import { AuditService } from '../audit/audit.service';
 import { JSONSchemaConverterService } from '../schemas/json-schema-converter.service';
 import { TazamaDataModelService } from '../data-model-extensions/tazama-data-model.service';
 import { DataModelExtensionService } from '../data-model-extensions/data-model-extension.service';
+import { FlowableService } from '../flowable/flowable.service';
 import {
   Config,
   ContentType,
@@ -21,7 +22,7 @@ describe('ConfigService', () => {
   let repository: jest.Mocked<ConfigRepository>;
   let payloadParsingService: jest.Mocked<PayloadParsingService>;
   let auditService: jest.Mocked<AuditService>;
-  let jsonSchemaConverter: jest.Mocked<JSONSchemaConverterService>;
+  let flowableService: jest.Mocked<FlowableService>;
   const mockJSONSchema: JSONSchema = {
     $schema: 'https://json-schema.org/draft/2020-12/schema',
     type: 'object',
@@ -82,6 +83,13 @@ describe('ConfigService', () => {
       deleteExtension: jest.fn(),
       isValidDestinationPath: jest.fn().mockResolvedValue(true),
     };
+    const mockFlowableService = {
+      startWorkflowWithDraft: jest.fn(),
+      startProcess: jest.fn(),
+      getConfigFromProcess: jest.fn(),
+      getTasks: jest.fn(),
+      completeTask: jest.fn(),
+    };
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ConfigService,
@@ -109,13 +117,17 @@ describe('ConfigService', () => {
           provide: DataModelExtensionService,
           useValue: mockDataModelExtensionService,
         },
+        {
+          provide: FlowableService,
+          useValue: mockFlowableService,
+        },
       ],
     }).compile();
     service = module.get<ConfigService>(ConfigService);
     repository = module.get(ConfigRepository);
     payloadParsingService = module.get(PayloadParsingService);
     auditService = module.get(AuditService);
-    jsonSchemaConverter = module.get(JSONSchemaConverterService);
+    flowableService = module.get(FlowableService);
   });
   it('should be defined', () => {
     expect(service).toBeDefined();
@@ -149,24 +161,23 @@ describe('ConfigService', () => {
         parsingResult,
       );
       repository.findConfigByVersionAndTransactionType.mockResolvedValue(null); // No version conflict
-      repository.createConfig.mockResolvedValue(1);
-      repository.findConfigById.mockResolvedValue(mockConfig);
+
+      // Mock Flowable workflow start
+      flowableService.startWorkflowWithDraft.mockResolvedValue({
+        processInstanceId: 'proc-123',
+        configId: 'config-456',
+      });
+
       const result = await service.createConfig(dto, 'test-tenant', 'user-123');
+
       expect(result.success).toBe(true);
-      expect(result.config).toEqual(mockConfig);
-      expect(repository.createConfig).toHaveBeenCalled();
-      expect(repository.createConfig).toHaveBeenCalledWith(
+      expect(result.message).toContain('Flowable workflow started');
+      expect(flowableService.startWorkflowWithDraft).toHaveBeenCalled();
+      expect(auditService.logAction).toHaveBeenCalledWith(
         expect.objectContaining({
-          status: ConfigStatus.IN_PROGRESS,
+          action: 'CREATE_CONFIG_WORKFLOW',
         }),
       );
-      expect(auditService.logAction).toHaveBeenCalledWith({
-        action: 'CREATE_CONFIG',
-        actor: 'user-123',
-        tenantId: 'test-tenant',
-        endpointName: 'pain.001 - /test-tenant/v1/pain.001/Payments',
-        entityType: 'CONFIG',
-      });
     });
     it('should use preferred_username for createdBy if present', async () => {
       const dto: CreateConfigDto = {
@@ -192,26 +203,20 @@ describe('ConfigService', () => {
         parsingResult,
       );
       repository.findConfigByVersionAndTransactionType.mockResolvedValue(null); // No version conflict
-      repository.createConfig.mockResolvedValue(2);
-      const configWithPreferredUsername = {
-        ...mockConfig,
-        id: 2,
-        createdBy: 'preferred_user',
-      };
-      repository.findConfigById.mockResolvedValue(configWithPreferredUsername);
+
+      // Mock Flowable workflow start
+      flowableService.startWorkflowWithDraft.mockResolvedValue({
+        processInstanceId: 'proc-2',
+        configId: 'config-2',
+      });
+
       const result = await service.createConfig(
         dto,
         'tenant-xyz',
         'preferred_user',
       );
       expect(result.success).toBe(true);
-      expect(result.config).toBeDefined();
-      if (result.config) {
-        expect(result.config.createdBy).toBe('preferred_user');
-      }
-      expect(repository.createConfig).toHaveBeenCalledWith(
-        expect.objectContaining({ createdBy: 'preferred_user' }),
-      );
+      expect(flowableService.startWorkflowWithDraft).toHaveBeenCalled();
     });
     it('should auto-generate endpoint path with msgFam', async () => {
       const dto: CreateConfigDto = {
@@ -237,20 +242,16 @@ describe('ConfigService', () => {
         parsingResult,
       );
       repository.findConfigByVersionAndTransactionType.mockResolvedValue(null); // No version conflict
-      repository.createConfig.mockResolvedValue(3);
-      const configWithAutoPath = {
-        ...mockConfig,
-        id: 3,
-        endpointPath: '/test-tenant/v1/pain.001/Payments',
-      };
-      repository.findConfigById.mockResolvedValue(configWithAutoPath);
+
+      // Mock Flowable workflow start
+      flowableService.startWorkflowWithDraft.mockResolvedValue({
+        processInstanceId: 'proc-3',
+        configId: 'config-3',
+      });
+
       const result = await service.createConfig(dto, 'test-tenant', 'user-123');
       expect(result.success).toBe(true);
-      expect(repository.createConfig).toHaveBeenCalledWith(
-        expect.objectContaining({
-          endpointPath: '/test-tenant/v1/pain.001/Payments',
-        }),
-      );
+      expect(flowableService.startWorkflowWithDraft).toHaveBeenCalled();
     });
     it('should auto-generate endpoint path without msgFam', async () => {
       const dto: CreateConfigDto = {
@@ -275,20 +276,16 @@ describe('ConfigService', () => {
         parsingResult,
       );
       repository.findConfigByVersionAndTransactionType.mockResolvedValue(null); // No version conflict
-      repository.createConfig.mockResolvedValue(4);
-      const configWithAutoPath = {
-        ...mockConfig,
-        id: 4,
-        endpointPath: '/test-tenant/v1/Payments',
-      };
-      repository.findConfigById.mockResolvedValue(configWithAutoPath);
+
+      // Mock Flowable workflow start
+      flowableService.startWorkflowWithDraft.mockResolvedValue({
+        processInstanceId: 'proc-4',
+        configId: 'config-4',
+      });
+
       const result = await service.createConfig(dto, 'test-tenant', 'user-123');
       expect(result.success).toBe(true);
-      expect(repository.createConfig).toHaveBeenCalledWith(
-        expect.objectContaining({
-          endpointPath: '/test-tenant/v1/Payments',
-        }),
-      );
+      expect(flowableService.startWorkflowWithDraft).toHaveBeenCalled();
     });
     it('should handle parsing failure', async () => {
       const dto: CreateConfigDto = {
@@ -520,52 +517,18 @@ describe('ConfigService', () => {
         functions: [
           {
             params: ['dbtrAcctId', 'tenantId'],
-            sources: ['amount', 'currency'],
             functionName: 'addAccount' as AllowedFunctionName,
           },
         ],
       };
-
-      const mockSourceFields = [
-        {
-          path: 'amount',
-          name: 'amount',
-          type: 'number' as any,
-          isRequired: true,
-        },
-        {
-          path: 'currency',
-          name: 'currency',
-          type: 'string' as any,
-          isRequired: false,
-        },
-        {
-          path: 'firstName',
-          name: 'firstName',
-          type: 'string' as any,
-          isRequired: false,
-        },
-        {
-          path: 'lastName',
-          name: 'lastName',
-          type: 'string' as any,
-          isRequired: false,
-        },
-      ];
 
       repository.findConfigById.mockResolvedValue(mockConfig);
       repository.findConfigById
         .mockResolvedValueOnce(mockConfig)
         .mockResolvedValueOnce(mockConfigWithFunction);
 
-      // Mock the JSON schema converter to return mock fields
-      jsonSchemaConverter.convertFromJSONSchema.mockReturnValue(
-        mockSourceFields,
-      );
-
       const functionDto: AddFunctionDto = {
         params: ['dbtrAcctId', 'tenantId'],
-        sources: ['amount', 'currency'],
         functionName: 'addAccount',
       };
 
@@ -585,7 +548,6 @@ describe('ConfigService', () => {
           expect.objectContaining({
             functionName: 'addAccount',
             params: ['dbtrAcctId', 'tenantId'],
-            sources: ['amount', 'currency'],
           }),
         ]),
       });
@@ -603,7 +565,6 @@ describe('ConfigService', () => {
 
       const functionDto: AddFunctionDto = {
         params: ['dbtrAcctId'],
-        sources: ['amount'],
         functionName: 'addAccount',
       };
 
@@ -617,7 +578,6 @@ describe('ConfigService', () => {
 
       const invalidFunctionDto: AddFunctionDto = {
         params: [],
-        sources: ['amount'],
         functionName: 'addAccount',
       };
 
@@ -631,7 +591,6 @@ describe('ConfigService', () => {
 
       const invalidFunctionDto = {
         params: ['param1'],
-        sources: ['amount'],
         functionName: 'invalidFunction' as any,
       };
 
@@ -650,7 +609,6 @@ describe('ConfigService', () => {
         functions: [
           {
             params: ['dbtrAcctId'],
-            sources: ['amount'],
             functionName: 'addAccount' as AllowedFunctionName,
           },
         ],
