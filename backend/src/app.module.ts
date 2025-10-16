@@ -15,6 +15,7 @@ import { KnexModule } from '../knex/knex.module';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { TokenExpiryInterceptor } from './auth/token-expiry.interceptor';
 import { AuditInterceptor } from './audit/audit.interceptor';
+import { SchedulerModule } from './scheduler/scheduler.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { AuditInterceptor } from './audit/audit.interceptor';
     SimulationModule,
     DataModelExtensionModule,
     FlowableModule,
+    SchedulerModule,
   ],
   controllers: [AppController],
   providers: [
