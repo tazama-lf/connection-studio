@@ -213,7 +213,7 @@ describe('FlowableController', () => {
         configId: 'config-123',
         msgFam: 'pacs.008',
         transactionType: 'credit_transfer',
-        endpointPath: '/api/pacs008',
+        endpointPath: '/pacs008',
         schema: { type: 'object' },
       };
 

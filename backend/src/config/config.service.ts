@@ -13,6 +13,7 @@ import {
 import { AuditService } from '../audit/audit.service';
 import { JSONSchemaConverterService } from '../schemas/json-schema-converter.service';
 import { FlowableService } from '../flowable/flowable.service';
+import { ConfigLifecycleService } from './config-lifecycle.service';
 
 import { TazamaDataModelService } from '../data-model-extensions/tazama-data-model.service';
 import { DataModelExtensionService } from '../data-model-extensions/data-model-extension.service';
@@ -25,6 +26,7 @@ import {
   FieldMapping,
   ContentType,
   ConfigStatus,
+  ConfigLifecycleState,
   TransactionType,
   AddMappingDto,
   FunctionDefinition,
@@ -57,7 +59,23 @@ export class ConfigService {
     private readonly tazamaDataModelService: TazamaDataModelService,
     private readonly dataModelExtensionService: DataModelExtensionService,
     private readonly flowableService: FlowableService,
+    private readonly configLifecycleService: ConfigLifecycleService,
   ) {}
+
+  /**
+   * Get comprehensive lifecycle state for a config version/type
+   */
+  async getConfigLifecycleState(
+    version: string,
+    transactionType: string,
+    tenantId: string,
+  ) {
+    return this.configLifecycleService.getConfigLifecycleState(
+      version,
+      transactionType,
+      tenantId,
+    );
+  }
 
   async createConfig(
     dto: CreateConfigDto,
@@ -70,18 +88,17 @@ export class ConfigService {
 
     try {
       const version = dto.version || 'v1';
-      const existingConfig =
-        await this.configRepository.findConfigByVersionAndTransactionType(
+
+      // ✅ CHECK VERSION CONFLICTS: Use lifecycle management
+      const conflictCheck =
+        await this.configLifecycleService.checkVersionConflicts(
           version,
           dto.transactionType,
           tenantId,
         );
 
-      if (existingConfig) {
-        return {
-          success: false,
-          message: `Config with version '${version}' for transaction type '${dto.transactionType}' already exists for this tenant. Please use a different version.`,
-        };
+      if (conflictCheck) {
+        return conflictCheck; // Return detailed conflict information
       }
 
       if (!dto.payload) {
@@ -118,7 +135,6 @@ export class ConfigService {
             dto.fieldAdjustments,
           );
 
-        // Regenerate JSON schema with adjusted fields
         finalSchema =
           this.jsonSchemaConverter.convertToJSONSchema(adjustedSourceFields);
 
@@ -158,17 +174,17 @@ export class ConfigService {
         createdBy: userId,
       };
 
-      const configId = await this.configRepository.createConfig(configData);
+      this.logger.log(
+        'Starting Flowable workflow with config data (no DB save yet)...',
+      );
 
-      this.logger.log('Starting Flowable workflow for config approval...');
-
-      // Start Flowable workflow with draft config
-      const flowableResult =
-        await this.flowableService.startWorkflowWithDraft(
-          { ...configData, configId },
+      const flowableResult = await this.flowableService.startProcess(
+        {
           tenantId,
-          userId,
-        );
+          initiator: userId,
+        },
+        configData, // Store entire config in Flowable variables
+      );
 
       this.logger.log(
         `Flowable workflow started: Process ID ${flowableResult.processInstanceId}`,
@@ -180,20 +196,17 @@ export class ConfigService {
         actor: userId,
         tenantId,
         endpointName: `${dto.msgFam || ''} - ${endpointPath}`,
-        details: `Process ID: ${flowableResult.processInstanceId}, Config ID: ${flowableResult.configId}`,
+        details: `Process ID: ${flowableResult.processInstanceId}, Config pending approval`,
       });
 
-      const config = await this.configRepository.findConfigById(
-        configId,
-        tenantId,
+      this.logger.log(
+        `Config submitted for approval via Flowable workflow process ${flowableResult.processInstanceId}`,
       );
-
-      this.logger.log('Successfully created config ' + configId);
 
       return {
         success: true,
-        message: `Flowable workflow started successfully. Process ID: ${flowableResult.processInstanceId}`,
-        config: config!,
+        message: `Config submitted for approval. Process ID: ${flowableResult.processInstanceId}. No database writes until approval.`,
+        processInstanceId: flowableResult.processInstanceId,
         validation,
       };
     } catch (error) {
@@ -214,7 +227,6 @@ export class ConfigService {
     userId: string,
   ): Promise<ConfigResponseDto> {
     try {
-      // First, fetch the source config
       const sourceConfig = await this.configRepository.findConfigById(
         dto.sourceConfigId,
         tenantId,
@@ -227,7 +239,6 @@ export class ConfigService {
         };
       }
 
-      // Check if the new transaction type already exists for this tenant
       const existingConfig =
         await this.configRepository.findConfigByVersionAndTransactionType(
           dto.newVersion || sourceConfig.version,
@@ -242,11 +253,9 @@ export class ConfigService {
         };
       }
 
-      // Prepare the new config data by cloning the source
       const newMsgFam = dto.newMsgFam || sourceConfig.msgFam;
       const newVersion = dto.newVersion || sourceConfig.version;
 
-      // Generate new endpoint path
       const newEndpointPath = this.generateEndpointPath(
         tenantId,
         newVersion,
@@ -254,14 +263,12 @@ export class ConfigService {
         newMsgFam,
       );
 
-      // Handle field adjustments if provided
       let finalSchema = sourceConfig.schema;
       if (dto.fieldAdjustments && dto.fieldAdjustments.length > 0) {
         this.logger.log(
           `Applying ${dto.fieldAdjustments.length} field adjustments to cloned config`,
         );
 
-        // Convert existing schema to source fields first
         const existingSourceFields =
           this.jsonSchemaConverter.convertFromJSONSchema(sourceConfig.schema);
 
@@ -345,7 +352,6 @@ export class ConfigService {
     return this.configRepository.findConfigById(id, tenantId);
   }
 
-  // Test method to verify TypeScript compilation - updated
   async testMethod(): Promise<boolean> {
     return true;
   }
@@ -379,15 +385,40 @@ export class ConfigService {
   async updateConfig(
     id: number,
     dto: UpdateConfigDto,
-    tenantId: string,
+    _tenantId: string,
     userId: string,
   ): Promise<ConfigResponseDto> {
-    const config = await this.configRepository.findConfigById(id, tenantId);
+    // ✅ VALIDATE EDIT PERMISSION: Check lifecycle state
+    await this.configLifecycleService.validateEditPermission(
+      id,
+      _tenantId,
+      userId,
+    );
+
+    const config = await this.configRepository.findConfigById(id, _tenantId);
 
     if (!config) {
       throw new NotFoundException(`Config with ID ${id} not found`);
     }
 
+    // Check if config is in an active Flowable process
+    const activeProcess = await this.flowableService.getProcessByConfigId(id);
+
+    if (
+      activeProcess &&
+      typeof activeProcess === 'object' &&
+      'id' in activeProcess
+    ) {
+      // ✅ UPDATE FLOWABLE VARIABLES: Edit in-progress config
+      return this.updateConfigInProcess(
+        activeProcess.id as string,
+        dto,
+        _tenantId,
+        userId,
+      );
+    }
+
+    // If no active process, proceed with regular update (for rejected/draft configs)
     if (dto.schema) {
       const validation = this.validateSchema(dto.schema);
       if (!validation.success) {
@@ -399,28 +430,23 @@ export class ConfigService {
       }
     }
 
-    // Handle field adjustments if provided
     let finalSchema = dto.schema;
     if (dto.fieldAdjustments && dto.fieldAdjustments.length > 0) {
       this.logger.log(
         `Applying ${dto.fieldAdjustments.length} field adjustments to config ${id}`,
       );
 
-      // Use existing schema as base if no new schema provided
       const baseSchema = dto.schema || config.schema;
 
-      // Convert existing schema to source fields first
       const existingSourceFields =
         this.jsonSchemaConverter.convertFromJSONSchema(baseSchema);
 
-      // Apply field adjustments
       const adjustedSourceFields =
         this.payloadParsingService.applyFieldAdjustments(
           existingSourceFields,
           dto.fieldAdjustments,
         );
 
-      // Regenerate JSON schema with adjusted fields
       finalSchema =
         this.jsonSchemaConverter.convertToJSONSchema(adjustedSourceFields);
 
@@ -428,7 +454,6 @@ export class ConfigService {
         'Successfully applied field adjustments and regenerated schema',
       );
 
-      // Validate the adjusted schema
       const validation = this.validateSchema(finalSchema);
       if (!validation.success) {
         return {
@@ -439,8 +464,6 @@ export class ConfigService {
       }
     }
 
-    // Check if this update requires creating a new config row
-    // This happens when key fields that are part of the unique constraint change
     const isVersionChanging =
       dto.version !== undefined && dto.version !== config.version;
     const isTransactionTypeChanging =
@@ -453,17 +476,15 @@ export class ConfigService {
       isVersionChanging || isTransactionTypeChanging || isMsgFamChanging;
 
     if (requiresNewRow) {
-      // Create a new config with the updated fields
       const newVersion = dto.version ?? config.version;
       const newTransactionType = dto.transactionType ?? config.transactionType;
       const newMsgFam = dto.msgFam ?? config.msgFam;
 
-      // Check if this new combination would conflict with an existing config
       const existingConfig =
         await this.configRepository.findConfigByVersionAndTransactionType(
           newVersion,
           newTransactionType,
-          tenantId,
+          _tenantId,
         );
 
       if (existingConfig && existingConfig.id !== id) {
@@ -474,13 +495,12 @@ export class ConfigService {
       }
 
       const newEndpointPath = this.generateEndpointPath(
-        tenantId,
+        _tenantId,
         newVersion,
         newTransactionType,
         newMsgFam,
       );
 
-      // Create new config with all the data from the original plus updates
       const newConfigData: Omit<Config, 'id' | 'createdAt' | 'updatedAt'> = {
         msgFam: newMsgFam,
         transactionType: newTransactionType,
@@ -490,7 +510,7 @@ export class ConfigService {
         schema: finalSchema ?? config.schema,
         mapping: dto.mapping ?? config.mapping,
         status: config.status,
-        tenantId,
+        tenantId: _tenantId,
         createdBy: userId, // New config created by the user making the update
       };
 
@@ -501,13 +521,13 @@ export class ConfigService {
         entityType: 'CONFIG',
         action: 'CREATE_CONFIG',
         actor: userId,
-        tenantId,
+        tenantId: _tenantId,
         endpointName: `${newMsgFam} - ${newEndpointPath} (versioned from ${id})`,
       });
 
       const newConfig = await this.configRepository.findConfigById(
         newConfigId,
-        tenantId,
+        _tenantId,
       );
 
       this.logger.log(
@@ -521,21 +541,18 @@ export class ConfigService {
       };
     }
 
-    // Regular update for non-version-changing fields
     const updateData = { ...dto };
 
-    // Use finalSchema if field adjustments were applied
     if (finalSchema) {
       updateData.schema = finalSchema;
     }
 
-    // Auto-regenerate endpoint path if needed (for non-version changes)
     if (dto.transactionType !== undefined || dto.msgFam !== undefined) {
       const newTransactionType = dto.transactionType ?? config.transactionType;
       const newMsgFam = dto.msgFam ?? config.msgFam;
 
       updateData.endpointPath = this.generateEndpointPath(
-        tenantId,
+        _tenantId,
         config.version, // Keep the same version for regular updates
         newTransactionType,
         newMsgFam,
@@ -546,19 +563,19 @@ export class ConfigService {
       );
     }
 
-    await this.configRepository.updateConfig(id, tenantId, updateData);
+    await this.configRepository.updateConfig(id, _tenantId, updateData);
 
     await this.auditService.logAction({
       entityType: 'CONFIG',
       action: 'UPDATE_CONFIG',
       actor: userId,
-      tenantId,
+      tenantId: _tenantId,
       endpointName: `Config ${id}`,
     });
 
     const updatedConfig = await this.configRepository.findConfigById(
       id,
-      tenantId,
+      _tenantId,
     );
 
     return {
@@ -887,8 +904,10 @@ export class ConfigService {
     };
   }
 
-  private validateFunction(func: FunctionDefinition, _schema: JSONSchema): void {
-    // Validate parameter names
+  private validateFunction(
+    func: FunctionDefinition,
+    _schema: JSONSchema,
+  ): void {
     for (const param of func.params) {
       if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(param)) {
         throw new BadRequestException(
@@ -928,7 +947,6 @@ export class ConfigService {
   }
 
   private createMappingFromDto(dto: AddMappingDto): FieldMapping {
-    // Many-to-one (concat logic)
     if (dto.sources && dto.sources.length > 0) {
       if (dto.sources.length < 2) {
         throw new BadRequestException(
@@ -948,7 +966,6 @@ export class ConfigService {
       };
     }
 
-    // One-to-many (split logic)
     if (dto.source && dto.destinations && dto.destinations.length > 0) {
       return {
         source: dto.source,
@@ -958,7 +975,6 @@ export class ConfigService {
       };
     }
 
-    // Simple mapping
     if (dto.source && dto.destination) {
       return {
         source: dto.source,
@@ -979,7 +995,6 @@ export class ConfigService {
   ): Promise<void> {
     const allPaths = this.extractAllPathsFromSchema(schema);
 
-    // Many-to-one (concat logic)
     if (Array.isArray(mapping.source)) {
       for (const src of mapping.source) {
         if (!allPaths.includes(src)) {
@@ -989,7 +1004,6 @@ export class ConfigService {
         }
       }
     } else {
-      // One-to-one or one-to-many
       if (
         typeof mapping.source === 'string' &&
         mapping.source &&
@@ -1001,7 +1015,6 @@ export class ConfigService {
       }
     }
 
-    // Validate destination(s) against Tazama internal data model
     if (Array.isArray(mapping.destination)) {
       for (const dest of mapping.destination) {
         const isValid =
@@ -1078,12 +1091,10 @@ export class ConfigService {
     }
 
     try {
-      // Convert schema to source fields to get field information
       const sourceFields = this.jsonSchemaConverter.convertFromJSONSchema(
         config.schema,
       );
 
-      // Find the field in the source fields
       const findField = (fields: any[], path: string): any => {
         for (const field of fields) {
           if (field.path === path) {
@@ -1114,5 +1125,94 @@ export class ConfigService {
     }
 
     return null;
+  }
+
+  /**
+   * Update config that's currently in Flowable approval process
+   */
+  private async updateConfigInProcess(
+    processInstanceId: string,
+    dto: UpdateConfigDto,
+    tenantId: string,
+    userId: string,
+  ): Promise<ConfigResponseDto> {
+    try {
+      this.logger.log(
+        `Updating config in Flowable process ${processInstanceId}`,
+      );
+
+      // Get current config data from process
+      const currentConfigData =
+        await this.flowableService.getConfigFromProcess(processInstanceId);
+
+      if (!currentConfigData) {
+        throw new Error(
+          `Config data not found in process ${processInstanceId}`,
+        );
+      }
+
+      // Prepare updates
+      const updates: Record<string, any> = {};
+
+      if (dto.msgFam) updates.msgFam = dto.msgFam;
+      if (dto.transactionType) updates.transactionType = dto.transactionType;
+      if (dto.endpointPath) updates.endpointPath = dto.endpointPath;
+      if (dto.version) updates.version = dto.version;
+      if (dto.contentType) updates.contentType = dto.contentType;
+      if (dto.schema) updates.schema = JSON.stringify(dto.schema);
+      if (dto.mapping) updates.mapping = JSON.stringify(dto.mapping);
+      if (dto.functions) updates.functions = JSON.stringify(dto.functions);
+
+      // Add audit fields
+      updates.lastModifiedBy = userId;
+      updates.lastModifiedAt = new Date().toISOString();
+      updates.status = ConfigStatus.DRAFT; // Reset to draft when edited
+
+      // Update process variables
+      await this.flowableService.updateProcessVariables(
+        processInstanceId,
+        updates,
+      );
+
+      // Log audit trail
+      await this.auditService.logAction({
+        entityType: 'CONFIG',
+        action: 'UPDATE_IN_PROCESS',
+        actor: userId,
+        tenantId,
+        endpointName: dto.endpointPath || currentConfigData.endpointPath,
+        details: `Config updated in process ${processInstanceId}`,
+      });
+
+      this.logger.log(
+        `✅ Config updated in Flowable process ${processInstanceId}`,
+      );
+
+      return {
+        success: true,
+        message:
+          'Config updated in approval process. Changes will be reviewed.',
+        processInstanceId,
+        lifecycleInfo: {
+          version: dto.version || currentConfigData.version,
+          transactionType:
+            dto.transactionType || currentConfigData.transactionType,
+          tenantId,
+          state: ConfigLifecycleState.IN_APPROVAL,
+          status: ConfigStatus.DRAFT,
+          isEditable: true,
+          canClone: false,
+          isApproved: false,
+          processInstanceId,
+          lastModified: updates.lastModifiedAt,
+        },
+      };
+    } catch (error) {
+      this.logger.error(
+        `Failed to update config in process: ${error.message}`,
+        error.stack,
+      );
+      throw error;
+    }
   }
 }

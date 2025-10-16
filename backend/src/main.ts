@@ -12,13 +12,12 @@ async function bootstrap() {
   const logger = app.get(LoggerService);
   app.useLogger(logger);
 
-  // Set global prefix for all routes
   app.setGlobalPrefix('api');
 
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true, // Strip non-whitelisted properties
-      forbidNonWhitelisted: true, // Throw error for non-whitelisted properties
+      whitelist: true,
+      forbidNonWhitelisted: true,
       transform: true,
     }),
   );

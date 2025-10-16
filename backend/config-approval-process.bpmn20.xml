@@ -1,0 +1,78 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:flowable="http://flowable.org/bpmn"
+             targetNamespace="http://www.flowable.org/processdef">
+
+  <process id="config-approval-process" name="Configuration Approval Process" isExecutable="true">
+    
+    <startEvent id="startEvent" name="Start"/>
+    
+    <sequenceFlow sourceRef="startEvent" targetRef="reviewTask"/>
+    
+    <!-- Approver Review Task -->
+    <userTask id="reviewTask" name="Review Configuration" flowable:candidateGroups="approver">
+      <extensionElements>
+        <flowable:formProperty id="approvalStatus" name="Decision" type="enum" required="true">
+          <flowable:value id="approved" name="Approve"/>
+          <flowable:value id="rejected" name="Reject"/>
+        </flowable:formProperty>
+        <flowable:formProperty id="remarks" name="Remarks" type="string"/>
+      </extensionElements>
+    </userTask>
+    
+    <sequenceFlow sourceRef="reviewTask" targetRef="approvalGateway"/>
+    
+    <!-- Decision Gateway -->
+    <exclusiveGateway id="approvalGateway" name="Approved?"/>
+    
+    <!-- Approved Path -->
+    <sequenceFlow sourceRef="approvalGateway" targetRef="endApproved">
+      <conditionExpression xsi:type="tFormalExpression">
+        ${approvalStatus == 'approved'}
+      </conditionExpression>
+    </sequenceFlow>
+    
+    <!-- Rejected Path - Send back to Editor -->
+    <sequenceFlow sourceRef="approvalGateway" targetRef="reviseTask">
+      <conditionExpression xsi:type="tFormalExpression">
+        ${approvalStatus == 'rejected'}
+      </conditionExpression>
+    </sequenceFlow>
+    
+    <!-- Editor Revision Task -->
+    <userTask id="reviseTask" name="Revise Configuration" flowable:assignee="${initiator}">
+      <extensionElements>
+        <flowable:formProperty id="rejectionReason" name="Rejection Reason" type="string" expression="${remarks}" readable="true" writable="false"/>
+        <flowable:formProperty id="revisionAction" name="Action" type="enum" required="true">
+          <flowable:value id="resubmit" name="Resubmit for Approval"/>
+          <flowable:value id="cancel" name="Cancel"/>
+        </flowable:formProperty>
+      </extensionElements>
+    </userTask>
+    
+    <sequenceFlow sourceRef="reviseTask" targetRef="revisionGateway"/>
+    
+    <!-- Revision Decision Gateway -->
+    <exclusiveGateway id="revisionGateway" name="Resubmit?"/>
+    
+    <!-- Resubmit - Loop back to Approver -->
+    <sequenceFlow sourceRef="revisionGateway" targetRef="reviewTask">
+      <conditionExpression xsi:type="tFormalExpression">
+        ${revisionAction == 'resubmit'}
+      </conditionExpression>
+    </sequenceFlow>
+    
+    <!-- Cancel - End Process -->
+    <sequenceFlow sourceRef="revisionGateway" targetRef="endCancelled">
+      <conditionExpression xsi:type="tFormalExpression">
+        ${revisionAction == 'cancel'}
+      </conditionExpression>
+    </sequenceFlow>
+    
+    <endEvent id="endApproved" name="Approved - Saved to Main Table"/>
+    <endEvent id="endCancelled" name="Cancelled by Editor"/>
+    
+  </process>
+  
+</definitions>

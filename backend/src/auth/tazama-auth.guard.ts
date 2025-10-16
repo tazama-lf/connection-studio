@@ -37,7 +37,6 @@ export class TazamaAuthGuard implements CanActivate {
       return true;
     }
 
-    // Get required claims from decorator
     const requiredClaims = this.reflector.getAllAndOverride<string[]>(
       CLAIMS_KEY,
       [context.getHandler(), context.getClass()],

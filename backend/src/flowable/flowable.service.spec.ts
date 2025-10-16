@@ -66,7 +66,7 @@ describe('FlowableService', () => {
       const configData = {
         msgFam: 'pacs.008',
         transactionType: 'credit_transfer',
-        endpointPath: '/api/pacs008',
+        endpointPath: '/pacs008',
         version: '1.0',
         contentType: 'application/json',
         schema: { type: 'object' },
@@ -273,7 +273,7 @@ describe('FlowableService', () => {
       const configData = {
         msgFam: 'pacs.008',
         transactionType: 'credit_transfer',
-        endpointPath: '/api/pacs008',
+        endpointPath: '/pacs008',
         version: '1.0',
         contentType: 'application/json',
         schema: { type: 'object' },

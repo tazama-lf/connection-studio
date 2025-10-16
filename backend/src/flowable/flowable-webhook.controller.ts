@@ -1,4 +1,4 @@
-﻿import {
+import {
   Controller,
   Post,
   Body,
@@ -9,6 +9,7 @@
 import { FlowableService } from './flowable.service';
 import { ConfigRepository } from '../config/config.repository';
 import { AuditService } from '../audit/audit.service';
+import { ConfigLifecycleService } from '../config/config-lifecycle.service';
 import { Config, ConfigStatus } from '../config/config.interfaces';
 
 @Controller('flowable/webhook')
@@ -19,6 +20,7 @@ export class FlowableWebhookController {
     private readonly flowableService: FlowableService,
     private readonly configRepository: ConfigRepository,
     private readonly auditService: AuditService,
+    private readonly configLifecycleService: ConfigLifecycleService,
   ) {}
 
   @Post('task-completed')
@@ -48,20 +50,33 @@ export class FlowableWebhookController {
       const revisionAction = variables?.revisionAction;
 
       if (approvalStatus === 'rejected') {
-        return this.handleRejection(
-          configData,
-          variables,
+        return this.configLifecycleService.handleWorkflowReversal(
           processInstanceId,
+          'reject',
+          variables?.remarks ||
+            variables?.rejectionReason ||
+            'No reason provided',
+          variables?.reviewedBy || variables?.rejectedBy || 'system',
+          tenantId,
+        );
+      } else if (approvalStatus === 'changes_requested') {
+        return this.configLifecycleService.handleWorkflowReversal(
+          processInstanceId,
+          'request_changes',
+          variables?.remarks ||
+            variables?.changeRequests ||
+            'Changes requested',
+          variables?.reviewedBy || 'system',
           tenantId,
         );
       } else if (
         taskName === 'Review Configuration' ||
         approvalStatus === 'approved'
       ) {
-        return this.handleApproval(
-          configData,
-          variables,
+        return this.configLifecycleService.handleConfigApproval(
           processInstanceId,
+          variables?.reviewedBy || variables?.approver || 'system',
+          variables?.remarks || variables?.approvalRemarks || 'Approved',
           tenantId,
         );
       } else if (taskName === 'Revise Configuration') {
@@ -96,45 +111,56 @@ export class FlowableWebhookController {
     const remarks = variables?.remarks || variables?.approvalRemarks;
 
     try {
-      this.logger.log(`Config approved: ${configData.configId} by ${approver}`);
+      this.logger.log(
+        `Config approved for process ${processInstanceId} by ${approver}`,
+      );
 
-      const config: Omit<Config, 'id' | 'createdAt' | 'updatedAt'> = {
-        msgFam: configData.msgFam || '',
-        transactionType: configData.transactionType,
-        endpointPath: configData.endpointPath,
-        version: configData.version,
-        contentType: configData.contentType,
-        schema: configData.schema,
-        mapping: configData.mapping,
-        functions: configData.functions,
-        status: ConfigStatus.COMPLETED,
+      const approvedConfig: Omit<Config, 'id' | 'createdAt' | 'updatedAt'> = {
+        msgFam: variables.msgFam || '',
+        transactionType: variables.transactionType,
+        endpointPath: variables.endpointPath,
+        version: variables.version,
+        contentType: variables.contentType,
+        schema: variables.schema
+          ? JSON.parse(variables.schema)
+          : configData.schema,
+        mapping: variables.mapping
+          ? JSON.parse(variables.mapping)
+          : configData.mapping,
+        functions: variables.functions
+          ? JSON.parse(variables.functions)
+          : configData.functions,
+        status: ConfigStatus.APPROVED,
         tenantId: tenantId,
-        createdBy: configData.createdBy || approver,
+        createdBy: variables.createdBy || approver,
       };
 
-      const configId = await this.configRepository.createConfig(config);
+      const liveConfigId =
+        await this.configRepository.createConfig(approvedConfig);
 
       await this.auditService.logAction({
         entityType: 'CONFIG',
         action: 'APPROVE_CONFIG',
         actor: approver,
         tenantId,
-        endpointName: configData.endpointPath,
+        endpointName: variables.endpointPath,
+        details: `Process ${processInstanceId} ? Live Config ${liveConfigId}`,
       });
 
       this.logger.log(
-        `Config saved to main table after approval - Flowable process ${processInstanceId} → config ${configId}`,
+        `? Config approved and created: Process ${processInstanceId} ? Live Config ${liveConfigId}`,
       );
 
       return {
         success: true,
-        message: 'Config approved and saved to main table',
-        configId,
+        message: 'Config approved and saved to main config table',
+        configId: liveConfigId,
+        processInstanceId,
         remarks,
       };
     } catch (error) {
       this.logger.error(
-        `Failed to save approved config: ${error.message}`,
+        `Failed to approve config: ${error.message}`,
         error.stack,
       );
       throw error;
@@ -157,19 +183,20 @@ export class FlowableWebhookController {
         action: 'REJECT_CONFIG',
         actor: rejectedBy,
         tenantId,
-        endpointName: configData.endpointPath,
+        endpointName: variables.endpointPath || configData.endpointPath,
+        details: `Process ${processInstanceId} rejected: ${remarks}`,
       });
 
       this.logger.log(
-        `Config rejected: ${configData.configId} by ${rejectedBy}. Reason: ${remarks}. Sent back to editor.`,
+        `? Config rejected: Process ${processInstanceId} by ${rejectedBy}. Reason: ${remarks}. No database writes performed.`,
       );
 
       return {
         success: true,
-        message: 'Config rejected and sent back to editor for revision',
-        configId: configData.configId,
+        message: 'Config rejected. No data was saved to database.',
+        processInstanceId,
         remarks,
-        action: 'reverted_to_editor',
+        action: 'rejected',
       };
     } catch (error) {
       this.logger.error(

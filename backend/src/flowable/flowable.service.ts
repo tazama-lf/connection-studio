@@ -1,4 +1,4 @@
-﻿import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
@@ -123,7 +123,6 @@ export class FlowableService {
         error.stack,
       );
 
-      // Log the full error response from Flowable
       if (error.response) {
         this.logger.error(
           `Flowable error response: ${JSON.stringify(error.response.data, null, 2)}`,
@@ -422,6 +421,198 @@ export class FlowableService {
         error.stack,
       );
       throw new Error(`Flowable API error: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get active process for specific config version/type
+   */
+  async getActiveProcessForConfig(
+    version: string,
+    transactionType: string,
+    tenantId: string,
+  ): Promise<unknown> {
+    try {
+      const processes = await this.getActiveProcesses(tenantId);
+
+      return (
+        processes.find((process) => {
+          const variables = process.variables || {};
+          return (
+            variables.version === version &&
+            variables.transactionType === transactionType &&
+            variables.tenantId === tenantId
+          );
+        }) || null
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to get active process for config: ${error.message}`,
+        error.stack,
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Update process variables for config editing during approval
+   */
+  async updateProcessVariables(
+    processInstanceId: string,
+    updates: Record<string, any>,
+  ): Promise<void> {
+    const url = `${this.baseUrl}/runtime/process-instances/${processInstanceId}/variables`;
+
+    try {
+      const variables = Object.entries(updates).map(([key, value]) => ({
+        name: key,
+        value: typeof value === 'object' ? JSON.stringify(value) : value,
+      }));
+
+      await firstValueFrom(
+        this.httpService.put(url, variables, {
+          headers: {
+            Authorization: this.authHeader,
+            'Content-Type': 'application/json',
+          },
+        }),
+      );
+
+      this.logger.log(
+        `Updated ${variables.length} variables for process ${processInstanceId}`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to update process variables: ${error.message}`,
+        error.stack,
+      );
+      throw new Error(`Flowable API error: ${error.message}`);
+    }
+  }
+
+  /**
+   * Roll back workflow to Editor task when rejected or changes requested
+   */
+  async rollbackToEditorTask(
+    processInstanceId: string,
+    newStatus: string,
+    reason: string,
+    actorId: string,
+  ): Promise<void> {
+    try {
+      // Update process variables with rejection info
+      await this.updateProcessVariables(processInstanceId, {
+        status: newStatus,
+        rejectionReason: reason,
+        rejectedBy: actorId,
+        rejectedAt: new Date().toISOString(),
+        isRollback: true,
+      });
+
+      // Signal the process to roll back to editor task
+      const signalUrl = `${this.baseUrl}/runtime/executions`;
+
+      // Get current execution
+      const executionsResponse = await firstValueFrom(
+        this.httpService.get(signalUrl, {
+          params: { processInstanceId },
+          headers: { Authorization: this.authHeader },
+        }),
+      );
+
+      const executions = executionsResponse.data.data || [];
+      if (executions.length > 0) {
+        const executionId = executions[0].id;
+
+        // Send rollback signal
+        await firstValueFrom(
+          this.httpService.put(
+            `${signalUrl}/${executionId}`,
+            {
+              action: 'signal',
+              signalName: 'rollbackToEditor',
+              variables: [
+                { name: 'rollbackReason', value: reason },
+                { name: 'newStatus', value: newStatus },
+              ],
+            },
+            {
+              headers: {
+                Authorization: this.authHeader,
+                'Content-Type': 'application/json',
+              },
+            },
+          ),
+        );
+
+        this.logger.log(
+          `Workflow rolled back to editor for process ${processInstanceId}. Reason: ${reason}`,
+        );
+      }
+    } catch (error) {
+      this.logger.error(
+        `Failed to rollback workflow: ${error.message}`,
+        error.stack,
+      );
+      throw new Error(`Flowable rollback error: ${error.message}`);
+    }
+  }
+
+  /**
+   * Archive completed process instance
+   */
+  async archiveCompletedProcess(processInstanceId: string): Promise<void> {
+    try {
+      // Move to history by deleting the active instance
+      const deleteUrl = `${this.baseUrl}/runtime/process-instances/${processInstanceId}`;
+
+      await firstValueFrom(
+        this.httpService.delete(deleteUrl, {
+          params: { deleteReason: 'Config approved and moved to main table' },
+          headers: { Authorization: this.authHeader },
+        }),
+      );
+
+      this.logger.log(`Process ${processInstanceId} archived successfully`);
+    } catch (error) {
+      this.logger.warn(
+        `Failed to archive process ${processInstanceId}: ${error.message}`,
+      );
+      // Don't throw error - archival failure shouldn't block approval
+    }
+  }
+
+  /**
+   * Get process by config ID (for editing configs in progress)
+   */
+  async getProcessByConfigId(configId: number): Promise<unknown> {
+    try {
+      const url = `${this.baseUrl}/runtime/process-instances`;
+
+      const response = await firstValueFrom(
+        this.httpService.get(url, {
+          params: {
+            processDefinitionKey: 'config-approval-process',
+            includeProcessVariables: true,
+          },
+          headers: { Authorization: this.authHeader },
+        }),
+      );
+
+      const processes = response.data.data || [];
+
+      return (
+        processes.find((process) => {
+          const variables = process.variables || {};
+          return variables.configId === configId.toString();
+        }) || null
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to get process by config ID: ${error.message}`,
+        error.stack,
+      );
+      throw error;
     }
   }
 }

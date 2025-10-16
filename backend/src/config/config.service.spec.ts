@@ -7,6 +7,7 @@ import { JSONSchemaConverterService } from '../schemas/json-schema-converter.ser
 import { TazamaDataModelService } from '../data-model-extensions/tazama-data-model.service';
 import { DataModelExtensionService } from '../data-model-extensions/data-model-extension.service';
 import { FlowableService } from '../flowable/flowable.service';
+import { ConfigLifecycleService } from './config-lifecycle.service';
 import {
   Config,
   ContentType,
@@ -23,6 +24,7 @@ describe('ConfigService', () => {
   let payloadParsingService: jest.Mocked<PayloadParsingService>;
   let auditService: jest.Mocked<AuditService>;
   let flowableService: jest.Mocked<FlowableService>;
+  let configLifecycleService: jest.Mocked<ConfigLifecycleService>;
   const mockJSONSchema: JSONSchema = {
     $schema: 'https://json-schema.org/draft/2020-12/schema',
     type: 'object',
@@ -89,6 +91,8 @@ describe('ConfigService', () => {
       getConfigFromProcess: jest.fn(),
       getTasks: jest.fn(),
       completeTask: jest.fn(),
+      getProcessByConfigId: jest.fn(),
+      getActiveProcessForConfig: jest.fn(),
     };
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -121,6 +125,15 @@ describe('ConfigService', () => {
           provide: FlowableService,
           useValue: mockFlowableService,
         },
+        {
+          provide: ConfigLifecycleService,
+          useValue: {
+            validateEditPermission: jest.fn(),
+            approveConfig: jest.fn(),
+            rejectConfig: jest.fn(),
+            checkVersionConflicts: jest.fn().mockResolvedValue(null),
+          },
+        },
       ],
     }).compile();
     service = module.get<ConfigService>(ConfigService);
@@ -128,6 +141,7 @@ describe('ConfigService', () => {
     payloadParsingService = module.get(PayloadParsingService);
     auditService = module.get(AuditService);
     flowableService = module.get(FlowableService);
+    configLifecycleService = module.get(ConfigLifecycleService);
   });
   it('should be defined', () => {
     expect(service).toBeDefined();
@@ -163,7 +177,7 @@ describe('ConfigService', () => {
       repository.findConfigByVersionAndTransactionType.mockResolvedValue(null); // No version conflict
 
       // Mock Flowable workflow start
-      flowableService.startWorkflowWithDraft.mockResolvedValue({
+      flowableService.startProcess.mockResolvedValue({
         processInstanceId: 'proc-123',
         configId: 'config-456',
       });
@@ -171,8 +185,8 @@ describe('ConfigService', () => {
       const result = await service.createConfig(dto, 'test-tenant', 'user-123');
 
       expect(result.success).toBe(true);
-      expect(result.message).toContain('Flowable workflow started');
-      expect(flowableService.startWorkflowWithDraft).toHaveBeenCalled();
+      expect(result.message).toContain('Config submitted for approval');
+      expect(flowableService.startProcess).toHaveBeenCalled();
       expect(auditService.logAction).toHaveBeenCalledWith(
         expect.objectContaining({
           action: 'CREATE_CONFIG_WORKFLOW',
@@ -205,7 +219,7 @@ describe('ConfigService', () => {
       repository.findConfigByVersionAndTransactionType.mockResolvedValue(null); // No version conflict
 
       // Mock Flowable workflow start
-      flowableService.startWorkflowWithDraft.mockResolvedValue({
+      flowableService.startProcess.mockResolvedValue({
         processInstanceId: 'proc-2',
         configId: 'config-2',
       });
@@ -216,7 +230,7 @@ describe('ConfigService', () => {
         'preferred_user',
       );
       expect(result.success).toBe(true);
-      expect(flowableService.startWorkflowWithDraft).toHaveBeenCalled();
+      expect(flowableService.startProcess).toHaveBeenCalled();
     });
     it('should auto-generate endpoint path with msgFam', async () => {
       const dto: CreateConfigDto = {
@@ -244,14 +258,14 @@ describe('ConfigService', () => {
       repository.findConfigByVersionAndTransactionType.mockResolvedValue(null); // No version conflict
 
       // Mock Flowable workflow start
-      flowableService.startWorkflowWithDraft.mockResolvedValue({
+      flowableService.startProcess.mockResolvedValue({
         processInstanceId: 'proc-3',
         configId: 'config-3',
       });
 
       const result = await service.createConfig(dto, 'test-tenant', 'user-123');
       expect(result.success).toBe(true);
-      expect(flowableService.startWorkflowWithDraft).toHaveBeenCalled();
+      expect(flowableService.startProcess).toHaveBeenCalled();
     });
     it('should auto-generate endpoint path without msgFam', async () => {
       const dto: CreateConfigDto = {
@@ -278,14 +292,14 @@ describe('ConfigService', () => {
       repository.findConfigByVersionAndTransactionType.mockResolvedValue(null); // No version conflict
 
       // Mock Flowable workflow start
-      flowableService.startWorkflowWithDraft.mockResolvedValue({
+      flowableService.startProcess.mockResolvedValue({
         processInstanceId: 'proc-4',
         configId: 'config-4',
       });
 
       const result = await service.createConfig(dto, 'test-tenant', 'user-123');
       expect(result.success).toBe(true);
-      expect(flowableService.startWorkflowWithDraft).toHaveBeenCalled();
+      expect(flowableService.startProcess).toHaveBeenCalled();
     });
     it('should handle parsing failure', async () => {
       const dto: CreateConfigDto = {
@@ -330,19 +344,64 @@ describe('ConfigService', () => {
         version: 'v1',
         payload: '{"amount":100,"currency":"USD"}',
       };
-      const existingConfig = { ...mockConfig };
+
+      // Mock parsing service to return success
+      const parsingResult = {
+        success: true,
+        sourceFields: [],
+        jsonSchema: mockJSONSchema,
+        metadata: {
+          totalFields: 2,
+          requiredFields: 1,
+          optionalFields: 1,
+          nestedLevels: 1,
+          originalSize: 100,
+          processingTime: 50,
+        },
+        validation: {
+          success: true,
+          errors: [],
+          warnings: [],
+        },
+      };
+      payloadParsingService.parsePayloadToSchema.mockResolvedValue(
+        parsingResult,
+      );
+
+      const existingConfig = { ...mockConfig, status: ConfigStatus.APPROVED };
       repository.findConfigByVersionAndTransactionType.mockResolvedValue(
         existingConfig,
       );
+
+      // Mock Flowable service for lifecycle check - no active process
+      flowableService.getActiveProcessForConfig = jest
+        .fn()
+        .mockResolvedValue(null);
+
+      // Mock the conflict check to return the expected conflict
+      configLifecycleService.checkVersionConflicts.mockResolvedValueOnce({
+        success: false,
+        message:
+          'Config version already approved and deployed. Please clone to create a new version.',
+        lifecycleInfo: {
+          configId: 1,
+          state: 'APPROVED_LOCKED' as any,
+          isEditable: false,
+          canClone: true,
+        },
+        conflictInfo: {
+          hasConflict: true,
+          conflictType: 'approved_config' as any,
+          existingConfigId: 1,
+          suggestedAction: 'clone' as any,
+        },
+      } as any);
+
       const result = await service.createConfig(dto, 'test-tenant', 'user-123');
       expect(result.success).toBe(false);
       expect(result.message).toBe(
-        // eslint-disable-next-line quotes
-        "Config with version 'v1' for transaction type 'Payments' already exists for this tenant. Please use a different version.",
+        'Config version already approved and deployed. Please clone to create a new version.',
       );
-      expect(
-        repository.findConfigByVersionAndTransactionType,
-      ).toHaveBeenCalledWith('v1', 'Payments', 'test-tenant');
       expect(repository.createConfig).not.toHaveBeenCalled();
     });
     it('should validate payload is required', async () => {

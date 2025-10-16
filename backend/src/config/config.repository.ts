@@ -23,8 +23,13 @@ export class ConfigRepository {
         mapping: config.mapping ? JSON.stringify(config.mapping) : null,
         functions: config.functions ? JSON.stringify(config.functions) : null,
         status: config.status,
+        is_approved: config.isApproved || false,
+        process_instance_id: config.processInstanceId,
         tenant_id: config.tenantId,
         created_by: config.createdBy,
+        approved_by: config.approvedBy,
+        approved_at: config.approvedAt,
+        deployed_at: config.deployedAt,
       })
       .returning('id');
     return result.id;
@@ -146,8 +151,13 @@ export class ConfigRepository {
             ? JSON.parse(row.functions)
             : row.functions,
       status: row.status,
+      isApproved: row.is_approved || false,
+      processInstanceId: row.process_instance_id,
       tenantId: row.tenant_id,
       createdBy: row.created_by,
+      approvedBy: row.approved_by,
+      approvedAt: row.approved_at,
+      deployedAt: row.deployed_at,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };

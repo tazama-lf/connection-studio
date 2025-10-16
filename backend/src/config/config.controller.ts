@@ -16,6 +16,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ConfigService } from './config.service';
+import { ConfigLifecycleService } from './config-lifecycle.service';
 import { TazamaAuthGuard } from '../auth/tazama-auth.guard';
 import { User } from '../auth/user.decorator';
 import type { AuthenticatedUser } from '../auth/auth.types';
@@ -52,6 +53,7 @@ function getUserId(user: AuthenticatedUser): string {
 export class ConfigController {
   constructor(
     private readonly configService: ConfigService,
+    private readonly configLifecycleService: ConfigLifecycleService,
     private readonly fileParsingService: FileParsingService,
   ) {}
   private autoDetectContentType(
@@ -165,6 +167,21 @@ export class ConfigController {
     }
     return config;
   }
+
+  @Get('lifecycle/:version/:transactionType')
+  @RequireClaims(TazamaClaims.EDITOR)
+  async getConfigLifecycleState(
+    @Param('version') version: string,
+    @Param('transactionType') transactionType: string,
+    @User() user: AuthenticatedUser,
+  ) {
+    return this.configLifecycleService.getConfigLifecycleState(
+      version,
+      transactionType,
+      getTenantId(user),
+    );
+  }
+
   @Put(':id')
   @RequireClaims(TazamaClaims.EDITOR)
   async updateConfig(
