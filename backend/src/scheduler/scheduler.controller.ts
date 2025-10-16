@@ -24,4 +24,9 @@ export class SchedulerController {
     async update(@Param('id') id: string, @Body() body: UpdateScheduleJobDto) {
         return this.schedulerService.update(parseInt(id), body);
     }
+
+    @Get('/:id')
+    async getById(@Param('id') id: string) {
+        return this.schedulerService.findOne(parseInt(id));
+    }
 }
