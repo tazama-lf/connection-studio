@@ -14,5 +14,9 @@ export class ScheduleDto {
   @Expose()
   schedule_status: ScheduleStatus;
 
-  next_time: string | null;
+  @Expose()
+  start_date: Date
+
+  @Expose()
+  end_date: Date | null
 }
