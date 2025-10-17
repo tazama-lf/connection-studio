@@ -786,14 +786,14 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       </div>
       {activeTab === 'mapping' ? <>
           <div className="flex justify-between items-center mb-4" data-id="element-277">
-            <Button 
+            {/* <Button 
               variant="secondary" 
               size="sm" 
               onClick={fetchCurrentMappings}
               disabled={!configId}
             >
               Refresh Mappings
-            </Button>
+            </Button> */}
             <Button variant="secondary" size="sm" onClick={addNewMapping} icon={<PlusIcon size={16} data-id="element-279" />} data-id="element-278">
               Add Mapping
             </Button>

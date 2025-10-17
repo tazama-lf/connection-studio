@@ -12,6 +12,8 @@ interface PayloadEditorProps {
   onFieldAdjustmentsChange?: (fieldAdjustments: FieldAdjustment[]) => void; // Callback for field adjustments
   onSchemaChange?: (schema: any) => void; // Callback for current schema
   existingSchemaFields?: SchemaField[]; // Existing schema fields when editing
+  isEditMode?: boolean; // Explicitly control whether to show Add/Remove field buttons
+  tenantId?: string; // Tenant ID for endpoint preview
 }
 
 interface EndpointFormData {
@@ -38,7 +40,9 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
   configId,
   onFieldAdjustmentsChange,
   onSchemaChange,
-  existingSchemaFields
+  existingSchemaFields,
+  isEditMode = false, // Default to false - only true when explicitly editing existing config
+  tenantId = 'tenant-id' // Default placeholder if not provided
 }) => {
 
   
@@ -60,8 +64,6 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
   const [fieldGenerationError, setFieldGenerationError] = useState<string | null>(null);
   const [isGeneratingFields, setIsGeneratingFields] = useState(false);
   const [hasUserMadeEdits, setHasUserMadeEdits] = useState(false);
-  
-  // Add field form state
   const [showAddFieldForm, setShowAddFieldForm] = useState(false);
   const [newField, setNewField] = useState({
     path: '',
@@ -77,7 +79,7 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
   // Handle adding a new field manually
   const handleAddField = () => {
     if (!newField.path.trim()) {
-      return; // Don't add empty paths
+      return;
     }
 
     // Check if field already exists
@@ -680,6 +682,29 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
             className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
           />
         </div> */}
+
+        {/* Real-time Endpoint Path Preview */}
+        {endpointData.transactionType && (
+          <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0 mt-0.5">
+                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h4 className="text-sm font-medium text-blue-900 mb-1">Endpoint Path Preview</h4>
+                <p className="text-xs text-blue-700 mb-2">This endpoint will be accessible at:</p>
+                <div className="bg-white border border-blue-200 rounded px-3 py-2 font-mono text-sm text-gray-900">
+                  /{tenantId}/{endpointData.version || 'v1'}/{endpointData.msgFam ? `${endpointData.msgFam}/` : ''}{endpointData.transactionType}
+                </div>
+                <p className="text-xs text-blue-600 mt-2">
+                  💡 This path will be saved to the database once you complete all steps
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="flex justify-between items-center">
@@ -707,8 +732,8 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
         </div>
       </div>
 
-      {/* Sample Payload Buttons */}
-      {!value && (
+      {/* Sample Payload Buttons - Only show when NOT in edit mode */}
+      {!isEditMode && !value && (
         <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
           <p className="text-sm text-blue-700 mb-2">Need a starting point? Try these sample payloads:</p>
           <div className="flex space-x-2">
@@ -730,75 +755,85 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
         </div>
       )}
 
-      {/* Code Editor */}
-      <div className="border rounded-md relative">
-        {configId && (
-          <div className="absolute top-2 right-2 z-10">
-            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-200 text-gray-700">
-              🔒 Read-Only
-            </span>
+      {/* Code Editor - Hide completely in edit mode */}
+      {!isEditMode && (
+        <>
+          <div className="border rounded-md relative">
+            <textarea 
+              value={value} 
+              onChange={(e) => onChange(e.target.value)} 
+              className="w-full h-96 p-4 font-mono text-sm bg-gray-50"
+              spellCheck="false" 
+              placeholder={`Enter your ${endpointData.contentType === 'application/json' ? 'JSON' : 'XML'} payload here...`}
+            />
           </div>
-        )}
-        <textarea 
-          value={value} 
-          onChange={configId ? undefined : (e => onChange(e.target.value))} 
-          className={`w-full h-96 p-4 font-mono text-sm ${
-            configId 
-              ? 'bg-gray-100 text-gray-600 cursor-not-allowed' 
-              : 'bg-gray-50'
-          }`}
-          spellCheck="false" 
-          placeholder={
-            configId 
-              ? `Payload (read-only in edit mode) - use field editor below to modify schema`
-              : `Enter your ${endpointData.contentType === 'application/json' ? 'JSON' : 'XML'} payload here...`
-          }
-          readOnly={!!configId}
-        />
-      </div>
 
-      {/* Format Validation Status */}
-      {value && (
-        <div className="p-3 bg-green-50 border border-green-200 rounded-md">
-          <p className="text-sm text-green-700">
-            Valid {endpointData.contentType === 'application/json' ? 'JSON' : 'XML'} format detected
-          </p>
+          {/* Format Validation Status */}
+          {value && (
+            <div className="p-3 bg-green-50 border border-green-200 rounded-md">
+              <p className="text-sm text-green-700">
+                Valid {endpointData.contentType === 'application/json' ? 'JSON' : 'XML'} format detected
+              </p>
+            </div>
+          )}
+
+          {/* Schema Generation Info */}
+          <div className="my-6">
+            {fieldGenerationError && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-700 text-center">
+                {fieldGenerationError}
+              </div>
+            )}
+            
+            {/* Show Generate Fields button for creation mode */}
+            {value && (
+              <div className="text-center mb-4">
+                <Button
+                  variant="primary"
+                  onClick={handleGenerateFields}
+                  disabled={isGeneratingFields || !value.trim()}
+                  icon={<SparklesIcon size={16} />}
+                >
+                  {isGeneratingFields ? 'Generating...' : inferredFields.length > 0 ? 'Regenerate Fields' : 'Generate Fields'}
+                </Button>
+                {inferredFields.length > 0 && (
+                  <p className="text-xs text-gray-500 mt-2">
+                    💡 You can modify your payload and regenerate fields as many times as needed
+                  </p>
+                )}
+              </div>
+            )}
+            
+            <div className="text-center">
+              <p className="text-sm text-gray-600">
+                {value.trim() 
+                  ? 'Click "Generate Fields" to create schema fields from your payload above.'
+                  : 'Enter a payload above, then click "Generate Fields" to create schema fields.'
+                }
+              </p>
+            </div>
+          </div>
+        </>
+      )}
+      
+      {/* Edit Mode Info */}
+      {isEditMode && (
+        <div className="my-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0 mt-0.5">
+              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h4 className="text-sm font-medium text-blue-900 mb-1">Edit Mode</h4>
+              <p className="text-sm text-blue-700">
+                Use the field editor below to add, remove, or modify schema fields. The original payload is hidden in edit mode.
+              </p>
+            </div>
+          </div>
         </div>
       )}
-
-      {/* Schema Generation Info */}
-      <div className="my-6">
-        {fieldGenerationError && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-700 text-center">
-            {fieldGenerationError}
-          </div>
-        )}
-        
-        {/* Show Generate Fields button only for new configs (no configId) */}
-        {!configId && value && (
-          <div className="text-center mb-4">
-            <Button
-              variant="primary"
-              onClick={handleGenerateFields}
-              disabled={isGeneratingFields || !value.trim()}
-              icon={<SparklesIcon size={16} />}
-            >
-              {isGeneratingFields ? 'Generating...' : 'Generate Fields'}
-            </Button>
-          </div>
-        )}
-        
-        <div className="text-center">
-          <p className="text-sm text-gray-600">
-            {configId 
-              ? 'Payload is read-only in edit mode. Use the field editor below to add, remove, or modify schema fields.'
-              : value.trim() 
-                ? 'Click "Generate Fields from Payload" to create schema fields from your payload above.'
-                : 'Enter a payload above, then click "Generate Fields from Payload" to create schema fields.'
-            }
-          </p>
-        </div>
-      </div>
 
       {/* Schema Fields Section */}
       {showInferredFields && (
@@ -807,7 +842,7 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
             <div className="flex justify-between items-start">
               <div>
                 <h3 className="text-lg font-medium text-gray-900">
-                  Schema Fields {configId ? '(Manual Editing)' : '(Payload-Generated)'}
+                  Schema Fields
                 </h3>
                 <p className="text-sm text-gray-600 mt-1">
                   {configId 
@@ -818,7 +853,7 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
               </div>
               
               {/* Generate Fields Button - Only for new configs */}
-              {!configId && value.trim() && endpointData.contentType && (
+              {/* {!configId && value.trim() && endpointData.contentType && (
                 <Button
                   variant="secondary"
                   icon={<SparklesIcon size={16} />}
@@ -828,7 +863,7 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
                 >
                   {isGeneratingFields ? 'Generating...' : 'Generate Fields from Payload'}
                 </Button>
-              )}
+              )} */}
             </div>
           </div>
           
@@ -836,15 +871,15 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
               {inferredFields.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
                   <p className="text-sm">No schema fields generated yet.</p>
-                  <p className="text-xs mt-1">
+                  {/* <p className="text-xs mt-1">
                     {configId 
                       ? 'Use the field editor to manually add schema fields for this config:'
                       : 'Enter a valid JSON or XML payload above, then click "Generate Fields from Payload" to create schema fields.'
                     }
-                  </p>
+                  </p> */}
                   
                   {/* Add Field Button for Empty State - Only in edit mode */}
-                  {configId && (
+                  {isEditMode && (
                     <div className="mt-4">
                     {!showAddFieldForm ? (
                       <button
@@ -963,7 +998,7 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
               </div>
 
               {/* Add Field Section - Only show when editing existing configs */}
-              {configId && (
+              {isEditMode && (
                 <div className="mb-4">
                   {!showAddFieldForm ? (
                     <button
@@ -1118,7 +1153,7 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
                       </div>
                       
                       {/* Remove Button - Only show when editing existing configs */}
-                      {configId && (
+                      {isEditMode && (
                         <button
                           type="button"
                           onClick={() => {
@@ -1148,7 +1183,7 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
           )}
 
           {/* Schema Edit Info */}
-          {configId && inferredFields.length > 0 && (
+          {/* {configId && inferredFields.length > 0 && (
             <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <div className="flex items-center gap-2">
                 <div className="text-blue-600">
@@ -1162,7 +1197,7 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
                 </div>
               </div>
             </div>
-          )}
+          )} */}
         </div>
       )}
     </div>

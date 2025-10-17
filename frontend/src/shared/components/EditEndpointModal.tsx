@@ -7,6 +7,104 @@ import { DeploymentConfirmation } from './DeploymentConfirmation';
 import { Button } from './Button';
 import { configApi, type CreateConfigRequest,type FieldAdjustment, type ConfigResponse } from '../../features/config/services/configApi';
 import { useToast } from '../providers/ToastProvider';
+import { useAuth } from '../../features/auth';
+import FunctionsApiService from '../../features/functions/services/functionsApi';
+import type { 
+  FunctionDefinition, 
+  AddFunctionDto, 
+  AllowedFunctionName
+} from '../types/functions.types';
+import { FUNCTION_CONFIGS } from '../types/functions.types';
+
+// Function Selection Form Component
+interface FunctionSelectionFormProps {
+  onAddFunction: (functionData: AddFunctionDto) => void;
+  onClose: () => void;
+}
+
+const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({ onAddFunction, onClose }) => {
+  const [selectedFunction, setSelectedFunction] = useState<AllowedFunctionName>('addAccount');
+  const [selectedConfiguration, setSelectedConfiguration] = useState('');
+
+  const functionConfig = FUNCTION_CONFIGS[selectedFunction];
+  
+  const handleAddFunction = () => {
+    const config = functionConfig.configurations.find(c => c.name === selectedConfiguration);
+    if (!config) return;
+    
+    const params = config.parameters.split(', ').map(p => p.trim());
+    onAddFunction({
+      functionName: selectedFunction,
+      params
+    });
+  };
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Select Function</label>
+        <select
+          value={selectedFunction}
+          onChange={(e) => {
+            setSelectedFunction(e.target.value as AllowedFunctionName);
+            setSelectedConfiguration(''); // Reset configuration when function changes
+          }}
+          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        >
+          {Object.values(FUNCTION_CONFIGS).map((config) => (
+            <option key={config.name} value={config.name}>
+              {config.displayName}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Select Parameter Configuration</label>
+        <div className="space-y-2">
+          {functionConfig.configurations.map((config) => (
+            <div
+              key={config.name}
+              className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                selectedConfiguration === config.name
+                  ? 'border-blue-500 bg-blue-50'
+                  : 'border-gray-300 hover:border-gray-400'
+              }`}
+              onClick={() => setSelectedConfiguration(config.name)}
+            >
+              <div className="flex items-center space-x-2">
+                <input
+                  type="radio"
+                  name="configuration"
+                  value={config.name}
+                  checked={selectedConfiguration === config.name}
+                  onChange={() => setSelectedConfiguration(config.name)}
+                  className="text-blue-600"
+                />
+                <div>
+                  <h4 className="font-medium">{config.displayName}</h4>
+                  <p className="text-sm text-gray-600">{config.description}</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex justify-end space-x-3 pt-4">
+        <Button variant="secondary" onClick={onClose}>
+          Cancel
+        </Button>
+        <Button 
+          onClick={handleAddFunction}
+          disabled={!selectedConfiguration}
+        >
+          Add Function
+        </Button>
+      </div>
+    </div>
+  );
+};
 
 interface EndpointData {
   version: string;
@@ -34,7 +132,9 @@ interface EditEndpointModalProps {
   const isCloning = isCloneMode && endpointId !== -1;
   const shouldCreateNew = isNewEndpoint || isCloning; // Either truly new or cloning
   const { showSuccess, showError, showWarning } = useToast();
-  const [currentStep, setCurrentStep] = useState<'payload' | 'mapping' | 'simulation' | 'deploy'>('payload');
+  const { user } = useAuth();
+  const tenantId = user?.tenantId || 'tenant-id';
+  const [currentStep, setCurrentStep] = useState<'payload' | 'mapping' | 'functions' | 'simulation' | 'deploy'>('payload');
   const [payload, setPayload] = useState('');
 
   const [isMappingValid, setIsMappingValid] = useState(false);
@@ -62,6 +162,10 @@ interface EditEndpointModalProps {
   const [mappingData, setMappingData] = useState<any | null>(null);
   const [currentMappings, setCurrentMappings] = useState<any[]>([]); // Current mappings from MappingUtility
 
+  // Functions state
+  const [selectedFunctions, setSelectedFunctions] = useState<FunctionDefinition[]>([]);
+  const [showAddFunctionModal, setShowAddFunctionModal] = useState(false);
+
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [simulationResult, setSimulationResult] = useState<any | null>(null);
   const steps = [{
@@ -70,6 +174,9 @@ interface EditEndpointModalProps {
   }, {
     id: 'mapping',
     label: 'Mapping'
+  }, {
+    id: 'functions',
+    label: 'Functions'
   }, {
     id: 'simulation',
     label: 'Simulation'
@@ -138,6 +245,11 @@ interface EditEndpointModalProps {
             setCreatedEndpoint(config);
             setInferredSchema(config.schema);
             
+            // Load existing functions if available
+            if (config.functions && Array.isArray(config.functions)) {
+              setSelectedFunctions(config.functions);
+            }
+            
             console.log('Loaded existing config:', config);
           } else {
             console.log('No valid config found in response:', response);
@@ -169,11 +281,51 @@ interface EditEndpointModalProps {
       case 'payload':
         return isPayloadStepValid() ? 'mapping' : currentStep;
       case 'mapping':
-        return isMappingValid ? 'simulation' : currentStep;
+        return isMappingValid ? 'functions' : currentStep;
+      case 'functions':
+        return 'simulation'; // Functions step can always proceed to simulation
       case 'simulation':
         return isSimulationSuccess ? 'deploy' : currentStep;
       default:
         return currentStep;
+    }
+  };
+
+  // Navigation-only functions (don't save, just move between steps)
+  const handleNextStep = () => {
+    console.log('🚀 handleNextStep called for step:', currentStep);
+    console.log('🚀 createdEndpoint:', createdEndpoint);
+    console.log('🚀 isNewEndpoint:', isNewEndpoint);
+    
+    switch (currentStep) {
+      case 'payload':
+        // Check if payload step is saved and valid
+        if (!createdEndpoint && isNewEndpoint) {
+          showError('Please save the payload first before proceeding');
+          return;
+        }
+        console.log('✅ Moving from payload to mapping');
+        setCurrentStep('mapping');
+        break;
+      case 'mapping':
+        if (!isMappingValid) {
+          showError('Please complete the mapping before proceeding');
+          return;
+        }
+        setCurrentStep('functions');
+        break;
+      case 'functions':
+        setCurrentStep('simulation');
+        break;
+      case 'simulation':
+        if (!isSimulationSuccess) {
+          showError('Please run and pass simulation before proceeding');
+          return;
+        }
+        setCurrentStep('deploy');
+        break;
+      default:
+        break;
     }
   };
 
@@ -356,10 +508,10 @@ interface EditEndpointModalProps {
       }
 
       setIsMappingValid(true);
-      console.log('✅ Ready to proceed to simulation step');
+      console.log('✅ Ready to proceed to functions step');
       
       // Move to next step
-      setCurrentStep('simulation');
+      setCurrentStep('functions');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
       setError(`Failed to create mapping: ${errorMessage}`);
@@ -369,7 +521,103 @@ interface EditEndpointModalProps {
     }
   };
 
-  // Step 3: Navigate to Deploy (simulation is handled by SimulationPanel)
+  // Functions step handlers
+  const handleAddFunction = async (functionData: AddFunctionDto) => {
+    if (!createdEndpoint?.id && !existingConfig?.id) {
+      showError('No configuration ID available to add function');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const configId = createdEndpoint?.id || existingConfig?.id;
+      
+      const response = await FunctionsApiService.addFunction(configId, functionData);
+      
+      if (response.success && response.config) {
+        // Update local state with new function
+        const newFunction: FunctionDefinition = {
+          functionName: functionData.functionName,
+          params: functionData.params
+        };
+        setSelectedFunctions([...selectedFunctions, newFunction]);
+        
+        // Update the config in state
+        if (createdEndpoint) {
+          setCreatedEndpoint({
+            ...createdEndpoint,
+            functions: response.config.functions || []
+          });
+        } else if (existingConfig) {
+          setExistingConfig({
+            ...existingConfig,
+            functions: response.config.functions || []
+          });
+        }
+        
+        setShowAddFunctionModal(false);
+        console.log('✅ Function added successfully');
+      } else {
+        showError(`Failed to add function: ${response.message}`);
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      showError(`Failed to add function: ${errorMessage}`);
+      console.error('Error adding function:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRemoveFunction = async (index: number) => {
+    if (!createdEndpoint?.id && !existingConfig?.id) {
+      showError('No configuration ID available to remove function');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const configId = createdEndpoint?.id || existingConfig?.id;
+      
+      const response = await FunctionsApiService.deleteFunction(configId, index);
+      
+      if (response.success) {
+        // Update local state
+        const updatedFunctions = selectedFunctions.filter((_, i) => i !== index);
+        setSelectedFunctions(updatedFunctions);
+        
+        // Update the config in state
+        if (createdEndpoint) {
+          setCreatedEndpoint({
+            ...createdEndpoint,
+            functions: updatedFunctions
+          });
+        } else if (existingConfig) {
+          setExistingConfig({
+            ...existingConfig,
+            functions: updatedFunctions
+          });
+        }
+        
+        console.log('✅ Function removed successfully');
+      } else {
+        showError(`Failed to remove function: ${response.message}`);
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      showError(`Failed to remove function: ${errorMessage}`);
+      console.error('Error removing function:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleProceedFromFunctions = () => {
+    console.log('✅ Proceeding to simulation step with functions:', selectedFunctions);
+    setCurrentStep('simulation');
+  };
+
+  // Step 4: Navigate to Deploy (simulation is handled by SimulationPanel)
   const handleRunSimulation = async () => {
     if (!isSimulationSuccess) {
       setError('Please run the simulation first and ensure it passes');
@@ -467,8 +715,11 @@ interface EditEndpointModalProps {
         }
         
         console.log('Save API Response:', response);
+        console.log('🔍 Response success status:', response.success);
+        console.log('🔍 Response message:', response.message);
         
         if (!response.success) {
+          console.log('❌ Save failed - response.success is false');
           const action = isNewEndpoint ? 'save' : 'update';
           setError(response.message || `Failed to ${action} configuration`);
           if (response.validation?.errors) {
@@ -476,8 +727,11 @@ interface EditEndpointModalProps {
           }
           return;
         }
+        
+        console.log('✅ Save successful - proceeding with config update');
 
         if (response.config) {
+          console.log('🎯 Setting createdEndpoint with config:', response.config);
           setCreatedEndpoint(response.config);
           setInferredSchema(response.config.schema);
           const action = isNewEndpoint ? 'saved' : 'updated';
@@ -492,8 +746,9 @@ interface EditEndpointModalProps {
           const actionWord = isNewEndpoint ? 'created' : 'updated';
           console.log(`✅ Configuration ${actionWord} successfully! Changes reflected in database.`);
           
-          // Advance to the next step (mapping) after successful save
-          setCurrentStep('mapping');
+          // Save successful - do not advance step automatically
+          // User must click "Next" to advance to next step
+          showSuccess('Configuration saved successfully! Click Next to proceed to mapping.');
         } else {
           const action = isNewEndpoint ? 'saved' : 'updated';
           setError(`Configuration ${action} but no config data returned`);
@@ -512,9 +767,9 @@ interface EditEndpointModalProps {
         setLoading(false);
       }
     } else {
-      // Config already exists from file import, advance to next step
+      // Config already exists from file import - just show confirmation
       console.log('Configuration already saved with ID:', createdEndpoint.id);
-      setCurrentStep('mapping');
+      showSuccess('Configuration is already saved! Click Next to proceed.');
     }
   };
   if (!isOpen) return null;
@@ -561,7 +816,14 @@ interface EditEndpointModalProps {
                   onEndpointDataChange={setEndpointData}
                   onSchemaChange={setCurrentSchema}
                   configId={createdEndpoint?.id || existingConfig?.id}
-                  existingSchemaFields={existingConfig?.schema ? (() => {
+                  isEditMode={!isNewEndpoint} // Only allow editing for truly new endpoints (not clone or edit)
+                  tenantId={tenantId}
+                  existingSchemaFields={(() => {
+                    // Get schema from multiple sources: newly created endpoint, inferred schema, or existing config
+                    const schemaToUse = createdEndpoint?.schema || inferredSchema || existingConfig?.schema;
+                    
+                    if (!schemaToUse) return undefined;
+                    
                     // Convert AJV schema to SchemaField array for editing
                     const convertAjvToSchemaFields = (ajvSchema: any, parentPath = ''): any[] => {
                       if (!ajvSchema || typeof ajvSchema !== 'object') return [];
@@ -614,8 +876,8 @@ interface EditEndpointModalProps {
                       return schemaFields;
                     };
                     
-                    return convertAjvToSchemaFields(existingConfig.schema);
-                  })() : undefined}
+                    return convertAjvToSchemaFields(schemaToUse);
+                  })()}
                   data-id="element-740" 
                 />
                 
@@ -664,6 +926,89 @@ interface EditEndpointModalProps {
                 />
               </>
             )}
+            {currentStep === 'functions' && (
+              <>
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Select Functions</h3>
+                  
+                  {/* Functions List */}
+                  <div className="space-y-3">
+                    {selectedFunctions.length === 0 ? (
+                      <div className="text-center py-12">
+                        <p className="text-gray-500 mb-4">No functions selected. Click "Add Function" to select functions to call at runtime.</p>
+                      </div>
+                    ) : (
+                      selectedFunctions.map((func, index) => (
+                        <div key={index} className="bg-gray-50 p-4 rounded-lg border flex justify-between items-center">
+                          <div>
+                            <h4 className="font-medium">{func.functionName}</h4>
+                            <p className="text-sm text-gray-600">Parameters: {func.params.join(', ')}</p>
+                          </div>
+                          <button
+                            onClick={() => handleRemoveFunction(index)}
+                            className="text-red-600 hover:text-red-800 px-2 py-1"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  
+                  {/* Add Function Button */}
+                  <div className="flex justify-end">
+                    <Button
+                      onClick={() => setShowAddFunctionModal(true)}
+                      variant="secondary"
+                      className="border-blue-600 text-blue-600 hover:bg-blue-50"
+                    >
+                      + Add Function
+                    </Button>
+                  </div>
+                  
+                  {/* Function Configuration Summary */}
+                  {selectedFunctions.length > 0 && (
+                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                      <div className="flex items-center space-x-2 text-blue-800">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <h4 className="font-medium">Function Configuration Summary</h4>
+                      </div>
+                      <div className="mt-2 space-y-1">
+                        {selectedFunctions.map((func, index) => (
+                          <p key={index} className="text-sm text-blue-700">
+                            <strong>{func.functionName}</strong> with parameters: {func.params.join(', ')}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Add Function Modal */}
+                {showAddFunctionModal && (
+                  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 backdrop-blur-sm">
+                    <div className="bg-white rounded-lg p-6 w-full max-w-2xl">
+                      <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-semibold">Add Function</h3>
+                        <button 
+                          onClick={() => setShowAddFunctionModal(false)}
+                          className="text-gray-500 hover:text-gray-700"
+                        >
+                          <XIcon className="w-5 h-5" />
+                        </button>
+                      </div>
+                      
+                      <FunctionSelectionForm
+                        onAddFunction={handleAddFunction}
+                        onClose={() => setShowAddFunctionModal(false)}
+                      />
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
             {currentStep === 'simulation' && (
               <SimulationPanel 
                 endpointId={createdEndpoint?.id || existingConfig?.id}
@@ -692,17 +1037,21 @@ interface EditEndpointModalProps {
               Save
             </Button>
             <Button variant="primary" onClick={async () => {
-              if (currentStep === 'payload') {
-                await handleCreateEndpoint();
-              } else if (currentStep === 'mapping') {
-                await handleCreateMapping();
-              } else if (currentStep === 'simulation') {
-                await handleRunSimulation();
-              } else if (currentStep === 'deploy') {
+              if (currentStep === 'deploy') {
                 await handleDeploy();
+              } else {
+                handleNextStep();
               }
-            }} disabled={loading || (currentStep === 'payload' && !isPayloadStepValid()) || (currentStep === 'mapping' && !isMappingValid) || (currentStep === 'simulation' && !isSimulationSuccess)} data-id="element-749">
-              {loading ? 'Processing...' : (currentStep === 'deploy' ? 'Deploy' : 'Next')}
+            }} disabled={loading || 
+              (currentStep === 'payload' && (!createdEndpoint && isNewEndpoint)) || 
+              (currentStep === 'mapping' && !isMappingValid) || 
+              (currentStep === 'simulation' && !isSimulationSuccess)
+            } data-id="element-749">
+              {loading ? 'Processing...' : (
+                currentStep === 'deploy' ? 'Deploy' : 
+                currentStep === 'functions' ? 'Next' :
+                'Next'
+              )}
             </Button>
           </div>
         </div>

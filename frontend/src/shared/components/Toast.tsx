@@ -91,9 +91,9 @@ const ToastComponent: React.FC<ToastComponentProps> = ({ toast, onRemove }) => {
   return (
     <div
       className={`
-        mb-4 max-w-sm w-full shadow-lg rounded-lg pointer-events-auto border transform transition-all duration-300 ease-in-out
+        mb-4 w-full shadow-lg rounded-lg pointer-events-auto border transform transition-all duration-300 ease-in-out
         ${getBgColor()}
-        ${isVisible && !isExiting ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'}
+        ${isVisible && !isExiting ? 'translate-y-0 opacity-100' : '-translate-y-4 opacity-0'}
       `}
     >
       <div className="p-4">

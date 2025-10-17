@@ -9,8 +9,11 @@ import JobDetailsModal from '../components/JobDetailsModal';
 import { DataEnrichmentFormModal } from '../../../shared/components/DataEnrichmentFormModal';
 import { dataEnrichmentApi } from '../services/dataEnrichmentApi';
 import type { DataEnrichmentJobResponse } from '../types';
+import { useToast } from '../../../shared/providers/ToastProvider';
 
 const DataEnrichmentModule: React.FC = () => {
+  const { showSuccess, showError } = useToast();
+  
   // Job management state
   const [jobs, setJobs] = useState<DataEnrichmentJobResponse[]>([]);
   const [jobsLoading, setJobsLoading] = useState(false);
@@ -23,9 +26,6 @@ const DataEnrichmentModule: React.FC = () => {
   const [showJobDetails, setShowJobDetails] = useState(false);
   const [selectedJob, setSelectedJob] = useState<DataEnrichmentJobResponse | null>(null);
   const [jobDetailsLoading, setJobDetailsLoading] = useState(false);
-  
-  // Success message state
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Load jobs on component mount and when pagination changes
   useEffect(() => {
@@ -82,16 +82,12 @@ const DataEnrichmentModule: React.FC = () => {
       // We just need to refresh the jobs list
       await loadJobs();
       
-      // Show additional success message in the main module
+      // Show success message
       const jobName = jobResponse?.endpoint_name || 'New endpoint';
-      setSuccessMessage(`${jobName} has been successfully deployed and is now available!`);
-      
-      // Clear success message after 5 seconds
-      setTimeout(() => {
-        setSuccessMessage(null);
-      }, 5000);
+      showSuccess(`${jobName} has been successfully deployed and is now available!`);
     } catch (error) {
       console.error('Failed to handle job creation:', error);
+      showError('Failed to handle job creation');
     }
   };
 
@@ -157,38 +153,6 @@ const DataEnrichmentModule: React.FC = () => {
             Define New Endpoint
           </Button>
         </div>
-        
-        {/* Success Message */}
-        {successMessage && (
-          <div className="mb-6 bg-green-50 border border-green-200 rounded-md p-4">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <p className="text-sm font-medium text-green-800">
-                  {successMessage}
-                </p>
-              </div>
-              <div className="ml-auto pl-3">
-                <div className="-mx-1.5 -my-1.5">
-                  <button
-                    type="button"
-                    className="inline-flex bg-green-50 rounded-md p-1.5 text-green-500 hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-green-50 focus:ring-green-600"
-                    onClick={() => setSuccessMessage(null)}
-                  >
-                    <span className="sr-only">Dismiss</span>
-                    <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
         
         <JobList
           jobs={jobs}

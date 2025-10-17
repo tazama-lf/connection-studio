@@ -35,6 +35,14 @@ export interface ScheduleRequest {
   name: string;
   cron: string;
   iterations: number;
+  start_date?: string;
+  end_date?: string;
+  schedule_status?: string;
+}
+
+export interface ScheduleCreateResponse {
+  success: boolean;
+  message: string;
 }
 
 export interface ScheduleResponse {
@@ -45,6 +53,8 @@ export interface ScheduleResponse {
   schedule_status: string;
   next_time: string | null;
   created_at?: string;
+  start_date?: string;
+  end_date?: string;
 }
 
 // Base Data Enrichment Job

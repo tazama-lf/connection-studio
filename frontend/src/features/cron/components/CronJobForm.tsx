@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { HelpCircleIcon } from 'lucide-react';
 import { dataEnrichmentApi } from '../../data-enrichment/services';
+import { useToast } from '../../../shared/providers/ToastProvider';
 
 interface CronJobFormProps {
   onJobCreated?: () => void;
@@ -11,22 +12,21 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({ onJobCreated, onCancel
   const [jobName, setJobName] = useState('');
   const [cronExpression, setCronExpression] = useState('');
   const [iterations, setIterations] = useState(1);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const { showSuccess, showError } = useToast();
 
   // Validation function to check if all required fields are filled
   const isFormValid = () => {
-    return jobName.trim() !== '' && cronExpression.trim() !== '' && iterations >= 1;
+    return jobName.trim() !== '' && cronExpression.trim() !== '' && iterations >= 1 && startDate.trim() !== '';
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-    setSuccessMessage(null);
     
-    if (!jobName.trim() || !cronExpression.trim()) {
-      setError('Please provide both a job name and a valid CRON expression to continue.');
+    if (!jobName.trim() || !cronExpression.trim() || !startDate.trim()) {
+      showError('Please provide job name, CRON expression, and start date to continue.');
       return;
     }
 
@@ -34,20 +34,33 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({ onJobCreated, onCancel
       setIsSubmitting(true);
       
       // Create schedule using data-enrichment-service API
-      const createdSchedule = await dataEnrichmentApi.createSchedule({
+      const scheduleData: any = {
         name: jobName.trim(),
         cron: cronExpression.trim(),
         iterations: iterations,
-      });
+        start_date: startDate,
+      };
+      
+      // Add end_date only if provided
+      if (endDate.trim()) {
+        scheduleData.end_date = endDate;
+      }
+      
+      const response = await dataEnrichmentApi.createSchedule(scheduleData);
 
-      console.log('Schedule created successfully:', createdSchedule);
+      console.log('Schedule created successfully:', response);
 
+      // Show success message using the job name from the form
+      const scheduleName = jobName.trim();
+      
       // Reset form
       setJobName('');
       setCronExpression('');
       setIterations(1);
+      setStartDate('');
+      setEndDate('');
       
-      setSuccessMessage(`Schedule "${createdSchedule.name}" created successfully! ID: ${createdSchedule.id}`);
+      showSuccess(`Schedule "${scheduleName}" created successfully!`);
       onJobCreated?.();
       
     } catch (error: any) {
@@ -68,7 +81,7 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({ onJobCreated, onCancel
         errorMessage = 'Unable to connect to the service. Please check your internet connection and try again.';
       }
       
-      setError(errorMessage);
+      showError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -78,30 +91,6 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({ onJobCreated, onCancel
       <h2 className="text-xl font-semibold text-gray-800 mb-6" data-id="element-71">
         Create New CRON Job
       </h2>
-      
-      {successMessage && (
-        <div className="bg-green-50 border border-green-200 rounded-md p-4 mb-6">
-          <div className="flex">
-            <div className="ml-3">
-              <p className="text-sm font-medium text-green-800">
-                {successMessage}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-      
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
-          <div className="flex">
-            <div className="ml-3">
-              <p className="text-sm font-medium text-red-800">
-                {error}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
 
       <form onSubmit={handleSubmit} data-id="element-72">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6" data-id="element-73">
@@ -155,6 +144,34 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({ onJobCreated, onCancel
               required
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" 
               placeholder="Enter number of iterations" 
+            />
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <div>
+            <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 mb-1">
+              Start Date <span className="text-red-500">*</span>
+            </label>
+            <input 
+              type="datetime-local" 
+              id="startDate" 
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              required
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" 
+            />
+          </div>
+          <div>
+            <label htmlFor="endDate" className="block text-sm font-medium text-gray-700 mb-1">
+              End Date <span className="text-gray-400">(Optional)</span>
+            </label>
+            <input 
+              type="datetime-local" 
+              id="endDate" 
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" 
             />
           </div>
         </div>

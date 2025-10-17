@@ -1,47 +1,54 @@
 import React, { useState, useEffect } from 'react';
-import { PlayIcon, PauseIcon, EditIcon, TrashIcon, EyeIcon } from 'lucide-react';
+import { PlayIcon, PauseIcon, EditIcon, EyeIcon, XIcon } from 'lucide-react';
 import SearchBar from '../../../shared/components/SearchBar';
 import { dataEnrichmentApi } from '../../data-enrichment/services';
-import type { DataEnrichmentJobResponse, ScheduleResponse } from '../../data-enrichment/types';
+import type { ScheduleResponse } from '../../data-enrichment/types';
+import { useToast } from '../../../shared/providers/ToastProvider';
+
 export const CronJobList: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [jobs, setJobs] = useState<DataEnrichmentJobResponse[]>([]);
   const [schedules, setSchedules] = useState<ScheduleResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { showSuccess, showError } = useToast();
+  
+  // Modal states
+  const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [selectedSchedule, setSelectedSchedule] = useState<ScheduleResponse | null>(null);
+  
+  // Edit form state
+  const [editForm, setEditForm] = useState({
+    name: '',
+    cron: '',
+    iterations: 1,
+    start_date: '',
+    end_date: '',
+  });
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(5);
 
-  // Load jobs and schedules on component mount
+  // Load schedules on component mount
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        // Load schedules from data-enrichment-service (get all schedules for client-side pagination)
-        const schedulesData = await dataEnrichmentApi.getAllSchedules(1, 1000);
-        setSchedules(schedulesData || []);
-        
-        // For now, we'll focus on schedules since jobs would need a separate API
-        // that might not be implemented yet in the data-enrichment-service
-        setJobs([]);
-      } catch (err) {
-        console.error('Failed to load data:', err);
-        setError('Failed to load schedules. Please try again.');
-      } finally {
-        setLoading(false);
-      }
-    };
+    loadSchedules();
+  }, []);
 
-    loadData();
-  }, [currentPage, itemsPerPage]);
-
-  // Helper function to get schedule details for a job
-  const getScheduleForJob = (scheduleId: number) => {
-    return schedules.find(schedule => schedule.id === scheduleId);
+  const loadSchedules = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const schedulesData = await dataEnrichmentApi.getAllSchedules(1, 1000);
+      setSchedules(schedulesData || []);
+    } catch (err) {
+      console.error('Failed to load data:', err);
+      setError('Failed to load schedules. Please try again.');
+      showError('Failed to load schedules');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Filter schedules based on search term
@@ -72,6 +79,75 @@ export const CronJobList: React.FC = () => {
     setCurrentPage(prev => Math.min(prev + 1, totalPages));
   };
 
+  // Handle view schedule
+  const handleView = (schedule: ScheduleResponse) => {
+    setSelectedSchedule(schedule);
+    setViewModalOpen(true);
+  };
+
+  // Handle edit schedule
+  const handleEdit = (schedule: ScheduleResponse) => {
+    setSelectedSchedule(schedule);
+    setEditForm({
+      name: schedule.name,
+      cron: schedule.cron,
+      iterations: schedule.iterations,
+      start_date: schedule.start_date || '',
+      end_date: schedule.end_date || '',
+    });
+    setEditModalOpen(true);
+  };
+
+  // Handle pause/activate toggle
+  const handleToggleStatus = async (schedule: ScheduleResponse) => {
+    try {
+      const newStatus = schedule.schedule_status === 'active' ? 'in-active' : 'active';
+      
+      // Send the full schedule data with updated status
+      await dataEnrichmentApi.updateSchedule(schedule.id, {
+        name: schedule.name,
+        cron: schedule.cron,
+        iterations: schedule.iterations,
+        schedule_status: newStatus,
+        start_date: schedule.start_date,
+        end_date: schedule.end_date,
+      });
+      
+      showSuccess(`Schedule ${newStatus === 'active' ? 'activated' : 'paused'} successfully`);
+      loadSchedules();
+    } catch (err) {
+      console.error('Failed to update schedule status:', err);
+      showError('Failed to update schedule status');
+    }
+  };
+
+  // Handle save edit
+  const handleSaveEdit = async () => {
+    if (!selectedSchedule) return;
+
+    try {
+      await dataEnrichmentApi.updateSchedule(selectedSchedule.id, editForm);
+      
+      showSuccess('Schedule updated successfully');
+      setEditModalOpen(false);
+      setSelectedSchedule(null);
+      loadSchedules();
+    } catch (err) {
+      console.error('Failed to update schedule:', err);
+      showError('Failed to update schedule');
+    }
+  };
+
+  // Format date for display
+  const formatDate = (dateString: string | undefined) => {
+    if (!dateString) return 'N/A';
+    try {
+      return new Date(dateString).toLocaleString();
+    } catch {
+      return dateString;
+    }
+  };
+
   return <div data-id="element-116">
       <div className="flex justify-between items-center mb-6" data-id="element-117">
         <h2 className="text-xl font-semibold text-gray-800" data-id="element-118">
@@ -89,14 +165,17 @@ export const CronJobList: React.FC = () => {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" data-id="element-125">
                 CRON Expression
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" data-id="element-126">
-                Type
-              </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" data-id="element-127">
                 Status
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" data-id="element-128">
                 Iterations
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Start Date
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                End Date
               </th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider" data-id="element-129">
                 Actions
@@ -106,19 +185,19 @@ export const CronJobList: React.FC = () => {
           <tbody className="bg-white divide-y divide-gray-200">
             {loading ? (
               <tr>
-                <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">
+                <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
                   Loading schedules...
                 </td>
               </tr>
             ) : error ? (
               <tr>
-                <td colSpan={6} className="px-6 py-4 text-center text-sm text-red-500">
+                <td colSpan={7} className="px-6 py-4 text-center text-sm text-red-500">
                   {error}
                 </td>
               </tr>
             ) : filteredSchedules.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">
+                <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
                   No schedules found
                 </td>
               </tr>
@@ -131,9 +210,6 @@ export const CronJobList: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {schedule.cron}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      Schedule
-                    </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                         schedule.schedule_status === 'active' ? 'bg-green-100 text-green-800' :
@@ -145,26 +221,45 @@ export const CronJobList: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {schedule.iterations} iterations
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {formatDate(schedule.start_date)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {formatDate(schedule.end_date)}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex justify-end space-x-2">
-                        <button className="text-gray-500 hover:text-gray-700" title="View Schedule Details">
+                        <button 
+                          onClick={() => handleView(schedule)}
+                          className="text-gray-500 hover:text-gray-700" 
+                          title="View Schedule Details"
+                        >
                           <EyeIcon size={16} />
                         </button>
-                        <button className="text-blue-500 hover:text-blue-700" title="Edit Schedule">
+                        <button 
+                          onClick={() => handleEdit(schedule)}
+                          className="text-blue-500 hover:text-blue-700" 
+                          title="Edit Schedule"
+                        >
                           <EditIcon size={16} />
                         </button>
                         {schedule.schedule_status === 'active' ? (
-                          <button className="text-yellow-500 hover:text-yellow-700" title="Pause Schedule">
+                          <button 
+                            onClick={() => handleToggleStatus(schedule)}
+                            className="text-yellow-500 hover:text-yellow-700" 
+                            title="Pause Schedule"
+                          >
                             <PauseIcon size={16} />
                           </button>
                         ) : (
-                          <button className="text-green-500 hover:text-green-700" title="Activate Schedule">
+                          <button 
+                            onClick={() => handleToggleStatus(schedule)}
+                            className="text-green-500 hover:text-green-700" 
+                            title="Activate Schedule"
+                          >
                             <PlayIcon size={16} />
                           </button>
                         )}
-                        <button className="text-red-500 hover:text-red-700" title="Delete Schedule">
-                          <TrashIcon size={16} />
-                        </button>
                       </div>
                     </td>
                   </tr>
@@ -201,5 +296,183 @@ export const CronJobList: React.FC = () => {
           </div>
         </div>
       )}
+
+    {/* View Modal */}
+    {viewModalOpen && selectedSchedule && (
+      <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+        <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-medium text-gray-900">Schedule Details</h3>
+            <button 
+              onClick={() => setViewModalOpen(false)}
+              className="text-gray-400 hover:text-gray-500"
+            >
+              <XIcon size={20} />
+            </button>
+          </div>
+          
+          <div className="space-y-3">
+            <div>
+              <label className="text-sm font-medium text-gray-500">Name</label>
+              <p className="text-sm text-gray-900">{selectedSchedule.name}</p>
+            </div>
+            
+            <div>
+              <label className="text-sm font-medium text-gray-500">CRON Expression</label>
+              <p className="text-sm text-gray-900 font-mono">{selectedSchedule.cron}</p>
+            </div>
+            
+            <div>
+              <label className="text-sm font-medium text-gray-500">Status</label>
+              <p className="text-sm">
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                  selectedSchedule.schedule_status === 'active' ? 'bg-green-100 text-green-800' :
+                  'bg-gray-100 text-gray-800'
+                }`}>
+                  {selectedSchedule.schedule_status}
+                </span>
+              </p>
+            </div>
+            
+            <div>
+              <label className="text-sm font-medium text-gray-500">Iterations</label>
+              <p className="text-sm text-gray-900">{selectedSchedule.iterations}</p>
+            </div>
+            
+            <div>
+              <label className="text-sm font-medium text-gray-500">Start Date</label>
+              <p className="text-sm text-gray-900">{formatDate(selectedSchedule.start_date)}</p>
+            </div>
+            
+            <div>
+              <label className="text-sm font-medium text-gray-500">End Date</label>
+              <p className="text-sm text-gray-900">{formatDate(selectedSchedule.end_date)}</p>
+            </div>
+            
+            {selectedSchedule.next_time && (
+              <div>
+                <label className="text-sm font-medium text-gray-500">Next Run</label>
+                <p className="text-sm text-gray-900">{formatDate(selectedSchedule.next_time)}</p>
+              </div>
+            )}
+            
+            {selectedSchedule.created_at && (
+              <div>
+                <label className="text-sm font-medium text-gray-500">Created At</label>
+                <p className="text-sm text-gray-900">{formatDate(selectedSchedule.created_at)}</p>
+              </div>
+            )}
+          </div>
+          
+          <div className="mt-6">
+            <button
+              onClick={() => setViewModalOpen(false)}
+              className="w-full px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Edit Modal */}
+    {editModalOpen && selectedSchedule && (
+      <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+        <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-medium text-gray-900">Edit Schedule</h3>
+            <button 
+              onClick={() => setEditModalOpen(false)}
+              className="text-gray-400 hover:text-gray-500"
+            >
+              <XIcon size={20} />
+            </button>
+          </div>
+          
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Name <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={editForm.name}
+                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                CRON Expression <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={editForm.cron}
+                onChange={(e) => setEditForm({ ...editForm, cron: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 font-mono"
+                placeholder="e.g., 45 * * * * *"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Iterations <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="number"
+                value={editForm.iterations}
+                onChange={(e) => setEditForm({ ...editForm, iterations: parseInt(e.target.value) || 1 })}
+                min="1"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Start Date
+              </label>
+              <input
+                type="datetime-local"
+                value={editForm.start_date ? new Date(editForm.start_date).toISOString().slice(0, 16) : ''}
+                onChange={(e) => setEditForm({ ...editForm, start_date: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                End Date
+              </label>
+              <input
+                type="datetime-local"
+                value={editForm.end_date ? new Date(editForm.end_date).toISOString().slice(0, 16) : ''}
+                onChange={(e) => setEditForm({ ...editForm, end_date: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+          </div>
+          
+          <div className="mt-6 flex space-x-3">
+            <button
+              onClick={() => setEditModalOpen(false)}
+              className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSaveEdit}
+              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            >
+              Save Changes
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     </div>;
 };
+
+
+export default CronJobList;

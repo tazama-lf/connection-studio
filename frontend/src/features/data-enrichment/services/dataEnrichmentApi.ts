@@ -6,6 +6,7 @@ import type {
   DataEnrichmentJobResponse,
   JobListResponse,
   ScheduleResponse,
+  ScheduleCreateResponse,
   ScheduleRequest,
 } from '../types';
 
@@ -82,9 +83,27 @@ export const dataEnrichmentApi = {
     }
   },
 
+  updateJob: async (
+    id: string,
+    updates: Partial<{ job_status: 'PENDING' | 'IN-PROGRESS' | 'SUSPENDED' | 'CLONED' }>,
+  ): Promise<{ success: boolean; message: string }> => {
+    try {
+      return await apiRequest<{ success: boolean; message: string }>(
+        `${DATA_ENRICHMENT_BASE_URL}/job/${id}`,
+        {
+          method: 'PATCH',
+          body: JSON.stringify(updates),
+        }
+      );
+    } catch (error) {
+      console.error(`Failed to update job ${id}:`, error);
+      throw error;
+    }
+  },
+
   // Schedule endpoints
-  createSchedule: async (data: ScheduleRequest): Promise<ScheduleResponse> => {
-    const url = `${DATA_ENRICHMENT_BASE_URL}/schedule/create`;
+  createSchedule: async (data: ScheduleRequest): Promise<ScheduleCreateResponse> => {
+    const url = `${DATA_ENRICHMENT_BASE_URL}/api/scheduler/create`;
     console.log('Creating schedule at:', url, 'with data:', data);
 
     const response = await fetch(url, {
@@ -114,7 +133,7 @@ export const dataEnrichmentApi = {
     page = 1,
     limit = 50,
   ): Promise<ScheduleResponse[]> => {
-    const url = `${DATA_ENRICHMENT_BASE_URL}/schedule/all?page=${page}&limit=${limit}`;
+    const url = `${DATA_ENRICHMENT_BASE_URL}/api/scheduler/all?page=${page}&limit=${limit}`;
     console.log('Fetching schedules from:', url);
 
     const response = await fetch(url, {
@@ -140,7 +159,7 @@ export const dataEnrichmentApi = {
   },
 
   getSchedule: async (id: number): Promise<ScheduleResponse> => {
-    const response = await fetch(`${DATA_ENRICHMENT_BASE_URL}/schedule/${id}`, {
+    const response = await fetch(`${DATA_ENRICHMENT_BASE_URL}/api/scheduler/${id}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -152,6 +171,24 @@ export const dataEnrichmentApi = {
     }
 
     return response.json();
+  },
+
+  updateSchedule: async (
+    id: number,
+    updates: Partial<ScheduleRequest>,
+  ): Promise<{ success: boolean; message: string }> => {
+    try {
+      return await apiRequest<{ success: boolean; message: string }>(
+        `${DATA_ENRICHMENT_BASE_URL}/api/scheduler/${id}`,
+        {
+          method: 'PATCH',
+          body: JSON.stringify(updates),
+        }
+      );
+    } catch (error) {
+      console.error(`Failed to update schedule ${id}:`, error);
+      throw error;
+    }
   },
 
   // Test endpoints for validation

@@ -52,6 +52,10 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
     pathPattern: '',
     fileFormat: 'csv',
     delimiter: ',',
+    
+    // HTTP-specific fields
+    httpMethod: 'GET',
+    httpHeaders: '',
 
     // Push configuration fields
     endpointPath: '',
@@ -670,57 +674,61 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
               data-id="element-836" 
             />
           </div>
-          <div data-id="element-837">
-            <label htmlFor="port" className="block text-sm font-medium text-gray-700 mb-1" data-id="element-838">
-              Port
-            </label>
-            <input 
-              type="number" 
-              id="port" 
-              name="port" 
-              value={formData.port} 
-              onChange={handleInputChange} 
-              className={`w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${formData.sourceType !== 'sftp' ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-              placeholder="2222" 
-              disabled={formData.sourceType !== 'sftp'}
-              data-id="element-839" 
-            />
-          </div>
-          <div data-id="element-840">
-            <label htmlFor="authType" className="block text-sm font-medium text-gray-700 mb-1" data-id="element-841">
-              Authentication Type {formData.sourceType === 'sftp' && <span className="text-red-500">*</span>}
-            </label>
-            <select 
-              id="authType" 
-              name="authType" 
-              value={formData.authType} 
-              onChange={handleInputChange} 
-              className={`w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${formData.sourceType !== 'sftp' ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
-              disabled={formData.sourceType !== 'sftp'}
-              required={formData.sourceType === 'sftp'}
-              data-id="element-842"
-            >
-              <option value="password" data-id="element-843">Username & Password</option>
-              <option value="key" data-id="element-844">Username & Private Key</option>
-            </select>
-          </div>
-          <div data-id="element-845">
-            <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1" data-id="element-846">
-              Username {formData.sourceType === 'sftp' && <span className="text-red-500">*</span>}
-            </label>
-            <input 
-              type="text" 
-              id="username" 
-              name="username" 
-              value={formData.username} 
-              onChange={handleInputChange} 
-              className={`w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${formData.sourceType !== 'sftp' ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-              placeholder="Enter username" 
-              disabled={formData.sourceType !== 'sftp'}
-              required={formData.sourceType === 'sftp'}
-              data-id="element-847" 
-            />
-          </div>
+          
+          {/* SFTP-specific fields */}
+          {formData.sourceType === 'sftp' && (
+            <>
+              <div data-id="element-837">
+                <label htmlFor="port" className="block text-sm font-medium text-gray-700 mb-1" data-id="element-838">
+                  Port
+                </label>
+                <input 
+                  type="number" 
+                  id="port" 
+                  name="port" 
+                  value={formData.port} 
+                  onChange={handleInputChange} 
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="2222" 
+                  data-id="element-839" 
+                />
+              </div>
+              <div data-id="element-840">
+                <label htmlFor="authType" className="block text-sm font-medium text-gray-700 mb-1" data-id="element-841">
+                  Authentication Type <span className="text-red-500">*</span>
+                </label>
+                <select 
+                  id="authType" 
+                  name="authType" 
+                  value={formData.authType} 
+                  onChange={handleInputChange} 
+                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  required
+                  data-id="element-842"
+                >
+                  <option value="password" data-id="element-843">Username & Password</option>
+                  <option value="key" data-id="element-844">Username & Private Key</option>
+                </select>
+              </div>
+              <div data-id="element-845">
+                <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1" data-id="element-846">
+                  Username <span className="text-red-500">*</span>
+                </label>
+                <input 
+                  type="text" 
+                  id="username" 
+                  name="username" 
+                  value={formData.username} 
+                  onChange={handleInputChange} 
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Enter username" 
+                  required
+                  data-id="element-847" 
+                />
+              </div>
+            </>
+          )}
+          
           {formData.authType === 'password' && formData.sourceType === 'sftp' ? (
             <div data-id="element-848">
               <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1" data-id="element-849">
@@ -756,73 +764,117 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
 
         </div>
       </div>
-      <div className="bg-green-50 p-4 rounded-md" data-id="element-857">
-        <h3 className="text-md font-medium text-green-900 mb-3" data-id="element-858">
-          File Settings
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6" data-id="element-859">
-          <div data-id="element-860">
-            <label htmlFor="pathPattern" className="block text-sm font-medium text-gray-700 mb-1" data-id="element-861">
-              {formData.sourceType === 'sftp' ? 'Path/Pattern' : 'Endpoint Path'} {formData.sourceType === 'sftp' && <span className="text-red-500">*</span>}
-            </label>
-            <input 
-              type="text" 
-              id="pathPattern" 
-              name="pathPattern" 
-              value={formData.pathPattern} 
-              onChange={handleInputChange} 
-              className={`w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${formData.sourceType !== 'sftp' ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-              placeholder={formData.sourceType === 'sftp' ? '/inbound/*.csv' : '/api/data'} 
-              disabled={formData.sourceType !== 'sftp'}
-              required={formData.sourceType === 'sftp'} 
-              data-id="element-862" 
-            />
-          </div>
-          <div data-id="element-863">
-            <label htmlFor="fileFormat" className="block text-sm font-medium text-gray-700 mb-1" data-id="element-864">
-              File Format
-            </label>
-            <select 
-              id="fileFormat" 
-              name="fileFormat" 
-              value={formData.fileFormat} 
-              onChange={handleInputChange} 
-              className={`w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${formData.sourceType !== 'sftp' ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
-              disabled={formData.sourceType !== 'sftp'}
-              data-id="element-865"
-            >
-              <option value="csv" data-id="element-866">CSV</option>
-              <option value="tsv" data-id="element-867">TSV</option>
-              <option value="json" data-id="element-868">JSON</option>
-            </select>
-            {configurationType === 'pull' && formData.sourceType === 'sftp' && formData.pathPattern && formData.pathPattern.trim() && (() => {
-              const formatValidation = validateFileFormat();
-              return !formatValidation.isValid ? (
-                <p className="mt-1 text-sm text-red-600">{formatValidation.error}</p>
-              ) : null;
-            })()}
-          </div>
-          {formData.fileFormat === 'csv' && formData.sourceType === 'sftp' && (
-            <div data-id="element-869">
-              <label htmlFor="delimiter" className="block text-sm font-medium text-gray-700 mb-1" data-id="element-870">
-                Delimiter
+      
+      {/* SFTP-specific File Settings */}
+      {formData.sourceType === 'sftp' && (
+        <div className="bg-green-50 p-4 rounded-md" data-id="element-857">
+          <h3 className="text-md font-medium text-green-900 mb-3" data-id="element-858">
+            File Settings
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6" data-id="element-859">
+            <div data-id="element-860">
+              <label htmlFor="pathPattern" className="block text-sm font-medium text-gray-700 mb-1" data-id="element-861">
+                Path/Pattern <span className="text-red-500">*</span>
               </label>
               <input 
                 type="text" 
-                id="delimiter" 
-                name="delimiter" 
-                value={formData.delimiter} 
+                id="pathPattern" 
+                name="pathPattern" 
+                value={formData.pathPattern} 
                 onChange={handleInputChange} 
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" 
-                placeholder="," 
-                maxLength={1} 
-                data-id="element-871" 
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                placeholder="/inbound/*.csv" 
+                required
+                data-id="element-862" 
               />
             </div>
-          )}
-
+            <div data-id="element-863">
+              <label htmlFor="fileFormat" className="block text-sm font-medium text-gray-700 mb-1" data-id="element-864">
+                File Format
+              </label>
+              <select 
+                id="fileFormat" 
+                name="fileFormat" 
+                value={formData.fileFormat} 
+                onChange={handleInputChange} 
+                className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                data-id="element-865"
+              >
+                <option value="csv" data-id="element-866">CSV</option>
+                <option value="tsv" data-id="element-867">TSV</option>
+                <option value="json" data-id="element-868">JSON</option>
+              </select>
+              {configurationType === 'pull' && formData.pathPattern && formData.pathPattern.trim() && (() => {
+                const formatValidation = validateFileFormat();
+                return !formatValidation.isValid ? (
+                  <p className="mt-1 text-sm text-red-600">{formatValidation.error}</p>
+                ) : null;
+              })()}
+            </div>
+            {formData.fileFormat === 'csv' && (
+              <div data-id="element-869">
+                <label htmlFor="delimiter" className="block text-sm font-medium text-gray-700 mb-1" data-id="element-870">
+                  Delimiter
+                </label>
+                <input 
+                  type="text" 
+                  id="delimiter" 
+                  name="delimiter" 
+                  value={formData.delimiter} 
+                  onChange={handleInputChange} 
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" 
+                  placeholder="," 
+                  maxLength={1} 
+                  data-id="element-871" 
+                />
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
+      
+      {/* HTTP-specific Endpoint Settings */}
+      {formData.sourceType === 'http' && (
+        <div className="bg-indigo-50 p-4 rounded-md">
+          <h3 className="text-md font-medium text-indigo-900 mb-3">
+            HTTP Endpoint Settings
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label htmlFor="httpMethod" className="block text-sm font-medium text-gray-700 mb-1">
+                HTTP Method <span className="text-red-500">*</span>
+              </label>
+              <select 
+                id="httpMethod" 
+                name="httpMethod" 
+                value={formData.httpMethod || 'GET'}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                required
+              >
+                <option value="GET">GET</option>
+                <option value="POST">POST</option>
+                <option value="PUT">PUT</option>
+                <option value="DELETE">DELETE</option>
+              </select>
+            </div>
+            <div>
+              <label htmlFor="httpHeaders" className="block text-sm font-medium text-gray-700 mb-1">
+                Headers (JSON format)
+              </label>
+              <textarea
+                id="httpHeaders"
+                name="httpHeaders"
+                value={formData.httpHeaders || ''}
+                onChange={handleInputChange}
+                placeholder='{"Authorization": "Bearer token"}'
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
+              />
+            </div>
+          </div>
+        </div>
+      )}
       <div className="bg-purple-50 p-4 rounded-md" data-id="element-882">
         <h3 className="text-md font-medium text-purple-900 mb-3" data-id="element-883">
           Target PostgreSQL Settings

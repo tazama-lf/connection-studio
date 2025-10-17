@@ -34,6 +34,10 @@ export const API_CONFIG = {
       REMOVE_MAPPING: '/config/:id/mapping/:index',
       GET_BY_TRANSACTION_TYPE: '/config/transaction/:type',
       GET_BY_ENDPOINT: '/config/endpoint',
+      // Function endpoints
+      ADD_FUNCTION: '/config/:id/function',
+      UPDATE_FUNCTION: '/config/:id/function/:index',
+      DELETE_FUNCTION: '/config/:id/function/:index',
     },
   },
 } as const;

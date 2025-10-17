@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
 import ToastComponent from '../components/Toast';
 import type { Toast } from '../components/Toast';
 
@@ -67,8 +67,8 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => {
     <ToastContext.Provider value={value}>
       {children}
       
-      {/* Toast Container */}
-      <div className="fixed top-0 right-0 z-[100] p-6 space-y-4 pointer-events-none">
+      {/* Toast Container - Centered at top */}
+      <div className="fixed top-0 left-1/2 transform -translate-x-1/2 z-[100] pt-6 space-y-4 pointer-events-none w-full max-w-md">
         {toasts.map((toast) => (
           <ToastComponent
             key={toast.id}

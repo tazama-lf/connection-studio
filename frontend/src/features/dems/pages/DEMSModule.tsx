@@ -173,7 +173,7 @@ const DEMSModule: React.FC = () => {
                         >
                           <div className="font-medium text-gray-900">{config.transactionType}</div>
                           <div className="text-sm text-gray-600">
-                            Version {config.version} • {config.msgFam} • ID: {config.id}
+                            v{config.version} • {config.msgFam}
                           </div>
                         </button>
                       ))}
