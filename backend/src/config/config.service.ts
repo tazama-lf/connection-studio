@@ -848,9 +848,9 @@ export class ConfigService {
     }
 
     const allowedFunctions: AllowedFunctionName[] = [
+      'addAccountHolder',
+      'addEntity',
       'addAccount',
-      'handleTransaction',
-      'AddEntity',
     ];
     if (!allowedFunctions.includes(dto.functionName)) {
       throw new BadRequestException(
@@ -864,48 +864,16 @@ export class ConfigService {
       );
     }
 
-    if (!dto.sources || dto.sources.length === 0) {
-      throw new BadRequestException('Function must have at least one source');
-    }
-
-    if (dto.params.length !== dto.sources.length) {
-      throw new BadRequestException(
-        'Number of parameters must match number of sources',
-      );
-    }
-
     return {
       functionName: dto.functionName,
       params: dto.params.map((p) => p.trim()).filter((p) => p.length > 0),
-      sources: dto.sources,
     };
   }
 
-  private validateFunction(func: FunctionDefinition, schema: JSONSchema): void {
-    // Validate that all source paths exist in the schema
-    const sourceFields = this.jsonSchemaConverter.convertFromJSONSchema(schema);
-    const allPaths = this.collectAllPaths(sourceFields);
-
-    for (const source of func.sources) {
-      if (Array.isArray(source)) {
-        // For array sources, validate each path
-        for (const path of source) {
-          if (!allPaths.includes(path)) {
-            throw new BadRequestException(
-              `Source field path '${path}' not found in schema`,
-            );
-          }
-        }
-      } else {
-        // For string sources, validate the path
-        if (!allPaths.includes(source)) {
-          throw new BadRequestException(
-            `Source field path '${source}' not found in schema`,
-          );
-        }
-      }
-    }
-
+  private validateFunction(
+    func: FunctionDefinition,
+    _schema: JSONSchema,
+  ): void {
     // Validate parameter names
     for (const param of func.params) {
       if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(param)) {

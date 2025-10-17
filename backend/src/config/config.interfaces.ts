@@ -42,14 +42,13 @@ export interface FieldMapping {
 
 export interface FunctionDefinition {
   params: string[]; // Array of parameter names
-  sources: (string | string[])[]; // Array of source field paths, can be single string or array for complex mappings
-  functionName: 'addAccount' | 'handleTransaction' | 'AddEntity'; // Only these three functions are allowed
+  functionName: 'addAccountHolder' | 'addEntity' | 'addAccount'; // Only these three functions are allowed
 }
 
 export type AllowedFunctionName =
-  | 'addAccount'
-  | 'handleTransaction'
-  | 'AddEntity';
+  | 'addAccountHolder'
+  | 'addEntity'
+  | 'addAccount';
 
 export enum ContentType {
   JSON = 'application/json',
@@ -75,7 +74,7 @@ export interface Config {
   endpointPath: string;
   version: string;
   contentType: ContentType;
-  schema: JSONSchema; // JSON Schema defining data structure
+  schema: JSONSchema;
   mapping?: FieldMapping[];
   functions?: FunctionDefinition[];
   status?: ConfigStatus;
@@ -94,7 +93,6 @@ export interface AddMappingDto {
 
 export interface AddFunctionDto {
   params: string[];
-  sources: (string | string[])[];
   functionName: AllowedFunctionName;
 }
 export interface ConfigResponseDto {

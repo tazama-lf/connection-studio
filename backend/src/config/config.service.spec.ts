@@ -520,7 +520,6 @@ describe('ConfigService', () => {
         functions: [
           {
             params: ['dbtrAcctId', 'tenantId'],
-            sources: ['amount', 'currency'],
             functionName: 'addAccount' as AllowedFunctionName,
           },
         ],
@@ -565,7 +564,6 @@ describe('ConfigService', () => {
 
       const functionDto: AddFunctionDto = {
         params: ['dbtrAcctId', 'tenantId'],
-        sources: ['amount', 'currency'],
         functionName: 'addAccount',
       };
 
@@ -585,7 +583,6 @@ describe('ConfigService', () => {
           expect.objectContaining({
             functionName: 'addAccount',
             params: ['dbtrAcctId', 'tenantId'],
-            sources: ['amount', 'currency'],
           }),
         ]),
       });
@@ -603,7 +600,6 @@ describe('ConfigService', () => {
 
       const functionDto: AddFunctionDto = {
         params: ['dbtrAcctId'],
-        sources: ['amount'],
         functionName: 'addAccount',
       };
 
@@ -617,7 +613,6 @@ describe('ConfigService', () => {
 
       const invalidFunctionDto: AddFunctionDto = {
         params: [],
-        sources: ['amount'],
         functionName: 'addAccount',
       };
 
@@ -631,14 +626,13 @@ describe('ConfigService', () => {
 
       const invalidFunctionDto = {
         params: ['param1'],
-        sources: ['amount'],
         functionName: 'invalidFunction' as any,
       };
 
       await expect(
         service.addFunction(1, invalidFunctionDto, 'test-tenant', 'user-123'),
       ).rejects.toThrow(
-        'Invalid function name. Only the following functions are allowed: addAccount, handleTransaction, AddEntity',
+        'Invalid function name. Only the following functions are allowed: addAccountHolder, addEntity, addAccount',
       );
     });
   });
@@ -650,7 +644,6 @@ describe('ConfigService', () => {
         functions: [
           {
             params: ['dbtrAcctId'],
-            sources: ['amount'],
             functionName: 'addAccount' as AllowedFunctionName,
           },
         ],
