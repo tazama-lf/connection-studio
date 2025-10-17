@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { EyeIcon, ChevronDownIcon, HistoryIcon } from 'lucide-react';
+import { EyeIcon, ChevronDownIcon, HistoryIcon, Edit, Copy } from 'lucide-react';
 import { configApi } from '../services/configApi';
 import { Button } from '../../../shared/components/Button';
 
@@ -22,6 +22,7 @@ interface Config {
 interface ConfigListProps {
   onConfigSelect?: (config: Config) => void;
   onConfigEdit?: (config: Config) => void;
+  onConfigClone?: (config: Config) => void;
   onConfigDelete?: (configId: number) => void;
   onViewDetails?: (config: Config) => void;
   onViewHistory?: (config: Config) => void;
@@ -32,6 +33,7 @@ interface ConfigListProps {
 export const ConfigList: React.FC<ConfigListProps> = ({
   onConfigSelect,
   onConfigEdit,
+  onConfigClone,
   onConfigDelete,
   onViewDetails,
   onViewHistory,
@@ -135,8 +137,12 @@ export const ConfigList: React.FC<ConfigListProps> = ({
 
   // Close dropdown when clicking outside
   useEffect(() => {
-    const handleClickOutside = () => {
-      setOpenDropdown(null);
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      // Don't close if clicking inside a dropdown
+      if (!target.closest('.dropdown-container')) {
+        setOpenDropdown(null);
+      }
     };
     
     if (openDropdown !== null) {
@@ -255,12 +261,14 @@ export const ConfigList: React.FC<ConfigListProps> = ({
                         <EyeIcon className="w-4 h-4 mr-1" />
                         View
                       </button>
-                      <div className="relative">
+                      <div className="relative dropdown-container" onClick={(e) => e.stopPropagation()}>
                         <Button
                           variant="primary"
                           size="sm"
                           className="px-3 py-1.5 flex items-center text-sm font-medium"
-                          onClick={() => setOpenDropdown(openDropdown === config.id ? null : config.id)}
+                          onClick={() => {
+                            setOpenDropdown(openDropdown === config.id ? null : config.id);
+                          }}
                         >
                           Actions
                           <ChevronDownIcon className="w-4 h-4 ml-1" />
@@ -270,6 +278,30 @@ export const ConfigList: React.FC<ConfigListProps> = ({
                         {openDropdown === config.id && (
                           <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
                             <div className="py-1">
+                              <button
+                                onClick={() => {
+                                  setOpenDropdown(null);
+                                  if (onConfigEdit) {
+                                    onConfigEdit(config);
+                                  }
+                                }}
+                                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                              >
+                                <Edit className="w-4 h-4 mr-2" />
+                                Edit Configuration
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setOpenDropdown(null);
+                                  if (onConfigClone) {
+                                    onConfigClone(config);
+                                  }
+                                }}
+                                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                              >
+                                <Copy className="w-4 h-4 mr-2" />
+                                Clone Configuration
+                              </button>
                               <button
                                 onClick={() => {
                                   setOpenDropdown(null);

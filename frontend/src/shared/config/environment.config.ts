@@ -13,7 +13,7 @@ declare global {
 }
 
 export const ENV = {
-  API_BASE_URL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api',
+  API_BASE_URL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000',
   DATA_ENRICHMENT_SERVICE_URL:
     import.meta.env.VITE_DATA_ENRICHMENT_SERVICE_URL || 'http://localhost:3000',
   APP_TITLE: import.meta.env.VITE_APP_TITLE || 'Tazama Connection Studio',

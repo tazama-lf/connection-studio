@@ -1,13 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { AuthHeader } from '../../../shared/components/AuthHeader';
 import { ConfigList } from '../../config/components/ConfigList';
 import VersionHistoryModal from '../../config/components/VersionHistoryModal';
 import { Button } from '../../../shared/components/Button';
-import { PlusIcon, SearchIcon, AlertTriangleIcon, Copy, ChevronDown } from 'lucide-react';
+import { PlusIcon, SearchIcon, AlertTriangleIcon } from 'lucide-react';
 import EditEndpointModal from '../../../shared/components/EditEndpointModal';
 import ValidationLogsTable from '../../../shared/components/ValidationLogsTable';
 import type { Config } from '../../config/index';
-import { configApi } from '../../config/services/configApi';
 // DEMS Module now uses real backend configurations instead of mock data
 const DEMSModule: React.FC = () => {
   const [editingEndpointId, setEditingEndpointId] = useState<number | null>(null);
@@ -16,9 +15,6 @@ const DEMSModule: React.FC = () => {
   const [selectedConfig, setSelectedConfig] = useState<Config | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
-  const [showCloneDropdown, setShowCloneDropdown] = useState(false);
-  const [availableConfigs, setAvailableConfigs] = useState<Config[]>([]);
-  const [loadingConfigs, setLoadingConfigs] = useState(false);
   const [isInCloneMode, setIsInCloneMode] = useState(false);
 
   const handleAddNew = () => {
@@ -47,7 +43,11 @@ const DEMSModule: React.FC = () => {
     setEditingEndpointId(config.id);
   };
 
-
+  const handleCloneConfig = (config: Config) => {
+    // Set the editing ID to trigger EditEndpointModal with clone mode
+    setEditingEndpointId(config.id);
+    setIsInCloneMode(true);
+  };
 
   const handleViewHistory = (config: Config) => {
     setSelectedConfig(config);
@@ -58,53 +58,6 @@ const DEMSModule: React.FC = () => {
     setShowVersionHistoryModal(false);
     setSelectedConfig(null);
   };
-
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  // Load all configs for clone dropdown
-  const loadAvailableConfigs = async () => {
-    setLoadingConfigs(true);
-    try {
-      const response = await configApi.getAllConfigs();
-      setAvailableConfigs(response.configs);
-    } catch (error) {
-      console.error('Failed to load configs for cloning:', error);
-      setAvailableConfigs([]);
-    } finally {
-      setLoadingConfigs(false);
-    }
-  };
-
-  const handleCloneDropdownToggle = async () => {
-    if (!showCloneDropdown) {
-      await loadAvailableConfigs();
-    }
-    setShowCloneDropdown(!showCloneDropdown);
-  };
-
-  const handleCloneConfig = (config: Config) => {
-    // Set the editing ID to trigger EditEndpointModal with clone mode
-    setEditingEndpointId(config.id);
-    setIsInCloneMode(true);
-    setShowCloneDropdown(false);
-  };
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setShowCloneDropdown(false);
-      }
-    };
-
-    if (showCloneDropdown) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [showCloneDropdown]);
 
   const handleRefresh = () => {
     setRefreshKey(prev => prev + 1);
@@ -138,51 +91,12 @@ const DEMSModule: React.FC = () => {
               Validation Logs
             </Button>
           </div>
-          <div className="flex space-x-2">
-            <Button 
-              onClick={handleAddNew} 
-              icon={<PlusIcon size={16} />}
-            >
-              Create New Connection
-            </Button>
-            
-            {/* Clone Configuration Dropdown */}
-            <div className="relative" ref={dropdownRef}>
-              <Button 
-                onClick={handleCloneDropdownToggle}
-                icon={<Copy size={16} />}
-                variant="secondary"
-              >
-                Clone Configuration
-                <ChevronDown size={16} className="ml-2" />
-              </Button>
-              
-              {showCloneDropdown && (
-                <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50 max-h-64 overflow-y-auto">
-                  {loadingConfigs ? (
-                    <div className="p-4 text-center text-gray-600">Loading configurations...</div>
-                  ) : availableConfigs.length === 0 ? (
-                    <div className="p-4 text-center text-gray-600">No configurations available</div>
-                  ) : (
-                    <div className="py-2">
-                      {availableConfigs.map((config) => (
-                        <button
-                          key={config.id}
-                          onClick={() => handleCloneConfig(config)}
-                          className="w-full px-4 py-3 text-left hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
-                        >
-                          <div className="font-medium text-gray-900">{config.transactionType}</div>
-                          <div className="text-sm text-gray-600">
-                            v{config.version} • {config.msgFam}
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
+          <Button 
+            onClick={handleAddNew} 
+            icon={<PlusIcon size={16} />}
+          >
+            Create New Connection
+          </Button>
         </div>
 
         {/* Content Section */}
@@ -195,6 +109,7 @@ const DEMSModule: React.FC = () => {
               searchTerm={searchTerm}
               onViewDetails={handleViewDetails}
               onConfigEdit={handleEditConfig}
+              onConfigClone={handleCloneConfig}
               onViewHistory={handleViewHistory}
               onRefresh={handleRefresh}
             />

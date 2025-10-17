@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { PlayIcon, PauseIcon, EditIcon, EyeIcon, XIcon } from 'lucide-react';
+import { PlayIcon, PauseIcon, EditIcon, EyeIcon, XIcon, ChevronDownIcon } from 'lucide-react';
 import SearchBar from '../../../shared/components/SearchBar';
 import { dataEnrichmentApi } from '../../data-enrichment/services';
 import type { ScheduleResponse } from '../../data-enrichment/types';
 import { useToast } from '../../../shared/providers/ToastProvider';
+import { Button } from '../../../shared/components/Button';
 
 export const CronJobList: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -29,6 +30,7 @@ export const CronJobList: React.FC = () => {
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(5);
+  const [openDropdown, setOpenDropdown] = useState<number | null>(null);
 
   // Load schedules on component mount
   useEffect(() => {
@@ -70,6 +72,22 @@ export const CronJobList: React.FC = () => {
       setCurrentPage(1);
     }
   }, [totalFilteredItems, currentPage, itemsPerPage]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      // Don't close if clicking inside a dropdown
+      if (!target.closest('.dropdown-container')) {
+        setOpenDropdown(null);
+      }
+    };
+    
+    if (openDropdown !== null) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [openDropdown]);
 
   const handlePreviousPage = () => {
     setCurrentPage(prev => Math.max(prev - 1, 1));
@@ -204,7 +222,8 @@ export const CronJobList: React.FC = () => {
             ) : (
               paginatedSchedules.map(schedule => (
                   <tr key={schedule.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    <td className="px-6 
+                    py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {schedule.name}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -228,38 +247,68 @@ export const CronJobList: React.FC = () => {
                       {formatDate(schedule.end_date)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex justify-end space-x-2">
-                        <button 
+                      <div className="flex justify-end items-center space-x-3">
+                        <button
                           onClick={() => handleView(schedule)}
-                          className="text-gray-500 hover:text-gray-700" 
-                          title="View Schedule Details"
+                          className="flex items-center text-sm text-gray-500 hover:text-gray-700 font-medium"
                         >
-                          <EyeIcon size={16} />
+                          <EyeIcon className="w-4 h-4 mr-1" />
+                          View
                         </button>
-                        <button 
-                          onClick={() => handleEdit(schedule)}
-                          className="text-blue-500 hover:text-blue-700" 
-                          title="Edit Schedule"
-                        >
-                          <EditIcon size={16} />
-                        </button>
-                        {schedule.schedule_status === 'active' ? (
-                          <button 
-                            onClick={() => handleToggleStatus(schedule)}
-                            className="text-yellow-500 hover:text-yellow-700" 
-                            title="Pause Schedule"
+                        <div className="relative dropdown-container" onClick={(e) => e.stopPropagation()}>
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            className="px-3 py-1.5 flex items-center text-sm font-medium"
+                            onClick={() => {
+                              setOpenDropdown(openDropdown === schedule.id ? null : schedule.id);
+                            }}
                           >
-                            <PauseIcon size={16} />
-                          </button>
-                        ) : (
-                          <button 
-                            onClick={() => handleToggleStatus(schedule)}
-                            className="text-green-500 hover:text-green-700" 
-                            title="Activate Schedule"
-                          >
-                            <PlayIcon size={16} />
-                          </button>
-                        )}
+                            Actions
+                            <ChevronDownIcon className="w-4 h-4 ml-1" />
+                          </Button>
+                          
+                          {/* Dropdown Menu */}
+                          {openDropdown === schedule.id && (
+                            <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
+                              <div className="py-1">
+                                <button
+                                  onClick={() => {
+                                    setOpenDropdown(null);
+                                    handleEdit(schedule);
+                                  }}
+                                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                >
+                                  <EditIcon className="w-4 h-4 mr-2" />
+                                  Edit Schedule
+                                </button>
+                                {schedule.schedule_status === 'active' ? (
+                                  <button
+                                    onClick={() => {
+                                      setOpenDropdown(null);
+                                      handleToggleStatus(schedule);
+                                    }}
+                                    className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                  >
+                                    <PauseIcon className="w-4 h-4 mr-2" />
+                                    Pause Schedule
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => {
+                                      setOpenDropdown(null);
+                                      handleToggleStatus(schedule);
+                                    }}
+                                    className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                  >
+                                    <PlayIcon className="w-4 h-4 mr-2" />
+                                    Activate Schedule
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </td>
                   </tr>
