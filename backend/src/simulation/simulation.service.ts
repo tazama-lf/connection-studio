@@ -177,13 +177,18 @@ export class SimulationService {
   }
 
   private async parsePayload(payload: any, payloadType: string): Promise<any> {
+    if (!payloadType) {
+      throw new Error('payloadType is required. Must be either "application/json" or "application/xml"');
+    }
+
     if (payloadType === 'application/xml') {
+      const xmlString = typeof payload === 'string' ? payload : JSON.stringify(payload);
       const parser = new xml2js.Parser({
         explicitArray: false,
         ignoreAttrs: false,
         mergeAttrs: true,
       });
-      return parser.parseStringPromise(payload);
+      return parser.parseStringPromise(xmlString);
     }
 
     if (payloadType === 'application/json') {
@@ -193,7 +198,7 @@ export class SimulationService {
       return payload;
     }
 
-    throw new Error('Unsupported payload type: ' + payloadType);
+    throw new Error(`Unsupported payload type: "${payloadType}". Must be either "application/json" or "application/xml"`);
   }
 
   private createDefaultTCSMapping(_config: Config): iMappingConfiguration {
