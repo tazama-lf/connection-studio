@@ -87,6 +87,23 @@ export class ConfigRepository {
       .first();
     return result ? this.mapToConfig(result) : null;
   }
+
+  async findConfigByMsgFamVersionAndTransactionType(
+    msgFam: string,
+    version: string,
+    transactionType: string,
+    tenantId: string,
+  ): Promise<Config | null> {
+    const result = await this.knex('config')
+      .where({
+        msg_fam: msgFam,
+        version,
+        transaction_type: transactionType,
+        tenant_id: tenantId,
+      })
+      .first();
+    return result ? this.mapToConfig(result) : null;
+  }
   async updateConfig(
     id: number,
     tenantId: string,

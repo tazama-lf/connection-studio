@@ -469,27 +469,44 @@ describe('ConfigService', () => {
     });
   });
   describe('updateConfig', () => {
-    it('should update config successfully', async () => {
+    it('should update config in-place successfully', async () => {
       const updateDto: UpdateConfigDto = {
         msgFam: 'pacs.008',
       };
       repository.findConfigById.mockResolvedValueOnce(mockConfig);
-      repository.findConfigByVersionAndTransactionType.mockResolvedValueOnce(
-        null,
-      ); // No conflict
-      repository.createConfig.mockResolvedValueOnce(2); // New config ID
-      const updatedConfig = { ...mockConfig, id: 2, msgFam: 'pacs.008' };
+      repository.updateConfig.mockResolvedValueOnce(undefined);
+      const updatedConfig = { ...mockConfig, msgFam: 'pacs.008' };
       repository.findConfigById.mockResolvedValueOnce(updatedConfig);
+      
       const result = await service.updateConfig(
         1,
         updateDto,
         'test-tenant',
         'user-123',
       );
+      
       expect(result.success).toBe(true);
       expect(result.config?.msgFam).toBe('pacs.008');
-      expect(repository.createConfig).toHaveBeenCalled(); // Creates new config for key field changes
+      expect(repository.updateConfig).toHaveBeenCalled(); // Updates same config in-place
+      expect(repository.createConfig).not.toHaveBeenCalled(); // No new config created
     });
+
+    it('should prevent editing approved config', async () => {
+      const approvedConfig = { ...mockConfig, status: ConfigStatus.COMPLETED };
+      repository.findConfigById.mockResolvedValueOnce(approvedConfig);
+      
+      const result = await service.updateConfig(
+        1,
+        { msgFam: 'pacs.008' },
+        'test-tenant',
+        'user-123',
+      );
+      
+      expect(result.success).toBe(false);
+      expect(result.message).toContain('Cannot edit an approved configuration');
+      expect(repository.updateConfig).not.toHaveBeenCalled();
+    });
+
     it('should throw error if config not found', async () => {
       repository.findConfigById.mockResolvedValue(null);
       await expect(

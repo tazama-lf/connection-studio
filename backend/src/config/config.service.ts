@@ -63,22 +63,29 @@ export class ConfigService {
     userId: string,
   ): Promise<ConfigResponseDto> {
     this.logger.log(
-      `Creating config for ${dto.msgFam} - ${dto.transactionType}`,
+      `Creating config for msgFam: ${dto.msgFam}, transactionType: ${dto.transactionType}, version: ${dto.version}`,
+      `Payload: ${dto.payload}`,
+      `ContentType: ${dto.contentType}`,
+      `TenantId: ${tenantId}`,
+      `UserId: ${userId}`,
     );
 
     try {
       const version = dto.version || 'v1';
+      const msgFam = dto.msgFam || 'unknown';
+      this.logger.log(`Checking uniqueness for msgFam: ${msgFam}, transactionType: ${dto.transactionType}, version: ${version}, tenantId: ${tenantId}`);
       const existingConfig =
-        await this.configRepository.findConfigByVersionAndTransactionType(
+        await this.configRepository.findConfigByMsgFamVersionAndTransactionType(
+          msgFam,
           version,
           dto.transactionType,
           tenantId,
         );
-
       if (existingConfig) {
+        this.logger.warn(`Duplicate config found for msgFam: ${msgFam}, transactionType: ${dto.transactionType}, version: ${version}, tenantId: ${tenantId}`);
         return {
           success: false,
-          message: `Config with version '${version}' for transaction type '${dto.transactionType}' already exists for this tenant. Please use a different version.`,
+          message: `Config with message family '${msgFam}', transaction type '${dto.transactionType}', and version '${version}' already exists for this tenant. Please use different values.`,
         };
       }
 
@@ -210,10 +217,14 @@ export class ConfigService {
         };
       }
 
-      // Check if the new transaction type already exists for this tenant
+      // Check if the new combination already exists for this tenant
+      const newMsgFam = dto.newMsgFam || sourceConfig.msgFam;
+      const newVersion = dto.newVersion || sourceConfig.version;
+
       const existingConfig =
-        await this.configRepository.findConfigByVersionAndTransactionType(
-          dto.newVersion || sourceConfig.version,
+        await this.configRepository.findConfigByMsgFamVersionAndTransactionType(
+          newMsgFam,
+          newVersion,
           dto.newTransactionType,
           tenantId,
         );
@@ -221,14 +232,11 @@ export class ConfigService {
       if (existingConfig) {
         return {
           success: false,
-          message: `Config with message family '${dto.newMsgFam || sourceConfig.msgFam}', transaction type '${dto.newTransactionType}', and version '${dto.newVersion || sourceConfig.version}' already exists for this tenant. Please use different values.`,
+          message: `Config with message family '${newMsgFam}', transaction type '${dto.newTransactionType}', and version '${newVersion}' already exists for this tenant. Please use different values.`,
         };
       }
 
       // Prepare the new config data by cloning the source
-      const newMsgFam = dto.newMsgFam || sourceConfig.msgFam;
-      const newVersion = dto.newVersion || sourceConfig.version;
-
       // Generate new endpoint path
       const newEndpointPath = this.generateEndpointPath(
         tenantId,
@@ -371,6 +379,14 @@ export class ConfigService {
       throw new NotFoundException(`Config with ID ${id} not found`);
     }
 
+    // APPROVAL STATUS CHECK: Prevent editing if already approved
+    if (config.status === ConfigStatus.COMPLETED) {
+      return {
+        success: false,
+        message: 'Cannot edit an approved configuration. Please clone it to create a new version.',
+      };
+    }
+
     if (dto.schema) {
       const validation = this.validateSchema(dto.schema);
       if (!validation.success) {
@@ -422,89 +438,8 @@ export class ConfigService {
       }
     }
 
-    // Check if this update requires creating a new config row
-    // This happens when key fields that are part of the unique constraint change
-    const isVersionChanging =
-      dto.version !== undefined && dto.version !== config.version;
-    const isTransactionTypeChanging =
-      dto.transactionType !== undefined &&
-      dto.transactionType !== config.transactionType;
-    const isMsgFamChanging =
-      dto.msgFam !== undefined && dto.msgFam !== config.msgFam;
-
-    const requiresNewRow =
-      isVersionChanging || isTransactionTypeChanging || isMsgFamChanging;
-
-    if (requiresNewRow) {
-      // Create a new config with the updated fields
-      const newVersion = dto.version ?? config.version;
-      const newTransactionType = dto.transactionType ?? config.transactionType;
-      const newMsgFam = dto.msgFam ?? config.msgFam;
-
-      // Check if this new combination would conflict with an existing config
-      const existingConfig =
-        await this.configRepository.findConfigByVersionAndTransactionType(
-          newVersion,
-          newTransactionType,
-          tenantId,
-        );
-
-      if (existingConfig && existingConfig.id !== id) {
-        return {
-          success: false,
-          message: `Config with message family '${newMsgFam}', transaction type '${newTransactionType}', and version '${newVersion}' already exists for this tenant. Please use different values.`,
-        };
-      }
-
-      const newEndpointPath = this.generateEndpointPath(
-        tenantId,
-        newVersion,
-        newTransactionType,
-        newMsgFam,
-      );
-
-      // Create new config with all the data from the original plus updates
-      const newConfigData: Omit<Config, 'id' | 'createdAt' | 'updatedAt'> = {
-        msgFam: newMsgFam,
-        transactionType: newTransactionType,
-        endpointPath: newEndpointPath,
-        version: newVersion,
-        contentType: dto.contentType ?? config.contentType,
-        schema: finalSchema ?? config.schema,
-        mapping: dto.mapping ?? config.mapping,
-        status: config.status,
-        tenantId,
-        createdBy: userId, // New config created by the user making the update
-      };
-
-      const newConfigId =
-        await this.configRepository.createConfig(newConfigData);
-
-      await this.auditService.logAction({
-        entityType: 'CONFIG',
-        action: 'CREATE_CONFIG',
-        actor: userId,
-        tenantId,
-        endpointName: `${newMsgFam} - ${newEndpointPath} (versioned from ${id})`,
-      });
-
-      const newConfig = await this.configRepository.findConfigById(
-        newConfigId,
-        tenantId,
-      );
-
-      this.logger.log(
-        `Created new config ${newConfigId} as version update from config ${id}`,
-      );
-
-      return {
-        success: true,
-        message: 'New config version created successfully',
-        config: newConfig!,
-      };
-    }
-
-    // Regular update for non-version-changing fields
+    // IN-PLACE UPDATE: Update the same config row regardless of field changes
+    // (as long as status is not COMPLETED/approved)
     const updateData = { ...dto };
 
     // Use finalSchema if field adjustments were applied
@@ -512,14 +447,121 @@ export class ConfigService {
       updateData.schema = finalSchema;
     }
 
-    // Auto-regenerate endpoint path if needed (for non-version changes)
-    if (dto.transactionType !== undefined || dto.msgFam !== undefined) {
+    // Check if msgFam or version is changing - if so, CREATE NEW CONFIG instead of updating
+    const isVersionChanging =
+      dto.version !== undefined && dto.version !== config.version;
+    const isMsgFamChanging =
+      dto.msgFam !== undefined && dto.msgFam !== config.msgFam;
+
+    if (isVersionChanging || isMsgFamChanging) {
+      // msgFam or version change = NEW ENDPOINT = CREATE NEW CONFIG
+      this.logger.log(
+        `msgFam or version changed for config ${id}. Creating NEW config instead of updating.`,
+      );
+
+      const newVersion = dto.version ?? config.version;
       const newTransactionType = dto.transactionType ?? config.transactionType;
       const newMsgFam = dto.msgFam ?? config.msgFam;
 
+      // Check if this new combination already exists
+      const existingConfig =
+        await this.configRepository.findConfigByMsgFamVersionAndTransactionType(
+          newMsgFam,
+          newVersion,
+          newTransactionType,
+          tenantId,
+        );
+
+      if (existingConfig) {
+        return {
+          success: false,
+          message: `Config with message family '${newMsgFam}', transaction type '${newTransactionType}', and version '${newVersion}' already exists for this tenant. Please use different values.`,
+        };
+      }
+
+      // Create new config by inserting directly into repository
+      const newEndpointPath = this.generateEndpointPath(
+        tenantId,
+        newVersion,
+        newTransactionType,
+        newMsgFam,
+      );
+
+      const newConfigData = {
+        msgFam: newMsgFam,
+        version: newVersion,
+        transactionType: newTransactionType,
+        endpointPath: newEndpointPath,
+        contentType: config.contentType,
+        schema: finalSchema || config.schema,
+        mapping: dto.mapping ?? config.mapping,
+        functions: dto.functions ?? config.functions,
+        status: ConfigStatus.DRAFT,
+        tenantId,
+        createdBy: userId,
+      };
+
+      this.logger.log(
+        `Creating new config with msgFam: ${newMsgFam}, version: ${newVersion}, transactionType: ${newTransactionType}`,
+      );
+
+      const newConfigId = await this.configRepository.createConfig(
+        newConfigData as any,
+      );
+
+      await this.auditService.logAction({
+        entityType: 'CONFIG',
+        action: 'CREATE_CONFIG',
+        actor: userId,
+        tenantId,
+        endpointName: `Config ${newConfigId} (created from update of config ${id})`,
+      });
+
+      const newConfig = await this.configRepository.findConfigById(
+        newConfigId,
+        tenantId,
+      );
+
+      return {
+        success: true,
+        message: `msgFam or version changed. Created new config with ID ${newConfigId} instead of updating existing config ${id}.`,
+        config: newConfig!,
+      };
+    }
+
+    // If only transactionType is changing (not msgFam or version), check for conflicts
+    const isTransactionTypeChanging =
+      dto.transactionType !== undefined &&
+      dto.transactionType !== config.transactionType;
+
+    if (isTransactionTypeChanging) {
+      const newTransactionType = dto.transactionType!;
+
+      const existingConfig =
+        await this.configRepository.findConfigByMsgFamVersionAndTransactionType(
+          config.msgFam,
+          config.version,
+          newTransactionType,
+          tenantId,
+        );
+
+      if (existingConfig && existingConfig.id !== id) {
+        return {
+          success: false,
+          message: `Config with message family '${config.msgFam}', transaction type '${newTransactionType}', and version '${config.version}' already exists for this tenant. Please use different values.`,
+        };
+      }
+    }
+
+    // Auto-regenerate endpoint path if needed
+    if (dto.transactionType !== undefined || dto.msgFam !== undefined || dto.version !== undefined) {
+      const newTransactionType = dto.transactionType ?? config.transactionType;
+      const newMsgFam = dto.msgFam ?? config.msgFam;
+      const newVersion = dto.version ?? config.version;
+
       updateData.endpointPath = this.generateEndpointPath(
         tenantId,
-        config.version, // Keep the same version for regular updates
+        newVersion,
         newTransactionType,
         newMsgFam,
       );
