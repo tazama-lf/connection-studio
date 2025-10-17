@@ -21,10 +21,15 @@ export interface CloneConfigRequest {
 }
 
 export interface FieldMapping {
-  source?: string;
-  destination?: string;
+  source?: string | string[];
+  destination?: string | string[];
   sources?: string[];
+  destinations?: string[];
   separator?: string;
+  transformation?: string;
+  delimiter?: string;
+  constantValue?: any;
+  operator?: string;
 }
 
 export interface ConfigResponse {

@@ -122,21 +122,15 @@ export const SimulationPanel: React.FC<SimulationPanelProps> = ({
             {/* Validation Steps Summary */}
             <div className="mt-3 space-y-2">
               <div className="flex items-center justify-between text-sm">
-                <span>Schema Validation:</span>
-                <span className={`font-medium ${simulationResult.summary.validationSteps.schemaValidation === 'PASSED' ? 'text-green-600' : 'text-red-600'}`}>
-                  {simulationResult.summary.validationSteps.schemaValidation}
+                <span>Payload Parsing:</span>
+                <span className={`font-medium ${simulationResult.summary.validationSteps.payloadParsing === 'PASSED' ? 'text-green-600' : 'text-red-600'}`}>
+                  {simulationResult.summary.validationSteps.payloadParsing}
                 </span>
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span>Mapping Execution:</span>
                 <span className={`font-medium ${simulationResult.summary.validationSteps.mappingExecution === 'PASSED' ? 'text-green-600' : 'text-red-600'}`}>
                   {simulationResult.summary.validationSteps.mappingExecution}
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span>Tazama Validation:</span>
-                <span className={`font-medium ${simulationResult.summary.validationSteps.tazamaValidation === 'PASSED' ? 'text-green-600' : 'text-red-600'}`}>
-                  {simulationResult.summary.validationSteps.tazamaValidation}
                 </span>
               </div>
               <div className="flex items-center justify-between text-sm">

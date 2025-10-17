@@ -12,7 +12,7 @@ export type EndpointStatus =
 // Workflow status
 export const WORKFLOW_STATUS = {
   ACTIVE: 'active',
-  PAUSED: 'paused',
+  PAUSED: 'in-active',
 } as const;
 
 export type WorkflowStatus =

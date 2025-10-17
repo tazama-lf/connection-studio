@@ -706,12 +706,16 @@ interface EditEndpointModalProps {
         
         let response: ConfigResponse;
         
-        if (isNewEndpoint) {
-          console.log('Creating new config...');
+        // Determine actual config ID to use
+        const actualConfigId = createdEndpoint?.id || existingConfig?.id || endpointId;
+        const shouldCreate = !createdEndpoint && !existingConfig && isNewEndpoint;
+        
+        if (shouldCreate) {
+          console.log('Creating NEW config...');
           response = await configApi.createConfig(createRequest);
         } else {
-          console.log('Updating existing config with ID:', endpointId);
-          response = await configApi.updateConfig(endpointId, createRequest);
+          console.log('Updating EXISTING config with ID:', actualConfigId);
+          response = await configApi.updateConfig(actualConfigId, createRequest);
         }
         
         console.log('Save API Response:', response);
@@ -912,6 +916,16 @@ interface EditEndpointModalProps {
                   onMappingChange={setIsMappingValid} 
                   onMappingDataChange={setMappingData}
                   onCurrentMappingsChange={setCurrentMappings}
+                  onConfigUpdate={(config) => {
+                    console.log('🔄 Updating createdEndpoint with config from MappingUtility:', config);
+                    if (createdEndpoint) {
+                      setCreatedEndpoint({
+                        ...createdEndpoint,
+                        mapping: config.mapping || [],
+                        schema: config.schema || createdEndpoint.schema,
+                      });
+                    }
+                  }}
                   sourceSchema={createdEndpoint?.schema || inferredSchema?.schema || existingConfig?.schema}
                   templateType="Acmt.023"
                   configId={createdEndpoint?.id || existingConfig?.id}
@@ -988,8 +1002,15 @@ interface EditEndpointModalProps {
 
                 {/* Add Function Modal */}
                 {showAddFunctionModal && (
-                  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 backdrop-blur-sm">
-                    <div className="bg-white rounded-lg p-6 w-full max-w-2xl">
+                  <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    {/* Enhanced blurred backdrop - matching other modals */}
+                    <div 
+                      className="fixed inset-0 backdrop-blur-sm backdrop-saturate-150 z-40" 
+                      onClick={() => setShowAddFunctionModal(false)}
+                    />
+                    
+                    {/* Modal Content - Higher z-index to appear above backdrop */}
+                    <div className="bg-white rounded-lg p-6 w-full max-w-2xl relative z-50 shadow-2xl">
                       <div className="flex justify-between items-center mb-4">
                         <h3 className="text-lg font-semibold">Add Function</h3>
                         <button 

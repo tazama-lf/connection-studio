@@ -18,6 +18,7 @@ export interface SimulationError {
 export interface SimulationResult {
   status: 'PASSED' | 'FAILED';
   errors: SimulationError[];
+  tcsResult: any | null; // TCS mapping result from tcs-lib
   transformedPayload: Record<string, unknown>;
   summary: {
     endpointId: number;
@@ -26,9 +27,8 @@ export interface SimulationResult {
     validatedBy?: string;
     mappingsApplied: number;
     validationSteps: {
-      schemaValidation: 'PASSED' | 'FAILED';
+      payloadParsing: 'PASSED' | 'FAILED';
       mappingExecution: 'PASSED' | 'FAILED';
-      tazamaValidation: 'PASSED' | 'FAILED';
     };
   };
 }

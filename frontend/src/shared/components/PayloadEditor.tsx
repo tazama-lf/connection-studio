@@ -71,6 +71,10 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
     required: false
   });
 
+  // State for payload validation
+  const [isPayloadValid, setIsPayloadValid] = useState<boolean>(false);
+  const [payloadValidationMessage, setPayloadValidationMessage] = useState<string>('');
+
   // Helper function for capitalizing strings
   const capitalizeFirstLetter = (string: string): string => {
     return string.charAt(0).toUpperCase() + string.slice(1).toLowerCase();
@@ -214,6 +218,11 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
 
   // Manual generation function for new connections
   const handleGenerateFields = async () => {
+    console.log('🔄 handleGenerateFields called');
+    console.log('📄 Current payload value:', value);
+    console.log('📏 Payload length:', value?.length);
+    console.log('🎨 Content type:', endpointData.contentType);
+    
     if (!value.trim()) {
       setFieldGenerationError('Please enter a payload first.');
       return;
@@ -223,8 +232,10 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
     setFieldGenerationError(null);
 
     try {
+      console.log('🔍 Generating schema from payload...');
       // Generate schema from the current payload
       const schema = generateSchemaFromPayload(value, endpointData.contentType);
+      console.log('✅ Generated schema:', schema);
       
       if (schema) {
         // Convert schema to InferredField format for display
@@ -249,29 +260,80 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
         };
 
         const fields = convertSchemaToFields(schema);
+        console.log('✅ Converted to inferred fields:', fields);
+        console.log('📊 Total fields generated:', fields.length);
+        
         setInferredFields(fields);
         setShowInferredFields(true);
+        setHasUserMadeEdits(true); // Mark that fields have been generated/regenerated
         
-        console.log('Manually generated schema from payload:', fields);
+        console.log('✅ Fields successfully set in state');
       } else {
+        console.error('❌ Schema generation returned null');
         setFieldGenerationError('Failed to generate schema from payload');
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error('❌ Schema inference error:', error);
       setFieldGenerationError(`Schema inference failed: ${errorMessage}`);
-      console.error('Schema inference error:', error);
     } finally {
       setIsGeneratingFields(false);
     }
   };
 
-  const handleEndpointDataChange = (field: keyof EndpointFormData, value: string) => {
-    const updatedData = { ...endpointData, [field]: value };
+  const handleEndpointDataChange = (field: keyof EndpointFormData, newValue: string) => {
+    const updatedData = { ...endpointData, [field]: newValue };
     setEndpointData(updatedData);
     if (onEndpointDataChange) {
       onEndpointDataChange(updatedData);
     }
+    
+    // If content type changed, re-validate the payload
+    if (field === 'contentType') {
+      validatePayload(value || '', newValue);
+    }
   };
+
+  // Validation function to check if payload is valid JSON or XML
+  const validatePayload = (payloadValue: string, contentType: string) => {
+    if (!payloadValue || !payloadValue.trim()) {
+      setIsPayloadValid(false);
+      setPayloadValidationMessage('');
+      return;
+    }
+
+    if (contentType === 'application/json') {
+      try {
+        JSON.parse(payloadValue);
+        setIsPayloadValid(true);
+        setPayloadValidationMessage('Valid JSON format detected');
+      } catch (e) {
+        setIsPayloadValid(false);
+        setPayloadValidationMessage('Invalid JSON format');
+      }
+    } else if (contentType === 'application/xml') {
+      try {
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(payloadValue, 'text/xml');
+        const parseError = xmlDoc.getElementsByTagName('parsererror');
+        if (parseError.length > 0) {
+          setIsPayloadValid(false);
+          setPayloadValidationMessage('Invalid XML format');
+        } else {
+          setIsPayloadValid(true);
+          setPayloadValidationMessage('Valid XML format detected');
+        }
+      } catch (e) {
+        setIsPayloadValid(false);
+        setPayloadValidationMessage('Invalid XML format');
+      }
+    }
+  };
+
+  // Validate payload when it changes or when component mounts
+  useEffect(() => {
+    validatePayload(value, endpointData.contentType);
+  }, [value, endpointData.contentType]);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -305,14 +367,8 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
         }
         
         // Generate comprehensive XML schema starting from root
-        // xml2js creates: { "Document": { "xmlns": "...", "FIToFICstmrCdtTrf": {...} } }
-        // But validation expects the Document's children to be at the root level
+        // Keep the root element (e.g., university, transaction) in the schema
         const rootSchema = generateXMLSchema(xmlDoc.documentElement);
-        
-        // Extract the children from the Document element to match xml2js + validation expectations
-        if (rootSchema.length > 0 && rootSchema[0].children) {
-          return rootSchema[0].children;
-        }
         
         return rootSchema;
       } catch (e) {
@@ -424,8 +480,11 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
           
           if (elements.length > 0) {
             // Use first element as template for array items
+            // Generate schema but only use the children, not the element wrapper itself
             const templateSchema = generateXMLSchema(elements[0], `${fieldPath}.${tagName}[0]`);
-            if (templateSchema.length > 0) {
+            if (templateSchema.length > 0 && templateSchema[0].children) {
+              // Extract only the children to avoid duplicate nesting
+              // (disciplines.discipline -> just the children of discipline, not discipline itself)
               arrayField.children = templateSchema[0].children;
             }
           }
@@ -769,10 +828,10 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
           </div>
 
           {/* Format Validation Status */}
-          {value && (
-            <div className="p-3 bg-green-50 border border-green-200 rounded-md">
-              <p className="text-sm text-green-700">
-                Valid {endpointData.contentType === 'application/json' ? 'JSON' : 'XML'} format detected
+          {payloadValidationMessage && (
+            <div className={`p-3 ${isPayloadValid ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'} border rounded-md`}>
+              <p className={`text-sm ${isPayloadValid ? 'text-green-700' : 'text-red-700'}`}>
+                {payloadValidationMessage}
               </p>
             </div>
           )}
@@ -922,12 +981,11 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
                               onChange={(e) => setNewField(prev => ({ ...prev, type: e.target.value as InferredField['type'] }))}
                               className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm"
                             >
-                              <option value="String">Text</option>
+                              <option value="String">String</option>
                               <option value="Number">Number</option>
                               <option value="Boolean">Boolean</option>
                               <option value="Object">Object</option>
                               <option value="Array">Array</option>
-                              <option value="Date">Date</option>
                             </select>
                           </div>
 
@@ -1031,12 +1089,11 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
                           onChange={(e) => setNewField(prev => ({ ...prev, type: e.target.value as InferredField['type'] }))}
                           className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         >
-                          <option value="String">Text</option>
+                          <option value="String">String</option>
                           <option value="Number">Number</option>
                           <option value="Boolean">Boolean</option>
                           <option value="Object">Object</option>
                           <option value="Array">Array</option>
-                          <option value="Date">Date</option>
                         </select>
                       </div>
 
@@ -1113,12 +1170,11 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
                         }}
                         className="w-full px-2 py-1.5 bg-white border border-gray-200 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       >
-                        <option value="String">Text</option>
+                        <option value="String">String</option>
                         <option value="Number">Number</option>
                         <option value="Boolean">Boolean</option>
                         <option value="Object">Object</option>
                         <option value="Array">Array</option>
-                        <option value="Date">Date</option>
                       </select>
                     </div>
                     <div className="col-span-3 flex items-center justify-between">

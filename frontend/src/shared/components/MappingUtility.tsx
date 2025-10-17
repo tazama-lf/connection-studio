@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ArrowRightIcon, PlusIcon, XIcon, ChevronRightIcon, FolderIcon, DatabaseIcon, ServerIcon } from 'lucide-react';
 import { Button } from './Button';
 import { configApi, type AddMappingRequest, type FieldMapping } from '../../features/config/services/configApi';
-import { dataModelApi, type DestinationOption, ExtensionManagement } from '../../features/data-model';
+import { dataModelApi, type DestinationOption } from '../../features/data-model';
 
 /**
  * MappingUtility Component - Updated for Tazama Integration
@@ -28,6 +28,7 @@ interface MappingUtilityProps {
   onMappingChange: (isValid: boolean) => void;
   onMappingDataChange?: (mappingData: MappingData) => void;
   onCurrentMappingsChange?: (mappings: FieldMapping[]) => void; // NEW: Expose current mappings to parent
+  onConfigUpdate?: (config: any) => void; // NEW: Callback to update parent config
   sourceSchema?: Array<{
     name: string;
     path: string;
@@ -64,6 +65,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
   onMappingChange,
   onMappingDataChange,
   onCurrentMappingsChange,
+  onConfigUpdate,
   sourceSchema,
   configId,
   existingMappings = []
@@ -82,24 +84,31 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
   useEffect(() => {
     console.log('🔄 MappingUtility - existingMappings changed:', existingMappings);
     console.log('🔄 MappingUtility - existingMappings length:', existingMappings.length);
+    console.log('🔄 MappingUtility - About to set currentMappings to existingMappings');
     setCurrentMappings(existingMappings);
     validateMappings(existingMappings);
+    console.log('🔄 MappingUtility - currentMappings set to existingMappings');
   }, [existingMappings]);
 
   // Fetch current mappings from backend on component mount if configId is available
   useEffect(() => {
+    console.log('🔄 MappingUtility - configId changed:', configId);
     if (configId) {
+      console.log('🔄 MappingUtility - configId is available, fetching mappings...');
       fetchCurrentMappings();
+    } else {
+      console.log('🔄 MappingUtility - configId not available yet, skipping fetch');
     }
   }, [configId]);
 
   // Expose current mappings to parent component whenever they change
   useEffect(() => {
     console.log('📤 MappingUtility - Sending current mappings to parent:', currentMappings);
+    console.log('📤 MappingUtility - Current mappings length:', currentMappings.length);
     if (onCurrentMappingsChange) {
       onCurrentMappingsChange(currentMappings);
     }
-  }, [currentMappings, onCurrentMappingsChange]);
+  }, [currentMappings]); // Removed onCurrentMappingsChange from deps to prevent infinite loop
 
   // Function to fetch current config and refresh mappings
   const fetchCurrentMappings = async () => {
@@ -114,15 +123,17 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       
       if (response.success && response.config) {
         const mappings = response.config.mapping || [];
-        console.log('🔄 MappingUtility - Fetched mappings from backend:', mappings);
-        console.log('🔄 MappingUtility - Mappings count:', mappings.length);
+        console.log('✅ MappingUtility - Fetched mappings from backend:', mappings);
+        console.log('✅ MappingUtility - Mappings count:', mappings.length);
+        console.log('✅ MappingUtility - About to call setCurrentMappings with:', mappings);
         setCurrentMappings(mappings);
         validateMappings(mappings);
+        console.log('✅ MappingUtility - setCurrentMappings and validateMappings called successfully');
       } else {
-        console.error('🔄 MappingUtility - Failed to fetch config:', response.message);
+        console.error('❌ MappingUtility - Failed to fetch config:', response.message);
       }
     } catch (error) {
-      console.error('🔄 MappingUtility - Error fetching config:', error);
+      console.error('❌ MappingUtility - Error fetching config:', error);
     }
   };
 
@@ -174,22 +185,30 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
         sources: mapping.transformFunction === 'concatenate' ? mapping.source : undefined,
         destinations: mapping.transformFunction === 'split' ? mapping.destination : undefined,
         delimiter: mapping.transformFunction === 'split' ? delimiter : undefined,
-        separator: mapping.transformFunction === 'concatenate' ? ' ' : undefined,
+        separator: mapping.transformFunction === 'concatenate' ? delimiter : undefined,
       };
 
       console.log('Saving mapping to backend:', mappingRequest);
       const response = await configApi.addMapping(configId, mappingRequest);
       
+      console.log('✅ Backend response from addMapping:', response);
+      console.log('✅ Response success:', response.success);
+      console.log('✅ Response config:', response.config);
+      console.log('✅ Response config mapping:', response.config?.mapping);
+      
       if (response.success && response.config) {
-        // Update local state with new mappings
+        console.log('✅ Mapping saved successfully, backend returned config with mappings');
+        
+        // IMMEDIATE UPDATE: Use the mappings from the response immediately
         const newMappings = response.config.mapping || [];
-        console.log('🔄 MappingUtility - Setting new mappings after successful save:', newMappings);
-        console.log('🔄 MappingUtility - New mappings length:', newMappings.length);
+        console.log('✅ Setting mappings from response:', newMappings.length, 'mappings');
+        console.log('✅ New mappings content:', newMappings);
         setCurrentMappings(newMappings);
+        console.log('✅ setCurrentMappings called with:', newMappings);
+        console.log('✅ After setCurrentMappings, currentMappings should be:', newMappings);
         validateMappings(newMappings);
         
-        // Also fetch fresh data from backend to ensure we have the latest state
-        await fetchCurrentMappings();
+        console.log('✅ Mappings updated immediately from API response');
         
         // Update parent component with mapping data
         if (onMappingDataChange && response.config) {
@@ -201,14 +220,22 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                 type: config.schema.properties?.[key]?.type || 'string',
                 isRequired: Array.isArray(config.schema?.required) && config.schema.required.includes(key) || false,
               })) : [],
-            destinationFields: (config.mapping || []).map((m: FieldMapping) => ({
-              path: m.destination || '',
-              type: 'string',
-              isRequired: false,
-            })),
+            destinationFields: (config.mapping || []).flatMap((m: FieldMapping) => {
+              const destinations = Array.isArray(m.destination) ? m.destination : [m.destination || ''];
+              return destinations.map(dest => ({
+                path: dest,
+                type: 'string',
+                isRequired: false,
+              }));
+            }),
             transformation: 'NONE',
             constants: {},
           });
+        }
+
+        // Update parent config
+        if (onConfigUpdate && response.config) {
+          onConfigUpdate(response.config);
         }
         
         console.log('Mapping saved successfully');
@@ -244,9 +271,6 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
         const newMappings = response.config.mapping || [];
         setCurrentMappings(newMappings);
         validateMappings(newMappings);
-        
-        // Also fetch fresh data from backend to ensure we have the latest state
-        await fetchCurrentMappings();
         
         console.log('Mapping removed successfully');
         return true;
@@ -302,18 +326,46 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
   const buildSourceTreeFromArray = (schemaArray: any[]): TreeNode[] => {
     if (!schemaArray || !Array.isArray(schemaArray)) return [];
     
-    return schemaArray.map((field) => {
+    // Build a tree structure from flat array of schema fields
+    const nodeMap = new Map<string, TreeNode>();
+    const rootNodes: TreeNode[] = [];
+    
+    // First pass: create all nodes
+    schemaArray.forEach((field) => {
       const pathParts = field.path ? field.path.split('.') : [field.name || 'unknown'];
-      
       const node: TreeNode = {
         id: field.path || field.name || 'unknown',
         name: field.name || pathParts[pathParts.length - 1] || 'unknown',
         path: pathParts,
-        type: field.type?.toLowerCase() || 'string'
+        type: field.type?.toLowerCase() || 'string',
+        children: []
       };
-      
-      return node;
+      nodeMap.set(node.id, node);
     });
+    
+    // Second pass: build parent-child relationships
+    nodeMap.forEach((node, nodeId) => {
+      const pathParts = nodeId.split('.');
+      if (pathParts.length === 1) {
+        // Top-level node
+        rootNodes.push(node);
+      } else {
+        // Child node - find parent
+        const parentPath = pathParts.slice(0, -1).join('.');
+        const parentNode = nodeMap.get(parentPath);
+        if (parentNode) {
+          if (!parentNode.children) {
+            parentNode.children = [];
+          }
+          parentNode.children.push(node);
+        } else {
+          // Parent not found, treat as root
+          rootNodes.push(node);
+        }
+      }
+    });
+    
+    return rootNodes;
   };
 
   // Generate source tree from the provided schema
@@ -419,7 +471,6 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
   const [selectedSources, setSelectedSources] = useState<string[]>([]);
   const [selectedDestinations, setSelectedDestinations] = useState<string[]>([]);
   const [selectedDestinationType, setSelectedDestinationType] = useState<'database' | 'valkey' | 'model'>('database');
-  const [activeTab, setActiveTab] = useState<'mapping' | 'extensions'>('mapping');
   const [selectedTransformation, setSelectedTransformation] = useState<'concatenate' | 'sum' | 'split' | 'none'>('none');
   const [delimiter, setDelimiter] = useState<string>(' ');
   
@@ -447,18 +498,6 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
     setDelimiter(' '); // Reset delimiter to default
     setMappingError(null); // Clear any previous errors
     setShowAddMapping(true);
-  };
-
-
-  // Handle extension changes - refresh destination options when extensions are modified
-  const handleExtensionChange = async () => {
-    try {
-      // Refresh destination options to include new/updated extensions
-      await fetchDestinationOptions();
-      console.log('Destination options refreshed after extension change');
-    } catch (error) {
-      console.error('Error refreshing destination options:', error);
-    }
   };
 
   const toggleSourceNode = (nodeId: string) => {
@@ -736,7 +775,12 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
           <div className="text-red-800 text-sm">{mappingError}</div>
         </div>
       )}
-      
+        <div className="flex justify-between items-center mb-4" data-id="element-272">
+        <h3 className="text-lg font-medium text-gray-900" data-id="element-273">Field Mapping</h3>
+        <Button variant="secondary" size="sm" onClick={addNewMapping} icon={<PlusIcon size={16} data-id="element-279" />} data-id="element-278">
+          Add Mapping
+        </Button>
+      </div>
       {/* Current Mappings Display */}
       {(() => {
         console.log('🎨 MappingUtility RENDER - currentMappings:', currentMappings);
@@ -747,13 +791,18 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
         <div className="bg-green-50 border border-green-200 rounded-md p-4">
           <h4 className="text-sm font-medium text-green-800 mb-2">Current Mappings ({currentMappings.length})</h4>
           <div className="space-y-2">
+            {(() => {
+              console.log('🎨 RENDERING Current Mappings section, currentMappings:', currentMappings);
+              return null;
+            })()}
             {currentMappings.map((mapping, index) => (
               <div key={index} className="flex items-center justify-between bg-white p-2 rounded border">
                 <div className="flex items-center space-x-2">
                   <span className="text-sm text-gray-600">
-                    {mapping.sources ? mapping.sources.join(' + ') : mapping.source} 
+                    {mapping.sources ? mapping.sources.join(' + ') : 
+                     Array.isArray(mapping.source) ? mapping.source.join(' + ') : mapping.source} 
                     <ArrowRightIcon size={16} className="inline mx-2" />
-                    {mapping.destination}
+                    {Array.isArray(mapping.destination) ? mapping.destination.join(' + ') : mapping.destination}
                   </span>
                   {mapping.separator && (
                     <span className="text-xs text-gray-500">({mapping.separator})</span>
@@ -773,61 +822,16 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
         </div>
       )}
       
-      <div className="flex justify-between items-center" data-id="element-272">
-        <h3 className="text-lg font-medium text-gray-900" data-id="element-273">Field Mapping</h3>
-        <div className="flex space-x-2" data-id="element-274">
-          <button onClick={() => setActiveTab('mapping')} className={`px-4 py-2 text-sm font-medium rounded-md ${activeTab === 'mapping' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'}`} data-id="element-275">
-            Mappings
-          </button>
-          <button onClick={() => setActiveTab('extensions')} className={`px-4 py-2 text-sm font-medium rounded-md ${activeTab === 'extensions' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'}`} data-id="element-276">
-            Data Model Extensions
-          </button>
+    
+      
+      {currentMappings.length === 0 ? (
+        <div className="text-center py-12 text-gray-500">
+          <p className="text-sm">No mappings created yet.</p>
+          <p className="text-xs mt-1">Click "Add Mapping" to get started.</p>
         </div>
-      </div>
-      {activeTab === 'mapping' ? <>
-          <div className="flex justify-between items-center mb-4" data-id="element-277">
-            {/* <Button 
-              variant="secondary" 
-              size="sm" 
-              onClick={fetchCurrentMappings}
-              disabled={!configId}
-            >
-              Refresh Mappings
-            </Button> */}
-            <Button variant="secondary" size="sm" onClick={addNewMapping} icon={<PlusIcon size={16} data-id="element-279" />} data-id="element-278">
-              Add Mapping
-            </Button>
-          </div>
-          {currentMappings.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
-              <p className="text-sm">No mappings created yet.</p>
-              <p className="text-xs mt-1">Click "Add Mapping" to get started.</p>
-            </div>
-          ) : null}
-        </> : <>
-          <ExtensionManagement onExtensionChange={handleExtensionChange} />
-        </>}
-      {/* Mapping Summary */}
-      {activeTab === 'mapping' && currentMappings.length > 0 && <div className="mt-6 p-4 bg-gray-50 rounded-md border border-gray-200" data-id="element-338">
-          <h4 className="text-sm font-medium text-gray-700 mb-2" data-id="element-339">
-            Mapping Summary
-          </h4>
-          <div className="space-y-2" data-id="element-340">
-            {currentMappings.map((mapping, index) => <div key={index} className="text-sm text-gray-600" data-id="element-341">
-                <span className="font-medium" data-id="element-342">
-                  {mapping.sources ? mapping.sources.join(' + ') : mapping.source}
-                </span>
-                {mapping.separator && <span className="text-gray-400" data-id="element-343">
-                    {' '}
-                    ({mapping.separator}){' '}
-                  </span>}
-                →{' '}
-                <span className="font-medium" data-id="element-344">
-                  {mapping.destination}
-                </span>
-              </div>)}
-          </div>
-        </div>}
+      ) : null}
+      
+     
       {/* Add Mapping Modal */}
       {renderAddMappingModal()}
     </div>;

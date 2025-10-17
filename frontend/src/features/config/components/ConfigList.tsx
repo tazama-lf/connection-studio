@@ -74,7 +74,6 @@ export const ConfigList: React.FC<ConfigListProps> = ({
     const matchesSearch = searchTerm === '' || 
       config.transactionType.toLowerCase().includes(searchTerm.toLowerCase()) ||
       config.endpointPath.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      config.tenantId.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (config.msgFam && config.msgFam.toLowerCase().includes(searchTerm.toLowerCase()));
       
     return matchesSearch;
@@ -209,9 +208,6 @@ export const ConfigList: React.FC<ConfigListProps> = ({
                 ENDPOINT PATH
               </th>
               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                TENANT ID
-              </th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                 STATUS
               </th>
               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
@@ -225,7 +221,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
           <tbody className="bg-white">
             {paginatedConfigs.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
                   {configs.length === 0 ? 'No configurations found' : 'No configurations match your search criteria'}
                 </td>
               </tr>
@@ -234,9 +230,6 @@ export const ConfigList: React.FC<ConfigListProps> = ({
                 <tr key={config.id} className="border-b border-gray-200 hover:bg-gray-50">
                   <td className="px-6 py-4 text-sm font-medium text-gray-900">
                     {config.endpointPath}
-                  </td>
-                  <td className="px-6 py-4 text-sm font-medium text-gray-700">
-                    {config.tenantId}
                   </td>
                   <td className="px-6 py-4">
                     <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${getStatusBadge(config.status)}`}>

@@ -1,5 +1,5 @@
 // Function-related types matching backend interfaces
-export type AllowedFunctionName = 'addAccount' | 'handleTransaction' | 'AddEntity';
+export type AllowedFunctionName = 'addAccount' | 'addAccountHolder' | 'addEntity';
 
 export interface FunctionDefinition {
   params: string[];
@@ -64,26 +64,25 @@ export const FUNCTION_CONFIGS: Record<AllowedFunctionName, FunctionConfig> = {
       }
     ]
   },
-  handleTransaction: {
-    name: 'handleTransaction',
-    displayName: 'Handle Transaction',
+  addAccountHolder: {
+    name: 'addAccountHolder',
+    displayName: 'Add Account Holder',
     parameters: [
-      { name: 'transactionId', displayName: 'Transaction ID', type: 'string', description: 'Transaction identifier' },
-      { name: 'amount', displayName: 'Amount', type: 'string', description: 'Transaction amount' },
-      { name: 'currency', displayName: 'Currency', type: 'string', description: 'Currency code' },
+      { name: 'accountHolderId', displayName: 'Account Holder ID', type: 'string', description: 'Account holder identifier' },
+      { name: 'name', displayName: 'Name', type: 'string', description: 'Account holder name' },
       { name: 'tenantId', displayName: 'Tenant ID', type: 'string', description: 'Tenant identifier' }
     ],
     configurations: [
       {
-        name: 'process-transaction',
-        displayName: 'Process Transaction',
-        parameters: 'transactionId, amount, currency, tenantId',
-        description: 'Parameters: transactionId, amount, currency, tenantId'
+        name: 'create-account-holder',
+        displayName: 'Create Account Holder',
+        parameters: 'accountHolderId, name, tenantId',
+        description: 'Parameters: accountHolderId, name, tenantId'
       }
     ]
   },
-  AddEntity: {
-    name: 'AddEntity',
+  addEntity: {
+    name: 'addEntity',
     displayName: 'Add Entity',
     parameters: [
       { name: 'creditorId', displayName: 'Creditor ID', type: 'string', description: 'Entity identifier for creditor' },
