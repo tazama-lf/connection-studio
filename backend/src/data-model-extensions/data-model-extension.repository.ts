@@ -110,6 +110,22 @@ export class DataModelExtensionRepository {
   async delete(id: number, tenantId: string): Promise<void> {
     await this.knex(this.tableName).where({ id, tenant_id: tenantId }).delete();
   }
+  private safeJsonParse(value: string): any {
+    try {
+      return JSON.parse(value);
+    } catch (error) {
+      this.logger.warn(`Failed to parse JSON value: "${value}". Error: ${error.message}`);
+      // Return the original string value if it cannot be parsed as JSON
+      return value;
+    }
+  }
+
+
+
+
+
+
+
 
   private mapToExtension(row: any): TazamaDataModelExtension {
     return {
@@ -121,11 +137,11 @@ export class DataModelExtensionRepository {
       isRequired: row.is_required,
       defaultValue:
         row.default_value && typeof row.default_value === 'string'
-          ? JSON.parse(row.default_value)
+          ? this.safeJsonParse(row.default_value)
           : row.default_value,
       validation:
         row.validation && typeof row.validation === 'string'
-          ? JSON.parse(row.validation)
+          ? this.safeJsonParse(row.validation)
           : row.validation,
       tenantId: row.tenant_id,
       createdBy: row.created_by,
