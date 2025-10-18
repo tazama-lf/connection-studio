@@ -171,6 +171,7 @@ export class TazamaDataModelService {
       'account_holder',
       'transactionRelationship',
       'transactionHistory',
+      'redis',
     ];
     if (validCollections.includes(collectionName as TazamaCollectionName)) {
       return collectionName as TazamaCollectionName;
