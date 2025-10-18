@@ -20,7 +20,7 @@ export class SchedulerController {
         return this.schedulerService.findAll(page, limit);
     }
 
-    @Patch('/:id')
+    @Patch('/update/:id')
     async update(@Param('id') id: string, @Body() body: UpdateScheduleJobDto) {
         return this.schedulerService.update(parseInt(id), body);
     }

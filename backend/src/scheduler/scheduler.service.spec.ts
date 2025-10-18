@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { SchedulerService } from './scheduler.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
+import { DatabaseService } from '../database/database.service';
 
 describe('SchedulerService', () => {
   let service: SchedulerService;
@@ -19,6 +20,12 @@ describe('SchedulerService', () => {
             error: jest.fn(),
           },
         },
+        {
+          provide: DatabaseService,
+          useValue: {
+            query: jest.fn()
+          }
+        }
       ],
     }).compile();
 

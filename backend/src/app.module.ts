@@ -16,6 +16,8 @@ import { APP_INTERCEPTOR } from '@nestjs/core';
 import { TokenExpiryInterceptor } from './auth/token-expiry.interceptor';
 import { AuditInterceptor } from './audit/audit.interceptor';
 import { SchedulerModule } from './scheduler/scheduler.module';
+import { JobModule } from './job/job.module';
+import { DatabaseModule } from './database/database.module';
 
 @Module({
   imports: [
@@ -34,6 +36,8 @@ import { SchedulerModule } from './scheduler/scheduler.module';
     DataModelExtensionModule,
     FlowableModule,
     SchedulerModule,
+    JobModule,
+    DatabaseModule,
   ],
   controllers: [AppController],
   providers: [

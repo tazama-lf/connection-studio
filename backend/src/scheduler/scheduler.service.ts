@@ -1,32 +1,46 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import { Knex } from 'knex';
-import { CreateScheduleJobDto } from './dto/create-schedule.dto';
-import { Schedule } from './types/scheduler-interfaces';
-import { ScheduleDto } from './dto/schedule.dto';
+import { DatabaseService } from '../database/database.service';
 import { ISuccess } from 'src/utils/interfaces';
 import { validateCronExpression } from '../utils/helpers';
+import { CreateScheduleJobDto } from './dto/create-schedule.dto';
+import { ScheduleDto } from './dto/schedule.dto';
+import { Schedule } from './types/scheduler-interfaces';
 
 @Injectable()
 export class SchedulerService {
 
-    constructor(@Inject('KNEX_CONNECTION') private readonly knex: Knex, private readonly loggerService: LoggerService) { }
+    constructor(private readonly db: DatabaseService, private readonly loggerService: LoggerService) { }
 
     async create(schedule: CreateScheduleJobDto): Promise<ISuccess> {
         try {
             validateCronExpression(schedule.cron);
 
-            const existing = await this.knex('schedule')
-                .where({ name: schedule.name })
-                .first();
-            if (existing) {
+            const res = await this.db.query(
+                `SELECT * FROM schedule WHERE name = $1 LIMIT 1;`,
+                [schedule.name]
+            );
+
+            if (res.length) {
                 throw new BadRequestException(`Schedule with name '${schedule.name}' already exists.`);
             }
 
-            const [result] = await this.knex('schedule').insert(schedule).returning('id');
+            const keys = Object.keys(schedule);
+            const values = Object.values(schedule);
+            const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
+
+            const insertQuery = `
+      INSERT INTO schedule (${keys.join(', ')})
+      VALUES (${placeholders})
+      RETURNING id;
+    `;
+            const result = await this.db.query(insertQuery, values);
+            const insertedId = result.rows[0].id;
+
+
             return {
                 success: true,
-                message: `Schedule with id ${result.id} successfully crreated`,
+                message: `Schedule with id ${insertedId} successfully created`,
             }
         } catch (error) {
             this.loggerService.error(`Error While Creating Schedule : ${error.message}`)
@@ -35,7 +49,9 @@ export class SchedulerService {
     }
 
     async findOne(id: number): Promise<Schedule> {
-        const schedule = await this.knex<Schedule>('schedule').where({ id }).first();
+        const query = `SELECT * FROM schedule WHERE id = $1 LIMIT 1;`;
+        const result = await this.db.query(query, [id]);
+        const schedule = result.rows[0] || null;
         if (!schedule) {
             throw new NotFoundException(`Configuration with id ${id} not found`);
         }
@@ -49,16 +65,27 @@ export class SchedulerService {
         }
 
         const offset = (page - 1) * limit;
-        const data = await this.knex('schedule')
-            .select('*')
-            .limit(limit)
-            .offset(offset);
+        const result = await this.db.query(
+            `SELECT * FROM schedule LIMIT $1 OFFSET $2;`,
+            [limit, offset]
+        );
+
+        const data = result.rows;
 
         return data;
     }
 
     async update(id: number, attr: Partial<ScheduleDto>): Promise<ISuccess> {
-        const updatedRows = await this.knex<Schedule>('schedule').where({ id }).update(attr);
+
+        const keys = Object.keys(attr);
+        const values = Object.values(attr);
+        const setClause = keys.map((key, i) => `${key} = $${i + 1}`).join(', ');
+        const query = `UPDATE schedule SET ${setClause} WHERE id = $${keys.length + 1};`;
+
+        const result = await this.db.query(query, [...values, id]);
+
+        const updatedRows = result.rowCount;
+
         if (updatedRows === 0) {
             throw new NotFoundException(`Schedule with id ${id} not found or no changes were made`);
         }
