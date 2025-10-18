@@ -14,6 +14,7 @@ interface PayloadEditorProps {
   existingSchemaFields?: SchemaField[]; // Existing schema fields when editing
   isEditMode?: boolean; // Explicitly control whether to show Add/Remove field buttons
   tenantId?: string; // Tenant ID for endpoint preview
+  readOnly?: boolean; // When true, disable all editing functionality
 }
 
 interface EndpointFormData {
@@ -42,7 +43,8 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
   onSchemaChange,
   existingSchemaFields,
   isEditMode = false, // Default to false - only true when explicitly editing existing config
-  tenantId = 'tenant-id' // Default placeholder if not provided
+  tenantId = 'tenant-id', // Default placeholder if not provided
+  readOnly = false
 }) => {
 
   
@@ -676,6 +678,7 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
               onChange={(e) => handleEndpointDataChange('version', e.target.value)}
               placeholder="1.0"
               className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+              readOnly={readOnly}
             />
           </div>
 
@@ -691,6 +694,7 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
               onChange={(e) => handleEndpointDataChange('transactionType', e.target.value)}
               placeholder="e.g., pacs.008, pain.001"
               className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+              readOnly={readOnly}
             />
            
           </div>
@@ -707,6 +711,7 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
               onChange={(e) => handleEndpointDataChange('msgFam', e.target.value)}
               placeholder="optional"
               className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+              readOnly={readOnly}
             />
           </div>
 
@@ -720,6 +725,7 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
               value={endpointData.contentType}
               onChange={(e) => handleEndpointDataChange('contentType', e.target.value)}
               className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+              disabled={readOnly}
             >
               <option value="application/json">application/json</option>
               <option value="application/xml">application/xml</option>
@@ -792,7 +798,7 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
       </div>
 
       {/* Sample Payload Buttons - Only show when NOT in edit mode */}
-      {!isEditMode && !value && (
+      {!isEditMode && !value && !readOnly && (
         <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
           <p className="text-sm text-blue-700 mb-2">Need a starting point? Try these sample payloads:</p>
           <div className="flex space-x-2">
@@ -824,6 +830,7 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
               className="w-full h-96 p-4 font-mono text-sm bg-gray-50"
               spellCheck="false" 
               placeholder={`Enter your ${endpointData.contentType === 'application/json' ? 'JSON' : 'XML'} payload here...`}
+              readOnly={readOnly}
             />
           </div>
 
@@ -850,7 +857,7 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
                 <Button
                   variant="primary"
                   onClick={handleGenerateFields}
-                  disabled={isGeneratingFields || !value.trim()}
+                  disabled={isGeneratingFields || !value.trim() || readOnly}
                   icon={<SparklesIcon size={16} />}
                 >
                   {isGeneratingFields ? 'Generating...' : inferredFields.length > 0 ? 'Regenerate Fields' : 'Generate Fields'}

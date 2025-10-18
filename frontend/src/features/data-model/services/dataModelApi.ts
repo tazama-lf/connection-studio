@@ -50,16 +50,36 @@ export interface DataModelExtension {
   fieldType: TazamaFieldType;
   description?: string;
   isRequired: boolean;
-  defaultValue?: unknown;
+  defaultValue?: any;
   validation?: {
     pattern?: string;
     min?: number;
     max?: number;
-    enum?: unknown[];
+    enum?: any[];
   };
   tenantId: string;
   createdBy: string;
-  createdAt: string;
+  createdAt: Date | string;
+  version: number;
+}
+
+export interface DataModelExtension {
+  id: number;
+  collection: TazamaCollectionName;
+  fieldName: string;
+  fieldType: TazamaFieldType;
+  description?: string;
+  isRequired: boolean;
+  defaultValue?: any;
+  validation?: {
+    pattern?: string;
+    min?: number;
+    max?: number;
+    enum?: any[];
+  };
+  tenantId: string;
+  createdBy: string;
+  createdAt: Date | string;
   version: number;
 }
 
@@ -181,18 +201,18 @@ class DataModelApiService {
    * Get destination options formatted for UI dropdowns (includes base model + extensions)
    */
   async getDestinationOptions(): Promise<
-    DataModelApiResponse & { options?: DestinationOption[] }
+    DataModelApiResponse & { data?: DestinationOption[] }
   > {
     try {
       const response = await fetch(
-        `${this.baseURL}/data-model/destination-options`,
+        `${this.baseURL}/tazama-data-model/destination-options`,
         {
           method: 'GET',
           headers: this.getAuthHeaders(),
         },
       );
       return this.handleResponse<
-        DataModelApiResponse & { options?: DestinationOption[] }
+        DataModelApiResponse & { data?: DestinationOption[] }
       >(response);
     } catch (error) {
       console.error('Error fetching destination options:', error);

@@ -1,26 +1,34 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthHeader } from '../../../shared/components/AuthHeader';
-import { ActivityIcon, DatabaseIcon, ClockIcon } from 'lucide-react';
+import { ActivityIcon, DatabaseIcon, ClockIcon, CheckCircleIcon } from 'lucide-react';
 import { NAVIGATION } from '../../../shared/config/routes.config';
 import { APP_CONFIG } from '../../../shared/config/app.config';
 import { useAuth } from '../../auth/contexts/AuthContext';
-// import { isApprover } from '../../../utils/roleUtils';
-// import ApproverDashboard from '../../approver/pages/ApproverDashboard';
+import { isApprover } from '../../../utils/roleUtils';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   
-  // Check if user is an approver and show approver-specific dashboard
-  // if (user && user.claims && isApprover(user.claims)) {
-  //   return <ApproverDashboard />;
-  // }
+  // Filter modules based on user roles
+  const userClaims = user?.claims || [];
+  const isUserApprover = isApprover(userClaims);
   
-  const modules = NAVIGATION.mainModules.map(module => ({
+  const filteredModules = NAVIGATION.mainModules.filter(module => {
+    // If user is an approver, only show the approver module
+    if (isUserApprover) {
+      return module.id === 'approver';
+    }
+    // For non-approvers, show all modules except approver
+    return module.id !== 'approver';
+  });
+  
+  const modules = filteredModules.map((module: any) => ({
     ...module,
     icon: module.icon === 'ActivityIcon' ? <ActivityIcon size={24} /> :
           module.icon === 'DatabaseIcon' ? <DatabaseIcon size={24} /> :
+          module.icon === 'CheckCircleIcon' ? <CheckCircleIcon size={24} /> :
           module.icon === 'ClockIcon' ? <ClockIcon size={24} /> : null,
     action: () => navigate(module.path)
   }));

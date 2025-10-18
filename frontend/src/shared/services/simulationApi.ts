@@ -15,9 +15,18 @@ export interface SimulationError {
   value?: unknown;
 }
 
+export interface ValidationStage {
+  name: string;
+  status: 'PASSED' | 'FAILED' | 'SKIPPED';
+  message: string;
+  errors?: SimulationError[];
+  details?: any;
+}
+
 export interface SimulationResult {
   status: 'PASSED' | 'FAILED';
   errors: SimulationError[];
+  stages: ValidationStage[];
   tcsResult: any | null; // TCS mapping result from tcs-lib
   transformedPayload: Record<string, unknown>;
   summary: {
@@ -26,10 +35,9 @@ export interface SimulationResult {
     timestamp: string;
     validatedBy?: string;
     mappingsApplied: number;
-    validationSteps: {
-      payloadParsing: 'PASSED' | 'FAILED';
-      mappingExecution: 'PASSED' | 'FAILED';
-    };
+    totalStages: number;
+    passedStages: number;
+    failedStages: number;
   };
 }
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowRightIcon, PlusIcon, XIcon, ChevronRightIcon, FolderIcon, DatabaseIcon, ServerIcon } from 'lucide-react';
 import { Button } from './Button';
-import { configApi, type AddMappingRequest, type FieldMapping } from '../../features/config/services/configApi';
+import { configApi, type FieldMapping } from '../../features/config/services/configApi';
 import { dataModelApi, type DestinationOption } from '../../features/data-model';
 
 /**
@@ -17,18 +17,11 @@ import { dataModelApi, type DestinationOption } from '../../features/data-model'
  * Usage: Select source fields → Select destination fields → Click "Add Mapping"
  * The mapping will be saved to the backend and associated with the config ID.
  */
-interface MappingField {
-  source: string[];
-  destination: string[];
-  destinationType: 'database' | 'valkey' | 'model';
-  transformFunction: 'concatenate' | 'sum' | 'split' | 'none';
-}
 
 interface MappingUtilityProps {
   onMappingChange: (isValid: boolean) => void;
   onMappingDataChange?: (mappingData: MappingData) => void;
-  onCurrentMappingsChange?: (mappings: FieldMapping[]) => void; // NEW: Expose current mappings to parent
-  onConfigUpdate?: (config: any) => void; // NEW: Callback to update parent config
+  onCurrentMappingsChange?: (mappings: FieldMapping[]) => void;
   sourceSchema?: Array<{
     name: string;
     path: string;
@@ -38,6 +31,7 @@ interface MappingUtilityProps {
   templateType?: string;
   configId?: number; // ID of the configuration to add mappings to
   existingMappings?: FieldMapping[]; // Existing mappings from backend
+  readOnly?: boolean; // When true, disable all editing functionality
 }
 
 interface MappingData {
@@ -65,14 +59,13 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
   onMappingChange,
   onMappingDataChange,
   onCurrentMappingsChange,
-  onConfigUpdate,
   sourceSchema,
   configId,
-  existingMappings = []
+  existingMappings = [],
+  readOnly = false
 }) => {
   // State for managing mappings
   const [mappingError, setMappingError] = useState<string | null>(null);
-  const [savingMapping, setSavingMapping] = useState(false);
   const [currentMappings, setCurrentMappings] = useState<FieldMapping[]>(existingMappings);
   
   // State for dynamic destination tree from API
@@ -144,9 +137,9 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       setDestinationError(null);
       
       const response = await dataModelApi.getDestinationOptions();
-      // Backend returns {success: true, options: [...]}
-      if (response.success && response.options) {
-        const treeNodes = convertDestinationOptionsToTree(response.options);
+      // Backend returns {success: true, data: [...]}
+      if (response.success && response.data) {
+        const treeNodes = convertDestinationOptionsToTree(response.data);
         setDestinationTree(treeNodes);
       } else {
         throw new Error(response.message || 'Failed to fetch destination options');
@@ -166,126 +159,19 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
     fetchDestinationOptions();
   }, []);
 
-  // Function to save mapping to backend
-  const saveMapping = async (mapping: MappingField): Promise<boolean> => {
-    if (!configId) {
-      setMappingError('No configuration ID provided');
-      return false;
-    }
-
-    setSavingMapping(true);
-    setMappingError(null);
-
-    try {
-      const mappingRequest: AddMappingRequest = {
-        // Handle different transformation types
-        source: mapping.transformFunction === 'split' ? mapping.source[0] : 
-                mapping.transformFunction === 'concatenate' ? undefined : mapping.source[0],
-        destination: mapping.transformFunction === 'split' ? undefined : mapping.destination[0],
-        sources: mapping.transformFunction === 'concatenate' ? mapping.source : undefined,
-        destinations: mapping.transformFunction === 'split' ? mapping.destination : undefined,
-        delimiter: mapping.transformFunction === 'split' ? delimiter : undefined,
-        separator: mapping.transformFunction === 'concatenate' ? delimiter : undefined,
-      };
-
-      console.log('Saving mapping to backend:', mappingRequest);
-      const response = await configApi.addMapping(configId, mappingRequest);
-      
-      console.log('✅ Backend response from addMapping:', response);
-      console.log('✅ Response success:', response.success);
-      console.log('✅ Response config:', response.config);
-      console.log('✅ Response config mapping:', response.config?.mapping);
-      
-      if (response.success && response.config) {
-        console.log('✅ Mapping saved successfully, backend returned config with mappings');
-        
-        // IMMEDIATE UPDATE: Use the mappings from the response immediately
-        const newMappings = response.config.mapping || [];
-        console.log('✅ Setting mappings from response:', newMappings.length, 'mappings');
-        console.log('✅ New mappings content:', newMappings);
-        setCurrentMappings(newMappings);
-        console.log('✅ setCurrentMappings called with:', newMappings);
-        console.log('✅ After setCurrentMappings, currentMappings should be:', newMappings);
-        validateMappings(newMappings);
-        
-        console.log('✅ Mappings updated immediately from API response');
-        
-        // Update parent component with mapping data
-        if (onMappingDataChange && response.config) {
-          const config = response.config;
-          onMappingDataChange({
-            sourceFields: config.schema?.properties ? 
-              Object.keys(config.schema.properties).map(key => ({
-                path: key,
-                type: config.schema.properties?.[key]?.type || 'string',
-                isRequired: Array.isArray(config.schema?.required) && config.schema.required.includes(key) || false,
-              })) : [],
-            destinationFields: (config.mapping || []).flatMap((m: FieldMapping) => {
-              const destinations = Array.isArray(m.destination) ? m.destination : [m.destination || ''];
-              return destinations.map(dest => ({
-                path: dest,
-                type: 'string',
-                isRequired: false,
-              }));
-            }),
-            transformation: 'NONE',
-            constants: {},
-          });
-        }
-
-        // Update parent config
-        if (onConfigUpdate && response.config) {
-          onConfigUpdate(response.config);
-        }
-        
-        console.log('Mapping saved successfully');
-        return true;
-      } else {
-        setMappingError(response.message || 'Failed to save mapping');
-        return false;
-      }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      setMappingError(`Failed to save mapping: ${errorMessage}`);
-      console.error('Error saving mapping:', error);
-      return false;
-    } finally {
-      setSavingMapping(false);
-    }
-  };
-
   // Function to remove mapping from backend
-  const removeMappingFromBackend = async (index: number) => {
-    if (!configId) {
-      setMappingError('No configuration ID provided');
-      return false;
+  const removeMappingFromBackend = (index: number) => {
+    // Remove from local state instead of calling API
+    const updatedMappings = currentMappings.filter((_, i) => i !== index);
+    setCurrentMappings(updatedMappings);
+    validateMappings(updatedMappings);
+    
+    // Notify parent component
+    if (onCurrentMappingsChange) {
+      onCurrentMappingsChange(updatedMappings);
     }
-
-    setSavingMapping(true);
-    setMappingError(null);
-
-    try {
-      const response = await configApi.removeMapping(configId, index);
-      
-      if (response.success && response.config) {
-        const newMappings = response.config.mapping || [];
-        setCurrentMappings(newMappings);
-        validateMappings(newMappings);
-        
-        console.log('Mapping removed successfully');
-        return true;
-      } else {
-        setMappingError(response.message || 'Failed to remove mapping');
-        return false;
-      }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      setMappingError(`Failed to remove mapping: ${errorMessage}`);
-      console.error('Error removing mapping:', error);
-      return false;
-    } finally {
-      setSavingMapping(false);
-    }
+    
+    console.log('Mapping removed from local state successfully');
   };
 
   // Convert JSON schema to hierarchical tree structure
@@ -438,30 +324,30 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       }))
     }));
   };
-  // Valkey cache sample data
-  const valkeyTree: TreeNode[] = [{
-    id: 'valkey',
-    name: 'Valkey Cache',
-    path: ['valkey'],
+  // Redis cache sample data
+  const redisTree: TreeNode[] = [{
+    id: 'redis',
+    name: 'redis',
+    path: ['redis'],
     children: [{
-      id: 'valkey.accountDetails',
+      id: 'redis.accountDetails',
       name: 'accountDetails',
-      path: ['valkey', 'accountDetails'],
+      path: ['redis', 'accountDetails'],
       type: 'object'
     }, {
-      id: 'valkey.preferences',
+      id: 'redis.preferences',
       name: 'preferences',
-      path: ['valkey', 'preferences'],
+      path: ['redis', 'preferences'],
       type: 'object'
     }, {
-      id: 'valkey.limits',
+      id: 'redis.limits',
       name: 'limits',
-      path: ['valkey', 'limits'],
+      path: ['redis', 'limits'],
       type: 'object'
     }, {
-      id: 'valkey.lastTransaction',
+      id: 'redis.lastTransaction',
       name: 'lastTransaction',
-      path: ['valkey', 'lastTransaction'],
+      path: ['redis', 'lastTransaction'],
       type: 'object'
     }]
   }];
@@ -470,30 +356,36 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
   const [showAddMapping, setShowAddMapping] = useState(false);
   const [selectedSources, setSelectedSources] = useState<string[]>([]);
   const [selectedDestinations, setSelectedDestinations] = useState<string[]>([]);
-  const [selectedDestinationType, setSelectedDestinationType] = useState<'database' | 'valkey' | 'model'>('database');
-  const [selectedTransformation, setSelectedTransformation] = useState<'concatenate' | 'sum' | 'split' | 'none'>('none');
+  const [selectedTransformation, setSelectedTransformation] = useState<'concatenate' | 'sum' | 'split' | 'none' | 'constant'>('none');
   const [delimiter, setDelimiter] = useState<string>(' ');
   
   // Helper function to check if current selection is valid for the transformation type
   const isCurrentMappingValid = () => {
     if (selectedTransformation === 'concatenate') {
       return selectedSources.length >= 2 && selectedDestinations.length === 1;
+    } else if (selectedTransformation === 'sum') {
+      return selectedSources.length >= 2 && selectedDestinations.length === 1;
     } else if (selectedTransformation === 'split') {
       return selectedSources.length === 1 && selectedDestinations.length >= 2;
     } else if (selectedTransformation === 'none') {
       return selectedSources.length === 1 && selectedDestinations.length === 1;
+    } else if (selectedTransformation === 'constant') {
+      return selectedDestinations.length === 1;
     }
     return selectedSources.length > 0 && selectedDestinations.length > 0;
   };
   
   const validateMappings = (newMappings: FieldMapping[]) => {
-    const isValid = newMappings.every(mapping => mapping.source || mapping.sources);
+    const isValid = newMappings.every(mapping => 
+      mapping.source || 
+      mapping.sources || 
+      mapping.constantValue !== undefined
+    );
     onMappingChange(isValid);
   };
   const addNewMapping = () => {
     setSelectedSources([]);
     setSelectedDestinations([]);
-    setSelectedDestinationType('database');
     setSelectedTransformation('none');
     setDelimiter(' '); // Reset delimiter to default
     setMappingError(null); // Clear any previous errors
@@ -524,7 +416,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       setSelectedSources([...selectedSources, pathStr]);
     }
   };
-  const handleDestinationSelect = (path: string[], type: 'database' | 'valkey' | 'model') => {
+  const handleDestinationSelect = (path: string[], type: 'database' | 'redis' | 'model') => {
     // Toggle selection for destinations
     const pathStr = path.join('.');
     console.log('Destination field selected:', pathStr, 'Type:', type);
@@ -533,9 +425,49 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
     } else {
       setSelectedDestinations([...selectedDestinations, pathStr]);
     }
-    setSelectedDestinationType(type);
   };
   const handleSaveMapping = async () => {
+    // Check for duplicate mappings first
+    const isDuplicate = currentMappings.some(existingMapping => {
+      // For constant mappings, check constant value and destination
+      if (selectedTransformation === 'constant') {
+        return existingMapping.transformation === 'CONSTANT' && 
+               existingMapping.constantValue === selectedSources[0] && 
+               existingMapping.destination === selectedDestinations[0];
+      }
+      
+      // For other mappings, check source, destination, and transformation
+      const existingSource = Array.isArray(existingMapping.source) 
+        ? existingMapping.source.filter((s): s is string => s != null && s !== '') // Filter out null/undefined/empty
+        : [existingMapping.source].filter((s): s is string => s != null && s !== '');
+      const existingDestination = Array.isArray(existingMapping.destination) 
+        ? existingMapping.destination.filter((d): d is string => d != null && d !== '') // Filter out null/undefined/empty
+        : [existingMapping.destination].filter((d): d is string => d != null && d !== '');
+      
+      const currentSource = selectedSources.filter(s => s);
+      const currentDestination = selectedDestinations.filter(d => d);
+      
+      // Check if sources match (order doesn't matter for comparison)
+      const sourcesMatch = existingSource.length === currentSource.length && 
+        existingSource.every(src => currentSource.includes(src)) &&
+        currentSource.every(src => existingSource.includes(src));
+      
+      // Check if destinations match
+      const destinationsMatch = existingDestination.length === currentDestination.length && 
+        existingDestination.every(dest => currentDestination.includes(dest)) &&
+        currentDestination.every(dest => existingDestination.includes(dest));
+      
+      // Check transformation type
+      const transformationMatch = existingMapping.transformation === selectedTransformation.toUpperCase();
+      
+      return sourcesMatch && destinationsMatch && transformationMatch;
+    });
+
+    if (isDuplicate) {
+      setMappingError('This mapping already exists. Please create a different mapping.');
+      return;
+    }
+
     // Validate based on transformation type
     let validationError = '';
     
@@ -545,11 +477,23 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       } else if (selectedDestinations.length !== 1) {
         validationError = 'Concatenate requires exactly 1 destination field';
       }
+    } else if (selectedTransformation === 'sum') {
+      if (selectedSources.length < 2) {
+        validationError = 'Sum requires at least 2 source fields';
+      } else if (selectedDestinations.length !== 1) {
+        validationError = 'Sum requires exactly 1 destination field';
+      }
     } else if (selectedTransformation === 'split') {
       if (selectedSources.length !== 1) {
         validationError = 'Split requires exactly 1 source field';
       } else if (selectedDestinations.length < 2) {
         validationError = 'Split requires at least 2 destination fields';
+      }
+    } else if (selectedTransformation === 'constant') {
+      if (selectedSources.length !== 1) {
+        validationError = 'Constant mapping requires exactly 1 constant value';
+      } else if (selectedDestinations.length !== 1) {
+        validationError = 'Constant mapping requires exactly 1 destination field';
       }
     } else if (selectedTransformation === 'none') {
       if (selectedSources.length !== 1) {
@@ -568,27 +512,68 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       return;
     }
 
-    const newMapping: MappingField = {
-      source: selectedSources,
-      destination: selectedDestinations,
-      destinationType: selectedDestinationType,
-      transformFunction: selectedTransformation
+    // Create AddMappingRequest object for API
+    const mappingRequest = {
+      source: selectedTransformation === 'split' ? selectedSources[0] : 
+              selectedTransformation === 'concatenate' ? undefined : 
+              selectedTransformation === 'sum' ? undefined :
+              selectedTransformation === 'constant' ? undefined : selectedSources[0],
+      destination: selectedTransformation === 'split' ? undefined : selectedDestinations[0],
+      sources: selectedTransformation === 'concatenate' || selectedTransformation === 'sum' ? selectedSources : undefined,
+      destinations: selectedTransformation === 'split' ? selectedDestinations : undefined,
+      delimiter: selectedTransformation === 'split' ? delimiter : undefined,
+      separator: selectedTransformation === 'concatenate' ? delimiter : undefined,
+      constantValue: selectedTransformation === 'constant' ? selectedSources[0] : undefined,
     };
-    
-    // Save to backend API
-    const success = await saveMapping(newMapping);
-    if (success) {
-      // Close modal only if backend save was successful
-      // currentMappings is updated automatically in saveMapping function
-      setShowAddMapping(false);
-      console.log('Mapping saved successfully to backend');
-    } else {
-      console.error('Failed to save mapping to backend');
-      // Show error to user but don't close modal
+
+    // Call API to save mapping directly
+    try {
+      console.log('💾 Saving mapping to backend:', mappingRequest);
+      const response = await configApi.addMapping(configId!, mappingRequest);
+      
+      if (response.success) {
+        console.log('✅ Mapping saved successfully to backend');
+        
+        // Create FieldMapping object for local state (includes transformation info)
+        const newFieldMapping: FieldMapping = {
+          source: selectedTransformation === 'split' ? selectedSources[0] : 
+                  selectedTransformation === 'concatenate' ? undefined : 
+                  selectedTransformation === 'sum' ? undefined :
+                  selectedTransformation === 'constant' ? undefined : selectedSources[0],
+          destination: selectedTransformation === 'split' ? undefined : selectedDestinations[0],
+          sources: selectedTransformation === 'concatenate' || selectedTransformation === 'sum' ? selectedSources : undefined,
+          destinations: selectedTransformation === 'split' ? selectedDestinations : undefined,
+          delimiter: selectedTransformation === 'split' ? delimiter : undefined,
+          separator: selectedTransformation === 'concatenate' ? delimiter : undefined,
+          constantValue: selectedTransformation === 'constant' ? selectedSources[0] : undefined,
+          transformation: selectedTransformation.toUpperCase(),
+          operator: selectedTransformation === 'sum' ? 'SUM' : undefined,
+        };
+        
+        // Update local state only after successful API call
+        const updatedMappings = [...currentMappings, newFieldMapping];
+        setCurrentMappings(updatedMappings);
+        validateMappings(updatedMappings);
+        
+        // Notify parent component
+        if (onCurrentMappingsChange) {
+          onCurrentMappingsChange(updatedMappings);
+        }
+        
+        // Close modal
+        setShowAddMapping(false);
+        console.log('Mapping added successfully');
+      } else {
+        console.error('❌ Failed to save mapping:', response.message);
+        setMappingError(`Failed to save mapping: ${response.message}`);
+      }
+    } catch (error) {
+      console.error('❌ Error saving mapping:', error);
+      setMappingError('Failed to save mapping. Please try again.');
     }
   };
 
-  const renderTree = (nodes: TreeNode[], expanded: string[], toggleFn: (id: string) => void, onSelect: (path: string[], type?: any) => void, selectedPaths: string[] = [], type: 'source' | 'destination' | 'valkey' = 'source') => {
+  const renderTree = (nodes: TreeNode[], expanded: string[], toggleFn: (id: string) => void, onSelect: (path: string[], type?: any) => void, selectedPaths: string[] = [], type: 'source' | 'destination' | 'redis' = 'source') => {
     return <div className="space-y-1" data-id="element-176">
         {nodes.map(node => {
         const hasChildren = node.children && node.children.length > 0;
@@ -601,8 +586,8 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                   </button> : <span className="w-6" data-id="element-181"></span>}
                 {type === 'source' && <FolderIcon size={16} className="mr-2 text-blue-500" data-id="element-182" />}
                 {type === 'destination' && <DatabaseIcon size={16} className="mr-2 text-green-500" data-id="element-183" />}
-                {type === 'valkey' && <ServerIcon size={16} className="mr-2 text-purple-500" data-id="element-184" />}
-                <button onClick={() => onSelect(node.path, type === 'valkey' ? 'valkey' : 'database')} className="text-left flex-1 text-sm" data-id="element-185">
+                {type === 'redis' && <ServerIcon size={16} className="mr-2 text-purple-500" data-id="element-184" />}
+                <button onClick={() => onSelect(node.path, type === 'redis' ? 'redis' : 'database')} className="text-left flex-1 text-sm" data-id="element-185">
                   {node.name}
                   {node.type && <span className="ml-2 text-xs text-gray-500" data-id="element-186">
                       ({node.type})
@@ -632,6 +617,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
           </div>
           <div className="grid grid-cols-3 gap-6" data-id="element-194">
             {/* Source Selection */}
+            {selectedTransformation !== 'constant' && (
             <div className="space-y-4" data-id="element-195">
               <h4 className="font-medium text-gray-700" data-id="element-196">Source Fields</h4>
               <div className="border border-gray-200 rounded-md p-3 h-96 overflow-auto" data-id="element-197">
@@ -644,6 +630,30 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                 Selected: {selectedSources.join(', ') || 'None'}
               </div>
             </div>
+            )}
+
+            {/* Constant Value Input */}
+            {selectedTransformation === 'constant' && (
+            <div className="space-y-4" data-id="element-constant-1">
+              <h4 className="font-medium text-gray-700" data-id="element-constant-2">Constant Value</h4>
+              <div className="border border-gray-200 rounded-md p-3" data-id="element-constant-3">
+                <label className="block text-sm font-medium text-gray-700 mb-2" data-id="element-constant-4">
+                  Enter Constant Value:
+                </label>
+                <input
+                  type="text"
+                  value={selectedSources[0] || ''}
+                  onChange={(e) => setSelectedSources([e.target.value])}
+                  placeholder="Enter a constant value (string, number, etc.)"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <div className="mt-2 text-sm text-gray-500" data-id="element-constant-5">
+                  This value will be mapped directly to the destination field
+                </div>
+              </div>
+            </div>
+            )}
+
             {/* Transformation */}
             <div className="space-y-4" data-id="element-200">
               <h4 className="font-medium text-gray-700" data-id="element-201">Transformation</h4>
@@ -652,11 +662,12 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                   <label className="block text-sm font-medium text-gray-700 mb-2" data-id="element-204">
                     Select Transformation Function
                   </label>
-                  <select value={selectedTransformation} onChange={e => setSelectedTransformation(e.target.value as 'concatenate' | 'sum' | 'split' | 'none')} className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" data-id="element-205">
+                  <select value={selectedTransformation} onChange={e => setSelectedTransformation(e.target.value as 'concatenate' | 'sum' | 'split' | 'none' | 'constant')} className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" data-id="element-205">
                     <option value="none" data-id="element-206">None (Direct Mapping)</option>
                     <option value="concatenate" data-id="element-207">Concatenate</option>
                     <option value="sum" data-id="element-208">Sum</option>
                     <option value="split" data-id="element-209">Split</option>
+                    <option value="constant" data-id="element-constant-option">Constant Value</option>
                   </select>
                 </div>
                 {(selectedTransformation === 'split' || selectedTransformation === 'concatenate') && (
@@ -719,6 +730,15 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                         without transformation.
                       </p>
                     </div>}
+                  {selectedTransformation === 'constant' && <div className="text-center p-4 bg-gray-50 rounded-md" data-id="element-229">
+                      <h5 className="font-medium text-gray-700 mb-2" data-id="element-230">
+                        Constant Value
+                      </h5>
+                      <p className="text-sm text-gray-600" data-id="element-231">
+                        Maps a fixed constant value to the destination field,
+                        ignoring any source data.
+                      </p>
+                    </div>}
                 </div>
               </div>
             </div>
@@ -732,12 +752,12 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                 ) : destinationError ? (
                   <div className="text-sm text-red-500 py-4">{destinationError}</div>
                 ) : (
-                  renderTree(destinationTree, expandedDestNodes, toggleDestNode, (path, type) => handleDestinationSelect(path, type as 'database' | 'valkey' | 'model'), selectedDestinations, 'destination')
+                  renderTree(destinationTree, expandedDestNodes, toggleDestNode, (path, type) => handleDestinationSelect(path, type as 'database' | 'redis' | 'model'), selectedDestinations, 'destination')
                 )}
                 <div className="mt-4 mb-2 text-sm text-gray-500" data-id="element-233">
-                  Valkey Cache (Update)
+                  redis (Update)
                 </div>
-                {renderTree(valkeyTree, expandedDestNodes, toggleDestNode, path => handleDestinationSelect(path, 'valkey'), selectedDestinations, 'valkey')}
+                {renderTree(redisTree, expandedDestNodes, toggleDestNode, path => handleDestinationSelect(path, 'redis'), selectedDestinations, 'redis')}
               </div>
               <div className="text-sm text-gray-600" data-id="element-234">
                 Selected: {selectedDestinations.join(', ') || 'None'}
@@ -758,10 +778,10 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
             <Button 
               variant="primary" 
               onClick={handleSaveMapping} 
-              disabled={!isCurrentMappingValid() || savingMapping} 
+              disabled={!isCurrentMappingValid()} 
               data-id="element-237"
             >
-              {savingMapping ? 'Saving...' : 'Add Mapping'}
+              Add Mapping
             </Button>
           </div>
         </div>
@@ -777,7 +797,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       )}
         <div className="flex justify-between items-center mb-4" data-id="element-272">
         <h3 className="text-lg font-medium text-gray-900" data-id="element-273">Field Mapping</h3>
-        <Button variant="secondary" size="sm" onClick={addNewMapping} icon={<PlusIcon size={16} data-id="element-279" />} data-id="element-278">
+        <Button variant="secondary" size="sm" onClick={addNewMapping} icon={<PlusIcon size={16} data-id="element-279" />} disabled={readOnly} data-id="element-278">
           Add Mapping
         </Button>
       </div>
@@ -799,20 +819,26 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
               <div key={index} className="flex items-center justify-between bg-white p-2 rounded border">
                 <div className="flex items-center space-x-2">
                   <span className="text-sm text-gray-600">
-                    {mapping.sources ? mapping.sources.join(' + ') : 
-                     Array.isArray(mapping.source) ? mapping.source.join(' + ') : mapping.source} 
+                    {mapping.transformation === 'CONSTANT' ? 
+                      `"${mapping.constantValue}"` :
+                      (mapping.sources ? mapping.sources.join(' + ') : 
+                       Array.isArray(mapping.source) ? mapping.source.join(' + ') : mapping.source)
+                    } 
                     <ArrowRightIcon size={16} className="inline mx-2" />
                     {Array.isArray(mapping.destination) ? mapping.destination.join(' + ') : mapping.destination}
                   </span>
                   {mapping.separator && (
                     <span className="text-xs text-gray-500">({mapping.separator})</span>
                   )}
+                  {mapping.transformation && mapping.transformation !== 'NONE' && (
+                    <span className="text-xs text-blue-600 font-medium">[{mapping.transformation}]</span>
+                  )}
                 </div>
                 <Button 
                   variant="secondary" 
                   size="sm" 
                   onClick={() => removeMappingFromBackend(index)}
-                  disabled={savingMapping}
+                  disabled={readOnly}
                 >
                   Remove
                 </Button>

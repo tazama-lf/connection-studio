@@ -1,56 +1,263 @@
-import React from 'react';
-import { CheckCircleIcon } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { CheckCircleIcon, LoaderIcon } from 'lucide-react';
+import { configApi } from '../../features/config/services/configApi';
+
 interface DeploymentConfirmationProps {
+  configId?: number;
+  configData?: any; // Fallback data from local state
   endpointPath: string;
   transactionType?: string;
 }
+
 export const DeploymentConfirmation: React.FC<DeploymentConfirmationProps> = ({
+  configId,
+  configData: fallbackConfigData,
   endpointPath,
   transactionType = 'transfers'
 }) => {
-  // Format the endpoint path to include the transaction type
-  const formattedEndpointPath = `${endpointPath}-${transactionType}`;
-  return <div className="space-y-6" data-id="element-156">
-      <div className="flex items-center space-x-2" data-id="element-157">
-        <CheckCircleIcon className="h-6 w-6 text-green-500" data-id="element-158" />
-        <h3 className="text-lg font-medium text-gray-900" data-id="element-159">Ready to Deploy</h3>
+  const [configData, setConfigData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchConfigData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        console.log('🔄 Fetching complete config data for deployment confirmation:', configId);
+        console.log('🔍 ConfigId type:', typeof configId, 'ConfigId value:', configId);
+
+        // If we have fallback data and no configId, use the fallback
+        if (!configId && fallbackConfigData) {
+          console.log('✅ Using fallback config data:', fallbackConfigData);
+          setConfigData(fallbackConfigData);
+          return;
+        }
+
+        if (!configId) {
+          console.error('❌ No configId provided to DeploymentConfirmation');
+          setError('No configuration ID provided');
+          return;
+        }
+
+        const response = await configApi.getConfig(configId);
+        console.log('🔍 API Response:', response);
+        console.log('🔍 Response success:', response.success);
+        console.log('🔍 Response config:', response.config);
+
+        if (response.success && response.config) {
+          console.log('✅ Config data fetched successfully:', response.config);
+          setConfigData(response.config);
+        } else {
+          console.error('❌ Failed to fetch config data:', response.message);
+          console.error('❌ Full response:', response);
+
+          // Check if it's an authentication error and we have fallback data
+          if ((response.message?.includes('401') || response.message?.includes('Unauthorized') || response.message?.includes('authentication')) && fallbackConfigData) {
+            console.log('⚠️ Authentication failed, using fallback data');
+            setConfigData(fallbackConfigData);
+            setError(null); // Clear error since we have fallback
+          } else if (response.message?.includes('401') || response.message?.includes('Unauthorized') || response.message?.includes('authentication')) {
+            setError('Authentication required. Please log in again.');
+          } else {
+            setError(response.message || 'Failed to load configuration data');
+          }
+        }
+      } catch (err) {
+        console.error('❌ Error fetching config data:', err);
+
+        // If API call fails and we have fallback data, use it
+        if (fallbackConfigData) {
+          console.log('⚠️ API call failed, using fallback data');
+          setConfigData(fallbackConfigData);
+          setError(null); // Clear error since we have fallback
+        } else {
+          setError(`Failed to load configuration data: ${err instanceof Error ? err.message : 'Unknown error'}`);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    // Always try to fetch, but use fallback if available
+    fetchConfigData();
+  }, [configId, fallbackConfigData]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <LoaderIcon className="h-6 w-6 animate-spin text-blue-500 mr-2" />
+        <span className="text-gray-600">Loading configuration details...</span>
       </div>
-      <div className="bg-gray-50 p-4 rounded-md space-y-4" data-id="element-160">
-        <div data-id="element-161">
-          <h4 className="text-sm font-medium text-gray-700" data-id="element-162">Endpoint Path:</h4>
-          <p className="mt-1 text-sm text-gray-900" data-id="element-163">{formattedEndpointPath}</p>
-        </div>
-        <div data-id="element-164">
-          <h4 className="text-sm font-medium text-gray-700" data-id="element-165">Configuration:</h4>
-          <div className="mt-2 bg-white p-3 rounded border border-gray-200" data-id="element-166">
-            <pre className="text-sm text-gray-600" data-id="element-167">
-              {JSON.stringify({
-              endpoint: formattedEndpointPath,
-              transactionType: transactionType,
-              schema: {
-                type: 'object',
-                required: ['transactionId', 'amount', 'currency'],
-                properties: {
-                  transactionId: {
-                    type: 'string'
-                  },
-                  amount: {
-                    type: 'number'
-                  },
-                  currency: {
-                    type: 'string'
-                  }
-                }
-              },
-              mapping: {
-                transactionId: 'id',
-                amount: 'value',
-                currency: 'currencyCode'
-              }
-            }, null, 2)}
-            </pre>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-md p-4">
+        <div className="flex items-center">
+          <div className="text-red-600 mr-2">⚠️</div>
+          <div>
+            <h4 className="text-sm font-medium text-red-900">Error Loading Configuration</h4>
+            <p className="text-sm text-red-700 mt-1">{error}</p>
           </div>
         </div>
       </div>
-    </div>;
+    );
+  }
+
+  if (!configData) {
+    return (
+      <div className="text-center py-12 text-gray-500">
+        <p>No configuration data available</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6" data-id="element-156">
+      <div className="flex items-center space-x-2" data-id="element-157">
+        <CheckCircleIcon className="h-6 w-6 text-green-500" data-id="element-158" />
+        <h3 className="text-lg font-medium text-gray-900" data-id="element-159">Ready to Submit for Approval</h3>
+      </div>
+
+      <div className="bg-gray-50 p-6 rounded-md space-y-6" data-id="element-160">
+        {/* Endpoint Information */}
+        <div data-id="element-161">
+          <h4 className="text-sm font-medium text-gray-700 mb-3" data-id="element-162">📍 Endpoint Information</h4>
+          <div className="bg-white p-4 rounded border border-gray-200 space-y-2">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Endpoint Path</span>
+                <p className="mt-1 text-sm text-gray-900 font-mono bg-gray-50 p-2 rounded">{configData.endpointPath || endpointPath}</p>
+              </div>
+              <div>
+                <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Transaction Type</span>
+                <p className="mt-1 text-sm text-gray-900">{configData.transactionType || transactionType}</p>
+              </div>
+              <div>
+                <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Version</span>
+                <p className="mt-1 text-sm text-gray-900">{configData.version || '1.0'}</p>
+              </div>
+              <div>
+                <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Content Type</span>
+                <p className="mt-1 text-sm text-gray-900">{configData.contentType || 'application/json'}</p>
+              </div>
+            </div>
+            {configData.msgFam && (
+              <div>
+                <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Message Family</span>
+                <p className="mt-1 text-sm text-gray-900">{configData.msgFam}</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Payload/Schema */}
+        <div>
+          <h4 className="text-sm font-medium text-gray-700 mb-3">📄 Payload & Schema</h4>
+          <div className="bg-white p-4 rounded border border-gray-200">
+            <div className="space-y-4">
+              {configData.payload && (
+                <div>
+                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wide block mb-2">Original Payload</span>
+                  <pre className="text-xs text-gray-800 bg-gray-50 p-3 rounded border overflow-x-auto max-h-40">
+                    {typeof configData.payload === 'string' ? configData.payload : JSON.stringify(configData.payload, null, 2)}
+                  </pre>
+                </div>
+              )}
+
+              {configData.schema && (
+                <div>
+                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wide block mb-2">Generated Schema</span>
+                  <pre className="text-xs text-gray-800 bg-gray-50 p-3 rounded border overflow-x-auto max-h-40">
+                    {typeof configData.schema === 'string' ? configData.schema : JSON.stringify(configData.schema, null, 2)}
+                  </pre>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Mappings */}
+        {configData.mapping && configData.mapping.length > 0 && (
+          <div>
+            <h4 className="text-sm font-medium text-gray-700 mb-3">🔄 Field Mappings ({configData.mapping.length})</h4>
+            <div className="bg-white p-4 rounded border border-gray-200">
+              <div className="space-y-3">
+                {configData.mapping.map((mapping: any, index: number) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded border">
+                    <div className="flex items-center space-x-3">
+                      <span className="text-xs font-medium text-blue-600 bg-blue-100 px-2 py-1 rounded">
+                        {mapping.transformation || 'DIRECT'}
+                      </span>
+                      <div className="text-sm">
+                        <span className="font-medium text-gray-900">
+                          {Array.isArray(mapping.source) ? mapping.source.join(', ') : mapping.source || mapping.sources?.join(', ') || 'N/A'}
+                        </span>
+                        <span className="text-gray-500 mx-2">→</span>
+                        <span className="font-medium text-gray-900">
+                          {Array.isArray(mapping.destination) ? mapping.destination.join(', ') : mapping.destination || mapping.destinations?.join(', ') || 'N/A'}
+                        </span>
+                      </div>
+                    </div>
+                    {mapping.constantValue && (
+                      <span className="text-xs text-purple-600 bg-purple-100 px-2 py-1 rounded">
+                        Constant: {mapping.constantValue}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Functions */}
+        {configData.functions && configData.functions.length > 0 && (
+          <div>
+            <h4 className="text-sm font-medium text-gray-700 mb-3">⚙️ Functions ({configData.functions.length})</h4>
+            <div className="bg-white p-4 rounded border border-gray-200">
+              <div className="space-y-3">
+                {configData.functions.map((func: any, index: number) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded border">
+                    <div className="flex items-center space-x-3">
+                      <span className="text-xs font-medium text-green-600 bg-green-100 px-2 py-1 rounded">
+                        {func.functionName}
+                      </span>
+                      <div className="text-sm text-gray-700">
+                        Parameters: {func.params?.join(', ') || 'None'}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Status Summary */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0 mt-0.5">
+              <CheckCircleIcon className="w-5 h-5 text-blue-600" />
+            </div>
+            <div className="flex-1">
+              <h4 className="text-sm font-medium text-blue-900 mb-1">Configuration Complete</h4>
+              <p className="text-sm text-blue-700">
+                Your configuration is ready for approval. It includes:
+              </p>
+              <ul className="text-sm text-blue-700 mt-2 space-y-1">
+                <li>• Endpoint: <code className="bg-blue-100 px-1 rounded text-xs">{configData.endpointPath || endpointPath}</code></li>
+                <li>• Payload/Schema: {configData.payload ? '✅ Included' : '⚠️ Schema only'}</li>
+                <li>• Mappings: {configData.mapping?.length || 0} field mappings</li>
+                <li>• Functions: {configData.functions?.length || 0} runtime functions</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 };

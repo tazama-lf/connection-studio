@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { EyeIcon, ChevronDownIcon, HistoryIcon, Edit, Copy } from 'lucide-react';
+import { EyeIcon, MoreVerticalIcon, EditIcon, CopyIcon, HistoryIcon } from 'lucide-react';
 import { configApi } from '../services/configApi';
-import { Button } from '../../../shared/components/Button';
 
 interface Config {
   id: number;
@@ -23,22 +22,27 @@ interface ConfigListProps {
   onConfigSelect?: (config: Config) => void;
   onConfigEdit?: (config: Config) => void;
   onConfigClone?: (config: Config) => void;
-  onConfigDelete?: (configId: number) => void;
   onViewDetails?: (config: Config) => void;
   onViewHistory?: (config: Config) => void;
   onRefresh?: () => void;
   searchTerm?: string;
+  showPendingApprovals?: boolean;
+  onApprove?: (configId: number) => void;
+  onReject?: (config: Config) => void;
+  onSendForDeployment?: (configId: number) => void;
 }
 
 export const ConfigList: React.FC<ConfigListProps> = ({
   onConfigSelect,
   onConfigEdit,
   onConfigClone,
-  onConfigDelete,
   onViewDetails,
   onViewHistory,
-  onRefresh,
-  searchTerm: externalSearchTerm
+  searchTerm: externalSearchTerm,
+  showPendingApprovals = false,
+  onApprove,
+  onReject,
+  onSendForDeployment
 }) => {
   const [configs, setConfigs] = useState<Config[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,14 +54,21 @@ export const ConfigList: React.FC<ConfigListProps> = ({
   // Use external search term if provided, otherwise use empty string
   const searchTerm = externalSearchTerm || '';
 
-  // Fetch all configs on component mount
+  // Fetch configs based on showPendingApprovals flag
   const fetchConfigs = async () => {
     try {
       setLoading(true);
       setError(null);
-      console.log('Fetching all configurations...');
       
-      const response = await configApi.getAllConfigs();
+      let response;
+      if (showPendingApprovals) {
+        console.log('Fetching pending approvals...');
+        response = await configApi.getPendingApprovals();
+      } else {
+        console.log('Fetching all configurations...');
+        response = await configApi.getAllConfigs();
+      }
+      
       setConfigs(response.configs || []);
       console.log('Fetched configs:', response.configs);
     } catch (err) {
@@ -100,14 +111,22 @@ export const ConfigList: React.FC<ConfigListProps> = ({
     switch (status.toLowerCase()) {
       case 'active':
       case 'ready for approval':
+      case 'approved':
         return 'bg-green-50 text-green-600 border border-green-200';
       case 'in-progress':
       case 'draft':
         return 'bg-yellow-50 text-yellow-600 border border-yellow-200';
       case 'suspended':
+      case 'rejected':
         return 'bg-red-50 text-red-600 border border-red-200';
       case 'cloned':
         return 'bg-purple-50 text-purple-600 border border-purple-200';
+      case 'under_review':
+        return 'bg-blue-50 text-blue-600 border border-blue-200';
+      case 'deployed':
+        return 'bg-indigo-50 text-indigo-600 border border-indigo-200';
+      case 'changes_requested':
+        return 'bg-orange-50 text-orange-600 border border-orange-200';
       default:
         return 'bg-gray-50 text-gray-600 border border-gray-200';
     }
@@ -116,16 +135,26 @@ export const ConfigList: React.FC<ConfigListProps> = ({
   const getStatusText = (status: string) => {
     switch (status.toLowerCase()) {
       case 'active':
-        return 'Ready for Approval';
+        return 'READY FOR APPROVAL';
       case 'draft':
       case 'in-progress':
-        return 'In-Progress';
+        return 'IN PROGRESS';
       case 'suspended':
-        return 'Suspended';
+        return 'SUSPENDED';
       case 'cloned':
-        return 'Cloned';
+        return 'CLONED';
+      case 'approved':
+        return 'APPROVED';
+      case 'under_review':
+        return 'UNDER REVIEW';
+      case 'deployed':
+        return 'DEPLOYED';
+      case 'rejected':
+        return 'REJECTED';
+      case 'changes_requested':
+        return 'CHANGES REQUESTED';
       default:
-        return status;
+        return status.toUpperCase().replace(/_/g, ' ');
     }
   };
 
@@ -156,20 +185,6 @@ export const ConfigList: React.FC<ConfigListProps> = ({
       onViewDetails(config);
     } else if (onConfigSelect) {
       onConfigSelect(config);
-    }
-  };
-
-  const handleEditConfig = (config: Config) => {
-    console.log('Editing config:', config);
-    if (onConfigEdit) {
-      onConfigEdit(config);
-    }
-  };
-
-  const handleDeleteConfig = (configId: number) => {
-    console.log('Deleting config:', configId);
-    if (onConfigDelete) {
-      onConfigDelete(configId);
     }
   };
 
@@ -254,63 +269,61 @@ export const ConfigList: React.FC<ConfigListProps> = ({
                         <EyeIcon className="w-4 h-4 mr-1" />
                         View
                       </button>
-                      <div className="relative dropdown-container" onClick={(e) => e.stopPropagation()}>
-                        <Button
-                          variant="primary"
-                          size="sm"
-                          className="px-3 py-1.5 flex items-center text-sm font-medium"
-                          onClick={() => {
-                            setOpenDropdown(openDropdown === config.id ? null : config.id);
-                          }}
-                        >
-                          Actions
-                          <ChevronDownIcon className="w-4 h-4 ml-1" />
-                        </Button>
-                        
-                        {/* Dropdown Menu */}
-                        {openDropdown === config.id && (
-                          <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
-                            <div className="py-1">
-                              <button
-                                onClick={() => {
-                                  setOpenDropdown(null);
-                                  if (onConfigEdit) {
-                                    onConfigEdit(config);
-                                  }
-                                }}
-                                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                              >
-                                <Edit className="w-4 h-4 mr-2" />
-                                Edit Configuration
-                              </button>
-                              <button
-                                onClick={() => {
-                                  setOpenDropdown(null);
-                                  if (onConfigClone) {
-                                    onConfigClone(config);
-                                  }
-                                }}
-                                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                              >
-                                <Copy className="w-4 h-4 mr-2" />
-                                Clone Configuration
-                              </button>
-                              <button
-                                onClick={() => {
-                                  setOpenDropdown(null);
-                                  if (onViewHistory) {
-                                    onViewHistory(config);
-                                  }
-                                }}
-                                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                              >
-                                <HistoryIcon className="w-4 h-4 mr-2" />
-                                View History
-                              </button>
+                      
+                      {/* Actions dropdown for editors (when not showing pending approvals) */}
+                      {!showPendingApprovals && (
+                        <div className="relative dropdown-container">
+                          <button
+                            onClick={() => setOpenDropdown(openDropdown === config.id ? null : config.id)}
+                            className="p-1 text-gray-400 hover:text-gray-600 rounded-md hover:bg-gray-100"
+                          >
+                            <MoreVerticalIcon className="w-4 h-4" />
+                          </button>
+                          
+                          {openDropdown === config.id && (
+                            <div className="absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-10">
+                              <div className="py-1">
+                                {onConfigEdit && (
+                                  <button
+                                    onClick={() => {
+                                      onConfigEdit(config);
+                                      setOpenDropdown(null);
+                                    }}
+                                    className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                  >
+                                    <EditIcon className="w-4 h-4 mr-2" />
+                                    Edit
+                                  </button>
+                                )}
+                                {onConfigClone && (
+                                  <button
+                                    onClick={() => {
+                                      onConfigClone(config);
+                                      setOpenDropdown(null);
+                                    }}
+                                    className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                  >
+                                    <CopyIcon className="w-4 h-4 mr-2" />
+                                    Clone
+                                  </button>
+                                )}
+                                {onViewHistory && (
+                                  <button
+                                    onClick={() => {
+                                      onViewHistory(config);
+                                      setOpenDropdown(null);
+                                    }}
+                                    className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                  >
+                                    <HistoryIcon className="w-4 h-4 mr-2" />
+                                    View History
+                                  </button>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        )}
-                      </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </td>
                 </tr>

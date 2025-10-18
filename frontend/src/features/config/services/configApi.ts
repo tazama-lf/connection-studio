@@ -62,8 +62,10 @@ export interface AddMappingRequest {
   destination?: string;
   sources?: string[];
   destinations?: string[];
+  sumFields?: string[]; // Source fields to sum for mathematical operations
   delimiter?: string;
   separator?: string; // Keeping for backward compatibility with concatenate
+  constantValue?: any; // Fixed value to map to destination
 }
 
 export interface SchemaField {
@@ -91,6 +93,10 @@ export class ConfigApiService {
 
   private getAuthHeaders(): Record<string, string> {
     const token = localStorage.getItem('authToken');
+    console.log('🔍 getAuthHeaders - Token exists:', !!token);
+    if (token) {
+      console.log('🔍 getAuthHeaders - Token preview:', token.substring(0, 50) + '...');
+    }
     return {
       'Content-Type': 'application/json',
       Accept: 'application/json',
@@ -215,12 +221,37 @@ export class ConfigApiService {
         headers: this.getAuthHeaders(),
       });
 
-      const result = await this.handleResponse<ConfigResponse>(response);
-      console.log('Fetched config:', result);
-      return result;
+      const result = await this.handleResponse<any>(response);
+      console.log('Raw API response:', result);
+
+      // Check if the response is already in the expected format
+      if (result && typeof result === 'object' && 'success' in result) {
+        console.log('Response is in expected format:', result);
+        return result as ConfigResponse;
+      }
+
+      // If the response is the config object directly, wrap it in the expected format
+      if (result && typeof result === 'object' && 'id' in result) {
+        console.log('Response is raw config object, wrapping in success format');
+        return {
+          success: true,
+          config: result,
+          message: 'Config retrieved successfully'
+        };
+      }
+
+      // If we get here, something unexpected happened
+      console.error('Unexpected response format:', result);
+      return {
+        success: false,
+        message: 'Invalid response format from server'
+      };
     } catch (error) {
       console.error('Config fetch failed:', error);
-      throw error;
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Unknown error occurred'
+      };
     }
   }
 
@@ -237,6 +268,26 @@ export class ConfigApiService {
       return { configs };
     } catch (error) {
       console.error('Configs fetch failed:', error);
+      throw error;
+    }
+  }
+
+  async getPendingApprovals(): Promise<{ configs: Config[] }> {
+    try {
+      console.log('🚀 getPendingApprovals - Fetching pending approvals from:', `${this.baseURL}/config/pending-approvals`);
+      const headers = this.getAuthHeaders();
+      console.log('🚀 getPendingApprovals - Headers:', headers);
+      
+      const response = await fetch(`${this.baseURL}/config/pending-approvals`, {
+        method: 'GET',
+        headers: headers,
+      });
+
+      const configs = await this.handleResponse<Config[]>(response);
+      console.log('✅ getPendingApprovals - Success:', configs);
+      return { configs };
+    } catch (error) {
+      console.error('❌ getPendingApprovals - Failed:', error);
       throw error;
     }
   }
@@ -375,6 +426,114 @@ export class ConfigApiService {
       await this.handleResponse(response);
     } catch (error) {
       console.error('Config deletion failed:', error);
+      throw error;
+    }
+  }
+
+  // Workflow methods
+  async submitForApproval(id: number, userId: string, userRole: string = 'editor', comment?: string): Promise<ConfigResponse> {
+    try {
+      const response = await fetch(`${this.baseURL}/config/${id}/workflow/submit`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({
+          configId: id,
+          userId,
+          userRole,
+          comment,
+        }),
+      });
+
+      return await this.handleResponse<ConfigResponse>(response);
+    } catch (error) {
+      console.error('Submit for approval failed:', error);
+      throw error;
+    }
+  }
+
+  async approveConfig(id: number): Promise<ConfigResponse> {
+    try {
+      const response = await fetch(`${this.baseURL}/config/${id}/approve`, {
+        method: 'PATCH',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({ comment: '' }), // Send empty comment to satisfy backend expectations
+      });
+
+      return await this.handleResponse<ConfigResponse>(response);
+    } catch (error) {
+      console.error('Config approval failed:', error);
+      throw error;
+    }
+  }
+
+  async rejectConfig(id: number, reason?: string): Promise<ConfigResponse> {
+    try {
+      const response = await fetch(`${this.baseURL}/config/${id}/reject`, {
+        method: 'PATCH',
+        headers: this.getAuthHeaders(),
+        body: reason ? JSON.stringify({ reason }) : undefined,
+      });
+
+      return await this.handleResponse<ConfigResponse>(response);
+    } catch (error) {
+      console.error('Config rejection failed:', error);
+      throw error;
+    }
+  }
+
+  async deployConfig(id: number): Promise<ConfigResponse> {
+    try {
+      const response = await fetch(`${this.baseURL}/config/${id}/workflow/deploy`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+      });
+
+      return await this.handleResponse<ConfigResponse>(response);
+    } catch (error) {
+      console.error('Config deployment failed:', error);
+      throw error;
+    }
+  }
+
+  async getWorkflowStatus(id: number): Promise<{ status: string; message?: string }> {
+    try {
+      const response = await fetch(`${this.baseURL}/config/${id}/workflow/status`, {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      });
+
+      return await this.handleResponse<{ status: string; message?: string }>(response);
+    } catch (error) {
+      console.error('Get workflow status failed:', error);
+      throw error;
+    }
+  }
+
+  async returnToProgress(id: number): Promise<ConfigResponse> {
+    try {
+      const response = await fetch(`${this.baseURL}/config/${id}/workflow/return-to-progress`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+      });
+
+      return await this.handleResponse<ConfigResponse>(response);
+    } catch (error) {
+      console.error('Return to progress failed:', error);
+      throw error;
+    }
+  }
+
+  async requestChanges(id: number, requestedChanges: string): Promise<ConfigResponse> {
+    try {
+      const response = await fetch(`${this.baseURL}/config/${id}/workflow/request-changes`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({ requestedChanges }),
+      });
+
+      return await this.handleResponse<ConfigResponse>(response);
+    } catch (error) {
+      console.error('Request changes failed:', error);
       throw error;
     }
   }

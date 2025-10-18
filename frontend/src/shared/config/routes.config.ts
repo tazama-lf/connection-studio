@@ -8,6 +8,7 @@ export const ROUTES = {
   DEMS: '/dems',
   DATA_ENRICHMENT: '/de',
   CRON: '/cron',
+  APPROVER: '/approver',
 
   // Nested routes (for future use)
   DEMS_ENDPOINTS: '/dems/endpoints',
@@ -40,11 +41,21 @@ export const NAVIGATION = {
     },
     {
       id: 'cron',
-      name: 'CRON Job Management',
-      description: 'Schedule and monitor automated tasks and jobs',
+      name: 'Cron Job Management',
+      description:
+        'Schedule and manage automated tasks and background processes',
       path: ROUTES.CRON,
       icon: 'ClockIcon',
       color: 'bg-purple-100 text-purple-600',
+    },
+    {
+      id: 'approver',
+      name: 'Configuration Approver',
+      description:
+        'Review and approve submitted configuration changes',
+      path: ROUTES.APPROVER,
+      icon: 'CheckCircleIcon',
+      color: 'bg-orange-100 text-orange-600',
     },
   ],
 } as const;

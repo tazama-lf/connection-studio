@@ -120,13 +120,19 @@ interface EditEndpointModalProps {
   endpointId: number; // -1 indicates new endpoint creation
   onSuccess?: () => void; // Callback when config is successfully created/updated
   isCloneMode?: boolean; // When true, load config data but treat as new config creation
+  readOnly?: boolean; // When true, modal is in read-only mode for approvers
+  onRevertToEditor?: () => void; // Callback for reverting config back to editor
+  onSendForDeployment?: () => void; // Callback for sending config for deployment
 }
  const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
   isOpen,
   onClose,
   endpointId,
   onSuccess,
-  isCloneMode = false
+  isCloneMode = false,
+  readOnly = false,
+  onRevertToEditor,
+  onSendForDeployment
 }) => {
   const isNewEndpoint = endpointId === -1;
   const isCloning = isCloneMode && endpointId !== -1;
@@ -158,7 +164,7 @@ interface EditEndpointModalProps {
   const [createdEndpoint, setCreatedEndpoint] = useState<any | null>(null);
   const [existingConfig, setExistingConfig] = useState<any | null>(null);
   const [inferredSchema, setInferredSchema] = useState<any | null>(null);
-  const [createdMapping, setCreatedMapping] = useState<any | null>(null);
+
   const [mappingData, setMappingData] = useState<any | null>(null);
   const [currentMappings, setCurrentMappings] = useState<any[]>([]); // Current mappings from MappingUtility
 
@@ -182,7 +188,7 @@ interface EditEndpointModalProps {
     label: 'Simulation'
   }, {
     id: 'deploy',
-    label: 'Deploy'
+    label: 'Submit for Approval'
   }];
 
   // Load existing config data when editing
@@ -494,12 +500,10 @@ interface EditEndpointModalProps {
       // MappingUtility handles all mapping CRUD operations directly - we just need to validate and proceed
       console.log('✅ Mappings are handled directly by MappingUtility component');
       console.log('📋 Proceeding with existing mappings from database');
-      setCreatedMapping(existingMappings);
       setIsMappingValid(true);
 
       // Update the endpoint with latest mapping data
       if (currentConfig.success && currentConfig.config) {
-        setCreatedMapping(currentConfig.config.mapping);
         setCreatedEndpoint(currentConfig.config);
         
         console.log('📋 Current mapping data in database:');
@@ -528,42 +532,59 @@ interface EditEndpointModalProps {
       return;
     }
 
+    // Check for duplicate functions in local state first
+    const isDuplicate = selectedFunctions.some(existingFunction => {
+      // Check if function name matches
+      if (existingFunction.functionName !== functionData.functionName) {
+        return false;
+      }
+      
+      // Check if parameters match (order doesn't matter)
+      const existingParams = existingFunction.params || [];
+      const newParams = functionData.params || [];
+      
+      if (existingParams.length !== newParams.length) {
+        return false;
+      }
+      
+      // Sort both parameter arrays and compare
+      const sortedExisting = [...existingParams].sort();
+      const sortedNew = [...newParams].sort();
+      
+      return sortedExisting.every((param, index) => param === sortedNew[index]);
+    });
+
+    if (isDuplicate) {
+      showError('This function with the same parameters already exists. Please modify the parameters or choose a different function.');
+      return;
+    }
+
     try {
       setLoading(true);
       const configId = createdEndpoint?.id || existingConfig?.id;
       
+      console.log('💾 Adding function to backend:', functionData);
       const response = await FunctionsApiService.addFunction(configId, functionData);
       
-      if (response.success && response.config) {
-        // Update local state with new function
+      if (response.success) {
+        console.log('✅ Function added successfully to backend');
+        
+        // Add to local state only after successful API call
         const newFunction: FunctionDefinition = {
           functionName: functionData.functionName,
           params: functionData.params
         };
         setSelectedFunctions([...selectedFunctions, newFunction]);
         
-        // Update the config in state
-        if (createdEndpoint) {
-          setCreatedEndpoint({
-            ...createdEndpoint,
-            functions: response.config.functions || []
-          });
-        } else if (existingConfig) {
-          setExistingConfig({
-            ...existingConfig,
-            functions: response.config.functions || []
-          });
-        }
-        
         setShowAddFunctionModal(false);
-        console.log('✅ Function added successfully');
+        console.log('Function added successfully');
       } else {
+        console.error('❌ Failed to add function:', response.message);
         showError(`Failed to add function: ${response.message}`);
       }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-      showError(`Failed to add function: ${errorMessage}`);
-      console.error('Error adding function:', err);
+    } catch (error) {
+      console.error('❌ Error adding function:', error);
+      showError('Failed to add function. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -617,7 +638,7 @@ interface EditEndpointModalProps {
     setCurrentStep('simulation');
   };
 
-  // Step 4: Navigate to Deploy (simulation is handled by SimulationPanel)
+  // Step 4: Submit for Approval (simulation is handled by SimulationPanel)
   const handleRunSimulation = async () => {
     if (!isSimulationSuccess) {
       setError('Please run the simulation first and ensure it passes');
@@ -628,27 +649,65 @@ interface EditEndpointModalProps {
     setCurrentStep('deploy');
   };
 
-  // Step 4: Deploy/Publish
+  // Step 4: Submit for Approval
   const handleDeploy = async () => {
-    if (!createdMapping) {
-      setError('Mapping must be created first');
+    console.log('🚀 handleDeploy called');
+    console.log('createdEndpoint:', createdEndpoint);
+
+    if (!createdEndpoint?.id) {
+      console.log('❌ No endpoint created');
+      setError('Endpoint must be created first');
       return;
     }
 
+    // Check if mappings exist in the database
+    try {
+      console.log('🔍 Checking for existing mappings in database...');
+      const configResponse = await configApi.getConfig(createdEndpoint.id);
+
+      if (!configResponse.success || !configResponse.config?.mapping || configResponse.config.mapping.length === 0) {
+        console.log('❌ No mapping found in database');
+        setError('At least one mapping must be created before deployment');
+        return;
+      }
+
+      console.log('✅ Found mappings in database:', configResponse.config.mapping.length);
+    } catch (error) {
+      console.error('❌ Error checking mappings:', error);
+      setError('Failed to validate mappings. Please try again.');
+      return;
+    }
+
+    console.log('✅ Starting submission process');
     setLoading(true);
     setError(null);
 
     try {
-      // Deploy the configuration - update status to active/deployed
-      console.log('Deploying configuration with ID:', createdEndpoint.id);
+      // Submit the configuration for approval
+      console.log('Submitting configuration for approval with ID:', createdEndpoint.id);
+      console.log('User:', user);
       
-      console.log('Configuration deployed successfully');
+      const response = await configApi.submitForApproval(
+        createdEndpoint.id, 
+        user?.id || 'unknown', 
+        'editor'
+      );
+      console.log('API response:', response);
       
-      // Close modal and refresh parent component
-      handleSave();
+      if (response.success) {
+        console.log('Configuration submitted for approval successfully');
+        showSuccess('Configuration submitted for approval successfully!');
+        
+        // Close modal and refresh parent component
+        handleSave();
+      } else {
+        console.log('❌ API returned success=false:', response.message);
+        setError(`Failed to submit for approval: ${response.message}`);
+      }
     } catch (err) {
-      setError(`Deployment failed: ${err}`);
-      console.error('Error deploying:', err);
+      console.log('❌ Exception caught:', err);
+      setError(`Submission failed: ${err}`);
+      console.error('Error submitting for approval:', err);
     } finally {
       setLoading(false);
     }
@@ -752,7 +811,7 @@ interface EditEndpointModalProps {
           
           // Save successful - do not advance step automatically
           // User must click "Next" to advance to next step
-          showSuccess('Configuration saved successfully! Click Next to proceed to mapping.');
+          showSuccess('Configuration saved successfully! Click Next to proceed.');
         } else {
           const action = isNewEndpoint ? 'saved' : 'updated';
           setError(`Configuration ${action} but no config data returned`);
@@ -822,6 +881,7 @@ interface EditEndpointModalProps {
                   configId={createdEndpoint?.id || existingConfig?.id}
                   isEditMode={!isNewEndpoint} // Only allow editing for truly new endpoints (not clone or edit)
                   tenantId={tenantId}
+                  readOnly={readOnly}
                   existingSchemaFields={(() => {
                     // Get schema from multiple sources: newly created endpoint, inferred schema, or existing config
                     const schemaToUse = createdEndpoint?.schema || inferredSchema || existingConfig?.schema;
@@ -916,16 +976,6 @@ interface EditEndpointModalProps {
                   onMappingChange={setIsMappingValid} 
                   onMappingDataChange={setMappingData}
                   onCurrentMappingsChange={setCurrentMappings}
-                  onConfigUpdate={(config) => {
-                    console.log('🔄 Updating createdEndpoint with config from MappingUtility:', config);
-                    if (createdEndpoint) {
-                      setCreatedEndpoint({
-                        ...createdEndpoint,
-                        mapping: config.mapping || [],
-                        schema: config.schema || createdEndpoint.schema,
-                      });
-                    }
-                  }}
                   sourceSchema={createdEndpoint?.schema || inferredSchema?.schema || existingConfig?.schema}
                   templateType="Acmt.023"
                   configId={createdEndpoint?.id || existingConfig?.id}
@@ -936,6 +986,7 @@ interface EditEndpointModalProps {
                       ? existingConfig.mapping 
                       : createdEndpoint?.mapping || []
                   }
+                  readOnly={readOnly}
                   data-id="element-741" 
                 />
               </>
@@ -944,6 +995,17 @@ interface EditEndpointModalProps {
               <>
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold">Select Functions</h3>
+
+                    {/* Add Function Button */}
+                  <div className="flex justify-end">
+                    <Button
+                      onClick={() => setShowAddFunctionModal(true)}
+                      variant="secondary"
+                      className="border-blue-600 text-blue-600 hover:bg-blue-50"
+                    >
+                      + Add Function
+                    </Button>
+                  </div>
                   
                   {/* Functions List */}
                   <div className="space-y-3">
@@ -969,16 +1031,7 @@ interface EditEndpointModalProps {
                     )}
                   </div>
                   
-                  {/* Add Function Button */}
-                  <div className="flex justify-end">
-                    <Button
-                      onClick={() => setShowAddFunctionModal(true)}
-                      variant="secondary"
-                      className="border-blue-600 text-blue-600 hover:bg-blue-50"
-                    >
-                      + Add Function
-                    </Button>
-                  </div>
+                
                   
                   {/* Function Configuration Summary */}
                   {selectedFunctions.length > 0 && (
@@ -1038,7 +1091,13 @@ interface EditEndpointModalProps {
                 data-id="element-742" 
               />
             )}
-            {currentStep === 'deploy' && <DeploymentConfirmation endpointPath="/transactions/acmt.023" transactionType={endpointData.transactionType} data-id="element-743" />}
+            {currentStep === 'deploy' && (() => {
+              const configId = createdEndpoint?.id || existingConfig?.id;
+              const endpointPath = createdEndpoint?.endpointPath || existingConfig?.endpointPath || '/transactions/acmt.023';
+              const configData = createdEndpoint || existingConfig;
+              console.log('🎯 Rendering DeploymentConfirmation with:', { configId, endpointPath, transactionType: endpointData.transactionType, hasConfigData: !!configData });
+              return <DeploymentConfirmation configId={configId} configData={configData} endpointPath={endpointPath} transactionType={endpointData.transactionType} data-id="element-743" />;
+            })()}
           </div>
         </div>
         <div className="px-6 py-4 border-t border-gray-200 flex justify-between" data-id="element-744">
@@ -1054,26 +1113,58 @@ interface EditEndpointModalProps {
             <Button variant="secondary" onClick={onClose} data-id="element-747">
               Cancel
             </Button>
-            <Button variant="secondary" onClick={handleSave} data-id="element-748">
-              Save
-            </Button>
-            <Button variant="primary" onClick={async () => {
-              if (currentStep === 'deploy') {
-                await handleDeploy();
-              } else {
-                handleNextStep();
-              }
-            }} disabled={loading || 
-              (currentStep === 'payload' && (!createdEndpoint && isNewEndpoint)) || 
-              (currentStep === 'mapping' && !isMappingValid) || 
-              (currentStep === 'simulation' && !isSimulationSuccess)
-            } data-id="element-749">
-              {loading ? 'Processing...' : (
-                currentStep === 'deploy' ? 'Deploy' : 
-                currentStep === 'functions' ? 'Next' :
-                'Next'
-              )}
-            </Button>
+            {readOnly && currentStep === 'deploy' ? (
+              <>
+                <Button 
+                  variant="secondary" 
+                  onClick={onRevertToEditor}
+                  disabled={!onRevertToEditor}
+                  data-id="element-revert"
+                >
+                  Revert to Editor
+                </Button>
+                <Button 
+                  variant="primary" 
+                  onClick={onSendForDeployment}
+                  disabled={!onSendForDeployment || (createdEndpoint?.status === 'deployed' || existingConfig?.status === 'deployed')}
+                  data-id="element-deploy"
+                >
+                  Send for Deployment
+                </Button>
+              </>
+            ) : (
+              <>
+                {!readOnly && (
+                  <Button variant="secondary" onClick={handleSave} data-id="element-748">
+                    Save
+                  </Button>
+                )}
+                <Button variant="primary" onClick={async () => {
+                  console.log('🎯 Button clicked, currentStep:', currentStep);
+                  console.log('createdEndpoint:', createdEndpoint);
+                  console.log('existingConfig:', existingConfig);
+                  if (currentStep === 'deploy') {
+                    console.log('Calling handleDeploy');
+                    await handleDeploy();
+                  } else {
+                    console.log('Calling handleNextStep');
+                    handleNextStep();
+                  }
+                }} disabled={loading || 
+                  (currentStep === 'payload' && (!createdEndpoint && isNewEndpoint)) || 
+                  (currentStep === 'mapping' && !isMappingValid) || 
+                  (currentStep === 'simulation' && !isSimulationSuccess) ||
+                  (!createdEndpoint && !existingConfig) ||
+                  (currentStep === 'deploy' && (createdEndpoint?.status === 'under_review' || createdEndpoint?.status === 'approved' || existingConfig?.status === 'under_review' || existingConfig?.status === 'approved'))
+                } data-id="element-749">
+                  {loading ? 'Processing...' : (
+                    currentStep === 'deploy' ? 'Submit for Approval' : 
+                    currentStep === 'functions' ? 'Next' :
+                    'Next'
+                  )}
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </div>

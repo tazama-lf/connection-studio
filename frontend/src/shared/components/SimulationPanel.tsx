@@ -122,28 +122,39 @@ export const SimulationPanel: React.FC<SimulationPanelProps> = ({
             {/* Validation Steps Summary */}
             <div className="mt-3 space-y-2">
               <div className="flex items-center justify-between text-sm">
-                <span>Payload Parsing:</span>
-                <span className={`font-medium ${simulationResult.summary.validationSteps.payloadParsing === 'PASSED' ? 'text-green-600' : 'text-red-600'}`}>
-                  {simulationResult.summary.validationSteps.payloadParsing}
-                </span>
+                <span>Stages Passed:</span>
+                <span className="font-medium text-gray-700">{simulationResult.summary?.passedStages || 0} / {simulationResult.summary?.totalStages || 0}</span>
               </div>
               <div className="flex items-center justify-between text-sm">
-                <span>Mapping Execution:</span>
-                <span className={`font-medium ${simulationResult.summary.validationSteps.mappingExecution === 'PASSED' ? 'text-green-600' : 'text-red-600'}`}>
-                  {simulationResult.summary.validationSteps.mappingExecution}
-                </span>
+                <span>Stages Failed:</span>
+                <span className="font-medium text-gray-700">{simulationResult.summary?.failedStages || 0}</span>
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span>Mappings Applied:</span>
-                <span className="font-medium text-gray-700">{simulationResult.summary.mappingsApplied}</span>
+                <span className="font-medium text-gray-700">{simulationResult.summary?.mappingsApplied || 0}</span>
               </div>
             </div>
 
+            {/* Detailed Stages */}
+            {simulationResult.stages && simulationResult.stages.length > 0 && (
+              <div className="mt-3 space-y-2">
+                <h5 className="text-sm font-medium text-gray-700">Validation Stages:</h5>
+                {simulationResult.stages.map((stage, index) => (
+                  <div key={index} className="flex items-center justify-between text-sm p-2 bg-gray-50 rounded">
+                    <span className="font-medium">{stage.name}:</span>
+                    <span className={`font-medium ${stage.status === 'PASSED' ? 'text-green-600' : stage.status === 'FAILED' ? 'text-red-600' : 'text-yellow-600'}`}>
+                      {stage.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* Error Messages */}
-            {simulationResult.errors.length > 0 && (
+            {(simulationResult.errors?.length || 0) > 0 && (
               <div className="mt-3 space-y-2" data-id="element-721">
                 <h5 className="text-sm font-medium text-red-700">Errors:</h5>
-                {simulationResult.errors.map((error, index) => (
+                {simulationResult.errors?.map((error, index) => (
                   <div key={index} className="text-sm text-red-600 bg-red-25 p-2 rounded" data-id="element-722">
                     <div className="font-medium">{error.field}:</div>
                     <div>{error.message}</div>
@@ -160,7 +171,7 @@ export const SimulationPanel: React.FC<SimulationPanelProps> = ({
               Transformed Output:
             </h4>
             <pre className="bg-white p-3 rounded text-sm overflow-auto" data-id="element-725">
-              {JSON.stringify(simulationResult.transformedPayload, null, 2)}
+              {JSON.stringify(simulationResult.transformedPayload || {}, null, 2)}
             </pre>
           </div>
         </div>}
