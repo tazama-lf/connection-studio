@@ -125,7 +125,6 @@ export class SimulationService {
 
       if (schemaStage.status === 'FAILED') {
         errors.push(...(schemaStage.errors || []));
-        // Schema validation failed - stop here
         return this.createStageBasedResult(
           dto,
           timestamp,
@@ -147,7 +146,6 @@ export class SimulationService {
 
       if (mappingValidationStage.status === 'FAILED') {
         errors.push(...(mappingValidationStage.errors || []));
-        // Mapping validation failed - stop here
         return this.createStageBasedResult(
           dto,
           timestamp,
@@ -554,7 +552,6 @@ export class SimulationService {
     }
 
     try {
-      // Configure AJV with strict validation
       const ajv = new Ajv({
         allErrors: true,
         strict: false,
@@ -565,7 +562,6 @@ export class SimulationService {
         allowUnionTypes: false,
       });
 
-      // Add validation for additionalProperties if not set in schema
       const schemaWithStrict = this.enforceStrictSchema(schema);
 
       this.logger.log(`Original schema: ${JSON.stringify(schema)}`);
@@ -618,7 +614,6 @@ export class SimulationService {
           ? [mapping.source]
           : [];
 
-      // Skip validation for constant mappings (no source field)
       if (
         mapping.transformation === 'CONSTANT' ||
         mapping.constantValue !== undefined
@@ -626,7 +621,6 @@ export class SimulationService {
         continue;
       }
 
-      // Check if at least one source field exists
       let anySourceExists = false;
       const missingSources: string[] = [];
 
@@ -662,13 +656,9 @@ export class SimulationService {
     return errors;
   }
 
-  /**
-   * Get field value from nested object using dot notation
-   */
   private getFieldValue(obj: any, path: string): any {
     if (!path) return undefined;
 
-    // Handle array notation like "debtor[0].name"
     const normalizedPath = path.replace(/\[(\d+)\]/g, '.$1');
 
     return _.get(obj, normalizedPath);
@@ -681,15 +671,19 @@ export class SimulationService {
 
     const strictSchema = { ...schema };
 
-    // If this is an object type and additionalProperties is not set, disallow additional properties
     if (
       strictSchema.type === 'object' &&
-      strictSchema.additionalProperties === undefined
+      strictSchema.additionalProperties === undefined &&
+      !strictSchema.items
     ) {
       strictSchema.additionalProperties = false;
     }
 
-    // Recursively apply to nested properties
+    if (strictSchema.type === 'array' && strictSchema.items) {
+      strictSchema.items = this.enforceStrictSchema(strictSchema.items);
+      return strictSchema;
+    }
+
     if (strictSchema.properties) {
       strictSchema.properties = Object.keys(strictSchema.properties).reduce(
         (acc, key) => {
@@ -700,7 +694,7 @@ export class SimulationService {
       );
     }
 
-    if (strictSchema.items) {
+    if (strictSchema.items && strictSchema.type !== 'array') {
       strictSchema.items = this.enforceStrictSchema(strictSchema.items);
     }
 
