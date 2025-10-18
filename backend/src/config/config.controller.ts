@@ -29,8 +29,18 @@ import {
   type Config,
   ContentType,
   type TransactionType,
+  type SubmitForApprovalDto,
+  type ApprovalDto,
+  type RejectionDto,
+  type ChangeRequestDto,
+  type DeploymentDto,
+  type StatusTransitionDto,
 } from './config.interfaces';
-import { RequireClaims, TazamaClaims } from '../auth/auth.decorator';
+import {
+  RequireClaims,
+  TazamaClaims,
+  RequireAnyClaims,
+} from '../auth/auth.decorator';
 import { FileParsingService } from '@tazama-lf/tcs-lib';
 function getTenantId(user: AuthenticatedUser): string {
   return user.token.tenantId || 'default';
@@ -46,6 +56,10 @@ function decodeTokenString(tokenString: string): any {
 function getUserId(user: AuthenticatedUser): string {
   const decodedToken = decodeTokenString(user.token.tokenString);
   return decodedToken.preferred_username;
+}
+
+function getUserClaims(user: AuthenticatedUser): string[] {
+  return user.validClaims || [];
 }
 @Controller('config')
 @UseGuards(TazamaAuthGuard)
@@ -277,6 +291,121 @@ export class ConfigController {
       dto,
       getTenantId(user),
       getUserId(user),
+    );
+  }
+
+  // ======================== WORKFLOW ENDPOINTS ========================
+
+  @Post(':id/workflow/submit')
+  @RequireClaims(TazamaClaims.EDITOR)
+  async submitForApproval(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: SubmitForApprovalDto,
+    @User() user: AuthenticatedUser,
+  ): Promise<ConfigResponseDto> {
+    return this.configService.submitForApproval(
+      id,
+      dto,
+      getTenantId(user),
+      getUserId(user),
+      getUserClaims(user),
+    );
+  }
+
+  @Post(':id/workflow/approve')
+  @RequireClaims(TazamaClaims.APPROVER)
+  async approveConfig(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: ApprovalDto,
+    @User() user: AuthenticatedUser,
+  ): Promise<ConfigResponseDto> {
+    return this.configService.approveConfig(
+      id,
+      dto,
+      getTenantId(user),
+      getUserId(user),
+      getUserClaims(user),
+    );
+  }
+
+  @Post(':id/workflow/reject')
+  @RequireClaims(TazamaClaims.APPROVER)
+  async rejectConfig(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: RejectionDto,
+    @User() user: AuthenticatedUser,
+  ): Promise<ConfigResponseDto> {
+    return this.configService.rejectConfig(
+      id,
+      dto,
+      getTenantId(user),
+      getUserId(user),
+      getUserClaims(user),
+    );
+  }
+
+  @Post(':id/workflow/request-changes')
+  @RequireClaims(TazamaClaims.APPROVER)
+  async requestChanges(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: ChangeRequestDto,
+    @User() user: AuthenticatedUser,
+  ): Promise<ConfigResponseDto> {
+    return this.configService.requestChanges(
+      id,
+      dto,
+      getTenantId(user),
+      getUserId(user),
+      getUserClaims(user),
+    );
+  }
+
+  @Post(':id/workflow/deploy')
+  @RequireClaims(TazamaClaims.PUBLISHER)
+  async deployConfig(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: DeploymentDto,
+    @User() user: AuthenticatedUser,
+  ): Promise<ConfigResponseDto> {
+    return this.configService.deployConfig(
+      id,
+      dto,
+      getTenantId(user),
+      getUserId(user),
+      getUserClaims(user),
+    );
+  }
+
+  @Post(':id/workflow/return-to-progress')
+  @RequireClaims(TazamaClaims.EDITOR)
+  async returnToProgress(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: StatusTransitionDto,
+    @User() user: AuthenticatedUser,
+  ): Promise<ConfigResponseDto> {
+    return this.configService.returnToProgress(
+      id,
+      dto,
+      getTenantId(user),
+      getUserId(user),
+      getUserClaims(user),
+    );
+  }
+
+  @Get(':id/workflow/status')
+  @RequireAnyClaims(
+    TazamaClaims.EDITOR,
+    TazamaClaims.APPROVER,
+    TazamaClaims.PUBLISHER,
+  )
+  async getWorkflowStatus(
+    @Param('id', ParseIntPipe) id: number,
+    @User() user: AuthenticatedUser,
+  ): Promise<any> {
+    return this.configService.getWorkflowStatus(
+      id,
+      getTenantId(user),
+      getUserClaims(user),
     );
   }
 }

@@ -3,6 +3,7 @@ import {
   Logger,
   BadRequestException,
   NotFoundException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { ConfigRepository } from './config.repository';
 import {
@@ -13,8 +14,8 @@ import {
 import { AuditService } from '../audit/audit.service';
 import { JSONSchemaConverterService } from '../schemas/json-schema-converter.service';
 
-import { TazamaDataModelService } from '../data-model-extensions/tazama-data-model.service';
-import { DataModelExtensionService } from '../data-model-extensions/data-model-extension.service';
+import { TazamaDataModelService } from '../tazama-data-model/tazama-data-model.service';
+import { ConfigWorkflowService } from './config-workflow.service';
 import {
   Config,
   CreateConfigDto,
@@ -29,6 +30,13 @@ import {
   FunctionDefinition,
   AddFunctionDto,
   AllowedFunctionName,
+  StatusTransitionDto,
+  SubmitForApprovalDto,
+  ApprovalDto,
+  RejectionDto,
+  ChangeRequestDto,
+  DeploymentDto,
+  WorkflowAction,
 } from './config.interfaces';
 
 @Injectable()
@@ -54,7 +62,7 @@ export class ConfigService {
     private readonly auditService: AuditService,
     private readonly jsonSchemaConverter: JSONSchemaConverterService,
     private readonly tazamaDataModelService: TazamaDataModelService,
-    private readonly dataModelExtensionService: DataModelExtensionService,
+    private readonly workflowService: ConfigWorkflowService,
   ) {}
 
   async createConfig(
@@ -73,7 +81,9 @@ export class ConfigService {
     try {
       const version = dto.version || 'v1';
       const msgFam = dto.msgFam || 'unknown';
-      this.logger.log(`Checking uniqueness for msgFam: ${msgFam}, transactionType: ${dto.transactionType}, version: ${version}, tenantId: ${tenantId}`);
+      this.logger.log(
+        `Checking uniqueness for msgFam: ${msgFam}, transactionType: ${dto.transactionType}, version: ${version}, tenantId: ${tenantId}`,
+      );
       const existingConfig =
         await this.configRepository.findConfigByMsgFamVersionAndTransactionType(
           msgFam,
@@ -82,7 +92,9 @@ export class ConfigService {
           tenantId,
         );
       if (existingConfig) {
-        this.logger.warn(`Duplicate config found for msgFam: ${msgFam}, transactionType: ${dto.transactionType}, version: ${version}, tenantId: ${tenantId}`);
+        this.logger.warn(
+          `Duplicate config found for msgFam: ${msgFam}, transactionType: ${dto.transactionType}, version: ${version}, tenantId: ${tenantId}`,
+        );
         return {
           success: false,
           message: `Config with message family '${msgFam}', transaction type '${dto.transactionType}', and version '${version}' already exists for this tenant. Please use different values.`,
@@ -204,7 +216,6 @@ export class ConfigService {
     userId: string,
   ): Promise<ConfigResponseDto> {
     try {
-      // First, fetch the source config
       const sourceConfig = await this.configRepository.findConfigById(
         dto.sourceConfigId,
         tenantId,
@@ -287,7 +298,7 @@ export class ConfigService {
         contentType: sourceConfig.contentType,
         schema: finalSchema,
         mapping: sourceConfig.mapping, // Clone the mappings
-        status: ConfigStatus.IN_PROGRESS, // Reset status to in-progress
+        status: ConfigStatus.IN_PROGRESS,
         tenantId,
         createdBy: userId,
       };
@@ -379,11 +390,14 @@ export class ConfigService {
       throw new NotFoundException(`Config with ID ${id} not found`);
     }
 
-    // APPROVAL STATUS CHECK: Prevent editing if already approved
-    if (config.status === ConfigStatus.COMPLETED) {
+    // WORKFLOW CHECK: Prevent editing if not in editable state
+    const editValidation = this.workflowService.canEditConfig(
+      config.status as ConfigStatus,
+    );
+    if (!editValidation.canEdit) {
       return {
         success: false,
-        message: 'Cannot edit an approved configuration. Please clone it to create a new version.',
+        message: editValidation.message || 'Editing not allowed.',
       };
     }
 
@@ -496,7 +510,7 @@ export class ConfigService {
         schema: finalSchema || config.schema,
         mapping: dto.mapping ?? config.mapping,
         functions: dto.functions ?? config.functions,
-        status: ConfigStatus.DRAFT,
+        status: ConfigStatus.IN_PROGRESS,
         tenantId,
         createdBy: userId,
       };
@@ -554,7 +568,11 @@ export class ConfigService {
     }
 
     // Auto-regenerate endpoint path if needed
-    if (dto.transactionType !== undefined || dto.msgFam !== undefined || dto.version !== undefined) {
+    if (
+      dto.transactionType !== undefined ||
+      dto.msgFam !== undefined ||
+      dto.version !== undefined
+    ) {
       const newTransactionType = dto.transactionType ?? config.transactionType;
       const newMsgFam = dto.msgFam ?? config.msgFam;
       const newVersion = dto.version ?? config.version;
@@ -1019,7 +1037,7 @@ export class ConfigService {
   private async validateMapping(
     mapping: FieldMapping,
     schema: JSONSchema,
-    tenantId: string,
+    _tenantId: string,
   ): Promise<void> {
     const allPaths = this.extractAllPathsFromSchema(schema);
 
@@ -1049,26 +1067,21 @@ export class ConfigService {
     if (Array.isArray(mapping.destination)) {
       for (const dest of mapping.destination) {
         const isValid =
-          await this.dataModelExtensionService.isValidDestinationPath(
-            dest,
-            tenantId,
-          );
+          this.tazamaDataModelService.isValidDestinationPath(dest);
         if (!isValid) {
           throw new BadRequestException(
-            `Destination field '${dest}' is not a valid Tazama data model field. Use a field from the Tazama internal data model (e.g., entities.Name, accounts.Currency, transactionRelationship.Amt) or create a data model extension.`,
+            `Destination field '${dest}' is not a valid Tazama data model field. Use a field from the Tazama internal data model (e.g., entities.Name, accounts.Currency, transactionRelationship.Amt).`,
           );
         }
       }
     } else {
       if (typeof mapping.destination === 'string' && mapping.destination) {
-        const isValid =
-          await this.dataModelExtensionService.isValidDestinationPath(
-            mapping.destination,
-            tenantId,
-          );
+        const isValid = this.tazamaDataModelService.isValidDestinationPath(
+          mapping.destination,
+        );
         if (!isValid) {
           throw new BadRequestException(
-            `Destination field '${mapping.destination}' is not a valid Tazama data model field. Use a field from the Tazama internal data model (e.g., entities.Name, accounts.Currency, transactionRelationship.Amt) or create a data model extension.`,
+            `Destination field '${mapping.destination}' is not a valid Tazama data model field. Use a field from the Tazama internal data model (e.g., entities.Name, accounts.Currency, transactionRelationship.Amt).`,
           );
         }
       }
@@ -1158,5 +1171,461 @@ export class ConfigService {
     }
 
     return null;
+  }
+
+  // ======================== WORKFLOW METHODS ========================
+
+  /**
+   * Submit configuration for approval
+   */
+  async submitForApproval(
+    id: number,
+    dto: SubmitForApprovalDto,
+    tenantId: string,
+    userId: string,
+    userClaims: string[],
+  ): Promise<ConfigResponseDto> {
+    const config = await this.configRepository.findConfigById(id, tenantId);
+    if (!config) {
+      throw new NotFoundException(`Config with ID ${id} not found`);
+    }
+
+    const currentStatus = config.status as ConfigStatus;
+    const action: WorkflowAction = 'submit_for_approval';
+
+    // Validate user can perform this action
+    const validation = this.workflowService.canPerformAction(
+      userClaims,
+      currentStatus,
+      action,
+    );
+    if (!validation.canPerform) {
+      throw new ForbiddenException(validation.message);
+    }
+
+    const newStatus = ConfigStatus.UNDER_REVIEW;
+
+    // Update status
+    await this.configRepository.updateConfig(id, tenantId, {
+      status: newStatus,
+    });
+
+    // Log the action
+    await this.logStatusChange(
+      id,
+      currentStatus,
+      newStatus,
+      action,
+      userId,
+      dto.comment,
+    );
+
+    // Audit the action
+    await this.auditService.logAction({
+      action: 'submit_for_approval',
+      entityType: 'config',
+      entityId: id.toString(),
+      actor: userId,
+      tenantId,
+      details: `Configuration submitted for approval${dto.comment ? `: ${dto.comment}` : ''}`,
+      newValues: { status: newStatus },
+    });
+
+    return {
+      success: true,
+      message: 'Configuration submitted for approval successfully',
+      config:
+        (await this.configRepository.findConfigById(id, tenantId)) || undefined,
+    };
+  }
+
+  /**
+   * Approve configuration
+   */
+  async approveConfig(
+    id: number,
+    dto: ApprovalDto,
+    tenantId: string,
+    userId: string,
+    userClaims: string[],
+  ): Promise<ConfigResponseDto> {
+    const config = await this.configRepository.findConfigById(id, tenantId);
+    if (!config) {
+      throw new NotFoundException(`Config with ID ${id} not found`);
+    }
+
+    const currentStatus = config.status as ConfigStatus;
+    const action: WorkflowAction = 'approve';
+
+    // Validate user can perform this action
+    const validation = this.workflowService.canPerformAction(
+      userClaims,
+      currentStatus,
+      action,
+    );
+    if (!validation.canPerform) {
+      throw new ForbiddenException(validation.message);
+    }
+
+    const newStatus = ConfigStatus.APPROVED;
+
+    // Update status
+    await this.configRepository.updateConfig(id, tenantId, {
+      status: newStatus,
+    });
+
+    // Log the action
+    await this.logStatusChange(
+      id,
+      currentStatus,
+      newStatus,
+      action,
+      userId,
+      dto.comment,
+    );
+
+    // Audit the action
+    await this.auditService.logAction({
+      action: 'approve_config',
+      entityType: 'config',
+      entityId: id.toString(),
+      actor: userId,
+      tenantId,
+      details: `Configuration approved${dto.comment ? `: ${dto.comment}` : ''}`,
+      newValues: { status: newStatus },
+    });
+
+    return {
+      success: true,
+      message: 'Configuration approved successfully',
+      config:
+        (await this.configRepository.findConfigById(id, tenantId)) || undefined,
+    };
+  }
+
+  /**
+   * Reject configuration
+   */
+  async rejectConfig(
+    id: number,
+    dto: RejectionDto,
+    tenantId: string,
+    userId: string,
+    userClaims: string[],
+  ): Promise<ConfigResponseDto> {
+    const config = await this.configRepository.findConfigById(id, tenantId);
+    if (!config) {
+      throw new NotFoundException(`Config with ID ${id} not found`);
+    }
+
+    const currentStatus = config.status as ConfigStatus;
+    const action: WorkflowAction = 'reject';
+
+    // Validate user can perform this action
+    const validation = this.workflowService.canPerformAction(
+      userClaims,
+      currentStatus,
+      action,
+    );
+    if (!validation.canPerform) {
+      throw new ForbiddenException(validation.message);
+    }
+
+    const newStatus = ConfigStatus.REJECTED;
+
+    // Update status
+    await this.configRepository.updateConfig(id, tenantId, {
+      status: newStatus,
+    });
+
+    // Log the action
+    await this.logStatusChange(
+      id,
+      currentStatus,
+      newStatus,
+      action,
+      userId,
+      dto.comment,
+    );
+
+    // Audit the action
+    await this.auditService.logAction({
+      action: 'reject_config',
+      entityType: 'config',
+      entityId: id.toString(),
+      actor: userId,
+      tenantId,
+      details: `Configuration rejected: ${dto.comment}`,
+      newValues: { status: newStatus },
+    });
+
+    return {
+      success: true,
+      message: 'Configuration rejected successfully',
+      config:
+        (await this.configRepository.findConfigById(id, tenantId)) || undefined,
+    };
+  }
+
+  /**
+   * Request changes for configuration
+   */
+  async requestChanges(
+    id: number,
+    dto: ChangeRequestDto,
+    tenantId: string,
+    userId: string,
+    userClaims: string[],
+  ): Promise<ConfigResponseDto> {
+    const config = await this.configRepository.findConfigById(id, tenantId);
+    if (!config) {
+      throw new NotFoundException(`Config with ID ${id} not found`);
+    }
+
+    const currentStatus = config.status as ConfigStatus;
+    const action: WorkflowAction = 'request_changes';
+
+    // Validate user can perform this action
+    const validation = this.workflowService.canPerformAction(
+      userClaims,
+      currentStatus,
+      action,
+    );
+    if (!validation.canPerform) {
+      throw new ForbiddenException(validation.message);
+    }
+
+    const newStatus = ConfigStatus.CHANGES_REQUESTED;
+
+    // Update status
+    await this.configRepository.updateConfig(id, tenantId, {
+      status: newStatus,
+    });
+
+    // Log the action
+    await this.logStatusChange(
+      id,
+      currentStatus,
+      newStatus,
+      action,
+      userId,
+      dto.comment,
+    );
+
+    // Audit the action
+    await this.auditService.logAction({
+      action: 'request_changes',
+      entityType: 'config',
+      entityId: id.toString(),
+      actor: userId,
+      tenantId,
+      details: `Changes requested: ${dto.comment}`,
+      newValues: { status: newStatus },
+    });
+
+    return {
+      success: true,
+      message: 'Changes requested successfully',
+      config:
+        (await this.configRepository.findConfigById(id, tenantId)) || undefined,
+    };
+  }
+
+  /**
+   * Deploy configuration
+   */
+  async deployConfig(
+    id: number,
+    dto: DeploymentDto,
+    tenantId: string,
+    userId: string,
+    userClaims: string[],
+  ): Promise<ConfigResponseDto> {
+    const config = await this.configRepository.findConfigById(id, tenantId);
+    if (!config) {
+      throw new NotFoundException(`Config with ID ${id} not found`);
+    }
+
+    const currentStatus = config.status as ConfigStatus;
+    const action: WorkflowAction = 'deploy';
+
+    // Validate user can perform this action
+    const validation = this.workflowService.canPerformAction(
+      userClaims,
+      currentStatus,
+      action,
+    );
+    if (!validation.canPerform) {
+      throw new ForbiddenException(validation.message);
+    }
+
+    const newStatus = ConfigStatus.DEPLOYED;
+
+    // Update status
+    await this.configRepository.updateConfig(id, tenantId, {
+      status: newStatus,
+    });
+
+    // Log the action
+    await this.logStatusChange(
+      id,
+      currentStatus,
+      newStatus,
+      action,
+      userId,
+      dto.comment,
+    );
+
+    // Audit the action
+    await this.auditService.logAction({
+      action: 'deploy_config',
+      entityType: 'config',
+      entityId: id.toString(),
+      actor: userId,
+      tenantId,
+      details: `Configuration deployed${dto.comment ? `: ${dto.comment}` : ''}`,
+      newValues: { status: newStatus },
+    });
+
+    return {
+      success: true,
+      message: 'Configuration deployed successfully',
+      config:
+        (await this.configRepository.findConfigById(id, tenantId)) || undefined,
+    };
+  }
+
+  /**
+   * Return configuration to progress (from rejected or changes requested)
+   */
+  async returnToProgress(
+    id: number,
+    dto: StatusTransitionDto,
+    tenantId: string,
+    userId: string,
+    userClaims: string[],
+  ): Promise<ConfigResponseDto> {
+    const config = await this.configRepository.findConfigById(id, tenantId);
+    if (!config) {
+      throw new NotFoundException(`Config with ID ${id} not found`);
+    }
+
+    const currentStatus = config.status as ConfigStatus;
+    const action: WorkflowAction = 'return_to_progress';
+
+    // Validate user can perform this action
+    const validation = this.workflowService.canPerformAction(
+      userClaims,
+      currentStatus,
+      action,
+    );
+    if (!validation.canPerform) {
+      throw new ForbiddenException(validation.message);
+    }
+
+    const newStatus = ConfigStatus.IN_PROGRESS;
+
+    // Update status
+    await this.configRepository.updateConfig(id, tenantId, {
+      status: newStatus,
+    });
+
+    // Log the action
+    await this.logStatusChange(
+      id,
+      currentStatus,
+      newStatus,
+      action,
+      userId,
+      dto.comment,
+    );
+
+    // Audit the action
+    await this.auditService.logAction({
+      action: 'return_to_progress',
+      entityType: 'config',
+      entityId: id.toString(),
+      actor: userId,
+      tenantId,
+      details: `Configuration returned to progress${dto.comment ? `: ${dto.comment}` : ''}`,
+      newValues: { status: newStatus },
+    });
+
+    return {
+      success: true,
+      message: 'Configuration returned to progress successfully',
+      config:
+        (await this.configRepository.findConfigById(id, tenantId)) || undefined,
+    };
+  }
+
+  /**
+   * Get workflow status and available actions for a configuration
+   */
+  async getWorkflowStatus(
+    id: number,
+    tenantId: string,
+    userClaims: string[],
+  ): Promise<any> {
+    const config = await this.configRepository.findConfigById(id, tenantId);
+    if (!config) {
+      throw new NotFoundException(`Config with ID ${id} not found`);
+    }
+
+    const currentStatus = config.status as ConfigStatus;
+    const permissions = this.workflowService.validateUserPermissions(
+      userClaims,
+      currentStatus,
+      'submit_for_approval',
+    );
+
+    return {
+      configId: id,
+      currentStatus,
+      availableActions: {
+        canEdit: permissions.canEdit,
+        canSubmit: permissions.canSubmit,
+        canApprove: permissions.canApprove,
+        canReject: permissions.canReject,
+        canRequestChanges: permissions.canRequestChanges,
+        canDeploy: permissions.canDeploy,
+      },
+      statusDescription: this.getStatusDescription(currentStatus),
+    };
+  }
+
+  /**
+   * Private method to log status changes
+   */
+  private async logStatusChange(
+    configId: number,
+    previousStatus: ConfigStatus,
+    newStatus: ConfigStatus,
+    action: WorkflowAction,
+    performedBy: string,
+    comment?: string,
+  ): Promise<void> {
+    // Log to a dedicated status change log if needed
+    this.logger.log(
+      `Config ${configId}: Status changed from ${previousStatus} to ${newStatus} by ${performedBy} (${action})${comment ? ` - ${comment}` : ''}`,
+    );
+  }
+
+  /**
+   * Get human-readable status description
+   */
+  private getStatusDescription(status: ConfigStatus): string {
+    const descriptions: Record<ConfigStatus, string> = {
+      [ConfigStatus.IN_PROGRESS]: 'Configuration is being edited',
+      [ConfigStatus.UNDER_REVIEW]: 'Configuration is under review by approvers',
+      [ConfigStatus.APPROVED]:
+        'Configuration has been approved and ready for deployment',
+      [ConfigStatus.DEPLOYED]: 'Configuration has been deployed to production',
+      [ConfigStatus.REJECTED]: 'Configuration has been rejected',
+      [ConfigStatus.CHANGES_REQUESTED]:
+        'Changes have been requested for this configuration',
+    };
+
+    return descriptions[status] || status;
   }
 }

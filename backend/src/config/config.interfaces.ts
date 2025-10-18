@@ -56,10 +56,12 @@ export enum ContentType {
 }
 export type TransactionType = string;
 export enum ConfigStatus {
-  DRAFT = 'draft',
   IN_PROGRESS = 'inprogress',
-  COMPLETED = 'completed',
-  FAILED = 'failed',
+  UNDER_REVIEW = 'under_review',
+  APPROVED = 'approved',
+  DEPLOYED = 'deployed',
+  REJECTED = 'rejected',
+  CHANGES_REQUESTED = 'changes_requested',
 }
 export interface MappingSource {
   field: string; // Field path in source schema
@@ -104,4 +106,75 @@ export interface ConfigResponseDto {
     errors: string[];
     warnings: string[];
   };
+}
+
+export interface StatusTransitionDto {
+  userId: string;
+  userRole: string;
+  comment?: string;
+  metadata?: Record<string, any>;
+}
+
+export interface SubmitForApprovalDto extends StatusTransitionDto {
+  configId: number;
+}
+
+export interface ApprovalDto extends StatusTransitionDto {
+  configId: number;
+  approvalNotes?: string;
+}
+
+export interface RejectionDto extends StatusTransitionDto {
+  configId: number;
+  rejectionReason: string;
+}
+
+export interface ChangeRequestDto extends StatusTransitionDto {
+  configId: number;
+  requestedChanges: string;
+}
+
+export interface DeploymentDto extends StatusTransitionDto {
+  configId: number;
+  deploymentEnvironment?: string;
+  deploymentNotes?: string;
+}
+
+export interface WorkflowValidationResult {
+  canEdit: boolean;
+  canSubmit: boolean;
+  canApprove: boolean;
+  canReject: boolean;
+  canRequestChanges: boolean;
+  canDeploy: boolean;
+  canReturnToProgress: boolean;
+  reason?: string;
+}
+
+export interface StatusTransitionValidation {
+  isValid: boolean;
+  currentStatus: ConfigStatus;
+  targetStatus: ConfigStatus;
+  allowedNextStatuses: ConfigStatus[];
+  reason?: string;
+}
+
+export type WorkflowAction =
+  | 'submit_for_approval'
+  | 'approve'
+  | 'reject'
+  | 'request_changes'
+  | 'deploy'
+  | 'return_to_progress';
+
+export interface AuditLogEntry {
+  configId: number;
+  action: string;
+  userId: string;
+  userRole: string;
+  previousStatus?: ConfigStatus;
+  newStatus?: ConfigStatus;
+  comment?: string;
+  metadata?: Record<string, any>;
+  timestamp: Date;
 }

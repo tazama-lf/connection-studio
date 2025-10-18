@@ -1,11 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from './config.service';
 import { ConfigRepository } from './config.repository';
+import { ConfigWorkflowService } from './config-workflow.service';
 import { PayloadParsingService, JSONSchema } from '@tazama-lf/tcs-lib';
 import { AuditService } from '../audit/audit.service';
 import { JSONSchemaConverterService } from '../schemas/json-schema-converter.service';
-import { TazamaDataModelService } from '../data-model-extensions/tazama-data-model.service';
-import { DataModelExtensionService } from '../data-model-extensions/data-model-extension.service';
+import { TazamaDataModelService } from '../tazama-data-model/tazama-data-model.service';
 import {
   Config,
   ContentType,
@@ -16,6 +16,7 @@ import {
   AddFunctionDto,
   AllowedFunctionName,
 } from './config.interfaces';
+
 describe('ConfigService', () => {
   let service: ConfigService;
   let repository: jest.Mocked<ConfigRepository>;
@@ -57,6 +58,7 @@ describe('ConfigService', () => {
       findConfigsByTenant: jest.fn(),
       findConfigsByTransactionType: jest.fn(),
       findConfigByVersionAndTransactionType: jest.fn(),
+      findConfigByMsgFamVersionAndTransactionType: jest.fn(),
       updateConfig: jest.fn(),
       deleteConfig: jest.fn(),
     };
@@ -74,13 +76,28 @@ describe('ConfigService', () => {
       validateDestinationPath: jest.fn(),
       getDestinationPaths: jest.fn(),
       getMappingSuggestions: jest.fn(),
+      isValidDestinationPath: jest.fn().mockReturnValue(true),
     };
-    const mockDataModelExtensionService = {
-      createExtension: jest.fn(),
-      getExtensions: jest.fn(),
-      updateExtension: jest.fn(),
-      deleteExtension: jest.fn(),
-      isValidDestinationPath: jest.fn().mockResolvedValue(true),
+    const mockConfigWorkflowService = {
+      validateStatusTransition: jest.fn(),
+      validateUserPermissions: jest.fn(),
+      getTargetStatus: jest.fn(),
+      canPerformAction: jest.fn(),
+      canEditConfig: jest.fn().mockImplementation((status: ConfigStatus) => {
+        const editableStates = [
+          ConfigStatus.IN_PROGRESS,
+          ConfigStatus.REJECTED,
+          ConfigStatus.CHANGES_REQUESTED,
+        ];
+        const canEdit = editableStates.includes(status);
+        return {
+          canEdit,
+          message: canEdit
+            ? undefined
+            : 'Editing not allowed. Please clone to create a new version.',
+        };
+      }),
+      getActionDescription: jest.fn(),
     };
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -106,8 +123,8 @@ describe('ConfigService', () => {
           useValue: mockTazamaDataModelService,
         },
         {
-          provide: DataModelExtensionService,
-          useValue: mockDataModelExtensionService,
+          provide: ConfigWorkflowService,
+          useValue: mockConfigWorkflowService,
         },
       ],
     }).compile();
@@ -334,18 +351,18 @@ describe('ConfigService', () => {
         payload: '{"amount":100,"currency":"USD"}',
       };
       const existingConfig = { ...mockConfig };
-      repository.findConfigByVersionAndTransactionType.mockResolvedValue(
+      repository.findConfigByMsgFamVersionAndTransactionType.mockResolvedValue(
         existingConfig,
       );
       const result = await service.createConfig(dto, 'test-tenant', 'user-123');
       expect(result.success).toBe(false);
       expect(result.message).toBe(
         // eslint-disable-next-line quotes
-        "Config with version 'v1' for transaction type 'Payments' already exists for this tenant. Please use a different version.",
+        "Config with message family 'pain.001', transaction type 'Payments', and version 'v1' already exists for this tenant. Please use different values.",
       );
       expect(
-        repository.findConfigByVersionAndTransactionType,
-      ).toHaveBeenCalledWith('v1', 'Payments', 'test-tenant');
+        repository.findConfigByMsgFamVersionAndTransactionType,
+      ).toHaveBeenCalledWith('pain.001', 'v1', 'Payments', 'test-tenant');
       expect(repository.createConfig).not.toHaveBeenCalled();
     });
     it('should validate payload is required', async () => {
@@ -471,39 +488,66 @@ describe('ConfigService', () => {
   describe('updateConfig', () => {
     it('should update config in-place successfully', async () => {
       const updateDto: UpdateConfigDto = {
-        msgFam: 'pacs.008',
+        endpointPath: '/new-payment-path',
       };
       repository.findConfigById.mockResolvedValueOnce(mockConfig);
       repository.updateConfig.mockResolvedValueOnce(undefined);
-      const updatedConfig = { ...mockConfig, msgFam: 'pacs.008' };
+      const updatedConfig = {
+        ...mockConfig,
+        endpointPath: '/new-payment-path',
+      };
       repository.findConfigById.mockResolvedValueOnce(updatedConfig);
-      
+
       const result = await service.updateConfig(
         1,
         updateDto,
         'test-tenant',
         'user-123',
       );
-      
+
       expect(result.success).toBe(true);
-      expect(result.config?.msgFam).toBe('pacs.008');
+      expect(result.config?.endpointPath).toBe('/new-payment-path');
       expect(repository.updateConfig).toHaveBeenCalled(); // Updates same config in-place
       expect(repository.createConfig).not.toHaveBeenCalled(); // No new config created
     });
 
     it('should prevent editing approved config', async () => {
-      const approvedConfig = { ...mockConfig, status: ConfigStatus.COMPLETED };
+      console.log('ConfigStatus.APPROVED value:', ConfigStatus.APPROVED);
+      console.log('ConfigStatus enum:', ConfigStatus);
+
+      const approvedConfig: Config = {
+        id: 1,
+        msgFam: 'pain.001',
+        transactionType: 'Payments',
+        endpointPath: '/payment',
+        version: 'v1',
+        contentType: ContentType.JSON,
+        schema: mockJSONSchema,
+        mapping: undefined,
+        status: ConfigStatus.APPROVED,
+        tenantId: 'test-tenant',
+        createdBy: 'user-123',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      console.log(
+        'Approved config created, status field:',
+        approvedConfig.status,
+      );
       repository.findConfigById.mockResolvedValueOnce(approvedConfig);
-      
+
       const result = await service.updateConfig(
         1,
-        { msgFam: 'pacs.008' },
+        { endpointPath: '/new-path' },
         'test-tenant',
         'user-123',
       );
-      
+
+      console.log('Result:', result);
+
       expect(result.success).toBe(false);
-      expect(result.message).toContain('Cannot edit an approved configuration');
+      expect(result.message).toContain('Editing not allowed');
       expect(repository.updateConfig).not.toHaveBeenCalled();
     });
 

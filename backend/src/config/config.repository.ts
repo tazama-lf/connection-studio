@@ -116,6 +116,7 @@ export class ConfigRepository {
       schema?: JSONSchema;
       mapping?: FieldMapping[];
       functions?: FunctionDefinition[];
+      status?: string;
     },
   ): Promise<void> {
     const updateData: any = {};
@@ -133,6 +134,7 @@ export class ConfigRepository {
       updateData.mapping = JSON.stringify(updates.mapping);
     if (updates.functions !== undefined)
       updateData.functions = JSON.stringify(updates.functions);
+    if (updates.status !== undefined) updateData.status = updates.status;
     await this.knex('config')
       .where({ id, tenant_id: tenantId })
       .update(updateData);
