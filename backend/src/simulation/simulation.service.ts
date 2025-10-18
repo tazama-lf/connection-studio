@@ -76,52 +76,110 @@ export class SimulationService {
       // Stage 1: Load Configuration
       const configStage = await this.stageLoadConfig(dto.endpointId, tenantId);
       stages.push(configStage);
-      
+
       if (configStage.status === 'FAILED') {
         errors.push(...(configStage.errors || []));
-        return this.createStageBasedResult(dto, timestamp, userId, tenantId, stages, errors, null, {});
+        return this.createStageBasedResult(
+          dto,
+          timestamp,
+          userId,
+          tenantId,
+          stages,
+          errors,
+          null,
+          {},
+        );
       }
 
       const config = configStage.details.config as Config;
 
       // Stage 2: Parse Payload
-      const parseStage = await this.stageParsePayload(dto.payload, dto.payloadType);
+      const parseStage = await this.stageParsePayload(
+        dto.payload,
+        dto.payloadType,
+      );
       stages.push(parseStage);
-      
+
       if (parseStage.status === 'FAILED') {
         errors.push(...(parseStage.errors || []));
-        return this.createStageBasedResult(dto, timestamp, userId, tenantId, stages, errors, null, {});
+        return this.createStageBasedResult(
+          dto,
+          timestamp,
+          userId,
+          tenantId,
+          stages,
+          errors,
+          null,
+          {},
+        );
       }
 
       const parsedPayload = parseStage.details.parsedPayload;
 
       // Stage 3: Validate Schema
-      const schemaStage = this.stageValidateSchema(parsedPayload, config.schema);
+      const schemaStage = this.stageValidateSchema(
+        parsedPayload,
+        config.schema,
+      );
       stages.push(schemaStage);
-      
+
       if (schemaStage.status === 'FAILED') {
         errors.push(...(schemaStage.errors || []));
         // Schema validation failed - stop here
-        return this.createStageBasedResult(dto, timestamp, userId, tenantId, stages, errors, null, { originalPayload: parsedPayload });
+        return this.createStageBasedResult(
+          dto,
+          timestamp,
+          userId,
+          tenantId,
+          stages,
+          errors,
+          null,
+          { originalPayload: parsedPayload },
+        );
       }
 
       // Stage 4: Validate Mappings Configuration
-      const mappingValidationStage = this.stageValidateMappings(parsedPayload, config.mapping || []);
+      const mappingValidationStage = this.stageValidateMappings(
+        parsedPayload,
+        config.mapping || [],
+      );
       stages.push(mappingValidationStage);
-      
+
       if (mappingValidationStage.status === 'FAILED') {
         errors.push(...(mappingValidationStage.errors || []));
         // Mapping validation failed - stop here
-        return this.createStageBasedResult(dto, timestamp, userId, tenantId, stages, errors, null, { originalPayload: parsedPayload });
+        return this.createStageBasedResult(
+          dto,
+          timestamp,
+          userId,
+          tenantId,
+          stages,
+          errors,
+          null,
+          { originalPayload: parsedPayload },
+        );
       }
 
       // Stage 5: Execute TCS Mapping Functions
-      const tcsStage = await this.stageExecuteTCSMapping(parsedPayload, config, dto.tcsMapping);
+      const tcsStage = await this.stageExecuteTCSMapping(
+        parsedPayload,
+        config,
+        dto.tcsMapping,
+      );
       stages.push(tcsStage);
-      
+
       if (tcsStage.status === 'FAILED') {
         errors.push(...(tcsStage.errors || []));
-        return this.createStageBasedResult(dto, timestamp, userId, tenantId, stages, errors, null, { originalPayload: parsedPayload });
+        return this.createStageBasedResult(
+          dto,
+          timestamp,
+          userId,
+          tenantId,
+          stages,
+          errors,
+          null,
+          { originalPayload: parsedPayload },
+        );
       }
 
       tcsResult = tcsStage.details.tcsResult;
@@ -142,13 +200,21 @@ export class SimulationService {
         actor: userId || 'SYSTEM',
         tenantId,
         entityId: dto.endpointId.toString(),
-        details: `Simulation ${finalStatus} for endpoint ${dto.endpointId}, mappings applied: ${mappingsApplied}, stages: ${stages.filter(s => s.status === 'PASSED').length}/${stages.length}`,
+        details: `Simulation ${finalStatus} for endpoint ${dto.endpointId}, mappings applied: ${mappingsApplied}, stages: ${stages.filter((s) => s.status === 'PASSED').length}/${stages.length}`,
         status: finalStatus === 'PASSED' ? 'SUCCESS' : 'FAILURE',
         severity: finalStatus === 'PASSED' ? 'LOW' : 'MEDIUM',
       });
 
-      return this.createStageBasedResult(dto, timestamp, userId, tenantId, stages, errors, tcsResult, transformedPayload);
-
+      return this.createStageBasedResult(
+        dto,
+        timestamp,
+        userId,
+        tenantId,
+        stages,
+        errors,
+        tcsResult,
+        transformedPayload,
+      );
     } catch (error: any) {
       stages.push({
         name: 'System Error',
@@ -156,7 +222,7 @@ export class SimulationService {
         message: 'Unexpected system error occurred',
         errors: [{ field: 'system', message: error.message }],
       });
-      
+
       return this.createStageBasedResult(
         dto,
         timestamp,
@@ -178,14 +244,22 @@ export class SimulationService {
     tenantId: string,
   ): Promise<ValidationStage> {
     try {
-      const config = await this.configRepository.findConfigById(endpointId, tenantId);
-      
+      const config = await this.configRepository.findConfigById(
+        endpointId,
+        tenantId,
+      );
+
       if (!config) {
         return {
           name: '1. Load Configuration',
           status: 'FAILED',
           message: 'Configuration not found',
-          errors: [{ field: 'endpointId', message: `Configuration with ID ${endpointId} not found` }],
+          errors: [
+            {
+              field: 'endpointId',
+              message: `Configuration with ID ${endpointId} not found`,
+            },
+          ],
         };
       }
 
@@ -214,7 +288,7 @@ export class SimulationService {
   ): Promise<ValidationStage> {
     try {
       const parsedPayload = await this.parsePayload(payload, payloadType);
-      
+
       return {
         name: '2. Parse Payload',
         status: 'PASSED',
@@ -234,12 +308,9 @@ export class SimulationService {
   /**
    * Stage 3: Validate Schema
    */
-  private stageValidateSchema(
-    payload: any,
-    schema: any,
-  ): ValidationStage {
+  private stageValidateSchema(payload: any, schema: any): ValidationStage {
     const errors = this.validatePayloadAgainstSchema(payload, schema);
-    
+
     if (errors.length > 0) {
       return {
         name: '3. Validate Schema',
@@ -254,7 +325,10 @@ export class SimulationService {
       name: '3. Validate Schema',
       status: 'PASSED',
       message: 'Payload conforms to the saved schema',
-      details: { schemaType: schema.type, requiredFields: schema.required || [] },
+      details: {
+        schemaType: schema.type,
+        requiredFields: schema.required || [],
+      },
     };
   }
 
@@ -275,14 +349,17 @@ export class SimulationService {
     }
 
     const errors = this.validateMappings(payload, mappings);
-    
+
     if (errors.length > 0) {
       return {
         name: '4. Validate Mappings',
         status: 'FAILED',
         message: `Mapping validation failed: ${errors.length} error(s) found`,
         errors,
-        details: { totalMappings: mappings.length, invalidMappings: errors.length },
+        details: {
+          totalMappings: mappings.length,
+          invalidMappings: errors.length,
+        },
       };
     }
 
@@ -303,7 +380,8 @@ export class SimulationService {
     providedMapping?: iMappingConfiguration,
   ): Promise<ValidationStage> {
     try {
-      const tcsMapping = providedMapping || this.convertConfigToTCSMapping(config);
+      const tcsMapping =
+        providedMapping || this.convertConfigToTCSMapping(config);
       const mappingsApplied = tcsMapping.mappings?.length || 0;
 
       if (mappingsApplied === 0) {
@@ -311,7 +389,9 @@ export class SimulationService {
           name: '5. Execute TCS Mapping Functions',
           status: 'FAILED',
           message: 'No TCS mappings to execute',
-          errors: [{ field: 'tcsMapping', message: 'No TCS mappings configured' }],
+          errors: [
+            { field: 'tcsMapping', message: 'No TCS mappings configured' },
+          ],
         };
       }
 
@@ -386,10 +466,13 @@ export class SimulationService {
     tcsResult: iMappingResult | null,
     transformedPayload: any,
   ): SimulationResult {
-    const passedStages = stages.filter(s => s.status === 'PASSED').length;
-    const failedStages = stages.filter(s => s.status === 'FAILED').length;
+    const passedStages = stages.filter((s) => s.status === 'PASSED').length;
+    const failedStages = stages.filter((s) => s.status === 'FAILED').length;
     const totalStages = stages.length;
-    const mappingsApplied = tcsResult ? (stages.find(s => s.name.includes('TCS Mapping'))?.details?.mappingsApplied || 0) : 0;
+    const mappingsApplied = tcsResult
+      ? stages.find((s) => s.name.includes('TCS Mapping'))?.details
+          ?.mappingsApplied || 0
+      : 0;
 
     return {
       status: errors.length === 0 ? 'PASSED' : 'FAILED',
@@ -419,11 +502,14 @@ export class SimulationService {
 
   private async parsePayload(payload: any, payloadType: string): Promise<any> {
     if (!payloadType) {
-      throw new Error('payloadType is required. Must be either "application/json" or "application/xml"');
+      throw new Error(
+        'payloadType is required. Must be either "application/json" or "application/xml"',
+      );
     }
 
     if (payloadType === 'application/xml') {
-      const xmlString = typeof payload === 'string' ? payload : JSON.stringify(payload);
+      const xmlString =
+        typeof payload === 'string' ? payload : JSON.stringify(payload);
       const parser = new xml2js.Parser({
         explicitArray: false,
         ignoreAttrs: false,
@@ -439,7 +525,9 @@ export class SimulationService {
       return payload;
     }
 
-    throw new Error(`Unsupported payload type: "${payloadType}". Must be either "application/json" or "application/xml"`);
+    throw new Error(
+      `Unsupported payload type: "${payloadType}". Must be either "application/json" or "application/xml"`,
+    );
   }
 
   /**
@@ -449,10 +537,12 @@ export class SimulationService {
     payload: any,
     schema: any,
   ): SimulationError[] {
-    this.logger.debug(`Validating payload against schema`);
+    this.logger.debug('Validating payload against schema');
     this.logger.debug(`Schema: ${JSON.stringify(schema).substring(0, 500)}...`);
-    this.logger.debug(`Payload: ${JSON.stringify(payload).substring(0, 500)}...`);
-    
+    this.logger.debug(
+      `Payload: ${JSON.stringify(payload).substring(0, 500)}...`,
+    );
+
     const errors: SimulationError[] = [];
 
     if (!schema) {
@@ -465,8 +555,8 @@ export class SimulationService {
 
     try {
       // Configure AJV with strict validation
-      const ajv = new Ajv({ 
-        allErrors: true, 
+      const ajv = new Ajv({
+        allErrors: true,
         strict: false,
         strictSchema: false,
         strictNumbers: true,
@@ -474,27 +564,32 @@ export class SimulationService {
         strictRequired: true,
         allowUnionTypes: false,
       });
-      
+
       // Add validation for additionalProperties if not set in schema
       const schemaWithStrict = this.enforceStrictSchema(schema);
-      
+
       this.logger.log(`Original schema: ${JSON.stringify(schema)}`);
       this.logger.log(`Strict schema: ${JSON.stringify(schemaWithStrict)}`);
-      
+
       const validate = ajv.compile(schemaWithStrict);
       const valid = validate(payload);
 
       this.logger.debug(`Schema validation result: ${valid}`);
-      
+
       if (!valid && validate.errors) {
-        this.logger.warn(`Schema validation errors: ${JSON.stringify(validate.errors)}`);
-        
+        this.logger.warn(
+          `Schema validation errors: ${JSON.stringify(validate.errors)}`,
+        );
+
         for (const error of validate.errors) {
           errors.push({
             field: error.instancePath || 'root',
             message: error.message || 'Schema validation failed',
             path: error.instancePath,
-            value: _.get(payload, error.instancePath?.replace(/^\//, '').replace(/\//g, '.')),
+            value: _.get(
+              payload,
+              error.instancePath?.replace(/^\//, '').replace(/\//g, '.'),
+            ),
           });
         }
       }
@@ -512,10 +607,7 @@ export class SimulationService {
   /**
    * Validate that all mapping sources exist in the payload
    */
-  private validateMappings(
-    payload: any,
-    mappings: any[],
-  ): SimulationError[] {
+  private validateMappings(payload: any, mappings: any[]): SimulationError[] {
     const errors: SimulationError[] = [];
 
     for (let i = 0; i < mappings.length; i++) {
@@ -527,7 +619,10 @@ export class SimulationService {
           : [];
 
       // Skip validation for constant mappings (no source field)
-      if (mapping.transformation === 'CONSTANT' || mapping.constantValue !== undefined) {
+      if (
+        mapping.transformation === 'CONSTANT' ||
+        mapping.constantValue !== undefined
+      ) {
         continue;
       }
 
@@ -572,14 +667,13 @@ export class SimulationService {
    */
   private getFieldValue(obj: any, path: string): any {
     if (!path) return undefined;
-    
+
     // Handle array notation like "debtor[0].name"
     const normalizedPath = path.replace(/\[(\d+)\]/g, '.$1');
-    
+
     return _.get(obj, normalizedPath);
   }
 
- 
   private enforceStrictSchema(schema: any): any {
     if (!schema || typeof schema !== 'object') {
       return schema;
@@ -588,16 +682,22 @@ export class SimulationService {
     const strictSchema = { ...schema };
 
     // If this is an object type and additionalProperties is not set, disallow additional properties
-    if (strictSchema.type === 'object' && strictSchema.additionalProperties === undefined) {
+    if (
+      strictSchema.type === 'object' &&
+      strictSchema.additionalProperties === undefined
+    ) {
       strictSchema.additionalProperties = false;
     }
 
     // Recursively apply to nested properties
     if (strictSchema.properties) {
-      strictSchema.properties = Object.keys(strictSchema.properties).reduce((acc, key) => {
-        acc[key] = this.enforceStrictSchema(strictSchema.properties[key]);
-        return acc;
-      }, {} as any);
+      strictSchema.properties = Object.keys(strictSchema.properties).reduce(
+        (acc, key) => {
+          acc[key] = this.enforceStrictSchema(strictSchema.properties[key]);
+          return acc;
+        },
+        {} as any,
+      );
     }
 
     if (strictSchema.items) {
@@ -605,13 +705,19 @@ export class SimulationService {
     }
 
     if (strictSchema.oneOf) {
-      strictSchema.oneOf = strictSchema.oneOf.map((s: any) => this.enforceStrictSchema(s));
+      strictSchema.oneOf = strictSchema.oneOf.map((s: any) =>
+        this.enforceStrictSchema(s),
+      );
     }
     if (strictSchema.anyOf) {
-      strictSchema.anyOf = strictSchema.anyOf.map((s: any) => this.enforceStrictSchema(s));
+      strictSchema.anyOf = strictSchema.anyOf.map((s: any) =>
+        this.enforceStrictSchema(s),
+      );
     }
     if (strictSchema.allOf) {
-      strictSchema.allOf = strictSchema.allOf.map((s: any) => this.enforceStrictSchema(s));
+      strictSchema.allOf = strictSchema.allOf.map((s: any) =>
+        this.enforceStrictSchema(s),
+      );
     }
 
     return strictSchema;
