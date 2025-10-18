@@ -135,6 +135,9 @@ export class ConfigRepository {
     if (updates.functions !== undefined)
       updateData.functions = JSON.stringify(updates.functions);
     if (updates.status !== undefined) updateData.status = updates.status;
+    
+    updateData.updated_at = this.knex.fn.now();
+    
     await this.knex('config')
       .where({ id, tenant_id: tenantId })
       .update(updateData);

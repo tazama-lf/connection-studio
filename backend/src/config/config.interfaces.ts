@@ -90,6 +90,8 @@ export interface AddMappingDto {
   destination?: string;
   destinations?: string[];
   sources?: string[];
+  sumFields?: string[]; // For SUM transformation
+  constantValue?: any; // For CONSTANT transformation
   delimiter?: string;
 }
 

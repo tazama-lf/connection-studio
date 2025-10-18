@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
+import { AuditService } from '../audit/audit.service';
 
 describe('AuthController', () => {
   let controller: AuthController;
@@ -16,6 +17,13 @@ describe('AuthController', () => {
             authenticate: jest.fn(),
             checkTokenExpiry: jest.fn(),
             getTimeToExpiry: jest.fn(),
+          },
+        },
+        {
+          provide: AuditService,
+          useValue: {
+            getAuditLogs: jest.fn().mockResolvedValue([]),
+            logAction: jest.fn().mockResolvedValue(undefined),
           },
         },
         {

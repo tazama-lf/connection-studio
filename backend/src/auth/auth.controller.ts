@@ -13,11 +13,13 @@ import { AuthService } from './auth.service';
 import { User } from './user.decorator';
 import { TazamaAuthGuard } from './tazama-auth.guard';
 import { RequireClaims, TazamaClaims } from './auth.decorator';
+import { AuditService } from '../audit/audit.service';
 
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
+    private readonly auditService: AuditService,
     private readonly logger: LoggerService,
   ) {}
 
@@ -56,10 +58,37 @@ export class AuthController {
   @RequireClaims(TazamaClaims.VIEW_PROFILE)
   @Get('audit-logs')
   async getAuditLogs(
-    @Query('limit') _limit = 50,
-    @Query('offset') _offset = 0,
+    @User() user: any,
+    @Query('limit') limit?: string,
+    @Query('entityType') entityType?: string,
+    @Query('actor') actor?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
   ) {
-    // Implementation for audit logs retrieval
-    return { message: 'Audit logs endpoint - implementation pending' };
+    const tenantId = user?.token?.tenantId || 'default';
+    const parsedLimit = limit ? parseInt(limit, 10) : 100;
+
+    const logs = await this.auditService.getAuditLogs(
+      tenantId,
+      entityType,
+      actor,
+      startDate ? new Date(startDate) : undefined,
+      endDate ? new Date(endDate) : undefined,
+      parsedLimit,
+    );
+
+    return {
+      success: true,
+      data: logs,
+      count: logs.length,
+      filters: {
+        tenantId,
+        entityType,
+        actor,
+        startDate,
+        endDate,
+        limit: parsedLimit,
+      },
+    };
   }
 }

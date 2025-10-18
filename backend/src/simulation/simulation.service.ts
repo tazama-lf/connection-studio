@@ -600,9 +600,7 @@ export class SimulationService {
     return errors;
   }
 
-  /**
-   * Validate that all mapping sources exist in the payload
-   */
+  
   private validateMappings(payload: any, mappings: any[]): SimulationError[] {
     const errors: SimulationError[] = [];
 
