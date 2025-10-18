@@ -204,7 +204,6 @@ export class ConfigWorkflowService {
   } {
     const editableStatuses = [
       ConfigStatus.IN_PROGRESS,
-      ConfigStatus.REJECTED,
       ConfigStatus.CHANGES_REQUESTED,
     ];
 

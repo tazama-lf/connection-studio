@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Put,
+  Patch,
   Delete,
   Body,
   Param,
@@ -312,7 +313,7 @@ export class ConfigController {
     );
   }
 
-  @Post(':id/workflow/approve')
+  @Patch(':id/approve')
   @RequireClaims(TazamaClaims.APPROVER)
   async approveConfig(
     @Param('id', ParseIntPipe) id: number,
@@ -328,7 +329,7 @@ export class ConfigController {
     );
   }
 
-  @Post(':id/workflow/reject')
+  @Patch(':id/reject')
   @RequireClaims(TazamaClaims.APPROVER)
   async rejectConfig(
     @Param('id', ParseIntPipe) id: number,
@@ -407,5 +408,18 @@ export class ConfigController {
       getTenantId(user),
       getUserClaims(user),
     );
+  }
+
+  @Get(':id/audit-history')
+  @RequireAnyClaims(
+    TazamaClaims.EDITOR,
+    TazamaClaims.APPROVER,
+    TazamaClaims.PUBLISHER,
+  )
+  async getAuditHistory(
+    @Param('id', ParseIntPipe) id: number,
+    @User() user: AuthenticatedUser,
+  ): Promise<any> {
+    return this.configService.getAuditHistory(id, getTenantId(user));
   }
 }

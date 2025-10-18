@@ -1595,6 +1595,57 @@ export class ConfigService {
   }
 
   /**
+   * Get audit history for a configuration
+   * Includes all workflow actions with comments from approvers
+   */
+  async getAuditHistory(
+    id: number,
+    tenantId: string,
+  ): Promise<{
+    configId: number;
+    history: Array<{
+      action: string;
+      actor: string;
+      timestamp: Date;
+      details: string;
+      previousStatus?: string;
+      newStatus?: string;
+    }>;
+  }> {
+    const config = await this.configRepository.findConfigById(id, tenantId);
+    if (!config) {
+      throw new NotFoundException(`Config with ID ${id} not found`);
+    }
+
+    // Get audit logs for this config
+    const auditLogs = await this.auditService.getAuditLogs(
+      tenantId,
+      'config',
+      undefined,
+      undefined,
+      undefined,
+      100,
+    );
+
+    // Filter logs for this specific config and extract relevant information
+    const configLogs = auditLogs
+      .filter((log) => log.entity_id === id.toString())
+      .map((log) => ({
+        action: log.action,
+        actor: log.actor,
+        timestamp: log.timestamp,
+        details: log.details || '',
+        previousStatus: log.old_values?.status,
+        newStatus: log.new_values?.status,
+      }));
+
+    return {
+      configId: id,
+      history: configLogs,
+    };
+  }
+
+  /**
    * Private method to log status changes
    */
   private async logStatusChange(

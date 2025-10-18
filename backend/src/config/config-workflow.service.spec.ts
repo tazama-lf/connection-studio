@@ -114,7 +114,6 @@ describe('ConfigWorkflowService', () => {
     it('should allow editing in editable states', () => {
       const editableStates = [
         ConfigStatus.IN_PROGRESS,
-        ConfigStatus.REJECTED,
         ConfigStatus.CHANGES_REQUESTED,
       ];
 
@@ -128,6 +127,7 @@ describe('ConfigWorkflowService', () => {
       const nonEditableStates = [
         ConfigStatus.UNDER_REVIEW,
         ConfigStatus.APPROVED,
+        ConfigStatus.REJECTED,
         ConfigStatus.DEPLOYED,
       ];
 
