@@ -547,8 +547,8 @@ describe('ConfigService', () => {
       console.log('Result:', result);
 
       expect(result.success).toBe(false);
-      expect(result.message).toContain('Cannot edit config with status');
-      expect(result.message).toContain('view-only');
+      expect(result.message).toContain('Editing not allowed');
+      expect(result.message).toContain('Please clone to create a new version');
       expect(repository.updateConfig).not.toHaveBeenCalled();
     });
 

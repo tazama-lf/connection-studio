@@ -600,7 +600,6 @@ export class SimulationService {
     return errors;
   }
 
-  
   private validateMappings(payload: any, mappings: any[]): SimulationError[] {
     const errors: SimulationError[] = [];
 

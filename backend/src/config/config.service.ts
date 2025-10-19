@@ -368,6 +368,15 @@ export class ConfigService {
     return this.configRepository.findConfigsByTenant(tenantId);
   }
 
+  async getPendingApprovals(tenantId: string): Promise<Config[]> {
+    const allConfigs =
+      await this.configRepository.findConfigsByTenant(tenantId);
+    return allConfigs.filter((config) => {
+      const status: string | undefined = config.status as string | undefined;
+      return status === 'under_review' || status === 'approved';
+    });
+  }
+
   async getConfigsByTransactionType(
     transactionType: TransactionType,
     tenantId: string,
@@ -390,16 +399,16 @@ export class ConfigService {
       throw new NotFoundException(`Config with ID ${id} not found`);
     }
 
-    if (
-      config.status === ConfigStatus.APPROVED ||
-      config.status === ConfigStatus.DEPLOYED
-    ) {
+    // WORKFLOW CHECK: Prevent editing if not in editable state
+    const editValidation = this.workflowService.canEditConfig(
+      config.status as ConfigStatus,
+    );
+    if (!editValidation.canEdit) {
       return {
         success: false,
-        message: `Cannot edit config with status ${config.status}. APPROVED and DEPLOYED configs are view-only. Please clone this config to create a new version.`,
+        message: editValidation.message || 'Editing not allowed.',
       };
     }
-
 
     if (dto.schema) {
       const validation = this.validateSchema(dto.schema);
@@ -452,21 +461,32 @@ export class ConfigService {
       }
     }
 
-    const isTransactionTypeChanging =
-      dto.transactionType !== undefined &&
-      dto.transactionType !== config.transactionType;
+    // IN-PLACE UPDATE: Update the same config row regardless of field changes
+    // (as long as status is not COMPLETED/approved)
+    const updateData = { ...dto };
+
+    // Use finalSchema if field adjustments were applied
+    if (finalSchema) {
+      updateData.schema = finalSchema;
+    }
+
+    // Check if msgFam or version is changing - if so, CREATE NEW CONFIG instead of updating
     const isVersionChanging =
       dto.version !== undefined && dto.version !== config.version;
+    const isMsgFamChanging =
+      dto.msgFam !== undefined && dto.msgFam !== config.msgFam;
 
-    if (isTransactionTypeChanging || isVersionChanging) {
+    if (isVersionChanging || isMsgFamChanging) {
+      // msgFam or version change = NEW ENDPOINT = CREATE NEW CONFIG
       this.logger.log(
-        `Transaction type or version changed for config ${id}. Creating NEW config row.`,
+        `msgFam or version changed for config ${id}. Creating NEW config instead of updating.`,
       );
 
-      const newTransactionType = dto.transactionType ?? config.transactionType;
       const newVersion = dto.version ?? config.version;
+      const newTransactionType = dto.transactionType ?? config.transactionType;
       const newMsgFam = dto.msgFam ?? config.msgFam;
 
+      // Check if this new combination already exists
       const existingConfig =
         await this.configRepository.findConfigByMsgFamVersionAndTransactionType(
           newMsgFam,
@@ -475,13 +495,14 @@ export class ConfigService {
           tenantId,
         );
 
-      if (existingConfig && existingConfig.id !== id) {
+      if (existingConfig) {
         return {
           success: false,
-          message: `A config with transaction type '${newTransactionType}' and version '${newVersion}' already exists. Please use different values or edit that config.`,
+          message: `Config with message family '${newMsgFam}', transaction type '${newTransactionType}', and version '${newVersion}' already exists for this tenant. Please use different values.`,
         };
       }
 
+      // Create new config by inserting directly into repository
       const newEndpointPath = this.generateEndpointPath(
         tenantId,
         newVersion,
@@ -494,8 +515,8 @@ export class ConfigService {
         version: newVersion,
         transactionType: newTransactionType,
         endpointPath: newEndpointPath,
-        contentType: dto.contentType ?? config.contentType,
-        schema: finalSchema || dto.schema || config.schema,
+        contentType: config.contentType,
+        schema: finalSchema || config.schema,
         mapping: dto.mapping ?? config.mapping,
         functions: dto.functions ?? config.functions,
         status: ConfigStatus.IN_PROGRESS,
@@ -504,7 +525,7 @@ export class ConfigService {
       };
 
       this.logger.log(
-        `Creating new config: txnType=${newTransactionType}, version=${newVersion}`,
+        `Creating new config with msgFam: ${newMsgFam}, version: ${newVersion}, transactionType: ${newTransactionType}`,
       );
 
       const newConfigId = await this.configRepository.createConfig(
@@ -513,11 +534,10 @@ export class ConfigService {
 
       await this.auditService.logAction({
         entityType: 'CONFIG',
-        action: 'CREATE_CONFIG_VERSION',
+        action: 'CREATE_CONFIG',
         actor: userId,
         tenantId,
-        endpointName: `New config ${newConfigId} (versioned from config ${id})`,
-        details: `Transaction type or version changed. Created new config row.`,
+        endpointName: `Config ${newConfigId} (created from update of config ${id})`,
       });
 
       const newConfig = await this.configRepository.findConfigById(
@@ -527,34 +547,56 @@ export class ConfigService {
 
       return {
         success: true,
-        message: `Transaction type or version changed. Created new config with ID ${newConfigId}.`,
+        message: `msgFam or version changed. Created new config with ID ${newConfigId} instead of updating existing config ${id}.`,
         config: newConfig!,
       };
     }
 
-    this.logger.log(`Updating config ${id} in-place (same row update)`);
+    // If only transactionType is changing (not msgFam or version), check for conflicts
+    const isTransactionTypeChanging =
+      dto.transactionType !== undefined &&
+      dto.transactionType !== config.transactionType;
 
-    const updateData = { ...dto };
+    if (isTransactionTypeChanging) {
+      const newTransactionType = dto.transactionType!;
 
-    if (finalSchema) {
-      updateData.schema = finalSchema;
+      const existingConfig =
+        await this.configRepository.findConfigByMsgFamVersionAndTransactionType(
+          config.msgFam,
+          config.version,
+          newTransactionType,
+          tenantId,
+        );
+
+      if (existingConfig && existingConfig.id !== id) {
+        return {
+          success: false,
+          message: `Config with message family '${config.msgFam}', transaction type '${newTransactionType}', and version '${config.version}' already exists for this tenant. Please use different values.`,
+        };
+      }
     }
 
-    if (dto.msgFam !== undefined && dto.msgFam !== config.msgFam) {
+    // Auto-regenerate endpoint path if needed
+    if (
+      dto.transactionType !== undefined ||
+      dto.msgFam !== undefined ||
+      dto.version !== undefined
+    ) {
+      const newTransactionType = dto.transactionType ?? config.transactionType;
+      const newMsgFam = dto.msgFam ?? config.msgFam;
+      const newVersion = dto.version ?? config.version;
+
       updateData.endpointPath = this.generateEndpointPath(
         tenantId,
-        config.version,
-        config.transactionType,
-        dto.msgFam,
+        newVersion,
+        newTransactionType,
+        newMsgFam,
       );
+
       this.logger.log(
-        `Updated endpoint path due to msgFam change: ${updateData.endpointPath}`,
+        `Auto-generated new endpoint path: ${updateData.endpointPath} for config ${id}`,
       );
     }
-
-    this.logger.log(
-      `Updating config ${id} with data: ${JSON.stringify(Object.keys(updateData))}`,
-    );
 
     await this.configRepository.updateConfig(id, tenantId, updateData);
 
@@ -564,15 +606,12 @@ export class ConfigService {
       actor: userId,
       tenantId,
       endpointName: `Config ${id}`,
-      details: 'In-place update (same row)',
     });
 
     const updatedConfig = await this.configRepository.findConfigById(
       id,
       tenantId,
     );
-
-    this.logger.log(`Config ${id} updated successfully (in-place)`);
 
     return {
       success: true,
@@ -904,6 +943,7 @@ export class ConfigService {
     func: FunctionDefinition,
     _schema: JSONSchema,
   ): void {
+    // Validate parameter names
     for (const param of func.params) {
       if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(param)) {
         throw new BadRequestException(
@@ -998,15 +1038,6 @@ export class ConfigService {
       };
     }
 
-    // Constant mapping
-    if (dto.constantValue !== undefined && dto.destination) {
-      return {
-        destination: dto.destination,
-        constantValue: dto.constantValue,
-        transformation: 'CONSTANT',
-      };
-    }
-
     // One-to-many (split logic)
     if (dto.source && dto.destinations && dto.destinations.length > 0) {
       return {
@@ -1026,8 +1057,17 @@ export class ConfigService {
       };
     }
 
+    // Constant mapping
+    if (dto.constantValue !== undefined && dto.destination) {
+      return {
+        destination: dto.destination,
+        constantValue: dto.constantValue,
+        transformation: 'CONSTANT',
+      };
+    }
+
     throw new BadRequestException(
-      'Invalid mapping: provide (source, destination), (sources[], destination), or (source, destinations[])',
+      'Invalid mapping: provide (source, destination), (sources[], destination), (source, destinations[]), or (constantValue, destination)',
     );
   }
 
@@ -1036,8 +1076,11 @@ export class ConfigService {
     schema: JSONSchema,
     _tenantId: string,
   ): Promise<void> {
-    // Skip validation for constant mappings (no source field to validate)
-    if (mapping.transformation === 'CONSTANT' || mapping.constantValue !== undefined) {
+    // Skip validation for constant mappings (no source field required)
+    if (
+      mapping.transformation === 'CONSTANT' ||
+      mapping.constantValue !== undefined
+    ) {
       return;
     }
 
@@ -1065,6 +1108,7 @@ export class ConfigService {
       }
     }
 
+    // Validate destination(s) against Tazama internal data model
     if (Array.isArray(mapping.destination)) {
       for (const dest of mapping.destination) {
         const isValid =
