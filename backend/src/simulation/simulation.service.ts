@@ -560,6 +560,7 @@ export class SimulationService {
         strictTypes: true,
         strictRequired: true,
         allowUnionTypes: false,
+        validateFormats: false, 
       });
 
       const schemaWithStrict = this.enforceStrictSchema(schema);
@@ -568,9 +569,11 @@ export class SimulationService {
       this.logger.log(`Strict schema: ${JSON.stringify(schemaWithStrict)}`);
 
       const validate = ajv.compile(schemaWithStrict);
+      
       const valid = validate(payload);
 
       this.logger.debug(`Schema validation result: ${valid}`);
+      this.logger.debug(`Payload type: ${Array.isArray(payload) ? 'array' : typeof payload}`);
 
       if (!valid && validate.errors) {
         this.logger.warn(
@@ -578,6 +581,12 @@ export class SimulationService {
         );
 
         for (const error of validate.errors) {
+          if (error.keyword === 'additionalProperties' && 
+              error.instancePath && 
+              this.isArrayPath(payload, error.instancePath)) {
+            continue;
+          }
+
           errors.push({
             field: error.instancePath || 'root',
             message: error.message || 'Schema validation failed',
@@ -653,6 +662,30 @@ export class SimulationService {
     return errors;
   }
 
+  private isArrayPath(obj: any, path: string): boolean {
+    if (!path) return false;
+    
+    const normalizedPath = path.replace(/^\//, '').replace(/\//g, '.');
+    const pathParts = normalizedPath.split('.');
+    
+    let current = obj;
+    for (let i = 0; i < pathParts.length; i++) {
+      const part = pathParts[i];
+      
+      if (Array.isArray(current)) {
+        return true;
+      }
+      
+      if (current && typeof current === 'object' && part in current) {
+        current = current[part];
+      } else {
+        break;
+      }
+    }
+    
+    return Array.isArray(current);
+  }
+
   private getFieldValue(obj: any, path: string): any {
     if (!path) return undefined;
 
@@ -668,17 +701,21 @@ export class SimulationService {
 
     const strictSchema = { ...schema };
 
-    if (
-      strictSchema.type === 'object' &&
-      strictSchema.additionalProperties === undefined &&
-      !strictSchema.items
-    ) {
-      strictSchema.additionalProperties = false;
+    
+    if (strictSchema.type === 'array') {
+      if (strictSchema.items) {
+        if (typeof strictSchema.items === 'object') {
+          strictSchema.items = this.enforceStrictSchema(strictSchema.items);
+        }
+      }
+      return strictSchema;
     }
 
-    if (strictSchema.type === 'array' && strictSchema.items) {
-      strictSchema.items = this.enforceStrictSchema(strictSchema.items);
-      return strictSchema;
+    if (
+      strictSchema.type === 'object' &&
+      strictSchema.additionalProperties === undefined
+    ) {
+      strictSchema.additionalProperties = false;
     }
 
     if (strictSchema.properties) {
