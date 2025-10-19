@@ -1,10 +1,10 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import { DatabaseService } from '../database/database.service';
 import { ISuccess } from 'src/utils/interfaces';
+import { DatabaseService } from '../database/database.service';
 import { validateCronExpression } from '../utils/helpers';
 import { CreateScheduleJobDto } from './dto/create-schedule.dto';
-import { ScheduleDto } from './dto/schedule.dto';
+import { UpdateScheduleJobDto } from './dto/update-schedule-dto';
 import { Schedule } from './types/scheduler-interfaces';
 
 @Injectable()
@@ -75,23 +75,27 @@ export class SchedulerService {
         return data;
     }
 
-    async update(id: number, attr: Partial<ScheduleDto>): Promise<ISuccess> {
+    async update(id: number, attr: UpdateScheduleJobDto): Promise<ISuccess> {
+        try {
+            const keys = Object.keys(attr);
+            const values = Object.values(attr);
+            const setClause = keys.map((key, i) => `${key} = $${i + 1}`).join(', ');
+            const query = `UPDATE schedule SET ${setClause} WHERE id = $${keys.length + 1};`;
 
-        const keys = Object.keys(attr);
-        const values = Object.values(attr);
-        const setClause = keys.map((key, i) => `${key} = $${i + 1}`).join(', ');
-        const query = `UPDATE schedule SET ${setClause} WHERE id = $${keys.length + 1};`;
+            const result = await this.db.query(query, [...values, id]);
 
-        const result = await this.db.query(query, [...values, id]);
+            const updatedRows = result.rowCount;
 
-        const updatedRows = result.rowCount;
-
-        if (updatedRows === 0) {
-            throw new NotFoundException(`Schedule with id ${id} not found or no changes were made`);
-        }
-        return {
-            success: true,
-            message: `Schedule with id ${id} successfully updated`,
+            if (!updatedRows) {
+                throw new NotFoundException(`Schedule with id ${id} not found or no changes were made`);
+            }
+            return {
+                success: true,
+                message: `Schedule with id ${id} successfully updated`,
+            }
+        } catch (err) {
+            this.loggerService.error(`Error updating schedule: ${err.message}`);
+            throw err;
         }
     }
 }
