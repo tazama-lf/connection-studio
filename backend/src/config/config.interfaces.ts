@@ -38,7 +38,7 @@ export interface FieldMapping {
   delimiter?: string; // Used for one-to-many mapping to split source value
   constantValue?: any; // Fixed value to map to destination (replaces constants)
   operator?: 'ADD' | 'SUBTRACT' | 'MULTIPLY' | 'DIVIDE'; // Mathematical operators for MATH transformation
-  prefix?: string; 
+  prefix?: string;
 }
 
 export interface FunctionDefinition {
