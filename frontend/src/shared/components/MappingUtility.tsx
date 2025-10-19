@@ -160,18 +160,33 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
   }, []);
 
   // Function to remove mapping from backend
-  const removeMappingFromBackend = (index: number) => {
-    // Remove from local state instead of calling API
-    const updatedMappings = currentMappings.filter((_, i) => i !== index);
-    setCurrentMappings(updatedMappings);
-    validateMappings(updatedMappings);
-    
-    // Notify parent component
-    if (onCurrentMappingsChange) {
-      onCurrentMappingsChange(updatedMappings);
+  const removeMappingFromBackend = async (index: number) => {
+    try {
+      console.log('🗑️ Removing mapping from backend:', index);
+      const response = await configApi.removeMapping(configId!, index);
+      
+      if (response.success) {
+        console.log('✅ Mapping removed successfully from backend');
+        
+        // Update local state only after successful API call
+        const updatedMappings = currentMappings.filter((_, i) => i !== index);
+        setCurrentMappings(updatedMappings);
+        validateMappings(updatedMappings);
+        
+        // Notify parent component
+        if (onCurrentMappingsChange) {
+          onCurrentMappingsChange(updatedMappings);
+        }
+        
+        console.log('Mapping removed successfully');
+      } else {
+        console.error('❌ Failed to remove mapping:', response.message);
+        setMappingError(`Failed to remove mapping: ${response.message}`);
+      }
+    } catch (error) {
+      console.error('❌ Error removing mapping:', error);
+      setMappingError('Failed to remove mapping. Please try again.');
     }
-    
-    console.log('Mapping removed from local state successfully');
   };
 
   // Convert JSON schema to hierarchical tree structure
@@ -358,6 +373,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
   const [selectedDestinations, setSelectedDestinations] = useState<string[]>([]);
   const [selectedTransformation, setSelectedTransformation] = useState<'concatenate' | 'sum' | 'split' | 'none' | 'constant'>('none');
   const [delimiter, setDelimiter] = useState<string>(' ');
+  const [prefix, setPrefix] = useState<string>('');
   
   // Helper function to check if current selection is valid for the transformation type
   const isCurrentMappingValid = () => {
@@ -388,6 +404,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
     setSelectedDestinations([]);
     setSelectedTransformation('none');
     setDelimiter(' '); // Reset delimiter to default
+    setPrefix(''); // Reset prefix to default
     setMappingError(null); // Clear any previous errors
     setShowAddMapping(true);
   };
@@ -524,6 +541,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       delimiter: selectedTransformation === 'split' ? delimiter : undefined,
       separator: selectedTransformation === 'concatenate' ? delimiter : undefined,
       constantValue: selectedTransformation === 'constant' ? selectedSources[0] : undefined,
+      prefix: prefix.trim() || undefined,
     };
 
     // Call API to save mapping directly
@@ -548,6 +566,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
           constantValue: selectedTransformation === 'constant' ? selectedSources[0] : undefined,
           transformation: selectedTransformation.toUpperCase(),
           operator: selectedTransformation === 'sum' ? 'SUM' : undefined,
+          prefix: prefix.trim() || undefined,
         };
         
         // Update local state only after successful API call
@@ -690,6 +709,21 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                     </p>
                   </div>
                 )}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Prefix (Optional)
+                  </label>
+                  <input 
+                    type="text" 
+                    value={prefix} 
+                    onChange={e => setPrefix(e.target.value)}
+                    placeholder="Enter prefix to prepend to result"
+                    className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Optional prefix to add before the mapped value (e.g., "PREFIX_" + result)
+                  </p>
+                </div>
                 <div className="flex-1 flex items-center justify-center" data-id="element-210">
                   {selectedTransformation === 'concatenate' && <div className="text-center p-4 bg-gray-50 rounded-md" data-id="element-211">
                       <h5 className="font-medium text-gray-700 mb-2" data-id="element-212">
@@ -825,6 +859,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                        Array.isArray(mapping.source) ? mapping.source.join(' + ') : mapping.source)
                     } 
                     <ArrowRightIcon size={16} className="inline mx-2" />
+                    {mapping.prefix ? `"${mapping.prefix}" + ` : ''}
                     {Array.isArray(mapping.destination) ? mapping.destination.join(' + ') : mapping.destination}
                   </span>
                   {mapping.separator && (

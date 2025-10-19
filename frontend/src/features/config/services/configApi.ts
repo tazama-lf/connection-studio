@@ -30,6 +30,7 @@ export interface FieldMapping {
   delimiter?: string;
   constantValue?: any;
   operator?: string;
+  prefix?: string;
 }
 
 export interface ConfigResponse {
@@ -66,6 +67,7 @@ export interface AddMappingRequest {
   delimiter?: string;
   separator?: string; // Keeping for backward compatibility with concatenate
   constantValue?: any; // Fixed value to map to destination
+  prefix?: string;
 }
 
 export interface SchemaField {

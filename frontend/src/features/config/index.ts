@@ -40,6 +40,7 @@ export interface FieldMapping {
   sources?: string[];
   destination: string;
   separator?: string;
+  prefix?: string;
 }
 
 export interface JsonSchema {
