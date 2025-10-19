@@ -425,7 +425,6 @@ export class SimulationService {
       sources: string[];
       separator?: string;
       prefix?: string;
-      suffix?: string;
     }> = [];
 
     if (config.mapping && Array.isArray(config.mapping)) {
@@ -444,6 +443,7 @@ export class SimulationService {
           destination: destination || '',
           sources,
           separator: '',
+          prefix: mapping.prefix,
         });
       }
     }
