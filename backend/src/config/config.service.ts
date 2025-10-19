@@ -935,7 +935,7 @@ export class ConfigService {
 
     return {
       functionName: dto.functionName,
-      params: dto.params.map((p) => p.trim()).filter((p) => p.length > 0),
+      params: dto.params.map((p) => `redis.${p.trim()}`).filter((p) => p.length > 0),
     };
   }
 
