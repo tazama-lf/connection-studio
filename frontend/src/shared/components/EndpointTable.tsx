@@ -14,6 +14,7 @@ interface Endpoint {
 }
 interface EndpointTableProps {
   endpoints: Endpoint[];
+  onView: (id: number) => void;
   onEdit: (id: number) => void;
   onDelete: (id: number) => void;
   onClone?: (id: number) => void;
@@ -24,6 +25,7 @@ interface EndpointTableProps {
 }
  const EndpointTable: React.FC<EndpointTableProps> = ({
   endpoints,
+  onView,
   onEdit,
   onDelete: _onDelete,
   onClone,
@@ -74,6 +76,12 @@ interface EndpointTableProps {
   };
   const handleAction = (action: string, endpoint: Endpoint) => {
     switch (action) {
+      case 'view':
+        onView(endpoint.id);
+        break;
+      case 'edit':
+        onEdit(endpoint.id);
+        break;
       case 'history':
         setShowHistory(endpoint.id);
         break;
@@ -158,18 +166,25 @@ interface EndpointTableProps {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500" data-id="element-782">
                   <div className="flex items-center space-x-2" data-id="element-783">
-                    <Button variant="secondary" size="sm" icon={<EyeIcon size={14} data-id="element-785" />} onClick={() => onEdit(endpoint.id)} data-id="element-784">
-                      View
-                    </Button>
                     {showActionsColumn && <div className="relative" data-id="element-786">
-                        <Button variant="primary" size="sm" onClick={() => setActiveDropdown(activeDropdown === endpoint.id ? null : endpoint.id)} icon={<MoreVerticalIcon size={14} data-id="element-788" />} data-id="element-787">
+                        <Button variant="danger" size="sm" onClick={() => setActiveDropdown(activeDropdown === endpoint.id ? null : endpoint.id)} icon={<MoreVerticalIcon size={14} data-id="element-788" />} data-id="element-787">
                           Actions
                         </Button>
                         {activeDropdown === endpoint.id && <div className="absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10" data-id="element-789">
                             <div className="py-1" role="menu" data-id="element-790">
-                              <button onClick={() => handleAction('history', endpoint)} className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" data-id="element-791">
-                                <HistoryIcon size={14} className="mr-2" data-id="element-792" />
-                                View History
+                              <button onClick={() => handleAction('view', endpoint)} className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" data-id="element-791">
+                                <EyeIcon size={14} className="mr-2" data-id="element-792" />
+                                View Configuration
+                              </button>
+                              <button onClick={() => handleAction('edit', endpoint)} className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" data-id="element-793">
+                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                                Edit Configuration
+                              </button>
+                              <button onClick={() => handleAction('clone', endpoint)} className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" data-id="element-799">
+                                <CopyIcon size={14} className="mr-2" data-id="element-800" />
+                                Clone Configuration
                               </button>
                               {endpoint.status === 'Suspended' ? <button onClick={() => handleAction('resume', endpoint)} className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" data-id="element-793">
                                   <PlayIcon size={14} className="mr-2" data-id="element-794" />
@@ -182,10 +197,6 @@ interface EndpointTableProps {
                                   <CheckCircleIcon size={14} className="mr-2" data-id="element-798" />
                                   Submit for Approval
                                 </button>}
-                              <button onClick={() => handleAction('clone', endpoint)} className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" data-id="element-799">
-                                <CopyIcon size={14} className="mr-2" data-id="element-800" />
-                                Clone Endpoint
-                              </button>
                             </div>
                           </div>}
                       </div>}

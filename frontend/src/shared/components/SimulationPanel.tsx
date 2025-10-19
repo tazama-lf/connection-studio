@@ -6,11 +6,13 @@ interface SimulationPanelProps {
   endpointId?: number;
   contentType?: 'application/json' | 'application/xml';
   onSimulationComplete: (success: boolean) => void;
+  readOnly?: boolean;
 }
 export const SimulationPanel: React.FC<SimulationPanelProps> = ({
   endpointId,
   contentType = 'application/json',
-  onSimulationComplete
+  onSimulationComplete,
+  readOnly = false
 }) => {
   const [hasRun, setHasRun] = useState(false);
   const [testPayload, setTestPayload] = useState('');
@@ -87,14 +89,22 @@ export const SimulationPanel: React.FC<SimulationPanelProps> = ({
           <h4 className="text-md font-medium text-gray-700" data-id="element-705">Test Payload</h4>
           <div className="flex items-center space-x-2" data-id="element-706">
             <input type="file" id="test-payload-upload" className="hidden" accept=".xml,.json" onChange={handleFileUpload} data-id="element-707" />
-            <Button variant="secondary" size="sm" icon={<UploadIcon size={16} data-id="element-709" />} onClick={() => document.getElementById('test-payload-upload')?.click()} data-id="element-708">
+            <Button variant="secondary" size="sm" icon={<UploadIcon size={16} data-id="element-709" />} onClick={() => document.getElementById('test-payload-upload')?.click()} disabled={readOnly} data-id="element-708">
               Import Test File
             </Button>
           </div>
         </div>
         {/* Code Editor for Test Payload */}
         <div className="border rounded-md" data-id="element-710">
-          <textarea value={testPayload} onChange={e => setTestPayload(e.target.value)} className="w-full h-48 p-4 font-mono text-sm bg-gray-50" spellCheck="false" placeholder="Enter or upload a test payload to simulate the transformation..." data-id="element-711" />
+          <textarea 
+            value={testPayload} 
+            onChange={e => setTestPayload(e.target.value)} 
+            className="w-full h-48 p-4 font-mono text-sm bg-gray-50" 
+            spellCheck="false" 
+            placeholder="Enter or upload a test payload to simulate the transformation..." 
+            readOnly={readOnly}
+            data-id="element-711" 
+          />
         </div>
         {/* Error Message */}
         {simulationError && (
@@ -104,7 +114,7 @@ export const SimulationPanel: React.FC<SimulationPanelProps> = ({
         )}
 
         <div className="flex justify-end" data-id="element-712">
-          <Button variant="primary" onClick={runSimulation} disabled={!testPayload.trim() || isRunning || !endpointId} data-id="element-713">
+          <Button variant="primary" onClick={runSimulation} disabled={!testPayload.trim() || isRunning || !endpointId || readOnly} data-id="element-713">
             {isRunning ? 'Running Simulation...' : 'Run Simulation'}
           </Button>
         </div>

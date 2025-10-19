@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { XIcon } from 'lucide-react';
 import { PayloadEditor } from './PayloadEditor';
 import { MappingUtility } from './MappingUtility';
 import { SimulationPanel } from './SimulationPanel';
 import { DeploymentConfirmation } from './DeploymentConfirmation';
 import { Button } from './Button';
-import { configApi, type CreateConfigRequest,type FieldAdjustment, type ConfigResponse } from '../../features/config/services/configApi';
+import { configApi, type CreateConfigRequest, type ConfigResponse } from '../../features/config/services/configApi';
 import { useToast } from '../providers/ToastProvider';
 import { useAuth } from '../../features/auth';
 import FunctionsApiService from '../../features/functions/services/functionsApi';
@@ -137,7 +137,7 @@ interface EditEndpointModalProps {
   const isNewEndpoint = endpointId === -1;
   const isCloning = isCloneMode && endpointId !== -1;
   const shouldCreateNew = isNewEndpoint || isCloning; // Either truly new or cloning
-  const { showSuccess, showError, showWarning } = useToast();
+  const { showSuccess, showError } = useToast();
   const { user } = useAuth();
   const tenantId = user?.tenantId || 'tenant-id';
   const [currentStep, setCurrentStep] = useState<'payload' | 'mapping' | 'functions' | 'simulation' | 'deploy'>('payload');
@@ -165,15 +165,11 @@ interface EditEndpointModalProps {
   const [existingConfig, setExistingConfig] = useState<any | null>(null);
   const [inferredSchema, setInferredSchema] = useState<any | null>(null);
 
-  const [mappingData, setMappingData] = useState<any | null>(null);
   const [currentMappings, setCurrentMappings] = useState<any[]>([]); // Current mappings from MappingUtility
 
   // Functions state
   const [selectedFunctions, setSelectedFunctions] = useState<FunctionDefinition[]>([]);
   const [showAddFunctionModal, setShowAddFunctionModal] = useState(false);
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [simulationResult, setSimulationResult] = useState<any | null>(null);
   const steps = [{
     id: 'payload',
     label: 'Payload'
@@ -225,8 +221,8 @@ interface EditEndpointModalProps {
             
             setExistingConfig(config);
             
-            // Check if config is approved and show error immediately
-            if (config.status === 'approved') {
+            // Check if config is approved and show error immediately (only when not in read-only mode)
+            if (config.status === 'approved' && !readOnly) {
               setError('This configuration has been approved and cannot be edited directly. Please clone the configuration to create a new version.');
             }
             
@@ -286,22 +282,6 @@ interface EditEndpointModalProps {
            endpointData.contentType;
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const getNextStep = () => {
-    switch (currentStep) {
-      case 'payload':
-        return isPayloadStepValid() ? 'mapping' : currentStep;
-      case 'mapping':
-        return isMappingValid ? 'functions' : currentStep;
-      case 'functions':
-        return 'simulation'; // Functions step can always proceed to simulation
-      case 'simulation':
-        return isSimulationSuccess ? 'deploy' : currentStep;
-      default:
-        return currentStep;
-    }
-  };
-
   // Navigation-only functions (don't save, just move between steps)
   const handleNextStep = () => {
     console.log('🚀 handleNextStep called for step:', currentStep);
@@ -329,7 +309,7 @@ interface EditEndpointModalProps {
         setCurrentStep('simulation');
         break;
       case 'simulation':
-        if (!isSimulationSuccess) {
+        if (!isSimulationSuccess && !readOnly) {
           showError('Please run and pass simulation before proceeding');
           return;
         }
@@ -862,7 +842,7 @@ interface EditEndpointModalProps {
       <div className="bg-white rounded-lg w-full max-w-6xl max-h-[90vh] overflow-hidden relative z-50 shadow-2xl" data-id="element-727">
         <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200" data-id="element-728">
           <h2 className="text-xl font-semibold text-gray-800" data-id="element-729">
-            {isNewEndpoint ? 'Create New Connection' : isCloning ? 'Clone Configuration' : 'Edit Configuration'}
+            {isNewEndpoint ? 'Create New Connection' : isCloning ? 'Clone Configuration' : readOnly ? 'View Configuration' : 'Edit Configuration'}
           </h2>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700" data-id="element-730">
             <XIcon size={24} data-id="element-731" />
@@ -1002,27 +982,7 @@ interface EditEndpointModalProps {
                   data-id="element-740" 
                 />
                 
-                {/* Versioning info for existing configs */}
-                {!isNewEndpoint && (
-                  <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-4 h-4 rounded-full bg-green-500 flex items-center justify-center">
-                        <span className="text-white text-xs">✓</span>
-                      </div>
-                      <span className="text-sm font-medium text-green-900">
-                        Versioning Enabled
-                      </span>
-                    </div>
-                    <p className="mt-1 text-xs text-green-700">
-                      Editing this config will create a new version <strong>(v{endpointData.version || existingConfig?.version || '1.0'})</strong> preserving the original config.
-                      <br />
-                      Original config <strong>(v{existingConfig?.version || '1.0'})</strong> will remain unchanged in the database.
-                    </p>
-                    <div className="mt-2 text-xs text-green-600">
-                      <strong>Current approach:</strong> Create new row → Preserve history → No data loss
-                    </div>
-                  </div>
-                )}
+               
               </>
             )}
             {currentStep === 'mapping' && (
@@ -1031,7 +991,6 @@ interface EditEndpointModalProps {
                 {console.log('EditEndpointModal - createdEndpoint:', createdEndpoint)}
                 <MappingUtility 
                   onMappingChange={setIsMappingValid} 
-                  onMappingDataChange={setMappingData}
                   onCurrentMappingsChange={setCurrentMappings}
                   sourceSchema={createdEndpoint?.schema || inferredSchema?.schema || existingConfig?.schema}
                   templateType="Acmt.023"
@@ -1053,22 +1012,24 @@ interface EditEndpointModalProps {
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold">Select Functions</h3>
 
-                    {/* Add Function Button */}
-                  <div className="flex justify-end">
-                    <Button
-                      onClick={() => setShowAddFunctionModal(true)}
-                      variant="secondary"
-                      className="border-blue-600 text-blue-600 hover:bg-blue-50"
-                    >
-                      + Add Function
-                    </Button>
-                  </div>
+                    {/* Add Function Button - Only show when not read-only */}
+                  {!readOnly && (
+                    <div className="flex justify-end">
+                      <Button
+                        onClick={() => setShowAddFunctionModal(true)}
+                        variant="secondary"
+                        className="border-blue-600 text-blue-600 hover:bg-blue-50"
+                      >
+                        + Add Function
+                      </Button>
+                    </div>
+                  )}
                   
                   {/* Functions List */}
                   <div className="space-y-3">
                     {selectedFunctions.length === 0 ? (
                       <div className="text-center py-12">
-                        <p className="text-gray-500 mb-4">No functions selected. Click "Add Function" to select functions to call at runtime.</p>
+                        <p className="text-gray-500 mb-4">No functions selected. {!readOnly ? 'Click "Add Function" to select functions to call at runtime.' : ''}</p>
                       </div>
                     ) : (
                       selectedFunctions.map((func, index) => (
@@ -1077,12 +1038,15 @@ interface EditEndpointModalProps {
                             <h4 className="font-medium">{func.functionName}</h4>
                             <p className="text-sm text-gray-600">Parameters: {func.params.join(', ')}</p>
                           </div>
-                          <button
-                            onClick={() => handleRemoveFunction(index)}
-                            className="text-red-600 hover:text-red-800 px-2 py-1"
-                          >
-                            ×
-                          </button>
+                          {/* Remove button - Only show when not read-only */}
+                          {!readOnly && (
+                            <button
+                              onClick={() => handleRemoveFunction(index)}
+                              className="text-red-600 hover:text-red-800 px-2 py-1"
+                            >
+                              ×
+                            </button>
+                          )}
                         </div>
                       ))
                     )}
@@ -1144,7 +1108,8 @@ interface EditEndpointModalProps {
               <SimulationPanel 
                 endpointId={createdEndpoint?.id || existingConfig?.id}
                 contentType={endpointData.contentType as 'application/json' | 'application/xml'}
-                onSimulationComplete={setIsSimulationSuccess} 
+                onSimulationComplete={setIsSimulationSuccess}
+                readOnly={readOnly}
                 data-id="element-742" 
               />
             )}
@@ -1210,7 +1175,7 @@ interface EditEndpointModalProps {
                 }} disabled={loading || 
                   (currentStep === 'payload' && (!createdEndpoint && isNewEndpoint)) || 
                   (currentStep === 'mapping' && !isMappingValid) || 
-                  (currentStep === 'simulation' && !isSimulationSuccess) ||
+                  (currentStep === 'simulation' && !isSimulationSuccess && !readOnly) ||
                   (!createdEndpoint && !existingConfig) ||
                   (currentStep === 'deploy' && (createdEndpoint?.status === 'under_review' || createdEndpoint?.status === 'approved' || existingConfig?.status === 'under_review' || existingConfig?.status === 'approved'))
                 } data-id="element-749">

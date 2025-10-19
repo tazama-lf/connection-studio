@@ -16,6 +16,7 @@ const DEMSModule: React.FC = () => {
   const [refreshKey, setRefreshKey] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const [isInCloneMode, setIsInCloneMode] = useState(false);
+  const [isReadOnly, setIsReadOnly] = useState(false);
 
   const handleAddNew = () => {
     setEditingEndpointId(-1);
@@ -24,6 +25,7 @@ const DEMSModule: React.FC = () => {
   const handleCloseModal = () => {
     setEditingEndpointId(null);
     setIsInCloneMode(false); // Reset clone mode
+    setIsReadOnly(false); // Reset read-only mode
     // Refresh the config list when modal closes
     setRefreshKey(prev => prev + 1);
   };
@@ -34,13 +36,15 @@ const DEMSModule: React.FC = () => {
   };
 
   const handleViewDetails = (config: Config) => {
-    // Open EditEndpointModal for viewing/editing - same workflow for both
+    // Open EditEndpointModal in read-only mode for viewing
     setEditingEndpointId(config.id);
+    setIsReadOnly(true);
   };
 
   const handleEditConfig = (config: Config) => {
-    // Same as view - both use EditEndpointModal workflow
+    // Open EditEndpointModal in edit mode
     setEditingEndpointId(config.id);
+    setIsReadOnly(false);
   };
 
   const handleCloneConfig = (config: Config) => {
@@ -125,6 +129,7 @@ const DEMSModule: React.FC = () => {
           endpointId={editingEndpointId}
           onSuccess={handleConfigSuccess}
           isCloneMode={isInCloneMode}
+          readOnly={isReadOnly}
         />
       )}
 

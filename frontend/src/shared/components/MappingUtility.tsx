@@ -853,7 +853,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       {currentMappings.length === 0 ? (
         <div className="text-center py-12 text-gray-500">
           <p className="text-sm">No mappings created yet.</p>
-          <p className="text-xs mt-1">Click "Add Mapping" to get started.</p>
+          {!readOnly && <p className="text-xs mt-1">Click "Add Mapping" to get started.</p>}
         </div>
       ) : null}
       

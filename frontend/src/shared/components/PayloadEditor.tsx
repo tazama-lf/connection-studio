@@ -883,7 +883,7 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
       )}
       
       {/* Edit Mode Info */}
-      {isEditMode && (
+      {isEditMode && !readOnly && (
         <div className="my-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
           <div className="flex items-start gap-3">
             <div className="flex-shrink-0 mt-0.5">
@@ -894,7 +894,7 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
             <div className="flex-1">
               <h4 className="text-sm font-medium text-blue-900 mb-1">Edit Mode</h4>
               <p className="text-sm text-blue-700">
-                Use the field editor below to add, remove, or modify schema fields. The original payload is hidden in edit mode.
+                Use the field editor below to add, remove, or modify schema fields.
               </p>
             </div>
           </div>
@@ -911,9 +911,11 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
                   Schema Fields
                 </h3>
                 <p className="text-sm text-gray-600 mt-1">
-                  {configId 
-                    ? 'Manually add, remove, and edit schema fields below. The payload above is read-only in edit mode.'
-                    : 'Generate schema fields from your payload above, then adjust field types and requirements below.'
+                  {readOnly
+                    ? 'Review the schema fields below for this configuration.'
+                    : configId
+                      ? 'Manually add, remove, and edit schema fields below. The payload above is read-only in edit mode.'
+                      : 'Generate schema fields from your payload above, then adjust field types and requirements below.'
                   }
                 </p>
               </div>
@@ -944,8 +946,8 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
                     }
                   </p> */}
                   
-                  {/* Add Field Button for Empty State - Only in edit mode */}
-                  {isEditMode && (
+                  {/* Add Field Button for Empty State - Only in edit mode and not read-only */}
+                  {isEditMode && !readOnly && (
                     <div className="mt-4">
                     {!showAddFieldForm ? (
                       <button
@@ -1062,8 +1064,8 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
                 </div>
               </div>
 
-              {/* Add Field Section - Only show when editing existing configs */}
-              {isEditMode && (
+              {/* Add Field Section - Only show when editing existing configs and not read-only */}
+              {isEditMode && !readOnly && (
                 <div className="mb-4">
                   {!showAddFieldForm ? (
                     <button
@@ -1175,7 +1177,8 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
                           setInferredFields(updatedFields);
                           setHasUserMadeEdits(true);
                         }}
-                        className="w-full px-2 py-1.5 bg-white border border-gray-200 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        disabled={readOnly}
+                        className="w-full px-2 py-1.5 bg-white border border-gray-200 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
                       >
                         <option value="String">String</option>
                         <option value="Number">Number</option>
@@ -1208,15 +1211,16 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
                             setInferredFields(updatedFields);
                             setHasUserMadeEdits(true);
                           }}
-                          className="h-3.5 w-3.5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                          disabled={readOnly}
+                          className="h-3.5 w-3.5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed"
                         />
                         <label htmlFor={`required-${index}`} className="ml-1.5 text-xs text-gray-600 cursor-pointer">
                           {field.required ? 'Required' : 'Optional'}
                         </label>
                       </div>
                       
-                      {/* Remove Button - Only show when editing existing configs */}
-                      {isEditMode && (
+                      {/* Remove Button - Only show when editing existing configs and not read-only */}
+                      {isEditMode && !readOnly && (
                         <button
                           type="button"
                           onClick={() => {

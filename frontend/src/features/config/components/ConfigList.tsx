@@ -307,18 +307,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
                                     Clone
                                   </button>
                                 )}
-                                {onViewHistory && (
-                                  <button
-                                    onClick={() => {
-                                      onViewHistory(config);
-                                      setOpenDropdown(null);
-                                    }}
-                                    className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                  >
-                                    <HistoryIcon className="w-4 h-4 mr-2" />
-                                    View History
-                                  </button>
-                                )}
+                               
                               </div>
                             </div>
                           )}
