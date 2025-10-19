@@ -1,13 +1,13 @@
 import { Body, Controller, DefaultValuePipe, Get, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
-import { RequireEditorRole } from 'src/auth/auth.decorator';
-import { ConfigType, JobStatus } from 'src/utils/interfaces';
+import { RequireEditorRole } from '../auth/auth.decorator';
+import { ConfigType, JobStatus } from '../utils/interfaces';
 import { CreatePushJobDto } from './dto/create-push-job.dto';
 import { JobService } from './job.service';
 
 @Controller('job')
 // @UseGuards(TazamaAuthGuard)
 export class JobController {
-    constructor(private jobService: JobService) { }
+    constructor(private readonly jobService: JobService) { }
 
     @Post('/create/push')
     @RequireEditorRole()

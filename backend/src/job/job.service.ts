@@ -1,8 +1,8 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import { DatabaseService } from 'src/database/database.service';
-import { validateTableName } from 'src/utils/helpers';
-import { ConfigType, ISuccess, JobStatus } from 'src/utils/interfaces';
+import { DatabaseService } from '../database/database.service';
+import { validateTableName } from '../utils/helpers';
+import { ConfigType, ISuccess, JobStatus } from '../utils/interfaces';
 import { v4 } from 'uuid';
 import { CreatePushJobDto } from './dto/create-push-job.dto';
 import { Job } from './types/interface';

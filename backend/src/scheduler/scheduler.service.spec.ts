@@ -11,10 +11,6 @@ describe('SchedulerService', () => {
       providers: [
         SchedulerService,
         {
-          provide: 'KNEX_CONNECTION',
-          useValue: {},
-        },
-        {
           provide: LoggerService,
           useValue: {
             error: jest.fn(),
