@@ -1022,8 +1022,8 @@ export class ConfigService {
         source: dto.sources || [],
         destination: dto.destination,
         transformation: 'CONCAT',
-        delimiter: dto.delimiter || ' ',
         ...(dto.prefix !== undefined && { prefix: dto.prefix }),
+        delimiter: dto.delimiter || ' ',
       };
     }
 
@@ -1053,8 +1053,8 @@ export class ConfigService {
         source: dto.source,
         destination: dto.destinations,
         transformation: 'SPLIT',
-        delimiter: dto.delimiter || ',',
         ...(dto.prefix !== undefined && { prefix: dto.prefix }),
+        delimiter: dto.delimiter || ',',
       };
     }
 
@@ -1072,9 +1072,9 @@ export class ConfigService {
     if (dto.constantValue !== undefined && dto.destination) {
       return {
         destination: dto.destination,
-        constantValue: dto.constantValue,
         transformation: 'CONSTANT',
         ...(dto.prefix !== undefined && { prefix: dto.prefix }),
+        constantValue: dto.constantValue,
       };
     }
 
