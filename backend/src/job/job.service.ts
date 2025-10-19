@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { DatabaseService } from '../database/database.service';
 import { validateTableName } from '../utils/helpers';
-import { ConfigType, ISuccess, JobStatus } from '../utils/interfaces';
+import { ConfigType, ISuccess, JobStatus, ScheduleStatus } from '../utils/interfaces';
 import { v4 } from 'uuid';
 import { CreatePushJobDto } from './dto/create-push-job.dto';
 import { Job } from './types/interface';
@@ -226,6 +226,34 @@ export class JobService {
         }
     }
 
+    async updateActivation(id: string, status: ScheduleStatus, table_name: string): Promise<ISuccess> {
+        try {
+            if (!id || !status || !table_name) {
+                throw new BadRequestException('Both status and table_name are required.');
+            }
+
+            const query = `
+      UPDATE ${table_name}
+      SET record_status = $1, updated_at = NOW()
+      WHERE id = $2
+      RETURNING *;
+    `;
+
+            const result = await this.db.query(query, [status, id]);
+
+            if (result.rowCount === 0) {
+                throw new NotFoundException(`Record with id "${id}" not found in table "${table_name}".`);
+            }
+
+            return {
+                success: true,
+                message: `${table_name} with id ${id} successfully updated`,
+            }
+        } catch (err) {
+            this.loggerService.error(`Error fetching records by status: ${err.message}`);
+            throw new BadRequestException(err.message);
+        }
+    }
     async updateStatus(id: string, status: JobStatus, table_name: string): Promise<ISuccess> {
         try {
             if (!id || !status || !table_name) {
@@ -247,7 +275,7 @@ export class JobService {
 
             return {
                 success: true,
-                message: `${table_name === 'endpoints' ? 'Endpoint' : 'Job'} with id ${id} successfully updated`,
+                message: `${table_name} with id ${id} successfully updated`,
             }
         } catch (err) {
             this.loggerService.error(`Error fetching records by status: ${err.message}`);

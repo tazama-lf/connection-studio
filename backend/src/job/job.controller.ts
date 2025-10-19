@@ -1,6 +1,6 @@
 import { Body, Controller, DefaultValuePipe, Get, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
 import { RequireEditorRole } from '../auth/auth.decorator';
-import { ConfigType, JobStatus } from '../utils/interfaces';
+import { ConfigType, JobStatus, ScheduleStatus } from '../utils/interfaces';
 import { CreatePushJobDto } from './dto/create-push-job.dto';
 import { JobService } from './job.service';
 
@@ -34,12 +34,17 @@ export class JobController {
         @Query('status') status: JobStatus,
         @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
         @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,) {
-        return await this.jobService.findByStatus(status,page,limit)
+        return await this.jobService.findByStatus(status, page, limit)
     }
 
     @Patch('/update/status/:id')
-    async updatePushStatus(@Param('id') id: string, @Query('status') status: JobStatus) {
-        return await this.jobService.updateStatus(id, status, 'endpoints')
+    async updateStatus(@Param('id') id: string, @Query('status') status: JobStatus, @Query('type') type: ConfigType) {
+        return await this.jobService.updateStatus(id, status, type === ConfigType.PUSH ? 'endpoints' : 'job')
+    }
+
+    @Patch('/update/activation/:id')
+    async update(@Param('id') id: string, @Query('status') status: ScheduleStatus, @Query('type') type: ConfigType) {
+        return await this.jobService.updateActivation(id, status, type === ConfigType.PUSH ? 'endpoints' : 'job')
     }
 
 }
