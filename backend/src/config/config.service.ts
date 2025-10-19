@@ -660,7 +660,7 @@ export class ConfigService {
     }
 
     const newMapping = this.createMappingFromDto(mappingDto);
-    await this.validateMapping(newMapping, config.schema, tenantId);
+    this.validateMapping(newMapping, config.schema, tenantId);
 
     const updatedMappings = [...(config.mapping || []), newMapping];
 
@@ -750,7 +750,7 @@ export class ConfigService {
     }
 
     const updatedMapping = this.createMappingFromDto(mappingDto);
-    await this.validateMapping(updatedMapping, config.schema, tenantId);
+    this.validateMapping(updatedMapping, config.schema, tenantId);
 
     const updatedMappings = [...config.mapping];
     updatedMappings[mappingIndex] = updatedMapping;
@@ -935,7 +935,15 @@ export class ConfigService {
 
     return {
       functionName: dto.functionName,
-      params: dto.params.map((p) => `redis.${p.trim()}`).filter((p) => p.length > 0),
+      params: dto.params
+        .map((p) => {
+          const trimmed = p.trim();
+          // tenantId gets transaction. prefix, others get redis. prefix
+          return trimmed === 'tenantId'
+            ? `transaction.${trimmed}`
+            : `redis.${trimmed}`;
+        })
+        .filter((p) => p.length > 0),
     };
   }
 
@@ -944,9 +952,9 @@ export class ConfigService {
     _schema: JSONSchema,
   ): void {
     for (const param of func.params) {
-      if (!/^(redis\.)?[a-zA-Z_][a-zA-Z0-9_]*$/.test(param)) {
+      if (!/^(redis\.|transaction\.)?[a-zA-Z_][a-zA-Z0-9_]*$/.test(param)) {
         throw new BadRequestException(
-          `Parameter name '${param}' must be a valid identifier or redis-prefixed identifier (e.g., 'param1' or 'redis.param1')`,
+          `Parameter name '${param}' must be a valid identifier or prefixed identifier (e.g., 'param1', 'redis.param1', or 'transaction.param1')`,
         );
       }
     }
@@ -1070,11 +1078,11 @@ export class ConfigService {
     );
   }
 
-  private async validateMapping(
+  private validateMapping(
     mapping: FieldMapping,
     schema: JSONSchema,
     _tenantId: string,
-  ): Promise<void> {
+  ): void {
     // Skip validation for constant mappings (no source field required)
     if (
       mapping.transformation === 'CONSTANT' ||

@@ -393,7 +393,7 @@ export class SimulationService {
         };
       }
 
-      const tcsResult = await processMappings(payload, tcsMapping);
+      const tcsResult = processMappings(payload, tcsMapping);
 
       return {
         name: '5. Execute TCS Mapping Functions',

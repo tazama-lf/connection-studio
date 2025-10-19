@@ -581,7 +581,7 @@ describe('ConfigService', () => {
         ...mockConfig,
         functions: [
           {
-            params: ['redis.dbtrAcctId', 'redis.tenantId'],
+            params: ['redis.dbtrAcctId', 'transaction.tenantId'],
             functionName: 'addAccount' as AllowedFunctionName,
           },
         ],
@@ -644,7 +644,7 @@ describe('ConfigService', () => {
         functions: expect.arrayContaining([
           expect.objectContaining({
             functionName: 'addAccount',
-            params: ['dbtrAcctId', 'tenantId'],
+            params: ['redis.dbtrAcctId', 'transaction.tenantId'],
           }),
         ]),
       });
@@ -705,7 +705,7 @@ describe('ConfigService', () => {
         ...mockConfig,
         functions: [
           {
-            params: ['dbtrAcctId'],
+            params: ['redis.dbtrAcctId'],
             functionName: 'addAccount' as AllowedFunctionName,
           },
         ],
