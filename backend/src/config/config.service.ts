@@ -1023,7 +1023,7 @@ export class ConfigService {
         destination: dto.destination,
         transformation: 'CONCAT',
         delimiter: dto.delimiter || ' ',
-        prefix: dto.prefix,
+        ...(dto.prefix !== undefined && { prefix: dto.prefix }),
       };
     }
 
@@ -1043,7 +1043,7 @@ export class ConfigService {
         source: dto.sumFields || [],
         destination: dto.destination,
         transformation: 'SUM',
-        prefix: dto.prefix,
+        ...(dto.prefix !== undefined && { prefix: dto.prefix }),
       };
     }
 
@@ -1054,7 +1054,7 @@ export class ConfigService {
         destination: dto.destinations,
         transformation: 'SPLIT',
         delimiter: dto.delimiter || ',',
-        prefix: dto.prefix,
+        ...(dto.prefix !== undefined && { prefix: dto.prefix }),
       };
     }
 
@@ -1064,7 +1064,7 @@ export class ConfigService {
         source: dto.source,
         destination: dto.destination,
         transformation: 'NONE',
-        prefix: dto.prefix,
+        ...(dto.prefix !== undefined && { prefix: dto.prefix }),
       };
     }
 
@@ -1074,7 +1074,7 @@ export class ConfigService {
         destination: dto.destination,
         constantValue: dto.constantValue,
         transformation: 'CONSTANT',
-        prefix: dto.prefix,
+        ...(dto.prefix !== undefined && { prefix: dto.prefix }),
       };
     }
 
