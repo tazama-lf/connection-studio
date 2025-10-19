@@ -1021,8 +1021,8 @@ export class ConfigService {
       return {
         source: dto.sources || [],
         destination: dto.destination,
-        transformation: 'CONCAT',
         ...(dto.prefix !== undefined && { prefix: dto.prefix }),
+        transformation: 'CONCAT',
         delimiter: dto.delimiter || ' ',
       };
     }
@@ -1042,8 +1042,8 @@ export class ConfigService {
       return {
         source: dto.sumFields || [],
         destination: dto.destination,
-        transformation: 'SUM',
         ...(dto.prefix !== undefined && { prefix: dto.prefix }),
+        transformation: 'SUM',
       };
     }
 
@@ -1052,8 +1052,8 @@ export class ConfigService {
       return {
         source: dto.source,
         destination: dto.destinations,
-        transformation: 'SPLIT',
         ...(dto.prefix !== undefined && { prefix: dto.prefix }),
+        transformation: 'SPLIT',
         delimiter: dto.delimiter || ',',
       };
     }
@@ -1063,8 +1063,8 @@ export class ConfigService {
       return {
         source: dto.source,
         destination: dto.destination,
-        transformation: 'NONE',
         ...(dto.prefix !== undefined && { prefix: dto.prefix }),
+        transformation: 'NONE',
       };
     }
 
@@ -1072,8 +1072,8 @@ export class ConfigService {
     if (dto.constantValue !== undefined && dto.destination) {
       return {
         destination: dto.destination,
-        transformation: 'CONSTANT',
         ...(dto.prefix !== undefined && { prefix: dto.prefix }),
+        transformation: 'CONSTANT',
         constantValue: dto.constantValue,
       };
     }
@@ -1088,7 +1088,6 @@ export class ConfigService {
     schema: JSONSchema,
     _tenantId: string,
   ): void {
-    // Skip validation for constant mappings (no source field required)
     if (
       mapping.transformation === 'CONSTANT' ||
       mapping.constantValue !== undefined
@@ -1120,7 +1119,6 @@ export class ConfigService {
       }
     }
 
-    // Validate destination(s) against Tazama internal data model
     if (Array.isArray(mapping.destination)) {
       for (const dest of mapping.destination) {
         const isValid =
@@ -1192,12 +1190,10 @@ export class ConfigService {
     }
 
     try {
-      // Convert schema to source fields to get field information
       const sourceFields = this.jsonSchemaConverter.convertFromJSONSchema(
         config.schema,
       );
 
-      // Find the field in the source fields
       const findField = (fields: any[], path: string): any => {
         for (const field of fields) {
           if (field.path === path) {
