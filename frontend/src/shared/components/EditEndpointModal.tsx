@@ -167,6 +167,27 @@ interface EditEndpointModalProps {
 
   const [currentMappings, setCurrentMappings] = useState<any[]>([]); // Current mappings from MappingUtility
 
+  // Function to update current mappings and sync with createdEndpoint
+  const updateCurrentMappings = (newMappings: any[]) => {
+    console.log('🔄 updateCurrentMappings called with:', newMappings);
+    setCurrentMappings(newMappings);
+    
+    // Also update the createdEndpoint to include the new mappings
+    if (createdEndpoint) {
+      console.log('🔄 Updating createdEndpoint with new mappings');
+      setCreatedEndpoint({
+        ...createdEndpoint,
+        mapping: newMappings
+      });
+    } else if (existingConfig) {
+      console.log('🔄 Updating existingConfig with new mappings');
+      setExistingConfig({
+        ...existingConfig,
+        mapping: newMappings
+      });
+    }
+  };
+
   // Functions state
   const [selectedFunctions, setSelectedFunctions] = useState<FunctionDefinition[]>([]);
   const [showAddFunctionModal, setShowAddFunctionModal] = useState(false);
@@ -246,6 +267,12 @@ interface EditEndpointModalProps {
             } else if (config.schema) {
               // Otherwise, show the schema (user will need to replace with actual payload for editing)
               setPayload(JSON.stringify(config.schema, null, 2));
+            }
+            
+            // Initialize currentMappings with existing mappings for consistency
+            if (config.mapping && Array.isArray(config.mapping)) {
+              setCurrentMappings(config.mapping);
+              console.log('🔄 Initialized currentMappings with existing mappings:', config.mapping.length, 'mappings');
             }
             
             // Set the existing config as the "created" endpoint for all subsequent steps
@@ -684,7 +711,10 @@ interface EditEndpointModalProps {
         showSuccess('Configuration submitted for approval successfully!');
         
         // Close modal and refresh parent component
-        handleSave();
+        onClose();
+        if (onSuccess) {
+          onSuccess();
+        }
       } else {
         console.log('❌ API returned success=false:', response.message);
         setError(`Failed to submit for approval: ${response.message}`);
@@ -991,16 +1021,17 @@ interface EditEndpointModalProps {
                 {console.log('EditEndpointModal - createdEndpoint:', createdEndpoint)}
                 <MappingUtility 
                   onMappingChange={setIsMappingValid} 
-                  onCurrentMappingsChange={setCurrentMappings}
+                  onCurrentMappingsChange={updateCurrentMappings}
                   sourceSchema={createdEndpoint?.schema || inferredSchema?.schema || existingConfig?.schema}
                   templateType="Acmt.023"
                   configId={createdEndpoint?.id || existingConfig?.id}
                   existingMappings={
-                    // For editing existing config: use existingConfig.mapping
-                    // For new config after creation: use createdEndpoint.mapping
-                    !isNewEndpoint && existingConfig?.mapping 
-                      ? existingConfig.mapping 
-                      : createdEndpoint?.mapping || []
+                    // Priority: currentMappings (most recent) > createdEndpoint.mapping > existingConfig.mapping > empty array
+                    currentMappings.length > 0 
+                      ? currentMappings 
+                      : (!isNewEndpoint && existingConfig?.mapping 
+                        ? existingConfig.mapping 
+                        : createdEndpoint?.mapping || [])
                   }
                   readOnly={readOnly}
                   data-id="element-741" 
