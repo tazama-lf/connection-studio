@@ -1018,13 +1018,16 @@ export class ConfigService {
           'Concat mapping requires a destination field',
         );
       }
-      return {
+      const mapping: any = {
         source: dto.sources || [],
         destination: dto.destination,
-        ...(dto.prefix !== undefined && { prefix: dto.prefix }),
-        transformation: 'CONCAT',
-        delimiter: dto.delimiter || ' ',
       };
+      if (dto.prefix !== undefined) {
+        mapping.prefix = dto.prefix;
+      }
+      mapping.transformation = 'CONCAT';
+      mapping.delimiter = dto.delimiter || ' ';
+      return mapping;
     }
 
     // Many-to-one (sum logic)
@@ -1039,43 +1042,55 @@ export class ConfigService {
           'Sum mapping requires a destination field',
         );
       }
-      return {
+      const mapping: any = {
         source: dto.sumFields || [],
         destination: dto.destination,
-        ...(dto.prefix !== undefined && { prefix: dto.prefix }),
-        transformation: 'SUM',
       };
+      if (dto.prefix !== undefined) {
+        mapping.prefix = dto.prefix;
+      }
+      mapping.transformation = 'SUM';
+      return mapping;
     }
 
     // One-to-many (split logic)
     if (dto.source && dto.destinations && dto.destinations.length > 0) {
-      return {
+      const mapping: any = {
         source: dto.source,
         destination: dto.destinations,
-        ...(dto.prefix !== undefined && { prefix: dto.prefix }),
-        transformation: 'SPLIT',
-        delimiter: dto.delimiter || ',',
       };
+      if (dto.prefix !== undefined) {
+        mapping.prefix = dto.prefix;
+      }
+      mapping.transformation = 'SPLIT';
+      mapping.delimiter = dto.delimiter || ',';
+      return mapping;
     }
 
     // Simple mapping
     if (dto.source && dto.destination) {
-      return {
+      const mapping: any = {
         source: dto.source,
         destination: dto.destination,
-        ...(dto.prefix !== undefined && { prefix: dto.prefix }),
-        transformation: 'NONE',
       };
+      if (dto.prefix !== undefined) {
+        mapping.prefix = dto.prefix;
+      }
+      mapping.transformation = 'NONE';
+      return mapping;
     }
 
     // Constant mapping
     if (dto.constantValue !== undefined && dto.destination) {
-      return {
+      const mapping: any = {
         destination: dto.destination,
-        ...(dto.prefix !== undefined && { prefix: dto.prefix }),
-        transformation: 'CONSTANT',
-        constantValue: dto.constantValue,
       };
+      if (dto.prefix !== undefined) {
+        mapping.prefix = dto.prefix;
+      }
+      mapping.transformation = 'CONSTANT';
+      mapping.constantValue = dto.constantValue;
+      return mapping;
     }
 
     throw new BadRequestException(
