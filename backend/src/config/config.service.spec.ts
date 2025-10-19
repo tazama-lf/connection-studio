@@ -581,7 +581,7 @@ describe('ConfigService', () => {
         ...mockConfig,
         functions: [
           {
-            params: ['dbtrAcctId', 'tenantId'],
+            params: ['redis.dbtrAcctId', 'redis.tenantId'],
             functionName: 'addAccount' as AllowedFunctionName,
           },
         ],

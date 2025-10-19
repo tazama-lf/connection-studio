@@ -943,11 +943,10 @@ export class ConfigService {
     func: FunctionDefinition,
     _schema: JSONSchema,
   ): void {
-    // Validate parameter names
     for (const param of func.params) {
-      if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(param)) {
+      if (!/^(redis\.)?[a-zA-Z_][a-zA-Z0-9_]*$/.test(param)) {
         throw new BadRequestException(
-          `Parameter name '${param}' must be a valid identifier`,
+          `Parameter name '${param}' must be a valid identifier or redis-prefixed identifier (e.g., 'param1' or 'redis.param1')`,
         );
       }
     }
