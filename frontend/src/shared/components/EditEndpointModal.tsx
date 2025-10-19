@@ -225,6 +225,11 @@ interface EditEndpointModalProps {
             
             setExistingConfig(config);
             
+            // Check if config is approved and show error immediately
+            if (config.status === 'approved') {
+              setError('This configuration has been approved and cannot be edited directly. Please clone the configuration to create a new version.');
+            }
+            
             // Pre-populate form data with existing config
             // For clone mode, adjust version and transaction type to indicate it's a clone
             const isCloning = isCloneMode && endpointId !== -1;
@@ -768,6 +773,7 @@ interface EditEndpointModalProps {
         // Determine actual config ID to use
         const actualConfigId = createdEndpoint?.id || existingConfig?.id || endpointId;
         const shouldCreate = !createdEndpoint && !existingConfig && isNewEndpoint;
+        const action = shouldCreate ? 'create' : 'update';
         
         if (shouldCreate) {
           console.log('Creating NEW config...');
@@ -783,8 +789,16 @@ interface EditEndpointModalProps {
         
         if (!response.success) {
           console.log('❌ Save failed - response.success is false');
-          const action = isNewEndpoint ? 'save' : 'update';
-          setError(response.message || `Failed to ${action} configuration`);
+          
+          // Check for specific error messages that need user-friendly handling
+          let errorMessage = response.message || `Failed to ${action} configuration`;
+          
+          // Handle approved config editing error with more user-friendly message
+          if (response.message && response.message.includes('Editing not allowed')) {
+            errorMessage = 'This configuration has been approved and cannot be edited directly. Please clone the configuration to create a new version.';
+          }
+          
+          setError(errorMessage);
           if (response.validation?.errors) {
             console.error('Validation errors:', response.validation.errors);
           }
@@ -855,6 +869,49 @@ interface EditEndpointModalProps {
           </button>
         </div>
         <div className="overflow-y-auto p-6 max-h-[calc(90vh-120px)]" data-id="element-732">
+          {/* Error Display - Show prominently when there's an error */}
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 mt-0.5">
+                  <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-sm font-medium text-red-900 mb-1">Error</h4>
+                  <p className="text-sm text-red-700">{error}</p>
+                  {error.includes('approved and cannot be edited') && (
+                    <div className="mt-3">
+                      <button
+                        onClick={() => {
+                          // Close current modal and trigger clone mode
+                          onClose();
+                          // Note: Parent component should handle opening in clone mode
+                        }}
+                        className="inline-flex items-center px-3 py-1.5 border border-blue-300 text-sm rounded text-blue-700 bg-blue-50 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                        Clone Configuration
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <button
+                  onClick={() => setError(null)}
+                  className="flex-shrink-0 text-red-500 hover:text-red-700"
+                  title="Dismiss error"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="mb-8" data-id="element-733">
             <div className="flex justify-between items-center" data-id="element-734">
               {steps.map((step, index) => <div key={step.id} className="flex items-center" data-id="element-735">
