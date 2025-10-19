@@ -1,8 +1,7 @@
 import { Body, Controller, DefaultValuePipe, Get, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
 import { RequireEditorRole } from 'src/auth/auth.decorator';
-import { ConfigType } from 'src/utils/interfaces';
+import { ConfigType, JobStatus } from 'src/utils/interfaces';
 import { CreatePushJobDto } from './dto/create-push-job.dto';
-import { UpdateJobDto } from './dto/update-job.dto';
 import { JobService } from './job.service';
 
 @Controller('job')
@@ -17,21 +16,30 @@ export class JobController {
     }
 
     @Get('/all')
+    @RequireEditorRole()
     async getAll(
         @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
         @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
     ) {
-        return this.jobService.findAll(page, limit);
-    }
-
-    @Patch('/update/:id')
-    async updatePush(@Param('id') id: string, @Body() body: UpdateJobDto) {
-        return this.jobService.updatePush(id, body);
+        return this.jobService.findAll(page, limit, '1234');
     }
 
     @Get('/:id')
     async getById(@Param('id') id: string, @Query('type') type: ConfigType) {
-        return await this.jobService.findOne(id, type)
+        return await this.jobService.findOne(id, type, '1234')
+    }
+
+    @Get('/get/status')
+    async getByStatus(
+        @Query('status') status: JobStatus,
+        @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+        @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,) {
+        return await this.jobService.findByStatus(status,page,limit)
+    }
+
+    @Patch('/update/status/:id')
+    async updatePushStatus(@Param('id') id: string, @Query('status') status: JobStatus) {
+        return await this.jobService.updateStatus(id, status, 'endpoints')
     }
 
 }
