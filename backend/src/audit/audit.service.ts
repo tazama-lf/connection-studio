@@ -10,7 +10,7 @@ export interface AuditLogEntry {
   tenantId: string;
   endpointName?: string;
   mappingName?: string;
-  version?: number;
+  version?: string;
   details?: string;
   oldValues?: Record<string, any>;
   newValues?: Record<string, any>;
@@ -28,7 +28,7 @@ export interface MappingAuditLogEntry {
   tenantId: string;
   mappingName?: string;
   endpointName?: string;
-  version?: number;
+  version?: string;
 }
 
 @Injectable()
@@ -74,7 +74,7 @@ export class AuditService {
     actor: string,
     endpointName: string,
     tenantId: string,
-    version?: number,
+    version?: string,
   ): Promise<void> {
     await this.logAction({
       action: 'ENDPOINT_CREATED',
@@ -90,7 +90,7 @@ export class AuditService {
     actor: string,
     endpointName: string,
     tenantId: string,
-    version?: number,
+    version?: string,
   ): Promise<void> {
     await this.logAction({
       action: 'SCHEMA_INFERRED',
@@ -106,7 +106,7 @@ export class AuditService {
     actor: string,
     endpointName: string,
     tenantId: string,
-    version?: number,
+    version?: string,
   ): Promise<void> {
     await this.logAction({
       action: 'DRAFT_SAVED',
@@ -122,7 +122,7 @@ export class AuditService {
     actor: string,
     endpointName: string,
     tenantId: string,
-    version?: number,
+    version?: string,
   ): Promise<void> {
     await this.logAction({
       action: 'SCHEMA_VALIDATED',

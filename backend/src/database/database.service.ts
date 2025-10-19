@@ -17,6 +17,20 @@ export class DatabaseService implements OnModuleDestroy {
         return result;
     }
 
+    async tableExist(tableName: string): Promise<boolean> {
+        const cleanName = tableName.trim().toLowerCase();
+        const query = `
+    SELECT EXISTS (
+      SELECT FROM information_schema.tables 
+      WHERE table_schema = 'public' 
+      AND table_name = $1
+    ) AS exists;
+  `;
+
+        const result = await this.pool.query(query, [cleanName]);
+        return result.rows[0]?.exists || false;
+    }
+
     async onModuleDestroy() {
         await this.pool.end();
     }
