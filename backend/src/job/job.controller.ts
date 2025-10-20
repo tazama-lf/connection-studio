@@ -3,6 +3,7 @@ import { RequireEditorRole } from '../auth/auth.decorator';
 import { ConfigType, JobStatus, ScheduleStatus } from '../utils/interfaces';
 import { CreatePushJobDto } from './dto/create-push-job.dto';
 import { JobService } from './job.service';
+import { CreatePullJobDto } from './dto/create-pull-job.dto';
 
 @Controller('job')
 // @UseGuards(TazamaAuthGuard)
@@ -13,6 +14,13 @@ export class JobController {
     @RequireEditorRole()
     async createPushJob(@Body() job: CreatePushJobDto) {
         return await this.jobService.createPush(job, '1234');
+    }
+
+
+    @Post('/create/pull')
+    // @RequireEditorRole()
+    async createPullJob(@Body() job: CreatePullJobDto) {
+        return await this.jobService.createPull(job, '1234');
     }
 
     @Get('/all')

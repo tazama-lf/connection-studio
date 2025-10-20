@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { JobService } from './job.service';
 import { DatabaseService } from '../database/database.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
+import { DryRunService } from '../dry-run/dry-run.service';
 
 describe('JobService', () => {
   let service: JobService;
@@ -12,6 +13,10 @@ describe('JobService', () => {
         JobService,
         {
           provide: DatabaseService,
+          useValue: {}
+        },
+        {
+          provide: DryRunService,
           useValue: {}
         },
         {

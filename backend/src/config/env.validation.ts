@@ -33,6 +33,8 @@ class EnvironmentVariables {
   CONFIGURATION_DATABASE_USER: string;
   @IsString()
   CONFIGURATION_DATABASE_PASSWORD: string;
+  @IsString()
+  ENCRYPTION_KEY: string;
 }
 export const validate = (config: Record<string, unknown>) => {
   const validatedConfig = plainToClass(EnvironmentVariables, config, {

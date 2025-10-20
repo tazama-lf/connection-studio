@@ -1,9 +1,26 @@
 import { BadRequestException } from '@nestjs/common';
 import { CronTime } from 'cron';
 import * as path from 'path';
-import { RESERVED_KEYWORDS } from './constants';
+import { RESERVED_KEYWORDS } from './constants'
+import * as crypto from 'crypto';
 
+const IV_LENGTH = 16;
+const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY!;
+const buffer = Buffer.from(`${ENCRYPTION_KEY}`, 'utf8')
 
+export function encrypt(text: string) {
+    const iv = crypto.randomBytes(IV_LENGTH);
+
+    const cipher = crypto.createCipheriv(
+        'aes-256-cbc',
+        buffer, 
+        iv,
+    );
+
+    let encrypted = cipher.update(text, 'utf8', 'hex');
+    encrypted += cipher.final('hex');
+    return iv.toString('hex') + ':' + encrypted;
+}
 
 export function validateCronExpression(expression: string): void {
     try {
@@ -43,4 +60,8 @@ export function validateFileType(filePath: string): 'CSV' | 'TSV' | 'JSON' {
         default:
             throw new Error(`Invalid file type: ${ext}. Only CSV, TSV, or JSON are allowed.`);
     }
+}
+
+export function isValidText(text: string): boolean {
+    return !/�{3,}/.test(text);
 }

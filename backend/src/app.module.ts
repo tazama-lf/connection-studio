@@ -18,6 +18,7 @@ import { AuditInterceptor } from './audit/audit.interceptor';
 import { SchedulerModule } from './scheduler/scheduler.module';
 import { JobModule } from './job/job.module';
 import { DatabaseModule } from './database/database.module';
+import { DryRunModule } from './dry-run/dry-run.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { DatabaseModule } from './database/database.module';
     SchedulerModule,
     JobModule,
     DatabaseModule,
+    DryRunModule,
   ],
   controllers: [AppController],
   providers: [

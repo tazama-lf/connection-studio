@@ -1,11 +1,13 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { DatabaseService } from '../database/database.service';
-import { validateTableName } from '../utils/helpers';
-import { ConfigType, ISuccess, JobStatus, ScheduleStatus } from '../utils/interfaces';
+import { encrypt, validateFileType, validateTableName } from '../utils/helpers';
+import { AuthType, ConfigType, ISuccess, JobStatus, ScheduleStatus, SourceType } from '../utils/interfaces';
 import { v4 } from 'uuid';
 import { CreatePushJobDto } from './dto/create-push-job.dto';
 import { Job } from './types/interface';
+import { CreatePullJobDto, SFTPConnectionDto } from './dto/create-pull-job.dto';
+import { DryRunService } from '../dry-run/dry-run.service';
 
 @Injectable()
 export class JobService {
@@ -13,6 +15,7 @@ export class JobService {
     constructor(
         private readonly db: DatabaseService,
         private readonly loggerService: LoggerService,
+        private readonly dryRunService: DryRunService
     ) { }
 
 
@@ -47,10 +50,10 @@ export class JobService {
             const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
 
             const insertQuery = `
-        INSERT INTO endpoints (${keys.join(', ')})
-        VALUES (${placeholders})
-        RETURNING *;
-      `;
+                    INSERT INTO endpoints (${keys.join(', ')})
+                     VALUES (${placeholders})
+                      RETURNING *;
+                      `;
 
             const insertRes = await this.db.query(insertQuery, values);
             const newJob = insertRes.rows[0];
@@ -61,6 +64,69 @@ export class JobService {
             throw new BadRequestException(err.message);
         }
     }
+
+    async createPull(job: CreatePullJobDto, tenantId: string): Promise<Job> {
+        try {
+            await this.validateExisting(job.table_name);
+
+            const checkScheduleQuery = `
+                 SELECT * 
+                  FROM schedule 
+                     WHERE id = $1 
+                         LIMIT 1;
+                     `;
+
+            const scheduleResult = await this.db.query(checkScheduleQuery, [job.schedule_id]);
+            const exist = scheduleResult.rows[0];
+            if (!exist) {
+                throw new BadRequestException(`Schedule Id "${job.schedule_id}" not found`);
+            }
+
+            let connection = job.connection;
+            if (job.source_type === SourceType.SFTP) {
+                validateFileType(job.file.path);
+
+                const sftpConn = connection as SFTPConnectionDto;
+                if (sftpConn.auth_type === AuthType.USERNAME_PASSWORD && sftpConn.password) {
+                    connection = {
+                        ...sftpConn,
+                        password: encrypt(sftpConn.password),
+                    };
+                } else if (sftpConn.private_key) {
+                    connection = {
+                        ...sftpConn,
+                        private_key: encrypt(sftpConn.private_key),
+                    };
+                }
+            }
+
+            await this.dryRunService.dryRun(job);
+
+            const jobWithId = { ...job, id: v4(), connection, tenant_id: tenantId };
+            const keys = Object.keys(jobWithId);
+            const values = Object.values(jobWithId);
+            const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
+
+            const insertQuery = `
+                 INSERT INTO job (${keys.join(', ')})
+                  VALUES (${placeholders})
+                  RETURNING *;
+                     `;
+
+            const insertResult = await this.db.query(insertQuery, values);
+            const newJob = insertResult.rows[0];
+
+            return newJob;
+        } catch (err) {
+            if (Array.isArray(err)) {
+                const messages = err.flatMap((e) => Object.values(e.constraints ?? {}));
+                throw new BadRequestException(messages);
+            }
+
+            throw new BadRequestException(err.message || 'Invalid request payload');
+        }
+    }
+
 
 
     async findAll(page: number, limit: number, tenantId: string) {
@@ -233,11 +299,11 @@ export class JobService {
             }
 
             const query = `
-      UPDATE ${table_name}
-      SET record_status = $1, updated_at = NOW()
-      WHERE id = $2
-      RETURNING *;
-    `;
+                 UPDATE ${table_name}
+                 SET record_status = $1, updated_at = NOW()
+                 WHERE id = $2
+                 RETURNING *;
+                    `;
 
             const result = await this.db.query(query, [status, id]);
 
@@ -261,11 +327,11 @@ export class JobService {
             }
 
             const query = `
-      UPDATE ${table_name}
-      SET status = $1, updated_at = NOW()
-      WHERE id = $2
-      RETURNING *;
-    `;
+                  UPDATE ${table_name}
+                   SET status = $1, updated_at = NOW()
+                       WHERE id = $2
+                          RETURNING *;
+                      `;
 
             const result = await this.db.query(query, [status, id]);
 

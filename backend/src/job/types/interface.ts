@@ -35,4 +35,4 @@ interface Job {
     schedule?: Schedule;
 }
 
-export { type Job }
+export type { Job, HTTPConnection, SFTPConnection, FileSettings }
