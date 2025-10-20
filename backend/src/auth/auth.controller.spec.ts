@@ -3,6 +3,8 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { AuditService } from '../audit/audit.service';
+import { SessionManagerService } from './session-manager.service';
+import { TazamaAuthGuard } from './tazama-auth.guard';
 
 describe('AuthController', () => {
   let controller: AuthController;
@@ -17,6 +19,8 @@ describe('AuthController', () => {
             authenticate: jest.fn(),
             checkTokenExpiry: jest.fn(),
             getTimeToExpiry: jest.fn(),
+            login: jest.fn(),
+            isTokenExpired: jest.fn(),
           },
         },
         {
@@ -27,14 +31,32 @@ describe('AuthController', () => {
           },
         },
         {
+          provide: SessionManagerService,
+          useValue: {
+            recordActivity: jest.fn(),
+            isSessionActive: jest.fn().mockReturnValue(true),
+            getSessionTimeRemaining: jest.fn().mockReturnValue(1800),
+            getSessionInfo: jest.fn().mockReturnValue({
+              active: true,
+              lastActivity: new Date(),
+              expiresAt: new Date(Date.now() + 1800000),
+            }),
+            invalidateSession: jest.fn(),
+          },
+        },
+        {
           provide: LoggerService,
           useValue: {
             log: jest.fn(),
             error: jest.fn(),
+            warn: jest.fn(),
           },
         },
       ],
-    }).compile();
+    })
+      .overrideGuard(TazamaAuthGuard)
+      .useValue({ canActivate: jest.fn(() => true) })
+      .compile();
 
     controller = module.get<AuthController>(AuthController);
   });
