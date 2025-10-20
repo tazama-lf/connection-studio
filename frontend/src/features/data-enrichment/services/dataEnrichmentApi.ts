@@ -24,7 +24,7 @@ export const dataEnrichmentApi = {
         {
           method: 'POST',
           body: JSON.stringify(data),
-        }
+        },
       );
     } catch (error) {
       console.error('Create pull job error:', error);
@@ -42,7 +42,7 @@ export const dataEnrichmentApi = {
         {
           method: 'POST',
           body: JSON.stringify(data),
-        }
+        },
       );
     } catch (error) {
       console.error('Create push job error:', error);
@@ -50,14 +50,17 @@ export const dataEnrichmentApi = {
     }
   },
 
-  getAllJobs: async (page?: number, limit?: number): Promise<JobListResponse> => {
+  getAllJobs: async (
+    page?: number,
+    limit?: number,
+  ): Promise<JobListResponse> => {
     console.log('=== getAllJobs API CALL ===');
     console.log('Input parameters - page:', page, 'limit:', limit);
-    
+
     const queryParams = new URLSearchParams();
     if (page) queryParams.append('page', page.toString());
     if (limit) queryParams.append('limit', limit.toString());
-    
+
     const url = `${DATA_ENRICHMENT_BASE_URL}/job/all${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
     console.log('Base URL:', DATA_ENRICHMENT_BASE_URL);
     console.log('Final request URL:', url);
@@ -76,7 +79,9 @@ export const dataEnrichmentApi = {
 
   getJob: async (id: string): Promise<DataEnrichmentJobResponse> => {
     try {
-      return await apiRequest<DataEnrichmentJobResponse>(`${DATA_ENRICHMENT_BASE_URL}/job/${id}`);
+      return await apiRequest<DataEnrichmentJobResponse>(
+        `${DATA_ENRICHMENT_BASE_URL}/job/${id}`,
+      );
     } catch (error) {
       console.error(`Failed to fetch job ${id}:`, error);
       throw error;
@@ -85,7 +90,9 @@ export const dataEnrichmentApi = {
 
   updateJob: async (
     id: string,
-    updates: Partial<{ job_status: 'PENDING' | 'IN-PROGRESS' | 'SUSPENDED' | 'CLONED' }>,
+    updates: Partial<{
+      job_status: 'PENDING' | 'IN-PROGRESS' | 'SUSPENDED' | 'CLONED';
+    }>,
   ): Promise<{ success: boolean; message: string }> => {
     try {
       return await apiRequest<{ success: boolean; message: string }>(
@@ -93,7 +100,7 @@ export const dataEnrichmentApi = {
         {
           method: 'PATCH',
           body: JSON.stringify(updates),
-        }
+        },
       );
     } catch (error) {
       console.error(`Failed to update job ${id}:`, error);
@@ -102,7 +109,9 @@ export const dataEnrichmentApi = {
   },
 
   // Schedule endpoints
-  createSchedule: async (data: ScheduleRequest): Promise<ScheduleCreateResponse> => {
+  createSchedule: async (
+    data: ScheduleRequest,
+  ): Promise<ScheduleCreateResponse> => {
     const url = `${DATA_ENRICHMENT_BASE_URL}/api/scheduler/create`;
     console.log('Creating schedule at:', url, 'with data:', data);
 
@@ -159,12 +168,15 @@ export const dataEnrichmentApi = {
   },
 
   getSchedule: async (id: number): Promise<ScheduleResponse> => {
-    const response = await fetch(`${DATA_ENRICHMENT_BASE_URL}/api/scheduler/${id}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
+    const response = await fetch(
+      `${DATA_ENRICHMENT_BASE_URL}/api/scheduler/${id}`,
+      {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
       },
-    });
+    );
 
     if (!response.ok) {
       throw new Error(`Failed to fetch schedule: ${response.status}`);
@@ -183,7 +195,7 @@ export const dataEnrichmentApi = {
         {
           method: 'PATCH',
           body: JSON.stringify(updates),
-        }
+        },
       );
     } catch (error) {
       console.error(`Failed to update schedule ${id}:`, error);
@@ -201,7 +213,7 @@ export const dataEnrichmentApi = {
         {
           method: 'POST',
           body: JSON.stringify(connectionData),
-        }
+        },
       );
     } catch (error) {
       console.error('Connection test failed:', error);
@@ -226,13 +238,10 @@ export const dataEnrichmentApi = {
         invalidRows: number;
         previewRows: Record<string, any>[];
         validationErrors: Array<{ row: number; field: string; error: string }>;
-      }>(
-        `${DATA_ENRICHMENT_BASE_URL}/job/preview`,
-        {
-          method: 'POST',
-          body: JSON.stringify(connectionData),
-        }
-      );
+      }>(`${DATA_ENRICHMENT_BASE_URL}/job/preview`, {
+        method: 'POST',
+        body: JSON.stringify(connectionData),
+      });
     } catch (error) {
       console.error('Data preview failed:', error);
       throw error;

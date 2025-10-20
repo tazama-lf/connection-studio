@@ -1,7 +1,7 @@
-import { API_CONFIG } from "../../../shared/config/api.config";
-import type { 
-  AddFunctionDto, 
-  FunctionResponseDto
+import { API_CONFIG } from '../../../shared/config/api.config';
+import type {
+  AddFunctionDto,
+  FunctionResponseDto,
 } from '../../../shared/types/functions.types';
 
 export class FunctionsApiService {
@@ -17,8 +17,8 @@ export class FunctionsApiService {
    * Add a function to a configuration
    */
   static async addFunction(
-    configId: number, 
-    functionData: AddFunctionDto
+    configId: number,
+    functionData: AddFunctionDto,
   ): Promise<FunctionResponseDto> {
     try {
       const url = `${API_CONFIG.API_BASE_URL}${API_CONFIG.ENDPOINTS.CONFIG.ADD_FUNCTION.replace(':id', configId.toString())}`;
@@ -27,11 +27,11 @@ export class FunctionsApiService {
         headers: this.getAuthHeaders(),
         body: JSON.stringify(functionData),
       });
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       return await response.json();
     } catch (error) {
       console.error('Failed to add function:', error);
@@ -43,25 +43,26 @@ export class FunctionsApiService {
    * Update a function in a configuration
    */
   static async updateFunction(
-    configId: number, 
-    functionIndex: number, 
-    functionData: AddFunctionDto
+    configId: number,
+    functionIndex: number,
+    functionData: AddFunctionDto,
   ): Promise<FunctionResponseDto> {
     try {
-      const url = `${API_CONFIG.API_BASE_URL}${API_CONFIG.ENDPOINTS.CONFIG.UPDATE_FUNCTION
-        .replace(':id', configId.toString())
-        .replace(':index', functionIndex.toString())}`;
-      
+      const url = `${API_CONFIG.API_BASE_URL}${API_CONFIG.ENDPOINTS.CONFIG.UPDATE_FUNCTION.replace(
+        ':id',
+        configId.toString(),
+      ).replace(':index', functionIndex.toString())}`;
+
       const response = await fetch(url, {
         method: 'PUT',
         headers: this.getAuthHeaders(),
         body: JSON.stringify(functionData),
       });
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       return await response.json();
     } catch (error) {
       console.error('Failed to update function:', error);
@@ -73,23 +74,24 @@ export class FunctionsApiService {
    * Delete a function from a configuration
    */
   static async deleteFunction(
-    configId: number, 
-    functionIndex: number
+    configId: number,
+    functionIndex: number,
   ): Promise<FunctionResponseDto> {
     try {
-      const url = `${API_CONFIG.API_BASE_URL}${API_CONFIG.ENDPOINTS.CONFIG.DELETE_FUNCTION
-        .replace(':id', configId.toString())
-        .replace(':index', functionIndex.toString())}`;
-      
+      const url = `${API_CONFIG.API_BASE_URL}${API_CONFIG.ENDPOINTS.CONFIG.DELETE_FUNCTION.replace(
+        ':id',
+        configId.toString(),
+      ).replace(':index', functionIndex.toString())}`;
+
       const response = await fetch(url, {
         method: 'DELETE',
         headers: this.getAuthHeaders(),
       });
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       return await response.json();
     } catch (error) {
       console.error('Failed to delete function:', error);
@@ -107,11 +109,11 @@ export class FunctionsApiService {
         method: 'GET',
         headers: this.getAuthHeaders(),
       });
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       return await response.json();
     } catch (error) {
       console.error('Failed to get config with functions:', error);

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { EyeIcon, MoreVerticalIcon, EditIcon, CopyIcon, HistoryIcon } from 'lucide-react';
+import { EyeIcon, MoreVerticalIcon, EditIcon, CopyIcon, HistoryIcon, ChevronUpIcon, ChevronDownIcon, FilterIcon } from 'lucide-react';
 import { configApi } from '../services/configApi';
+import { UI_CONFIG } from '../../../shared/config/app.config';
 
 interface Config {
   id: number;
@@ -48,8 +49,16 @@ export const ConfigList: React.FC<ConfigListProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(5);
+  const [itemsPerPage] = useState(UI_CONFIG.pagination.defaultPageSize);
   const [openDropdown, setOpenDropdown] = useState<number | null>(null);
+
+  // Sorting state
+  const [sortField, setSortField] = useState<string>('createdAt');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+
+  // Status filtering state
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [showStatusFilter, setShowStatusFilter] = useState(false);
 
   // Use external search term if provided, otherwise use empty string
   const searchTerm = externalSearchTerm || '';
@@ -80,21 +89,66 @@ export const ConfigList: React.FC<ConfigListProps> = ({
     }
   };
 
-  // Filter configs by search term
+  // Filter configs by search term and status
   const filteredConfigs = configs.filter(config => {
     const matchesSearch = searchTerm === '' || 
       config.transactionType.toLowerCase().includes(searchTerm.toLowerCase()) ||
       config.endpointPath.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (config.msgFam && config.msgFam.toLowerCase().includes(searchTerm.toLowerCase()));
+    
+    const matchesStatus = statusFilter === 'all' || config.status.toLowerCase() === statusFilter.toLowerCase();
       
-    return matchesSearch;
+    return matchesSearch && matchesStatus;
+  });
+
+  // Sort filtered configs
+  const sortedConfigs = [...filteredConfigs].sort((a, b) => {
+    let aValue: any = a[sortField as keyof Config];
+    let bValue: any = b[sortField as keyof Config];
+
+    // Handle date sorting
+    if (sortField === 'createdAt' || sortField === 'updatedAt') {
+      aValue = new Date(aValue).getTime();
+      bValue = new Date(bValue).getTime();
+    } else {
+      // String sorting for other fields
+      aValue = String(aValue || '').toLowerCase();
+      bValue = String(bValue || '').toLowerCase();
+    }
+
+    if (sortDirection === 'asc') {
+      return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
+    } else {
+      return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;
+    }
   });
 
   // Pagination logic
-  const totalPages = Math.ceil(filteredConfigs.length / itemsPerPage);
+  const totalPages = Math.ceil(sortedConfigs.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const paginatedConfigs = filteredConfigs.slice(startIndex, endIndex);
+  const paginatedConfigs = sortedConfigs.slice(startIndex, endIndex);
+
+  // Handle sorting
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+    setCurrentPage(1); // Reset to first page when sorting
+  };
+
+  // Handle status filter
+  const handleStatusFilter = (status: string) => {
+    setStatusFilter(status);
+    setShowStatusFilter(false);
+    setCurrentPage(1); // Reset to first page when filtering
+  };
+
+  // Get unique statuses for filter dropdown
+  const uniqueStatuses = Array.from(new Set(configs.map(config => config.status))).sort();
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -163,21 +217,17 @@ export const ConfigList: React.FC<ConfigListProps> = ({
     fetchConfigs();
   }, []);
 
-  // Close dropdown when clicking outside
+  // Close status filter dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-      // Don't close if clicking inside a dropdown
-      if (!target.closest('.dropdown-container')) {
-        setOpenDropdown(null);
+      if (showStatusFilter && !(event.target as Element).closest('.status-filter-container')) {
+        setShowStatusFilter(false);
       }
     };
-    
-    if (openDropdown !== null) {
-      document.addEventListener('click', handleClickOutside);
-      return () => document.removeEventListener('click', handleClickOutside);
-    }
-  }, [openDropdown]);
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showStatusFilter]);
 
   const handleViewConfig = (config: Config) => {
     console.log('Viewing config:', config);
@@ -219,14 +269,70 @@ export const ConfigList: React.FC<ConfigListProps> = ({
         <table className="min-w-full">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                ENDPOINT PATH
+              <th 
+                className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                onClick={() => handleSort('endpointPath')}
+              >
+                <div className="flex items-center">
+                  ENDPOINT PATH
+                  {sortField === 'endpointPath' && (
+                    sortDirection === 'asc' ? 
+                      <ChevronUpIcon className="w-4 h-4 ml-1" /> : 
+                      <ChevronDownIcon className="w-4 h-4 ml-1" />
+                  )}
+                </div>
               </th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                STATUS
+              <th 
+                className="status-filter-container px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none relative"
+                onClick={() => setShowStatusFilter(!showStatusFilter)}
+              >
+                <div className="flex items-center">
+                  STATUS
+                  <FilterIcon className="w-4 h-4 ml-1" />
+                  {statusFilter !== 'all' && (
+                    <span className="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-blue-100 text-blue-800">
+                      {statusFilter}
+                    </span>
+                  )}
+                </div>
+                {showStatusFilter && (
+                  <div className="absolute top-full left-0 mt-1 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-20">
+                    <div className="py-1">
+                      <button
+                        onClick={() => handleStatusFilter('all')}
+                        className={`flex items-center w-full px-4 py-2 text-sm hover:bg-gray-100 ${
+                          statusFilter === 'all' ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                        }`}
+                      >
+                        All Statuses
+                      </button>
+                      {uniqueStatuses.map(status => (
+                        <button
+                          key={status}
+                          onClick={() => handleStatusFilter(status)}
+                          className={`flex items-center w-full px-4 py-2 text-sm hover:bg-gray-100 ${
+                            statusFilter === status ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                          }`}
+                        >
+                          {getStatusText(status)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                CREATED TIME
+              <th 
+                className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                onClick={() => handleSort('createdAt')}
+              >
+                <div className="flex items-center">
+                  CREATED TIME
+                  {sortField === 'createdAt' && (
+                    sortDirection === 'asc' ? 
+                      <ChevronUpIcon className="w-4 h-4 ml-1" /> : 
+                      <ChevronDownIcon className="w-4 h-4 ml-1" />
+                  )}
+                </div>
               </th>
               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                 ACTIONS
@@ -261,58 +367,63 @@ export const ConfigList: React.FC<ConfigListProps> = ({
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="flex items-center space-x-3">
-                      <button
-                        onClick={() => handleViewConfig(config)}
-                        className="flex items-center text-sm text-gray-500 hover:text-gray-700 font-medium"
-                      >
-                        <EyeIcon className="w-4 h-4 mr-1" />
-                        View
-                      </button>
-                      
-                      {/* Actions dropdown for editors (when not showing pending approvals) */}
-                      {!showPendingApprovals && (
-                        <div className="relative dropdown-container">
-                          <button
-                            onClick={() => setOpenDropdown(openDropdown === config.id ? null : config.id)}
-                            className="p-1 text-gray-400 hover:text-gray-600 rounded-md hover:bg-gray-100"
-                          >
-                            <MoreVerticalIcon className="w-4 h-4" />
-                          </button>
-                          
-                          {openDropdown === config.id && (
-                            <div className="absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-10">
-                              <div className="py-1">
-                                {onConfigEdit && (
-                                  <button
-                                    onClick={() => {
-                                      onConfigEdit(config);
-                                      setOpenDropdown(null);
-                                    }}
-                                    className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                  >
-                                    <EditIcon className="w-4 h-4 mr-2" />
-                                    Edit
-                                  </button>
-                                )}
-                                {onConfigClone && (
-                                  <button
-                                    onClick={() => {
-                                      onConfigClone(config);
-                                      setOpenDropdown(null);
-                                    }}
-                                    className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                  >
-                                    <CopyIcon className="w-4 h-4 mr-2" />
-                                    Clone
-                                  </button>
-                                )}
-                               
-                              </div>
+                    <div className="flex items-center">
+                      {/* Actions dropdown */}
+                      <div className="relative dropdown-container">
+                        <button
+                          onClick={() => setOpenDropdown(openDropdown === config.id ? null : config.id)}
+                          className="p-1 text-gray-400 hover:text-gray-600 rounded-md hover:bg-gray-100"
+                        >
+                          <MoreVerticalIcon className="w-4 h-4" />
+                        </button>
+                        
+                        {openDropdown === config.id && (
+                          <div className="absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-10">
+                            <div className="py-1">
+                              <button
+                                onClick={() => {
+                                  handleViewConfig(config);
+                                  setOpenDropdown(null);
+                                }}
+                                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                              >
+                                <EyeIcon className="w-4 h-4 mr-2" />
+                                View
+                              </button>
+                              {onConfigEdit && (
+                                <button
+                                  onClick={() => {
+                                    onConfigEdit(config);
+                                    setOpenDropdown(null);
+                                  }}
+                                  disabled={config.status === 'under_review' || config.status === 'approved'}
+                                  className={`flex items-center w-full px-4 py-2 text-sm hover:bg-gray-100 ${
+                                    config.status === 'under_review' || config.status === 'approved'
+                                      ? 'text-gray-400 cursor-not-allowed'
+                                      : 'text-gray-700'
+                                  }`}
+                                >
+                                  <EditIcon className="w-4 h-4 mr-2" />
+                                  Edit
+                                </button>
+                              )}
+                              {onConfigClone && (
+                                <button
+                                  onClick={() => {
+                                    onConfigClone(config);
+                                    setOpenDropdown(null);
+                                  }}
+                                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                >
+                                  <CopyIcon className="w-4 h-4 mr-2" />
+                                  Clone
+                                </button>
+                              )}
+                             
                             </div>
-                          )}
-                        </div>
-                      )}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </td>
                 </tr>
@@ -323,10 +434,10 @@ export const ConfigList: React.FC<ConfigListProps> = ({
       </div>
 
       {/* Pagination */}
-      {filteredConfigs.length > 0 && (
+      {sortedConfigs.length > 0 && (
         <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
           <div className="text-sm text-gray-700">
-            Showing {startIndex + 1} to {Math.min(endIndex, filteredConfigs.length)} of {filteredConfigs.length} results
+            Showing {startIndex + 1} to {Math.min(endIndex, sortedConfigs.length)} of {sortedConfigs.length} results
           </div>
           <div className="flex items-center space-x-2">
             <button

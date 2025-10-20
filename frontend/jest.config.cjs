@@ -23,6 +23,7 @@ module.exports = {
     '!src/main.tsx',
     '!src/vite-env.d.ts',
     '!src/test/**',
+    '!src/shared/config/environment.config.ts',
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
@@ -37,10 +38,10 @@ module.exports = {
   ],
   coverageThreshold: {
     global: {
-      branches: 60,
-      functions: 60,
-      lines: 60,
-      statements: 60
+      branches: 95,
+      functions: 95,
+      lines: 95,
+      statements: 95
     }
   }
 };

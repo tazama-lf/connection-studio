@@ -250,7 +250,7 @@ export const DeploymentConfirmation: React.FC<DeploymentConfirmationProps> = ({
               </p>
               <ul className="text-sm text-blue-700 mt-2 space-y-1">
                 <li>• Endpoint: <code className="bg-blue-100 px-1 rounded text-xs">{configData.endpointPath || endpointPath}</code></li>
-                <li>• Payload/Schema: {configData.payload ? '✅ Included' : '⚠️ Schema only'}</li>
+                {/* <li>• Payload/Schema: {configData.payload ? '✅ Included' : '⚠️ Schema only'}</li> */}
                 <li>• Mappings: {configData.mapping?.length || 0} field mappings</li>
                 <li>• Functions: {configData.functions?.length || 0} runtime functions</li>
               </ul>

@@ -1,9 +1,10 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import EditEndpointModal from '../../../shared/components/EditEndpointModal';
 import { configApi } from '../../../features/config/services/configApi';
 import type { ConfigResponse } from '../../../features/config/services/configApi';
+import { ToastProvider } from '../../../shared/providers/ToastProvider';
 
 // Mock the configApi with only methods that actually exist
 jest.mock('../../../features/config/services/configApi', () => ({
@@ -45,12 +46,14 @@ describe('EditEndpointModal', () => {
   describe('Create Mode', () => {
     it('should render create mode modal', () => {
       render(
-        <EditEndpointModal
-          isOpen={true}
-          onClose={mockOnClose}
-          endpointId={-1}
-          onSuccess={mockOnSuccess}
-        />
+        <ToastProvider>
+          <EditEndpointModal
+            isOpen={true}
+            onClose={mockOnClose}
+            endpointId={-1}
+            onSuccess={mockOnSuccess}
+          />
+        </ToastProvider>
       );
 
       expect(screen.getByText('Create New Connection')).toBeInTheDocument();
@@ -63,12 +66,14 @@ describe('EditEndpointModal', () => {
       });
 
       render(
-        <EditEndpointModal
-          isOpen={true}
-          onClose={mockOnClose}
-          endpointId={-1}
-          onSuccess={mockOnSuccess}
-        />
+        <ToastProvider>
+          <EditEndpointModal
+            isOpen={true}
+            onClose={mockOnClose}
+            endpointId={-1}
+            onSuccess={mockOnSuccess}
+          />
+        </ToastProvider>
       );
 
       expect(screen.getByText('Create New Connection')).toBeInTheDocument();
@@ -78,12 +83,14 @@ describe('EditEndpointModal', () => {
   describe('Edit Mode', () => {
     it('should render edit mode modal', () => {
       render(
-        <EditEndpointModal
-          isOpen={true}
-          onClose={mockOnClose}
-          endpointId={123}
-          onSuccess={mockOnSuccess}
-        />
+        <ToastProvider>
+          <EditEndpointModal
+            isOpen={true}
+            onClose={mockOnClose}
+            endpointId={123}
+            onSuccess={mockOnSuccess}
+          />
+        </ToastProvider>
       );
 
       expect(screen.getByText('Edit Configuration')).toBeInTheDocument();
@@ -97,12 +104,14 @@ describe('EditEndpointModal', () => {
       });
 
       render(
-        <EditEndpointModal
-          isOpen={true}
-          onClose={mockOnClose}
-          endpointId={123}
-          onSuccess={mockOnSuccess}
-        />
+        <ToastProvider>
+          <EditEndpointModal
+            isOpen={true}
+            onClose={mockOnClose}
+            endpointId={123}
+            onSuccess={mockOnSuccess}
+          />
+        </ToastProvider>
       );
 
       await waitFor(() => {
@@ -125,12 +134,14 @@ describe('EditEndpointModal', () => {
       mockConfigApi.getConfig.mockResolvedValue(mockGetResponse);
 
       render(
-        <EditEndpointModal
-          isOpen={true}
-          onClose={mockOnClose}
-          endpointId={123}
-          onSuccess={mockOnSuccess}
-        />
+        <ToastProvider>
+          <EditEndpointModal
+            isOpen={true}
+            onClose={mockOnClose}
+            endpointId={123}
+            onSuccess={mockOnSuccess}
+          />
+        </ToastProvider>
       );
 
       await waitFor(() => {
@@ -145,12 +156,14 @@ describe('EditEndpointModal', () => {
   describe('Modal Controls', () => {
     it('should not render when isOpen is false', () => {
       render(
-        <EditEndpointModal
-          isOpen={false}
-          onClose={mockOnClose}
-          endpointId={-1}
-          onSuccess={mockOnSuccess}
-        />
+        <ToastProvider>
+          <EditEndpointModal
+            isOpen={false}
+            onClose={mockOnClose}
+            endpointId={-1}
+            onSuccess={mockOnSuccess}
+          />
+        </ToastProvider>
       );
 
       expect(screen.queryByText('Create New Connection')).not.toBeInTheDocument();
@@ -166,12 +179,14 @@ describe('EditEndpointModal', () => {
       });
 
       render(
-        <EditEndpointModal
-          isOpen={true}
-          onClose={mockOnClose}
-          endpointId={123}
-          onSuccess={mockOnSuccess}
-        />
+        <ToastProvider>
+          <EditEndpointModal
+            isOpen={true}
+            onClose={mockOnClose}
+            endpointId={123}
+            onSuccess={mockOnSuccess}
+          />
+        </ToastProvider>
       );
 
       await waitFor(() => {
@@ -183,12 +198,14 @@ describe('EditEndpointModal', () => {
       mockConfigApi.getConfig.mockRejectedValue(new Error('Network error'));
 
       render(
-        <EditEndpointModal
-          isOpen={true}
-          onClose={mockOnClose}
-          endpointId={123}
-          onSuccess={mockOnSuccess}
-        />
+        <ToastProvider>
+          <EditEndpointModal
+            isOpen={true}
+            onClose={mockOnClose}
+            endpointId={123}
+            onSuccess={mockOnSuccess}
+          />
+        </ToastProvider>
       );
 
       expect(screen.getByText('Edit Configuration')).toBeInTheDocument();

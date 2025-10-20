@@ -59,7 +59,7 @@ export class AuthApiService {
         console.log('URL:', url);
         console.log('Method:', config.method || 'GET');
         console.log('Headers:', headers);
-        
+
         // Use global token manager instead of direct redirect
         globalTokenManager.handleTokenExpiration();
         throw new Error('Unauthorized');

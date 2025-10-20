@@ -51,8 +51,7 @@ export const NAVIGATION = {
     {
       id: 'approver',
       name: 'Configuration Approver',
-      description:
-        'Review and approve submitted configuration changes',
+      description: 'Review and approve submitted configuration changes',
       path: ROUTES.APPROVER,
       icon: 'CheckCircleIcon',
       color: 'bg-orange-100 text-orange-600',

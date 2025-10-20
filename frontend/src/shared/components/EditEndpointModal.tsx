@@ -15,6 +15,7 @@ import type {
   AllowedFunctionName
 } from '../types/functions.types';
 import { FUNCTION_CONFIGS } from '../types/functions.types';
+import { isApprover } from '../../utils/roleUtils';
 
 // Function Selection Form Component
 interface FunctionSelectionFormProps {
@@ -121,8 +122,6 @@ interface EditEndpointModalProps {
   onSuccess?: () => void; // Callback when config is successfully created/updated
   isCloneMode?: boolean; // When true, load config data but treat as new config creation
   readOnly?: boolean; // When true, modal is in read-only mode for approvers
-  onRevertToEditor?: () => void; // Callback for reverting config back to editor
-  onSendForDeployment?: () => void; // Callback for sending config for deployment
 }
  const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
   isOpen,
@@ -130,9 +129,7 @@ interface EditEndpointModalProps {
   endpointId,
   onSuccess,
   isCloneMode = false,
-  readOnly = false,
-  onRevertToEditor,
-  onSendForDeployment
+  readOnly = false
 }) => {
   const isNewEndpoint = endpointId === -1;
   const isCloning = isCloneMode && endpointId !== -1;
@@ -148,7 +145,7 @@ interface EditEndpointModalProps {
   
   // Endpoint form data from PayloadEditor
   const [endpointData, setEndpointData] = useState<EndpointData>({
-    version: '1.0',
+    version: '',
     transactionType: '',
     description: '',
     contentType: 'application/json',
@@ -205,7 +202,7 @@ interface EditEndpointModalProps {
     label: 'Simulation'
   }, {
     id: 'deploy',
-    label: 'Submit for Approval'
+    label: isApprover(user?.claims || []) ? 'Send for Deployment' : 'Submit for Approval'
   }];
 
   // Load existing config data when editing
@@ -349,19 +346,34 @@ interface EditEndpointModalProps {
 
   // Step 1: Create or Update Endpoint with Payload
   const handleCreateEndpoint = async () => {
-    if (!payload.trim()) {
-      showError('Validation Error', 'Please provide a payload');
-      return;
-    }
+    // Validate all required fields before saving
+    const validationErrors: string[] = [];
 
-    // Validate required endpoint data
     if (!endpointData.transactionType.trim()) {
-      showError('Validation Error', 'Please select a transaction type');
-      return;
+      validationErrors.push('Transaction Type is required');
     }
 
     if (!endpointData.version.trim()) {
-      showError('Validation Error', 'Please provide a version');
+      validationErrors.push('Version is required');
+    }
+
+    if (!payload.trim()) {
+      validationErrors.push('Payload is required');
+    }
+
+    // If there are validation errors, show them and scroll to top
+    if (validationErrors.length > 0) {
+      const errorMessage = validationErrors.join('. ');
+      setError(errorMessage);
+
+      // Scroll to the error message at the top
+      setTimeout(() => {
+        const errorElement = document.querySelector('.bg-red-50.border-red-200');
+        if (errorElement) {
+          errorElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
+
       return;
     }
 
@@ -695,20 +707,51 @@ interface EditEndpointModalProps {
     setError(null);
 
     try {
-      // Submit the configuration for approval
+      // Submit the configuration for approval or deployment based on user role
       console.log('Submitting configuration for approval with ID:', createdEndpoint.id);
       console.log('User:', user);
       
-      const response = await configApi.submitForApproval(
-        createdEndpoint.id, 
-        user?.id || 'unknown', 
-        'editor'
-      );
+      let response: ConfigResponse;
+      const isUserApprover = isApprover(user?.claims || []);
+      
+      if (isUserApprover) {
+        // Approvers send for deployment
+        console.log('User is approver - checking config status');
+        
+        // Check current config status
+        const configResponse = await configApi.getConfig(createdEndpoint.id);
+        if (!configResponse.success || !configResponse.config) {
+          throw new Error('Failed to get config status');
+        }
+        
+        const currentStatus = configResponse.config.status;
+        console.log('Current config status:', currentStatus);
+        
+        // If config is under_review, just approve it (set to approved)
+        if (currentStatus === 'under_review') {
+          console.log('Config is under_review - approving it');
+          response = await configApi.approveConfig(createdEndpoint.id);
+        } else {
+          // For other statuses, deploy if possible
+          console.log('Config status allows deployment');
+          response = await configApi.deployConfig(createdEndpoint.id);
+        }
+      } else {
+        // Editors submit for approval
+        console.log('User is editor - calling submitForApproval');
+        response = await configApi.submitForApproval(
+          createdEndpoint.id, 
+          user?.id || 'unknown', 
+          'editor'
+        );
+      }
+      
       console.log('API response:', response);
       
       if (response.success) {
-        console.log('Configuration submitted for approval successfully');
-        showSuccess('Configuration submitted for approval successfully!');
+        console.log('Configuration submitted successfully');
+        const successMessage = isUserApprover ? 'Configuration sent for deployment successfully!' : 'Configuration submitted for approval successfully!';
+        showSuccess(successMessage);
         
         // Close modal and refresh parent component
         onClose();
@@ -717,7 +760,7 @@ interface EditEndpointModalProps {
         }
       } else {
         console.log('❌ API returned success=false:', response.message);
-        setError(`Failed to submit for approval: ${response.message}`);
+        setError(`Failed to submit: ${response.message}`);
       }
     } catch (err) {
       console.log('❌ Exception caught:', err);
@@ -729,27 +772,40 @@ interface EditEndpointModalProps {
   };
 
   const handleSave = async () => {
+    // Validate all required fields before saving
+    const validationErrors: string[] = [];
+
+    if (!endpointData.transactionType.trim()) {
+      validationErrors.push('Transaction Type is required');
+    }
+
+    if (!endpointData.version.trim()) {
+      validationErrors.push('Version is required');
+    }
+
+    if (!payload.trim()) {
+      validationErrors.push('Payload is required');
+    }
+
+    // If there are validation errors, show them and scroll to top
+    if (validationErrors.length > 0) {
+      const errorMessage = validationErrors.join('. ');
+      setError(errorMessage);
+
+      // Scroll to the error message at the top
+      setTimeout(() => {
+        const errorElement = document.querySelector('.bg-red-50.border-red-200');
+        if (errorElement) {
+          errorElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
+
+      return;
+    }
+
     // Save the current configuration to the database without advancing steps
     // For editing existing configs, always save; for new configs, validate first
     if (!createdEndpoint || !isNewEndpoint) {
-      // Validate required fields (same validation as handleCreateEndpoint)
-      if (!payload.trim()) {
-        setError('Please provide a payload');
-        return;
-      }
-
-      if (!endpointData.transactionType.trim()) {
-        setError('Please select a transaction type');
-        return;
-      }
-
-      if (!endpointData.version.trim()) {
-        setError('Please provide a version');
-        return;
-      }
-
-      setLoading(true);
-      setError(null);
 
       try {
         // Create configuration request using user-entered data
@@ -1085,24 +1141,6 @@ interface EditEndpointModalProps {
                   
                 
                   
-                  {/* Function Configuration Summary */}
-                  {selectedFunctions.length > 0 && (
-                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                      <div className="flex items-center space-x-2 text-blue-800">
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
-                        <h4 className="font-medium">Function Configuration Summary</h4>
-                      </div>
-                      <div className="mt-2 space-y-1">
-                        {selectedFunctions.map((func, index) => (
-                          <p key={index} className="text-sm text-blue-700">
-                            <strong>{func.functionName}</strong> with parameters: {func.params.join(', ')}
-                          </p>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                 </div>
 
                 {/* Add Function Modal */}
@@ -1154,71 +1192,56 @@ interface EditEndpointModalProps {
           </div>
         </div>
         <div className="px-6 py-4 border-t border-gray-200 flex justify-between" data-id="element-744">
-          <Button variant="secondary" onClick={() => {
-          const currentIndex = steps.findIndex(s => s.id === currentStep);
-          if (currentIndex > 0) {
-            setCurrentStep(steps[currentIndex - 1].id as any);
-          }
-        }} disabled={currentStep === 'payload'} data-id="element-745">
-            Back
+          <Button variant="secondary" onClick={onClose} data-id="element-747">
+            Cancel
           </Button>
-          <div className="space-x-4" data-id="element-746">
-            <Button variant="secondary" onClick={onClose} data-id="element-747">
-              Cancel
-            </Button>
-            {readOnly && currentStep === 'deploy' ? (
-              <>
-                <Button 
-                  variant="secondary" 
-                  onClick={onRevertToEditor}
-                  disabled={!onRevertToEditor}
-                  data-id="element-revert"
-                >
-                  Revert to Editor
+          {/* Hide action buttons on deploy step when in read-only mode for non-approvers */}
+          {!(readOnly && currentStep === 'deploy' && !isApprover(user?.claims || [])) && (
+            <div className="space-x-4" data-id="element-746">
+              <Button variant="secondary" onClick={() => {
+              const currentIndex = steps.findIndex(s => s.id === currentStep);
+              if (currentIndex > 0) {
+                setCurrentStep(steps[currentIndex - 1].id as any);
+              }
+            }} disabled={currentStep === 'payload'} data-id="element-745">
+                Back
+              </Button>
+              {!readOnly && (
+                <Button variant="secondary" onClick={handleSave} data-id="element-748">
+                  Save
                 </Button>
-                <Button 
-                  variant="primary" 
-                  onClick={onSendForDeployment}
-                  disabled={!onSendForDeployment || (createdEndpoint?.status === 'deployed' || existingConfig?.status === 'deployed')}
-                  data-id="element-deploy"
-                >
-                  Send for Deployment
-                </Button>
-              </>
-            ) : (
-              <>
-                {!readOnly && (
-                  <Button variant="secondary" onClick={handleSave} data-id="element-748">
-                    Save
-                  </Button>
+              )}
+              <Button variant="primary" onClick={async () => {
+                console.log('🎯 Button clicked, currentStep:', currentStep);
+                console.log('createdEndpoint:', createdEndpoint);
+                console.log('existingConfig:', existingConfig);
+                if (currentStep === 'deploy') {
+                  console.log('Calling handleDeploy');
+                  await handleDeploy();
+                } else {
+                  console.log('Calling handleNextStep');
+                  handleNextStep();
+                }
+              }} disabled={loading || 
+                (currentStep === 'payload' && (!createdEndpoint && isNewEndpoint)) || 
+                (currentStep === 'mapping' && !isMappingValid) || 
+                (currentStep === 'simulation' && !isSimulationSuccess && !readOnly) ||
+                (!createdEndpoint && !existingConfig) ||
+                (currentStep === 'deploy' && !isApprover(user?.claims || []) && (createdEndpoint?.status === 'under_review' || createdEndpoint?.status === 'approved' || existingConfig?.status === 'under_review' || existingConfig?.status === 'approved')) ||
+                (currentStep === 'deploy' && isApprover(user?.claims || []) && (createdEndpoint?.status === 'approved' || existingConfig?.status === 'approved'))
+              } data-id="element-749">
+                {loading ? 'Processing...' : (
+                  currentStep === 'deploy' ? (
+                    isApprover(user?.claims || []) && (createdEndpoint?.status !== 'approved' && existingConfig?.status !== 'approved') ? 'Send for Deployment' : 
+                    !isApprover(user?.claims || []) ? 'Submit for Approval' :
+                    'Configuration Approved'
+                  ) : 
+                  currentStep === 'functions' ? 'Next' :
+                  'Next'
                 )}
-                <Button variant="primary" onClick={async () => {
-                  console.log('🎯 Button clicked, currentStep:', currentStep);
-                  console.log('createdEndpoint:', createdEndpoint);
-                  console.log('existingConfig:', existingConfig);
-                  if (currentStep === 'deploy') {
-                    console.log('Calling handleDeploy');
-                    await handleDeploy();
-                  } else {
-                    console.log('Calling handleNextStep');
-                    handleNextStep();
-                  }
-                }} disabled={loading || 
-                  (currentStep === 'payload' && (!createdEndpoint && isNewEndpoint)) || 
-                  (currentStep === 'mapping' && !isMappingValid) || 
-                  (currentStep === 'simulation' && !isSimulationSuccess && !readOnly) ||
-                  (!createdEndpoint && !existingConfig) ||
-                  (currentStep === 'deploy' && (createdEndpoint?.status === 'under_review' || createdEndpoint?.status === 'approved' || existingConfig?.status === 'under_review' || existingConfig?.status === 'approved'))
-                } data-id="element-749">
-                  {loading ? 'Processing...' : (
-                    currentStep === 'deploy' ? 'Submit for Approval' : 
-                    currentStep === 'functions' ? 'Next' :
-                    'Next'
-                  )}
-                </Button>
-              </>
-            )}
-          </div>
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { XIcon, PlayIcon, DatabaseIcon, CheckCircleIcon, UploadIcon, DownloadIcon } from 'lucide-react';
+import { XIcon, PlayIcon, CheckCircleIcon, UploadIcon, DownloadIcon } from 'lucide-react';
 import { Button } from './Button';
 import { dataEnrichmentApi } from '../../features/data-enrichment/services';
 import type { ScheduleResponse } from '../../features/data-enrichment/types';
@@ -109,18 +109,24 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
       }
 
       // Create the schedule
-      const createdSchedule = await dataEnrichmentApi.createSchedule({
+      await dataEnrichmentApi.createSchedule({
         name: newSchedule.name,
         cron: newSchedule.cron,
         iterations: newSchedule.iterations
       });
 
-      // Add to available schedules and select it
-      setAvailableSchedules(prev => [...prev, createdSchedule]);
-      setSelectedScheduleId(createdSchedule.id);
+      // Reload schedules to get the newly created one with full details
+      const updatedSchedules = await dataEnrichmentApi.getAllSchedules();
+      setAvailableSchedules(updatedSchedules);
       
-      // Show success message
-      setCreateSuccess(`Schedule "${createdSchedule.name}" created successfully!`);
+      // Find the newly created schedule by name and select it
+      const newScheduleObj = updatedSchedules.find(s => s.name === newSchedule.name);
+      if (newScheduleObj) {
+        setSelectedScheduleId(newScheduleObj.id);
+        setCreateSuccess(`Schedule "${newScheduleObj.name}" created successfully!`);
+      } else {
+        setCreateSuccess('Schedule created successfully!');
+      }
       
       // Reset form and close
       setNewSchedule({ name: '', cron: '', iterations: 1 });

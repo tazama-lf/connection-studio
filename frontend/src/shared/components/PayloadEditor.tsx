@@ -52,7 +52,7 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
   // New state for endpoint form data
   const [endpointData, setEndpointData] = useState<EndpointFormData>(
     initialEndpointData || {
-      version: '1.0',
+      version: '',
       transactionType: '',
       description: '',
       contentType: 'application/json',
@@ -78,9 +78,64 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
   const [isPayloadValid, setIsPayloadValid] = useState<boolean>(false);
   const [payloadValidationMessage, setPayloadValidationMessage] = useState<string>('');
 
+  // State for field validation errors
+  const [fieldErrors, setFieldErrors] = useState<{
+    version: string;
+    transactionType: string;
+    payload: string;
+  }>({
+    version: '',
+    transactionType: '',
+    payload: ''
+  });
+
   // Helper function for capitalizing strings
   const capitalizeFirstLetter = (string: string): string => {
     return string.charAt(0).toUpperCase() + string.slice(1).toLowerCase();
+  };
+
+  // Validation functions
+  const validateVersion = (version: string): string => {
+    if (!version || !version.trim()) {
+      return 'Version is required';
+    }
+    return '';
+  };
+
+  const validateTransactionType = (transactionType: string): string => {
+    if (!transactionType || !transactionType.trim()) {
+      return 'Transaction type is required';
+    }
+    return '';
+  };
+
+  const validatePayloadContent = (payloadValue: string, contentType: string): { isValid: boolean; message: string; error: string } => {
+    if (!payloadValue || !payloadValue.trim()) {
+      return { isValid: false, message: '', error: 'Payload is required' };
+    }
+
+    if (contentType === 'application/json') {
+      try {
+        JSON.parse(payloadValue);
+        return { isValid: true, message: 'Valid JSON format detected', error: '' };
+      } catch (e) {
+        return { isValid: false, message: 'Invalid JSON format', error: 'Invalid JSON format' };
+      }
+    } else if (contentType === 'application/xml') {
+      try {
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(payloadValue, 'text/xml');
+        const parseError = xmlDoc.getElementsByTagName('parsererror');
+        if (parseError.length > 0) {
+          return { isValid: false, message: 'Invalid XML format', error: 'Invalid XML format' };
+        } else {
+          return { isValid: true, message: 'Valid XML format detected', error: '' };
+        }
+      } catch (e) {
+        return { isValid: false, message: 'Invalid XML format', error: 'Invalid XML format' };
+      }
+    }
+    return { isValid: false, message: '', error: 'Unsupported content type' };
   };
 
   // Handle adding a new field manually
@@ -290,47 +345,32 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
     if (onEndpointDataChange) {
       onEndpointDataChange(updatedData);
     }
-    
+
+    // Validate the changed field
+    let newFieldErrors = { ...fieldErrors };
+    if (field === 'version') {
+      newFieldErrors.version = validateVersion(newValue);
+    } else if (field === 'transactionType') {
+      newFieldErrors.transactionType = validateTransactionType(newValue);
+    }
+
+    setFieldErrors(newFieldErrors);
+
     // If content type changed, re-validate the payload
     if (field === 'contentType') {
-      validatePayload(value || '', newValue);
+      const payloadValidation = validatePayloadContent(value || '', newValue);
+      setIsPayloadValid(payloadValidation.isValid);
+      setPayloadValidationMessage(payloadValidation.message);
+      setFieldErrors(prev => ({ ...prev, payload: payloadValidation.error }));
     }
   };
 
   // Validation function to check if payload is valid JSON or XML
   const validatePayload = (payloadValue: string, contentType: string) => {
-    if (!payloadValue || !payloadValue.trim()) {
-      setIsPayloadValid(false);
-      setPayloadValidationMessage('');
-      return;
-    }
-
-    if (contentType === 'application/json') {
-      try {
-        JSON.parse(payloadValue);
-        setIsPayloadValid(true);
-        setPayloadValidationMessage('Valid JSON format detected');
-      } catch (e) {
-        setIsPayloadValid(false);
-        setPayloadValidationMessage('Invalid JSON format');
-      }
-    } else if (contentType === 'application/xml') {
-      try {
-        const parser = new DOMParser();
-        const xmlDoc = parser.parseFromString(payloadValue, 'text/xml');
-        const parseError = xmlDoc.getElementsByTagName('parsererror');
-        if (parseError.length > 0) {
-          setIsPayloadValid(false);
-          setPayloadValidationMessage('Invalid XML format');
-        } else {
-          setIsPayloadValid(true);
-          setPayloadValidationMessage('Valid XML format detected');
-        }
-      } catch (e) {
-        setIsPayloadValid(false);
-        setPayloadValidationMessage('Invalid XML format');
-      }
-    }
+    const validation = validatePayloadContent(payloadValue, contentType);
+    setIsPayloadValid(validation.isValid);
+    setPayloadValidationMessage(validation.message);
+    setFieldErrors(prev => ({ ...prev, payload: validation.error }));
   };
 
   // Validate payload when it changes or when component mounts
@@ -338,12 +378,76 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
     validatePayload(value, endpointData.contentType);
   }, [value, endpointData.contentType]);
 
+  // Initialize field validation on mount and when endpointData changes
+  // Note: Validation errors are only shown when user attempts to save, not on initial load
+  useEffect(() => {
+    // Don't set validation errors on initial load - only validate when saving
+    setFieldErrors({
+      version: '',
+      transactionType: '',
+      payload: ''
+    });
+  }, [endpointData.version, endpointData.transactionType]);
+
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      // Check file extension against selected content type
+      const fileName = file.name.toLowerCase();
+      const isJsonFile = fileName.endsWith('.json');
+      const isXmlFile = fileName.endsWith('.xml');
+      
+      const expectedContentType = endpointData.contentType;
+      const isJsonExpected = expectedContentType === 'application/json';
+      const isXmlExpected = expectedContentType === 'application/xml';
+      
+      // Validate file extension matches content type
+      if ((isJsonExpected && !isJsonFile) || (isXmlExpected && !isXmlFile)) {
+        const expectedFormat = isJsonExpected ? 'JSON (.json)' : 'XML (.xml)';
+        const actualFormat = isJsonFile ? 'JSON' : isXmlFile ? 'XML' : 'unknown';
+        setFieldErrors(prev => ({ 
+          ...prev, 
+          payload: `File format mismatch: Expected ${expectedFormat} file but received ${actualFormat} file. Please select the correct file type or change the Content Type setting.` 
+        }));
+        // Clear the file input
+        event.target.value = '';
+        return;
+      }
+      
       const reader = new FileReader();
       reader.onload = e => {
         const content = e.target?.result as string;
+        
+        // Validate file content matches the expected format
+        let contentValidationError = '';
+        if (isJsonExpected) {
+          try {
+            JSON.parse(content);
+          } catch (error) {
+            contentValidationError = 'Invalid JSON file: The uploaded file contains invalid JSON format.';
+          }
+        } else if (isXmlExpected) {
+          try {
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(content, 'text/xml');
+            const parseError = xmlDoc.getElementsByTagName('parsererror');
+            if (parseError.length > 0) {
+              contentValidationError = 'Invalid XML file: The uploaded file contains invalid XML format.';
+            }
+          } catch (error) {
+            contentValidationError = 'Invalid XML file: The uploaded file contains invalid XML format.';
+          }
+        }
+        
+        if (contentValidationError) {
+          setFieldErrors(prev => ({ ...prev, payload: contentValidationError }));
+          // Clear the file input
+          event.target.value = '';
+          return;
+        }
+        
+        // Clear any previous errors and set the content
+        setFieldErrors(prev => ({ ...prev, payload: '' }));
         onChange(content);
       };
       reader.readAsText(file);
@@ -612,9 +716,15 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
               value={endpointData.version}
               onChange={(e) => handleEndpointDataChange('version', e.target.value)}
               placeholder="1.0"
-              className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-              readOnly={readOnly}
+              className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
+                configId ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 
+                fieldErrors.version ? 'bg-white border-red-300 text-red-900 placeholder-red-300 focus:ring-red-500 focus:border-red-500' : 'bg-white border-gray-300'
+              }`}
+              readOnly={readOnly || !!configId}
             />
+            {fieldErrors.version && (
+              <p className="mt-1 text-sm text-red-600">{fieldErrors.version}</p>
+            )}
           </div>
 
           {/* Transaction Type */}
@@ -628,9 +738,15 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
               value={endpointData.transactionType || ''}
               onChange={(e) => handleEndpointDataChange('transactionType', e.target.value)}
               placeholder="e.g., pacs.008, pain.001"
-              className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-              readOnly={readOnly}
+              className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
+                configId ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 
+                fieldErrors.transactionType ? 'bg-white border-red-300 text-red-900 placeholder-red-300 focus:ring-red-500 focus:border-red-500' : 'bg-white border-gray-300'
+              }`}
+              readOnly={readOnly || !!configId}
             />
+            {fieldErrors.transactionType && (
+              <p className="mt-1 text-sm text-red-600">{fieldErrors.transactionType}</p>
+            )}
            
           </div>
 
@@ -707,34 +823,36 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
         )}
       </div>
 
-      <div className="flex justify-between items-center">
-        <h3 className="text-lg font-medium text-gray-900">
-          {configId ? 'Configuration Schema' : 'Configuration Payload'}
-        </h3>
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-2">
-            <label className="text-sm font-medium text-gray-700">Format:</label>
-            <span className="px-2 py-1 border border-gray-300 rounded text-sm bg-gray-50">
-              {endpointData.contentType === 'application/json' ? 'JSON' : 'XML'}
-            </span>
-          </div>
-          <div className="border-l border-gray-300 pl-4">
-            {!readOnly && (
-              <>
-                <input type="file" id="file-upload" className="hidden" accept=".xml,.json" onChange={handleFileUpload} />
-                <Button 
-                  variant="secondary" 
-                  size="sm" 
-                  icon={<UploadIcon size={16} />} 
-                  onClick={() => document.getElementById('file-upload')?.click()}
-                >
-                  Import File
-                </Button>
-              </>
-            )}
+      {!readOnly && (
+        <div className="flex justify-between items-center">
+          <h3 className="text-lg font-medium text-gray-900">
+            {configId ? 'Configuration Schema' : 'Configuration Payload'}
+          </h3>
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <label className="text-sm font-medium text-gray-700">Format:</label>
+              <span className="px-2 py-1 border border-gray-300 rounded text-sm bg-gray-50">
+                {endpointData.contentType === 'application/json' ? 'JSON' : 'XML'}
+              </span>
+            </div>
+            <div className="border-l border-gray-300 pl-4">
+              {!readOnly && !isEditMode && (
+                <>
+                  <input type="file" id="file-upload" className="hidden" accept=".xml,.json" onChange={handleFileUpload} />
+                  <Button 
+                    variant="secondary" 
+                    size="sm" 
+                    icon={<UploadIcon size={16} />} 
+                    onClick={() => document.getElementById('file-upload')?.click()}
+                  >
+                    Import File
+                  </Button>
+                </>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Sample Payload Buttons - Only show when NOT in edit mode */}
       {!isEditMode && !value && !readOnly && (
@@ -774,10 +892,16 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
           </div>
 
           {/* Format Validation Status */}
-          {payloadValidationMessage && (
-            <div className={`p-3 ${isPayloadValid ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'} border rounded-md`}>
-              <p className={`text-sm ${isPayloadValid ? 'text-green-700' : 'text-red-700'}`}>
-                {payloadValidationMessage}
+          {(payloadValidationMessage || fieldErrors.payload) && (
+            <div className={`p-3 border rounded-md ${
+              fieldErrors.payload ? 'bg-red-50 border-red-200' : 
+              isPayloadValid ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200'
+            }`}>
+              <p className={`text-sm ${
+                fieldErrors.payload ? 'text-red-700' : 
+                isPayloadValid ? 'text-green-700' : 'text-yellow-700'
+              }`}>
+                {fieldErrors.payload || payloadValidationMessage}
               </p>
             </div>
           )}
@@ -1154,7 +1278,7 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
                           className="h-3.5 w-3.5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed"
                         />
                         <label htmlFor={`required-${index}`} className="ml-1.5 text-xs text-gray-600 cursor-pointer">
-                          {field.required ? 'Required' : 'Optional'}
+                          Required
                         </label>
                       </div>
                       
@@ -1162,7 +1286,9 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
                       {isEditMode && !readOnly && (
                         <button
                           type="button"
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
                             console.log(`🗑️ Deleting field "${field.path}" and all children`);
                             // Remove this field and any child fields
                             const updatedFields = inferredFields.filter(f => 

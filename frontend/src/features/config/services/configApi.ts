@@ -97,7 +97,10 @@ export class ConfigApiService {
     const token = localStorage.getItem('authToken');
     console.log('🔍 getAuthHeaders - Token exists:', !!token);
     if (token) {
-      console.log('🔍 getAuthHeaders - Token preview:', token.substring(0, 50) + '...');
+      console.log(
+        '🔍 getAuthHeaders - Token preview:',
+        token.substring(0, 50) + '...',
+      );
     }
     return {
       'Content-Type': 'application/json',
@@ -234,11 +237,13 @@ export class ConfigApiService {
 
       // If the response is the config object directly, wrap it in the expected format
       if (result && typeof result === 'object' && 'id' in result) {
-        console.log('Response is raw config object, wrapping in success format');
+        console.log(
+          'Response is raw config object, wrapping in success format',
+        );
         return {
           success: true,
           config: result,
-          message: 'Config retrieved successfully'
+          message: 'Config retrieved successfully',
         };
       }
 
@@ -246,13 +251,14 @@ export class ConfigApiService {
       console.error('Unexpected response format:', result);
       return {
         success: false,
-        message: 'Invalid response format from server'
+        message: 'Invalid response format from server',
       };
     } catch (error) {
       console.error('Config fetch failed:', error);
       return {
         success: false,
-        message: error instanceof Error ? error.message : 'Unknown error occurred'
+        message:
+          error instanceof Error ? error.message : 'Unknown error occurred',
       };
     }
   }
@@ -276,10 +282,13 @@ export class ConfigApiService {
 
   async getPendingApprovals(): Promise<{ configs: Config[] }> {
     try {
-      console.log('🚀 getPendingApprovals - Fetching pending approvals from:', `${this.baseURL}/config/pending-approvals`);
+      console.log(
+        '🚀 getPendingApprovals - Fetching pending approvals from:',
+        `${this.baseURL}/config/pending-approvals`,
+      );
       const headers = this.getAuthHeaders();
       console.log('🚀 getPendingApprovals - Headers:', headers);
-      
+
       const response = await fetch(`${this.baseURL}/config/pending-approvals`, {
         method: 'GET',
         headers: headers,
@@ -389,7 +398,7 @@ export class ConfigApiService {
       console.log('  - Config ID:', id);
       console.log('  - Update data:', JSON.stringify(data, null, 2));
       console.log('  - API URL:', `${this.baseURL}/config/${id}`);
-      
+
       const headers = this.getAuthHeaders();
       console.log('  - Request headers:', headers);
 
@@ -402,11 +411,14 @@ export class ConfigApiService {
       console.log('📨 Response received:');
       console.log('  - Status:', response.status);
       console.log('  - Status text:', response.statusText);
-      console.log('  - Response headers:', Object.fromEntries(response.headers.entries()));
+      console.log(
+        '  - Response headers:',
+        Object.fromEntries(response.headers.entries()),
+      );
 
       const result = await this.handleResponse<ConfigResponse>(response);
       console.log('✅ Processed response:', result);
-      
+
       return result;
     } catch (error) {
       console.error('💥 Config update failed:', error);
@@ -433,18 +445,26 @@ export class ConfigApiService {
   }
 
   // Workflow methods
-  async submitForApproval(id: number, userId: string, userRole: string = 'editor', comment?: string): Promise<ConfigResponse> {
+  async submitForApproval(
+    id: number,
+    userId: string,
+    userRole: string = 'editor',
+    comment?: string,
+  ): Promise<ConfigResponse> {
     try {
-      const response = await fetch(`${this.baseURL}/config/${id}/workflow/submit`, {
-        method: 'POST',
-        headers: this.getAuthHeaders(),
-        body: JSON.stringify({
-          configId: id,
-          userId,
-          userRole,
-          comment,
-        }),
-      });
+      const response = await fetch(
+        `${this.baseURL}/config/${id}/workflow/submit`,
+        {
+          method: 'POST',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify({
+            configId: id,
+            userId,
+            userRole,
+            comment,
+          }),
+        },
+      );
 
       return await this.handleResponse<ConfigResponse>(response);
     } catch (error) {
@@ -485,10 +505,13 @@ export class ConfigApiService {
 
   async deployConfig(id: number): Promise<ConfigResponse> {
     try {
-      const response = await fetch(`${this.baseURL}/config/${id}/workflow/deploy`, {
-        method: 'POST',
-        headers: this.getAuthHeaders(),
-      });
+      const response = await fetch(
+        `${this.baseURL}/config/${id}/workflow/deploy`,
+        {
+          method: 'POST',
+          headers: this.getAuthHeaders(),
+        },
+      );
 
       return await this.handleResponse<ConfigResponse>(response);
     } catch (error) {
@@ -497,14 +520,21 @@ export class ConfigApiService {
     }
   }
 
-  async getWorkflowStatus(id: number): Promise<{ status: string; message?: string }> {
+  async getWorkflowStatus(
+    id: number,
+  ): Promise<{ status: string; message?: string }> {
     try {
-      const response = await fetch(`${this.baseURL}/config/${id}/workflow/status`, {
-        method: 'GET',
-        headers: this.getAuthHeaders(),
-      });
+      const response = await fetch(
+        `${this.baseURL}/config/${id}/workflow/status`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+      );
 
-      return await this.handleResponse<{ status: string; message?: string }>(response);
+      return await this.handleResponse<{ status: string; message?: string }>(
+        response,
+      );
     } catch (error) {
       console.error('Get workflow status failed:', error);
       throw error;
@@ -513,10 +543,13 @@ export class ConfigApiService {
 
   async returnToProgress(id: number): Promise<ConfigResponse> {
     try {
-      const response = await fetch(`${this.baseURL}/config/${id}/workflow/return-to-progress`, {
-        method: 'POST',
-        headers: this.getAuthHeaders(),
-      });
+      const response = await fetch(
+        `${this.baseURL}/config/${id}/workflow/return-to-progress`,
+        {
+          method: 'POST',
+          headers: this.getAuthHeaders(),
+        },
+      );
 
       return await this.handleResponse<ConfigResponse>(response);
     } catch (error) {
@@ -525,13 +558,19 @@ export class ConfigApiService {
     }
   }
 
-  async requestChanges(id: number, requestedChanges: string): Promise<ConfigResponse> {
+  async requestChanges(
+    id: number,
+    requestedChanges: string,
+  ): Promise<ConfigResponse> {
     try {
-      const response = await fetch(`${this.baseURL}/config/${id}/workflow/request-changes`, {
-        method: 'POST',
-        headers: this.getAuthHeaders(),
-        body: JSON.stringify({ requestedChanges }),
-      });
+      const response = await fetch(
+        `${this.baseURL}/config/${id}/workflow/request-changes`,
+        {
+          method: 'POST',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify({ requestedChanges }),
+        },
+      );
 
       return await this.handleResponse<ConfigResponse>(response);
     } catch (error) {

@@ -10,6 +10,7 @@ import { DataEnrichmentFormModal } from '../../../shared/components/DataEnrichme
 import { dataEnrichmentApi } from '../services/dataEnrichmentApi';
 import type { DataEnrichmentJobResponse } from '../types';
 import { useToast } from '../../../shared/providers/ToastProvider';
+import { UI_CONFIG } from '../../../shared/config/app.config';
 
 const DataEnrichmentModule: React.FC = () => {
   const { showSuccess, showError } = useToast();
@@ -19,7 +20,7 @@ const DataEnrichmentModule: React.FC = () => {
   const [jobsLoading, setJobsLoading] = useState(false);
   const [showJobForm, setShowJobForm] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(5);
+  const [itemsPerPage] = useState(UI_CONFIG.pagination.defaultPageSize);
   const [totalItems, setTotalItems] = useState(0);
   
   // Job details modal state

@@ -8,14 +8,54 @@ describe('convertInferredFieldsToJsonSchema', () => {
       { path: 'teams', type: 'Array', required: true, level: 0 },
       { path: 'teams.name', type: 'String', required: true, level: 1 },
       { path: 'teams.projects', type: 'Array', required: true, level: 1 },
-      { path: 'teams.projects.title', type: 'String', required: true, level: 2 },
-      { path: 'teams.projects.modules', type: 'Array', required: true, level: 2 },
-      { path: 'teams.projects.modules.name', type: 'String', required: true, level: 3 },
-      { path: 'teams.projects.modules.tasks', type: 'Array', required: true, level: 3 },
-      { path: 'teams.projects.modules.tasks.description', type: 'String', required: true, level: 4 },
-      { path: 'teams.projects.modules.tasks.assignees', type: 'Array', required: true, level: 4 },
-      { path: 'teams.projects.modules.tasks.assignees.name', type: 'String', required: true, level: 5 },
-      { path: 'teams.projects.modules.tasks.assignees.role', type: 'String', required: true, level: 5 }
+      {
+        path: 'teams.projects.title',
+        type: 'String',
+        required: true,
+        level: 2,
+      },
+      {
+        path: 'teams.projects.modules',
+        type: 'Array',
+        required: true,
+        level: 2,
+      },
+      {
+        path: 'teams.projects.modules.name',
+        type: 'String',
+        required: true,
+        level: 3,
+      },
+      {
+        path: 'teams.projects.modules.tasks',
+        type: 'Array',
+        required: true,
+        level: 3,
+      },
+      {
+        path: 'teams.projects.modules.tasks.description',
+        type: 'String',
+        required: true,
+        level: 4,
+      },
+      {
+        path: 'teams.projects.modules.tasks.assignees',
+        type: 'Array',
+        required: true,
+        level: 4,
+      },
+      {
+        path: 'teams.projects.modules.tasks.assignees.name',
+        type: 'String',
+        required: true,
+        level: 5,
+      },
+      {
+        path: 'teams.projects.modules.tasks.assignees.role',
+        type: 'String',
+        required: true,
+        level: 5,
+      },
     ];
 
     const schema = convertInferredFieldsToJsonSchema(mockInferredFields);
@@ -80,7 +120,7 @@ describe('convertInferredFieldsToJsonSchema', () => {
 
   it('should handle simple arrays correctly', () => {
     const mockInferredFields: InferredField[] = [
-      { path: 'tags', type: 'Array', required: false, level: 0 }
+      { path: 'tags', type: 'Array', required: false, level: 0 },
     ];
 
     const schema = convertInferredFieldsToJsonSchema(mockInferredFields);
@@ -98,7 +138,12 @@ describe('convertInferredFieldsToJsonSchema', () => {
       { path: 'user.name', type: 'String', required: true, level: 1 },
       { path: 'user.roles', type: 'Array', required: false, level: 1 },
       { path: 'user.roles.name', type: 'String', required: true, level: 2 },
-      { path: 'user.roles.permissions', type: 'Array', required: false, level: 2 }
+      {
+        path: 'user.roles.permissions',
+        type: 'Array',
+        required: false,
+        level: 2,
+      },
     ];
 
     const schema = convertInferredFieldsToJsonSchema(mockInferredFields);

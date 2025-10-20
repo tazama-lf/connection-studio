@@ -6,7 +6,9 @@ export interface InferredField {
 }
 
 // Convert inferred fields to proper JSON Schema format
-export const convertInferredFieldsToJsonSchema = (fields: InferredField[]): any => {
+export const convertInferredFieldsToJsonSchema = (
+  fields: InferredField[],
+): any => {
   console.log('🔄 Converting inferred fields to JSON Schema:', fields);
 
   if (fields.length === 0) {
@@ -14,59 +16,66 @@ export const convertInferredFieldsToJsonSchema = (fields: InferredField[]): any 
   }
 
   // Group fields by their root level (no dots in path)
-  const rootFields = fields.filter(f => !f.path.includes('.'));
-  const nestedFields = fields.filter(f => f.path.includes('.'));
+  const rootFields = fields.filter((f) => !f.path.includes('.'));
+  const nestedFields = fields.filter((f) => f.path.includes('.'));
 
   const properties: any = {};
   const required: string[] = [];
 
   // Process root level fields
-  rootFields.forEach(field => {
+  rootFields.forEach((field) => {
     const fieldName = field.path;
 
     // Find nested fields for this root field
-    const childFields = nestedFields.filter(f => f.path.startsWith(fieldName + '.'));
+    const childFields = nestedFields.filter((f) =>
+      f.path.startsWith(fieldName + '.'),
+    );
 
     if (field.type === 'Object' && childFields.length > 0) {
       // Convert child fields for nested object
-      const childInferredFields = childFields.map(cf => ({
+      const childInferredFields = childFields.map((cf) => ({
         ...cf,
         path: cf.path.substring(fieldName.length + 1), // Remove the parent path
-        level: cf.level - 1
+        level: cf.level - 1,
       }));
 
-      const nestedSchema = convertInferredFieldsToJsonSchema(childInferredFields);
+      const nestedSchema =
+        convertInferredFieldsToJsonSchema(childInferredFields);
       properties[fieldName] = {
         type: 'object',
         ...nestedSchema,
-        additionalProperties: false
+        additionalProperties: false,
       };
     } else if (field.type === 'Array') {
       // Find nested fields for this array field to define the items schema
-      const arrayItemFields = nestedFields.filter(f => f.path.startsWith(fieldName + '.'));
+      const arrayItemFields = nestedFields.filter((f) =>
+        f.path.startsWith(fieldName + '.'),
+      );
 
       if (arrayItemFields.length > 0) {
         // Convert child fields for array items
-        const arrayItemInferredFields = arrayItemFields.map(cf => ({
+        const arrayItemInferredFields = arrayItemFields.map((cf) => ({
           ...cf,
           path: cf.path.substring(fieldName.length + 1), // Remove the parent array path
-          level: cf.level - 1
+          level: cf.level - 1,
         }));
 
-        const itemsSchema = convertInferredFieldsToJsonSchema(arrayItemInferredFields);
+        const itemsSchema = convertInferredFieldsToJsonSchema(
+          arrayItemInferredFields,
+        );
         properties[fieldName] = {
           type: 'array',
-          items: itemsSchema || { type: 'object', additionalProperties: false }
+          items: itemsSchema || { type: 'object', additionalProperties: false },
         };
       } else {
         properties[fieldName] = {
           type: 'array',
-          items: { type: 'string' } // Default array item type
+          items: { type: 'string' }, // Default array item type
         };
       }
     } else {
       properties[fieldName] = {
-        type: field.type.toLowerCase()
+        type: field.type.toLowerCase(),
       };
     }
 
@@ -78,7 +87,7 @@ export const convertInferredFieldsToJsonSchema = (fields: InferredField[]): any 
   const schema: any = {
     type: 'object',
     properties,
-    additionalProperties: false
+    additionalProperties: false,
   };
 
   if (required.length > 0) {

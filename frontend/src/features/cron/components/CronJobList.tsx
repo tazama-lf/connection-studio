@@ -5,6 +5,7 @@ import { dataEnrichmentApi } from '../../data-enrichment/services';
 import type { ScheduleResponse } from '../../data-enrichment/types';
 import { useToast } from '../../../shared/providers/ToastProvider';
 import { Button } from '../../../shared/components/Button';
+import { UI_CONFIG } from '../../../shared/config/app.config';
 
 export const CronJobList: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -29,7 +30,7 @@ export const CronJobList: React.FC = () => {
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(5);
+  const [itemsPerPage] = useState(UI_CONFIG.pagination.defaultPageSize);
   const [openDropdown, setOpenDropdown] = useState<number | null>(null);
 
   // Load schedules on component mount
@@ -72,22 +73,6 @@ export const CronJobList: React.FC = () => {
       setCurrentPage(1);
     }
   }, [totalFilteredItems, currentPage, itemsPerPage]);
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-      // Don't close if clicking inside a dropdown
-      if (!target.closest('.dropdown-container')) {
-        setOpenDropdown(null);
-      }
-    };
-    
-    if (openDropdown !== null) {
-      document.addEventListener('click', handleClickOutside);
-      return () => document.removeEventListener('click', handleClickOutside);
-    }
-  }, [openDropdown]);
 
   const handlePreviousPage = () => {
     setCurrentPage(prev => Math.max(prev - 1, 1));
