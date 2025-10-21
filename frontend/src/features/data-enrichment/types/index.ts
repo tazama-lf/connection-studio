@@ -2,7 +2,7 @@
 
 export type ConfigType = 'Pull' | 'Push';
 export type SourceType = 'HTTP' | 'SFTP';
-export type JobStatus = 'PENDING' | 'IN-PROGRESS' | 'SUSPENDED' | 'CLONED';
+export type JobStatus = 'pending' | 'approved' | 'in-progress' | 'rejected'; // Matches backend enum
 export type AuthType = 'USERNAME_PASSWORD' | 'PRIVATE_KEY';
 export type FileType = 'CSV' | 'JSON' | 'TSV';
 export type EncodingType = 'utf-8' | 'ascii' | 'latin1' | 'utf16le';
@@ -46,22 +46,22 @@ export interface ScheduleCreateResponse {
 }
 
 export interface ScheduleResponse {
-  id: number;
+  id: string; // UUID string from backend
   name: string;
   cron: string;
   iterations: number;
   schedule_status: string;
-  next_time: string | null;
+  next_time?: string | null;
   created_at?: string;
   start_date?: string;
-  end_date?: string;
+  end_date?: string | null;
 }
 
 // Base Data Enrichment Job
 export interface DataEnrichmentJobBase {
   config_type: ConfigType;
   endpoint_name: string;
-  schedule_id: number;
+  schedule_id: string; // UUID string from backend
   source_type: SourceType;
   description: string;
   table_name: string;
@@ -87,7 +87,7 @@ export type DataEnrichmentJob = HttpDataEnrichmentJob | SftpDataEnrichmentJob;
 // Backend DTO types (matching actual API structure)
 export interface CreatePullJobDto {
   endpoint_name: string;
-  schedule_id: number;
+  schedule_id: string; // UUID string from backend
   source_type: SourceType;
   description: string;
   connection: HttpConnection | SftpConnection;
@@ -106,25 +106,49 @@ export interface CreatePushJobDto {
   version: string;
 }
 
+// Update DTOs - Partial versions for updating existing jobs
+export type UpdatePullJobDto = Partial<CreatePullJobDto>;
+export type UpdatePushJobDto = Partial<CreatePushJobDto>;
+
 // Job creation request (without id and status) - Legacy for compatibility
 export type CreateDataEnrichmentJobRequest =
   | CreatePullJobDto
   | CreatePushJobDto;
 
-// Job response with ID and metadata - using intersection instead of extends
-export type DataEnrichmentJobResponse = DataEnrichmentJob & {
-  id: string; // Backend uses UUID string ID
-  job_status?: JobStatus; // Optional in response
-  created_at?: string; // Backend returns dates as strings
+// Job update request
+export type UpdateDataEnrichmentJobRequest =
+  | UpdatePullJobDto
+  | UpdatePushJobDto;
+
+// Job response with ID and metadata - matching actual backend response
+export interface DataEnrichmentJobResponse {
+  id: string;
+  endpoint_name: string;
+  path?: string | null; // For push jobs
+  mode: 'append' | 'replace';
+  table_name: string;
+  description: string;
+  version: string;
+  status?: JobStatus | null; // Note: backend returns 'status' not 'job_status'
+  record_status?: 'active' | 'in-active' | null; // Activation status
+  created_at?: string;
   updated_at?: string;
-};
+  type: 'push' | 'pull'; // Backend returns lowercase type
+  // Additional fields for type discrimination
+  config_type?: ConfigType; // For compatibility
+  job_status?: JobStatus; // Alias for status
+  schedule_id?: string;
+  source_type?: SourceType;
+  connection?: HttpConnection | SftpConnection;
+  file?: FileConfig;
+}
 
 // Pagination for job listing
 export interface JobListResponse {
   jobs: DataEnrichmentJobResponse[];
-  total: number;
   page: number;
   limit: number;
+  total: number;
   totalPages: number;
 }
 

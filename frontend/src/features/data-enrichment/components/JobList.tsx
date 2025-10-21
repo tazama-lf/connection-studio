@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Eye, Play, Pause, MoreHorizontal } from 'lucide-react';
+import { Eye, Play, MoreVertical, ChevronDown, Settings, FilterIcon } from 'lucide-react';
 import type { DataEnrichmentJobResponse, JobStatus } from '../types';
 import { Button } from '../../../shared/components/Button';
 import { dataEnrichmentApi } from '../services/dataEnrichmentApi';
@@ -10,49 +10,82 @@ interface JobListProps {
   isLoading?: boolean;
   onViewLogs?: (jobId: string) => void;
   onRefresh?: () => void;
+  statusFilter?: JobStatus | 'ALL';
+  onStatusFilterChange?: (status: JobStatus | 'ALL') => void;
+  searchQuery?: string;
+  recordStatusFilter?: 'active' | 'in-active' | 'not-set' | 'ALL';
+  onRecordStatusFilterChange?: (status: 'active' | 'in-active' | 'not-set' | 'ALL') => void;
+  dateFilter?: 'today' | 'week' | 'month' | 'ALL';
+  onDateFilterChange?: (period: 'today' | 'week' | 'month' | 'ALL') => void;
+  typeFilter?: 'push' | 'pull' | 'ALL';
+  onTypeFilterChange?: (type: 'push' | 'pull' | 'ALL') => void;
 }
 
 const StatusBadge: React.FC<{ status: JobStatus }> = ({ status }) => {
   const getStatusConfig = (status: JobStatus) => {
     switch (status) {
-      case 'PENDING':
+      case 'pending':
         return {
-          className: 'bg-green-100 text-green-700 border border-green-200',
-          icon: '✓',
-          text: 'Ready for Approval'
+          className: 'bg-blue-50 text-blue-700',
+          dotColor: 'bg-blue-500',
+          text: 'PENDING'
         };
-      case 'IN-PROGRESS':
+      case 'approved':
         return {
-          className: 'bg-yellow-100 text-yellow-700 border border-yellow-200',
-          icon: '⏳',
-          text: 'In Progress'
+          className: 'bg-green-50 text-green-700',
+          dotColor: 'bg-green-500',
+          text: 'APPROVED'
         };
-      case 'SUSPENDED':
+      case 'in-progress':
         return {
-          className: 'bg-red-100 text-red-700 border border-red-200',
-          icon: '⚠',
-          text: 'Suspended'
+          className: 'bg-gray-100 text-gray-700',
+          dotColor: 'bg-gray-500',
+          text: 'INPROGRESS'
         };
-      case 'CLONED':
+      case 'rejected':
         return {
-          className: 'bg-purple-100 text-purple-700 border border-purple-200',
-          icon: '📋',
-          text: 'Cloned'
+          className: 'bg-red-50 text-red-700',
+          dotColor: 'bg-red-500',
+          text: 'REJECTED'
         };
       default:
         return {
-          className: 'bg-gray-100 text-gray-700 border border-gray-200',
-          icon: '•',
-          text: status
+          className: 'bg-gray-100 text-gray-700',
+          dotColor: 'bg-gray-500',
+          text: String(status).toUpperCase()
         };
     }
   };
 
   const config = getStatusConfig(status);
   return (
-    <span className={`inline-flex items-center px-3 py-1 text-sm font-medium rounded-full ${config.className}`}>
-      <span className="mr-1">{config.icon}</span>
+    <span className={`inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-full ${config.className}`}>
+      <span className={`w-2 h-2 rounded-full mr-2 ${config.dotColor}`}></span>
       {config.text}
+    </span>
+  );
+};
+
+const ActivationBadge: React.FC<{ recordStatus: 'active' | 'in-active' | null | undefined }> = ({ recordStatus }) => {
+  const isActive = recordStatus === 'active';
+  
+  if (!recordStatus) {
+    return (
+      <span className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-full bg-gray-100 text-gray-600">
+        <span className="w-2 h-2 rounded-full mr-2 bg-gray-400"></span>
+        NOT SET
+      </span>
+    );
+  }
+  
+  return (
+    <span className={`inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-full ${
+      isActive ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-600'
+    }`}>
+      <span className={`w-2 h-2 rounded-full mr-2 ${
+        isActive ? 'bg-green-500' : 'bg-gray-500'
+      }`}></span>
+      {isActive ? 'ACTIVE' : 'INACTIVE'}
     </span>
   );
 };
@@ -62,24 +95,84 @@ export const JobList: React.FC<JobListProps> = ({
   isLoading = false,
   onViewLogs,
   onRefresh,
+  statusFilter = 'ALL',
+  onStatusFilterChange,
+  searchQuery = '',
+  recordStatusFilter = 'ALL',
+  onRecordStatusFilterChange,
+  dateFilter = 'ALL',
+  onDateFilterChange,
+  typeFilter = 'ALL',
+  onTypeFilterChange,
 }) => {
+  console.log('=== JobList COMPONENT RENDER ===');
+  console.log('Time:', new Date().toISOString());
+  console.log('Props received:');
+  console.log('  - jobs:', jobs);
+  console.log('  - jobs type:', typeof jobs);
+  console.log('  - jobs is Array?:', Array.isArray(jobs));
+  console.log('  - jobs length:', jobs?.length || 'N/A');
+  console.log('  - isLoading:', isLoading);
+  console.log('  - onViewLogs:', typeof onViewLogs);
+  console.log('  - onRefresh:', typeof onRefresh);
+  console.log('  - statusFilter:', statusFilter);
+  
+  if (jobs && jobs.length > 0) {
+    console.log('Jobs array contains', jobs.length, 'items');
+    console.log('First job:', JSON.stringify(jobs[0], null, 2));
+  } else {
+    console.log('❌ Jobs array is empty or null/undefined');
+  }
+  
   const { showSuccess, showError } = useToast();
   const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
+  const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
+  const [recordStatusDropdownOpen, setRecordStatusDropdownOpen] = useState(false);
+  const [dateDropdownOpen, setDateDropdownOpen] = useState(false);
+  const [typeDropdownOpen, setTypeDropdownOpen] = useState(false);
 
-  const handleStatusUpdate = async (jobId: string, newStatus: JobStatus) => {
+  // Close dropdowns when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      
+      // Don't close if clicking on dropdown buttons or dropdown content
+      if (target.closest('.filter-dropdown') || target.closest('.dropdown-menu') || target.closest('.actions-dropdown')) {
+        return;
+      }
+      
+      setStatusDropdownOpen(false);
+      setRecordStatusDropdownOpen(false);
+      setDateDropdownOpen(false);
+      setTypeDropdownOpen(false);
+      setDropdownOpen(null);
+    };
+
+    if (statusDropdownOpen || recordStatusDropdownOpen || dateDropdownOpen || dropdownOpen) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [statusDropdownOpen, recordStatusDropdownOpen, dateDropdownOpen, dropdownOpen]);
+
+  // Jobs are already filtered and paginated by parent component
+  console.log('Jobs received (already filtered & paginated):', jobs.length);
+
+  const handleStatusUpdate = async (jobId: string, newStatus: JobStatus, jobType: 'PULL' | 'PUSH') => {
     try {
-      await dataEnrichmentApi.updateJobStatus(jobId, newStatus);
+      console.log(`Updating job status - ID: ${jobId}, Status: ${newStatus}, Type: ${jobType}`);
+      await dataEnrichmentApi.updateJobStatus(jobId, newStatus, jobType);
       showSuccess(`Job status updated to ${newStatus}`);
       onRefresh?.();
     } catch (error) {
       console.error('Failed to update job status:', error);
+      console.error('Error details:', error);
       showError('Failed to update job status');
     }
   };
 
-  const handleActivationToggle = async (jobId: string, isActive: boolean) => {
+  const handleActivationToggle = async (jobId: string, isActive: boolean, jobType: 'PULL' | 'PUSH') => {
     try {
-      await dataEnrichmentApi.updateJobActivation(jobId, isActive);
+      await dataEnrichmentApi.updateJobActivation(jobId, isActive, jobType);
       showSuccess(`Job ${isActive ? 'activated' : 'deactivated'} successfully`);
       onRefresh?.();
     } catch (error) {
@@ -89,6 +182,7 @@ export const JobList: React.FC<JobListProps> = ({
   };
 
   if (isLoading) {
+    console.log('🔄 Rendering LOADING state');
     return (
       <div className="flex justify-center items-center py-8">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -98,17 +192,55 @@ export const JobList: React.FC<JobListProps> = ({
   }
 
   if (!jobs || jobs.length === 0) {
+    console.log('⚠️ Rendering NO JOBS FOUND state');
+    console.log('Reason: jobs =', jobs, '| jobs.length =', jobs?.length);
     return (
-      <div className="text-center py-8">
-        <div className="text-gray-500 mb-4">No jobs found</div>
-        {onRefresh && (
-          <Button onClick={onRefresh} variant="secondary">
-            Refresh
-          </Button>
-        )}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12">
+        <div className="text-center">
+          <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+            <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No Data Enrichment Jobs Yet</h3>
+          <p className="text-gray-500 mb-2">
+            Get started by creating your first data enrichment endpoint
+          </p>
+          <p className="text-sm text-gray-400 mb-6">
+            Click the "Define New Endpoint" button above to create a Pull or Push job
+          </p>
+          <div className="text-xs text-gray-400 mb-4 p-3 bg-blue-50 rounded-md">
+            💡 <strong>Tip:</strong> Check browser console (F12) for detailed logs
+          </div>
+          {onRefresh && (
+            <Button onClick={onRefresh} variant="secondary">
+              Refresh
+            </Button>
+          )}
+        </div>
       </div>
     );
   }
+
+  if (jobs.length === 0 && searchQuery.trim()) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12">
+        <div className="text-center">
+          <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+            <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No endpoints match your search</h3>
+          <p className="text-gray-500 mb-6">
+            Try adjusting your search terms or browse all endpoints.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  console.log('✅ Rendering JOBS TABLE with', jobs.length, 'jobs');
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
@@ -120,16 +252,257 @@ export const JobList: React.FC<JobListProps> = ({
                 ENDPOINT PATH
               </th>
               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                TENANT ID
+                <div className="flex items-center space-x-2">
+                  <span>TYPE</span>
+                  <div className="relative filter-dropdown">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setTypeDropdownOpen(!typeDropdownOpen);
+                      }}
+                      className="p-1 hover:bg-gray-200 rounded transition-colors"
+                      title="Filter by type"
+                    >
+                      <ChevronDown size={16} className={`text-gray-500 transition-transform ${typeDropdownOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                    {typeDropdownOpen && (
+                      <div className="absolute top-full left-0 mt-1 w-48 bg-white rounded-md shadow-lg z-50 border border-gray-200 dropdown-menu">
+                        <div className="py-1">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onTypeFilterChange?.('ALL');
+                              setTypeDropdownOpen(false);
+                            }}
+                            className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${typeFilter === 'ALL' ? 'bg-gray-100 font-medium' : 'text-gray-700'}`}
+                          >
+                            All Types
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onTypeFilterChange?.('push');
+                              setTypeDropdownOpen(false);
+                            }}
+                            className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${typeFilter === 'push' ? 'bg-gray-100 font-medium' : 'text-gray-700'}`}
+                          >
+                            Push
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onTypeFilterChange?.('pull');
+                              setTypeDropdownOpen(false);
+                            }}
+                            className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${typeFilter === 'pull' ? 'bg-gray-100 font-medium' : 'text-gray-700'}`}
+                          >
+                            Pull
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </th>
               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                TYPE
+                <div className="flex items-center space-x-2">
+                  <FilterIcon className="w-4 h-4 text-gray-400" />
+                  <span>STATUS</span>
+                  <div className="relative filter-dropdown">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setStatusDropdownOpen(!statusDropdownOpen);
+                      }}
+                      className="p-1 hover:bg-gray-200 rounded transition-colors"
+                      title="Filter by status"
+                    >
+                      <ChevronDown size={16} className={`text-gray-500 transition-transform ${statusDropdownOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                    {statusDropdownOpen && (
+                      <div className="absolute top-full left-0 mt-1 w-48 bg-white rounded-md shadow-lg z-50 border border-gray-200 dropdown-menu">
+                        <div className="py-1">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onStatusFilterChange?.('ALL');
+                              setStatusDropdownOpen(false);
+                            }}
+                            className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${statusFilter === 'ALL' ? 'bg-gray-100 font-medium' : 'text-gray-700'}`}
+                          >
+                            All Statuses
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onStatusFilterChange?.('pending');
+                              setStatusDropdownOpen(false);
+                            }}
+                            className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${statusFilter === 'pending' ? 'bg-gray-100 font-medium' : 'text-gray-700'}`}
+                          >
+                            Pending
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onStatusFilterChange?.('approved');
+                              setStatusDropdownOpen(false);
+                            }}
+                            className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${statusFilter === 'approved' ? 'bg-gray-100 font-medium' : 'text-gray-700'}`}
+                          >
+                            Approved
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onStatusFilterChange?.('in-progress');
+                              setStatusDropdownOpen(false);
+                            }}
+                            className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${statusFilter === 'in-progress' ? 'bg-gray-100 font-medium' : 'text-gray-700'}`}
+                          >
+                            In Progress
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onStatusFilterChange?.('rejected');
+                              setStatusDropdownOpen(false);
+                            }}
+                            className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${statusFilter === 'rejected' ? 'bg-gray-100 font-medium' : 'text-gray-700'}`}
+                          >
+                            Rejected
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </th>
               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                STATUS
+                <div className="flex items-center space-x-2">
+                  <span>ACTIVATION</span>
+                  <div className="relative filter-dropdown">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setRecordStatusDropdownOpen(!recordStatusDropdownOpen);
+                      }}
+                      className="p-1 hover:bg-gray-200 rounded transition-colors"
+                      title="Filter by activation status"
+                    >
+                      <ChevronDown size={16} className={`text-gray-500 transition-transform ${recordStatusDropdownOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                    {recordStatusDropdownOpen && (
+                      <div className="absolute top-full left-0 mt-1 w-48 bg-white rounded-md shadow-lg z-50 border border-gray-200 dropdown-menu">
+                        <div className="py-1">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onRecordStatusFilterChange?.('ALL');
+                              setRecordStatusDropdownOpen(false);
+                            }}
+                            className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${recordStatusFilter === 'ALL' ? 'bg-gray-100 font-medium' : 'text-gray-700'}`}
+                          >
+                            All Activation Status
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onRecordStatusFilterChange?.('active');
+                              setRecordStatusDropdownOpen(false);
+                            }}
+                            className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${recordStatusFilter === 'active' ? 'bg-gray-100 font-medium' : 'text-gray-700'}`}
+                          >
+                            Active
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onRecordStatusFilterChange?.('in-active');
+                              setRecordStatusDropdownOpen(false);
+                            }}
+                            className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${recordStatusFilter === 'in-active' ? 'bg-gray-100 font-medium' : 'text-gray-700'}`}
+                          >
+                            Inactive
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onRecordStatusFilterChange?.('not-set');
+                              setRecordStatusDropdownOpen(false);
+                            }}
+                            className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${recordStatusFilter === 'not-set' ? 'bg-gray-100 font-medium' : 'text-gray-700'}`}
+                          >
+                            Not Set
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </th>
               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                RECEIVED TIME
+                <div className="flex items-center space-x-2">
+                  <span>CREATED TIME</span>
+                  <div className="relative filter-dropdown">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDateDropdownOpen(!dateDropdownOpen);
+                      }}
+                      className="p-1 hover:bg-gray-200 rounded transition-colors"
+                      title="Filter by date"
+                    >
+                      <ChevronDown size={16} className={`text-gray-500 transition-transform ${dateDropdownOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                    {dateDropdownOpen && (
+                      <div className="absolute top-full left-0 mt-1 w-48 bg-white rounded-md shadow-lg z-50 border border-gray-200 dropdown-menu">
+                        <div className="py-1">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDateFilterChange?.('ALL');
+                              setDateDropdownOpen(false);
+                            }}
+                            className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${dateFilter === 'ALL' ? 'bg-gray-100 font-medium' : 'text-gray-700'}`}
+                          >
+                            All Time
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDateFilterChange?.('today');
+                              setDateDropdownOpen(false);
+                            }}
+                            className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${dateFilter === 'today' ? 'bg-gray-100 font-medium' : 'text-gray-700'}`}
+                          >
+                            Today
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDateFilterChange?.('week');
+                              setDateDropdownOpen(false);
+                            }}
+                            className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${dateFilter === 'week' ? 'bg-gray-100 font-medium' : 'text-gray-700'}`}
+                          >
+                            This Week
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDateFilterChange?.('month');
+                              setDateDropdownOpen(false);
+                            }}
+                            className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${dateFilter === 'month' ? 'bg-gray-100 font-medium' : 'text-gray-700'}`}
+                          >
+                            This Month
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </th>
               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                 ACTIONS
@@ -137,152 +510,236 @@ export const JobList: React.FC<JobListProps> = ({
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-100">
-            {jobs.map((job, index) => (
-              <tr key={job.id} className={`hover:bg-gray-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
-                <td className="px-6 py-4">
-                  <div className="text-sm font-medium text-gray-900">
-                    {`/v1/enrich/${job.endpoint_name?.replace(/[^a-zA-Z0-9]/g, '').substring(0, 6) || 'UNKNOWN'}/${job.table_name || 'data'}`}
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="text-sm font-semibold text-blue-600">
-                    {job.endpoint_name?.replace(/[^a-zA-Z0-9]/g, '').substring(0, 6) || 'UNKNOWN'}
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  <span className={`inline-flex items-center text-sm font-medium ${
-                    job.config_type === 'Push' 
-                      ? 'text-blue-600' 
-                      : 'text-purple-600'
-                  }`}>
-                    <svg 
-                      className={`w-4 h-4 mr-1 ${
-                        job.config_type === 'Push' ? 'text-blue-600' : 'text-purple-600'
-                      }`} 
-                      fill="none" 
-                      stroke="currentColor" 
-                      viewBox="0 0 24 24"
-                    >
-                      {job.config_type === 'Push' ? (
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16l3-3m0 0l3 3m-3-3v8m0-13a9 9 0 110 18 9 9 0 010-18z" />
-                      ) : (
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l-3 3m0 0l-3-3m3 3V4m0 13a9 9 0 11-0-18 9 9 0 01-0 18z" />
-                      )}
-                    </svg>
-                    {job.config_type}
-                  </span>
-                </td>
-                <td className="px-6 py-4">
-                  <StatusBadge status={job.job_status || 'PENDING'} />
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex items-center text-sm text-gray-600">
-                    <svg className="h-4 w-4 text-gray-400 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span className="font-medium">
-                      {job.updated_at 
-                        ? new Date(job.updated_at).toLocaleDateString('en-US', {
-                            month: 'numeric',
-                            day: 'numeric', 
-                            year: 'numeric',
-                            hour: 'numeric',
-                            minute: '2-digit',
-                            hour12: true
-                          })
-                        : 'Never'
-                      }
-                    </span>
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex items-center space-x-3">
-                    <button
-                      onClick={() => onViewLogs?.(job.id)}
-                      className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
-                      title="View Details"
-                    >
-                      <Eye size={16} className="mr-1.5" />
-                      View
-                    </button>
+            {jobs.map((job, index) => {
+              // Get job type - normalize to uppercase for API calls
+              const rawJobType = job.type || job.config_type?.toLowerCase() || 'pull';
+              const jobType: 'PULL' | 'PUSH' = rawJobType?.toLowerCase() === 'push' ? 'PUSH' : 'PULL';
+              
+              console.log(`Job ${job.id} type determination:`, {
+                'job.type': job.type,
+                'job.config_type': job.config_type,
+                rawJobType,
+                finalJobType: jobType,
+                'rawJobType === push': rawJobType === 'push',
+                'rawJobType?.toLowerCase() === push': rawJobType?.toLowerCase() === 'push'
+              });
+              
+              // Build the endpoint path based on job type
+              const getEndpointPath = () => {
+                if (rawJobType === 'push') {
+                  // For push jobs, use the path field if available
+                  return job.path || `/tenant-${job.endpoint_name?.substring(0, 6)}/${job.table_name || 'data'}`;
+                } else {
+                  // For pull jobs, show a descriptive path
+                  return `/tenant-${job.endpoint_name?.substring(0, 6) || '001'}/${job.table_name || job.endpoint_name}`;
+                }
+              };
+              
+              // Status updates should be available for all jobs (both PUSH and PULL)
+              // Show status update buttons for all jobs, regardless of current status value
+              const hasStatus = true; // Allow status updates for all jobs
+              
+              // For display: show 'pending' for jobs without explicit status
+              const displayStatus: JobStatus = job.status || 'pending';
+              
+              // Debug logging for status update issues
+              console.log(`Job ${job.id} status debug:`, {
+                jobType: rawJobType,
+                rawStatus: job.status,
+                displayStatus,
+                hasStatus,
+                willShowStatusButtons: hasStatus
+              });
 
+              return (
+                <tr key={job.id} className={`hover:bg-gray-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
+                  <td className="px-6 py-4">
+                    <div className="text-sm font-medium text-gray-900">
+                      {getEndpointPath()}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className={`inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded ${
+                      jobType === 'PUSH' 
+                        ? 'bg-purple-100 text-purple-700' 
+                        : 'bg-blue-100 text-blue-700'
+                    }`}>
+                      {jobType}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <StatusBadge status={displayStatus} />
+                  </td>
+                  <td className="px-6 py-4">
+                    <ActivationBadge recordStatus={job.record_status} />
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center text-sm text-gray-600">
+                      <svg className="h-4 w-4 text-gray-400 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      <span className="font-medium">
+                        {job.created_at 
+                          ? new Date(job.created_at).toLocaleDateString('en-US', {
+                              month: 'numeric',
+                              day: 'numeric', 
+                              year: 'numeric',
+                              hour: 'numeric',
+                              minute: '2-digit',
+                              hour12: true
+                            })
+                          : 'N/A'
+                        }
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center justify-center space-x-2">
                     {/* Actions Dropdown */}
-                    <div className="relative">
+                    <div className="relative actions-dropdown">
                       <button
                         onClick={() => setDropdownOpen(dropdownOpen === job.id ? null : job.id)}
-                        className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
-                        title="More Actions"
+                        className={`p-2 rounded-lg transition-all duration-200 ${
+                          dropdownOpen === job.id
+                            ? 'bg-blue-100 text-blue-700 shadow-sm'
+                            : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+                        }`}
+                        title="Job Actions"
                       >
-                        <MoreHorizontal size={16} className="mr-1.5" />
-                        Actions
+                        <MoreVertical size={18} />
                       </button>
 
                       {dropdownOpen === job.id && (
-                        <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg z-10 border border-gray-200">
-                          <div className="py-1">
-                            {/* Status Update Options */}
-                            <div className="px-4 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">
-                              Update Status
-                            </div>
+                        <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg z-20 border border-gray-200 overflow-hidden">
+                          {/* View Details Section */}
+                          <div className="px-4 py-3 border-b border-gray-100">
                             <button
                               onClick={() => {
-                                handleStatusUpdate(job.id, 'PENDING');
+                                onViewLogs?.(job.id);
                                 setDropdownOpen(null);
                               }}
-                              className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                              disabled={job.job_status === 'PENDING'}
+                              className="flex items-center w-full text-left group hover:bg-gray-50 px-3 py-2 rounded-lg transition-all duration-200"
                             >
-                              <Play size={16} className="mr-2" />
-                              Set to Pending
+                              <div className="flex items-center justify-center w-8 h-8 bg-gray-100 rounded-lg mr-3 group-hover:bg-gray-200 transition-colors">
+                                <Eye size={16} className="text-gray-600" />
+                              </div>
+                              <div>
+                                <div className="text-sm font-medium text-gray-900">View Details</div>
+                                <div className="text-xs text-gray-500">Open job configuration</div>
+                              </div>
                             </button>
-                            <button
-                              onClick={() => {
-                                handleStatusUpdate(job.id, 'IN-PROGRESS');
-                                setDropdownOpen(null);
-                              }}
-                              className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                              disabled={job.job_status === 'IN-PROGRESS'}
-                            >
-                              <Play size={16} className="mr-2" />
-                              Set to In Progress
-                            </button>
-                            <button
-                              onClick={() => {
-                                handleStatusUpdate(job.id, 'SUSPENDED');
-                                setDropdownOpen(null);
-                              }}
-                              className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                              disabled={job.job_status === 'SUSPENDED'}
-                            >
-                              <Pause size={16} className="mr-2" />
-                              Suspend Job
-                            </button>
+                          </div>
 
-                            {/* Activation Toggle */}
-                            <div className="border-t border-gray-200 my-1"></div>
-                            <div className="px-4 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">
-                              Activation
+                          {/* Status Management Section */}
+                          {hasStatus && (
+                            <div className="px-4 py-3">
+                              <div className="flex items-center mb-3">
+                                <div className="flex items-center justify-center w-6 h-6 bg-gray-100 rounded-md mr-2">
+                                  <Settings size={12} className="text-gray-600" />
+                                </div>
+                                <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Status Management</h4>
+                              </div>
+                              
+                              <div className="grid grid-cols-2 gap-2">
+                                {/* Approve Button */}
+                                <button
+                                  onClick={() => {
+                                    handleStatusUpdate(job.id, 'approved', jobType);
+                                    setDropdownOpen(null);
+                                  }}
+                                  disabled={displayStatus === 'approved'}
+                                  className={`flex items-center justify-center px-3 py-2 rounded-md text-xs font-medium transition-all duration-200 ${
+                                    displayStatus === 'approved'
+                                      ? 'bg-gray-100 text-gray-500 cursor-not-allowed opacity-60'
+                                      : 'bg-gray-50 text-gray-700 hover:bg-gray-100 hover:shadow-sm border border-gray-200'
+                                  }`}
+                                >
+                                  ✓ Approve
+                                </button>
+
+                                {/* Reject Button */}
+                                <button
+                                  onClick={() => {
+                                    handleStatusUpdate(job.id, 'rejected', jobType);
+                                    setDropdownOpen(null);
+                                  }}
+                                  disabled={displayStatus === 'rejected'}
+                                  className={`flex items-center justify-center px-3 py-2 rounded-md text-xs font-medium transition-all duration-200 ${
+                                    displayStatus === 'rejected'
+                                      ? 'bg-gray-100 text-gray-500 cursor-not-allowed opacity-60'
+                                      : 'bg-gray-50 text-gray-700 hover:bg-gray-100 hover:shadow-sm border border-gray-200'
+                                  }`}
+                                >
+                                  ✕ Reject
+                                </button>
+
+                                {/* Pending Button */}
+                                <button
+                                  onClick={() => {
+                                    handleStatusUpdate(job.id, 'pending', jobType);
+                                    setDropdownOpen(null);
+                                  }}
+                                  disabled={displayStatus === 'pending'}
+                                  className={`flex items-center justify-center px-3 py-2 rounded-md text-xs font-medium transition-all duration-200 ${
+                                    displayStatus === 'pending'
+                                      ? 'bg-gray-100 text-gray-500 cursor-not-allowed opacity-60'
+                                      : 'bg-gray-50 text-gray-700 hover:bg-gray-100 hover:shadow-sm border border-gray-200'
+                                  }`}
+                                >
+                                  ⧖ Pending
+                                </button>
+
+                                {/* In Progress Button */}
+                                <button
+                                  onClick={() => {
+                                    handleStatusUpdate(job.id, 'in-progress', jobType);
+                                    setDropdownOpen(null);
+                                  }}
+                                  disabled={displayStatus === 'in-progress'}
+                                  className={`flex items-center justify-center px-3 py-2 rounded-md text-xs font-medium transition-all duration-200 ${
+                                    displayStatus === 'in-progress'
+                                      ? 'bg-gray-100 text-gray-500 cursor-not-allowed opacity-60'
+                                      : 'bg-gray-50 text-gray-700 hover:bg-gray-100 hover:shadow-sm border border-gray-200'
+                                  }`}
+                                >
+                                  ⟳ Progress
+                                </button>
+                              </div>
                             </div>
-                            <button
-                              onClick={() => {
-                                handleActivationToggle(job.id, true);
-                                setDropdownOpen(null);
-                              }}
-                              className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                            >
-                              <Play size={16} className="mr-2 text-green-600" />
-                              Activate Job
-                            </button>
-                            <button
-                              onClick={() => {
-                                handleActivationToggle(job.id, false);
-                                setDropdownOpen(null);
-                              }}
-                              className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                            >
-                              <Pause size={16} className="mr-2 text-red-600" />
-                              Deactivate Job
-                            </button>
+                          )}
+
+                          {/* Activation Controls Section */}
+                          <div className="px-4 py-3 border-t border-gray-100">
+                            <div className="flex items-center mb-3">
+                              <div className="flex items-center justify-center w-6 h-6 bg-gray-100 rounded-md mr-2">
+                                <Play size={12} className="text-gray-600" />
+                              </div>
+                              <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Job Control</h4>
+                            </div>
+                            
+                            <div className="flex space-x-2">
+                              {/* Activate Button */}
+                              <button
+                                onClick={() => {
+                                  handleActivationToggle(job.id, true, jobType);
+                                  setDropdownOpen(null);
+                                }}
+                                className="flex-1 flex items-center justify-center px-3 py-2 bg-gray-50 text-gray-700 rounded-md text-xs font-medium hover:bg-gray-100 transition-all duration-200 hover:shadow-sm border border-gray-200"
+                              >
+                                ▶ Activate
+                              </button>
+
+                              {/* Deactivate Button */}
+                              <button
+                                onClick={() => {
+                                  handleActivationToggle(job.id, false, jobType);
+                                  setDropdownOpen(null);
+                                }}
+                                className="flex-1 flex items-center justify-center px-3 py-2 bg-gray-50 text-gray-700 rounded-md text-xs font-medium hover:bg-gray-100 transition-all duration-200 hover:shadow-sm border border-gray-200"
+                              >
+                                ⏸ Deactivate
+                              </button>
+                            </div>
                           </div>
                         </div>
                       )}
@@ -290,7 +747,8 @@ export const JobList: React.FC<JobListProps> = ({
                   </div>
                 </td>
               </tr>
-            ))}
+            );
+            })}
           </tbody>
         </table>
       </div>

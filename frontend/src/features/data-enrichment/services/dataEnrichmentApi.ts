@@ -3,6 +3,8 @@ import { apiRequest } from '../../../shared/services/tokenManager';
 import type {
   CreatePullJobDto,
   CreatePushJobDto,
+  UpdatePullJobDto,
+  UpdatePushJobDto,
   DataEnrichmentJobResponse,
   JobListResponse,
   ScheduleResponse,
@@ -55,33 +57,67 @@ export const dataEnrichmentApi = {
     page?: number,
     limit?: number,
   ): Promise<JobListResponse> => {
-    console.log('=== getAllJobs API CALL ===');
-    console.log('Input parameters - page:', page, 'limit:', limit);
+    console.log('\n=== getAllJobs API CALL START ===');
+    console.log('Time:', new Date().toISOString());
+    console.log('Input parameters:');
+    console.log('  - page:', page);
+    console.log('  - limit:', limit);
 
     const queryParams = new URLSearchParams();
     if (page) queryParams.append('page', page.toString());
     if (limit) queryParams.append('limit', limit.toString());
 
     const url = `${API_BASE_URL}/job/all${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
-    console.log('Base URL:', API_BASE_URL);
-    console.log('Final request URL:', url);
+    console.log('API Configuration:');
+    console.log('  - API_BASE_URL:', API_BASE_URL);
+    console.log('  - Query params:', queryParams.toString() || 'none');
+    console.log('  - Full URL:', url);
 
     try {
-      const result = await apiRequest<JobListResponse>(url);
-      console.log('Raw API response:', result);
-      console.log('Jobs in response:', result?.jobs?.length || 0);
-      console.log('Total in response:', result?.total);
-      return result;
+      console.log('Making API request...');
+      const result = await apiRequest<DataEnrichmentJobResponse[] | JobListResponse>(url);
+      
+      console.log('=== API RESPONSE RECEIVED ===');
+      console.log('Response type:', typeof result);
+      console.log('Response is Array?:', Array.isArray(result));
+      console.log('Raw response:', JSON.stringify(result, null, 2));
+      
+      // Backend returns flat array, transform to paginated format
+      if (Array.isArray(result)) {
+        console.log('⚠️ Backend returned flat array, transforming to paginated format');
+        const jobs = result as DataEnrichmentJobResponse[];
+        const transformedResponse: JobListResponse = {
+          jobs: jobs,
+          page: page || 1,
+          limit: limit || 10,
+          totalPages: Math.ceil(jobs.length / (limit || 10))
+        };
+        console.log('Transformed response:', transformedResponse);
+        console.log('=== getAllJobs API CALL SUCCESS (transformed) ===\n');
+        return transformedResponse;
+      }
+      
+      // If already in correct format, return as is
+      console.log('Response already in paginated format');
+      console.log('=== getAllJobs API CALL SUCCESS ===\n');
+      return result as JobListResponse;
     } catch (error) {
-      console.error('Get all jobs error:', error);
+      console.error('=== getAllJobs API CALL FAILED ===');
+      console.error('Error type:', error?.constructor?.name);
+      console.error('Error message:', error instanceof Error ? error.message : String(error));
+      console.error('Full error:', error);
+      console.error('=== getAllJobs API CALL END ===\n');
       throw error;
     }
   },
 
-  getJob: async (id: string): Promise<DataEnrichmentJobResponse> => {
+  getJob: async (id: string, type?: 'PULL' | 'PUSH'): Promise<DataEnrichmentJobResponse> => {
     try {
+      // Backend expects lowercase 'push' or 'pull' matching ConfigType enum
+      const queryParams = type ? `?type=${type.toLowerCase()}` : '';
+      console.log(`Fetching job ${id} with type=${type?.toLowerCase() || 'not specified'}`);
       return await apiRequest<DataEnrichmentJobResponse>(
-        `${API_BASE_URL}/job/${id}`,
+        `${API_BASE_URL}/job/${id}${queryParams}`,
       );
     } catch (error) {
       console.error(`Failed to fetch job ${id}:`, error);
@@ -90,7 +126,7 @@ export const dataEnrichmentApi = {
   },
 
   getJobsByStatus: async (
-    status: 'PENDING' | 'IN-PROGRESS' | 'SUSPENDED' | 'CLONED',
+    status: 'pending' | 'approved' | 'in-progress' | 'rejected',
     page?: number,
     limit?: number,
   ): Promise<JobListResponse> => {
@@ -100,19 +136,90 @@ export const dataEnrichmentApi = {
     if (limit) queryParams.append('limit', limit.toString());
 
     try {
-      return await apiRequest<JobListResponse>(
+      const result = await apiRequest<DataEnrichmentJobResponse[] | JobListResponse>(
         `${API_BASE_URL}/job/get/status?${queryParams.toString()}`,
       );
+      
+      // Backend returns flat array, transform to paginated format
+      if (Array.isArray(result)) {
+        console.log('⚠️ Backend returned flat array for status filter, transforming...');
+        const jobs = result as DataEnrichmentJobResponse[];
+        return {
+          jobs: jobs,
+          page: page || 1,
+          limit: limit || 10,
+          totalPages: Math.ceil(jobs.length / (limit || 10))
+        };
+      }
+      
+      return result as JobListResponse;
     } catch (error) {
       console.error(`Failed to fetch jobs by status ${status}:`, error);
       throw error;
     }
   },
 
+  // Update full pull job configuration
+  updatePullJob: async (
+    id: string,
+    updates: UpdatePullJobDto,
+  ): Promise<DataEnrichmentJobResponse> => {
+    console.log('Updating pull job with data:', JSON.stringify(updates, null, 2));
+    try {
+      return await apiRequest<DataEnrichmentJobResponse>(
+        `${API_BASE_URL}/job/update/pull/${id}`,
+        {
+          method: 'PATCH',
+          body: JSON.stringify(updates),
+        },
+      );
+    } catch (error) {
+      console.error(`Failed to update pull job ${id}:`, error);
+      throw error;
+    }
+  },
+
+  // Update full push job configuration
+  updatePushJob: async (
+    id: string,
+    updates: UpdatePushJobDto,
+  ): Promise<DataEnrichmentJobResponse> => {
+    console.log('Updating push job with data:', JSON.stringify(updates, null, 2));
+    try {
+      return await apiRequest<DataEnrichmentJobResponse>(
+        `${API_BASE_URL}/job/update/push/${id}`,
+        {
+          method: 'PATCH',
+          body: JSON.stringify(updates),
+        },
+      );
+    } catch (error) {
+      console.error(`Failed to update push job ${id}:`, error);
+      throw error;
+    }
+  },
+
+  // Delete a job
+  deleteJob: async (id: string, type: 'pull' | 'push'): Promise<{ success: boolean; message: string }> => {
+    try {
+      // Backend expects lowercase 'push' or 'pull' matching ConfigType enum
+      return await apiRequest<{ success: boolean; message: string }>(
+        `${API_BASE_URL}/job/${id}?type=${type.toLowerCase()}`,
+        {
+          method: 'DELETE',
+        },
+      );
+    } catch (error) {
+      console.error(`Failed to delete job ${id}:`, error);
+      throw error;
+    }
+  },
+
+  // Legacy generic update (for backward compatibility)
   updateJob: async (
     id: string,
     updates: Partial<{
-      job_status: 'PENDING' | 'IN-PROGRESS' | 'SUSPENDED' | 'CLONED';
+      job_status: 'pending' | 'approved' | 'in-progress' | 'rejected';
     }>,
   ): Promise<{ success: boolean; message: string }> => {
     try {
@@ -131,13 +238,16 @@ export const dataEnrichmentApi = {
 
   updateJobStatus: async (
     id: string,
-    status: 'PENDING' | 'IN-PROGRESS' | 'SUSPENDED' | 'CLONED',
+    status: 'pending' | 'approved' | 'in-progress' | 'rejected',
+    type: 'PULL' | 'PUSH',
   ): Promise<{ success: boolean; message: string }> => {
     try {
       const queryParams = new URLSearchParams();
       queryParams.append('status', status);
-      queryParams.append('type', 'PULL'); // Assuming PULL type for now
+      queryParams.append('type', type.toLowerCase()); // Convert to lowercase to match backend ConfigType enum
 
+      console.log(`Updating job ${id} status to ${status} for type ${type} (sent as ${type.toLowerCase()})`);
+      
       return await apiRequest<{ success: boolean; message: string }>(
         `${API_BASE_URL}/job/update/status/${id}?${queryParams.toString()}`,
         {
@@ -153,11 +263,14 @@ export const dataEnrichmentApi = {
   updateJobActivation: async (
     id: string,
     isActive: boolean,
+    type: 'PULL' | 'PUSH',
   ): Promise<{ success: boolean; message: string }> => {
     try {
       const queryParams = new URLSearchParams();
       queryParams.append('status', isActive ? 'active' : 'in-active');
-      queryParams.append('type', 'PULL'); // Assuming PULL type for now
+      queryParams.append('type', type.toLowerCase()); // Convert to lowercase to match backend ConfigType enum
+
+      console.log(`Updating job ${id} activation to ${isActive ? 'active' : 'inactive'} for type ${type} (sent as ${type.toLowerCase()})`);
 
       return await apiRequest<{ success: boolean; message: string }>(
         `${API_BASE_URL}/job/update/activation/${id}?${queryParams.toString()}`,
@@ -207,7 +320,7 @@ export const dataEnrichmentApi = {
     }
   },
 
-  getSchedule: async (id: number): Promise<ScheduleResponse> => {
+  getSchedule: async (id: string): Promise<ScheduleResponse> => {
     try {
       return await apiRequest<ScheduleResponse>(
         `${API_BASE_URL}/scheduler/${id}`,
@@ -219,7 +332,7 @@ export const dataEnrichmentApi = {
   },
 
   updateSchedule: async (
-    id: number,
+    id: string,
     updates: Partial<ScheduleRequest>,
   ): Promise<{ success: boolean; message: string }> => {
     try {

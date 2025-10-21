@@ -7,19 +7,26 @@ interface DataEnrichmentFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (formData: any) => void;
+  editMode?: boolean;
+  jobId?: string;
+  jobType?: 'pull' | 'push';
 }
 export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = ({
   isOpen,
   onClose,
-  onSave
+  onSave,
+  editMode = false,
+  jobId,
+  jobType
 }) => {
   const [currentStep, setCurrentStep] = useState<'config' | 'preview' | 'summary'>('config');
-  const [configurationType, setConfigurationType] = useState<'pull' | 'push'>('pull');
+  const [configurationType, setConfigurationType] = useState<'pull' | 'push'>(jobType || 'pull');
+  const [isLoadingJob, setIsLoadingJob] = useState(false);
   
   // Schedule selection state
   const [availableSchedules, setAvailableSchedules] = useState<ScheduleResponse[]>([]);
   const [schedulesLoading, setSchedulesLoading] = useState(false);
-  const [selectedScheduleId, setSelectedScheduleId] = useState<number | null>(null);
+  const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(null);
   
   // Schedule creation state
   const [showCreateSchedule, setShowCreateSchedule] = useState(false);
@@ -59,6 +66,7 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
 
     // Push configuration fields
     endpointPath: '',
+    endpointVersion: '/v1/enrich', // Default version
     ingestMode: 'append',
     // Common fields
 
@@ -96,6 +104,47 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
 
     loadSchedules();
   }, [isOpen]);
+
+  // Load job data when in edit mode
+  useEffect(() => {
+    const loadJobData = async () => {
+      if (!isOpen || !editMode || !jobId) return;
+      
+      try {
+        setIsLoadingJob(true);
+        setCreateError(null);
+        console.log(`Loading job data for ${jobId} (${jobType})`);
+        
+        const job = await dataEnrichmentApi.getJob(jobId, jobType?.toUpperCase() as 'PULL' | 'PUSH');
+        console.log('Loaded job data:', job);
+        
+        // Populate form with job data
+        setFormData({
+          ...formData,
+          name: job.endpoint_name,
+          description: job.description || '',
+          configurationType: job.config_type.toLowerCase() as 'pull' | 'push',
+          sourceType: job.source_type?.toLowerCase() || 'sftp',
+          // Populate other fields based on job type and source type
+          targetTable: job.table_name || '',
+        });
+        
+        if ('schedule_id' in job) {
+          setSelectedScheduleId(job.schedule_id);
+        }
+        
+        setConfigurationType(job.config_type.toLowerCase() as 'pull' | 'push');
+        
+      } catch (error) {
+        console.error('Failed to load job data:', error);
+        setCreateError('Failed to load job data. Please try again.');
+      } finally {
+        setIsLoadingJob(false);
+      }
+    };
+
+    loadJobData();
+  }, [isOpen, editMode, jobId, jobType]);
 
   const handleCreateSchedule = async () => {
     try {
@@ -172,7 +221,7 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
       }
     } else if (configurationType === 'push') {
       // Required fields for push configuration
-      if (!formData.endpointPath || !formData.targetCollection) {
+      if (!formData.endpointPath || !formData.endpointVersion || !formData.targetCollection) {
         return false;
       }
     }
@@ -274,7 +323,7 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
       // Build test payload based on current form data
       const testPayload = {
         endpoint_name: formData.name || 'test-connection',
-        schedule_id: selectedScheduleId || 1, // Use dummy schedule for testing
+        schedule_id: selectedScheduleId || availableSchedules[0]?.id || '', // Use first available schedule for testing
         source_type: formData.sourceType.toUpperCase() as 'HTTP' | 'SFTP',
         description: 'Connection test',
         table_name: 'test_table',
@@ -389,6 +438,10 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
           setCreateError('Please provide an endpoint path for push configuration');
           return;
         }
+        if (!formData.endpointVersion) {
+          setCreateError('Please provide a version for the endpoint');
+          return;
+        }
       } else {
         // Pull configuration validation
         if (formData.sourceType === 'http') {
@@ -414,7 +467,7 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
       // Build the request payload based on source type
       const basePayload = {
         endpoint_name: formData.name,
-        schedule_id: selectedScheduleId || 1, // Fallback to schedule ID 1 if none selected
+        schedule_id: selectedScheduleId!, // Required - validation ensures it's set
         source_type: formData.sourceType.toUpperCase() as 'HTTP' | 'SFTP',
         description: formData.description,
         table_name: formData.targetTable || formData.name.toLowerCase().replace(/\s+/g, '_'),
@@ -432,16 +485,22 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
 
       if (configurationType === 'push') {
         // Push job payload - much simpler structure
-        // Clean up the endpoint path by removing leading/trailing slashes
+        // Clean up version and path by removing leading/trailing slashes
+        const cleanVersion = formData.endpointVersion.replace(/^\/+|\/+$/g, '');
         const cleanPath = formData.endpointPath.replace(/^\/+|\/+$/g, '');
+        
+        // Ensure version starts with / if not already
+        const versionPath = cleanVersion.startsWith('/') ? cleanVersion : `/${cleanVersion}`;
+        // Ensure path starts with / if not already
+        const fullPath = cleanPath.startsWith('/') ? cleanPath : `/${cleanPath}`;
         
         payload = {
           endpoint_name: formData.name,
-          path: `/v1/enrich/${cleanPath}`,
+          path: versionPath + fullPath, // version + path
           description: formData.description,
           table_name: formData.targetTable || formData.name.toLowerCase().replace(/\s+/g, '_'),
           mode: formData.ingestMode as 'append' | 'replace',
-          version: '1.0.0'
+          version: cleanVersion
         };
       } else if (formData.sourceType === 'http') {
         // Pull HTTP configuration
@@ -478,15 +537,26 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
       // Validate payload before sending
       console.log('Final payload being sent:', JSON.stringify(payload, null, 2));
       
-      // Create the job using the API
-      const response = configurationType === 'pull' 
-        ? await dataEnrichmentApi.createPullJob(payload)
-        : await dataEnrichmentApi.createPushJob(payload);
+      let response;
       
-      // Show success message briefly before closing
-      setCreateSuccess(`Data enrichment endpoint "${formData.name}" created successfully!`);
+      // Create or update the job based on mode
+      if (editMode && jobId) {
+        // Update existing job
+        response = configurationType === 'pull' 
+          ? await dataEnrichmentApi.updatePullJob(jobId, payload)
+          : await dataEnrichmentApi.updatePushJob(jobId, payload);
+        
+        setCreateSuccess(`Data enrichment endpoint "${formData.name}" updated successfully!`);
+      } else {
+        // Create new job
+        response = configurationType === 'pull' 
+          ? await dataEnrichmentApi.createPullJob(payload)
+          : await dataEnrichmentApi.createPushJob(payload);
+        
+        setCreateSuccess(`Data enrichment endpoint "${formData.name}" created successfully!`);
+      }
       
-      // Call the parent's onSave with the created job
+      // Call the parent's onSave with the created/updated job
       onSave(response);
       
       // Close modal after a brief delay to show success message
@@ -568,7 +638,7 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
             id="schedule"
             name="schedule"
             value={selectedScheduleId || ''}
-            onChange={(e) => setSelectedScheduleId(e.target.value ? parseInt(e.target.value) : null)}
+            onChange={(e) => setSelectedScheduleId(e.target.value || null)}
             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             required
           >
@@ -931,13 +1001,40 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
           </label>
           <input type="text" id="name" name="name" value={formData.name} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="Enter endpoint name" required data-id="element-895" />
         </div>
-        <div data-id="element-896">
-          <label htmlFor="endpointPath" className="block text-sm font-medium text-gray-700 mb-1" data-id="element-897">
-            API Path Pattern <span className="text-red-500">*</span>
-          </label>
-          <div className="flex items-center" data-id="element-898">
-            <span className="text-gray-500 mr-1" data-id="element-899">/v1/enrich/</span>
-            <input type="text" id="endpointPath" name="endpointPath" value={formData.endpointPath} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="customers/data" required data-id="element-900" />
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4" data-id="element-896">
+          <div data-id="element-896a">
+            <label htmlFor="endpointVersion" className="block text-sm font-medium text-gray-700 mb-1" data-id="element-897a">
+              Version <span className="text-red-500">*</span>
+            </label>
+            <input 
+              type="text" 
+              id="endpointVersion" 
+              name="endpointVersion" 
+              value={formData.endpointVersion} 
+              onChange={handleInputChange} 
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" 
+              placeholder="/v1/enrich" 
+              required 
+              data-id="element-900a" 
+            />
+            <p className="mt-1 text-xs text-gray-500">e.g., /v1/enrich, /v2/enrich</p>
+          </div>
+          <div className="md:col-span-3" data-id="element-896b">
+            <label htmlFor="endpointPath" className="block text-sm font-medium text-gray-700 mb-1" data-id="element-897">
+              API Path <span className="text-red-500">*</span>
+            </label>
+            <input 
+              type="text" 
+              id="endpointPath" 
+              name="endpointPath" 
+              value={formData.endpointPath} 
+              onChange={handleInputChange} 
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" 
+              placeholder="/customers/data" 
+              required 
+              data-id="element-900" 
+            />
+            <p className="mt-1 text-xs text-gray-500">Full path: {formData.endpointVersion || '/v1/enrich'}{formData.endpointPath || '/customers/data'}</p>
           </div>
         </div>
       </div>
@@ -1115,11 +1212,11 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
       </div>
       <div className="text-center" data-id="element-993">
         <h3 className="text-lg font-medium text-gray-900 mb-2" data-id="element-994">
-          Ready to Create Endpoint
+          {editMode ? 'Ready to Update Endpoint' : 'Ready to Create Endpoint'}
         </h3>
         <p className="text-gray-500" data-id="element-995">
           Your data enrichment endpoint has been validated and is ready to be
-          created.
+          {editMode ? ' updated.' : ' created.'}
         </p>
       </div>
       <div className="bg-gray-50 p-4 rounded-md" data-id="element-996">
@@ -1193,7 +1290,7 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
                 <div className="col-span-1 text-sm font-medium text-gray-500" data-id="element-1023">
                   API Endpoint:
                 </div>
-                <div className="col-span-2 text-sm text-gray-900" data-id="element-1024">{`/v1/enrich/${formData.endpointPath}`}</div>
+                <div className="col-span-2 text-sm text-gray-900" data-id="element-1024">{`/v1/enrich/${formData.endpointVersion}/${formData.endpointPath}`}</div>
               </div>
               <div className="grid grid-cols-3 gap-4" data-id="element-1025">
                 <div className="col-span-1 text-sm font-medium text-gray-500" data-id="element-1026">
@@ -1236,7 +1333,7 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
           Back
         </Button>
         <Button variant="primary" onClick={handleSave} disabled={isCreating} data-id="element-1045">
-          {isCreating ? 'Creating Endpoint...' : 'Create Endpoint'}
+          {isCreating ? (editMode ? 'Updating Endpoint...' : 'Creating Endpoint...') : (editMode ? 'Update Endpoint' : 'Create Endpoint')}
         </Button>
       </div>
     </div>;
@@ -1247,15 +1344,24 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
       <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden relative z-10 shadow-2xl" data-id="element-1047">
         <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200" data-id="element-1048">
           <h2 className="text-xl font-semibold text-gray-800" data-id="element-1049">
-            Define New Data Enrichment Endpoint
+            {editMode ? 'Edit Data Enrichment Endpoint' : 'Define New Data Enrichment Endpoint'}
           </h2>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700" data-id="element-1050">
             <XIcon size={24} data-id="element-1051" />
           </button>
         </div>
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]" data-id="element-1052">
-          {currentStep === 'config' && renderConfigStep()}
-          {currentStep === 'summary' && renderSummaryStep()}
+          {isLoadingJob ? (
+            <div className="flex justify-center items-center py-12">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+              <span className="ml-3 text-gray-600">Loading job data...</span>
+            </div>
+          ) : (
+            <>
+              {currentStep === 'config' && renderConfigStep()}
+              {currentStep === 'summary' && renderSummaryStep()}
+            </>
+          )}
         </div>
       </div>
     </div>;
