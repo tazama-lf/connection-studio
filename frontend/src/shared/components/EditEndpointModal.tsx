@@ -15,7 +15,7 @@ import type {
   AllowedFunctionName
 } from '../types/functions.types';
 import { FUNCTION_CONFIGS } from '../types/functions.types';
-import { isApprover } from '../../utils/roleUtils';
+import { isApprover, isEditor } from '../../utils/roleUtils';
 
 // Function Selection Form Component
 interface FunctionSelectionFormProps {
@@ -122,6 +122,9 @@ interface EditEndpointModalProps {
   onSuccess?: () => void; // Callback when config is successfully created/updated
   isCloneMode?: boolean; // When true, load config data but treat as new config creation
   readOnly?: boolean; // When true, modal is in read-only mode for approvers
+  onRevertToEditor?: () => void; // For approvers to send back to editor
+  onSendForDeployment?: () => void; // For approvers to send for deployment
+  onNextStep?: () => void; // For approvers to progress to next workflow step
 }
  const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
   isOpen,
@@ -129,7 +132,10 @@ interface EditEndpointModalProps {
   endpointId,
   onSuccess,
   isCloneMode = false,
-  readOnly = false
+  readOnly = false,
+  onRevertToEditor,
+  onSendForDeployment,
+  onNextStep
 }) => {
   const isNewEndpoint = endpointId === -1;
   const isCloning = isCloneMode && endpointId !== -1;
@@ -1070,6 +1076,16 @@ interface EditEndpointModalProps {
     }
   };
 
+  // Navigation functions for view mode
+  const handleNext = () => {
+    const currentIndex = steps.findIndex(s => s.id === currentStep);
+    if (currentIndex < steps.length - 1) {
+      setError(null); // Clear any previous errors when navigating
+      setCurrentStep(steps[currentIndex + 1].id as any);
+      onNextStep?.(); // Call parent callback if provided
+    }
+  };
+
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -1371,6 +1387,23 @@ interface EditEndpointModalProps {
                     'Save and Next'
                   )}
                 </Button>
+              )}
+              {/* Show Next button for approvers and editors in read-only mode on all steps */}
+              {readOnly && (isApprover(user?.claims || []) || isEditor(user?.claims || [])) && (
+                <div className="space-x-4">
+                  {(() => {
+                    const currentIndex = steps.findIndex(s => s.id === currentStep);
+                    return (
+                      <>
+                        {currentIndex < steps.length - 1 && (
+                          <Button variant="primary" onClick={handleNext}>
+                            Next
+                          </Button>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
               )}
             </div>
           )}

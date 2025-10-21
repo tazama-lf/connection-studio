@@ -418,7 +418,8 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
         source_type: formData.sourceType.toUpperCase() as 'HTTP' | 'SFTP',
         description: formData.description,
         table_name: formData.targetTable || formData.name.toLowerCase().replace(/\s+/g, '_'),
-        mode: formData.ingestMode as 'append' | 'replace'
+        mode: formData.ingestMode as 'append' | 'replace',
+        version: '1.0.0'
       };
       
       // Additional validation
@@ -431,12 +432,16 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
 
       if (configurationType === 'push') {
         // Push job payload - much simpler structure
+        // Clean up the endpoint path by removing leading/trailing slashes
+        const cleanPath = formData.endpointPath.replace(/^\/+|\/+$/g, '');
+        
         payload = {
           endpoint_name: formData.name,
-          path: `/v1/enrich/${formData.endpointPath}`,
+          path: `/v1/enrich/${cleanPath}`,
           description: formData.description,
           table_name: formData.targetTable || formData.name.toLowerCase().replace(/\s+/g, '_'),
-          mode: formData.ingestMode as 'append' | 'replace'
+          mode: formData.ingestMode as 'append' | 'replace',
+          version: '1.0.0'
         };
       } else if (formData.sourceType === 'http') {
         // Pull HTTP configuration

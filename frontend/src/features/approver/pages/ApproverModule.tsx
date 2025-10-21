@@ -12,6 +12,7 @@ import { RejectionDialog } from '../../../shared/components/RejectionDialog';
 import { ConfigReviewModal } from '../../../shared/components/ConfigReviewModal';
 import { ChangeRequestDialog } from '../../../shared/components/ChangeRequestDialog';
 import { useAuth } from '../../auth/contexts/AuthContext';
+import { flowableApi } from '../../../shared/services/flowableApi';
 
 const ApproverModule: React.FC = () => {
   const [editingEndpointId, setEditingEndpointId] = useState<number | null>(null);
@@ -176,6 +177,49 @@ const ApproverModule: React.FC = () => {
     }
   };
 
+  const handleNextStep = async (configId: number) => {
+    try {
+      console.log('🚀 handleNextStep - Starting next step for config:', configId);
+      
+      // First, get the current tasks for the approver role
+      const tasksResponse = await flowableApi.getTasksForRole('approver');
+      console.log('📨 handleNextStep - Tasks response:', tasksResponse);
+      
+      if (!tasksResponse.success || !tasksResponse.tasks || tasksResponse.tasks.length === 0) {
+        console.log('❌ handleNextStep - No active tasks found for approver');
+        showError('No active workflow tasks found for your role');
+        return;
+      }
+      
+      // Find the task associated with this config
+      // Note: We need to match by process instance or some other identifier
+      // For now, we'll complete the first available task (this may need refinement)
+      const taskToComplete = tasksResponse.tasks[0];
+      console.log('📨 handleNextStep - Completing task:', taskToComplete);
+      
+      const completeResponse = await flowableApi.completeTask({
+        taskId: taskToComplete.id,
+        comment: 'Moving to next step in approval workflow'
+      });
+      
+      console.log('📨 handleNextStep - Complete task response:', completeResponse);
+      
+      if (completeResponse.success) {
+        console.log('✅ handleNextStep - Task completed successfully');
+        showSuccess('Workflow progressed to next step successfully');
+        setRefreshKey(prev => prev + 1);
+        // Close the modal after successful progression
+        handleCloseModal();
+      } else {
+        console.log('❌ handleNextStep - Task completion failed:', completeResponse.message);
+        showError(completeResponse.message || 'Failed to progress workflow');
+      }
+    } catch (error) {
+      console.error('💥 handleNextStep - Exception occurred:', error);
+      showError('Failed to progress workflow to next step');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <AuthHeader title="DEMS - Configuration Approval" showBackButton={true} />
@@ -235,6 +279,7 @@ const ApproverModule: React.FC = () => {
           readOnly={true}
           onRevertToEditor={() => editingConfig && handleRevertToEditor(editingConfig)}
           onSendForDeployment={() => handleSendForApproval(editingEndpointId)}
+          onNextStep={() => handleNextStep(editingEndpointId)}
         />
       )}
 

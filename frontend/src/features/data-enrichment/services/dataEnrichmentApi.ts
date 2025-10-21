@@ -11,6 +11,7 @@ import type {
 } from '../types';
 
 const DATA_ENRICHMENT_BASE_URL = ENV.DATA_ENRICHMENT_SERVICE_URL;
+const API_BASE_URL = ENV.API_BASE_URL;
 
 export const dataEnrichmentApi = {
   // Job endpoints
@@ -20,7 +21,7 @@ export const dataEnrichmentApi = {
     console.log('Creating pull job with data:', JSON.stringify(data, null, 2));
     try {
       return await apiRequest<DataEnrichmentJobResponse>(
-        `${DATA_ENRICHMENT_BASE_URL}/job/create/pull`,
+        `${API_BASE_URL}/job/create/pull`,
         {
           method: 'POST',
           body: JSON.stringify(data),
@@ -38,7 +39,7 @@ export const dataEnrichmentApi = {
     console.log('Creating push job with data:', JSON.stringify(data, null, 2));
     try {
       return await apiRequest<DataEnrichmentJobResponse>(
-        `${DATA_ENRICHMENT_BASE_URL}/job/create/push`,
+        `${API_BASE_URL}/job/create/push`,
         {
           method: 'POST',
           body: JSON.stringify(data),
@@ -61,8 +62,8 @@ export const dataEnrichmentApi = {
     if (page) queryParams.append('page', page.toString());
     if (limit) queryParams.append('limit', limit.toString());
 
-    const url = `${DATA_ENRICHMENT_BASE_URL}/job/all${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
-    console.log('Base URL:', DATA_ENRICHMENT_BASE_URL);
+    const url = `${API_BASE_URL}/job/all${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    console.log('Base URL:', API_BASE_URL);
     console.log('Final request URL:', url);
 
     try {
@@ -80,10 +81,30 @@ export const dataEnrichmentApi = {
   getJob: async (id: string): Promise<DataEnrichmentJobResponse> => {
     try {
       return await apiRequest<DataEnrichmentJobResponse>(
-        `${DATA_ENRICHMENT_BASE_URL}/job/${id}`,
+        `${API_BASE_URL}/job/${id}`,
       );
     } catch (error) {
       console.error(`Failed to fetch job ${id}:`, error);
+      throw error;
+    }
+  },
+
+  getJobsByStatus: async (
+    status: 'PENDING' | 'IN-PROGRESS' | 'SUSPENDED' | 'CLONED',
+    page?: number,
+    limit?: number,
+  ): Promise<JobListResponse> => {
+    const queryParams = new URLSearchParams();
+    queryParams.append('status', status);
+    if (page) queryParams.append('page', page.toString());
+    if (limit) queryParams.append('limit', limit.toString());
+
+    try {
+      return await apiRequest<JobListResponse>(
+        `${API_BASE_URL}/job/get/status?${queryParams.toString()}`,
+      );
+    } catch (error) {
+      console.error(`Failed to fetch jobs by status ${status}:`, error);
       throw error;
     }
   },
@@ -96,7 +117,7 @@ export const dataEnrichmentApi = {
   ): Promise<{ success: boolean; message: string }> => {
     try {
       return await apiRequest<{ success: boolean; message: string }>(
-        `${DATA_ENRICHMENT_BASE_URL}/job/${id}`,
+        `${API_BASE_URL}/job/${id}`,
         {
           method: 'PATCH',
           body: JSON.stringify(updates),
@@ -108,81 +129,93 @@ export const dataEnrichmentApi = {
     }
   },
 
-  // Schedule endpoints
+  updateJobStatus: async (
+    id: string,
+    status: 'PENDING' | 'IN-PROGRESS' | 'SUSPENDED' | 'CLONED',
+  ): Promise<{ success: boolean; message: string }> => {
+    try {
+      const queryParams = new URLSearchParams();
+      queryParams.append('status', status);
+      queryParams.append('type', 'PULL'); // Assuming PULL type for now
+
+      return await apiRequest<{ success: boolean; message: string }>(
+        `${API_BASE_URL}/job/update/status/${id}?${queryParams.toString()}`,
+        {
+          method: 'PATCH',
+        },
+      );
+    } catch (error) {
+      console.error(`Failed to update job status ${id}:`, error);
+      throw error;
+    }
+  },
+
+  updateJobActivation: async (
+    id: string,
+    isActive: boolean,
+  ): Promise<{ success: boolean; message: string }> => {
+    try {
+      const queryParams = new URLSearchParams();
+      queryParams.append('status', isActive ? 'active' : 'in-active');
+      queryParams.append('type', 'PULL'); // Assuming PULL type for now
+
+      return await apiRequest<{ success: boolean; message: string }>(
+        `${API_BASE_URL}/job/update/activation/${id}?${queryParams.toString()}`,
+        {
+          method: 'PATCH',
+        },
+      );
+    } catch (error) {
+      console.error(`Failed to update job activation ${id}:`, error);
+      throw error;
+    }
+  },
+
+    // Schedule endpoints
   createSchedule: async (
     data: ScheduleRequest,
   ): Promise<ScheduleCreateResponse> => {
-    const url = `${DATA_ENRICHMENT_BASE_URL}/api/scheduler/create`;
-    console.log('Creating schedule at:', url, 'with data:', data);
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data),
-    });
-
-    console.log('Create schedule API response status:', response.status);
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error('Create schedule API error:', errorData);
-      throw new Error(
-        errorData.message || `Failed to create schedule: ${response.status}`,
+    try {
+      return await apiRequest<ScheduleCreateResponse>(
+        `${API_BASE_URL}/scheduler/create`,
+        {
+          method: 'POST',
+          body: JSON.stringify(data),
+        },
       );
+    } catch (error) {
+      console.error('Create schedule error:', error);
+      throw error;
     }
-
-    const responseData = await response.json();
-    console.log('Create schedule API response data:', responseData);
-    return responseData;
   },
 
   getAllSchedules: async (
     page = 1,
     limit = 50,
   ): Promise<ScheduleResponse[]> => {
-    const url = `${DATA_ENRICHMENT_BASE_URL}/api/scheduler/all?page=${page}&limit=${limit}`;
-    console.log('Fetching schedules from:', url);
+    const queryParams = new URLSearchParams();
+    queryParams.append('page', page.toString());
+    queryParams.append('limit', limit.toString());
 
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    console.log('Schedule API response status:', response.status);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Schedule API error:', errorText);
-      throw new Error(
-        `Failed to fetch schedules: ${response.status} - ${errorText}`,
+    try {
+      return await apiRequest<ScheduleResponse[]>(
+        `${API_BASE_URL}/scheduler/all?${queryParams.toString()}`,
       );
+    } catch (error) {
+      console.error('Get all schedules error:', error);
+      throw error;
     }
-
-    const data = await response.json();
-    console.log('Schedule API response data:', data);
-    return data;
   },
 
   getSchedule: async (id: number): Promise<ScheduleResponse> => {
-    const response = await fetch(
-      `${DATA_ENRICHMENT_BASE_URL}/api/scheduler/${id}`,
-      {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      },
-    );
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch schedule: ${response.status}`);
+    try {
+      return await apiRequest<ScheduleResponse>(
+        `${API_BASE_URL}/scheduler/${id}`,
+      );
+    } catch (error) {
+      console.error(`Failed to fetch schedule ${id}:`, error);
+      throw error;
     }
-
-    return response.json();
   },
 
   updateSchedule: async (
@@ -191,7 +224,7 @@ export const dataEnrichmentApi = {
   ): Promise<{ success: boolean; message: string }> => {
     try {
       return await apiRequest<{ success: boolean; message: string }>(
-        `${DATA_ENRICHMENT_BASE_URL}/api/scheduler/${id}`,
+        `${API_BASE_URL}/scheduler/update/${id}`,
         {
           method: 'PATCH',
           body: JSON.stringify(updates),

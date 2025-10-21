@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { AuthHeader } from '../../../shared/components/AuthHeader';
 import { Button } from '../../../shared/components/Button';
-import { Plus } from 'lucide-react';
+import { Plus, Filter } from 'lucide-react';
 
 // New job management components
 import JobList from '../components/JobList';
 import JobDetailsModal from '../components/JobDetailsModal';
 import { DataEnrichmentFormModal } from '../../../shared/components/DataEnrichmentFormModal';
 import { dataEnrichmentApi } from '../services/dataEnrichmentApi';
-import type { DataEnrichmentJobResponse } from '../types';
+import type { DataEnrichmentJobResponse, JobStatus } from '../types';
 import { useToast } from '../../../shared/providers/ToastProvider';
 import { UI_CONFIG } from '../../../shared/config/app.config';
 
@@ -22,6 +22,7 @@ const DataEnrichmentModule: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(UI_CONFIG.pagination.defaultPageSize);
   const [totalItems, setTotalItems] = useState(0);
+  const [statusFilter, setStatusFilter] = useState<JobStatus | 'ALL'>('ALL');
   
   // Job details modal state
   const [showJobDetails, setShowJobDetails] = useState(false);
@@ -31,15 +32,23 @@ const DataEnrichmentModule: React.FC = () => {
   // Load jobs on component mount and when pagination changes
   useEffect(() => {
     loadJobs();
-  }, [currentPage, itemsPerPage]);
+  }, [currentPage, itemsPerPage, statusFilter]);
 
   const loadJobs = async () => {
     console.log('=== LOAD JOBS DEBUG ===');
-    console.log('loadJobs called, currentPage:', currentPage, 'itemsPerPage:', itemsPerPage);
+    console.log('loadJobs called, currentPage:', currentPage, 'itemsPerPage:', itemsPerPage, 'statusFilter:', statusFilter);
     setJobsLoading(true);
     try {
-      // Fetch jobs from the data enrichment service
-      const response = await dataEnrichmentApi.getAllJobs(currentPage, itemsPerPage);
+      let response;
+
+      if (statusFilter === 'ALL') {
+        // Fetch all jobs
+        response = await dataEnrichmentApi.getAllJobs(currentPage, itemsPerPage);
+      } else {
+        // Fetch jobs by status
+        response = await dataEnrichmentApi.getJobsByStatus(statusFilter, currentPage, itemsPerPage);
+      }
+
       console.log('=== API RESPONSE ===');
       console.log('Full response:', response);
       console.log('Jobs array length:', response.jobs?.length || 0);
@@ -47,14 +56,14 @@ const DataEnrichmentModule: React.FC = () => {
       console.log('Current page from API:', response.page);
       console.log('Limit from API:', response.limit);
       console.log('Total pages from API:', response.totalPages);
-      
+
       setJobs(response.jobs || []);
       setTotalItems(response.total || 0);
-      
+
       console.log('=== STATE UPDATE ===');
       console.log('Jobs set to state:', response.jobs?.length || 0);
       console.log('Total items set to state:', response.total || 0);
-      
+
       // Calculate pagination values
       const calculatedTotalPages = Math.ceil((response.total || 0) / itemsPerPage);
       console.log('Calculated total pages:', calculatedTotalPages);
@@ -65,7 +74,7 @@ const DataEnrichmentModule: React.FC = () => {
       console.error('Error message:', error instanceof Error ? error.message : 'Unknown error');
       setJobs([]); // Ensure jobs is always an array even on error
       setTotalItems(0);
-      
+
       // Show user-friendly error message
       if (error instanceof TypeError && error.message.includes('fetch')) {
         console.warn('Cannot connect to data enrichment service. Using empty job list.');
@@ -153,6 +162,33 @@ const DataEnrichmentModule: React.FC = () => {
           >
             Define New Endpoint
           </Button>
+        </div>
+
+        {/* Status Filter */}
+        <div className="flex items-center justify-between mb-6 gap-4">
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <Filter size={16} className="text-gray-500" />
+              <span className="text-sm font-medium text-gray-700">Filter by Status:</span>
+            </div>
+            <select
+              value={statusFilter}
+              onChange={(e) => {
+                setStatusFilter(e.target.value as JobStatus | 'ALL');
+                setCurrentPage(1); // Reset to first page when filter changes
+              }}
+              className="px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="ALL">All Statuses</option>
+              <option value="PENDING">Ready for Approval</option>
+              <option value="IN-PROGRESS">In Progress</option>
+              <option value="SUSPENDED">Suspended</option>
+              <option value="CLONED">Cloned</option>
+            </select>
+          </div>
+          <div className="text-sm text-gray-600">
+            {totalItems > 0 && `Total: ${totalItems} jobs`}
+          </div>
         </div>
         
         <JobList

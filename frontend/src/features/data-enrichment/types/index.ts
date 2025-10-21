@@ -94,6 +94,7 @@ export interface CreatePullJobDto {
   file?: FileConfig; // Only required for SFTP
   table_name: string;
   mode?: 'append' | 'replace';
+  version: string;
 }
 
 export interface CreatePushJobDto {
@@ -102,6 +103,7 @@ export interface CreatePushJobDto {
   description: string;
   table_name: string;
   mode?: 'append' | 'replace';
+  version: string;
 }
 
 // Job creation request (without id and status) - Legacy for compatibility

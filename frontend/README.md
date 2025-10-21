@@ -57,7 +57,7 @@ The Tazama Connection Studio (TCS) is a comprehensive web-based platform designe
 ```bash
 # Clone the repository
 git clone <repository-url>
-cd connection-studio/frontend
+cd postgres/frontend
 
 # Install dependencies
 npm install
