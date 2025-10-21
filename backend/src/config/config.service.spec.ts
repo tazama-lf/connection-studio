@@ -400,7 +400,7 @@ describe('ConfigService', () => {
       repository.findConfigById.mockResolvedValue(mockConfig);
       const updatedConfig = {
         ...mockConfig,
-        mapping: [{ source: 'amount', destination: 'transactionAmount' }],
+        mapping: [{ source: ['amount'], destination: 'transactionAmount' }],
       };
       repository.findConfigById.mockResolvedValueOnce(mockConfig);
       repository.findConfigById.mockResolvedValueOnce(updatedConfig);
@@ -459,14 +459,14 @@ describe('ConfigService', () => {
       const configWithMapping = {
         ...mockConfig,
         mapping: [
-          { source: 'amount', destination: 'transactionAmount' },
-          { source: 'currency', destination: 'transactionCurrency' },
+          { source: ['amount'], destination: 'transactionAmount' },
+          { source: ['currency'], destination: 'transactionCurrency' },
         ],
       };
       repository.findConfigById.mockResolvedValueOnce(configWithMapping);
       const updatedConfig = {
         ...configWithMapping,
-        mapping: [{ source: 'currency', destination: 'transactionCurrency' }],
+        mapping: [{ source: ['currency'], destination: 'transactionCurrency' }],
       };
       repository.findConfigById.mockResolvedValueOnce(updatedConfig);
       const result = await service.removeMapping(

@@ -1056,7 +1056,7 @@ export class ConfigService {
     // One-to-many (split logic)
     if (dto.source && dto.destinations && dto.destinations.length > 0) {
       const mapping: any = {
-        source: dto.source,
+        source: [dto.source], // Always use array format for consistency
         destination: dto.destinations,
       };
       if (dto.prefix !== undefined) {
@@ -1070,7 +1070,7 @@ export class ConfigService {
     // Simple mapping
     if (dto.source && dto.destination) {
       const mapping: any = {
-        source: dto.source,
+        source: [dto.source], // Always use array format for consistency
         destination: dto.destination,
       };
       if (dto.prefix !== undefined) {
@@ -1112,25 +1112,14 @@ export class ConfigService {
 
     const allPaths = this.extractAllPathsFromSchema(schema);
 
-    // Many-to-one (concat logic)
-    if (Array.isArray(mapping.source)) {
+    // Validate source fields (now always an array)
+    if (mapping.source && Array.isArray(mapping.source)) {
       for (const src of mapping.source) {
         if (!allPaths.includes(src)) {
           throw new BadRequestException(
             `Source field '${src}' not found in schema`,
           );
         }
-      }
-    } else {
-      // One-to-one or one-to-many
-      if (
-        typeof mapping.source === 'string' &&
-        mapping.source &&
-        !allPaths.includes(mapping.source)
-      ) {
-        throw new BadRequestException(
-          `Source field '${mapping.source}' not found in schema`,
-        );
       }
     }
 

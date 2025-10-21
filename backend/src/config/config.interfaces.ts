@@ -32,7 +32,7 @@ export interface UpdateConfigDto {
   fieldAdjustments?: AdjustFieldDto[];
 }
 export interface FieldMapping {
-  source?: string | string[]; // Optional when using constants
+  source?: string[]; // Always an array for consistency, optional when using constants
   destination: string | string[];
   transformation?: 'NONE' | 'CONCAT' | 'SUM' | 'SPLIT' | 'CONSTANT' | 'MATH';
   delimiter?: string; // Used for one-to-many mapping to split source value

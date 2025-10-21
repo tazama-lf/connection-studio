@@ -429,11 +429,8 @@ export class SimulationService {
 
     if (config.mapping && Array.isArray(config.mapping)) {
       for (const mapping of config.mapping) {
-        const sources = Array.isArray(mapping.source)
-          ? mapping.source
-          : mapping.source
-            ? [mapping.source]
-            : [];
+        // Source is always an array for consistency
+        const sources = mapping.source || [];
 
         const destination = Array.isArray(mapping.destination)
           ? mapping.destination[0]
@@ -618,11 +615,8 @@ export class SimulationService {
 
     for (let i = 0; i < mappings.length; i++) {
       const mapping = mappings[i];
-      const sources = Array.isArray(mapping.source)
-        ? mapping.source
-        : mapping.source
-          ? [mapping.source]
-          : [];
+      // Source is always an array for consistency
+      const sources = mapping.source || [];
 
       if (
         mapping.transformation === 'CONSTANT' ||
