@@ -133,8 +133,6 @@ const DEMSModule: React.FC = () => {
         />
       )}
 
-
-
       {/* Version History Modal */}
       {showVersionHistoryModal && selectedConfig && (
         <VersionHistoryModal

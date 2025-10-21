@@ -238,12 +238,7 @@ interface EditEndpointModalProps {
             console.log('  - mapping length:', config.mapping?.length);
             
             setExistingConfig(config);
-            
-            // Check if config is approved and show error immediately (only when not in read-only mode)
-            if (config.status === 'approved' && !readOnly) {
-              setError('This configuration has been approved and cannot be edited directly. Please clone the configuration to create a new version.');
-            }
-            
+
             // Pre-populate form data with existing config
             // For clone mode, adjust version and transaction type to indicate it's a clone
             const isCloning = isCloneMode && endpointId !== -1;
@@ -311,7 +306,10 @@ interface EditEndpointModalProps {
     console.log('🚀 handleNextStep called for step:', currentStep);
     console.log('🚀 createdEndpoint:', createdEndpoint);
     console.log('🚀 isNewEndpoint:', isNewEndpoint);
-    
+
+    // Clear any previous step-specific errors when navigating
+    setError(null);
+
     switch (currentStep) {
       case 'payload':
         // Check if payload step is saved and valid
@@ -320,6 +318,7 @@ interface EditEndpointModalProps {
           return;
         }
         console.log('✅ Moving from payload to mapping');
+        setError(null); // Clear any previous errors before moving to next step
         setCurrentStep('mapping');
         break;
       case 'mapping':
@@ -327,9 +326,11 @@ interface EditEndpointModalProps {
           showError('Please complete the mapping before proceeding');
           return;
         }
+        setError(null); // Clear any previous errors before moving to next step
         setCurrentStep('functions');
         break;
       case 'functions':
+        setError(null); // Clear any previous errors before moving to next step
         setCurrentStep('simulation');
         break;
       case 'simulation':
@@ -337,6 +338,7 @@ interface EditEndpointModalProps {
           showError('Please run and pass simulation before proceeding');
           return;
         }
+        setError(null); // Clear any previous errors before moving to next step
         setCurrentStep('deploy');
         break;
       default:
@@ -488,6 +490,7 @@ interface EditEndpointModalProps {
         console.log(`✅ Configuration ${actionWord} successfully! Changes reflected in database.`);
         
         // Move to next step
+        setError(null); // Clear any previous errors before moving to next step
         setCurrentStep('mapping');
       } else {
         const action = isNewEndpoint ? 'created' : 'updated';
@@ -539,6 +542,7 @@ interface EditEndpointModalProps {
       console.log('✅ Ready to proceed to functions step');
       
       // Move to next step
+      setError(null); // Clear any previous errors before moving to next step
       setCurrentStep('functions');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
@@ -659,6 +663,7 @@ interface EditEndpointModalProps {
 
   const handleProceedFromFunctions = () => {
     console.log('✅ Proceeding to simulation step with functions:', selectedFunctions);
+    setError(null); // Clear any previous errors before moving to next step
     setCurrentStep('simulation');
   };
 
@@ -670,6 +675,7 @@ interface EditEndpointModalProps {
     }
 
     // Simply move to the next step since simulation is handled by SimulationPanel
+    setError(null); // Clear any previous errors before moving to next step
     setCurrentStep('deploy');
   };
 
@@ -771,7 +777,16 @@ interface EditEndpointModalProps {
     }
   };
 
-  const handleSave = async () => {
+  const handleSaveAndNext = async () => {
+    console.log('🎯 handleSaveAndNext called for step:', currentStep);
+
+    // For deploy step, just call handleDeploy (no save needed)
+    if (currentStep === 'deploy') {
+      console.log('Deploy step - calling handleDeploy');
+      await handleDeploy();
+      return;
+    }
+
     // Validate all required fields before saving
     const validationErrors: string[] = [];
 
@@ -803,118 +818,258 @@ interface EditEndpointModalProps {
       return;
     }
 
-    // Save the current configuration to the database without advancing steps
-    // For editing existing configs, always save; for new configs, validate first
-    if (!createdEndpoint || !isNewEndpoint) {
+    setLoading(true);
+    setError(null);
 
-      try {
-        // Create configuration request using user-entered data
-        const createRequest: CreateConfigRequest = {
-          msgFam: endpointData.msgFam?.trim() || undefined,
-          transactionType: endpointData.transactionType,
-          version: endpointData.version,
-          contentType: endpointData.contentType as 'application/json' | 'application/xml',
-          payload: payload,
-        };
+    try {
+      // First, save the configuration to the database
+      let saveResponse: ConfigResponse;
 
-        // CRITICAL: Use the current schema from PayloadEditor (includes user edits)
-        if (!isNewEndpoint && currentSchema) {
-          createRequest.schema = currentSchema;
-          console.log('🔄 Using current edited schema from PayloadEditor:', currentSchema);
-        } else if (!isNewEndpoint && existingConfig?.schema) {
-          createRequest.schema = existingConfig.schema;
-          console.log('🔒 Preserving existing schema (no current edits):', existingConfig.schema);
-        }
+      // Create configuration request using user-entered data
+      const createRequest: CreateConfigRequest = {
+        msgFam: endpointData.msgFam?.trim() || undefined,
+        transactionType: endpointData.transactionType,
+        version: endpointData.version,
+        contentType: endpointData.contentType as 'application/json' | 'application/xml',
+        payload: payload,
+      };
 
-        console.log('🔥 EditEndpointModal.handleSave - Saving configuration:');
-        console.log('📦 Create request data:', createRequest);
-        console.log('📊 Full endpoint data:', endpointData);
-        console.log('📄 Payload length:', payload.length);
-        console.log('🆕 Is new endpoint?', isNewEndpoint);
-        console.log('🆔 Endpoint ID:', endpointId);
-        console.log('⚠️  NOTE: This request does NOT include schema - backend will auto-generate from payload!');
-        
-        let response: ConfigResponse;
-        
-        // Determine actual config ID to use
-        const actualConfigId = createdEndpoint?.id || existingConfig?.id || endpointId;
-        const shouldCreate = !createdEndpoint && !existingConfig && isNewEndpoint;
-        const action = shouldCreate ? 'create' : 'update';
-        
-        if (shouldCreate) {
-          console.log('Creating NEW config...');
-          response = await configApi.createConfig(createRequest);
-        } else {
-          console.log('Updating EXISTING config with ID:', actualConfigId);
-          response = await configApi.updateConfig(actualConfigId, createRequest);
-        }
-        
-        console.log('Save API Response:', response);
-        console.log('🔍 Response success status:', response.success);
-        console.log('🔍 Response message:', response.message);
-        
-        if (!response.success) {
-          console.log('❌ Save failed - response.success is false');
-          
-          // Check for specific error messages that need user-friendly handling
-          let errorMessage = response.message || `Failed to ${action} configuration`;
-          
-          // Handle approved config editing error with more user-friendly message
-          if (response.message && response.message.includes('Editing not allowed')) {
-            errorMessage = 'This configuration has been approved and cannot be edited directly. Please clone the configuration to create a new version.';
+      // CRITICAL: Use the current schema from PayloadEditor (includes user edits)
+      // If no currentSchema but we have a payload, regenerate schema from payload
+      let finalSchema = currentSchema;
+      if (!finalSchema && payload.trim()) {
+        console.log('🔄 No current schema from PayloadEditor, regenerating from payload...');
+        try {
+          // Import the schema generation logic (simplified version)
+          const generateSchemaFromPayload = (payloadText: string, contentType: string) => {
+            if (contentType === 'application/json') {
+              try {
+                const parsed = JSON.parse(payloadText);
+                const generateJSONSchema = (obj: any, path = ''): any[] => {
+                  const schema: any[] = [];
+                  if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
+                    Object.entries(obj).forEach(([key, value]) => {
+                      const fieldPath = path ? `${path}.${key}` : key;
+                      let fieldType: string;
+                      if (Array.isArray(value)) {
+                        fieldType = 'array';
+                      } else if (value && typeof value === 'object') {
+                        fieldType = 'object';
+                      } else {
+                        fieldType = typeof value;
+                      }
+                      const field: any = {
+                        name: key,
+                        path: fieldPath,
+                        type: fieldType,
+                        isRequired: true
+                      };
+                      if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+                        field.children = generateJSONSchema(value, fieldPath);
+                      }
+                      schema.push(field);
+                    });
+                  }
+                  return schema;
+                };
+                return generateJSONSchema(parsed);
+              } catch (e) {
+                throw new Error('Invalid JSON format');
+              }
+            }
+            return null;
+          };
+
+          const schemaFields = generateSchemaFromPayload(payload, endpointData.contentType);
+          if (schemaFields) {
+            // Convert to JSON schema format
+            const convertToJSONSchema = (fields: any[]): any => {
+              const schema: any = {
+                type: 'object',
+                properties: {},
+                required: []
+              };
+
+              const processFields = (fieldList: any[], parentPath = '') => {
+                fieldList.forEach(field => {
+                  const fullPath = parentPath ? `${parentPath}.${field.name}` : field.name;
+                  const pathParts = fullPath.split('.');
+                  const fieldName = pathParts[pathParts.length - 1];
+
+                  if (field.type === 'object' && field.children) {
+                    schema.properties[fieldName] = {
+                      type: 'object',
+                      properties: {},
+                      required: [],
+                      additionalProperties: false
+                    };
+                    if (field.isRequired) {
+                      schema.required.push(fieldName);
+                    }
+                    processFields(field.children, fullPath);
+                  } else {
+                    let jsonType = 'string';
+                    if (field.type === 'number') jsonType = 'number';
+                    else if (field.type === 'boolean') jsonType = 'boolean';
+                    else if (field.type === 'array') jsonType = 'array';
+
+                    schema.properties[fieldName] = {
+                      type: jsonType,
+                      ...(field.type === 'array' && { items: { type: 'string' } })
+                    };
+
+                    if (field.isRequired) {
+                      schema.required.push(fieldName);
+                    }
+                  }
+                });
+              };
+
+              processFields(fields);
+              schema.additionalProperties = false;
+              return schema;
+            };
+
+            finalSchema = convertToJSONSchema(schemaFields);
+            console.log('✅ Regenerated schema from payload:', finalSchema);
           }
-          
-          setError(errorMessage);
-          if (response.validation?.errors) {
-            console.error('Validation errors:', response.validation.errors);
-          }
-          return;
+        } catch (error) {
+          console.warn('⚠️ Failed to regenerate schema from payload:', error);
+          // Fall back to existing schema
+          finalSchema = existingConfig?.schema;
         }
-        
-        console.log('✅ Save successful - proceeding with config update');
-
-        if (response.config) {
-          console.log('🎯 Setting createdEndpoint with config:', response.config);
-          setCreatedEndpoint(response.config);
-          setInferredSchema(response.config.schema);
-          const action = isNewEndpoint ? 'saved' : 'updated';
-          console.log(`Configuration ${action} successfully:`, response.config);
-          
-          // Call success callback to refresh parent data
-          if (onSuccess) {
-            onSuccess();
-          }
-          
-          // Show success message to user
-          const actionWord = isNewEndpoint ? 'created' : 'updated';
-          console.log(`✅ Configuration ${actionWord} successfully! Changes reflected in database.`);
-          
-          // Save successful - do not advance step automatically
-          // User must click "Next" to advance to next step
-          showSuccess('Configuration saved successfully! Click Next to proceed.');
-        } else {
-          const action = isNewEndpoint ? 'saved' : 'updated';
-          setError(`Configuration ${action} but no config data returned`);
-        }
-      } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-        const action = isNewEndpoint ? 'save' : 'update';
-        setError(`Failed to ${action} configuration: ${errorMessage}`);
-        console.error('Error saving configuration:', err);
-        console.error('Error details:', {
-          name: err instanceof Error ? err.name : 'Unknown',
-          message: err instanceof Error ? err.message : String(err),
-          stack: err instanceof Error ? err.stack : undefined
-        });
-      } finally {
-        setLoading(false);
       }
-    } else {
-      // Config already exists from file import - just show confirmation
-      console.log('Configuration already saved with ID:', createdEndpoint.id);
-      showSuccess('Configuration is already saved! Click Next to proceed.');
+
+      if (!finalSchema && existingConfig?.schema) {
+        finalSchema = existingConfig.schema;
+        console.log('🔒 Using existing schema (no current edits):', existingConfig.schema);
+      }
+
+      if (finalSchema) {
+        createRequest.schema = finalSchema;
+      }
+
+      console.log('🔥 EditEndpointModal.handleSaveAndNext - Saving configuration:');
+      console.log('📦 Create request data:', createRequest);
+      console.log('📊 Full endpoint data:', endpointData);
+      console.log('📄 Payload length:', payload.length);
+      console.log('🆕 Is new endpoint?', isNewEndpoint);
+      console.log('🆔 Endpoint ID:', endpointId);
+
+      // Determine actual config ID to use
+      const actualConfigId = createdEndpoint?.id || existingConfig?.id || endpointId;
+      const shouldCreate = !createdEndpoint && !existingConfig && isNewEndpoint;
+      const action = shouldCreate ? 'create' : 'update';
+
+      if (shouldCreate) {
+        console.log('Creating NEW config...');
+        saveResponse = await configApi.createConfig(createRequest);
+      } else {
+        console.log('Updating EXISTING config with ID:', actualConfigId);
+        saveResponse = await configApi.updateConfig(actualConfigId, createRequest);
+      }
+
+      console.log('Save API Response:', saveResponse);
+      console.log('🔍 Response success status:', saveResponse.success);
+      console.log('🔍 Response message:', saveResponse.message);
+
+      if (!saveResponse.success) {
+        console.log('❌ Save failed - response.success is false');
+
+        // Check for specific error messages that need user-friendly handling
+        let errorMessage = saveResponse.message || `Failed to ${action} configuration`;
+
+        setError(errorMessage);
+        if (saveResponse.validation?.errors) {
+          console.error('Validation errors:', saveResponse.validation.errors);
+        }
+        return;
+      }
+
+      console.log('✅ Save successful');
+
+      if (saveResponse.config) {
+        console.log('🎯 Setting createdEndpoint with config:', saveResponse.config);
+        setCreatedEndpoint(saveResponse.config);
+        setInferredSchema(saveResponse.config.schema);
+        const action = isNewEndpoint ? 'saved' : 'updated';
+        console.log(`Configuration ${action} successfully:`, saveResponse.config);
+        console.log('Schema inferred:', saveResponse.config.schema);
+        
+        // Determine whether to move to next step or stay on current step
+        // "Save and Next" should always advance to next step, except for deploy step which has special logic
+        const shouldAdvanceToNextStep = currentStep !== 'deploy';
+
+        if (shouldAdvanceToNextStep) {
+          // Always move to next step for non-deploy steps
+          console.log('🚀 Save and Next - moving to next step');
+
+          // Clear any previous errors before moving to next step
+          setError(null);
+
+          switch (currentStep) {
+            case 'payload':
+              console.log('✅ Moving from payload to mapping');
+              setCurrentStep('mapping');
+              break;
+            case 'mapping':
+              if (!isMappingValid) {
+                showError('Please complete the mapping before proceeding');
+                return;
+              }
+              console.log('✅ Moving from mapping to functions');
+              setCurrentStep('functions');
+              break;
+            case 'functions':
+              console.log('✅ Moving from functions to simulation');
+              setCurrentStep('simulation');
+              break;
+            case 'simulation':
+              if (!isSimulationSuccess && !readOnly) {
+                showError('Please run and pass simulation before proceeding');
+                return;
+              }
+              console.log('✅ Moving from simulation to deploy');
+              setCurrentStep('deploy');
+              break;
+            default:
+              break;
+          }
+
+          showSuccess('Configuration saved successfully! Proceeding to next step.');
+        } else {
+          // Deploy step - stay on current step (deploy step has special logic)
+          console.log('💾 Deploy step - staying on current step');
+          showSuccess('Configuration updated successfully!');
+        }
+
+        // Call success callback to refresh parent data (after UI updates)
+        if (onSuccess) {
+          onSuccess();
+        }
+
+        // Show success message to user
+        const actionWord = isNewEndpoint ? 'created' : 'updated';
+        console.log(`✅ Configuration ${actionWord} successfully! Changes reflected in database.`);
+      } else {
+        const action = isNewEndpoint ? 'saved' : 'updated';
+        setError(`Configuration ${action} but no config data returned`);
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      const action = isNewEndpoint ? 'save' : 'update';
+      setError(`Failed to ${action} configuration: ${errorMessage}`);
+      console.error('Error saving configuration:', err);
+      console.error('Error details:', {
+        name: err instanceof Error ? err.name : 'Unknown',
+        message: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined
+      });
+    } finally {
+      setLoading(false);
     }
   };
+
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -947,23 +1102,6 @@ interface EditEndpointModalProps {
                 <div className="flex-1">
                   <h4 className="text-sm font-medium text-red-900 mb-1">Error</h4>
                   <p className="text-sm text-red-700">{error}</p>
-                  {error.includes('approved and cannot be edited') && (
-                    <div className="mt-3">
-                      <button
-                        onClick={() => {
-                          // Close current modal and trigger clone mode
-                          onClose();
-                          // Note: Parent component should handle opening in clone mode
-                        }}
-                        className="inline-flex items-center px-3 py-1.5 border border-blue-300 text-sm rounded text-blue-700 bg-blue-50 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                        </svg>
-                        Clone Configuration
-                      </button>
-                    </div>
-                  )}
                 </div>
                 <button
                   onClick={() => setError(null)}
@@ -1005,6 +1143,7 @@ interface EditEndpointModalProps {
                   isEditMode={!isNewEndpoint} // Only allow editing for truly new endpoints (not clone or edit)
                   tenantId={tenantId}
                   readOnly={readOnly}
+                  isCloning={isCloning}
                   existingSchemaFields={(() => {
                     // Get schema from multiple sources: newly created endpoint, inferred schema, or existing config
                     const schemaToUse = createdEndpoint?.schema || inferredSchema || existingConfig?.schema;
@@ -1198,48 +1337,41 @@ interface EditEndpointModalProps {
           {/* Hide action buttons on deploy step when in read-only mode for non-approvers */}
           {!(readOnly && currentStep === 'deploy' && !isApprover(user?.claims || [])) && (
             <div className="space-x-4" data-id="element-746">
-              <Button variant="secondary" onClick={() => {
-              const currentIndex = steps.findIndex(s => s.id === currentStep);
-              if (currentIndex > 0) {
-                setCurrentStep(steps[currentIndex - 1].id as any);
-              }
-            }} disabled={currentStep === 'payload'} data-id="element-745">
-                Back
-              </Button>
-              {!readOnly && (
-                <Button variant="secondary" onClick={handleSave} data-id="element-748">
-                  Save
+              {currentStep !== 'payload' && (
+                <Button variant="secondary" onClick={() => {
+                const currentIndex = steps.findIndex(s => s.id === currentStep);
+                if (currentIndex > 0) {
+                  // Clear any previous step-specific errors when navigating backward
+                  setError(null);
+                  setCurrentStep(steps[currentIndex - 1].id as any);
+                }
+              }} data-id="element-745">
+                  Back
                 </Button>
               )}
-              <Button variant="primary" onClick={async () => {
-                console.log('🎯 Button clicked, currentStep:', currentStep);
-                console.log('createdEndpoint:', createdEndpoint);
-                console.log('existingConfig:', existingConfig);
-                if (currentStep === 'deploy') {
-                  console.log('Calling handleDeploy');
-                  await handleDeploy();
-                } else {
-                  console.log('Calling handleNextStep');
-                  handleNextStep();
-                }
-              }} disabled={loading || 
-                (currentStep === 'payload' && (!createdEndpoint && isNewEndpoint)) || 
-                (currentStep === 'mapping' && !isMappingValid) || 
-                (currentStep === 'simulation' && !isSimulationSuccess && !readOnly) ||
-                (!createdEndpoint && !existingConfig) ||
-                (currentStep === 'deploy' && !isApprover(user?.claims || []) && (createdEndpoint?.status === 'under_review' || createdEndpoint?.status === 'approved' || existingConfig?.status === 'under_review' || existingConfig?.status === 'approved')) ||
-                (currentStep === 'deploy' && isApprover(user?.claims || []) && (createdEndpoint?.status === 'approved' || existingConfig?.status === 'approved'))
-              } data-id="element-749">
-                {loading ? 'Processing...' : (
-                  currentStep === 'deploy' ? (
-                    isApprover(user?.claims || []) && (createdEndpoint?.status !== 'approved' && existingConfig?.status !== 'approved') ? 'Send for Deployment' : 
-                    !isApprover(user?.claims || []) ? 'Submit for Approval' :
-                    'Configuration Approved'
-                  ) : 
-                  currentStep === 'functions' ? 'Next' :
-                  'Next'
-                )}
-              </Button>
+              {!readOnly && (
+                <Button variant="primary" onClick={async () => {
+                  console.log('🎯 Save and Next button clicked, currentStep:', currentStep);
+                  console.log('createdEndpoint:', createdEndpoint);
+                  console.log('existingConfig:', existingConfig);
+                  await handleSaveAndNext();
+                }} disabled={loading || 
+                  (currentStep === 'mapping' && !isMappingValid) || 
+                  (currentStep === 'simulation' && !isSimulationSuccess && !readOnly) ||
+                  (currentStep !== 'payload' && !createdEndpoint && !existingConfig) ||
+                  (currentStep === 'deploy' && !isApprover(user?.claims || []) && (createdEndpoint?.status === 'under_review' || createdEndpoint?.status === 'approved' || existingConfig?.status === 'under_review' || existingConfig?.status === 'approved')) ||
+                  (currentStep === 'deploy' && isApprover(user?.claims || []) && (createdEndpoint?.status === 'approved' || existingConfig?.status === 'approved'))
+                } data-id="element-749">
+                  {loading ? 'Processing...' : (
+                    currentStep === 'deploy' ? (
+                      isApprover(user?.claims || []) && (createdEndpoint?.status !== 'approved' && existingConfig?.status !== 'approved') ? 'Send for Deployment' : 
+                      !isApprover(user?.claims || []) ? 'Submit for Approval' :
+                      'Configuration Approved'
+                    ) : 
+                    'Save and Next'
+                  )}
+                </Button>
+              )}
             </div>
           )}
         </div>

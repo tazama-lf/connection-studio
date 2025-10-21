@@ -4,20 +4,6 @@ import { Button } from './Button';
 import { configApi, type FieldMapping } from '../../features/config/services/configApi';
 import { dataModelApi, type DestinationOption } from '../../features/data-model';
 
-/**
- * MappingUtility Component - Updated for Tazama Integration
- * 
- * Features implemented:
- * 1. Dynamic source fields from generated payload schema
- * 2. Tazama destination data model (payer, payee, transaction, routing, riskData)
- * 3. Real backend API integration (POST /config/:id/mapping)
- * 4. Proper error handling and user feedback
- * 5. Console logging for debugging
- * 
- * Usage: Select source fields → Select destination fields → Click "Add Mapping"
- * The mapping will be saved to the backend and associated with the config ID.
- */
-
 interface MappingUtilityProps {
   onMappingChange: (isValid: boolean) => void;
   onMappingDataChange?: (mappingData: MappingData) => void;
@@ -320,14 +306,21 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
   const convertDestinationOptionsToTree = (options: DestinationOption[]): TreeNode[] => {
     // Group options by collection to create a hierarchical structure
     const collections = new Map<string, DestinationOption[]>();
-    
+
     options.forEach(option => {
       const existing = collections.get(option.collection) || [];
       existing.push(option);
       collections.set(option.collection, existing);
     });
 
-    return Array.from(collections.entries()).map(([collectionName, fields]) => ({
+    // Sort collections so redis appears at the end
+    const sortedCollections = Array.from(collections.entries()).sort(([a], [b]) => {
+      if (a === 'redis') return 1; // redis goes to the end
+      if (b === 'redis') return -1; // redis goes to the end
+      return a.localeCompare(b); // alphabetical for others
+    });
+
+    return sortedCollections.map(([collectionName, fields]) => ({
       id: collectionName,
       name: collectionName.charAt(0).toUpperCase() + collectionName.slice(1),
       path: [collectionName],
@@ -339,33 +332,6 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       }))
     }));
   };
-  // Redis cache sample data
-  const redisTree: TreeNode[] = [{
-    id: 'redis',
-    name: 'redis',
-    path: ['redis'],
-    children: [{
-      id: 'redis.accountDetails',
-      name: 'accountDetails',
-      path: ['redis', 'accountDetails'],
-      type: 'object'
-    }, {
-      id: 'redis.preferences',
-      name: 'preferences',
-      path: ['redis', 'preferences'],
-      type: 'object'
-    }, {
-      id: 'redis.limits',
-      name: 'limits',
-      path: ['redis', 'limits'],
-      type: 'object'
-    }, {
-      id: 'redis.lastTransaction',
-      name: 'lastTransaction',
-      path: ['redis', 'lastTransaction'],
-      type: 'object'
-    }]
-  }];
   const [expandedSourceNodes, setExpandedSourceNodes] = useState<string[]>([]);
   const [expandedDestNodes, setExpandedDestNodes] = useState<string[]>([]);
   const [showAddMapping, setShowAddMapping] = useState(false);
@@ -594,19 +560,29 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
 
   const renderTree = (nodes: TreeNode[], expanded: string[], toggleFn: (id: string) => void, onSelect: (path: string[], type?: any) => void, selectedPaths: string[] = [], type: 'source' | 'destination' | 'redis' = 'source') => {
     return <div className="space-y-1" data-id="element-176">
-        {nodes.map(node => {
+        {nodes.map((node, index) => {
         const hasChildren = node.children && node.children.length > 0;
         const isExpanded = expanded.includes(node.id);
         const isSelected = selectedPaths.includes(node.path.join('.'));
+        // Determine the actual type for this node - redis nodes should be purple
+        const nodeType = node.id.startsWith('redis') ? 'redis' : type;
+        const isRedis = node.id === 'redis';
+        
         return <div key={node.id} className="ml-2" data-id="element-177">
+              {/* Add spacing and heading before redis section */}
+              {isRedis && index > 0 && (
+                <div className="mt-4 mb-2">
+                  <div className="text-sm text-gray-500">Redis Cache (Update)</div>
+                </div>
+              )}
               <div className={`flex items-center p-1 rounded hover:bg-gray-100 ${isSelected ? 'bg-blue-100' : ''}`} data-id="element-178">
                 {hasChildren ? <button onClick={() => toggleFn(node.id)} className="p-1 text-gray-500 hover:text-gray-700" data-id="element-179">
                     <ChevronRightIcon size={16} className={`transform transition-transform ${isExpanded ? 'rotate-90' : ''}`} data-id="element-180" />
                   </button> : <span className="w-6" data-id="element-181"></span>}
-                {type === 'source' && <FolderIcon size={16} className="mr-2 text-blue-500" data-id="element-182" />}
-                {type === 'destination' && <DatabaseIcon size={16} className="mr-2 text-green-500" data-id="element-183" />}
-                {type === 'redis' && <ServerIcon size={16} className="mr-2 text-purple-500" data-id="element-184" />}
-                <button onClick={() => onSelect(node.path, type === 'redis' ? 'redis' : 'database')} className="text-left flex-1 text-sm" data-id="element-185">
+                {nodeType === 'source' && <FolderIcon size={16} className="mr-2 text-blue-500" data-id="element-182" />}
+                {nodeType === 'destination' && <DatabaseIcon size={16} className="mr-2 text-green-500" data-id="element-183" />}
+                {nodeType === 'redis' && <ServerIcon size={16} className="mr-2 text-purple-500" data-id="element-184" />}
+                <button onClick={() => onSelect(node.path, nodeType === 'redis' ? 'redis' : 'database')} className="text-left flex-1 text-sm" data-id="element-185">
                   {node.name}
                   {node.type && <span className="ml-2 text-xs text-gray-500" data-id="element-186">
                       ({node.type})
@@ -614,7 +590,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                 </button>
               </div>
               {hasChildren && isExpanded && <div className="ml-4 pl-2 border-l border-gray-200" data-id="element-187">
-                  {renderTree(node.children ?? [], expanded, toggleFn, onSelect, selectedPaths, type)}
+                  {renderTree(node.children ?? [], expanded, toggleFn, onSelect, selectedPaths, nodeType)}
                 </div>}
             </div>;
       })}
@@ -780,7 +756,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
             <div className="space-y-4" data-id="element-229">
               <h4 className="font-medium text-gray-700" data-id="element-230">Destination</h4>
               <div className="border border-gray-200 rounded-md p-3 h-96 overflow-auto" data-id="element-231">
-                <div className="mb-2 text-sm text-gray-500" data-id="element-232">Tazama Data Model</div>
+                <div className="mb-2 text-sm text-gray-500" data-id="element-232">Data Model</div>
                 {loadingDestinations ? (
                   <div className="text-sm text-gray-500 py-4">Loading destination fields...</div>
                 ) : destinationError ? (
@@ -788,10 +764,6 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                 ) : (
                   renderTree(destinationTree, expandedDestNodes, toggleDestNode, (path, type) => handleDestinationSelect(path, type as 'database' | 'redis' | 'model'), selectedDestinations, 'destination')
                 )}
-                <div className="mt-4 mb-2 text-sm text-gray-500" data-id="element-233">
-                  redis (Update)
-                </div>
-                {renderTree(redisTree, expandedDestNodes, toggleDestNode, path => handleDestinationSelect(path, 'redis'), selectedDestinations, 'redis')}
               </div>
               <div className="text-sm text-gray-600" data-id="element-234">
                 Selected: {selectedDestinations.join(', ') || 'None'}

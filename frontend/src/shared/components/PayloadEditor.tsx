@@ -16,6 +16,7 @@ interface PayloadEditorProps {
   isEditMode?: boolean; // Explicitly control whether to show Add/Remove field buttons
   tenantId?: string; // Tenant ID for endpoint preview
   readOnly?: boolean; // When true, disable all editing functionality
+  isCloning?: boolean; // When true, allow editing even for existing configs
 }
 
 interface EndpointFormData {
@@ -45,7 +46,8 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
   existingSchemaFields,
   isEditMode = false, // Default to false - only true when explicitly editing existing config
   tenantId = 'tenant-id', // Default placeholder if not provided
-  readOnly = false
+  readOnly = false,
+  isCloning = false
 }) => {
 
   
@@ -710,18 +712,23 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
             <label htmlFor="version" className="block text-sm font-medium text-gray-700 mb-1">
               Version *
             </label>
-            <input
-              id="version"
-              type="text"
-              value={endpointData.version}
-              onChange={(e) => handleEndpointDataChange('version', e.target.value)}
-              placeholder="1.0"
-              className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
-                configId ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 
-                fieldErrors.version ? 'bg-white border-red-300 text-red-900 placeholder-red-300 focus:ring-red-500 focus:border-red-500' : 'bg-white border-gray-300'
-              }`}
-              readOnly={readOnly || !!configId}
-            />
+            {(() => {
+              const isReadOnly = readOnly || (!isCloning && !!configId);
+              return (
+                <input
+                  id="version"
+                  type="text"
+                  value={endpointData.version}
+                  onChange={(e) => handleEndpointDataChange('version', e.target.value)}
+                  placeholder="1.0"
+                  className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
+                    isReadOnly ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 
+                    fieldErrors.version ? 'bg-white border-red-300 text-red-900 placeholder-red-300 focus:ring-red-500 focus:border-red-500' : 'bg-white border-gray-300'
+                  }`}
+                  readOnly={isReadOnly}
+                />
+              );
+            })()}
             {fieldErrors.version && (
               <p className="mt-1 text-sm text-red-600">{fieldErrors.version}</p>
             )}
@@ -732,18 +739,23 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
             <label htmlFor="transaction-type" className="block text-sm font-medium text-gray-700 mb-1">
               Transaction Type *
             </label>
-               <input
-              id="transaction-type"
-              type="text"
-              value={endpointData.transactionType || ''}
-              onChange={(e) => handleEndpointDataChange('transactionType', e.target.value)}
-              placeholder="e.g., pacs.008, pain.001"
-              className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
-                configId ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 
-                fieldErrors.transactionType ? 'bg-white border-red-300 text-red-900 placeholder-red-300 focus:ring-red-500 focus:border-red-500' : 'bg-white border-gray-300'
-              }`}
-              readOnly={readOnly || !!configId}
-            />
+               {(() => {
+                 const isReadOnly = readOnly || (!isCloning && !!configId);
+                 return (
+                   <input
+                     id="transaction-type"
+                     type="text"
+                     value={endpointData.transactionType || ''}
+                     onChange={(e) => handleEndpointDataChange('transactionType', e.target.value)}
+                     placeholder="e.g., pacs.008, pain.001"
+                     className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
+                       isReadOnly ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 
+                       fieldErrors.transactionType ? 'bg-white border-red-300 text-red-900 placeholder-red-300 focus:ring-red-500 focus:border-red-500' : 'bg-white border-gray-300'
+                     }`}
+                     readOnly={isReadOnly}
+                   />
+                 );
+               })()}
             {fieldErrors.transactionType && (
               <p className="mt-1 text-sm text-red-600">{fieldErrors.transactionType}</p>
             )}
