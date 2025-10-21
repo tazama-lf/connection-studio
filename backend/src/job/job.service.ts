@@ -8,16 +8,18 @@ import { CreatePushJobDto } from './dto/create-push-job.dto';
 import { Job } from './types/interface';
 import { CreatePullJobDto, SFTPConnectionDto } from './dto/create-pull-job.dto';
 import { DryRunService } from '../dry-run/dry-run.service';
+import SFTPClient from 'ssh2-sftp-client';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class JobService {
 
     constructor(
         private readonly db: DatabaseService,
+        private readonly configService: ConfigService,
         private readonly loggerService: LoggerService,
         private readonly dryRunService: DryRunService
     ) { }
-
 
     async validateExisting(table_name: string): Promise<void> {
         validateTableName(table_name);
@@ -39,10 +41,6 @@ export class JobService {
             await this.validateExisting(job.table_name);
 
             let path = `/tcs/${job.version}/${tenantId}/enrichment${job.path}`;
-            const existing = await this.findByPathAndVersion(path, tenantId, job.version, 'endpoints')
-            if (existing.length) {
-                throw new Error(`Path ${job.path} with given version ${job.version} already exits`)
-            }
 
             const jobWithId = { ...job, id: v4(), path, tenant_id: tenantId };
             const keys = Object.keys(jobWithId);
@@ -85,7 +83,6 @@ export class JobService {
             let connection = job.connection;
             if (job.source_type === SourceType.SFTP) {
                 validateFileType(job.file.path);
-
                 const sftpConn = connection as SFTPConnectionDto;
                 if (sftpConn.auth_type === AuthType.USERNAME_PASSWORD && sftpConn.password) {
                     connection = {
@@ -126,8 +123,6 @@ export class JobService {
             throw new BadRequestException(err.message || 'Invalid request payload');
         }
     }
-
-
 
     async findAll(page: number, limit: number, tenantId: string) {
         if (!Number.isInteger(page) || !Number.isInteger(limit) || page < 1 || limit < 1) {
@@ -204,7 +199,7 @@ export class JobService {
         status: JobStatus,
         page: number,
         limit: number,
-    ): Promise<any[]> {
+    ): Promise<[]> {
 
         try {
             if (!status || !page || !limit) {
@@ -260,38 +255,6 @@ export class JobService {
         }
     }
 
-    async findByPathAndVersion(path: string, tenantId: string, version: string, table_name: string) {
-        try {
-
-            if (!path || !tenantId) {
-                throw new BadRequestException('Both path and tenantId are required.');
-            }
-
-            const query = `
-      SELECT *
-      FROM ${table_name}
-      WHERE path = $1
-        AND version = $2
-        AND tenant_id = $3
-      ORDER BY created_at DESC;
-    `;
-
-            const result = await this.db.query(query, [path.trim(), version.trim(), tenantId.trim()]);
-            const record = result.rows;
-
-            if (!record) {
-                throw new NotFoundException(`Endpoint with path "${path}" not found for tenant ${tenantId}.`);
-            }
-
-            const filteredRecords = record.map(({ tenant_id, ...rest }) => rest);
-
-            return filteredRecords;
-        } catch (err) {
-            this.loggerService.error(`Error fetching endpoint by path: ${err.message}`);
-            throw new BadRequestException(err.message);
-        }
-    }
-
     async updateActivation(id: string, status: ScheduleStatus, table_name: string): Promise<ISuccess> {
         try {
             if (!id || !status || !table_name) {
@@ -320,6 +283,7 @@ export class JobService {
             throw new BadRequestException(err.message);
         }
     }
+
     async updateStatus(id: string, status: JobStatus, table_name: string): Promise<ISuccess> {
         try {
             if (!id || !status || !table_name) {
@@ -337,6 +301,16 @@ export class JobService {
 
             if (result.rowCount === 0) {
                 throw new NotFoundException(`Record with id "${id}" not found in table "${table_name}".`);
+            }
+
+            if (status === JobStatus.INPROGRESS) {
+                const sftp = new SFTPClient();
+                await sftp.connect({
+                    host: this.configService.get<string>('SFTP_HOST_TEST'),
+                    port: this.configService.get<number>('SFTP_PORT_TEST'),
+                    username: this.configService.get<string>('SFTP_USERNAME_TEST'),
+                    password: this.configService.get<string>('SFTP_PASSWORD_TEST'),
+                });
             }
 
             return {

@@ -15,7 +15,8 @@ export class DryRunService {
 
     constructor(
         private readonly loggerService: LoggerService,
-        private readonly httpService: HttpService) { }
+        private readonly httpService: HttpService
+    ) { }
 
     async transformFileToJSON(sftp: SFTPClient, file: FileSettings): Promise<any> {
         try {
@@ -70,50 +71,55 @@ export class DryRunService {
     }
 
 
-    private async dryRunHttpJob(job: CreatePullJobDto): Promise<any> {
+    private async dryRunHttpJob(job: CreatePullJobDto): Promise<void> {
         const httpCon = job.connection as HTTPConnection
-        const { data, status } = await firstValueFrom(this.httpService.get(httpCon.url, { headers: httpCon.headers, timeout: 3000 }));
+        const { data } = await firstValueFrom(this.httpService.get(httpCon.url, { headers: httpCon.headers, timeout: 3000 }));
 
-        if (status !== 200) {
-            throw new Error(`HTTP source returned status ${status}`);
-        }
-
-        if (data === undefined || data === null) {
-            throw new Error(`No data received from HTTP source ${httpCon.url}`);
-        }
-
-        const isValidType = typeof data === 'object' && !Array.isArray(data) ? true : Array.isArray(data);
+        const isValidType =
+            (typeof data === 'object' && !Array.isArray(data)) || Array.isArray(data);
 
         if (!isValidType) {
-            throw new Error(`Invalid data type received from HTTP source: expected object or array, got ${typeof data}`);
+            throw new Error(
+                `Invalid data type received from HTTP source: expected object or array, got ${typeof data}`,
+            );
+        }
+
+        if (Array.isArray(data) && data.length === 0) {
+            this.loggerService.warn(`Empty array received from HTTP source: ${httpCon.url}`);
+        }
+    }
+
+    async createSftpConnection(sftpCon: SFTPConnection): Promise<SFTPClient> {
+        const sftp = new SFTPClient();
+        try {
+            if (sftpCon.auth_type === AuthType.USERNAME_PASSWORD) {
+                await sftp.connect({
+                    host: sftpCon.host,
+                    port: sftpCon.port,
+                    username: sftpCon.user_name,
+                    password: sftpCon.password,
+                });
+            } else {
+                await sftp.connect({
+                    host: sftpCon.host,
+                    port: sftpCon.port,
+                    username: sftpCon.user_name,
+                    privateKey: sftpCon.private_key,
+                });
+            }
+            return sftp;
+        } catch (err: any) {
+            throw new Error(`SFTP connection failed: ${err.message}`);
         }
     }
 
     private async dryRunSftpJob(job: CreatePullJobDto): Promise<any> {
         const sftpCon = job.connection as SFTPConnection;
         const file = job.file;
-        const sftp = new SFTPClient();
+        let sftp = new SFTPClient();
 
         try {
-            try {
-                if (sftpCon.auth_type === AuthType.USERNAME_PASSWORD) {
-                    await sftp.connect({
-                        host: sftpCon.host,
-                        port: sftpCon.port,
-                        username: sftpCon.user_name,
-                        password: sftpCon.password,
-                    });
-                } else {
-                    await sftp.connect({
-                        host: sftpCon.host,
-                        port: sftpCon.port,
-                        username: sftpCon.user_name,
-                        privateKey: sftpCon.private_key,
-                    });
-                }
-            } catch (connErr: any) {
-                throw new Error(`Failed to connect to SFTP server ${sftpCon.host}:${sftpCon.port} — ${connErr.message}`);
-            }
+            sftp = await this.createSftpConnection(sftpCon);
 
             if (!file?.path) throw new Error('File path not provided in job config');
             const fileExists = await sftp.exists(file.path);
@@ -130,18 +136,16 @@ export class DryRunService {
         }
     }
 
-
-
     async dryRun(job: CreatePullJobDto): Promise<any> {
         try {
             if (job.source_type === SourceType.HTTP) {
                 return await this.dryRunHttpJob(job);
-            } else if (job.source_type === SourceType.SFTP) {
+            } else {
                 return await this.dryRunSftpJob(job);
             }
         } catch (error: any) {
-            this.loggerService.error(`Dry run failed: ${error.message}`);
-            throw new Error(`Dry run failed: ${error.message}`);
+            this.loggerService.error(`Dry run failed, ${error.message}`);
+            throw new Error(`Dry run failed, ${error.message}`);
         }
     }
 }

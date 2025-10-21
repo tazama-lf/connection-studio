@@ -16,15 +16,6 @@ export class SchedulerService {
         try {
             validateCronExpression(schedule.cron);
 
-            const res = await this.db.query(
-                `SELECT * FROM schedule WHERE name = $1 LIMIT 1;`,
-                [schedule.name]
-            );
-
-            if (res.length) {
-                throw new BadRequestException(`Schedule with name '${schedule.name}' already exists.`);
-            }
-
             const keys = Object.keys(schedule);
             const values = Object.values(schedule);
             const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
@@ -37,14 +28,13 @@ export class SchedulerService {
             const result = await this.db.query(insertQuery, values);
             const insertedId = result.rows[0].id;
 
-
             return {
                 success: true,
                 message: `Schedule with id ${insertedId} successfully created`,
             }
         } catch (error) {
             this.loggerService.error(`Error While Creating Schedule : ${error.message}`)
-            throw error;
+            throw new BadRequestException(error.message);
         }
     }
 
