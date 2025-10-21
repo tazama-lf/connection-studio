@@ -155,7 +155,7 @@ export class JobService {
         table_name,
         description,
         version,
-        NULL AS status,
+        status,
         created_at,
         'pull' AS type
       FROM job
@@ -238,7 +238,7 @@ export class JobService {
           table_name,
           description,
           version,
-          NULL AS status,
+          status,
           created_at,
           'pull' AS type
         FROM job
@@ -311,6 +311,28 @@ export class JobService {
                     username: this.configService.get<string>('SFTP_USERNAME_TEST'),
                     password: this.configService.get<string>('SFTP_PASSWORD_TEST'),
                 });
+
+                const remotePath = '/upload/config.json';
+                const fileExists = await sftp.exists(remotePath);
+                let config: any = {};
+
+                if (fileExists) {
+                    const fileContent = await sftp.get(remotePath);
+                    const rawData = fileContent.toString();
+                    config = JSON.parse(rawData);
+
+                    config.updated_at = new Date().toISOString();
+                    config.jobs = config.jobs || [];
+                    config.jobs.push(result.rows[0]);
+                } else {
+                    config = {
+                        created_at: new Date().toISOString(),
+                        jobs: [result.rows[0]],
+                    };
+                }
+
+                await sftp.put(Buffer.from(JSON.stringify(config, null, 2)), remotePath);
+                this.loggerService.log(`Successfully updated config.json on SFTP server.`);
             }
 
             return {
