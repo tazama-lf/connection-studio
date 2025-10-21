@@ -51,8 +51,8 @@ describe('TazamaDataModelService', () => {
       expect(service.getFieldType('transactionRelationship.Amt')).toBe(
         'NUMBER',
       );
-      expect(service.getFieldType('transactionHistory.Validated')).toBe(
-        'BOOLEAN',
+      expect(service.getFieldType('transactionDetails.TxTp')).toBe(
+        'STRING',
       );
     });
 

@@ -170,7 +170,7 @@ export class TazamaDataModelService {
       'accounts',
       'account_holder',
       'transactionRelationship',
-      'transactionHistory',
+      'transactionDetails',
       'redis',
     ];
     if (validCollections.includes(collectionName as TazamaCollectionName)) {

@@ -6,7 +6,7 @@ export type TazamaCollectionName =
   | 'accounts'
   | 'account_holder'
   | 'transactionRelationship'
-  | 'transactionHistory'
+  | 'transactionDetails'
   | 'redis';
 export type TazamaFieldType =
   | 'STRING'
@@ -48,6 +48,23 @@ export interface TazamaDataModelExtension {
   createdAt: Date | string;
   version: number;
 }
+
+
+export interface TransactionDetails {
+  source: string;
+  destination: string;
+  TxTp: string;
+  TenantId: string;
+  MsgId: string;
+  CreDtTm: string;
+  Amt?: string;
+  Ccy?: string;
+  EndToEndId: string;
+  lat?: string;
+  long?: string;
+  TxSts?: string;
+}
+
 export const TAZAMA_DATA_MODEL_SCHEMAS: TazamaCollectionSchema[] = [
   {
     name: 'entities',
@@ -155,30 +172,93 @@ export const TAZAMA_DATA_MODEL_SCHEMAS: TazamaCollectionSchema[] = [
     ],
   },
   {
-    name: 'transactionHistory',
+    name: 'transactionDetails',
     type: 'node',
-    description: 'Historical transaction records',
+    description: 'Transaction details for the Tazama internal data model',
     fields: [
       {
-        name: '_key',
+        name: 'source',
         type: 'string',
         required: true,
-        description: 'Unique history record identifier',
-        example: 'HIST001',
+        description: 'Source of the transaction',
+        example: 'SOURCE-001',
       },
       {
-        name: 'TransactionId',
+        name: 'destination',
         type: 'string',
         required: true,
-        description: 'Reference to transaction',
-        example: 'TXN001',
+        description: 'Destination of the transaction',
+        example: 'DEST-001',
       },
       {
-        name: 'Validated',
-        type: 'boolean',
+        name: 'TxTp',
+        type: 'string',
+        required: true,
+        description: 'Transaction type',
+        example: 'pacs.008.001.10',
+      },
+      {
+        name: 'TenantId',
+        type: 'string',
+        required: true,
+        description: 'Tenant identifier',
+        example: 'tenant-123',
+      },
+      {
+        name: 'MsgId',
+        type: 'string',
+        required: true,
+        description: 'Message identifier',
+        example: 'MSG-12345',
+      },
+      {
+        name: 'CreDtTm',
+        type: 'string',
+        required: true,
+        description: 'Creation date time',
+        example: '2023-10-15T14:30:00Z',
+      },
+      {
+        name: 'Amt',
+        type: 'string',
         required: false,
-        description: 'Whether fraud checks passed',
-        example: true,
+        description: 'Transaction amount',
+        example: '1000.50',
+      },
+      {
+        name: 'Ccy',
+        type: 'string',
+        required: false,
+        description: 'Currency code',
+        example: 'USD',
+      },
+      {
+        name: 'EndToEndId',
+        type: 'string',
+        required: true,
+        description: 'End-to-end identifier',
+        example: 'E2E-67890',
+      },
+      {
+        name: 'lat',
+        type: 'string',
+        required: false,
+        description: 'Latitude coordinate',
+        example: '40.7128',
+      },
+      {
+        name: 'long',
+        type: 'string',
+        required: false,
+        description: 'Longitude coordinate',
+        example: '-74.0060',
+      },
+      {
+        name: 'TxSts',
+        type: 'string',
+        required: false,
+        description: 'Transaction status',
+        example: 'COMPLETED',
       },
     ],
   },
@@ -188,364 +268,68 @@ export const TAZAMA_DATA_MODEL_SCHEMAS: TazamaCollectionSchema[] = [
     description:
       'Redis cache/store - Flat key-value mappings for fast lookup and caching',
     fields: [
-      // Transaction Identifiers
       {
-        name: 'transactionID',
+        name: 'dbtrId',
         type: 'string',
         required: false,
-        description: 'Unique transaction identifier',
-        example: 'TXN-12345',
+        description: 'Debtor ID',
+        example: 'DBTR-12345',
       },
       {
-        name: 'endToEndId',
+        name: 'cdtrId',
         type: 'string',
         required: false,
-        description: 'End-to-end transaction ID',
-        example: 'E2E-67890',
+        description: 'Creditor ID',
+        example: 'CDTR-67890',
       },
       {
-        name: 'messageId',
+        name: 'dbtrAcctId',
         type: 'string',
         required: false,
-        description: 'Message identifier',
-        example: 'MSG-12345',
+        description: 'Debtor Account ID',
+        example: 'ACCT-001',
       },
       {
-        name: 'transactionType',
+        name: 'cdtrAcctId',
         type: 'string',
         required: false,
-        description: 'Transaction type code',
-        example: 'pacs.008.001.10',
-      },
-
-      // Amount & Currency
-      {
-        name: 'amount',
-        type: 'number',
-        required: false,
-        description: 'Transaction amount',
-        example: 1000.5,
+        description: 'Creditor Account ID',
+        example: 'ACCT-002',
       },
       {
-        name: 'currency',
+        name: 'evtId',
         type: 'string',
         required: false,
-        description: 'Currency code (ISO 4217)',
-        example: 'USD',
-      },
-
-      // Debtor Information (Flat)
-      {
-        name: 'debtorName',
-        type: 'string',
-        required: false,
-        description: 'Debtor full name',
-        example: 'John Doe',
+        description: 'Event ID',
+        example: 'EVT-12345',
       },
       {
-        name: 'debtorId',
+        name: 'creDtTm',
         type: 'string',
         required: false,
-        description: 'Debtor identification number',
-        example: 'ID-12345',
-      },
-      {
-        name: 'debtorAccountId',
-        type: 'string',
-        required: false,
-        description: 'Debtor account identifier',
-        example: 'ACC-001',
-      },
-      {
-        name: 'debtorAccountType',
-        type: 'string',
-        required: false,
-        description: 'Debtor account type',
-        example: 'SAVINGS',
-      },
-      {
-        name: 'debtorBankId',
-        type: 'string',
-        required: false,
-        description: 'Debtor bank/institution identifier',
-        example: 'BANK-001',
-      },
-      {
-        name: 'debtorCountry',
-        type: 'string',
-        required: false,
-        description: 'Debtor country code (ISO 3166)',
-        example: 'US',
-      },
-      {
-        name: 'debtorPhone',
-        type: 'string',
-        required: false,
-        description: 'Debtor phone number',
-        example: '+1234567890',
-      },
-      {
-        name: 'debtorEmail',
-        type: 'string',
-        required: false,
-        description: 'Debtor email address',
-        example: 'john@example.com',
-      },
-
-      // Creditor Information (Flat)
-      {
-        name: 'creditorName',
-        type: 'string',
-        required: false,
-        description: 'Creditor full name',
-        example: 'Jane Smith',
-      },
-      {
-        name: 'creditorId',
-        type: 'string',
-        required: false,
-        description: 'Creditor identification number',
-        example: 'ID-67890',
-      },
-      {
-        name: 'creditorAccountId',
-        type: 'string',
-        required: false,
-        description: 'Creditor account identifier',
-        example: 'ACC-002',
-      },
-      {
-        name: 'creditorAccountType',
-        type: 'string',
-        required: false,
-        description: 'Creditor account type',
-        example: 'CHECKING',
-      },
-      {
-        name: 'creditorBankId',
-        type: 'string',
-        required: false,
-        description: 'Creditor bank/institution identifier',
-        example: 'BANK-002',
-      },
-      {
-        name: 'creditorCountry',
-        type: 'string',
-        required: false,
-        description: 'Creditor country code (ISO 3166)',
-        example: 'GB',
-      },
-      {
-        name: 'creditorPhone',
-        type: 'string',
-        required: false,
-        description: 'Creditor phone number',
-        example: '+4412345678',
-      },
-      {
-        name: 'creditorEmail',
-        type: 'string',
-        required: false,
-        description: 'Creditor email address',
-        example: 'jane@example.com',
-      },
-
-      // Timestamp & Date Fields
-      {
-        name: 'timestamp',
-        type: 'string',
-        required: false,
-        description: 'Transaction timestamp (ISO 8601)',
+        description: 'Creation Date Time',
         example: '2023-10-15T14:30:00Z',
       },
       {
-        name: 'createdDate',
-        type: 'string',
+        name: 'instdAmt',
+        type: 'object',
         required: false,
-        description: 'Creation date',
-        example: '2023-10-15',
+        description: 'Instructed Amount with currency',
+        example: { amt: 1000.5, ccy: 'USD' },
       },
       {
-        name: 'valueDate',
-        type: 'string',
+        name: 'intrBkSttlmAmt',
+        type: 'object',
         required: false,
-        description: 'Value date',
-        example: '2023-10-16',
-      },
-
-      // Transaction Details
-      {
-        name: 'description',
-        type: 'string',
-        required: false,
-        description: 'Transaction description/purpose',
-        example: 'Payment for services',
+        description: 'Interbank Settlement Amount with currency',
+        example: { amt: 1000.5, ccy: 'USD' },
       },
       {
-        name: 'reference',
-        type: 'string',
-        required: false,
-        description: 'Transaction reference number',
-        example: 'REF-12345',
-      },
-      {
-        name: 'status',
-        type: 'string',
-        required: false,
-        description: 'Transaction status',
-        example: 'COMPLETED',
-      },
-      {
-        name: 'channel',
-        type: 'string',
-        required: false,
-        description: 'Transaction channel (MOBILE, WEB, ATM, etc.)',
-        example: 'MOBILE',
-      },
-
-      // Risk & Fraud Scoring
-      {
-        name: 'riskScore',
+        name: 'xchgRate',
         type: 'number',
         required: false,
-        description: 'Risk score (0-100)',
-        example: 25.5,
-      },
-      {
-        name: 'fraudScore',
-        type: 'number',
-        required: false,
-        description: 'Fraud probability score (0-100)',
-        example: 15.3,
-      },
-      {
-        name: 'fraudFlag',
-        type: 'boolean',
-        required: false,
-        description: 'Fraud detected flag',
-        example: false,
-      },
-      {
-        name: 'alertLevel',
-        type: 'string',
-        required: false,
-        description: 'Alert level (LOW, MEDIUM, HIGH, CRITICAL)',
-        example: 'LOW',
-      },
-
-      // Location & IP Information
-      {
-        name: 'ipAddress',
-        type: 'string',
-        required: false,
-        description: 'IP address of transaction initiator',
-        example: '192.168.1.1',
-      },
-      {
-        name: 'geoLocation',
-        type: 'string',
-        required: false,
-        description: 'Geographic location coordinates',
-        example: '40.7128,-74.0060',
-      },
-      {
-        name: 'deviceId',
-        type: 'string',
-        required: false,
-        description: 'Device identifier',
-        example: 'DEV-123456',
-      },
-
-      // Additional Metadata
-      {
-        name: 'sessionId',
-        type: 'string',
-        required: false,
-        description: 'Session identifier',
-        example: 'SESS-789012',
-      },
-      {
-        name: 'merchantId',
-        type: 'string',
-        required: false,
-        description: 'Merchant identifier (for card transactions)',
-        example: 'MERCH-456',
-      },
-      {
-        name: 'merchantName',
-        type: 'string',
-        required: false,
-        description: 'Merchant name',
-        example: 'Amazon Inc',
-      },
-      {
-        name: 'categoryCode',
-        type: 'string',
-        required: false,
-        description: 'Merchant category code (MCC)',
-        example: '5411',
-      },
-
-      // Processing Information
-      {
-        name: 'processingStatus',
-        type: 'string',
-        required: false,
-        description: 'Processing status',
-        example: 'PENDING',
-      },
-      {
-        name: 'approvalCode',
-        type: 'string',
-        required: false,
-        description: 'Approval/authorization code',
-        example: 'AUTH-123',
-      },
-      {
-        name: 'rejectionReason',
-        type: 'string',
-        required: false,
-        description: 'Reason for rejection/failure',
-        example: 'INSUFFICIENT_FUNDS',
-      },
-
-      // Custom Fields (for flexibility)
-      {
-        name: 'customField1',
-        type: 'string',
-        required: false,
-        description: 'Custom field 1 - configurable',
-        example: 'custom_value_1',
-      },
-      {
-        name: 'customField2',
-        type: 'string',
-        required: false,
-        description: 'Custom field 2 - configurable',
-        example: 'custom_value_2',
-      },
-      {
-        name: 'customField3',
-        type: 'string',
-        required: false,
-        description: 'Custom field 3 - configurable',
-        example: 'custom_value_3',
-      },
-      {
-        name: 'metadata',
-        type: 'string',
-        required: false,
-        description: 'Additional metadata (JSON string)',
-        example: '{"key":"value"}',
-      },
-
-      // TTL for Redis expiry
-      {
-        name: 'ttl',
-        type: 'number',
-        required: false,
-        description: 'Time-to-live in seconds (for Redis expiry)',
-        example: 3600,
+        description: 'Exchange Rate',
+        example: 1.2,
       },
     ],
   },
