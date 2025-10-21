@@ -244,7 +244,7 @@ interface EditEndpointModalProps {
             const isCloning = isCloneMode && endpointId !== -1;
             setEndpointData({
               version: isCloning ? '1.0' : (config.version || '1.0'), // Reset version for clones
-              transactionType: isCloning ? `${config.transactionType}_COPY` : (config.transactionType || ''),
+              transactionType: isCloning ? `${config.transactionType}` : (config.transactionType || ''),
               description: config.msgFam || '', // Using msgFam as description since there's no separate description field in backend
               contentType: config.contentType || 'application/json',
               msgFam: config.msgFam || '',
