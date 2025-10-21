@@ -185,8 +185,7 @@ export class SimulationService {
       transformedPayload = {
         originalPayload: parsedPayload,
         dataCache: tcsResult?.dataCache || {},
-        transactionRelationship: tcsResult?.transactionRelationship || {},
-        endToEndId: tcsResult?.endToEndId || '',
+        endToEndId: tcsResult?.endToEndId || null,
       };
 
       // All stages passed!

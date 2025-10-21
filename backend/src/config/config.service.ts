@@ -1129,7 +1129,7 @@ export class ConfigService {
           this.tazamaDataModelService.isValidDestinationPath(dest);
         if (!isValid) {
           throw new BadRequestException(
-            `Destination field '${dest}' is not a valid Tazama data model field. Use a field from the Tazama internal data model (e.g., entities.Name, accounts.Currency, transactionRelationship.Amt).`,
+            `Destination field '${dest}' is not a valid Tazama data model field. Use a field from the Tazama internal data model (e.g., entities.id, accounts.id, transactionDetails.Amt).`,
           );
         }
       }
@@ -1140,7 +1140,7 @@ export class ConfigService {
         );
         if (!isValid) {
           throw new BadRequestException(
-            `Destination field '${mapping.destination}' is not a valid Tazama data model field. Use a field from the Tazama internal data model (e.g., entities.Name, accounts.Currency, transactionRelationship.Amt).`,
+            `Destination field '${mapping.destination}' is not a valid Tazama data model field. Use a field from the Tazama internal data model (e.g., entities.id, accounts.id, transactionDetails.Amt).`,
           );
         }
       }

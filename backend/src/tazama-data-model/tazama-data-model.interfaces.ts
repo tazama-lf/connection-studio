@@ -5,7 +5,6 @@ export type TazamaCollectionName =
   | 'entities'
   | 'accounts'
   | 'account_holder'
-  | 'transactionRelationship'
   | 'transactionDetails'
   | 'redis';
 export type TazamaFieldType =
@@ -49,7 +48,6 @@ export interface TazamaDataModelExtension {
   version: number;
 }
 
-
 export interface TransactionDetails {
   source: string;
   destination: string;
@@ -69,105 +67,65 @@ export const TAZAMA_DATA_MODEL_SCHEMAS: TazamaCollectionSchema[] = [
   {
     name: 'entities',
     type: 'node',
-    description: 'Individuals or organizations involved in transactions',
+    description:
+      'Entity - Individuals or organizations involved in transactions',
     fields: [
       {
-        name: '_key',
+        name: 'id',
         type: 'string',
         required: true,
-        description: 'Unique entity identifier',
-        example: 'ENTITY001',
+        description: 'Entity identifier (entityId + schemeProprietary)',
+        example: 'ENTITY001-SCHEME',
       },
       {
-        name: 'Name',
+        name: 'creDtTm',
         type: 'string',
-        required: false,
-        description: 'Entity name',
-        example: 'John Doe',
-      },
-      {
-        name: 'Type',
-        type: 'string',
-        required: false,
-        description: 'Entity type (INDIVIDUAL or ORGANIZATION)',
-        example: 'INDIVIDUAL',
+        required: true,
+        description: 'Creation date time',
+        example: '2023-10-15T14:30:00Z',
       },
     ],
   },
   {
     name: 'accounts',
     type: 'node',
-    description: 'Financial accounts',
+    description: 'Account - Financial accounts',
     fields: [
       {
-        name: '_key',
+        name: 'id',
         type: 'string',
         required: true,
-        description: 'Unique account identifier',
-        example: 'ACC001',
-      },
-      {
-        name: 'Currency',
-        type: 'string',
-        required: false,
-        description: 'Currency code',
-        example: 'USD',
+        description:
+          'Account identifier (accountId + schemeProprietary + agtMemberId)',
+        example: 'ACC001-SCHEME-MEMBER',
       },
     ],
   },
   {
     name: 'account_holder',
     type: 'edge',
-    description: 'Relationships between entities and accounts',
+    description: 'Account Holder - Relationships between entities and accounts',
     fields: [
       {
-        name: '_key',
+        name: 'source',
         type: 'string',
         required: true,
-        description: 'Unique relationship identifier',
-        example: 'REL001',
+        description: 'Entity ID (source of the edge)',
+        example: 'ENTITY001-SCHEME',
       },
       {
-        name: '_from',
+        name: 'destination',
         type: 'string',
         required: true,
-        description: 'Source entity',
-        example: 'entities/ENTITY001',
+        description: 'Account ID (destination of the edge)',
+        example: 'ACC001-SCHEME-MEMBER',
       },
       {
-        name: '_to',
+        name: 'creDtTm',
         type: 'string',
         required: true,
-        description: 'Target account',
-        example: 'accounts/ACC001',
-      },
-    ],
-  },
-  {
-    name: 'transactionRelationship',
-    type: 'edge',
-    description: 'Transaction relationships between accounts',
-    fields: [
-      {
-        name: '_key',
-        type: 'string',
-        required: true,
-        description: 'Unique transaction identifier',
-        example: 'TXN001',
-      },
-      {
-        name: 'Amt',
-        type: 'number',
-        required: true,
-        description: 'Transaction amount',
-        example: 100.5,
-      },
-      {
-        name: 'Ccy',
-        type: 'string',
-        required: false,
-        description: 'Currency code',
-        example: 'USD',
+        description: 'Creation date time',
+        example: '2023-10-15T14:30:00Z',
       },
     ],
   },

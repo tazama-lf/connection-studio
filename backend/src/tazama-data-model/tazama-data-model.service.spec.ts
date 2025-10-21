@@ -19,21 +19,21 @@ describe('TazamaDataModelService', () => {
   describe('getAllDestinationPaths', () => {
     it('should return all available destination paths', () => {
       const paths = service.getAllDestinationPaths();
-      expect(paths).toContain('entities._key');
-      expect(paths).toContain('entities.Name');
-      expect(paths).toContain('accounts.Currency');
-      expect(paths).toContain('transactionRelationship.Amt');
+      expect(paths).toContain('entities.id');
+      expect(paths).toContain('entities.creDtTm');
+      expect(paths).toContain('accounts.id');
+      expect(paths).toContain('transactionDetails.Amt');
       expect(paths.length).toBeGreaterThan(10);
     });
   });
 
   describe('isValidDestinationPath', () => {
     it('should validate correct destination paths', () => {
-      expect(service.isValidDestinationPath('entities.Name')).toBe(true);
-      expect(service.isValidDestinationPath('accounts.Currency')).toBe(true);
-      expect(
-        service.isValidDestinationPath('transactionRelationship.Amt'),
-      ).toBe(true);
+      expect(service.isValidDestinationPath('entities.id')).toBe(true);
+      expect(service.isValidDestinationPath('accounts.id')).toBe(true);
+      expect(service.isValidDestinationPath('transactionDetails.Amt')).toBe(
+        true,
+      );
     });
 
     it('should reject invalid destination paths', () => {
@@ -47,13 +47,9 @@ describe('TazamaDataModelService', () => {
 
   describe('getFieldType', () => {
     it('should return correct field types', () => {
-      expect(service.getFieldType('entities.Name')).toBe('STRING');
-      expect(service.getFieldType('transactionRelationship.Amt')).toBe(
-        'NUMBER',
-      );
-      expect(service.getFieldType('transactionDetails.TxTp')).toBe(
-        'STRING',
-      );
+      expect(service.getFieldType('entities.id')).toBe('STRING');
+      expect(service.getFieldType('redis.xchgRate')).toBe('NUMBER');
+      expect(service.getFieldType('transactionDetails.TxTp')).toBe('STRING');
     });
 
     it('should return null for invalid paths', () => {
@@ -63,13 +59,13 @@ describe('TazamaDataModelService', () => {
 
   describe('isFieldRequired', () => {
     it('should identify required fields', () => {
-      expect(service.isFieldRequired('entities._key')).toBe(true);
-      expect(service.isFieldRequired('transactionRelationship.Amt')).toBe(true);
+      expect(service.isFieldRequired('entities.id')).toBe(true);
+      expect(service.isFieldRequired('transactionDetails.source')).toBe(true);
     });
 
     it('should identify optional fields', () => {
-      expect(service.isFieldRequired('entities.Name')).toBe(false);
-      expect(service.isFieldRequired('accounts.Currency')).toBe(false);
+      expect(service.isFieldRequired('transactionDetails.Amt')).toBe(false);
+      expect(service.isFieldRequired('redis.dbtrId')).toBe(false);
     });
   });
 
@@ -87,10 +83,8 @@ describe('TazamaDataModelService', () => {
 
   describe('extractCollectionName', () => {
     it('should extract collection name from path', () => {
-      expect(service.extractCollectionName('entities.Name')).toBe('entities');
-      expect(service.extractCollectionName('accounts.Currency')).toBe(
-        'accounts',
-      );
+      expect(service.extractCollectionName('entities.id')).toBe('entities');
+      expect(service.extractCollectionName('accounts.id')).toBe('accounts');
     });
 
     it('should return null for invalid paths', () => {
@@ -100,8 +94,8 @@ describe('TazamaDataModelService', () => {
 
   describe('extractFieldName', () => {
     it('should extract field name from path', () => {
-      expect(service.extractFieldName('entities.Name')).toBe('Name');
-      expect(service.extractFieldName('accounts.Currency')).toBe('Currency');
+      expect(service.extractFieldName('entities.id')).toBe('id');
+      expect(service.extractFieldName('entities.creDtTm')).toBe('creDtTm');
     });
 
     it('should return null for invalid paths', () => {
