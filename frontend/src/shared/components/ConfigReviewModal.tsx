@@ -90,7 +90,7 @@ export const ConfigReviewModal: React.FC<ConfigReviewModalProps> = ({
                     <span className="font-medium text-gray-700">Transaction Type:</span> {configDetails.transactionType}
                   </div>
                   <div>
-                    <span className="font-medium text-gray-700">Message Family:</span> {configDetails.msgFam || 'N/A'}
+                    <span className="font-medium text-gray-700">Event Type:</span> {configDetails.msgFam || 'N/A'}
                   </div>
                   <div>
                     <span className="font-medium text-gray-700">Version:</span> {configDetails.version}

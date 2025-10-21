@@ -147,7 +147,7 @@ export const DeploymentConfirmation: React.FC<DeploymentConfirmationProps> = ({
             </div>
             {configData.msgFam && (
               <div>
-                <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Message Family</span>
+                <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Event Type</span>
                 <p className="mt-1 text-sm text-gray-900">{configData.msgFam}</p>
               </div>
             )}

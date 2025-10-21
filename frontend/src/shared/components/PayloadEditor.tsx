@@ -762,10 +762,10 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
            
           </div>
 
-          {/* Message Family (Optional) */}
+          {/* Event Type (Optional) */}
           <div>
             <label htmlFor="msgFam" className="block text-sm font-medium text-gray-700 mb-1">
-              Message Family
+              Event Type
             </label>
             <input
               id="msgFam"

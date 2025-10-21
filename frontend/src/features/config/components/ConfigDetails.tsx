@@ -223,14 +223,14 @@ export const ConfigDetails: React.FC<ConfigDetailsProps> = ({
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Message Family</label>
+                    <label className="block text-sm font-medium text-gray-700">Event Type</label>
                     {isEditMode ? (
                       <input
                         type="text"
                         value={editForm.msgFam || ''}
                         onChange={(e) => handleFormChange('msgFam', e.target.value)}
                         className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                        placeholder="Message Family"
+                        placeholder="Event Type"
                       />
                     ) : (
                       <p className="mt-1 text-sm text-gray-900">{config.msgFam || 'Not specified'}</p>
