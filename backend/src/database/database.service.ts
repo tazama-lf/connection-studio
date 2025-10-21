@@ -1,11 +1,13 @@
 import { Injectable, OnModuleDestroy } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Pool, QueryResult } from 'pg';
+import SFTPClient from 'ssh2-sftp-client';
 
 @Injectable()
 export class DatabaseService implements OnModuleDestroy {
     private pool: Pool;
 
-    constructor() {
+    constructor(private readonly configService: ConfigService) {
         this.pool = new Pool({
             connectionString: process.env.CONFIGURATION_DATABASE_URL,
             max: 10,
@@ -29,6 +31,29 @@ export class DatabaseService implements OnModuleDestroy {
 
         const result = await this.pool.query(query, [cleanName]);
         return result.rows[0]?.exists || false;
+    }
+
+
+    async getConfigFile() {
+        const sftp = new SFTPClient();
+        await sftp.connect({
+            host: this.configService.get<string>('SFTP_HOST_TEST'),
+            port: this.configService.get<number>('SFTP_PORT_TEST'),
+            username: this.configService.get<string>('SFTP_USERNAME_TEST'),
+            password: this.configService.get<string>('SFTP_PASSWORD_TEST'),
+        });
+
+        const remotePath = '/upload/config.json';
+        const fileExists = await sftp.exists(remotePath);
+
+        let config = {}
+
+        if (fileExists) {
+            const fileContent = await sftp.get(remotePath);
+            const rawData = fileContent.toString();
+            config = JSON.parse(rawData);
+        }
+        return config;
     }
 
     async onModuleDestroy() {
