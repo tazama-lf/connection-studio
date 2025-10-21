@@ -137,64 +137,87 @@ export class SimulationService {
         );
       }
 
-      // Stage 4: Validate Mappings Configuration
-      const mappingValidationStage = this.stageValidateMappings(
-        parsedPayload,
-        config.mapping || [],
-      );
-      stages.push(mappingValidationStage);
+      // Stage 4: Validate Mappings Configuration (Optional)
+      // If no mappings are defined, skip mapping stages
+      const hasMappings = config.mapping && config.mapping.length > 0;
 
-      if (mappingValidationStage.status === 'FAILED') {
-        errors.push(...(mappingValidationStage.errors || []));
-        return this.createStageBasedResult(
-          dto,
-          timestamp,
-          userId,
-          tenantId,
-          stages,
-          errors,
-          null,
-          { originalPayload: parsedPayload },
+      if (hasMappings) {
+        const mappingValidationStage = this.stageValidateMappings(
+          parsedPayload,
+          config.mapping || [],
         );
-      }
+        stages.push(mappingValidationStage);
 
-      // Stage 5: Execute TCS Mapping Functions
-      const tcsStage = await this.stageExecuteTCSMapping(
-        parsedPayload,
-        config,
-        dto.tcsMapping,
-      );
-      stages.push(tcsStage);
+        if (mappingValidationStage.status === 'FAILED') {
+          errors.push(...(mappingValidationStage.errors || []));
+          return this.createStageBasedResult(
+            dto,
+            timestamp,
+            userId,
+            tenantId,
+            stages,
+            errors,
+            null,
+            { originalPayload: parsedPayload },
+          );
+        }
 
-      if (tcsStage.status === 'FAILED') {
-        errors.push(...(tcsStage.errors || []));
-        return this.createStageBasedResult(
-          dto,
-          timestamp,
-          userId,
-          tenantId,
-          stages,
-          errors,
-          null,
-          { originalPayload: parsedPayload },
+        // Stage 5: Execute TCS Mapping Functions
+        const tcsStage = await this.stageExecuteTCSMapping(
+          parsedPayload,
+          config,
+          dto.tcsMapping,
         );
+        stages.push(tcsStage);
+
+        if (tcsStage.status === 'FAILED') {
+          errors.push(...(tcsStage.errors || []));
+          return this.createStageBasedResult(
+            dto,
+            timestamp,
+            userId,
+            tenantId,
+            stages,
+            errors,
+            null,
+            { originalPayload: parsedPayload },
+          );
+        }
+
+        tcsResult = tcsStage.details.tcsResult;
+        mappingsApplied = tcsStage.details.mappingsApplied;
+
+        const mappingDetails = this.buildMappingDetails(
+          config.mapping || [],
+          parsedPayload,
+          tcsResult,
+        );
+
+        transformedPayload = {
+          originalPayload: parsedPayload,
+          dataCache: tcsResult?.dataCache || {},
+          endToEndId: tcsResult?.endToEndId || null,
+          mappings: mappingDetails,
+        };
+      } else {
+        // No mappings defined - skip mapping stages
+        stages.push({
+          name: '4. Validate Mappings',
+          status: 'SKIPPED',
+          message: 'No mappings defined - skipping validation',
+        });
+
+        stages.push({
+          name: '5. Execute TCS Mapping Functions',
+          status: 'SKIPPED',
+          message: 'No mappings defined - skipping execution',
+        });
+
+        // No mapping results, just include original payload
+        transformedPayload = {
+          originalPayload: parsedPayload,
+        };
       }
-
-      tcsResult = tcsStage.details.tcsResult;
-      mappingsApplied = tcsStage.details.mappingsApplied;
-
-      const mappingDetails = this.buildMappingDetails(
-        config.mapping || [],
-        parsedPayload,
-        tcsResult,
-      );
-
-      transformedPayload = {
-        originalPayload: parsedPayload,
-        dataCache: tcsResult?.dataCache || {},
-        endToEndId: tcsResult?.endToEndId || null,
-        mappings: mappingDetails,
-      };
 
       // All stages passed!
       const finalStatus = errors.length === 0 ? 'PASSED' : 'FAILED';
@@ -344,15 +367,8 @@ export class SimulationService {
     payload: any,
     mappings: any[],
   ): ValidationStage {
-    if (!mappings || mappings.length === 0) {
-      return {
-        name: '4. Validate Mappings',
-        status: 'FAILED',
-        message: 'No mappings defined in configuration',
-        errors: [{ field: 'mapping', message: 'No mappings defined' }],
-      };
-    }
-
+    // This method should only be called when mappings exist
+    // The caller checks for empty mappings before calling this
     const errors = this.validateMappings(payload, mappings);
 
     if (errors.length > 0) {
@@ -389,17 +405,8 @@ export class SimulationService {
         providedMapping || this.convertConfigToTCSMapping(config);
       const mappingsApplied = tcsMapping.mappings?.length || 0;
 
-      if (mappingsApplied === 0) {
-        return {
-          name: '5. Execute TCS Mapping Functions',
-          status: 'FAILED',
-          message: 'No TCS mappings to execute',
-          errors: [
-            { field: 'tcsMapping', message: 'No TCS mappings configured' },
-          ],
-        };
-      }
-
+      // This method should only be called when mappings exist
+      // The caller checks for empty mappings before calling this
       const tcsResult = processMappings(payload, tcsMapping);
 
       return {
