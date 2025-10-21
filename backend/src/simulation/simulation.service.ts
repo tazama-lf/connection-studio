@@ -1,6 +1,6 @@
 ﻿import { Injectable, Logger } from '@nestjs/common';
 import { ConfigRepository } from '../config/config.repository';
-import { Config } from '../config/config.interfaces';
+import { Config, FieldMapping } from '../config/config.interfaces';
 import { AuditService } from '../audit/audit.service';
 import {
   processMappings,
@@ -182,10 +182,18 @@ export class SimulationService {
 
       tcsResult = tcsStage.details.tcsResult;
       mappingsApplied = tcsStage.details.mappingsApplied;
+
+      const mappingDetails = this.buildMappingDetails(
+        config.mapping || [],
+        parsedPayload,
+        tcsResult,
+      );
+
       transformedPayload = {
         originalPayload: parsedPayload,
         dataCache: tcsResult?.dataCache || {},
         endToEndId: tcsResult?.endToEndId || null,
+        mappings: mappingDetails,
       };
 
       // All stages passed!
@@ -445,6 +453,84 @@ export class SimulationService {
     }
 
     return { mappings };
+  }
+
+  private buildMappingDetails(
+    mappings: FieldMapping[],
+    originalPayload: any,
+    tcsResult: iMappingResult | null,
+  ): Array<{
+    destination: string;
+    sources: string[];
+    sourceValues: any[];
+    transformation: string;
+    resultValue: any;
+    prefix?: string;
+    delimiter?: string;
+    constantValue?: any;
+    operator?: string;
+  }> {
+    const details: Array<{
+      destination: string;
+      sources: string[];
+      sourceValues: any[];
+      transformation: string;
+      resultValue: any;
+      prefix?: string;
+      delimiter?: string;
+      constantValue?: any;
+      operator?: string;
+    }> = [];
+
+    for (const mapping of mappings) {
+      const sources = mapping.source || [];
+      const destination = Array.isArray(mapping.destination)
+        ? mapping.destination[0]
+        : mapping.destination;
+
+      // Extract source values from original payload
+      const sourceValues = sources.map((sourcePath) =>
+        this.getValueByPath(originalPayload, sourcePath),
+      );
+
+      // Determine the result value from tcsResult based on destination
+      let resultValue: any = null;
+      if (tcsResult && destination) {
+        const [collectionName, fieldName] = destination.split('.');
+        if (collectionName === 'redis' && tcsResult.dataCache) {
+          resultValue = tcsResult.dataCache[fieldName];
+        } else if (
+          collectionName === 'transaction' &&
+          fieldName === 'endToEndId'
+        ) {
+          resultValue = tcsResult.endToEndId;
+        }
+      }
+
+      details.push({
+        destination: destination || '',
+        sources,
+        sourceValues,
+        transformation: mapping.transformation || 'NONE',
+        resultValue,
+        prefix: mapping.prefix,
+        delimiter: mapping.delimiter,
+        constantValue: mapping.constantValue,
+        operator: mapping.operator,
+      });
+    }
+
+    return details;
+  }
+
+  /**
+   * Get value from object by dot-notation path
+   */
+  private getValueByPath(obj: any, path: string): any {
+    if (!path) return undefined;
+    return path.split('.').reduce((current, key) => {
+      return current && current[key] !== undefined ? current[key] : undefined;
+    }, obj);
   }
 
   /**
