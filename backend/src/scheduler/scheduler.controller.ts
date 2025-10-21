@@ -22,11 +22,11 @@ export class SchedulerController {
 
     @Patch('/update/:id')
     async update(@Param('id') id: string, @Body() body: UpdateScheduleJobDto) {
-        return this.schedulerService.update(parseInt(id), body);
+        return this.schedulerService.update(id, body);
     }
 
     @Get('/:id')
     async getById(@Param('id') id: string) {
-        return this.schedulerService.findOne(parseInt(id));
+        return this.schedulerService.findOne(id);
     }
 }

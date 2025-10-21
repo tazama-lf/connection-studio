@@ -38,7 +38,7 @@ export class SchedulerService {
         }
     }
 
-    async findOne(id: number): Promise<Schedule> {
+    async findOne(id: string): Promise<Schedule> {
         const query = `SELECT * FROM schedule WHERE id = $1 LIMIT 1;`;
         const result = await this.db.query(query, [id]);
         const schedule = result.rows[0] || null;
@@ -65,7 +65,7 @@ export class SchedulerService {
         return data;
     }
 
-    async update(id: number, attr: UpdateScheduleJobDto): Promise<ISuccess> {
+    async update(id: string, attr: UpdateScheduleJobDto): Promise<ISuccess> {
         try {
             const keys = Object.keys(attr);
             const values = Object.values(attr);
