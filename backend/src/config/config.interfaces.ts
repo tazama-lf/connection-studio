@@ -32,12 +32,13 @@ export interface UpdateConfigDto {
   fieldAdjustments?: AdjustFieldDto[];
 }
 export interface FieldMapping {
-  source?: string | string[]; // Optional when using constants
+  source?: string[]; // Always an array for consistency, optional when using constants
   destination: string | string[];
   transformation?: 'NONE' | 'CONCAT' | 'SUM' | 'SPLIT' | 'CONSTANT' | 'MATH';
   delimiter?: string; // Used for one-to-many mapping to split source value
   constantValue?: any; // Fixed value to map to destination (replaces constants)
   operator?: 'ADD' | 'SUBTRACT' | 'MULTIPLY' | 'DIVIDE'; // Mathematical operators for MATH transformation
+  prefix?: string;
 }
 
 export interface FunctionDefinition {
@@ -90,7 +91,10 @@ export interface AddMappingDto {
   destination?: string;
   destinations?: string[];
   sources?: string[];
+  sumFields?: string[];
   delimiter?: string;
+  constantValue?: any;
+  prefix?: string;
 }
 
 export interface AddFunctionDto {

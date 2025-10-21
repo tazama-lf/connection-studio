@@ -161,6 +161,17 @@ export class TazamaDataModelService {
     return options.sort((a, b) => a.label.localeCompare(b.label));
   }
 
+  getCollectionTypes(): string[] {
+    const validCollections = [
+      'entities',
+      'accounts',
+      'account_holder',
+      'transactionDetails',
+      'redis',
+    ];
+    return validCollections;
+  }
+
   extractCollectionName(
     path: TazamaDestinationPath,
   ): TazamaCollectionName | null {
@@ -169,8 +180,7 @@ export class TazamaDataModelService {
       'entities',
       'accounts',
       'account_holder',
-      'transactionRelationship',
-      'transactionHistory',
+      'transactionDetails',
       'redis',
     ];
     if (validCollections.includes(collectionName as TazamaCollectionName)) {

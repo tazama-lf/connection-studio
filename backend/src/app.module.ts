@@ -14,6 +14,7 @@ import { KnexModule } from '../knex/knex.module';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { TokenExpiryInterceptor } from './auth/token-expiry.interceptor';
 import { AuditInterceptor } from './audit/audit.interceptor';
+import { SessionActivityInterceptor } from './auth/session-activity.interceptor';
 
 @Module({
   imports: [
@@ -37,6 +38,10 @@ import { AuditInterceptor } from './audit/audit.interceptor';
     {
       provide: APP_INTERCEPTOR,
       useClass: TokenExpiryInterceptor,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: SessionActivityInterceptor,
     },
     {
       provide: APP_INTERCEPTOR,

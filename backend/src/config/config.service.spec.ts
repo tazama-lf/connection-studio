@@ -400,7 +400,7 @@ describe('ConfigService', () => {
       repository.findConfigById.mockResolvedValue(mockConfig);
       const updatedConfig = {
         ...mockConfig,
-        mapping: [{ source: 'amount', destination: 'transactionAmount' }],
+        mapping: [{ source: ['amount'], destination: 'transactionAmount' }],
       };
       repository.findConfigById.mockResolvedValueOnce(mockConfig);
       repository.findConfigById.mockResolvedValueOnce(updatedConfig);
@@ -459,14 +459,14 @@ describe('ConfigService', () => {
       const configWithMapping = {
         ...mockConfig,
         mapping: [
-          { source: 'amount', destination: 'transactionAmount' },
-          { source: 'currency', destination: 'transactionCurrency' },
+          { source: ['amount'], destination: 'transactionAmount' },
+          { source: ['currency'], destination: 'transactionCurrency' },
         ],
       };
       repository.findConfigById.mockResolvedValueOnce(configWithMapping);
       const updatedConfig = {
         ...configWithMapping,
-        mapping: [{ source: 'currency', destination: 'transactionCurrency' }],
+        mapping: [{ source: ['currency'], destination: 'transactionCurrency' }],
       };
       repository.findConfigById.mockResolvedValueOnce(updatedConfig);
       const result = await service.removeMapping(
@@ -548,6 +548,7 @@ describe('ConfigService', () => {
 
       expect(result.success).toBe(false);
       expect(result.message).toContain('Editing not allowed');
+      expect(result.message).toContain('Please clone to create a new version');
       expect(repository.updateConfig).not.toHaveBeenCalled();
     });
 
@@ -580,7 +581,7 @@ describe('ConfigService', () => {
         ...mockConfig,
         functions: [
           {
-            params: ['dbtrAcctId', 'tenantId'],
+            params: ['redis.dbtrAcctId', 'transaction.tenantId'],
             functionName: 'addAccount' as AllowedFunctionName,
           },
         ],
@@ -643,7 +644,7 @@ describe('ConfigService', () => {
         functions: expect.arrayContaining([
           expect.objectContaining({
             functionName: 'addAccount',
-            params: ['dbtrAcctId', 'tenantId'],
+            params: ['redis.dbtrAcctId', 'transaction.tenantId'],
           }),
         ]),
       });
@@ -704,7 +705,7 @@ describe('ConfigService', () => {
         ...mockConfig,
         functions: [
           {
-            params: ['dbtrAcctId'],
+            params: ['redis.dbtrAcctId'],
             functionName: 'addAccount' as AllowedFunctionName,
           },
         ],

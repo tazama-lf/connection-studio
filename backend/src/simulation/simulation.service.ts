@@ -1,6 +1,6 @@
 ﻿import { Injectable, Logger } from '@nestjs/common';
 import { ConfigRepository } from '../config/config.repository';
-import { Config } from '../config/config.interfaces';
+import { Config, FieldMapping } from '../config/config.interfaces';
 import { AuditService } from '../audit/audit.service';
 import {
   processMappings,
@@ -137,57 +137,87 @@ export class SimulationService {
         );
       }
 
-      // Stage 4: Validate Mappings Configuration
-      const mappingValidationStage = this.stageValidateMappings(
-        parsedPayload,
-        config.mapping || [],
-      );
-      stages.push(mappingValidationStage);
+      // Stage 4: Validate Mappings Configuration (Optional)
+      // If no mappings are defined, skip mapping stages
+      const hasMappings = config.mapping && config.mapping.length > 0;
 
-      if (mappingValidationStage.status === 'FAILED') {
-        errors.push(...(mappingValidationStage.errors || []));
-        return this.createStageBasedResult(
-          dto,
-          timestamp,
-          userId,
-          tenantId,
-          stages,
-          errors,
-          null,
-          { originalPayload: parsedPayload },
+      if (hasMappings) {
+        const mappingValidationStage = this.stageValidateMappings(
+          parsedPayload,
+          config.mapping || [],
         );
-      }
+        stages.push(mappingValidationStage);
 
-      // Stage 5: Execute TCS Mapping Functions
-      const tcsStage = await this.stageExecuteTCSMapping(
-        parsedPayload,
-        config,
-        dto.tcsMapping,
-      );
-      stages.push(tcsStage);
+        if (mappingValidationStage.status === 'FAILED') {
+          errors.push(...(mappingValidationStage.errors || []));
+          return this.createStageBasedResult(
+            dto,
+            timestamp,
+            userId,
+            tenantId,
+            stages,
+            errors,
+            null,
+            { originalPayload: parsedPayload },
+          );
+        }
 
-      if (tcsStage.status === 'FAILED') {
-        errors.push(...(tcsStage.errors || []));
-        return this.createStageBasedResult(
-          dto,
-          timestamp,
-          userId,
-          tenantId,
-          stages,
-          errors,
-          null,
-          { originalPayload: parsedPayload },
+        // Stage 5: Execute TCS Mapping Functions
+        const tcsStage = await this.stageExecuteTCSMapping(
+          parsedPayload,
+          config,
+          dto.tcsMapping,
         );
-      }
+        stages.push(tcsStage);
 
-      tcsResult = tcsStage.details.tcsResult;
-      mappingsApplied = tcsStage.details.mappingsApplied;
-      transformedPayload = {
-        originalPayload: parsedPayload,
-        dataCache: tcsResult?.dataCache || {},
-        transactionRelationship: tcsResult?.transactionRelationship || {},
-        endToEndId: tcsResult?.endToEndId || '',
-      };
+        if (tcsStage.status === 'FAILED') {
+          errors.push(...(tcsStage.errors || []));
+          return this.createStageBasedResult(
+            dto,
+            timestamp,
+            userId,
+            tenantId,
+            stages,
+            errors,
+            null,
+            { originalPayload: parsedPayload },
+          );
+        }
+
+        tcsResult = tcsStage.details.tcsResult;
+        mappingsApplied = tcsStage.details.mappingsApplied;
+
+        const mappingDetails = this.buildMappingDetails(
+          config.mapping || [],
+          parsedPayload,
+          tcsResult,
+        );
+
+        transformedPayload = {
+          originalPayload: parsedPayload,
+          dataCache: tcsResult?.dataCache || {},
+          endToEndId: tcsResult?.endToEndId || null,
+          mappings: mappingDetails,
+        };
+      } else {
+        // No mappings defined - skip mapping stages
+        stages.push({
+          name: '4. Validate Mappings',
+          status: 'SKIPPED',
+          message: 'No mappings defined - skipping validation',
+        });
+
+        stages.push({
+          name: '5. Execute TCS Mapping Functions',
+          status: 'SKIPPED',
+          message: 'No mappings defined - skipping execution',
+        });
+
+        // No mapping results, just include original payload
+        transformedPayload = {
+          originalPayload: parsedPayload,
+        };
+      }
 
       // All stages passed!
       const finalStatus = errors.length === 0 ? 'PASSED' : 'FAILED';
@@ -337,15 +367,8 @@ export class SimulationService {
     payload: any,
     mappings: any[],
   ): ValidationStage {
-    if (!mappings || mappings.length === 0) {
-      return {
-        name: '4. Validate Mappings',
-        status: 'FAILED',
-        message: 'No mappings defined in configuration',
-        errors: [{ field: 'mapping', message: 'No mappings defined' }],
-      };
-    }
-
+    // This method should only be called when mappings exist
+    // The caller checks for empty mappings before calling this
     const errors = this.validateMappings(payload, mappings);
 
     if (errors.length > 0) {
@@ -382,18 +405,9 @@ export class SimulationService {
         providedMapping || this.convertConfigToTCSMapping(config);
       const mappingsApplied = tcsMapping.mappings?.length || 0;
 
-      if (mappingsApplied === 0) {
-        return {
-          name: '5. Execute TCS Mapping Functions',
-          status: 'FAILED',
-          message: 'No TCS mappings to execute',
-          errors: [
-            { field: 'tcsMapping', message: 'No TCS mappings configured' },
-          ],
-        };
-      }
-
-      const tcsResult = await processMappings(payload, tcsMapping);
+      // This method should only be called when mappings exist
+      // The caller checks for empty mappings before calling this
+      const tcsResult = processMappings(payload, tcsMapping);
 
       return {
         name: '5. Execute TCS Mapping Functions',
@@ -425,16 +439,12 @@ export class SimulationService {
       sources: string[];
       separator?: string;
       prefix?: string;
-      suffix?: string;
     }> = [];
 
     if (config.mapping && Array.isArray(config.mapping)) {
       for (const mapping of config.mapping) {
-        const sources = Array.isArray(mapping.source)
-          ? mapping.source
-          : mapping.source
-            ? [mapping.source]
-            : [];
+        // Source is always an array for consistency
+        const sources = mapping.source || [];
 
         const destination = Array.isArray(mapping.destination)
           ? mapping.destination[0]
@@ -444,11 +454,90 @@ export class SimulationService {
           destination: destination || '',
           sources,
           separator: '',
+          prefix: mapping.prefix,
         });
       }
     }
 
     return { mappings };
+  }
+
+  private buildMappingDetails(
+    mappings: FieldMapping[],
+    originalPayload: any,
+    tcsResult: iMappingResult | null,
+  ): Array<{
+    destination: string;
+    sources: string[];
+    sourceValues: any[];
+    transformation: string;
+    resultValue: any;
+    prefix?: string;
+    delimiter?: string;
+    constantValue?: any;
+    operator?: string;
+  }> {
+    const details: Array<{
+      destination: string;
+      sources: string[];
+      sourceValues: any[];
+      transformation: string;
+      resultValue: any;
+      prefix?: string;
+      delimiter?: string;
+      constantValue?: any;
+      operator?: string;
+    }> = [];
+
+    for (const mapping of mappings) {
+      const sources = mapping.source || [];
+      const destination = Array.isArray(mapping.destination)
+        ? mapping.destination[0]
+        : mapping.destination;
+
+      // Extract source values from original payload
+      const sourceValues = sources.map((sourcePath) =>
+        this.getValueByPath(originalPayload, sourcePath),
+      );
+
+      // Determine the result value from tcsResult based on destination
+      let resultValue: any = null;
+      if (tcsResult && destination) {
+        const [collectionName, fieldName] = destination.split('.');
+        if (collectionName === 'redis' && tcsResult.dataCache) {
+          resultValue = tcsResult.dataCache[fieldName];
+        } else if (
+          collectionName === 'transaction' &&
+          fieldName === 'endToEndId'
+        ) {
+          resultValue = tcsResult.endToEndId;
+        }
+      }
+
+      details.push({
+        destination: destination || '',
+        sources,
+        sourceValues,
+        transformation: mapping.transformation || 'NONE',
+        resultValue,
+        prefix: mapping.prefix,
+        delimiter: mapping.delimiter,
+        constantValue: mapping.constantValue,
+        operator: mapping.operator,
+      });
+    }
+
+    return details;
+  }
+
+  /**
+   * Get value from object by dot-notation path
+   */
+  private getValueByPath(obj: any, path: string): any {
+    if (!path) return undefined;
+    return path.split('.').reduce((current, key) => {
+      return current && current[key] !== undefined ? current[key] : undefined;
+    }, obj);
   }
 
   /**
@@ -560,6 +649,7 @@ export class SimulationService {
         strictTypes: true,
         strictRequired: true,
         allowUnionTypes: false,
+        validateFormats: false,
       });
 
       const schemaWithStrict = this.enforceStrictSchema(schema);
@@ -568,9 +658,13 @@ export class SimulationService {
       this.logger.log(`Strict schema: ${JSON.stringify(schemaWithStrict)}`);
 
       const validate = ajv.compile(schemaWithStrict);
+
       const valid = validate(payload);
 
       this.logger.debug(`Schema validation result: ${valid}`);
+      this.logger.debug(
+        `Payload type: ${Array.isArray(payload) ? 'array' : typeof payload}`,
+      );
 
       if (!valid && validate.errors) {
         this.logger.warn(
@@ -578,6 +672,14 @@ export class SimulationService {
         );
 
         for (const error of validate.errors) {
+          if (
+            error.keyword === 'additionalProperties' &&
+            error.instancePath &&
+            this.isArrayPath(payload, error.instancePath)
+          ) {
+            continue;
+          }
+
           errors.push({
             field: error.instancePath || 'root',
             message: error.message || 'Schema validation failed',
@@ -600,19 +702,13 @@ export class SimulationService {
     return errors;
   }
 
-  /**
-   * Validate that all mapping sources exist in the payload
-   */
   private validateMappings(payload: any, mappings: any[]): SimulationError[] {
     const errors: SimulationError[] = [];
 
     for (let i = 0; i < mappings.length; i++) {
       const mapping = mappings[i];
-      const sources = Array.isArray(mapping.source)
-        ? mapping.source
-        : mapping.source
-          ? [mapping.source]
-          : [];
+      // Source is always an array for consistency
+      const sources = mapping.source || [];
 
       if (
         mapping.transformation === 'CONSTANT' ||
@@ -656,6 +752,30 @@ export class SimulationService {
     return errors;
   }
 
+  private isArrayPath(obj: any, path: string): boolean {
+    if (!path) return false;
+
+    const normalizedPath = path.replace(/^\//, '').replace(/\//g, '.');
+    const pathParts = normalizedPath.split('.');
+
+    let current = obj;
+    for (let i = 0; i < pathParts.length; i++) {
+      const part = pathParts[i];
+
+      if (Array.isArray(current)) {
+        return true;
+      }
+
+      if (current && typeof current === 'object' && part in current) {
+        current = current[part];
+      } else {
+        break;
+      }
+    }
+
+    return Array.isArray(current);
+  }
+
   private getFieldValue(obj: any, path: string): any {
     if (!path) return undefined;
 
@@ -671,17 +791,20 @@ export class SimulationService {
 
     const strictSchema = { ...schema };
 
-    if (
-      strictSchema.type === 'object' &&
-      strictSchema.additionalProperties === undefined &&
-      !strictSchema.items
-    ) {
-      strictSchema.additionalProperties = false;
+    if (strictSchema.type === 'array') {
+      if (strictSchema.items) {
+        if (typeof strictSchema.items === 'object') {
+          strictSchema.items = this.enforceStrictSchema(strictSchema.items);
+        }
+      }
+      return strictSchema;
     }
 
-    if (strictSchema.type === 'array' && strictSchema.items) {
-      strictSchema.items = this.enforceStrictSchema(strictSchema.items);
-      return strictSchema;
+    if (
+      strictSchema.type === 'object' &&
+      strictSchema.additionalProperties === undefined
+    ) {
+      strictSchema.additionalProperties = false;
     }
 
     if (strictSchema.properties) {

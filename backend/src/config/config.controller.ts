@@ -132,25 +132,12 @@ export class ConfigController {
       getUserId(user),
     );
   }
-  @Get(':id')
-  @RequireClaims(TazamaClaims.EDITOR)
-  async getConfigById(
-    @Param('id', ParseIntPipe) id: number,
+  @Get('pending-approvals')
+  @RequireClaims(TazamaClaims.APPROVER)
+  async getPendingApprovals(
     @User() user: AuthenticatedUser,
-  ): Promise<Config> {
-    const config = await this.configService.getConfigById(
-      id,
-      getTenantId(user),
-    );
-    if (!config) {
-      throw new Error(`Config with ID ${id} not found`);
-    }
-    return config;
-  }
-  @Get()
-  @RequireClaims(TazamaClaims.EDITOR)
-  async getAllConfigs(@User() user: AuthenticatedUser): Promise<Config[]> {
-    return this.configService.getAllConfigs(getTenantId(user));
+  ): Promise<Config[]> {
+    return this.configService.getPendingApprovals(getTenantId(user));
   }
   @Get('transaction/:type')
   @RequireClaims(TazamaClaims.EDITOR)
@@ -179,6 +166,26 @@ export class ConfigController {
       throw new Error(`Config not found for path ${path} version ${version}`);
     }
     return config;
+  }
+  @Get(':id')
+  @RequireAnyClaims(TazamaClaims.EDITOR, TazamaClaims.APPROVER)
+  async getConfigById(
+    @Param('id', ParseIntPipe) id: number,
+    @User() user: AuthenticatedUser,
+  ): Promise<Config> {
+    const config = await this.configService.getConfigById(
+      id,
+      getTenantId(user),
+    );
+    if (!config) {
+      throw new Error(`Config with ID ${id} not found`);
+    }
+    return config;
+  }
+  @Get()
+  @RequireClaims(TazamaClaims.EDITOR)
+  async getAllConfigs(@User() user: AuthenticatedUser): Promise<Config[]> {
+    return this.configService.getAllConfigs(getTenantId(user));
   }
   @Put(':id')
   @RequireClaims(TazamaClaims.EDITOR)
@@ -362,7 +369,7 @@ export class ConfigController {
   }
 
   @Post(':id/workflow/deploy')
-  @RequireClaims(TazamaClaims.PUBLISHER)
+  @RequireClaims(TazamaClaims.APPROVER)
   async deployConfig(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: DeploymentDto,

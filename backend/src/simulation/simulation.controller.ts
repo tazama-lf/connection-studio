@@ -5,12 +5,12 @@ import type {
   SimulationResult,
 } from './simulation.service';
 import { TazamaAuthGuard } from '../auth/tazama-auth.guard';
-import { RequireEditorRole } from '../auth/auth.decorator';
+import { RequireAnyClaims, TazamaClaims } from '../auth/auth.decorator';
 import { User } from '../auth/user.decorator';
 
 @Controller('simulation')
 @UseGuards(TazamaAuthGuard)
-@RequireEditorRole()
+@RequireAnyClaims(TazamaClaims.EDITOR, TazamaClaims.APPROVER)
 export class SimulationController {
   private readonly logger = new Logger(SimulationController.name);
 

@@ -1,6 +1,11 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
 import { Knex } from 'knex';
-import { Config, FieldMapping, FunctionDefinition } from './config.interfaces';
+import {
+  Config,
+  FieldMapping,
+  FunctionDefinition,
+  ConfigStatus,
+} from './config.interfaces';
 import { JSONSchema } from '@tazama-lf/tcs-lib';
 @Injectable()
 export class ConfigRepository {
@@ -135,6 +140,9 @@ export class ConfigRepository {
     if (updates.functions !== undefined)
       updateData.functions = JSON.stringify(updates.functions);
     if (updates.status !== undefined) updateData.status = updates.status;
+
+    updateData.updated_at = this.knex.fn.now();
+
     await this.knex('config')
       .where({ id, tenant_id: tenantId })
       .update(updateData);
@@ -164,7 +172,7 @@ export class ConfigRepository {
           : typeof row.functions === 'string'
             ? JSON.parse(row.functions)
             : row.functions,
-      status: row.status,
+      status: row.status as ConfigStatus,
       tenantId: row.tenant_id,
       createdBy: row.created_by,
       createdAt: row.created_at,

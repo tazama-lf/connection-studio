@@ -368,6 +368,15 @@ export class ConfigService {
     return this.configRepository.findConfigsByTenant(tenantId);
   }
 
+  async getPendingApprovals(tenantId: string): Promise<Config[]> {
+    const allConfigs =
+      await this.configRepository.findConfigsByTenant(tenantId);
+    return allConfigs.filter((config) => {
+      const status: string | undefined = config.status as string | undefined;
+      return status === 'under_review' || status === 'approved';
+    });
+  }
+
   async getConfigsByTransactionType(
     transactionType: TransactionType,
     tenantId: string,
@@ -651,7 +660,7 @@ export class ConfigService {
     }
 
     const newMapping = this.createMappingFromDto(mappingDto);
-    await this.validateMapping(newMapping, config.schema, tenantId);
+    this.validateMapping(newMapping, config.schema, tenantId);
 
     const updatedMappings = [...(config.mapping || []), newMapping];
 
@@ -741,7 +750,7 @@ export class ConfigService {
     }
 
     const updatedMapping = this.createMappingFromDto(mappingDto);
-    await this.validateMapping(updatedMapping, config.schema, tenantId);
+    this.validateMapping(updatedMapping, config.schema, tenantId);
 
     const updatedMappings = [...config.mapping];
     updatedMappings[mappingIndex] = updatedMapping;
@@ -926,7 +935,15 @@ export class ConfigService {
 
     return {
       functionName: dto.functionName,
-      params: dto.params.map((p) => p.trim()).filter((p) => p.length > 0),
+      params: dto.params
+        .map((p) => {
+          const trimmed = p.trim();
+          // tenantId gets transaction. prefix, others get redis. prefix
+          return trimmed === 'tenantId'
+            ? `transaction.${trimmed}`
+            : `redis.${trimmed}`;
+        })
+        .filter((p) => p.length > 0),
     };
   }
 
@@ -934,11 +951,10 @@ export class ConfigService {
     func: FunctionDefinition,
     _schema: JSONSchema,
   ): void {
-    // Validate parameter names
     for (const param of func.params) {
-      if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(param)) {
+      if (!/^(redis\.|transaction\.)?[a-zA-Z_][a-zA-Z0-9_]*$/.test(param)) {
         throw new BadRequestException(
-          `Parameter name '${param}' must be a valid identifier`,
+          `Parameter name '${param}' must be a valid identifier or prefixed identifier (e.g., 'param1', 'redis.param1', or 'transaction.param1')`,
         );
       }
     }
@@ -1002,47 +1018,102 @@ export class ConfigService {
           'Concat mapping requires a destination field',
         );
       }
-      return {
+      const mapping: any = {
         source: dto.sources || [],
         destination: dto.destination,
-        transformation: 'CONCAT',
-        delimiter: dto.delimiter || ' ',
       };
+      if (dto.prefix !== undefined) {
+        mapping.prefix = dto.prefix;
+      }
+      mapping.transformation = 'CONCAT';
+      mapping.delimiter = dto.delimiter || ' ';
+      return mapping;
+    }
+
+    // Many-to-one (sum logic)
+    if (dto.sumFields && dto.sumFields.length > 0) {
+      if (dto.sumFields.length < 2) {
+        throw new BadRequestException(
+          'Sum mapping requires at least 2 source fields',
+        );
+      }
+      if (!dto.destination) {
+        throw new BadRequestException(
+          'Sum mapping requires a destination field',
+        );
+      }
+      const mapping: any = {
+        source: dto.sumFields || [],
+        destination: dto.destination,
+      };
+      if (dto.prefix !== undefined) {
+        mapping.prefix = dto.prefix;
+      }
+      mapping.transformation = 'SUM';
+      return mapping;
     }
 
     // One-to-many (split logic)
     if (dto.source && dto.destinations && dto.destinations.length > 0) {
-      return {
-        source: dto.source,
+      const mapping: any = {
+        source: [dto.source], // Always use array format for consistency
         destination: dto.destinations,
-        transformation: 'SPLIT',
-        delimiter: dto.delimiter || ',',
       };
+      if (dto.prefix !== undefined) {
+        mapping.prefix = dto.prefix;
+      }
+      mapping.transformation = 'SPLIT';
+      mapping.delimiter = dto.delimiter || ',';
+      return mapping;
     }
 
     // Simple mapping
     if (dto.source && dto.destination) {
-      return {
-        source: dto.source,
+      const mapping: any = {
+        source: [dto.source], // Always use array format for consistency
         destination: dto.destination,
-        transformation: 'NONE',
       };
+      if (dto.prefix !== undefined) {
+        mapping.prefix = dto.prefix;
+      }
+      mapping.transformation = 'NONE';
+      return mapping;
+    }
+
+    // Constant mapping
+    if (dto.constantValue !== undefined && dto.destination) {
+      const mapping: any = {
+        destination: dto.destination,
+      };
+      if (dto.prefix !== undefined) {
+        mapping.prefix = dto.prefix;
+      }
+      mapping.transformation = 'CONSTANT';
+      mapping.constantValue = dto.constantValue;
+      return mapping;
     }
 
     throw new BadRequestException(
-      'Invalid mapping: provide (source, destination), (sources[], destination), or (source, destinations[])',
+      'Invalid mapping: provide (source, destination), (sources[], destination), (source, destinations[]), or (constantValue, destination)',
     );
   }
 
-  private async validateMapping(
+  private validateMapping(
     mapping: FieldMapping,
     schema: JSONSchema,
     _tenantId: string,
-  ): Promise<void> {
+  ): void {
+    if (
+      mapping.transformation === 'CONSTANT' ||
+      mapping.constantValue !== undefined
+    ) {
+      return;
+    }
+
     const allPaths = this.extractAllPathsFromSchema(schema);
 
-    // Many-to-one (concat logic)
-    if (Array.isArray(mapping.source)) {
+    // Validate source fields (now always an array)
+    if (mapping.source && Array.isArray(mapping.source)) {
       for (const src of mapping.source) {
         if (!allPaths.includes(src)) {
           throw new BadRequestException(
@@ -1050,27 +1121,15 @@ export class ConfigService {
           );
         }
       }
-    } else {
-      // One-to-one or one-to-many
-      if (
-        typeof mapping.source === 'string' &&
-        mapping.source &&
-        !allPaths.includes(mapping.source)
-      ) {
-        throw new BadRequestException(
-          `Source field '${mapping.source}' not found in schema`,
-        );
-      }
     }
 
-    // Validate destination(s) against Tazama internal data model
     if (Array.isArray(mapping.destination)) {
       for (const dest of mapping.destination) {
         const isValid =
           this.tazamaDataModelService.isValidDestinationPath(dest);
         if (!isValid) {
           throw new BadRequestException(
-            `Destination field '${dest}' is not a valid Tazama data model field. Use a field from the Tazama internal data model (e.g., entities.Name, accounts.Currency, transactionRelationship.Amt).`,
+            `Destination field '${dest}' is not a valid Tazama data model field. Use a field from the Tazama internal data model (e.g., entities.id, accounts.id, transactionDetails.Amt).`,
           );
         }
       }
@@ -1081,7 +1140,7 @@ export class ConfigService {
         );
         if (!isValid) {
           throw new BadRequestException(
-            `Destination field '${mapping.destination}' is not a valid Tazama data model field. Use a field from the Tazama internal data model (e.g., entities.Name, accounts.Currency, transactionRelationship.Amt).`,
+            `Destination field '${mapping.destination}' is not a valid Tazama data model field. Use a field from the Tazama internal data model (e.g., entities.id, accounts.id, transactionDetails.Amt).`,
           );
         }
       }
@@ -1135,12 +1194,10 @@ export class ConfigService {
     }
 
     try {
-      // Convert schema to source fields to get field information
       const sourceFields = this.jsonSchemaConverter.convertFromJSONSchema(
         config.schema,
       );
 
-      // Find the field in the source fields
       const findField = (fields: any[], path: string): any => {
         for (const field of fields) {
           if (field.path === path) {

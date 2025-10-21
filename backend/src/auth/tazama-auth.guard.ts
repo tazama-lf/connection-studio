@@ -4,6 +4,7 @@ import {
   ExecutionContext,
   UnauthorizedException,
   Logger,
+  Inject,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { validateTokenAndClaims } from '@tazama-lf/auth-lib';
@@ -13,12 +14,17 @@ import type {
   AuthenticatedUser,
 } from './auth.types';
 import { CLAIMS_KEY, IS_PUBLIC_KEY, ANY_CLAIMS_KEY } from './auth.decorator';
+import { SessionManagerService } from './session-manager.service';
 
 @Injectable()
 export class TazamaAuthGuard implements CanActivate {
   private readonly logger = new Logger(TazamaAuthGuard.name);
 
-  constructor(private reflector: Reflector) {}
+  constructor(
+    private reflector: Reflector,
+    @Inject(SessionManagerService)
+    private sessionManager: SessionManagerService,
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const logContext = 'TazamaAuthGuard.canActivate()';
@@ -140,6 +146,13 @@ export class TazamaAuthGuard implements CanActivate {
 
       // Attach user to request for use in controllers
       request.user = authenticatedUser;
+
+      // Record session activity to extend session timeout
+      this.sessionManager.recordActivity(
+        decodedToken.clientId || '',
+        decodedToken.tenantId || '',
+        token,
+      );
 
       this.logger.log(
         `Authentication successful for clientId: ${decodedToken.clientId}, tenantId: ${decodedToken.tenantId}, claims: [${validClaims.join(', ')}]`,
