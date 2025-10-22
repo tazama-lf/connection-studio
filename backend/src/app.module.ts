@@ -15,6 +15,10 @@ import { APP_INTERCEPTOR } from '@nestjs/core';
 import { TokenExpiryInterceptor } from './auth/token-expiry.interceptor';
 import { AuditInterceptor } from './audit/audit.interceptor';
 import { SessionActivityInterceptor } from './auth/session-activity.interceptor';
+import { JobModule } from './job/job.module';
+import { SchedulerModule } from './scheduler/scheduler.module';
+import { DryRunModule } from './dry-run/dry-run.module';
+import { DatabaseModule } from './database/database.module';
 
 @Module({
   imports: [
@@ -31,6 +35,10 @@ import { SessionActivityInterceptor } from './auth/session-activity.interceptor'
     ConfigModule,
     SimulationModule,
     TazamaDataModelModule,
+    JobModule,
+    SchedulerModule,
+    DryRunModule,
+    DatabaseModule
   ],
   controllers: [AppController],
   providers: [
@@ -49,4 +57,4 @@ import { SessionActivityInterceptor } from './auth/session-activity.interceptor'
     },
   ],
 })
-export class AppModule {}
+export class AppModule { }
