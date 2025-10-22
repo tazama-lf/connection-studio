@@ -112,19 +112,11 @@ export class ConfigApiService {
   private async handleResponse<T>(response: Response): Promise<T> {
     if (response.status === 401) {
       localStorage.removeItem('authToken');
-      // In test environment, just return the JSON response instead of redirecting
-      if (
-        typeof window !== 'undefined' &&
-        window.location &&
-        !window.location.href.includes('localhost')
-      ) {
-        window.location.href = '/login';
-      }
-      // Return the error response for test consistency
+      // For invalid credentials, throw an error instead of redirecting
       const errorData = await response
         .json()
-        .catch(() => ({ success: false, message: 'Unauthorized' }));
-      return errorData as T;
+        .catch(() => ({ success: false, message: 'Invalid credentials' }));
+      throw new Error(errorData.message || 'Invalid credentials');
     }
 
     if (!response.ok) {

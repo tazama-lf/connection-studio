@@ -119,7 +119,11 @@ export const DeploymentConfirmation: React.FC<DeploymentConfirmationProps> = ({
     <div className="space-y-6" data-id="element-156">
       <div className="flex items-center space-x-2" data-id="element-157">
         <CheckCircleIcon className="h-6 w-6 text-green-500" data-id="element-158" />
-        <h3 className="text-lg font-medium text-gray-900" data-id="element-159">Ready to Submit for Approval</h3>
+        <h3 className="text-lg font-medium text-gray-900" data-id="element-159">
+          {configData?.status === 'approved' ? 'Configuration Approved' : 
+           configData?.status === 'under_review' ? 'Pending Review' : 
+           'Ready to Submit for Approval'}
+        </h3>
       </div>
 
       <div className="bg-gray-50 p-6 rounded-md space-y-6" data-id="element-160">

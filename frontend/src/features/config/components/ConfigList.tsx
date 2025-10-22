@@ -71,19 +71,24 @@ export const ConfigList: React.FC<ConfigListProps> = ({
       
       let response;
       if (showPendingApprovals) {
-        console.log('Fetching pending approvals...');
+        console.log('🔍 ConfigList - Fetching pending approvals...');
         response = await configApi.getPendingApprovals();
+        console.log('🔍 ConfigList - Pending approvals response:', response);
+        console.log('🔍 ConfigList - Pending approvals configs array:', response.configs);
+        console.log('🔍 ConfigList - Pending approvals count:', response.configs?.length || 0);
       } else {
-        console.log('Fetching all configurations...');
+        console.log('🔍 ConfigList - Fetching all configurations...');
         response = await configApi.getAllConfigs();
       }
       
-      setConfigs(response.configs || []);
-      console.log('Fetched configs:', response.configs);
+      const configsArray = response.configs || [];
+      setConfigs(configsArray);
+      console.log('✅ ConfigList - Final configs set to state:', configsArray);
+      console.log('✅ ConfigList - Final configs count:', configsArray.length);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch configurations';
       setError(errorMessage);
-      console.error('Error fetching configs:', err);
+      console.error('❌ ConfigList - Error fetching configs:', err);
     } finally {
       setLoading(false);
     }
@@ -340,7 +345,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
             </tr>
           </thead>
           <tbody className="bg-white">
-            {paginatedConfigs.length === 0 ? (
+            {paginatedConfigs.length === 0 && !showPendingApprovals ? (
               <tr>
                 <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
                   {configs.length === 0 ? 'No configurations found' : 'No configurations match your search criteria'}
@@ -407,7 +412,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
                                   Edit
                                 </button>
                               )}
-                              {onConfigClone && (
+                              {onConfigClone && !showPendingApprovals && (
                                 <button
                                   onClick={() => {
                                     onConfigClone(config);
@@ -439,23 +444,23 @@ export const ConfigList: React.FC<ConfigListProps> = ({
           <div className="text-sm text-gray-700">
             Showing {startIndex + 1} to {Math.min(endIndex, sortedConfigs.length)} of {sortedConfigs.length} results
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-3">
             <button
               onClick={handlePreviousPage}
               disabled={currentPage === 1}
-              className="px-3 py-1 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+              className="px-4 py-2 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 flex items-center"
             >
-              Previous
+              ← Previous
             </button>
-            <span className="text-sm text-gray-700">
+            <span className="text-sm text-gray-700 px-2">
               Page {currentPage} of {totalPages}
             </span>
             <button
               onClick={handleNextPage}
               disabled={currentPage === totalPages}
-              className="px-3 py-1 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+              className="px-4 py-2 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 flex items-center"
             >
-              Next
+              Next →
             </button>
           </div>
         </div>

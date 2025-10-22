@@ -1352,7 +1352,7 @@ interface EditEndpointModalProps {
           </Button>
           {/* Hide action buttons on deploy step when in read-only mode for non-approvers */}
           {!(readOnly && currentStep === 'deploy' && !isApprover(user?.claims || [])) && (
-            <div className="space-x-4" data-id="element-746">
+            <div className="flex items-center space-x-4" data-id="element-746">
               {currentStep !== 'payload' && (
                 <Button variant="secondary" onClick={() => {
                 const currentIndex = steps.findIndex(s => s.id === currentStep);
@@ -1390,7 +1390,7 @@ interface EditEndpointModalProps {
               )}
               {/* Show Next button for approvers and editors in read-only mode on all steps */}
               {readOnly && (isApprover(user?.claims || []) || isEditor(user?.claims || [])) && (
-                <div className="space-x-4">
+                <>
                   {(() => {
                     const currentIndex = steps.findIndex(s => s.id === currentStep);
                     return (
@@ -1400,10 +1400,51 @@ interface EditEndpointModalProps {
                             Next
                           </Button>
                         )}
+                        {/* Show approver action buttons on the last step (deployment) */}
+                        {isApprover(user?.claims || []) && currentStep === 'deploy' && (
+                          <>
+                            {onRevertToEditor && (createdEndpoint?.status !== 'approved' && existingConfig?.status !== 'approved') && (
+                              <Button 
+                                variant="primary" 
+                                onClick={onRevertToEditor}
+                                className="bg-red-600 hover:bg-red-700 text-white"
+                              >
+                                Revert to Editor
+                              </Button>
+                            )}
+                            {onSendForDeployment && (createdEndpoint?.status !== 'approved' && existingConfig?.status !== 'approved') && (
+                              <Button 
+                                variant="primary" 
+                                onClick={onSendForDeployment}
+                                className="bg-green-600 hover:bg-green-700 text-white"
+                              >
+                                Send for Deployment
+                              </Button>
+                            )}
+                          </>
+                        )}
+                        {/* Show submit for approval button for editors on the last step */}
+                        {isEditor(user?.claims || []) && currentStep === 'deploy' && (
+                          <>
+                            {/* Show Submit for Approval button for draft configs or when config is ready for submission */}
+                            {((createdEndpoint?.status !== 'under_review' && createdEndpoint?.status !== 'approved') || 
+                              (existingConfig?.status !== 'under_review' && existingConfig?.status !== 'approved') ||
+                              (!createdEndpoint?.status && !existingConfig?.status)) && (
+                              <Button 
+                                variant="primary" 
+                                onClick={async () => await handleSaveAndNext()}
+                                disabled={loading}
+                                className="bg-blue-600 hover:bg-blue-700 text-white"
+                              >
+                                {loading ? 'Processing...' : 'Submit for Approval'}
+                              </Button>
+                            )}
+                          </>
+                        )}
                       </>
                     );
                   })()}
-                </div>
+                </>
               )}
             </div>
           )}

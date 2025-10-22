@@ -502,7 +502,8 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
               selectedTransformation === 'sum' ? undefined :
               selectedTransformation === 'constant' ? undefined : selectedSources[0],
       destination: selectedTransformation === 'split' ? undefined : selectedDestinations[0],
-      sources: selectedTransformation === 'concatenate' || selectedTransformation === 'sum' ? selectedSources : undefined,
+      sources: selectedTransformation === 'concatenate' ? selectedSources : undefined,
+      sumFields: selectedTransformation === 'sum' ? selectedSources : undefined,
       destinations: selectedTransformation === 'split' ? selectedDestinations : undefined,
       delimiter: selectedTransformation === 'split' ? delimiter : undefined,
       separator: selectedTransformation === 'concatenate' ? delimiter : undefined,
