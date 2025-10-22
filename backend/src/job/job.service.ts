@@ -223,6 +223,7 @@ export class JobService {
           description,
           version,
           status,
+          record_status,
           created_at,
           'push' AS type
         FROM endpoints
@@ -239,6 +240,7 @@ export class JobService {
           description,
           version,
           status,
+          record_status,
           created_at,
           'pull' AS type
         FROM job
