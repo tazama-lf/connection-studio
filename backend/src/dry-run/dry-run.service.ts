@@ -18,7 +18,8 @@ export class DryRunService {
         private readonly httpService: HttpService
     ) { }
 
-    async transformFileToJSON(sftp: SFTPClient, file: FileSettings): Promise<any> {
+
+    async transformFileToJSON(sftp: SFTPClient, file: FileSettings): Promise<Record<string, unknown>[]> {
         try {
             const buffer = await sftp.get(file.path);
 
@@ -30,10 +31,6 @@ export class DryRunService {
                 }
             } catch (decodeError) {
                 this.loggerService.warn(`Decoding failed : ${decodeError}`);
-            }
-
-            if (!decoded) {
-                throw new Error(`Failed to decode file: ${file.path}`);
             }
 
             if (file.file_type === FileType.JSON) {
@@ -60,7 +57,7 @@ export class DryRunService {
                     escape: '"',
                     record_delimiter: ['\r\n', '\n', '\r'],
                 });
-                return records;
+                return records as Record<string, unknown>[];
             }
 
             throw new Error('Unsupported file type');
@@ -69,7 +66,6 @@ export class DryRunService {
             throw error;
         }
     }
-
 
     private async dryRunHttpJob(job: CreatePullJobDto): Promise<void> {
         const httpCon = job.connection as HTTPConnection
