@@ -5,10 +5,11 @@ import { LoggerModule } from '../logger-service/logger-service.module';
 import { DatabaseModule } from '../database/database.module';
 import { AuditModule } from '../audit/audit.module';
 import { DryRunModule } from '../dry-run/dry-run.module';
+import { ConfigModule } from '@nestjs/config';
 
 @Module({
   providers: [JobService],
   controllers: [JobController],
-  imports: [LoggerModule, DatabaseModule, AuditModule, DryRunModule]
+  imports: [LoggerModule, DatabaseModule, AuditModule, DryRunModule, ConfigModule]
 })
 export class JobModule { }
