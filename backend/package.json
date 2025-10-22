@@ -43,7 +43,7 @@
     "@tazama-lf/auth-lib": "^2.1.0",
     "@tazama-lf/frms-coe-lib": "^5.1.1",
     "@tazama-lf/frms-coe-startup-lib": "^2.4.0",
-    "@tazama-lf/tcs-lib": "file:../../../../tcs-lib",
+    "@tazama-lf/tcs-lib": "file:../../tcs-lib",
     "@types/cache-manager-redis-store": "^2.0.4",
     "@types/multer": "^2.0.0",
     "@types/xml2js": "^0.4.14",
