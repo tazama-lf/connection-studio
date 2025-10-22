@@ -32,23 +32,24 @@ export interface UpdateConfigDto {
   fieldAdjustments?: AdjustFieldDto[];
 }
 export interface FieldMapping {
-  source?: string | string[]; // Optional when using constants
+  source?: string[]; // Always an array for consistency, optional when using constants
   destination: string | string[];
   transformation?: 'NONE' | 'CONCAT' | 'SUM' | 'SPLIT' | 'CONSTANT' | 'MATH';
   delimiter?: string; // Used for one-to-many mapping to split source value
   constantValue?: any; // Fixed value to map to destination (replaces constants)
   operator?: 'ADD' | 'SUBTRACT' | 'MULTIPLY' | 'DIVIDE'; // Mathematical operators for MATH transformation
+  prefix?: string;
 }
 
 export interface FunctionDefinition {
   params: string[]; // Array of parameter names
-  functionName: 'addAccount' | 'handleTransaction' | 'AddEntity'; // Only these three functions are allowed
+  functionName: 'addAccountHolder' | 'addEntity' | 'addAccount'; // Only these three functions are allowed
 }
 
 export type AllowedFunctionName =
-  | 'addAccount'
-  | 'handleTransaction'
-  | 'AddEntity';
+  | 'addAccountHolder'
+  | 'addEntity'
+  | 'addAccount';
 
 export enum ContentType {
   JSON = 'application/json',
@@ -56,10 +57,12 @@ export enum ContentType {
 }
 export type TransactionType = string;
 export enum ConfigStatus {
-  DRAFT = 'draft',
   IN_PROGRESS = 'inprogress',
-  COMPLETED = 'completed',
-  FAILED = 'failed',
+  UNDER_REVIEW = 'under_review',
+  APPROVED = 'approved',
+  DEPLOYED = 'deployed',
+  REJECTED = 'rejected',
+  CHANGES_REQUESTED = 'changes_requested',
 }
 export interface MappingSource {
   field: string; // Field path in source schema
@@ -74,7 +77,7 @@ export interface Config {
   endpointPath: string;
   version: string;
   contentType: ContentType;
-  schema: JSONSchema; // JSON Schema defining data structure
+  schema: JSONSchema;
   mapping?: FieldMapping[];
   functions?: FunctionDefinition[];
   status?: ConfigStatus;
@@ -88,7 +91,10 @@ export interface AddMappingDto {
   destination?: string;
   destinations?: string[];
   sources?: string[];
+  sumFields?: string[];
   delimiter?: string;
+  constantValue?: any;
+  prefix?: string;
 }
 
 export interface AddFunctionDto {
@@ -104,4 +110,75 @@ export interface ConfigResponseDto {
     errors: string[];
     warnings: string[];
   };
+}
+
+export interface StatusTransitionDto {
+  userId: string;
+  userRole: string;
+  comment?: string;
+  metadata?: Record<string, any>;
+}
+
+export interface SubmitForApprovalDto extends StatusTransitionDto {
+  configId: number;
+}
+
+export interface ApprovalDto extends StatusTransitionDto {
+  configId: number;
+  approvalNotes?: string;
+}
+
+export interface RejectionDto extends StatusTransitionDto {
+  configId: number;
+  rejectionReason: string;
+}
+
+export interface ChangeRequestDto extends StatusTransitionDto {
+  configId: number;
+  requestedChanges: string;
+}
+
+export interface DeploymentDto extends StatusTransitionDto {
+  configId: number;
+  deploymentEnvironment?: string;
+  deploymentNotes?: string;
+}
+
+export interface WorkflowValidationResult {
+  canEdit: boolean;
+  canSubmit: boolean;
+  canApprove: boolean;
+  canReject: boolean;
+  canRequestChanges: boolean;
+  canDeploy: boolean;
+  canReturnToProgress: boolean;
+  reason?: string;
+}
+
+export interface StatusTransitionValidation {
+  isValid: boolean;
+  currentStatus: ConfigStatus;
+  targetStatus: ConfigStatus;
+  allowedNextStatuses: ConfigStatus[];
+  reason?: string;
+}
+
+export type WorkflowAction =
+  | 'submit_for_approval'
+  | 'approve'
+  | 'reject'
+  | 'request_changes'
+  | 'deploy'
+  | 'return_to_progress';
+
+export interface AuditLogEntry {
+  configId: number;
+  action: string;
+  userId: string;
+  userRole: string;
+  previousStatus?: ConfigStatus;
+  newStatus?: ConfigStatus;
+  comment?: string;
+  metadata?: Record<string, any>;
+  timestamp: Date;
 }

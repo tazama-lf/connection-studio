@@ -9,16 +9,12 @@ import { SchemasModule } from './schemas/schemas.module';
 import { AuditModule } from './audit/audit.module';
 import { ConfigModule } from './config/config.module';
 import { SimulationModule } from './simulation/simulation.module';
-import { DataModelExtensionModule } from './data-model-extensions/data-model-extension.module';
-import { FlowableModule } from './flowable/flowable.module';
+import { TazamaDataModelModule } from './tazama-data-model/tazama-data-model.module';
 import { KnexModule } from '../knex/knex.module';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { TokenExpiryInterceptor } from './auth/token-expiry.interceptor';
 import { AuditInterceptor } from './audit/audit.interceptor';
-import { SchedulerModule } from './scheduler/scheduler.module';
-import { JobModule } from './job/job.module';
-import { DatabaseModule } from './database/database.module';
-import { DryRunModule } from './dry-run/dry-run.module';
+import { SessionActivityInterceptor } from './auth/session-activity.interceptor';
 
 @Module({
   imports: [
@@ -34,12 +30,7 @@ import { DryRunModule } from './dry-run/dry-run.module';
     AuditModule,
     ConfigModule,
     SimulationModule,
-    DataModelExtensionModule,
-    FlowableModule,
-    SchedulerModule,
-    JobModule,
-    DatabaseModule,
-    DryRunModule,
+    TazamaDataModelModule,
   ],
   controllers: [AppController],
   providers: [
@@ -47,6 +38,10 @@ import { DryRunModule } from './dry-run/dry-run.module';
     {
       provide: APP_INTERCEPTOR,
       useClass: TokenExpiryInterceptor,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: SessionActivityInterceptor,
     },
     {
       provide: APP_INTERCEPTOR,

@@ -1,25 +1,43 @@
-import { Injectable, Logger } from '@nestjs/common';
+﻿import { Injectable, Logger } from '@nestjs/common';
 import { ConfigRepository } from '../config/config.repository';
-import { TazamaDataModelService } from '../data-model-extensions/tazama-data-model.service';
-import { FieldMapping, Config } from '../config/config.interfaces';
+import { Config, FieldMapping } from '../config/config.interfaces';
 import { AuditService } from '../audit/audit.service';
-import Ajv, { ErrorObject } from 'ajv';
-import addFormats from 'ajv-formats';
+import {
+  processMappings,
+  iMappingConfiguration,
+  iMappingResult,
+} from '@tazama-lf/tcs-lib';
 import * as xml2js from 'xml2js';
+import Ajv from 'ajv';
+import * as _ from 'lodash';
+
 export interface SimulatePayloadDto {
   endpointId: number;
   payloadType: 'application/json' | 'application/xml';
   payload: any;
+  tcsMapping?: iMappingConfiguration;
 }
+
 export interface SimulationError {
   field: string;
   message: string;
   path?: string;
   value?: any;
 }
+
+export interface ValidationStage {
+  name: string;
+  status: 'PASSED' | 'FAILED' | 'SKIPPED';
+  message: string;
+  errors?: SimulationError[];
+  details?: any;
+}
+
 export interface SimulationResult {
   status: 'PASSED' | 'FAILED';
   errors: SimulationError[];
+  stages: ValidationStage[];
+  tcsResult: iMappingResult | null;
   transformedPayload: any;
   summary: {
     endpointId: number;
@@ -27,150 +45,541 @@ export interface SimulationResult {
     timestamp: string;
     validatedBy?: string;
     mappingsApplied: number;
-    validationSteps: {
-      schemaValidation: 'PASSED' | 'FAILED';
-      mappingExecution: 'PASSED' | 'FAILED';
-      tazamaValidation: 'PASSED' | 'FAILED';
-    };
+    totalStages: number;
+    passedStages: number;
+    failedStages: number;
   };
 }
+
 @Injectable()
 export class SimulationService {
   private readonly logger = new Logger(SimulationService.name);
-  private readonly ajv: Ajv;
+
   constructor(
     private readonly configRepository: ConfigRepository,
-    private readonly tazamaDataModelService: TazamaDataModelService,
     private readonly auditService: AuditService,
-  ) {
-    this.ajv = new Ajv({ allErrors: true });
-    addFormats(this.ajv);
-  }
+  ) {}
+
   async simulateMapping(
     dto: SimulatePayloadDto,
     tenantId: string,
     userId?: string,
   ): Promise<SimulationResult> {
     const timestamp = new Date().toISOString();
+    const stages: ValidationStage[] = [];
     const errors: SimulationError[] = [];
-    let transformedPayload = {};
+    let transformedPayload: any = {};
+    let tcsResult: iMappingResult | null = null;
     let mappingsApplied = 0;
+
     try {
-      const config = await this.getEndpointConfig(dto.endpointId, tenantId);
-      if (!config) {
-        return this.createFailedResult(
+      // Stage 1: Load Configuration
+      const configStage = await this.stageLoadConfig(dto.endpointId, tenantId);
+      stages.push(configStage);
+
+      if (configStage.status === 'FAILED') {
+        errors.push(...(configStage.errors || []));
+        return this.createStageBasedResult(
           dto,
           timestamp,
           userId,
-          [
-            {
-              field: 'endpointId',
-              message: `Configuration not found for endpoint ${dto.endpointId}`,
-            },
-          ],
           tenantId,
-        );
-      }
-      let parsedPayload: any;
-      try {
-        parsedPayload = await this.parsePayload(dto.payload, dto.payloadType);
-      } catch (parseError: any) {
-        errors.push({
-          field: 'payload',
-          message: `Failed to parse ${dto.payloadType}: ${parseError.message}`,
-          value: dto.payload,
-        });
-        let validationPayload = parsedPayload;
-        if (dto.payloadType === 'application/xml' && parsedPayload) {
-          const rootKeys = Object.keys(parsedPayload);
-          if (rootKeys.length === 1) {
-            validationPayload = parsedPayload[rootKeys[0]];
-          }
-        }
-        const schemaValidation = this.validateSchema(
-          validationPayload,
-          config.schema,
-        );
-        if (!schemaValidation.valid) {
-          errors.push(...schemaValidation.errors);
-        }
-        return this.createFailedResult(
-          dto,
-          timestamp,
-          userId,
+          stages,
           errors,
-          tenantId,
+          null,
+          {},
         );
       }
-      const schemaValidation = this.validateSchema(
+
+      const config = configStage.details.config as Config;
+
+      // Stage 2: Parse Payload
+      const parseStage = await this.stageParsePayload(
+        dto.payload,
+        dto.payloadType,
+      );
+      stages.push(parseStage);
+
+      if (parseStage.status === 'FAILED') {
+        errors.push(...(parseStage.errors || []));
+        return this.createStageBasedResult(
+          dto,
+          timestamp,
+          userId,
+          tenantId,
+          stages,
+          errors,
+          null,
+          {},
+        );
+      }
+
+      const parsedPayload = parseStage.details.parsedPayload;
+
+      // Stage 3: Validate Schema
+      const schemaStage = this.stageValidateSchema(
         parsedPayload,
         config.schema,
       );
-      if (!schemaValidation.valid) {
-        errors.push(...schemaValidation.errors);
+      stages.push(schemaStage);
+
+      if (schemaStage.status === 'FAILED') {
+        errors.push(...(schemaStage.errors || []));
+        return this.createStageBasedResult(
+          dto,
+          timestamp,
+          userId,
+          tenantId,
+          stages,
+          errors,
+          null,
+          { originalPayload: parsedPayload },
+        );
       }
-      let mappingResult = {
-        result: parsedPayload,
-        applied: 0,
-        errors: [] as SimulationError[],
-      };
-      if (config.mapping && config.mapping.length > 0) {
-        mappingResult = this.applyMappings(parsedPayload, config.mapping);
-        transformedPayload = mappingResult.result;
-        mappingsApplied = mappingResult.applied;
-        errors.push(...mappingResult.errors);
+
+      // Stage 4: Validate Mappings Configuration (Optional)
+      // If no mappings are defined, skip mapping stages
+      const hasMappings = config.mapping && config.mapping.length > 0;
+
+      if (hasMappings) {
+        const mappingValidationStage = this.stageValidateMappings(
+          parsedPayload,
+          config.mapping || [],
+        );
+        stages.push(mappingValidationStage);
+
+        if (mappingValidationStage.status === 'FAILED') {
+          errors.push(...(mappingValidationStage.errors || []));
+          return this.createStageBasedResult(
+            dto,
+            timestamp,
+            userId,
+            tenantId,
+            stages,
+            errors,
+            null,
+            { originalPayload: parsedPayload },
+          );
+        }
+
+        // Stage 5: Execute TCS Mapping Functions
+        const tcsStage = await this.stageExecuteTCSMapping(
+          parsedPayload,
+          config,
+          dto.tcsMapping,
+        );
+        stages.push(tcsStage);
+
+        if (tcsStage.status === 'FAILED') {
+          errors.push(...(tcsStage.errors || []));
+          return this.createStageBasedResult(
+            dto,
+            timestamp,
+            userId,
+            tenantId,
+            stages,
+            errors,
+            null,
+            { originalPayload: parsedPayload },
+          );
+        }
+
+        tcsResult = tcsStage.details.tcsResult;
+        mappingsApplied = tcsStage.details.mappingsApplied;
+
+        const mappingDetails = this.buildMappingDetails(
+          config.mapping || [],
+          parsedPayload,
+          tcsResult,
+        );
+
+        transformedPayload = {
+          originalPayload: parsedPayload,
+          dataCache: tcsResult?.dataCache || {},
+          endToEndId: tcsResult?.endToEndId || null,
+          mappings: mappingDetails,
+        };
       } else {
-        transformedPayload = parsedPayload;
+        // No mappings defined - skip mapping stages
+        stages.push({
+          name: '4. Validate Mappings',
+          status: 'SKIPPED',
+          message: 'No mappings defined - skipping validation',
+        });
+
+        stages.push({
+          name: '5. Execute TCS Mapping Functions',
+          status: 'SKIPPED',
+          message: 'No mappings defined - skipping execution',
+        });
+
+        // No mapping results, just include original payload
+        transformedPayload = {
+          originalPayload: parsedPayload,
+        };
       }
-      const tazamaValidation =
-        await this.validateTazamaModel(transformedPayload);
-      if (!tazamaValidation.valid) {
-        errors.push(...tazamaValidation.errors);
-      }
-      const status = errors.length === 0 ? 'PASSED' : 'FAILED';
+
+      // All stages passed!
+      const finalStatus = errors.length === 0 ? 'PASSED' : 'FAILED';
 
       this.auditService.logAction({
         entityType: 'SIMULATION',
-        action: 'SIMULATE_MAPPING',
+        action: 'TCS_SIMULATE_MAPPING',
         actor: userId || 'SYSTEM',
         tenantId,
         entityId: dto.endpointId.toString(),
-        details: `Simulation ${status} for endpoint ${dto.endpointId}, mappings applied: ${mappingsApplied}, errors: ${errors.length}`,
-        status: status === 'PASSED' ? 'SUCCESS' : 'FAILURE',
-        severity: status === 'PASSED' ? 'LOW' : 'MEDIUM',
+        details: `Simulation ${finalStatus} for endpoint ${dto.endpointId}, mappings applied: ${mappingsApplied}, stages: ${stages.filter((s) => s.status === 'PASSED').length}/${stages.length}`,
+        status: finalStatus === 'PASSED' ? 'SUCCESS' : 'FAILURE',
+        severity: finalStatus === 'PASSED' ? 'LOW' : 'MEDIUM',
       });
 
-      return {
-        status,
-        errors,
-        transformedPayload,
-        summary: {
-          endpointId: dto.endpointId,
-          tenantId,
-          timestamp,
-          validatedBy: userId,
-          mappingsApplied,
-          validationSteps: {
-            schemaValidation: schemaValidation.valid ? 'PASSED' : 'FAILED',
-            mappingExecution: mappingResult
-              ? mappingResult.errors.length === 0
-                ? 'PASSED'
-                : 'FAILED'
-              : 'PASSED',
-            tazamaValidation: tazamaValidation.valid ? 'PASSED' : 'FAILED',
-          },
-        },
-      };
-    } catch (error: any) {
-      return this.createFailedResult(
+      return this.createStageBasedResult(
         dto,
         timestamp,
         userId,
-        [{ field: 'system', message: `Simulation error: ${error.message}` }],
         tenantId,
+        stages,
+        errors,
+        tcsResult,
+        transformedPayload,
+      );
+    } catch (error: any) {
+      stages.push({
+        name: 'System Error',
+        status: 'FAILED',
+        message: 'Unexpected system error occurred',
+        errors: [{ field: 'system', message: error.message }],
+      });
+
+      return this.createStageBasedResult(
+        dto,
+        timestamp,
+        userId,
+        tenantId,
+        stages,
+        [{ field: 'system', message: 'Simulation error: ' + error.message }],
+        null,
+        {},
       );
     }
   }
+
+  /**
+   * Stage 1: Load Configuration
+   */
+  private async stageLoadConfig(
+    endpointId: number,
+    tenantId: string,
+  ): Promise<ValidationStage> {
+    try {
+      const config = await this.configRepository.findConfigById(
+        endpointId,
+        tenantId,
+      );
+
+      if (!config) {
+        return {
+          name: '1. Load Configuration',
+          status: 'FAILED',
+          message: 'Configuration not found',
+          errors: [
+            {
+              field: 'endpointId',
+              message: `Configuration with ID ${endpointId} not found`,
+            },
+          ],
+        };
+      }
+
+      return {
+        name: '1. Load Configuration',
+        status: 'PASSED',
+        message: `Configuration loaded successfully (ID: ${endpointId})`,
+        details: { config },
+      };
+    } catch (error: any) {
+      return {
+        name: '1. Load Configuration',
+        status: 'FAILED',
+        message: 'Failed to load configuration',
+        errors: [{ field: 'endpointId', message: error.message }],
+      };
+    }
+  }
+
+  /**
+   * Stage 2: Parse Payload
+   */
+  private async stageParsePayload(
+    payload: any,
+    payloadType: string,
+  ): Promise<ValidationStage> {
+    try {
+      const parsedPayload = await this.parsePayload(payload, payloadType);
+
+      return {
+        name: '2. Parse Payload',
+        status: 'PASSED',
+        message: `Payload parsed successfully as ${payloadType}`,
+        details: { parsedPayload, payloadType },
+      };
+    } catch (error: any) {
+      return {
+        name: '2. Parse Payload',
+        status: 'FAILED',
+        message: `Failed to parse payload: ${error.message}`,
+        errors: [{ field: 'payload', message: error.message }],
+      };
+    }
+  }
+
+  /**
+   * Stage 3: Validate Schema
+   */
+  private stageValidateSchema(payload: any, schema: any): ValidationStage {
+    const errors = this.validatePayloadAgainstSchema(payload, schema);
+
+    if (errors.length > 0) {
+      return {
+        name: '3. Validate Schema',
+        status: 'FAILED',
+        message: `Schema validation failed: ${errors.length} error(s) found`,
+        errors,
+        details: { schema, payload },
+      };
+    }
+
+    return {
+      name: '3. Validate Schema',
+      status: 'PASSED',
+      message: 'Payload conforms to the saved schema',
+      details: {
+        schemaType: schema.type,
+        requiredFields: schema.required || [],
+      },
+    };
+  }
+
+  /**
+   * Stage 4: Validate Mappings
+   */
+  private stageValidateMappings(
+    payload: any,
+    mappings: any[],
+  ): ValidationStage {
+    // This method should only be called when mappings exist
+    // The caller checks for empty mappings before calling this
+    const errors = this.validateMappings(payload, mappings);
+
+    if (errors.length > 0) {
+      return {
+        name: '4. Validate Mappings',
+        status: 'FAILED',
+        message: `Mapping validation failed: ${errors.length} error(s) found`,
+        errors,
+        details: {
+          totalMappings: mappings.length,
+          invalidMappings: errors.length,
+        },
+      };
+    }
+
+    return {
+      name: '4. Validate Mappings',
+      status: 'PASSED',
+      message: `All ${mappings.length} mapping(s) validated successfully`,
+      details: { totalMappings: mappings.length },
+    };
+  }
+
+  /**
+   * Stage 5: Execute TCS Mapping Functions
+   */
+  private async stageExecuteTCSMapping(
+    payload: any,
+    config: Config,
+    providedMapping?: iMappingConfiguration,
+  ): Promise<ValidationStage> {
+    try {
+      const tcsMapping =
+        providedMapping || this.convertConfigToTCSMapping(config);
+      const mappingsApplied = tcsMapping.mappings?.length || 0;
+
+      // This method should only be called when mappings exist
+      // The caller checks for empty mappings before calling this
+      const tcsResult = processMappings(payload, tcsMapping);
+
+      return {
+        name: '5. Execute TCS Mapping Functions',
+        status: 'PASSED',
+        message: `Successfully executed ${mappingsApplied} TCS mapping function(s)`,
+        details: {
+          mappingsApplied,
+          tcsResult,
+          dataCache: tcsResult?.dataCache || {},
+          endToEndId: tcsResult?.endToEndId || '',
+        },
+      };
+    } catch (error: any) {
+      return {
+        name: '5. Execute TCS Mapping Functions',
+        status: 'FAILED',
+        message: `TCS mapping execution failed: ${error.message}`,
+        errors: [{ field: 'tcsMapping', message: error.message }],
+      };
+    }
+  }
+
+  /**
+   * Convert config mappings to TCS lib format
+   */
+  private convertConfigToTCSMapping(config: Config): iMappingConfiguration {
+    const mappings: Array<{
+      destination: string;
+      sources: string[];
+      separator?: string;
+      prefix?: string;
+    }> = [];
+
+    if (config.mapping && Array.isArray(config.mapping)) {
+      for (const mapping of config.mapping) {
+        // Source is always an array for consistency
+        const sources = mapping.source || [];
+
+        const destination = Array.isArray(mapping.destination)
+          ? mapping.destination[0]
+          : mapping.destination;
+
+        mappings.push({
+          destination: destination || '',
+          sources,
+          separator: '',
+          prefix: mapping.prefix,
+        });
+      }
+    }
+
+    return { mappings };
+  }
+
+  private buildMappingDetails(
+    mappings: FieldMapping[],
+    originalPayload: any,
+    tcsResult: iMappingResult | null,
+  ): Array<{
+    destination: string;
+    sources: string[];
+    sourceValues: any[];
+    transformation: string;
+    resultValue: any;
+    prefix?: string;
+    delimiter?: string;
+    constantValue?: any;
+    operator?: string;
+  }> {
+    const details: Array<{
+      destination: string;
+      sources: string[];
+      sourceValues: any[];
+      transformation: string;
+      resultValue: any;
+      prefix?: string;
+      delimiter?: string;
+      constantValue?: any;
+      operator?: string;
+    }> = [];
+
+    for (const mapping of mappings) {
+      const sources = mapping.source || [];
+      const destination = Array.isArray(mapping.destination)
+        ? mapping.destination[0]
+        : mapping.destination;
+
+      // Extract source values from original payload
+      const sourceValues = sources.map((sourcePath) =>
+        this.getValueByPath(originalPayload, sourcePath),
+      );
+
+      // Determine the result value from tcsResult based on destination
+      let resultValue: any = null;
+      if (tcsResult && destination) {
+        const [collectionName, fieldName] = destination.split('.');
+        if (collectionName === 'redis' && tcsResult.dataCache) {
+          resultValue = tcsResult.dataCache[fieldName];
+        } else if (
+          collectionName === 'transaction' &&
+          fieldName === 'endToEndId'
+        ) {
+          resultValue = tcsResult.endToEndId;
+        }
+      }
+
+      details.push({
+        destination: destination || '',
+        sources,
+        sourceValues,
+        transformation: mapping.transformation || 'NONE',
+        resultValue,
+        prefix: mapping.prefix,
+        delimiter: mapping.delimiter,
+        constantValue: mapping.constantValue,
+        operator: mapping.operator,
+      });
+    }
+
+    return details;
+  }
+
+  /**
+   * Get value from object by dot-notation path
+   */
+  private getValueByPath(obj: any, path: string): any {
+    if (!path) return undefined;
+    return path.split('.').reduce((current, key) => {
+      return current && current[key] !== undefined ? current[key] : undefined;
+    }, obj);
+  }
+
+  /**
+   * Create stage-based result
+   */
+  private createStageBasedResult(
+    dto: SimulatePayloadDto,
+    timestamp: string,
+    userId: string | undefined,
+    tenantId: string,
+    stages: ValidationStage[],
+    errors: SimulationError[],
+    tcsResult: iMappingResult | null,
+    transformedPayload: any,
+  ): SimulationResult {
+    const passedStages = stages.filter((s) => s.status === 'PASSED').length;
+    const failedStages = stages.filter((s) => s.status === 'FAILED').length;
+    const totalStages = stages.length;
+    const mappingsApplied = tcsResult
+      ? stages.find((s) => s.name.includes('TCS Mapping'))?.details
+          ?.mappingsApplied || 0
+      : 0;
+
+    return {
+      status: errors.length === 0 ? 'PASSED' : 'FAILED',
+      errors,
+      stages,
+      tcsResult,
+      transformedPayload,
+      summary: {
+        endpointId: dto.endpointId,
+        tenantId,
+        timestamp,
+        validatedBy: userId,
+        mappingsApplied,
+        totalStages,
+        passedStages,
+        failedStages,
+      },
+    };
+  }
+
   private async getEndpointConfig(
     endpointId: number,
     tenantId: string,
@@ -179,394 +588,255 @@ export class SimulationService {
   }
 
   private async parsePayload(payload: any, payloadType: string): Promise<any> {
+    if (!payloadType) {
+      throw new Error(
+        'payloadType is required. Must be either "application/json" or "application/xml"',
+      );
+    }
+
     if (payloadType === 'application/xml') {
-      if (typeof payload === 'object') {
-        return payload;
-      }
+      const xmlString =
+        typeof payload === 'string' ? payload : JSON.stringify(payload);
       const parser = new xml2js.Parser({
         explicitArray: false,
         ignoreAttrs: false,
         mergeAttrs: true,
       });
-      return await parser.parseStringPromise(payload);
+      return parser.parseStringPromise(xmlString);
     }
-    if (typeof payload === 'string') {
-      return JSON.parse(payload);
+
+    if (payloadType === 'application/json') {
+      if (typeof payload === 'string') {
+        return JSON.parse(payload);
+      }
+      return payload;
     }
-    return payload;
+
+    throw new Error(
+      `Unsupported payload type: "${payloadType}". Must be either "application/json" or "application/xml"`,
+    );
   }
 
-  private validateSchema(
+  /**
+   * Validate payload against JSON schema
+   */
+  private validatePayloadAgainstSchema(
     payload: any,
     schema: any,
-  ): { valid: boolean; errors: SimulationError[] } {
-    if (!schema) {
-      return { valid: true, errors: [] };
-    }
-    const validate = this.ajv.compile(schema);
-    const valid = validate(payload);
-    if (valid) {
-      return { valid: true, errors: [] };
-    }
-    const errors: SimulationError[] = (validate.errors || []).map(
-      (error: ErrorObject) => ({
-        field: error.instancePath
-          ? error.instancePath.replace('/', '')
-          : error.schemaPath,
-        message: error.message || 'Validation error',
-        path: error.instancePath,
-        value: error.data,
-      }),
+  ): SimulationError[] {
+    this.logger.debug('Validating payload against schema');
+    this.logger.debug(`Schema: ${JSON.stringify(schema).substring(0, 500)}...`);
+    this.logger.debug(
+      `Payload: ${JSON.stringify(payload).substring(0, 500)}...`,
     );
-    return { valid: false, errors };
-  }
 
-  private applyMappings(
-    sourcePayload: any,
-    mappings: FieldMapping[],
-  ): {
-    result: any;
-    applied: number;
-    errors: SimulationError[];
-  } {
-    const result: any = {};
     const errors: SimulationError[] = [];
-    let applied = 0;
-    for (const mapping of mappings) {
-      try {
-        const success = this.applyMapping(sourcePayload, result, mapping);
-        if (success) {
-          applied++;
-        }
-      } catch (error: any) {
-        const sourcePath = mapping.source
-          ? Array.isArray(mapping.source)
-            ? mapping.source.join(', ')
-            : mapping.source
-          : 'constant';
-        errors.push({
-          field: Array.isArray(mapping.destination)
-            ? mapping.destination.join(', ')
-            : mapping.destination,
-          message: `Mapping error: ${error.message}`,
-          path: sourcePath,
-        });
-      }
-    }
-    return { result, applied, errors };
-  }
 
-  private applyMapping(
-    sourcePayload: any,
-    result: any,
-    mapping: FieldMapping,
-  ): boolean {
-    const {
-      source,
-      destination,
-      transformation = 'NONE',
-      delimiter = ' ',
-      constantValue,
-      operator = 'ADD',
-    } = mapping;
-    const transformationType = transformation;
-    switch (transformationType) {
-      case 'NONE':
-        return this.applyNoneMapping(
-          sourcePayload,
-          result,
-          source as string,
-          destination as string,
-        );
-      case 'CONCAT':
-        return this.applyConcatMapping(
-          sourcePayload,
-          result,
-          source as string[],
-          destination as string,
-          delimiter,
-        );
-      case 'SPLIT':
-        return this.applySplitMapping(
-          sourcePayload,
-          result,
-          source as string,
-          destination as string[],
-          delimiter,
-        );
-      case 'SUM':
-        return this.applySumMapping(
-          sourcePayload,
-          result,
-          source as string[],
-          destination as string,
-        );
-      case 'MATH':
-        return this.applyMathMapping(
-          sourcePayload,
-          result,
-          source as string[],
-          destination as string,
-          operator,
-        );
-      case 'CONSTANT':
-        return this.applyConstantMapping(
-          result,
-          destination as string,
-          constantValue,
-        );
-      default:
-        throw new Error(
-          `Unknown transformation type: ${String(transformationType)}`,
-        );
+    if (!schema) {
+      errors.push({
+        field: 'schema',
+        message: 'No schema defined in configuration',
+      });
+      return errors;
     }
-  }
-  private applyNoneMapping(
-    sourcePayload: any,
-    result: any,
-    sourcePath: string,
-    destinationPath: string,
-  ): boolean {
-    const sourceValue = this.getNestedValue(sourcePayload, sourcePath);
-    if (sourceValue !== undefined) {
-      this.setNestedValue(result, destinationPath, sourceValue);
-      return true;
-    }
-    return false;
-  }
-  private applyConcatMapping(
-    sourcePayload: any,
-    result: any,
-    sourcePaths: string[],
-    destinationPath: string,
-    delimiter: string,
-  ): boolean {
-    const values: string[] = [];
-    for (const sourcePath of sourcePaths) {
-      const value = this.getNestedValue(sourcePayload, sourcePath);
-      if (value !== undefined && value !== null) {
-        values.push(String(value));
-      }
-    }
-    if (values.length > 0) {
-      const concatenatedValue = values.join(delimiter);
-      this.setNestedValue(result, destinationPath, concatenatedValue);
-      return true;
-    }
-    return false;
-  }
 
-  private applySplitMapping(
-    sourcePayload: any,
-    result: any,
-    sourcePath: string,
-    destinationPaths: string[],
-    delimiter: string,
-  ): boolean {
-    const sourceValue = this.getNestedValue(sourcePayload, sourcePath);
-    if (sourceValue !== undefined && sourceValue !== null) {
-      const splitValues = String(sourceValue).split(delimiter);
-      for (
-        let i = 0;
-        i < Math.min(splitValues.length, destinationPaths.length);
-        i++
-      ) {
-        const trimmedValue = splitValues[i].trim();
-        if (trimmedValue) {
-          this.setNestedValue(result, destinationPaths[i], trimmedValue);
-        }
-      }
-      return true;
-    }
-    return false;
-  }
-
-  private applySumMapping(
-    sourcePayload: any,
-    result: any,
-    sourcePaths: string[],
-    destinationPath: string,
-  ): boolean {
-    let sum = 0;
-    let hasValues = false;
-    for (const sourcePath of sourcePaths) {
-      const value = this.getNestedValue(sourcePayload, sourcePath);
-      if (value !== undefined && value !== null) {
-        const numValue = Number(value);
-        if (!isNaN(numValue)) {
-          sum += numValue;
-          hasValues = true;
-        }
-      }
-    }
-    if (hasValues) {
-      this.setNestedValue(result, destinationPath, sum);
-      return true;
-    }
-    return false;
-  }
-
-  private applyMathMapping(
-    sourcePayload: any,
-    result: any,
-    sourcePaths: string[],
-    destinationPath: string,
-    operator: 'ADD' | 'SUBTRACT' | 'MULTIPLY' | 'DIVIDE',
-  ): boolean {
-    const values: number[] = [];
-    for (const sourcePath of sourcePaths) {
-      const value = this.getNestedValue(sourcePayload, sourcePath);
-      if (value !== undefined && value !== null) {
-        const numValue = Number(value);
-        if (!isNaN(numValue)) {
-          values.push(numValue);
-        }
-      }
-    }
-    if (values.length === 0) {
-      return false;
-    }
-    let result_value: number;
-    switch (operator) {
-      case 'ADD':
-        result_value = values.reduce((acc, val) => acc + val, 0);
-        break;
-      case 'SUBTRACT':
-        if (values.length < 2) {
-          throw new Error('SUBTRACT operation requires at least 2 values');
-        }
-        result_value = values.reduce((acc, val, index) =>
-          index === 0 ? val : acc - val,
-        );
-        break;
-      case 'MULTIPLY':
-        result_value = values.reduce((acc, val) => acc * val, 1);
-        break;
-      case 'DIVIDE':
-        if (values.length < 2) {
-          throw new Error('DIVIDE operation requires at least 2 values');
-        }
-        result_value = values.reduce((acc, val, index) => {
-          if (index === 0) return val;
-          if (val === 0) {
-            throw new Error('Division by zero is not allowed');
-          }
-          return acc / val;
-        });
-        break;
-      default:
-        throw new Error(`Unknown operator: ${String(operator)}`);
-    }
-    this.setNestedValue(result, destinationPath, result_value);
-    return true;
-  }
-  private applyConstantMapping(
-    result: any,
-    destinationPath: string,
-    constantValue: any,
-  ): boolean {
-    if (constantValue !== undefined && constantValue !== null) {
-      this.setNestedValue(result, destinationPath, constantValue);
-      return true;
-    }
-    return false;
-  }
-
-  private getNestedValue(obj: any, path: string): any {
-    return path.split('.').reduce((current, key) => {
-      return current && current[key] !== undefined ? current[key] : undefined;
-    }, obj);
-  }
-
-  private setNestedValue(obj: any, path: string, value: any): void {
-    const keys = path.split('.');
-    let current = obj;
-    for (let i = 0; i < keys.length - 1; i++) {
-      const key = keys[i];
-      if (!(key in current) || typeof current[key] !== 'object') {
-        current[key] = {};
-      }
-      current = current[key];
-    }
-    current[keys[keys.length - 1]] = value;
-  }
-
-  private async validateTazamaModel(
-    transformedPayload: any,
-  ): Promise<{ valid: boolean; errors: SimulationError[] }> {
-    const errors: SimulationError[] = [];
     try {
-      this.validateTazamaFields(transformedPayload, '', errors);
-      return {
-        valid: errors.length === 0,
-        errors,
-      };
-    } catch (error: any) {
-      this.logger.warn(`Tazama validation error: ${error.message}`);
-      return {
-        valid: false,
-        errors: [
-          {
-            field: 'tazama',
-            message: `Tazama validation failed: ${error.message}`,
-            value: transformedPayload,
-          },
-        ],
-      };
-    }
-  }
+      const ajv = new Ajv({
+        allErrors: true,
+        strict: false,
+        strictSchema: false,
+        strictNumbers: true,
+        strictTypes: true,
+        strictRequired: true,
+        allowUnionTypes: false,
+        validateFormats: false,
+      });
 
-  private validateTazamaFields(
-    obj: any,
-    basePath: string,
-    errors: SimulationError[],
-  ): void {
-    if (!obj || typeof obj !== 'object') {
-      return;
-    }
-    for (const [key, value] of Object.entries(obj)) {
-      const currentPath = basePath ? `${basePath}.${key}` : key;
-      if (value && typeof value === 'object' && !Array.isArray(value)) {
-        this.validateTazamaFields(value, currentPath, errors);
-      } else {
-        if (basePath) {
-          const isValid =
-            this.tazamaDataModelService.isValidDestinationPath(currentPath);
-          if (!isValid) {
-            errors.push({
-              field: currentPath,
-              message: `Invalid Tazama destination path: ${currentPath}`,
-              path: currentPath,
-              value: value,
-            });
+      const schemaWithStrict = this.enforceStrictSchema(schema);
+
+      this.logger.log(`Original schema: ${JSON.stringify(schema)}`);
+      this.logger.log(`Strict schema: ${JSON.stringify(schemaWithStrict)}`);
+
+      const validate = ajv.compile(schemaWithStrict);
+
+      const valid = validate(payload);
+
+      this.logger.debug(`Schema validation result: ${valid}`);
+      this.logger.debug(
+        `Payload type: ${Array.isArray(payload) ? 'array' : typeof payload}`,
+      );
+
+      if (!valid && validate.errors) {
+        this.logger.warn(
+          `Schema validation errors: ${JSON.stringify(validate.errors)}`,
+        );
+
+        for (const error of validate.errors) {
+          if (
+            error.keyword === 'additionalProperties' &&
+            error.instancePath &&
+            this.isArrayPath(payload, error.instancePath)
+          ) {
+            continue;
           }
+
+          errors.push({
+            field: error.instancePath || 'root',
+            message: error.message || 'Schema validation failed',
+            path: error.instancePath,
+            value: _.get(
+              payload,
+              error.instancePath?.replace(/^\//, '').replace(/\//g, '.'),
+            ),
+          });
         }
       }
+    } catch (schemaError: any) {
+      this.logger.error(`Schema validation error: ${schemaError.message}`);
+      errors.push({
+        field: 'schema',
+        message: 'Schema validation error: ' + schemaError.message,
+      });
     }
+
+    return errors;
   }
-  private createFailedResult(
-    dto: SimulatePayloadDto,
-    timestamp: string,
-    userId: string | undefined,
-    errors: SimulationError[],
-    tenantId: string,
-  ): SimulationResult {
-    return {
-      status: 'FAILED',
-      errors,
-      transformedPayload: {},
-      summary: {
-        endpointId: dto.endpointId,
-        tenantId,
-        timestamp,
-        validatedBy: userId,
-        mappingsApplied: 0,
-        validationSteps: {
-          schemaValidation: 'FAILED',
-          mappingExecution: 'FAILED',
-          tazamaValidation: 'FAILED',
+
+  private validateMappings(payload: any, mappings: any[]): SimulationError[] {
+    const errors: SimulationError[] = [];
+
+    for (let i = 0; i < mappings.length; i++) {
+      const mapping = mappings[i];
+      // Source is always an array for consistency
+      const sources = mapping.source || [];
+
+      if (
+        mapping.transformation === 'CONSTANT' ||
+        mapping.constantValue !== undefined
+      ) {
+        continue;
+      }
+
+      let anySourceExists = false;
+      const missingSources: string[] = [];
+
+      for (const source of sources) {
+        const fieldValue = this.getFieldValue(payload, source);
+        if (fieldValue !== undefined && fieldValue !== null) {
+          anySourceExists = true;
+          break;
+        } else {
+          missingSources.push(source);
+        }
+      }
+
+      if (!anySourceExists && sources.length > 0) {
+        errors.push({
+          field: 'mapping',
+          message: `Mapping #${i + 1}: None of the source fields exist in payload: ${missingSources.join(', ')}`,
+          path: `mappings[${i}]`,
+          value: mapping,
+        });
+      }
+
+      // Validate destination format
+      if (!mapping.destination) {
+        errors.push({
+          field: 'mapping',
+          message: `Mapping #${i + 1}: Missing destination field`,
+          path: `mappings[${i}]`,
+        });
+      }
+    }
+
+    return errors;
+  }
+
+  private isArrayPath(obj: any, path: string): boolean {
+    if (!path) return false;
+
+    const normalizedPath = path.replace(/^\//, '').replace(/\//g, '.');
+    const pathParts = normalizedPath.split('.');
+
+    let current = obj;
+    for (let i = 0; i < pathParts.length; i++) {
+      const part = pathParts[i];
+
+      if (Array.isArray(current)) {
+        return true;
+      }
+
+      if (current && typeof current === 'object' && part in current) {
+        current = current[part];
+      } else {
+        break;
+      }
+    }
+
+    return Array.isArray(current);
+  }
+
+  private getFieldValue(obj: any, path: string): any {
+    if (!path) return undefined;
+
+    const normalizedPath = path.replace(/\[(\d+)\]/g, '.$1');
+
+    return _.get(obj, normalizedPath);
+  }
+
+  private enforceStrictSchema(schema: any): any {
+    if (!schema || typeof schema !== 'object') {
+      return schema;
+    }
+
+    const strictSchema = { ...schema };
+
+    if (strictSchema.type === 'array') {
+      if (strictSchema.items) {
+        if (typeof strictSchema.items === 'object') {
+          strictSchema.items = this.enforceStrictSchema(strictSchema.items);
+        }
+      }
+      return strictSchema;
+    }
+
+    if (
+      strictSchema.type === 'object' &&
+      strictSchema.additionalProperties === undefined
+    ) {
+      strictSchema.additionalProperties = false;
+    }
+
+    if (strictSchema.properties) {
+      strictSchema.properties = Object.keys(strictSchema.properties).reduce(
+        (acc, key) => {
+          acc[key] = this.enforceStrictSchema(strictSchema.properties[key]);
+          return acc;
         },
-      },
-    };
+        {} as any,
+      );
+    }
+
+    if (strictSchema.items && strictSchema.type !== 'array') {
+      strictSchema.items = this.enforceStrictSchema(strictSchema.items);
+    }
+
+    if (strictSchema.oneOf) {
+      strictSchema.oneOf = strictSchema.oneOf.map((s: any) =>
+        this.enforceStrictSchema(s),
+      );
+    }
+    if (strictSchema.anyOf) {
+      strictSchema.anyOf = strictSchema.anyOf.map((s: any) =>
+        this.enforceStrictSchema(s),
+      );
+    }
+    if (strictSchema.allOf) {
+      strictSchema.allOf = strictSchema.allOf.map((s: any) =>
+        this.enforceStrictSchema(s),
+      );
+    }
+
+    return strictSchema;
   }
 }

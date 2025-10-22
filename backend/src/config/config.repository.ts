@@ -1,6 +1,11 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
 import { Knex } from 'knex';
-import { Config, FieldMapping, FunctionDefinition } from './config.interfaces';
+import {
+  Config,
+  FieldMapping,
+  FunctionDefinition,
+  ConfigStatus,
+} from './config.interfaces';
 import { JSONSchema } from '@tazama-lf/tcs-lib';
 @Injectable()
 export class ConfigRepository {
@@ -87,6 +92,23 @@ export class ConfigRepository {
       .first();
     return result ? this.mapToConfig(result) : null;
   }
+
+  async findConfigByMsgFamVersionAndTransactionType(
+    msgFam: string,
+    version: string,
+    transactionType: string,
+    tenantId: string,
+  ): Promise<Config | null> {
+    const result = await this.knex('config')
+      .where({
+        msg_fam: msgFam,
+        version,
+        transaction_type: transactionType,
+        tenant_id: tenantId,
+      })
+      .first();
+    return result ? this.mapToConfig(result) : null;
+  }
   async updateConfig(
     id: number,
     tenantId: string,
@@ -99,6 +121,7 @@ export class ConfigRepository {
       schema?: JSONSchema;
       mapping?: FieldMapping[];
       functions?: FunctionDefinition[];
+      status?: string;
     },
   ): Promise<void> {
     const updateData: any = {};
@@ -116,6 +139,10 @@ export class ConfigRepository {
       updateData.mapping = JSON.stringify(updates.mapping);
     if (updates.functions !== undefined)
       updateData.functions = JSON.stringify(updates.functions);
+    if (updates.status !== undefined) updateData.status = updates.status;
+
+    updateData.updated_at = this.knex.fn.now();
+
     await this.knex('config')
       .where({ id, tenant_id: tenantId })
       .update(updateData);
@@ -145,7 +172,7 @@ export class ConfigRepository {
           : typeof row.functions === 'string'
             ? JSON.parse(row.functions)
             : row.functions,
-      status: row.status,
+      status: row.status as ConfigStatus,
       tenantId: row.tenant_id,
       createdBy: row.created_by,
       createdAt: row.created_at,

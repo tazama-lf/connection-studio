@@ -7,22 +7,10 @@ import {
   TAZAMA_DATA_MODEL_SCHEMAS,
 } from './tazama-data-model.interfaces';
 
-/**
- * Service for managing the Tazama Internal Data Model
- *
- * Provides utilities for:
- * - Retrieving available destination fields for mapping
- * - Validating destination paths
- * - Managing data model schema definitions
- */
 @Injectable()
 export class TazamaDataModelService {
   private readonly logger = new Logger(TazamaDataModelService.name);
 
-  /**
-   * Get all available destination paths for mapping
-   * Returns a flat list of collection.field paths
-   */
   getAllDestinationPaths(): TazamaDestinationPath[] {
     const paths: TazamaDestinationPath[] = [];
     for (const schema of TAZAMA_DATA_MODEL_SCHEMAS) {
@@ -36,9 +24,6 @@ export class TazamaDataModelService {
     return paths.sort();
   }
 
-  /**
-   * Get destination paths grouped by collection
-   */
   getDestinationPathsByCollection(): Record<
     TazamaCollectionName,
     TazamaDestinationPath[]
@@ -52,9 +37,6 @@ export class TazamaDataModelService {
     return grouped as Record<TazamaCollectionName, TazamaDestinationPath[]>;
   }
 
-  /**
-   * Validate if a destination path exists in the data model
-   */
   isValidDestinationPath(path: TazamaDestinationPath): boolean {
     const [collectionName, fieldName] = path.split('.');
     if (!collectionName || !fieldName) {
@@ -69,9 +51,6 @@ export class TazamaDataModelService {
     return schema.fields.some((f) => f.name === fieldName);
   }
 
-  /**
-   * Get schema for a specific collection
-   */
   getCollectionSchema(
     collectionName: TazamaCollectionName,
   ): TazamaCollectionSchema | null {
@@ -80,16 +59,10 @@ export class TazamaDataModelService {
     );
   }
 
-  /**
-   * Get all collection schemas
-   */
   getAllCollectionSchemas(): TazamaCollectionSchema[] {
     return TAZAMA_DATA_MODEL_SCHEMAS;
   }
 
-  /**
-   * Get field type from a destination path
-   */
   getFieldType(path: TazamaDestinationPath): TazamaFieldType | null {
     const [collectionName, fieldName] = path.split('.');
     const schema = this.getCollectionSchema(
@@ -102,9 +75,6 @@ export class TazamaDataModelService {
     return field?.type ? (field.type.toUpperCase() as TazamaFieldType) : null;
   }
 
-  /**
-   * Check if a field is required in the data model
-   */
   isFieldRequired(path: TazamaDestinationPath): boolean {
     const [collectionName, fieldName] = path.split('.');
     const schema = this.getCollectionSchema(
@@ -117,9 +87,6 @@ export class TazamaDataModelService {
     return field?.required || false;
   }
 
-  /**
-   * Get all required fields for a collection
-   */
   getRequiredFields(collectionName: TazamaCollectionName): string[] {
     const schema = this.getCollectionSchema(collectionName);
     if (!schema) {
@@ -128,9 +95,6 @@ export class TazamaDataModelService {
     return schema.fields.filter((f) => f.required).map((f) => f.name);
   }
 
-  /**
-   * Get field description from destination path
-   */
   getFieldDescription(path: TazamaDestinationPath): string | null {
     const [collectionName, fieldName] = path.split('.');
     const schema = this.getCollectionSchema(
@@ -143,9 +107,6 @@ export class TazamaDataModelService {
     return field?.description || null;
   }
 
-  /**
-   * Get example value for a field
-   */
   getFieldExample(path: TazamaDestinationPath): any {
     const [collectionName, fieldName] = path.split('.');
     const schema = this.getCollectionSchema(
@@ -158,9 +119,6 @@ export class TazamaDataModelService {
     return field?.example || null;
   }
 
-  /**
-   * Get searchable/filterable destination options for UI dropdowns
-   */
   getDestinationOptions(): Array<{
     value: TazamaDestinationPath;
     label: string;
@@ -203,9 +161,17 @@ export class TazamaDataModelService {
     return options.sort((a, b) => a.label.localeCompare(b.label));
   }
 
-  /**
-   * Extract collection name from destination path
-   */
+  getCollectionTypes(): string[] {
+    const validCollections = [
+      'entities',
+      'accounts',
+      'account_holder',
+      'transactionDetails',
+      'redis',
+    ];
+    return validCollections;
+  }
+
   extractCollectionName(
     path: TazamaDestinationPath,
   ): TazamaCollectionName | null {
@@ -214,8 +180,8 @@ export class TazamaDataModelService {
       'entities',
       'accounts',
       'account_holder',
-      'transactionRelationship',
-      'transactionHistory',
+      'transactionDetails',
+      'redis',
     ];
     if (validCollections.includes(collectionName as TazamaCollectionName)) {
       return collectionName as TazamaCollectionName;
@@ -223,14 +189,11 @@ export class TazamaDataModelService {
     return null;
   }
 
-  /**
-   * Extract field name from destination path
-   */
   extractFieldName(path: TazamaDestinationPath): string | null {
     const parts = path.split('.');
     if (parts.length < 2) {
       return null;
     }
-    return parts.slice(1).join('.'); // Support nested paths like "geoLocation.lat"
+    return parts.slice(1).join('.');
   }
 }

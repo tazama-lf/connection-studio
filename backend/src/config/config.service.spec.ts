@@ -1,12 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from './config.service';
 import { ConfigRepository } from './config.repository';
+import { ConfigWorkflowService } from './config-workflow.service';
 import { PayloadParsingService, JSONSchema } from '@tazama-lf/tcs-lib';
 import { AuditService } from '../audit/audit.service';
 import { JSONSchemaConverterService } from '../schemas/json-schema-converter.service';
-import { TazamaDataModelService } from '../data-model-extensions/tazama-data-model.service';
-import { DataModelExtensionService } from '../data-model-extensions/data-model-extension.service';
-import { FlowableService } from '../flowable/flowable.service';
+import { TazamaDataModelService } from '../tazama-data-model/tazama-data-model.service';
 import {
   Config,
   ContentType,
@@ -17,12 +16,13 @@ import {
   AddFunctionDto,
   AllowedFunctionName,
 } from './config.interfaces';
+
 describe('ConfigService', () => {
   let service: ConfigService;
   let repository: jest.Mocked<ConfigRepository>;
   let payloadParsingService: jest.Mocked<PayloadParsingService>;
   let auditService: jest.Mocked<AuditService>;
-  let flowableService: jest.Mocked<FlowableService>;
+  let jsonSchemaConverter: jest.Mocked<JSONSchemaConverterService>;
   const mockJSONSchema: JSONSchema = {
     $schema: 'https://json-schema.org/draft/2020-12/schema',
     type: 'object',
@@ -58,6 +58,7 @@ describe('ConfigService', () => {
       findConfigsByTenant: jest.fn(),
       findConfigsByTransactionType: jest.fn(),
       findConfigByVersionAndTransactionType: jest.fn(),
+      findConfigByMsgFamVersionAndTransactionType: jest.fn(),
       updateConfig: jest.fn(),
       deleteConfig: jest.fn(),
     };
@@ -75,20 +76,28 @@ describe('ConfigService', () => {
       validateDestinationPath: jest.fn(),
       getDestinationPaths: jest.fn(),
       getMappingSuggestions: jest.fn(),
+      isValidDestinationPath: jest.fn().mockReturnValue(true),
     };
-    const mockDataModelExtensionService = {
-      createExtension: jest.fn(),
-      getExtensions: jest.fn(),
-      updateExtension: jest.fn(),
-      deleteExtension: jest.fn(),
-      isValidDestinationPath: jest.fn().mockResolvedValue(true),
-    };
-    const mockFlowableService = {
-      startWorkflowWithDraft: jest.fn(),
-      startProcess: jest.fn(),
-      getConfigFromProcess: jest.fn(),
-      getTasks: jest.fn(),
-      completeTask: jest.fn(),
+    const mockConfigWorkflowService = {
+      validateStatusTransition: jest.fn(),
+      validateUserPermissions: jest.fn(),
+      getTargetStatus: jest.fn(),
+      canPerformAction: jest.fn(),
+      canEditConfig: jest.fn().mockImplementation((status: ConfigStatus) => {
+        const editableStates = [
+          ConfigStatus.IN_PROGRESS,
+          ConfigStatus.REJECTED,
+          ConfigStatus.CHANGES_REQUESTED,
+        ];
+        const canEdit = editableStates.includes(status);
+        return {
+          canEdit,
+          message: canEdit
+            ? undefined
+            : 'Editing not allowed. Please clone to create a new version.',
+        };
+      }),
+      getActionDescription: jest.fn(),
     };
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -114,12 +123,8 @@ describe('ConfigService', () => {
           useValue: mockTazamaDataModelService,
         },
         {
-          provide: DataModelExtensionService,
-          useValue: mockDataModelExtensionService,
-        },
-        {
-          provide: FlowableService,
-          useValue: mockFlowableService,
+          provide: ConfigWorkflowService,
+          useValue: mockConfigWorkflowService,
         },
       ],
     }).compile();
@@ -127,7 +132,7 @@ describe('ConfigService', () => {
     repository = module.get(ConfigRepository);
     payloadParsingService = module.get(PayloadParsingService);
     auditService = module.get(AuditService);
-    flowableService = module.get(FlowableService);
+    jsonSchemaConverter = module.get(JSONSchemaConverterService);
   });
   it('should be defined', () => {
     expect(service).toBeDefined();
@@ -161,23 +166,24 @@ describe('ConfigService', () => {
         parsingResult,
       );
       repository.findConfigByVersionAndTransactionType.mockResolvedValue(null); // No version conflict
-
-      // Mock Flowable workflow start
-      flowableService.startWorkflowWithDraft.mockResolvedValue({
-        processInstanceId: 'proc-123',
-        configId: 'config-456',
-      });
-
+      repository.createConfig.mockResolvedValue(1);
+      repository.findConfigById.mockResolvedValue(mockConfig);
       const result = await service.createConfig(dto, 'test-tenant', 'user-123');
-
       expect(result.success).toBe(true);
-      expect(result.message).toContain('Flowable workflow started');
-      expect(flowableService.startWorkflowWithDraft).toHaveBeenCalled();
-      expect(auditService.logAction).toHaveBeenCalledWith(
+      expect(result.config).toEqual(mockConfig);
+      expect(repository.createConfig).toHaveBeenCalled();
+      expect(repository.createConfig).toHaveBeenCalledWith(
         expect.objectContaining({
-          action: 'CREATE_CONFIG_WORKFLOW',
+          status: ConfigStatus.IN_PROGRESS,
         }),
       );
+      expect(auditService.logAction).toHaveBeenCalledWith({
+        action: 'CREATE_CONFIG',
+        actor: 'user-123',
+        tenantId: 'test-tenant',
+        endpointName: 'pain.001 - /test-tenant/v1/pain.001/Payments',
+        entityType: 'CONFIG',
+      });
     });
     it('should use preferred_username for createdBy if present', async () => {
       const dto: CreateConfigDto = {
@@ -203,20 +209,26 @@ describe('ConfigService', () => {
         parsingResult,
       );
       repository.findConfigByVersionAndTransactionType.mockResolvedValue(null); // No version conflict
-
-      // Mock Flowable workflow start
-      flowableService.startWorkflowWithDraft.mockResolvedValue({
-        processInstanceId: 'proc-2',
-        configId: 'config-2',
-      });
-
+      repository.createConfig.mockResolvedValue(2);
+      const configWithPreferredUsername = {
+        ...mockConfig,
+        id: 2,
+        createdBy: 'preferred_user',
+      };
+      repository.findConfigById.mockResolvedValue(configWithPreferredUsername);
       const result = await service.createConfig(
         dto,
         'tenant-xyz',
         'preferred_user',
       );
       expect(result.success).toBe(true);
-      expect(flowableService.startWorkflowWithDraft).toHaveBeenCalled();
+      expect(result.config).toBeDefined();
+      if (result.config) {
+        expect(result.config.createdBy).toBe('preferred_user');
+      }
+      expect(repository.createConfig).toHaveBeenCalledWith(
+        expect.objectContaining({ createdBy: 'preferred_user' }),
+      );
     });
     it('should auto-generate endpoint path with msgFam', async () => {
       const dto: CreateConfigDto = {
@@ -242,16 +254,20 @@ describe('ConfigService', () => {
         parsingResult,
       );
       repository.findConfigByVersionAndTransactionType.mockResolvedValue(null); // No version conflict
-
-      // Mock Flowable workflow start
-      flowableService.startWorkflowWithDraft.mockResolvedValue({
-        processInstanceId: 'proc-3',
-        configId: 'config-3',
-      });
-
+      repository.createConfig.mockResolvedValue(3);
+      const configWithAutoPath = {
+        ...mockConfig,
+        id: 3,
+        endpointPath: '/test-tenant/v1/pain.001/Payments',
+      };
+      repository.findConfigById.mockResolvedValue(configWithAutoPath);
       const result = await service.createConfig(dto, 'test-tenant', 'user-123');
       expect(result.success).toBe(true);
-      expect(flowableService.startWorkflowWithDraft).toHaveBeenCalled();
+      expect(repository.createConfig).toHaveBeenCalledWith(
+        expect.objectContaining({
+          endpointPath: '/test-tenant/v1/pain.001/Payments',
+        }),
+      );
     });
     it('should auto-generate endpoint path without msgFam', async () => {
       const dto: CreateConfigDto = {
@@ -276,16 +292,20 @@ describe('ConfigService', () => {
         parsingResult,
       );
       repository.findConfigByVersionAndTransactionType.mockResolvedValue(null); // No version conflict
-
-      // Mock Flowable workflow start
-      flowableService.startWorkflowWithDraft.mockResolvedValue({
-        processInstanceId: 'proc-4',
-        configId: 'config-4',
-      });
-
+      repository.createConfig.mockResolvedValue(4);
+      const configWithAutoPath = {
+        ...mockConfig,
+        id: 4,
+        endpointPath: '/test-tenant/v1/Payments',
+      };
+      repository.findConfigById.mockResolvedValue(configWithAutoPath);
       const result = await service.createConfig(dto, 'test-tenant', 'user-123');
       expect(result.success).toBe(true);
-      expect(flowableService.startWorkflowWithDraft).toHaveBeenCalled();
+      expect(repository.createConfig).toHaveBeenCalledWith(
+        expect.objectContaining({
+          endpointPath: '/test-tenant/v1/Payments',
+        }),
+      );
     });
     it('should handle parsing failure', async () => {
       const dto: CreateConfigDto = {
@@ -331,18 +351,18 @@ describe('ConfigService', () => {
         payload: '{"amount":100,"currency":"USD"}',
       };
       const existingConfig = { ...mockConfig };
-      repository.findConfigByVersionAndTransactionType.mockResolvedValue(
+      repository.findConfigByMsgFamVersionAndTransactionType.mockResolvedValue(
         existingConfig,
       );
       const result = await service.createConfig(dto, 'test-tenant', 'user-123');
       expect(result.success).toBe(false);
       expect(result.message).toBe(
         // eslint-disable-next-line quotes
-        "Config with version 'v1' for transaction type 'Payments' already exists for this tenant. Please use a different version.",
+        "Config with message family 'pain.001', transaction type 'Payments', and version 'v1' already exists for this tenant. Please use different values.",
       );
       expect(
-        repository.findConfigByVersionAndTransactionType,
-      ).toHaveBeenCalledWith('v1', 'Payments', 'test-tenant');
+        repository.findConfigByMsgFamVersionAndTransactionType,
+      ).toHaveBeenCalledWith('pain.001', 'v1', 'Payments', 'test-tenant');
       expect(repository.createConfig).not.toHaveBeenCalled();
     });
     it('should validate payload is required', async () => {
@@ -380,7 +400,7 @@ describe('ConfigService', () => {
       repository.findConfigById.mockResolvedValue(mockConfig);
       const updatedConfig = {
         ...mockConfig,
-        mapping: [{ source: 'amount', destination: 'transactionAmount' }],
+        mapping: [{ source: ['amount'], destination: 'transactionAmount' }],
       };
       repository.findConfigById.mockResolvedValueOnce(mockConfig);
       repository.findConfigById.mockResolvedValueOnce(updatedConfig);
@@ -439,14 +459,14 @@ describe('ConfigService', () => {
       const configWithMapping = {
         ...mockConfig,
         mapping: [
-          { source: 'amount', destination: 'transactionAmount' },
-          { source: 'currency', destination: 'transactionCurrency' },
+          { source: ['amount'], destination: 'transactionAmount' },
+          { source: ['currency'], destination: 'transactionCurrency' },
         ],
       };
       repository.findConfigById.mockResolvedValueOnce(configWithMapping);
       const updatedConfig = {
         ...configWithMapping,
-        mapping: [{ source: 'currency', destination: 'transactionCurrency' }],
+        mapping: [{ source: ['currency'], destination: 'transactionCurrency' }],
       };
       repository.findConfigById.mockResolvedValueOnce(updatedConfig);
       const result = await service.removeMapping(
@@ -466,27 +486,72 @@ describe('ConfigService', () => {
     });
   });
   describe('updateConfig', () => {
-    it('should update config successfully', async () => {
+    it('should update config in-place successfully', async () => {
       const updateDto: UpdateConfigDto = {
-        msgFam: 'pacs.008',
+        endpointPath: '/new-payment-path',
       };
       repository.findConfigById.mockResolvedValueOnce(mockConfig);
-      repository.findConfigByVersionAndTransactionType.mockResolvedValueOnce(
-        null,
-      ); // No conflict
-      repository.createConfig.mockResolvedValueOnce(2); // New config ID
-      const updatedConfig = { ...mockConfig, id: 2, msgFam: 'pacs.008' };
+      repository.updateConfig.mockResolvedValueOnce(undefined);
+      const updatedConfig = {
+        ...mockConfig,
+        endpointPath: '/new-payment-path',
+      };
       repository.findConfigById.mockResolvedValueOnce(updatedConfig);
+
       const result = await service.updateConfig(
         1,
         updateDto,
         'test-tenant',
         'user-123',
       );
+
       expect(result.success).toBe(true);
-      expect(result.config?.msgFam).toBe('pacs.008');
-      expect(repository.createConfig).toHaveBeenCalled(); // Creates new config for key field changes
+      expect(result.config?.endpointPath).toBe('/new-payment-path');
+      expect(repository.updateConfig).toHaveBeenCalled(); // Updates same config in-place
+      expect(repository.createConfig).not.toHaveBeenCalled(); // No new config created
     });
+
+    it('should prevent editing approved config', async () => {
+      console.log('ConfigStatus.APPROVED value:', ConfigStatus.APPROVED);
+      console.log('ConfigStatus enum:', ConfigStatus);
+
+      const approvedConfig: Config = {
+        id: 1,
+        msgFam: 'pain.001',
+        transactionType: 'Payments',
+        endpointPath: '/payment',
+        version: 'v1',
+        contentType: ContentType.JSON,
+        schema: mockJSONSchema,
+        mapping: undefined,
+        status: ConfigStatus.APPROVED,
+        tenantId: 'test-tenant',
+        createdBy: 'user-123',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      console.log(
+        'Approved config created, status field:',
+        approvedConfig.status,
+      );
+      repository.findConfigById.mockResolvedValueOnce(approvedConfig);
+
+      const result = await service.updateConfig(
+        1,
+        { endpointPath: '/new-path' },
+        'test-tenant',
+        'user-123',
+      );
+
+      console.log('Result:', result);
+
+      expect(result.success).toBe(false);
+      expect(result.message).toContain('Editing not allowed');
+      expect(result.message).toContain('Please clone to create a new version');
+      expect(repository.updateConfig).not.toHaveBeenCalled();
+    });
+
     it('should throw error if config not found', async () => {
       repository.findConfigById.mockResolvedValue(null);
       await expect(
@@ -516,16 +581,48 @@ describe('ConfigService', () => {
         ...mockConfig,
         functions: [
           {
-            params: ['dbtrAcctId', 'tenantId'],
+            params: ['redis.dbtrAcctId', 'transaction.tenantId'],
             functionName: 'addAccount' as AllowedFunctionName,
           },
         ],
       };
 
+      const mockSourceFields = [
+        {
+          path: 'amount',
+          name: 'amount',
+          type: 'number' as any,
+          isRequired: true,
+        },
+        {
+          path: 'currency',
+          name: 'currency',
+          type: 'string' as any,
+          isRequired: false,
+        },
+        {
+          path: 'firstName',
+          name: 'firstName',
+          type: 'string' as any,
+          isRequired: false,
+        },
+        {
+          path: 'lastName',
+          name: 'lastName',
+          type: 'string' as any,
+          isRequired: false,
+        },
+      ];
+
       repository.findConfigById.mockResolvedValue(mockConfig);
       repository.findConfigById
         .mockResolvedValueOnce(mockConfig)
         .mockResolvedValueOnce(mockConfigWithFunction);
+
+      // Mock the JSON schema converter to return mock fields
+      jsonSchemaConverter.convertFromJSONSchema.mockReturnValue(
+        mockSourceFields,
+      );
 
       const functionDto: AddFunctionDto = {
         params: ['dbtrAcctId', 'tenantId'],
@@ -547,7 +644,7 @@ describe('ConfigService', () => {
         functions: expect.arrayContaining([
           expect.objectContaining({
             functionName: 'addAccount',
-            params: ['dbtrAcctId', 'tenantId'],
+            params: ['redis.dbtrAcctId', 'transaction.tenantId'],
           }),
         ]),
       });
@@ -597,7 +694,7 @@ describe('ConfigService', () => {
       await expect(
         service.addFunction(1, invalidFunctionDto, 'test-tenant', 'user-123'),
       ).rejects.toThrow(
-        'Invalid function name. Only the following functions are allowed: addAccount, handleTransaction, AddEntity',
+        'Invalid function name. Only the following functions are allowed: addAccountHolder, addEntity, addAccount',
       );
     });
   });
@@ -608,7 +705,7 @@ describe('ConfigService', () => {
         ...mockConfig,
         functions: [
           {
-            params: ['dbtrAcctId'],
+            params: ['redis.dbtrAcctId'],
             functionName: 'addAccount' as AllowedFunctionName,
           },
         ],

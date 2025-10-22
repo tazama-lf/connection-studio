@@ -297,24 +297,6 @@ export class AuditService {
     });
   }
 
-  async logDataModelExtension(
-    actor: string,
-    extensionId: string,
-    action: 'CREATED' | 'UPDATED' | 'DELETED',
-    tenantId: string,
-    details?: string,
-  ): Promise<void> {
-    await this.logAction({
-      action: `DATA_MODEL_EXTENSION_${action}`,
-      entityType: 'DATA_MODEL_EXTENSION',
-      entityId: extensionId,
-      actor,
-      tenantId,
-      details,
-      severity: 'MEDIUM',
-    });
-  }
-
   async logError(
     actor: string,
     tenantId: string,
