@@ -7,7 +7,8 @@ import {
 } from '@nestjs/common';
 import { ConfigRepository } from './config.repository';
 import {
-  PayloadParsingService,
+  parsePayloadToSchema,
+  applyFieldAdjustments,
   FieldType,
   JSONSchema,
 } from '@tazama-lf/tcs-lib';
@@ -58,7 +59,6 @@ export class ConfigService {
 
   constructor(
     private readonly configRepository: ConfigRepository,
-    private readonly payloadParsingService: PayloadParsingService,
     private readonly auditService: AuditService,
     private readonly jsonSchemaConverter: JSONSchemaConverterService,
     private readonly tazamaDataModelService: TazamaDataModelService,
@@ -110,16 +110,16 @@ export class ConfigService {
       }
 
       const parsingResult =
-        await this.payloadParsingService.parsePayloadToSchema(
+        await parsePayloadToSchema(
           dto.payload,
           dto.contentType || ContentType.JSON,
         );
 
-      if (!parsingResult.success) {
+      if (!parsingResult || !parsingResult.success) {
         return {
           success: false,
           message: 'Failed to parse payload',
-          validation: parsingResult.validation,
+          validation: { success: false, errors: ['Parsing failed'], warnings: [] },
         };
       }
 
@@ -130,7 +130,7 @@ export class ConfigService {
         );
 
         const adjustedSourceFields =
-          this.payloadParsingService.applyFieldAdjustments(
+          applyFieldAdjustments(
             parsingResult.sourceFields,
             dto.fieldAdjustments,
           );
@@ -268,7 +268,7 @@ export class ConfigService {
           this.jsonSchemaConverter.convertFromJSONSchema(sourceConfig.schema);
 
         const adjustedSourceFields =
-          this.payloadParsingService.applyFieldAdjustments(
+          applyFieldAdjustments(
             existingSourceFields,
             dto.fieldAdjustments,
           );
@@ -437,7 +437,7 @@ export class ConfigService {
 
       // Apply field adjustments
       const adjustedSourceFields =
-        this.payloadParsingService.applyFieldAdjustments(
+        applyFieldAdjustments(
           existingSourceFields,
           dto.fieldAdjustments,
         );

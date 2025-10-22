@@ -42,7 +42,6 @@ import {
   TazamaClaims,
   RequireAnyClaims,
 } from '../auth/auth.decorator';
-import { FileParsingService } from '@tazama-lf/tcs-lib';
 function getTenantId(user: AuthenticatedUser): string {
   return user.token.tenantId || 'default';
 }
@@ -67,7 +66,6 @@ function getUserClaims(user: AuthenticatedUser): string[] {
 export class ConfigController {
   constructor(
     private readonly configService: ConfigService,
-    private readonly fileParsingService: FileParsingService,
   ) {}
   private autoDetectContentType(
     filename: string,
