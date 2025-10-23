@@ -30,6 +30,7 @@ const AuthProvider: React.FC<{
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [showTokenExpiredModal, setShowTokenExpiredModal] = useState(false);
+  const [isIntentionalLogout, setIsIntentionalLogout] = useState(false);
 
   // Check if user is already logged in (from localStorage)
   useEffect(() => {
@@ -93,8 +94,17 @@ const AuthProvider: React.FC<{
   useEffect(() => {
     const tokenHandler = {
       onTokenExpired: () => {
-        console.log('Token expired, showing modal and logging out');
-        setShowTokenExpiredModal(true);
+        console.log('Token expired event triggered');
+        console.log('Is intentional logout:', isIntentionalLogout);
+        
+        // Don't show modal if this is an intentional logout
+        if (!isIntentionalLogout) {
+          console.log('Showing token expired modal');
+          setShowTokenExpiredModal(true);
+        } else {
+          console.log('Intentional logout - skipping modal');
+        }
+        
         setUser(null);
         setIsAuthenticated(false);
       },
@@ -103,7 +113,7 @@ const AuthProvider: React.FC<{
 
     const unsubscribe = globalTokenManager.subscribe(tokenHandler);
     return unsubscribe;
-  }, [showTokenExpiredModal]);
+  }, [showTokenExpiredModal, isIntentionalLogout]);
 
   // Periodic token expiration check for idle users
   useEffect(() => {
@@ -174,6 +184,8 @@ const AuthProvider: React.FC<{
   };
 
   const logout = () => {
+    console.log('=== INTENTIONAL LOGOUT ===');
+    setIsIntentionalLogout(true); // Set flag to prevent modal
     setUser(null);
     setIsAuthenticated(false);
     localStorage.removeItem('authToken');
@@ -183,6 +195,9 @@ const AuthProvider: React.FC<{
     authApi.logout().catch(error => {
       console.error('Logout API call failed:', error);
     });
+    
+    // Reset the flag after a short delay
+    setTimeout(() => setIsIntentionalLogout(false), 1000);
   };
 
   const handleTokenExpiredLoginRedirect = () => {

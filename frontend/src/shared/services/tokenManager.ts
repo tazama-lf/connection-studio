@@ -79,7 +79,31 @@ export async function apiRequest<T>(
     }
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      // Try to extract error details from response body
+      let errorDetails: any;
+      try {
+        errorDetails = await response.json();
+      } catch {
+        // If response body is not JSON, create a generic error
+        errorDetails = { 
+          message: `HTTP error! status: ${response.status}`,
+          statusCode: response.status 
+        };
+      }
+
+      // Create an error object that includes response details
+      const error: any = new Error(
+        errorDetails.message || 
+        errorDetails.error || 
+        `HTTP error! status: ${response.status}`
+      );
+      error.response = {
+        status: response.status,
+        data: errorDetails,
+        headers: Object.fromEntries(response.headers.entries())
+      };
+      
+      throw error;
     }
 
     return await response.json();

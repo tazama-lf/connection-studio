@@ -10,7 +10,7 @@ export const ROUTES = {
   CRON: '/cron',
   APPROVER: '/approver',
 
-  // Nested routes (for future use)
+  // Nested routes
   DEMS_ENDPOINTS: '/dems/endpoints',
   DEMS_VALIDATION: '/dems/validation',
   DATA_ENRICHMENT_CONFIG: '/de/config',
@@ -50,11 +50,11 @@ export const NAVIGATION = {
     },
     {
       id: 'approver',
-      name: 'Configuration Approver',
+      name: 'Dynamic Endpoint Monitoring Service',
       description: 'Review and approve submitted configuration changes',
       path: ROUTES.APPROVER,
-      icon: 'CheckCircleIcon',
-      color: 'bg-orange-100 text-orange-600',
+      icon: 'ActivityIcon',
+      color: 'bg-blue-100 text-blue-600',
     },
   ],
 } as const;

@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { AuthHeader } from '../../../shared/components/AuthHeader';
 import { ConfigList } from '../../config/components/ConfigList';
+import { JobList } from '../../data-enrichment/components/JobList';
+import JobDetailsModal from '../../data-enrichment/components/JobDetailsModal';
 import { Button } from '../../../shared/components/Button';
-import { SearchIcon, AlertTriangleIcon } from 'lucide-react';
+import { SearchIcon, AlertTriangleIcon, Settings, Database } from 'lucide-react';
 import EditEndpointModal from '../../../shared/components/EditEndpointModal';
 import ValidationLogsTable from '../../../shared/components/ValidationLogsTable';
 import type { Config } from '../../config/index';
+import type { DataEnrichmentJobResponse, JobStatus } from '../../data-enrichment/types';
 import { configApi } from '../../config/services/configApi';
+import { dataEnrichmentApi } from '../../data-enrichment/services/dataEnrichmentApi';
 import { useToast } from '../../../shared/providers/ToastProvider';
 import { RejectionDialog } from '../../../shared/components/RejectionDialog';
 import { ConfigReviewModal } from '../../../shared/components/ConfigReviewModal';
@@ -14,6 +18,10 @@ import { ChangeRequestDialog } from '../../../shared/components/ChangeRequestDia
 import { useAuth } from '../../auth/contexts/AuthContext';
 
 const ApproverModule: React.FC = () => {
+  // UI State
+  const [activeTab, setActiveTab] = useState<'configs' | 'jobs'>('configs');
+  
+  // Config-related state
   const [editingEndpointId, setEditingEndpointId] = useState<number | null>(null);
   const [editingConfig, setEditingConfig] = useState<Config | null>(null);
   const [showValidationLogs, setShowValidationLogs] = useState(false);
@@ -25,12 +33,92 @@ const ApproverModule: React.FC = () => {
   const [showChangeRequestDialog, setShowChangeRequestDialog] = useState(false);
   const [configToReject, setConfigToReject] = useState<Config | null>(null);
   const [configToRequestChanges, setConfigToRequestChanges] = useState<Config | null>(null);
+  
+  // Data Enrichment Job state
+  const [jobs, setJobs] = useState<DataEnrichmentJobResponse[]>([]);
+  const [jobsLoading, setJobsLoading] = useState(false);
+  const [jobSearchTerm, setJobSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<JobStatus | 'ALL'>('pending'); // Default to pending for approvers
+  const [recordStatusFilter, setRecordStatusFilter] = useState<'active' | 'in-active' | 'not-set' | 'ALL'>('ALL');
+  const [dateFilter, setDateFilter] = useState<'today' | 'week' | 'month' | 'ALL'>('ALL');
+  const [typeFilter, setTypeFilter] = useState<'push' | 'pull' | 'ALL'>('ALL');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+  
+  // Job details modal state
+  const [showJobDetails, setShowJobDetails] = useState(false);
+  const [selectedJob, setSelectedJob] = useState<DataEnrichmentJobResponse | null>(null);
+  const [jobDetailsLoading, setJobDetailsLoading] = useState(false);
+  
   const { showSuccess, showError } = useToast();
   const { user, isAuthenticated } = useAuth();
 
   useEffect(() => {
     console.log('🔍 ApproverModule - Auth state:', { isAuthenticated, user: user?.username, claims: user?.claims });
   }, [isAuthenticated]);
+
+  // Load data enrichment jobs when the jobs tab is active
+  useEffect(() => {
+    if (activeTab === 'jobs') {
+      loadJobs();
+    }
+  }, [activeTab]);
+
+  const loadJobs = async () => {
+    console.log('ApproverModule: loadJobs called');
+    setJobsLoading(true);
+    try {
+      const response = await dataEnrichmentApi.getAllJobs();
+      console.log('ApproverModule: Jobs loaded:', response?.jobs?.length || 0);
+      
+      // Sort jobs by created_at descending (newest first)
+      const jobsArray = response?.jobs || [];
+      const sortedJobs = jobsArray.sort((a: any, b: any) => {
+        const dateA = new Date(a.created_at || a.createdAt || 0).getTime();
+        const dateB = new Date(b.created_at || b.createdAt || 0).getTime();
+        return dateB - dateA; // Descending order (newest first)
+      });
+      
+      setJobs(sortedJobs);
+    } catch (error) {
+      console.error('Failed to load jobs:', error);
+      showError('Failed to load data enrichment jobs');
+      setJobs([]);
+    } finally {
+      setJobsLoading(false);
+    }
+  };
+
+  const handleJobRefresh = () => {
+    console.log('ApproverModule: handleJobRefresh called - triggering loadJobs');
+    loadJobs();
+  };
+
+  const handleViewJobDetails = async (jobId: string) => {
+    console.log('ApproverModule: View job details clicked for:', jobId);
+    try {
+      setJobDetailsLoading(true);
+      setShowJobDetails(true);
+      
+      // Find the job in the current list to determine its type
+      const job = jobs.find(j => j.id === jobId);
+      const jobType = job?.type?.toUpperCase() as 'PULL' | 'PUSH' | undefined;
+      
+      // Fetch job details from the API
+      const jobDetails = await dataEnrichmentApi.getJob(jobId, jobType);
+      setSelectedJob(jobDetails);
+    } catch (error) {
+      console.error('Failed to load job details:', error);
+      showError('Failed to load job details');
+    } finally {
+      setJobDetailsLoading(false);
+    }
+  };
+
+  const handleCloseJobDetails = () => {
+    setShowJobDetails(false);
+    setSelectedJob(null);
+  };
 
   const handleCloseModal = () => {
     setEditingEndpointId(null);
@@ -178,48 +266,127 @@ const ApproverModule: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <AuthHeader title="DEMS - Configuration Approval" showBackButton={true} />
+      <AuthHeader title="Approver Dashboard" showBackButton={true} />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Tab Navigation */}
+        <div className="border-b border-gray-200 mb-6">
+          <nav className="-mb-px flex space-x-8">
+            <button
+              onClick={() => setActiveTab('configs')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === 'configs'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center space-x-2">
+                <Settings size={16} />
+                <span>Configuration Approval</span>
+              </div>
+            </button>
+            <button
+              onClick={() => setActiveTab('jobs')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === 'jobs'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center space-x-2">
+                <Database size={16} />
+                <span>Data Enrichment Jobs</span>
+              </div>
+            </button>
+          </nav>
+        </div>
+
         {/* Header Section */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
           <div className="flex items-center space-x-4">
-            {/* Search Bar */}
-            <div className="relative">
-              <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search configurations..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-4 py-2 w-80 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-            
-            <Button 
-              variant="secondary" 
-              onClick={() => setShowValidationLogs(!showValidationLogs)} 
-              icon={<AlertTriangleIcon size={16} />}
-            >
-              Validation Logs
-            </Button>
+            {/* Search Bar - Conditional based on active tab */}
+            {activeTab === 'configs' ? (
+              <>
+                <div className="relative">
+                  <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search configurations..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 pr-4 py-2 w-80 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                
+                {/* <Button 
+                  variant="secondary" 
+                  onClick={() => setShowValidationLogs(!showValidationLogs)} 
+                  icon={<AlertTriangleIcon size={16} />}
+                >
+                  Validation Logs
+                </Button> */}
+              </>
+            ) : (
+              <div className="relative">
+                <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search data enrichment jobs..."
+                  value={jobSearchTerm}
+                  onChange={(e) => setJobSearchTerm(e.target.value)}
+                  className="pl-10 pr-4 py-2 w-80 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+            )}
           </div>
         </div>
 
         {/* Content Section */}
-        {showValidationLogs ? (
-          <ValidationLogsTable />
+        {activeTab === 'configs' ? (
+          showValidationLogs ? (
+            <ValidationLogsTable />
+          ) : (
+            <div className="bg-white rounded-lg shadow">
+              <ConfigList
+                key={refreshKey}
+                searchTerm={searchTerm}
+                onViewDetails={handleViewDetails}
+                onRefresh={handleRefresh}
+                showPendingApprovals={true}
+                onApprove={handleSendForApproval}
+                onReject={handleRevertToEditor}
+                onSendForDeployment={handleSendForApproval}
+              />
+            </div>
+          )
         ) : (
           <div className="bg-white rounded-lg shadow">
-            <ConfigList
-              key={refreshKey}
-              searchTerm={searchTerm}
-              onViewDetails={handleViewDetails}
-              onRefresh={handleRefresh}
-              showPendingApprovals={true}
-              onApprove={handleSendForApproval}
-              onReject={handleRevertToEditor}
-              onSendForDeployment={handleSendForApproval}
+            <JobList
+              jobs={jobs}
+              isLoading={jobsLoading}
+              onViewLogs={handleViewJobDetails}
+              onRefresh={handleJobRefresh}
+              statusFilter={statusFilter}
+              onStatusFilterChange={(newStatus) => {
+                setStatusFilter(newStatus);
+                setCurrentPage(1);
+              }}
+              searchQuery={jobSearchTerm}
+              recordStatusFilter={recordStatusFilter}
+              onRecordStatusFilterChange={(newStatus) => {
+                setRecordStatusFilter(newStatus);
+                setCurrentPage(1);
+              }}
+              dateFilter={dateFilter}
+              onDateFilterChange={(newPeriod) => {
+                setDateFilter(newPeriod);
+                setCurrentPage(1);
+              }}
+              typeFilter={typeFilter}
+              onTypeFilterChange={(newType) => {
+                setTypeFilter(newType);
+                setCurrentPage(1);
+              }}
             />
           </div>
         )}
@@ -275,6 +442,17 @@ const ApproverModule: React.FC = () => {
           }}
           onConfirm={handleChangeRequestConfirm}
           configName={configToRequestChanges.endpointPath}
+        />
+      )}
+
+      {/* Job Details Modal */}
+      {showJobDetails && selectedJob && (
+        <JobDetailsModal
+          isOpen={showJobDetails}
+          onClose={handleCloseJobDetails}
+          job={selectedJob}
+          isLoading={jobDetailsLoading}
+          editMode={false}
         />
       )}
     </div>

@@ -1,12 +1,15 @@
-import React from 'react';
-import { X, Calendar, Clock, Database, Globe, Settings } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Calendar, Clock, Database, Globe, Settings, Save } from 'lucide-react';
 import type { DataEnrichmentJobResponse, JobStatus } from '../types';
+import { Button } from '../../../shared/components/Button';
 
 interface JobDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
   job: DataEnrichmentJobResponse | null;
   isLoading?: boolean;
+  editMode?: boolean;
+  onSave?: (updatedJob: Partial<DataEnrichmentJobResponse>) => Promise<void>;
 }
 
 // Helper function to determine job type
@@ -23,8 +26,65 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
   onClose,
   job,
   isLoading = false,
+  editMode = false,
+  onSave,
 }) => {
-  if (!isOpen) return null;
+  console.log('=== JOB DETAILS MODAL RENDER ===');
+  console.log('isOpen:', isOpen);
+  console.log('editMode:', editMode);
+  console.log('isLoading:', isLoading);
+  console.log('job:', job);
+  console.log('job type:', typeof job);
+  console.log('job id:', job?.id);
+  
+  // State for edit mode
+  const [editedJob, setEditedJob] = useState<Partial<DataEnrichmentJobResponse>>({});
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Initialize edited job data when job changes or editMode is enabled
+  useEffect(() => {
+    if (job && editMode) {
+      setEditedJob({
+        endpoint_name: job.endpoint_name,
+        description: job.description,
+        version: job.version,
+        table_name: job.table_name,
+        mode: job.mode,
+        path: job.path,
+        source_type: job.source_type,
+        schedule_id: job.schedule_id,
+        connection: job.connection,
+        file: job.file,
+        type: job.type, // Add job type to edited state
+      });
+    }
+  }, [job, editMode]);
+
+  const handleInputChange = (field: keyof DataEnrichmentJobResponse, value: any) => {
+    setEditedJob(prev => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const handleSave = async () => {
+    if (!onSave || !job) return;
+    
+    try {
+      setIsSaving(true);
+      await onSave(editedJob);
+      onClose();
+    } catch (error) {
+      console.error('Failed to save job:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+  
+  if (!isOpen) {
+    console.log('Modal not open, returning null');
+    return null;
+  }
 
   const formatDate = (dateString: string | undefined) => {
     if (!dateString) return 'N/A';
@@ -86,14 +146,27 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h3 className="text-lg leading-6 font-medium text-gray-900">
-            View Data Enrichment Endpoint: {job?.endpoint_name || 'Loading...'}
+            {editMode ? 'Edit' : 'View'} Data Enrichment Endpoint: {job?.endpoint_name || 'Loading...'}
           </h3>
-          <button
-            onClick={onClose}
-            className="rounded-md text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <X size={24} />
-          </button>
+          <div className="flex items-center space-x-2">
+            {editMode && (
+              <Button
+                onClick={handleSave}
+                disabled={isSaving}
+                variant="primary"
+                size="sm"
+                icon={<Save size={16} />}
+              >
+                {isSaving ? 'Saving...' : 'Save Changes'}
+              </Button>
+            )}
+            <button
+              onClick={onClose}
+              className="rounded-md text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <X size={24} />
+            </button>
+          </div>
         </div>
 
         {/* Scrollable Content */}
@@ -109,24 +182,34 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
               <div>
                 <h4 className="text-sm font-medium text-gray-900 mb-3">Configuration Type</h4>
                 <div className="flex space-x-4">
-                  <label className="flex items-center cursor-not-allowed">
+                  <label className={`flex items-center ${editMode ? 'cursor-pointer' : 'cursor-not-allowed'}`}>
                     <input
                       type="radio"
                       name="configType"
-                      checked={getJobType(job) === 'pull'}
-                      readOnly
+                      value="pull"
+                      checked={editMode 
+                        ? (editedJob.type?.toLowerCase() || job.type?.toLowerCase() || getJobType(job)) === 'pull'
+                        : (job.type?.toLowerCase() || getJobType(job)) === 'pull'
+                      }
+                      onChange={() => editMode && handleInputChange('type', 'pull')}
+                      disabled={!editMode}
                       className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
                     />
                     <span className="ml-2 text-sm text-gray-700">
                       ↓ Pull (SFTP/HTTP)
                     </span>
                   </label>
-                  <label className="flex items-center cursor-not-allowed">
+                  <label className={`flex items-center ${editMode ? 'cursor-pointer' : 'cursor-not-allowed'}`}>
                     <input
                       type="radio"
                       name="configType"
-                      checked={job.type?.toLowerCase() === 'push'}
-                      readOnly
+                      value="push"
+                      checked={editMode
+                        ? (editedJob.type?.toLowerCase() || job.type?.toLowerCase() || getJobType(job)) === 'push'
+                        : (job.type?.toLowerCase() || getJobType(job)) === 'push'
+                      }
+                      onChange={() => editMode && handleInputChange('type', 'push')}
+                      disabled={!editMode}
                       className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
                     />
                     <span className="ml-2 text-sm text-gray-700">
@@ -134,7 +217,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                     </span>
                   </label>
                 </div>
-                {job.type?.toLowerCase() === 'push' && (
+                {((editMode ? (editedJob.type || job.type) : job.type)?.toLowerCase() === 'push') && (
                   <p className="mt-2 text-sm text-gray-500">
                     Push configuration creates a REST API endpoint where external systems can send data to your system.
                   </p>
@@ -149,9 +232,12 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                   </label>
                   <input
                     type="text"
-                    value={job.endpoint_name || 'N/A'}
-                    readOnly
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900"
+                    value={editMode ? (editedJob.endpoint_name || '') : (job.endpoint_name || 'N/A')}
+                    onChange={(e) => editMode && handleInputChange('endpoint_name', e.target.value)}
+                    readOnly={!editMode}
+                    className={`w-full px-3 py-2 border border-gray-300 rounded-md ${
+                      editMode ? 'bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500' : 'bg-gray-50 text-gray-900'
+                    }`}
                   />
                 </div>
 
@@ -163,9 +249,12 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                     </label>
                     <input
                       type="text"
-                      value={job.path || 'Path not set'}
-                      readOnly
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900"
+                      value={editMode ? (editedJob.path || '') : (job.path || 'Path not set')}
+                      onChange={(e) => editMode && handleInputChange('path', e.target.value)}
+                      readOnly={!editMode}
+                      className={`w-full px-3 py-2 border border-gray-300 rounded-md ${
+                        editMode ? 'bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500' : 'bg-gray-50 text-gray-900'
+                      }`}
                     />
                   </div>
                 ) : (
@@ -173,12 +262,18 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Source Type
                     </label>
-                    <input
-                      type="text"
-                      value={job.source_type || 'N/A'}
-                      readOnly
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900"
-                    />
+                    <select
+                      value={editMode ? (editedJob.source_type || '') : (job.source_type || '')}
+                      onChange={(e) => editMode && handleInputChange('source_type', e.target.value)}
+                      disabled={!editMode}
+                      className={`w-full px-3 py-2 border border-gray-300 rounded-md ${
+                        editMode ? 'bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500' : 'bg-gray-50 text-gray-900'
+                      }`}
+                    >
+                      <option value="">Select source type</option>
+                      <option value="HTTP">HTTP</option>
+                      <option value="SFTP">SFTP</option>
+                    </select>
                   </div>
                 )}
 
@@ -188,9 +283,12 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                   </label>
                   <input
                     type="text"
-                    value={job.version || 'v1'}
-                    readOnly
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900"
+                    value={editMode ? (editedJob.version || '') : (job.version || 'v1')}
+                    onChange={(e) => editMode && handleInputChange('version', e.target.value)}
+                    readOnly={!editMode}
+                    className={`w-full px-3 py-2 border border-gray-300 rounded-md ${
+                      editMode ? 'bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500' : 'bg-gray-50 text-gray-900'
+                    }`}
                   />
                 </div>
 
@@ -215,10 +313,13 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                   Description
                 </label>
                 <textarea
-                  value={job.description || 'No description provided'}
-                  readOnly
+                  value={editMode ? (editedJob.description || '') : (job.description || 'No description provided')}
+                  onChange={(e) => editMode && handleInputChange('description', e.target.value)}
+                  readOnly={!editMode}
                   rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900 resize-none"
+                  className={`w-full px-3 py-2 border border-gray-300 rounded-md resize-none ${
+                    editMode ? 'bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500' : 'bg-gray-50 text-gray-900'
+                  }`}
                 />
               </div>
 
@@ -235,17 +336,20 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                       Ingest Mode
                     </label>
                     <select
-                      value={job.mode?.toLowerCase() || 'append'}
-                      disabled
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900"
+                      value={editMode ? (editedJob.mode?.toLowerCase() || 'append') : (job.mode?.toLowerCase() || 'append')}
+                      onChange={(e) => editMode && handleInputChange('mode', e.target.value)}
+                      disabled={!editMode}
+                      className={`w-full px-3 py-2 border border-gray-300 rounded-md ${
+                        editMode ? 'bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500' : 'bg-gray-50 text-gray-900'
+                      }`}
                     >
                       <option value="append">Append - Add new records to existing data</option>
                       <option value="replace">Replace - Replace all existing data</option>
                       <option value="update">Update - Update existing records</option>
                     </select>
                     <p className="mt-1 text-xs text-gray-500">
-                      {job.mode === 'append' && 'Append mode adds new records to the existing dataset.'}
-                      {job.mode === 'replace' && 'Replace mode replaces all existing data with new data.'}
+                      {(editMode ? editedJob.mode : job.mode) === 'append' && 'Append mode adds new records to the existing dataset.'}
+                      {(editMode ? editedJob.mode : job.mode) === 'replace' && 'Replace mode replaces all existing data with new data.'}
                     </p>
                   </div>
 
@@ -255,9 +359,12 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                     </label>
                     <input
                       type="text"
-                      value={job.table_name}
-                      readOnly
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900"
+                      value={editMode ? (editedJob.table_name || '') : (job.table_name || '')}
+                      onChange={(e) => editMode && handleInputChange('table_name', e.target.value)}
+                      readOnly={!editMode}
+                      className={`w-full px-3 py-2 border border-gray-300 rounded-md ${
+                        editMode ? 'bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500' : 'bg-gray-50 text-gray-900'
+                      }`}
                     />
                   </div>
                 </div>

@@ -887,57 +887,63 @@ interface EditEndpointModalProps {
           };
 
           const schemaFields = generateSchemaFromPayload(payload, endpointData.contentType);
+          console.log('🔍 Generated schema fields from payload:', schemaFields);
+          
           if (schemaFields) {
-            // Convert to JSON schema format
+            // Convert to JSON schema format - FIXED: proper recursive handling
             const convertToJSONSchema = (fields: any[]): any => {
               const schema: any = {
                 type: 'object',
                 properties: {},
-                required: []
+                required: [],
+                additionalProperties: false
               };
 
-              const processFields = (fieldList: any[], parentPath = '') => {
-                fieldList.forEach(field => {
-                  const fullPath = parentPath ? `${parentPath}.${field.name}` : field.name;
-                  const pathParts = fullPath.split('.');
-                  const fieldName = pathParts[pathParts.length - 1];
+              fields.forEach(field => {
+                const fieldName = field.name;
 
-                  if (field.type === 'object' && field.children) {
-                    schema.properties[fieldName] = {
-                      type: 'object',
-                      properties: {},
-                      required: [],
-                      additionalProperties: false
-                    };
-                    if (field.isRequired) {
-                      schema.required.push(fieldName);
-                    }
-                    processFields(field.children, fullPath);
-                  } else {
-                    let jsonType = 'string';
-                    if (field.type === 'number') jsonType = 'number';
-                    else if (field.type === 'boolean') jsonType = 'boolean';
-                    else if (field.type === 'array') jsonType = 'array';
-
-                    schema.properties[fieldName] = {
-                      type: jsonType,
-                      ...(field.type === 'array' && { items: { type: 'string' } })
-                    };
-
-                    if (field.isRequired) {
-                      schema.required.push(fieldName);
-                    }
+                if (field.type === 'object' && field.children) {
+                  // Recursively convert children for nested objects
+                  const nestedSchema = convertToJSONSchema(field.children);
+                  schema.properties[fieldName] = nestedSchema;
+                  
+                  if (field.isRequired) {
+                    schema.required.push(fieldName);
                   }
-                });
-              };
+                } else if (field.type === 'array' && field.children) {
+                  // Handle array with object items
+                  const itemsSchema = convertToJSONSchema(field.children);
+                  schema.properties[fieldName] = {
+                    type: 'array',
+                    items: itemsSchema
+                  };
+                  
+                  if (field.isRequired) {
+                    schema.required.push(fieldName);
+                  }
+                } else {
+                  // Simple field types
+                  let jsonType = 'string';
+                  if (field.type === 'number') jsonType = 'number';
+                  else if (field.type === 'boolean') jsonType = 'boolean';
+                  else if (field.type === 'array') jsonType = 'array';
 
-              processFields(fields);
-              schema.additionalProperties = false;
+                  schema.properties[fieldName] = {
+                    type: jsonType,
+                    ...(field.type === 'array' && { items: { type: 'string' } })
+                  };
+
+                  if (field.isRequired) {
+                    schema.required.push(fieldName);
+                  }
+                }
+              });
+
               return schema;
             };
 
             finalSchema = convertToJSONSchema(schemaFields);
-            console.log('✅ Regenerated schema from payload:', finalSchema);
+            console.log('✅ Regenerated schema from payload:', JSON.stringify(finalSchema, null, 2));
           }
         } catch (error) {
           console.warn('⚠️ Failed to regenerate schema from payload:', error);
@@ -951,12 +957,26 @@ interface EditEndpointModalProps {
         console.log('🔒 Using existing schema (no current edits):', existingConfig.schema);
       }
 
+      // Validate schema before sending to backend
       if (finalSchema) {
+        console.log('🔍 Validating schema before send:', finalSchema);
+        
+        // Check if schema has properties
+        if (!finalSchema.properties || Object.keys(finalSchema.properties).length === 0) {
+          console.error('❌ Schema validation failed: Schema has no properties');
+          setError('Invalid schema: No fields were generated from your payload. Please check your JSON/XML format and try again.');
+          setLoading(false);
+          return;
+        }
+        
         createRequest.schema = finalSchema;
+        console.log('✅ Schema validation passed - sending to backend');
+      } else {
+        console.log('⚠️ No schema provided - backend will generate from payload');
       }
 
       console.log('🔥 EditEndpointModal.handleSaveAndNext - Saving configuration:');
-      console.log('📦 Create request data:', createRequest);
+      console.log('📦 Create request data:', JSON.stringify(createRequest, null, 2));
       console.log('📊 Full endpoint data:', endpointData);
       console.log('📄 Payload length:', payload.length);
       console.log('🆕 Is new endpoint?', isNewEndpoint);

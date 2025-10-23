@@ -29,9 +29,11 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
   const [endpointName, setEndpointName] = useState('');
   const [description, setDescription] = useState('');
   const [tableName, setTableName] = useState('');
+  const [mode, setMode] = useState<'append' | 'replace'>('append');
+  const [version, setVersion] = useState('1.0.0');
 
   // Schedule selection
-  const [selectedScheduleId, setSelectedScheduleId] = useState<number | null>(null);
+  const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(null);
   const [availableSchedules, setAvailableSchedules] = useState<ScheduleResponse[]>([]);
   const [schedulesLoading, setSchedulesLoading] = useState(false);
 
@@ -77,54 +79,6 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
   // Error handling
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Helper function to convert backend errors to user-friendly messages
-  const getErrorMessage = (error: any): string => {
-    // Clear any existing error first
-    setErrorMessage(null);
-
-    // Handle different types of errors
-    if (error?.response?.status) {
-      switch (error.response.status) {
-        case 400:
-          return 'The information you provided is incomplete or incorrect. Please check all fields and try again.';
-        case 401:
-          return 'You are not authorized to perform this action. Please log in again.';
-        case 403:
-          return 'You do not have permission to create jobs. Please contact your administrator.';
-        case 404:
-          return 'The service is currently unavailable. Please try again later.';
-        case 409:
-          return 'A job with this name already exists. Please choose a different name.';
-        case 422:
-          return 'The data you entered is not valid. Please review your settings and try again.';
-        case 500:
-          return 'We are experiencing technical difficulties. Please try again in a few minutes.';
-        case 503:
-          return 'The service is temporarily unavailable. Please try again later.';
-        default:
-          return 'Something went wrong while creating your job. Please try again or contact support if the problem persists.';
-      }
-    }
-
-    // Handle network errors
-    if (error?.message?.includes('fetch') || error?.message?.includes('network')) {
-      return 'Unable to connect to the service. Please check your internet connection and try again.';
-    }
-
-    // Handle timeout errors
-    if (error?.message?.includes('timeout')) {
-      return 'The request is taking too long. Please try again.';
-    }
-
-    // Handle validation errors
-    if (error?.message?.includes('validation') || error?.message?.includes('invalid')) {
-      return 'Please check your input and make sure all required fields are filled correctly.';
-    }
-
-    // Default error message
-    return 'We encountered an issue while processing your request. Please try again or contact support if the problem continues.';
-  };
-
   // Helper function to validate file format matches file extension
   const validateFileFormat = () => {
     if (sourceType !== 'SFTP' || !filePath.trim()) {
@@ -163,7 +117,7 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
   // Validation function to check if all required fields are filled
   const isFormValid = () => {
     // Basic required fields
-    if (!endpointName.trim() || !description.trim() || !tableName.trim() || !selectedScheduleId) {
+    if (!endpointName.trim() || !description.trim() || !tableName.trim() || !selectedScheduleId || !version.trim()) {
       return false;
     }
 
@@ -221,7 +175,17 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
         source_type: sourceType,
         description,
         table_name: tableName,
+        mode,
+        version,
       };
+
+      console.log('=== JOB CREATION DEBUG ===');
+      console.log('Configuration Type:', configType);
+      console.log('Source Type:', sourceType);
+      console.log('Schedule ID:', selectedScheduleId);
+      console.log('Mode:', mode);
+      console.log('Version:', version);
+      console.log('Base Job Data:', JSON.stringify(baseJobData, null, 2));
 
       if (sourceType === 'HTTP') {
         const httpConnection: HttpConnection = {
@@ -235,6 +199,7 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
           connection: httpConnection,
         } as CreateDataEnrichmentJobRequest;
 
+        console.log('Final HTTP Job Payload:', JSON.stringify(jobData, null, 2));
         onSubmit(jobData);
       } else if (sourceType === 'SFTP') {
         const sftpConnection: SftpConnection = {
@@ -242,8 +207,14 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
           port: sftpPort,
           auth_type: sftpAuthType,
           user_name: sftpUsername,
-          ...(sftpAuthType === 'USERNAME_PASSWORD' ? { password: sftpPassword } : { private_key: sftpPrivateKey }),
         };
+
+        // Only add password or private_key based on auth type
+        if (sftpAuthType === 'USERNAME_PASSWORD') {
+          (sftpConnection as any).password = sftpPassword;
+        } else {
+          (sftpConnection as any).private_key = sftpPrivateKey;
+        }
 
         const fileConfig: FileConfig = {
           path: filePath,
@@ -258,12 +229,30 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
           file: fileConfig,
         } as CreateDataEnrichmentJobRequest;
 
+        console.log('Final SFTP Job Payload:', JSON.stringify(jobData, null, 2));
         onSubmit(jobData);
       }
-    } catch (error) {
-      console.error('Failed to create job:', error);
-      const friendlyErrorMessage = getErrorMessage(error);
-      setErrorMessage(friendlyErrorMessage);
+    } catch (error: any) {
+      console.error('=== JOB CREATION ERROR ===');
+      console.error('Error object:', error);
+      
+      // Try to extract the most detailed error message
+      let errorMessage = 'Failed to create job';
+      
+      if (error?.response?.data) {
+        console.error('Error response data:', error.response.data);
+        // Try to get the most specific error message
+        errorMessage = error.response.data.message || 
+                      error.response.data.error || 
+                      (Array.isArray(error.response.data.message) 
+                        ? error.response.data.message.join(', ') 
+                        : JSON.stringify(error.response.data));
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+      
+      console.error('Final error message:', errorMessage);
+      setErrorMessage(errorMessage);
     }
   };
 
@@ -350,6 +339,36 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
             />
           </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Mode <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={mode}
+                onChange={(e) => setMode(e.target.value as 'append' | 'replace')}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="append">Append (Add new records)</option>
+                <option value="replace">Replace (Overwrite existing)</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Version <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={version}
+                onChange={(e) => setVersion(e.target.value)}
+                required
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="e.g., 1.0.0"
+              />
+            </div>
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Source Type <span className="text-red-500">*</span>
@@ -380,13 +399,13 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
             ) : (
               <select
                 value={selectedScheduleId || ''}
-                onChange={(e) => setSelectedScheduleId(e.target.value ? parseInt(e.target.value) : null)}
+                onChange={(e) => setSelectedScheduleId(e.target.value || null)}
                 required
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Select a schedule</option>
                 {availableSchedules.map((schedule) => (
-                  <option key={schedule.id} value={schedule.id}>
+                  <option key={schedule.id} value={String(schedule.id)}>
                     {schedule.name} - {schedule.cron} ({schedule.iterations} iterations)
                   </option>
                 ))}

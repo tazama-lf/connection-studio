@@ -66,7 +66,7 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
 
     // Push configuration fields
     endpointPath: '',
-    endpointVersion: '/v1/enrich', // Default version
+    endpointVersion: '', // Default version
     ingestMode: 'append',
     // Common fields
 
@@ -108,7 +108,11 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
   // Load job data when in edit mode
   useEffect(() => {
     const loadJobData = async () => {
-      if (!isOpen || !editMode || !jobId) return;
+      console.log('loadJobData called with:', { isOpen, editMode, jobId, jobType });
+      if (!isOpen || !editMode || !jobId) {
+        console.log('Skipping loadJobData due to missing conditions:', { isOpen, editMode, jobId });
+        return;
+      }
       
       try {
         setIsLoadingJob(true);
@@ -123,17 +127,17 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
           ...formData,
           name: job.endpoint_name,
           description: job.description || '',
-          configurationType: job.config_type.toLowerCase() as 'pull' | 'push',
+          configurationType: (job.config_type || job.type)?.toLowerCase() as 'pull' | 'push',
           sourceType: job.source_type?.toLowerCase() || 'sftp',
           // Populate other fields based on job type and source type
           targetTable: job.table_name || '',
         });
         
-        if ('schedule_id' in job) {
+        if (job.schedule_id) {
           setSelectedScheduleId(job.schedule_id);
         }
         
-        setConfigurationType(job.config_type.toLowerCase() as 'pull' | 'push');
+        setConfigurationType((job.config_type || job.type)?.toLowerCase() as 'pull' | 'push');
         
       } catch (error) {
         console.error('Failed to load job data:', error);
@@ -145,6 +149,8 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
 
     loadJobData();
   }, [isOpen, editMode, jobId, jobType]);
+
+  console.log('DataEnrichmentFormModal render:', { isOpen, editMode, jobId, jobType });
 
   const handleCreateSchedule = async () => {
     try {
@@ -535,7 +541,20 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
       }
 
       // Validate payload before sending
+      console.log('=== PAYLOAD VALIDATION ===');
+      console.log('Configuration Type:', configurationType);
+      console.log('Source Type:', formData.sourceType);
+      console.log('Schedule ID:', selectedScheduleId);
       console.log('Final payload being sent:', JSON.stringify(payload, null, 2));
+      console.log('Payload keys:', Object.keys(payload));
+      console.log('Required fields check:');
+      console.log('  - endpoint_name:', payload.endpoint_name);
+      console.log('  - description:', payload.description);
+      console.log('  - table_name:', payload.table_name);
+      console.log('  - schedule_id:', payload.schedule_id);
+      console.log('  - source_type:', payload.source_type);
+      console.log('  - connection:', payload.connection);
+      console.log('=== END PAYLOAD VALIDATION ===');
       
       let response;
       
@@ -564,13 +583,38 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
         onClose();
       }, 1500);
     } catch (error) {
-      console.error('Failed to create endpoint:', error);
-      if (error instanceof TypeError && error.message.includes('fetch')) {
+      console.error('=== CREATE ENDPOINT ERROR ===');
+      console.error('Error type:', error?.constructor?.name);
+      console.error('Error object:', error);
+      
+      // Try to extract detailed error information
+      if (error && typeof error === 'object' && 'response' in error) {
+        const apiError = error as any;
+        console.error('API Response Status:', apiError.response?.status);
+        console.error('API Response Data:', apiError.response?.data);
+        console.error('API Response Headers:', apiError.response?.headers);
+        
+        // Show specific backend error message if available
+        const backendMessage = apiError.response?.data?.message || 
+                               apiError.response?.data?.error ||
+                               apiError.response?.data?.details;
+        
+        if (backendMessage) {
+          setCreateError(`Backend error: ${backendMessage}`);
+          console.error('Backend error message:', backendMessage);
+        } else if (apiError.response?.status === 400) {
+          setCreateError('Bad Request (400): Invalid data sent to backend. Check console for payload details.');
+        } else {
+          setCreateError(`HTTP ${apiError.response?.status}: ${apiError.message || 'Unknown error'}`);
+        }
+      } else if (error instanceof TypeError && error.message.includes('fetch')) {
         setCreateError('Cannot connect to data enrichment service. Please ensure the service is running on http://localhost:3001');
       } else {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
         setCreateError(`Failed to create endpoint: ${errorMessage}`);
       }
+      
+      console.error('=== END CREATE ENDPOINT ERROR ===');
     } finally {
       setIsCreating(false);
     }
@@ -613,7 +657,7 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
           </label>
           <select id="sourceType" name="sourceType" value={formData.sourceType} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required data-id="element-825">
             <option value="sftp" data-id="element-826">SFTP</option>
-            <option value="http" data-id="element-827">HTTP</option>
+            <option value="http" data-id="element-827">HTTPS</option>
           </select>
         </div>
       </div>
@@ -769,6 +813,8 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
                   name="port" 
                   value={formData.port} 
                   onChange={handleInputChange} 
+                  min="1"
+                  max="65535"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   placeholder="2222" 
                   data-id="element-839" 
@@ -914,48 +960,6 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
         </div>
       )}
       
-      {/* HTTP-specific Endpoint Settings */}
-      {formData.sourceType === 'http' && (
-        <div className="bg-indigo-50 p-4 rounded-md">
-          <h3 className="text-md font-medium text-indigo-900 mb-3">
-            HTTP Endpoint Settings
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label htmlFor="httpMethod" className="block text-sm font-medium text-gray-700 mb-1">
-                HTTP Method <span className="text-red-500">*</span>
-              </label>
-              <select 
-                id="httpMethod" 
-                name="httpMethod" 
-                value={formData.httpMethod || 'GET'}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                required
-              >
-                <option value="GET">GET</option>
-                <option value="POST">POST</option>
-                <option value="PUT">PUT</option>
-                <option value="DELETE">DELETE</option>
-              </select>
-            </div>
-            <div>
-              <label htmlFor="httpHeaders" className="block text-sm font-medium text-gray-700 mb-1">
-                Headers (JSON format)
-              </label>
-              <textarea
-                id="httpHeaders"
-                name="httpHeaders"
-                value={formData.httpHeaders || ''}
-                onChange={handleInputChange}
-                placeholder='{"Authorization": "Bearer token"}'
-                rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
-              />
-            </div>
-          </div>
-        </div>
-      )}
       <div className="bg-purple-50 p-4 rounded-md" data-id="element-882">
         <h3 className="text-md font-medium text-purple-900 mb-3" data-id="element-883">
           Target PostgreSQL Settings

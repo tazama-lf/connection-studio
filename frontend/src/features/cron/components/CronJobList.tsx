@@ -116,7 +116,7 @@ export const CronJobList: React.FC = () => {
         end_date: schedule.end_date,
       });
       
-      showSuccess(`Schedule ${newStatus === 'active' ? 'activated' : 'paused'} successfully`);
+      showSuccess(`Schedule ${newStatus === 'active' ? 'activated' : 'de-activated'} successfully`);
       loadSchedules();
     } catch (err) {
       console.error('Failed to update schedule status:', err);
@@ -276,7 +276,7 @@ export const CronJobList: React.FC = () => {
                                     className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                                   >
                                     <PauseIcon className="w-4 h-4 mr-2" />
-                                    Pause Schedule
+                                    Deactivate Schedule
                                   </button>
                                 ) : (
                                   <button

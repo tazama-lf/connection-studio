@@ -36,6 +36,7 @@ export class AuthApiService {
       method?: string;
       body?: unknown;
       headers?: Record<string, string>;
+      skipTokenExpirationHandler?: boolean; // Add flag to skip token expiration handling
     } = {},
   ): Promise<T> {
     const url = `${this.authBaseURL}${endpoint}`;
@@ -58,10 +59,18 @@ export class AuthApiService {
         console.log('=== 401 UNAUTHORIZED RESPONSE ===');
         console.log('URL:', url);
         console.log('Method:', config.method || 'GET');
-        console.log('Headers:', headers);
+        console.log('Endpoint:', endpoint);
+        console.log('Skip token handler:', config.skipTokenExpirationHandler);
 
-        // Use global token manager instead of direct redirect
-        globalTokenManager.handleTokenExpiration();
+        // Only trigger token expiration modal if NOT a login attempt
+        // Login failures should be handled by the login form, not the global handler
+        if (!config.skipTokenExpirationHandler && endpoint !== API_CONFIG.ENDPOINTS.AUTH.LOGIN) {
+          console.log('Triggering token expiration handler');
+          globalTokenManager.handleTokenExpiration();
+        } else {
+          console.log('Skipping token expiration handler - login failure or explicit skip');
+        }
+        
         throw new Error('Unauthorized');
       }
 

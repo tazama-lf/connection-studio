@@ -159,18 +159,20 @@ export const dataEnrichmentApi = {
     }
   },
 
-  // Update full pull job configuration
+  // Update full pull job configuration (using create endpoint with id for upsert)
   updatePullJob: async (
     id: string,
     updates: UpdatePullJobDto,
   ): Promise<DataEnrichmentJobResponse> => {
     console.log('Updating pull job with data:', JSON.stringify(updates, null, 2));
     try {
+      // Use create endpoint with id for upsert functionality
+      const payload = { ...updates, id };
       return await apiRequest<DataEnrichmentJobResponse>(
-        `${API_BASE_URL}/job/update/pull/${id}`,
+        `${API_BASE_URL}/job/create/pull`,
         {
-          method: 'PATCH',
-          body: JSON.stringify(updates),
+          method: 'POST',
+          body: JSON.stringify(payload),
         },
       );
     } catch (error) {
@@ -179,18 +181,20 @@ export const dataEnrichmentApi = {
     }
   },
 
-  // Update full push job configuration
+  // Update full push job configuration (using create endpoint with id for upsert)
   updatePushJob: async (
     id: string,
     updates: UpdatePushJobDto,
   ): Promise<DataEnrichmentJobResponse> => {
     console.log('Updating push job with data:', JSON.stringify(updates, null, 2));
     try {
+      // Use create endpoint with id for upsert functionality
+      const payload = { ...updates, id };
       return await apiRequest<DataEnrichmentJobResponse>(
-        `${API_BASE_URL}/job/update/push/${id}`,
+        `${API_BASE_URL}/job/create/push`,
         {
-          method: 'PATCH',
-          body: JSON.stringify(updates),
+          method: 'POST',
+          body: JSON.stringify(payload),
         },
       );
     } catch (error) {

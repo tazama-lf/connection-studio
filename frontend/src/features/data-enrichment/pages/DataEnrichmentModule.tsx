@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { AuthHeader } from '../../../shared/components/AuthHeader';
 import { Button } from '../../../shared/components/Button';
 import { Plus } from 'lucide-react';
@@ -8,12 +8,19 @@ import JobList from '../components/JobList';
 import JobDetailsModal from '../components/JobDetailsModal';
 import { DataEnrichmentFormModal } from '../../../shared/components/DataEnrichmentFormModal';
 import { dataEnrichmentApi } from '../services/dataEnrichmentApi';
-import type { DataEnrichmentJobResponse, JobStatus } from '../types';
+import type { DataEnrichmentJobResponse, JobStatus, CreatePushJobDto, CreatePullJobDto } from '../types';
 import { useToast } from '../../../shared/providers/ToastProvider';
+import { useAuth } from '../../auth/contexts/AuthContext';
+import { isEditor, isApprover } from '../../../utils/roleUtils';
 import { UI_CONFIG } from '../../../shared/config/app.config';
 
 const DataEnrichmentModule: React.FC = () => {
   const { showSuccess, showError } = useToast();
+  const { user } = useAuth();
+  
+  // User role detection
+  const userIsEditor = user?.claims ? isEditor(user.claims) : false;
+  const userIsApprover = user?.claims ? isApprover(user.claims) : false;
   
   // Job management state
   const [jobs, setJobs] = useState<DataEnrichmentJobResponse[]>([]);
@@ -31,6 +38,10 @@ const DataEnrichmentModule: React.FC = () => {
   const [showJobDetails, setShowJobDetails] = useState(false);
   const [selectedJob, setSelectedJob] = useState<DataEnrichmentJobResponse | null>(null);
   const [jobDetailsLoading, setJobDetailsLoading] = useState(false);
+  const [jobDetailsEditMode, setJobDetailsEditMode] = useState(false);
+
+  // Edit job state - keep for backwards compatibility but use JobDetailsModal instead
+  const [editJob, setEditJob] = useState<DataEnrichmentJobResponse | null>(null);
 
   // Load jobs on component mount only (no pagination dependency since we fetch all)
   useEffect(() => {
@@ -96,7 +107,14 @@ const DataEnrichmentModule: React.FC = () => {
         console.warn('💡 TIP: Or check backend logs to see if the API endpoint is working');
       }
       
-      setJobs(jobsArray);
+      // Sort jobs by created_at descending (newest first)
+      const sortedJobs = jobsArray.sort((a: any, b: any) => {
+        const dateA = new Date(a.created_at || a.createdAt || 0).getTime();
+        const dateB = new Date(b.created_at || b.createdAt || 0).getTime();
+        return dateB - dateA; // Descending order (newest first)
+      });
+      
+      setJobs(sortedJobs);
       // Note: totalItems will be calculated from filtered results in pagination logic
 
       console.log('=== STATE SET COMPLETE ===');
@@ -144,11 +162,16 @@ const DataEnrichmentModule: React.FC = () => {
     }
   };
 
-  const handleViewJobDetails = async (jobId: string) => {
+  const handleViewJobDetails = useCallback(async (jobId: string) => {
+    console.log('=== VIEW JOB DETAILS DEBUG ===');
     console.log('handleViewJobDetails called with jobId:', jobId);
+    console.log('User is approver:', userIsApprover);
+    console.log('User is editor:', userIsEditor);
+    
     try {
       setJobDetailsLoading(true);
       setShowJobDetails(true);
+      console.log('Modal state set - showJobDetails:', true, 'loading:', true);
       
       // Find the job in the current list to determine its type
       const job = jobs.find(j => j.id === jobId);
@@ -160,20 +183,147 @@ const DataEnrichmentModule: React.FC = () => {
       console.log('Job type uppercase for API:', jobType);
       
       // Fetch job details from the API
+      console.log('Calling dataEnrichmentApi.getJob...');
       const jobDetails = await dataEnrichmentApi.getJob(jobId, jobType);
       console.log('Job details received:', jobDetails);
       setSelectedJob(jobDetails);
+      console.log('Selected job set in state');
     } catch (error) {
       console.error('Failed to load job details:', error);
       showError('Failed to load job details');
     } finally {
       setJobDetailsLoading(false);
+      console.log('Loading state set to false');
+      console.log('=== VIEW JOB DETAILS DEBUG END ===');
+    }
+  }, [jobs, showError]); // Removed userIsApprover and userIsEditor from deps - they're just for logging
+
+  const handleSaveJobChanges = async (updatedJob: Partial<DataEnrichmentJobResponse>) => {
+    if (!selectedJob) return;
+    
+    try {
+      console.log('=== SAVE JOB CHANGES DEBUG ===');
+      console.log('Original job:', selectedJob);
+      console.log('Updated job data:', updatedJob);
+      
+      // Determine job type for API call (use updated type if changed, otherwise original)
+      const jobType = (updatedJob.type || selectedJob.type)?.toLowerCase() as 'pull' | 'push';
+      console.log('Final job type for API:', jobType);
+      
+      // Check if job type changed
+      const typeChanged = updatedJob.type && updatedJob.type !== selectedJob.type;
+      console.log('Job type changed?', typeChanged, 'from', selectedJob.type, 'to', updatedJob.type);
+      
+      if (typeChanged) {
+        console.warn('⚠️ Job type change detected. This may require creating a new job instead of updating.');
+        // For now, we'll prevent type changes since backend might not support it
+        showError('Changing job type is not supported. Please create a new job instead.');
+        return;
+      }
+      
+      // Use the upsert API (same as create with id) 
+      let response;
+      if (jobType === 'push') {
+        const pushData = {
+          id: selectedJob.id, // Include ID for upsert
+          endpoint_name: updatedJob.endpoint_name || selectedJob.endpoint_name || '',
+          description: updatedJob.description || selectedJob.description,
+          version: updatedJob.version || selectedJob.version || 'v1',
+          path: updatedJob.path || selectedJob.path || '',
+          table_name: updatedJob.table_name || selectedJob.table_name || '',
+          mode: (updatedJob.mode || selectedJob.mode || 'append') as 'append' | 'replace',
+        } as CreatePushJobDto & { id: string };
+        
+        console.log('Push data to send:', pushData);
+        response = await dataEnrichmentApi.createPushJob(pushData);
+      } else {
+        const pullData = {
+          id: selectedJob.id, // Include ID for upsert
+          endpoint_name: updatedJob.endpoint_name || selectedJob.endpoint_name || '',
+          description: updatedJob.description || selectedJob.description || '',
+          version: updatedJob.version || selectedJob.version || 'v1',
+          source_type: (updatedJob.source_type || selectedJob.source_type || 'HTTP') as 'HTTP' | 'SFTP',
+          table_name: updatedJob.table_name || selectedJob.table_name || '',
+          mode: (updatedJob.mode || selectedJob.mode || 'append') as 'append' | 'replace',
+          connection: updatedJob.connection || selectedJob.connection || { url: '', headers: {} },
+          file: updatedJob.file || selectedJob.file,
+          schedule_id: updatedJob.schedule_id || selectedJob.schedule_id || '',
+        } as CreatePullJobDto & { id: string };
+        
+        console.log('Pull data to send:', pullData);
+        response = await dataEnrichmentApi.createPullJob(pullData);
+      }
+      
+      console.log('Job update response:', response);
+      showSuccess('Job updated successfully!');
+      
+      // Refresh the jobs list
+      await loadJobs();
+      
+    } catch (error) {
+      console.error('=== SAVE JOB ERROR ===');
+      console.error('Error type:', error?.constructor?.name);
+      console.error('Error message:', error instanceof Error ? error.message : 'Unknown error');
+      console.error('Full error object:', error);
+      
+      // Try to extract API error details
+      if (error && typeof error === 'object' && 'response' in error) {
+        const apiError = error as any;
+        console.error('API Response Status:', apiError.response?.status);
+        console.error('API Response Data:', apiError.response?.data);
+        
+        // Show specific error message if available
+        const errorMessage = apiError.response?.data?.message || 
+                           apiError.response?.data?.error || 
+                           apiError.message || 
+                           'Failed to save job changes';
+        showError(`Save failed: ${errorMessage}`);
+      } else {
+        showError('Failed to save job changes');
+      }
+      
+      throw error; // Re-throw to let modal handle the error state
     }
   };
 
   const handleCloseJobDetails = () => {
     setShowJobDetails(false);
     setSelectedJob(null);
+    setJobDetailsEditMode(false);
+  };
+
+  const handleEditJob = useCallback(async (job: DataEnrichmentJobResponse) => {
+    console.log('handleEditJob called with:', job);
+    console.log('Job type:', job.type);
+    console.log('Job ID:', job.id);
+    
+    try {
+      setJobDetailsLoading(true);
+      setJobDetailsEditMode(true);
+      setShowJobDetails(true);
+      
+      // Find the job in the current list to determine its type
+      const jobType = job?.type?.toUpperCase() as 'PULL' | 'PUSH' | undefined;
+      
+      console.log('Job type uppercase for API:', jobType);
+      
+      // Fetch job details from the API (same as view, but in edit mode)
+      console.log('Calling dataEnrichmentApi.getJob for edit...');
+      const jobDetails = await dataEnrichmentApi.getJob(job.id, jobType);
+      console.log('Job details received for edit:', jobDetails);
+      setSelectedJob(jobDetails);
+      console.log('Modal should now open in edit mode');
+    } catch (error) {
+      console.error('Failed to load job details for edit:', error);
+      showError('Failed to load job details for edit');
+    } finally {
+      setJobDetailsLoading(false);
+    }
+  }, [showError]);
+
+  const handleCloseEditJob = () => {
+    setEditJob(null);
+    setShowJobForm(false);
   };
 
   // Calculate filtered jobs based on all applied filters
@@ -292,6 +442,15 @@ const DataEnrichmentModule: React.FC = () => {
     setCurrentPage(prev => Math.min(prev + 1, totalPages));
   };
 
+  // Debug modal props
+  console.log('Modal render check:', { 
+    showJobForm, 
+    editJob, 
+    editMode: !!editJob, 
+    jobId: editJob?.id, 
+    jobType: editJob?.type?.toLowerCase() 
+  });
+
   return (
     <div className="min-h-screen bg-gray-50">
       <AuthHeader title="Data Enrichment Module" showBackButton={true} />
@@ -313,24 +472,80 @@ const DataEnrichmentModule: React.FC = () => {
               className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
             />
           </div>
-          <Button 
-            variant="primary" 
-            icon={<Plus size={16} />} 
-            onClick={() => setShowJobForm(true)}
-          >
-            Define New Endpoint
-          </Button>
+          {userIsEditor && (
+            <Button 
+              variant="primary" 
+              icon={<Plus size={16} />} 
+              onClick={() => setShowJobForm(true)}
+            >
+              Define New Endpoint
+            </Button>
+          )}
         </div>
+
+        {/* Approver Section - Only for Approvers */}
+        {userIsApprover && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="flex-shrink-0">
+                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                    <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-blue-900">Approver Dashboard</h3>
+                  <p className="text-sm text-blue-700">Review and approve pending data enrichment jobs</p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-3">
+                <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-full">
+                  {filteredJobs.filter(job => job.status === 'pending').length} pending approvals
+                </span>
+                <Button 
+                  variant="secondary" 
+                  size="sm"
+                  onClick={() => {
+                    setStatusFilter('pending');
+                    setCurrentPage(1);
+                  }}
+                >
+                  View Pending Jobs
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Jobs Table with Total Count */}
         <div className="flex items-center justify-end mb-4">
           
         </div>
         
+        {/* DEBUG: Log handlers before passing to JobList */}
+        {(() => {
+          console.log('=== DataEnrichmentModule RENDER DEBUG ===');
+          console.log('About to render JobList component');
+          console.log('User role - Editor:', userIsEditor, 'Approver:', userIsApprover);
+          console.log('Handler values:');
+          console.log('  - handleViewJobDetails:', typeof handleViewJobDetails, handleViewJobDetails);
+          console.log('  - handleEditJob:', typeof handleEditJob, handleEditJob);
+          console.log('  - loadJobs:', typeof loadJobs, loadJobs);
+          console.log('Props being passed to JobList:');
+          console.log('  - onViewLogs:', typeof handleViewJobDetails);
+          console.log('  - onEdit:', typeof handleEditJob);
+          console.log('  - onRefresh:', typeof loadJobs);
+          console.log('=== END RENDER DEBUG ===');
+          return null;
+        })()}
+        
         <JobList
           jobs={paginatedJobs}
           isLoading={jobsLoading}
           onViewLogs={handleViewJobDetails}
+          onEdit={handleEditJob}
           onRefresh={loadJobs}
           statusFilter={statusFilter}
           onStatusFilterChange={(newStatus) => {
@@ -387,8 +602,11 @@ const DataEnrichmentModule: React.FC = () => {
         {showJobForm && (
           <DataEnrichmentFormModal
             isOpen={showJobForm}
-            onClose={() => setShowJobForm(false)}
+            onClose={editJob ? handleCloseEditJob : () => setShowJobForm(false)}
             onSave={handleCreateJob}
+            editMode={!!editJob}
+            jobId={editJob?.id}
+            jobType={editJob?.type?.toLowerCase() as 'pull' | 'push' | undefined}
           />
         )}
 
@@ -398,6 +616,8 @@ const DataEnrichmentModule: React.FC = () => {
           onClose={handleCloseJobDetails}
           job={selectedJob}
           isLoading={jobDetailsLoading}
+          editMode={jobDetailsEditMode}
+          onSave={handleSaveJobChanges}
         />
       </div>
     </div>

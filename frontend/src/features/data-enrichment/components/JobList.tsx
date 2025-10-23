@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
-import { Eye, Play, MoreVertical, ChevronDown, Settings, FilterIcon } from 'lucide-react';
+import { Eye, Play, MoreVertical, ChevronDown, FilterIcon, Edit } from 'lucide-react';
 import type { DataEnrichmentJobResponse, JobStatus } from '../types';
 import { Button } from '../../../shared/components/Button';
 import { dataEnrichmentApi } from '../services/dataEnrichmentApi';
 import { useToast } from '../../../shared/providers/ToastProvider';
+import { useAuth } from '../../auth/contexts/AuthContext';
+import { isEditor, isApprover } from '../../../utils/roleUtils';
 
 interface JobListProps {
   jobs: DataEnrichmentJobResponse[];
   isLoading?: boolean;
   onViewLogs?: (jobId: string) => void;
+  onEdit?: (job: DataEnrichmentJobResponse) => void;
   onRefresh?: () => void;
   statusFilter?: JobStatus | 'ALL';
   onStatusFilterChange?: (status: JobStatus | 'ALL') => void;
@@ -90,21 +93,44 @@ const ActivationBadge: React.FC<{ recordStatus: 'active' | 'in-active' | null | 
   );
 };
 
-export const JobList: React.FC<JobListProps> = ({
-  jobs,
-  isLoading = false,
-  onViewLogs,
-  onRefresh,
-  statusFilter = 'ALL',
-  onStatusFilterChange,
-  searchQuery = '',
-  recordStatusFilter = 'ALL',
-  onRecordStatusFilterChange,
-  dateFilter = 'ALL',
-  onDateFilterChange,
-  typeFilter = 'ALL',
-  onTypeFilterChange,
-}) => {
+export const JobList: React.FC<JobListProps> = (props) => {
+  // IMMEDIATE LOGGING - Log props as soon as component receives them
+  console.log('=== JobList COMPONENT PROPS RECEIVED ===');
+  console.log('Timestamp:', new Date().toISOString());
+  console.log('All props:', Object.keys(props));
+  console.log('Handler props received:');
+  console.log('  - onViewLogs type:', typeof props.onViewLogs);
+  console.log('  - onViewLogs value:', props.onViewLogs);
+  console.log('  - onEdit type:', typeof props.onEdit);
+  console.log('  - onEdit value:', props.onEdit);
+  console.log('  - onRefresh type:', typeof props.onRefresh);
+  console.log('  - onRefresh value:', props.onRefresh);
+  console.log('Jobs count:', props.jobs?.length || 0);
+  console.log('=== END PROPS RECEIVED ===');
+  
+  // Destructure after logging
+  const {
+    jobs,
+    isLoading = false,
+    onViewLogs,
+    onEdit,
+    onRefresh,
+    statusFilter = 'ALL',
+    onStatusFilterChange,
+    searchQuery = '',
+    recordStatusFilter = 'ALL',
+    onRecordStatusFilterChange,
+    dateFilter = 'ALL',
+    onDateFilterChange,
+    typeFilter = 'ALL',
+    onTypeFilterChange,
+  } = props;
+  const { user } = useAuth();
+  const userIsEditor = user?.claims ? isEditor(user.claims) : false;
+  const userIsApprover = user?.claims ? isApprover(user.claims) : false;
+  
+  console.log('JobList user roles:', { userIsEditor, userIsApprover, user: user?.username });
+  
   console.log('=== JobList COMPONENT RENDER ===');
   console.log('Time:', new Date().toISOString());
   console.log('Props received:');
@@ -159,11 +185,20 @@ export const JobList: React.FC<JobListProps> = ({
 
   const handleStatusUpdate = async (jobId: string, newStatus: JobStatus, jobType: 'PULL' | 'PUSH') => {
     try {
-      console.log(`Updating job status - ID: ${jobId}, Status: ${newStatus}, Type: ${jobType}`);
+      console.log(`=== STATUS UPDATE START ===`);
+      console.log(`Job ID: ${jobId}`);
+      console.log(`New Status: ${newStatus}`);
+      console.log(`Job Type: ${jobType}`);
+      console.log(`onRefresh available:`, !!onRefresh);
+      
       await dataEnrichmentApi.updateJobStatus(jobId, newStatus, jobType);
       showSuccess(`Job status updated to ${newStatus}`);
+      
+      console.log('Status update successful, calling onRefresh...');
       onRefresh?.();
+      console.log('=== STATUS UPDATE END ===');
     } catch (error) {
+      console.error('=== STATUS UPDATE ERROR ===');
       console.error('Failed to update job status:', error);
       console.error('Error details:', error);
       showError('Failed to update job status');
@@ -311,8 +346,14 @@ export const JobList: React.FC<JobListProps> = ({
                   <div className="relative filter-dropdown">
                     <button
                       onClick={(e) => {
+                        e.preventDefault();
                         e.stopPropagation();
+                        console.log('=== STATUS DROPDOWN TOGGLE CLICKED ===');
+                        console.log('Current statusDropdownOpen:', statusDropdownOpen);
+                        console.log('Will toggle to:', !statusDropdownOpen);
+                        console.log('User roles:', { userIsEditor, userIsApprover });
                         setStatusDropdownOpen(!statusDropdownOpen);
+                        console.log('Dropdown toggle complete - new state:', !statusDropdownOpen);
                       }}
                       className="p-1 hover:bg-gray-200 rounded transition-colors"
                       title="Filter by status"
@@ -324,9 +365,22 @@ export const JobList: React.FC<JobListProps> = ({
                         <div className="py-1">
                           <button
                             onClick={(e) => {
+                              e.preventDefault();
                               e.stopPropagation();
-                              onStatusFilterChange?.('ALL');
+                              console.log('=== STATUS FILTER CLICKED ===');
+                              console.log('Changing status filter to: ALL');
+                              console.log('onStatusFilterChange function:', typeof onStatusFilterChange);
+                              console.log('User roles:', { userIsEditor, userIsApprover });
+                              
+                              if (onStatusFilterChange) {
+                                onStatusFilterChange('ALL');
+                                console.log('✅ Status filter changed to ALL');
+                              } else {
+                                console.error('❌ onStatusFilterChange not available');
+                              }
+                              
                               setStatusDropdownOpen(false);
+                              console.log('Status filter change complete');
                             }}
                             className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${statusFilter === 'ALL' ? 'bg-gray-100 font-medium' : 'text-gray-700'}`}
                           >
@@ -334,9 +388,22 @@ export const JobList: React.FC<JobListProps> = ({
                           </button>
                           <button
                             onClick={(e) => {
+                              e.preventDefault();
                               e.stopPropagation();
-                              onStatusFilterChange?.('pending');
+                              console.log('=== STATUS FILTER CLICKED ===');
+                              console.log('Changing status filter to: pending');
+                              console.log('onStatusFilterChange function:', typeof onStatusFilterChange);
+                              console.log('User roles:', { userIsEditor, userIsApprover });
+                              
+                              if (onStatusFilterChange) {
+                                onStatusFilterChange('pending');
+                                console.log('✅ Status filter changed to pending');
+                              } else {
+                                console.error('❌ onStatusFilterChange not available');
+                              }
+                              
                               setStatusDropdownOpen(false);
+                              console.log('Status filter change complete');
                             }}
                             className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${statusFilter === 'pending' ? 'bg-gray-100 font-medium' : 'text-gray-700'}`}
                           >
@@ -551,6 +618,7 @@ export const JobList: React.FC<JobListProps> = ({
                 willShowStatusButtons: hasStatus
               });
 
+              
               return (
                 <tr key={job.id} className={`hover:bg-gray-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
                   <td className="px-6 py-4">
@@ -598,148 +666,158 @@ export const JobList: React.FC<JobListProps> = ({
                     {/* Actions Dropdown */}
                     <div className="relative actions-dropdown">
                       <button
-                        onClick={() => setDropdownOpen(dropdownOpen === job.id ? null : job.id)}
-                        className={`p-2 rounded-lg transition-all duration-200 ${
-                          dropdownOpen === job.id
-                            ? 'bg-blue-100 text-blue-700 shadow-sm'
-                            : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
-                        }`}
-                        title="Job Actions"
+                        onClick={() => {
+                          console.log('=== THREE-DOT MENU CLICKED ===');
+                          console.log('Job ID:', job.id);
+                          console.log('Current dropdownOpen:', dropdownOpen);
+                          console.log('Will set to:', dropdownOpen === job.id ? null : job.id);
+                          console.log('User roles:', { userIsEditor, userIsApprover });
+                          setDropdownOpen(dropdownOpen === job.id ? null : job.id);
+                        }}
+                        className={`p-1 rounded-md hover:bg-gray-100 ${dropdownOpen === job.id ? 'bg-blue-100 text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
+                        title={`Roles: Editor=${userIsEditor}, Approver=${userIsApprover}`}
                       >
-                        <MoreVertical size={18} />
+                        <MoreVertical className="w-4 h-4" />
                       </button>
 
                       {dropdownOpen === job.id && (
-                        <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg z-20 border border-gray-200 overflow-hidden">
-                          {/* View Details Section */}
-                          <div className="px-4 py-3 border-b border-gray-100">
-                            <button
-                              onClick={() => {
-                                onViewLogs?.(job.id);
-                                setDropdownOpen(null);
-                              }}
-                              className="flex items-center w-full text-left group hover:bg-gray-50 px-3 py-2 rounded-lg transition-all duration-200"
-                            >
-                              <div className="flex items-center justify-center w-8 h-8 bg-gray-100 rounded-lg mr-3 group-hover:bg-gray-200 transition-colors">
-                                <Eye size={16} className="text-gray-600" />
-                              </div>
-                              <div>
-                                <div className="text-sm font-medium text-gray-900">View Details</div>
-                                <div className="text-xs text-gray-500">Open job configuration</div>
-                              </div>
-                            </button>
-                          </div>
+                        <div className="absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-10">
+                          <div className="py-1">
+                            {/* View Details - Separate logic for Editors vs Approvers */}
+                            {userIsEditor ? (
+                              // Editors use the onViewLogs handler
+                              onViewLogs && (
+                                <button
+                                  onClick={() => {
+                                    onViewLogs(job.id);
+                                    setDropdownOpen(null);
+                                  }}
+                                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                >
+                                  <Eye className="w-4 h-4 mr-2" />
+                                  View
+                                </button>
+                              )
+                            ) : userIsApprover ? (
+                              // Approvers have their own direct view handler
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    console.log('Approver viewing job:', job.id);
+                                    // Call the handler if it exists, otherwise use fallback
+                                    if (onViewLogs) {
+                                      onViewLogs(job.id);
+                                    } else {
+                                      // Fallback: Call API directly for approvers
+                                      console.log('Using fallback view for approver');
+                                      alert('Opening job details...');
+                                      // You can add direct API call here if needed
+                                    }
+                                    setDropdownOpen(null);
+                                  } catch (error) {
+                                    console.error('Error viewing job:', error);
+                                  }
+                                }}
+                                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                              >
+                                <Eye className="w-4 h-4 mr-2" />
+                                View
+                              </button>
+                            ) : null}
 
-                          {/* Status Management Section */}
-                          {hasStatus && (
-                            <div className="px-4 py-3">
-                              <div className="flex items-center mb-3">
-                                <div className="flex items-center justify-center w-6 h-6 bg-gray-100 rounded-md mr-2">
-                                  <Settings size={12} className="text-gray-600" />
-                                </div>
-                                <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Status Management</h4>
-                              </div>
-                              
-                              <div className="grid grid-cols-2 gap-2">
-                                {/* Approve Button */}
+                            {/* Edit - Only for Editors */}
+                            {userIsEditor && onEdit && (
+                              <button
+                                onClick={() => {
+                                  onEdit(job);
+                                  setDropdownOpen(null);
+                                }}
+                                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                              >
+                                <Edit className="w-4 h-4 mr-2" />
+                                Edit
+                              </button>
+                            )}
+
+                            {/* Status Management - Only for Approvers */}
+                            {userIsApprover && (
+                              <>
+                                <hr className="my-1 border-gray-100" />
                                 <button
                                   onClick={() => {
                                     handleStatusUpdate(job.id, 'approved', jobType);
                                     setDropdownOpen(null);
                                   }}
                                   disabled={displayStatus === 'approved'}
-                                  className={`flex items-center justify-center px-3 py-2 rounded-md text-xs font-medium transition-all duration-200 ${
+                                  className={`flex items-center w-full px-4 py-2 text-sm hover:bg-gray-100 ${
                                     displayStatus === 'approved'
-                                      ? 'bg-gray-100 text-gray-500 cursor-not-allowed opacity-60'
-                                      : 'bg-gray-50 text-gray-700 hover:bg-gray-100 hover:shadow-sm border border-gray-200'
+                                      ? 'text-gray-400 cursor-not-allowed'
+                                      : 'text-gray-700'
                                   }`}
                                 >
-                                  ✓ Approve
+                                  <div className="w-4 h-4 mr-2 flex items-center justify-center">
+                                    <span className="text-green-600">✓</span>
+                                  </div>
+                                  Approve
                                 </button>
-
-                                {/* Reject Button */}
                                 <button
                                   onClick={() => {
                                     handleStatusUpdate(job.id, 'rejected', jobType);
                                     setDropdownOpen(null);
                                   }}
                                   disabled={displayStatus === 'rejected'}
-                                  className={`flex items-center justify-center px-3 py-2 rounded-md text-xs font-medium transition-all duration-200 ${
+                                  className={`flex items-center w-full px-4 py-2 text-sm hover:bg-gray-100 ${
                                     displayStatus === 'rejected'
-                                      ? 'bg-gray-100 text-gray-500 cursor-not-allowed opacity-60'
-                                      : 'bg-gray-50 text-gray-700 hover:bg-gray-100 hover:shadow-sm border border-gray-200'
+                                      ? 'text-gray-400 cursor-not-allowed'
+                                      : 'text-gray-700'
                                   }`}
                                 >
-                                  ✕ Reject
+                                  <div className="w-4 h-4 mr-2 flex items-center justify-center">
+                                    <span className="text-red-600">✕</span>
+                                  </div>
+                                  Reject
                                 </button>
+                                {displayStatus !== 'pending' && (
+                                  <button
+                                    onClick={() => {
+                                      handleStatusUpdate(job.id, 'pending', jobType);
+                                      setDropdownOpen(null);
+                                    }}
+                                    className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                  >
+                                    <div className="w-4 h-4 mr-2 flex items-center justify-center">
+                                      <span className="text-blue-600">⧖</span>
+                                    </div>
+                                    Set Pending
+                                  </button>
+                                )}
+                              </>
+                            )}
 
-                                {/* Pending Button */}
-                                <button
-                                  onClick={() => {
-                                    handleStatusUpdate(job.id, 'pending', jobType);
-                                    setDropdownOpen(null);
-                                  }}
-                                  disabled={displayStatus === 'pending'}
-                                  className={`flex items-center justify-center px-3 py-2 rounded-md text-xs font-medium transition-all duration-200 ${
-                                    displayStatus === 'pending'
-                                      ? 'bg-gray-100 text-gray-500 cursor-not-allowed opacity-60'
-                                      : 'bg-gray-50 text-gray-700 hover:bg-gray-100 hover:shadow-sm border border-gray-200'
-                                  }`}
-                                >
-                                  ⧖ Pending
-                                </button>
-
-                                {/* In Progress Button */}
-                                <button
-                                  onClick={() => {
-                                    handleStatusUpdate(job.id, 'in-progress', jobType);
-                                    setDropdownOpen(null);
-                                  }}
-                                  disabled={displayStatus === 'in-progress'}
-                                  className={`flex items-center justify-center px-3 py-2 rounded-md text-xs font-medium transition-all duration-200 ${
-                                    displayStatus === 'in-progress'
-                                      ? 'bg-gray-100 text-gray-500 cursor-not-allowed opacity-60'
-                                      : 'bg-gray-50 text-gray-700 hover:bg-gray-100 hover:shadow-sm border border-gray-200'
-                                  }`}
-                                >
-                                  ⟳ Progress
-                                </button>
+                            {/* Activation Controls */}
+                            <hr className="my-1 border-gray-100" />
+                            <button
+                              onClick={() => {
+                                handleActivationToggle(job.id, true, jobType);
+                                setDropdownOpen(null);
+                              }}
+                              className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                            >
+                              <Play className="w-4 h-4 mr-2" />
+                              Activate
+                            </button>
+                            <button
+                              onClick={() => {
+                                handleActivationToggle(job.id, false, jobType);
+                                setDropdownOpen(null);
+                              }}
+                              className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                            >
+                              <div className="w-4 h-4 mr-2 flex items-center justify-center">
+                                <span>⏸</span>
                               </div>
-                            </div>
-                          )}
-
-                          {/* Activation Controls Section */}
-                          <div className="px-4 py-3 border-t border-gray-100">
-                            <div className="flex items-center mb-3">
-                              <div className="flex items-center justify-center w-6 h-6 bg-gray-100 rounded-md mr-2">
-                                <Play size={12} className="text-gray-600" />
-                              </div>
-                              <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Job Control</h4>
-                            </div>
-                            
-                            <div className="flex space-x-2">
-                              {/* Activate Button */}
-                              <button
-                                onClick={() => {
-                                  handleActivationToggle(job.id, true, jobType);
-                                  setDropdownOpen(null);
-                                }}
-                                className="flex-1 flex items-center justify-center px-3 py-2 bg-gray-50 text-gray-700 rounded-md text-xs font-medium hover:bg-gray-100 transition-all duration-200 hover:shadow-sm border border-gray-200"
-                              >
-                                ▶ Activate
-                              </button>
-
-                              {/* Deactivate Button */}
-                              <button
-                                onClick={() => {
-                                  handleActivationToggle(job.id, false, jobType);
-                                  setDropdownOpen(null);
-                                }}
-                                className="flex-1 flex items-center justify-center px-3 py-2 bg-gray-50 text-gray-700 rounded-md text-xs font-medium hover:bg-gray-100 transition-all duration-200 hover:shadow-sm border border-gray-200"
-                              >
-                                ⏸ Deactivate
-                              </button>
-                            </div>
+                              Deactivate
+                            </button>
                           </div>
                         </div>
                       )}

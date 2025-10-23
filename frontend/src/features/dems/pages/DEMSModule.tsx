@@ -87,13 +87,13 @@ const DEMSModule: React.FC = () => {
               />
             </div>
             
-            <Button 
+            {/* <Button 
               variant="secondary" 
               onClick={() => setShowValidationLogs(!showValidationLogs)} 
               icon={<AlertTriangleIcon size={16} />}
             >
               Validation Logs
-            </Button>
+            </Button> */}
           </div>
           <Button 
             onClick={handleAddNew} 
