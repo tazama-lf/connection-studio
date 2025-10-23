@@ -9,5 +9,4 @@ interface Schedule {
   cron: string;
 }
 
-
-export type { Schedule }
+export type { Schedule };

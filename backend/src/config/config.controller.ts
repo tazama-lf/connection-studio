@@ -64,9 +64,7 @@ function getUserClaims(user: AuthenticatedUser): string[] {
 @Controller('config')
 @UseGuards(TazamaAuthGuard)
 export class ConfigController {
-  constructor(
-    private readonly configService: ConfigService,
-  ) {}
+  constructor(private readonly configService: ConfigService) {}
   private autoDetectContentType(
     filename: string,
     content: string,

@@ -14,21 +14,21 @@ describe('JobService', () => {
         JobService,
         {
           provide: DatabaseService,
-          useValue: {}
+          useValue: {},
         },
         {
           provide: DryRunService,
-          useValue: {}
+          useValue: {},
         },
         {
           provide: ConfigService,
-          useValue: {}
+          useValue: {},
         },
         {
           provide: LoggerService,
           useValue: {
-            error: jest.fn()
-          }
+            error: jest.fn(),
+          },
         },
       ],
     }).compile();

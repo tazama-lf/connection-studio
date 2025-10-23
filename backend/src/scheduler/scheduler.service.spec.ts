@@ -19,9 +19,9 @@ describe('SchedulerService', () => {
         {
           provide: DatabaseService,
           useValue: {
-            query: jest.fn()
-          }
-        }
+            query: jest.fn(),
+          },
+        },
       ],
     }).compile();
 

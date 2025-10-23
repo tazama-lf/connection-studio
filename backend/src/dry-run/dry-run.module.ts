@@ -6,6 +6,6 @@ import { LoggerModule } from 'src/logger-service/logger-service.module';
 @Module({
   providers: [DryRunService],
   imports: [HttpModule, LoggerModule],
-  exports: [DryRunService]
+  exports: [DryRunService],
 })
-export class DryRunModule { }
+export class DryRunModule {}

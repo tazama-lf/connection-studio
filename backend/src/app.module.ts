@@ -38,7 +38,7 @@ import { DatabaseModule } from './database/database.module';
     JobModule,
     SchedulerModule,
     DryRunModule,
-    DatabaseModule
+    DatabaseModule,
   ],
   controllers: [AppController],
   providers: [
@@ -57,4 +57,4 @@ import { DatabaseModule } from './database/database.module';
     },
   ],
 })
-export class AppModule { }
+export class AppModule {}

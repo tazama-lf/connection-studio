@@ -10,6 +10,12 @@ import { ConfigModule } from '@nestjs/config';
 @Module({
   providers: [JobService],
   controllers: [JobController],
-  imports: [LoggerModule, DatabaseModule, AuditModule, DryRunModule, ConfigModule]
+  imports: [
+    LoggerModule,
+    DatabaseModule,
+    AuditModule,
+    DryRunModule,
+    ConfigModule,
+  ],
 })
-export class JobModule { }
+export class JobModule {}

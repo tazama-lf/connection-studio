@@ -1,6 +1,20 @@
 import { Type } from 'class-transformer';
-import { IsEnum, IsNotEmpty, IsNumber, IsObject, IsString, IsUUID, ValidateIf, ValidateNested } from 'class-validator';
-import { AuthType, FileType, IngestMode, SourceType } from '../../utils/interfaces';
+import {
+  IsEnum,
+  IsNotEmpty,
+  IsNumber,
+  IsObject,
+  IsString,
+  IsUUID,
+  ValidateIf,
+  ValidateNested,
+} from 'class-validator';
+import {
+  AuthType,
+  FileType,
+  IngestMode,
+  SourceType,
+} from '../../utils/interfaces';
 
 class HTTPConnectionDto {
   @IsString()
@@ -95,8 +109,7 @@ export class CreatePullJobDto {
   @IsEnum(IngestMode)
   mode: IngestMode = IngestMode.APPEND;
 
-
   @IsString()
   @IsNotEmpty()
-  version: string
+  version: string;
 }

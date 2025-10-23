@@ -12,11 +12,7 @@ import { TazamaDataModelModule } from '../tazama-data-model/tazama-data-model.mo
 @Module({
   imports: [SchemasModule, AuditModule, TazamaDataModelModule],
   controllers: [ConfigController],
-  providers: [
-    ConfigService,
-    ConfigRepository,
-    ConfigWorkflowService,
-  ],
+  providers: [ConfigService, ConfigRepository, ConfigWorkflowService],
   exports: [ConfigService, ConfigRepository],
 })
 export class ConfigModule {}

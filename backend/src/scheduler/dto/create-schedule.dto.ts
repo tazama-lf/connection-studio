@@ -1,4 +1,10 @@
-import { IsDate, IsEnum, IsNumber, IsOptional, IsString } from 'class-validator';
+import {
+  IsDate,
+  IsEnum,
+  IsNumber,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 import { ScheduleStatus } from '../../utils/interfaces';
 import { Type } from 'class-transformer';
 

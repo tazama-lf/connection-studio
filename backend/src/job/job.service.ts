@@ -1,8 +1,19 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { DatabaseService } from '../database/database.service';
 import { encrypt, validateFileType, validateTableName } from '../utils/helpers';
-import { AuthType, ConfigType, ISuccess, JobStatus, ScheduleStatus, SourceType } from '../utils/interfaces';
+import {
+  AuthType,
+  ConfigType,
+  ISuccess,
+  JobStatus,
+  ScheduleStatus,
+  SourceType,
+} from '../utils/interfaces';
 import { v4 } from 'uuid';
 import { CreatePushJobDto } from './dto/create-push-job.dto';
 import { Job } from './types/interface';
@@ -13,124 +24,137 @@ import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class JobService {
+  constructor(
+    private readonly db: DatabaseService,
+    private readonly configService: ConfigService,
+    private readonly loggerService: LoggerService,
+    private readonly dryRunService: DryRunService,
+  ) {}
 
-    constructor(
-        private readonly db: DatabaseService,
-        private readonly configService: ConfigService,
-        private readonly loggerService: LoggerService,
-        private readonly dryRunService: DryRunService
-    ) { }
+  async validateExisting(table_name: string): Promise<void> {
+    validateTableName(table_name);
+    const result = await this.db.query(
+      'SELECT * FROM job WHERE table_name = $1 LIMIT 1;',
+      [table_name],
+    );
 
-    async validateExisting(table_name: string): Promise<void> {
-        validateTableName(table_name);
-        const result = await this.db.query(
-            `SELECT * FROM job WHERE table_name = $1 LIMIT 1;`,
-            [table_name]
-        );
-
-        const existingJob = result.rows[0] || null;
-        const exists = (await this.db.tableExist(table_name)) || existingJob;
-        if (exists) {
-            this.loggerService.error('Table Already Exists');
-            throw new BadRequestException('Table Already Exists');
-        }
+    const existingJob = result.rows[0] || null;
+    const exists = (await this.db.tableExist(table_name)) || existingJob;
+    if (exists) {
+      this.loggerService.error('Table Already Exists');
+      throw new BadRequestException('Table Already Exists');
     }
+  }
 
-    async createPush(job: CreatePushJobDto, tenantId: string): Promise<Job> {
-        try {
-            await this.validateExisting(job.table_name);
+  async createPush(job: CreatePushJobDto, tenantId: string): Promise<Job> {
+    try {
+      await this.validateExisting(job.table_name);
 
-            let path = `/tcs/${job.version}/${tenantId}/enrichment${job.path}`;
+      const path = `/tcs/${job.version}/${tenantId}/enrichment${job.path}`;
 
-            const jobWithId = { ...job, id: v4(), path, tenant_id: tenantId };
-            const keys = Object.keys(jobWithId);
-            const values = Object.values(jobWithId);
-            const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
+      const jobWithId = { ...job, id: v4(), path, tenant_id: tenantId };
+      const keys = Object.keys(jobWithId);
+      const values = Object.values(jobWithId);
+      const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
 
-            const insertQuery = `
+      const insertQuery = `
                     INSERT INTO endpoints (${keys.join(', ')})
                      VALUES (${placeholders})
                       RETURNING *;
                       `;
 
-            const insertRes = await this.db.query(insertQuery, values);
-            const newJob = insertRes.rows[0];
-            const { tenant_id, ...safeJob } = newJob;
-            return safeJob;
-        } catch (err) {
-            this.loggerService.error(err.message);
-            throw new BadRequestException(err.message);
-        }
+      const insertRes = await this.db.query(insertQuery, values);
+      const newJob = insertRes.rows[0];
+      const { tenant_id, ...safeJob } = newJob;
+      return safeJob;
+    } catch (err) {
+      this.loggerService.error(err.message);
+      throw new BadRequestException(err.message);
     }
+  }
 
-    async createPull(job: CreatePullJobDto, tenantId: string): Promise<Job> {
-        try {
-            await this.validateExisting(job.table_name);
+  async createPull(job: CreatePullJobDto, tenantId: string): Promise<Job> {
+    try {
+      await this.validateExisting(job.table_name);
 
-            const checkScheduleQuery = `
+      const checkScheduleQuery = `
                  SELECT * 
                   FROM schedule 
                      WHERE id = $1 
                          LIMIT 1;
                      `;
 
-            const scheduleResult = await this.db.query(checkScheduleQuery, [job.schedule_id]);
-            const exist = scheduleResult.rows[0];
-            if (!exist) {
-                throw new BadRequestException(`Schedule Id "${job.schedule_id}" not found`);
-            }
+      const scheduleResult = await this.db.query(checkScheduleQuery, [
+        job.schedule_id,
+      ]);
+      const exist = scheduleResult.rows[0];
+      if (!exist) {
+        throw new BadRequestException(
+          `Schedule Id "${job.schedule_id}" not found`,
+        );
+      }
 
-            let connection = job.connection;
-            if (job.source_type === SourceType.SFTP) {
-                validateFileType(job.file.path);
-                const sftpConn = connection as SFTPConnectionDto;
-                if (sftpConn.auth_type === AuthType.USERNAME_PASSWORD && sftpConn.password) {
-                    connection = {
-                        ...sftpConn,
-                        password: encrypt(sftpConn.password),
-                    };
-                } else if (sftpConn.private_key) {
-                    connection = {
-                        ...sftpConn,
-                        private_key: encrypt(sftpConn.private_key),
-                    };
-                }
-            }
+      let connection = job.connection;
+      if (job.source_type === SourceType.SFTP) {
+        validateFileType(job.file.path);
+        const sftpConn = connection as SFTPConnectionDto;
+        if (
+          sftpConn.auth_type === AuthType.USERNAME_PASSWORD &&
+          sftpConn.password
+        ) {
+          connection = {
+            ...sftpConn,
+            password: encrypt(sftpConn.password),
+          };
+        } else if (sftpConn.private_key) {
+          connection = {
+            ...sftpConn,
+            private_key: encrypt(sftpConn.private_key),
+          };
+        }
+      }
 
-            await this.dryRunService.dryRun(job);
+      await this.dryRunService.dryRun(job);
 
-            const jobWithId = { ...job, id: v4(), connection, tenant_id: tenantId };
-            const keys = Object.keys(jobWithId);
-            const values = Object.values(jobWithId);
-            const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
+      const jobWithId = { ...job, id: v4(), connection, tenant_id: tenantId };
+      const keys = Object.keys(jobWithId);
+      const values = Object.values(jobWithId);
+      const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
 
-            const insertQuery = `
+      const insertQuery = `
                  INSERT INTO job (${keys.join(', ')})
                   VALUES (${placeholders})
                   RETURNING *;
                      `;
 
-            const insertResult = await this.db.query(insertQuery, values);
-            const newJob = insertResult.rows[0];
+      const insertResult = await this.db.query(insertQuery, values);
+      const newJob = insertResult.rows[0];
 
-            return newJob;
-        } catch (err) {
-            if (Array.isArray(err)) {
-                const messages = err.flatMap((e) => Object.values(e.constraints ?? {}));
-                throw new BadRequestException(messages);
-            }
+      return newJob;
+    } catch (err) {
+      if (Array.isArray(err)) {
+        const messages = err.flatMap((e) => Object.values(e.constraints ?? {}));
+        throw new BadRequestException(messages);
+      }
 
-            throw new BadRequestException(err.message || 'Invalid request payload');
-        }
+      throw new BadRequestException(err.message || 'Invalid request payload');
+    }
+  }
+
+  async findAll(page: number, limit: number, tenantId: string) {
+    if (
+      !Number.isInteger(page) ||
+      !Number.isInteger(limit) ||
+      page < 1 ||
+      limit < 1
+    ) {
+      throw new BadRequestException(
+        'Page and limit must be positive integers.',
+      );
     }
 
-    async findAll(page: number, limit: number, tenantId: string) {
-        if (!Number.isInteger(page) || !Number.isInteger(limit) || page < 1 || limit < 1) {
-            throw new BadRequestException('Page and limit must be positive integers.');
-        }
-
-        const offset = (page - 1) * limit;
-        const query = `
+    const offset = (page - 1) * limit;
+    const query = `
       SELECT 
         id,
         endpoint_name,
@@ -164,55 +188,53 @@ export class JobService {
       LIMIT $1 OFFSET $2;
     `;
 
-        const result = await this.db.query(query, [limit, offset, tenantId]);
+    const result = await this.db.query(query, [limit, offset, tenantId]);
 
-        return result.rows
+    return result.rows;
+  }
+
+  async findOne(id: string, type: ConfigType, tenantId: string) {
+    try {
+      if (!id || !type) {
+        throw new BadRequestException('Both id and type are required.');
+      }
+      const tableName = type === ConfigType.PUSH ? 'endpoints' : 'job';
+
+      const query = `SELECT * FROM ${tableName} WHERE id = $1 AND tenant_id = $2 LIMIT 1;`;
+      const result = await this.db.query(query, [id.trim(), tenantId.trim()]);
+
+      const record = result.rows[0];
+      if (!record) {
+        throw new BadRequestException(
+          `${type === ConfigType.PUSH ? 'Endpoint' : 'Job'} with id ${id} not found.`,
+        );
+      }
+      return record;
+    } catch (err) {
+      this.loggerService.error(`Error fetching ${type} record: ${err.message}`);
+      throw err;
     }
+  }
 
-    async findOne(id: string, type: ConfigType, tenantId: string) {
-        try {
-            if (!id || !type) {
-                throw new BadRequestException('Both id and type are required.');
-            }
-            const tableName =
-                type === ConfigType.PUSH
-                    ? 'endpoints'
-                    : 'job'
+  async findByStatus(
+    status: JobStatus,
+    page: number,
+    limit: number,
+  ): Promise<[]> {
+    try {
+      if (!status || !page || !limit) {
+        throw new BadRequestException('Status, page, and limit are required.');
+      }
 
-            const query = `SELECT * FROM ${tableName} WHERE id = $1 AND tenant_id = $2 LIMIT 1;`;
-            const result = await this.db.query(query, [id.trim(), tenantId.trim()]);
+      if (page < 1 || limit < 1) {
+        throw new BadRequestException(
+          'Page and limit must be positive integers.',
+        );
+      }
 
-            const record = result.rows[0];
-            if (!record) {
-                throw new BadRequestException(
-                    `${type === ConfigType.PUSH ? 'Endpoint' : 'Job'} with id ${id} not found.`,
-                );
-            }
-            return record;
-        } catch (err) {
-            this.loggerService.error(`Error fetching ${type} record: ${err.message}`);
-            throw err;
-        }
-    }
+      const offset = (page - 1) * limit;
 
-    async findByStatus(
-        status: JobStatus,
-        page: number,
-        limit: number,
-    ): Promise<[]> {
-
-        try {
-            if (!status || !page || !limit) {
-                throw new BadRequestException('Status, page, and limit are required.');
-            }
-
-            if (page < 1 || limit < 1) {
-                throw new BadRequestException('Page and limit must be positive integers.');
-            }
-
-            const offset = (page - 1) * limit;
-
-            const query = `
+      const query = `
       (
         SELECT 
           id,
@@ -249,102 +271,128 @@ export class JobService {
       LIMIT $2 OFFSET $3;
     `;
 
-            const result = await this.db.query(query, [status, limit, offset]);
-            return result.rows;
-        } catch (err) {
-            this.loggerService.error(`Error fetching records by status: ${err.message}`);
-            throw new BadRequestException(err.message);
-        }
+      const result = await this.db.query(query, [status, limit, offset]);
+      return result.rows;
+    } catch (err) {
+      this.loggerService.error(
+        `Error fetching records by status: ${err.message}`,
+      );
+      throw new BadRequestException(err.message);
     }
+  }
 
-    async updateActivation(id: string, status: ScheduleStatus, table_name: string): Promise<ISuccess> {
-        try {
-            if (!id || !status || !table_name) {
-                throw new BadRequestException('Both status and table_name are required.');
-            }
+  async updateActivation(
+    id: string,
+    status: ScheduleStatus,
+    table_name: string,
+  ): Promise<ISuccess> {
+    try {
+      if (!id || !status || !table_name) {
+        throw new BadRequestException(
+          'Both status and table_name are required.',
+        );
+      }
 
-            const query = `
+      const query = `
                  UPDATE ${table_name}
                  SET record_status = $1, updated_at = NOW()
                  WHERE id = $2
                  RETURNING *;
                     `;
 
-            const result = await this.db.query(query, [status, id]);
+      const result = await this.db.query(query, [status, id]);
 
-            if (result.rowCount === 0) {
-                throw new NotFoundException(`Record with id "${id}" not found in table "${table_name}".`);
-            }
+      if (result.rowCount === 0) {
+        throw new NotFoundException(
+          `Record with id "${id}" not found in table "${table_name}".`,
+        );
+      }
 
-            return {
-                success: true,
-                message: `${table_name} with id ${id} successfully updated`,
-            }
-        } catch (err) {
-            this.loggerService.error(`Error fetching records by status: ${err.message}`);
-            throw new BadRequestException(err.message);
-        }
+      return {
+        success: true,
+        message: `${table_name} with id ${id} successfully updated`,
+      };
+    } catch (err) {
+      this.loggerService.error(
+        `Error fetching records by status: ${err.message}`,
+      );
+      throw new BadRequestException(err.message);
     }
+  }
 
-    async updateStatus(id: string, status: JobStatus, table_name: string): Promise<ISuccess> {
-        try {
-            if (!id || !status || !table_name) {
-                throw new BadRequestException('Both status and table_name are required.');
-            }
+  async updateStatus(
+    id: string,
+    status: JobStatus,
+    table_name: string,
+  ): Promise<ISuccess> {
+    try {
+      if (!id || !status || !table_name) {
+        throw new BadRequestException(
+          'Both status and table_name are required.',
+        );
+      }
 
-            const query = `
+      const query = `
                   UPDATE ${table_name}
                    SET status = $1, updated_at = NOW()
                        WHERE id = $2
                           RETURNING *;
                       `;
 
-            const result = await this.db.query(query, [status, id]);
+      const result = await this.db.query(query, [status, id]);
 
-            if (result.rowCount === 0) {
-                throw new NotFoundException(`Record with id "${id}" not found in table "${table_name}".`);
-            }
+      if (result.rowCount === 0) {
+        throw new NotFoundException(
+          `Record with id "${id}" not found in table "${table_name}".`,
+        );
+      }
 
-            if (status === JobStatus.INPROGRESS) {
-                const sftp = new SFTPClient();
-                await sftp.connect({
-                    host: this.configService.get<string>('SFTP_HOST_TEST'),
-                    port: this.configService.get<number>('SFTP_PORT_TEST'),
-                    username: this.configService.get<string>('SFTP_USERNAME_TEST'),
-                    password: this.configService.get<string>('SFTP_PASSWORD_TEST'),
-                });
+      if (status === JobStatus.INPROGRESS) {
+        const sftp = new SFTPClient();
+        await sftp.connect({
+          host: this.configService.get<string>('SFTP_HOST_TEST'),
+          port: this.configService.get<number>('SFTP_PORT_TEST'),
+          username: this.configService.get<string>('SFTP_USERNAME_TEST'),
+          password: this.configService.get<string>('SFTP_PASSWORD_TEST'),
+        });
 
-                const remotePath = '/upload/config.json';
-                const fileExists = await sftp.exists(remotePath);
-                let config: any = {};
+        const remotePath = '/upload/config.json';
+        const fileExists = await sftp.exists(remotePath);
+        let config: any = {};
 
-                if (fileExists) {
-                    const fileContent = await sftp.get(remotePath);
-                    const rawData = fileContent.toString();
-                    config = JSON.parse(rawData);
+        if (fileExists) {
+          const fileContent = await sftp.get(remotePath);
+          const rawData = fileContent.toString();
+          config = JSON.parse(rawData);
 
-                    config.updated_at = new Date().toISOString();
-                    config.jobs = config.jobs || [];
-                    config.jobs.push(result.rows[0]);
-                } else {
-                    config = {
-                        created_at: new Date().toISOString(),
-                        jobs: [result.rows[0]],
-                    };
-                }
-
-                await sftp.put(Buffer.from(JSON.stringify(config, null, 2)), remotePath);
-                this.loggerService.log(`Successfully updated config.json on SFTP server.`);
-            }
-
-            return {
-                success: true,
-                message: `${table_name} with id ${id} successfully updated`,
-            }
-        } catch (err) {
-            this.loggerService.error(`Error fetching records by status: ${err.message}`);
-            throw new BadRequestException(err.message);
+          config.updated_at = new Date().toISOString();
+          config.jobs = config.jobs || [];
+          config.jobs.push(result.rows[0]);
+        } else {
+          config = {
+            created_at: new Date().toISOString(),
+            jobs: [result.rows[0]],
+          };
         }
-    }
 
+        await sftp.put(
+          Buffer.from(JSON.stringify(config, null, 2)),
+          remotePath,
+        );
+        this.loggerService.log(
+          'Successfully updated config.json on SFTP server.',
+        );
+      }
+
+      return {
+        success: true,
+        message: `${table_name} with id ${id} successfully updated`,
+      };
+    } catch (err) {
+      this.loggerService.error(
+        `Error fetching records by status: ${err.message}`,
+      );
+      throw new BadRequestException(err.message);
+    }
+  }
 }

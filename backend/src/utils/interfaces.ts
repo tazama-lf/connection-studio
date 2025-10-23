@@ -1,5 +1,3 @@
-
-
 enum ScheduleStatus {
   ACTIVE = 'active',
   INACTIVE = 'in-active',
@@ -38,8 +36,17 @@ enum JobStatus {
   REJECTED = 'rejected',
 }
 interface ISuccess {
-  success: boolean,
-  message: string
+  success: boolean;
+  message: string;
 }
 
-export { ScheduleStatus, type ISuccess, IngestMode, SourceType, JobStatus, FileType, AuthType, ConfigType };
+export {
+  ScheduleStatus,
+  type ISuccess,
+  IngestMode,
+  SourceType,
+  JobStatus,
+  FileType,
+  AuthType,
+  ConfigType,
+};

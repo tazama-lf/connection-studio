@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from './config.service';
 import { ConfigRepository } from './config.repository';
 import { ConfigWorkflowService } from './config-workflow.service';
-import { PayloadParsingService, JSONSchema } from '@tazama-lf/tcs-lib';
+import { JSONSchema, FieldType } from '@tazama-lf/tcs-lib';
 import { AuditService } from '../audit/audit.service';
 import { JSONSchemaConverterService } from '../schemas/json-schema-converter.service';
 import { TazamaDataModelService } from '../tazama-data-model/tazama-data-model.service';
@@ -17,10 +17,40 @@ import {
   AllowedFunctionName,
 } from './config.interfaces';
 
+// Mock @tazama-lf/tcs-lib functions
+jest.mock('@tazama-lf/tcs-lib', () => ({
+  parsePayloadToSchema: jest.fn(),
+  applyFieldAdjustments: jest.fn(),
+  // Keep other exports that might be needed
+  FieldType: {
+    STRING: 'string',
+    NUMBER: 'number',
+    BOOLEAN: 'boolean',
+    OBJECT: 'object',
+    ARRAY: 'array',
+  },
+  JSONSchema: {},
+  ContentType: {
+    JSON: 'application/json',
+    XML: 'application/xml',
+  },
+}));
+
+import {
+  parsePayloadToSchema,
+  applyFieldAdjustments,
+} from '@tazama-lf/tcs-lib';
+
+const mockParsePayloadToSchema = parsePayloadToSchema as jest.MockedFunction<
+  typeof parsePayloadToSchema
+>;
+const mockApplyFieldAdjustments = applyFieldAdjustments as jest.MockedFunction<
+  typeof applyFieldAdjustments
+>;
+
 describe('ConfigService', () => {
   let service: ConfigService;
   let repository: jest.Mocked<ConfigRepository>;
-  let payloadParsingService: jest.Mocked<PayloadParsingService>;
   let auditService: jest.Mocked<AuditService>;
   let jsonSchemaConverter: jest.Mocked<JSONSchemaConverterService>;
   const mockJSONSchema: JSONSchema = {
@@ -62,14 +92,11 @@ describe('ConfigService', () => {
       updateConfig: jest.fn(),
       deleteConfig: jest.fn(),
     };
-    const mockPayloadParsingService = {
-      parsePayloadToSchema: jest.fn(),
-    };
     const mockAuditService = {
       logAction: jest.fn(),
     };
     const mockJSONSchemaConverter = {
-      convertToJSONSchema: jest.fn(),
+      convertToJSONSchema: jest.fn().mockReturnValue(mockJSONSchema),
       convertFromJSONSchema: jest.fn(),
     };
     const mockTazamaDataModelService = {
@@ -107,10 +134,6 @@ describe('ConfigService', () => {
           useValue: mockConfigRepository,
         },
         {
-          provide: PayloadParsingService,
-          useValue: mockPayloadParsingService,
-        },
-        {
           provide: AuditService,
           useValue: mockAuditService,
         },
@@ -130,9 +153,76 @@ describe('ConfigService', () => {
     }).compile();
     service = module.get<ConfigService>(ConfigService);
     repository = module.get(ConfigRepository);
-    payloadParsingService = module.get(PayloadParsingService);
     auditService = module.get(AuditService);
     jsonSchemaConverter = module.get(JSONSchemaConverterService);
+
+    // Set up default mock return values
+    mockParsePayloadToSchema.mockResolvedValue({
+      success: true,
+      jsonSchema: mockJSONSchema,
+      sourceFields: [
+        {
+          name: 'amount',
+          type: FieldType.NUMBER,
+          path: 'amount',
+          isRequired: true,
+        },
+        {
+          name: 'currency',
+          type: FieldType.STRING,
+          path: 'currency',
+          isRequired: false,
+        },
+        {
+          name: 'firstName',
+          type: FieldType.STRING,
+          path: 'firstName',
+          isRequired: false,
+        },
+        {
+          name: 'lastName',
+          type: FieldType.STRING,
+          path: 'lastName',
+          isRequired: false,
+        },
+      ],
+      metadata: {
+        totalFields: 4,
+        requiredFields: 1,
+        optionalFields: 3,
+        nestedLevels: 1,
+        originalSize: 100,
+        processingTime: 50,
+      },
+      validation: { success: true, errors: [], warnings: [] },
+    });
+
+    mockApplyFieldAdjustments.mockReturnValue([
+      {
+        name: 'amount',
+        type: FieldType.NUMBER,
+        path: 'amount',
+        isRequired: true,
+      },
+      {
+        name: 'currency',
+        type: FieldType.STRING,
+        path: 'currency',
+        isRequired: false,
+      },
+      {
+        name: 'firstName',
+        type: FieldType.STRING,
+        path: 'firstName',
+        isRequired: false,
+      },
+      {
+        name: 'lastName',
+        type: FieldType.STRING,
+        path: 'lastName',
+        isRequired: false,
+      },
+    ]);
   });
   it('should be defined', () => {
     expect(service).toBeDefined();
@@ -146,7 +236,20 @@ describe('ConfigService', () => {
       };
       const parsingResult = {
         success: true,
-        sourceFields: [],
+        sourceFields: [
+          {
+            name: 'amount',
+            type: FieldType.NUMBER,
+            path: 'amount',
+            isRequired: true,
+          },
+          {
+            name: 'currency',
+            type: FieldType.STRING,
+            path: 'currency',
+            isRequired: false,
+          },
+        ],
         jsonSchema: mockJSONSchema,
         metadata: {
           totalFields: 2,
@@ -162,9 +265,7 @@ describe('ConfigService', () => {
           warnings: [],
         },
       };
-      payloadParsingService.parsePayloadToSchema.mockResolvedValue(
-        parsingResult,
-      );
+      mockParsePayloadToSchema.mockResolvedValue(parsingResult);
       repository.findConfigByVersionAndTransactionType.mockResolvedValue(null); // No version conflict
       repository.createConfig.mockResolvedValue(1);
       repository.findConfigById.mockResolvedValue(mockConfig);
@@ -193,7 +294,20 @@ describe('ConfigService', () => {
       };
       const parsingResult = {
         success: true,
-        sourceFields: [],
+        sourceFields: [
+          {
+            name: 'amount',
+            type: FieldType.NUMBER,
+            path: 'amount',
+            isRequired: true,
+          },
+          {
+            name: 'currency',
+            type: FieldType.STRING,
+            path: 'currency',
+            isRequired: false,
+          },
+        ],
         jsonSchema: mockJSONSchema,
         metadata: {
           totalFields: 2,
@@ -205,9 +319,7 @@ describe('ConfigService', () => {
         },
         validation: { success: true, errors: [], warnings: [] },
       };
-      payloadParsingService.parsePayloadToSchema.mockResolvedValue(
-        parsingResult,
-      );
+      mockParsePayloadToSchema.mockResolvedValue(parsingResult);
       repository.findConfigByVersionAndTransactionType.mockResolvedValue(null); // No version conflict
       repository.createConfig.mockResolvedValue(2);
       const configWithPreferredUsername = {
@@ -238,7 +350,20 @@ describe('ConfigService', () => {
       };
       const parsingResult = {
         success: true,
-        sourceFields: [],
+        sourceFields: [
+          {
+            name: 'amount',
+            type: FieldType.NUMBER,
+            path: 'amount',
+            isRequired: true,
+          },
+          {
+            name: 'currency',
+            type: FieldType.STRING,
+            path: 'currency',
+            isRequired: false,
+          },
+        ],
         jsonSchema: mockJSONSchema,
         metadata: {
           totalFields: 2,
@@ -250,9 +375,7 @@ describe('ConfigService', () => {
         },
         validation: { success: true, errors: [], warnings: [] },
       };
-      payloadParsingService.parsePayloadToSchema.mockResolvedValue(
-        parsingResult,
-      );
+      mockParsePayloadToSchema.mockResolvedValue(parsingResult);
       repository.findConfigByVersionAndTransactionType.mockResolvedValue(null); // No version conflict
       repository.createConfig.mockResolvedValue(3);
       const configWithAutoPath = {
@@ -276,7 +399,20 @@ describe('ConfigService', () => {
       };
       const parsingResult = {
         success: true,
-        sourceFields: [],
+        sourceFields: [
+          {
+            name: 'amount',
+            type: FieldType.NUMBER,
+            path: 'amount',
+            isRequired: true,
+          },
+          {
+            name: 'currency',
+            type: FieldType.STRING,
+            path: 'currency',
+            isRequired: false,
+          },
+        ],
         jsonSchema: mockJSONSchema,
         metadata: {
           totalFields: 2,
@@ -288,9 +424,7 @@ describe('ConfigService', () => {
         },
         validation: { success: true, errors: [], warnings: [] },
       };
-      payloadParsingService.parsePayloadToSchema.mockResolvedValue(
-        parsingResult,
-      );
+      mockParsePayloadToSchema.mockResolvedValue(parsingResult);
       repository.findConfigByVersionAndTransactionType.mockResolvedValue(null); // No version conflict
       repository.createConfig.mockResolvedValue(4);
       const configWithAutoPath = {
@@ -336,9 +470,7 @@ describe('ConfigService', () => {
           warnings: [],
         },
       };
-      payloadParsingService.parsePayloadToSchema.mockResolvedValue(
-        parsingResult,
-      );
+      mockParsePayloadToSchema.mockResolvedValue(parsingResult);
       const result = await service.createConfig(dto, 'test-tenant', 'user-123');
       expect(result.success).toBe(false);
       expect(result.message).toBe('Failed to parse payload');

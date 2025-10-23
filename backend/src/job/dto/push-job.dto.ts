@@ -3,21 +3,21 @@ import { IngestMode } from '../../utils/interfaces';
 import { Expose } from 'class-transformer';
 
 export class PushJob {
-    @Expose()
-    endpoint_name: string;
+  @Expose()
+  endpoint_name: string;
 
-    @Expose()
-    path: string;
+  @Expose()
+  path: string;
 
-    @Expose()
-    description: string;
+  @Expose()
+  description: string;
 
-    @Expose()
-    mode: IngestMode;
+  @Expose()
+  mode: IngestMode;
 
-    @Expose()
-    table_name: string;
+  @Expose()
+  table_name: string;
 
-    @Expose()
-    version: string
+  @Expose()
+  version: string;
 }

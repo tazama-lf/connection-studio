@@ -1,32 +1,42 @@
-import { Body, Controller, DefaultValuePipe, Get, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  DefaultValuePipe,
+  Get,
+  Param,
+  ParseIntPipe,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { SchedulerService } from './scheduler.service';
 import { CreateScheduleJobDto } from './dto/create-schedule.dto';
 import { UpdateScheduleJobDto } from './dto/update-schedule-dto';
 
 @Controller('scheduler')
 export class SchedulerController {
-    constructor(private readonly schedulerService: SchedulerService) { }
+  constructor(private readonly schedulerService: SchedulerService) {}
 
-    @Post('/create')
-    async createJob(@Body() schedule: CreateScheduleJobDto) {
-        return this.schedulerService.create(schedule);
-    }
+  @Post('/create')
+  async createJob(@Body() schedule: CreateScheduleJobDto) {
+    return this.schedulerService.create(schedule);
+  }
 
-    @Get('/all')
-    async getAll(
-        @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-        @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
-    ) {
-        return this.schedulerService.findAll(page, limit);
-    }
+  @Get('/all')
+  async getAll(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+  ) {
+    return this.schedulerService.findAll(page, limit);
+  }
 
-    @Patch('/update/:id')
-    async update(@Param('id') id: string, @Body() body: UpdateScheduleJobDto) {
-        return this.schedulerService.update(id, body);
-    }
+  @Patch('/update/:id')
+  async update(@Param('id') id: string, @Body() body: UpdateScheduleJobDto) {
+    return this.schedulerService.update(id, body);
+  }
 
-    @Get('/:id')
-    async getById(@Param('id') id: string) {
-        return this.schedulerService.findOne(id);
-    }
+  @Get('/:id')
+  async getById(@Param('id') id: string) {
+    return this.schedulerService.findOne(id);
+  }
 }
