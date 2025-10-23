@@ -43,13 +43,18 @@ export interface FieldMapping {
 
 export interface FunctionDefinition {
   params: string[]; // Array of parameter names
-  functionName: 'addAccountHolder' | 'addEntity' | 'addAccount'; // Only these three functions are allowed
+  functionName:
+    | 'addAccountHolder'
+    | 'addEntity'
+    | 'addAccount'
+    | 'transactionRelationship'; // Only these four functions are allowed
 }
 
 export type AllowedFunctionName =
   | 'addAccountHolder'
   | 'addEntity'
-  | 'addAccount';
+  | 'addAccount'
+  | 'transactionRelationship';
 
 export enum ContentType {
   JSON = 'application/json',

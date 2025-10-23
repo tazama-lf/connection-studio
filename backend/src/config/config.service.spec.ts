@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from './config.service';
 import { ConfigRepository } from './config.repository';
 import { ConfigWorkflowService } from './config-workflow.service';
-import { PayloadParsingService, JSONSchema } from '@tazama-lf/tcs-lib';
+import { JSONSchema } from '@tazama-lf/tcs-lib';
 import { AuditService } from '../audit/audit.service';
 import { JSONSchemaConverterService } from '../schemas/json-schema-converter.service';
 import { TazamaDataModelService } from '../tazama-data-model/tazama-data-model.service';
@@ -17,10 +17,27 @@ import {
   AllowedFunctionName,
 } from './config.interfaces';
 
+// Mock @tazama-lf/tcs-lib functions
+jest.mock('@tazama-lf/tcs-lib', () => ({
+  parsePayloadToSchema: jest.fn(),
+  applyFieldAdjustments: jest.fn(),
+  JSONSchema: {},
+  FieldType: {},
+  ContentType: {
+    JSON: 'application/json',
+    XML: 'application/xml',
+    YAML: 'application/yaml',
+  },
+}));
+
+import { parsePayloadToSchema, applyFieldAdjustments } from '@tazama-lf/tcs-lib';
+
+const mockParsePayloadToSchema = parsePayloadToSchema as jest.MockedFunction<typeof parsePayloadToSchema>;
+const mockApplyFieldAdjustments = applyFieldAdjustments as jest.MockedFunction<typeof applyFieldAdjustments>;
+
 describe('ConfigService', () => {
   let service: ConfigService;
   let repository: jest.Mocked<ConfigRepository>;
-  let payloadParsingService: jest.Mocked<PayloadParsingService>;
   let auditService: jest.Mocked<AuditService>;
   let jsonSchemaConverter: jest.Mocked<JSONSchemaConverterService>;
   const mockJSONSchema: JSONSchema = {
@@ -107,10 +124,6 @@ describe('ConfigService', () => {
           useValue: mockConfigRepository,
         },
         {
-          provide: PayloadParsingService,
-          useValue: mockPayloadParsingService,
-        },
-        {
           provide: AuditService,
           useValue: mockAuditService,
         },
@@ -130,9 +143,30 @@ describe('ConfigService', () => {
     }).compile();
     service = module.get<ConfigService>(ConfigService);
     repository = module.get(ConfigRepository);
-    payloadParsingService = module.get(PayloadParsingService);
     auditService = module.get(AuditService);
     jsonSchemaConverter = module.get(JSONSchemaConverterService);
+
+    // Set up default mock return values
+    mockParsePayloadToSchema.mockResolvedValue({
+      success: true,
+      jsonSchema: mockJSONSchema,
+      sourceFields: [],
+      metadata: {
+        totalFields: 4,
+        requiredFields: 1,
+        optionalFields: 3,
+        nestedLevels: 1,
+        originalSize: 100,
+        processingTime: 50,
+      },
+      validation: {
+        success: true,
+        errors: [],
+        warnings: [],
+      },
+    });
+    
+    mockApplyFieldAdjustments.mockReturnValue([]);
   });
   it('should be defined', () => {
     expect(service).toBeDefined();
@@ -162,9 +196,6 @@ describe('ConfigService', () => {
           warnings: [],
         },
       };
-      payloadParsingService.parsePayloadToSchema.mockResolvedValue(
-        parsingResult,
-      );
       repository.findConfigByVersionAndTransactionType.mockResolvedValue(null); // No version conflict
       repository.createConfig.mockResolvedValue(1);
       repository.findConfigById.mockResolvedValue(mockConfig);
@@ -205,7 +236,7 @@ describe('ConfigService', () => {
         },
         validation: { success: true, errors: [], warnings: [] },
       };
-      payloadParsingService.parsePayloadToSchema.mockResolvedValue(
+      mockParsePayloadToSchema.mockResolvedValue(
         parsingResult,
       );
       repository.findConfigByVersionAndTransactionType.mockResolvedValue(null); // No version conflict
@@ -250,7 +281,7 @@ describe('ConfigService', () => {
         },
         validation: { success: true, errors: [], warnings: [] },
       };
-      payloadParsingService.parsePayloadToSchema.mockResolvedValue(
+      mockParsePayloadToSchema.mockResolvedValue(
         parsingResult,
       );
       repository.findConfigByVersionAndTransactionType.mockResolvedValue(null); // No version conflict
@@ -288,7 +319,7 @@ describe('ConfigService', () => {
         },
         validation: { success: true, errors: [], warnings: [] },
       };
-      payloadParsingService.parsePayloadToSchema.mockResolvedValue(
+      mockParsePayloadToSchema.mockResolvedValue(
         parsingResult,
       );
       repository.findConfigByVersionAndTransactionType.mockResolvedValue(null); // No version conflict
@@ -336,7 +367,7 @@ describe('ConfigService', () => {
           warnings: [],
         },
       };
-      payloadParsingService.parsePayloadToSchema.mockResolvedValue(
+      mockParsePayloadToSchema.mockResolvedValue(
         parsingResult,
       );
       const result = await service.createConfig(dto, 'test-tenant', 'user-123');
@@ -694,7 +725,7 @@ describe('ConfigService', () => {
       await expect(
         service.addFunction(1, invalidFunctionDto, 'test-tenant', 'user-123'),
       ).rejects.toThrow(
-        'Invalid function name. Only the following functions are allowed: addAccountHolder, addEntity, addAccount',
+        'Invalid function name. Only the following functions are allowed: addAccountHolder, addEntity, addAccount, transactionRelationship',
       );
     });
   });
