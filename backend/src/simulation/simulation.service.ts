@@ -120,7 +120,7 @@ export class SimulationService {
       const schemaStage = this.stageValidateSchema(
         parsedPayload,
         config.schema,
-        config, // Pass the full config
+        config, 
       );
       stages.push(schemaStage);
 
@@ -337,11 +337,7 @@ export class SimulationService {
   /**
    * Stage 3: Validate Schema
    */
-  private stageValidateSchema(
-    payload: any,
-    schema: any,
-    config?: Config,
-  ): ValidationStage {
+  private stageValidateSchema(payload: any, schema: any, config?: Config): ValidationStage {
     const errors = this.validatePayloadAgainstSchema(payload, schema, config);
 
     if (errors.length > 0) {
@@ -800,30 +796,20 @@ export class SimulationService {
     if (strictSchema.type === 'array') {
       if (strictSchema.items) {
         if (typeof strictSchema.items === 'object') {
-          strictSchema.items = this.enforceStrictSchema(
-            strictSchema.items,
-            config,
-          );
+          strictSchema.items = this.enforceStrictSchema(strictSchema.items, config);
         }
       }
       return strictSchema;
     }
 
-    // Be more lenient with additional properties to support manually added fields
-    // Override additionalProperties to true unless it was explicitly set to false in config
     if (strictSchema.type === 'object') {
-      // Always allow additional properties to support schema evolution and manually added fields
-      // This is more permissive than the original approach
       strictSchema.additionalProperties = true;
     }
 
     if (strictSchema.properties) {
       strictSchema.properties = Object.keys(strictSchema.properties).reduce(
         (acc, key) => {
-          acc[key] = this.enforceStrictSchema(
-            strictSchema.properties[key],
-            config,
-          );
+          acc[key] = this.enforceStrictSchema(strictSchema.properties[key], config);
           return acc;
         },
         {} as any,

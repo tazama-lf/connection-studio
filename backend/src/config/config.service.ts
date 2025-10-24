@@ -146,14 +146,9 @@ export class ConfigService {
         };
       }
 
-      // Check for duplicate fields in the schema
-      const duplicateErrors =
-        this.validateNoDuplicateSchemaFields(sourceFields);
+      const duplicateErrors = this.validateNoDuplicateSchemaFields(sourceFields);
       if (duplicateErrors.length > 0) {
-        this.logger.error(
-          'Duplicate fields detected in schema',
-          duplicateErrors,
-        );
+        this.logger.error('Duplicate fields detected in schema', duplicateErrors);
         return {
           success: false,
           message: 'Schema contains duplicate fields',
@@ -165,7 +160,6 @@ export class ConfigService {
         };
       }
 
-      // Apply field adjustments if provided
       if (dto.fieldAdjustments && dto.fieldAdjustments.length > 0) {
         this.logger.log(
           `Applying ${dto.fieldAdjustments.length} field adjustments`,
@@ -483,14 +477,9 @@ export class ConfigService {
         dto.fieldAdjustments,
       );
 
-      // Check for duplicate fields after adjustments
-      const duplicateErrors =
-        this.validateNoDuplicateSchemaFields(adjustedSourceFields);
+      const duplicateErrors = this.validateNoDuplicateSchemaFields(adjustedSourceFields);
       if (duplicateErrors.length > 0) {
-        this.logger.error(
-          'Duplicate fields detected after field adjustments',
-          duplicateErrors,
-        );
+        this.logger.error('Duplicate fields detected after field adjustments', duplicateErrors);
         return {
           success: false,
           message: 'Field adjustments resulted in duplicate fields',
@@ -722,6 +711,7 @@ export class ConfigService {
     const newMapping = this.createMappingFromDto(mappingDto);
     this.validateMapping(newMapping, config.schema, tenantId);
 
+
     const updatedMappings = [...(config.mapping || []), newMapping];
 
     await this.configRepository.updateConfig(id, tenantId, {
@@ -811,6 +801,8 @@ export class ConfigService {
 
     const updatedMapping = this.createMappingFromDto(mappingDto);
     this.validateMapping(updatedMapping, config.schema, tenantId);
+
+   
 
     const updatedMappings = [...config.mapping];
     updatedMappings[mappingIndex] = updatedMapping;
@@ -1073,7 +1065,7 @@ export class ConfigService {
 
     for (let i = 0; i < sourceFields.length; i++) {
       const field = sourceFields[i];
-
+      
       if (!field.name || !field.path) {
         continue; // Skip invalid fields
       }
