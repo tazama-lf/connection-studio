@@ -1,12 +1,15 @@
 import React from 'react';
 import { X, Calendar, Clock, Play, Pause } from 'lucide-react';
 import type { ScheduleResponse } from '../../data-enrichment/types';
+import { Button } from '../../../shared/components/Button';
 
 interface CronJobDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
   schedule: ScheduleResponse | null;
   isLoading?: boolean;
+  onActivate?: (scheduleId: string) => void;
+  onDeactivate?: (scheduleId: string) => void;
 }
 
 const CronJobDetailsModal: React.FC<CronJobDetailsModalProps> = ({
@@ -14,6 +17,8 @@ const CronJobDetailsModal: React.FC<CronJobDetailsModalProps> = ({
   onClose,
   schedule,
   isLoading = false,
+  onActivate,
+  onDeactivate,
 }) => {
   if (!isOpen) return null;
 
@@ -226,6 +231,43 @@ const CronJobDetailsModal: React.FC<CronJobDetailsModalProps> = ({
             </div>
           )}
         </div>
+
+        {/* Action Buttons Footer */}
+        {schedule && !isLoading && (
+          <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
+            <Button
+              variant="secondary"
+              onClick={onClose}
+            >
+              Close
+            </Button>
+            {schedule.schedule_status === 'inactive' && onActivate && (
+              <Button
+                variant="primary"
+                onClick={() => {
+                  onActivate(schedule.id);
+                  onClose();
+                }}
+                className="bg-green-600 hover:bg-green-700 text-white"
+              >
+                <Play size={16} className="mr-2" />
+                Activate Schedule
+              </Button>
+            )}
+            {schedule.schedule_status === 'active' && onDeactivate && (
+              <Button
+                variant="danger"
+                onClick={() => {
+                  onDeactivate(schedule.id);
+                  onClose();
+                }}
+              >
+                <Pause size={16} className="mr-2" />
+                Deactivate Schedule
+              </Button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

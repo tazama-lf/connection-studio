@@ -16,8 +16,8 @@ import { RejectionDialog } from '../../../shared/components/RejectionDialog';
 import { ConfigReviewModal } from '../../../shared/components/ConfigReviewModal';
 import { ChangeRequestDialog } from '../../../shared/components/ChangeRequestDialog';
 import { useAuth } from '../../auth/contexts/AuthContext';
-import { CronJobApproverList } from './CronJobApproverList';
-import CronJobDetailsModal from './CronJobDetailsModal';
+import { CronJobApproverList } from '../components/CronJobApproverList';
+import CronJobDetailsModal from '../components/CronJobDetailsModal';
 import type { ScheduleResponse } from '../../data-enrichment/types';
 
 const ApproverModule: React.FC = () => {
@@ -165,6 +165,32 @@ const ApproverModule: React.FC = () => {
       showError('Failed to load cron job details');
     } finally {
       setCronJobDetailsLoading(false);
+    }
+  };
+
+  const handleActivateCronJob = async (scheduleId: string) => {
+    try {
+      await dataEnrichmentApi.updateSchedule(scheduleId, {
+        schedule_status: 'active'
+      });
+      showSuccess('Cron job activated successfully');
+      handleCronJobRefresh();
+    } catch (error) {
+      console.error('Failed to activate cron job:', error);
+      showError('Failed to activate cron job');
+    }
+  };
+
+  const handleDeactivateCronJob = async (scheduleId: string) => {
+    try {
+      await dataEnrichmentApi.updateSchedule(scheduleId, {
+        schedule_status: 'inactive'
+      });
+      showSuccess('Cron job deactivated successfully');
+      handleCronJobRefresh();
+    } catch (error) {
+      console.error('Failed to deactivate cron job:', error);
+      showError('Failed to deactivate cron job');
     }
   };
 
@@ -578,6 +604,8 @@ const ApproverModule: React.FC = () => {
           onClose={handleCloseCronJobDetails}
           schedule={selectedSchedule}
           isLoading={cronJobDetailsLoading}
+          onActivate={handleActivateCronJob}
+          onDeactivate={handleDeactivateCronJob}
         />
       )}
     </div>

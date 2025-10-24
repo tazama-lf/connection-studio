@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
-import { Eye, Play, MoreVertical, ChevronDown, FilterIcon } from 'lucide-react';
+import { Eye, MoreVertical, ChevronDown, FilterIcon } from 'lucide-react';
 import type { ScheduleResponse } from '../../data-enrichment/types';
 import { Button } from '../../../shared/components/Button';
-import { dataEnrichmentApi } from '../../data-enrichment/services/dataEnrichmentApi';
-import { useToast } from '../../../shared/providers/ToastProvider';
 import { useAuth } from '../../auth/contexts/AuthContext';
 import { isApprover } from '../../../utils/roleUtils';
 import { DropdownMenuWithAutoDirection } from '../../data-enrichment/components/DropdownMenuWithAutoDirection';
@@ -67,47 +65,8 @@ export const CronJobApproverList: React.FC<CronJobApproverListProps> = (props) =
   const { user } = useAuth();
   const userIsApprover = user?.claims ? isApprover(user.claims) : false;
 
-  const { showSuccess, showError } = useToast();
   const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
-  const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
-
-  // Close dropdowns when clicking outside
-  React.useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-
-      // Don't close if clicking on dropdown buttons or dropdown content
-      if (target.closest('.filter-dropdown') || target.closest('.dropdown-menu') || target.closest('.actions-dropdown')) {
-        return;
-      }
-
-      setStatusDropdownOpen(false);
-      setDropdownOpen(null);
-    };
-
-    if (statusDropdownOpen || dropdownOpen) {
-      document.addEventListener('click', handleClickOutside);
-      return () => document.removeEventListener('click', handleClickOutside);
-    }
-  }, [statusDropdownOpen, dropdownOpen]);
-
-  const handleStatusUpdate = async (scheduleId: string, newStatus: ScheduleStatus) => {
-    try {
-      console.log(`Updating schedule ${scheduleId} status to ${newStatus}`);
-
-      await dataEnrichmentApi.updateSchedule(scheduleId, {
-        schedule_status: newStatus
-      });
-
-      showSuccess(`Schedule status updated to ${newStatus}`);
-      onRefresh?.();
-    } catch (error) {
-      console.error('Failed to update schedule status:', error);
-      showError('Failed to update schedule status');
-    }
-  };
-
-  if (isLoading) {
+  const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);  if (isLoading) {
     return (
       <div className="flex justify-center items-center py-8">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -362,41 +321,6 @@ export const CronJobApproverList: React.FC<CronJobApproverListProps> = (props) =
                               >
                                 <Eye className="w-4 h-4 mr-2" />
                                 View Details
-                              </button>
-
-                              {/* Activation Controls */}
-                              <hr className="my-1 border-gray-100" />
-                              <button
-                                onClick={() => {
-                                  handleStatusUpdate(schedule.id, 'active');
-                                  setDropdownOpen(null);
-                                }}
-                                disabled={displayStatus === 'active'}
-                                className={`flex items-center w-full px-4 py-2 text-sm hover:bg-gray-100 ${
-                                  displayStatus === 'active'
-                                    ? 'text-gray-400 cursor-not-allowed'
-                                    : 'text-gray-700'
-                                }`}
-                              >
-                                <Play className="w-4 h-4 mr-2" />
-                                Activate
-                              </button>
-                              <button
-                                onClick={() => {
-                                  handleStatusUpdate(schedule.id, 'inactive');
-                                  setDropdownOpen(null);
-                                }}
-                                disabled={displayStatus === 'inactive'}
-                                className={`flex items-center w-full px-4 py-2 text-sm hover:bg-gray-100 ${
-                                  displayStatus === 'inactive'
-                                    ? 'text-gray-400 cursor-not-allowed'
-                                    : 'text-gray-700'
-                                }`}
-                              >
-                                <div className="w-4 h-4 mr-2 flex items-center justify-center">
-                                  <span>⏸</span>
-                                </div>
-                                Deactivate
                               </button>
                             </div>
                           </DropdownMenuWithAutoDirection>
