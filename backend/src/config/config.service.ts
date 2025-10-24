@@ -146,6 +146,25 @@ export class ConfigService {
         };
       }
 
+      // Check for duplicate fields in the schema
+      const duplicateErrors =
+        this.validateNoDuplicateSchemaFields(sourceFields);
+      if (duplicateErrors.length > 0) {
+        this.logger.error(
+          'Duplicate fields detected in schema',
+          duplicateErrors,
+        );
+        return {
+          success: false,
+          message: 'Schema contains duplicate fields',
+          validation: {
+            success: false,
+            errors: duplicateErrors,
+            warnings: [],
+          },
+        };
+      }
+
       // Apply field adjustments if provided
       if (dto.fieldAdjustments && dto.fieldAdjustments.length > 0) {
         this.logger.log(
@@ -463,6 +482,25 @@ export class ConfigService {
         existingSourceFields,
         dto.fieldAdjustments,
       );
+
+      // Check for duplicate fields after adjustments
+      const duplicateErrors =
+        this.validateNoDuplicateSchemaFields(adjustedSourceFields);
+      if (duplicateErrors.length > 0) {
+        this.logger.error(
+          'Duplicate fields detected after field adjustments',
+          duplicateErrors,
+        );
+        return {
+          success: false,
+          message: 'Field adjustments resulted in duplicate fields',
+          validation: {
+            success: false,
+            errors: duplicateErrors,
+            warnings: [],
+          },
+        };
+      }
 
       // Regenerate JSON schema with adjusted fields
       finalSchema =
@@ -1026,6 +1064,36 @@ export class ConfigService {
       errors,
       warnings,
     };
+  }
+
+  private validateNoDuplicateSchemaFields(sourceFields: any[]): string[] {
+    const errors: string[] = [];
+    const seenNames = new Set<string>();
+    const seenPaths = new Set<string>();
+
+    for (let i = 0; i < sourceFields.length; i++) {
+      const field = sourceFields[i];
+
+      if (!field.name || !field.path) {
+        continue; // Skip invalid fields
+      }
+
+      // Check for duplicate field names
+      if (seenNames.has(field.name)) {
+        errors.push(`Duplicate field name '${field.name}' found in schema`);
+      } else {
+        seenNames.add(field.name);
+      }
+
+      // Check for duplicate field paths
+      if (seenPaths.has(field.path)) {
+        errors.push(`Duplicate field path '${field.path}' found in schema`);
+      } else {
+        seenPaths.add(field.path);
+      }
+    }
+
+    return errors;
   }
 
   private createMappingFromDto(dto: AddMappingDto): FieldMapping {

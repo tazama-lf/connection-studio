@@ -453,6 +453,118 @@ describe('ConfigService', () => {
       );
       expect(repository.createConfig).not.toHaveBeenCalled();
     });
+
+    it('should detect duplicate field names in schema', async () => {
+      const dto: CreateConfigDto = {
+        msgFam: 'pain.001',
+        transactionType: 'Payments',
+        payload: '{"amount":100,"currency":"USD"}',
+      };
+
+      const parsingResultWithDuplicates = {
+        success: true,
+        sourceFields: [
+          {
+            name: 'amount',
+            path: 'amount',
+            type: FieldType.NUMBER,
+            isRequired: true,
+          },
+          {
+            name: 'amount', // Duplicate name
+            path: 'totalAmount',
+            type: FieldType.NUMBER,
+            isRequired: false,
+          },
+          {
+            name: 'currency',
+            path: 'currency',
+            type: FieldType.STRING,
+            isRequired: false,
+          },
+        ],
+        jsonSchema: mockJSONSchema,
+        metadata: {
+          totalFields: 3,
+          requiredFields: 1,
+          optionalFields: 2,
+          nestedLevels: 1,
+          originalSize: 100,
+          processingTime: 50,
+        },
+        validation: { success: true, errors: [], warnings: [] },
+      };
+
+      mockParsePayloadToSchema.mockResolvedValue(parsingResultWithDuplicates);
+      repository.findConfigByVersionAndTransactionType.mockResolvedValue(null);
+
+      const result = await service.createConfig(dto, 'test-tenant', 'user-123');
+
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('Schema contains duplicate fields');
+      expect(result.validation?.errors).toContain(
+        // eslint-disable-next-line quotes
+        "Duplicate field name 'amount' found in schema",
+      );
+      expect(repository.createConfig).not.toHaveBeenCalled();
+    });
+
+    it('should detect duplicate field paths in schema', async () => {
+      const dto: CreateConfigDto = {
+        msgFam: 'pain.001',
+        transactionType: 'Payments',
+        payload: '{"amount":100,"currency":"USD"}',
+      };
+
+      const parsingResultWithDuplicatePaths = {
+        success: true,
+        sourceFields: [
+          {
+            name: 'amount',
+            path: 'payment.amount',
+            type: FieldType.NUMBER,
+            isRequired: true,
+          },
+          {
+            name: 'totalAmount',
+            path: 'payment.amount', // Duplicate path
+            type: FieldType.NUMBER,
+            isRequired: false,
+          },
+          {
+            name: 'currency',
+            path: 'currency',
+            type: FieldType.STRING,
+            isRequired: false,
+          },
+        ],
+        jsonSchema: mockJSONSchema,
+        metadata: {
+          totalFields: 3,
+          requiredFields: 1,
+          optionalFields: 2,
+          nestedLevels: 1,
+          originalSize: 100,
+          processingTime: 50,
+        },
+        validation: { success: true, errors: [], warnings: [] },
+      };
+
+      mockParsePayloadToSchema.mockResolvedValue(
+        parsingResultWithDuplicatePaths,
+      );
+      repository.findConfigByVersionAndTransactionType.mockResolvedValue(null);
+
+      const result = await service.createConfig(dto, 'test-tenant', 'user-123');
+
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('Schema contains duplicate fields');
+      expect(result.validation?.errors).toContain(
+        // eslint-disable-next-line quotes
+        "Duplicate field path 'payment.amount' found in schema",
+      );
+      expect(repository.createConfig).not.toHaveBeenCalled();
+    });
   });
   describe('getConfigById', () => {
     it('should return config by ID', async () => {

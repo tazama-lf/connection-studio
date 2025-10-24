@@ -120,6 +120,7 @@ export class SimulationService {
       const schemaStage = this.stageValidateSchema(
         parsedPayload,
         config.schema,
+        config, // Pass the full config
       );
       stages.push(schemaStage);
 
@@ -336,8 +337,12 @@ export class SimulationService {
   /**
    * Stage 3: Validate Schema
    */
-  private stageValidateSchema(payload: any, schema: any): ValidationStage {
-    const errors = this.validatePayloadAgainstSchema(payload, schema);
+  private stageValidateSchema(
+    payload: any,
+    schema: any,
+    config?: Config,
+  ): ValidationStage {
+    const errors = this.validatePayloadAgainstSchema(payload, schema, config);
 
     if (errors.length > 0) {
       return {
@@ -623,6 +628,7 @@ export class SimulationService {
   private validatePayloadAgainstSchema(
     payload: any,
     schema: any,
+    config?: Config,
   ): SimulationError[] {
     this.logger.debug('Validating payload against schema');
     this.logger.debug(`Schema: ${JSON.stringify(schema).substring(0, 500)}...`);
@@ -652,7 +658,7 @@ export class SimulationService {
         validateFormats: false,
       });
 
-      const schemaWithStrict = this.enforceStrictSchema(schema);
+      const schemaWithStrict = this.enforceStrictSchema(schema, config);
 
       this.logger.log(`Original schema: ${JSON.stringify(schema)}`);
       this.logger.log(`Strict schema: ${JSON.stringify(schemaWithStrict)}`);
@@ -784,7 +790,7 @@ export class SimulationService {
     return _.get(obj, normalizedPath);
   }
 
-  private enforceStrictSchema(schema: any): any {
+  private enforceStrictSchema(schema: any, config?: Config): any {
     if (!schema || typeof schema !== 'object') {
       return schema;
     }
@@ -794,23 +800,30 @@ export class SimulationService {
     if (strictSchema.type === 'array') {
       if (strictSchema.items) {
         if (typeof strictSchema.items === 'object') {
-          strictSchema.items = this.enforceStrictSchema(strictSchema.items);
+          strictSchema.items = this.enforceStrictSchema(
+            strictSchema.items,
+            config,
+          );
         }
       }
       return strictSchema;
     }
 
-    if (
-      strictSchema.type === 'object' &&
-      strictSchema.additionalProperties === undefined
-    ) {
-      strictSchema.additionalProperties = false;
+    // Be more lenient with additional properties to support manually added fields
+    // Override additionalProperties to true unless it was explicitly set to false in config
+    if (strictSchema.type === 'object') {
+      // Always allow additional properties to support schema evolution and manually added fields
+      // This is more permissive than the original approach
+      strictSchema.additionalProperties = true;
     }
 
     if (strictSchema.properties) {
       strictSchema.properties = Object.keys(strictSchema.properties).reduce(
         (acc, key) => {
-          acc[key] = this.enforceStrictSchema(strictSchema.properties[key]);
+          acc[key] = this.enforceStrictSchema(
+            strictSchema.properties[key],
+            config,
+          );
           return acc;
         },
         {} as any,
@@ -818,22 +831,22 @@ export class SimulationService {
     }
 
     if (strictSchema.items && strictSchema.type !== 'array') {
-      strictSchema.items = this.enforceStrictSchema(strictSchema.items);
+      strictSchema.items = this.enforceStrictSchema(strictSchema.items, config);
     }
 
     if (strictSchema.oneOf) {
       strictSchema.oneOf = strictSchema.oneOf.map((s: any) =>
-        this.enforceStrictSchema(s),
+        this.enforceStrictSchema(s, config),
       );
     }
     if (strictSchema.anyOf) {
       strictSchema.anyOf = strictSchema.anyOf.map((s: any) =>
-        this.enforceStrictSchema(s),
+        this.enforceStrictSchema(s, config),
       );
     }
     if (strictSchema.allOf) {
       strictSchema.allOf = strictSchema.allOf.map((s: any) =>
-        this.enforceStrictSchema(s),
+        this.enforceStrictSchema(s, config),
       );
     }
 
