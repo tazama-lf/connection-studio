@@ -23,7 +23,10 @@ export class ConfigWorkflowService {
       [ConfigStatus.APPROVED]: [ConfigStatus.DEPLOYED],
       [ConfigStatus.DEPLOYED]: [],
       [ConfigStatus.REJECTED]: [ConfigStatus.IN_PROGRESS],
-      [ConfigStatus.CHANGES_REQUESTED]: [ConfigStatus.IN_PROGRESS],
+      [ConfigStatus.CHANGES_REQUESTED]: [
+        ConfigStatus.IN_PROGRESS,
+        ConfigStatus.UNDER_REVIEW,
+      ],
     };
 
     const allowedTransitions = validTransitions[fromStatus];

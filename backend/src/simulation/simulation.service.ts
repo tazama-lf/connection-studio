@@ -526,6 +526,18 @@ export class SimulationService {
         }
       }
 
+      // If no TCS result available, show the transformed preview value
+      if (resultValue === null) {
+        resultValue = this.applyTransformation(
+          sourceValues,
+          mapping.transformation,
+          mapping.delimiter,
+          mapping.constantValue,
+          mapping.operator,
+          mapping.prefix,
+        );
+      }
+
       details.push({
         destination: destination || '',
         sources,
@@ -550,6 +562,83 @@ export class SimulationService {
     return normalizedPath.split('.').reduce((current, key) => {
       return current && current[key] !== undefined ? current[key] : undefined;
     }, obj);
+  }
+
+  /**
+   * Apply transformation to source values to show preview of what the result would be
+   */
+  private applyTransformation(
+    sourceValues: any[],
+    transformation: string | undefined,
+    delimiter?: string,
+    constantValue?: any,
+    operator?: string,
+    prefix?: string,
+  ): any {
+    if (!transformation || transformation === 'NONE') {
+      // For no transformation, return first source value with prefix if applicable
+      const value = sourceValues[0];
+      return prefix ? `${prefix}${value}` : value;
+    }
+
+    switch (transformation) {
+      case 'CONSTANT':
+        return constantValue;
+
+      case 'CONCAT':
+        const values = sourceValues.filter(
+          (v) => v !== undefined && v !== null,
+        );
+        const concatenated = values.join(delimiter || ' ');
+        return prefix ? `${prefix}${concatenated}` : concatenated;
+
+      case 'SUM':
+        const numericValues = sourceValues
+          .map((v) => parseFloat(v))
+          .filter((v) => !isNaN(v));
+        const sum = numericValues.reduce((acc, val) => acc + val, 0);
+        return prefix ? `${prefix}${sum}` : sum;
+
+      case 'MATH':
+        if (sourceValues.length >= 2 && operator) {
+          const val1 = parseFloat(sourceValues[0]);
+          const val2 = parseFloat(sourceValues[1]);
+          if (!isNaN(val1) && !isNaN(val2)) {
+            let result: number;
+            switch (operator) {
+              case 'ADD':
+                result = val1 + val2;
+                break;
+              case 'SUBTRACT':
+                result = val1 - val2;
+                break;
+              case 'MULTIPLY':
+                result = val1 * val2;
+                break;
+              case 'DIVIDE':
+                result = val2 !== 0 ? val1 / val2 : 0;
+                break;
+              default:
+                result = val1;
+            }
+            return prefix ? `${prefix}${result}` : result;
+          }
+        }
+        return sourceValues[0];
+
+      case 'SPLIT':
+        // For split transformation, this would be shown in preview
+        // but actual implementation would depend on how many destinations there are
+        const splitValue = sourceValues[0];
+        if (typeof splitValue === 'string' && delimiter) {
+          const parts = splitValue.split(delimiter);
+          return prefix ? `${prefix}${parts[0]}` : parts[0]; // Show first part in preview
+        }
+        return prefix ? `${prefix}${splitValue}` : splitValue;
+
+      default:
+        return sourceValues[0];
+    }
   }
 
   /**

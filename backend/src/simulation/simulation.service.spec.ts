@@ -159,4 +159,141 @@ describe('SimulationService', () => {
       expect(configStage?.message).toContain('Configuration not found');
     });
   });
+
+  describe('Transformation Preview', () => {
+    it('should show transformed values in simulation preview', async () => {
+      const configWithTransformations: Config = {
+        ...mockConfig,
+        mapping: [
+          {
+            source: ['firstName', 'lastName'],
+            destination: 'fullName',
+            transformation: 'CONCAT',
+            delimiter: ' ',
+          },
+          {
+            source: ['price', 'quantity'],
+            destination: 'totalAmount',
+            transformation: 'MATH',
+            operator: 'MULTIPLY',
+          },
+          {
+            source: ['amount'],
+            destination: 'formattedAmount',
+            transformation: 'NONE',
+            prefix: '$',
+          },
+          {
+            destination: 'category',
+            transformation: 'CONSTANT',
+            constantValue: 'payment',
+          },
+          {
+            source: ['item1', 'item2', 'item3'],
+            destination: 'itemsList',
+            transformation: 'CONCAT',
+            delimiter: ', ',
+          },
+          {
+            source: ['value1', 'value2'],
+            destination: 'sumTotal',
+            transformation: 'SUM',
+          },
+        ],
+        schema: {
+          type: 'object',
+          properties: {
+            firstName: { type: 'string' },
+            lastName: { type: 'string' },
+            price: { type: 'number' },
+            quantity: { type: 'number' },
+            amount: { type: 'number' },
+            item1: { type: 'string' },
+            item2: { type: 'string' },
+            item3: { type: 'string' },
+            value1: { type: 'number' },
+            value2: { type: 'number' },
+          },
+          required: [],
+          additionalProperties: false,
+        },
+      };
+
+      configRepository.findConfigById.mockResolvedValue(
+        configWithTransformations,
+      );
+
+      const dto = {
+        endpointId: 1,
+        payloadType: 'application/json' as const,
+        payload: {
+          firstName: 'John',
+          lastName: 'Doe',
+          price: 10.5,
+          quantity: 3,
+          amount: 100,
+          item1: 'apple',
+          item2: 'banana',
+          item3: 'orange',
+          value1: 25,
+          value2: 15,
+        },
+      };
+
+      const result = await service.simulateMapping(
+        dto,
+        'test-tenant',
+        'user-123',
+      );
+
+      expect(result.status).toBe('PASSED');
+
+      // Check that transformedPayload contains mapping details
+      expect(result.transformedPayload).toBeDefined();
+      expect(result.transformedPayload.mappings).toBeDefined();
+
+      const mappingDetails = result.transformedPayload.mappings;
+
+      // Check CONCAT transformation
+      const concatMapping = mappingDetails?.find(
+        (detail) => detail.destination === 'fullName',
+      );
+      expect(concatMapping?.resultValue).toBe('John Doe');
+      expect(concatMapping?.transformation).toBe('CONCAT');
+
+      // Check MATH transformation
+      const mathMapping = mappingDetails?.find(
+        (detail) => detail.destination === 'totalAmount',
+      );
+      expect(mathMapping?.resultValue).toBe(31.5); // 10.5 * 3
+      expect(mathMapping?.transformation).toBe('MATH');
+
+      // Check prefix transformation
+      const prefixMapping = mappingDetails?.find(
+        (detail) => detail.destination === 'formattedAmount',
+      );
+      expect(prefixMapping?.resultValue).toBe('$100');
+      expect(prefixMapping?.transformation).toBe('NONE');
+
+      // Check CONSTANT transformation
+      const constantMapping = mappingDetails?.find(
+        (detail) => detail.destination === 'category',
+      );
+      expect(constantMapping?.resultValue).toBe('payment');
+      expect(constantMapping?.transformation).toBe('CONSTANT');
+
+      // Check multi-value CONCAT
+      const itemsMapping = mappingDetails?.find(
+        (detail) => detail.destination === 'itemsList',
+      );
+      expect(itemsMapping?.resultValue).toBe('apple, banana, orange');
+
+      // Check SUM transformation
+      const sumMapping = mappingDetails?.find(
+        (detail) => detail.destination === 'sumTotal',
+      );
+      expect(sumMapping?.resultValue).toBe(40); // 25 + 15
+      expect(sumMapping?.transformation).toBe('SUM');
+    });
+  });
 });
