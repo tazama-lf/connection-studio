@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { PlayIcon, PauseIcon, EditIcon, EyeIcon, XIcon, ChevronDownIcon } from 'lucide-react';
-import SearchBar from '../../../shared/components/SearchBar';
+import { PlayIcon, PauseIcon, EditIcon, EyeIcon, XIcon, MoreVerticalIcon } from 'lucide-react';
 import { dataEnrichmentApi } from '../../data-enrichment/services';
 import type { ScheduleResponse } from '../../data-enrichment/types';
 import { useToast } from '../../../shared/providers/ToastProvider';
-import { Button } from '../../../shared/components/Button';
 import { UI_CONFIG } from '../../../shared/config/app.config';
 
-export const CronJobList: React.FC = () => {
-  const [searchTerm, setSearchTerm] = useState('');
+interface CronJobListProps {
+  searchTerm?: string;
+}
+
+export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => {
   const [schedules, setSchedules] = useState<ScheduleResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -31,7 +32,7 @@ export const CronJobList: React.FC = () => {
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(UI_CONFIG.pagination.defaultPageSize);
-  const [openDropdown, setOpenDropdown] = useState<number | null>(null);
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
 
   // Load schedules on component mount
   useEffect(() => {
@@ -113,7 +114,7 @@ export const CronJobList: React.FC = () => {
         iterations: schedule.iterations,
         schedule_status: newStatus,
         start_date: schedule.start_date,
-        end_date: schedule.end_date,
+        end_date: schedule.end_date || undefined,
       });
       
       showSuccess(`Schedule ${newStatus === 'active' ? 'activated' : 'de-activated'} successfully`);
@@ -142,7 +143,7 @@ export const CronJobList: React.FC = () => {
   };
 
   // Format date for display
-  const formatDate = (dateString: string | undefined) => {
+  const formatDate = (dateString: string | null | undefined) => {
     if (!dateString) return 'N/A';
     try {
       return new Date(dateString).toLocaleString();
@@ -152,40 +153,34 @@ export const CronJobList: React.FC = () => {
   };
 
   return <div data-id="element-116">
-      <div className="flex justify-between items-center mb-6" data-id="element-117">
-        <h2 className="text-xl font-semibold text-gray-800" data-id="element-118">
-          Manage Schedules
-        </h2>
-        <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} placeholder="Search schedules..." data-id="element-119" />
-      </div>
-      <div className="bg-white shadow overflow-hidden rounded-md" data-id="element-120">
-        <table className="min-w-full divide-y divide-gray-200" data-id="element-121">
+      <div className="shadow overflow-hidden rounded-lg border border-gray-200" data-id="element-120">
+        <table className="min-w-full" data-id="element-121">
           <thead className="bg-gray-50" data-id="element-122">
             <tr data-id="element-123">
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" data-id="element-124">
+              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" data-id="element-124">
                 Schedule Name
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" data-id="element-125">
+              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" data-id="element-125">
                 CRON Expression
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" data-id="element-127">
+              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" data-id="element-127">
                 Status
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" data-id="element-128">
+              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" data-id="element-128">
                 Iterations
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                 Start Date
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                 End Date
               </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider" data-id="element-129">
+              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" data-id="element-129">
                 Actions
               </th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="bg-white">
             {loading ? (
               <tr>
                 <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
@@ -206,57 +201,57 @@ export const CronJobList: React.FC = () => {
               </tr>
             ) : (
               paginatedSchedules.map(schedule => (
-                  <tr key={schedule.id} className="hover:bg-gray-50">
-                    <td className="px-6 
-                    py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  <tr key={schedule.id} className="border-b border-gray-200 hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {schedule.name}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {schedule.cron}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        schedule.schedule_status === 'active' ? 'bg-green-100 text-green-800' :
-                        'bg-gray-100 text-gray-800'
+                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
+                        schedule.schedule_status === 'active' 
+                          ? 'bg-green-50 text-green-600 border border-green-200' 
+                          : 'bg-gray-50 text-gray-600 border border-gray-200'
                       }`}>
-                        {schedule.schedule_status}
+                        <span className="w-2 h-2 rounded-full bg-current mr-2"></span>
+                        {schedule.schedule_status.toUpperCase()}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                       {schedule.iterations} iterations
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                       {formatDate(schedule.start_date)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                       {formatDate(schedule.end_date)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex justify-end items-center space-x-3">
-                        <button
-                          onClick={() => handleView(schedule)}
-                          className="flex items-center text-sm text-gray-500 hover:text-gray-700 font-medium"
-                        >
-                          <EyeIcon className="w-4 h-4 mr-1" />
-                          View
-                        </button>
-                        <div className="relative dropdown-container" onClick={(e) => e.stopPropagation()}>
-                          <Button
-                            variant="primary"
-                            size="sm"
-                            className="px-3 py-1.5 flex items-center text-sm font-medium"
-                            onClick={() => {
-                              setOpenDropdown(openDropdown === schedule.id ? null : schedule.id);
-                            }}
+                      <div className="flex justify-end items-center">
+                        {/* Actions dropdown with three-dot menu */}
+                        <div className="relative dropdown-container">
+                          <button
+                            onClick={() => setOpenDropdown(openDropdown === schedule.id ? null : schedule.id)}
+                            className="p-1 text-gray-400 hover:text-gray-600 rounded-md hover:bg-gray-100"
                           >
-                            Actions
-                            <ChevronDownIcon className="w-4 h-4 ml-1" />
-                          </Button>
+                            <MoreVerticalIcon className="w-4 h-4" />
+                          </button>
                           
                           {/* Dropdown Menu */}
                           {openDropdown === schedule.id && (
-                            <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
+                            <div className="absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-10">
                               <div className="py-1">
+                                <button
+                                  onClick={() => {
+                                    setOpenDropdown(null);
+                                    handleView(schedule);
+                                  }}
+                                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                >
+                                  <EyeIcon className="w-4 h-4 mr-2" />
+                                  View
+                                </button>
                                 <button
                                   onClick={() => {
                                     setOpenDropdown(null);
@@ -265,7 +260,7 @@ export const CronJobList: React.FC = () => {
                                   className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                                 >
                                   <EditIcon className="w-4 h-4 mr-2" />
-                                  Edit Schedule
+                                  Edit
                                 </button>
                                 {schedule.schedule_status === 'active' ? (
                                   <button
@@ -276,7 +271,7 @@ export const CronJobList: React.FC = () => {
                                     className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                                   >
                                     <PauseIcon className="w-4 h-4 mr-2" />
-                                    Deactivate Schedule
+                                    Deactivate
                                   </button>
                                 ) : (
                                   <button
@@ -287,7 +282,7 @@ export const CronJobList: React.FC = () => {
                                     className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                                   >
                                     <PlayIcon className="w-4 h-4 mr-2" />
-                                    Activate Schedule
+                                    Activate
                                   </button>
                                 )}
                               </div>
@@ -309,23 +304,23 @@ export const CronJobList: React.FC = () => {
           <div className="text-sm text-gray-700">
             Showing {startIndex + 1} to {Math.min(endIndex, totalFilteredItems)} of {totalFilteredItems} results
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-3">
             <button
               onClick={handlePreviousPage}
               disabled={currentPage === 1}
-              className="px-3 py-1 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+              className="px-4 py-2 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 flex items-center"
             >
-              Previous
+              ← Previous
             </button>
-            <span className="text-sm text-gray-700">
+            <span className="text-sm text-gray-700 px-2">
               Page {currentPage} of {totalPages}
             </span>
             <button
               onClick={handleNextPage}
               disabled={currentPage === totalPages}
-              className="px-3 py-1 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+              className="px-4 py-2 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 flex items-center"
             >
-              Next
+              Next →
             </button>
           </div>
         </div>
@@ -333,8 +328,15 @@ export const CronJobList: React.FC = () => {
 
     {/* View Modal */}
     {viewModalOpen && selectedSchedule && (
-      <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-        <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        {/* Enhanced blurred backdrop */}
+        <div 
+          className="fixed inset-0 backdrop-blur-sm backdrop-saturate-150 z-40" 
+          onClick={() => setViewModalOpen(false)}
+        />
+        
+        {/* Modal Content */}
+        <div className="relative z-50 p-5 border w-96 shadow-2xl rounded-lg bg-white">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-medium text-gray-900">Schedule Details</h3>
             <button 
@@ -412,8 +414,15 @@ export const CronJobList: React.FC = () => {
 
     {/* Edit Modal */}
     {editModalOpen && selectedSchedule && (
-      <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-        <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        {/* Enhanced blurred backdrop */}
+        <div 
+          className="fixed inset-0 backdrop-blur-sm backdrop-saturate-150 z-40" 
+          onClick={() => setEditModalOpen(false)}
+        />
+        
+        {/* Modal Content */}
+        <div className="relative z-50 p-5 border w-96 shadow-2xl rounded-lg bg-white">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-medium text-gray-900">Edit Schedule</h3>
             <button 

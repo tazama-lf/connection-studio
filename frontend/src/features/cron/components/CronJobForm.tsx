@@ -88,10 +88,6 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({ onJobCreated, onCancel
   };
   return (
     <div data-id="element-70">
-      <h2 className="text-xl font-semibold text-gray-800 mb-6" data-id="element-71">
-        Create New CRON Job
-      </h2>
-
       <form onSubmit={handleSubmit} data-id="element-72">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6" data-id="element-73">
           <div data-id="element-74">

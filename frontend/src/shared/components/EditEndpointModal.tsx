@@ -1062,7 +1062,7 @@ interface EditEndpointModalProps {
               break;
           }
 
-          showSuccess('Configuration saved successfully! Proceeding to next step.');
+          showSuccess('Configuration saved successfully!');
         } else {
           // Deploy step - stay on current step (deploy step has special logic)
           console.log('💾 Deploy step - staying on current step');

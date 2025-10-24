@@ -117,7 +117,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
       case 'pending':
         return 'PENDING';
       case 'in-progress':
-        return 'INPROGRESS';
+        return 'IN-PROGRESS';
       case 'rejected':
         return 'REJECTED';
       case 'approved':

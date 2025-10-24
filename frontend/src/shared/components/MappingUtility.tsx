@@ -623,7 +623,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                 {renderTree(sourceTree, expandedSourceNodes, toggleSourceNode, handleSourceSelect, selectedSources, 'source')}
               </div>
               <div className="text-sm text-gray-600" data-id="element-199">
-                Selected: {selectedSources.join(', ') || 'None'}
+               <span className='font-bold'>Selected:</span> {selectedSources.join(', ') || 'None'}
               </div>
             </div>
             )}
@@ -661,7 +661,6 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                   <select value={selectedTransformation} onChange={e => setSelectedTransformation(e.target.value as 'concatenate' | 'sum' | 'split' | 'none' | 'constant')} className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" data-id="element-205">
                     <option value="none" data-id="element-206">None (Direct Mapping)</option>
                     <option value="concatenate" data-id="element-207">Concatenate</option>
-                    <option value="sum" data-id="element-208">Sum</option>
                     <option value="split" data-id="element-209">Split</option>
                     <option value="constant" data-id="element-constant-option">Constant Value</option>
                   </select>
@@ -766,8 +765,8 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                   renderTree(destinationTree, expandedDestNodes, toggleDestNode, (path, type) => handleDestinationSelect(path, type as 'database' | 'redis' | 'model'), selectedDestinations, 'destination')
                 )}
               </div>
-              <div className="text-sm text-gray-600" data-id="element-234">
-                Selected: {selectedDestinations.join(', ') || 'None'}
+              <div className="text-sm text-gray-600 " data-id="element-234">
+                <span className='font-bold'>Selected:</span> {selectedDestinations.join(', ') || 'None'}
               </div>
             </div>
           </div>
@@ -796,12 +795,6 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
   };
 
   return <div className="space-y-6" data-id="element-271">
-      {/* Error Display */}
-      {mappingError && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-md">
-          <div className="text-red-800 text-sm">{mappingError}</div>
-        </div>
-      )}
         <div className="flex justify-between items-center mb-4" data-id="element-272">
         <h3 className="text-lg font-medium text-gray-900" data-id="element-273">Field Mapping</h3>
         <Button variant="secondary" size="sm" onClick={addNewMapping} icon={<PlusIcon size={16} data-id="element-279" />} disabled={readOnly} data-id="element-278">

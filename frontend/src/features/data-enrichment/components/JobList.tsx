@@ -43,7 +43,7 @@ const StatusBadge: React.FC<{ status: JobStatus }> = ({ status }) => {
         return {
           className: 'bg-gray-100 text-gray-700',
           dotColor: 'bg-gray-500',
-          text: 'INPROGRESS'
+          text: 'IN-PROGRESS'
         };
       case 'rejected':
         return {

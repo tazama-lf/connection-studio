@@ -197,7 +197,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
         return 'READY FOR APPROVAL';
       case 'draft':
       case 'in-progress':
-        return 'IN PROGRESS';
+        return 'IN-PROGRESS';
       case 'suspended':
         return 'SUSPENDED';
       case 'cloned':
