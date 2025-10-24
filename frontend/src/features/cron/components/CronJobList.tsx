@@ -31,6 +31,7 @@ export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => 
     start_date: '',
     end_date: '',
   });
+  const [isEditJobSaved, setIsEditJobSaved] = useState(false);
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -105,6 +106,7 @@ export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => 
       start_date: schedule.start_date || '',
       end_date: schedule.end_date || '',
     });
+    setIsEditJobSaved(false);
     setEditModalOpen(true);
   };
 
@@ -139,12 +141,23 @@ export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => 
       await dataEnrichmentApi.updateSchedule(selectedSchedule.id, editForm);
       
       showSuccess('Schedule updated successfully');
-      setEditModalOpen(false);
-      setSelectedSchedule(null);
+      setIsEditJobSaved(true);
       loadSchedules();
     } catch (err) {
       console.error('Failed to update schedule:', err);
       showError('Failed to update schedule');
+    }
+  };
+
+  const handleSubmitForApproval = async () => {
+    try {
+      showSuccess('Cron job submitted for approval successfully!');
+      setEditModalOpen(false);
+      setSelectedSchedule(null);
+      setIsEditJobSaved(false);
+    } catch (error) {
+      console.error('Failed to submit for approval:', error);
+      showError('Failed to submit for approval. Please try again.');
     }
   };
 
@@ -331,8 +344,8 @@ export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => 
         />
         
         {/* Modal Content */}
-        <div className="relative z-50 p-5 border w-96 shadow-2xl rounded-lg bg-white">
-          <div className="flex justify-between items-center mb-4">
+        <div className="relative z-50 p-5 border w-full max-w-2xl shadow-2xl rounded-lg bg-white">
+          <div className="flex justify-between items-center mb-6">
             <h3 className="text-lg font-medium text-gray-900">Schedule Details</h3>
             <button 
               onClick={() => setViewModalOpen(false)}
@@ -342,63 +355,100 @@ export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => 
             </button>
           </div>
           
-          <div className="space-y-3">
-            <div>
-              <label className="text-sm font-medium text-gray-500">Name</label>
-              <p className="text-sm text-gray-900">{selectedSchedule.name}</p>
-            </div>
-            
-            <div>
-              <label className="text-sm font-medium text-gray-500">CRON Expression</label>
-              <p className="text-sm text-gray-900 font-mono">{selectedSchedule.cron}</p>
-            </div>
-            
-            <div>
-              <label className="text-sm font-medium text-gray-500">Status</label>
-              <p className="text-sm">
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                  selectedSchedule.schedule_status === 'active' ? 'bg-green-100 text-green-800' :
-                  'bg-gray-100 text-gray-800'
-                }`}>
-                  {selectedSchedule.schedule_status}
-                </span>
-              </p>
-            </div>
-            
-            <div>
-              <label className="text-sm font-medium text-gray-500">Iterations</label>
-              <p className="text-sm text-gray-900">{selectedSchedule.iterations}</p>
-            </div>
-            
-            <div>
-              <label className="text-sm font-medium text-gray-500">Start Date</label>
-              <p className="text-sm text-gray-900">{formatDate(selectedSchedule.start_date)}</p>
-            </div>
-            
-            <div>
-              <label className="text-sm font-medium text-gray-500">End Date</label>
-              <p className="text-sm text-gray-900">{formatDate(selectedSchedule.end_date)}</p>
-            </div>
-            
-            {selectedSchedule.next_time && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="text-sm font-medium text-gray-500">Next Run</label>
-                <p className="text-sm text-gray-900">{formatDate(selectedSchedule.next_time)}</p>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Job Name
+                </label>
+                <div className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50 text-gray-900">
+                  {selectedSchedule.name}
+                </div>
               </div>
-            )}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  CRON Expression
+                </label>
+                <div className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50 text-gray-900 font-mono">
+                  {selectedSchedule.cron}
+                </div>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  No. of Iterations
+                </label>
+                <div className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50 text-gray-900">
+                  {selectedSchedule.iterations}
+                </div>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Start Date
+                </label>
+                <div className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50 text-gray-900">
+                  {formatDate(selectedSchedule.start_date)}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  End Date
+                </label>
+                <div className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50 text-gray-900">
+                  {formatDate(selectedSchedule.end_date)}
+                </div>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Status
+                </label>
+                <div className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50">
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                    selectedSchedule.schedule_status === 'active' ? 'bg-green-100 text-green-800' :
+                    'bg-gray-100 text-gray-800'
+                  }`}>
+                    {selectedSchedule.schedule_status}
+                  </span>
+                </div>
+              </div>
+              {selectedSchedule.next_time && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Next Run
+                  </label>
+                  <div className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50 text-gray-900">
+                    {formatDate(selectedSchedule.next_time)}
+                  </div>
+                </div>
+              )}
+            </div>
             
             {selectedSchedule.created_at && (
-              <div>
-                <label className="text-sm font-medium text-gray-500">Created At</label>
-                <p className="text-sm text-gray-900">{formatDate(selectedSchedule.created_at)}</p>
+              <div className="grid grid-cols-1 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Created At
+                  </label>
+                  <div className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50 text-gray-900">
+                    {formatDate(selectedSchedule.created_at)}
+                  </div>
+                </div>
               </div>
             )}
           </div>
           
-          <div className="mt-6">
+          <div className="mt-6 flex justify-end">
             <button
               onClick={() => setViewModalOpen(false)}
-              className="w-full px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
+              className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
               Close
             </button>
@@ -417,8 +467,8 @@ export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => 
         />
         
         {/* Modal Content */}
-        <div className="relative z-50 p-5 border w-96 shadow-2xl rounded-lg bg-white">
-          <div className="flex justify-between items-center mb-4">
+        <div className="relative z-50 p-5 border w-full max-w-2xl shadow-2xl rounded-lg bg-white">
+          <div className="flex justify-between items-center mb-6">
             <h3 className="text-lg font-medium text-gray-900">Edit Schedule</h3>
             <button 
               onClick={() => setEditModalOpen(false)}
@@ -428,84 +478,109 @@ export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => 
             </button>
           </div>
           
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Name <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={editForm.name}
-                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              />
+          <form onSubmit={(e) => { e.preventDefault(); handleSaveEdit(); }}>
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Job Name <span className="text-red-500">*</span>
+                  </label>
+                  <input 
+                    type="text" 
+                    value={editForm.name}
+                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" 
+                    placeholder="Enter job name" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    CRON Expression <span className="text-red-500">*</span>
+                  </label>
+                  <input 
+                    type="text" 
+                    value={editForm.cron}
+                    onChange={(e) => setEditForm({ ...editForm, cron: e.target.value })}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" 
+                    placeholder="e.g., 45 * * * * *" 
+                  />
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    No. of Iterations <span className="text-red-500">*</span>
+                  </label>
+                  <input 
+                    type="number" 
+                    value={editForm.iterations}
+                    onChange={(e) => setEditForm({ ...editForm, iterations: parseInt(e.target.value) || 1 })}
+                    min="1" 
+                    step="1" 
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" 
+                    placeholder="Enter number of iterations" 
+                  />
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Start Date <span className="text-red-500">*</span>
+                  </label>
+                  <input 
+                    type="datetime-local" 
+                    value={editForm.start_date ? new Date(editForm.start_date).toISOString().slice(0, 16) : ''}
+                    onChange={(e) => setEditForm({ ...editForm, start_date: e.target.value })}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    End Date
+                  </label>
+                  <input 
+                    type="datetime-local" 
+                    value={editForm.end_date ? new Date(editForm.end_date).toISOString().slice(0, 16) : ''}
+                    onChange={(e) => setEditForm({ ...editForm, end_date: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" 
+                  />
+                </div>
+              </div>
             </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                CRON Expression <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={editForm.cron}
-                onChange={(e) => setEditForm({ ...editForm, cron: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 font-mono"
-                placeholder="e.g., 45 * * * * *"
-              />
+
+            <div className="mt-6 flex justify-between space-x-3">
+              <button 
+                type="button" 
+                onClick={() => setEditModalOpen(false)}
+                className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                Cancel
+              </button>
+              <div className="flex space-x-3">
+                <button
+                  type="submit"
+                  className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  Save
+                </button>
+                {isEditJobSaved && (
+                  <button 
+                    type="button"
+                    onClick={handleSubmitForApproval}
+                    className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    Submit for Approval
+                  </button>
+                )}
+              </div>
             </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Iterations <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="number"
-                value={editForm.iterations}
-                onChange={(e) => setEditForm({ ...editForm, iterations: parseInt(e.target.value) || 1 })}
-                min="1"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Start Date
-              </label>
-              <input
-                type="datetime-local"
-                value={editForm.start_date ? new Date(editForm.start_date).toISOString().slice(0, 16) : ''}
-                onChange={(e) => setEditForm({ ...editForm, start_date: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                End Date
-              </label>
-              <input
-                type="datetime-local"
-                value={editForm.end_date ? new Date(editForm.end_date).toISOString().slice(0, 16) : ''}
-                onChange={(e) => setEditForm({ ...editForm, end_date: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-          </div>
-          
-          <div className="mt-6 flex space-x-3">
-            <button
-              onClick={() => setEditModalOpen(false)}
-              className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSaveEdit}
-              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-            >
-              Save Changes
-            </button>
-          </div>
+          </form>
         </div>
       </div>
     )}

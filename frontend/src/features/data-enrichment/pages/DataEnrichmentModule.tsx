@@ -157,7 +157,7 @@ const DataEnrichmentModule: React.FC = () => {
       
       // Show success message
       const jobName = jobResponse?.endpoint_name || 'New endpoint';
-      showSuccess(`${jobName} has been successfully deployed and is now available!`);
+      showSuccess(`${jobName} has been successfully sent for approval!`);
     } catch (error) {
       console.error('Failed to handle job creation:', error);
       showError('Failed to handle job creation');
