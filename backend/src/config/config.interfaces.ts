@@ -100,6 +100,8 @@ export interface AddMappingDto {
   delimiter?: string;
   constantValue?: any;
   prefix?: string;
+  transformation?: 'NONE' | 'CONCAT' | 'SUM' | 'SPLIT' | 'CONSTANT' | 'MATH';
+  operator?: 'ADD' | 'SUBTRACT' | 'MULTIPLY' | 'DIVIDE';
 }
 
 export interface AddFunctionDto {

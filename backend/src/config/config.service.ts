@@ -150,8 +150,18 @@ export class ConfigService {
         this.validateNoDuplicateSchemaFields(sourceFields);
       if (duplicateErrors.length > 0) {
         this.logger.error(
-          'Duplicate fields detected in schema',
-          duplicateErrors,
+          'Duplicate fields detected in schema during config creation',
+          {
+            errors: duplicateErrors,
+            tenantId,
+            userId,
+            msgFam: dto.msgFam,
+            transactionType: dto.transactionType,
+            version: dto.version,
+            contentType: dto.contentType,
+            totalSourceFields: sourceFields.length,
+            context: 'createConfig',
+          },
         );
         return {
           success: false,
@@ -485,8 +495,16 @@ export class ConfigService {
         this.validateNoDuplicateSchemaFields(adjustedSourceFields);
       if (duplicateErrors.length > 0) {
         this.logger.error(
-          'Duplicate fields detected after field adjustments',
-          duplicateErrors,
+          'Duplicate fields detected after field adjustments during config update',
+          {
+            errors: duplicateErrors,
+            configId: id,
+            tenantId,
+            userId,
+            fieldAdjustments: dto.fieldAdjustments,
+            totalAdjustedFields: adjustedSourceFields.length,
+            context: 'updateConfig',
+          },
         );
         return {
           success: false,
@@ -1067,6 +1085,8 @@ export class ConfigService {
     const errors: string[] = [];
     const seenNames = new Set<string>();
     const seenPaths = new Set<string>();
+    const duplicateNames: string[] = [];
+    const duplicatePaths: string[] = [];
 
     for (let i = 0; i < sourceFields.length; i++) {
       const field = sourceFields[i];
@@ -1077,23 +1097,72 @@ export class ConfigService {
 
       // Check for duplicate field names
       if (seenNames.has(field.name)) {
-        errors.push(`Duplicate field name '${field.name}' found in schema`);
+        const errorMsg = `Duplicate field name '${field.name}' found in schema`;
+        errors.push(errorMsg);
+        duplicateNames.push(field.name);
+        
+        // Log detailed error information
+        this.logger.error(
+          `Schema validation failed: ${errorMsg}`,
+          {
+            duplicateFieldName: field.name,
+            fieldPath: field.path,
+            fieldType: field.type,
+            fieldIndex: i,
+            context: 'validateNoDuplicateSchemaFields',
+          },
+        );
       } else {
         seenNames.add(field.name);
       }
 
       // Check for duplicate field paths
       if (seenPaths.has(field.path)) {
-        errors.push(`Duplicate field path '${field.path}' found in schema`);
+        const errorMsg = `Duplicate field path '${field.path}' found in schema`;
+        errors.push(errorMsg);
+        duplicatePaths.push(field.path);
+        
+        // Log detailed error information
+        this.logger.error(
+          `Schema validation failed: ${errorMsg}`,
+          {
+            duplicateFieldPath: field.path,
+            fieldName: field.name,
+            fieldType: field.type,
+            fieldIndex: i,
+            context: 'validateNoDuplicateSchemaFields',
+          },
+        );
       } else {
         seenPaths.add(field.path);
       }
+    }
+
+    // Log summary if duplicates were found
+    if (errors.length > 0) {
+      this.logger.error(
+        `Schema contains ${errors.length} duplicate field error(s)`,
+        {
+          totalErrors: errors.length,
+          duplicateFieldNames: duplicateNames,
+          duplicateFieldPaths: duplicatePaths,
+          totalFieldsProcessed: sourceFields.length,
+          context: 'validateNoDuplicateSchemaFields',
+        },
+      );
     }
 
     return errors;
   }
 
   private createMappingFromDto(dto: AddMappingDto): FieldMapping {
+    // Handle explicit transformation specification
+    if (dto.transformation) {
+      return this.createMappingWithExplicitTransformation(dto);
+    }
+
+    // Legacy behavior: Auto-detect transformation based on input fields
+    
     // Many-to-one (concat logic)
     if (dto.sources && dto.sources.length > 0) {
       if (dto.sources.length < 2) {
@@ -1186,6 +1255,123 @@ export class ConfigService {
     );
   }
 
+  /**
+   * Create mapping with explicitly specified transformation
+   */
+  private createMappingWithExplicitTransformation(dto: AddMappingDto): FieldMapping {
+    const mapping: any = {
+      transformation: dto.transformation,
+    };
+
+    if (dto.prefix !== undefined) {
+      mapping.prefix = dto.prefix;
+    }
+
+    switch (dto.transformation) {
+      case 'CONCAT':
+        if (!dto.sources || dto.sources.length < 1) {
+          throw new BadRequestException(
+            'CONCAT transformation requires at least one source field',
+          );
+        }
+        if (!dto.destination) {
+          throw new BadRequestException(
+            'CONCAT transformation requires a destination field',
+          );
+        }
+        mapping.source = dto.sources;
+        mapping.destination = dto.destination;
+        mapping.delimiter = dto.delimiter || ' ';
+        break;
+
+      case 'SUM':
+        const sourceFields = dto.sumFields || dto.sources;
+        if (!sourceFields || sourceFields.length < 1) {
+          throw new BadRequestException(
+            'SUM transformation requires at least one source field',
+          );
+        }
+        if (!dto.destination) {
+          throw new BadRequestException(
+            'SUM transformation requires a destination field',
+          );
+        }
+        mapping.source = sourceFields;
+        mapping.destination = dto.destination;
+        break;
+
+      case 'MATH':
+        if (!dto.sources || dto.sources.length < 1) {
+          throw new BadRequestException(
+            'MATH transformation requires at least one source field',
+          );
+        }
+        if (!dto.destination) {
+          throw new BadRequestException(
+            'MATH transformation requires a destination field',
+          );
+        }
+        if (!dto.operator) {
+          throw new BadRequestException(
+            'MATH transformation requires an operator (ADD, SUBTRACT, MULTIPLY, DIVIDE)',
+          );
+        }
+        mapping.source = dto.sources;
+        mapping.destination = dto.destination;
+        mapping.operator = dto.operator;
+        break;
+
+      case 'SPLIT':
+        if (!dto.source) {
+          throw new BadRequestException(
+            'SPLIT transformation requires a source field',
+          );
+        }
+        if (!dto.destinations || dto.destinations.length === 0) {
+          throw new BadRequestException(
+            'SPLIT transformation requires destination fields',
+          );
+        }
+        mapping.source = [dto.source];
+        mapping.destination = dto.destinations;
+        mapping.delimiter = dto.delimiter || ',';
+        break;
+
+      case 'CONSTANT':
+        if (dto.constantValue === undefined) {
+          throw new BadRequestException(
+            'CONSTANT transformation requires a constant value',
+          );
+        }
+        if (!dto.destination) {
+          throw new BadRequestException(
+            'CONSTANT transformation requires a destination field',
+          );
+        }
+        mapping.destination = dto.destination;
+        mapping.constantValue = dto.constantValue;
+        break;
+
+      case 'NONE':
+      default:
+        if (!dto.source) {
+          throw new BadRequestException(
+            'Direct mapping (NONE transformation) requires a source field',
+          );
+        }
+        if (!dto.destination) {
+          throw new BadRequestException(
+            'Direct mapping (NONE transformation) requires a destination field',
+          );
+        }
+        mapping.source = [dto.source];
+        mapping.destination = dto.destination;
+        break;
+    }
+
+    return mapping;
+  }
+
   private getFieldTypeFromSchema(
     schema: JSONSchema,
     fieldPath: string,
@@ -1227,51 +1413,9 @@ export class ConfigService {
     sourceType: string,
     destinationType: string,
   ): boolean {
-    // Exact type match is always allowed
-    if (sourceType === destinationType) {
-      return true;
-    }
-
-    // Allow number to string (common conversion)
-    if (sourceType === 'number' && destinationType === 'string') {
-      return true;
-    }
-
-    // Allow boolean to string (common conversion)
-    if (sourceType === 'boolean' && destinationType === 'string') {
-      return true;
-    }
-
-    // Disallow array to non-array and vice versa (strict rule)
-    if (sourceType === 'array' && destinationType !== 'array') {
-      return false;
-    }
-
-    if (sourceType !== 'array' && destinationType === 'array') {
-      return false;
-    }
-
-    // Disallow object to non-object and vice versa (strict rule)
-    if (sourceType === 'object' && destinationType !== 'object') {
-      return false;
-    }
-
-    if (sourceType !== 'object' && destinationType === 'object') {
-      return false;
-    }
-
-    // Allow string to basic types (string, number, boolean) but not complex types
-    if (
-      sourceType === 'string' &&
-      (destinationType === 'string' ||
-        destinationType === 'number' ||
-        destinationType === 'boolean')
-    ) {
-      return true;
-    }
-
-    // All other combinations are disallowed
-    return false;
+    // STRICT TYPE MATCHING: Only exact type matches are allowed
+    // No type conversions are permitted (string <-> number, etc.)
+    return sourceType === destinationType;
   }
 
   private validateMapping(
@@ -1279,16 +1423,20 @@ export class ConfigService {
     schema: JSONSchema,
     _tenantId: string,
   ): void {
+    // CONSTANT transformations skip source type validation since they don't use source fields
     if (
       mapping.transformation === 'CONSTANT' ||
       mapping.constantValue !== undefined
     ) {
+      // Still validate destination type for constants
+      this.validateConstantMapping(mapping);
       return;
     }
 
     const allPaths = this.extractAllPathsFromSchema(schema);
-
     const sourceTypes: string[] = [];
+
+    // Validate source fields exist and get their types
     if (mapping.source && Array.isArray(mapping.source)) {
       for (const src of mapping.source) {
         if (!allPaths.includes(src)) {
@@ -1305,7 +1453,7 @@ export class ConfigService {
       }
     }
 
-    // Validate destinations and check type compatibility
+    // Validate destinations exist and check type compatibility
     const destinations = Array.isArray(mapping.destination)
       ? mapping.destination
       : [mapping.destination];
@@ -1322,26 +1470,278 @@ export class ConfigService {
         );
       }
 
-      // Get destination field type and check compatibility
+      // Get destination field type and perform comprehensive type validation
       const destinationType = this.tazamaDataModelService.getFieldType(dest);
       if (destinationType && sourceTypes.length > 0) {
+        this.validateMappingTypeCompatibility(
+          mapping,
+          sourceTypes,
+          destinationType,
+          dest,
+        );
+      }
+    }
+  }
+
+  /**
+   * Validates constant mappings - ensures constant value type matches destination
+   */
+  private validateConstantMapping(mapping: FieldMapping): void {
+    if (mapping.constantValue === undefined) {
+      return;
+    }
+
+    const destinations = Array.isArray(mapping.destination)
+      ? mapping.destination
+      : [mapping.destination];
+
+    for (const dest of destinations) {
+      if (typeof dest !== 'string' || !dest) {
+        continue;
+      }
+
+      const destinationType = this.tazamaDataModelService.getFieldType(dest);
+      if (destinationType) {
+        const constantType = typeof mapping.constantValue;
         const destTypeLower = destinationType.toLowerCase();
 
-        for (let i = 0; i < sourceTypes.length; i++) {
-          const sourceType = sourceTypes[i];
-          const src = mapping.source![i];
-
-          if (!this.areTypesCompatible(sourceType, destTypeLower)) {
-            throw new BadRequestException(
-              `Data type mismatch: Cannot map source field '${src}' of type '${sourceType}' to destination field '${dest}' of type '${destTypeLower}'. ` +
-                'Compatible mappings: same types to same types, number/boolean to string, string to basic types (string, number, boolean). ' +
-                'Arrays can only map to arrays, objects can only map to objects.',
-            );
-          }
+        if (!this.areTypesCompatible(constantType, destTypeLower)) {
+          throw new BadRequestException(
+            `Constant value type mismatch: Cannot assign constant value '${mapping.constantValue}' of type '${constantType}' to destination field '${dest}' of type '${destTypeLower}'.`,
+          );
         }
       }
     }
   }
+
+  /**
+   * Comprehensive type compatibility validation based on transformation type
+   */
+  private validateMappingTypeCompatibility(
+    mapping: FieldMapping,
+    sourceTypes: string[],
+    destinationType: string,
+    destinationPath: string,
+  ): void {
+    const destTypeLower = destinationType.toLowerCase();
+    const transformation = mapping.transformation || 'NONE';
+
+    // Log mapping validation for debugging
+    this.logger.debug(
+      `Validating mapping type compatibility: ${transformation} transformation`,
+      {
+        sourceTypes,
+        destinationType: destTypeLower,
+        destinationPath,
+        transformation,
+      },
+    );
+
+    switch (transformation) {
+      case 'CONCAT':
+        this.validateConcatTypeCompatibility(
+          sourceTypes,
+          destTypeLower,
+          destinationPath,
+          mapping,
+        );
+        break;
+
+      case 'SUM':
+        this.validateSumTypeCompatibility(
+          sourceTypes,
+          destTypeLower,
+          destinationPath,
+          mapping,
+        );
+        break;
+
+      case 'MATH':
+        this.validateMathTypeCompatibility(
+          sourceTypes,
+          destTypeLower,
+          destinationPath,
+          mapping,
+        );
+        break;
+
+      case 'SPLIT':
+        this.validateSplitTypeCompatibility(
+          sourceTypes,
+          destTypeLower,
+          destinationPath,
+          mapping,
+        );
+        break;
+
+      case 'NONE':
+      default:
+        this.validateDirectTypeCompatibility(
+          sourceTypes,
+          destTypeLower,
+          destinationPath,
+          mapping,
+        );
+        break;
+    }
+  }
+
+  /**
+   * Validate CONCAT transformation: all sources must be string type, result is string
+   */
+  private validateConcatTypeCompatibility(
+    sourceTypes: string[],
+    destinationType: string,
+    destinationPath: string,
+    mapping: FieldMapping,
+  ): void {
+    // CONCAT always produces a string result
+    if (destinationType !== 'string') {
+      throw new BadRequestException(
+        `CONCAT transformation type mismatch: CONCAT operations always produce string results, but destination field '${destinationPath}' is of type '${destinationType}'. Destination field must be of type 'string'.`,
+      );
+    }
+
+    // STRICT: All source fields must be strings (no type conversions)
+    for (let i = 0; i < sourceTypes.length; i++) {
+      const sourceType = sourceTypes[i];
+      const src = mapping.source![i];
+
+      if (sourceType !== 'string') {
+        throw new BadRequestException(
+          `CONCAT transformation type mismatch: Source field '${src}' of type '${sourceType}' cannot be concatenated. Only string type fields are allowed for concatenation.`,
+        );
+      }
+    }
+  }
+
+  /**
+   * Validate SUM transformation: all sources must be numeric, result must be numeric
+   */
+  private validateSumTypeCompatibility(
+    sourceTypes: string[],
+    destinationType: string,
+    destinationPath: string,
+    mapping: FieldMapping,
+  ): void {
+    // SUM always produces a numeric result - STRICT: must be number only
+    if (destinationType !== 'number') {
+      throw new BadRequestException(
+        `SUM transformation type mismatch: SUM operations produce numeric results, but destination field '${destinationPath}' is of type '${destinationType}'. Destination field must be of type 'number'.`,
+      );
+    }
+
+    // All source fields must be numeric
+    for (let i = 0; i < sourceTypes.length; i++) {
+      const sourceType = sourceTypes[i];
+      const src = mapping.source![i];
+
+      if (sourceType !== 'number') {
+        throw new BadRequestException(
+          `SUM transformation type mismatch: Source field '${src}' of type '${sourceType}' cannot be summed. Only numeric fields can be used in SUM operations.`,
+        );
+      }
+    }
+  }
+
+  /**
+   * Validate MATH transformation: all sources must be numeric, result must be numeric
+   */
+  private validateMathTypeCompatibility(
+    sourceTypes: string[],
+    destinationType: string,
+    destinationPath: string,
+    mapping: FieldMapping,
+  ): void {
+    // MATH always produces a numeric result - STRICT: must be number only
+    if (destinationType !== 'number') {
+      throw new BadRequestException(
+        `MATH transformation type mismatch: MATH operations produce numeric results, but destination field '${destinationPath}' is of type '${destinationType}'. Destination field must be of type 'number'.`,
+      );
+    }
+
+    // All source fields must be numeric
+    for (let i = 0; i < sourceTypes.length; i++) {
+      const sourceType = sourceTypes[i];
+      const src = mapping.source![i];
+
+      if (sourceType !== 'number') {
+        throw new BadRequestException(
+          `MATH transformation type mismatch: Source field '${src}' of type '${sourceType}' cannot be used in mathematical operations. Only numeric fields are allowed.`,
+        );
+      }
+    }
+
+    // Validate operator is specified for MATH transformation
+    if (!mapping.operator) {
+      throw new BadRequestException(
+        `MATH transformation validation error: Mathematical operator (ADD, SUBTRACT, MULTIPLY, DIVIDE) must be specified for MATH transformations.`,
+      );
+    }
+  }
+
+  /**
+   * Validate SPLIT transformation: source must be string, destinations can be string-compatible
+   */
+  private validateSplitTypeCompatibility(
+    sourceTypes: string[],
+    destinationType: string,
+    destinationPath: string,
+    mapping: FieldMapping,
+  ): void {
+    // SPLIT requires exactly one source field
+    if (sourceTypes.length !== 1) {
+      throw new BadRequestException(
+        `SPLIT transformation validation error: SPLIT operations require exactly one source field, but ${sourceTypes.length} source fields were provided.`,
+      );
+    }
+
+    const sourceType = sourceTypes[0];
+    const src = mapping.source![0];
+
+    // Source must be string for splitting
+    if (sourceType !== 'string') {
+      throw new BadRequestException(
+        `SPLIT transformation type mismatch: Source field '${src}' of type '${sourceType}' cannot be split. Only string fields can be split.`,
+      );
+    }
+
+    // STRICT: Destination must be string type (split results are strings)
+    if (destinationType !== 'string') {
+      throw new BadRequestException(
+        `SPLIT transformation type mismatch: Split results are strings, but destination field '${destinationPath}' is of type '${destinationType}'. Destination field must be of type 'string'.`,
+      );
+    }
+  }
+
+  /**
+   * Validate direct mapping (NONE transformation): strict type compatibility
+   */
+  private validateDirectTypeCompatibility(
+    sourceTypes: string[],
+    destinationType: string,
+    destinationPath: string,
+    mapping: FieldMapping,
+  ): void {
+    // Direct mappings should have exactly one source
+    if (sourceTypes.length !== 1) {
+      throw new BadRequestException(
+        `Direct mapping validation error: Direct mappings (NONE transformation) require exactly one source field, but ${sourceTypes.length} source fields were provided.`,
+      );
+    }
+
+    const sourceType = sourceTypes[0];
+    const src = mapping.source![0];
+
+    if (!this.areTypesCompatible(sourceType, destinationType)) {
+      throw new BadRequestException(
+        `Direct mapping type mismatch: Cannot map source field '${src}' of type '${sourceType}' to destination field '${destinationPath}' of type '${destinationType}'. ` +
+          'STRICT TYPE MATCHING: Only exact type matches are allowed. String fields can only map to string fields, number fields can only map to number fields, etc.',
+      );
+    }
+  }
+
+
 
   private extractAllPathsFromSchema(schema: JSONSchema, prefix = ''): string[] {
     const paths: string[] = [];

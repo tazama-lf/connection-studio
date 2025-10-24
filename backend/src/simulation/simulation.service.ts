@@ -750,14 +750,14 @@ export class SimulationService {
   /**
    * Normalize payload for schema validation, handling XML-specific structures
    */
-  private normalizePayloadForValidation(payload: any, _config?: Config): any {
+  private normalizePayloadForValidation(payload: any, config?: Config): any {
     if (!payload || typeof payload !== 'object') {
       return payload;
     }
 
-    // If this looks like an XML-parsed object, apply normalization
+    // If this looks like an XML-parsed object, apply schema-aware normalization
     if (this.isXmlParsedObject(payload)) {
-      return this.normalizeXmlParsedObject(payload);
+      return this.normalizeXmlParsedObjectWithSchema(payload, config?.schema);
     }
 
     return payload;
@@ -784,7 +784,120 @@ export class SimulationService {
   }
 
   /**
-   * Normalize XML-parsed object structure for schema validation
+   * Normalize XML-parsed object structure for schema validation with schema awareness
+   */
+  private normalizeXmlParsedObjectWithSchema(obj: any, schema?: any, path: string = ''): any {
+    if (!obj || typeof obj !== 'object') {
+      return obj;
+    }
+
+    if (Array.isArray(obj)) {
+      return obj.map((item) => this.normalizeXmlParsedObjectWithSchema(item, schema, path));
+    }
+
+    const normalized: any = {};
+
+    for (const [key, value] of Object.entries(obj)) {
+      // Skip XML attributes for schema validation (they start with @)
+      if (key.startsWith('@')) {
+        continue;
+      }
+
+      // Handle text content specially
+      if (key === '#text') {
+        // Check if the parent object has attributes and text content
+        const hasAttributes = Object.keys(obj).some(k => k !== '#text' && !k.startsWith('@'));
+        const hasOnlyTextAndAttributes = Object.keys(obj).every(k => k === '#text' || k.startsWith('@') || !k.startsWith('@'));
+        
+        // If the schema expects a string at this path and we have text content with attributes,
+        // we should return just the text value for schema validation
+        const currentPath = path ? `${path}.${key}` : key;
+        const expectedType = this.getSchemaTypeAtPath(schema, path);
+        
+        if (expectedType === 'string' && hasAttributes) {
+          // Return just the text content when schema expects string
+          return value;
+        }
+        
+        // If the object only has text content, return just the text
+        if (Object.keys(obj).length === 1 || hasOnlyTextAndAttributes) {
+          return value;
+        }
+        
+        // Otherwise, include it as a property
+        normalized['textContent'] = value;
+        continue;
+      }
+
+      // Build the current path for schema lookup
+      const currentPath = path ? `${path}.${key}` : key;
+      
+      // Get schema for this field
+      const fieldSchema = this.getSchemaAtPath(schema, currentPath);
+      
+      // Recursively normalize nested objects
+      if (value && typeof value === 'object') {
+        const normalizedValue = this.normalizeXmlParsedObjectWithSchema(value, fieldSchema, currentPath);
+        
+        // Special handling: if schema expects string but we got object with text content
+        if (fieldSchema?.type === 'string' && 
+            typeof normalizedValue === 'object' && 
+            normalizedValue !== null &&
+            (normalizedValue.textContent !== undefined || normalizedValue['#text'] !== undefined)) {
+          normalized[key] = normalizedValue.textContent || normalizedValue['#text'];
+        } else {
+          normalized[key] = normalizedValue;
+        }
+      } else {
+        normalized[key] = value;
+      }
+    }
+
+    return normalized;
+  }
+
+  /**
+   * Get schema type at a specific path
+   */
+  private getSchemaTypeAtPath(schema: any, path: string): string | null {
+    if (!schema || !path) return null;
+    
+    const parts = path.split('.');
+    let current = schema;
+    
+    for (const part of parts) {
+      if (current?.properties && current.properties[part]) {
+        current = current.properties[part];
+      } else {
+        return null;
+      }
+    }
+    
+    return current?.type || null;
+  }
+
+  /**
+   * Get schema object at a specific path
+   */
+  private getSchemaAtPath(schema: any, path: string): any {
+    if (!schema || !path) return null;
+    
+    const parts = path.split('.');
+    let current = schema;
+    
+    for (const part of parts) {
+      if (current?.properties && current.properties[part]) {
+        current = current.properties[part];
+      } else {
+        return null;
+      }
+    }
+    
+    return current;
+  }
+
+  /**
+   * Normalize XML-parsed object structure for schema validation (legacy method)
    */
   private normalizeXmlParsedObject(obj: any): any {
     if (!obj || typeof obj !== 'object') {
