@@ -455,9 +455,9 @@ export class SimulationService {
           ? mapping.destination[0]
           : mapping.destination;
 
-        // Use delimiter for concatenation transformations, otherwise empty separator
-        const separator =
-          mapping.transformation === 'CONCAT' ? mapping.delimiter || ' ' : '';
+        const separator = mapping.transformation === 'CONCAT' 
+          ? (mapping.delimiter || ' ') 
+          : '';
 
         mappings.push({
           destination: destination || '',
