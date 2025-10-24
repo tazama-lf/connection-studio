@@ -120,7 +120,7 @@ export class SimulationService {
       const schemaStage = this.stageValidateSchema(
         parsedPayload,
         config.schema,
-        config, 
+        config,
       );
       stages.push(schemaStage);
 
@@ -337,7 +337,11 @@ export class SimulationService {
   /**
    * Stage 3: Validate Schema
    */
-  private stageValidateSchema(payload: any, schema: any, config?: Config): ValidationStage {
+  private stageValidateSchema(
+    payload: any,
+    schema: any,
+    config?: Config,
+  ): ValidationStage {
     const errors = this.validatePayloadAgainstSchema(payload, schema, config);
 
     if (errors.length > 0) {
@@ -531,12 +535,12 @@ export class SimulationService {
     return details;
   }
 
-  /**
-   * Get value from object by dot-notation path
-   */
   private getValueByPath(obj: any, path: string): any {
     if (!path) return undefined;
-    return path.split('.').reduce((current, key) => {
+
+    const normalizedPath = path.replace(/\[(\d+)\]/g, '.$1');
+
+    return normalizedPath.split('.').reduce((current, key) => {
       return current && current[key] !== undefined ? current[key] : undefined;
     }, obj);
   }
@@ -598,17 +602,46 @@ export class SimulationService {
     if (payloadType === 'application/xml') {
       const xmlString =
         typeof payload === 'string' ? payload : JSON.stringify(payload);
+
+      if (!xmlString || xmlString.trim().length === 0) {
+        throw new Error('XML payload cannot be empty');
+      }
+
       const parser = new xml2js.Parser({
         explicitArray: false,
         ignoreAttrs: false,
         mergeAttrs: true,
+        trim: true,
+        normalize: true,
+        normalizeTags: false,
+        attrkey: '@',
+        charkey: '#text',
+        explicitCharkey: false,
+        attrNameProcessors: undefined,
+        attrValueProcessors: undefined,
+        tagNameProcessors: undefined,
+        valueProcessors: undefined,
       });
-      return parser.parseStringPromise(xmlString);
+
+      try {
+        const result = await parser.parseStringPromise(xmlString);
+        this.logger.debug(
+          `XML parsed successfully: ${JSON.stringify(result).substring(0, 200)}...`,
+        );
+        return result;
+      } catch (xmlError: any) {
+        this.logger.error(`XML parsing failed: ${xmlError.message}`);
+        throw new Error(`Invalid XML payload: ${xmlError.message}`);
+      }
     }
 
     if (payloadType === 'application/json') {
       if (typeof payload === 'string') {
-        return JSON.parse(payload);
+        try {
+          return JSON.parse(payload);
+        } catch (jsonError: any) {
+          throw new Error(`Invalid JSON payload: ${jsonError.message}`);
+        }
       }
       return payload;
     }
@@ -616,6 +649,84 @@ export class SimulationService {
     throw new Error(
       `Unsupported payload type: "${payloadType}". Must be either "application/json" or "application/xml"`,
     );
+  }
+
+  /**
+   * Normalize payload for schema validation, handling XML-specific structures
+   */
+  private normalizePayloadForValidation(payload: any, _config?: Config): any {
+    if (!payload || typeof payload !== 'object') {
+      return payload;
+    }
+
+    // If this looks like an XML-parsed object, apply normalization
+    if (this.isXmlParsedObject(payload)) {
+      return this.normalizeXmlParsedObject(payload);
+    }
+
+    return payload;
+  }
+
+  /**
+   * Check if object looks like it came from XML parsing
+   */
+  private isXmlParsedObject(obj: any): boolean {
+    if (!obj || typeof obj !== 'object') {
+      return false;
+    }
+
+    // Look for common XML parsing indicators
+    const hasXmlAttributes = Object.keys(obj).some((key) =>
+      key.startsWith('@'),
+    );
+    const hasTextContent = Object.prototype.hasOwnProperty.call(obj, '#text');
+    const hasNestedStructure = Object.values(obj).some(
+      (val) => val && typeof val === 'object' && !Array.isArray(val),
+    );
+
+    return hasXmlAttributes || hasTextContent || hasNestedStructure;
+  }
+
+  /**
+   * Normalize XML-parsed object structure for schema validation
+   */
+  private normalizeXmlParsedObject(obj: any): any {
+    if (!obj || typeof obj !== 'object') {
+      return obj;
+    }
+
+    if (Array.isArray(obj)) {
+      return obj.map((item) => this.normalizeXmlParsedObject(item));
+    }
+
+    const normalized: any = {};
+
+    for (const [key, value] of Object.entries(obj)) {
+      // Skip XML attributes for schema validation (they start with @)
+      if (key.startsWith('@')) {
+        continue;
+      }
+
+      // Handle text content specially
+      if (key === '#text') {
+        // If the object only has text content, return just the text
+        if (Object.keys(obj).length === 1) {
+          return value;
+        }
+        // Otherwise, include it as a property
+        normalized['textContent'] = value;
+        continue;
+      }
+
+      // Recursively normalize nested objects
+      if (value && typeof value === 'object') {
+        normalized[key] = this.normalizeXmlParsedObject(value);
+      } else {
+        normalized[key] = value;
+      }
+    }
+
+    return normalized;
   }
 
   /**
@@ -643,14 +754,20 @@ export class SimulationService {
     }
 
     try {
+      // Handle XML payload normalization for schema validation
+      const normalizedPayload = this.normalizePayloadForValidation(
+        payload,
+        config,
+      );
+
       const ajv = new Ajv({
         allErrors: true,
         strict: false,
         strictSchema: false,
         strictNumbers: true,
-        strictTypes: true,
+        strictTypes: false, // More lenient for XML-parsed content
         strictRequired: true,
-        allowUnionTypes: false,
+        allowUnionTypes: true, // Allow for XML attribute/text content variations
         validateFormats: false,
       });
 
@@ -658,14 +775,17 @@ export class SimulationService {
 
       this.logger.log(`Original schema: ${JSON.stringify(schema)}`);
       this.logger.log(`Strict schema: ${JSON.stringify(schemaWithStrict)}`);
+      this.logger.log(
+        `Normalized payload: ${JSON.stringify(normalizedPayload).substring(0, 500)}...`,
+      );
 
       const validate = ajv.compile(schemaWithStrict);
 
-      const valid = validate(payload);
+      const valid = validate(normalizedPayload);
 
       this.logger.debug(`Schema validation result: ${valid}`);
       this.logger.debug(
-        `Payload type: ${Array.isArray(payload) ? 'array' : typeof payload}`,
+        `Payload type: ${Array.isArray(normalizedPayload) ? 'array' : typeof normalizedPayload}`,
       );
 
       if (!valid && validate.errors) {
@@ -674,12 +794,38 @@ export class SimulationService {
         );
 
         for (const error of validate.errors) {
+          // Skip certain benign errors for arrays
           if (
             error.keyword === 'additionalProperties' &&
             error.instancePath &&
-            this.isArrayPath(payload, error.instancePath)
+            this.isArrayPath(normalizedPayload, error.instancePath)
           ) {
             continue;
+          }
+
+          // Handle array element type mismatches more gracefully
+          if (error.keyword === 'type' && error.instancePath?.includes('/')) {
+            const pathSegments = error.instancePath.split('/');
+            const isArrayElement = pathSegments.some((segment) =>
+              /^\d+$/.test(segment),
+            );
+
+            if (isArrayElement) {
+              this.logger.debug(
+                `Array element type mismatch at ${error.instancePath}: expected ${String(error.schema)}, got ${typeof error.data}`,
+              );
+              // Convert array index errors to more user-friendly messages
+              const friendlyPath = error.instancePath
+                .replace(/^\//, '')
+                .replace(/\//g, '.');
+              errors.push({
+                field: friendlyPath,
+                message: `Array element at ${friendlyPath}: expected ${String(error.schema)}, got ${typeof error.data}`,
+                path: error.instancePath,
+                value: error.data,
+              });
+              continue;
+            }
           }
 
           errors.push({
@@ -687,7 +833,7 @@ export class SimulationService {
             message: error.message || 'Schema validation failed',
             path: error.instancePath,
             value: _.get(
-              payload,
+              normalizedPayload,
               error.instancePath?.replace(/^\//, '').replace(/\//g, '.'),
             ),
           });
@@ -757,6 +903,7 @@ export class SimulationService {
   private isArrayPath(obj: any, path: string): boolean {
     if (!path) return false;
 
+    // Convert JSON Pointer style path to dot notation
     const normalizedPath = path.replace(/^\//, '').replace(/\//g, '.');
     const pathParts = normalizedPath.split('.');
 
@@ -764,7 +911,13 @@ export class SimulationService {
     for (let i = 0; i < pathParts.length; i++) {
       const part = pathParts[i];
 
+      // Check if current level is an array
       if (Array.isArray(current)) {
+        return true;
+      }
+
+      // Check if the part is a numeric index (indicating array access)
+      if (/^\d+$/.test(part)) {
         return true;
       }
 
@@ -781,6 +934,7 @@ export class SimulationService {
   private getFieldValue(obj: any, path: string): any {
     if (!path) return undefined;
 
+    // Normalize array notation: convert [index] to .index
     const normalizedPath = path.replace(/\[(\d+)\]/g, '.$1');
 
     return _.get(obj, normalizedPath);
@@ -793,23 +947,37 @@ export class SimulationService {
 
     const strictSchema = { ...schema };
 
+    // Handle array schemas
     if (strictSchema.type === 'array') {
       if (strictSchema.items) {
         if (typeof strictSchema.items === 'object') {
-          strictSchema.items = this.enforceStrictSchema(strictSchema.items, config);
+          strictSchema.items = this.enforceStrictSchema(
+            strictSchema.items,
+            config,
+          );
+
+          // For arrays of objects, ensure additionalProperties is allowed
+          if (strictSchema.items.type === 'object') {
+            strictSchema.items.additionalProperties = true;
+          }
         }
       }
       return strictSchema;
     }
 
+    // Handle object schemas
     if (strictSchema.type === 'object') {
       strictSchema.additionalProperties = true;
     }
 
+    // Recursively process nested schemas
     if (strictSchema.properties) {
       strictSchema.properties = Object.keys(strictSchema.properties).reduce(
         (acc, key) => {
-          acc[key] = this.enforceStrictSchema(strictSchema.properties[key], config);
+          acc[key] = this.enforceStrictSchema(
+            strictSchema.properties[key],
+            config,
+          );
           return acc;
         },
         {} as any,
@@ -820,6 +988,7 @@ export class SimulationService {
       strictSchema.items = this.enforceStrictSchema(strictSchema.items, config);
     }
 
+    // Handle schema composition keywords
     if (strictSchema.oneOf) {
       strictSchema.oneOf = strictSchema.oneOf.map((s: any) =>
         this.enforceStrictSchema(s, config),
