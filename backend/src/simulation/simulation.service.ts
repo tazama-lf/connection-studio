@@ -455,19 +455,34 @@ export class SimulationService {
           source.replace(/\[(\d+)\]/g, '.$1'),
         );
 
-        const destination = Array.isArray(mapping.destination)
-          ? mapping.destination[0]
-          : mapping.destination;
+        // Handle SPLIT transformations: create multiple TCS mappings for multiple destinations
+        if (mapping.transformation === 'SPLIT' && Array.isArray(mapping.destination)) {
+          // For SPLIT transformations, create one TCS mapping per destination
+          for (let i = 0; i < mapping.destination.length; i++) {
+            const destination = mapping.destination[i];
+            mappings.push({
+              destination: destination || '',
+              sources: normalizedSources,
+              separator: mapping.delimiter || ' ', // Use delimiter for SPLIT
+              prefix: mapping.prefix,
+            });
+          }
+        } else {
+          // For non-SPLIT transformations, use original logic
+          const destination = Array.isArray(mapping.destination)
+            ? mapping.destination[0]
+            : mapping.destination;
 
-        const separator =
-          mapping.transformation === 'CONCAT' ? mapping.delimiter || ' ' : '';
+          const separator =
+            mapping.transformation === 'CONCAT' ? mapping.delimiter || ' ' : '';
 
-        mappings.push({
-          destination: destination || '',
-          sources: normalizedSources,
-          separator,
-          prefix: mapping.prefix,
-        });
+          mappings.push({
+            destination: destination || '',
+            sources: normalizedSources,
+            separator,
+            prefix: mapping.prefix,
+          });
+        }
       }
     }
 
@@ -503,32 +518,16 @@ export class SimulationService {
 
     for (const mapping of mappings) {
       const sources = mapping.source || [];
-      const destination = Array.isArray(mapping.destination)
-        ? mapping.destination[0]
-        : mapping.destination;
 
-      // Extract source values from original payload
-      const sourceValues = sources.map((sourcePath) =>
-        this.getValueByPath(originalPayload, sourcePath),
-      );
+      // Handle SPLIT transformations: create details for each destination
+      if (mapping.transformation === 'SPLIT' && Array.isArray(mapping.destination)) {
+        // Extract source values from original payload
+        const sourceValues = sources.map((sourcePath) =>
+          this.getValueByPath(originalPayload, sourcePath),
+        );
 
-      // Determine the result value from tcsResult based on destination
-      let resultValue: any = null;
-      if (tcsResult && destination) {
-        const [collectionName, fieldName] = destination.split('.');
-        if (collectionName === 'redis' && tcsResult.dataCache) {
-          resultValue = tcsResult.dataCache[fieldName];
-        } else if (
-          collectionName === 'transaction' &&
-          fieldName === 'endToEndId'
-        ) {
-          resultValue = tcsResult.endToEndId;
-        }
-      }
-
-      // If no TCS result available, show the transformed preview value
-      if (resultValue === null) {
-        resultValue = this.applyTransformation(
+        // Apply SPLIT transformation to get the split values
+        const splitValues = this.applyTransformation(
           sourceValues,
           mapping.transformation,
           mapping.delimiter,
@@ -536,19 +535,93 @@ export class SimulationService {
           mapping.operator,
           mapping.prefix,
         );
-      }
 
-      details.push({
-        destination: destination || '',
-        sources,
-        sourceValues,
-        transformation: mapping.transformation || 'NONE',
-        resultValue,
-        prefix: mapping.prefix,
-        delimiter: mapping.delimiter,
-        constantValue: mapping.constantValue,
-        operator: mapping.operator,
-      });
+        // Create a detail entry for each destination
+        for (let i = 0; i < mapping.destination.length; i++) {
+          const destination = mapping.destination[i];
+          
+          // Determine the result value from tcsResult based on destination
+          let resultValue: any = null;
+          if (tcsResult && destination) {
+            const [collectionName, fieldName] = destination.split('.');
+            if (collectionName === 'redis' && tcsResult.dataCache) {
+              resultValue = tcsResult.dataCache[fieldName];
+            } else if (
+              collectionName === 'transaction' &&
+              fieldName === 'endToEndId'
+            ) {
+              resultValue = tcsResult.endToEndId;
+            }
+          }
+
+          // If no TCS result available, use the appropriate split value
+          if (resultValue === null) {
+            resultValue = Array.isArray(splitValues) && splitValues[i] !== undefined 
+              ? splitValues[i] 
+              : splitValues; // fallback to full result
+          }
+
+          details.push({
+            destination: destination || '',
+            sources,
+            sourceValues,
+            transformation: mapping.transformation || 'NONE',
+            resultValue,
+            prefix: mapping.prefix,
+            delimiter: mapping.delimiter,
+            constantValue: mapping.constantValue,
+            operator: mapping.operator,
+          });
+        }
+      } else {
+        // For non-SPLIT transformations, use original logic
+        const destination = Array.isArray(mapping.destination)
+          ? mapping.destination[0]
+          : mapping.destination;
+
+        // Extract source values from original payload
+        const sourceValues = sources.map((sourcePath) =>
+          this.getValueByPath(originalPayload, sourcePath),
+        );
+
+        // Determine the result value from tcsResult based on destination
+        let resultValue: any = null;
+        if (tcsResult && destination) {
+          const [collectionName, fieldName] = destination.split('.');
+          if (collectionName === 'redis' && tcsResult.dataCache) {
+            resultValue = tcsResult.dataCache[fieldName];
+          } else if (
+            collectionName === 'transaction' &&
+            fieldName === 'endToEndId'
+          ) {
+            resultValue = tcsResult.endToEndId;
+          }
+        }
+
+        // If no TCS result available, show the transformed preview value
+        if (resultValue === null) {
+          resultValue = this.applyTransformation(
+            sourceValues,
+            mapping.transformation,
+            mapping.delimiter,
+            mapping.constantValue,
+            mapping.operator,
+            mapping.prefix,
+          );
+        }
+
+        details.push({
+          destination: destination || '',
+          sources,
+          sourceValues,
+          transformation: mapping.transformation || 'NONE',
+          resultValue,
+          prefix: mapping.prefix,
+          delimiter: mapping.delimiter,
+          constantValue: mapping.constantValue,
+          operator: mapping.operator,
+        });
+      }
     }
 
     return details;
