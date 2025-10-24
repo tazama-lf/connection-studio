@@ -5,6 +5,8 @@ import type { ScheduleResponse } from '../../data-enrichment/types';
 import { useToast } from '../../../shared/providers/ToastProvider';
 import { UI_CONFIG } from '../../../shared/config/app.config';
 import { DropdownMenuWithAutoDirection } from '../../../shared/components/DropdownMenuWithAutoDirection';
+import { useAuth } from '../../auth/contexts/AuthContext';
+import { isEditor } from '../../../utils/roleUtils';
 
 interface CronJobListProps {
   searchTerm?: string;
@@ -34,6 +36,9 @@ export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(UI_CONFIG.pagination.defaultPageSize);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+
+  const { user } = useAuth();
+  const userIsEditor = user?.claims ? isEditor(user.claims) : false;
 
   // Load schedules on component mount
   useEffect(() => {
@@ -164,9 +169,6 @@ export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => 
               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" data-id="element-125">
                 CRON Expression
               </th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" data-id="element-127">
-                Status
-              </th>
               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" data-id="element-128">
                 Iterations
               </th>
@@ -184,19 +186,19 @@ export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => 
           <tbody className="bg-white">
             {loading ? (
               <tr>
-                <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
+                <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">
                   Loading schedules...
                 </td>
               </tr>
             ) : error ? (
               <tr>
-                <td colSpan={7} className="px-6 py-4 text-center text-sm text-red-500">
+                <td colSpan={6} className="px-6 py-4 text-center text-sm text-red-500">
                   {error}
                 </td>
               </tr>
             ) : filteredSchedules.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
+                <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">
                   No schedules found
                 </td>
               </tr>
@@ -208,16 +210,6 @@ export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => 
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {schedule.cron}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
-                        schedule.schedule_status === 'active' 
-                          ? 'bg-green-50 text-green-600 border border-green-200' 
-                          : 'bg-gray-50 text-gray-600 border border-gray-200'
-                      }`}>
-                        <span className="w-2 h-2 rounded-full bg-current mr-2"></span>
-                        {schedule.schedule_status.toUpperCase()}
-                      </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                       {schedule.iterations} iterations
@@ -261,28 +253,32 @@ export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => 
                                   <EditIcon className="w-4 h-4 mr-2" />
                                   Edit
                                 </button>
-                                {schedule.schedule_status === 'active' ? (
-                                  <button
-                                    onClick={() => {
-                                      setOpenDropdown(null);
-                                      handleToggleStatus(schedule);
-                                    }}
-                                    className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                  >
-                                    <PauseIcon className="w-4 h-4 mr-2" />
-                                    Deactivate
-                                  </button>
-                                ) : (
-                                  <button
-                                    onClick={() => {
-                                      setOpenDropdown(null);
-                                      handleToggleStatus(schedule);
-                                    }}
-                                    className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                  >
-                                    <PlayIcon className="w-4 h-4 mr-2" />
-                                    Activate
-                                  </button>
+                                {!userIsEditor && (
+                                  <>
+                                    {schedule.schedule_status === 'active' ? (
+                                      <button
+                                        onClick={() => {
+                                          setOpenDropdown(null);
+                                          handleToggleStatus(schedule);
+                                        }}
+                                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                      >
+                                        <PauseIcon className="w-4 h-4 mr-2" />
+                                        Deactivate
+                                      </button>
+                                    ) : (
+                                      <button
+                                        onClick={() => {
+                                          setOpenDropdown(null);
+                                          handleToggleStatus(schedule);
+                                        }}
+                                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                      >
+                                        <PlayIcon className="w-4 h-4 mr-2" />
+                                        Activate
+                                      </button>
+                                    )}
+                                  </>
                                 )}
                               </div>
                             </DropdownMenuWithAutoDirection>

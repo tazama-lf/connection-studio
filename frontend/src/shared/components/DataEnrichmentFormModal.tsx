@@ -1107,129 +1107,105 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
   const renderConfigStep = () => <div className="space-y-6" data-id="element-940">
       {renderConfigTypeSelector()}
       {configurationType === 'pull' ? renderPullConfigForm() : renderPushConfigForm()}
-      <div className="flex justify-end space-x-4" data-id="element-941">
-        <Button variant="secondary" onClick={onClose} data-id="element-942">
-          Cancel
-        </Button>
-        {!isFormValid() ? (
-          <div title="Please fill all required fields">
-            <Button variant="primary" icon={<PlayIcon size={16} data-id="element-944" />} onClick={handleTestRun} disabled={true} data-id="element-943">
-              {isTestingConnection ? 'Testing Connection...' : 'Save and Next'}
-            </Button>
-          </div>
-        ) : (
-          <Button variant="primary" icon={<PlayIcon size={16} data-id="element-944" />} onClick={handleTestRun} disabled={isTestingConnection} data-id="element-943">
-            {isTestingConnection ? 'Testing Connection...' : 'Save and Next'}
-          </Button>
-        )}
-      </div>
     </div>;
-//   const renderPreviewStep = () => <div className="space-y-6" data-id="element-945">
-//       <div className="bg-green-50 p-4 rounded-md" data-id="element-946">
-//         <h3 className="text-md font-medium text-green-900 mb-3" data-id="element-947">
-//           Test Run Results
-//         </h3>
-//         <div className="grid grid-cols-3 gap-4 mb-4" data-id="element-948">
-//           <div className="bg-white p-3 rounded-md shadow-sm" data-id="element-949">
-//             <p className="text-sm text-gray-500" data-id="element-950">Total Rows</p>
-//             <p className="text-xl font-semibold" data-id="element-951">{previewData.totalRows}</p>
-//           </div>
-//           <div className="bg-white p-3 rounded-md shadow-sm" data-id="element-952">
-//             <p className="text-sm text-gray-500" data-id="element-953">Valid Rows</p>
-//             <p className="text-xl font-semibold text-green-600" data-id="element-954">
-//               {previewData.validRows}
-//             </p>
-//           </div>
-//           <div className="bg-white p-3 rounded-md shadow-sm" data-id="element-955">
-//             <p className="text-sm text-gray-500" data-id="element-956">Invalid Rows</p>
-//             <p className="text-xl font-semibold text-red-600" data-id="element-957">
-//               {previewData.invalidRows}
-//             </p>
-//           </div>
-//         </div>
-//       </div>
-//       {previewData.validationErrors.length > 0 && <div className="bg-red-50 p-4 rounded-md" data-id="element-958">
-//           <h3 className="text-md font-medium text-red-900 mb-3" data-id="element-959">
-//             Validation Errors
-//           </h3>
-//           <div className="max-h-40 overflow-y-auto" data-id="element-960">
-//             <table className="min-w-full divide-y divide-gray-200" data-id="element-961">
-//               <thead className="bg-gray-50" data-id="element-962">
-//                 <tr data-id="element-963">
-//                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" data-id="element-964">
-//                     Row
-//                   </th>
-//                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" data-id="element-965">
-//                     Field
-//                   </th>
-//                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" data-id="element-966">
-//                     Error
-//                   </th>
-//                 </tr>
-//               </thead>
-//               <tbody className="bg-white divide-y divide-gray-200" data-id="element-967">
-//                 {previewData.validationErrors.map((error: any, index: number) => <tr key={index} data-id="element-968">
-//                     <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-500" data-id="element-969">
-//                       {error.row}
-//                     </td>
-//                     <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-500" data-id="element-970">
-//                       {error.field}
-//                     </td>
-//                     <td className="px-6 py-2 whitespace-nowrap text-sm text-red-500" data-id="element-971">
-//                       {error.error}
-//                     </td>
-//                   </tr>)}
-//               </tbody>
-//             </table>
-//           </div>
-//         </div>}
-//       <div className="bg-white p-4 rounded-md shadow border border-gray-200" data-id="element-972">
-//         <h3 className="text-md font-medium text-gray-900 mb-3" data-id="element-973">Data Preview</h3>
-//         <div className="overflow-x-auto" data-id="element-974">
-//           <table className="min-w-full divide-y divide-gray-200" data-id="element-975">
-//             <thead className="bg-gray-50" data-id="element-976">
-//               <tr data-id="element-977">
-//                 {previewData.previewRows.length > 0 && Object.keys(previewData.previewRows[0]).map(header => <th key={header} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" data-id="element-978">
-//                       {header}
-//                     </th>)}
-//               </tr>
-//             </thead>
-//             <tbody className="bg-white divide-y divide-gray-200" data-id="element-979">
-//               {previewData.previewRows.map((row: Record<string, any>, rowIndex: number) => <tr key={rowIndex} data-id="element-980">
-//                   {Object.values(row).map((value, colIndex) => <td key={colIndex} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500" data-id="element-981">
-//                       {String(value)}
-//                     </td>)}
-//                 </tr>)}
-//             </tbody>
-//           </table>
-//         </div>
-//       </div>
-//       {configurationType === 'push' && <div className="bg-blue-50 p-4 rounded-md" data-id="element-982">
-//           <h3 className="text-md font-medium text-blue-900 mb-3" data-id="element-983">
-//             API Response Example
-//           </h3>
-//           <pre className="bg-white p-3 rounded border border-gray-200 text-sm font-mono overflow-x-auto" data-id="element-984">
-//             {`{
-//   "success": true,
-//   "correlationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-//   "stats": {
-//     "accepted": ${previewData.validRows},
-//     "rejected": ${previewData.invalidRows},
-//     "total": ${previewData.totalRows}
-//   },
-//   "timestamp": "${new Date().toISOString()}"
-// }`}
-//           </pre>
-//         </div>}
-//       <div className="flex justify-end space-x-4" data-id="element-985">
-//         <Button variant="secondary" onClick={() => setCurrentStep('config')} data-id="element-986">
-//           Back to Configuration
-//         </Button>
-//         <Button variant="primary" icon={<DatabaseIcon size={16} data-id="element-988" />} onClick={() => setCurrentStep('summary')} data-id="element-987">
-//           Continue
-//         </Button>
-//       </div>
-//     </div>;
+  const renderPreviewStep = () => <div className="space-y-6" data-id="element-945">
+      <div className="bg-green-50 p-4 rounded-md" data-id="element-946">
+        <h3 className="text-md font-medium text-green-900 mb-3" data-id="element-947">
+          Test Run Results
+        </h3>
+        <div className="grid grid-cols-3 gap-4 mb-4" data-id="element-948">
+          <div className="bg-white p-3 rounded-md shadow-sm" data-id="element-949">
+            <p className="text-sm text-gray-500" data-id="element-950">Total Rows</p>
+            <p className="text-xl font-semibold" data-id="element-951">{previewData.totalRows}</p>
+          </div>
+          <div className="bg-white p-3 rounded-md shadow-sm" data-id="element-952">
+            <p className="text-sm text-gray-500" data-id="element-953">Valid Rows</p>
+            <p className="text-xl font-semibold text-green-600" data-id="element-954">
+              {previewData.validRows}
+            </p>
+          </div>
+          <div className="bg-white p-3 rounded-md shadow-sm" data-id="element-955">
+            <p className="text-sm text-gray-500" data-id="element-956">Invalid Rows</p>
+            <p className="text-xl font-semibold text-red-600" data-id="element-957">
+              {previewData.invalidRows}
+            </p>
+          </div>
+        </div>
+      </div>
+      {previewData.validationErrors.length > 0 && <div className="bg-red-50 p-4 rounded-md" data-id="element-958">
+          <h3 className="text-md font-medium text-red-900 mb-3" data-id="element-959">
+            Validation Errors
+          </h3>
+          <div className="max-h-40 overflow-y-auto" data-id="element-960">
+            <table className="min-w-full divide-y divide-gray-200" data-id="element-961">
+              <thead className="bg-gray-50" data-id="element-962">
+                <tr data-id="element-963">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" data-id="element-964">
+                    Row
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" data-id="element-965">
+                    Field
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" data-id="element-966">
+                    Error
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200" data-id="element-967">
+                {previewData.validationErrors.map((error: any, index: number) => <tr key={index} data-id="element-968">
+                    <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-500" data-id="element-969">
+                      {error.row}
+                    </td>
+                    <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-500" data-id="element-970">
+                      {error.field}
+                    </td>
+                    <td className="px-6 py-2 whitespace-nowrap text-sm text-red-500" data-id="element-971">
+                      {error.error}
+                    </td>
+                  </tr>)}
+              </tbody>
+            </table>
+          </div>
+        </div>}
+      <div className="bg-white p-4 rounded-md shadow border border-gray-200" data-id="element-972">
+        <h3 className="text-md font-medium text-gray-900 mb-3" data-id="element-973">Data Preview</h3>
+        <div className="overflow-x-auto" data-id="element-974">
+          <table className="min-w-full divide-y divide-gray-200" data-id="element-975">
+            <thead className="bg-gray-50" data-id="element-976">
+              <tr data-id="element-977">
+                {previewData.previewRows.length > 0 && Object.keys(previewData.previewRows[0]).map(header => <th key={header} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" data-id="element-978">
+                      {header}
+                    </th>)}
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200" data-id="element-979">
+              {previewData.previewRows.map((row: Record<string, any>, rowIndex: number) => <tr key={rowIndex} data-id="element-980">
+                  {Object.values(row).map((value, colIndex) => <td key={colIndex} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500" data-id="element-981">
+                      {String(value)}
+                    </td>)}
+                </tr>)}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {configurationType === 'push' && <div className="bg-blue-50 p-4 rounded-md" data-id="element-982">
+          <h3 className="text-md font-medium text-blue-900 mb-3" data-id="element-983">
+            API Response Example
+          </h3>
+          <pre className="bg-white p-3 rounded border border-gray-200 text-sm font-mono overflow-x-auto" data-id="element-984">
+            {`{
+  "success": true,
+  "correlationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "stats": {
+    "accepted": ${previewData.validRows},
+    "rejected": ${previewData.invalidRows},
+    "total": ${previewData.totalRows}
+  },
+  "timestamp": "${new Date().toISOString()}"
+}`}
+          </pre>
+        </div>}
+    </div>;
   const renderSummaryStep = () => <div className="space-y-6" data-id="element-989">
       <div className="flex items-center justify-center py-4" data-id="element-990">
         <div className="bg-green-100 rounded-full p-3" data-id="element-991">
@@ -1339,24 +1315,11 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
         </div>
       </div>
      
-      {createError && (
-        <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded" data-id="error-message">
-          {createError}
-        </div>
-      )}
       {createSuccess && (
         <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded" data-id="success-message">
           {createSuccess}
         </div>
       )}
-      <div className="flex justify-end space-x-4" data-id="element-1043">
-        <Button variant="secondary" onClick={() => setCurrentStep('config')} disabled={isCreating} data-id="element-1044">
-          Back
-        </Button>
-        <Button variant="primary" onClick={handleSave} disabled={isCreating} data-id="element-1045">
-          {isCreating ? (editMode ? 'Updating Endpoint...' : 'Creating Endpoint...') : (editMode ? 'Update Endpoint' : 'Create Endpoint')}
-        </Button>
-      </div>
     </div>;
   if (!isOpen) return null;
   return <div className="fixed inset-0 z-50 flex items-center justify-center p-4" data-id="element-1046">
@@ -1371,7 +1334,7 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
             <XIcon size={24} data-id="element-1051" />
           </button>
         </div>
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]" data-id="element-1052">
+        <div className="p-6 overflow-y-auto max-h-[calc(90vh-180px)]" data-id="element-1052">
           {isLoadingJob ? (
             <div className="flex justify-center items-center py-12">
               <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
@@ -1380,9 +1343,57 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
           ) : (
             <>
               {currentStep === 'config' && renderConfigStep()}
+              {currentStep === 'preview' && renderPreviewStep()}
               {currentStep === 'summary' && renderSummaryStep()}
             </>
           )}
+        </div>
+        
+        {/* Sticky Footer */}
+        <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4 flex justify-between items-center" data-id="sticky-footer">
+          <Button variant="secondary" onClick={onClose} data-id="cancel-button">
+            Cancel
+          </Button>
+          
+          <div className="flex space-x-3" data-id="right-buttons">
+            {currentStep === 'config' && (
+              <>
+                {!isFormValid() ? (
+                  <div title="Please fill all required fields">
+                    <Button variant="primary" icon={<PlayIcon size={16} />} onClick={handleTestRun} disabled={true}>
+                      {isTestingConnection ? 'Testing Connection...' : 'Save and Next'}
+                    </Button>
+                  </div>
+                ) : (
+                  <Button variant="primary" icon={<PlayIcon size={16} />} onClick={handleTestRun} disabled={isTestingConnection}>
+                    {isTestingConnection ? 'Testing Connection...' : 'Save and Next'}
+                  </Button>
+                )}
+              </>
+            )}
+            
+            {currentStep === 'preview' && (
+              <>
+                <Button variant="secondary" onClick={() => setCurrentStep('config')}>
+                  Back to Configuration
+                </Button>
+                <Button variant="primary" onClick={() => setCurrentStep('summary')}>
+                  Send for Approval
+                </Button>
+              </>
+            )}
+            
+            {currentStep === 'summary' && (
+              <>
+                <Button variant="secondary" onClick={() => setCurrentStep('config')} disabled={isCreating}>
+                  Back
+                </Button>
+                <Button variant="primary" onClick={handleSave} disabled={isCreating}>
+                  {isCreating ? (editMode ? 'Updating Endpoint...' : 'Creating Endpoint...') : (editMode ? 'Update Endpoint' : 'Send for Approval')}
+                </Button>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>;

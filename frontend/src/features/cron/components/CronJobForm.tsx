@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { HelpCircleIcon } from 'lucide-react';
 import { dataEnrichmentApi } from '../../data-enrichment/services';
 import { useToast } from '../../../shared/providers/ToastProvider';
 
@@ -15,11 +14,23 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({ onJobCreated, onCancel
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isJobSaved, setIsJobSaved] = useState(false);
   const { showSuccess, showError } = useToast();
 
   // Validation function to check if all required fields are filled
   const isFormValid = () => {
     return jobName.trim() !== '' && cronExpression.trim() !== '' && iterations >= 1 && startDate.trim() !== '';
+  };
+
+  const handleSubmitForApproval = async () => {
+    try {
+      showSuccess('Cron job submitted for approval successfully!');
+      // Close the form after submission
+      onCancel?.();
+    } catch (error) {
+      console.error('Failed to submit for approval:', error);
+      showError('Failed to submit for approval. Please try again.');
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -59,6 +70,9 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({ onJobCreated, onCancel
       setIterations(1);
       setStartDate('');
       setEndDate('');
+      
+      // Mark job as saved for approval workflow
+      setIsJobSaved(true);
       
       showSuccess(`Schedule "${scheduleName}" created successfully!`);
       onJobCreated?.();
@@ -109,10 +123,6 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({ onJobCreated, onCancel
               <label htmlFor="cronExpression" className="block text-sm font-medium text-gray-700" data-id="element-79">
                 CRON Expression <span className="text-red-500">*</span>
               </label>
-              <button type="button" className="inline-flex items-center text-sm text-blue-600 hover:text-blue-500" data-id="element-80">
-                <HelpCircleIcon size={16} className="mr-1" data-id="element-81" />
-                Help
-              </button>
             </div>
             <input 
               type="text" 
@@ -172,7 +182,7 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({ onJobCreated, onCancel
           </div>
         </div>
 
-        <div className="flex justify-end space-x-3">
+        <div className="flex justify-between space-x-3">
           <button 
             type="button" 
             onClick={onCancel}
@@ -181,17 +191,28 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({ onJobCreated, onCancel
           >
             Cancel
           </button>
-          <div 
-            className="relative"
-            title={!isFormValid() ? 'Please fill all required fields' : ''}
-          >
-            <button 
-              type="submit" 
-              disabled={isSubmitting || !isFormValid()}
-              className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+          <div className="flex space-x-3">
+            <div 
+              className="relative"
+              title={!isFormValid() ? 'Please fill all required fields' : ''}
             >
-              {isSubmitting ? 'Saving...' : 'Save Job'}
-            </button>
+              <button 
+                type="submit" 
+                disabled={isSubmitting || !isFormValid()}
+                className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+              >
+                {isSubmitting ? 'Saving...' : 'Save Job'}
+              </button>
+            </div>
+            {isJobSaved && (
+              <button 
+                type="button"
+                onClick={handleSubmitForApproval}
+                className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                Submit for Approval
+              </button>
+            )}
           </div>
         </div>
       </form>
