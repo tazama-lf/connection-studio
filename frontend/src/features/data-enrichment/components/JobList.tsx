@@ -7,6 +7,7 @@ import { useToast } from '../../../shared/providers/ToastProvider';
 import { useAuth } from '../../auth/contexts/AuthContext';
 import { isEditor, isApprover } from '../../../utils/roleUtils';
 import { DropdownMenuWithAutoDirection } from './DropdownMenuWithAutoDirection';
+import { getUserFriendlyErrorMessage } from '../../../shared/utils/errorUtils';
 
 interface JobListProps {
   jobs: DataEnrichmentJobResponse[];
@@ -202,7 +203,8 @@ export const JobList: React.FC<JobListProps> = (props) => {
       console.error('=== STATUS UPDATE ERROR ===');
       console.error('Failed to update job status:', error);
       console.error('Error details:', error);
-      showError('Failed to update job status');
+      const userFriendlyMessage = getUserFriendlyErrorMessage(error, 'approve');
+      showError(userFriendlyMessage);
     }
   };
 
@@ -213,7 +215,8 @@ export const JobList: React.FC<JobListProps> = (props) => {
       onRefresh?.();
     } catch (error) {
       console.error('Failed to update job activation:', error);
-      showError('Failed to update job activation');
+      const userFriendlyMessage = getUserFriendlyErrorMessage(error, isActive ? 'activate' : 'deactivate');
+      showError(userFriendlyMessage);
     }
   };
 
@@ -823,30 +826,34 @@ export const JobList: React.FC<JobListProps> = (props) => {
                               </>
                             )}
 
-                            {/* Activation Controls */}
-                            <hr className="my-1 border-gray-100" />
-                            <button
-                              onClick={() => {
-                                handleActivationToggle(job.id, true, jobType);
-                                setDropdownOpen(null);
-                              }}
-                              className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                            >
-                              <Play className="w-4 h-4 mr-2" />
-                              Activate
-                            </button>
-                            <button
-                              onClick={() => {
-                                handleActivationToggle(job.id, false, jobType);
-                                setDropdownOpen(null);
-                              }}
-                              className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                            >
-                              <div className="w-4 h-4 mr-2 flex items-center justify-center">
-                                <span>⏸</span>
-                              </div>
-                              Deactivate
-                            </button>
+                            {/* Activation Controls - Only for Approvers */}
+                            {userIsApprover && (
+                              <>
+                                <hr className="my-1 border-gray-100" />
+                                <button
+                                  onClick={() => {
+                                    handleActivationToggle(job.id, true, jobType);
+                                    setDropdownOpen(null);
+                                  }}
+                                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                >
+                                  <Play className="w-4 h-4 mr-2" />
+                                  Activate
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    handleActivationToggle(job.id, false, jobType);
+                                    setDropdownOpen(null);
+                                  }}
+                                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                >
+                                  <div className="w-4 h-4 mr-2 flex items-center justify-center">
+                                    <span>⏸</span>
+                                  </div>
+                                  Deactivate
+                                </button>
+                              </>
+                            )}
                           </div>
                         </DropdownMenuWithAutoDirection>
                       )}

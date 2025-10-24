@@ -13,6 +13,7 @@ import { useToast } from '../../../shared/providers/ToastProvider';
 import { useAuth } from '../../auth/contexts/AuthContext';
 import { isEditor, isApprover } from '../../../utils/roleUtils';
 import { UI_CONFIG } from '../../../shared/config/app.config';
+import { getUserFriendlyErrorMessage } from '../../../shared/utils/errorUtils';
 
 const DataEnrichmentModule: React.FC = () => {
   const { showSuccess, showError } = useToast();
@@ -135,9 +136,10 @@ const DataEnrichmentModule: React.FC = () => {
       // Show user-friendly error message
       if (error instanceof TypeError && error.message.includes('fetch')) {
         console.warn('❌ Cannot connect to backend service. Check if backend is running.');
-        showError('Cannot connect to backend service. Please ensure backend is running on http://localhost:3000');
+        showError('Cannot connect to the data enrichment service. Please ensure the backend is running.');
       } else {
-        showError(`Failed to load jobs: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        const userFriendlyMessage = getUserFriendlyErrorMessage(error, 'load');
+        showError(userFriendlyMessage);
       }
     } finally {
       setJobsLoading(false);
@@ -268,23 +270,11 @@ const DataEnrichmentModule: React.FC = () => {
       console.error('Error type:', error?.constructor?.name);
       console.error('Error message:', error instanceof Error ? error.message : 'Unknown error');
       console.error('Full error object:', error);
-      
-      // Try to extract API error details
-      if (error && typeof error === 'object' && 'response' in error) {
-        const apiError = error as any;
-        console.error('API Response Status:', apiError.response?.status);
-        console.error('API Response Data:', apiError.response?.data);
-        
-        // Show specific error message if available
-        const errorMessage = apiError.response?.data?.message || 
-                           apiError.response?.data?.error || 
-                           apiError.message || 
-                           'Failed to save job changes';
-        showError(`Save failed: ${errorMessage}`);
-      } else {
-        showError('Failed to save job changes');
-      }
-      
+
+      // Show user-friendly error message
+      const userFriendlyMessage = getUserFriendlyErrorMessage(error, 'save');
+      showError(userFriendlyMessage);
+
       throw error; // Re-throw to let modal handle the error state
     }
   };
@@ -318,7 +308,8 @@ const DataEnrichmentModule: React.FC = () => {
       console.log('Modal should now open in edit mode');
     } catch (error) {
       console.error('Failed to load job details for edit:', error);
-      showError('Failed to load job details for edit');
+      const userFriendlyMessage = getUserFriendlyErrorMessage(error, 'load');
+      showError(userFriendlyMessage);
     } finally {
       setJobDetailsLoading(false);
     }
