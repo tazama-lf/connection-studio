@@ -7,11 +7,10 @@ import {
 } from '@nestjs/common';
 import { ConfigRepository } from './config.repository';
 import {
-  parsePayloadToSchema,
-  applyFieldAdjustments,
   FieldType,
   JSONSchema,
-  ContentType,
+  parsePayloadToSchema,
+  applyFieldAdjustments,
 } from '@tazama-lf/tcs-lib';
 import { AuditService } from '../audit/audit.service';
 import { JSONSchemaConverterService } from '../schemas/json-schema-converter.service';
@@ -25,6 +24,7 @@ import {
   CloneConfigDto,
   ConfigResponseDto,
   FieldMapping,
+  ContentType,
   ConfigStatus,
   TransactionType,
   AddMappingDto,
@@ -109,42 +109,66 @@ export class ConfigService {
         };
       }
 
-      const parsingResult =
-        await parsePayloadToSchema(
-          dto.payload,
-          dto.contentType || ContentType.JSON,
-        );
+      const parsingResult = await parsePayloadToSchema(
+        dto.payload,
+        dto.contentType || ContentType.JSON,
+      );
 
-      if (!parsingResult || !parsingResult.success) {
+      if (!parsingResult?.success) {
+        this.logger.error(
+          'Failed to parse payload:',
+          parsingResult?.validation || 'Unknown error',
+        );
         return {
           success: false,
           message: 'Failed to parse payload',
-          validation: parsingResult?.validation,
+          validation: {
+            success: false,
+            errors: ['Parsing failed'],
+            warnings: [],
+          },
         };
       }
 
-      let finalSchema = parsingResult.jsonSchema;
+      // Use sourceFields to generate the schema with backend's converter
+      let sourceFields = parsingResult.sourceFields;
+
+      if (!sourceFields || sourceFields.length === 0) {
+        this.logger.error('Parsing result contains no source fields');
+        return {
+          success: false,
+          message: 'Failed to generate fields from payload',
+          validation: {
+            success: false,
+            errors: ['No fields generated'],
+            warnings: [],
+          },
+        };
+      }
+
+      // Apply field adjustments if provided
       if (dto.fieldAdjustments && dto.fieldAdjustments.length > 0) {
         this.logger.log(
           `Applying ${dto.fieldAdjustments.length} field adjustments`,
         );
 
-        const adjustedSourceFields =
-          applyFieldAdjustments(
-            parsingResult.sourceFields,
-            dto.fieldAdjustments,
-          );
-
-        // Regenerate JSON schema with adjusted fields
-        finalSchema =
-          this.jsonSchemaConverter.convertToJSONSchema(adjustedSourceFields);
-
-        this.logger.log(
-          'Successfully applied field adjustments and regenerated schema',
+        sourceFields = applyFieldAdjustments(
+          sourceFields,
+          dto.fieldAdjustments,
         );
+
+        this.logger.log('Successfully applied field adjustments');
       } else {
         this.logger.log('No field adjustments to apply');
       }
+
+      // Generate JSON schema from source fields using backend's converter
+      const finalSchema =
+        this.jsonSchemaConverter.convertToJSONSchema(sourceFields);
+
+      this.logger.log(
+        `Generated schema with ${Object.keys(finalSchema.properties || {}).length} properties`,
+      );
 
       const validation = this.validateSchema(finalSchema);
       if (!validation.success) {
@@ -267,11 +291,10 @@ export class ConfigService {
         const existingSourceFields =
           this.jsonSchemaConverter.convertFromJSONSchema(sourceConfig.schema);
 
-        const adjustedSourceFields =
-          applyFieldAdjustments(
-            existingSourceFields,
-            dto.fieldAdjustments,
-          );
+        const adjustedSourceFields = applyFieldAdjustments(
+          existingSourceFields,
+          dto.fieldAdjustments,
+        );
 
         finalSchema =
           this.jsonSchemaConverter.convertToJSONSchema(adjustedSourceFields);
@@ -436,11 +459,10 @@ export class ConfigService {
         this.jsonSchemaConverter.convertFromJSONSchema(baseSchema);
 
       // Apply field adjustments
-      const adjustedSourceFields =
-        applyFieldAdjustments(
-          existingSourceFields,
-          dto.fieldAdjustments,
-        );
+      const adjustedSourceFields = applyFieldAdjustments(
+        existingSourceFields,
+        dto.fieldAdjustments,
+      );
 
       // Regenerate JSON schema with adjusted fields
       finalSchema =
