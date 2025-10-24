@@ -120,7 +120,9 @@ export class AuthController {
         ...sessionInfo,
         timeRemainingSeconds: timeRemaining,
         timeRemainingMinutes: Math.floor(timeRemaining / 60),
-        sessionTimeoutMinutes: 30,
+        sessionTimeoutMinutes: Math.floor(
+          this.sessionManager.getSessionTimeout() / (60 * 1000),
+        ),
       },
     };
   }

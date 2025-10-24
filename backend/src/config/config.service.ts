@@ -1723,7 +1723,6 @@ export class ConfigService {
     destinationPath: string,
     mapping: FieldMapping,
   ): void {
-    // Direct mappings should have exactly one source
     if (sourceTypes.length !== 1) {
       throw new BadRequestException(
         `Direct mapping validation error: Direct mappings (NONE transformation) require exactly one source field, but ${sourceTypes.length} source fields were provided.`,
@@ -1763,6 +1762,7 @@ export class ConfigService {
           typeof propSchema.items === 'object' &&
           propSchema.items.type === 'object'
         ) {
+          // Generate indexed array paths (existing behavior)
           const arrayPaths = this.extractAllPathsFromSchema(
             propSchema.items as JSONSchema,
             `${path}[0]`,
@@ -1774,6 +1774,12 @@ export class ConfigService {
             `${path}.0`,
           );
           paths.push(...dotArrayPaths);
+
+          const traversalPaths = this.extractAllPathsFromSchema(
+            propSchema.items as JSONSchema,
+            path, 
+          );
+          paths.push(...traversalPaths);
         }
       }
     }
