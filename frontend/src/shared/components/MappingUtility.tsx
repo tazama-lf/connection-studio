@@ -583,12 +583,22 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                 {nodeType === 'source' && <FolderIcon size={16} className="mr-2 text-blue-500" data-id="element-182" />}
                 {nodeType === 'destination' && <DatabaseIcon size={16} className="mr-2 text-green-500" data-id="element-183" />}
                 {nodeType === 'redis' && <ServerIcon size={16} className="mr-2 text-purple-500" data-id="element-184" />}
-                <button onClick={() => onSelect(node.path, nodeType === 'redis' ? 'redis' : 'database')} className="text-left flex-1 text-sm" data-id="element-185">
-                  {node.name}
-                  {node.type && <span className="ml-2 text-xs text-gray-500" data-id="element-186">
-                      ({node.type})
-                    </span>}
-                </button>
+                {/* Only allow selection for leaf nodes (no children, not object/array) */}
+                {(!hasChildren && node.type !== 'object' && node.type !== 'array') ? (
+                  <button onClick={() => onSelect(node.path, nodeType === 'redis' ? 'redis' : 'database')} className="text-left flex-1 text-sm hover:text-blue-700" data-id="element-185">
+                    {node.name}
+                    {node.type && <span className="ml-2 text-xs text-gray-500" data-id="element-186">
+                        ({node.type})
+                      </span>}
+                  </button>
+                ) : (
+                  <span className="text-left flex-1 text-sm text-gray-400 cursor-not-allowed select-none" title="Select a field, not an object or array" data-id="element-185">
+                    {node.name}
+                    {node.type && <span className="ml-2 text-xs text-gray-400" data-id="element-186">
+                        ({node.type})
+                      </span>}
+                  </span>
+                )}
               </div>
               {hasChildren && isExpanded && <div className="ml-4 pl-2 border-l border-gray-200" data-id="element-187">
                   {renderTree(node.children ?? [], expanded, toggleFn, onSelect, selectedPaths, nodeType)}
@@ -623,7 +633,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                 {renderTree(sourceTree, expandedSourceNodes, toggleSourceNode, handleSourceSelect, selectedSources, 'source')}
               </div>
               <div className="text-sm text-gray-600" data-id="element-199">
-               <span className='font-bold'>Selected:</span> {selectedSources.join(', ') || 'None'}
+                Selected: {selectedSources.join(', ') || 'None'}
               </div>
             </div>
             )}
@@ -661,6 +671,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                   <select value={selectedTransformation} onChange={e => setSelectedTransformation(e.target.value as 'concatenate' | 'sum' | 'split' | 'none' | 'constant')} className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" data-id="element-205">
                     <option value="none" data-id="element-206">None (Direct Mapping)</option>
                     <option value="concatenate" data-id="element-207">Concatenate</option>
+                    <option value="sum" data-id="element-208">Sum</option>
                     <option value="split" data-id="element-209">Split</option>
                     <option value="constant" data-id="element-constant-option">Constant Value</option>
                   </select>
@@ -765,8 +776,8 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                   renderTree(destinationTree, expandedDestNodes, toggleDestNode, (path, type) => handleDestinationSelect(path, type as 'database' | 'redis' | 'model'), selectedDestinations, 'destination')
                 )}
               </div>
-              <div className="text-sm text-gray-600 " data-id="element-234">
-                <span className='font-bold'>Selected:</span> {selectedDestinations.join(', ') || 'None'}
+              <div className="text-sm text-gray-600" data-id="element-234">
+                Selected: {selectedDestinations.join(', ') || 'None'}
               </div>
             </div>
           </div>
@@ -795,6 +806,12 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
   };
 
   return <div className="space-y-6" data-id="element-271">
+      {/* Error Display */}
+      {mappingError && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-md">
+          <div className="text-red-800 text-sm">{mappingError}</div>
+        </div>
+      )}
         <div className="flex justify-between items-center mb-4" data-id="element-272">
         <h3 className="text-lg font-medium text-gray-900" data-id="element-273">Field Mapping</h3>
         <Button variant="secondary" size="sm" onClick={addNewMapping} icon={<PlusIcon size={16} data-id="element-279" />} disabled={readOnly} data-id="element-278">

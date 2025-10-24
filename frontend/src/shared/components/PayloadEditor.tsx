@@ -111,9 +111,15 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
     return '';
   };
 
-  const validatePayloadContent = (payloadValue: string, contentType: string): { isValid: boolean; message: string; error: string } => {
-    if (!payloadValue || !payloadValue.trim()) {
+  const validatePayloadContent = (payloadValue: string, contentType: string, checkRequired: boolean = false): { isValid: boolean; message: string; error: string } => {
+    // Only check if payload is required when explicitly requested (e.g., on save)
+    if (checkRequired && (!payloadValue || !payloadValue.trim())) {
       return { isValid: false, message: '', error: 'Payload is required' };
+    }
+
+    // If payload is empty but we're not checking required, consider it valid (not yet filled)
+    if (!payloadValue || !payloadValue.trim()) {
+      return { isValid: true, message: '', error: '' };
     }
 
     if (contentType === 'application/json') {
@@ -490,6 +496,9 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
   const generateJSONSchema = (obj: any, path = ''): SchemaField[] => {
     const schema: SchemaField[] = [];
     
+    console.log(`🔍 generateJSONSchema called with path: "${path}"`);
+    console.log(`📦 Object keys:`, obj && typeof obj === 'object' ? Object.keys(obj) : 'Not an object');
+    
     if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
       Object.entries(obj).forEach(([key, value]) => {
         const fieldPath = path ? `${path}.${key}` : key;
@@ -503,6 +512,8 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
           fieldType = typeof value;
         }
         
+        console.log(`  ➡️ Processing field: ${fieldPath}, type: ${fieldType}, isArray: ${Array.isArray(value)}`);
+        
         const field: SchemaField = {
           name: key,
           path: fieldPath,
@@ -511,25 +522,37 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
         };
 
         if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-          // Handle nested objects
+          // Handle nested objects - recursively process
+          console.log(`    🔄 Recursing into nested object at ${fieldPath}`);
           field.children = generateJSONSchema(value, fieldPath);
         } else if (Array.isArray(value) && value.length > 0) {
           const firstElement = value[0];
-          if (typeof firstElement === 'object' && firstElement !== null) {
-            // Generate schema for array elements
-            // For array children, generate paths relative to the array element
-            // This will create paths like: fieldPath.childName which extractFieldName can handle
+          console.log(`    📋 Array at ${fieldPath}, first element type:`, typeof firstElement, 'isArray:', Array.isArray(firstElement));
+          
+          if (typeof firstElement === 'object' && firstElement !== null && !Array.isArray(firstElement)) {
+            // Generate schema for array elements with objects
+            // IMPORTANT: Recursively process the object to get all nested fields
+            console.log(`    🔄 Recursing into array element object at ${fieldPath}`);
             field.children = generateJSONSchema(firstElement, fieldPath);
             field.arrayElementType = 'object';
+          } else if (Array.isArray(firstElement)) {
+            // Handle arrays of arrays
+            console.log(`    📋 Array of arrays at ${fieldPath}`);
+            field.children = [];
+            field.arrayElementType = 'array';
           } else {
+            // Primitive array elements (string, number, boolean)
+            console.log(`    🔤 Primitive array at ${fieldPath}`);
             field.arrayElementType = typeof firstElement;
           }
         }
         
+        console.log(`  ✅ Created field: ${fieldPath}, has children:`, !!field.children, 'children count:', field.children?.length || 0);
         schema.push(field);
       });
     }
     
+    console.log(`✅ generateJSONSchema returning ${schema.length} fields for path "${path}"`);
     return schema;
   };
 
@@ -983,7 +1006,7 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
                   {readOnly
                     ? 'Review the schema fields below for this configuration.'
                     : configId
-                      ? 'Manually add, remove, and edit schema fields below. The payload above is read-only in edit mode.'
+                      ? 'Manually add, remove, and edit schema fields below.'
                       : 'Generate schema fields from your payload above, then adjust field types and requirements below.'
                   }
                 </p>

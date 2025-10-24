@@ -113,6 +113,12 @@ export class AuthApiService {
     });
   }
 
+  async refreshSession(): Promise<{ success: boolean; message: string }> {
+    return this.authRequest<{ success: boolean; message: string }>('/auth/session/refresh', {
+      method: 'POST',
+    });
+  }
+
   async getProfile(): Promise<User> {
     return this.authRequest<User>(API_CONFIG.ENDPOINTS.AUTH.PROFILE);
   }

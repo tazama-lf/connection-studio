@@ -6,6 +6,7 @@ import { dataEnrichmentApi } from '../services/dataEnrichmentApi';
 import { useToast } from '../../../shared/providers/ToastProvider';
 import { useAuth } from '../../auth/contexts/AuthContext';
 import { isEditor, isApprover } from '../../../utils/roleUtils';
+import { DropdownMenuWithAutoDirection } from './DropdownMenuWithAutoDirection';
 
 interface JobListProps {
   jobs: DataEnrichmentJobResponse[];
@@ -229,6 +230,48 @@ export const JobList: React.FC<JobListProps> = (props) => {
   if (!jobs || jobs.length === 0) {
     console.log('⚠️ Rendering NO JOBS FOUND state');
     console.log('Reason: jobs =', jobs, '| jobs.length =', jobs?.length);
+    
+    // Check if any filters are active
+    const hasActiveFilters = 
+      (statusFilter && statusFilter !== 'ALL') ||
+      (recordStatusFilter && recordStatusFilter !== 'ALL') ||
+      (dateFilter && dateFilter !== 'ALL') ||
+      (typeFilter && typeFilter !== 'ALL') ||
+      (searchQuery && searchQuery.trim() !== '');
+    
+    if (hasActiveFilters) {
+      // Show "no results match filters" message with button to clear filters
+      return (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12">
+          <div className="text-center">
+            <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+              <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No Jobs Match Your Filters</h3>
+            <p className="text-gray-500 mb-6">
+              Try adjusting your search criteria or clear all filters to see all jobs
+            </p>
+            <Button 
+              onClick={() => {
+                // Clear all filters
+                onStatusFilterChange?.('ALL');
+                onRecordStatusFilterChange?.('ALL');
+                onDateFilterChange?.('ALL');
+                onTypeFilterChange?.('ALL');
+                onRefresh?.();
+              }} 
+              variant="primary"
+            >
+              Refresh
+            </Button>
+          </div>
+        </div>
+      );
+    }
+    
+    // Show "no jobs yet" message for empty system
     return (
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12">
         <div className="text-center">
@@ -681,7 +724,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
                       </button>
 
                       {dropdownOpen === job.id && (
-                        <div className="absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-10">
+                        <DropdownMenuWithAutoDirection>
                           <div className="py-1">
                             {/* View Details - Separate logic for Editors vs Approvers */}
                             {userIsEditor ? (
@@ -819,7 +862,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
                               Deactivate
                             </button>
                           </div>
-                        </div>
+                        </DropdownMenuWithAutoDirection>
                       )}
                     </div>
                   </div>

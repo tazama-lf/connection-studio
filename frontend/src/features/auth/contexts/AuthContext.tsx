@@ -2,6 +2,8 @@ import React, { useEffect, useState, createContext, useContext } from 'react';
 import { authApi, type User } from '../services/authApi';
 import { globalTokenManager } from '../../../shared/services/tokenManager';
 import { TokenExpirationModal } from '../../../shared/components/TokenExpirationModal';
+import { TokenExpirationWarning } from '../../../shared/components/TokenExpirationWarning';
+import { getTokenInfo, formatTimeRemaining } from '../../../shared/utils/tokenUtils';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -30,6 +32,8 @@ const AuthProvider: React.FC<{
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [showTokenExpiredModal, setShowTokenExpiredModal] = useState(false);
+  const [showTokenExpiringWarning, setShowTokenExpiringWarning] = useState(false);
+  const [timeRemaining, setTimeRemaining] = useState<string>('');
   const [isIntentionalLogout, setIsIntentionalLogout] = useState(false);
 
   // Check if user is already logged in (from localStorage)
@@ -115,7 +119,7 @@ const AuthProvider: React.FC<{
     return unsubscribe;
   }, [showTokenExpiredModal, isIntentionalLogout]);
 
-  // Periodic token expiration check for idle users
+  // Monitor token expiration and show warning when token will expire soon
   useEffect(() => {
     if (!isAuthenticated) return;
 
@@ -128,14 +132,24 @@ const AuthProvider: React.FC<{
       }
 
       try {
-        // Check if token is expired
-        const tokenPayload = JSON.parse(atob(token.split('.')[1]));
-        const currentTime = Math.floor(Date.now() / 1000);
-        const isTokenExpired = tokenPayload.exp && tokenPayload.exp < currentTime;
+        const tokenInfo = getTokenInfo(token);
         
-        if (isTokenExpired) {
-          console.log('Token expired during idle check, triggering logout');
+        if (tokenInfo.isExpired) {
+          console.log('Token expired, triggering logout');
           globalTokenManager.handleTokenExpiration();
+          return;
+        }
+
+        // Show warning if token will expire soon (within 5 minutes)
+        if (tokenInfo.willExpireSoon && !showTokenExpiringWarning) {
+          console.log(`Token will expire in ${tokenInfo.timeUntilExpiry}s, showing warning`);
+          setTimeRemaining(formatTimeRemaining(tokenInfo.timeUntilExpiry));
+          setShowTokenExpiringWarning(true);
+        }
+
+        // Update time remaining if warning is already showing
+        if (showTokenExpiringWarning && !tokenInfo.isExpired) {
+          setTimeRemaining(formatTimeRemaining(tokenInfo.timeUntilExpiry));
         }
       } catch (error) {
         console.error('Error checking token expiration:', error);
@@ -143,11 +157,14 @@ const AuthProvider: React.FC<{
       }
     };
 
-    // Check every 30 seconds
-    const interval = setInterval(checkTokenExpiration, 30000);
+    // Check immediately on mount
+    checkTokenExpiration();
+
+    // Check every 10 seconds for more responsive warnings
+    const interval = setInterval(checkTokenExpiration, 10000);
     
     return () => clearInterval(interval);
-  }, [isAuthenticated]);
+  }, [isAuthenticated, showTokenExpiringWarning]);
 
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
@@ -174,10 +191,12 @@ const AuthProvider: React.FC<{
         }
       }
       
+      console.log('Login failed: No token in response');
       return false;
     } catch (error) {
-      console.error('Login failed:', error);
-      return false;
+      console.error('Login failed with error:', error);
+      // Re-throw the error so Login component can catch it and display appropriate message
+      throw error;
     } finally {
       setLoading(false);
     }
@@ -206,6 +225,34 @@ const AuthProvider: React.FC<{
     window.location.href = '/';
   };
 
+  const handleExtendSession = async () => {
+    console.log('=== EXTENDING SESSION ===');
+    try {
+      // Call the session refresh endpoint to extend the session
+      const response = await authApi.refreshSession();
+      
+      if (response.success) {
+        console.log('Session extended successfully');
+        setShowTokenExpiringWarning(false);
+        // Note: We're not getting a new JWT token, just extending the session
+        // User will need to re-login when JWT actually expires
+      } else {
+        console.error('Failed to extend session:', response);
+        // Session could not be extended, user needs to re-login
+        logout();
+      }
+    } catch (error) {
+      console.error('Error extending session:', error);
+      // If we can't extend, force re-login
+      logout();
+    }
+  };
+
+  const handleLogoutFromWarning = () => {
+    setShowTokenExpiringWarning(false);
+    logout();
+  };
+
   return (
     <AuthContext.Provider value={{
       isAuthenticated,
@@ -215,6 +262,14 @@ const AuthProvider: React.FC<{
       logout
     }}>
       {children}
+      
+      {/* Token Expiring Soon Warning */}
+      <TokenExpirationWarning
+        isOpen={showTokenExpiringWarning}
+        timeRemaining={timeRemaining}
+        onExtendSession={handleExtendSession}
+        onLogout={handleLogoutFromWarning}
+      />
       
       {/* Token Expiration Modal */}
       <TokenExpirationModal

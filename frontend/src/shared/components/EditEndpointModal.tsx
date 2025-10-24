@@ -795,17 +795,22 @@ interface EditEndpointModalProps {
 
     // Validate all required fields before saving
     const validationErrors: string[] = [];
-
+   if (!endpointData.version.trim()) {
+      validationErrors.push('Version is required');
+    }
     if (!endpointData.transactionType.trim()) {
       validationErrors.push('Transaction Type is required');
     }
 
-    if (!endpointData.version.trim()) {
-      validationErrors.push('Version is required');
-    }
+ 
 
     if (!payload.trim()) {
       validationErrors.push('Payload is required');
+    }
+
+    // Check if fields have been generated from payload
+    if (!currentSchema || !currentSchema.properties || Object.keys(currentSchema.properties).length === 0) {
+      validationErrors.push('Please generate fields from your payload before saving');
     }
 
     // If there are validation errors, show them and scroll to top
@@ -1112,7 +1117,7 @@ interface EditEndpointModalProps {
       {/* Enhanced blurred backdrop */}
       <div 
         className="fixed inset-0 backdrop-blur-sm backdrop-saturate-150 z-40" 
-        onClick={onClose}
+        // onClick={onClose}
       />
       
       {/* Modal Content - Higher z-index to appear above backdrop */}

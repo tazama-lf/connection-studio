@@ -4,6 +4,7 @@ import { dataEnrichmentApi } from '../../data-enrichment/services';
 import type { ScheduleResponse } from '../../data-enrichment/types';
 import { useToast } from '../../../shared/providers/ToastProvider';
 import { UI_CONFIG } from '../../../shared/config/app.config';
+import { DropdownMenuWithAutoDirection } from '../../../shared/components/DropdownMenuWithAutoDirection';
 
 interface CronJobListProps {
   searchTerm?: string;
@@ -237,10 +238,8 @@ export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => 
                           >
                             <MoreVerticalIcon className="w-4 h-4" />
                           </button>
-                          
-                          {/* Dropdown Menu */}
                           {openDropdown === schedule.id && (
-                            <div className="absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-10">
+                            <DropdownMenuWithAutoDirection onClose={() => setOpenDropdown(null)}>
                               <div className="py-1">
                                 <button
                                   onClick={() => {
@@ -286,7 +285,7 @@ export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => 
                                   </button>
                                 )}
                               </div>
-                            </div>
+                            </DropdownMenuWithAutoDirection>
                           )}
                         </div>
                       </div>

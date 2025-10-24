@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { EyeIcon, MoreVerticalIcon, EditIcon, CopyIcon, HistoryIcon, ChevronUpIcon, ChevronDownIcon, FilterIcon } from 'lucide-react';
 import { configApi } from '../services/configApi';
 import { UI_CONFIG } from '../../../shared/config/app.config';
+import { DropdownMenuWithAutoDirection } from '../../../shared/components/DropdownMenuWithAutoDirection';
 
 interface Config {
   id: number;
@@ -288,7 +289,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
                 </div>
               </th>
               <th 
-                className="status-filter-container px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none relative"
+                className="status-filter-container px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
                 onClick={() => setShowStatusFilter(!showStatusFilter)}
               >
                 <div className="flex items-center">
@@ -381,9 +382,8 @@ export const ConfigList: React.FC<ConfigListProps> = ({
                         >
                           <MoreVerticalIcon className="w-4 h-4" />
                         </button>
-                        
                         {openDropdown === config.id && (
-                          <div className="absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-10">
+                          <DropdownMenuWithAutoDirection onClose={() => setOpenDropdown(null)}>
                             <div className="py-1">
                               <button
                                 onClick={() => {
@@ -426,7 +426,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
                               )}
                              
                             </div>
-                          </div>
+                          </DropdownMenuWithAutoDirection>
                         )}
                       </div>
                     </div>
