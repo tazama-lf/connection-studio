@@ -182,10 +182,12 @@ export const ConfigList: React.FC<ConfigListProps> = ({
       case 'cloned':
         return 'bg-purple-50 text-purple-600 border border-purple-200';
       case 'under_review':
+      case 'under review':
         return 'bg-blue-50 text-blue-600 border border-blue-200';
       case 'deployed':
         return 'bg-indigo-50 text-indigo-600 border border-indigo-200';
       case 'changes_requested':
+      case 'changes requested':
         return 'bg-orange-50 text-orange-600 border border-orange-200';
       default:
         return 'bg-gray-50 text-gray-600 border border-gray-200';
@@ -205,13 +207,14 @@ export const ConfigList: React.FC<ConfigListProps> = ({
         return 'CLONED';
       case 'approved':
         return 'APPROVED';
-      case 'under_review':
+      case 'under review':
         return 'UNDER REVIEW';
       case 'deployed':
         return 'DEPLOYED';
       case 'rejected':
         return 'REJECTED';
       case 'changes_requested':
+      case 'changes requested':
         return 'CHANGES REQUESTED';
       default:
         return status.toUpperCase().replace(/_/g, ' ');
@@ -289,7 +292,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
                 </div>
               </th>
               <th 
-                className="status-filter-container px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                className="status-filter-container relative px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
                 onClick={() => setShowStatusFilter(!showStatusFilter)}
               >
                 <div className="flex items-center">
@@ -401,9 +404,9 @@ export const ConfigList: React.FC<ConfigListProps> = ({
                                     onConfigEdit(config);
                                     setOpenDropdown(null);
                                   }}
-                                  disabled={config.status === 'under_review' || config.status === 'approved'}
+                                  disabled={config.status === 'under_review' || config.status === 'under review' || config.status === 'approved'}
                                   className={`flex items-center w-full px-4 py-2 text-sm hover:bg-gray-100 ${
-                                    config.status === 'under_review' || config.status === 'approved'
+                                    config.status === 'under_review' || config.status === 'under review' || config.status === 'approved'
                                       ? 'text-gray-400 cursor-not-allowed'
                                       : 'text-gray-700'
                                   }`}

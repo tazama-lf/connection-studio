@@ -740,7 +740,7 @@ interface EditEndpointModalProps {
         console.log('Current config status:', currentStatus);
         
         // If config is under_review, just approve it (set to approved)
-        if (currentStatus === 'under_review') {
+        if (currentStatus === 'under_review' || currentStatus === 'under review') {
           console.log('Config is under_review - approving it');
           response = await configApi.approveConfig(createdEndpoint.id);
         } else {
@@ -1400,7 +1400,7 @@ interface EditEndpointModalProps {
                   (currentStep === 'mapping' && !isMappingValid) || 
                   (currentStep === 'simulation' && !isSimulationSuccess && !readOnly) ||
                   (currentStep !== 'payload' && !createdEndpoint && !existingConfig) ||
-                  (currentStep === 'deploy' && !isApprover(user?.claims || []) && (createdEndpoint?.status === 'under_review' || createdEndpoint?.status === 'approved' || existingConfig?.status === 'under_review' || existingConfig?.status === 'approved')) ||
+                  (currentStep === 'deploy' && !isApprover(user?.claims || []) && (createdEndpoint?.status === 'under_review' || createdEndpoint?.status === 'under review' || createdEndpoint?.status === 'approved' || existingConfig?.status === 'under_review' || existingConfig?.status === 'under review' || existingConfig?.status === 'approved')) ||
                   (currentStep === 'deploy' && isApprover(user?.claims || []) && (createdEndpoint?.status === 'approved' || existingConfig?.status === 'approved'))
                 } data-id="element-749">
                   {loading ? 'Processing...' : (
@@ -1452,8 +1452,8 @@ interface EditEndpointModalProps {
                         {isEditor(user?.claims || []) && currentStep === 'deploy' && (
                           <>
                             {/* Show Submit for Approval button for draft configs or when config is ready for submission */}
-                            {((createdEndpoint?.status !== 'under_review' && createdEndpoint?.status !== 'approved') || 
-                              (existingConfig?.status !== 'under_review' && existingConfig?.status !== 'approved') ||
+                            {((createdEndpoint?.status !== 'under_review' && createdEndpoint?.status !== 'under review' && createdEndpoint?.status !== 'approved') || 
+                              (existingConfig?.status !== 'under_review' && existingConfig?.status !== 'under review' && existingConfig?.status !== 'approved') ||
                               (!createdEndpoint?.status && !existingConfig?.status)) && (
                               <Button 
                                 variant="primary" 

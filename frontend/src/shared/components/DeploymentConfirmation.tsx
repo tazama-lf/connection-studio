@@ -121,7 +121,7 @@ export const DeploymentConfirmation: React.FC<DeploymentConfirmationProps> = ({
         <CheckCircleIcon className="h-6 w-6 text-green-500" data-id="element-158" />
         <h3 className="text-lg font-medium text-gray-900" data-id="element-159">
           {configData?.status === 'approved' ? 'Configuration Approved' : 
-           configData?.status === 'under_review' ? 'Pending Review' : 
+           configData?.status === 'under_review' || configData?.status === 'under review' ? 'Pending Review' : 
            'Ready to Submit for Approval'}
         </h3>
       </div>

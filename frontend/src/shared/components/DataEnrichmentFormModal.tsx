@@ -1114,12 +1114,12 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
         {!isFormValid() ? (
           <div title="Please fill all required fields">
             <Button variant="primary" icon={<PlayIcon size={16} data-id="element-944" />} onClick={handleTestRun} disabled={true} data-id="element-943">
-              {isTestingConnection ? 'Testing Connection...' : 'Test Run'}
+              {isTestingConnection ? 'Testing Connection...' : 'Save and Next'}
             </Button>
           </div>
         ) : (
           <Button variant="primary" icon={<PlayIcon size={16} data-id="element-944" />} onClick={handleTestRun} disabled={isTestingConnection} data-id="element-943">
-            {isTestingConnection ? 'Testing Connection...' : 'Test Run'}
+            {isTestingConnection ? 'Testing Connection...' : 'Save and Next'}
           </Button>
         )}
       </div>
@@ -1338,12 +1338,7 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
             </>}
         </div>
       </div>
-      <div className="bg-blue-50 p-4 rounded-md" data-id="element-1040">
-        <p className="text-sm text-blue-700" data-id="element-1041">
-          <strong data-id="element-1042">Note:</strong> This endpoint will be created with version 1.0
-          and all changes will be audit-logged.
-        </p>
-      </div>
+     
       {createError && (
         <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded" data-id="error-message">
           {createError}

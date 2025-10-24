@@ -472,7 +472,7 @@ const DataEnrichmentModule: React.FC = () => {
               icon={<Plus size={16} />} 
               onClick={() => setShowJobForm(true)}
             >
-              Define New Endpoint
+              New Data Enrichment Job
             </Button>
           )}
         </div>

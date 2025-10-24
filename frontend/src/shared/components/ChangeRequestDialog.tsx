@@ -26,10 +26,6 @@ export const ChangeRequestDialog: React.FC<ChangeRequestDialogProps> = ({
       return;
     }
 
-    if (requestedChanges.trim().length < 10) {
-      setError('Please provide more detailed change requirements (at least 10 characters)');
-      return;
-    }
 
     onConfirm(requestedChanges.trim());
     setRequestedChanges('');
