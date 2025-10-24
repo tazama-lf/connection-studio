@@ -29,7 +29,6 @@ export const CronJobModal: React.FC<CronJobModalProps> = ({
       {/* Enhanced blurred backdrop */}
       <div 
         className="fixed inset-0 backdrop-blur-sm backdrop-saturate-150 z-40" 
-        onClick={onClose}
       />
       
       {/* Modal Content - Higher z-index to appear above backdrop */}

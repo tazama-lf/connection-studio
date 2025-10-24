@@ -4,7 +4,7 @@ import { ConfigList } from '../../config/components/ConfigList';
 import { JobList } from '../../data-enrichment/components/JobList';
 import JobDetailsModal from '../../data-enrichment/components/JobDetailsModal';
 import { Button } from '../../../shared/components/Button';
-import { SearchIcon, AlertTriangleIcon, Settings, Database } from 'lucide-react';
+import { SearchIcon, AlertTriangleIcon, Settings, Database, Clock } from 'lucide-react';
 import EditEndpointModal from '../../../shared/components/EditEndpointModal';
 import ValidationLogsTable from '../../../shared/components/ValidationLogsTable';
 import type { Config } from '../../config/index';
@@ -16,10 +16,13 @@ import { RejectionDialog } from '../../../shared/components/RejectionDialog';
 import { ConfigReviewModal } from '../../../shared/components/ConfigReviewModal';
 import { ChangeRequestDialog } from '../../../shared/components/ChangeRequestDialog';
 import { useAuth } from '../../auth/contexts/AuthContext';
+import { CronJobApproverList } from './CronJobApproverList';
+import CronJobDetailsModal from './CronJobDetailsModal';
+import type { ScheduleResponse } from '../../data-enrichment/types';
 
 const ApproverModule: React.FC = () => {
   // UI State
-  const [activeTab, setActiveTab] = useState<'configs' | 'jobs'>('configs');
+  const [activeTab, setActiveTab] = useState<'configs' | 'jobs' | 'cron-jobs'>('configs');
   
   // Config-related state
   const [editingEndpointId, setEditingEndpointId] = useState<number | null>(null);
@@ -50,6 +53,17 @@ const ApproverModule: React.FC = () => {
   const [selectedJob, setSelectedJob] = useState<DataEnrichmentJobResponse | null>(null);
   const [jobDetailsLoading, setJobDetailsLoading] = useState(false);
   
+  // Cron Job state
+  const [schedules, setSchedules] = useState<ScheduleResponse[]>([]);
+  const [schedulesLoading, setSchedulesLoading] = useState(false);
+  const [cronJobSearchTerm, setCronJobSearchTerm] = useState('');
+  const [scheduleStatusFilter, setScheduleStatusFilter] = useState<'active' | 'inactive' | 'ALL'>('ALL');
+  
+  // Cron job details modal state
+  const [showCronJobDetails, setShowCronJobDetails] = useState(false);
+  const [selectedSchedule, setSelectedSchedule] = useState<ScheduleResponse | null>(null);
+  const [cronJobDetailsLoading, setCronJobDetailsLoading] = useState(false);
+  
   const { showSuccess, showError } = useToast();
   const { user, isAuthenticated } = useAuth();
 
@@ -61,6 +75,13 @@ const ApproverModule: React.FC = () => {
   useEffect(() => {
     if (activeTab === 'jobs') {
       loadJobs();
+    }
+  }, [activeTab]);
+
+  // Load cron jobs when the cron-jobs tab is active
+  useEffect(() => {
+    if (activeTab === 'cron-jobs') {
+      loadCronJobs();
     }
   }, [activeTab]);
 
@@ -92,6 +113,64 @@ const ApproverModule: React.FC = () => {
   const handleJobRefresh = () => {
     console.log('ApproverModule: handleJobRefresh called - triggering loadJobs');
     loadJobs();
+  };
+
+  const loadCronJobs = async () => {
+    console.log('ApproverModule: loadCronJobs called');
+    setSchedulesLoading(true);
+    try {
+      const response = await dataEnrichmentApi.getAllSchedules();
+      console.log('ApproverModule: Schedules loaded:', response?.length || 0);
+      
+      // Sort schedules by created_at descending (newest first)
+      const schedulesArray = response || [];
+      const sortedSchedules = schedulesArray.sort((a: any, b: any) => {
+        const dateA = new Date(a.created_at || 0).getTime();
+        const dateB = new Date(b.created_at || 0).getTime();
+        return dateB - dateA; // Descending order (newest first)
+      });
+      
+      setSchedules(sortedSchedules);
+    } catch (error) {
+      console.error('Failed to load cron jobs:', error);
+      showError('Failed to load cron jobs');
+      setSchedules([]);
+    } finally {
+      setSchedulesLoading(false);
+    }
+  };
+
+  const handleCronJobRefresh = () => {
+    console.log('ApproverModule: handleCronJobRefresh called - triggering loadCronJobs');
+    loadCronJobs();
+  };
+
+  const handleViewCronJobDetails = async (scheduleId: string) => {
+    console.log('ApproverModule: View cron job details clicked for:', scheduleId);
+    try {
+      setCronJobDetailsLoading(true);
+      setShowCronJobDetails(true);
+      
+      // Find the schedule in the current list
+      const schedule = schedules.find(s => s.id === scheduleId);
+      if (schedule) {
+        setSelectedSchedule(schedule);
+      } else {
+        // If not found in current list, fetch from API
+        const scheduleDetails = await dataEnrichmentApi.getSchedule(scheduleId);
+        setSelectedSchedule(scheduleDetails);
+      }
+    } catch (error) {
+      console.error('Failed to load cron job details:', error);
+      showError('Failed to load cron job details');
+    } finally {
+      setCronJobDetailsLoading(false);
+    }
+  };
+
+  const handleCloseCronJobDetails = () => {
+    setShowCronJobDetails(false);
+    setSelectedSchedule(null);
   };
 
   const handleViewJobDetails = async (jobId: string) => {
@@ -298,6 +377,19 @@ const ApproverModule: React.FC = () => {
                 <span>Data Enrichment Jobs</span>
               </div>
             </button>
+            <button
+              onClick={() => setActiveTab('cron-jobs')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === 'cron-jobs'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center space-x-2">
+                <Clock size={16} />
+                <span>Cron Jobs</span>
+              </div>
+            </button>
           </nav>
         </div>
 
@@ -326,7 +418,7 @@ const ApproverModule: React.FC = () => {
                   Validation Logs
                 </Button> */}
               </>
-            ) : (
+            ) : activeTab === 'jobs' ? (
               <div className="relative">
                 <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <input
@@ -334,6 +426,17 @@ const ApproverModule: React.FC = () => {
                   placeholder="Search data enrichment jobs..."
                   value={jobSearchTerm}
                   onChange={(e) => setJobSearchTerm(e.target.value)}
+                  className="pl-10 pr-4 py-2 w-80 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+            ) : (
+              <div className="relative">
+                <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search cron jobs..."
+                  value={cronJobSearchTerm}
+                  onChange={(e) => setCronJobSearchTerm(e.target.value)}
                   className="pl-10 pr-4 py-2 w-80 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
@@ -359,7 +462,7 @@ const ApproverModule: React.FC = () => {
               />
             </div>
           )
-        ) : (
+        ) : activeTab === 'jobs' ? (
           <div className="bg-white rounded-lg shadow">
             <JobList
               jobs={jobs}
@@ -387,6 +490,18 @@ const ApproverModule: React.FC = () => {
                 setTypeFilter(newType);
                 setCurrentPage(1);
               }}
+            />
+          </div>
+        ) : (
+          <div className="bg-white rounded-lg shadow">
+            <CronJobApproverList
+              schedules={schedules}
+              isLoading={schedulesLoading}
+              onViewDetails={handleViewCronJobDetails}
+              onRefresh={handleCronJobRefresh}
+              statusFilter={scheduleStatusFilter}
+              onStatusFilterChange={setScheduleStatusFilter}
+              searchQuery={cronJobSearchTerm}
             />
           </div>
         )}
@@ -453,6 +568,16 @@ const ApproverModule: React.FC = () => {
           job={selectedJob}
           isLoading={jobDetailsLoading}
           editMode={false}
+        />
+      )}
+
+      {/* Cron Job Details Modal */}
+      {showCronJobDetails && selectedSchedule && (
+        <CronJobDetailsModal
+          isOpen={showCronJobDetails}
+          onClose={handleCloseCronJobDetails}
+          schedule={selectedSchedule}
+          isLoading={cronJobDetailsLoading}
         />
       )}
     </div>

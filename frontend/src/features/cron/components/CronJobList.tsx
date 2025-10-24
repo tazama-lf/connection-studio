@@ -68,12 +68,20 @@ export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => 
     schedule.cron.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Sort filtered schedules by creation date (latest first)
+  const sortedSchedules = filteredSchedules.sort((a, b) => {
+    if (!a.created_at && !b.created_at) return 0;
+    if (!a.created_at) return 1;
+    if (!b.created_at) return -1;
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
+
   // Calculate pagination for filtered results
-  const totalFilteredItems = filteredSchedules.length;
+  const totalFilteredItems = sortedSchedules.length;
   const totalPages = Math.ceil(totalFilteredItems / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const paginatedSchedules = filteredSchedules.slice(startIndex, endIndex);
+  const paginatedSchedules = sortedSchedules.slice(startIndex, endIndex);
 
   // Reset to first page if current page is beyond available pages
   useEffect(() => {
@@ -209,7 +217,7 @@ export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => 
                   {error}
                 </td>
               </tr>
-            ) : filteredSchedules.length === 0 ? (
+            ) : sortedSchedules.length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">
                   No schedules found
