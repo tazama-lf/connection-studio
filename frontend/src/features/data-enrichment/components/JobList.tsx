@@ -820,20 +820,6 @@ export const JobList: React.FC<JobListProps> = (props) => {
                                   </div>
                                   Reject
                                 </button>
-                                {displayStatus !== 'pending' && (
-                                  <button
-                                    onClick={() => {
-                                      handleStatusUpdate(job.id, 'pending', jobType);
-                                      setDropdownOpen(null);
-                                    }}
-                                    className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                  >
-                                    <div className="w-4 h-4 mr-2 flex items-center justify-center">
-                                      <span className="text-blue-600">⧖</span>
-                                    </div>
-                                    Set Pending
-                                  </button>
-                                )}
                               </>
                             )}
 

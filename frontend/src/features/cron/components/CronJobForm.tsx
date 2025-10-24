@@ -160,7 +160,7 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({ onJobCreated, onCancel
           </div>
           <div>
             <label htmlFor="endDate" className="block text-sm font-medium text-gray-700 mb-1">
-              End Date <span className="text-gray-400">(Optional)</span>
+              End Date <span className="text-red-500">*</span>
             </label>
             <input 
               type="datetime-local" 
