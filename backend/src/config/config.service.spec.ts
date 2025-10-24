@@ -941,4 +941,84 @@ describe('ConfigService', () => {
       ).rejects.toThrow('Invalid function index');
     });
   });
+
+  describe('submitForApproval', () => {
+    it('should allow submission without mappings', async () => {
+      const configWithoutMappings: Config = {
+        ...mockConfig,
+        mapping: [], // No mappings
+        status: ConfigStatus.IN_PROGRESS,
+      };
+
+      repository.findConfigById.mockResolvedValue(configWithoutMappings);
+      const mockWorkflowService = {
+        canPerformAction: jest.fn().mockReturnValue({ canPerform: true }),
+      };
+
+      // Mock the workflow service
+      (service as any).workflowService = mockWorkflowService;
+
+      const dto = {
+        configId: 1,
+        userId: 'user-123',
+        userRole: 'editor',
+        comment: 'Submitting config without mappings',
+      };
+
+      const result = await service.submitForApproval(
+        1,
+        dto,
+        'test-tenant',
+        'user-123',
+        ['editor'],
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.message).toBe(
+        'Configuration submitted for approval successfully',
+      );
+      expect(repository.updateConfig).toHaveBeenCalledWith(1, 'test-tenant', {
+        status: ConfigStatus.UNDER_REVIEW,
+      });
+    });
+
+    it('should allow submission with empty mapping array', async () => {
+      const configWithEmptyMappings: Config = {
+        ...mockConfig,
+        mapping: undefined, // No mappings defined at all
+        status: ConfigStatus.IN_PROGRESS,
+      };
+
+      repository.findConfigById.mockResolvedValue(configWithEmptyMappings);
+      const mockWorkflowService = {
+        canPerformAction: jest.fn().mockReturnValue({ canPerform: true }),
+      };
+
+      // Mock the workflow service
+      (service as any).workflowService = mockWorkflowService;
+
+      const dto = {
+        configId: 1,
+        userId: 'user-123',
+        userRole: 'editor',
+        comment: 'Submitting config with undefined mappings',
+      };
+
+      const result = await service.submitForApproval(
+        1,
+        dto,
+        'test-tenant',
+        'user-123',
+        ['editor'],
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.message).toBe(
+        'Configuration submitted for approval successfully',
+      );
+      expect(repository.updateConfig).toHaveBeenCalledWith(1, 'test-tenant', {
+        status: ConfigStatus.UNDER_REVIEW,
+      });
+    });
+  });
 });

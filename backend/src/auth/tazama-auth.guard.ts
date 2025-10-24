@@ -135,6 +135,19 @@ export class TazamaAuthGuard implements CanActivate {
       // Extract token payload (you might need to decode the JWT to get the full TazamaToken)
       const decodedToken = this.extractTokenPayload(token);
 
+      const userId = decodedToken.clientId || '';
+      const tenantId = decodedToken.tenantId || '';
+
+      if (!this.sessionManager.isSessionActive(userId, tenantId)) {
+        this.logger.warn(
+          `Session expired for user: ${userId}, tenant: ${tenantId}`,
+          logContext,
+        );
+        throw new UnauthorizedException(
+          'Session has expired due to inactivity. Please log in again.',
+        );
+      }
+
       // Create authenticated user object
       const authenticatedUser: AuthenticatedUser = {
         token: decodedToken,
