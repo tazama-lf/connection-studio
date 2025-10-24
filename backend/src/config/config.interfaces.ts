@@ -62,12 +62,12 @@ export enum ContentType {
 }
 export type TransactionType = string;
 export enum ConfigStatus {
-  IN_PROGRESS = 'inprogress',
-  UNDER_REVIEW = 'under_review',
+  IN_PROGRESS = 'in progress',
+  UNDER_REVIEW = 'under review',
   APPROVED = 'approved',
   DEPLOYED = 'deployed',
   REJECTED = 'rejected',
-  CHANGES_REQUESTED = 'changes_requested',
+  CHANGES_REQUESTED = 'changes requested',
 }
 export interface MappingSource {
   field: string; // Field path in source schema

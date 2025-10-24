@@ -98,6 +98,18 @@ describe('ConfigService', () => {
       getDestinationPaths: jest.fn(),
       getMappingSuggestions: jest.fn(),
       isValidDestinationPath: jest.fn().mockReturnValue(true),
+      getFieldType: jest.fn().mockImplementation((path: string) => {
+        // Mock field types for common test destinations
+        const fieldTypes: Record<string, string> = {
+          transactionAmount: 'NUMBER',
+          fullName: 'STRING',
+          'transaction.amount': 'NUMBER',
+          'person.name': 'STRING',
+          'transaction.parties': 'ARRAY',
+          'person.details': 'OBJECT',
+        };
+        return fieldTypes[path] || 'STRING'; // Default to STRING for unknown paths
+      }),
     };
     const mockConfigWorkflowService = {
       validateStatusTransition: jest.fn(),

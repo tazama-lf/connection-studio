@@ -451,17 +451,20 @@ export class SimulationService {
         // Source is always an array for consistency
         const sources = mapping.source || [];
 
+        const normalizedSources = sources.map((source) =>
+          source.replace(/\[(\d+)\]/g, '.$1'),
+        );
+
         const destination = Array.isArray(mapping.destination)
           ? mapping.destination[0]
           : mapping.destination;
 
-        const separator = mapping.transformation === 'CONCAT' 
-          ? (mapping.delimiter || ' ') 
-          : '';
+        const separator =
+          mapping.transformation === 'CONCAT' ? mapping.delimiter || ' ' : '';
 
         mappings.push({
           destination: destination || '',
-          sources,
+          sources: normalizedSources,
           separator,
           prefix: mapping.prefix,
         });

@@ -1186,6 +1186,94 @@ export class ConfigService {
     );
   }
 
+  private getFieldTypeFromSchema(
+    schema: JSONSchema,
+    fieldPath: string,
+  ): string | null {
+    const pathParts = fieldPath.split('.');
+    let current = schema;
+
+    for (let i = 0; i < pathParts.length; i++) {
+      const part = pathParts[i];
+
+      const cleanPart = part.replace(/\[.*\]/, '');
+      const hasArrayIndex = part.includes('[');
+
+      const isNumericIndex = /^\d+$/.test(part);
+
+      if (isNumericIndex) {
+        continue;
+      }
+
+      if (current.type === 'object' && current.properties?.[cleanPart]) {
+        current = current.properties[cleanPart] as JSONSchema;
+
+        if (hasArrayIndex && current.type === 'array' && current.items) {
+          current = current.items as JSONSchema;
+        }
+      } else if (current.type === 'array' && current.items) {
+        current = current.items as JSONSchema;
+        i--;
+        continue;
+      } else {
+        return null;
+      }
+    }
+
+    return current.type || null;
+  }
+
+  private areTypesCompatible(
+    sourceType: string,
+    destinationType: string,
+  ): boolean {
+    // Exact type match is always allowed
+    if (sourceType === destinationType) {
+      return true;
+    }
+
+    // Allow number to string (common conversion)
+    if (sourceType === 'number' && destinationType === 'string') {
+      return true;
+    }
+
+    // Allow boolean to string (common conversion)
+    if (sourceType === 'boolean' && destinationType === 'string') {
+      return true;
+    }
+
+    // Disallow array to non-array and vice versa (strict rule)
+    if (sourceType === 'array' && destinationType !== 'array') {
+      return false;
+    }
+
+    if (sourceType !== 'array' && destinationType === 'array') {
+      return false;
+    }
+
+    // Disallow object to non-object and vice versa (strict rule)
+    if (sourceType === 'object' && destinationType !== 'object') {
+      return false;
+    }
+
+    if (sourceType !== 'object' && destinationType === 'object') {
+      return false;
+    }
+
+    // Allow string to basic types (string, number, boolean) but not complex types
+    if (
+      sourceType === 'string' &&
+      (destinationType === 'string' ||
+        destinationType === 'number' ||
+        destinationType === 'boolean')
+    ) {
+      return true;
+    }
+
+    // All other combinations are disallowed
+    return false;
+  }
+
   private validateMapping(
     mapping: FieldMapping,
     schema: JSONSchema,
@@ -1200,7 +1288,7 @@ export class ConfigService {
 
     const allPaths = this.extractAllPathsFromSchema(schema);
 
-    // Validate source fields (now always an array)
+    const sourceTypes: string[] = [];
     if (mapping.source && Array.isArray(mapping.source)) {
       for (const src of mapping.source) {
         if (!allPaths.includes(src)) {
@@ -1208,28 +1296,48 @@ export class ConfigService {
             `Source field '${src}' not found in schema`,
           );
         }
+
+        // Get source field type
+        const sourceType = this.getFieldTypeFromSchema(schema, src);
+        if (sourceType) {
+          sourceTypes.push(sourceType);
+        }
       }
     }
 
-    if (Array.isArray(mapping.destination)) {
-      for (const dest of mapping.destination) {
-        const isValid =
-          this.tazamaDataModelService.isValidDestinationPath(dest);
-        if (!isValid) {
-          throw new BadRequestException(
-            `Destination field '${dest}' is not a valid Tazama data model field. Use a field from the Tazama internal data model (e.g., entities.id, accounts.id, transactionDetails.Amt).`,
-          );
-        }
+    // Validate destinations and check type compatibility
+    const destinations = Array.isArray(mapping.destination)
+      ? mapping.destination
+      : [mapping.destination];
+
+    for (const dest of destinations) {
+      if (typeof dest !== 'string' || !dest) {
+        continue;
       }
-    } else {
-      if (typeof mapping.destination === 'string' && mapping.destination) {
-        const isValid = this.tazamaDataModelService.isValidDestinationPath(
-          mapping.destination,
+
+      const isValid = this.tazamaDataModelService.isValidDestinationPath(dest);
+      if (!isValid) {
+        throw new BadRequestException(
+          `Destination field '${dest}' is not a valid Tazama data model field. Use a field from the Tazama internal data model (e.g., entities.id, accounts.id, transactionDetails.Amt).`,
         );
-        if (!isValid) {
-          throw new BadRequestException(
-            `Destination field '${mapping.destination}' is not a valid Tazama data model field. Use a field from the Tazama internal data model (e.g., entities.id, accounts.id, transactionDetails.Amt).`,
-          );
+      }
+
+      // Get destination field type and check compatibility
+      const destinationType = this.tazamaDataModelService.getFieldType(dest);
+      if (destinationType && sourceTypes.length > 0) {
+        const destTypeLower = destinationType.toLowerCase();
+
+        for (let i = 0; i < sourceTypes.length; i++) {
+          const sourceType = sourceTypes[i];
+          const src = mapping.source![i];
+
+          if (!this.areTypesCompatible(sourceType, destTypeLower)) {
+            throw new BadRequestException(
+              `Data type mismatch: Cannot map source field '${src}' of type '${sourceType}' to destination field '${dest}' of type '${destTypeLower}'. ` +
+                'Compatible mappings: same types to same types, number/boolean to string, string to basic types (string, number, boolean). ' +
+                'Arrays can only map to arrays, objects can only map to objects.',
+            );
+          }
         }
       }
     }
@@ -1255,12 +1363,17 @@ export class ConfigService {
           typeof propSchema.items === 'object' &&
           propSchema.items.type === 'object'
         ) {
-          paths.push(
-            ...this.extractAllPathsFromSchema(
-              propSchema.items as JSONSchema,
-              `${path}[]`,
-            ),
+          const arrayPaths = this.extractAllPathsFromSchema(
+            propSchema.items as JSONSchema,
+            `${path}[0]`,
           );
+          paths.push(...arrayPaths);
+
+          const dotArrayPaths = this.extractAllPathsFromSchema(
+            propSchema.items as JSONSchema,
+            `${path}.0`,
+          );
+          paths.push(...dotArrayPaths);
         }
       }
     }
