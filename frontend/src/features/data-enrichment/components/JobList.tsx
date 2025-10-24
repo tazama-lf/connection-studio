@@ -808,9 +808,9 @@ export const JobList: React.FC<JobListProps> = (props) => {
                                     handleStatusUpdate(job.id, 'rejected', jobType);
                                     setDropdownOpen(null);
                                   }}
-                                  disabled={displayStatus === 'rejected'}
+                                  disabled={displayStatus === 'rejected' || displayStatus === 'approved'}
                                   className={`flex items-center w-full px-4 py-2 text-sm hover:bg-gray-100 ${
-                                    displayStatus === 'rejected'
+                                    displayStatus === 'rejected' || displayStatus === 'approved'
                                       ? 'text-gray-400 cursor-not-allowed'
                                       : 'text-gray-700'
                                   }`}

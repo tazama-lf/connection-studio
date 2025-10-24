@@ -8,7 +8,7 @@ import JobList from '../components/JobList';
 import JobDetailsModal from '../components/JobDetailsModal';
 import { DataEnrichmentFormModal } from '../../../shared/components/DataEnrichmentFormModal';
 import { dataEnrichmentApi } from '../services/dataEnrichmentApi';
-import type { DataEnrichmentJobResponse, JobStatus, CreatePushJobDto, CreatePullJobDto } from '../types';
+import type { DataEnrichmentJobResponse, JobStatus, UpdatePullJobDto } from '../types';
 import { useToast } from '../../../shared/providers/ToastProvider';
 import { useAuth } from '../../auth/contexts/AuthContext';
 import { isEditor, isApprover } from '../../../utils/roleUtils';
@@ -221,24 +221,27 @@ const DataEnrichmentModule: React.FC = () => {
         return;
       }
       
-      // Use the upsert API (same as create with id) 
+      // Use the proper update API methods instead of create with id
       let response;
       if (jobType === 'push') {
-        const pushData = {
-          id: selectedJob.id, // Include ID for upsert
+        const pushData: any = {
           endpoint_name: updatedJob.endpoint_name || selectedJob.endpoint_name || '',
           description: updatedJob.description || selectedJob.description,
           version: updatedJob.version || selectedJob.version || 'v1',
           path: updatedJob.path || selectedJob.path || '',
           table_name: updatedJob.table_name || selectedJob.table_name || '',
           mode: (updatedJob.mode || selectedJob.mode || 'append') as 'append' | 'replace',
-        } as CreatePushJobDto & { id: string };
+        };
+        
+        // Include schedule_id if it exists (backend may require it for push jobs)
+        if (selectedJob.schedule_id) {
+          pushData.schedule_id = selectedJob.schedule_id;
+        }
         
         console.log('Push data to send:', pushData);
-        response = await dataEnrichmentApi.createPushJob(pushData);
+        response = await dataEnrichmentApi.updatePushJob(selectedJob.id, pushData);
       } else {
         const pullData = {
-          id: selectedJob.id, // Include ID for upsert
           endpoint_name: updatedJob.endpoint_name || selectedJob.endpoint_name || '',
           description: updatedJob.description || selectedJob.description || '',
           version: updatedJob.version || selectedJob.version || 'v1',
@@ -248,10 +251,10 @@ const DataEnrichmentModule: React.FC = () => {
           connection: updatedJob.connection || selectedJob.connection || { url: '', headers: {} },
           file: updatedJob.file || selectedJob.file,
           schedule_id: updatedJob.schedule_id || selectedJob.schedule_id || '',
-        } as CreatePullJobDto & { id: string };
+        } as UpdatePullJobDto;
         
         console.log('Pull data to send:', pullData);
-        response = await dataEnrichmentApi.createPullJob(pullData);
+        response = await dataEnrichmentApi.updatePullJob(selectedJob.id, pullData);
       }
       
       console.log('Job update response:', response);
