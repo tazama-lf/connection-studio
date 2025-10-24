@@ -15,26 +15,21 @@ import type {
 } from './auth.types';
 import { CLAIMS_KEY, IS_PUBLIC_KEY, ANY_CLAIMS_KEY } from './auth.decorator';
 import { SessionManagerService } from './session-manager.service';
-
 @Injectable()
 export class TazamaAuthGuard implements CanActivate {
   private readonly logger = new Logger(TazamaAuthGuard.name);
-
   constructor(
     private reflector: Reflector,
     @Inject(SessionManagerService)
     private sessionManager: SessionManagerService,
   ) {}
-
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const logContext = 'TazamaAuthGuard.canActivate()';
-
     // Check if route is public
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
       context.getClass(),
     ]);
-
     if (isPublic) {
       this.logger.log(
         'Public route accessed, skipping authentication',
@@ -42,7 +37,6 @@ export class TazamaAuthGuard implements CanActivate {
       );
       return true;
     }
-
     // Get required claims from decorator
     const requiredClaims = this.reflector.getAllAndOverride<string[]>(
       CLAIMS_KEY,
@@ -52,16 +46,13 @@ export class TazamaAuthGuard implements CanActivate {
       ANY_CLAIMS_KEY,
       [context.getHandler(), context.getClass()],
     );
-
     const request = context.switchToHttp().getRequest();
     const authHeader = request.headers.authorization;
-
     // Validate authorization header
     if (!authHeader?.startsWith('Bearer ')) {
       this.logger.warn('No Bearer token provided', logContext);
       throw new UnauthorizedException('No Bearer token provided');
     }
-
     // Check if we have either type of claims requirement
     if (
       (!requiredClaims || requiredClaims.length === 0) &&
@@ -73,23 +64,18 @@ export class TazamaAuthGuard implements CanActivate {
       );
       throw new UnauthorizedException('No required claims specified');
     }
-
     try {
       const token = authHeader.split(' ')[1];
-
       // Determine which claims to validate
       const claimsToValidate = requiredClaims || anyRequiredClaims || [];
-
       // Validate token and claims using tazama-auth-lib
       const validated: ClaimValidationResult = validateTokenAndClaims(
         token,
         claimsToValidate,
       );
-
       let hasValidAccess = false;
       let validClaims: string[] = [];
       let invalidClaims: string[] = [];
-
       if (requiredClaims && requiredClaims.length > 0) {
         // ALL required claims must be present
         const hasAllClaims = requiredClaims.every(
@@ -100,7 +86,6 @@ export class TazamaAuthGuard implements CanActivate {
         );
         invalidClaims = requiredClaims.filter((claim) => !validated[claim]);
         hasValidAccess = hasAllClaims;
-
         if (!hasAllClaims) {
           this.logger.warn(
             `User missing required claims. Required: [${requiredClaims.join(', ')}], Invalid: [${invalidClaims.join(', ')}]`,
@@ -117,7 +102,6 @@ export class TazamaAuthGuard implements CanActivate {
         );
         invalidClaims = anyRequiredClaims.filter((claim) => !validated[claim]);
         hasValidAccess = hasAnyClaim;
-
         if (!hasAnyClaim) {
           this.logger.warn(
             `User missing any required claims. Required (any of): [${anyRequiredClaims.join(', ')}], Invalid: [${invalidClaims.join(', ')}]`,
@@ -125,19 +109,15 @@ export class TazamaAuthGuard implements CanActivate {
           );
         }
       }
-
       if (!hasValidAccess) {
         throw new UnauthorizedException(
           `Missing or invalid claims: ${invalidClaims.join(', ')}`,
         );
       }
-
       // Extract token payload (you might need to decode the JWT to get the full TazamaToken)
       const decodedToken = this.extractTokenPayload(token);
-
       const userId = decodedToken.clientId || '';
       const tenantId = decodedToken.tenantId || '';
-
       if (!this.sessionManager.isSessionActive(userId, tenantId)) {
         this.logger.warn(
           `Session expired for user: ${userId}, tenant: ${tenantId}`,
@@ -147,7 +127,6 @@ export class TazamaAuthGuard implements CanActivate {
           'Session has expired due to inactivity. Please log in again.',
         );
       }
-
       // Create authenticated user object
       const authenticatedUser: AuthenticatedUser = {
         token: decodedToken,
@@ -156,61 +135,90 @@ export class TazamaAuthGuard implements CanActivate {
         tenantId: decodedToken.tenantId || '',
         userId: decodedToken.clientId || '',
       };
-
       // Attach user to request for use in controllers
       request.user = authenticatedUser;
-
       // Record session activity to extend session timeout
       this.sessionManager.recordActivity(
         decodedToken.clientId || '',
         decodedToken.tenantId || '',
         token,
       );
-
       this.logger.log(
         `Authentication successful for clientId: ${decodedToken.clientId}, tenantId: ${decodedToken.tenantId}, claims: [${validClaims.join(', ')}]`,
         logContext,
       );
-
       return true;
     } catch (error) {
       const err = error as Error;
+      // Check if this is a token expiration error
+      const isTokenExpiredError =
+        err.message.includes('token expired') ||
+        err.message.includes('jwt expired') ||
+        err.message.includes('401 Unauthorized');
+      // If token expired, check if user was still active
+      if (isTokenExpiredError) {
+        try {
+          // Try to decode the token to get user info (even if expired)
+          const jwt = require('jsonwebtoken');
+          const decoded = jwt.decode(authHeader.split(' ')[1]) as any;
+          if (decoded && decoded.clientId && decoded.tenantId) {
+            const userId = decoded.clientId;
+            const tenantId = decoded.tenantId;
+            // Check if session was active
+            if (this.sessionManager.isSessionActive(userId, tenantId)) {
+              this.logger.warn(
+                `Token expired but session was still active for user: ${userId}. User needs to re-authenticate.`,
+                logContext,
+              );
+              throw new UnauthorizedException(
+                'Your session token has expired. Please log in again to continue.',
+              );
+            } else {
+              this.logger.warn(
+                `Token expired and session inactive for user: ${userId}`,
+                logContext,
+              );
+              throw new UnauthorizedException(
+                'Session has expired due to inactivity. Please log in again.',
+              );
+            }
+          }
+        } catch (decodeError) {
+          // If we can't decode, fall through to generic error
+          this.logger.error(
+            `Could not decode expired token: ${decodeError}`,
+            logContext,
+          );
+        }
+      }
       this.logger.error(
         `Authentication failed: ${err.name}: ${err.message}`,
         logContext,
       );
-
       if (error instanceof UnauthorizedException) {
         throw error;
       }
-
       throw new UnauthorizedException('Token validation failed');
     }
   }
-
   private extractTokenPayload(token: string): TazamaToken {
     try {
       // Decode JWT without verification (since validation is done by tazama-auth-lib)
       const jwt = require('jsonwebtoken');
       const decoded = jwt.decode(token) as TazamaToken;
-
       if (!decoded) {
         throw new Error('Failed to decode token');
       }
-
       // Validate required TazamaToken fields
       if (!decoded.clientId) {
         throw new Error('Token missing clientId');
       }
-
       if (!decoded.tenantId) {
         throw new Error('Token missing tenantId');
       }
-
       if (!decoded.claims || !Array.isArray(decoded.claims)) {
         throw new Error('Token missing or invalid claims array');
       }
-
       return decoded;
     } catch (error) {
       const err = error as Error;
