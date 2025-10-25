@@ -122,7 +122,7 @@ export class DryRunService {
     }
   }
 
-  private async dryRunSftpJob(job: CreatePullJobDto): Promise<any> {
+  private async dryRunSftpJob(job: CreatePullJobDto): Promise<void> {
     const sftpCon = job.connection as SFTPConnection;
     const file = job.file;
     let sftp = new SFTPClient();
@@ -150,7 +150,7 @@ export class DryRunService {
     }
   }
 
-  async dryRun(job: CreatePullJobDto): Promise<any> {
+  async dryRun(job: CreatePullJobDto): Promise<void> {
     try {
       if (job.source_type === SourceType.HTTP) {
         return await this.dryRunHttpJob(job);

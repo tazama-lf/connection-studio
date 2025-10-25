@@ -81,7 +81,7 @@ export class CreatePullJobDto {
 
   @ValidateNested()
   @Type((opts) => {
-    const obj = opts?.object;
+    const obj = opts?.object as CreatePullJobDto;
     if (obj?.source_type === SourceType.HTTP) {
       return HTTPConnectionDto;
     }
@@ -94,7 +94,7 @@ export class CreatePullJobDto {
 
   @ValidateNested()
   @Type((opts) => {
-    const obj = opts?.object;
+    const obj = opts?.object as CreatePullJobDto;
     if (obj?.source_type === SourceType.SFTP) {
       return FileSettingDto;
     }

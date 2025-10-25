@@ -14,7 +14,7 @@ export class DatabaseService implements OnModuleDestroy {
     });
   }
 
-  async query<T = any>(sql: string, params?: any[]): Promise<QueryResult<T>> {
+  async query<T = unknown>(sql: string, params?: unknown[]): Promise<QueryResult<T>> {
     const result = await this.pool.query(sql, params);
     return result;
   }
