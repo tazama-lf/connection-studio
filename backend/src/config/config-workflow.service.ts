@@ -76,7 +76,10 @@ export class ConfigWorkflowService {
         ConfigStatus.CHANGES_REQUESTED,
       ].includes(currentStatus);
 
-      result.canSubmit = currentStatus === ConfigStatus.IN_PROGRESS;
+      result.canSubmit = [
+        ConfigStatus.IN_PROGRESS,
+        ConfigStatus.CHANGES_REQUESTED,
+      ].includes(currentStatus);
     }
 
     if (hasApproverRole) {
@@ -133,7 +136,7 @@ export class ConfigWorkflowService {
           return {
             canPerform: false,
             message:
-              'Only editors can submit configurations for approval from IN_PROGRESS status',
+              'Only editors can submit configurations for approval from IN_PROGRESS or CHANGES_REQUESTED status',
           };
         }
         break;

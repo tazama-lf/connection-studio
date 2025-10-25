@@ -101,7 +101,6 @@ describe('Session Timeout Functionality', () => {
         tenantId,
       );
 
-
       expect(newTimeRemaining).toBeGreaterThan(initialTimeRemaining - 2);
     });
 
