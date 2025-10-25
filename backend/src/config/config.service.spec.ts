@@ -21,18 +21,12 @@ import {
 jest.mock('@tazama-lf/tcs-lib', () => ({
   parsePayloadToSchema: jest.fn(),
   applyFieldAdjustments: jest.fn(),
-  // Keep other exports that might be needed
-  FieldType: {
-    STRING: 'string',
-    NUMBER: 'number',
-    BOOLEAN: 'boolean',
-    OBJECT: 'object',
-    ARRAY: 'array',
-  },
   JSONSchema: {},
+  FieldType: {},
   ContentType: {
     JSON: 'application/json',
     XML: 'application/xml',
+    YAML: 'application/yaml',
   },
 }));
 
@@ -96,7 +90,7 @@ describe('ConfigService', () => {
       logAction: jest.fn(),
     };
     const mockJSONSchemaConverter = {
-      convertToJSONSchema: jest.fn().mockReturnValue(mockJSONSchema),
+      convertToJSONSchema: jest.fn(),
       convertFromJSONSchema: jest.fn(),
     };
     const mockTazamaDataModelService = {
@@ -104,6 +98,18 @@ describe('ConfigService', () => {
       getDestinationPaths: jest.fn(),
       getMappingSuggestions: jest.fn(),
       isValidDestinationPath: jest.fn().mockReturnValue(true),
+      getFieldType: jest.fn().mockImplementation((path: string) => {
+        // Mock field types for common test destinations
+        const fieldTypes: Record<string, string> = {
+          transactionAmount: 'NUMBER',
+          fullName: 'STRING',
+          'transaction.amount': 'NUMBER',
+          'person.name': 'STRING',
+          'transaction.parties': 'ARRAY',
+          'person.details': 'OBJECT',
+        };
+        return fieldTypes[path] || 'STRING'; // Default to STRING for unknown paths
+      }),
     };
     const mockConfigWorkflowService = {
       validateStatusTransition: jest.fn(),
@@ -163,26 +169,26 @@ describe('ConfigService', () => {
       sourceFields: [
         {
           name: 'amount',
-          type: FieldType.NUMBER,
           path: 'amount',
+          type: FieldType.NUMBER,
           isRequired: true,
         },
         {
           name: 'currency',
-          type: FieldType.STRING,
           path: 'currency',
+          type: FieldType.STRING,
           isRequired: false,
         },
         {
           name: 'firstName',
-          type: FieldType.STRING,
           path: 'firstName',
+          type: FieldType.STRING,
           isRequired: false,
         },
         {
           name: 'lastName',
-          type: FieldType.STRING,
           path: 'lastName',
+          type: FieldType.STRING,
           isRequired: false,
         },
       ],
@@ -194,35 +200,17 @@ describe('ConfigService', () => {
         originalSize: 100,
         processingTime: 50,
       },
-      validation: { success: true, errors: [], warnings: [] },
+      validation: {
+        success: true,
+        errors: [],
+        warnings: [],
+      },
     });
 
-    mockApplyFieldAdjustments.mockReturnValue([
-      {
-        name: 'amount',
-        type: FieldType.NUMBER,
-        path: 'amount',
-        isRequired: true,
-      },
-      {
-        name: 'currency',
-        type: FieldType.STRING,
-        path: 'currency',
-        isRequired: false,
-      },
-      {
-        name: 'firstName',
-        type: FieldType.STRING,
-        path: 'firstName',
-        isRequired: false,
-      },
-      {
-        name: 'lastName',
-        type: FieldType.STRING,
-        path: 'lastName',
-        isRequired: false,
-      },
-    ]);
+    mockApplyFieldAdjustments.mockReturnValue([]);
+
+    // Set up JSON schema converter mock
+    mockJSONSchemaConverter.convertToJSONSchema.mockReturnValue(mockJSONSchema);
   });
   it('should be defined', () => {
     expect(service).toBeDefined();
@@ -234,38 +222,6 @@ describe('ConfigService', () => {
         transactionType: 'Payments',
         payload: '{"amount":100,"currency":"USD"}',
       };
-      const parsingResult = {
-        success: true,
-        sourceFields: [
-          {
-            name: 'amount',
-            type: FieldType.NUMBER,
-            path: 'amount',
-            isRequired: true,
-          },
-          {
-            name: 'currency',
-            type: FieldType.STRING,
-            path: 'currency',
-            isRequired: false,
-          },
-        ],
-        jsonSchema: mockJSONSchema,
-        metadata: {
-          totalFields: 2,
-          requiredFields: 1,
-          optionalFields: 1,
-          nestedLevels: 1,
-          originalSize: 100,
-          processingTime: 50,
-        },
-        validation: {
-          success: true,
-          errors: [],
-          warnings: [],
-        },
-      };
-      mockParsePayloadToSchema.mockResolvedValue(parsingResult);
       repository.findConfigByVersionAndTransactionType.mockResolvedValue(null); // No version conflict
       repository.createConfig.mockResolvedValue(1);
       repository.findConfigById.mockResolvedValue(mockConfig);
@@ -297,14 +253,14 @@ describe('ConfigService', () => {
         sourceFields: [
           {
             name: 'amount',
-            type: FieldType.NUMBER,
             path: 'amount',
+            type: FieldType.NUMBER,
             isRequired: true,
           },
           {
             name: 'currency',
-            type: FieldType.STRING,
             path: 'currency',
+            type: FieldType.STRING,
             isRequired: false,
           },
         ],
@@ -353,14 +309,14 @@ describe('ConfigService', () => {
         sourceFields: [
           {
             name: 'amount',
-            type: FieldType.NUMBER,
             path: 'amount',
+            type: FieldType.NUMBER,
             isRequired: true,
           },
           {
             name: 'currency',
-            type: FieldType.STRING,
             path: 'currency',
+            type: FieldType.STRING,
             isRequired: false,
           },
         ],
@@ -402,14 +358,14 @@ describe('ConfigService', () => {
         sourceFields: [
           {
             name: 'amount',
-            type: FieldType.NUMBER,
             path: 'amount',
+            type: FieldType.NUMBER,
             isRequired: true,
           },
           {
             name: 'currency',
-            type: FieldType.STRING,
             path: 'currency',
+            type: FieldType.STRING,
             isRequired: false,
           },
         ],
@@ -506,6 +462,118 @@ describe('ConfigService', () => {
       expect(result.success).toBe(false);
       expect(result.message).toBe(
         'Payload is required. Provide either payload text or upload a file.',
+      );
+      expect(repository.createConfig).not.toHaveBeenCalled();
+    });
+
+    it('should detect duplicate field names in schema', async () => {
+      const dto: CreateConfigDto = {
+        msgFam: 'pain.001',
+        transactionType: 'Payments',
+        payload: '{"amount":100,"currency":"USD"}',
+      };
+
+      const parsingResultWithDuplicates = {
+        success: true,
+        sourceFields: [
+          {
+            name: 'amount',
+            path: 'amount',
+            type: FieldType.NUMBER,
+            isRequired: true,
+          },
+          {
+            name: 'amount', // Duplicate name
+            path: 'totalAmount',
+            type: FieldType.NUMBER,
+            isRequired: false,
+          },
+          {
+            name: 'currency',
+            path: 'currency',
+            type: FieldType.STRING,
+            isRequired: false,
+          },
+        ],
+        jsonSchema: mockJSONSchema,
+        metadata: {
+          totalFields: 3,
+          requiredFields: 1,
+          optionalFields: 2,
+          nestedLevels: 1,
+          originalSize: 100,
+          processingTime: 50,
+        },
+        validation: { success: true, errors: [], warnings: [] },
+      };
+
+      mockParsePayloadToSchema.mockResolvedValue(parsingResultWithDuplicates);
+      repository.findConfigByVersionAndTransactionType.mockResolvedValue(null);
+
+      const result = await service.createConfig(dto, 'test-tenant', 'user-123');
+
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('Schema contains duplicate fields');
+      expect(result.validation?.errors).toContain(
+        // eslint-disable-next-line quotes
+        "Duplicate field name 'amount' found in schema",
+      );
+      expect(repository.createConfig).not.toHaveBeenCalled();
+    });
+
+    it('should detect duplicate field paths in schema', async () => {
+      const dto: CreateConfigDto = {
+        msgFam: 'pain.001',
+        transactionType: 'Payments',
+        payload: '{"amount":100,"currency":"USD"}',
+      };
+
+      const parsingResultWithDuplicatePaths = {
+        success: true,
+        sourceFields: [
+          {
+            name: 'amount',
+            path: 'payment.amount',
+            type: FieldType.NUMBER,
+            isRequired: true,
+          },
+          {
+            name: 'totalAmount',
+            path: 'payment.amount', // Duplicate path
+            type: FieldType.NUMBER,
+            isRequired: false,
+          },
+          {
+            name: 'currency',
+            path: 'currency',
+            type: FieldType.STRING,
+            isRequired: false,
+          },
+        ],
+        jsonSchema: mockJSONSchema,
+        metadata: {
+          totalFields: 3,
+          requiredFields: 1,
+          optionalFields: 2,
+          nestedLevels: 1,
+          originalSize: 100,
+          processingTime: 50,
+        },
+        validation: { success: true, errors: [], warnings: [] },
+      };
+
+      mockParsePayloadToSchema.mockResolvedValue(
+        parsingResultWithDuplicatePaths,
+      );
+      repository.findConfigByVersionAndTransactionType.mockResolvedValue(null);
+
+      const result = await service.createConfig(dto, 'test-tenant', 'user-123');
+
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('Schema contains duplicate fields');
+      expect(result.validation?.errors).toContain(
+        // eslint-disable-next-line quotes
+        "Duplicate field path 'payment.amount' found in schema",
       );
       expect(repository.createConfig).not.toHaveBeenCalled();
     });
@@ -826,7 +894,7 @@ describe('ConfigService', () => {
       await expect(
         service.addFunction(1, invalidFunctionDto, 'test-tenant', 'user-123'),
       ).rejects.toThrow(
-        'Invalid function name. Only the following functions are allowed: addAccountHolder, addEntity, addAccount',
+        'Invalid function name. Only the following functions are allowed: addAccountHolder, addEntity, addAccount, transactionRelationship',
       );
     });
   });
@@ -871,6 +939,86 @@ describe('ConfigService', () => {
       await expect(
         service.removeFunction(1, 0, 'test-tenant', 'user-123'),
       ).rejects.toThrow('Invalid function index');
+    });
+  });
+
+  describe('submitForApproval', () => {
+    it('should allow submission without mappings', async () => {
+      const configWithoutMappings: Config = {
+        ...mockConfig,
+        mapping: [], // No mappings
+        status: ConfigStatus.IN_PROGRESS,
+      };
+
+      repository.findConfigById.mockResolvedValue(configWithoutMappings);
+      const mockWorkflowService = {
+        canPerformAction: jest.fn().mockReturnValue({ canPerform: true }),
+      };
+
+      // Mock the workflow service
+      (service as any).workflowService = mockWorkflowService;
+
+      const dto = {
+        configId: 1,
+        userId: 'user-123',
+        userRole: 'editor',
+        comment: 'Submitting config without mappings',
+      };
+
+      const result = await service.submitForApproval(
+        1,
+        dto,
+        'test-tenant',
+        'user-123',
+        ['editor'],
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.message).toBe(
+        'Configuration submitted for approval successfully',
+      );
+      expect(repository.updateConfig).toHaveBeenCalledWith(1, 'test-tenant', {
+        status: ConfigStatus.UNDER_REVIEW,
+      });
+    });
+
+    it('should allow submission with empty mapping array', async () => {
+      const configWithEmptyMappings: Config = {
+        ...mockConfig,
+        mapping: undefined, // No mappings defined at all
+        status: ConfigStatus.IN_PROGRESS,
+      };
+
+      repository.findConfigById.mockResolvedValue(configWithEmptyMappings);
+      const mockWorkflowService = {
+        canPerformAction: jest.fn().mockReturnValue({ canPerform: true }),
+      };
+
+      // Mock the workflow service
+      (service as any).workflowService = mockWorkflowService;
+
+      const dto = {
+        configId: 1,
+        userId: 'user-123',
+        userRole: 'editor',
+        comment: 'Submitting config with undefined mappings',
+      };
+
+      const result = await service.submitForApproval(
+        1,
+        dto,
+        'test-tenant',
+        'user-123',
+        ['editor'],
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.message).toBe(
+        'Configuration submitted for approval successfully',
+      );
+      expect(repository.updateConfig).toHaveBeenCalledWith(1, 'test-tenant', {
+        status: ConfigStatus.UNDER_REVIEW,
+      });
     });
   });
 });

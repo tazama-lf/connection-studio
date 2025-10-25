@@ -55,7 +55,7 @@ export interface TransactionDetails {
   TenantId: string;
   MsgId: string;
   CreDtTm: string;
-  Amt?: string;
+  Amt?: number;
   Ccy?: string;
   EndToEndId: string;
   lat?: string;
@@ -178,10 +178,10 @@ export const TAZAMA_DATA_MODEL_SCHEMAS: TazamaCollectionSchema[] = [
       },
       {
         name: 'Amt',
-        type: 'string',
+        type: 'number',
         required: false,
         description: 'Transaction amount',
-        example: '1000.50',
+        example: 1000.5,
       },
       {
         name: 'Ccy',

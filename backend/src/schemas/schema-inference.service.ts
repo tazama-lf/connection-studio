@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { SchemaField, ContentType, FieldType } from '@tazama-lf/tcs-lib';
 import { parseStringPromise } from 'xml2js';
 @Injectable()
 export class SchemaInferenceService {
+  private readonly logger = new Logger(SchemaInferenceService.name);
   async inferSchemaFromPayload(
     payload: string,
     contentType: ContentType,
@@ -214,9 +215,17 @@ export class SchemaInferenceService {
       }
       if (field.path) {
         if (seenPaths.has(field.path)) {
-          errors.push(
-            `Validation error: Duplicate field path '${field.path}' detected.`,
-          );
+          const errorMsg = `Validation error: Duplicate field path '${field.path}' detected.`;
+          errors.push(errorMsg);
+
+          // Log detailed error information
+          this.logger.error(`Schema inference validation failed: ${errorMsg}`, {
+            duplicateFieldPath: field.path,
+            fieldName: field.name,
+            fieldType: field.type,
+            context: 'validateFields',
+            parentPath: _parentPath,
+          });
         } else {
           seenPaths.add(field.path);
         }

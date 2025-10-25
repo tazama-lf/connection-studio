@@ -43,13 +43,18 @@ export interface FieldMapping {
 
 export interface FunctionDefinition {
   params: string[]; // Array of parameter names
-  functionName: 'addAccountHolder' | 'addEntity' | 'addAccount'; // Only these three functions are allowed
+  functionName:
+    | 'addAccountHolder'
+    | 'addEntity'
+    | 'addAccount'
+    | 'transactionRelationship'; // Only these four functions are allowed
 }
 
 export type AllowedFunctionName =
   | 'addAccountHolder'
   | 'addEntity'
-  | 'addAccount';
+  | 'addAccount'
+  | 'transactionRelationship';
 
 export enum ContentType {
   JSON = 'application/json',
@@ -57,12 +62,12 @@ export enum ContentType {
 }
 export type TransactionType = string;
 export enum ConfigStatus {
-  IN_PROGRESS = 'inprogress',
-  UNDER_REVIEW = 'under_review',
+  IN_PROGRESS = 'in progress',
+  UNDER_REVIEW = 'under review',
   APPROVED = 'approved',
   DEPLOYED = 'deployed',
   REJECTED = 'rejected',
-  CHANGES_REQUESTED = 'changes_requested',
+  CHANGES_REQUESTED = 'changes requested',
 }
 export interface MappingSource {
   field: string; // Field path in source schema
@@ -95,6 +100,8 @@ export interface AddMappingDto {
   delimiter?: string;
   constantValue?: any;
   prefix?: string;
+  transformation?: 'NONE' | 'CONCAT' | 'SUM' | 'SPLIT' | 'CONSTANT' | 'MATH';
+  operator?: 'ADD' | 'SUBTRACT' | 'MULTIPLY' | 'DIVIDE';
 }
 
 export interface AddFunctionDto {

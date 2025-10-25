@@ -120,6 +120,7 @@ export class SimulationService {
       const schemaStage = this.stageValidateSchema(
         parsedPayload,
         config.schema,
+        config,
       );
       stages.push(schemaStage);
 
@@ -336,8 +337,12 @@ export class SimulationService {
   /**
    * Stage 3: Validate Schema
    */
-  private stageValidateSchema(payload: any, schema: any): ValidationStage {
-    const errors = this.validatePayloadAgainstSchema(payload, schema);
+  private stageValidateSchema(
+    payload: any,
+    schema: any,
+    config?: Config,
+  ): ValidationStage {
+    const errors = this.validatePayloadAgainstSchema(payload, schema, config);
 
     if (errors.length > 0) {
       return {
@@ -446,16 +451,41 @@ export class SimulationService {
         // Source is always an array for consistency
         const sources = mapping.source || [];
 
-        const destination = Array.isArray(mapping.destination)
-          ? mapping.destination[0]
-          : mapping.destination;
+        const normalizedSources = sources.map((source) =>
+          source.replace(/\[(\d+)\]/g, '.$1'),
+        );
 
-        mappings.push({
-          destination: destination || '',
-          sources,
-          separator: '',
-          prefix: mapping.prefix,
-        });
+        // Handle SPLIT transformations: create multiple TCS mappings for multiple destinations
+        if (
+          mapping.transformation === 'SPLIT' &&
+          Array.isArray(mapping.destination)
+        ) {
+          // For SPLIT transformations, create one TCS mapping per destination
+          for (let i = 0; i < mapping.destination.length; i++) {
+            const destination = mapping.destination[i];
+            mappings.push({
+              destination: destination || '',
+              sources: normalizedSources,
+              separator: mapping.delimiter || ' ', // Use delimiter for SPLIT
+              prefix: mapping.prefix,
+            });
+          }
+        } else {
+          // For non-SPLIT transformations, use original logic
+          const destination = Array.isArray(mapping.destination)
+            ? mapping.destination[0]
+            : mapping.destination;
+
+          const separator =
+            mapping.transformation === 'CONCAT' ? mapping.delimiter || ' ' : '';
+
+          mappings.push({
+            destination: destination || '',
+            sources: normalizedSources,
+            separator,
+            prefix: mapping.prefix,
+          });
+        }
       }
     }
 
@@ -491,53 +521,204 @@ export class SimulationService {
 
     for (const mapping of mappings) {
       const sources = mapping.source || [];
-      const destination = Array.isArray(mapping.destination)
-        ? mapping.destination[0]
-        : mapping.destination;
 
-      // Extract source values from original payload
-      const sourceValues = sources.map((sourcePath) =>
-        this.getValueByPath(originalPayload, sourcePath),
-      );
+      // Handle SPLIT transformations: create details for each destination
+      if (
+        mapping.transformation === 'SPLIT' &&
+        Array.isArray(mapping.destination)
+      ) {
+        // Extract source values from original payload
+        const sourceValues = sources.map((sourcePath) =>
+          this.getValueByPath(originalPayload, sourcePath),
+        );
 
-      // Determine the result value from tcsResult based on destination
-      let resultValue: any = null;
-      if (tcsResult && destination) {
-        const [collectionName, fieldName] = destination.split('.');
-        if (collectionName === 'redis' && tcsResult.dataCache) {
-          resultValue = tcsResult.dataCache[fieldName];
-        } else if (
-          collectionName === 'transaction' &&
-          fieldName === 'endToEndId'
-        ) {
-          resultValue = tcsResult.endToEndId;
+        // Apply SPLIT transformation to get the split values
+        const splitValues = this.applyTransformation(
+          sourceValues,
+          mapping.transformation,
+          mapping.delimiter,
+          mapping.constantValue,
+          mapping.operator,
+          mapping.prefix,
+        );
+
+        // Create a detail entry for each destination
+        for (let i = 0; i < mapping.destination.length; i++) {
+          const destination = mapping.destination[i];
+
+          // Determine the result value from tcsResult based on destination
+          let resultValue: any = null;
+          if (tcsResult && destination) {
+            const [collectionName, fieldName] = destination.split('.');
+            if (collectionName === 'redis' && tcsResult.dataCache) {
+              resultValue = tcsResult.dataCache[fieldName];
+            } else if (
+              collectionName === 'transaction' &&
+              fieldName === 'endToEndId'
+            ) {
+              resultValue = tcsResult.endToEndId;
+            }
+          }
+
+          // If no TCS result available, use the appropriate split value
+          if (resultValue === null) {
+            resultValue =
+              Array.isArray(splitValues) && splitValues[i] !== undefined
+                ? splitValues[i]
+                : splitValues; // fallback to full result
+          }
+
+          details.push({
+            destination: destination || '',
+            sources,
+            sourceValues,
+            transformation: mapping.transformation || 'NONE',
+            resultValue,
+            prefix: mapping.prefix,
+            delimiter: mapping.delimiter,
+            constantValue: mapping.constantValue,
+            operator: mapping.operator,
+          });
         }
-      }
+      } else {
+        // For non-SPLIT transformations, use original logic
+        const destination = Array.isArray(mapping.destination)
+          ? mapping.destination[0]
+          : mapping.destination;
 
-      details.push({
-        destination: destination || '',
-        sources,
-        sourceValues,
-        transformation: mapping.transformation || 'NONE',
-        resultValue,
-        prefix: mapping.prefix,
-        delimiter: mapping.delimiter,
-        constantValue: mapping.constantValue,
-        operator: mapping.operator,
-      });
+        // Extract source values from original payload
+        const sourceValues = sources.map((sourcePath) =>
+          this.getValueByPath(originalPayload, sourcePath),
+        );
+
+        // Determine the result value from tcsResult based on destination
+        let resultValue: any = null;
+        if (tcsResult && destination) {
+          const [collectionName, fieldName] = destination.split('.');
+          if (collectionName === 'redis' && tcsResult.dataCache) {
+            resultValue = tcsResult.dataCache[fieldName];
+          } else if (
+            collectionName === 'transaction' &&
+            fieldName === 'endToEndId'
+          ) {
+            resultValue = tcsResult.endToEndId;
+          }
+        }
+
+        // If no TCS result available, show the transformed preview value
+        if (resultValue === null) {
+          resultValue = this.applyTransformation(
+            sourceValues,
+            mapping.transformation,
+            mapping.delimiter,
+            mapping.constantValue,
+            mapping.operator,
+            mapping.prefix,
+          );
+        }
+
+        details.push({
+          destination: destination || '',
+          sources,
+          sourceValues,
+          transformation: mapping.transformation || 'NONE',
+          resultValue,
+          prefix: mapping.prefix,
+          delimiter: mapping.delimiter,
+          constantValue: mapping.constantValue,
+          operator: mapping.operator,
+        });
+      }
     }
 
     return details;
   }
 
-  /**
-   * Get value from object by dot-notation path
-   */
   private getValueByPath(obj: any, path: string): any {
     if (!path) return undefined;
-    return path.split('.').reduce((current, key) => {
+
+    const normalizedPath = path.replace(/\[(\d+)\]/g, '.$1');
+
+    return normalizedPath.split('.').reduce((current, key) => {
       return current && current[key] !== undefined ? current[key] : undefined;
     }, obj);
+  }
+
+  /**
+   * Apply transformation to source values to show preview of what the result would be
+   */
+  private applyTransformation(
+    sourceValues: any[],
+    transformation: string | undefined,
+    delimiter?: string,
+    constantValue?: any,
+    operator?: string,
+    prefix?: string,
+  ): any {
+    if (!transformation || transformation === 'NONE') {
+      // For no transformation, return first source value with prefix if applicable
+      const value = sourceValues[0];
+      return prefix ? `${prefix}${value}` : value;
+    }
+
+    switch (transformation) {
+      case 'CONSTANT':
+        return constantValue;
+
+      case 'CONCAT':
+        const values = sourceValues.filter(
+          (v) => v !== undefined && v !== null,
+        );
+        const concatenated = values.join(delimiter || ' ');
+        return prefix ? `${prefix}${concatenated}` : concatenated;
+
+      case 'SUM':
+        const numericValues = sourceValues
+          .map((v) => parseFloat(v))
+          .filter((v) => !isNaN(v));
+        const sum = numericValues.reduce((acc, val) => acc + val, 0);
+        return prefix ? `${prefix}${sum}` : sum;
+
+      case 'MATH':
+        if (sourceValues.length >= 2 && operator) {
+          const val1 = parseFloat(sourceValues[0]);
+          const val2 = parseFloat(sourceValues[1]);
+          if (!isNaN(val1) && !isNaN(val2)) {
+            let result: number;
+            switch (operator) {
+              case 'ADD':
+                result = val1 + val2;
+                break;
+              case 'SUBTRACT':
+                result = val1 - val2;
+                break;
+              case 'MULTIPLY':
+                result = val1 * val2;
+                break;
+              case 'DIVIDE':
+                result = val2 !== 0 ? val1 / val2 : 0;
+                break;
+              default:
+                result = val1;
+            }
+            return prefix ? `${prefix}${result}` : result;
+          }
+        }
+        return sourceValues[0];
+
+      case 'SPLIT':
+        // For split transformation, this would be shown in preview
+        // but actual implementation would depend on how many destinations there are
+        const splitValue = sourceValues[0];
+        if (typeof splitValue === 'string' && delimiter) {
+          const parts = splitValue.split(delimiter);
+          return prefix ? `${prefix}${parts[0]}` : parts[0]; // Show first part in preview
+        }
+        return prefix ? `${prefix}${splitValue}` : splitValue;
+
+      default:
+        return sourceValues[0];
+    }
   }
 
   /**
@@ -597,17 +778,46 @@ export class SimulationService {
     if (payloadType === 'application/xml') {
       const xmlString =
         typeof payload === 'string' ? payload : JSON.stringify(payload);
+
+      if (!xmlString || xmlString.trim().length === 0) {
+        throw new Error('XML payload cannot be empty');
+      }
+
       const parser = new xml2js.Parser({
         explicitArray: false,
         ignoreAttrs: false,
         mergeAttrs: true,
+        trim: true,
+        normalize: true,
+        normalizeTags: false,
+        attrkey: '@',
+        charkey: '#text',
+        explicitCharkey: false,
+        attrNameProcessors: undefined,
+        attrValueProcessors: undefined,
+        tagNameProcessors: undefined,
+        valueProcessors: undefined,
       });
-      return parser.parseStringPromise(xmlString);
+
+      try {
+        const result = await parser.parseStringPromise(xmlString);
+        this.logger.debug(
+          `XML parsed successfully: ${JSON.stringify(result).substring(0, 200)}...`,
+        );
+        return result;
+      } catch (xmlError: any) {
+        this.logger.error(`XML parsing failed: ${xmlError.message}`);
+        throw new Error(`Invalid XML payload: ${xmlError.message}`);
+      }
     }
 
     if (payloadType === 'application/json') {
       if (typeof payload === 'string') {
-        return JSON.parse(payload);
+        try {
+          return JSON.parse(payload);
+        } catch (jsonError: any) {
+          throw new Error(`Invalid JSON payload: ${jsonError.message}`);
+        }
       }
       return payload;
     }
@@ -618,11 +828,221 @@ export class SimulationService {
   }
 
   /**
+   * Normalize payload for schema validation, handling XML-specific structures
+   */
+  private normalizePayloadForValidation(payload: any, config?: Config): any {
+    if (!payload || typeof payload !== 'object') {
+      return payload;
+    }
+
+    // If this looks like an XML-parsed object, apply schema-aware normalization
+    if (this.isXmlParsedObject(payload)) {
+      return this.normalizeXmlParsedObjectWithSchema(payload, config?.schema);
+    }
+
+    return payload;
+  }
+
+  /**
+   * Check if object looks like it came from XML parsing
+   */
+  private isXmlParsedObject(obj: any): boolean {
+    if (!obj || typeof obj !== 'object') {
+      return false;
+    }
+
+    // Look for common XML parsing indicators
+    const hasXmlAttributes = Object.keys(obj).some((key) =>
+      key.startsWith('@'),
+    );
+    const hasTextContent = Object.prototype.hasOwnProperty.call(obj, '#text');
+    const hasNestedStructure = Object.values(obj).some(
+      (val) => val && typeof val === 'object' && !Array.isArray(val),
+    );
+
+    return hasXmlAttributes || hasTextContent || hasNestedStructure;
+  }
+
+  /**
+   * Normalize XML-parsed object structure for schema validation with schema awareness
+   */
+  private normalizeXmlParsedObjectWithSchema(
+    obj: any,
+    schema?: any,
+    path: string = '',
+  ): any {
+    if (!obj || typeof obj !== 'object') {
+      return obj;
+    }
+
+    if (Array.isArray(obj)) {
+      return obj.map((item) =>
+        this.normalizeXmlParsedObjectWithSchema(item, schema, path),
+      );
+    }
+
+    const normalized: any = {};
+
+    for (const [key, value] of Object.entries(obj)) {
+      // Skip XML attributes for schema validation (they start with @)
+      if (key.startsWith('@')) {
+        continue;
+      }
+
+      // Handle text content specially
+      if (key === '#text') {
+        // Check if the parent object has attributes and text content
+        const hasAttributes = Object.keys(obj).some(
+          (k) => k !== '#text' && !k.startsWith('@'),
+        );
+        const hasOnlyTextAndAttributes = Object.keys(obj).every(
+          (k) => k === '#text' || k.startsWith('@') || !k.startsWith('@'),
+        );
+
+        // If the schema expects a string at this path and we have text content with attributes,
+        // we should return just the text value for schema validation
+        const currentPath = path ? `${path}.${key}` : key;
+        const expectedType = this.getSchemaTypeAtPath(schema, path);
+
+        if (expectedType === 'string' && hasAttributes) {
+          // Return just the text content when schema expects string
+          return value;
+        }
+
+        // If the object only has text content, return just the text
+        if (Object.keys(obj).length === 1 || hasOnlyTextAndAttributes) {
+          return value;
+        }
+
+        // Otherwise, include it as a property
+        normalized['textContent'] = value;
+        continue;
+      }
+
+      // Build the current path for schema lookup
+      const currentPath = path ? `${path}.${key}` : key;
+
+      // Get schema for this field
+      const fieldSchema = this.getSchemaAtPath(schema, currentPath);
+
+      // Recursively normalize nested objects
+      if (value && typeof value === 'object') {
+        const normalizedValue = this.normalizeXmlParsedObjectWithSchema(
+          value,
+          fieldSchema,
+          currentPath,
+        );
+
+        // Special handling: if schema expects string but we got object with text content
+        if (
+          fieldSchema?.type === 'string' &&
+          typeof normalizedValue === 'object' &&
+          normalizedValue !== null &&
+          (normalizedValue.textContent !== undefined ||
+            normalizedValue['#text'] !== undefined)
+        ) {
+          normalized[key] =
+            normalizedValue.textContent || normalizedValue['#text'];
+        } else {
+          normalized[key] = normalizedValue;
+        }
+      } else {
+        normalized[key] = value;
+      }
+    }
+
+    return normalized;
+  }
+
+  /**
+   * Get schema type at a specific path
+   */
+  private getSchemaTypeAtPath(schema: any, path: string): string | null {
+    if (!schema || !path) return null;
+
+    const parts = path.split('.');
+    let current = schema;
+
+    for (const part of parts) {
+      if (current?.properties?.[part]) {
+        current = current.properties[part];
+      } else {
+        return null;
+      }
+    }
+
+    return current?.type || null;
+  }
+
+  /**
+   * Get schema object at a specific path
+   */
+  private getSchemaAtPath(schema: any, path: string): any {
+    if (!schema || !path) return null;
+
+    const parts = path.split('.');
+    let current = schema;
+
+    for (const part of parts) {
+      if (current?.properties?.[part]) {
+        current = current.properties[part];
+      } else {
+        return null;
+      }
+    }
+
+    return current;
+  }
+
+  /**
+   * Normalize XML-parsed object structure for schema validation (legacy method)
+   */
+  private normalizeXmlParsedObject(obj: any): any {
+    if (!obj || typeof obj !== 'object') {
+      return obj;
+    }
+
+    if (Array.isArray(obj)) {
+      return obj.map((item) => this.normalizeXmlParsedObject(item));
+    }
+
+    const normalized: any = {};
+
+    for (const [key, value] of Object.entries(obj)) {
+      // Skip XML attributes for schema validation (they start with @)
+      if (key.startsWith('@')) {
+        continue;
+      }
+
+      // Handle text content specially
+      if (key === '#text') {
+        // If the object only has text content, return just the text
+        if (Object.keys(obj).length === 1) {
+          return value;
+        }
+        // Otherwise, include it as a property
+        normalized['textContent'] = value;
+        continue;
+      }
+
+      // Recursively normalize nested objects
+      if (value && typeof value === 'object') {
+        normalized[key] = this.normalizeXmlParsedObject(value);
+      } else {
+        normalized[key] = value;
+      }
+    }
+
+    return normalized;
+  }
+
+  /**
    * Validate payload against JSON schema
    */
   private validatePayloadAgainstSchema(
     payload: any,
     schema: any,
+    config?: Config,
   ): SimulationError[] {
     this.logger.debug('Validating payload against schema');
     this.logger.debug(`Schema: ${JSON.stringify(schema).substring(0, 500)}...`);
@@ -641,29 +1061,38 @@ export class SimulationService {
     }
 
     try {
+      // Handle XML payload normalization for schema validation
+      const normalizedPayload = this.normalizePayloadForValidation(
+        payload,
+        config,
+      );
+
       const ajv = new Ajv({
         allErrors: true,
         strict: false,
         strictSchema: false,
         strictNumbers: true,
-        strictTypes: true,
+        strictTypes: false, // More lenient for XML-parsed content
         strictRequired: true,
-        allowUnionTypes: false,
+        allowUnionTypes: true, // Allow for XML attribute/text content variations
         validateFormats: false,
       });
 
-      const schemaWithStrict = this.enforceStrictSchema(schema);
+      const schemaWithStrict = this.enforceStrictSchema(schema, config);
 
       this.logger.log(`Original schema: ${JSON.stringify(schema)}`);
       this.logger.log(`Strict schema: ${JSON.stringify(schemaWithStrict)}`);
+      this.logger.log(
+        `Normalized payload: ${JSON.stringify(normalizedPayload).substring(0, 500)}...`,
+      );
 
       const validate = ajv.compile(schemaWithStrict);
 
-      const valid = validate(payload);
+      const valid = validate(normalizedPayload);
 
       this.logger.debug(`Schema validation result: ${valid}`);
       this.logger.debug(
-        `Payload type: ${Array.isArray(payload) ? 'array' : typeof payload}`,
+        `Payload type: ${Array.isArray(normalizedPayload) ? 'array' : typeof normalizedPayload}`,
       );
 
       if (!valid && validate.errors) {
@@ -672,12 +1101,38 @@ export class SimulationService {
         );
 
         for (const error of validate.errors) {
+          // Skip certain benign errors for arrays
           if (
             error.keyword === 'additionalProperties' &&
             error.instancePath &&
-            this.isArrayPath(payload, error.instancePath)
+            this.isArrayPath(normalizedPayload, error.instancePath)
           ) {
             continue;
+          }
+
+          // Handle array element type mismatches more gracefully
+          if (error.keyword === 'type' && error.instancePath?.includes('/')) {
+            const pathSegments = error.instancePath.split('/');
+            const isArrayElement = pathSegments.some((segment) =>
+              /^\d+$/.test(segment),
+            );
+
+            if (isArrayElement) {
+              this.logger.debug(
+                `Array element type mismatch at ${error.instancePath}: expected ${String(error.schema)}, got ${typeof error.data}`,
+              );
+              // Convert array index errors to more user-friendly messages
+              const friendlyPath = error.instancePath
+                .replace(/^\//, '')
+                .replace(/\//g, '.');
+              errors.push({
+                field: friendlyPath,
+                message: `Array element at ${friendlyPath}: expected ${String(error.schema)}, got ${typeof error.data}`,
+                path: error.instancePath,
+                value: error.data,
+              });
+              continue;
+            }
           }
 
           errors.push({
@@ -685,7 +1140,7 @@ export class SimulationService {
             message: error.message || 'Schema validation failed',
             path: error.instancePath,
             value: _.get(
-              payload,
+              normalizedPayload,
               error.instancePath?.replace(/^\//, '').replace(/\//g, '.'),
             ),
           });
@@ -755,6 +1210,7 @@ export class SimulationService {
   private isArrayPath(obj: any, path: string): boolean {
     if (!path) return false;
 
+    // Convert JSON Pointer style path to dot notation
     const normalizedPath = path.replace(/^\//, '').replace(/\//g, '.');
     const pathParts = normalizedPath.split('.');
 
@@ -762,7 +1218,13 @@ export class SimulationService {
     for (let i = 0; i < pathParts.length; i++) {
       const part = pathParts[i];
 
+      // Check if current level is an array
       if (Array.isArray(current)) {
+        return true;
+      }
+
+      // Check if the part is a numeric index (indicating array access)
+      if (/^\d+$/.test(part)) {
         return true;
       }
 
@@ -779,38 +1241,50 @@ export class SimulationService {
   private getFieldValue(obj: any, path: string): any {
     if (!path) return undefined;
 
+    // Normalize array notation: convert [index] to .index
     const normalizedPath = path.replace(/\[(\d+)\]/g, '.$1');
 
     return _.get(obj, normalizedPath);
   }
 
-  private enforceStrictSchema(schema: any): any {
+  private enforceStrictSchema(schema: any, config?: Config): any {
     if (!schema || typeof schema !== 'object') {
       return schema;
     }
 
     const strictSchema = { ...schema };
 
+    // Handle array schemas
     if (strictSchema.type === 'array') {
       if (strictSchema.items) {
         if (typeof strictSchema.items === 'object') {
-          strictSchema.items = this.enforceStrictSchema(strictSchema.items);
+          strictSchema.items = this.enforceStrictSchema(
+            strictSchema.items,
+            config,
+          );
+
+          // For arrays of objects, ensure additionalProperties is allowed
+          if (strictSchema.items.type === 'object') {
+            strictSchema.items.additionalProperties = true;
+          }
         }
       }
       return strictSchema;
     }
 
-    if (
-      strictSchema.type === 'object' &&
-      strictSchema.additionalProperties === undefined
-    ) {
-      strictSchema.additionalProperties = false;
+    // Handle object schemas
+    if (strictSchema.type === 'object') {
+      strictSchema.additionalProperties = true;
     }
 
+    // Recursively process nested schemas
     if (strictSchema.properties) {
       strictSchema.properties = Object.keys(strictSchema.properties).reduce(
         (acc, key) => {
-          acc[key] = this.enforceStrictSchema(strictSchema.properties[key]);
+          acc[key] = this.enforceStrictSchema(
+            strictSchema.properties[key],
+            config,
+          );
           return acc;
         },
         {} as any,
@@ -818,22 +1292,23 @@ export class SimulationService {
     }
 
     if (strictSchema.items && strictSchema.type !== 'array') {
-      strictSchema.items = this.enforceStrictSchema(strictSchema.items);
+      strictSchema.items = this.enforceStrictSchema(strictSchema.items, config);
     }
 
+    // Handle schema composition keywords
     if (strictSchema.oneOf) {
       strictSchema.oneOf = strictSchema.oneOf.map((s: any) =>
-        this.enforceStrictSchema(s),
+        this.enforceStrictSchema(s, config),
       );
     }
     if (strictSchema.anyOf) {
       strictSchema.anyOf = strictSchema.anyOf.map((s: any) =>
-        this.enforceStrictSchema(s),
+        this.enforceStrictSchema(s, config),
       );
     }
     if (strictSchema.allOf) {
       strictSchema.allOf = strictSchema.allOf.map((s: any) =>
-        this.enforceStrictSchema(s),
+        this.enforceStrictSchema(s, config),
       );
     }
 

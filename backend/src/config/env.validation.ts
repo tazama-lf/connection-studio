@@ -3,6 +3,7 @@ import {
   IsEnum,
   IsString,
   IsNumberString,
+  IsOptional,
   validateSync,
 } from 'class-validator';
 enum NodeEnv {
@@ -33,8 +34,13 @@ class EnvironmentVariables {
   CONFIGURATION_DATABASE_USER: string;
   @IsString()
   CONFIGURATION_DATABASE_PASSWORD: string;
+
   @IsString()
   ENCRYPTION_KEY: string;
+
+  @IsOptional()
+  @IsNumberString()
+  SESSION_TIMEOUT_MINUTES?: string;
 }
 export const validate = (config: Record<string, unknown>) => {
   const validatedConfig = plainToClass(EnvironmentVariables, config, {

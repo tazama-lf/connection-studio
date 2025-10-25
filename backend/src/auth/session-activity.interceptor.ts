@@ -16,6 +16,17 @@ export class SessionActivityInterceptor implements NestInterceptor {
     const request = context.switchToHttp().getRequest();
     const response = context.switchToHttp().getResponse();
 
+    const user = request.user;
+    if (user) {
+      const userId = user?.token?.clientId || user?.userId;
+      const tenantId = user?.token?.tenantId || user?.tenantId;
+      const token = request.headers.authorization?.split(' ')[1];
+
+      if (userId && tenantId && token) {
+        this.sessionManager.recordActivity(userId, tenantId, token);
+      }
+    }
+
     return next.handle().pipe(
       tap(() => {
         // After successful request, add session info to response headers
@@ -35,6 +46,11 @@ export class SessionActivityInterceptor implements NestInterceptor {
             response.setHeader(
               'X-Session-Timeout-Minutes',
               Math.floor(timeRemaining / 60),
+            );
+
+            response.setHeader(
+              'X-Session-Active',
+              this.sessionManager.isSessionActive(userId, tenantId),
             );
           }
         }

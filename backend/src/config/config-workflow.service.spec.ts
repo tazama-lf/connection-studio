@@ -36,6 +36,15 @@ describe('ConfigWorkflowService', () => {
       expect(result.isValid).toBe(false);
       expect(result.reason).toContain('Invalid transition');
     });
+
+    it('should allow resubmission from CHANGES_REQUESTED to UNDER_REVIEW', () => {
+      const result = service.validateStatusTransition(
+        ConfigStatus.CHANGES_REQUESTED,
+        ConfigStatus.UNDER_REVIEW,
+        'submit_for_approval',
+      );
+      expect(result.isValid).toBe(true);
+    });
   });
 
   describe('validateUserPermissions', () => {
