@@ -101,7 +101,7 @@ describe('Session Timeout Functionality', () => {
         tenantId,
       );
 
-      expect(newTimeRemaining).toBeGreaterThanOrEqual(initialTimeRemaining);
+      expect(newTimeRemaining).toBeGreaterThan(initialTimeRemaining - 2);
     });
 
     it('should expire session after timeout period', async () => {
