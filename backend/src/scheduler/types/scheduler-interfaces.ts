@@ -1,4 +1,4 @@
-import { ScheduleStatus } from '../../utils/interfaces';
+import { JobStatus, ScheduleStatus } from '../../utils/interfaces';
 
 interface Schedule {
   id: number;
@@ -7,6 +7,7 @@ interface Schedule {
   schedule_status: ScheduleStatus;
   next_time: string | null;
   cron: string;
+  status: JobStatus
 }
 
 export type { Schedule };

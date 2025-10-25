@@ -1,10 +1,11 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import { ISuccess, JobStatus } from 'src/utils/interfaces';
+import { ISuccess, JobStatus } from '../utils/interfaces';
 import { DatabaseService } from '../database/database.service';
 import { validateCronExpression } from '../utils/helpers';
 import { CreateScheduleJobDto } from './dto/create-schedule.dto';
@@ -81,6 +82,15 @@ export class SchedulerService {
 
   async update(id: string, attr: UpdateScheduleJobDto): Promise<ISuccess> {
     try {
+
+      const existingSchedule = await this.findOne(id);
+
+      if (existingSchedule.status === JobStatus.APPROVED) {
+        throw new ForbiddenException(
+          'Approved cron jobs cannot be edited. Please create a new cron job instead.'
+        );
+      }
+
       const keys = Object.keys(attr);
       const values = Object.values(attr);
       const setClause = keys.map((key, i) => `${key} = $${i + 1}`).join(', ');
