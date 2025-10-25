@@ -12,10 +12,11 @@ import {
 import { SchedulerService } from './scheduler.service';
 import { CreateScheduleJobDto } from './dto/create-schedule.dto';
 import { UpdateScheduleJobDto } from './dto/update-schedule-dto';
+import { JobStatus } from 'src/utils/interfaces';
 
 @Controller('scheduler')
 export class SchedulerController {
-  constructor(private readonly schedulerService: SchedulerService) {}
+  constructor(private readonly schedulerService: SchedulerService) { }
 
   @Post('/create')
   async createJob(@Body() schedule: CreateScheduleJobDto) {
@@ -38,5 +39,16 @@ export class SchedulerController {
   @Get('/:id')
   async getById(@Param('id') id: string) {
     return this.schedulerService.findOne(id);
+  }
+
+  @Patch('/update/status/:id')
+  async updateStatus(
+    @Param('id') id: string,
+    @Query('status') status: JobStatus,
+  ) {
+    return await this.schedulerService.updateStatus(
+      id,
+      status,
+    );
   }
 }

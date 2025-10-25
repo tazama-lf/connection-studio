@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import { ISuccess } from 'src/utils/interfaces';
+import { ISuccess, JobStatus } from 'src/utils/interfaces';
 import { DatabaseService } from '../database/database.service';
 import { validateCronExpression } from '../utils/helpers';
 import { CreateScheduleJobDto } from './dto/create-schedule.dto';
@@ -16,7 +16,7 @@ export class SchedulerService {
   constructor(
     private readonly db: DatabaseService,
     private readonly loggerService: LoggerService,
-  ) {}
+  ) { }
 
   async create(schedule: CreateScheduleJobDto): Promise<ISuccess> {
     try {
@@ -102,6 +102,38 @@ export class SchedulerService {
     } catch (err) {
       this.loggerService.error(`Error updating schedule: ${err.message}`);
       throw err;
+    }
+  }
+
+  async updateStatus(id: string, status: JobStatus): Promise<ISuccess> {
+    try {
+      if (!status) {
+        throw new BadRequestException('Both status and table_name are required.');
+      }
+
+      const query = `
+                  UPDATE schedule
+                   SET status = $1, updated_at = NOW()
+                       WHERE id = $2
+                          RETURNING *;
+                      `;
+
+      const result = await this.db.query(query, [status, id]);
+
+      if (result.rowCount === 0) {
+        throw new NotFoundException(
+          `Record with id "${id}" not found`,
+        );
+      }
+
+      return {
+        success: true,
+        message: `Cron Job with id ${id} successfully updated`,
+      };
+
+    } catch (err) {
+      this.loggerService.error(err.message);
+      throw new BadRequestException(err.message);
     }
   }
 }
