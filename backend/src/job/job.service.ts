@@ -29,7 +29,7 @@ export class JobService {
     private readonly configService: ConfigService,
     private readonly loggerService: LoggerService,
     private readonly dryRunService: DryRunService,
-  ) {}
+  ) { }
 
   async validateExisting(table_name: string): Promise<void> {
     validateTableName(table_name);
@@ -73,7 +73,7 @@ export class JobService {
     }
   }
 
-  async createPull(job: CreatePullJobDto, tenantId: string): Promise<Job> {
+  async createPull(job: CreatePullJobDto, tenantId: string): Promise<ISuccess> {
     try {
       await this.validateExisting(job.table_name);
 
@@ -126,18 +126,27 @@ export class JobService {
                   VALUES (${placeholders})
                   RETURNING *;
                      `;
-
       const insertResult = await this.db.query(insertQuery, values);
-      const newJob = insertResult.rows[0];
+      const { id } = insertResult.rows[0];
 
-      return newJob;
-    } catch (err) {
+      return {
+        success: true,
+        message: `Job with id ${id} successfully updated`,
+      }
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        this.loggerService.error(err.message);
+        throw new BadRequestException(err.message);
+      } else {
+        this.loggerService.error(`${JSON.stringify(err)}`);
+      }
+
       if (Array.isArray(err)) {
         const messages = err.flatMap((e) => Object.values(e.constraints ?? {}));
         throw new BadRequestException(messages);
       }
 
-      throw new BadRequestException(err.message || 'Invalid request payload');
+      throw new BadRequestException('Invalid request payload');
     }
   }
 
@@ -151,6 +160,7 @@ export class JobService {
       throw new BadRequestException(
         'Page and limit must be positive integers.',
       );
+
     }
 
     const offset = (page - 1) * limit;
@@ -164,6 +174,7 @@ export class JobService {
         description,
         version,
         status,
+        record_status,
         created_at,
         'push' AS type
       FROM endpoints
@@ -180,6 +191,7 @@ export class JobService {
         description,
         version,
         status,
+        record_status,
         created_at,
         'pull' AS type
       FROM job
@@ -281,16 +293,10 @@ export class JobService {
     }
   }
 
-  async updateActivation(
-    id: string,
-    status: ScheduleStatus,
-    table_name: string,
-  ): Promise<ISuccess> {
+  async updateActivation(id: string, status: ScheduleStatus, table_name: string): Promise<ISuccess> {
     try {
-      if (!id || !status || !table_name) {
-        throw new BadRequestException(
-          'Both status and table_name are required.',
-        );
+      if (!status || !table_name) {
+        throw new BadRequestException('Both status and table_name are required.');
       }
 
       const query = `
@@ -320,16 +326,10 @@ export class JobService {
     }
   }
 
-  async updateStatus(
-    id: string,
-    status: JobStatus,
-    table_name: string,
-  ): Promise<ISuccess> {
+  async updateStatus(id: string, status: JobStatus, table_name: string): Promise<ISuccess> {
     try {
-      if (!id || !status || !table_name) {
-        throw new BadRequestException(
-          'Both status and table_name are required.',
-        );
+      if (!status || !table_name) {
+        throw new BadRequestException('Both status and table_name are required.');
       }
 
       const query = `

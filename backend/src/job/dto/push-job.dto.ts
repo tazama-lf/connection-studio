@@ -1,6 +1,5 @@
-import { IsEnum, IsNotEmpty, IsString, Matches } from 'class-validator';
-import { IngestMode } from '../../utils/interfaces';
 import { Expose } from 'class-transformer';
+import { IngestMode } from '../../utils/interfaces';
 
 export class PushJob {
   @Expose()
