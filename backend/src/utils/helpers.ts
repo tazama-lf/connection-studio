@@ -1,12 +1,14 @@
+import * as path from 'path';
+import dotenv from 'dotenv';
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 import { BadRequestException } from '@nestjs/common';
 import { CronTime } from 'cron';
-import * as path from 'path';
 import { RESERVED_KEYWORDS } from './constants';
 import * as crypto from 'crypto';
 
 const IV_LENGTH = 16;
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY!;
-const buffer = Buffer.from(`${ENCRYPTION_KEY}`, 'utf8');
+const buffer = Buffer.from(ENCRYPTION_KEY, 'utf8');
 
 export function encrypt(text: string) {
   const iv = crypto.randomBytes(IV_LENGTH);
