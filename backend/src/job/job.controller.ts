@@ -64,7 +64,8 @@ export class JobController {
     return await this.jobService.updateStatus(
       id,
       status,
-      type === ConfigType.PUSH ? 'endpoints' : 'job',
+      type,
+      '1234'
     );
   }
 

@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -326,10 +327,22 @@ export class JobService {
     }
   }
 
-  async updateStatus(id: string, status: JobStatus, table_name: string): Promise<ISuccess> {
+
+
+  async updateStatus(id: string, status: JobStatus, type: ConfigType, tenantId: string): Promise<ISuccess> {
     try {
-      if (!status || !table_name) {
-        throw new BadRequestException('Both status and table_name are required.');
+      if (!status || !type) {
+        throw new BadRequestException('Both status and type are required.');
+      }
+
+      const table_name = ConfigType.PUSH ? 'endpoints' : 'job'
+
+      const existingSchedule = await this.findOne(id, type, tenantId);
+
+      if (existingSchedule.status === JobStatus.APPROVED) {
+        throw new ForbiddenException(
+          'Approved job cannot be edited. Please create a new job instead.'
+        );
       }
 
       const query = `
