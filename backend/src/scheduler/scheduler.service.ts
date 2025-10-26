@@ -5,12 +5,11 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import { ISuccess, JobStatus } from '../utils/interfaces';
 import { DatabaseService } from '../database/database.service';
 import { validateCronExpression } from '../utils/helpers';
 import { CreateScheduleJobDto } from './dto/create-schedule.dto';
 import { UpdateScheduleJobDto } from './dto/update-schedule-dto';
-import { Schedule } from './types/scheduler-interfaces';
+import { Schedule, ISuccess, JobStatus } from '@tazama-lf/tcs-lib';
 
 @Injectable()
 export class SchedulerService {

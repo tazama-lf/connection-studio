@@ -14,7 +14,7 @@ import {
   FileType,
   IngestMode,
   SourceType,
-} from '../../utils/interfaces';
+} from '@tazama-lf/tcs-lib';
 
 class HTTPConnectionDto {
   @IsString()

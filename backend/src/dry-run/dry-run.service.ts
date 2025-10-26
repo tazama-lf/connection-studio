@@ -3,11 +3,11 @@ import { Injectable } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { CreatePullJobDto } from '../job/dto/create-pull-job.dto';
 import {
+  AuthType, FileType, SourceType,
   FileSettings,
   HTTPConnection,
   SFTPConnection,
-} from '../job/types/interface';
-import { AuthType, FileType, SourceType } from '../utils/interfaces';
+} from '@tazama-lf/tcs-lib';
 import { firstValueFrom } from 'rxjs';
 import SFTPClient from 'ssh2-sftp-client';
 import * as iconv from 'iconv-lite';
@@ -19,7 +19,7 @@ export class DryRunService {
   constructor(
     private readonly loggerService: LoggerService,
     private readonly httpService: HttpService,
-  ) {}
+  ) { }
 
   async transformFileToJSON(
     sftp: SFTPClient,

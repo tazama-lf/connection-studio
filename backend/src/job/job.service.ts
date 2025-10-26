@@ -13,10 +13,10 @@ import {
   JobStatus,
   ScheduleStatus,
   SourceType,
-} from '../utils/interfaces';
+  Job
+} from '@tazama-lf/tcs-lib';
 import { v4 } from 'uuid';
 import { CreatePushJobDto } from './dto/create-push-job.dto';
-import { Job } from './types/interface';
 import { CreatePullJobDto, SFTPConnectionDto } from './dto/create-pull-job.dto';
 import { DryRunService } from '../dry-run/dry-run.service';
 import SFTPClient from 'ssh2-sftp-client';

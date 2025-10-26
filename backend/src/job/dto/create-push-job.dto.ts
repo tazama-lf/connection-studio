@@ -1,5 +1,6 @@
 import { IsEnum, IsNotEmpty, IsString, Matches } from 'class-validator';
-import { IngestMode } from '../../utils/interfaces';
+import { IngestMode } from '@tazama-lf/tcs-lib';
+
 
 export class CreatePushJobDto {
   @IsString()

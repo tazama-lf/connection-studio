@@ -10,7 +10,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { RequireEditorRole } from '../auth/auth.decorator';
-import { ConfigType, JobStatus, ScheduleStatus } from '../utils/interfaces';
+import { ConfigType, JobStatus, ScheduleStatus } from '@tazama-lf/tcs-lib';
 import { CreatePushJobDto } from './dto/create-push-job.dto';
 import { JobService } from './job.service';
 import { CreatePullJobDto } from './dto/create-pull-job.dto';
@@ -18,7 +18,7 @@ import { CreatePullJobDto } from './dto/create-pull-job.dto';
 @Controller('job')
 // @UseGuards(TazamaAuthGuard)
 export class JobController {
-  constructor(private readonly jobService: JobService) {}
+  constructor(private readonly jobService: JobService) { }
 
   @Post('/create/push')
   @RequireEditorRole()

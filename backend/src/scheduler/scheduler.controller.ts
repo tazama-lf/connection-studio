@@ -12,7 +12,7 @@ import {
 import { SchedulerService } from './scheduler.service';
 import { CreateScheduleJobDto } from './dto/create-schedule.dto';
 import { UpdateScheduleJobDto } from './dto/update-schedule-dto';
-import { JobStatus } from '../utils/interfaces';
+import { JobStatus } from '@tazama-lf/tcs-lib';
 
 @Controller('scheduler')
 export class SchedulerController {

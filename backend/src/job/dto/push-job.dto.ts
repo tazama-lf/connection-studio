@@ -1,5 +1,5 @@
 import { Expose } from 'class-transformer';
-import { IngestMode } from '../../utils/interfaces';
+import { IngestMode } from '@tazama-lf/tcs-lib';
 
 export class PushJob {
   @Expose()

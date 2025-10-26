@@ -5,7 +5,7 @@ import {
   IsOptional,
   IsString,
 } from 'class-validator';
-import { ScheduleStatus } from '../../utils/interfaces';
+import { ScheduleStatus } from '@tazama-lf/tcs-lib';
 import { Type } from 'class-transformer';
 
 export class CreateScheduleJobDto {
