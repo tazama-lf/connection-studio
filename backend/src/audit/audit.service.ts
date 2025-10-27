@@ -1,26 +1,9 @@
-import { Injectable, Inject } from '@nestjs/common';
-import { Knex } from 'knex';
-import { randomUUID } from 'crypto';
-
-export interface AuditLogEntry {
-  action: string;
-  entityType: string;
-  entityId?: string;
-  actor: string;
-  tenantId: string;
-  endpointName?: string;
-  mappingName?: string;
-  version?: number;
-  details?: string;
-  oldValues?: Record<string, any>;
-  newValues?: Record<string, any>;
-  ipAddress?: string;
-  userAgent?: string;
-  sessionId?: string;
-  severity?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
-  status?: 'SUCCESS' | 'FAILURE' | 'PENDING';
-  errorMessage?: string;
-}
+import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import {
+  DatabaseService,
+  DbAuditLogEntry as AuditLogEntry,
+} from '@tazama-lf/tcs-lib';
 
 export interface MappingAuditLogEntry {
   action: 'CREATE' | 'UPDATE' | 'DELETE' | 'ROLLBACK' | 'APPROVE' | 'PUBLISH';
@@ -33,7 +16,19 @@ export interface MappingAuditLogEntry {
 
 @Injectable()
 export class AuditService {
-  constructor(@Inject('KNEX_CONNECTION') private readonly knex: Knex) {}
+  private readonly dbService: DatabaseService;
+
+  constructor(private readonly configService: ConfigService) {
+    // Initialize DatabaseService with config from environment
+    const dbConfig = {
+      host: this.configService.get<string>('DB_HOST') || 'localhost',
+      port: this.configService.get<number>('DB_PORT') || 5432,
+      database: this.configService.get<string>('DB_NAME') || 'postgres',
+      user: this.configService.get<string>('DB_USER') || 'postgres',
+      password: this.configService.get<string>('DB_PASS') || 'newpassword',
+    };
+    this.dbService = new DatabaseService(dbConfig);
+  }
 
   // Simple log method for compatibility with external services
   log(): void {
@@ -42,32 +37,7 @@ export class AuditService {
   }
 
   async logAction(entry: AuditLogEntry): Promise<void> {
-    try {
-      await this.knex('audit_logs').insert({
-        id: randomUUID(),
-        action: entry.action,
-        entity_type: entry.entityType,
-        entity_id: entry.entityId,
-        actor: entry.actor,
-        endpoint_name: entry.endpointName || entry.mappingName || 'UNKNOWN',
-        mapping_name: entry.mappingName,
-        version: entry.version,
-        tenant_id: entry.tenantId,
-        details: entry.details,
-        old_values: entry.oldValues ? JSON.stringify(entry.oldValues) : null,
-        new_values: entry.newValues ? JSON.stringify(entry.newValues) : null,
-        ip_address: entry.ipAddress,
-        user_agent: entry.userAgent,
-        session_id: entry.sessionId,
-        severity: entry.severity || 'MEDIUM',
-        status: entry.status || 'SUCCESS',
-        error_message: entry.errorMessage,
-        timestamp: new Date(),
-      });
-    } catch (error) {
-      console.error('Failed to log audit entry:', error);
-      console.error('Entry data:', entry);
-    }
+    return await this.dbService.logAction(entry);
   }
 
   async logEndpointCreated(
@@ -323,48 +293,29 @@ export class AuditService {
     endDate?: Date,
     limit: number = 100,
   ): Promise<any[]> {
-    const query = this.knex('audit_logs')
-      .where('tenant_id', tenantId)
-      .orderBy('timestamp', 'desc')
-      .limit(limit);
-
-    if (entityType) {
-      query.where('entity_type', entityType);
-    }
-
-    if (actor) {
-      query.where('actor', actor);
-    }
-
-    if (startDate) {
-      query.where('timestamp', '>=', startDate);
-    }
-
-    if (endDate) {
-      query.where('timestamp', '<=', endDate);
-    }
-
-    return query;
+    return await this.dbService.getAuditLogs(
+      tenantId,
+      entityType,
+      actor,
+      startDate,
+      endDate,
+      limit,
+    );
   }
 
   /**
    * Log mapping-related actions with simplified audit trail
    */
   async logMappingAction(entry: MappingAuditLogEntry): Promise<void> {
-    try {
-      await this.knex('audit_logs').insert({
-        id: randomUUID(),
-        action: entry.action,
-        actor: entry.actor,
-        endpoint_name: entry.endpointName || entry.mappingName || 'UNKNOWN',
-        version: entry.version,
-        tenant_id: entry.tenantId,
-        timestamp: new Date(),
-      });
-    } catch (error) {
-      console.error('Failed to log mapping audit entry:', error);
-      throw error;
-    }
+    await this.logAction({
+      action: entry.action,
+      entityType: 'MAPPING',
+      actor: entry.actor,
+      tenantId: entry.tenantId,
+      endpointName: entry.endpointName,
+      mappingName: entry.mappingName,
+      version: entry.version,
+    });
   }
 
   /**
@@ -375,11 +326,6 @@ export class AuditService {
     tenantId: string,
     limit = 100,
   ): Promise<any[]> {
-    return await this.knex('audit_logs')
-      .select('action', 'actor', 'endpoint_name', 'version', 'timestamp')
-      .where('endpoint_name', name)
-      .where('tenant_id', tenantId)
-      .orderBy('timestamp', 'desc')
-      .limit(limit);
+    return await this.dbService.getAuditLogsByName(name, tenantId, limit);
   }
 }

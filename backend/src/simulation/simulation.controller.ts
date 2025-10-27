@@ -42,6 +42,7 @@ export class SimulationController {
       dto,
       tenantId,
       userId,
+      user?.token?.tokenString,
     );
 
     this.logger.log(

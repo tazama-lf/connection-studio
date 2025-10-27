@@ -1,5 +1,5 @@
 ﻿import { Injectable, Logger } from '@nestjs/common';
-import { ConfigRepository } from '../config/config.repository';
+import { AdminServiceClient } from '../services/admin-service-client.service';
 import { Config, FieldMapping } from '../config/config.interfaces';
 import { AuditService } from '../audit/audit.service';
 import {
@@ -56,7 +56,7 @@ export class SimulationService {
   private readonly logger = new Logger(SimulationService.name);
 
   constructor(
-    private readonly configRepository: ConfigRepository,
+    private readonly adminServiceClient: AdminServiceClient,
     private readonly auditService: AuditService,
   ) {}
 
@@ -64,6 +64,7 @@ export class SimulationService {
     dto: SimulatePayloadDto,
     tenantId: string,
     userId?: string,
+    token?: string,
   ): Promise<SimulationResult> {
     const timestamp = new Date().toISOString();
     const stages: ValidationStage[] = [];
@@ -74,7 +75,11 @@ export class SimulationService {
 
     try {
       // Stage 1: Load Configuration
-      const configStage = await this.stageLoadConfig(dto.endpointId, tenantId);
+      const configStage = await this.stageLoadConfig(
+        dto.endpointId,
+        tenantId,
+        token,
+      );
       stages.push(configStage);
 
       if (configStage.status === 'FAILED') {
@@ -270,11 +275,26 @@ export class SimulationService {
   private async stageLoadConfig(
     endpointId: number,
     tenantId: string,
+    token?: string,
   ): Promise<ValidationStage> {
     try {
-      const config = await this.configRepository.findConfigById(
+      if (!token) {
+        return {
+          name: '1. Load Configuration',
+          status: 'FAILED',
+          message: 'Authentication token required',
+          errors: [
+            {
+              field: 'token',
+              message: 'Missing authentication token',
+            },
+          ],
+        };
+      }
+
+      const config = await this.adminServiceClient.getConfigById(
         endpointId,
-        tenantId,
+        token,
       );
 
       if (!config) {
@@ -443,8 +463,12 @@ export class SimulationService {
 
     if (config.mapping && Array.isArray(config.mapping)) {
       for (const mapping of config.mapping) {
-        // Source is always an array for consistency
-        const sources = mapping.source || [];
+        // Ensure source is always an array
+        const sources = Array.isArray(mapping.source)
+          ? mapping.source
+          : mapping.source
+            ? [mapping.source]
+            : [];
 
         const destination = Array.isArray(mapping.destination)
           ? mapping.destination[0]
@@ -490,7 +514,13 @@ export class SimulationService {
     }> = [];
 
     for (const mapping of mappings) {
-      const sources = mapping.source || [];
+      // Ensure source is always an array
+      const sources = Array.isArray(mapping.source)
+        ? mapping.source
+        : mapping.source
+          ? [mapping.source]
+          : [];
+
       const destination = Array.isArray(mapping.destination)
         ? mapping.destination[0]
         : mapping.destination;
@@ -583,8 +613,9 @@ export class SimulationService {
   private async getEndpointConfig(
     endpointId: number,
     tenantId: string,
+    token: string,
   ): Promise<Config | null> {
-    return this.configRepository.findConfigById(endpointId, tenantId);
+    return this.adminServiceClient.getConfigById(endpointId, token);
   }
 
   private async parsePayload(payload: any, payloadType: string): Promise<any> {

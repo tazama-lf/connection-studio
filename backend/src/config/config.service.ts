@@ -7,9 +7,10 @@ import {
 } from '@nestjs/common';
 import { ConfigRepository } from './config.repository';
 import {
-  PayloadParsingService,
   FieldType,
   JSONSchema,
+  parsePayloadToSchema,
+  applyFieldAdjustments,
 } from '@tazama-lf/tcs-lib';
 import { AuditService } from '../audit/audit.service';
 import { JSONSchemaConverterService } from '../schemas/json-schema-converter.service';
@@ -58,7 +59,6 @@ export class ConfigService {
 
   constructor(
     private readonly configRepository: ConfigRepository,
-    private readonly payloadParsingService: PayloadParsingService,
     private readonly auditService: AuditService,
     private readonly jsonSchemaConverter: JSONSchemaConverterService,
     private readonly tazamaDataModelService: TazamaDataModelService,
@@ -69,6 +69,7 @@ export class ConfigService {
     dto: CreateConfigDto,
     tenantId: string,
     userId: string,
+    token: string,
   ): Promise<ConfigResponseDto> {
     this.logger.log(
       `Creating config for msgFam: ${dto.msgFam}, transactionType: ${dto.transactionType}, version: ${dto.version}`,
@@ -90,6 +91,7 @@ export class ConfigService {
           version,
           dto.transactionType,
           tenantId,
+          token,
         );
       if (existingConfig) {
         this.logger.warn(
@@ -109,42 +111,90 @@ export class ConfigService {
         };
       }
 
-      const parsingResult =
-        await this.payloadParsingService.parsePayloadToSchema(
-          dto.payload,
-          dto.contentType || ContentType.JSON,
-        );
+      const parsingResult = await parsePayloadToSchema(
+        dto.payload,
+        dto.contentType || ContentType.JSON,
+      );
 
-      if (!parsingResult.success) {
+      if (!parsingResult?.success) {
+        this.logger.error(
+          'Failed to parse payload:',
+          parsingResult?.validation || 'Unknown error',
+        );
         return {
           success: false,
           message: 'Failed to parse payload',
-          validation: parsingResult.validation,
+          validation: {
+            success: false,
+            errors: ['Parsing failed'],
+            warnings: [],
+          },
         };
       }
 
-      let finalSchema = parsingResult.jsonSchema;
+      let sourceFields = parsingResult.sourceFields;
+
+      if (!sourceFields || sourceFields.length === 0) {
+        this.logger.error('Parsing result contains no source fields');
+        return {
+          success: false,
+          message: 'Failed to generate fields from payload',
+          validation: {
+            success: false,
+            errors: ['No fields generated'],
+            warnings: [],
+          },
+        };
+      }
+
+      const duplicateErrors =
+        this.validateNoDuplicateSchemaFields(sourceFields);
+      if (duplicateErrors.length > 0) {
+        this.logger.error(
+          'Duplicate fields detected in schema during config creation',
+          {
+            errors: duplicateErrors,
+            tenantId,
+            userId,
+            msgFam: dto.msgFam,
+            transactionType: dto.transactionType,
+            version: dto.version,
+            contentType: dto.contentType,
+            totalSourceFields: sourceFields.length,
+            context: 'createConfig',
+          },
+        );
+        return {
+          success: false,
+          message: 'Schema contains duplicate fields',
+          validation: {
+            success: false,
+            errors: duplicateErrors,
+            warnings: [],
+          },
+        };
+      }
+
       if (dto.fieldAdjustments && dto.fieldAdjustments.length > 0) {
         this.logger.log(
           `Applying ${dto.fieldAdjustments.length} field adjustments`,
         );
 
-        const adjustedSourceFields =
-          this.payloadParsingService.applyFieldAdjustments(
-            parsingResult.sourceFields,
-            dto.fieldAdjustments,
-          );
-
-        // Regenerate JSON schema with adjusted fields
-        finalSchema =
-          this.jsonSchemaConverter.convertToJSONSchema(adjustedSourceFields);
-
-        this.logger.log(
-          'Successfully applied field adjustments and regenerated schema',
+        sourceFields = applyFieldAdjustments(
+          sourceFields,
+          dto.fieldAdjustments,
         );
+
+        this.logger.log('Successfully applied field adjustments');
       } else {
         this.logger.log('No field adjustments to apply');
       }
+      const finalSchema =
+        this.jsonSchemaConverter.convertToJSONSchema(sourceFields);
+
+      this.logger.log(
+        `Generated schema with ${Object.keys(finalSchema.properties || {}).length} properties`,
+      );
 
       const validation = this.validateSchema(finalSchema);
       if (!validation.success) {
@@ -175,7 +225,10 @@ export class ConfigService {
         createdBy: userId,
       };
 
-      const configId = await this.configRepository.createConfig(configData);
+      const configId = await this.configRepository.createConfig(
+        configData,
+        token,
+      );
 
       await this.auditService.logAction({
         entityType: 'CONFIG',
@@ -188,6 +241,7 @@ export class ConfigService {
       const config = await this.configRepository.findConfigById(
         configId,
         tenantId,
+        token,
       );
 
       this.logger.log('Successfully created config ' + configId);
@@ -214,6 +268,7 @@ export class ConfigService {
     dto: CloneConfigDto,
     tenantId: string,
     userId: string,
+    token: string,
   ): Promise<ConfigResponseDto> {
     try {
       const sourceConfig = await this.configRepository.findConfigById(
@@ -238,6 +293,7 @@ export class ConfigService {
           newVersion,
           dto.newTransactionType,
           tenantId,
+          token,
         );
 
       if (existingConfig) {
@@ -267,11 +323,10 @@ export class ConfigService {
         const existingSourceFields =
           this.jsonSchemaConverter.convertFromJSONSchema(sourceConfig.schema);
 
-        const adjustedSourceFields =
-          this.payloadParsingService.applyFieldAdjustments(
-            existingSourceFields,
-            dto.fieldAdjustments,
-          );
+        const adjustedSourceFields = applyFieldAdjustments(
+          existingSourceFields,
+          dto.fieldAdjustments,
+        );
 
         finalSchema =
           this.jsonSchemaConverter.convertToJSONSchema(adjustedSourceFields);
@@ -303,8 +358,10 @@ export class ConfigService {
         createdBy: userId,
       };
 
-      const newConfigId =
-        await this.configRepository.createConfig(newConfigData);
+      const newConfigId = await this.configRepository.createConfig(
+        newConfigData,
+        token,
+      );
 
       await this.auditService.logAction({
         entityType: 'CONFIG',
@@ -347,7 +404,6 @@ export class ConfigService {
     return this.configRepository.findConfigById(id, tenantId);
   }
 
-  // Test method to verify TypeScript compilation - updated
   async testMethod(): Promise<boolean> {
     return true;
   }
@@ -392,6 +448,7 @@ export class ConfigService {
     dto: UpdateConfigDto,
     tenantId: string,
     userId: string,
+    token: string,
   ): Promise<ConfigResponseDto> {
     const config = await this.configRepository.findConfigById(id, tenantId);
 
@@ -399,7 +456,6 @@ export class ConfigService {
       throw new NotFoundException(`Config with ID ${id} not found`);
     }
 
-    // WORKFLOW CHECK: Prevent editing if not in editable state
     const editValidation = this.workflowService.canEditConfig(
       config.status as ConfigStatus,
     );
@@ -421,28 +477,48 @@ export class ConfigService {
       }
     }
 
-    // Handle field adjustments if provided
     let finalSchema = dto.schema;
     if (dto.fieldAdjustments && dto.fieldAdjustments.length > 0) {
       this.logger.log(
         `Applying ${dto.fieldAdjustments.length} field adjustments to config ${id}`,
       );
 
-      // Use existing schema as base if no new schema provided
       const baseSchema = dto.schema || config.schema;
 
-      // Convert existing schema to source fields first
       const existingSourceFields =
         this.jsonSchemaConverter.convertFromJSONSchema(baseSchema);
 
-      // Apply field adjustments
-      const adjustedSourceFields =
-        this.payloadParsingService.applyFieldAdjustments(
-          existingSourceFields,
-          dto.fieldAdjustments,
-        );
+      const adjustedSourceFields = applyFieldAdjustments(
+        existingSourceFields,
+        dto.fieldAdjustments,
+      );
 
-      // Regenerate JSON schema with adjusted fields
+      const duplicateErrors =
+        this.validateNoDuplicateSchemaFields(adjustedSourceFields);
+      if (duplicateErrors.length > 0) {
+        this.logger.error(
+          'Duplicate fields detected after field adjustments during config update',
+          {
+            errors: duplicateErrors,
+            configId: id,
+            tenantId,
+            userId,
+            fieldAdjustments: dto.fieldAdjustments,
+            totalAdjustedFields: adjustedSourceFields.length,
+            context: 'updateConfig',
+          },
+        );
+        return {
+          success: false,
+          message: 'Field adjustments resulted in duplicate fields',
+          validation: {
+            success: false,
+            errors: duplicateErrors,
+            warnings: [],
+          },
+        };
+      }
+
       finalSchema =
         this.jsonSchemaConverter.convertToJSONSchema(adjustedSourceFields);
 
@@ -450,7 +526,6 @@ export class ConfigService {
         'Successfully applied field adjustments and regenerated schema',
       );
 
-      // Validate the adjusted schema
       const validation = this.validateSchema(finalSchema);
       if (!validation.success) {
         return {
@@ -460,9 +535,6 @@ export class ConfigService {
         };
       }
     }
-
-    // IN-PLACE UPDATE: Update the same config row regardless of field changes
-    // (as long as status is not COMPLETED/approved)
     const updateData = { ...dto };
 
     // Use finalSchema if field adjustments were applied
@@ -493,6 +565,7 @@ export class ConfigService {
           newVersion,
           newTransactionType,
           tenantId,
+          token,
         );
 
       if (existingConfig) {
@@ -530,6 +603,7 @@ export class ConfigService {
 
       const newConfigId = await this.configRepository.createConfig(
         newConfigData as any,
+        token,
       );
 
       await this.auditService.logAction({
@@ -566,6 +640,7 @@ export class ConfigService {
           config.version,
           newTransactionType,
           tenantId,
+          token,
         );
 
       if (existingConfig && existingConfig.id !== id) {
@@ -598,7 +673,7 @@ export class ConfigService {
       );
     }
 
-    await this.configRepository.updateConfig(id, tenantId, updateData);
+    await this.configRepository.updateConfig(id, tenantId, updateData, token);
 
     await this.auditService.logAction({
       entityType: 'CONFIG',
@@ -624,6 +699,7 @@ export class ConfigService {
     id: number,
     tenantId: string,
     userId: string,
+    token: string,
   ): Promise<ConfigResponseDto> {
     const config = await this.configRepository.findConfigById(id, tenantId);
 
@@ -631,7 +707,7 @@ export class ConfigService {
       throw new NotFoundException(`Config with ID ${id} not found`);
     }
 
-    await this.configRepository.deleteConfig(id, tenantId);
+    await this.configRepository.deleteConfig(id, tenantId, token);
 
     await this.auditService.logAction({
       entityType: 'CONFIG',
@@ -652,6 +728,7 @@ export class ConfigService {
     mappingDto: AddMappingDto,
     tenantId: string,
     userId: string,
+    token: string,
   ): Promise<ConfigResponseDto> {
     const config = await this.configRepository.findConfigById(id, tenantId);
 
@@ -664,9 +741,14 @@ export class ConfigService {
 
     const updatedMappings = [...(config.mapping || []), newMapping];
 
-    await this.configRepository.updateConfig(id, tenantId, {
-      mapping: updatedMappings,
-    });
+    await this.configRepository.updateConfig(
+      id,
+      tenantId,
+      {
+        mapping: updatedMappings,
+      },
+      token,
+    );
 
     await this.auditService.logAction({
       entityType: 'MAPPING',
@@ -693,6 +775,7 @@ export class ConfigService {
     mappingIndex: number,
     tenantId: string,
     userId: string,
+    token: string,
   ): Promise<ConfigResponseDto> {
     const config = await this.configRepository.findConfigById(id, tenantId);
 
@@ -708,9 +791,14 @@ export class ConfigService {
       (_, idx) => idx !== mappingIndex,
     );
 
-    await this.configRepository.updateConfig(id, tenantId, {
-      mapping: updatedMappings.length > 0 ? updatedMappings : [],
-    });
+    await this.configRepository.updateConfig(
+      id,
+      tenantId,
+      {
+        mapping: updatedMappings.length > 0 ? updatedMappings : [],
+      },
+      token,
+    );
 
     await this.auditService.logAction({
       entityType: 'MAPPING',
@@ -738,6 +826,7 @@ export class ConfigService {
     mappingDto: AddMappingDto,
     tenantId: string,
     userId: string,
+    token: string,
   ): Promise<ConfigResponseDto> {
     const config = await this.configRepository.findConfigById(id, tenantId);
 
@@ -755,9 +844,14 @@ export class ConfigService {
     const updatedMappings = [...config.mapping];
     updatedMappings[mappingIndex] = updatedMapping;
 
-    await this.configRepository.updateConfig(id, tenantId, {
-      mapping: updatedMappings,
-    });
+    await this.configRepository.updateConfig(
+      id,
+      tenantId,
+      {
+        mapping: updatedMappings,
+      },
+      token,
+    );
 
     await this.auditService.logAction({
       entityType: 'MAPPING',
@@ -784,6 +878,7 @@ export class ConfigService {
     functionDto: AddFunctionDto,
     tenantId: string,
     userId: string,
+    token: string,
   ): Promise<ConfigResponseDto> {
     const config = await this.configRepository.findConfigById(id, tenantId);
 
@@ -796,9 +891,14 @@ export class ConfigService {
 
     const updatedFunctions = [...(config.functions || []), newFunction];
 
-    await this.configRepository.updateConfig(id, tenantId, {
-      functions: updatedFunctions,
-    });
+    await this.configRepository.updateConfig(
+      id,
+      tenantId,
+      {
+        functions: updatedFunctions,
+      },
+      token,
+    );
 
     await this.auditService.logAction({
       entityType: 'FUNCTION',
@@ -825,6 +925,7 @@ export class ConfigService {
     functionIndex: number,
     tenantId: string,
     userId: string,
+    token: string,
   ): Promise<ConfigResponseDto> {
     const config = await this.configRepository.findConfigById(id, tenantId);
 
@@ -840,9 +941,14 @@ export class ConfigService {
       (_, idx) => idx !== functionIndex,
     );
 
-    await this.configRepository.updateConfig(id, tenantId, {
-      functions: updatedFunctions.length > 0 ? updatedFunctions : [],
-    });
+    await this.configRepository.updateConfig(
+      id,
+      tenantId,
+      {
+        functions: updatedFunctions.length > 0 ? updatedFunctions : [],
+      },
+      token,
+    );
 
     await this.auditService.logAction({
       entityType: 'FUNCTION',
@@ -870,6 +976,7 @@ export class ConfigService {
     functionDto: AddFunctionDto,
     tenantId: string,
     userId: string,
+    token: string,
   ): Promise<ConfigResponseDto> {
     const config = await this.configRepository.findConfigById(id, tenantId);
 
@@ -887,9 +994,14 @@ export class ConfigService {
     const updatedFunctions = [...config.functions];
     updatedFunctions[functionIndex] = updatedFunction;
 
-    await this.configRepository.updateConfig(id, tenantId, {
-      functions: updatedFunctions,
-    });
+    await this.configRepository.updateConfig(
+      id,
+      tenantId,
+      {
+        functions: updatedFunctions,
+      },
+      token,
+    );
 
     await this.auditService.logAction({
       entityType: 'FUNCTION',
@@ -920,6 +1032,7 @@ export class ConfigService {
       'addAccountHolder',
       'addEntity',
       'addAccount',
+      'transactionRelationship',
     ];
     if (!allowedFunctions.includes(dto.functionName)) {
       throw new BadRequestException(
@@ -1005,8 +1118,74 @@ export class ConfigService {
     };
   }
 
+  private validateNoDuplicateSchemaFields(sourceFields: any[]): string[] {
+    const errors: string[] = [];
+    const seenNames = new Set<string>();
+    const seenPaths = new Set<string>();
+    const duplicateNames: string[] = [];
+    const duplicatePaths: string[] = [];
+
+    for (let i = 0; i < sourceFields.length; i++) {
+      const field = sourceFields[i];
+
+      if (!field.name || !field.path) {
+        continue;
+      }
+
+      if (seenNames.has(field.name)) {
+        const errorMsg = `Duplicate field name '${field.name}' found in schema`;
+        errors.push(errorMsg);
+        duplicateNames.push(field.name);
+
+        this.logger.error(`Schema validation failed: ${errorMsg}`, {
+          duplicateFieldName: field.name,
+          fieldPath: field.path,
+          fieldType: field.type,
+          fieldIndex: i,
+          context: 'validateNoDuplicateSchemaFields',
+        });
+      } else {
+        seenNames.add(field.name);
+      }
+
+      if (seenPaths.has(field.path)) {
+        const errorMsg = `Duplicate field path '${field.path}' found in schema`;
+        errors.push(errorMsg);
+        duplicatePaths.push(field.path);
+
+        this.logger.error(`Schema validation failed: ${errorMsg}`, {
+          duplicateFieldPath: field.path,
+          fieldName: field.name,
+          fieldType: field.type,
+          fieldIndex: i,
+          context: 'validateNoDuplicateSchemaFields',
+        });
+      } else {
+        seenPaths.add(field.path);
+      }
+    }
+
+    if (errors.length > 0) {
+      this.logger.error(
+        `Schema contains ${errors.length} duplicate field error(s)`,
+        {
+          totalErrors: errors.length,
+          duplicateFieldNames: duplicateNames,
+          duplicateFieldPaths: duplicatePaths,
+          totalFieldsProcessed: sourceFields.length,
+          context: 'validateNoDuplicateSchemaFields',
+        },
+      );
+    }
+
+    return errors;
+  }
+
   private createMappingFromDto(dto: AddMappingDto): FieldMapping {
-    // Many-to-one (concat logic)
+    if (dto.transformation) {
+      return this.createMappingWithExplicitTransformation(dto);
+    }
+
     if (dto.sources && dto.sources.length > 0) {
       if (dto.sources.length < 2) {
         throw new BadRequestException(
@@ -1098,6 +1277,169 @@ export class ConfigService {
     );
   }
 
+  private createMappingWithExplicitTransformation(
+    dto: AddMappingDto,
+  ): FieldMapping {
+    const mapping: any = {
+      transformation: dto.transformation,
+    };
+
+    if (dto.prefix !== undefined) {
+      mapping.prefix = dto.prefix;
+    }
+
+    switch (dto.transformation) {
+      case 'CONCAT':
+        if (!dto.sources || dto.sources.length < 1) {
+          throw new BadRequestException(
+            'CONCAT transformation requires at least one source field',
+          );
+        }
+        if (!dto.destination) {
+          throw new BadRequestException(
+            'CONCAT transformation requires a destination field',
+          );
+        }
+        mapping.source = dto.sources;
+        mapping.destination = dto.destination;
+        mapping.delimiter = dto.delimiter || ' ';
+        break;
+
+      case 'SUM': {
+        const sourceFields = dto.sumFields || dto.sources;
+        if (!sourceFields || sourceFields.length < 1) {
+          throw new BadRequestException(
+            'SUM transformation requires at least one source field',
+          );
+        }
+        if (!dto.destination) {
+          throw new BadRequestException(
+            'SUM transformation requires a destination field',
+          );
+        }
+        mapping.source = sourceFields;
+        mapping.destination = dto.destination;
+        break;
+      }
+
+      case 'MATH':
+        if (!dto.sources || dto.sources.length < 1) {
+          throw new BadRequestException(
+            'MATH transformation requires at least one source field',
+          );
+        }
+        if (!dto.destination) {
+          throw new BadRequestException(
+            'MATH transformation requires a destination field',
+          );
+        }
+        if (!dto.operator) {
+          throw new BadRequestException(
+            'MATH transformation requires an operator (ADD, SUBTRACT, MULTIPLY, DIVIDE)',
+          );
+        }
+        mapping.source = dto.sources;
+        mapping.destination = dto.destination;
+        mapping.operator = dto.operator;
+        break;
+
+      case 'SPLIT':
+        if (!dto.source) {
+          throw new BadRequestException(
+            'SPLIT transformation requires a source field',
+          );
+        }
+        if (!dto.destinations || dto.destinations.length === 0) {
+          throw new BadRequestException(
+            'SPLIT transformation requires destination fields',
+          );
+        }
+        mapping.source = [dto.source];
+        mapping.destination = dto.destinations;
+        mapping.delimiter = dto.delimiter || ',';
+        break;
+
+      case 'CONSTANT':
+        if (dto.constantValue === undefined) {
+          throw new BadRequestException(
+            'CONSTANT transformation requires a constant value',
+          );
+        }
+        if (!dto.destination) {
+          throw new BadRequestException(
+            'CONSTANT transformation requires a destination field',
+          );
+        }
+        mapping.destination = dto.destination;
+        mapping.constantValue = dto.constantValue;
+        break;
+
+      case 'NONE':
+      default:
+        if (!dto.source) {
+          throw new BadRequestException(
+            'Direct mapping (NONE transformation) requires a source field',
+          );
+        }
+        if (!dto.destination) {
+          throw new BadRequestException(
+            'Direct mapping (NONE transformation) requires a destination field',
+          );
+        }
+        mapping.source = [dto.source];
+        mapping.destination = dto.destination;
+        break;
+    }
+
+    return mapping;
+  }
+
+  private getFieldTypeFromSchema(
+    schema: JSONSchema,
+    fieldPath: string,
+  ): string | null {
+    const pathParts = fieldPath.split('.');
+    let current = schema;
+
+    for (let i = 0; i < pathParts.length; i++) {
+      const part = pathParts[i];
+
+      const cleanPart = part.replace(/\[.*\]/, '');
+      const hasArrayIndex = part.includes('[');
+
+      const isNumericIndex = /^\d+$/.test(part);
+
+      if (isNumericIndex) {
+        continue;
+      }
+
+      if (current.type === 'object' && current.properties?.[cleanPart]) {
+        current = current.properties[cleanPart] as JSONSchema;
+
+        if (hasArrayIndex && current.type === 'array' && current.items) {
+          current = current.items as JSONSchema;
+        }
+      } else if (current.type === 'array' && current.items) {
+        current = current.items as JSONSchema;
+        i--;
+        continue;
+      } else {
+        return null;
+      }
+    }
+
+    return current.type || null;
+  }
+
+  private areTypesCompatible(
+    sourceType: string,
+    destinationType: string,
+  ): boolean {
+    // STRICT TYPE MATCHING: Only exact type matches are allowed
+    // No type conversions are permitted (string <-> number, etc.)
+    return sourceType === destinationType;
+  }
+
   private validateMapping(
     mapping: FieldMapping,
     schema: JSONSchema,
@@ -1107,12 +1449,13 @@ export class ConfigService {
       mapping.transformation === 'CONSTANT' ||
       mapping.constantValue !== undefined
     ) {
+      this.validateConstantMapping(mapping);
       return;
     }
 
     const allPaths = this.extractAllPathsFromSchema(schema);
+    const sourceTypes: string[] = [];
 
-    // Validate source fields (now always an array)
     if (mapping.source && Array.isArray(mapping.source)) {
       for (const src of mapping.source) {
         if (!allPaths.includes(src)) {
@@ -1120,30 +1463,265 @@ export class ConfigService {
             `Source field '${src}' not found in schema`,
           );
         }
+
+        const sourceType = this.getFieldTypeFromSchema(schema, src);
+        if (sourceType) {
+          sourceTypes.push(sourceType);
+        }
       }
     }
 
-    if (Array.isArray(mapping.destination)) {
-      for (const dest of mapping.destination) {
-        const isValid =
-          this.tazamaDataModelService.isValidDestinationPath(dest);
-        if (!isValid) {
-          throw new BadRequestException(
-            `Destination field '${dest}' is not a valid Tazama data model field. Use a field from the Tazama internal data model (e.g., entities.id, accounts.id, transactionDetails.Amt).`,
-          );
-        }
+    const destinations = Array.isArray(mapping.destination)
+      ? mapping.destination
+      : [mapping.destination];
+
+    for (const dest of destinations) {
+      if (typeof dest !== 'string' || !dest) {
+        continue;
       }
-    } else {
-      if (typeof mapping.destination === 'string' && mapping.destination) {
-        const isValid = this.tazamaDataModelService.isValidDestinationPath(
-          mapping.destination,
+
+      const isValid = this.tazamaDataModelService.isValidDestinationPath(dest);
+      if (!isValid) {
+        throw new BadRequestException(
+          `Destination field '${dest}' is not a valid Tazama data model field. Use a field from the Tazama internal data model (e.g., entities.id, accounts.id, transactionDetails.Amt).`,
         );
-        if (!isValid) {
+      }
+
+      // Get destination field type and perform comprehensive type validation
+      const destinationType = this.tazamaDataModelService.getFieldType(dest);
+      if (destinationType && sourceTypes.length > 0) {
+        this.validateMappingTypeCompatibility(
+          mapping,
+          sourceTypes,
+          destinationType,
+          dest,
+        );
+      }
+    }
+  }
+
+  private validateConstantMapping(mapping: FieldMapping): void {
+    if (mapping.constantValue === undefined) {
+      return;
+    }
+
+    const destinations = Array.isArray(mapping.destination)
+      ? mapping.destination
+      : [mapping.destination];
+
+    for (const dest of destinations) {
+      if (typeof dest !== 'string' || !dest) {
+        continue;
+      }
+
+      const destinationType = this.tazamaDataModelService.getFieldType(dest);
+      if (destinationType) {
+        const constantType = typeof mapping.constantValue;
+        const destTypeLower = destinationType.toLowerCase();
+
+        if (!this.areTypesCompatible(constantType, destTypeLower)) {
           throw new BadRequestException(
-            `Destination field '${mapping.destination}' is not a valid Tazama data model field. Use a field from the Tazama internal data model (e.g., entities.id, accounts.id, transactionDetails.Amt).`,
+            `Constant value type mismatch: Cannot assign constant value '${mapping.constantValue}' of type '${constantType}' to destination field '${dest}' of type '${destTypeLower}'.`,
           );
         }
       }
+    }
+  }
+
+  private validateMappingTypeCompatibility(
+    mapping: FieldMapping,
+    sourceTypes: string[],
+    destinationType: string,
+    destinationPath: string,
+  ): void {
+    const destTypeLower = destinationType.toLowerCase();
+    const transformation = mapping.transformation || 'NONE';
+
+    this.logger.debug(
+      `Validating mapping type compatibility: ${transformation} transformation`,
+      {
+        sourceTypes,
+        destinationType: destTypeLower,
+        destinationPath,
+        transformation,
+      },
+    );
+
+    switch (transformation) {
+      case 'CONCAT':
+        this.validateConcatTypeCompatibility(
+          sourceTypes,
+          destTypeLower,
+          destinationPath,
+          mapping,
+        );
+        break;
+
+      case 'SUM':
+        this.validateSumTypeCompatibility(
+          sourceTypes,
+          destTypeLower,
+          destinationPath,
+          mapping,
+        );
+        break;
+
+      case 'MATH':
+        this.validateMathTypeCompatibility(
+          sourceTypes,
+          destTypeLower,
+          destinationPath,
+          mapping,
+        );
+        break;
+
+      case 'SPLIT':
+        this.validateSplitTypeCompatibility(
+          sourceTypes,
+          destTypeLower,
+          destinationPath,
+          mapping,
+        );
+        break;
+
+      case 'NONE':
+      default:
+        this.validateDirectTypeCompatibility(
+          sourceTypes,
+          destTypeLower,
+          destinationPath,
+          mapping,
+        );
+        break;
+    }
+  }
+
+  private validateConcatTypeCompatibility(
+    sourceTypes: string[],
+    destinationType: string,
+    destinationPath: string,
+    mapping: FieldMapping,
+  ): void {
+    if (destinationType !== 'string') {
+      throw new BadRequestException(
+        `CONCAT transformation type mismatch: CONCAT operations always produce string results, but destination field '${destinationPath}' is of type '${destinationType}'. Destination field must be of type 'string'.`,
+      );
+    }
+
+    for (let i = 0; i < sourceTypes.length; i++) {
+      const sourceType = sourceTypes[i];
+      const src = mapping.source![i];
+
+      if (sourceType !== 'string') {
+        throw new BadRequestException(
+          `CONCAT transformation type mismatch: Source field '${src}' of type '${sourceType}' cannot be concatenated. Only string type fields are allowed for concatenation.`,
+        );
+      }
+    }
+  }
+
+  private validateSumTypeCompatibility(
+    sourceTypes: string[],
+    destinationType: string,
+    destinationPath: string,
+    mapping: FieldMapping,
+  ): void {
+    if (destinationType !== 'number') {
+      throw new BadRequestException(
+        `SUM transformation type mismatch: SUM operations produce numeric results, but destination field '${destinationPath}' is of type '${destinationType}'. Destination field must be of type 'number'.`,
+      );
+    }
+
+    for (let i = 0; i < sourceTypes.length; i++) {
+      const sourceType = sourceTypes[i];
+      const src = mapping.source![i];
+
+      if (sourceType !== 'number') {
+        throw new BadRequestException(
+          `SUM transformation type mismatch: Source field '${src}' of type '${sourceType}' cannot be summed. Only numeric fields can be used in SUM operations.`,
+        );
+      }
+    }
+  }
+
+  private validateMathTypeCompatibility(
+    sourceTypes: string[],
+    destinationType: string,
+    destinationPath: string,
+    mapping: FieldMapping,
+  ): void {
+    if (destinationType !== 'number') {
+      throw new BadRequestException(
+        `MATH transformation type mismatch: MATH operations produce numeric results, but destination field '${destinationPath}' is of type '${destinationType}'. Destination field must be of type 'number'.`,
+      );
+    }
+
+    for (let i = 0; i < sourceTypes.length; i++) {
+      const sourceType = sourceTypes[i];
+      const src = mapping.source![i];
+
+      if (sourceType !== 'number') {
+        throw new BadRequestException(
+          `MATH transformation type mismatch: Source field '${src}' of type '${sourceType}' cannot be used in mathematical operations. Only numeric fields are allowed.`,
+        );
+      }
+    }
+
+    if (!mapping.operator) {
+      throw new BadRequestException(
+        'MATH transformation validation error: Mathematical operator (ADD, SUBTRACT, MULTIPLY, DIVIDE) must be specified for MATH transformations.',
+      );
+    }
+  }
+
+  private validateSplitTypeCompatibility(
+    sourceTypes: string[],
+    destinationType: string,
+    destinationPath: string,
+    mapping: FieldMapping,
+  ): void {
+    if (sourceTypes.length !== 1) {
+      throw new BadRequestException(
+        `SPLIT transformation validation error: SPLIT operations require exactly one source field, but ${sourceTypes.length} source fields were provided.`,
+      );
+    }
+
+    const sourceType = sourceTypes[0];
+    const src = mapping.source![0];
+
+    if (sourceType !== 'string') {
+      throw new BadRequestException(
+        `SPLIT transformation type mismatch: Source field '${src}' of type '${sourceType}' cannot be split. Only string fields can be split.`,
+      );
+    }
+
+    if (destinationType !== 'string') {
+      throw new BadRequestException(
+        `SPLIT transformation type mismatch: Split results are strings, but destination field '${destinationPath}' is of type '${destinationType}'. Destination field must be of type 'string'.`,
+      );
+    }
+  }
+
+  private validateDirectTypeCompatibility(
+    sourceTypes: string[],
+    destinationType: string,
+    destinationPath: string,
+    mapping: FieldMapping,
+  ): void {
+    if (sourceTypes.length !== 1) {
+      throw new BadRequestException(
+        `Direct mapping validation error: Direct mappings (NONE transformation) require exactly one source field, but ${sourceTypes.length} source fields were provided.`,
+      );
+    }
+
+    const sourceType = sourceTypes[0];
+    const src = mapping.source![0];
+
+    if (!this.areTypesCompatible(sourceType, destinationType)) {
+      throw new BadRequestException(
+        `Direct mapping type mismatch: Cannot map source field '${src}' of type '${sourceType}' to destination field '${destinationPath}' of type '${destinationType}'. ` +
+          'STRICT TYPE MATCHING: Only exact type matches are allowed. String fields can only map to string fields, number fields can only map to number fields, etc.',
+      );
     }
   }
 
@@ -1167,12 +1745,23 @@ export class ConfigService {
           typeof propSchema.items === 'object' &&
           propSchema.items.type === 'object'
         ) {
-          paths.push(
-            ...this.extractAllPathsFromSchema(
-              propSchema.items as JSONSchema,
-              `${path}[]`,
-            ),
+          const arrayPaths = this.extractAllPathsFromSchema(
+            propSchema.items as JSONSchema,
+            `${path}[0]`,
           );
+          paths.push(...arrayPaths);
+
+          const dotArrayPaths = this.extractAllPathsFromSchema(
+            propSchema.items as JSONSchema,
+            `${path}.0`,
+          );
+          paths.push(...dotArrayPaths);
+
+          const traversalPaths = this.extractAllPathsFromSchema(
+            propSchema.items as JSONSchema,
+            path,
+          );
+          paths.push(...traversalPaths);
         }
       }
     }
@@ -1241,6 +1830,7 @@ export class ConfigService {
     tenantId: string,
     userId: string,
     userClaims: string[],
+    token: string,
   ): Promise<ConfigResponseDto> {
     const config = await this.configRepository.findConfigById(id, tenantId);
     if (!config) {
@@ -1263,9 +1853,14 @@ export class ConfigService {
     const newStatus = ConfigStatus.UNDER_REVIEW;
 
     // Update status
-    await this.configRepository.updateConfig(id, tenantId, {
-      status: newStatus,
-    });
+    await this.configRepository.updateConfig(
+      id,
+      tenantId,
+      {
+        status: newStatus,
+      },
+      token,
+    );
 
     // Log the action
     await this.logStatusChange(
@@ -1305,6 +1900,7 @@ export class ConfigService {
     tenantId: string,
     userId: string,
     userClaims: string[],
+    token: string,
   ): Promise<ConfigResponseDto> {
     const config = await this.configRepository.findConfigById(id, tenantId);
     if (!config) {
@@ -1327,9 +1923,14 @@ export class ConfigService {
     const newStatus = ConfigStatus.APPROVED;
 
     // Update status
-    await this.configRepository.updateConfig(id, tenantId, {
-      status: newStatus,
-    });
+    await this.configRepository.updateConfig(
+      id,
+      tenantId,
+      {
+        status: newStatus,
+      },
+      token,
+    );
 
     // Log the action
     await this.logStatusChange(
@@ -1369,6 +1970,7 @@ export class ConfigService {
     tenantId: string,
     userId: string,
     userClaims: string[],
+    token: string,
   ): Promise<ConfigResponseDto> {
     const config = await this.configRepository.findConfigById(id, tenantId);
     if (!config) {
@@ -1391,9 +1993,14 @@ export class ConfigService {
     const newStatus = ConfigStatus.REJECTED;
 
     // Update status
-    await this.configRepository.updateConfig(id, tenantId, {
-      status: newStatus,
-    });
+    await this.configRepository.updateConfig(
+      id,
+      tenantId,
+      {
+        status: newStatus,
+      },
+      token,
+    );
 
     // Log the action
     await this.logStatusChange(
@@ -1433,6 +2040,7 @@ export class ConfigService {
     tenantId: string,
     userId: string,
     userClaims: string[],
+    token: string,
   ): Promise<ConfigResponseDto> {
     const config = await this.configRepository.findConfigById(id, tenantId);
     if (!config) {
@@ -1455,9 +2063,14 @@ export class ConfigService {
     const newStatus = ConfigStatus.CHANGES_REQUESTED;
 
     // Update status
-    await this.configRepository.updateConfig(id, tenantId, {
-      status: newStatus,
-    });
+    await this.configRepository.updateConfig(
+      id,
+      tenantId,
+      {
+        status: newStatus,
+      },
+      token,
+    );
 
     // Log the action
     await this.logStatusChange(
@@ -1497,6 +2110,7 @@ export class ConfigService {
     tenantId: string,
     userId: string,
     userClaims: string[],
+    token: string,
   ): Promise<ConfigResponseDto> {
     const config = await this.configRepository.findConfigById(id, tenantId);
     if (!config) {
@@ -1519,9 +2133,14 @@ export class ConfigService {
     const newStatus = ConfigStatus.DEPLOYED;
 
     // Update status
-    await this.configRepository.updateConfig(id, tenantId, {
-      status: newStatus,
-    });
+    await this.configRepository.updateConfig(
+      id,
+      tenantId,
+      {
+        status: newStatus,
+      },
+      token,
+    );
 
     // Log the action
     await this.logStatusChange(
@@ -1561,6 +2180,7 @@ export class ConfigService {
     tenantId: string,
     userId: string,
     userClaims: string[],
+    token: string,
   ): Promise<ConfigResponseDto> {
     const config = await this.configRepository.findConfigById(id, tenantId);
     if (!config) {
@@ -1583,9 +2203,14 @@ export class ConfigService {
     const newStatus = ConfigStatus.IN_PROGRESS;
 
     // Update status
-    await this.configRepository.updateConfig(id, tenantId, {
-      status: newStatus,
-    });
+    await this.configRepository.updateConfig(
+      id,
+      tenantId,
+      {
+        status: newStatus,
+      },
+      token,
+    );
 
     // Log the action
     await this.logStatusChange(

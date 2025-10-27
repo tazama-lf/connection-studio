@@ -1,37 +1,34 @@
 import { Module } from '@nestjs/common';
+import { HttpModule } from '@nestjs/axios';
 import { ConfigController } from './config.controller';
 import { ConfigService } from './config.service';
 import { ConfigRepository } from './config.repository';
 import { ConfigWorkflowService } from './config-workflow.service';
 import { SchemasModule } from '../schemas/schemas.module';
 import { AuditModule } from '../audit/audit.module';
-import { PayloadParsingService, FileParsingService } from '@tazama-lf/tcs-lib';
-import { JSONSchemaConverterService } from '../schemas/json-schema-converter.service';
-import { AuditService } from '../audit/audit.service';
 import { TazamaDataModelModule } from '../tazama-data-model/tazama-data-model.module';
+import { PayloadParsingService } from '../services/payload-parsing.service';
+import { FileParsingService } from '../services/file-parsing.service';
+import { AdminServiceClient } from '../services/admin-service-client.service';
 
 @Module({
-  imports: [SchemasModule, AuditModule, TazamaDataModelModule],
+  imports: [HttpModule, SchemasModule, AuditModule, TazamaDataModelModule],
   controllers: [ConfigController],
   providers: [
     ConfigService,
     ConfigRepository,
     ConfigWorkflowService,
-    {
-      provide: PayloadParsingService,
-      useFactory: (jsonSchemaConverter: JSONSchemaConverterService) => {
-        return new PayloadParsingService(jsonSchemaConverter);
-      },
-      inject: [JSONSchemaConverterService],
-    },
-    {
-      provide: FileParsingService,
-      useFactory: (auditService: AuditService) => {
-        return new FileParsingService(auditService);
-      },
-      inject: [AuditService],
-    },
+    PayloadParsingService,
+    FileParsingService,
+    AdminServiceClient,
   ],
-  exports: [ConfigService, ConfigRepository, PayloadParsingService],
+  exports: [
+    ConfigService,
+    ConfigRepository,
+    ConfigWorkflowService,
+    PayloadParsingService,
+    FileParsingService,
+    AdminServiceClient,
+  ],
 })
 export class ConfigModule {}
