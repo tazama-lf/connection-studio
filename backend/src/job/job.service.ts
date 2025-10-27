@@ -4,24 +4,25 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import { DatabaseService } from '../database/database.service';
-import { encrypt, validateFileType, validateTableName } from '../utils/helpers';
 import {
   AuthType,
   ConfigType,
   ISuccess,
+  Job,
   JobStatus,
   ScheduleStatus,
-  SourceType,
-  Job
+  SFTPConnection,
+  SourceType
 } from '@tazama-lf/tcs-lib';
+import { SftpService } from 'src/sftp/sftp.service';
 import { v4 } from 'uuid';
-import { CreatePushJobDto } from './dto/create-push-job.dto';
-import { CreatePullJobDto, SFTPConnectionDto } from './dto/create-pull-job.dto';
+import { DatabaseService } from '../database/database.service';
 import { DryRunService } from '../dry-run/dry-run.service';
-import SFTPClient from 'ssh2-sftp-client';
-import { ConfigService } from '@nestjs/config';
+import { encrypt, validateFileType, validateTableName } from '../utils/helpers';
+import { CreatePullJobDto, SFTPConnectionDto } from './dto/create-pull-job.dto';
+import { CreatePushJobDto } from './dto/create-push-job.dto';
 
 @Injectable()
 export class JobService {
@@ -30,6 +31,7 @@ export class JobService {
     private readonly configService: ConfigService,
     private readonly loggerService: LoggerService,
     private readonly dryRunService: DryRunService,
+    private readonly sftpService: SftpService,
   ) { }
 
   async validateExisting(table_name: string): Promise<void> {
@@ -329,28 +331,56 @@ export class JobService {
 
 
 
-  async updateStatus(id: string, status: JobStatus, type: ConfigType, tenantId: string): Promise<ISuccess> {
+  async updateStatus(
+    id: string,
+    status: JobStatus,
+    type: ConfigType,
+    tenantId: string,
+  ): Promise<ISuccess> {
     try {
       if (!status || !type) {
         throw new BadRequestException('Both status and type are required.');
       }
 
-      const table_name = ConfigType.PUSH ? 'endpoints' : 'job'
+      const table_name = type === ConfigType.PUSH ? 'endpoints' : 'job';
 
       const existingSchedule = await this.findOne(id, type, tenantId);
 
       if (existingSchedule.status === JobStatus.APPROVED) {
         throw new ForbiddenException(
-          'Approved job cannot be edited. Please create a new job instead.'
+          'Approved job cannot be edited. Please create a new job instead.',
+        );
+      }
+
+      if (status === JobStatus.EXPORTED) {
+        const nodeEnv = this.configService.get<string>('NODE_ENV');
+        const sftpHost = this.configService.get<string>('SFTP_HOST_CONSUMER');
+
+        if (nodeEnv !== 'dev') {
+          throw new BadRequestException(
+            `Exported status can only be set in the dev environment.`,
+          );
+        }
+
+        if (!sftpHost) {
+          throw new BadRequestException(`Consumer SFTP server credentials not provided.`);
+        }
+
+        const fileName = `/upload/${nodeEnv}_de_${tenantId}_${id}.json`;
+
+        await this.sftpService.createFile(fileName, existingSchedule);
+
+        this.loggerService.log(
+          `Successfully uploaded config file (${fileName}) on SFTP server.`,
         );
       }
 
       const query = `
-                  UPDATE ${table_name}
-                   SET status = $1, updated_at = NOW()
-                       WHERE id = $2
-                          RETURNING *;
-                      `;
+      UPDATE ${table_name}
+      SET status = $1, updated_at = NOW()
+      WHERE id = $2
+      RETURNING *;
+    `;
 
       const result = await this.db.query(query, [status, id]);
 
@@ -360,50 +390,13 @@ export class JobService {
         );
       }
 
-      if (status === JobStatus.INPROGRESS) {
-        const sftp = new SFTPClient();
-        await sftp.connect({
-          host: this.configService.get<string>('SFTP_HOST_TEST'),
-          port: this.configService.get<number>('SFTP_PORT_TEST'),
-          username: this.configService.get<string>('SFTP_USERNAME_TEST'),
-          password: this.configService.get<string>('SFTP_PASSWORD_TEST'),
-        });
-
-        const remotePath = '/upload/config.json';
-        const fileExists = await sftp.exists(remotePath);
-        let config: any = {};
-
-        if (fileExists) {
-          const fileContent = await sftp.get(remotePath);
-          const rawData = fileContent.toString();
-          config = JSON.parse(rawData);
-
-          config.updated_at = new Date().toISOString();
-          config.jobs = config.jobs || [];
-          config.jobs.push(result.rows[0]);
-        } else {
-          config = {
-            created_at: new Date().toISOString(),
-            jobs: [result.rows[0]],
-          };
-        }
-
-        await sftp.put(
-          Buffer.from(JSON.stringify(config, null, 2)),
-          remotePath,
-        );
-        this.loggerService.log(
-          'Successfully updated config.json on SFTP server.',
-        );
-      }
-
       return {
         success: true,
         message: `${table_name} with id ${id} successfully updated`,
       };
     } catch (err) {
       this.loggerService.error(
-        `Error fetching records by status: ${err.message}`,
+        `Error updating job status: ${err instanceof Error ? err.message : err}`,
       );
       throw new BadRequestException(err.message);
     }

@@ -16,4 +16,7 @@ const RESERVED_KEYWORDS = new Set([
   'limit',
 ]);
 
-export { RESERVED_KEYWORDS };
+const uuidPattern =
+  '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}';
+
+export { RESERVED_KEYWORDS, uuidPattern };

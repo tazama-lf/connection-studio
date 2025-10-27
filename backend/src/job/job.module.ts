@@ -6,6 +6,7 @@ import { DatabaseModule } from '../database/database.module';
 import { AuditModule } from '../audit/audit.module';
 import { DryRunModule } from '../dry-run/dry-run.module';
 import { ConfigModule } from '@nestjs/config';
+import { SftpModule } from 'src/sftp/sftp.module';
 
 @Module({
   providers: [JobService],
@@ -16,6 +17,7 @@ import { ConfigModule } from '@nestjs/config';
     AuditModule,
     DryRunModule,
     ConfigModule,
+    SftpModule
   ],
 })
-export class JobModule {}
+export class JobModule { }
