@@ -159,20 +159,18 @@ export const dataEnrichmentApi = {
     }
   },
 
-  // Update full pull job configuration (using create endpoint with id for upsert)
+  // Update full pull job configuration (using PATCH endpoint)
   updatePullJob: async (
     id: string,
     updates: UpdatePullJobDto,
   ): Promise<DataEnrichmentJobResponse> => {
     console.log('Updating pull job with data:', JSON.stringify(updates, null, 2));
     try {
-      // Use create endpoint with id for upsert functionality
-      const payload = { ...updates, id };
       return await apiRequest<DataEnrichmentJobResponse>(
-        `${API_BASE_URL}/job/create/pull`,
+        `${API_BASE_URL}/job/update/pull/${id}`,
         {
-          method: 'POST',
-          body: JSON.stringify(payload),
+          method: 'PATCH',
+          body: JSON.stringify(updates),
         },
       );
     } catch (error) {
@@ -181,20 +179,18 @@ export const dataEnrichmentApi = {
     }
   },
 
-  // Update full push job configuration (using create endpoint with id for upsert)
+  // Update full push job configuration (using PATCH endpoint)
   updatePushJob: async (
     id: string,
     updates: UpdatePushJobDto,
   ): Promise<DataEnrichmentJobResponse> => {
     console.log('Updating push job with data:', JSON.stringify(updates, null, 2));
     try {
-      // Use create endpoint with id for upsert functionality
-      const payload = { ...updates, id };
       return await apiRequest<DataEnrichmentJobResponse>(
-        `${API_BASE_URL}/job/create/push`,
+        `${API_BASE_URL}/job/update/push/${id}`,
         {
-          method: 'POST',
-          body: JSON.stringify(payload),
+          method: 'PATCH',
+          body: JSON.stringify(updates),
         },
       );
     } catch (error) {
@@ -371,30 +367,4 @@ export const dataEnrichmentApi = {
     }
   },
 
-  // Preview data from connection
-  previewData: async (
-    connectionData: Partial<CreatePullJobDto | CreatePushJobDto>,
-  ): Promise<{
-    totalRows: number;
-    validRows: number;
-    invalidRows: number;
-    previewRows: Record<string, any>[];
-    validationErrors: Array<{ row: number; field: string; error: string }>;
-  }> => {
-    try {
-      return await apiRequest<{
-        totalRows: number;
-        validRows: number;
-        invalidRows: number;
-        previewRows: Record<string, any>[];
-        validationErrors: Array<{ row: number; field: string; error: string }>;
-      }>(`${DATA_ENRICHMENT_BASE_URL}/job/preview`, {
-        method: 'POST',
-        body: JSON.stringify(connectionData),
-      });
-    } catch (error) {
-      console.error('Data preview failed:', error);
-      throw error;
-    }
-  },
-};
+  };

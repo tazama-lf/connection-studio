@@ -416,7 +416,7 @@ describe('DataEnrichmentFormModal', () => {
   });
 
   describe('Form Field Interactions', () => {
-    it('clears SFTP fields when switching to HTTP', () => {
+    it('clears SFTP fields when switching to http', () => {
       render(<DataEnrichmentFormModal {...defaultProps} />);
 
       // Fill SFTP fields
@@ -425,7 +425,7 @@ describe('DataEnrichmentFormModal', () => {
       fireEvent.change(screen.getByLabelText(/Password/), { target: { value: 'password' } });
       fireEvent.change(screen.getByLabelText(/Path\/Pattern/), { target: { value: '/data/*.csv' } });
 
-      // Switch to HTTP
+      // Switch to http
       fireEvent.change(screen.getByDisplayValue('sftp'), { target: { value: 'http' } });
 
       // Check that SFTP fields are cleared

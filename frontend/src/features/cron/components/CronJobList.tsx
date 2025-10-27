@@ -4,7 +4,7 @@ import { dataEnrichmentApi } from '../../data-enrichment/services';
 import type { ScheduleResponse } from '../../data-enrichment/types';
 import { useToast } from '../../../shared/providers/ToastProvider';
 import { UI_CONFIG } from '../../../shared/config/app.config';
-import { DropdownMenuWithAutoDirection } from '../../../shared/components/DropdownMenuWithAutoDirection';
+import { DropdownMenuWithAutoDirection } from '../../../features/data-enrichment/components/DropdownMenuWithAutoDirection';
 import { useAuth } from '../../auth/contexts/AuthContext';
 import { isEditor } from '../../../utils/roleUtils';
 
@@ -37,6 +37,9 @@ export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(UI_CONFIG.pagination.defaultPageSize);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+
+  // Action state for debouncing
+  const [isActionInProgress, setIsActionInProgress] = useState(false);
 
   const { user } = useAuth();
   const userIsEditor = user?.claims ? isEditor(user.claims) : false;
@@ -90,6 +93,25 @@ export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => 
     }
   }, [totalFilteredItems, currentPage, itemsPerPage]);
 
+  // Close dropdowns when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      
+      // Don't close if clicking on dropdown buttons or dropdown content
+      if (target.closest('.actions-dropdown')) {
+        return;
+      }
+      
+      setOpenDropdown(null);
+    };
+
+    if (openDropdown) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [openDropdown]);
+
   const handlePreviousPage = () => {
     setCurrentPage(prev => Math.max(prev - 1, 1));
   };
@@ -120,6 +142,14 @@ export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => 
 
   // Handle pause/activate toggle
   const handleToggleStatus = async (schedule: ScheduleResponse) => {
+    // Prevent multiple simultaneous calls
+    if (isActionInProgress) {
+      console.log('⚠️ Action already in progress, ignoring duplicate call');
+      return;
+    }
+
+    setIsActionInProgress(true);
+
     try {
       const newStatus = schedule.schedule_status === 'active' ? 'in-active' : 'active';
       
@@ -138,6 +168,8 @@ export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => 
     } catch (err) {
       console.error('Failed to update schedule status:', err);
       showError('Failed to update schedule status');
+    } finally {
+      setIsActionInProgress(false);
     }
   };
 
@@ -158,14 +190,37 @@ export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => 
   };
 
   const handleSubmitForApproval = async () => {
+    if (!selectedSchedule) return;
+
+    // Prevent multiple simultaneous calls
+    if (isActionInProgress) {
+      console.log('⚠️ Action already in progress, ignoring duplicate call');
+      return;
+    }
+
+    setIsActionInProgress(true);
+
     try {
+      // Update the schedule status to 'pending_approval' to submit for approval
+      await dataEnrichmentApi.updateSchedule(selectedSchedule.id, {
+        name: selectedSchedule.name,
+        cron: selectedSchedule.cron,
+        iterations: selectedSchedule.iterations,
+        schedule_status: 'pending_approval',
+        start_date: selectedSchedule.start_date,
+        end_date: selectedSchedule.end_date || undefined,
+      });
+
       showSuccess('Cron job submitted for approval successfully!');
       setEditModalOpen(false);
       setSelectedSchedule(null);
       setIsEditJobSaved(false);
+      loadSchedules(); // Refresh the list to show updated status
     } catch (error) {
       console.error('Failed to submit for approval:', error);
       showError('Failed to submit for approval. Please try again.');
+    } finally {
+      setIsActionInProgress(false);
     }
   };
 
@@ -199,6 +254,9 @@ export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => 
               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                 End Date
               </th>
+              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                Status
+              </th>
               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" data-id="element-129">
                 Actions
               </th>
@@ -207,24 +265,30 @@ export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => 
           <tbody className="bg-white">
             {loading ? (
               <tr>
-                <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">
+                <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
                   Loading schedules...
                 </td>
               </tr>
             ) : error ? (
               <tr>
-                <td colSpan={6} className="px-6 py-4 text-center text-sm text-red-500">
+                <td colSpan={7} className="px-6 py-4 text-center text-sm text-red-500">
                   {error}
                 </td>
               </tr>
             ) : sortedSchedules.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">
+                <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
                   No schedules found
                 </td>
               </tr>
             ) : (
-              paginatedSchedules.map(schedule => (
+              paginatedSchedules.map((schedule, index) => {
+                  // Determine dropdown direction: first row opens down, last row opens up
+                  const isFirstRow = index === 0;
+                  const isLastRow = index === paginatedSchedules.length - 1;
+                  const forceDirection = isFirstRow ? 'bottom' : isLastRow ? 'top' : 'auto';
+                  
+                  return (
                   <tr key={schedule.id} className="border-b border-gray-200 hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {schedule.name}
@@ -241,10 +305,22 @@ export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => 
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                       {formatDate(schedule.end_date)}
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        schedule.status === 'approved' ? 'bg-green-100 text-green-800' :
+                        schedule.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                        schedule.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                        schedule.status === 'in-progress' ? 'bg-blue-100 text-blue-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {schedule.status === 'in-progress' ? 'IN PROGRESS' :
+                         schedule.status?.toUpperCase() || 'UNKNOWN'}
+                      </span>
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex justify-end items-center">
                         {/* Actions dropdown with three-dot menu */}
-                        <div className="relative dropdown-container">
+                        <div className="relative actions-dropdown">
                           <button
                             onClick={() => setOpenDropdown(openDropdown === schedule.id ? null : schedule.id)}
                             className="p-1 text-gray-400 hover:text-gray-600 rounded-md hover:bg-gray-100"
@@ -252,7 +328,9 @@ export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => 
                             <MoreVerticalIcon className="w-4 h-4" />
                           </button>
                           {openDropdown === schedule.id && (
-                            <DropdownMenuWithAutoDirection onClose={() => setOpenDropdown(null)}>
+                            <DropdownMenuWithAutoDirection 
+                              forceDirection={forceDirection}
+                            >
                               <div className="py-1">
                                 <button
                                   onClick={() => {
@@ -269,7 +347,23 @@ export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => 
                                     setOpenDropdown(null);
                                     handleEdit(schedule);
                                   }}
-                                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                  disabled={userIsEditor && schedule.status === 'approved' || isActionInProgress}
+                                  className={`flex items-center w-full px-4 py-2 text-sm hover:bg-gray-100 ${
+                                    userIsEditor && schedule.status === 'approved'
+                                      ? 'text-gray-400 cursor-not-allowed'
+                                      : isActionInProgress
+                                      ? 'text-gray-400 cursor-not-allowed opacity-50'
+                                      : 'text-gray-700'
+                                  }`}
+                                  title={
+                                    userIsEditor && schedule.status === 'approved' 
+                                      ? 'Approved cron jobs cannot be edited' 
+                                      : isActionInProgress
+                                      ? 'Action in progress...'
+                                      : userIsEditor && (schedule.status === 'rejected' || schedule.status === 'pending')
+                                      ? 'This cron job can be edited'
+                                      : ''
+                                  }
                                 >
                                   <EditIcon className="w-4 h-4 mr-2" />
                                   Edit
@@ -282,7 +376,10 @@ export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => 
                                           setOpenDropdown(null);
                                           handleToggleStatus(schedule);
                                         }}
-                                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                        disabled={isActionInProgress}
+                                        className={`flex items-center w-full px-4 py-2 text-sm hover:bg-gray-100 ${
+                                          isActionInProgress ? 'text-gray-400 cursor-not-allowed opacity-50' : 'text-gray-700'
+                                        }`}
                                       >
                                         <PauseIcon className="w-4 h-4 mr-2" />
                                         Deactivate
@@ -293,7 +390,10 @@ export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => 
                                           setOpenDropdown(null);
                                           handleToggleStatus(schedule);
                                         }}
-                                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                        disabled={isActionInProgress}
+                                        className={`flex items-center w-full px-4 py-2 text-sm hover:bg-gray-100 ${
+                                          isActionInProgress ? 'text-gray-400 cursor-not-allowed opacity-50' : 'text-gray-700'
+                                        }`}
                                       >
                                         <PlayIcon className="w-4 h-4 mr-2" />
                                         Activate
@@ -308,7 +408,8 @@ export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => 
                       </div>
                     </td>
                   </tr>
-                ))
+                );
+              })
             )}
           </tbody>
         </table>
@@ -420,10 +521,14 @@ export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => 
                 </label>
                 <div className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50">
                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    selectedSchedule.schedule_status === 'active' ? 'bg-green-100 text-green-800' :
+                    selectedSchedule.status === 'approved' ? 'bg-green-100 text-green-800' :
+                    selectedSchedule.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                    selectedSchedule.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                    selectedSchedule.status === 'in-progress' ? 'bg-blue-100 text-blue-800' :
                     'bg-gray-100 text-gray-800'
                   }`}>
-                    {selectedSchedule.schedule_status}
+                    {selectedSchedule.status === 'in-progress' ? 'IN PROGRESS' :
+                     selectedSchedule.status?.toUpperCase() || 'UNKNOWN'}
                   </span>
                 </div>
               </div>
@@ -573,19 +678,15 @@ export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => 
               <div className="flex space-x-3">
                 <button
                   type="submit"
-                  className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  disabled={isActionInProgress}
+                  className={`px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
+                    isActionInProgress 
+                      ? 'bg-gray-400 cursor-not-allowed' 
+                      : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
+                  }`}
                 >
-                  Save
+                  {isActionInProgress ? 'Submitting...' : 'Send for Approval'}
                 </button>
-                {isEditJobSaved && (
-                  <button 
-                    type="button"
-                    onClick={handleSubmitForApproval}
-                    className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                  >
-                    Submit for Approval
-                  </button>
-                )}
               </div>
             </div>
           </form>

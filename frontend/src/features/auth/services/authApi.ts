@@ -114,9 +114,34 @@ export class AuthApiService {
   }
 
   async refreshSession(): Promise<{ success: boolean; message: string }> {
-    return this.authRequest<{ success: boolean; message: string }>('/auth/session/refresh', {
-      method: 'POST',
-    });
+    const token = localStorage.getItem('authToken');
+    const user = localStorage.getItem('user');
+    
+    if (!token || !user) {
+      throw new Error('No authentication data found');
+    }
+    
+    try {
+      const userData = JSON.parse(user);
+      const decodedToken = this.decodeToken(token);
+      
+      if (!decodedToken) {
+        throw new Error('Invalid token');
+      }
+      
+      return this.authRequest<{ success: boolean; message: string }>('/auth/session/refresh', {
+        method: 'POST',
+        body: {
+          userId: decodedToken.id || userData.id,
+          tenantId: decodedToken.tenantId || userData.tenantId,
+          tokenString: token
+        },
+        skipTokenExpirationHandler: true, // Don't trigger logout on 401 for session refresh
+      });
+    } catch (error) {
+      console.error('Failed to decode token for session refresh:', error);
+      throw error;
+    }
   }
 
   async getProfile(): Promise<User> {

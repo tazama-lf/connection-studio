@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { X, Calendar, Clock, Database, Globe, Settings, Save } from 'lucide-react';
 import type { DataEnrichmentJobResponse, JobStatus } from '../types';
 import { Button } from '../../../shared/components/Button';
+import { useAuth } from '../../auth/contexts/AuthContext';
+import { isApprover } from '../../../utils/roleUtils';
 
 interface JobDetailsModalProps {
   isOpen: boolean;
@@ -10,6 +12,8 @@ interface JobDetailsModalProps {
   isLoading?: boolean;
   editMode?: boolean;
   onSave?: (updatedJob: Partial<DataEnrichmentJobResponse>) => Promise<void>;
+  onApprove?: (jobId: string, jobType: 'PULL' | 'PUSH') => void;
+  onReject?: (jobId: string, jobType: 'PULL' | 'PUSH') => void;
 }
 
 // Helper function to determine job type
@@ -28,7 +32,11 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
   isLoading = false,
   editMode = false,
   onSave,
+  onApprove,
+  onReject,
 }) => {
+  const { user } = useAuth();
+  const userIsApprover = user?.claims ? isApprover(user.claims) : false;
   console.log('=== JOB DETAILS MODAL RENDER ===');
   console.log('isOpen:', isOpen);
   console.log('editMode:', editMode);
@@ -44,19 +52,28 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
   // Initialize edited job data when job changes or editMode is enabled
   useEffect(() => {
     if (job && editMode) {
-      setEditedJob({
+      const jobType = getJobType(job);
+      const baseData = {
         endpoint_name: job.endpoint_name,
         description: job.description,
         version: job.version,
         table_name: job.table_name,
         mode: job.mode,
         path: job.path,
-        source_type: job.source_type,
-        schedule_id: job.schedule_id,
-        connection: job.connection,
-        file: job.file,
-        type: job.type, // Add job type to edited state
-      });
+        type: job.type || jobType,
+      };
+
+      if (jobType === 'push') {
+        setEditedJob(baseData);
+      } else {
+        setEditedJob({
+          ...baseData,
+          source_type: job.source_type,
+          schedule_id: job.schedule_id,
+          connection: job.connection,
+          file: job.file,
+        });
+      }
     }
   }, [job, editMode]);
 
@@ -72,7 +89,18 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
     
     try {
       setIsSaving(true);
-      await onSave(editedJob);
+      // Filter out schedule_id for push jobs since they don't use schedules
+      const jobType = getJobType(job);
+      const dataToSave = { ...editedJob };
+      
+      if (jobType === 'push') {
+        delete dataToSave.schedule_id;
+        delete dataToSave.source_type;
+        delete dataToSave.connection;
+        delete dataToSave.file;
+      }
+      
+      await onSave(dataToSave);
       onClose();
     } catch (error) {
       console.error('Failed to save job:', error);
@@ -138,7 +166,6 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
       {/* Enhanced blurred background overlay without black background */}
       <div
         className="fixed inset-0 backdrop-blur-sm backdrop-saturate-150 transition-opacity"
-        onClick={onClose}
       />
 
       {/* Modal panel */}
@@ -149,17 +176,6 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
             {editMode ? 'Edit' : 'View'} Data Enrichment Endpoint: {job?.endpoint_name || 'Loading...'}
           </h3>
           <div className="flex items-center space-x-2">
-            {editMode && (
-              <Button
-                onClick={handleSave}
-                disabled={isSaving}
-                variant="primary"
-                size="sm"
-                icon={<Save size={16} />}
-              >
-                {isSaving ? 'Saving...' : 'Save Changes'}
-              </Button>
-            )}
             <button
               onClick={onClose}
               className="rounded-md text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -196,7 +212,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                       className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
                     />
                     <span className="ml-2 text-sm text-gray-700">
-                      ↓ Pull (SFTP/HTTP)
+                      ↓ Pull (SFTP/HTTSP)
                     </span>
                   </label>
                   <label className={`flex items-center ${editMode ? 'cursor-pointer' : 'cursor-not-allowed'}`}>
@@ -265,15 +281,18 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                     <select
                       value={editMode ? (editedJob.source_type || '') : (job.source_type || '')}
                       onChange={(e) => editMode && handleInputChange('source_type', e.target.value)}
-                      disabled={!editMode}
-                      className={`w-full px-3 py-2 border border-gray-300 rounded-md ${
-                        editMode ? 'bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500' : 'bg-gray-50 text-gray-900'
-                      }`}
+                      disabled={true} // Source type cannot be changed during editing
+                      className={`w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900`}
                     >
                       <option value="">Select source type</option>
                       <option value="HTTP">HTTP</option>
                       <option value="SFTP">SFTP</option>
                     </select>
+                    {editMode && (
+                      <p className="mt-1 text-xs text-gray-500">
+                        Source type cannot be changed after creation
+                      </p>
+                    )}
                   </div>
                 )}
 
@@ -345,7 +364,6 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                     >
                       <option value="append">Append - Add new records to existing data</option>
                       <option value="replace">Replace - Replace all existing data</option>
-                      <option value="update">Update - Update existing records</option>
                     </select>
                     <p className="mt-1 text-xs text-gray-500">
                       {(editMode ? editedJob.mode : job.mode) === 'append' && 'Append mode adds new records to the existing dataset.'}
@@ -442,7 +460,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                     <Globe size={16} className="mr-2" />
                     Connection Details ({job.source_type})
                   </h4>
-                  
+
                   {job.source_type === 'HTTP' && 'url' in job.connection && (
                     <>
                       <div>
@@ -570,6 +588,66 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
             </div>
           )}
         </div>
+
+        {/* Edit Mode Footer - Sticky */}
+        {editMode && (
+          <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4">
+            <div className="flex justify-between items-center">
+              <Button
+                onClick={onClose}
+                variant="secondary"
+                size="md"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSave}
+                disabled={isSaving}
+                variant="primary"
+                size="md"
+              >
+                {isSaving ? 'Sending...' : 'Send to Approver'}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Action Buttons Footer - Only show for approvers when not in edit mode and callbacks are provided */}
+        {job && !isLoading && !editMode && userIsApprover && (onApprove || onReject) && (
+          <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
+            <Button
+              variant="secondary"
+              onClick={onClose}
+            >
+              Close
+            </Button>
+            {onReject && (
+              <Button
+                variant="danger"
+                onClick={() => {
+                  const jobType = getJobType(job) === 'push' ? 'PUSH' : 'PULL';
+                  onReject(job.id, jobType);
+                  onClose();
+                }}
+              >
+                Reject Job
+              </Button>
+            )}
+            {onApprove && (
+              <Button
+                variant="primary"
+                onClick={() => {
+                  const jobType = getJobType(job) === 'push' ? 'PUSH' : 'PULL';
+                  onApprove(job.id, jobType);
+                  onClose();
+                }}
+                className="bg-green-600 hover:bg-green-700 text-white"
+              >
+                Approve Job
+              </Button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

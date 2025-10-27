@@ -294,6 +294,12 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
       return;
     }
 
+    // Prevent multiple simultaneous calls
+    if (isGeneratingFields) {
+      console.log('⚠️ Generation already in progress, ignoring duplicate call');
+      return;
+    }
+    
     setIsGeneratingFields(true);
     setFieldGenerationError(null);
 

@@ -185,29 +185,6 @@ export const JobList: React.FC<JobListProps> = (props) => {
   // Jobs are already filtered and paginated by parent component
   console.log('Jobs received (already filtered & paginated):', jobs.length);
 
-  const handleStatusUpdate = async (jobId: string, newStatus: JobStatus, jobType: 'PULL' | 'PUSH') => {
-    try {
-      console.log(`=== STATUS UPDATE START ===`);
-      console.log(`Job ID: ${jobId}`);
-      console.log(`New Status: ${newStatus}`);
-      console.log(`Job Type: ${jobType}`);
-      console.log(`onRefresh available:`, !!onRefresh);
-      
-      await dataEnrichmentApi.updateJobStatus(jobId, newStatus, jobType);
-      showSuccess(`Job status updated to ${newStatus}`);
-      
-      console.log('Status update successful, calling onRefresh...');
-      onRefresh?.();
-      console.log('=== STATUS UPDATE END ===');
-    } catch (error) {
-      console.error('=== STATUS UPDATE ERROR ===');
-      console.error('Failed to update job status:', error);
-      console.error('Error details:', error);
-      const userFriendlyMessage = getUserFriendlyErrorMessage(error, 'approve');
-      showError(userFriendlyMessage);
-    }
-  };
-
   const handleActivationToggle = async (jobId: string, isActive: boolean, jobType: 'PULL' | 'PUSH') => {
     try {
       await dataEnrichmentApi.updateJobActivation(jobId, isActive, jobType);
@@ -290,9 +267,6 @@ export const JobList: React.FC<JobListProps> = (props) => {
           <p className="text-sm text-gray-400 mb-6">
             Click the "Define New Endpoint" button above to create a Pull or Push job
           </p>
-          <div className="text-xs text-gray-400 mb-4 p-3 bg-blue-50 rounded-md">
-            💡 <strong>Tip:</strong> Check browser console (F12) for detailed logs
-          </div>
           {onRefresh && (
             <Button onClick={onRefresh} variant="secondary">
               Refresh
@@ -347,7 +321,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
                       <ChevronDown size={16} className={`text-gray-500 transition-transform ${typeDropdownOpen ? 'rotate-180' : ''}`} />
                     </button>
                     {typeDropdownOpen && (
-                      <div className="absolute top-full left-0 mt-1 w-48 bg-white rounded-md shadow-lg z-50 border border-gray-200 dropdown-menu">
+                      <div className="absolute bottom-full left-0 mb-1 w-48 bg-white rounded-md shadow-lg z-[999] border border-gray-200 dropdown-menu">
                         <div className="py-1">
                           <button
                             onClick={(e) => {
@@ -407,7 +381,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
                       <ChevronDown size={16} className={`text-gray-500 transition-transform ${statusDropdownOpen ? 'rotate-180' : ''}`} />
                     </button>
                     {statusDropdownOpen && (
-                      <div className="absolute top-full left-0 mt-1 w-48 bg-white rounded-md shadow-lg z-50 border border-gray-200 dropdown-menu">
+                      <div className="absolute bottom-full left-0 mb-1 w-48 bg-white rounded-md shadow-lg z-[999] border border-gray-200 dropdown-menu">
                         <div className="py-1">
                           <button
                             onClick={(e) => {
@@ -506,7 +480,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
                       <ChevronDown size={16} className={`text-gray-500 transition-transform ${recordStatusDropdownOpen ? 'rotate-180' : ''}`} />
                     </button>
                     {recordStatusDropdownOpen && (
-                      <div className="absolute top-full left-0 mt-1 w-48 bg-white rounded-md shadow-lg z-50 border border-gray-200 dropdown-menu">
+                      <div className="absolute bottom-full left-0 mb-1 w-48 bg-white rounded-md shadow-lg z-[999] border border-gray-200 dropdown-menu">
                         <div className="py-1">
                           <button
                             onClick={(e) => {
@@ -569,7 +543,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
                       <ChevronDown size={16} className={`text-gray-500 transition-transform ${dateDropdownOpen ? 'rotate-180' : ''}`} />
                     </button>
                     {dateDropdownOpen && (
-                      <div className="absolute top-full left-0 mt-1 w-48 bg-white rounded-md shadow-lg z-50 border border-gray-200 dropdown-menu">
+                      <div className="absolute bottom-full left-0 mb-1 w-48 bg-white rounded-md shadow-lg z-[999] border border-gray-200 dropdown-menu">
                         <div className="py-1">
                           <button
                             onClick={(e) => {
@@ -624,6 +598,11 @@ export const JobList: React.FC<JobListProps> = (props) => {
           </thead>
           <tbody className="bg-white divide-y divide-gray-100">
             {jobs.map((job, index) => {
+              // Determine dropdown direction: first row opens down, last row opens up
+              const isFirstRow = index === 0;
+              const isLastRow = index === jobs.length - 1;
+              const forceDirection = isFirstRow ? 'bottom' : isLastRow ? 'top' : 'auto';
+              
               // Get job type - normalize to uppercase for API calls
               const rawJobType = job.type || job.config_type?.toLowerCase() || 'pull';
               const jobType: 'PULL' | 'PUSH' = rawJobType?.toLowerCase() === 'push' ? 'PUSH' : 'PULL';
@@ -727,7 +706,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
                       </button>
 
                       {dropdownOpen === job.id && (
-                        <DropdownMenuWithAutoDirection>
+                        <DropdownMenuWithAutoDirection forceDirection={forceDirection}>
                           <div className="py-1">
                             {/* View Details - Separate logic for Editors vs Approvers */}
                             {userIsEditor ? (
@@ -771,8 +750,8 @@ export const JobList: React.FC<JobListProps> = (props) => {
                               </button>
                             ) : null}
 
-                            {/* Edit - Only for Editors */}
-                            {userIsEditor && onEdit && (
+                            {/* Edit - Only for Editors and only for pending/rejected jobs */}
+                            {userIsEditor && onEdit && (displayStatus === 'pending' || displayStatus === 'rejected') && (
                               <button
                                 onClick={() => {
                                   onEdit(job);
@@ -783,47 +762,6 @@ export const JobList: React.FC<JobListProps> = (props) => {
                                 <Edit className="w-4 h-4 mr-2" />
                                 Edit
                               </button>
-                            )}
-
-                            {/* Status Management - Only for Approvers */}
-                            {userIsApprover && (
-                              <>
-                                <hr className="my-1 border-gray-100" />
-                                <button
-                                  onClick={() => {
-                                    handleStatusUpdate(job.id, 'approved', jobType);
-                                    setDropdownOpen(null);
-                                  }}
-                                  disabled={displayStatus === 'approved'}
-                                  className={`flex items-center w-full px-4 py-2 text-sm hover:bg-gray-100 ${
-                                    displayStatus === 'approved'
-                                      ? 'text-gray-400 cursor-not-allowed'
-                                      : 'text-gray-700'
-                                  }`}
-                                >
-                                  <div className="w-4 h-4 mr-2 flex items-center justify-center">
-                                    <span className="text-green-600">✓</span>
-                                  </div>
-                                  Approve
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    handleStatusUpdate(job.id, 'rejected', jobType);
-                                    setDropdownOpen(null);
-                                  }}
-                                  disabled={displayStatus === 'rejected' || displayStatus === 'approved'}
-                                  className={`flex items-center w-full px-4 py-2 text-sm hover:bg-gray-100 ${
-                                    displayStatus === 'rejected' || displayStatus === 'approved'
-                                      ? 'text-gray-400 cursor-not-allowed'
-                                      : 'text-gray-700'
-                                  }`}
-                                >
-                                  <div className="w-4 h-4 mr-2 flex items-center justify-center">
-                                    <span className="text-red-600">✕</span>
-                                  </div>
-                                  Reject
-                                </button>
-                              </>
                             )}
 
                             {/* Activation Controls - Only for Approvers */}

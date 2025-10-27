@@ -1,15 +1,17 @@
 import React from 'react';
-import { X, Calendar, Clock, Play, Pause } from 'lucide-react';
+import { X, Calendar, Clock } from 'lucide-react';
 import type { ScheduleResponse } from '../../data-enrichment/types';
 import { Button } from '../../../shared/components/Button';
+import { useAuth } from '../../auth/contexts/AuthContext';
+import { isApprover } from '../../../utils/roleUtils';
 
 interface CronJobDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
   schedule: ScheduleResponse | null;
   isLoading?: boolean;
-  onActivate?: (scheduleId: string) => void;
-  onDeactivate?: (scheduleId: string) => void;
+  onApprove?: (scheduleId: string) => void;
+  onReject?: (scheduleId: string) => void;
 }
 
 const CronJobDetailsModal: React.FC<CronJobDetailsModalProps> = ({
@@ -17,9 +19,11 @@ const CronJobDetailsModal: React.FC<CronJobDetailsModalProps> = ({
   onClose,
   schedule,
   isLoading = false,
-  onActivate,
-  onDeactivate,
+  onApprove,
+  onReject,
 }) => {
+  const { user } = useAuth();
+  const userIsApprover = user?.claims ? isApprover(user.claims) : false;
   if (!isOpen) return null;
 
   const formatDate = (dateString: string | undefined) => {
@@ -31,28 +35,6 @@ const CronJobDetailsModal: React.FC<CronJobDetailsModalProps> = ({
       hour: '2-digit',
       minute: '2-digit',
     });
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status?.toLowerCase()) {
-      case 'active':
-        return 'bg-green-50 text-green-700 border-green-200';
-      case 'inactive':
-        return 'bg-gray-100 text-gray-700 border-gray-300';
-      default:
-        return 'bg-gray-100 text-gray-700 border-gray-200';
-    }
-  };
-
-  const getStatusDisplay = (status: string) => {
-    switch (status?.toLowerCase()) {
-      case 'active':
-        return 'ACTIVE';
-      case 'inactive':
-        return 'INACTIVE';
-      default:
-        return status?.toUpperCase() || 'N/A';
-    }
   };
 
   return (
@@ -99,22 +81,6 @@ const CronJobDetailsModal: React.FC<CronJobDetailsModalProps> = ({
                     readOnly
                     className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900"
                   />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Status
-                  </label>
-                  <div className="flex items-center">
-                    <span className={`inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-full border ${getStatusColor(schedule.schedule_status)}`}>
-                      {schedule.schedule_status === 'active' ? (
-                        <Play size={12} className="mr-1.5" />
-                      ) : (
-                        <Pause size={12} className="mr-1.5" />
-                      )}
-                      {getStatusDisplay(schedule.schedule_status)}
-                    </span>
-                  </div>
                 </div>
 
                 <div>
@@ -241,30 +207,32 @@ const CronJobDetailsModal: React.FC<CronJobDetailsModalProps> = ({
             >
               Close
             </Button>
-            {schedule.schedule_status === 'inactive' && onActivate && (
-              <Button
-                variant="primary"
-                onClick={() => {
-                  onActivate(schedule.id);
-                  onClose();
-                }}
-                className="bg-green-600 hover:bg-green-700 text-white"
-              >
-                <Play size={16} className="mr-2" />
-                Activate Schedule
-              </Button>
-            )}
-            {schedule.schedule_status === 'active' && onDeactivate && (
-              <Button
-                variant="danger"
-                onClick={() => {
-                  onDeactivate(schedule.id);
-                  onClose();
-                }}
-              >
-                <Pause size={16} className="mr-2" />
-                Deactivate Schedule
-              </Button>
+            {userIsApprover && (onApprove || onReject) && (
+              <>
+                {onReject && (
+                  <Button
+                    variant="danger"
+                    onClick={() => {
+                      onReject(schedule.id);
+                      onClose();
+                    }}
+                  >
+                    Reject Schedule
+                  </Button>
+                )}
+                {onApprove && (
+                  <Button
+                    variant="primary"
+                    onClick={() => {
+                      onApprove(schedule.id);
+                      onClose();
+                    }}
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                  >
+                    Approve Schedule
+                  </Button>
+                )}
+              </>
             )}
           </div>
         )}

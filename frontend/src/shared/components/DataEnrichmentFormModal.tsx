@@ -559,24 +559,26 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
       console.log('  - connection:', payload.connection);
       console.log('=== END PAYLOAD VALIDATION ===');
       
+      console.log('=== COMPLETE JOB PAYLOAD BEING SENT ===');
+      console.log('Full payload object:', payload);
+      console.log('Payload as JSON string:', JSON.stringify(payload, null, 2));
+      console.log('API endpoint:', configurationType === 'pull' ? 'createPullJob' : 'createPushJob');
+      console.log('=== END COMPLETE JOB PAYLOAD ===');
+      
       let response;
       
-      // Create or update the job based on mode
-      if (editMode && jobId) {
-        // Update existing job
-        response = configurationType === 'pull' 
-          ? await dataEnrichmentApi.updatePullJob(jobId, payload)
-          : await dataEnrichmentApi.updatePushJob(jobId, payload);
-        
-        setCreateSuccess(`Data enrichment endpoint "${formData.name}" updated successfully!`);
-      } else {
-        // Create new job
-        response = configurationType === 'pull' 
-          ? await dataEnrichmentApi.createPullJob(payload)
-          : await dataEnrichmentApi.createPushJob(payload);
-        
-        setCreateSuccess(`Data enrichment endpoint "${formData.name}" created successfully!`);
-      }
+      // Always create new job (both pull and push jobs create new jobs when edited)
+      response = configurationType === 'pull' 
+        ? await dataEnrichmentApi.createPullJob(payload)
+        : await dataEnrichmentApi.createPushJob(payload);
+      
+      console.log('=== API RESPONSE RECEIVED ===');
+      console.log('Response object:', response);
+      console.log('Response as JSON string:', JSON.stringify(response, null, 2));
+      console.log('Response keys:', Object.keys(response || {}));
+      console.log('=== END API RESPONSE ===');
+      
+      setCreateSuccess(`Data enrichment endpoint "${formData.name}" created successfully!`);
       
       // Call the parent's onSave with the created/updated job
       onSave(response);
@@ -660,7 +662,7 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
           </label>
           <select id="sourceType" name="sourceType" value={formData.sourceType} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required data-id="element-825">
             <option value="sftp" data-id="element-826">SFTP</option>
-            <option value="http" data-id="element-827">HTTPS</option>
+            <option value="http" data-id="element-827">HTTP</option>
           </select>
         </div>
       </div>
@@ -1214,11 +1216,10 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
       </div>
       <div className="text-center" data-id="element-993">
         <h3 className="text-lg font-medium text-gray-900 mb-2" data-id="element-994">
-          {editMode ? 'Ready to Update Endpoint' : 'Ready to Create Endpoint'}
+          Ready to Create Endpoint
         </h3>
         <p className="text-gray-500" data-id="element-995">
-          Your data enrichment endpoint has been validated and is ready to be
-          {editMode ? ' updated.' : ' created.'}
+          Your data enrichment endpoint has been validated and is ready to be created.
         </p>
       </div>
       <div className="bg-gray-50 p-4 rounded-md" data-id="element-996">
@@ -1328,7 +1329,7 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
       <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden relative z-10 shadow-2xl" data-id="element-1047">
         <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200" data-id="element-1048">
           <h2 className="text-xl font-semibold text-gray-800" data-id="element-1049">
-            {editMode ? 'Edit Data Enrichment Endpoint' : 'Define New Data Enrichment Endpoint'}
+            Define New Data Enrichment Endpoint
           </h2>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700" data-id="element-1050">
             <XIcon size={24} data-id="element-1051" />
@@ -1360,12 +1361,12 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
               <>
                 {!isFormValid() ? (
                   <div title="Please fill all required fields">
-                    <Button variant="primary" icon={<PlayIcon size={16} />} onClick={handleTestRun} disabled={true}>
+                    <Button variant="primary" onClick={handleTestRun} disabled={true}>
                       {isTestingConnection ? 'Testing Connection...' : 'Save and Next'}
                     </Button>
                   </div>
                 ) : (
-                  <Button variant="primary" icon={<PlayIcon size={16} />} onClick={handleTestRun} disabled={isTestingConnection}>
+                  <Button variant="primary" onClick={handleTestRun} disabled={isTestingConnection}>
                     {isTestingConnection ? 'Testing Connection...' : 'Save and Next'}
                   </Button>
                 )}
@@ -1389,7 +1390,7 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
                   Back
                 </Button>
                 <Button variant="primary" onClick={handleSave} disabled={isCreating}>
-                  {isCreating ? (editMode ? 'Updating Endpoint...' : 'Creating Endpoint...') : (editMode ? 'Update Endpoint' : 'Send for Approval')}
+                  {isCreating ? 'Creating Endpoint...' : 'Send for Approval'}
                 </Button>
               </>
             )}

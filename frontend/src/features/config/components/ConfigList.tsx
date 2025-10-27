@@ -305,7 +305,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
                   )}
                 </div>
                 {showStatusFilter && (
-                  <div className="absolute top-full left-0 mt-1 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-20">
+                  <div className="absolute bottom-full left-0 mb-1 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-[999]">
                     <div className="py-1">
                       <button
                         onClick={() => handleStatusFilter('all')}

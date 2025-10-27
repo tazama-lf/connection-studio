@@ -170,6 +170,15 @@ const AuthProvider: React.FC<{
     try {
       setLoading(true);
       console.log('Attempting login for username:', username);
+      
+      // Clear any existing auth state before login
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('user');
+      setUser(null);
+      setIsAuthenticated(false);
+      setShowTokenExpiredModal(false);
+      setShowTokenExpiringWarning(false);
+      
       const response = await authApi.login({ username, password });
       console.log('Login response:', response);
       
@@ -220,7 +229,16 @@ const AuthProvider: React.FC<{
   };
 
   const handleTokenExpiredLoginRedirect = () => {
+    console.log('=== TOKEN EXPIRED LOGIN REDIRECT ===');
+    // Clear all auth-related data
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('user');
+    setUser(null);
+    setIsAuthenticated(false);
     setShowTokenExpiredModal(false);
+    setShowTokenExpiringWarning(false);
+    setIsIntentionalLogout(false);
+    
     // Force a page reload to clear any stale state and redirect to login
     window.location.href = '/';
   };

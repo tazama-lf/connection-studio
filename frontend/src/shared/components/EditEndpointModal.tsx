@@ -990,10 +990,11 @@ interface EditEndpointModalProps {
       // Determine actual config ID to use
       const actualConfigId = createdEndpoint?.id || existingConfig?.id || endpointId;
       const shouldCreate = !createdEndpoint && !existingConfig && isNewEndpoint;
-      const action = shouldCreate ? 'create' : 'update';
+      const isCloningOperation = isCloning && existingConfig; // True when we're cloning an existing config
+      const action = (shouldCreate || isCloningOperation) ? 'create' : 'update';
 
-      if (shouldCreate) {
-        console.log('Creating NEW config...');
+      if (shouldCreate || isCloningOperation) {
+        console.log(isCloningOperation ? 'Cloning config - creating new config...' : 'Creating NEW config...');
         saveResponse = await configApi.createConfig(createRequest);
       } else {
         console.log('Updating EXISTING config with ID:', actualConfigId);

@@ -57,7 +57,6 @@ const ApproverModule: React.FC = () => {
   const [schedules, setSchedules] = useState<ScheduleResponse[]>([]);
   const [schedulesLoading, setSchedulesLoading] = useState(false);
   const [cronJobSearchTerm, setCronJobSearchTerm] = useState('');
-  const [scheduleStatusFilter, setScheduleStatusFilter] = useState<'active' | 'inactive' | 'ALL'>('ALL');
   
   // Cron job details modal state
   const [showCronJobDetails, setShowCronJobDetails] = useState(false);
@@ -168,29 +167,51 @@ const ApproverModule: React.FC = () => {
     }
   };
 
-  const handleActivateCronJob = async (scheduleId: string) => {
+  const handleApproveCronJob = async (scheduleId: string) => {
     try {
       await dataEnrichmentApi.updateSchedule(scheduleId, {
-        schedule_status: 'active'
+        status: 'approved'
       });
-      showSuccess('Cron job activated successfully');
+      showSuccess('Cron job approved successfully');
       handleCronJobRefresh();
     } catch (error) {
-      console.error('Failed to activate cron job:', error);
-      showError('Failed to activate cron job');
+      console.error('Failed to approve cron job:', error);
+      showError('Failed to approve cron job');
     }
   };
 
-  const handleDeactivateCronJob = async (scheduleId: string) => {
+  const handleRejectCronJob = async (scheduleId: string) => {
     try {
       await dataEnrichmentApi.updateSchedule(scheduleId, {
-        schedule_status: 'inactive'
+        status: 'rejected'
       });
-      showSuccess('Cron job deactivated successfully');
+      showSuccess('Cron job rejected successfully');
       handleCronJobRefresh();
     } catch (error) {
-      console.error('Failed to deactivate cron job:', error);
-      showError('Failed to deactivate cron job');
+      console.error('Failed to reject cron job:', error);
+      showError('Failed to reject cron job');
+    }
+  };
+
+  const handleApproveJob = async (jobId: string, jobType: 'PULL' | 'PUSH') => {
+    try {
+      await dataEnrichmentApi.updateJobStatus(jobId, 'approved', jobType);
+      showSuccess('Job approved successfully');
+      handleJobRefresh();
+    } catch (error) {
+      console.error('Failed to approve job:', error);
+      showError('Failed to approve job');
+    }
+  };
+
+  const handleRejectJob = async (jobId: string, jobType: 'PULL' | 'PUSH') => {
+    try {
+      await dataEnrichmentApi.updateJobStatus(jobId, 'rejected', jobType);
+      showSuccess('Job rejected successfully');
+      handleJobRefresh();
+    } catch (error) {
+      console.error('Failed to reject job:', error);
+      showError('Failed to reject job');
     }
   };
 
@@ -525,8 +546,6 @@ const ApproverModule: React.FC = () => {
               isLoading={schedulesLoading}
               onViewDetails={handleViewCronJobDetails}
               onRefresh={handleCronJobRefresh}
-              statusFilter={scheduleStatusFilter}
-              onStatusFilterChange={setScheduleStatusFilter}
               searchQuery={cronJobSearchTerm}
             />
           </div>
@@ -594,6 +613,8 @@ const ApproverModule: React.FC = () => {
           job={selectedJob}
           isLoading={jobDetailsLoading}
           editMode={false}
+          onApprove={handleApproveJob}
+          onReject={handleRejectJob}
         />
       )}
 
@@ -604,8 +625,8 @@ const ApproverModule: React.FC = () => {
           onClose={handleCloseCronJobDetails}
           schedule={selectedSchedule}
           isLoading={cronJobDetailsLoading}
-          onActivate={handleActivateCronJob}
-          onDeactivate={handleDeactivateCronJob}
+          onApprove={handleApproveCronJob}
+          onReject={handleRejectCronJob}
         />
       )}
     </div>

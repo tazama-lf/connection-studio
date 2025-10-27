@@ -38,6 +38,7 @@ export interface ScheduleRequest {
   start_date?: string;
   end_date?: string;
   schedule_status?: string;
+  status?: string; // Approval status: pending, approved, rejected
 }
 
 export interface ScheduleCreateResponse {
@@ -51,6 +52,7 @@ export interface ScheduleResponse {
   cron: string;
   iterations: number;
   schedule_status: string;
+  status?: string; // Approval status: pending, approved, rejected
   next_time?: string | null;
   created_at?: string;
   start_date?: string;
@@ -86,6 +88,7 @@ export type DataEnrichmentJob = HttpDataEnrichmentJob | SftpDataEnrichmentJob;
 
 // Backend DTO types (matching actual API structure)
 export interface CreatePullJobDto {
+  id?: string; // Optional for upsert operations
   endpoint_name: string;
   schedule_id: string; // UUID string from backend
   source_type: SourceType;
@@ -98,6 +101,7 @@ export interface CreatePullJobDto {
 }
 
 export interface CreatePushJobDto {
+  id?: string; // Optional for upsert operations
   endpoint_name: string;
   path: string; // Push jobs use path instead of connection/source_type
   description: string;

@@ -8,7 +8,7 @@ import JobList from '../components/JobList';
 import JobDetailsModal from '../components/JobDetailsModal';
 import { DataEnrichmentFormModal } from '../../../shared/components/DataEnrichmentFormModal';
 import { dataEnrichmentApi } from '../services/dataEnrichmentApi';
-import type { DataEnrichmentJobResponse, JobStatus, UpdatePullJobDto } from '../types';
+import type { DataEnrichmentJobResponse, JobStatus, CreatePushJobDto, CreatePullJobDto } from '../types';
 import { useToast } from '../../../shared/providers/ToastProvider';
 import { useAuth } from '../../auth/contexts/AuthContext';
 import { isEditor, isApprover } from '../../../utils/roleUtils';
@@ -223,10 +223,11 @@ const DataEnrichmentModule: React.FC = () => {
         return;
       }
       
-      // Use the proper update API methods instead of create with id
+      // Use the create API methods to create new jobs (editing creates new versions)
       let response;
       if (jobType === 'push') {
-        const pushData: any = {
+        const pushData: CreatePushJobDto = {
+          // id: selectedJob.id, // Remove ID - we're creating new jobs, not updating
           endpoint_name: updatedJob.endpoint_name || selectedJob.endpoint_name || '',
           description: updatedJob.description || selectedJob.description,
           version: updatedJob.version || selectedJob.version || 'v1',
@@ -234,33 +235,57 @@ const DataEnrichmentModule: React.FC = () => {
           table_name: updatedJob.table_name || selectedJob.table_name || '',
           mode: (updatedJob.mode || selectedJob.mode || 'append') as 'append' | 'replace',
         };
-        
-        // Include schedule_id if it exists (backend may require it for push jobs)
-        if (selectedJob.schedule_id) {
-          pushData.schedule_id = selectedJob.schedule_id;
-        }
-        
-        console.log('Push data to send:', pushData);
-        response = await dataEnrichmentApi.updatePushJob(selectedJob.id, pushData);
+
+        console.log('Push data to send (creating new job):', pushData);
+        response = await dataEnrichmentApi.createPushJob(pushData);
       } else {
-        const pullData = {
+        // Determine source type - ensure it's uppercase to match backend enum
+        const sourceType = (updatedJob.source_type || selectedJob.source_type || 'HTTP').toUpperCase() as 'HTTP' | 'SFTP';
+
+        // Build connection object based on source type
+        let connection;
+        if (sourceType === 'HTTP') {
+          connection = {
+            url: (updatedJob.connection as any)?.url || (selectedJob.connection as any)?.url || '',
+            headers: (updatedJob.connection as any)?.headers || (selectedJob.connection as any)?.headers || {},
+          };
+        } else { // SFTP
+          connection = {
+            host: (updatedJob.connection as any)?.host || (selectedJob.connection as any)?.host || '',
+            port: (updatedJob.connection as any)?.port || (selectedJob.connection as any)?.port || 22,
+            auth_type: (updatedJob.connection as any)?.auth_type || (selectedJob.connection as any)?.auth_type || 'USERNAME_PASSWORD',
+            user_name: (updatedJob.connection as any)?.user_name || (selectedJob.connection as any)?.user_name || '',
+            password: (updatedJob.connection as any)?.password || (selectedJob.connection as any)?.password,
+            private_key: (updatedJob.connection as any)?.private_key || (selectedJob.connection as any)?.private_key,
+          };
+        }
+
+        const pullData: CreatePullJobDto = {
+          // id: selectedJob.id, // Remove ID - we're creating new jobs, not updating
           endpoint_name: updatedJob.endpoint_name || selectedJob.endpoint_name || '',
           description: updatedJob.description || selectedJob.description || '',
           version: updatedJob.version || selectedJob.version || 'v1',
-          source_type: (updatedJob.source_type || selectedJob.source_type || 'HTTP') as 'HTTP' | 'SFTP',
+          source_type: sourceType,
           table_name: updatedJob.table_name || selectedJob.table_name || '',
           mode: (updatedJob.mode || selectedJob.mode || 'append') as 'append' | 'replace',
-          connection: updatedJob.connection || selectedJob.connection || { url: '', headers: {} },
-          file: updatedJob.file || selectedJob.file,
+          connection: connection,
           schedule_id: updatedJob.schedule_id || selectedJob.schedule_id || '',
-        } as UpdatePullJobDto;
-        
-        console.log('Pull data to send:', pullData);
-        response = await dataEnrichmentApi.updatePullJob(selectedJob.id, pullData);
+          // Only include file for SFTP connections
+          ...(sourceType === 'SFTP' && {
+            file: updatedJob.file || selectedJob.file || {
+              path: '',
+              file_type: 'CSV' as const,
+              delimiter: ',',
+            }
+          }),
+        };
+
+        console.log('Pull data to send (creating new job):', pullData);
+        response = await dataEnrichmentApi.createPullJob(pullData);
       }
       
-      console.log('Job update response:', response);
-      showSuccess('Job updated successfully!');
+      console.log('Job creation response:', response);
+      showSuccess('New job version created successfully!');
       
       // Refresh the jobs list
       await loadJobs();
@@ -289,6 +314,22 @@ const DataEnrichmentModule: React.FC = () => {
     console.log('handleEditJob called with:', job);
     console.log('Job type:', job.type);
     console.log('Job ID:', job.id);
+    console.log('Job status:', job.status);
+    
+    // Prevent editing approved jobs
+    const jobStatus = job.status || 'pending';
+    if (jobStatus === 'approved') {
+      console.warn('Attempted to edit approved job - blocking action');
+      showError('Approved jobs cannot be edited. Please create a new job instead.');
+      return;
+    }
+    
+    // Only allow editing pending or rejected jobs
+    if (jobStatus !== 'pending' && jobStatus !== 'rejected') {
+      console.warn(`Attempted to edit job with status: ${jobStatus} - blocking action`);
+      showError(`Jobs with status "${jobStatus}" cannot be edited.`);
+      return;
+    }
     
     try {
       setJobDetailsLoading(true);

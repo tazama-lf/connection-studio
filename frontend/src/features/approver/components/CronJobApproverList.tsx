@@ -1,55 +1,18 @@
 import React, { useState } from 'react';
-import { Eye, MoreVertical, ChevronDown, FilterIcon } from 'lucide-react';
+import { Eye, MoreVertical } from 'lucide-react';
 import type { ScheduleResponse } from '../../data-enrichment/types';
 import { Button } from '../../../shared/components/Button';
+import { DropdownMenuWithAutoDirection } from '../../../features/data-enrichment/components/DropdownMenuWithAutoDirection';
 import { useAuth } from '../../auth/contexts/AuthContext';
 import { isApprover } from '../../../utils/roleUtils';
-import { DropdownMenuWithAutoDirection } from '../../data-enrichment/components/DropdownMenuWithAutoDirection';
 
 interface CronJobApproverListProps {
   schedules: ScheduleResponse[];
   isLoading?: boolean;
   onViewDetails?: (scheduleId: string) => void;
   onRefresh?: () => void;
-  statusFilter?: 'active' | 'inactive' | 'ALL';
-  onStatusFilterChange?: (status: 'active' | 'inactive' | 'ALL') => void;
   searchQuery?: string;
 }
-
-type ScheduleStatus = 'active' | 'inactive';
-
-const StatusBadge: React.FC<{ status: ScheduleStatus }> = ({ status }) => {
-  const getStatusConfig = (status: ScheduleStatus) => {
-    switch (status) {
-      case 'active':
-        return {
-          className: 'bg-green-50 text-green-700',
-          dotColor: 'bg-green-500',
-          text: 'ACTIVE'
-        };
-      case 'inactive':
-        return {
-          className: 'bg-gray-100 text-gray-700',
-          dotColor: 'bg-gray-500',
-          text: 'INACTIVE'
-        };
-      default:
-        return {
-          className: 'bg-gray-100 text-gray-700',
-          dotColor: 'bg-gray-500',
-          text: String(status).toUpperCase()
-        };
-    }
-  };
-
-  const config = getStatusConfig(status);
-  return (
-    <span className={`inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-full ${config.className}`}>
-      <span className={`w-2 h-2 rounded-full mr-2 ${config.dotColor}`}></span>
-      {config.text}
-    </span>
-  );
-};
 
 export const CronJobApproverList: React.FC<CronJobApproverListProps> = (props) => {
   const {
@@ -57,8 +20,6 @@ export const CronJobApproverList: React.FC<CronJobApproverListProps> = (props) =
     isLoading = false,
     onViewDetails,
     onRefresh,
-    statusFilter = 'ALL',
-    onStatusFilterChange,
     searchQuery = '',
   } = props;
 
@@ -66,7 +27,27 @@ export const CronJobApproverList: React.FC<CronJobApproverListProps> = (props) =
   const userIsApprover = user?.claims ? isApprover(user.claims) : false;
 
   const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
-  const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);  if (isLoading) {
+
+  // Close dropdowns when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      
+      // Don't close if clicking on dropdown buttons or dropdown content
+      if (target.closest('.actions-dropdown')) {
+        return;
+      }
+      
+      setDropdownOpen(null);
+    };
+
+    if (dropdownOpen) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [dropdownOpen]);
+
+  if (isLoading) {
     return (
       <div className="flex justify-center items-center py-8">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -78,7 +59,6 @@ export const CronJobApproverList: React.FC<CronJobApproverListProps> = (props) =
   if (!schedules || schedules.length === 0) {
     // Check if any filters are active
     const hasActiveFilters =
-      (statusFilter && statusFilter !== 'ALL') ||
       (searchQuery && searchQuery.trim() !== '');
 
     if (hasActiveFilters) {
@@ -96,7 +76,6 @@ export const CronJobApproverList: React.FC<CronJobApproverListProps> = (props) =
             </p>
             <Button
               onClick={() => {
-                onStatusFilterChange?.('ALL');
                 onRefresh?.();
               }}
               variant="primary"
@@ -164,71 +143,16 @@ export const CronJobApproverList: React.FC<CronJobApproverListProps> = (props) =
                 CRON EXPRESSION
               </th>
               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                <div className="flex items-center space-x-2">
-                  <FilterIcon className="w-4 h-4 text-gray-400" />
-                  <span>STATUS</span>
-                  <div className="relative filter-dropdown">
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setStatusDropdownOpen(!statusDropdownOpen);
-                      }}
-                      className="p-1 hover:bg-gray-200 rounded transition-colors"
-                      title="Filter by status"
-                    >
-                      <ChevronDown size={16} className={`text-gray-500 transition-transform ${statusDropdownOpen ? 'rotate-180' : ''}`} />
-                    </button>
-                    {statusDropdownOpen && (
-                      <div className="absolute top-full left-0 mt-1 w-48 bg-white rounded-md shadow-lg z-50 border border-gray-200 dropdown-menu">
-                        <div className="py-1">
-                          <button
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              onStatusFilterChange?.('ALL');
-                              setStatusDropdownOpen(false);
-                            }}
-                            className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${statusFilter === 'ALL' ? 'bg-gray-100 font-medium' : 'text-gray-700'}`}
-                          >
-                            All Statuses
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              onStatusFilterChange?.('active');
-                              setStatusDropdownOpen(false);
-                            }}
-                            className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${statusFilter === 'active' ? 'bg-gray-100 font-medium' : 'text-gray-700'}`}
-                          >
-                            Active
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              onStatusFilterChange?.('inactive');
-                              setStatusDropdownOpen(false);
-                            }}
-                            className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${statusFilter === 'inactive' ? 'bg-gray-100 font-medium' : 'text-gray-700'}`}
-                          >
-                            Inactive
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                 ITERATIONS
               </th>
               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                NEXT RUN
+                START DATE
               </th>
               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                CREATED TIME
+                END DATE
+              </th>
+              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                STATUS
               </th>
               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                 ACTIONS
@@ -237,8 +161,11 @@ export const CronJobApproverList: React.FC<CronJobApproverListProps> = (props) =
           </thead>
           <tbody className="bg-white divide-y divide-gray-100">
             {schedules.map((schedule, index) => {
-              const displayStatus: ScheduleStatus = (schedule.schedule_status as ScheduleStatus) || 'inactive';
-
+              // Determine dropdown direction: first row opens down, last row opens up
+              const isFirstRow = index === 0;
+              const isLastRow = index === schedules.length - 1;
+              const forceDirection = isFirstRow ? 'bottom' : isLastRow ? 'top' : 'auto';
+              
               return (
                 <tr key={schedule.id} className={`hover:bg-gray-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
                   <td className="px-6 py-4">
@@ -252,17 +179,14 @@ export const CronJobApproverList: React.FC<CronJobApproverListProps> = (props) =
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <StatusBadge status={displayStatus} />
-                  </td>
-                  <td className="px-6 py-4">
                     <div className="text-sm text-gray-600">
-                      {schedule.iterations === -1 ? 'Infinite' : schedule.iterations}
+                      {schedule.iterations === -1 ? 'Infinite' : `${schedule.iterations} iterations`}
                     </div>
                   </td>
                   <td className="px-6 py-4">
                     <div className="text-sm text-gray-600">
-                      {schedule.next_time
-                        ? new Date(schedule.next_time).toLocaleDateString('en-US', {
+                      {schedule.start_date
+                        ? new Date(schedule.start_date).toLocaleDateString('en-US', {
                             month: 'numeric',
                             day: 'numeric',
                             year: 'numeric',
@@ -275,27 +199,34 @@ export const CronJobApproverList: React.FC<CronJobApproverListProps> = (props) =
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="flex items-center text-sm text-gray-600">
-                      <svg className="h-4 w-4 text-gray-400 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                      <span className="font-medium">
-                        {schedule.created_at
-                          ? new Date(schedule.created_at).toLocaleDateString('en-US', {
-                              month: 'numeric',
-                              day: 'numeric',
-                              year: 'numeric',
-                              hour: 'numeric',
-                              minute: '2-digit',
-                              hour12: true
-                            })
-                          : 'N/A'
-                        }
-                      </span>
+                    <div className="text-sm text-gray-600">
+                      {schedule.start_date
+                        ? new Date(schedule.start_date).toLocaleDateString('en-US', {
+                            month: 'numeric',
+                            day: 'numeric',
+                            year: 'numeric',
+                            hour: 'numeric',
+                            minute: '2-digit',
+                            hour12: true
+                          })
+                        : 'N/A'
+                      }
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="flex items-center justify-center space-x-2">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      schedule.status === 'approved' ? 'bg-green-100 text-green-800' :
+                      schedule.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                      schedule.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                      schedule.status === 'in-progress' ? 'bg-blue-100 text-blue-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {schedule.status === 'in-progress' ? 'IN PROGRESS' :
+                       schedule.status?.toUpperCase() || 'UNKNOWN'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center justify-end space-x-2">
                       {/* Actions Dropdown */}
                       <div className="relative actions-dropdown">
                         <button
@@ -309,7 +240,9 @@ export const CronJobApproverList: React.FC<CronJobApproverListProps> = (props) =
                         </button>
 
                         {dropdownOpen === schedule.id && userIsApprover && (
-                          <DropdownMenuWithAutoDirection>
+                          <DropdownMenuWithAutoDirection 
+                            forceDirection={forceDirection}
+                          >
                             <div className="py-1">
                               {/* View Details */}
                               <button
