@@ -20,6 +20,17 @@ export function encrypt(text: string) {
   return iv.toString('hex') + ':' + encrypted;
 }
 
+export function decrypt(text: string) {
+  const [ivHex, encrypted] = text.split(':');
+
+  const iv = Buffer.from(ivHex, 'hex');
+  const decipher = crypto.createDecipheriv('aes-256-cbc', buffer, iv);
+
+  let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+  decrypted += decipher.final('utf8');
+  return decrypted;
+}
+
 export function validateCronExpression(expression: string): void {
   try {
     new CronTime(expression);

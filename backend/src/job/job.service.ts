@@ -20,7 +20,7 @@ import { SftpService } from 'src/sftp/sftp.service';
 import { v4 } from 'uuid';
 import { DatabaseService } from '../database/database.service';
 import { DryRunService } from '../dry-run/dry-run.service';
-import { encrypt, validateFileType, validateTableName } from '../utils/helpers';
+import { decrypt, encrypt, validateFileType, validateTableName } from '../utils/helpers';
 import { CreatePullJobDto, SFTPConnectionDto } from './dto/create-pull-job.dto';
 import { CreatePushJobDto } from './dto/create-push-job.dto';
 
@@ -36,12 +36,16 @@ export class JobService {
 
   async validateExisting(table_name: string): Promise<void> {
     validateTableName(table_name);
-    const result = await this.db.query(
+    const jobResult = await this.db.query(
       'SELECT * FROM job WHERE table_name = $1 LIMIT 1;',
       [table_name],
     );
+    const endpointResult = await this.db.query(
+      'SELECT * FROM endpoints WHERE table_name = $1 LIMIT 1;',
+      [table_name],
+    );
 
-    const existingJob = result.rows[0] || null;
+    const existingJob = jobResult.rows[0] || endpointResult.rows[0];
     const exists = (await this.db.tableExist(table_name)) || existingJob;
     if (exists) {
       this.loggerService.error('Table Already Exists');
@@ -49,13 +53,13 @@ export class JobService {
     }
   }
 
-  async createPush(job: CreatePushJobDto, tenantId: string): Promise<Job> {
+  async createPush(job: CreatePushJobDto, tenantId: string, status: JobStatus = JobStatus.INPROGRESS): Promise<Job> {
     try {
       await this.validateExisting(job.table_name);
 
       const path = `/tcs/${job.version}/${tenantId}/enrichment${job.path}`;
 
-      const jobWithId = { ...job, id: v4(), path, tenant_id: tenantId };
+      const jobWithId = { ...job, id: v4(), path, tenant_id: tenantId, status };
       const keys = Object.keys(jobWithId);
       const values = Object.values(jobWithId);
       const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
@@ -76,7 +80,7 @@ export class JobService {
     }
   }
 
-  async createPull(job: CreatePullJobDto, tenantId: string): Promise<ISuccess> {
+  async createPull(job: CreatePullJobDto, tenantId: string, status: JobStatus = JobStatus.INPROGRESS): Promise<ISuccess> {
     try {
       await this.validateExisting(job.table_name);
 
@@ -91,9 +95,9 @@ export class JobService {
         job.schedule_id,
       ]);
       const exist = scheduleResult.rows[0];
-      if (!exist) {
+      if (!exist || exist.status != JobStatus.APPROVED) {
         throw new BadRequestException(
-          `Schedule Id "${job.schedule_id}" not found`,
+          `Schedule with Id "${job.schedule_id}" not found or is not approved yet.`,
         );
       }
 
@@ -119,7 +123,7 @@ export class JobService {
 
       await this.dryRunService.dryRun(job);
 
-      const jobWithId = { ...job, id: v4(), connection, tenant_id: tenantId };
+      const jobWithId = { ...job, id: v4(), connection, tenant_id: tenantId, status };
       const keys = Object.keys(jobWithId);
       const values = Object.values(jobWithId);
       const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
@@ -342,8 +346,6 @@ export class JobService {
     }
   }
 
-
-
   async updateStatus(
     id: string,
     status: JobStatus,
@@ -355,63 +357,87 @@ export class JobService {
         throw new BadRequestException('Both status and type are required.');
       }
 
-      const table_name = type === ConfigType.PUSH ? 'endpoints' : 'job';
+      const tableName = type === ConfigType.PUSH ? 'endpoints' : 'job';
+      const existingJob = await this.findOne(id, type, tenantId);
 
-      const existingSchedule = await this.findOne(id, type, tenantId);
+      switch (status) {
+        case JobStatus.EXPORTED: {
+          const nodeEnv = this.configService.get<string>('NODE_ENV');
+          const sftpHost = this.configService.get<string>('SFTP_HOST_CONSUMER');
 
-      if (existingSchedule.status === JobStatus.APPROVED) {
-        throw new ForbiddenException(
-          'Approved job cannot be edited. Please create a new job instead.',
-        );
-      }
+          if (nodeEnv !== 'dev') {
+            throw new BadRequestException(
+              `Exported status can only be set in the dev environment.`,
+            );
+          }
 
-      if (status === JobStatus.EXPORTED) {
-        const nodeEnv = this.configService.get<string>('NODE_ENV');
-        const sftpHost = this.configService.get<string>('SFTP_HOST_CONSUMER');
+          if (!sftpHost) {
+            throw new BadRequestException(`Consumer SFTP server credentials not provided.`);
+          }
 
-        if (nodeEnv !== 'dev') {
-          throw new BadRequestException(
-            `Exported status can only be set in the dev environment.`,
+          const fileName = `/upload/${nodeEnv}_de_${tenantId}_${id}.json`;
+
+          await this.sftpService.createFile(fileName, {
+            ...existingJob,
+            status: JobStatus.READY,
+          });
+
+          this.loggerService.log(
+            `Successfully uploaded config file (${fileName}) on SFTP server.`,
           );
+          break;
         }
 
-        if (!sftpHost) {
-          throw new BadRequestException(`Consumer SFTP server credentials not provided.`);
+        case JobStatus.DEPLOYED: {
+          if (type === ConfigType.PULL) {
+            const connection = { ...existingJob.connection } as SFTPConnection;
+
+            if (existingJob.AuthType === AuthType.USERNAME_PASSWORD && connection.password) {
+              connection.password = decrypt(connection.password);
+            } else if (connection.private_key) {
+              connection.private_key = decrypt(connection.private_key);
+            }
+
+            const { schedule, ...jobPayload } = existingJob;
+
+            await this.createPull(
+              { ...jobPayload, connection },
+              tenantId,
+              JobStatus.DEPLOYED
+            );
+          } else {
+            await this.createPush(existingJob, tenantId, JobStatus.DEPLOYED);
+          }
+          break;
         }
 
-        const fileName = `/upload/${nodeEnv}_de_${tenantId}_${id}.json`;
-
-        await this.sftpService.createFile(fileName, existingSchedule);
-
-        this.loggerService.log(
-          `Successfully uploaded config file (${fileName}) on SFTP server.`,
-        );
+        default:
+          break;
       }
 
-      const query = `
-      UPDATE ${table_name}
+      const updateQuery = `
+      UPDATE ${tableName}
       SET status = $1, updated_at = NOW()
       WHERE id = $2
-      RETURNING *;
+      RETURNING id;
     `;
 
-      const result = await this.db.query(query, [status, id]);
+      const result = await this.db.query(updateQuery, [status, id]);
 
-      if (result.rowCount === 0) {
+      if (!result.rowCount) {
         throw new NotFoundException(
-          `Record with id "${id}" not found in table "${table_name}".`,
+          `Record with id "${id}" not found in table "${tableName}".`,
         );
       }
 
       return {
         success: true,
-        message: `${table_name} with id ${id} successfully updated`,
+        message: `${tableName} with id ${id} successfully updated.`,
       };
-    } catch (err) {
-      this.loggerService.error(
-        `Error updating job status: ${err instanceof Error ? err.message : err}`,
-      );
-      throw new BadRequestException(err.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.loggerService.error(`Error updating job status: ${message}`);
+      throw new BadRequestException(message);
     }
   }
 }

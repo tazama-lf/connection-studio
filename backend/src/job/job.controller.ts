@@ -9,13 +9,11 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { RequireEditorRole } from '../auth/auth.decorator';
 import { ConfigType, JobStatus, ScheduleStatus } from '@tazama-lf/tcs-lib';
+import { RequireEditorRole } from '../auth/auth.decorator';
+import { CreatePullJobDto } from './dto/create-pull-job.dto';
 import { CreatePushJobDto } from './dto/create-push-job.dto';
 import { JobService } from './job.service';
-import { CreatePullJobDto } from './dto/create-pull-job.dto';
-import { Serialize } from 'src/interceptors/serialize.interceptor';
-import { PullJobResponseDto } from './dto/fetch-pull-job.dto';
 
 @Controller('job')
 // @UseGuards(TazamaAuthGuard)
@@ -44,7 +42,7 @@ export class JobController {
   }
 
   @Get('/:id')
-  @Serialize(PullJobResponseDto)
+  // @Serialize(PullJobResponseDto)
   async getById(@Param('id') id: string, @Query('type') type: ConfigType) {
     return await this.jobService.findOne(id, type, '1234');
   }
