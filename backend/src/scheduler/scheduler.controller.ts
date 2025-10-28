@@ -20,7 +20,7 @@ export class SchedulerController {
 
   @Post('/create')
   async createJob(@Body() schedule: CreateScheduleJobDto) {
-    return this.schedulerService.create(schedule);
+    return this.schedulerService.create(schedule, '1234');
   }
 
   @Get('/all')
@@ -28,12 +28,12 @@ export class SchedulerController {
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
   ) {
-    return this.schedulerService.findAll(page, limit);
+    return this.schedulerService.findAll(page, limit, '1234');
   }
 
   @Patch('/update/:id')
   async update(@Param('id') id: string, @Body() body: UpdateScheduleJobDto) {
-    return this.schedulerService.update(id, body);
+    return this.schedulerService.update(id, body, '1234');
   }
 
   @Get('/:id')
@@ -48,6 +48,7 @@ export class SchedulerController {
   ) {
     return await this.schedulerService.updateStatus(
       id,
+      '1234',
       status,
     );
   }

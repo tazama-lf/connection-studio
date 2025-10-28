@@ -10,20 +10,26 @@ import { validateCronExpression } from '../utils/helpers';
 import { CreateScheduleJobDto } from './dto/create-schedule.dto';
 import { UpdateScheduleJobDto } from './dto/update-schedule-dto';
 import { Schedule, ISuccess, JobStatus } from '@tazama-lf/tcs-lib';
+import { ConfigService } from '@nestjs/config';
+import { SftpService } from 'src/sftp/sftp.service';
+import { v4 } from 'uuid';
 
 @Injectable()
 export class SchedulerService {
   constructor(
     private readonly db: DatabaseService,
     private readonly loggerService: LoggerService,
+    private readonly configService: ConfigService,
+    private readonly sftpService: SftpService
   ) { }
 
-  async create(schedule: CreateScheduleJobDto): Promise<ISuccess> {
+  async create(schedule: CreateScheduleJobDto, tenantId: string, status: JobStatus = JobStatus.INPROGRESS): Promise<ISuccess> {
     try {
       validateCronExpression(schedule.cron);
 
-      const keys = Object.keys(schedule);
-      const values = Object.values(schedule);
+      const scheduleWithId = { ...schedule, id: v4(), tenant_id: tenantId, status };
+      const keys = Object.keys(scheduleWithId);
+      const values = Object.values(scheduleWithId);
       const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
 
       const insertQuery = `
@@ -56,7 +62,7 @@ export class SchedulerService {
     return schedule;
   }
 
-  async findAll(page: number, limit: number): Promise<Schedule[]> {
+  async findAll(page: number, limit: number, tenantId: string): Promise<Schedule[]> {
     if (
       !Number.isInteger(page) ||
       !Number.isInteger(limit) ||
@@ -70,8 +76,8 @@ export class SchedulerService {
 
     const offset = (page - 1) * limit;
     const result = await this.db.query(
-      'SELECT * FROM schedule LIMIT $1 OFFSET $2;',
-      [limit, offset],
+      'SELECT * FROM schedule WHERE tenant_id = $1 LIMIT $2 OFFSET $3;',
+      [tenantId, limit, offset],
     );
 
     const data = result.rows;
@@ -79,7 +85,7 @@ export class SchedulerService {
     return data;
   }
 
-  async update(id: string, attr: UpdateScheduleJobDto): Promise<ISuccess> {
+  async update(id: string, attr: UpdateScheduleJobDto, tenantId: string): Promise<ISuccess> {
     try {
 
       const existingSchedule = await this.findOne(id);
@@ -114,10 +120,37 @@ export class SchedulerService {
     }
   }
 
-  async updateStatus(id: string, status: JobStatus): Promise<ISuccess> {
+  async updateStatus(id: string, tenantId: string, status: JobStatus): Promise<ISuccess> {
     try {
       if (!status) {
         throw new BadRequestException('Both status and table_name are required.');
+      }
+
+      const existing = await this.findOne(id);
+
+      switch (status) {
+        case JobStatus.EXPORTED: {
+          const nodeEnv = this.configService.get<string>('NODE_ENV');
+          const fileName = `/upload/${nodeEnv}_cron_${tenantId}_${id}.json`;
+
+          await this.sftpService.createFile(fileName, {
+            ...existing,
+            status: JobStatus.READY,
+          });
+
+          this.loggerService.log(
+            `Successfully uploaded config file (${fileName}) on SFTP server.`,
+          );
+          break;
+        }
+
+        case JobStatus.DEPLOYED: {
+          await this.create(existing, tenantId, JobStatus.DEPLOYED);
+          break;
+        }
+
+        default:
+          break;
       }
 
       const query = `

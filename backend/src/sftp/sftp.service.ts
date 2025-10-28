@@ -75,6 +75,19 @@ export class SftpService implements OnModuleInit, OnModuleDestroy {
     async createFile(path: string, data: unknown): Promise<void> {
         try {
 
+            const nodeEnv = this.configService.get<string>('NODE_ENV');
+            const sftpHost = this.configService.get<string>('SFTP_HOST_CONSUMER');
+
+            if (nodeEnv !== 'dev') {
+                throw new BadRequestException(
+                    `Exported status can only be set in the dev environment.`,
+                );
+            }
+
+            if (!sftpHost) {
+                throw new BadRequestException(`Consumer SFTP server credentials not provided.`);
+            }
+
             const buffer = Buffer.from(JSON.stringify(data, null, 2));
             await this.producerSftp.put(buffer, path);
 

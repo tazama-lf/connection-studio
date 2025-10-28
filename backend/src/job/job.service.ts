@@ -212,15 +212,15 @@ export class JobService {
     return result.rows;
   }
 
-  async findOne(id: string, type: ConfigType, tenantId: string) {
+  async findOne(id: string, type: ConfigType) {
     try {
       if (!id || !type) {
         throw new BadRequestException('Both id and type are required.');
       }
       const tableName = type === ConfigType.PUSH ? 'endpoints' : 'job';
 
-      const query = `SELECT * FROM ${tableName} WHERE id = $1 AND tenant_id = $2 LIMIT 1;`;
-      const result = await this.db.query(query, [id.trim(), tenantId.trim()]);
+      const query = `SELECT * FROM ${tableName} WHERE id = $1 LIMIT 1;`;
+      const result = await this.db.query(query, [id]);
 
       const record = result.rows[0];
       if (!record) {
@@ -358,23 +358,12 @@ export class JobService {
       }
 
       const tableName = type === ConfigType.PUSH ? 'endpoints' : 'job';
-      const existingJob = await this.findOne(id, type, tenantId);
+      const existingJob = await this.findOne(id, type);
 
       switch (status) {
         case JobStatus.EXPORTED: {
+
           const nodeEnv = this.configService.get<string>('NODE_ENV');
-          const sftpHost = this.configService.get<string>('SFTP_HOST_CONSUMER');
-
-          if (nodeEnv !== 'dev') {
-            throw new BadRequestException(
-              `Exported status can only be set in the dev environment.`,
-            );
-          }
-
-          if (!sftpHost) {
-            throw new BadRequestException(`Consumer SFTP server credentials not provided.`);
-          }
-
           const fileName = `/upload/${nodeEnv}_de_${tenantId}_${id}.json`;
 
           await this.sftpService.createFile(fileName, {
