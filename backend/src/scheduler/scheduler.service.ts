@@ -131,7 +131,7 @@ export class SchedulerService {
       switch (status) {
         case JobStatus.EXPORTED: {
           const nodeEnv = this.configService.get<string>('NODE_ENV');
-          const fileName = `/upload/${nodeEnv}_cron_${tenantId}_${id}.json`;
+          const fileName = `${nodeEnv}_cron_${tenantId}_${id}`;
 
           await this.sftpService.createFile(fileName, {
             ...existing,

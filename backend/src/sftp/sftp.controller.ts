@@ -1,7 +1,8 @@
-import { BadRequestException, Body, Controller, Get, Query } from '@nestjs/common';
-import { SftpService } from './sftp.service';
+import { BadRequestException, Controller, Get, Query } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { SFTPConnection } from '@tazama-lf/tcs-lib';
+import { SftpService } from './sftp.service';
+import { Serialize } from 'src/interceptors/serialize.interceptor';
+import { FetchSftpDto } from './dto/fetch-sftp.dto';
 
 @Controller('sftp')
 export class SftpController {
@@ -19,9 +20,8 @@ export class SftpController {
         return await this.sftpService.listFiles('/upload', format)
     }
 
-
     @Get('/read')
     async viewFile(@Query('name') name: string) {
-        return await this.sftpService.readFile(`/upload/${name}`)
+        return await this.sftpService.readFile(name)
     }
 }

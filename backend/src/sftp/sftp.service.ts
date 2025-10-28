@@ -4,6 +4,7 @@ import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { uuidPattern } from 'src/utils/constants';
 import SFTPClient from 'ssh2-sftp-client';
 import { SftpFile } from './types/sftp.interface';
+import { createHash } from 'crypto';
 
 @Injectable()
 export class SftpService implements OnModuleInit, OnModuleDestroy {
@@ -72,7 +73,7 @@ export class SftpService implements OnModuleInit, OnModuleDestroy {
         this.loggerService.log('SFTP connections closed.');
     }
 
-    async createFile(path: string, data: unknown): Promise<void> {
+    async createFile(fileName: string, data: unknown): Promise<void> {
         try {
 
             const nodeEnv = this.configService.get<string>('NODE_ENV');
@@ -88,27 +89,50 @@ export class SftpService implements OnModuleInit, OnModuleDestroy {
                 throw new BadRequestException(`Consumer SFTP server credentials not provided.`);
             }
 
-            const buffer = Buffer.from(JSON.stringify(data, null, 2));
-            await this.producerSftp.put(buffer, path);
+            const path = `/upload/${fileName}.json`
+            const integrityFilePath = `/upload/${fileName}.hash`
 
-            this.loggerService.log(`File uploaded to ${path}`);
+            const buffer = Buffer.from(JSON.stringify(data, null, 2));
+            await this.consumerSftp.put(buffer, path);
+
+            const integrityValue = this.computeSHA256(buffer)
+
+            await this.consumerSftp.put(Buffer.from(integrityValue, 'utf8'), integrityFilePath);
+
+            this.loggerService.log(`File uploaded ${fileName}`);
         } catch (error) {
-            this.loggerService.error(`Failed to upload file to ${path}: ${error.message}`);
+            this.loggerService.error(`Failed to upload file ${fileName}: ${error.message}`);
             throw error;
         }
     }
 
-    async readFile(remotePath: string): Promise<Record<string, any>> {
+    async readFile(fileName: string): Promise<Record<string, any>> {
         try {
-            const fileExists = await this.producerSftp.exists(remotePath);
+            const path = `/upload/${fileName}.json`
+            const integrityFilePath = `/upload/${fileName}.hash`
 
-            if (!fileExists) {
-                this.loggerService.warn(`File not found at path: ${remotePath}`);
-                throw new NotFoundException(`File not found at path: ${remotePath}`);
+            const fileExists = await this.producerSftp.exists(path);
+            const integrityFile = await this.producerSftp.exists(integrityFilePath);
+
+            if (!fileExists || !integrityFile) {
+                this.loggerService.warn(`File or its integrity file not found`);
+                throw new NotFoundException(`File or its integrity file not found`);
             }
 
-            const fileContent = await this.producerSftp.get(remotePath);
-            const rawData = fileContent.toString();
+            const [fileBuffer, integrityBuffer] = await Promise.all([
+                this.producerSftp.get(path),
+                this.producerSftp.get(integrityFilePath),
+            ]);
+
+            const expectedValue = integrityBuffer.toString().trim();
+            const computedValue = this.computeSHA256(fileBuffer)
+
+            if (computedValue !== expectedValue) {
+                this.loggerService.error(`Integrity check failed for ${fileName}`);
+                throw new BadRequestException(`Integrity validation failed for ${fileName}`);
+            }
+
+            const rawData = fileBuffer.toString('utf8').trim();
             return JSON.parse(rawData);
         } catch (error: unknown) {
             if (error instanceof NotFoundException || error instanceof BadRequestException) {
@@ -118,9 +142,9 @@ export class SftpService implements OnModuleInit, OnModuleDestroy {
             const message =
                 error instanceof Error ? error.message : JSON.stringify(error);
 
-            this.loggerService.error(`Failed to read file ${remotePath}: ${message}`);
+            this.loggerService.error(`Failed to read file ${fileName}: ${message}`);
             throw new InternalServerErrorException(
-                `Unable to read file at ${remotePath}`,
+                `Unable to read file at ${fileName}`,
             );
         }
     }
@@ -130,12 +154,16 @@ export class SftpService implements OnModuleInit, OnModuleDestroy {
             const regex = new RegExp(
                 `^([a-zA-Z0-9_-]+)_${format}_(\\d+)_(${uuidPattern})\\.json$`
             );
-            const files: SftpFile[] = await this.consumerSftp.list('/upload', (file: SftpFile) => regex.test(file.name));
+            const files: SftpFile[] = await this.producerSftp.list('/upload', (file: SftpFile) => regex.test(file.name));
             this.loggerService.log(`Found ${files.length} matching config files in ${remoteDir}`);
             return files;
         } catch (error) {
             this.loggerService.error(`Failed to list files in ${remoteDir}: ${error.message}`);
             throw error;
         }
+    }
+
+    private computeSHA256(data: Buffer): string {
+        return createHash('sha256').update(data).digest('hex');
     }
 }   

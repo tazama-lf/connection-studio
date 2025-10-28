@@ -55,7 +55,7 @@ export class JobService {
 
   async createPush(job: CreatePushJobDto, tenantId: string, status: JobStatus = JobStatus.INPROGRESS): Promise<Job> {
     try {
-      await this.validateExisting(job.table_name);
+      // await this.validateExisting(job.table_name);
 
       const path = `/tcs/${job.version}/${tenantId}/enrichment${job.path}`;
 
@@ -82,7 +82,7 @@ export class JobService {
 
   async createPull(job: CreatePullJobDto, tenantId: string, status: JobStatus = JobStatus.INPROGRESS): Promise<ISuccess> {
     try {
-      await this.validateExisting(job.table_name);
+      // await this.validateExisting(job.table_name);
 
       const checkScheduleQuery = `
                  SELECT * 
@@ -364,7 +364,7 @@ export class JobService {
         case JobStatus.EXPORTED: {
 
           const nodeEnv = this.configService.get<string>('NODE_ENV');
-          const fileName = `/upload/${nodeEnv}_de_${tenantId}_${id}.json`;
+          const fileName = `${nodeEnv}_de_${tenantId}_${id}`;
 
           await this.sftpService.createFile(fileName, {
             ...existingJob,
