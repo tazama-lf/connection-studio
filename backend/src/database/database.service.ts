@@ -33,28 +33,6 @@ export class DatabaseService implements OnModuleDestroy {
     return result.rows[0]?.exists || false;
   }
 
-  async getConfigFile() {
-    const sftp = new SFTPClient();
-    await sftp.connect({
-      host: this.configService.get<string>('SFTP_HOST_TEST'),
-      port: this.configService.get<number>('SFTP_PORT_TEST'),
-      username: this.configService.get<string>('SFTP_USERNAME_TEST'),
-      password: this.configService.get<string>('SFTP_PASSWORD_TEST'),
-    });
-
-    const remotePath = '/upload/config.json';
-    const fileExists = await sftp.exists(remotePath);
-
-    let config = {};
-
-    if (fileExists) {
-      const fileContent = await sftp.get(remotePath);
-      const rawData = fileContent.toString();
-      config = JSON.parse(rawData);
-    }
-    return config;
-  }
-
   async onModuleDestroy() {
     await this.pool.end();
   }

@@ -1,4 +1,4 @@
-import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { uuidPattern } from 'src/utils/constants';
@@ -82,6 +82,33 @@ export class SftpService implements OnModuleInit, OnModuleDestroy {
         } catch (error) {
             this.loggerService.error(`Failed to upload file to ${path}: ${error.message}`);
             throw error;
+        }
+    }
+
+    async readFile(remotePath: string): Promise<Record<string, any>> {
+        try {
+            const fileExists = await this.producerSftp.exists(remotePath);
+
+            if (!fileExists) {
+                this.loggerService.warn(`File not found at path: ${remotePath}`);
+                throw new NotFoundException(`File not found at path: ${remotePath}`);
+            }
+
+            const fileContent = await this.producerSftp.get(remotePath);
+            const rawData = fileContent.toString();
+            return JSON.parse(rawData);
+        } catch (error: unknown) {
+            if (error instanceof NotFoundException || error instanceof BadRequestException) {
+                throw error;
+            }
+
+            const message =
+                error instanceof Error ? error.message : JSON.stringify(error);
+
+            this.loggerService.error(`Failed to read file ${remotePath}: ${message}`);
+            throw new InternalServerErrorException(
+                `Unable to read file at ${remotePath}`,
+            );
         }
     }
 
