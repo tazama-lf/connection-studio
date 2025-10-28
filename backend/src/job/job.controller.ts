@@ -44,7 +44,7 @@ export class JobController {
   @Get('/:id')
   // @Serialize(PullJobResponseDto)
   async getById(@Param('id') id: string, @Query('type') type: ConfigType) {
-    return await this.jobService.findOne(id, type, '1234');
+    return await this.jobService.findOne(id, type);
   }
 
   @Get('/get/status')
