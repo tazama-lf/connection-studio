@@ -224,6 +224,19 @@ export class JobService {
           `${type === ConfigType.PUSH ? 'Endpoint' : 'Job'} with id ${id} not found.`,
         );
       }
+
+
+      if (tableName === 'job' && record.schedule_id) {
+        const scheduleQuery = `SELECT id, name, cron FROM schedule WHERE id = $1 LIMIT 1;`;
+        const scheduleResult = await this.db.query(scheduleQuery, [record.schedule_id]);
+        const schedule = scheduleResult.rows[0] || null;
+
+        return {
+          ...record,
+          schedule,
+        };
+      }
+
       return record;
     } catch (err) {
       this.loggerService.error(`Error fetching ${type} record: ${err.message}`);

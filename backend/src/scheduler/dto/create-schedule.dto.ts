@@ -1,12 +1,10 @@
+import { Type } from 'class-transformer';
 import {
   IsDate,
-  IsEnum,
   IsNumber,
   IsOptional,
-  IsString,
+  IsString
 } from 'class-validator';
-import { ScheduleStatus } from '@tazama-lf/tcs-lib';
-import { Type } from 'class-transformer';
 
 export class CreateScheduleJobDto {
   @IsString()
@@ -17,9 +15,6 @@ export class CreateScheduleJobDto {
 
   @IsNumber()
   iterations: number;
-
-  @IsEnum(ScheduleStatus)
-  schedule_status: ScheduleStatus = ScheduleStatus.ACTIVE;
 
   @IsDate()
   @Type(() => Date)

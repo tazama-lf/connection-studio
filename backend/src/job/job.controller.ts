@@ -14,6 +14,8 @@ import { ConfigType, JobStatus, ScheduleStatus } from '@tazama-lf/tcs-lib';
 import { CreatePushJobDto } from './dto/create-push-job.dto';
 import { JobService } from './job.service';
 import { CreatePullJobDto } from './dto/create-pull-job.dto';
+import { Serialize } from 'src/interceptors/serialize.interceptor';
+import { PullJobResponseDto } from './dto/fetch-pull-job.dto';
 
 @Controller('job')
 // @UseGuards(TazamaAuthGuard)
@@ -42,6 +44,7 @@ export class JobController {
   }
 
   @Get('/:id')
+  @Serialize(PullJobResponseDto)
   async getById(@Param('id') id: string, @Query('type') type: ConfigType) {
     return await this.jobService.findOne(id, type, '1234');
   }

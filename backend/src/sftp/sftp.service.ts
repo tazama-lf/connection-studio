@@ -1,10 +1,9 @@
-import { BadRequestException, Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import { SFTPConnection } from '@tazama-lf/tcs-lib';
+import { uuidPattern } from 'src/utils/constants';
 import SFTPClient from 'ssh2-sftp-client';
 import { SftpFile } from './types/sftp.interface';
-import { uuidPattern } from 'src/utils/constants';
-import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class SftpService implements OnModuleInit, OnModuleDestroy {
