@@ -1,11 +1,12 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from '../features/auth/contexts/AuthContext';
-import { isApprover } from '../utils/roleUtils';
+import { isApprover, isPublisher } from '../utils/roleUtils';
 import Login from '../features/auth/pages/Login';
 import Dashboard from '../features/dashboard/pages/Dashboard';
 import DEMSModule from '../features/dems/pages/DEMSModule';
 import ApproverModule from '../features/approver/pages/ApproverModule';
+import PublisherModule from '../features/publisher/pages/PublisherModule';
 import CRONModule from '../features/cron/pages/CRONModule';
 import DataEnrichmentModule from '../features/data-enrichment/pages/DataEnrichmentModule';
 import NotFoundPage from '../pages/NotFoundPage';
@@ -33,6 +34,21 @@ const ApproverRoute = ({
     return <Navigate to={ROUTES.LOGIN} />;
   }
   if (!user?.claims || !isApprover(user.claims)) {
+    return <Navigate to={ROUTES.DASHBOARD} />;
+  }
+  return <>{children}</>;
+};
+
+const PublisherRoute = ({
+  children
+}: {
+  children: React.ReactNode;
+}) => {
+  const { isAuthenticated, user } = useAuth();
+  if (!isAuthenticated) {
+    return <Navigate to={ROUTES.LOGIN} />;
+  }
+  if (!user?.claims || !isPublisher(user.claims)) {
     return <Navigate to={ROUTES.DASHBOARD} />;
   }
   return <>{children}</>;
@@ -81,6 +97,11 @@ export const AppRoutes: React.FC = () => {
         <ApproverRoute>
           <ApproverModule />
         </ApproverRoute>
+      } />
+      <Route path={ROUTES.PUBLISHER} element={
+        <PublisherRoute>
+          <PublisherModule />
+        </PublisherRoute>
       } />
       <Route path={ROUTES.DATA_ENRICHMENT} element={
         <EditorRoute>

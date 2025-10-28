@@ -1,13 +1,10 @@
 import React, { useState } from 'react';
-import { Eye, Play, MoreVertical, ChevronDown, FilterIcon, Edit } from 'lucide-react';
+import { Eye, MoreVertical, ChevronDown, FilterIcon, Edit } from 'lucide-react';
 import type { DataEnrichmentJobResponse, JobStatus } from '../types';
 import { Button } from '../../../shared/components/Button';
-import { dataEnrichmentApi } from '../services/dataEnrichmentApi';
-import { useToast } from '../../../shared/providers/ToastProvider';
 import { useAuth } from '../../auth/contexts/AuthContext';
 import { isEditor, isApprover } from '../../../utils/roleUtils';
 import { DropdownMenuWithAutoDirection } from './DropdownMenuWithAutoDirection';
-import { getUserFriendlyErrorMessage } from '../../../shared/utils/errorUtils';
 
 interface JobListProps {
   jobs: DataEnrichmentJobResponse[];
@@ -130,29 +127,6 @@ export const JobList: React.FC<JobListProps> = (props) => {
   const { user } = useAuth();
   const userIsEditor = user?.claims ? isEditor(user.claims) : false;
   const userIsApprover = user?.claims ? isApprover(user.claims) : false;
-  
-  console.log('JobList user roles:', { userIsEditor, userIsApprover, user: user?.username });
-  
-  console.log('=== JobList COMPONENT RENDER ===');
-  console.log('Time:', new Date().toISOString());
-  console.log('Props received:');
-  console.log('  - jobs:', jobs);
-  console.log('  - jobs type:', typeof jobs);
-  console.log('  - jobs is Array?:', Array.isArray(jobs));
-  console.log('  - jobs length:', jobs?.length || 'N/A');
-  console.log('  - isLoading:', isLoading);
-  console.log('  - onViewLogs:', typeof onViewLogs);
-  console.log('  - onRefresh:', typeof onRefresh);
-  console.log('  - statusFilter:', statusFilter);
-  
-  if (jobs && jobs.length > 0) {
-    console.log('Jobs array contains', jobs.length, 'items');
-    console.log('First job:', JSON.stringify(jobs[0], null, 2));
-  } else {
-    console.log('❌ Jobs array is empty or null/undefined');
-  }
-  
-  const { showSuccess, showError } = useToast();
   const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
   const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
   const [recordStatusDropdownOpen, setRecordStatusDropdownOpen] = useState(false);
@@ -184,18 +158,6 @@ export const JobList: React.FC<JobListProps> = (props) => {
 
   // Jobs are already filtered and paginated by parent component
   console.log('Jobs received (already filtered & paginated):', jobs.length);
-
-  const handleActivationToggle = async (jobId: string, isActive: boolean, jobType: 'PULL' | 'PUSH') => {
-    try {
-      await dataEnrichmentApi.updateJobActivation(jobId, isActive, jobType);
-      showSuccess(`Job ${isActive ? 'activated' : 'deactivated'} successfully`);
-      onRefresh?.();
-    } catch (error) {
-      console.error('Failed to update job activation:', error);
-      const userFriendlyMessage = getUserFriendlyErrorMessage(error, isActive ? 'activate' : 'deactivate');
-      showError(userFriendlyMessage);
-    }
-  };
 
   if (isLoading) {
     console.log('🔄 Rendering LOADING state');
@@ -762,35 +724,6 @@ export const JobList: React.FC<JobListProps> = (props) => {
                                 <Edit className="w-4 h-4 mr-2" />
                                 Edit
                               </button>
-                            )}
-
-                            {/* Activation Controls - Only for Approvers */}
-                            {userIsApprover && (
-                              <>
-                                <hr className="my-1 border-gray-100" />
-                                <button
-                                  onClick={() => {
-                                    handleActivationToggle(job.id, true, jobType);
-                                    setDropdownOpen(null);
-                                  }}
-                                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                >
-                                  <Play className="w-4 h-4 mr-2" />
-                                  Activate
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    handleActivationToggle(job.id, false, jobType);
-                                    setDropdownOpen(null);
-                                  }}
-                                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                >
-                                  <div className="w-4 h-4 mr-2 flex items-center justify-center">
-                                    <span>⏸</span>
-                                  </div>
-                                  Deactivate
-                                </button>
-                              </>
                             )}
                           </div>
                         </DropdownMenuWithAutoDirection>

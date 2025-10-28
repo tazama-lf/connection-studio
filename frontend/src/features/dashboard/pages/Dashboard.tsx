@@ -1,11 +1,11 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthHeader } from '../../../shared/components/AuthHeader';
-import { ActivityIcon, DatabaseIcon, ClockIcon, CheckCircleIcon } from 'lucide-react';
+import { ActivityIcon, DatabaseIcon, ClockIcon, CheckCircleIcon, UploadIcon } from 'lucide-react';
 import { NAVIGATION } from '../../../shared/config/routes.config';
 import { APP_CONFIG } from '../../../shared/config/app.config';
 import { useAuth } from '../../auth/contexts/AuthContext';
-import { isApprover } from '../../../utils/roleUtils';
+import { isApprover, isPublisher } from '../../../utils/roleUtils';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -14,14 +14,19 @@ const Dashboard: React.FC = () => {
   // Filter modules based on user roles
   const userClaims = user?.claims || [];
   const isUserApprover = isApprover(userClaims);
+  const isUserPublisher = isPublisher(userClaims);
   
   const filteredModules = NAVIGATION.mainModules.filter(module => {
     // If user is an approver, only show the approver module
     if (isUserApprover) {
       return module.id === 'approver';
     }
-    // For non-approvers, show all modules except approver
-    return module.id !== 'approver';
+    // If user is a publisher, only show the publisher module
+    if (isUserPublisher) {
+      return module.id === 'publisher';
+    }
+    // For everyone else (editors), show all modules except approver and publisher
+    return module.id !== 'approver' && module.id !== 'publisher';
   });
   
   const modules = filteredModules.map((module: any) => ({
@@ -29,7 +34,8 @@ const Dashboard: React.FC = () => {
     icon: module.icon === 'ActivityIcon' ? <ActivityIcon size={24} /> :
           module.icon === 'DatabaseIcon' ? <DatabaseIcon size={24} /> :
           module.icon === 'CheckCircleIcon' ? <CheckCircleIcon size={24} /> :
-          module.icon === 'ClockIcon' ? <ClockIcon size={24} /> : null,
+          module.icon === 'ClockIcon' ? <ClockIcon size={24} /> :
+          module.icon === 'UploadIcon' ? <UploadIcon size={24} /> : null,
     action: () => navigate(module.path)
   }));
 

@@ -9,6 +9,7 @@ export const ROUTES = {
   DATA_ENRICHMENT: '/de',
   CRON: '/cron',
   APPROVER: '/approver',
+  PUBLISHER: '/publisher',
 
   // Nested routes
   DEMS_ENDPOINTS: '/dems/endpoints',
@@ -55,6 +56,14 @@ export const NAVIGATION = {
       path: ROUTES.APPROVER,
       icon: 'ActivityIcon',
       color: 'bg-blue-100 text-blue-600',
+    },
+    {
+      id: 'publisher',
+      name: 'Publisher Dashboard',
+      description: 'Publish approved configurations and deploy endpoints',
+      path: ROUTES.PUBLISHER,
+      icon: 'UploadIcon',
+      color: 'bg-orange-100 text-orange-600',
     },
   ],
 } as const;

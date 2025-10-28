@@ -2,7 +2,7 @@
  * Utility functions for role-based UI logic
  */
 
-export type UserRole = 'editor' | 'approver' | 'publisher';
+export type UserRole = 'editor' | 'approver' | 'publisher' | 'exporter';
 
 /**
  * Check if user has a specific role
@@ -33,6 +33,14 @@ export const isPublisher = (userClaims: string[]): boolean => {
 };
 
 /**
+ * Check if user is an exporter
+ */
+export const isExporter = (userClaims: string[]): boolean => {
+  return hasRole(userClaims, 'exporter');
+};
+
+
+/**
  * Get the primary role for display purposes (in order of precedence)
  */
 export const getPrimaryRole = (userClaims: string[]): UserRole | null => {
@@ -61,6 +69,11 @@ export const getRoleDisplayInfo = (role: UserRole) => {
       label: 'Publisher',
       color: 'bg-purple-100 text-purple-800',
       description: 'Publish and deploy approved configurations',
+    },
+    exporter: {
+      label: 'Exporter',
+      color: 'bg-yellow-100 text-yellow-800',
+      description: 'Export data and configurations',
     },
   };
 

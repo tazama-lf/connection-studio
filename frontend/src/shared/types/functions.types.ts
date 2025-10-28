@@ -2,7 +2,8 @@
 export type AllowedFunctionName =
   | 'addAccount'
   | 'addAccountHolder'
-  | 'addEntity';
+  | 'addEntity'
+  | 'transactionRelationship';
 
 export interface FunctionDefinition {
   params: string[];
@@ -28,7 +29,13 @@ export interface FunctionResponseDto {
 export interface FunctionConfig {
   name: AllowedFunctionName;
   displayName: string;
-  parameters: {
+  requiredParameters: {
+    name: string;
+    displayName: string;
+    type: string;
+    description: string;
+  }[];
+  optionalParameters: {
     name: string;
     displayName: string;
     type: string;
@@ -47,7 +54,7 @@ export const FUNCTION_CONFIGS: Record<AllowedFunctionName, FunctionConfig> = {
   addAccount: {
     name: 'addAccount',
     displayName: 'Add Account',
-    parameters: [
+    requiredParameters: [
       {
         name: 'debtorAcctId',
         displayName: 'Debtor Account ID',
@@ -67,6 +74,7 @@ export const FUNCTION_CONFIGS: Record<AllowedFunctionName, FunctionConfig> = {
         description: 'Tenant identifier',
       },
     ],
+    optionalParameters: [],
     configurations: [
       {
         name: 'debtor-account',
@@ -85,7 +93,7 @@ export const FUNCTION_CONFIGS: Record<AllowedFunctionName, FunctionConfig> = {
   addAccountHolder: {
     name: 'addAccountHolder',
     displayName: 'Add Account Holder',
-    parameters: [
+    requiredParameters: [
       {
         name: 'accountHolderId',
         displayName: 'Account Holder ID',
@@ -105,6 +113,7 @@ export const FUNCTION_CONFIGS: Record<AllowedFunctionName, FunctionConfig> = {
         description: 'Tenant identifier',
       },
     ],
+    optionalParameters: [],
     configurations: [
       {
         name: 'create-account-holder',
@@ -117,7 +126,7 @@ export const FUNCTION_CONFIGS: Record<AllowedFunctionName, FunctionConfig> = {
   addEntity: {
     name: 'addEntity',
     displayName: 'Add Entity',
-    parameters: [
+    requiredParameters: [
       {
         name: 'creditorId',
         displayName: 'Creditor ID',
@@ -143,6 +152,7 @@ export const FUNCTION_CONFIGS: Record<AllowedFunctionName, FunctionConfig> = {
         description: 'Creation timestamp',
       },
     ],
+    optionalParameters: [],
     configurations: [
       {
         name: 'creditor-entity',
@@ -158,4 +168,98 @@ export const FUNCTION_CONFIGS: Record<AllowedFunctionName, FunctionConfig> = {
       },
     ],
   },
+  transactionRelationship: {
+    name: 'transactionRelationship',  
+    displayName: 'Transaction Relationship',
+    requiredParameters: [
+      {
+        name: 'from',
+        displayName: 'From',
+        type: 'string',
+        description: 'Usually from DataCache, e.g., accounts/${debtorAcctId}',
+      },
+      {
+        name: 'to',
+        displayName: 'To',
+        type: 'string',
+        description: 'Usually from DataCache, e.g., accounts/${creditorAcctId}',
+      },
+      {
+        name: 'TxTp',
+        displayName: 'Transaction Type',
+        type: 'string',
+        description: 'From transaction message',
+      },
+      {
+        name: 'MsgId',
+        displayName: 'Message ID',
+        type: 'string',
+        description: 'From transaction message',
+      },
+      {
+        name: 'CreDtTm',
+        displayName: 'Creation Date Time',
+        type: 'string',
+        description: 'From transaction message',
+      },
+      {
+        name: 'PmtInfId',
+        displayName: 'Payment Information ID',
+        type: 'string',
+        description: 'From transaction message',
+      },
+      {
+        name: 'EndToEndId',
+        displayName: 'End to End ID',
+        type: 'string',
+        description: 'From transaction message',
+      },
+      {
+        name: 'TenantId',
+        displayName: 'Tenant ID',
+        type: 'string',
+        description: 'From context or transaction',
+      },
+    ],
+    optionalParameters: [
+      {
+        name: 'Amt',
+        displayName: 'Amount',
+        type: 'string',
+        description: 'From transaction message (optional)',
+      },
+      {
+        name: 'Ccy',
+        displayName: 'Currency',
+        type: 'string',
+        description: 'From transaction message (optional)',
+      },
+      {
+        name: 'lat',
+        displayName: 'Latitude',
+        type: 'string',
+        description: 'From transaction message (optional)',
+      },
+      {
+        name: 'long',
+        displayName: 'Longitude',
+        type: 'string',
+        description: 'From transaction message (optional)',
+      },
+      {
+        name: 'TxSts',
+        displayName: 'Transaction Status',
+        type: 'string',
+        description: 'Set during processing (optional)',
+      },
+    ],
+    configurations: [
+      {
+        name: 'create-transaction-relationship',
+        displayName: 'Create Transaction Relationship',
+        parameters: 'from, to, TxTp, MsgId, CreDtTm, PmtInfId, EndToEndId, TenantId',
+        description: 'Parameters: from, to, TxTp, MsgId, CreDtTm, PmtInfId, EndToEndId, TenantId',
+      },
+    ],
+  }
 };

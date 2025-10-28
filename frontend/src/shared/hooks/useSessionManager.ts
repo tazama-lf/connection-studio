@@ -8,11 +8,11 @@ interface UseSessionManagerOptions {
   onSessionWarning?: () => void;
 }
 
-// API endpoints
-const SESSION_STATUS_URL = '/auth/session/status';
-const SESSION_REFRESH_URL = '/auth/session/refresh';
-const TOKEN_REFRESH_URL = '/auth/token/refresh';
-const LOGOUT_URL = '/auth/logout';
+// API endpoints (disabled)
+// const SESSION_STATUS_URL = '/auth/session/status';
+// const SESSION_REFRESH_URL = '/auth/session/refresh';
+// const TOKEN_REFRESH_URL = '/auth/token/refresh';
+// const LOGOUT_URL = '/auth/logout';
 
 const ACTIVITY_EVENTS = [
   'mousedown',
@@ -33,17 +33,16 @@ export function useSessionManager({
   const lastActivityRef = useRef<number>(Date.now());
   const warnedRef = useRef(false);
 
-  // Helper: Call backend API
-  const callApi = useCallback(async (url: string, method: string = 'POST') => {
-    const res = await fetch(url, { method, credentials: 'include' });
-    if (!res.ok) throw new Error(`API ${url} failed: ${res.status}`);
-    return res.json();
-  }, []);
+  // Helper: Call backend API (disabled)
+  // const callApi = useCallback(async (_url: string, _method: string = 'POST') => {
+  //   // API calls disabled - returning empty promise
+  //   return Promise.resolve({});
+  // }, []);
 
-  // Refresh session (extend timeout)
+  // Refresh session (extend timeout) - disabled
   const refreshSession = useCallback(async () => {
     try {
-      await callApi(SESSION_REFRESH_URL, 'POST');
+      // await callApi(SESSION_REFRESH_URL, 'POST');
       lastActivityRef.current = Date.now();
       warnedRef.current = false;
       setupTimers();
@@ -51,14 +50,14 @@ export function useSessionManager({
       // If refresh fails, expire session
       handleSessionExpired();
     }
-  }, [callApi]);
+  }, []);
 
   // Handle session expired
   const handleSessionExpired = useCallback(() => {
     if (onSessionExpired) onSessionExpired();
     cleanupTimers();
-    callApi(LOGOUT_URL, 'POST').catch(() => {});
-  }, [onSessionExpired, callApi]);
+    // callApi(LOGOUT_URL, 'POST').catch(() => {});
+  }, [onSessionExpired]);
 
   // Handle warning
   const handleSessionWarning = useCallback(() => {
@@ -99,8 +98,8 @@ export function useSessionManager({
 
   // Mount/unmount logic
   useEffect(() => {
-    // On mount, check session status
-    callApi(SESSION_STATUS_URL, 'GET').catch(handleSessionExpired);
+    // On mount, check session status (disabled)
+    // callApi(SESSION_STATUS_URL, 'GET').catch(handleSessionExpired);
     setupTimers();
     // Add listeners
     ACTIVITY_EVENTS.forEach((event) => {
@@ -113,12 +112,12 @@ export function useSessionManager({
       cleanupTimers();
     };
     // eslint-disable-next-line
-  }, [setupTimers, handleActivity, callApi]);
+  }, [setupTimers, handleActivity]);
 
-  // Token refresh (optional, can be called by consumer)
+  // Token refresh (optional, can be called by consumer) - disabled
   const refreshToken = useCallback(async () => {
-    await callApi(TOKEN_REFRESH_URL, 'POST');
-  }, [callApi]);
+    // await callApi(TOKEN_REFRESH_URL, 'POST');
+  }, []);
 
   return {
     refreshSession,

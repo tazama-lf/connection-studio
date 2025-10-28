@@ -25,30 +25,55 @@ interface FunctionSelectionFormProps {
 
 const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({ onAddFunction, onClose }) => {
   const [selectedFunction, setSelectedFunction] = useState<AllowedFunctionName>('addAccount');
-  const [selectedConfiguration, setSelectedConfiguration] = useState('');
+  const [selectedOptionalParams, setSelectedOptionalParams] = useState<string[]>([]);
+  const [showOptionalDropdown, setShowOptionalDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowOptionalDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const functionConfig = FUNCTION_CONFIGS[selectedFunction];
   
   const handleAddFunction = () => {
-    const config = functionConfig.configurations.find(c => c.name === selectedConfiguration);
-    if (!config) return;
+    // Combine required parameters with selected optional parameters
+    const requiredParams = functionConfig.requiredParameters.map(p => p.name);
+    const allParams = [...requiredParams, ...selectedOptionalParams];
     
-    const params = config.parameters.split(', ').map(p => p.trim());
     onAddFunction({
       functionName: selectedFunction,
-      params
+      params: allParams
     });
   };
 
+  const handleOptionalParamToggle = (paramName: string) => {
+    setSelectedOptionalParams(prev => 
+      prev.includes(paramName) 
+        ? prev.filter(p => p !== paramName)
+        : [...prev, paramName]
+    );
+  };
+
+  const hasOptionalParams = functionConfig.optionalParameters && functionConfig.optionalParameters.length > 0;
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">Select Function</label>
         <select
           value={selectedFunction}
           onChange={(e) => {
             setSelectedFunction(e.target.value as AllowedFunctionName);
-            setSelectedConfiguration(''); // Reset configuration when function changes
+            setSelectedOptionalParams([]); // Reset optional params when function changes
+            setShowOptionalDropdown(false);
           }}
           className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         >
@@ -60,35 +85,132 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({ onAddFunc
         </select>
       </div>
 
+      {/* Required Parameters Section */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Select Parameter Configuration</label>
-        <div className="space-y-2">
-          {functionConfig.configurations.map((config) => (
-            <div
-              key={config.name}
-              className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                selectedConfiguration === config.name
-                  ? 'border-blue-500 bg-blue-50'
-                  : 'border-gray-300 hover:border-gray-400'
-              }`}
-              onClick={() => setSelectedConfiguration(config.name)}
-            >
-              <div className="flex items-center space-x-2">
+        <label className="block text-sm font-medium text-gray-700 mb-2">Required Parameters</label>
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="space-y-2">
+            {functionConfig.requiredParameters.map((param) => (
+              <div key={param.name} className="flex items-center space-x-2">
                 <input
-                  type="radio"
-                  name="configuration"
-                  value={config.name}
-                  checked={selectedConfiguration === config.name}
-                  onChange={() => setSelectedConfiguration(config.name)}
-                  className="text-blue-600"
+                  type="checkbox"
+                  checked={true}
+                  disabled={true}
+                  className="text-blue-600 bg-blue-100 cursor-not-allowed"
                 />
                 <div>
-                  <h4 className="font-medium">{config.displayName}</h4>
-                  <p className="text-sm text-gray-600">{config.description}</p>
+                  <span className="font-medium text-blue-900">{param.displayName}</span>
+                  <span className="text-sm text-blue-700 ml-2">({param.name})</span>
+                  <p className="text-xs text-blue-600 mt-1">{param.description}</p>
                 </div>
               </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Optional Parameters Section */}
+      {hasOptionalParams && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Optional Parameters</label>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowOptionalDropdown(!showOptionalDropdown)}
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-left flex justify-between items-center"
+            >
+              <span className="text-gray-700">
+                {selectedOptionalParams.length === 0 
+                  ? 'Select optional parameters...' 
+                  : `${selectedOptionalParams.length} selected`
+                }
+              </span>
+              <svg 
+                className={`w-5 h-5 text-gray-400 transform transition-transform ${showOptionalDropdown ? 'rotate-180' : ''}`} 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {showOptionalDropdown && (
+              <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                <div className="p-2">
+                  {functionConfig.optionalParameters.map((param) => (
+                    <div key={param.name} className="flex items-start space-x-2 p-2 hover:bg-gray-50 rounded">
+                      <input
+                        type="checkbox"
+                        id={`param-${param.name}`}
+                        checked={selectedOptionalParams.includes(param.name)}
+                        onChange={() => handleOptionalParamToggle(param.name)}
+                        className="text-blue-600 mt-1"
+                      />
+                      <div className="flex-1">
+                        <label 
+                          htmlFor={`param-${param.name}`} 
+                          className="font-medium text-gray-900 cursor-pointer"
+                        >
+                          {param.displayName}
+                        </label>
+                        <span className="text-sm text-gray-500 ml-2">({param.name})</span>
+                        <p className="text-xs text-gray-600 mt-1">{param.description}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Selected Optional Parameters Display */}
+          {selectedOptionalParams.length > 0 && (
+            <div className="mt-3">
+              <p className="text-sm font-medium text-gray-700 mb-2">Selected Optional Parameters:</p>
+              <div className="flex flex-wrap gap-2">
+                {selectedOptionalParams.map((paramName) => {
+                  const param = functionConfig.optionalParameters.find(p => p.name === paramName);
+                  return (
+                    <span 
+                      key={paramName}
+                      className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800"
+                    >
+                      {param?.displayName || paramName}
+                      <button
+                        type="button"
+                        onClick={() => handleOptionalParamToggle(paramName)}
+                        className="ml-1 text-green-600 hover:text-green-800"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  );
+                })}
+              </div>
             </div>
-          ))}
+          )}
+        </div>
+      )}
+
+      {/* Function Preview */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Function Preview</label>
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+          <div className="space-y-2">
+            <div className="flex items-center space-x-2">
+              <span className="font-medium text-gray-900">{functionConfig.displayName}</span>
+              <span className="text-sm text-gray-500">({selectedFunction})</span>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">
+                <strong>Parameters:</strong> {[
+                  ...functionConfig.requiredParameters.map(p => p.name),
+                  ...selectedOptionalParams
+                ].join(', ')}
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -98,7 +220,7 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({ onAddFunc
         </Button>
         <Button 
           onClick={handleAddFunction}
-          disabled={!selectedConfiguration}
+          disabled={false}
         >
           Add Function
         </Button>
@@ -701,13 +823,12 @@ interface EditEndpointModalProps {
       console.log('🔍 Checking for existing mappings in database...');
       const configResponse = await configApi.getConfig(createdEndpoint.id);
 
-      if (!configResponse.success || !configResponse.config?.mapping || configResponse.config.mapping.length === 0) {
+      if (!configResponse.success) {
         console.log('❌ No mapping found in database');
-        setError('At least one mapping must be created before deployment');
         return;
       }
 
-      console.log('✅ Found mappings in database:', configResponse.config.mapping.length);
+     
     } catch (error) {
       console.error('❌ Error checking mappings:', error);
       setError('Failed to validate mappings. Please try again.');
