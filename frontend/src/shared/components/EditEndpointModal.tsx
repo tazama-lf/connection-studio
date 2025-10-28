@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { XIcon } from 'lucide-react';
 import { PayloadEditor } from './PayloadEditor';
 import { MappingUtility } from './MappingUtility';
@@ -25,6 +25,7 @@ interface FunctionSelectionFormProps {
 
 const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({ onAddFunction, onClose }) => {
   const [selectedFunction, setSelectedFunction] = useState<AllowedFunctionName>('addAccount');
+  const [selectedConfiguration, setSelectedConfiguration] = useState('');
   const [selectedOptionalParams, setSelectedOptionalParams] = useState<string[]>([]);
   const [showOptionalDropdown, setShowOptionalDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -44,9 +45,12 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({ onAddFunc
   const functionConfig = FUNCTION_CONFIGS[selectedFunction];
   
   const handleAddFunction = () => {
-    // Combine required parameters with selected optional parameters
-    const requiredParams = functionConfig.requiredParameters.map(p => p.name);
-    const allParams = [...requiredParams, ...selectedOptionalParams];
+    const config = functionConfig.configurations.find(c => c.name === selectedConfiguration);
+    if (!config) return;
+    
+    // Combine base parameters with selected optional parameters
+    const baseParams = config.parameters.split(', ').map(p => p.trim());
+    const allParams = [...baseParams, ...selectedOptionalParams];
     
     onAddFunction({
       functionName: selectedFunction,
@@ -65,13 +69,14 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({ onAddFunc
   const hasOptionalParams = functionConfig.optionalParameters && functionConfig.optionalParameters.length > 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">Select Function</label>
         <select
           value={selectedFunction}
           onChange={(e) => {
             setSelectedFunction(e.target.value as AllowedFunctionName);
+            setSelectedConfiguration(''); // Reset configuration when function changes
             setSelectedOptionalParams([]); // Reset optional params when function changes
             setShowOptionalDropdown(false);
           }}
@@ -85,35 +90,43 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({ onAddFunc
         </select>
       </div>
 
-      {/* Required Parameters Section */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Required Parameters</label>
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div className="space-y-2">
-            {functionConfig.requiredParameters.map((param) => (
-              <div key={param.name} className="flex items-center space-x-2">
+        <label className="block text-sm font-medium text-gray-700 mb-2">Select Parameter Configuration</label>
+        <div className="space-y-2">
+          {functionConfig.configurations.map((config) => (
+            <div
+              key={config.name}
+              className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                selectedConfiguration === config.name
+                  ? 'border-blue-500 bg-blue-50'
+                  : 'border-gray-300 hover:border-gray-400'
+              }`}
+              onClick={() => setSelectedConfiguration(config.name)}
+            >
+              <div className="flex items-center space-x-2">
                 <input
-                  type="checkbox"
-                  checked={true}
-                  disabled={true}
-                  className="text-blue-600 bg-blue-100 cursor-not-allowed"
+                  type="radio"
+                  name="configuration"
+                  value={config.name}
+                  checked={selectedConfiguration === config.name}
+                  onChange={() => setSelectedConfiguration(config.name)}
+                  className="text-blue-600"
                 />
                 <div>
-                  <span className="font-medium text-blue-900">{param.displayName}</span>
-                  <span className="text-sm text-blue-700 ml-2">({param.name})</span>
-                  <p className="text-xs text-blue-600 mt-1">{param.description}</p>
+                  <h4 className="font-medium">{config.displayName}</h4>
+                  <p className="text-sm text-gray-600">{config.description}</p>
                 </div>
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* Optional Parameters Section */}
-      {hasOptionalParams && (
+      {/* Optional Parameters Section - Only show if function has optional parameters */}
+      {hasOptionalParams && selectedConfiguration && (
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Optional Parameters</label>
-          <div className="relative">
+          <div className="relative" ref={dropdownRef}>
             <button
               type="button"
               onClick={() => setShowOptionalDropdown(!showOptionalDropdown)}
@@ -193,34 +206,13 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({ onAddFunc
         </div>
       )}
 
-      {/* Function Preview */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Function Preview</label>
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-          <div className="space-y-2">
-            <div className="flex items-center space-x-2">
-              <span className="font-medium text-gray-900">{functionConfig.displayName}</span>
-              <span className="text-sm text-gray-500">({selectedFunction})</span>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">
-                <strong>Parameters:</strong> {[
-                  ...functionConfig.requiredParameters.map(p => p.name),
-                  ...selectedOptionalParams
-                ].join(', ')}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <div className="flex justify-end space-x-3 pt-4">
         <Button variant="secondary" onClick={onClose}>
           Cancel
         </Button>
         <Button 
           onClick={handleAddFunction}
-          disabled={false}
+          disabled={!selectedConfiguration}
         >
           Add Function
         </Button>
