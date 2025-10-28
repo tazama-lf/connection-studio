@@ -74,9 +74,49 @@ export class SimulationService {
     let mappingsApplied = 0;
 
     try {
+      // Validate endpointId
+      if (!dto.endpointId || isNaN(Number(dto.endpointId))) {
+        return {
+          status: 'FAILED',
+          errors: [
+            {
+              field: 'endpointId',
+              message: `Invalid endpoint ID: ${dto.endpointId}. Must be a valid number.`,
+            },
+          ],
+          stages: [
+            {
+              name: 'Validation',
+              status: 'FAILED',
+              message: 'Invalid endpoint ID provided',
+              errors: [
+                {
+                  field: 'endpointId',
+                  message: `Invalid endpoint ID: ${dto.endpointId}. Must be a valid number.`,
+                },
+              ],
+            },
+          ],
+          tcsResult: null,
+          transformedPayload: {},
+          summary: {
+            endpointId: dto.endpointId as any,
+            tenantId,
+            timestamp,
+            mappingsApplied: 0,
+            totalStages: 1,
+            passedStages: 0,
+            failedStages: 1,
+          },
+        };
+      }
+
+      // Ensure endpointId is a number
+      const endpointId = Number(dto.endpointId);
+
       // Stage 1: Load Configuration
       const configStage = await this.stageLoadConfig(
-        dto.endpointId,
+        endpointId,
         tenantId,
         token,
       );

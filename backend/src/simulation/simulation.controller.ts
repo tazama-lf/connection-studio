@@ -18,9 +18,20 @@ export class SimulationController {
 
   @Post('run')
   async simulateMapping(
-    @Body() dto: SimulatePayloadDto,
+    @Body() body: any,
     @User() user?: any,
   ): Promise<SimulationResult> {
+    this.logger.log(`DEBUG - Full body received: ${JSON.stringify(body)}`);
+
+    // Map frontend field names to backend DTO
+    const dto: SimulatePayloadDto = {
+      endpointId: body.configId || body.endpointId,
+      payload: body.testPayload || body.payload,
+      payloadType: body.payloadType,
+      tcsMapping: body.tcsMapping,
+    };
+
+    this.logger.log(`DEBUG - Mapped DTO: ${JSON.stringify(dto)}`);
     this.logger.log(
       `TCS simulation requested for endpoint ${dto.endpointId} by user ${user?.id || 'unknown'}`,
     );
