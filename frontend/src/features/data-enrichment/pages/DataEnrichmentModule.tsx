@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { AuthHeader } from '../../../shared/components/AuthHeader';
 import { Button } from '../../../shared/components/Button';
-import { Plus } from 'lucide-react';
+import { Plus, Clock } from 'lucide-react';
 
 // New job management components
 import JobList from '../components/JobList';
 import JobDetailsModal from '../components/JobDetailsModal';
+import CronJobManagement from '../components/CronJobManagement';
 import { DataEnrichmentFormModal } from '../../../shared/components/DataEnrichmentFormModal';
 import { dataEnrichmentApi } from '../services/dataEnrichmentApi';
 import type { DataEnrichmentJobResponse, JobStatus, CreatePushJobDto, CreatePullJobDto } from '../types';
@@ -157,7 +158,7 @@ const DataEnrichmentModule: React.FC = () => {
       
       // Show success message
       const jobName = jobResponse?.endpoint_name || 'New endpoint';
-      showSuccess(`${jobName} has been successfully sent for approval!`);
+      showSuccess(`${jobName} has been saved successfully! You can now send it for approval.`);
     } catch (error) {
       console.error('Failed to handle job creation:', error);
       showError('Failed to handle job creation');
@@ -226,17 +227,29 @@ const DataEnrichmentModule: React.FC = () => {
       // Use the create API methods to create new jobs (editing creates new versions)
       let response;
       if (jobType === 'push') {
+        // Generate a unique table name for the new version by appending timestamp
+        const originalTableName = selectedJob.table_name || '';
+        const versionSuffix = `_v${Date.now()}`;
+        const newTableName = updatedJob.table_name 
+          ? updatedJob.table_name  // If user changed it, use their value
+          : `${originalTableName}${versionSuffix}`; // Otherwise, create versioned name
+        
+        // Build push job data - explicitly only include fields needed for PUSH jobs
         const pushData: CreatePushJobDto = {
-          // id: selectedJob.id, // Remove ID - we're creating new jobs, not updating
           endpoint_name: updatedJob.endpoint_name || selectedJob.endpoint_name || '',
           description: updatedJob.description || selectedJob.description,
           version: updatedJob.version || selectedJob.version || 'v1',
           path: updatedJob.path || selectedJob.path || '',
-          table_name: updatedJob.table_name || selectedJob.table_name || '',
+          table_name: newTableName,
           mode: (updatedJob.mode || selectedJob.mode || 'append') as 'append' | 'replace',
         };
 
-        console.log('Push data to send (creating new job):', pushData);
+        console.log('Push data to send (creating new job with versioned table):', pushData);
+        console.log('Excluded fields from updatedJob:', {
+          schedule_id: updatedJob.schedule_id,
+          source_type: updatedJob.source_type,
+          connection: updatedJob.connection,
+        });
         response = await dataEnrichmentApi.createPushJob(pushData);
       } else {
         // Determine source type - ensure it's uppercase to match backend enum
@@ -260,13 +273,20 @@ const DataEnrichmentModule: React.FC = () => {
           };
         }
 
+        // Generate a unique table name for the new version by appending timestamp
+        const originalTableName = selectedJob.table_name || '';
+        const versionSuffix = `_v${Date.now()}`;
+        const newTableName = updatedJob.table_name 
+          ? updatedJob.table_name  // If user changed it, use their value
+          : `${originalTableName}${versionSuffix}`; // Otherwise, create versioned name
+
         const pullData: CreatePullJobDto = {
           // id: selectedJob.id, // Remove ID - we're creating new jobs, not updating
           endpoint_name: updatedJob.endpoint_name || selectedJob.endpoint_name || '',
           description: updatedJob.description || selectedJob.description || '',
           version: updatedJob.version || selectedJob.version || 'v1',
           source_type: sourceType,
-          table_name: updatedJob.table_name || selectedJob.table_name || '',
+          table_name: newTableName,
           mode: (updatedJob.mode || selectedJob.mode || 'append') as 'append' | 'replace',
           connection: connection,
           schedule_id: updatedJob.schedule_id || selectedJob.schedule_id || '',
@@ -280,7 +300,7 @@ const DataEnrichmentModule: React.FC = () => {
           }),
         };
 
-        console.log('Pull data to send (creating new job):', pullData);
+        console.log('Pull data to send (creating new job with versioned table):', pullData);
         response = await dataEnrichmentApi.createPullJob(pullData);
       }
       
@@ -296,11 +316,35 @@ const DataEnrichmentModule: React.FC = () => {
       console.error('Error message:', error instanceof Error ? error.message : 'Unknown error');
       console.error('Full error object:', error);
 
+      // Check for specific schedule status error
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (errorMessage.includes('not found or is not approved yet')) {
+        showError('Cannot edit this job: The associated schedule has been deployed and cannot be used for creating new job versions. The backend requires schedules to be in "approved" status for new jobs.');
+        throw error;
+      }
+
       // Show user-friendly error message
       const userFriendlyMessage = getUserFriendlyErrorMessage(error, 'save');
       showError(userFriendlyMessage);
 
       throw error; // Re-throw to let modal handle the error state
+    }
+  };
+
+  const handleSendForApproval = async (jobId: string, jobType: 'PULL' | 'PUSH') => {
+    try {
+      console.log('Sending job for approval:', jobId, jobType);
+      await dataEnrichmentApi.updateJobStatus(jobId, 'under-review', jobType);
+      showSuccess('Job sent for approval successfully!');
+      
+      // Refresh the jobs list
+      await loadJobs();
+      
+      // Close the modal
+      handleCloseJobDetails();
+    } catch (error) {
+      console.error('Failed to send job for approval:', error);
+      showError('Failed to send job for approval. Please try again.');
     }
   };
 
@@ -317,7 +361,7 @@ const DataEnrichmentModule: React.FC = () => {
     console.log('Job status:', job.status);
     
     // Prevent editing approved jobs
-    const jobStatus = job.status || 'pending';
+    const jobStatus = job.status || 'in-progress';
     if (jobStatus === 'approved') {
       console.warn('Attempted to edit approved job - blocking action');
       showError('Approved jobs cannot be edited. Please create a new job instead.');
@@ -325,7 +369,7 @@ const DataEnrichmentModule: React.FC = () => {
     }
     
     // Only allow editing pending or rejected jobs
-    if (jobStatus !== 'pending' && jobStatus !== 'rejected') {
+    if (jobStatus !== 'in-progress' && jobStatus !== 'rejected') {
       console.warn(`Attempted to edit job with status: ${jobStatus} - blocking action`);
       showError(`Jobs with status "${jobStatus}" cannot be edited.`);
       return;
@@ -391,7 +435,7 @@ const DataEnrichmentModule: React.FC = () => {
     if (statusFilter !== 'ALL') {
       const beforeCount = filtered.length;
       filtered = filtered.filter(job => {
-        const jobStatus = job.status || 'pending'; // Default to pending if no status
+        const jobStatus = job.status || 'in-progress'; // Default to in-progress if no status
         const matches = jobStatus === statusFilter;
         console.log(`Job ${job.id}: status="${jobStatus}", filter="${statusFilter}", matches=${matches}`);
         return matches;
@@ -537,13 +581,13 @@ const DataEnrichmentModule: React.FC = () => {
               </div>
               <div className="flex items-center space-x-3">
                 <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-full">
-                  {filteredJobs.filter(job => job.status === 'pending').length} pending approvals
+                  {filteredJobs.filter(job => job.status === 'in-progress').length} pending approvals
                 </span>
                 <Button 
                   variant="secondary" 
                   size="sm"
                   onClick={() => {
-                    setStatusFilter('pending');
+                    setStatusFilter('in-progress');
                     setCurrentPage(1);
                   }}
                 >
@@ -653,6 +697,7 @@ const DataEnrichmentModule: React.FC = () => {
           isLoading={jobDetailsLoading}
           editMode={jobDetailsEditMode}
           onSave={handleSaveJobChanges}
+          onSendForApproval={handleSendForApproval}
         />
       </div>
     </div>

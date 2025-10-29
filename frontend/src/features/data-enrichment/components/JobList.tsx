@@ -5,6 +5,7 @@ import { Button } from '../../../shared/components/Button';
 import { useAuth } from '../../auth/contexts/AuthContext';
 import { isEditor, isApprover } from '../../../utils/roleUtils';
 import { DropdownMenuWithAutoDirection } from './DropdownMenuWithAutoDirection';
+import { getStatusColor, getStatusLabel } from '../../../shared/utils/statusColors';
 
 interface JobListProps {
   jobs: DataEnrichmentJobResponse[];
@@ -24,46 +25,12 @@ interface JobListProps {
 }
 
 const StatusBadge: React.FC<{ status: JobStatus }> = ({ status }) => {
-  const getStatusConfig = (status: JobStatus) => {
-    switch (status) {
-      case 'pending':
-        return {
-          className: 'bg-blue-50 text-blue-700',
-          dotColor: 'bg-blue-500',
-          text: 'PENDING'
-        };
-      case 'approved':
-        return {
-          className: 'bg-green-50 text-green-700',
-          dotColor: 'bg-green-500',
-          text: 'APPROVED'
-        };
-      case 'in-progress':
-        return {
-          className: 'bg-gray-100 text-gray-700',
-          dotColor: 'bg-gray-500',
-          text: 'IN-PROGRESS'
-        };
-      case 'rejected':
-        return {
-          className: 'bg-red-50 text-red-700',
-          dotColor: 'bg-red-500',
-          text: 'REJECTED'
-        };
-      default:
-        return {
-          className: 'bg-gray-100 text-gray-700',
-          dotColor: 'bg-gray-500',
-          text: String(status).toUpperCase()
-        };
-    }
-  };
+  const statusColor = getStatusColor(status);
+  const statusLabel = getStatusLabel(status);
 
-  const config = getStatusConfig(status);
   return (
-    <span className={`inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-full ${config.className}`}>
-      <span className={`w-2 h-2 rounded-full mr-2 ${config.dotColor}`}></span>
-      {config.text}
+    <span className={statusColor}>
+      {statusLabel}
     </span>
   );
 };
@@ -260,7 +227,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
   console.log('✅ Rendering JOBS TABLE with', jobs.length, 'jobs');
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200">
       <div className="overflow-x-auto">
         <table className="min-w-full">
           <thead className="bg-gray-50 border-b border-gray-200">
@@ -378,8 +345,8 @@ export const JobList: React.FC<JobListProps> = (props) => {
                               console.log('User roles:', { userIsEditor, userIsApprover });
                               
                               if (onStatusFilterChange) {
-                                onStatusFilterChange('pending');
-                                console.log('✅ Status filter changed to pending');
+                                onStatusFilterChange('in-progress');
+                                console.log('✅ Status filter changed to in-progress');
                               } else {
                                 console.error('❌ onStatusFilterChange not available');
                               }
@@ -387,9 +354,9 @@ export const JobList: React.FC<JobListProps> = (props) => {
                               setStatusDropdownOpen(false);
                               console.log('Status filter change complete');
                             }}
-                            className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${statusFilter === 'pending' ? 'bg-gray-100 font-medium' : 'text-gray-700'}`}
+                            className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${statusFilter === 'in-progress' ? 'bg-gray-100 font-medium' : 'text-gray-700'}`}
                           >
-                            Pending
+                            In Progress
                           </button>
                           <button
                             onClick={(e) => {
@@ -593,8 +560,8 @@ export const JobList: React.FC<JobListProps> = (props) => {
               // Show status update buttons for all jobs, regardless of current status value
               const hasStatus = true; // Allow status updates for all jobs
               
-              // For display: show 'pending' for jobs without explicit status
-              const displayStatus: JobStatus = job.status || 'pending';
+              // For display: show 'in-progress' for jobs without explicit status
+              const displayStatus: JobStatus = job.status || 'in-progress';
               
               // Debug logging for status update issues
               console.log(`Job ${job.id} status debug:`, {
@@ -712,8 +679,8 @@ export const JobList: React.FC<JobListProps> = (props) => {
                               </button>
                             ) : null}
 
-                            {/* Edit - Only for Editors and only for pending/rejected jobs */}
-                            {userIsEditor && onEdit && (displayStatus === 'pending' || displayStatus === 'rejected') && (
+                            {/* Edit - Only for Editors and only for in-progress jobs */}
+                            {userIsEditor && onEdit && displayStatus === 'in-progress' && (
                               <button
                                 onClick={() => {
                                   onEdit(job);

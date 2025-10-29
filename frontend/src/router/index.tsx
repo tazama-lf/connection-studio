@@ -1,12 +1,16 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from '../features/auth/contexts/AuthContext';
-import { isApprover, isPublisher } from '../utils/roleUtils';
+import { isApprover, isPublisher, isExporter } from '../utils/roleUtils';
 import Login from '../features/auth/pages/Login';
 import Dashboard from '../features/dashboard/pages/Dashboard';
 import DEMSModule from '../features/dems/pages/DEMSModule';
 import ApproverModule from '../features/approver/pages/ApproverModule';
+import ExporterModule from '../features/exporter/pages/ExporterModule';
 import PublisherModule from '../features/publisher/pages/PublisherModule';
+import PublisherCronJobsPage from '../features/publisher/pages/PublisherCronJobsPage';
+import PublisherDEJobsPage from '../features/publisher/pages/PublisherDEJobsPage';
+import PublisherExportedItemsPage from '../features/publisher/pages/PublisherExportedItemsPage';
 import CRONModule from '../features/cron/pages/CRONModule';
 import DataEnrichmentModule from '../features/data-enrichment/pages/DataEnrichmentModule';
 import NotFoundPage from '../pages/NotFoundPage';
@@ -49,6 +53,21 @@ const PublisherRoute = ({
     return <Navigate to={ROUTES.LOGIN} />;
   }
   if (!user?.claims || !isPublisher(user.claims)) {
+    return <Navigate to={ROUTES.DASHBOARD} />;
+  }
+  return <>{children}</>;
+};
+
+const ExporterRoute = ({
+  children
+}: {
+  children: React.ReactNode;
+}) => {
+  const { isAuthenticated, user } = useAuth();
+  if (!isAuthenticated) {
+    return <Navigate to={ROUTES.LOGIN} />;
+  }
+  if (!user?.claims || !isExporter(user.claims)) {
     return <Navigate to={ROUTES.DASHBOARD} />;
   }
   return <>{children}</>;
@@ -98,9 +117,29 @@ export const AppRoutes: React.FC = () => {
           <ApproverModule />
         </ApproverRoute>
       } />
+      <Route path={ROUTES.EXPORTER} element={
+        <ExporterRoute>
+          <ExporterModule />
+        </ExporterRoute>
+      } />
       <Route path={ROUTES.PUBLISHER} element={
         <PublisherRoute>
           <PublisherModule />
+        </PublisherRoute>
+      } />
+      <Route path="/publisher/cron-jobs" element={
+        <PublisherRoute>
+          <PublisherCronJobsPage />
+        </PublisherRoute>
+      } />
+      <Route path="/publisher/de-jobs" element={
+        <PublisherRoute>
+          <PublisherDEJobsPage />
+        </PublisherRoute>
+      } />
+      <Route path="/publisher/exported-items" element={
+        <PublisherRoute>
+          <PublisherExportedItemsPage />
         </PublisherRoute>
       } />
       <Route path={ROUTES.DATA_ENRICHMENT} element={

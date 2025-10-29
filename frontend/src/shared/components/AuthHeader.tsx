@@ -50,7 +50,10 @@ interface AuthHeaderProps {
                     <span className="mx-1">-</span>
                     <span>{user.claims.includes('approver') ? 'Approver' : 
                            user.claims.includes('editor') ? 'Editor' : 
-                           user.claims.includes('publisher') ? 'Publisher' : 'User'}</span>
+                           user.claims.includes('publisher') ? 'Publisher' :
+                           user.claims.includes('exporter') ? 'Exporter' : 'User'}
+                           </span>
+                           
                   </>
                 )}
               </div>

@@ -200,14 +200,16 @@ const CronJobDetailsModal: React.FC<CronJobDetailsModalProps> = ({
 
         {/* Action Buttons Footer */}
         {schedule && !isLoading && (
-          <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
+          <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3 bg-gray-50">
             <Button
               variant="secondary"
               onClick={onClose}
             >
               Close
             </Button>
-            {userIsApprover && (onApprove || onReject) && (
+            
+            {/* Show Approve/Reject buttons for under-review schedules */}
+            {schedule.status === 'under-review' && userIsApprover && (onApprove || onReject) && (
               <>
                 {onReject && (
                   <Button

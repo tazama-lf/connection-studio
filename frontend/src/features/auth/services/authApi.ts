@@ -101,17 +101,17 @@ export class AuthApiService {
     });
   }
 
-  async logout(): Promise<void> {
-    return this.authRequest<void>(API_CONFIG.ENDPOINTS.AUTH.LOGOUT, {
-      method: 'POST',
-    });
-  }
+  // async logout(): Promise<void> {
+  //   return this.authRequest<void>(API_CONFIG.ENDPOINTS.AUTH.LOGOUT, {
+  //     method: 'POST',
+  //   });
+  // }
 
-  async refreshToken(): Promise<AuthResponse> {
-    return this.authRequest<AuthResponse>(API_CONFIG.ENDPOINTS.AUTH.REFRESH, {
-      method: 'POST',
-    });
-  }
+  // async refreshToken(): Promise<AuthResponse> {
+  //   return this.authRequest<AuthResponse>(API_CONFIG.ENDPOINTS.AUTH.REFRESH, {
+  //     method: 'POST',
+  //   });
+  // }
 
   async refreshSession(): Promise<{ success: boolean; message: string }> {
     const token = localStorage.getItem('authToken');

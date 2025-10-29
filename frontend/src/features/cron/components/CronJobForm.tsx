@@ -14,82 +14,11 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({ onJobCreated, onCancel
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isJobSaved, setIsJobSaved] = useState(false);
   const { showSuccess, showError } = useToast();
 
   // Validation function to check if all required fields are filled
   const isFormValid = () => {
     return jobName.trim() !== '' && cronExpression.trim() !== '' && iterations >= 1 && startDate.trim() !== '';
-  };
-
-  const handleSubmitForApproval = async () => {
-    if (!jobName.trim() || !cronExpression.trim() || !startDate.trim()) {
-      showError('Please provide job name, CRON expression, and start date to continue.');
-      return;
-    }
-
-    try {
-      setIsSubmitting(true);
-
-      // Create schedule with pending_approval status
-      const scheduleData: any = {
-        name: jobName.trim(),
-        cron: cronExpression.trim(),
-        iterations: iterations,
-        schedule_status: 'pending_approval',
-        start_date: startDate,
-      };
-
-      // Add end_date only if provided
-      if (endDate.trim()) {
-        scheduleData.end_date = endDate;
-      }
-
-      const response = await dataEnrichmentApi.createSchedule(scheduleData);
-
-      console.log('Schedule created and submitted for approval successfully:', response);
-
-      // Show success message
-      const scheduleName = jobName.trim();
-
-      // Reset form
-      setJobName('');
-      setCronExpression('');
-      setIterations(1);
-      setStartDate('');
-      setEndDate('');
-
-      // Mark job as saved for approval workflow
-      setIsJobSaved(true);
-
-      showSuccess(`Schedule "${scheduleName}" created and submitted for approval successfully!`);
-      onJobCreated?.();
-
-      // Close the form after submission
-      onCancel?.();
-
-    } catch (error: any) {
-      console.error('Failed to submit for approval:', error);
-
-      // Provide user-friendly error messages based on error type
-      let errorMessage = 'We encountered an issue while submitting your schedule for approval. Please try again.';
-
-      if (error?.response?.status === 400) {
-        errorMessage = 'The CRON expression or job details are invalid. Please check your input and try again.';
-      } else if (error?.response?.status === 409) {
-        errorMessage = 'A schedule with this name already exists. Please choose a different name.';
-      } else if (error?.response?.status === 401 || error?.response?.status === 403) {
-        errorMessage = 'You do not have permission to create schedules. Please contact your administrator.';
-      } else if (error?.response?.status >= 500) {
-        errorMessage = 'Our service is temporarily unavailable. Please try again in a few minutes.';
-      } else if (error?.message?.includes('fetch') || error?.message?.includes('network')) {
-        errorMessage = 'Unable to connect to the service. Please check your internet connection and try again.';
-      }
-
-      showError(errorMessage);
-    } finally {
-      setIsSubmitting(false);
-    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -104,11 +33,11 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({ onJobCreated, onCancel
       setIsSubmitting(true);
       
       // Create schedule using data-enrichment-service API
+      // Note: status will be set to 'in-progress' by default in the database
       const scheduleData: any = {
         name: jobName.trim(),
         cron: cronExpression.trim(),
         iterations: iterations,
-        schedule_status: 'active', // Default status for saved jobs
         start_date: startDate,
       };
       
@@ -130,9 +59,6 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({ onJobCreated, onCancel
       setIterations(1);
       setStartDate('');
       setEndDate('');
-      
-      // Mark job as saved for approval workflow
-      setIsJobSaved(true);
       
       showSuccess(`Schedule "${scheduleName}" created successfully!`);
       onJobCreated?.();
@@ -251,28 +177,17 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({ onJobCreated, onCancel
           >
             Cancel
           </button>
-          <div className="flex space-x-3">
-            <div 
-              className="relative"
-              title={!isFormValid() ? 'Please fill all required fields' : ''}
+          <div 
+            className="relative"
+            title={!isFormValid() ? 'Please fill all required fields' : ''}
+          >
+            <button 
+              type="submit" 
+              disabled={isSubmitting || !isFormValid()}
+              className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
             >
-              <button 
-                type="submit" 
-                disabled={isSubmitting || !isFormValid()}
-                className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-              >
-                {isSubmitting ? 'Sending...' : 'Send for Approval'}
-              </button>
-            </div>
-            {isJobSaved && (
-              <button 
-                type="button"
-                onClick={handleSubmitForApproval}
-                className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                Submit for Approval
-              </button>
-            )}
+              {isSubmitting ? 'Saving...' : 'Save'}
+            </button>
           </div>
         </div>
       </form>

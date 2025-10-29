@@ -45,8 +45,10 @@ export const isExporter = (userClaims: string[]): boolean => {
  */
 export const getPrimaryRole = (userClaims: string[]): UserRole | null => {
   if (isPublisher(userClaims)) return 'publisher';
+  if (isExporter(userClaims)) return 'exporter';
   if (isApprover(userClaims)) return 'approver';
   if (isEditor(userClaims)) return 'editor';
+
   return null;
 };
 

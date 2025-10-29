@@ -418,6 +418,31 @@ export class ConfigApiService {
     }
   }
 
+  async updateConfigStatus(
+    id: number,
+    status: string,
+  ): Promise<ConfigResponse> {
+    try {
+      console.log('🚀 configApi.updateConfigStatus called:');
+      console.log('  - Config ID:', id);
+      console.log('  - New status:', status);
+
+      const response = await fetch(`${this.baseURL}/config/${id}/status`, {
+        method: 'PATCH',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({ status }),
+      });
+
+      const result = await this.handleResponse<ConfigResponse>(response);
+      console.log('✅ Config status updated:', result);
+
+      return result;
+    } catch (error) {
+      console.error('💥 Config status update failed:', error);
+      throw error;
+    }
+  }
+
   async deleteConfig(id: number): Promise<void> {
     try {
       const response = await fetch(`${this.baseURL}/config/${id}`, {

@@ -6,7 +6,8 @@ import { useToast } from '../../../shared/providers/ToastProvider';
 import { UI_CONFIG } from '../../../shared/config/app.config';
 import { DropdownMenuWithAutoDirection } from '../../../features/data-enrichment/components/DropdownMenuWithAutoDirection';
 import { useAuth } from '../../auth/contexts/AuthContext';
-import { isEditor } from '../../../utils/roleUtils';
+import { isEditor, isExporter, isApprover } from '../../../utils/roleUtils';
+import { getStatusColor, getStatusLabel } from '../../../shared/utils/statusColors';
 
 interface CronJobListProps {
   searchTerm?: string;
@@ -43,6 +44,8 @@ export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => 
 
   const { user } = useAuth();
   const userIsEditor = user?.claims ? isEditor(user.claims) : false;
+  const userIsExporter = user?.claims ? isExporter(user.claims) : false;
+  const userIsApprover = user?.claims ? isApprover(user.claims) : false;
 
   // Load schedules on component mount
   useEffect(() => {
@@ -178,7 +181,15 @@ export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => 
     if (!selectedSchedule) return;
 
     try {
-      await dataEnrichmentApi.updateSchedule(selectedSchedule.id, editForm);
+      // Clean up the form data: remove empty strings for optional date fields
+      const cleanedForm = {
+        ...editForm,
+        end_date: editForm.end_date && editForm.end_date.trim() !== '' 
+          ? editForm.end_date 
+          : undefined
+      };
+      
+      await dataEnrichmentApi.updateSchedule(selectedSchedule.id, cleanedForm);
       
       showSuccess('Schedule updated successfully');
       setIsEditJobSaved(true);
@@ -306,15 +317,8 @@ export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => 
                       {formatDate(schedule.end_date)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        schedule.status === 'approved' ? 'bg-green-100 text-green-800' :
-                        schedule.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                        schedule.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                        schedule.status === 'in-progress' ? 'bg-blue-100 text-blue-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
-                        {schedule.status === 'in-progress' ? 'IN PROGRESS' :
-                         schedule.status?.toUpperCase() || 'UNKNOWN'}
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(schedule.status)}`}>
+                        {getStatusLabel(schedule.status)}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -347,21 +351,19 @@ export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => 
                                     setOpenDropdown(null);
                                     handleEdit(schedule);
                                   }}
-                                  disabled={userIsEditor && schedule.status === 'approved' || isActionInProgress}
+                                  disabled={schedule.status !== 'in-progress' || isActionInProgress}
                                   className={`flex items-center w-full px-4 py-2 text-sm hover:bg-gray-100 ${
-                                    userIsEditor && schedule.status === 'approved'
+                                    schedule.status !== 'in-progress'
                                       ? 'text-gray-400 cursor-not-allowed'
                                       : isActionInProgress
                                       ? 'text-gray-400 cursor-not-allowed opacity-50'
                                       : 'text-gray-700'
                                   }`}
                                   title={
-                                    userIsEditor && schedule.status === 'approved' 
-                                      ? 'Approved cron jobs cannot be edited' 
+                                    schedule.status !== 'in-progress'
+                                      ? 'Can only edit jobs with in-progress status' 
                                       : isActionInProgress
                                       ? 'Action in progress...'
-                                      : userIsEditor && (schedule.status === 'rejected' || schedule.status === 'pending')
-                                      ? 'This cron job can be edited'
                                       : ''
                                   }
                                 >
@@ -520,15 +522,8 @@ export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => 
                   Status
                 </label>
                 <div className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50">
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    selectedSchedule.status === 'approved' ? 'bg-green-100 text-green-800' :
-                    selectedSchedule.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                    selectedSchedule.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                    selectedSchedule.status === 'in-progress' ? 'bg-blue-100 text-blue-800' :
-                    'bg-gray-100 text-gray-800'
-                  }`}>
-                    {selectedSchedule.status === 'in-progress' ? 'IN PROGRESS' :
-                     selectedSchedule.status?.toUpperCase() || 'UNKNOWN'}
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(selectedSchedule.status)}`}>
+                    {getStatusLabel(selectedSchedule.status)}
                   </span>
                 </div>
               </div>
@@ -558,13 +553,57 @@ export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => 
             )}
           </div>
           
-          <div className="mt-6 flex justify-end">
+          <div className="mt-6 flex justify-end space-x-3">
             <button
               onClick={() => setViewModalOpen(false)}
               className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
               Close
             </button>
+            {userIsExporter && selectedSchedule.status === 'approved' && (
+              <button
+                onClick={async () => {
+                  try {
+                    setIsActionInProgress(true);
+                    await dataEnrichmentApi.updateScheduleStatus(selectedSchedule.id, 'exported');
+                    showSuccess('Cron job exported successfully');
+                    setViewModalOpen(false);
+                    await loadSchedules();
+                  } catch (error) {
+                    console.error('Failed to export cron job:', error);
+                    showError('Failed to export cron job');
+                  } finally {
+                    setIsActionInProgress(false);
+                  }
+                }}
+                disabled={isActionInProgress}
+                className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isActionInProgress ? 'Exporting...' : 'Export'}
+              </button>
+            )}
+            {(userIsEditor || userIsApprover) && selectedSchedule.status === 'in-progress' && (
+              <button
+                onClick={async () => {
+                  try {
+                    setIsActionInProgress(true);
+                    await dataEnrichmentApi.updateScheduleStatus(selectedSchedule.id, 'under-review');
+                    showSuccess('Cron job submitted for approval');
+                    setViewModalOpen(false);
+                    await loadSchedules();
+                  } catch (error) {
+                    console.error('Failed to submit for approval:', error);
+                    showError('Failed to submit cron job for approval');
+                  } finally {
+                    setIsActionInProgress(false);
+                  }
+                }}
+                disabled={isActionInProgress}
+                className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isActionInProgress ? 'Submitting...' : 'Send for Approval'}
+              </button>
+            )}
           </div>
         </div>
       </div>

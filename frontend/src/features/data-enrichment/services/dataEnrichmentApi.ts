@@ -90,6 +90,7 @@ export const dataEnrichmentApi = {
           jobs: jobs,
           page: page || 1,
           limit: limit || 10,
+          total: jobs.length,
           totalPages: Math.ceil(jobs.length / (limit || 10))
         };
         console.log('Transformed response:', transformedResponse);
@@ -148,6 +149,7 @@ export const dataEnrichmentApi = {
           jobs: jobs,
           page: page || 1,
           limit: limit || 10,
+          total: jobs.length,
           totalPages: Math.ceil(jobs.length / (limit || 10))
         };
       }
@@ -238,7 +240,7 @@ export const dataEnrichmentApi = {
 
   updateJobStatus: async (
     id: string,
-    status: 'pending' | 'approved' | 'in-progress' | 'rejected',
+    status: 'pending' | 'approved' | 'in-progress' | 'rejected' | 'exported' | 'under-review' | 'ready-for-deployment' | 'deployed',
     type: 'PULL' | 'PUSH',
   ): Promise<{ success: boolean; message: string }> => {
     try {
@@ -345,6 +347,28 @@ export const dataEnrichmentApi = {
       );
     } catch (error) {
       console.error(`Failed to update schedule ${id}:`, error);
+      throw error;
+    }
+  },
+
+  updateScheduleStatus: async (
+    id: string,
+    status: string,
+  ): Promise<{ success: boolean; message: string }> => {
+    try {
+      const queryParams = new URLSearchParams();
+      queryParams.append('status', status);
+
+      console.log(`Updating schedule ${id} status to ${status}`);
+      
+      return await apiRequest<{ success: boolean; message: string }>(
+        `${API_BASE_URL}/scheduler/update/status/${id}?${queryParams.toString()}`,
+        {
+          method: 'PATCH',
+        },
+      );
+    } catch (error) {
+      console.error(`Failed to update schedule status ${id}:`, error);
       throw error;
     }
   },

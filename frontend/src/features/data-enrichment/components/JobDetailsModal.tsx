@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { X, Calendar, Clock, Database, Globe, Settings, Save } from 'lucide-react';
+import { X, Calendar, Clock, Database, Globe, Settings, Save, Download } from 'lucide-react';
 import type { DataEnrichmentJobResponse, JobStatus } from '../types';
 import { Button } from '../../../shared/components/Button';
 import { useAuth } from '../../auth/contexts/AuthContext';
-import { isApprover } from '../../../utils/roleUtils';
+import { isApprover, isExporter } from '../../../utils/roleUtils';
+import { getJobTypeColor, getStatusColor as getCentralizedStatusColor, getStatusLabel } from '../../../shared/utils/statusColors';
 
 interface JobDetailsModalProps {
   isOpen: boolean;
@@ -12,8 +13,10 @@ interface JobDetailsModalProps {
   isLoading?: boolean;
   editMode?: boolean;
   onSave?: (updatedJob: Partial<DataEnrichmentJobResponse>) => Promise<void>;
+  onSendForApproval?: (jobId: string, jobType: 'PULL' | 'PUSH') => void;
   onApprove?: (jobId: string, jobType: 'PULL' | 'PUSH') => void;
   onReject?: (jobId: string, jobType: 'PULL' | 'PUSH') => void;
+  onExport?: (jobId: string, jobType: 'PULL' | 'PUSH') => Promise<void>;
 }
 
 // Helper function to determine job type
@@ -32,11 +35,14 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
   isLoading = false,
   editMode = false,
   onSave,
+  onSendForApproval,
   onApprove,
   onReject,
+  onExport,
 }) => {
   const { user } = useAuth();
   const userIsApprover = user?.claims ? isApprover(user.claims) : false;
+  const userIsExporter = user?.claims ? isExporter(user.claims) : false;
   console.log('=== JOB DETAILS MODAL RENDER ===');
   console.log('isOpen:', isOpen);
   console.log('editMode:', editMode);
@@ -44,6 +50,9 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
   console.log('job:', job);
   console.log('job type:', typeof job);
   console.log('job id:', job?.id);
+  console.log('userIsExporter:', userIsExporter);
+  console.log('userIsApprover:', userIsApprover);
+  console.log('onExport available:', !!onExport);
   
   // State for edit mode
   const [editedJob, setEditedJob] = useState<Partial<DataEnrichmentJobResponse>>({});
@@ -93,6 +102,13 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
       const jobType = getJobType(job);
       const dataToSave = { ...editedJob };
       
+      // Remove type field - we don't allow changing job type
+      delete dataToSave.type;
+      
+      // Note: table_name is intentionally excluded from this update
+      // The parent component will handle versioning if needed
+      delete dataToSave.table_name;
+      
       if (jobType === 'push') {
         delete dataToSave.schedule_id;
         delete dataToSave.source_type;
@@ -125,40 +141,8 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
     });
   };
 
-  const getStatusColor = (status: JobStatus | null | undefined) => {
-    switch (status?.toLowerCase()) {
-      case 'pending':
-        return 'bg-blue-50 text-blue-700 border-blue-200';
-      case 'in-progress':
-        return 'bg-gray-100 text-gray-700 border-gray-300';
-      case 'rejected':
-        return 'bg-red-50 text-red-700 border-red-200';
-      case 'approved':
-        return 'bg-green-50 text-green-700 border-green-200';
-      default:
-        return 'bg-gray-100 text-gray-700 border-gray-200';
-    }
-  };
-
-  const getStatusDisplay = (status: JobStatus | null | undefined) => {
-    switch (status?.toLowerCase()) {
-      case 'pending':
-        return 'PENDING';
-      case 'in-progress':
-        return 'IN-PROGRESS';
-      case 'rejected':
-        return 'REJECTED';
-      case 'approved':
-        return 'APPROVED';
-      default:
-        return status?.toUpperCase() || 'N/A';
-    }
-  };
-
   const getConfigTypeColor = (type: string | undefined) => {
-    return type?.toLowerCase() === 'push'
-      ? 'bg-blue-100 text-blue-800 border-blue-200'
-      : 'bg-purple-100 text-purple-800 border-purple-200';
+    return getJobTypeColor(type);
   };
 
   return (
@@ -417,9 +401,8 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                       <Settings size={18} className="text-gray-400 mt-0.5 flex-shrink-0" />
                       <div className="flex-1 min-w-0">
                         <span className="text-sm font-medium text-gray-700 block">Status:</span>
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${getStatusColor(job.status)}`}>
-                          <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${job.status?.toLowerCase() === 'approved' ? 'bg-green-500' : job.status?.toLowerCase() === 'rejected' ? 'bg-red-500' : job.status?.toLowerCase() === 'in-progress' ? 'bg-gray-500' : 'bg-blue-500'}`}></span>
-                          {getStatusDisplay(job.status)}
+                        <span className={getCentralizedStatusColor(job.status || 'in-progress')}>
+                          {getStatusLabel(job.status || 'in-progress')}
                         </span>
                       </div>
                     </div>
@@ -589,7 +572,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
           )}
         </div>
 
-        {/* Edit Mode Footer - Sticky */}
+        {/* Edit Mode Footer - Shows "Save" button when creating/editing */}
         {editMode && (
           <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4">
             <div className="flex justify-between items-center">
@@ -606,14 +589,37 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                 variant="primary"
                 size="md"
               >
-                {isSaving ? 'Sending...' : 'Send to Approver'}
+                {isSaving ? 'Saving...' : 'Save'}
               </Button>
             </div>
           </div>
         )}
 
-        {/* Action Buttons Footer - Only show for approvers when not in edit mode and callbacks are provided */}
-        {job && !isLoading && !editMode && userIsApprover && (onApprove || onReject) && (
+        {/* Send for Approval Footer - Show for editors when viewing job with status='in-progress' */}
+        {job && !isLoading && !editMode && job.status === 'in-progress' && onSendForApproval && (
+          <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
+            <Button
+              variant="secondary"
+              onClick={onClose}
+            >
+              Close
+            </Button>
+            <Button
+              variant="primary"
+              onClick={() => {
+                const jobType = getJobType(job) === 'push' ? 'PUSH' : 'PULL';
+                onSendForApproval(job.id, jobType);
+                onClose();
+              }}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              Send for Approval
+            </Button>
+          </div>
+        )}
+
+        {/* Action Buttons Footer - Only show for approvers when status is under-review */}
+        {job && !isLoading && !editMode && userIsApprover && (onApprove || onReject) && job.status === 'under-review' && (
           <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
             <Button
               variant="secondary"
@@ -646,6 +652,41 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                 Approve Job
               </Button>
             )}
+          </div>
+        )}
+
+        {/* Export Button Footer - Show for exporters when status is approved (ready to export) */}
+        {job && !isLoading && !editMode && onExport && userIsExporter && job.status === 'approved' && (
+          <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3 bg-gray-50">
+            <Button
+              variant="secondary"
+              onClick={onClose}
+            >
+              Close
+            </Button>
+            <Button
+              variant="primary"
+              onClick={async () => {
+                const jobType = getJobType(job) === 'push' ? 'PUSH' : 'PULL';
+                await onExport(job.id, jobType);
+              }}
+              className="flex items-center space-x-2"
+            >
+              <Download className="w-4 h-4" />
+              <span>Export</span>
+            </Button>
+          </div>
+        )}
+
+        {/* Default Footer - Show when no other footer is displayed */}
+        {job && !isLoading && !editMode && !userIsApprover && !userIsExporter && (
+          <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3 bg-gray-50">
+            <Button
+              variant="secondary"
+              onClick={onClose}
+            >
+              Close
+            </Button>
           </div>
         )}
       </div>

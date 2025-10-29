@@ -2,7 +2,7 @@
 
 export type ConfigType = 'Pull' | 'Push';
 export type SourceType = 'HTTP' | 'SFTP';
-export type JobStatus = 'pending' | 'approved' | 'in-progress' | 'rejected'; // Matches backend enum
+export type JobStatus = 'in-progress' | 'under-review' | 'approved' | 'rejected' | 'exported' | 'ready-for-deployment' | 'deployed';
 export type AuthType = 'USERNAME_PASSWORD' | 'PRIVATE_KEY';
 export type FileType = 'CSV' | 'JSON' | 'TSV';
 export type EncodingType = 'utf-8' | 'ascii' | 'latin1' | 'utf16le';
@@ -52,7 +52,8 @@ export interface ScheduleResponse {
   cron: string;
   iterations: number;
   schedule_status: string;
-  status?: string; // Approval status: pending, approved, rejected
+  status?: JobStatus; // Updated to use JobStatus type: inprogress, under review, approved, suspended, rejected, exported, published
+  source_type?: SourceType; // SFTP or HTTP source type
   next_time?: string | null;
   created_at?: string;
   start_date?: string;

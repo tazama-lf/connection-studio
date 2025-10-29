@@ -41,7 +41,7 @@ const ApproverModule: React.FC = () => {
   const [jobs, setJobs] = useState<DataEnrichmentJobResponse[]>([]);
   const [jobsLoading, setJobsLoading] = useState(false);
   const [jobSearchTerm, setJobSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<JobStatus | 'ALL'>('pending'); // Default to pending for approvers
+  const [statusFilter, setStatusFilter] = useState<JobStatus | 'ALL'>('in-progress'); // Default to in-progress for approvers
   const [recordStatusFilter, setRecordStatusFilter] = useState<'active' | 'in-active' | 'not-set' | 'ALL'>('ALL');
   const [dateFilter, setDateFilter] = useState<'today' | 'week' | 'month' | 'ALL'>('ALL');
   const [typeFilter, setTypeFilter] = useState<'push' | 'pull' | 'ALL'>('ALL');
@@ -91,9 +91,15 @@ const ApproverModule: React.FC = () => {
       const response = await dataEnrichmentApi.getAllJobs();
       console.log('ApproverModule: Jobs loaded:', response?.jobs?.length || 0);
       
-      // Sort jobs by created_at descending (newest first)
+      // Show all statuses: under-review, approved, and rejected
       const jobsArray = response?.jobs || [];
-      const sortedJobs = jobsArray.sort((a: any, b: any) => {
+      const relevantJobs = jobsArray.filter((j: any) => 
+        j.status === 'under-review' || j.status === 'approved' || j.status === 'rejected'
+      );
+      console.log('ApproverModule: Relevant jobs (under-review, approved, rejected):', relevantJobs.length);
+      
+      // Sort jobs by created_at descending (newest first)
+      const sortedJobs = relevantJobs.sort((a: any, b: any) => {
         const dateA = new Date(a.created_at || a.createdAt || 0).getTime();
         const dateB = new Date(b.created_at || b.createdAt || 0).getTime();
         return dateB - dateA; // Descending order (newest first)
@@ -121,9 +127,15 @@ const ApproverModule: React.FC = () => {
       const response = await dataEnrichmentApi.getAllSchedules();
       console.log('ApproverModule: Schedules loaded:', response?.length || 0);
       
-      // Sort schedules by created_at descending (newest first)
+      // Show all statuses: under-review, approved, and rejected
       const schedulesArray = response || [];
-      const sortedSchedules = schedulesArray.sort((a: any, b: any) => {
+      const relevantSchedules = schedulesArray.filter((s: any) => 
+        s.status === 'under-review' || s.status === 'approved' || s.status === 'rejected'
+      );
+      console.log('ApproverModule: Relevant schedules (under-review, approved, rejected):', relevantSchedules.length);
+      
+      // Sort schedules by created_at descending (newest first)
+      const sortedSchedules = relevantSchedules.sort((a: any, b: any) => {
         const dateA = new Date(a.created_at || 0).getTime();
         const dateB = new Date(b.created_at || 0).getTime();
         return dateB - dateA; // Descending order (newest first)
@@ -169,9 +181,7 @@ const ApproverModule: React.FC = () => {
 
   const handleApproveCronJob = async (scheduleId: string) => {
     try {
-      await dataEnrichmentApi.updateSchedule(scheduleId, {
-        status: 'approved'
-      });
+      await dataEnrichmentApi.updateScheduleStatus(scheduleId, 'approved');
       showSuccess('Cron job approved successfully');
       handleCronJobRefresh();
     } catch (error) {
@@ -182,14 +192,23 @@ const ApproverModule: React.FC = () => {
 
   const handleRejectCronJob = async (scheduleId: string) => {
     try {
-      await dataEnrichmentApi.updateSchedule(scheduleId, {
-        status: 'rejected'
-      });
+      await dataEnrichmentApi.updateScheduleStatus(scheduleId, 'rejected');
       showSuccess('Cron job rejected successfully');
       handleCronJobRefresh();
     } catch (error) {
       console.error('Failed to reject cron job:', error);
       showError('Failed to reject cron job');
+    }
+  };
+
+  const handleExportCronJob = async (scheduleId: string) => {
+    try {
+      await dataEnrichmentApi.updateScheduleStatus(scheduleId, 'exported');
+      showSuccess('Cron job exported successfully');
+      handleCronJobRefresh();
+    } catch (error) {
+      console.error('Failed to export cron job:', error);
+      showError('Failed to export cron job');
     }
   };
 
@@ -627,6 +646,7 @@ const ApproverModule: React.FC = () => {
           isLoading={cronJobDetailsLoading}
           onApprove={handleApproveCronJob}
           onReject={handleRejectCronJob}
+          onExport={handleExportCronJob}
         />
       )}
     </div>
