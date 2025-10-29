@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import { uuidPattern } from 'src/utils/constants';
+import { uuidPattern } from '../utils/constants';
 import SFTPClient from 'ssh2-sftp-client';
 import { SftpFile } from './types/sftp.interface';
 import { createHash } from 'crypto';
@@ -75,7 +75,6 @@ export class SftpService implements OnModuleInit, OnModuleDestroy {
 
     async createFile(fileName: string, data: unknown): Promise<void> {
         try {
-
             const nodeEnv = this.configService.get<string>('NODE_ENV');
             const sftpHost = this.configService.get<string>('SFTP_HOST_CONSUMER');
 
@@ -108,11 +107,19 @@ export class SftpService implements OnModuleInit, OnModuleDestroy {
 
     async readFile(fileName: string): Promise<Record<string, any>> {
         try {
+
+            const sftpHost = this.configService.get<string>('SFTP_HOST_PRODUCER');
+            if (!sftpHost) {
+                throw new BadRequestException(`Producer SFTP server credentials not provided.`);
+            }
+
             const path = `/upload/${fileName}.json`
             const integrityFilePath = `/upload/${fileName}.hash`
 
-            const fileExists = await this.producerSftp.exists(path);
-            const integrityFile = await this.producerSftp.exists(integrityFilePath);
+            const [fileExists, integrityFile] = await Promise.all([
+                this.producerSftp.exists(path),
+                this.producerSftp.exists(integrityFilePath),
+            ]);
 
             if (!fileExists || !integrityFile) {
                 this.loggerService.warn(`File or its integrity file not found`);
@@ -149,6 +156,40 @@ export class SftpService implements OnModuleInit, OnModuleDestroy {
         }
     }
 
+    async deleteFile(fileName: string): Promise<void> {
+        try {
+            const sftpHost = this.configService.get<string>('SFTP_HOST_PRODUCER');
+            if (!sftpHost) {
+                throw new BadRequestException(`Producer SFTP server credentials not provided.`);
+            }
+
+            const path = `/upload/${fileName}.json`
+            const integrityFilePath = `/upload/${fileName}.hash`
+
+            const [fileExists, hashExists] = await Promise.all([
+                this.producerSftp.exists(path),
+                this.producerSftp.exists(integrityFilePath),
+            ]);
+
+            if (!fileExists && !hashExists) {
+                this.loggerService.warn(`No files found for ${fileName}`);
+                throw new NotFoundException(`File or its integrity file not found for ${fileName}`);
+            }
+
+            if (fileExists) this.producerSftp.delete(path);
+            if (hashExists) this.producerSftp.delete(integrityFilePath);
+
+
+            this.loggerService.log('File(s) deleted.')
+        } catch (error: unknown) {
+            const message =
+                error instanceof Error ? error.message : JSON.stringify(error);
+
+            this.loggerService.error(`Failed to delete file ${fileName}: ${message}`);
+            throw error;
+        }
+    }
+
     async listFiles(remoteDir: string, format: 'de' | 'cron'): Promise<SftpFile[]> {
         try {
             const regex = new RegExp(
@@ -157,8 +198,12 @@ export class SftpService implements OnModuleInit, OnModuleDestroy {
             const files: SftpFile[] = await this.producerSftp.list('/upload', (file: SftpFile) => regex.test(file.name));
             this.loggerService.log(`Found ${files.length} matching config files in ${remoteDir}`);
             return files;
-        } catch (error) {
-            this.loggerService.error(`Failed to list files in ${remoteDir}: ${error.message}`);
+        } catch (error: unknown) {
+
+            const message =
+                error instanceof Error ? error.message : JSON.stringify(error);
+
+            this.loggerService.error(`Failed to list files in ${remoteDir}: ${message}`);
             throw error;
         }
     }

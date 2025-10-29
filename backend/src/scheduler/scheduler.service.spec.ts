@@ -2,6 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { SchedulerService } from './scheduler.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { DatabaseService } from '../database/database.service';
+import { ConfigService } from '@nestjs/config';
+import { SftpService } from '../sftp/sftp.service';
 
 describe('SchedulerService', () => {
   let service: SchedulerService;
@@ -21,6 +23,14 @@ describe('SchedulerService', () => {
           useValue: {
             query: jest.fn(),
           },
+        },
+        {
+          provide: ConfigService,
+          useValue: {}
+        },
+        {
+          provide: SftpService,
+          useValue: {}
         },
       ],
     }).compile();

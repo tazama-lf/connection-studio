@@ -1,8 +1,7 @@
 import {
   BadRequestException,
-  ForbiddenException,
   Injectable,
-  NotFoundException,
+  NotFoundException
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
@@ -16,10 +15,10 @@ import {
   SFTPConnection,
   SourceType
 } from '@tazama-lf/tcs-lib';
-import { SftpService } from 'src/sftp/sftp.service';
 import { v4 } from 'uuid';
 import { DatabaseService } from '../database/database.service';
 import { DryRunService } from '../dry-run/dry-run.service';
+import { SftpService } from '../sftp/sftp.service';
 import { decrypt, encrypt, validateFileType, validateTableName } from '../utils/helpers';
 import { CreatePullJobDto, SFTPConnectionDto } from './dto/create-pull-job.dto';
 import { CreatePushJobDto } from './dto/create-push-job.dto';
@@ -359,13 +358,11 @@ export class JobService {
 
       const tableName = type === ConfigType.PUSH ? 'endpoints' : 'job';
       const existingJob = await this.findOne(id, type);
+      const nodeEnv = this.configService.get<string>('NODE_ENV');
+      const fileName = `${nodeEnv}_de_${tenantId}_${id}`;
 
       switch (status) {
         case JobStatus.EXPORTED: {
-
-          const nodeEnv = this.configService.get<string>('NODE_ENV');
-          const fileName = `${nodeEnv}_de_${tenantId}_${id}`;
-
           await this.sftpService.createFile(fileName, {
             ...existingJob,
             status: JobStatus.READY,
@@ -397,6 +394,7 @@ export class JobService {
           } else {
             await this.createPush(existingJob, tenantId, JobStatus.DEPLOYED);
           }
+          await this.sftpService.deleteFile(fileName)
           break;
         }
 

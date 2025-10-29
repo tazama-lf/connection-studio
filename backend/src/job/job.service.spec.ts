@@ -4,6 +4,7 @@ import { DatabaseService } from '../database/database.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { DryRunService } from '../dry-run/dry-run.service';
 import { ConfigService } from '@nestjs/config';
+import { SftpService } from '../sftp/sftp.service';
 
 describe('JobService', () => {
   let service: JobService;
@@ -22,6 +23,10 @@ describe('JobService', () => {
         },
         {
           provide: ConfigService,
+          useValue: {},
+        },
+        {
+          provide: SftpService,
           useValue: {},
         },
         {

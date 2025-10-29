@@ -1,4 +1,4 @@
-import { BadRequestException, Controller, Get, Query } from '@nestjs/common';
+import { BadRequestException, Controller, Get, Post, Query } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SftpService } from './sftp.service';
 import { Serialize } from 'src/interceptors/serialize.interceptor';
@@ -23,5 +23,10 @@ export class SftpController {
     @Get('/read')
     async viewFile(@Query('name') name: string) {
         return await this.sftpService.readFile(name)
+    }
+
+    @Post('/delete')
+    async deleteFile(@Query('name') name: string) {
+        return await this.sftpService.deleteFile(name)
     }
 }

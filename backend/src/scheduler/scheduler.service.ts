@@ -11,7 +11,7 @@ import { CreateScheduleJobDto } from './dto/create-schedule.dto';
 import { UpdateScheduleJobDto } from './dto/update-schedule-dto';
 import { Schedule, ISuccess, JobStatus } from '@tazama-lf/tcs-lib';
 import { ConfigService } from '@nestjs/config';
-import { SftpService } from 'src/sftp/sftp.service';
+import { SftpService } from '../sftp/sftp.service';
 import { v4 } from 'uuid';
 
 @Injectable()
