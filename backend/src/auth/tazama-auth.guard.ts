@@ -25,7 +25,7 @@ export class TazamaAuthGuard implements CanActivate {
   ) {}
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const logContext = 'TazamaAuthGuard.canActivate()';
-    // Check if route is public
+
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
       context.getClass(),
@@ -37,7 +37,7 @@ export class TazamaAuthGuard implements CanActivate {
       );
       return true;
     }
-    // Get required claims from decorator
+
     const requiredClaims = this.reflector.getAllAndOverride<string[]>(
       CLAIMS_KEY,
       [context.getHandler(), context.getClass()],
@@ -48,12 +48,12 @@ export class TazamaAuthGuard implements CanActivate {
     );
     const request = context.switchToHttp().getRequest();
     const authHeader = request.headers.authorization;
-    // Validate authorization header
+
     if (!authHeader?.startsWith('Bearer ')) {
       this.logger.warn('No Bearer token provided', logContext);
       throw new UnauthorizedException('No Bearer token provided');
     }
-    // Check if we have either type of claims requirement
+
     if (
       (!requiredClaims || requiredClaims.length === 0) &&
       (!anyRequiredClaims || anyRequiredClaims.length === 0)
@@ -66,9 +66,9 @@ export class TazamaAuthGuard implements CanActivate {
     }
     try {
       const token = authHeader.split(' ')[1];
-      // Determine which claims to validate
+
       const claimsToValidate = requiredClaims || anyRequiredClaims || [];
-      // Validate token and claims using tazama-auth-lib
+
       const validated: ClaimValidationResult = validateTokenAndClaims(
         token,
         claimsToValidate,
@@ -114,20 +114,11 @@ export class TazamaAuthGuard implements CanActivate {
           `Missing or invalid claims: ${invalidClaims.join(', ')}`,
         );
       }
-      // Extract token payload (you might need to decode the JWT to get the full TazamaToken)
+
       const decodedToken = this.extractTokenPayload(token);
-      const userId = decodedToken.clientId || '';
-      const tenantId = decodedToken.tenantId || '';
-      if (!this.sessionManager.isSessionActive(userId, tenantId)) {
-        this.logger.warn(
-          `Session expired for user: ${userId}, tenant: ${tenantId}`,
-          logContext,
-        );
-        throw new UnauthorizedException(
-          'Session has expired due to inactivity. Please log in again.',
-        );
-      }
-      // Create authenticated user object
+
+      (decodedToken as any).tokenString = token;
+
       const authenticatedUser: AuthenticatedUser = {
         token: decodedToken,
         validated,
@@ -135,9 +126,9 @@ export class TazamaAuthGuard implements CanActivate {
         tenantId: decodedToken.tenantId || '',
         userId: decodedToken.clientId || '',
       };
-      // Attach user to request for use in controllers
+
       request.user = authenticatedUser;
-      // Record session activity to extend session timeout
+
       this.sessionManager.recordActivity(
         decodedToken.clientId || '',
         decodedToken.tenantId || '',

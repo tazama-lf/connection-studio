@@ -14,8 +14,10 @@ import {
   HttpStatus,
   UseInterceptors,
   UploadedFile,
+  Req,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { AdminServiceClient } from '../services/admin-service-client.service';
 import { ConfigService } from './config.service';
 import { TazamaAuthGuard } from '../auth/tazama-auth.guard';
 import { User } from '../auth/user.decorator';
@@ -42,6 +44,7 @@ import {
   TazamaClaims,
   RequireAnyClaims,
 } from '../auth/auth.decorator';
+import { FileParsingService } from '../services/file-parsing.service';
 function getTenantId(user: AuthenticatedUser): string {
   return user.token.tenantId || 'default';
 }
@@ -61,10 +64,24 @@ function getUserId(user: AuthenticatedUser): string {
 function getUserClaims(user: AuthenticatedUser): string[] {
   return user.validClaims || [];
 }
+
+function buildForwardHeaders(user: AuthenticatedUser): Record<string, string> {
+  return {
+    Authorization: `Bearer ${user.token.tokenString}`,
+    'x-tenant-id': getTenantId(user),
+    'x-user-id': getUserId(user),
+    'x-user-claims': JSON.stringify(getUserClaims(user)),
+  };
+}
+
 @Controller('config')
 @UseGuards(TazamaAuthGuard)
 export class ConfigController {
-  constructor(private readonly configService: ConfigService) {}
+  constructor(
+    private readonly adminServiceClient: AdminServiceClient,
+    private readonly fileParsingService: FileParsingService,
+    private readonly configService: ConfigService,
+  ) {}
   private autoDetectContentType(
     filename: string,
     content: string,
@@ -82,6 +99,19 @@ export class ConfigController {
     } catch {
       return ContentType.XML;
     }
+  }
+
+  private generateEndpointPath(
+    tenantId: string,
+    version: string,
+    transactionType: string,
+    msgFam?: string,
+  ): string {
+    const basePath = `/${tenantId}/${version}`;
+    if (msgFam?.trim()) {
+      return `${basePath}/${msgFam}/${transactionType}`;
+    }
+    return `${basePath}/${transactionType}`;
   }
   @Post('upload')
   @RequireClaims(TazamaClaims.EDITOR)
@@ -102,6 +132,7 @@ export class ConfigController {
       file.originalname,
       content,
     );
+
     const dto: CreateConfigDto = {
       msgFam,
       transactionType,
@@ -109,31 +140,66 @@ export class ConfigController {
       payload: content,
       contentType: autoDetectedContentType,
     };
-    return this.configService.createConfig(
+
+    const result = await this.configService.createConfig(
       dto,
       getTenantId(user),
       getUserId(user),
+      user.token.tokenString,
     );
+
+    if (!result.success) {
+      throw new Error(result.message || 'Failed to create config');
+    }
+
+    return {
+      success: true,
+      message: 'Config created successfully from file',
+      config: result.config,
+      validation: result.validation,
+    };
   }
+
   @Post()
   @RequireClaims(TazamaClaims.EDITOR)
   @HttpCode(HttpStatus.CREATED)
   async createConfig(
     @Body() dto: CreateConfigDto,
     @User() user: AuthenticatedUser,
+    @Req() request: any,
   ): Promise<ConfigResponseDto> {
-    return this.configService.createConfig(
+    const authHeader = request.headers.authorization || '';
+    const token = authHeader.replace('Bearer ', '');
+
+    const result = await this.configService.createConfig(
       dto,
       getTenantId(user),
       getUserId(user),
+      token,
     );
+
+    if (!result.success) {
+      throw new Error(result.message || 'Failed to create config');
+    }
+
+    return {
+      success: true,
+      message: 'Config created successfully',
+      config: result.config,
+      validation: result.validation,
+    };
   }
   @Get('pending-approvals')
   @RequireClaims(TazamaClaims.APPROVER)
   async getPendingApprovals(
     @User() user: AuthenticatedUser,
-  ): Promise<Config[]> {
-    return this.configService.getPendingApprovals(getTenantId(user));
+  ): Promise<ConfigResponseDto[]> {
+    return this.adminServiceClient.forwardRequest(
+      'GET',
+      '/v1/admin/tcs/config/pending-approvals',
+      undefined,
+      buildForwardHeaders(user),
+    );
   }
   @Get('transaction/:type')
   @RequireClaims(TazamaClaims.EDITOR)
@@ -141,9 +207,11 @@ export class ConfigController {
     @Param('type') type: TransactionType,
     @User() user: AuthenticatedUser,
   ): Promise<Config[]> {
-    return this.configService.getConfigsByTransactionType(
-      type,
-      getTenantId(user),
+    return this.adminServiceClient.forwardRequest(
+      'GET',
+      `/v1/admin/tcs/config/transaction/${type}`,
+      undefined,
+      buildForwardHeaders(user),
     );
   }
   @Get('endpoint')
@@ -153,10 +221,11 @@ export class ConfigController {
     @Query('version') version: string,
     @User() user: AuthenticatedUser,
   ): Promise<Config> {
-    const config = await this.configService.getConfigByEndpoint(
-      path,
-      version || 'v1',
-      getTenantId(user),
+    const config = await this.adminServiceClient.forwardRequest(
+      'GET',
+      `/v1/admin/tcs/config/endpoint?path=${encodeURIComponent(path)}&version=${encodeURIComponent(version || 'v1')}`,
+      undefined,
+      buildForwardHeaders(user),
     );
     if (!config) {
       throw new Error(`Config not found for path ${path} version ${version}`);
@@ -173,13 +242,15 @@ export class ConfigController {
   async getConfigById(
     @Param('id', ParseIntPipe) id: number,
     @User() user: AuthenticatedUser,
-  ): Promise<Config> {
-    const config = await this.configService.getConfigById(
-      id,
-      getTenantId(user),
+  ): Promise<ConfigResponseDto> {
+    const config = await this.adminServiceClient.forwardRequest(
+      'GET',
+      `/v1/admin/tcs/config/${id}`,
+      undefined,
+      buildForwardHeaders(user),
     );
     if (!config) {
-      throw new Error(`Config with ID ${id} not found`);
+      throw new Error(`Configuration with ID ${id} not found`);
     }
     return config;
   }
@@ -191,7 +262,12 @@ export class ConfigController {
     TazamaClaims.EXPORTER,
   )
   async getAllConfigs(@User() user: AuthenticatedUser): Promise<Config[]> {
-    return this.configService.getAllConfigs(getTenantId(user));
+    return this.adminServiceClient.forwardRequest(
+      'GET',
+      '/v1/admin/tcs/config',
+      undefined,
+      buildForwardHeaders(user),
+    );
   }
   @Put(':id')
   @RequireClaims(TazamaClaims.EDITOR)
@@ -200,11 +276,11 @@ export class ConfigController {
     @Body() dto: UpdateConfigDto,
     @User() user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
-    return this.configService.updateConfig(
-      id,
+    return this.adminServiceClient.forwardRequest(
+      'PUT',
+      `/v1/admin/tcs/config/${id}/write`,
       dto,
-      getTenantId(user),
-      getUserId(user),
+      buildForwardHeaders(user),
     );
   }
   @Post('clone')
@@ -213,10 +289,11 @@ export class ConfigController {
     @Body() dto: CloneConfigDto,
     @User() user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
-    return this.configService.cloneConfig(
+    return this.adminServiceClient.forwardRequest(
+      'POST',
+      '/v1/admin/tcs/config/clone',
       dto,
-      getTenantId(user),
-      getUserId(user),
+      buildForwardHeaders(user),
     );
   }
   @Delete(':id')
@@ -226,10 +303,11 @@ export class ConfigController {
     @Param('id', ParseIntPipe) id: number,
     @User() user: AuthenticatedUser,
   ): Promise<void> {
-    await this.configService.deleteConfig(
-      id,
-      getTenantId(user),
-      getUserId(user),
+    await this.adminServiceClient.forwardRequest(
+      'DELETE',
+      `/v1/admin/tcs/config/${id}/write`,
+      undefined,
+      buildForwardHeaders(user),
     );
   }
   @Post(':id/mapping')
@@ -239,11 +317,11 @@ export class ConfigController {
     @Body() dto: AddMappingDto,
     @User() user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
-    return this.configService.addMapping(
-      id,
+    return this.adminServiceClient.forwardRequest(
+      'POST',
+      `/v1/admin/tcs/config/${id}/mapping`,
       dto,
-      getTenantId(user),
-      getUserId(user),
+      buildForwardHeaders(user),
     );
   }
   @Delete(':id/mapping/:index')
@@ -253,11 +331,11 @@ export class ConfigController {
     @Param('index', ParseIntPipe) index: number,
     @User() user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
-    return this.configService.removeMapping(
-      id,
-      index,
-      getTenantId(user),
-      getUserId(user),
+    return this.adminServiceClient.forwardRequest(
+      'DELETE',
+      `/v1/admin/tcs/config/${id}/mapping/${index}`,
+      undefined,
+      buildForwardHeaders(user),
     );
   }
 
@@ -268,11 +346,11 @@ export class ConfigController {
     @Body() dto: AddFunctionDto,
     @User() user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
-    return this.configService.addFunction(
-      id,
+    return this.adminServiceClient.forwardRequest(
+      'POST',
+      `/v1/admin/tcs/config/${id}/function`,
       dto,
-      getTenantId(user),
-      getUserId(user),
+      buildForwardHeaders(user),
     );
   }
 
@@ -283,11 +361,11 @@ export class ConfigController {
     @Param('index', ParseIntPipe) index: number,
     @User() user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
-    return this.configService.removeFunction(
-      id,
-      index,
-      getTenantId(user),
-      getUserId(user),
+    return this.adminServiceClient.forwardRequest(
+      'DELETE',
+      `/v1/admin/tcs/config/${id}/function/${index}`,
+      undefined,
+      buildForwardHeaders(user),
     );
   }
 
@@ -299,16 +377,13 @@ export class ConfigController {
     @Body() dto: AddFunctionDto,
     @User() user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
-    return this.configService.updateFunction(
-      id,
-      index,
+    return this.adminServiceClient.forwardRequest(
+      'PUT',
+      `/v1/admin/tcs/config/${id}/function/${index}`,
       dto,
-      getTenantId(user),
-      getUserId(user),
+      buildForwardHeaders(user),
     );
   }
-
-  // ======================== WORKFLOW ENDPOINTS ========================
 
   @Post(':id/workflow/submit')
   @RequireClaims(TazamaClaims.EDITOR)
@@ -317,12 +392,11 @@ export class ConfigController {
     @Body() dto: SubmitForApprovalDto,
     @User() user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
-    return this.configService.submitForApproval(
-      id,
+    return this.adminServiceClient.forwardRequest(
+      'POST',
+      `/v1/admin/tcs/config/${id}/workflow/submit`,
       dto,
-      getTenantId(user),
-      getUserId(user),
-      getUserClaims(user),
+      buildForwardHeaders(user),
     );
   }
 
@@ -333,12 +407,11 @@ export class ConfigController {
     @Body() dto: ApprovalDto,
     @User() user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
-    return this.configService.approveConfig(
-      id,
+    return this.adminServiceClient.forwardRequest(
+      'POST',
+      `/v1/admin/tcs/config/${id}/workflow/approve`,
       dto,
-      getTenantId(user),
-      getUserId(user),
-      getUserClaims(user),
+      buildForwardHeaders(user),
     );
   }
 
@@ -349,12 +422,11 @@ export class ConfigController {
     @Body() dto: RejectionDto,
     @User() user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
-    return this.configService.rejectConfig(
-      id,
+    return this.adminServiceClient.forwardRequest(
+      'POST',
+      `/v1/admin/tcs/config/${id}/workflow/reject`,
       dto,
-      getTenantId(user),
-      getUserId(user),
-      getUserClaims(user),
+      buildForwardHeaders(user),
     );
   }
 
@@ -365,12 +437,11 @@ export class ConfigController {
     @Body() dto: ChangeRequestDto,
     @User() user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
-    return this.configService.requestChanges(
-      id,
+    return this.adminServiceClient.forwardRequest(
+      'POST',
+      `/v1/admin/tcs/config/${id}/workflow/request-changes`,
       dto,
-      getTenantId(user),
-      getUserId(user),
-      getUserClaims(user),
+      buildForwardHeaders(user),
     );
   }
 
@@ -381,12 +452,11 @@ export class ConfigController {
     @Body() dto: DeploymentDto,
     @User() user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
-    return this.configService.deployConfig(
-      id,
+    return this.adminServiceClient.forwardRequest(
+      'POST',
+      `/v1/admin/tcs/config/${id}/workflow/deploy`,
       dto,
-      getTenantId(user),
-      getUserId(user),
-      getUserClaims(user),
+      buildForwardHeaders(user),
     );
   }
 
@@ -397,12 +467,11 @@ export class ConfigController {
     @Body() dto: StatusTransitionDto,
     @User() user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
-    return this.configService.returnToProgress(
-      id,
+    return this.adminServiceClient.forwardRequest(
+      'POST',
+      `/v1/admin/tcs/config/${id}/workflow/return-to-progress`,
       dto,
-      getTenantId(user),
-      getUserId(user),
-      getUserClaims(user),
+      buildForwardHeaders(user),
     );
   }
 
@@ -416,10 +485,11 @@ export class ConfigController {
     @Param('id', ParseIntPipe) id: number,
     @User() user: AuthenticatedUser,
   ): Promise<any> {
-    return this.configService.getWorkflowStatus(
-      id,
-      getTenantId(user),
-      getUserClaims(user),
+    return this.adminServiceClient.forwardRequest(
+      'GET',
+      `/v1/admin/tcs/config/${id}/workflow/status`,
+      undefined,
+      buildForwardHeaders(user),
     );
   }
 
@@ -434,6 +504,11 @@ export class ConfigController {
     @Param('id', ParseIntPipe) id: number,
     @User() user: AuthenticatedUser,
   ): Promise<any> {
-    return this.configService.getAuditHistory(id, getTenantId(user));
+    return this.adminServiceClient.forwardRequest(
+      'GET',
+      `/v1/admin/tcs/config/${id}/audit-history`,
+      undefined,
+      buildForwardHeaders(user),
+    );
   }
 }
