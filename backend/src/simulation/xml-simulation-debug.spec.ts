@@ -26,8 +26,8 @@ describe('XML Simulation Debug', () => {
                   properties: {
                     MsgId: { type: 'string' },
                     CreDtTm: { type: 'string' },
-                    NbOfTxs: { type: 'string' }
-                  }
+                    NbOfTxs: { type: 'string' },
+                  },
                 },
                 CdtTrfTxInf: {
                   type: 'object',
@@ -36,8 +36,8 @@ describe('XML Simulation Debug', () => {
                       type: 'object',
                       properties: {
                         InstrId: { type: 'string' },
-                        EndToEndId: { type: 'string' }
-                      }
+                        EndToEndId: { type: 'string' },
+                      },
                     },
                     IntrBkSttlmAmt: { type: 'string' },
                     Dbtr: {
@@ -47,10 +47,10 @@ describe('XML Simulation Debug', () => {
                         Id: {
                           type: 'object',
                           properties: {
-                            PrvtId: { type: 'string' }
-                          }
-                        }
-                      }
+                            PrvtId: { type: 'string' },
+                          },
+                        },
+                      },
                     },
                     Cdtr: {
                       type: 'object',
@@ -59,18 +59,18 @@ describe('XML Simulation Debug', () => {
                         Id: {
                           type: 'object',
                           properties: {
-                            PrvtId: { type: 'string' }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
+                            PrvtId: { type: 'string' },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
     },
     mapping: [
       {
@@ -151,7 +151,11 @@ describe('XML Simulation Debug', () => {
         payload: xmlPayload,
       };
 
-      const result = await service.simulateMapping(dto, 'test-tenant', 'test-user');
+      const result = await service.simulateMapping(
+        dto,
+        'test-tenant',
+        'test-user',
+      );
 
       console.log('=== XML SIMULATION RESULT ===');
       console.log('Status:', result.status);
@@ -160,7 +164,7 @@ describe('XML Simulation Debug', () => {
         console.log(`  ${index + 1}. ${stage.name}: ${stage.status}`);
         console.log(`     Message: ${stage.message}`);
         if (stage.errors) {
-          console.log(`     Errors:`, stage.errors);
+          console.log('     Errors:', stage.errors);
         }
       });
 
@@ -181,25 +185,33 @@ describe('XML Simulation Debug', () => {
 
     it('should debug XML parsing step by step', async () => {
       console.log('=== XML PARSING DEBUG ===');
-      
+
       // Test XML parsing directly
       const parseMethod = (service as any).parsePayload.bind(service);
       const parsedPayload = await parseMethod(xmlPayload, 'application/xml');
-      
+
       console.log('1. Parsed XML Payload:');
       console.log(JSON.stringify(parsedPayload, null, 2));
 
       // Test normalization
-      const normalizeMethod = (service as any).normalizePayloadForValidation.bind(service);
+      const normalizeMethod = (
+        service as any
+      ).normalizePayloadForValidation.bind(service);
       const normalizedPayload = normalizeMethod(parsedPayload, mockConfig);
-      
+
       console.log('2. Normalized Payload:');
       console.log(JSON.stringify(normalizedPayload, null, 2));
 
       // Test schema validation
-      const validateMethod = (service as any).validatePayloadAgainstSchema.bind(service);
-      const validationErrors = validateMethod(parsedPayload, mockConfig.schema, mockConfig);
-      
+      const validateMethod = (service as any).validatePayloadAgainstSchema.bind(
+        service,
+      );
+      const validationErrors = validateMethod(
+        parsedPayload,
+        mockConfig.schema,
+        mockConfig,
+      );
+
       console.log('3. Schema Validation Errors:');
       console.log(JSON.stringify(validationErrors, null, 2));
 

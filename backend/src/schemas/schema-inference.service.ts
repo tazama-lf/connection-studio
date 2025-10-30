@@ -68,11 +68,7 @@ export class SchemaInferenceService {
           arrayField.arrayElementType === FieldType.OBJECT &&
           value.length > 0
         ) {
-          arrayField.children = this.analyzeXmlObject(
-            value[0],
-            key,
-            `${path}[0]`,
-          );
+          arrayField.children = this.analyzeXmlObject(value[0], key, path);
         }
         fields.push(arrayField);
       } else if (typeof value === 'object' && value !== null) {
@@ -149,7 +145,7 @@ export class SchemaInferenceService {
           field.arrayElementType === FieldType.OBJECT &&
           firstElement !== null
         ) {
-          field.children = this.analyzeObject(firstElement, `${path}[0]`);
+          field.children = this.analyzeObject(firstElement, path);
         }
       } else {
         field.arrayElementType = FieldType.STRING;
@@ -217,18 +213,15 @@ export class SchemaInferenceService {
         if (seenPaths.has(field.path)) {
           const errorMsg = `Validation error: Duplicate field path '${field.path}' detected.`;
           errors.push(errorMsg);
-          
+
           // Log detailed error information
-          this.logger.error(
-            `Schema inference validation failed: ${errorMsg}`,
-            {
-              duplicateFieldPath: field.path,
-              fieldName: field.name,
-              fieldType: field.type,
-              context: 'validateFields',
-              parentPath: _parentPath,
-            },
-          );
+          this.logger.error(`Schema inference validation failed: ${errorMsg}`, {
+            duplicateFieldPath: field.path,
+            fieldName: field.name,
+            fieldType: field.type,
+            context: 'validateFields',
+            parentPath: _parentPath,
+          });
         } else {
           seenPaths.add(field.path);
         }

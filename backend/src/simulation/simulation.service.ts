@@ -223,7 +223,7 @@ export class SimulationService {
       // All stages passed!
       const finalStatus = errors.length === 0 ? 'PASSED' : 'FAILED';
 
-      this.auditService.logAction({
+      void this.auditService.logAction({
         entityType: 'SIMULATION',
         action: 'TCS_SIMULATE_MAPPING',
         actor: userId || 'SYSTEM',
@@ -456,7 +456,10 @@ export class SimulationService {
         );
 
         // Handle SPLIT transformations: create multiple TCS mappings for multiple destinations
-        if (mapping.transformation === 'SPLIT' && Array.isArray(mapping.destination)) {
+        if (
+          mapping.transformation === 'SPLIT' &&
+          Array.isArray(mapping.destination)
+        ) {
           // For SPLIT transformations, create one TCS mapping per destination
           for (let i = 0; i < mapping.destination.length; i++) {
             const destination = mapping.destination[i];
@@ -520,7 +523,10 @@ export class SimulationService {
       const sources = mapping.source || [];
 
       // Handle SPLIT transformations: create details for each destination
-      if (mapping.transformation === 'SPLIT' && Array.isArray(mapping.destination)) {
+      if (
+        mapping.transformation === 'SPLIT' &&
+        Array.isArray(mapping.destination)
+      ) {
         // Extract source values from original payload
         const sourceValues = sources.map((sourcePath) =>
           this.getValueByPath(originalPayload, sourcePath),
@@ -539,7 +545,7 @@ export class SimulationService {
         // Create a detail entry for each destination
         for (let i = 0; i < mapping.destination.length; i++) {
           const destination = mapping.destination[i];
-          
+
           // Determine the result value from tcsResult based on destination
           let resultValue: any = null;
           if (tcsResult && destination) {
@@ -556,9 +562,10 @@ export class SimulationService {
 
           // If no TCS result available, use the appropriate split value
           if (resultValue === null) {
-            resultValue = Array.isArray(splitValues) && splitValues[i] !== undefined 
-              ? splitValues[i] 
-              : splitValues; // fallback to full result
+            resultValue =
+              Array.isArray(splitValues) && splitValues[i] !== undefined
+                ? splitValues[i]
+                : splitValues; // fallback to full result
           }
 
           details.push({
@@ -658,24 +665,26 @@ export class SimulationService {
       case 'CONSTANT':
         return constantValue;
 
-      case 'CONCAT':
+      case 'CONCAT': {
         const values = sourceValues.filter(
           (v) => v !== undefined && v !== null,
         );
         const concatenated = values.join(delimiter || ' ');
         return prefix ? `${prefix}${concatenated}` : concatenated;
+      }
 
-      case 'SUM':
+      case 'SUM': {
         const numericValues = sourceValues
-          .map((v) => parseFloat(v))
+          .map((v) => parseFloat(v as string))
           .filter((v) => !isNaN(v));
         const sum = numericValues.reduce((acc, val) => acc + val, 0);
         return prefix ? `${prefix}${sum}` : sum;
+      }
 
-      case 'MATH':
+      case 'MATH': {
         if (sourceValues.length >= 2 && operator) {
-          const val1 = parseFloat(sourceValues[0]);
-          const val2 = parseFloat(sourceValues[1]);
+          const val1 = parseFloat(sourceValues[0] as string);
+          const val2 = parseFloat(sourceValues[1] as string);
           if (!isNaN(val1) && !isNaN(val2)) {
             let result: number;
             switch (operator) {
@@ -698,8 +707,9 @@ export class SimulationService {
           }
         }
         return sourceValues[0];
+      }
 
-      case 'SPLIT':
+      case 'SPLIT': {
         // For split transformation, this would be shown in preview
         // but actual implementation would depend on how many destinations there are
         const splitValue = sourceValues[0];
@@ -708,6 +718,7 @@ export class SimulationService {
           return prefix ? `${prefix}${parts[0]}` : parts[0]; // Show first part in preview
         }
         return prefix ? `${prefix}${splitValue}` : splitValue;
+      }
 
       default:
         return sourceValues[0];
@@ -859,13 +870,19 @@ export class SimulationService {
   /**
    * Normalize XML-parsed object structure for schema validation with schema awareness
    */
-  private normalizeXmlParsedObjectWithSchema(obj: any, schema?: any, path: string = ''): any {
+  private normalizeXmlParsedObjectWithSchema(
+    obj: any,
+    schema?: any,
+    path: string = '',
+  ): any {
     if (!obj || typeof obj !== 'object') {
       return obj;
     }
 
     if (Array.isArray(obj)) {
-      return obj.map((item) => this.normalizeXmlParsedObjectWithSchema(item, schema, path));
+      return obj.map((item) =>
+        this.normalizeXmlParsedObjectWithSchema(item, schema, path),
+      );
     }
 
     const normalized: any = {};
@@ -879,24 +896,27 @@ export class SimulationService {
       // Handle text content specially
       if (key === '#text') {
         // Check if the parent object has attributes and text content
-        const hasAttributes = Object.keys(obj).some(k => k !== '#text' && !k.startsWith('@'));
-        const hasOnlyTextAndAttributes = Object.keys(obj).every(k => k === '#text' || k.startsWith('@') || !k.startsWith('@'));
-        
+        const hasAttributes = Object.keys(obj).some(
+          (k) => k !== '#text' && !k.startsWith('@'),
+        );
+        const hasOnlyTextAndAttributes = Object.keys(obj).every(
+          (k) => k === '#text' || k.startsWith('@') || !k.startsWith('@'),
+        );
+
         // If the schema expects a string at this path and we have text content with attributes,
         // we should return just the text value for schema validation
-        const currentPath = path ? `${path}.${key}` : key;
         const expectedType = this.getSchemaTypeAtPath(schema, path);
-        
+
         if (expectedType === 'string' && hasAttributes) {
           // Return just the text content when schema expects string
           return value;
         }
-        
+
         // If the object only has text content, return just the text
         if (Object.keys(obj).length === 1 || hasOnlyTextAndAttributes) {
           return value;
         }
-        
+
         // Otherwise, include it as a property
         normalized['textContent'] = value;
         continue;
@@ -904,20 +924,28 @@ export class SimulationService {
 
       // Build the current path for schema lookup
       const currentPath = path ? `${path}.${key}` : key;
-      
+
       // Get schema for this field
       const fieldSchema = this.getSchemaAtPath(schema, currentPath);
-      
+
       // Recursively normalize nested objects
       if (value && typeof value === 'object') {
-        const normalizedValue = this.normalizeXmlParsedObjectWithSchema(value, fieldSchema, currentPath);
-        
+        const normalizedValue = this.normalizeXmlParsedObjectWithSchema(
+          value,
+          fieldSchema,
+          currentPath,
+        );
+
         // Special handling: if schema expects string but we got object with text content
-        if (fieldSchema?.type === 'string' && 
-            typeof normalizedValue === 'object' && 
-            normalizedValue !== null &&
-            (normalizedValue.textContent !== undefined || normalizedValue['#text'] !== undefined)) {
-          normalized[key] = normalizedValue.textContent || normalizedValue['#text'];
+        if (
+          fieldSchema?.type === 'string' &&
+          typeof normalizedValue === 'object' &&
+          normalizedValue !== null &&
+          (normalizedValue.textContent !== undefined ||
+            normalizedValue['#text'] !== undefined)
+        ) {
+          normalized[key] =
+            normalizedValue.textContent || normalizedValue['#text'];
         } else {
           normalized[key] = normalizedValue;
         }
@@ -934,18 +962,18 @@ export class SimulationService {
    */
   private getSchemaTypeAtPath(schema: any, path: string): string | null {
     if (!schema || !path) return null;
-    
+
     const parts = path.split('.');
     let current = schema;
-    
+
     for (const part of parts) {
-      if (current?.properties && current.properties[part]) {
+      if (current?.properties?.[part]) {
         current = current.properties[part];
       } else {
         return null;
       }
     }
-    
+
     return current?.type || null;
   }
 
@@ -954,18 +982,18 @@ export class SimulationService {
    */
   private getSchemaAtPath(schema: any, path: string): any {
     if (!schema || !path) return null;
-    
+
     const parts = path.split('.');
     let current = schema;
-    
+
     for (const part of parts) {
-      if (current?.properties && current.properties[part]) {
+      if (current?.properties?.[part]) {
         current = current.properties[part];
       } else {
         return null;
       }
     }
-    
+
     return current;
   }
 

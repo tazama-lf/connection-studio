@@ -1100,18 +1100,15 @@ export class ConfigService {
         const errorMsg = `Duplicate field name '${field.name}' found in schema`;
         errors.push(errorMsg);
         duplicateNames.push(field.name);
-        
+
         // Log detailed error information
-        this.logger.error(
-          `Schema validation failed: ${errorMsg}`,
-          {
-            duplicateFieldName: field.name,
-            fieldPath: field.path,
-            fieldType: field.type,
-            fieldIndex: i,
-            context: 'validateNoDuplicateSchemaFields',
-          },
-        );
+        this.logger.error(`Schema validation failed: ${errorMsg}`, {
+          duplicateFieldName: field.name,
+          fieldPath: field.path,
+          fieldType: field.type,
+          fieldIndex: i,
+          context: 'validateNoDuplicateSchemaFields',
+        });
       } else {
         seenNames.add(field.name);
       }
@@ -1121,18 +1118,15 @@ export class ConfigService {
         const errorMsg = `Duplicate field path '${field.path}' found in schema`;
         errors.push(errorMsg);
         duplicatePaths.push(field.path);
-        
+
         // Log detailed error information
-        this.logger.error(
-          `Schema validation failed: ${errorMsg}`,
-          {
-            duplicateFieldPath: field.path,
-            fieldName: field.name,
-            fieldType: field.type,
-            fieldIndex: i,
-            context: 'validateNoDuplicateSchemaFields',
-          },
-        );
+        this.logger.error(`Schema validation failed: ${errorMsg}`, {
+          duplicateFieldPath: field.path,
+          fieldName: field.name,
+          fieldType: field.type,
+          fieldIndex: i,
+          context: 'validateNoDuplicateSchemaFields',
+        });
       } else {
         seenPaths.add(field.path);
       }
@@ -1162,7 +1156,7 @@ export class ConfigService {
     }
 
     // Legacy behavior: Auto-detect transformation based on input fields
-    
+
     // Many-to-one (concat logic)
     if (dto.sources && dto.sources.length > 0) {
       if (dto.sources.length < 2) {
@@ -1258,7 +1252,9 @@ export class ConfigService {
   /**
    * Create mapping with explicitly specified transformation
    */
-  private createMappingWithExplicitTransformation(dto: AddMappingDto): FieldMapping {
+  private createMappingWithExplicitTransformation(
+    dto: AddMappingDto,
+  ): FieldMapping {
     const mapping: any = {
       transformation: dto.transformation,
     };
@@ -1284,7 +1280,7 @@ export class ConfigService {
         mapping.delimiter = dto.delimiter || ' ';
         break;
 
-      case 'SUM':
+      case 'SUM': {
         const sourceFields = dto.sumFields || dto.sources;
         if (!sourceFields || sourceFields.length < 1) {
           throw new BadRequestException(
@@ -1299,8 +1295,9 @@ export class ConfigService {
         mapping.source = sourceFields;
         mapping.destination = dto.destination;
         break;
+      }
 
-      case 'MATH':
+      case 'MATH': {
         if (!dto.sources || dto.sources.length < 1) {
           throw new BadRequestException(
             'MATH transformation requires at least one source field',
@@ -1320,8 +1317,9 @@ export class ConfigService {
         mapping.destination = dto.destination;
         mapping.operator = dto.operator;
         break;
+      }
 
-      case 'SPLIT':
+      case 'SPLIT': {
         if (!dto.source) {
           throw new BadRequestException(
             'SPLIT transformation requires a source field',
@@ -1336,8 +1334,9 @@ export class ConfigService {
         mapping.destination = dto.destinations;
         mapping.delimiter = dto.delimiter || ',';
         break;
+      }
 
-      case 'CONSTANT':
+      case 'CONSTANT': {
         if (dto.constantValue === undefined) {
           throw new BadRequestException(
             'CONSTANT transformation requires a constant value',
@@ -1351,9 +1350,10 @@ export class ConfigService {
         mapping.destination = dto.destination;
         mapping.constantValue = dto.constantValue;
         break;
+      }
 
       case 'NONE':
-      default:
+      default: {
         if (!dto.source) {
           throw new BadRequestException(
             'Direct mapping (NONE transformation) requires a source field',
@@ -1367,6 +1367,7 @@ export class ConfigService {
         mapping.source = [dto.source];
         mapping.destination = dto.destination;
         break;
+      }
     }
 
     return mapping;
@@ -1675,7 +1676,7 @@ export class ConfigService {
     // Validate operator is specified for MATH transformation
     if (!mapping.operator) {
       throw new BadRequestException(
-        `MATH transformation validation error: Mathematical operator (ADD, SUBTRACT, MULTIPLY, DIVIDE) must be specified for MATH transformations.`,
+        'MATH transformation validation error: Mathematical operator (ADD, SUBTRACT, MULTIPLY, DIVIDE) must be specified for MATH transformations.',
       );
     }
   }
@@ -1740,8 +1741,6 @@ export class ConfigService {
     }
   }
 
-
-
   private extractAllPathsFromSchema(schema: JSONSchema, prefix = ''): string[] {
     const paths: string[] = [];
 
@@ -1777,7 +1776,7 @@ export class ConfigService {
 
           const traversalPaths = this.extractAllPathsFromSchema(
             propSchema.items as JSONSchema,
-            path, 
+            path,
           );
           paths.push(...traversalPaths);
         }

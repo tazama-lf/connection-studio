@@ -181,7 +181,7 @@ export const TAZAMA_DATA_MODEL_SCHEMAS: TazamaCollectionSchema[] = [
         type: 'number',
         required: false,
         description: 'Transaction amount',
-        example: 1000.50,
+        example: 1000.5,
       },
       {
         name: 'Ccy',

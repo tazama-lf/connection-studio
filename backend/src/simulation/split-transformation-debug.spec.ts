@@ -16,21 +16,28 @@ describe('SPLIT Transformation Simulation', () => {
       type: 'object',
       properties: {
         fullName: { type: 'string' },
-        address: { type: 'string' }
-      }
+        address: { type: 'string' },
+      },
     },
     mapping: [
       {
         id: 1,
         source: ['fullName'],
-        destination: ['transactionDetails.firstName', 'transactionDetails.lastName'],
+        destination: [
+          'transactionDetails.firstName',
+          'transactionDetails.lastName',
+        ],
         transformation: 'SPLIT',
         delimiter: ' ',
       },
       {
         id: 2,
         source: ['address'],
-        destination: ['transactionDetails.street', 'transactionDetails.city', 'transactionDetails.state'],
+        destination: [
+          'transactionDetails.street',
+          'transactionDetails.city',
+          'transactionDetails.state',
+        ],
         transformation: 'SPLIT',
         delimiter: ',',
       },
@@ -59,14 +66,16 @@ describe('SPLIT Transformation Simulation', () => {
     service = module.get<SimulationService>(SimulationService);
     configRepository = module.get<ConfigRepository>(ConfigRepository);
 
-    configRepository.findConfigById = jest.fn().mockResolvedValue(mockConfigWithSplit);
+    configRepository.findConfigById = jest
+      .fn()
+      .mockResolvedValue(mockConfigWithSplit);
   });
 
   describe('SPLIT Transformation Issues', () => {
     it('should handle SPLIT transformation to multiple destinations', async () => {
       const payload = {
         fullName: 'John Doe',
-        address: '123 Main St,New York,NY'
+        address: '123 Main St,New York,NY',
       };
 
       const dto = {
@@ -75,7 +84,11 @@ describe('SPLIT Transformation Simulation', () => {
         payload: payload,
       };
 
-      const result = await service.simulateMapping(dto, 'test-tenant', 'test-user');
+      const result = await service.simulateMapping(
+        dto,
+        'test-tenant',
+        'test-user',
+      );
 
       console.log('=== SPLIT TRANSFORMATION DEBUG ===');
       console.log('Status:', result.status);
@@ -84,31 +97,40 @@ describe('SPLIT Transformation Simulation', () => {
         console.log(`  ${index + 1}. ${stage.name}: ${stage.status}`);
         console.log(`     Message: ${stage.message}`);
         if (stage.errors) {
-          console.log(`     Errors:`, stage.errors);
+          console.log('     Errors:', stage.errors);
         }
       });
 
       if (result.tcsResult) {
         console.log('TCS Result:');
         console.log('  dataCache:', result.tcsResult.dataCache);
-        console.log('  transactionRelationship:', result.tcsResult.transactionRelationship);
+        console.log(
+          '  transactionRelationship:',
+          result.tcsResult.transactionRelationship,
+        );
         console.log('  endToEndId:', result.tcsResult.endToEndId);
       }
 
       // Check if transformation details show the split values
       if (result.stages.length > 4) {
         const tcsStage = result.stages[4]; // TCS mapping stage
-        if (tcsStage.details && tcsStage.details.mappingDetails) {
+        if (tcsStage.details?.mappingDetails) {
           console.log('Mapping Details:');
-          tcsStage.details.mappingDetails.forEach((detail: any, index: number) => {
-            console.log(`  Mapping ${index + 1}:`);
-            console.log(`    Destination: ${detail.destination}`);
-            console.log(`    Sources: ${JSON.stringify(detail.sources)}`);
-            console.log(`    Source Values: ${JSON.stringify(detail.sourceValues)}`);
-            console.log(`    Transformation: ${detail.transformation}`);
-            console.log(`    Result Value: ${JSON.stringify(detail.resultValue)}`);
-            console.log(`    Delimiter: ${detail.delimiter}`);
-          });
+          tcsStage.details.mappingDetails.forEach(
+            (detail: any, index: number) => {
+              console.log(`  Mapping ${index + 1}:`);
+              console.log(`    Destination: ${detail.destination}`);
+              console.log(`    Sources: ${JSON.stringify(detail.sources)}`);
+              console.log(
+                `    Source Values: ${JSON.stringify(detail.sourceValues)}`,
+              );
+              console.log(`    Transformation: ${detail.transformation}`);
+              console.log(
+                `    Result Value: ${JSON.stringify(detail.resultValue)}`,
+              );
+              console.log(`    Delimiter: ${detail.delimiter}`);
+            },
+          );
         }
       }
 
@@ -118,29 +140,31 @@ describe('SPLIT Transformation Simulation', () => {
 
       // The issue: SPLIT transformations should create multiple TCS mappings
       // but currently only create one mapping per source
-      
+
       // Test what we expect vs what currently happens
       if (result.tcsResult) {
         // For fullName "John Doe" split by " ", we should see:
         // - firstName: "John"
         // - lastName: "Doe"
-        
+
         // For address "123 Main St,New York,NY" split by ",", we should see:
         // - street: "123 Main St"
-        // - city: "New York"  
+        // - city: "New York"
         // - state: "NY"
-        
+
         console.log('Expected SPLIT results not found in dataCache');
       }
     });
 
     it('should debug TCS mapping conversion for SPLIT', async () => {
       console.log('=== TCS MAPPING CONVERSION DEBUG ===');
-      
+
       // Test the convertConfigToTCSMapping method directly
-      const convertMethod = (service as any).convertConfigToTCSMapping.bind(service);
+      const convertMethod = (service as any).convertConfigToTCSMapping.bind(
+        service,
+      );
       const tcsMapping = convertMethod(mockConfigWithSplit);
-      
+
       console.log('Original Config Mappings:');
       mockConfigWithSplit.mapping.forEach((mapping, index) => {
         console.log(`  Mapping ${index + 1}:`);
@@ -161,10 +185,10 @@ describe('SPLIT Transformation Simulation', () => {
 
       console.log('=== END TCS MAPPING CONVERSION DEBUG ===');
 
-      // The issue should be visible here: 
+      // The issue should be visible here:
       // SPLIT transformations with multiple destinations should create multiple TCS mappings
-      // but currently only create one TCS mapping taking the first destination
-      expect(tcsMapping.mappings).toHaveLength(2); // Currently creates 2, should create 5 (2+3)
+      // One mapping splits "fullName" into 2 fields, another splits "address" into 3 fields = 5 total
+      expect(tcsMapping.mappings).toHaveLength(5); // Should create 5 (2+3)
     });
   });
 });

@@ -100,7 +100,7 @@ describe('Data Type Validation for Mappings', () => {
     tazamaDataModelService = module.get(TazamaDataModelService);
   });
 
-  describe('Compatible Type Mappings (Should Succeed)', () => {
+  describe('Strict Type Validation', () => {
     it('should allow string to string mapping', async () => {
       tazamaDataModelService.getFieldType.mockReturnValue('STRING');
 
@@ -114,7 +114,7 @@ describe('Data Type Validation for Mappings', () => {
       ).resolves.toBeDefined();
     });
 
-    it('should allow string to any type (string is universal)', async () => {
+    it('should reject string to number mapping (strict typing)', async () => {
       tazamaDataModelService.getFieldType.mockReturnValue('NUMBER');
 
       const mappingDto = {
@@ -124,10 +124,10 @@ describe('Data Type Validation for Mappings', () => {
 
       await expect(
         service.addMapping(1, mappingDto, 'test-tenant', 'test-user'),
-      ).resolves.toBeDefined();
+      ).rejects.toThrow(/Direct mapping type mismatch.*string.*number/);
     });
 
-    it('should allow number to string mapping', async () => {
+    it('should reject number to string mapping (strict typing)', async () => {
       tazamaDataModelService.getFieldType.mockReturnValue('STRING');
 
       const mappingDto = {
@@ -137,10 +137,10 @@ describe('Data Type Validation for Mappings', () => {
 
       await expect(
         service.addMapping(1, mappingDto, 'test-tenant', 'test-user'),
-      ).resolves.toBeDefined();
+      ).rejects.toThrow(/Direct mapping type mismatch.*number.*string/);
     });
 
-    it('should allow boolean to string mapping', async () => {
+    it('should reject boolean to string mapping (strict typing)', async () => {
       tazamaDataModelService.getFieldType.mockReturnValue('STRING');
 
       const mappingDto = {
@@ -150,7 +150,7 @@ describe('Data Type Validation for Mappings', () => {
 
       await expect(
         service.addMapping(1, mappingDto, 'test-tenant', 'test-user'),
-      ).resolves.toBeDefined();
+      ).rejects.toThrow(/Direct mapping type mismatch.*boolean.*string/);
     });
 
     it('should allow number to number mapping', async () => {
@@ -195,7 +195,7 @@ describe('Data Type Validation for Mappings', () => {
 
       await expect(
         service.addMapping(1, mappingDto, 'test-tenant', 'test-user'),
-      ).rejects.toThrow(/Data type mismatch.*array.*string/);
+      ).rejects.toThrow(/Direct mapping type mismatch.*array.*string/);
     });
 
     it('should reject array to number mapping', async () => {
@@ -225,7 +225,7 @@ describe('Data Type Validation for Mappings', () => {
 
       await expect(
         service.addMapping(1, mappingDto, 'test-tenant', 'test-user'),
-      ).rejects.toThrow(/Data type mismatch.*string.*array/);
+      ).rejects.toThrow(/Direct mapping type mismatch.*string.*array/);
     });
 
     it('should reject object to string mapping', async () => {
@@ -297,17 +297,17 @@ describe('Data Type Validation for Mappings', () => {
   });
 
   describe('Constants and Special Cases', () => {
-    it('should allow constant mappings regardless of destination type', async () => {
+    it('should validate constant mappings type compatibility', async () => {
       tazamaDataModelService.getFieldType.mockReturnValue('NUMBER');
 
       const mappingDto = {
-        constantValue: 'some constant',
-        destination: 'entities.id',
+        constantValue: 'some constant', // string constant
+        destination: 'entities.id', // number field
       };
 
       await expect(
         service.addMapping(1, mappingDto, 'test-tenant', 'test-user'),
-      ).resolves.toBeDefined();
+      ).rejects.toThrow(/Constant value type mismatch/);
     });
 
     it('should handle missing destination type gracefully', async () => {
@@ -338,12 +338,12 @@ describe('Data Type Validation for Mappings', () => {
         fail('Should have thrown BadRequestException');
       } catch (error) {
         expect(error).toBeInstanceOf(BadRequestException);
-        expect(error.message).toContain('Data type mismatch');
+        expect(error.message).toContain('Direct mapping type mismatch');
         expect(error.message).toContain('stringField');
         expect(error.message).toContain('string');
         expect(error.message).toContain('entities.id');
         expect(error.message).toContain('array');
-        expect(error.message).toContain('Compatible mappings');
+        expect(error.message).toContain('STRICT TYPE MATCHING');
       }
     });
   });

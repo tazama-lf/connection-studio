@@ -1,5 +1,4 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { BadRequestException } from '@nestjs/common';
 import { ConfigService } from './config.service';
 import { ConfigRepository } from './config.repository';
 import { AuditService } from '../audit/audit.service';
@@ -25,12 +24,12 @@ describe('Enhanced Mapping Type Validation', () => {
         numberField: { type: 'number' },
         booleanField: { type: 'boolean' },
         arrayField: { type: 'array', items: { type: 'string' } },
-        objectField: { 
+        objectField: {
           type: 'object',
           properties: {
             nestedString: { type: 'string' },
-            nestedNumber: { type: 'number' }
-          }
+            nestedNumber: { type: 'number' },
+          },
         },
         anotherNumber: { type: 'number' }, // Add this field to avoid test issues
       } as any,
@@ -75,7 +74,9 @@ describe('Enhanced Mapping Type Validation', () => {
 
     service = module.get<ConfigService>(ConfigService);
     repository = module.get<ConfigRepository>(ConfigRepository);
-    tazamaDataModelService = module.get<TazamaDataModelService>(TazamaDataModelService);
+    tazamaDataModelService = module.get<TazamaDataModelService>(
+      TazamaDataModelService,
+    );
 
     repository.findConfigById = jest.fn().mockResolvedValue(mockConfig);
   });
@@ -108,7 +109,10 @@ describe('Enhanced Mapping Type Validation', () => {
 
       await expect(
         service.addMapping(1, dto, 'test-tenant', 'user-123'),
-      ).rejects.toThrow('Source field \'numberField\' of type \'number\' cannot be concatenated');
+      ).rejects.toThrow(
+        // prettier-ignore
+        'Source field \'numberField\' of type \'number\' cannot be concatenated',
+      );
     });
 
     it('should reject CONCAT to non-string destination', async () => {
@@ -141,6 +145,7 @@ describe('Enhanced Mapping Type Validation', () => {
       await expect(
         service.addMapping(1, dto, 'test-tenant', 'user-123'),
       ).rejects.toThrow(
+        // prettier-ignore
         'Source field \'arrayField\' of type \'array\' cannot be concatenated',
       );
     });
@@ -172,7 +177,8 @@ describe('Enhanced Mapping Type Validation', () => {
 
       await expect(
         service.addMapping(1, dto, 'test-tenant', 'user-123'),
-      ).rejects.toThrow('Destination field must be of type \'number\'');
+        // eslint-disable-next-line quotes
+      ).rejects.toThrow("Destination field must be of type 'number'");
     });
 
     it('should reject SUM with non-numeric sources', async () => {
@@ -187,12 +193,15 @@ describe('Enhanced Mapping Type Validation', () => {
       await expect(
         service.addMapping(1, dto, 'test-tenant', 'user-123'),
       ).rejects.toThrow(
-        'Source field \'stringField\' of type \'string\' cannot be summed',
+        // eslint-disable-next-line quotes
+        "Source field 'stringField' of type 'string' cannot be summed",
       );
     });
 
     it('should reject SUM to boolean destination (strict mode)', async () => {
-      tazamaDataModelService.getFieldType = jest.fn().mockReturnValue('BOOLEAN');
+      tazamaDataModelService.getFieldType = jest
+        .fn()
+        .mockReturnValue('BOOLEAN');
 
       const dto: AddMappingDto = {
         sumFields: ['numberField', 'anotherNumber'],
@@ -237,7 +246,8 @@ describe('Enhanced Mapping Type Validation', () => {
       await expect(
         service.addMapping(1, dto, 'test-tenant', 'user-123'),
       ).rejects.toThrow(
-        'Source field \'stringField\' of type \'string\' cannot be used in mathematical operations',
+        // eslint-disable-next-line quotes
+        "Source field 'stringField' of type 'string' cannot be used in mathematical operations",
       );
     });
 
@@ -265,7 +275,10 @@ describe('Enhanced Mapping Type Validation', () => {
 
       const dto: AddMappingDto = {
         source: 'stringField',
-        destinations: ['transactionDetails.field1', 'transactionDetails.field2'],
+        destinations: [
+          'transactionDetails.field1',
+          'transactionDetails.field2',
+        ],
         transformation: 'SPLIT',
         delimiter: ',',
       };
@@ -280,7 +293,10 @@ describe('Enhanced Mapping Type Validation', () => {
 
       const dto: AddMappingDto = {
         source: 'numberField',
-        destinations: ['transactionDetails.field1', 'transactionDetails.field2'],
+        destinations: [
+          'transactionDetails.field1',
+          'transactionDetails.field2',
+        ],
         transformation: 'SPLIT',
         delimiter: ',',
       };
@@ -288,7 +304,8 @@ describe('Enhanced Mapping Type Validation', () => {
       await expect(
         service.addMapping(1, dto, 'test-tenant', 'user-123'),
       ).rejects.toThrow(
-        'Source field \'numberField\' of type \'number\' cannot be split',
+        // eslint-disable-next-line quotes
+        "Source field 'numberField' of type 'number' cannot be split",
       );
     });
 
@@ -304,9 +321,8 @@ describe('Enhanced Mapping Type Validation', () => {
 
       await expect(
         service.addMapping(1, dto, 'test-tenant', 'user-123'),
-      ).rejects.toThrow(
-        'Destination field must be of type \'string\'',
-      );
+        // eslint-disable-next-line quotes
+      ).rejects.toThrow("Destination field must be of type 'string'");
     });
   });
 
@@ -334,7 +350,9 @@ describe('Enhanced Mapping Type Validation', () => {
 
       await expect(
         service.addMapping(1, dto, 'test-tenant', 'user-123'),
-      ).rejects.toThrow('STRICT TYPE MATCHING: Only exact type matches are allowed');
+      ).rejects.toThrow(
+        'STRICT TYPE MATCHING: Only exact type matches are allowed',
+      );
     });
 
     it('should reject incompatible direct mappings', async () => {
@@ -348,7 +366,8 @@ describe('Enhanced Mapping Type Validation', () => {
       await expect(
         service.addMapping(1, dto, 'test-tenant', 'user-123'),
       ).rejects.toThrow(
-        'Direct mapping type mismatch: Cannot map source field \'stringField\' of type \'string\' to destination field \'transactionDetails.arrayField\' of type \'array\'',
+        // eslint-disable-next-line quotes
+        "Direct mapping type mismatch: Cannot map source field 'stringField' of type 'string' to destination field 'transactionDetails.arrayField' of type 'array'",
       );
     });
   });
@@ -379,7 +398,10 @@ describe('Enhanced Mapping Type Validation', () => {
 
       await expect(
         service.addMapping(1, dto, 'test-tenant', 'user-123'),
-      ).rejects.toThrow('Cannot assign constant value \'123\' of type \'number\' to destination field');
+      ).rejects.toThrow(
+        // eslint-disable-next-line quotes
+        "Cannot assign constant value '123' of type 'number' to destination field",
+      );
     });
 
     it('should reject incompatible constant mappings', async () => {
@@ -394,7 +416,8 @@ describe('Enhanced Mapping Type Validation', () => {
       await expect(
         service.addMapping(1, dto, 'test-tenant', 'user-123'),
       ).rejects.toThrow(
-        'Constant value type mismatch: Cannot assign constant value \'test value\' of type \'string\' to destination field \'transactionDetails.arrayField\' of type \'array\'',
+        // eslint-disable-next-line quotes
+        "Constant value type mismatch: Cannot assign constant value 'test value' of type 'string' to destination field 'transactionDetails.arrayField' of type 'array'",
       );
     });
   });
@@ -410,9 +433,7 @@ describe('Enhanced Mapping Type Validation', () => {
 
       await expect(
         service.addMapping(1, dto, 'test-tenant', 'user-123'),
-      ).rejects.toThrow(
-        'Arrays can only map to arrays, objects can only map to objects',
-      );
+      ).rejects.toThrow(/Direct mapping type mismatch.*array.*string/);
     });
 
     it('should reject object to non-object mapping', async () => {
@@ -425,9 +446,7 @@ describe('Enhanced Mapping Type Validation', () => {
 
       await expect(
         service.addMapping(1, dto, 'test-tenant', 'user-123'),
-      ).rejects.toThrow(
-        'Arrays can only map to arrays, objects can only map to objects',
-      );
+      ).rejects.toThrow(/Direct mapping type mismatch.*object.*string/);
     });
   });
 });

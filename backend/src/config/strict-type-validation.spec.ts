@@ -1,5 +1,4 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { BadRequestException } from '@nestjs/common';
 import { ConfigService } from './config.service';
 import { ConfigRepository } from './config.repository';
 import { AuditService } from '../audit/audit.service';
@@ -25,12 +24,12 @@ describe('Strict Type Validation', () => {
         numberField: { type: 'number' },
         booleanField: { type: 'boolean' },
         arrayField: { type: 'array', items: { type: 'string' } },
-        objectField: { 
+        objectField: {
           type: 'object',
           properties: {
             nestedString: { type: 'string' },
-            nestedNumber: { type: 'number' }
-          }
+            nestedNumber: { type: 'number' },
+          },
         },
       } as any,
     } as any,
@@ -74,7 +73,9 @@ describe('Strict Type Validation', () => {
 
     service = module.get<ConfigService>(ConfigService);
     repository = module.get<ConfigRepository>(ConfigRepository);
-    tazamaDataModelService = module.get<TazamaDataModelService>(TazamaDataModelService);
+    tazamaDataModelService = module.get<TazamaDataModelService>(
+      TazamaDataModelService,
+    );
 
     repository.findConfigById = jest.fn().mockResolvedValue(mockConfig);
   });
@@ -116,7 +117,9 @@ describe('Strict Type Validation', () => {
 
       await expect(
         service.addMapping(1, dto, 'test-tenant', 'user-123'),
-      ).rejects.toThrow('STRICT TYPE MATCHING: Only exact type matches are allowed');
+      ).rejects.toThrow(
+        'STRICT TYPE MATCHING: Only exact type matches are allowed',
+      );
     });
 
     it('should reject number to string mapping (strict mode)', async () => {
@@ -129,7 +132,9 @@ describe('Strict Type Validation', () => {
 
       await expect(
         service.addMapping(1, dto, 'test-tenant', 'user-123'),
-      ).rejects.toThrow('STRICT TYPE MATCHING: Only exact type matches are allowed');
+      ).rejects.toThrow(
+        'STRICT TYPE MATCHING: Only exact type matches are allowed',
+      );
     });
 
     it('should require string sources for CONCAT transformation', async () => {
@@ -144,21 +149,25 @@ describe('Strict Type Validation', () => {
 
       await expect(
         service.addMapping(1, dto, 'test-tenant', 'user-123'),
-      ).rejects.toThrow('Source field \'numberField\' of type \'number\' cannot be concatenated');
+      ).rejects.toThrow(
+        // eslint-disable-next-line quotes
+        "Source field 'numberField' of type 'number' cannot be concatenated",
+      );
     });
 
     it('should require number destination for SUM transformation', async () => {
       tazamaDataModelService.getFieldType = jest.fn().mockReturnValue('STRING');
 
       const dto: AddMappingDto = {
-        sumFields: ['numberField'],
-        destination: 'transactionDetails.description', // string destination not allowed
+        sources: ['numberField'],
+        destination: 'transactionDetails.stringField',
         transformation: 'SUM',
       };
 
       await expect(
         service.addMapping(1, dto, 'test-tenant', 'user-123'),
-      ).rejects.toThrow('Destination field must be of type \'number\'');
+        // eslint-disable-next-line quotes
+      ).rejects.toThrow("Destination field must be of type 'number'");
     });
 
     it('should require number destination for MATH transformation', async () => {
@@ -173,7 +182,8 @@ describe('Strict Type Validation', () => {
 
       await expect(
         service.addMapping(1, dto, 'test-tenant', 'user-123'),
-      ).rejects.toThrow('Destination field must be of type \'number\'');
+        // eslint-disable-next-line quotes
+      ).rejects.toThrow("Destination field must be of type 'number'");
     });
 
     it('should require string destination for SPLIT transformation', async () => {
@@ -188,7 +198,8 @@ describe('Strict Type Validation', () => {
 
       await expect(
         service.addMapping(1, dto, 'test-tenant', 'user-123'),
-      ).rejects.toThrow('Destination field must be of type \'string\'');
+        // eslint-disable-next-line quotes
+      ).rejects.toThrow("Destination field must be of type 'string'");
     });
   });
 

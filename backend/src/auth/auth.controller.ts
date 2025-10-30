@@ -33,18 +33,20 @@ export class AuthController {
       // Decode the token to extract user information
       const jwt = require('jsonwebtoken');
       const decodedToken = jwt.decode(result.token);
-      if (decodedToken && decodedToken.clientId && decodedToken.tenantId) {
+      if (decodedToken?.clientId && decodedToken.tenantId) {
         // Create session for the user immediately after successful login
         this.sessionManager.recordActivity(
           decodedToken.clientId,
           decodedToken.tenantId,
-          result.token
+          result.token,
         );
         this.logger.log(
-          `Session created for user: ${decodedToken.clientId}, tenant: ${decodedToken.tenantId}`
+          `Session created for user: ${decodedToken.clientId}, tenant: ${decodedToken.tenantId}`,
         );
       } else {
-        this.logger.warn('Token does not contain required clientId/tenantId fields');
+        this.logger.warn(
+          'Token does not contain required clientId/tenantId fields',
+        );
       }
       const response: any = {
         message: 'Login successful',
@@ -166,7 +168,7 @@ export class AuthController {
     }
     // Get the original token to extract username for re-authentication
     const originalToken = user?.token;
-    if (!originalToken || !originalToken.preferred_username) {
+    if (!originalToken?.preferred_username) {
       this.logger.error('Could not extract username from token for refresh');
       throw new UnauthorizedException(
         'Invalid token data. Please log in again.',

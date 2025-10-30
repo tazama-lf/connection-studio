@@ -160,8 +160,8 @@ export class TazamaAuthGuard implements CanActivate {
         try {
           // Try to decode the token to get user info (even if expired)
           const jwt = require('jsonwebtoken');
-          const decoded = jwt.decode(authHeader.split(' ')[1]) as any;
-          if (decoded && decoded.clientId && decoded.tenantId) {
+          const decoded = jwt.decode(authHeader.split(' ')[1]);
+          if (decoded?.clientId && decoded.tenantId) {
             const userId = decoded.clientId;
             const tenantId = decoded.tenantId;
             // Check if session was active

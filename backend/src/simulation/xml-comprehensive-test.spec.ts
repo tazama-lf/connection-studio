@@ -26,8 +26,8 @@ describe('XML Simulation - Comprehensive Tests', () => {
                   properties: {
                     MsgId: { type: 'string' },
                     CreDtTm: { type: 'string' },
-                    NbOfTxs: { type: 'string' }
-                  }
+                    NbOfTxs: { type: 'string' },
+                  },
                 },
                 CdtTrfTxInf: {
                   type: 'object',
@@ -36,8 +36,8 @@ describe('XML Simulation - Comprehensive Tests', () => {
                       type: 'object',
                       properties: {
                         InstrId: { type: 'string' },
-                        EndToEndId: { type: 'string' }
-                      }
+                        EndToEndId: { type: 'string' },
+                      },
                     },
                     IntrBkSttlmAmt: { type: 'string' }, // Schema expects string for amount
                     ChrgBr: { type: 'string' }, // Simple text element
@@ -48,10 +48,10 @@ describe('XML Simulation - Comprehensive Tests', () => {
                         Id: {
                           type: 'object',
                           properties: {
-                            PrvtId: { type: 'string' }
-                          }
-                        }
-                      }
+                            PrvtId: { type: 'string' },
+                          },
+                        },
+                      },
                     },
                     Cdtr: {
                       type: 'object',
@@ -60,18 +60,18 @@ describe('XML Simulation - Comprehensive Tests', () => {
                         Id: {
                           type: 'object',
                           properties: {
-                            PrvtId: { type: 'string' }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
+                            PrvtId: { type: 'string' },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
     },
     mapping: [
       {
@@ -159,11 +159,17 @@ describe('XML Simulation - Comprehensive Tests', () => {
         payload: xmlPayload,
       };
 
-      const result = await service.simulateMapping(dto, 'test-tenant', 'test-user');
+      const result = await service.simulateMapping(
+        dto,
+        'test-tenant',
+        'test-user',
+      );
 
       expect(result.status).toBe('PASSED');
       expect(result.stages).toHaveLength(5);
-      expect(result.stages.every(stage => stage.status === 'PASSED')).toBe(true);
+      expect(result.stages.every((stage) => stage.status === 'PASSED')).toBe(
+        true,
+      );
       expect(result.summary.passedStages).toBe(5);
       expect(result.summary.failedStages).toBe(0);
       expect(result.summary.mappingsApplied).toBe(3);
@@ -207,13 +213,25 @@ describe('XML Simulation - Comprehensive Tests', () => {
         payload: xmlPayload,
       };
 
-      const result = await service.simulateMapping(dto, 'test-tenant', 'test-user');
+      const result = await service.simulateMapping(
+        dto,
+        'test-tenant',
+        'test-user',
+      );
 
       expect(result.status).toBe('PASSED');
-      expect(result.stages.find(s => s.name.includes('Parse Payload'))?.status).toBe('PASSED');
-      expect(result.stages.find(s => s.name.includes('Validate Schema'))?.status).toBe('PASSED');
-      expect(result.stages.find(s => s.name.includes('Validate Mappings'))?.status).toBe('PASSED');
-      expect(result.stages.find(s => s.name.includes('TCS Mapping'))?.status).toBe('PASSED');
+      expect(
+        result.stages.find((s) => s.name.includes('Parse Payload'))?.status,
+      ).toBe('PASSED');
+      expect(
+        result.stages.find((s) => s.name.includes('Validate Schema'))?.status,
+      ).toBe('PASSED');
+      expect(
+        result.stages.find((s) => s.name.includes('Validate Mappings'))?.status,
+      ).toBe('PASSED');
+      expect(
+        result.stages.find((s) => s.name.includes('TCS Mapping'))?.status,
+      ).toBe('PASSED');
     });
 
     it('should handle XML namespaces correctly', async () => {
@@ -254,7 +272,11 @@ describe('XML Simulation - Comprehensive Tests', () => {
         payload: xmlPayload,
       };
 
-      const result = await service.simulateMapping(dto, 'test-tenant', 'test-user');
+      const result = await service.simulateMapping(
+        dto,
+        'test-tenant',
+        'test-user',
+      );
 
       expect(result.status).toBe('PASSED');
       expect(result.errors).toHaveLength(0);
@@ -279,10 +301,16 @@ describe('XML Simulation - Comprehensive Tests', () => {
         payload: malformedXml,
       };
 
-      const result = await service.simulateMapping(dto, 'test-tenant', 'test-user');
+      const result = await service.simulateMapping(
+        dto,
+        'test-tenant',
+        'test-user',
+      );
 
       expect(result.status).toBe('FAILED');
-      expect(result.stages.find(s => s.name.includes('Parse Payload'))?.status).toBe('FAILED');
+      expect(
+        result.stages.find((s) => s.name.includes('Parse Payload'))?.status,
+      ).toBe('FAILED');
       expect(result.errors.length).toBeGreaterThan(0);
       expect(result.errors[0].message).toContain('Invalid XML payload');
     });
@@ -294,10 +322,16 @@ describe('XML Simulation - Comprehensive Tests', () => {
         payload: '',
       };
 
-      const result = await service.simulateMapping(dto, 'test-tenant', 'test-user');
+      const result = await service.simulateMapping(
+        dto,
+        'test-tenant',
+        'test-user',
+      );
 
       expect(result.status).toBe('FAILED');
-      expect(result.stages.find(s => s.name.includes('Parse Payload'))?.status).toBe('FAILED');
+      expect(
+        result.stages.find((s) => s.name.includes('Parse Payload'))?.status,
+      ).toBe('FAILED');
       expect(result.errors[0].message).toContain('XML payload cannot be empty');
     });
   });
@@ -306,21 +340,23 @@ describe('XML Simulation - Comprehensive Tests', () => {
     it('should extract text content when schema expects string', async () => {
       // Test the normalization method directly
       const parseMethod = (service as any).parsePayload.bind(service);
-      const normalizeMethod = (service as any).normalizePayloadForValidation.bind(service);
+      const normalizeMethod = (
+        service as any
+      ).normalizePayloadForValidation.bind(service);
 
-      const xmlPayload = `<IntrBkSttlmAmt Ccy="USD">100.00</IntrBkSttlmAmt>`;
+      const xmlPayload = '<IntrBkSttlmAmt Ccy="USD">100.00</IntrBkSttlmAmt>';
       const parsed = await parseMethod(xmlPayload, 'application/xml');
-      
+
       // Mock schema that expects string for IntrBkSttlmAmt
       const schema = {
         type: 'object',
         properties: {
-          IntrBkSttlmAmt: { type: 'string' }
-        }
+          IntrBkSttlmAmt: { type: 'string' },
+        },
       };
 
       const normalized = normalizeMethod(parsed, { schema });
-      
+
       // Should extract just the text content since schema expects string
       expect(normalized.IntrBkSttlmAmt).toBe('100.00');
       expect(typeof normalized.IntrBkSttlmAmt).toBe('string');
@@ -328,14 +364,16 @@ describe('XML Simulation - Comprehensive Tests', () => {
 
     it('should preserve structure when schema expects object', async () => {
       const parseMethod = (service as any).parsePayload.bind(service);
-      const normalizeMethod = (service as any).normalizePayloadForValidation.bind(service);
+      const normalizeMethod = (
+        service as any
+      ).normalizePayloadForValidation.bind(service);
 
       const xmlPayload = `<ComplexElement>
         <TextPart>Some text</TextPart>
         <NumericPart>123</NumericPart>
       </ComplexElement>`;
       const parsed = await parseMethod(xmlPayload, 'application/xml');
-      
+
       // Mock schema that expects object
       const schema = {
         type: 'object',
@@ -344,14 +382,14 @@ describe('XML Simulation - Comprehensive Tests', () => {
             type: 'object',
             properties: {
               TextPart: { type: 'string' },
-              NumericPart: { type: 'string' }
-            }
-          }
-        }
+              NumericPart: { type: 'string' },
+            },
+          },
+        },
       };
 
       const normalized = normalizeMethod(parsed, { schema });
-      
+
       // Should preserve object structure
       expect(typeof normalized.ComplexElement).toBe('object');
       expect(normalized.ComplexElement.TextPart).toBe('Some text');
@@ -398,16 +436,24 @@ describe('XML Simulation - Comprehensive Tests', () => {
         payload: xmlPayload,
       };
 
-      const result = await service.simulateMapping(dto, 'test-tenant', 'test-user');
+      const result = await service.simulateMapping(
+        dto,
+        'test-tenant',
+        'test-user',
+      );
 
       expect(result.status).toBe('PASSED');
       expect(result.tcsResult).toBeDefined();
       expect(result.summary.mappingsApplied).toBe(3);
-      
+
       // Verify TCS mapping stage passed
-      const tcsStage = result.stages.find(s => s.name.includes('TCS Mapping'));
+      const tcsStage = result.stages.find((s) =>
+        s.name.includes('TCS Mapping'),
+      );
       expect(tcsStage?.status).toBe('PASSED');
-      expect(tcsStage?.message).toContain('Successfully executed 3 TCS mapping function(s)');
+      expect(tcsStage?.message).toContain(
+        'Successfully executed 3 TCS mapping function(s)',
+      );
     });
   });
 });
