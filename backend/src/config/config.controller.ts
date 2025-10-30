@@ -164,7 +164,12 @@ export class ConfigController {
     return config;
   }
   @Get(':id')
-  @RequireAnyClaims(TazamaClaims.EDITOR, TazamaClaims.APPROVER)
+  @RequireAnyClaims(
+    TazamaClaims.EDITOR,
+    TazamaClaims.APPROVER,
+    TazamaClaims.PUBLISHER,
+    TazamaClaims.EXPORTER,
+  )
   async getConfigById(
     @Param('id', ParseIntPipe) id: number,
     @User() user: AuthenticatedUser,
@@ -179,7 +184,12 @@ export class ConfigController {
     return config;
   }
   @Get()
-  @RequireClaims(TazamaClaims.EDITOR)
+  @RequireClaims(
+    TazamaClaims.EDITOR,
+    TazamaClaims.APPROVER,
+    TazamaClaims.PUBLISHER,
+    TazamaClaims.EXPORTER,
+  )
   async getAllConfigs(@User() user: AuthenticatedUser): Promise<Config[]> {
     return this.configService.getAllConfigs(getTenantId(user));
   }
@@ -418,6 +428,7 @@ export class ConfigController {
     TazamaClaims.EDITOR,
     TazamaClaims.APPROVER,
     TazamaClaims.PUBLISHER,
+    TazamaClaims.EXPORTER,
   )
   async getAuditHistory(
     @Param('id', ParseIntPipe) id: number,

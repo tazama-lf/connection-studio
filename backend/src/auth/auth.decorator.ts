@@ -36,6 +36,7 @@ export const TazamaClaims = {
   EDITOR: 'editor',
   APPROVER: 'approver',
   PUBLISHER: 'publisher',
+  EXPORTER: 'exporter',
   MANAGE_ACCOUNT: 'manage-account',
   MANAGE_ACCOUNT_LINKS: 'manage-account-links',
   VIEW_PROFILE: 'view-profile',
@@ -49,5 +50,7 @@ export const TazamaClaims = {
  */
 export const RequireEditorRole = () => RequireClaim(TazamaClaims.EDITOR);
 export const RequireApproverRole = () => RequireClaim(TazamaClaims.APPROVER);
+export const RequireExporterRole = () => RequireClaim(TazamaClaims.EXPORTER);
+export const RequirePublisherRole = () => RequireClaim(TazamaClaims.PUBLISHER);
 export const RequireAccountManagement = () =>
   RequireClaims(TazamaClaims.MANAGE_ACCOUNT, TazamaClaims.MANAGE_ACCOUNT_LINKS);
