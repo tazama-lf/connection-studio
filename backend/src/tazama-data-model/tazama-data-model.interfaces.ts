@@ -21,6 +21,7 @@ export interface TazamaField {
   required: boolean;
   description?: string;
   example?: any;
+  properties?: TazamaField[]; // For object types, define nested properties
 }
 export interface TazamaCollectionSchema {
   name: TazamaCollectionName;
@@ -274,6 +275,22 @@ export const TAZAMA_DATA_MODEL_SCHEMAS: TazamaCollectionSchema[] = [
         required: false,
         description: 'Instructed Amount with currency',
         example: { amt: 1000.5, ccy: 'USD' },
+        properties: [
+          {
+            name: 'amt',
+            type: 'number',
+            required: true,
+            description: 'Amount value',
+            example: 1000.5,
+          },
+          {
+            name: 'ccy',
+            type: 'string',
+            required: true,
+            description: 'Currency code',
+            example: 'USD',
+          },
+        ],
       },
       {
         name: 'intrBkSttlmAmt',
@@ -281,6 +298,22 @@ export const TAZAMA_DATA_MODEL_SCHEMAS: TazamaCollectionSchema[] = [
         required: false,
         description: 'Interbank Settlement Amount with currency',
         example: { amt: 1000.5, ccy: 'USD' },
+        properties: [
+          {
+            name: 'amt',
+            type: 'number',
+            required: true,
+            description: 'Amount value',
+            example: 1000.5,
+          },
+          {
+            name: 'ccy',
+            type: 'string',
+            required: true,
+            description: 'Currency code',
+            example: 'USD',
+          },
+        ],
       },
       {
         name: 'xchgRate',
