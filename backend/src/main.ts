@@ -1,4 +1,7 @@
-import 'dotenv/config';
+import * as dotenv from 'dotenv';
+
+dotenv.config({ path: '.env' });
+
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ConfigService } from '@nestjs/config';
@@ -11,6 +14,9 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
   const logger = app.get(LoggerService);
   app.useLogger(logger);
+
+  // Set global prefix for all routes
+  app.setGlobalPrefix('api');
 
   app.useGlobalPipes(
     new ValidationPipe({

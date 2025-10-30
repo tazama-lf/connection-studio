@@ -117,7 +117,7 @@ describe('Data Type Validation for Mappings', () => {
     it('should reject string to number mapping (strict typing)', async () => {
       tazamaDataModelService.getFieldType.mockReturnValue('NUMBER');
 
-      const mappingDto = {
+      const stringToNumber = {
         source: 'stringField',
         destination: 'entities.id',
       };
@@ -305,6 +305,7 @@ describe('Data Type Validation for Mappings', () => {
         destination: 'entities.id', // number field
       };
 
+      // Should reject string constant to number field
       await expect(
         service.addMapping(1, mappingDto, 'test-tenant', 'test-user'),
       ).rejects.toThrow(/Constant value type mismatch/);
