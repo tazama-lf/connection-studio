@@ -11,6 +11,10 @@ import { JSONSchema } from '@tazama-lf/tcs-lib';
 export class ConfigRepository {
   private readonly logger = new Logger(ConfigRepository.name);
   constructor(@Inject('KNEX_CONNECTION') private readonly knex: Knex) {}
+
+  async runRawQuery(query: string): Promise<any> {
+    return this.knex.raw(query);
+  }
   async createConfig(
     config: Omit<Config, 'id' | 'createdAt' | 'updatedAt'>,
   ): Promise<number> {

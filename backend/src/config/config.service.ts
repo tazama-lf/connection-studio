@@ -18,6 +18,8 @@ import { SchemaInferenceService } from '../schemas/schema-inference.service';
 
 import { TazamaDataModelService } from '../tazama-data-model/tazama-data-model.service';
 import { ConfigWorkflowService } from './config-workflow.service';
+import { SftpService } from '../sftp/sftp.service';
+import { ConfigService as NestConfigService } from '@nestjs/config';
 import {
   Config,
   CreateConfigDto,
@@ -65,6 +67,8 @@ export class ConfigService {
     private readonly schemaInference: SchemaInferenceService,
     private readonly tazamaDataModelService: TazamaDataModelService,
     private readonly workflowService: ConfigWorkflowService,
+    private readonly sftpService: SftpService,
+    private readonly nestConfigService: NestConfigService,
   ) {}
 
   async createConfig(
@@ -1956,11 +1960,40 @@ export class ConfigService {
       newValues: { status: newStatus },
     });
 
+    let createTableQuery = '';
+    try {
+      const transactionType = config.transactionType.replace(/[^a-zA-Z0-9_]/g, '_');
+      const tableName = `${transactionType}_${tenantId}`;
+      createTableQuery = `CREATE TABLE IF NOT EXISTS "${tableName}" (
+        id SERIAL PRIMARY KEY,
+        config_id INTEGER,
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        details JSONB
+      );`;
+      await this.configRepository.runRawQuery(createTableQuery);
+      this.logger.log(`Created transaction history table: ${tableName}`);
+      await this.auditService.logAction({
+        action: 'create_transaction_history_table',
+        entityType: 'config',
+        entityId: id.toString(),
+        actor: userId,
+        tenantId,
+        details: `Created transaction history table: ${tableName}`,
+      });
+    } catch (err) {
+      this.logger.error(`Failed to create transaction history table: ${err.message}`);
+    }
+
+    // Store the query in the config for later export
+    const updatedConfig = await this.configRepository.findConfigById(id, tenantId);
+    if (updatedConfig) {
+      (updatedConfig as any).createTableQuery = createTableQuery;
+    }
+
     return {
       success: true,
       message: 'Configuration approved successfully',
-      config:
-        (await this.configRepository.findConfigById(id, tenantId)) || undefined,
+      config: updatedConfig || undefined,
     };
   }
 
@@ -2093,6 +2126,104 @@ export class ConfigService {
   }
 
   /**
+   * Export configuration to SFTP
+   */
+  async exportConfig(
+    id: number,
+    dto: StatusTransitionDto,
+    tenantId: string,
+    userId: string,
+    userClaims: string[],
+  ): Promise<ConfigResponseDto> {
+    const config = await this.configRepository.findConfigById(id, tenantId);
+    if (!config) {
+      throw new NotFoundException(`Config with ID ${id} not found`);
+    }
+
+    const currentStatus = config.status as ConfigStatus;
+    const action: WorkflowAction = 'export';
+
+    // Validate user can perform this action
+    const validation = this.workflowService.canPerformAction(
+      userClaims,
+      currentStatus,
+      action,
+    );
+    if (!validation.canPerform) {
+      throw new ForbiddenException(validation.message);
+    }
+
+    const newStatus = ConfigStatus.EXPORTED;
+
+    // Generate filename similar to job.service.ts
+    const nodeEnv = this.nestConfigService.get<string>('NODE_ENV');
+    const fileName = `${nodeEnv}_config_${tenantId}_${id}`;
+
+    try {
+      // Ensure config includes createTableQuery
+      let configToExport = { ...config };
+      if (!(configToExport as any).createTableQuery) {
+        // Regenerate query if missing
+        const transactionType = config.transactionType.replace(/[^a-zA-Z0-9_]/g, '_');
+        const tableName = `${transactionType}_${tenantId}`;
+        (configToExport as any).createTableQuery = `CREATE TABLE IF NOT EXISTS "${tableName}" (
+          id SERIAL PRIMARY KEY,
+          config_id INTEGER,
+          timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          details JSONB
+        );`;
+      }
+      // Upload config to SFTP with status READY (similar to job.service.ts)
+      await this.sftpService.createFile(fileName, {
+        ...configToExport,
+        status: 'ready',
+      });
+
+      this.logger.log(
+        `Successfully uploaded config file (${fileName}) to SFTP server.`,
+      );
+
+      // Update status
+      await this.configRepository.updateConfig(id, tenantId, {
+        status: newStatus,
+      });
+
+      // Log the action
+      await this.logStatusChange(
+        id,
+        currentStatus,
+        newStatus,
+        action,
+        userId,
+        dto.comment,
+      );
+
+      // Audit the action
+      await this.auditService.logAction({
+        action: 'export_config',
+        entityType: 'config',
+        entityId: id.toString(),
+        actor: userId,
+        tenantId,
+        details: `Configuration exported to SFTP${dto.comment ? `: ${dto.comment}` : ''}`,
+        newValues: { status: newStatus },
+      });
+
+      return {
+        success: true,
+        message: `Configuration exported successfully to SFTP (${fileName})`,
+        config:
+          (await this.configRepository.findConfigById(id, tenantId)) || undefined,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to export config to SFTP: ${error.message}`);
+      throw new BadRequestException(
+        `Failed to export configuration to SFTP: ${error.message}`,
+      );
+    }
+  }
+
+  /**
    * Deploy configuration
    */
   async deployConfig(
@@ -2122,38 +2253,56 @@ export class ConfigService {
 
     const newStatus = ConfigStatus.DEPLOYED;
 
-    // Update status
-    await this.configRepository.updateConfig(id, tenantId, {
-      status: newStatus,
-    });
+    // Generate filename similar to job.service.ts
+    const nodeEnv = this.nestConfigService.get<string>('NODE_ENV');
+    const fileName = `${nodeEnv}_config_${tenantId}_${id}`;
 
-    // Log the action
-    await this.logStatusChange(
-      id,
-      currentStatus,
-      newStatus,
-      action,
-      userId,
-      dto.comment,
-    );
+    try {
+      // Delete the file from SFTP after successful deployment (similar to job.service.ts)
+      await this.sftpService.deleteFile(fileName);
 
-    // Audit the action
-    await this.auditService.logAction({
-      action: 'deploy_config',
-      entityType: 'config',
-      entityId: id.toString(),
-      actor: userId,
-      tenantId,
-      details: `Configuration deployed${dto.comment ? `: ${dto.comment}` : ''}`,
-      newValues: { status: newStatus },
-    });
+      this.logger.log(
+        `Successfully deleted config file (${fileName}) from SFTP server after deployment.`,
+      );
 
-    return {
-      success: true,
-      message: 'Configuration deployed successfully',
-      config:
-        (await this.configRepository.findConfigById(id, tenantId)) || undefined,
-    };
+      // Update status
+      await this.configRepository.updateConfig(id, tenantId, {
+        status: newStatus,
+      });
+
+      // Log the action
+      await this.logStatusChange(
+        id,
+        currentStatus,
+        newStatus,
+        action,
+        userId,
+        dto.comment,
+      );
+
+      // Audit the action
+      await this.auditService.logAction({
+        action: 'deploy_config',
+        entityType: 'config',
+        entityId: id.toString(),
+        actor: userId,
+        tenantId,
+        details: `Configuration deployed${dto.comment ? `: ${dto.comment}` : ''}`,
+        newValues: { status: newStatus },
+      });
+
+      return {
+        success: true,
+        message: 'Configuration deployed successfully',
+        config:
+          (await this.configRepository.findConfigById(id, tenantId)) || undefined,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to deploy config: ${error.message}`);
+      throw new BadRequestException(
+        `Failed to deploy configuration: ${error.message}`,
+      );
+    }
   }
 
   /**
@@ -2331,7 +2480,9 @@ export class ConfigService {
       [ConfigStatus.IN_PROGRESS]: 'Configuration is being edited',
       [ConfigStatus.UNDER_REVIEW]: 'Configuration is under review by approvers',
       [ConfigStatus.APPROVED]:
-        'Configuration has been approved and ready for deployment',
+        'Configuration has been approved and ready for export',
+      [ConfigStatus.EXPORTED]:
+        'Configuration has been exported to SFTP and ready for deployment',
       [ConfigStatus.DEPLOYED]: 'Configuration has been deployed to production',
       [ConfigStatus.REJECTED]: 'Configuration has been rejected',
       [ConfigStatus.CHANGES_REQUESTED]:

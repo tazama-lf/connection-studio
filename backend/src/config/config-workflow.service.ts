@@ -20,7 +20,8 @@ export class ConfigWorkflowService {
         ConfigStatus.REJECTED,
         ConfigStatus.CHANGES_REQUESTED,
       ],
-      [ConfigStatus.APPROVED]: [ConfigStatus.DEPLOYED],
+      [ConfigStatus.APPROVED]: [ConfigStatus.EXPORTED],
+      [ConfigStatus.EXPORTED]: [ConfigStatus.DEPLOYED],
       [ConfigStatus.DEPLOYED]: [],
       [ConfigStatus.REJECTED]: [ConfigStatus.IN_PROGRESS],
       [ConfigStatus.CHANGES_REQUESTED]: [
@@ -57,6 +58,7 @@ export class ConfigWorkflowService {
     const hasEditorRole = userClaims.includes('editor');
     const hasApproverRole = userClaims.includes('approver');
     const hasPublisherRole = userClaims.includes('publisher');
+    const hasExporterRole = userClaims.includes('exporter');
 
     const result: WorkflowValidationResult = {
       canEdit: false,
@@ -64,6 +66,7 @@ export class ConfigWorkflowService {
       canApprove: false,
       canReject: false,
       canRequestChanges: false,
+      canExport: false,
       canDeploy: false,
       canReturnToProgress: false,
     };
@@ -89,8 +92,12 @@ export class ConfigWorkflowService {
       result.canRequestChanges = canApproverAct;
     }
 
+    if (hasExporterRole) {
+      result.canExport = currentStatus === ConfigStatus.APPROVED;
+    }
+
     if (hasPublisherRole) {
-      result.canDeploy = currentStatus === ConfigStatus.APPROVED;
+      result.canDeploy = currentStatus === ConfigStatus.EXPORTED;
     }
 
     return result;
@@ -102,6 +109,7 @@ export class ConfigWorkflowService {
       approve: ConfigStatus.APPROVED,
       reject: ConfigStatus.REJECTED,
       request_changes: ConfigStatus.CHANGES_REQUESTED,
+      export: ConfigStatus.EXPORTED,
       deploy: ConfigStatus.DEPLOYED,
       return_to_progress: ConfigStatus.IN_PROGRESS,
     };
@@ -229,6 +237,7 @@ export class ConfigWorkflowService {
       approve: 'Approve',
       reject: 'Reject',
       request_changes: 'Request Changes',
+      export: 'Export',
       deploy: 'Deploy',
       return_to_progress: 'Return to Progress',
     };

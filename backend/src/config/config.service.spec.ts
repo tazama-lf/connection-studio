@@ -818,7 +818,7 @@ describe('ConfigService', () => {
         functions: [
           {
             params: ['redis.dbtrAcctId', 'transaction.tenantId'],
-            functionName: 'addAccount' as AllowedFunctionName,
+            functionName: 'addAccountHolder' as AllowedFunctionName,
           },
         ],
       };
