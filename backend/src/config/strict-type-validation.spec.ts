@@ -1,5 +1,4 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { BadRequestException } from '@nestjs/common';
 import { ConfigService } from './config.service';
 import { ConfigRepository } from './config.repository';
 import { AuditService } from '../audit/audit.service';
@@ -151,6 +150,7 @@ describe('Strict Type Validation', () => {
       await expect(
         service.addMapping(1, dto, 'test-tenant', 'user-123'),
       ).rejects.toThrow(
+        // eslint-disable-next-line quotes
         "Source field 'numberField' of type 'number' cannot be concatenated",
       );
     });
@@ -159,13 +159,14 @@ describe('Strict Type Validation', () => {
       tazamaDataModelService.getFieldType = jest.fn().mockReturnValue('STRING');
 
       const dto: AddMappingDto = {
-        sumFields: ['numberField'],
-        destination: 'transactionDetails.description', // string destination not allowed
+        sources: ['numberField'],
+        destination: 'transactionDetails.stringField',
         transformation: 'SUM',
       };
 
       await expect(
         service.addMapping(1, dto, 'test-tenant', 'user-123'),
+        // eslint-disable-next-line quotes
       ).rejects.toThrow("Destination field must be of type 'number'");
     });
 
@@ -181,6 +182,7 @@ describe('Strict Type Validation', () => {
 
       await expect(
         service.addMapping(1, dto, 'test-tenant', 'user-123'),
+        // eslint-disable-next-line quotes
       ).rejects.toThrow("Destination field must be of type 'number'");
     });
 
@@ -196,6 +198,7 @@ describe('Strict Type Validation', () => {
 
       await expect(
         service.addMapping(1, dto, 'test-tenant', 'user-123'),
+        // eslint-disable-next-line quotes
       ).rejects.toThrow("Destination field must be of type 'string'");
     });
   });

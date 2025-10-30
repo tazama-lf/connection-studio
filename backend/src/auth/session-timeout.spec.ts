@@ -1,13 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
-import { UnauthorizedException } from '@nestjs/common';
 import { SessionManagerService } from './session-manager.service';
 import { TazamaAuthGuard } from './tazama-auth.guard';
 import { Reflector } from '@nestjs/core';
 
 describe('Session Timeout Functionality', () => {
   let sessionManager: SessionManagerService;
-  let authGuard: TazamaAuthGuard;
   let configService: ConfigService;
 
   beforeEach(async () => {
@@ -38,7 +36,6 @@ describe('Session Timeout Functionality', () => {
     }).compile();
 
     sessionManager = module.get<SessionManagerService>(SessionManagerService);
-    authGuard = module.get<TazamaAuthGuard>(TazamaAuthGuard);
     configService = module.get<ConfigService>(ConfigService);
   });
 

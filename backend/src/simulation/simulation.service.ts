@@ -223,7 +223,7 @@ export class SimulationService {
       // All stages passed!
       const finalStatus = errors.length === 0 ? 'PASSED' : 'FAILED';
 
-      this.auditService.logAction({
+      void this.auditService.logAction({
         entityType: 'SIMULATION',
         action: 'TCS_SIMULATE_MAPPING',
         actor: userId || 'SYSTEM',
@@ -665,24 +665,26 @@ export class SimulationService {
       case 'CONSTANT':
         return constantValue;
 
-      case 'CONCAT':
+      case 'CONCAT': {
         const values = sourceValues.filter(
           (v) => v !== undefined && v !== null,
         );
         const concatenated = values.join(delimiter || ' ');
         return prefix ? `${prefix}${concatenated}` : concatenated;
+      }
 
-      case 'SUM':
+      case 'SUM': {
         const numericValues = sourceValues
-          .map((v) => parseFloat(v))
+          .map((v) => parseFloat(v as string))
           .filter((v) => !isNaN(v));
         const sum = numericValues.reduce((acc, val) => acc + val, 0);
         return prefix ? `${prefix}${sum}` : sum;
+      }
 
-      case 'MATH':
+      case 'MATH': {
         if (sourceValues.length >= 2 && operator) {
-          const val1 = parseFloat(sourceValues[0]);
-          const val2 = parseFloat(sourceValues[1]);
+          const val1 = parseFloat(sourceValues[0] as string);
+          const val2 = parseFloat(sourceValues[1] as string);
           if (!isNaN(val1) && !isNaN(val2)) {
             let result: number;
             switch (operator) {
@@ -705,8 +707,9 @@ export class SimulationService {
           }
         }
         return sourceValues[0];
+      }
 
-      case 'SPLIT':
+      case 'SPLIT': {
         // For split transformation, this would be shown in preview
         // but actual implementation would depend on how many destinations there are
         const splitValue = sourceValues[0];
@@ -715,6 +718,7 @@ export class SimulationService {
           return prefix ? `${prefix}${parts[0]}` : parts[0]; // Show first part in preview
         }
         return prefix ? `${prefix}${splitValue}` : splitValue;
+      }
 
       default:
         return sourceValues[0];
@@ -901,7 +905,6 @@ export class SimulationService {
 
         // If the schema expects a string at this path and we have text content with attributes,
         // we should return just the text value for schema validation
-        const currentPath = path ? `${path}.${key}` : key;
         const expectedType = this.getSchemaTypeAtPath(schema, path);
 
         if (expectedType === 'string' && hasAttributes) {

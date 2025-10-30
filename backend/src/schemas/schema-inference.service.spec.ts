@@ -415,4 +415,105 @@ describe('SchemaInferenceService', () => {
       service.inferSchemaFromPayload('data', 'unsupported' as ContentType),
     ).rejects.toThrow(/Unsupported content type/);
   });
+
+  it('should handle complex payment structures with multiple Othr arrays without path conflicts', () => {
+    const paymentPayload = JSON.stringify({
+      CstmrCdtTrfInitn: {
+        GrpHdr: {
+          InitgPty: {
+            Id: {
+              PrvtId: {
+                Othr: [
+                  {
+                    Id: '12345',
+                    SchmeNm: {
+                      Prtry: 'National ID',
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        },
+        PmtInf: {
+          Dbtr: {
+            Id: {
+              PrvtId: {
+                Othr: [
+                  {
+                    Id: '67890',
+                    SchmeNm: {
+                      Prtry: 'Passport',
+                    },
+                  },
+                ],
+              },
+            },
+          },
+          CdtrAcct: {
+            Id: {
+              Othr: [
+                {
+                  Id: 'ACCT002',
+                  SchmeNm: {
+                    Prtry: 'BankAccount',
+                  },
+                },
+              ],
+            },
+          },
+        },
+      },
+    });
+
+    const schema = service['inferFromJson'](paymentPayload);
+
+    // Utility function to find fields by path
+    const findFieldByPath = (
+      fields: SchemaField[],
+      path: string,
+    ): SchemaField | null => {
+      for (const field of fields) {
+        if (field.path === path) {
+          return field;
+        }
+        if (field.children) {
+          const childResult = findFieldByPath(field.children, path);
+          if (childResult) return childResult;
+        }
+      }
+      return null;
+    };
+
+    const othrArray1 = findFieldByPath(
+      schema,
+      'CstmrCdtTrfInitn.GrpHdr.InitgPty.Id.PrvtId.Othr',
+    );
+    const othrArray2 = findFieldByPath(
+      schema,
+      'CstmrCdtTrfInitn.PmtInf.Dbtr.Id.PrvtId.Othr',
+    );
+    const othrArray3 = findFieldByPath(
+      schema,
+      'CstmrCdtTrfInitn.PmtInf.CdtrAcct.Id.Othr',
+    );
+
+    expect(othrArray1).toBeTruthy();
+    expect(othrArray1?.type).toBe(FieldType.ARRAY);
+    expect(othrArray1?.arrayElementType).toBe(FieldType.OBJECT);
+    expect(othrArray1?.children).toBeDefined();
+    expect(othrArray1?.children?.length).toBe(2); // Id and SchmeNm
+
+    expect(othrArray2).toBeTruthy();
+    expect(othrArray2?.type).toBe(FieldType.ARRAY);
+    expect(othrArray2?.arrayElementType).toBe(FieldType.OBJECT);
+
+    expect(othrArray3).toBeTruthy();
+    expect(othrArray3?.type).toBe(FieldType.ARRAY);
+    expect(othrArray3?.arrayElementType).toBe(FieldType.OBJECT);
+
+    const validation = service.validateSchema(schema);
+    expect(validation.isValid).toBe(true);
+    expect(validation.errors.length).toBe(0);
+  });
 });

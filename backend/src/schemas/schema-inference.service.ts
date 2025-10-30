@@ -68,11 +68,7 @@ export class SchemaInferenceService {
           arrayField.arrayElementType === FieldType.OBJECT &&
           value.length > 0
         ) {
-          arrayField.children = this.analyzeXmlObject(
-            value[0],
-            key,
-            `${path}[0]`,
-          );
+          arrayField.children = this.analyzeXmlObject(value[0], key, path);
         }
         fields.push(arrayField);
       } else if (typeof value === 'object' && value !== null) {
@@ -149,7 +145,9 @@ export class SchemaInferenceService {
           field.arrayElementType === FieldType.OBJECT &&
           firstElement !== null
         ) {
-          field.children = this.analyzeObject(firstElement, `${path}[0]`);
+          // Use .0 notation for array element paths
+          const arrayElementPath = `${path}.0`;
+          field.children = this.analyzeObject(firstElement, arrayElementPath);
         }
       } else {
         field.arrayElementType = FieldType.STRING;

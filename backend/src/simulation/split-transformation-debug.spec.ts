@@ -185,9 +185,10 @@ describe('SPLIT Transformation Simulation', () => {
 
       console.log('=== END TCS MAPPING CONVERSION DEBUG ===');
 
-      // SPLIT transformations now correctly create multiple TCS mappings
-      // Each SPLIT destination creates a separate TCS mapping entry
-      expect(tcsMapping.mappings).toHaveLength(5); // 2 direct mappings + 3 SPLIT destinations
+      // The issue should be visible here:
+      // SPLIT transformations with multiple destinations should create multiple TCS mappings
+      // One mapping splits "fullName" into 2 fields, another splits "address" into 3 fields = 5 total
+      expect(tcsMapping.mappings).toHaveLength(5); // Should create 5 (2+3)
     });
   });
 });

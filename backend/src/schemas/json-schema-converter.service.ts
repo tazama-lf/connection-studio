@@ -142,7 +142,7 @@ export class JSONSchemaConverterService {
     if (parentPath) {
       const remaining = fullPath.replace(`${parentPath}.`, '');
       const parts = remaining.split('.');
-      return parts[0];
+      return parts.find(part => !/^\d+$/.test(part)) || parts[0];
     }
     const parts = fullPath.split('.');
     return parts[parts.length - 1];
@@ -202,7 +202,7 @@ export class JSONSchemaConverterService {
           for (const [itemPropName, itemProp] of Object.entries(
             property.items.properties,
           )) {
-            const itemPath = `${path}.${itemPropName}`;
+            const itemPath = `${path}.0.${itemPropName}`;
             const itemField = this.convertPropertyToField(
               itemPropName,
               itemPath,
