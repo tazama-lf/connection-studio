@@ -127,11 +127,11 @@ export class SchedulerService {
       }
 
       const existing = await this.findOne(id);
+      const nodeEnv = this.configService.get<string>('NODE_ENV');
+      const fileName = `${nodeEnv}_cron_${tenantId}_${id}`;
 
       switch (status) {
         case JobStatus.EXPORTED: {
-          const nodeEnv = this.configService.get<string>('NODE_ENV');
-          const fileName = `${nodeEnv}_cron_${tenantId}_${id}`;
 
           await this.sftpService.createFile(fileName, {
             ...existing,
@@ -146,6 +146,7 @@ export class SchedulerService {
 
         case JobStatus.DEPLOYED: {
           await this.create(existing, tenantId, JobStatus.DEPLOYED);
+          await this.sftpService.deleteFile(fileName)
           break;
         }
 
