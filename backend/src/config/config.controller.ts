@@ -184,7 +184,7 @@ export class ConfigController {
     return config;
   }
   @Get()
-  @RequireClaims(
+  @RequireAnyClaims(
     TazamaClaims.EDITOR,
     TazamaClaims.APPROVER,
     TazamaClaims.PUBLISHER,
