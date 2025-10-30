@@ -14,6 +14,7 @@ import {
 } from '@tazama-lf/tcs-lib';
 import { AuditService } from '../audit/audit.service';
 import { JSONSchemaConverterService } from '../schemas/json-schema-converter.service';
+import { SchemaInferenceService } from '../schemas/schema-inference.service';
 
 import { TazamaDataModelService } from '../tazama-data-model/tazama-data-model.service';
 import { ConfigWorkflowService } from './config-workflow.service';
@@ -61,6 +62,7 @@ export class ConfigService {
     private readonly configRepository: ConfigRepository,
     private readonly auditService: AuditService,
     private readonly jsonSchemaConverter: JSONSchemaConverterService,
+    private readonly schemaInference: SchemaInferenceService,
     private readonly tazamaDataModelService: TazamaDataModelService,
     private readonly workflowService: ConfigWorkflowService,
   ) {}
@@ -109,38 +111,34 @@ export class ConfigService {
         };
       }
 
-      const parsingResult = await parsePayloadToSchema(
-        dto.payload,
-        dto.contentType || ContentType.JSON,
-      );
-
-      if (!parsingResult?.success) {
-        this.logger.error(
-          'Failed to parse payload:',
-          parsingResult?.validation || 'Unknown error',
+      // Use local schema inference service instead of external library
+      let sourceFields;
+      try {
+        sourceFields = await this.schemaInference.inferSchemaFromPayload(
+          dto.payload,
+          dto.contentType || ContentType.JSON,
         );
+
+        if (!sourceFields || sourceFields.length === 0) {
+          this.logger.error('Schema inference returned no source fields');
+          return {
+            success: false,
+            message: 'Failed to generate fields from payload',
+            validation: {
+              success: false,
+              errors: ['No fields generated'],
+              warnings: [],
+            },
+          };
+        }
+      } catch (error) {
+        this.logger.error('Schema inference failed:', error);
         return {
           success: false,
           message: 'Failed to parse payload',
           validation: {
             success: false,
-            errors: ['Parsing failed'],
-            warnings: [],
-          },
-        };
-      }
-
-      // Use sourceFields to generate the schema with backend's converter
-      let sourceFields = parsingResult.sourceFields;
-
-      if (!sourceFields || sourceFields.length === 0) {
-        this.logger.error('Parsing result contains no source fields');
-        return {
-          success: false,
-          message: 'Failed to generate fields from payload',
-          validation: {
-            success: false,
-            errors: ['No fields generated'],
+            errors: ['Schema inference failed'],
             warnings: [],
           },
         };

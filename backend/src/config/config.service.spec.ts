@@ -5,6 +5,7 @@ import { ConfigWorkflowService } from './config-workflow.service';
 import { JSONSchema, FieldType } from '@tazama-lf/tcs-lib';
 import { AuditService } from '../audit/audit.service';
 import { JSONSchemaConverterService } from '../schemas/json-schema-converter.service';
+import { SchemaInferenceService } from '../schemas/schema-inference.service';
 import { TazamaDataModelService } from '../tazama-data-model/tazama-data-model.service';
 import {
   Config,
@@ -148,6 +149,12 @@ describe('ConfigService', () => {
           useValue: mockJSONSchemaConverter,
         },
         {
+          provide: SchemaInferenceService,
+          useValue: {
+            inferSchemaFromPayload: jest.fn(),
+          },
+        },
+        {
           provide: TazamaDataModelService,
           useValue: mockTazamaDataModelService,
         },
@@ -161,8 +168,37 @@ describe('ConfigService', () => {
     repository = module.get(ConfigRepository);
     auditService = module.get(AuditService);
     jsonSchemaConverter = module.get(JSONSchemaConverterService);
+    
+    const schemaInferenceService = module.get(SchemaInferenceService);
 
     // Set up default mock return values
+    (schemaInferenceService.inferSchemaFromPayload as jest.Mock).mockResolvedValue([
+      {
+        name: 'amount',
+        path: 'amount',
+        type: FieldType.NUMBER,
+        isRequired: true,
+      },
+      {
+        name: 'currency',
+        path: 'currency',
+        type: FieldType.STRING,
+        isRequired: false,
+      },
+      {
+        name: 'firstName',
+        path: 'firstName',
+        type: FieldType.STRING,
+        isRequired: false,
+      },
+      {
+        name: 'lastName',
+        path: 'lastName',
+        type: FieldType.STRING,
+        isRequired: false,
+      },
+    ]);
+    
     mockParsePayloadToSchema.mockResolvedValue({
       success: true,
       jsonSchema: mockJSONSchema,
