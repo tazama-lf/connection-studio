@@ -145,7 +145,9 @@ export class SchemaInferenceService {
           field.arrayElementType === FieldType.OBJECT &&
           firstElement !== null
         ) {
-          field.children = this.analyzeObject(firstElement, path);
+          // Use .0 notation for array element paths
+          const arrayElementPath = `${path}.0`;
+          field.children = this.analyzeObject(firstElement, arrayElementPath);
         }
       } else {
         field.arrayElementType = FieldType.STRING;
