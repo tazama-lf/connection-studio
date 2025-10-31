@@ -84,6 +84,7 @@ export const ApproverConfigDetailsModal: React.FC<ApproverConfigDetailsModalProp
             <div className="flex items-center space-x-2">
               <span className="text-sm font-medium text-gray-700">Status:</span>
               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(config.status || 'pending')}`}>
+                <span className="w-2 h-2 rounded-full bg-current mr-2"></span>
                 {getStatusLabel(config.status || 'pending')}
               </span>
             </div>

@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { isApprover } from '../../../utils/roleUtils';
+import { authApi } from '../services/authApi';
 
 export const Login: React.FC = () => {
   const [email, setemail] = useState('');
@@ -18,7 +20,16 @@ export const Login: React.FC = () => {
     try {
       const success = await login(email, password);
       if (success) {
-        navigate('/dashboard');
+        // Get the token from localStorage and decode user info to check role
+        const token = localStorage.getItem('authToken');
+        if (token) {
+          const userData = authApi.decodeToken(token);
+          const isUserApprover = userData?.claims ? isApprover(userData.claims) : false;
+          navigate(isUserApprover ? '/approver' : '/dashboard');
+        } else {
+          // Fallback to dashboard if token not found
+          navigate('/dashboard');
+        }
       } else {
         setError('Invalid credentials. Please try again.');
       }

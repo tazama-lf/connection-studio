@@ -6,6 +6,9 @@ import Login from '../features/auth/pages/Login';
 import Dashboard from '../features/dashboard/pages/Dashboard';
 import DEMSModule from '../features/dems/pages/DEMSModule';
 import ApproverModule from '../features/approver/pages/ApproverModule';
+import ApproverConfigsPage from '../features/approver/pages/ApproverConfigsPage';
+import ApproverDEJobsPage from '../features/approver/pages/ApproverDEJobsPage';
+import ApproverCronJobsPage from '../features/approver/pages/ApproverCronJobsPage';
 import ExporterConfigsPage from '../features/exporter/pages/ExporterConfigsPage';
 import ExporterDEJobsPage from '../features/exporter/pages/ExporterDEJobsPage';
 import ExporterCronJobsPage from '../features/exporter/pages/ExporterCronJobsPage';
@@ -92,7 +95,7 @@ const EditorRoute = ({
 };
 
 export const AppRoutes: React.FC = () => {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, user } = useAuth();
 
   // Show loading while checking authentication
   if (loading) {
@@ -102,7 +105,11 @@ export const AppRoutes: React.FC = () => {
   return (
     <Routes>
       <Route path="/" element={
-        isAuthenticated ? <Navigate to={ROUTES.DASHBOARD} /> : <Navigate to={ROUTES.LOGIN} />
+        isAuthenticated ? (
+          user?.claims && isApprover(user.claims) ? 
+            <Navigate to={ROUTES.APPROVER} /> : 
+            <Navigate to={ROUTES.DASHBOARD} />
+        ) : <Navigate to={ROUTES.LOGIN} />
       } />
       <Route path={ROUTES.LOGIN} element={<Login />} />
       <Route path={ROUTES.DASHBOARD} element={
@@ -118,6 +125,21 @@ export const AppRoutes: React.FC = () => {
       <Route path={ROUTES.APPROVER} element={
         <ApproverRoute>
           <ApproverModule />
+        </ApproverRoute>
+      } />
+      <Route path="/approver/configs" element={
+        <ApproverRoute>
+          <ApproverConfigsPage />
+        </ApproverRoute>
+      } />
+      <Route path="/approver/jobs" element={
+        <ApproverRoute>
+          <ApproverDEJobsPage />
+        </ApproverRoute>
+      } />
+      <Route path="/approver/cron-jobs" element={
+        <ApproverRoute>
+          <ApproverCronJobsPage />
         </ApproverRoute>
       } />
       <Route path="/exporter/configs" element={

@@ -26,6 +26,7 @@ interface FunctionSelectionFormProps {
 const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({ onAddFunction, onClose }) => {
   const [selectedFunction, setSelectedFunction] = useState<AllowedFunctionName>('addAccount');
   const [selectedConfiguration, setSelectedConfiguration] = useState('');
+  const [selectedOptionalParams, setSelectedOptionalParams] = useState<string[]>([]);
 
   const functionConfig = FUNCTION_CONFIGS[selectedFunction];
 
@@ -33,11 +34,22 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({ onAddFunc
     const config = functionConfig.configurations.find(c => c.name === selectedConfiguration);
     if (!config) return;
 
-    const params = config.parameters.split(', ').map(p => p.trim());
+    // Combine required parameters from configuration with selected optional parameters
+    const requiredParams = config.parameters.split(', ').map(p => p.trim());
+    const allParams = [...requiredParams, ...selectedOptionalParams];
+    
     onAddFunction({
       functionName: selectedFunction,
-      params
+      params: allParams
     });
+  };
+
+  const handleOptionalParamToggle = (paramName: string) => {
+    setSelectedOptionalParams(prev => 
+      prev.includes(paramName) 
+        ? prev.filter(p => p !== paramName)
+        : [...prev, paramName]
+    );
   };
 
   return (
@@ -49,6 +61,7 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({ onAddFunc
           onChange={(e) => {
             setSelectedFunction(e.target.value as AllowedFunctionName);
             setSelectedConfiguration(''); // Reset configuration when function changes
+            setSelectedOptionalParams([]); // Reset optional params when function changes
           }}
           className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         >
@@ -91,6 +104,45 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({ onAddFunc
           ))}
         </div>
       </div>
+
+      {/* Optional Parameters Selection */}
+      {functionConfig.optionalParameters && functionConfig.optionalParameters.length > 0 && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Optional Parameters (Select any that you need)</label>
+          <div className="space-y-2 max-h-40 overflow-y-auto">
+            {functionConfig.optionalParameters.map((param) => (
+              <div
+                key={param.name}
+                className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                  selectedOptionalParams.includes(param.name)
+                    ? 'border-blue-500 bg-blue-50'
+                    : 'border-gray-300 hover:border-gray-400'
+                }`}
+                onClick={() => handleOptionalParamToggle(param.name)}
+              >
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={selectedOptionalParams.includes(param.name)}
+                    onChange={() => handleOptionalParamToggle(param.name)}
+                    className="text-blue-600 rounded"
+                  />
+                  <div>
+                    <h4 className="font-medium">{param.displayName} ({param.name})</h4>
+                    <p className="text-sm text-gray-600">{param.description}</p>
+                    <p className="text-xs text-gray-500">Type: {param.type}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          {selectedOptionalParams.length > 0 && (
+            <p className="text-sm text-blue-600 mt-2">
+              Selected optional parameters: {selectedOptionalParams.join(', ')}
+            </p>
+          )}
+        </div>
+      )}
 
       <div className="flex justify-end space-x-3 pt-4">
         <Button variant="secondary" onClick={onClose}>

@@ -25,36 +25,32 @@ const CRONModule: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <AuthHeader title="CRON Job Scheduler" showBackButton={true} />
+      <AuthHeader title="Cron Job Management" showBackButton={true} />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Header Section */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-          <p className="text-gray-600">
-            Create, manage, and monitor scheduled data jobs
-          </p>
-          
           <div className="flex items-center space-x-4">
             {/* Search Bar */}
             <div className="relative">
               <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search schedules..."
+                placeholder="Search cron jobs..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10 pr-4 py-2 w-80 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
-            
-            {/* Create New Job Button */}
-            <Button 
-              onClick={handleCreateNew} 
-              icon={<PlusIcon size={16} />}
-            >
-              Create New Job
-            </Button>
           </div>
+          
+          {/* Create New Job Button */}
+          <Button 
+            onClick={handleCreateNew} 
+            icon={<PlusIcon size={16} />}
+          >
+            Create New Cron Job
+          </Button>
         </div>
 
         {/* Job List Table */}

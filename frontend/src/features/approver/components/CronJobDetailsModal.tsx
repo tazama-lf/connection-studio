@@ -116,17 +116,7 @@ const CronJobDetailsModal: React.FC<CronJobDetailsModalProps> = ({
                 </h4>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Next Run Time
-                    </label>
-                    <input
-                      type="text"
-                      value={schedule.next_time ? formatDate(schedule.next_time) : 'Not scheduled'}
-                      readOnly
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900"
-                    />
-                  </div>
+                
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -178,18 +168,7 @@ const CronJobDetailsModal: React.FC<CronJobDetailsModalProps> = ({
                     </div>
                   </div>
                 </div>
-              </div>
-
-              {/* Cron Expression Help */}
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h4 className="text-sm font-medium text-gray-900 mb-3">Cron Expression Format</h4>
-                <div className="text-xs text-gray-600 space-y-1">
-                  <div><code>* * * * *</code> - Minute Hour Day Month DayOfWeek</div>
-                  <div><code>0 0 * * *</code> - Daily at midnight</div>
-                  <div><code>0 */2 * * *</code> - Every 2 hours</div>
-                  <div><code>0 9 * * 1</code> - Every Monday at 9 AM</div>
-                </div>
-              </div>
+              </div>          
             </div>
           ) : (
             <div className="text-center py-8">
@@ -200,7 +179,7 @@ const CronJobDetailsModal: React.FC<CronJobDetailsModalProps> = ({
 
         {/* Action Buttons Footer */}
         {schedule && !isLoading && (
-          <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3 bg-gray-50">
+          <div className="px-6 py-4 border-t border-gray-200 flex justify-between space-x-3 bg-gray-50">
             <Button
               variant="secondary"
               onClick={onClose}
@@ -210,7 +189,7 @@ const CronJobDetailsModal: React.FC<CronJobDetailsModalProps> = ({
             
             {/* Show Approve/Reject buttons for under-review schedules */}
             {schedule.status === 'under-review' && userIsApprover && (onApprove || onReject) && (
-              <>
+              <div className="flex space-x-3">
                 {onReject && (
                   <Button
                     variant="danger"
@@ -234,7 +213,7 @@ const CronJobDetailsModal: React.FC<CronJobDetailsModalProps> = ({
                     Approve
                   </Button>
                 )}
-              </>
+              </div>
             )}
           </div>
         )}

@@ -76,13 +76,10 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
     targetTable: '',
     targetCollection: ''
   });
-  const [previewData, setPreviewData] = useState<any>({
-    totalRows: 0,
-    validRows: 0,
-    invalidRows: 0,
-    previewRows: [],
-    validationErrors: []
-  });
+  // Helper function for pluralization
+  const getIterationText = (count: number) => {
+    return count === 1 ? '1 iteration' : `${count} iterations`;
+  };
 
 
   // Load available schedules when modal opens
@@ -94,8 +91,12 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
         setSchedulesLoading(true);
         console.log('Loading schedules from API...');
         const schedules = await dataEnrichmentApi.getAllSchedules();
-        console.log('Loaded schedules:', schedules);
-        setAvailableSchedules(schedules);
+        // Filter schedules to only show approved, exported, and deployed schedules
+        const filteredSchedules = schedules.filter((schedule: any) => 
+          schedule.status === 'approved' || schedule.status === 'exported' || schedule.status === 'deployed'
+        );
+        console.log('Loaded filtered schedules:', filteredSchedules);
+        setAvailableSchedules(filteredSchedules);
       } catch (error) {
         console.error('Failed to load schedules:', error);
         // Keep empty array as fallback
@@ -175,7 +176,11 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
 
       // Reload schedules to get the newly created one with full details
       const updatedSchedules = await dataEnrichmentApi.getAllSchedules();
-      setAvailableSchedules(updatedSchedules);
+      // Filter schedules to only show approved, exported, and deployed schedules
+      const filteredSchedules = updatedSchedules.filter((schedule: any) => 
+        schedule.status === 'approved' || schedule.status === 'exported' || schedule.status === 'deployed'
+      );
+      setAvailableSchedules(filteredSchedules);
       
       // Find the newly created schedule by name and select it
       const newScheduleObj = updatedSchedules.find(s => s.name === newSchedule.name);
@@ -694,7 +699,7 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
             <option value="">Select a schedule</option>
             {availableSchedules.map((schedule) => (
               <option key={schedule.id} value={schedule.id}>
-                {schedule.name} - {schedule.cron} ({schedule.iterations} iterations)
+                {schedule.name} - {schedule.cron} ({getIterationText(schedule.iterations)})
               </option>
             ))}
           </select>

@@ -132,9 +132,8 @@ export const CronJobApproverList: React.FC<CronJobApproverListProps> = (props) =
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-      <div className="overflow-x-auto">
-        <table className="min-w-full">
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 min-h-[400px] overflow-x-auto">
+      <table className="min-w-full">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
@@ -216,6 +215,7 @@ export const CronJobApproverList: React.FC<CronJobApproverListProps> = (props) =
                   </td>
                   <td className="px-6 py-4">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(schedule.status)}`}>
+                      <span className="w-2 h-2 rounded-full bg-current mr-2"></span>
                       {getStatusLabel(schedule.status)}
                     </span>
                   </td>
@@ -260,7 +260,6 @@ export const CronJobApproverList: React.FC<CronJobApproverListProps> = (props) =
             })}
           </tbody>
         </table>
-      </div>
     </div>
   );
 };

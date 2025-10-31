@@ -401,7 +401,8 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                       <Settings size={18} className="text-gray-400 mt-0.5 flex-shrink-0" />
                       <div className="flex-1 min-w-0">
                         <span className="text-sm font-medium text-gray-700 block">Status:</span>
-                        <span className={getCentralizedStatusColor(job.status || 'in-progress')}>
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getCentralizedStatusColor(job.status || 'in-progress')}`}>
+                          <span className="w-2 h-2 rounded-full bg-current mr-2"></span>
                           {getStatusLabel(job.status || 'in-progress')}
                         </span>
                       </div>

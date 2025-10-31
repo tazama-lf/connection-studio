@@ -44,7 +44,11 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
         setSchedulesLoading(true);
         setErrorMessage(null);
         const schedules = await dataEnrichmentApi.getAllSchedules();
-        setAvailableSchedules(schedules);
+        // Filter schedules to only show approved, exported, and deployed schedules
+        const filteredSchedules = schedules.filter((schedule: any) => 
+          schedule.status === 'approved' || schedule.status === 'exported' || schedule.status === 'deployed'
+        );
+        setAvailableSchedules(filteredSchedules);
       } catch (error) {
         console.error('Failed to load schedules:', error);
         setErrorMessage('Unable to load available schedules. Please refresh the page or try again later.');
@@ -78,6 +82,11 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
 
   // Error handling
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Helper function for pluralization
+  const getIterationText = (count: number) => {
+    return count === 1 ? '1 iteration' : `${count} iterations`;
+  };
 
   // Helper function to validate file format matches file extension
   const validateFileFormat = () => {
@@ -406,7 +415,7 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
                 <option value="">Select a schedule</option>
                 {availableSchedules.map((schedule) => (
                   <option key={schedule.id} value={String(schedule.id)}>
-                    {schedule.name} - {schedule.cron} ({schedule.iterations} iterations)
+                    {schedule.name} - {schedule.cron} ({getIterationText(schedule.iterations)})
                   </option>
                 ))}
               </select>
