@@ -126,13 +126,12 @@ export class SchedulerService {
         throw new BadRequestException('Both status and table_name are required.');
       }
 
-      const existing = await this.findOne(id);
       const nodeEnv = this.configService.get<string>('NODE_ENV');
-      const fileName = `${nodeEnv}_cron_${tenantId}_${id}`;
+      const fileName = `cron_${tenantId}_${id}`;
 
       switch (status) {
         case JobStatus.EXPORTED: {
-
+          const existing = await this.findOne(id);
           await this.sftpService.createFile(fileName, {
             ...existing,
             status: JobStatus.READY,
@@ -145,6 +144,7 @@ export class SchedulerService {
         }
 
         case JobStatus.DEPLOYED: {
+          const existing = await this.sftpService.readFile(`cron_${tenantId}_${id}`)
           await this.create(existing, tenantId, JobStatus.DEPLOYED);
           await this.sftpService.deleteFile(fileName)
           break;

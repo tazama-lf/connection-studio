@@ -105,7 +105,7 @@ export class SftpService implements OnModuleInit, OnModuleDestroy {
         }
     }
 
-    async readFile(fileName: string): Promise<Record<string, any>> {
+    async readFile(fileName: string): Promise<any> {
         try {
 
             const sftpHost = this.configService.get<string>('SFTP_HOST_PRODUCER');
