@@ -17,6 +17,7 @@ import { JobStatus } from '@tazama-lf/tcs-lib';
 import { TazamaAuthGuard } from 'src/auth/tazama-auth.guard';
 import { type AuthenticatedUser } from 'src/auth/auth.types';
 import { RequireAnyClaims, RequireEditorRole, TazamaClaims } from 'src/auth/auth.decorator';
+import { User } from 'src/auth/user.decorator';
 
 @Controller('scheduler')
 @UseGuards(TazamaAuthGuard)
@@ -25,7 +26,7 @@ export class SchedulerController {
 
   @Post('/create')
   @RequireAnyClaims(TazamaClaims.EDITOR)
-  async createJob(@Body() schedule: CreateScheduleJobDto, user: AuthenticatedUser) {
+  async createJob(@Body() schedule: CreateScheduleJobDto, @User() user: AuthenticatedUser) {
     return this.schedulerService.create(schedule, user.tenantId);
   }
 
@@ -34,14 +35,14 @@ export class SchedulerController {
   async getAll(
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
-    user: AuthenticatedUser
+    @User() user: AuthenticatedUser
   ) {
     return this.schedulerService.findAll(page, limit, user.tenantId);
   }
 
   @Patch('/update/:id')
   @RequireAnyClaims(TazamaClaims.EDITOR)
-  async update(@Param('id') id: string, @Body() body: UpdateScheduleJobDto, user: AuthenticatedUser) {
+  async update(@Param('id') id: string, @Body() body: UpdateScheduleJobDto, @User() user: AuthenticatedUser) {
     return this.schedulerService.update(id, body, user.tenantId);
   }
 
@@ -56,7 +57,7 @@ export class SchedulerController {
   async updateStatus(
     @Param('id') id: string,
     @Query('status') status: JobStatus,
-    user: AuthenticatedUser
+    @User() user: AuthenticatedUser
   ) {
     return await this.schedulerService.updateStatus(
       id,

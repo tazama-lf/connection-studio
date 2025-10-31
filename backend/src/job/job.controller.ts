@@ -17,6 +17,7 @@ import { CreatePushJobDto } from './dto/create-push-job.dto';
 import { JobService } from './job.service';
 import { TazamaAuthGuard } from 'src/auth/tazama-auth.guard';
 import { type AuthenticatedUser } from 'src/auth/auth.types';
+import { User } from 'src/auth/user.decorator';
 
 @Controller('job')
 @UseGuards(TazamaAuthGuard)
@@ -25,13 +26,13 @@ export class JobController {
 
   @Post('/create/push')
   @RequireAnyClaims(TazamaClaims.EDITOR)
-  async createPushJob(@Body() job: CreatePushJobDto, user: AuthenticatedUser) {
+  async createPushJob(@Body() job: CreatePushJobDto,@User() user: AuthenticatedUser) {
     return await this.jobService.createPush(job, user.tenantId);
   }
 
   @Post('/create/pull')
   @RequireAnyClaims(TazamaClaims.EDITOR)
-  async createPullJob(@Body() job: CreatePullJobDto, user: AuthenticatedUser) {
+  async createPullJob(@Body() job: CreatePullJobDto,@User() user: AuthenticatedUser) {
     return await this.jobService.createPull(job, user.tenantId);
   }
 
@@ -40,7 +41,7 @@ export class JobController {
   async getAll(
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
-    user: AuthenticatedUser
+    @User() user: AuthenticatedUser
   ) {
     return this.jobService.findAll(page, limit, user.tenantId);
   }
@@ -67,7 +68,7 @@ export class JobController {
     @Param('id') id: string,
     @Query('status') status: JobStatus,
     @Query('type') type: ConfigType,
-    user: AuthenticatedUser
+    @User() user: AuthenticatedUser
   ) {
     return await this.jobService.updateStatus(
       id,
