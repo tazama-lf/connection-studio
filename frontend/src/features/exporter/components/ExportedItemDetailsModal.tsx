@@ -313,7 +313,7 @@ export const ExportedItemDetailsModal: React.FC<ExportedItemDetailsModalProps> =
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Additional Details
                   </label>
-                  <div className="bg-gray-50 p-4 rounded border border-gray-200 max-h-64 overflow-y-auto">
+                  <div className="bg-gray-50 p-4 rounded border border-gray-200 h-96 overflow-y-auto">
                     <pre className="text-xs text-gray-900 whitespace-pre-wrap break-words">
                       {JSON.stringify(content, null, 2)}
                     </pre>

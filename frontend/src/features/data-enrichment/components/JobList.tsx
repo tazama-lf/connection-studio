@@ -94,7 +94,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
       document.addEventListener('click', handleClickOutside);
       return () => document.removeEventListener('click', handleClickOutside);
     }
-  }, [statusDropdownOpen, dateDropdownOpen, dropdownOpen]);
+  }, [statusDropdownOpen, dropdownOpen]);
 
   // Handle column sorting
   const handleSort = (field: SortField) => {
@@ -244,9 +244,9 @@ export const JobList: React.FC<JobListProps> = (props) => {
   console.log('✅ Rendering JOBS TABLE with', jobs.length, 'jobs');
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-      <div className="overflow-x-auto">
-        <table className="min-w-full relative">
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 h-96">
+      <div className="overflow-x-auto h-full">
+        <table className="min-w-full relative w-full">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
               <th 

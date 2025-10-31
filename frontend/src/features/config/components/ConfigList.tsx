@@ -288,7 +288,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
 
       {/* Table */}
       <div className="overflow-x-auto">
-        <table className="min-w-full relative">
+        <table className="min-w-full relative w-full">
           <thead className="bg-gray-50">
             <tr>
               <th 
