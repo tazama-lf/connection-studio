@@ -16,7 +16,7 @@ import { JobStatus } from '@tazama-lf/tcs-lib';
 
 @Controller('scheduler')
 export class SchedulerController {
-  constructor(private readonly schedulerService: SchedulerService) { }
+  constructor(private readonly schedulerService: SchedulerService) {}
 
   @Post('/create')
   async createJob(@Body() schedule: CreateScheduleJobDto) {
@@ -46,10 +46,6 @@ export class SchedulerController {
     @Param('id') id: string,
     @Query('status') status: JobStatus,
   ) {
-    return await this.schedulerService.updateStatus(
-      id,
-      '1234',
-      status,
-    );
+    return await this.schedulerService.updateStatus(id, '1234', status);
   }
 }

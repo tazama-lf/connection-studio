@@ -26,11 +26,11 @@ describe('SchedulerService', () => {
         },
         {
           provide: ConfigService,
-          useValue: {}
+          useValue: {},
         },
         {
           provide: SftpService,
-          useValue: {}
+          useValue: {},
         },
       ],
     }).compile();

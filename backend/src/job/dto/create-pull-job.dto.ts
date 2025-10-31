@@ -9,12 +9,7 @@ import {
   ValidateIf,
   ValidateNested,
 } from 'class-validator';
-import {
-  AuthType,
-  FileType,
-  IngestMode,
-  SourceType,
-} from '@tazama-lf/tcs-lib';
+import { AuthType, FileType, IngestMode, SourceType } from '@tazama-lf/tcs-lib';
 
 class HTTPConnectionDto {
   @IsString()

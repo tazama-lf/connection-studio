@@ -61,6 +61,7 @@ export enum ConfigStatus {
   IN_PROGRESS = 'in_progress',
   UNDER_REVIEW = 'under_review',
   APPROVED = 'approved',
+  EXPORTED = 'exported',
   DEPLOYED = 'deployed',
   REJECTED = 'rejected',
   CHANGES_REQUESTED = 'changes_requested',
@@ -153,6 +154,7 @@ export interface WorkflowValidationResult {
   canApprove: boolean;
   canReject: boolean;
   canRequestChanges: boolean;
+  canExport: boolean;
   canDeploy: boolean;
   canReturnToProgress: boolean;
   reason?: string;
@@ -171,6 +173,7 @@ export type WorkflowAction =
   | 'approve'
   | 'reject'
   | 'request_changes'
+  | 'export'
   | 'deploy'
   | 'return_to_progress';
 

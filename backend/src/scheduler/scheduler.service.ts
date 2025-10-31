@@ -20,14 +20,23 @@ export class SchedulerService {
     private readonly db: DatabaseService,
     private readonly loggerService: LoggerService,
     private readonly configService: ConfigService,
-    private readonly sftpService: SftpService
-  ) { }
+    private readonly sftpService: SftpService,
+  ) {}
 
-  async create(schedule: CreateScheduleJobDto, tenantId: string, status: JobStatus = JobStatus.INPROGRESS): Promise<ISuccess> {
+  async create(
+    schedule: CreateScheduleJobDto,
+    tenantId: string,
+    status: JobStatus = JobStatus.INPROGRESS,
+  ): Promise<ISuccess> {
     try {
       validateCronExpression(schedule.cron);
 
-      const scheduleWithId = { ...schedule, id: v4(), tenant_id: tenantId, status };
+      const scheduleWithId = {
+        ...schedule,
+        id: v4(),
+        tenant_id: tenantId,
+        status,
+      };
       const keys = Object.keys(scheduleWithId);
       const values = Object.values(scheduleWithId);
       const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
@@ -62,7 +71,11 @@ export class SchedulerService {
     return schedule;
   }
 
-  async findAll(page: number, limit: number, tenantId: string): Promise<Schedule[]> {
+  async findAll(
+    page: number,
+    limit: number,
+    tenantId: string,
+  ): Promise<Schedule[]> {
     if (
       !Number.isInteger(page) ||
       !Number.isInteger(limit) ||
@@ -85,14 +98,17 @@ export class SchedulerService {
     return data;
   }
 
-  async update(id: string, attr: UpdateScheduleJobDto, tenantId: string): Promise<ISuccess> {
+  async update(
+    id: string,
+    attr: UpdateScheduleJobDto,
+    _tenantId: string,
+  ): Promise<ISuccess> {
     try {
-
       const existingSchedule = await this.findOne(id);
 
       if (existingSchedule.status === JobStatus.APPROVED) {
         throw new ForbiddenException(
-          'Approved cron jobs cannot be edited. Please create a new cron job instead.'
+          'Approved cron jobs cannot be edited. Please create a new cron job instead.',
         );
       }
 
@@ -120,10 +136,16 @@ export class SchedulerService {
     }
   }
 
-  async updateStatus(id: string, tenantId: string, status: JobStatus): Promise<ISuccess> {
+  async updateStatus(
+    id: string,
+    tenantId: string,
+    status: JobStatus,
+  ): Promise<ISuccess> {
     try {
       if (!status) {
-        throw new BadRequestException('Both status and table_name are required.');
+        throw new BadRequestException(
+          'Both status and table_name are required.',
+        );
       }
 
       const existing = await this.findOne(id);
@@ -132,7 +154,6 @@ export class SchedulerService {
 
       switch (status) {
         case JobStatus.EXPORTED: {
-
           await this.sftpService.createFile(fileName, {
             ...existing,
             status: JobStatus.READY,
@@ -146,7 +167,7 @@ export class SchedulerService {
 
         case JobStatus.DEPLOYED: {
           await this.create(existing, tenantId, JobStatus.DEPLOYED);
-          await this.sftpService.deleteFile(fileName)
+          await this.sftpService.deleteFile(fileName);
           break;
         }
 
@@ -164,16 +185,13 @@ export class SchedulerService {
       const result = await this.db.query(query, [status, id]);
 
       if (result.rowCount === 0) {
-        throw new NotFoundException(
-          `Record with id "${id}" not found`,
-        );
+        throw new NotFoundException(`Record with id "${id}" not found`);
       }
 
       return {
         success: true,
         message: `Cron Job with id ${id} successfully updated`,
       };
-
     } catch (err) {
       this.loggerService.error(err.message);
       throw new BadRequestException(err.message);

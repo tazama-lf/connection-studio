@@ -7,6 +7,8 @@ import { AuditService } from '../audit/audit.service';
 import { JSONSchemaConverterService } from '../schemas/json-schema-converter.service';
 import { SchemaInferenceService } from '../schemas/schema-inference.service';
 import { TazamaDataModelService } from '../tazama-data-model/tazama-data-model.service';
+import { SftpService } from '../sftp/sftp.service';
+import { ConfigService as NestConfigService } from '@nestjs/config';
 import {
   Config,
   ContentType,
@@ -20,7 +22,6 @@ import {
 
 // Mock @tazama-lf/tcs-lib functions
 jest.mock('@tazama-lf/tcs-lib', () => ({
-  parsePayloadToSchema: jest.fn(),
   applyFieldAdjustments: jest.fn(),
   JSONSchema: {},
   FieldType: {},
@@ -31,14 +32,8 @@ jest.mock('@tazama-lf/tcs-lib', () => ({
   },
 }));
 
-import {
-  parsePayloadToSchema,
-  applyFieldAdjustments,
-} from '@tazama-lf/tcs-lib';
+import { applyFieldAdjustments } from '@tazama-lf/tcs-lib';
 
-const mockParsePayloadToSchema = parsePayloadToSchema as jest.MockedFunction<
-  typeof parsePayloadToSchema
->;
 const mockApplyFieldAdjustments = applyFieldAdjustments as jest.MockedFunction<
   typeof applyFieldAdjustments
 >;
@@ -48,6 +43,7 @@ describe('ConfigService', () => {
   let repository: jest.Mocked<ConfigRepository>;
   let auditService: jest.Mocked<AuditService>;
   let jsonSchemaConverter: jest.Mocked<JSONSchemaConverterService>;
+  let schemaInferenceService: jest.Mocked<SchemaInferenceService>;
   const mockJSONSchema: JSONSchema = {
     $schema: 'https://json-schema.org/draft/2020-12/schema',
     type: 'object',
@@ -86,6 +82,7 @@ describe('ConfigService', () => {
       findConfigByMsgFamVersionAndTransactionType: jest.fn(),
       updateConfig: jest.fn(),
       deleteConfig: jest.fn(),
+      runRawQuery: jest.fn(),
     };
     const mockAuditService = {
       logAction: jest.fn(),
@@ -162,17 +159,31 @@ describe('ConfigService', () => {
           provide: ConfigWorkflowService,
           useValue: mockConfigWorkflowService,
         },
+        {
+          provide: SftpService,
+          useValue: {
+            createFile: jest.fn(),
+            deleteFile: jest.fn(),
+          },
+        },
+        {
+          provide: NestConfigService,
+          useValue: {
+            get: jest.fn().mockReturnValue('test'),
+          },
+        },
       ],
     }).compile();
     service = module.get<ConfigService>(ConfigService);
     repository = module.get(ConfigRepository);
     auditService = module.get(AuditService);
     jsonSchemaConverter = module.get(JSONSchemaConverterService);
-    
-    const schemaInferenceService = module.get(SchemaInferenceService);
+    schemaInferenceService = module.get(SchemaInferenceService);
 
     // Set up default mock return values
-    (schemaInferenceService.inferSchemaFromPayload as jest.Mock).mockResolvedValue([
+    (
+      schemaInferenceService.inferSchemaFromPayload as jest.Mock
+    ).mockResolvedValue([
       {
         name: 'amount',
         path: 'amount',
@@ -198,50 +209,6 @@ describe('ConfigService', () => {
         isRequired: false,
       },
     ]);
-    
-    mockParsePayloadToSchema.mockResolvedValue({
-      success: true,
-      jsonSchema: mockJSONSchema,
-      sourceFields: [
-        {
-          name: 'amount',
-          path: 'amount',
-          type: FieldType.NUMBER,
-          isRequired: true,
-        },
-        {
-          name: 'currency',
-          path: 'currency',
-          type: FieldType.STRING,
-          isRequired: false,
-        },
-        {
-          name: 'firstName',
-          path: 'firstName',
-          type: FieldType.STRING,
-          isRequired: false,
-        },
-        {
-          name: 'lastName',
-          path: 'lastName',
-          type: FieldType.STRING,
-          isRequired: false,
-        },
-      ],
-      metadata: {
-        totalFields: 4,
-        requiredFields: 1,
-        optionalFields: 3,
-        nestedLevels: 1,
-        originalSize: 100,
-        processingTime: 50,
-      },
-      validation: {
-        success: true,
-        errors: [],
-        warnings: [],
-      },
-    });
 
     mockApplyFieldAdjustments.mockReturnValue([]);
 
@@ -284,35 +251,28 @@ describe('ConfigService', () => {
         transactionType: 'Payments',
         payload: '{"amount":200,"currency":"EUR"}',
       };
-      const parsingResult = {
-        success: true,
-        sourceFields: [
-          {
-            name: 'amount',
-            path: 'amount',
-            type: FieldType.NUMBER,
-            isRequired: true,
-          },
-          {
-            name: 'currency',
-            path: 'currency',
-            type: FieldType.STRING,
-            isRequired: false,
-          },
-        ],
-        jsonSchema: mockJSONSchema,
-        metadata: {
-          totalFields: 2,
-          requiredFields: 1,
-          optionalFields: 1,
-          nestedLevels: 1,
-          originalSize: 100,
-          processingTime: 50,
+
+      // Mock schema inference to return fields
+      (
+        schemaInferenceService.inferSchemaFromPayload as jest.Mock
+      ).mockResolvedValueOnce([
+        {
+          name: 'amount',
+          path: 'amount',
+          type: FieldType.NUMBER,
+          isRequired: true,
         },
-        validation: { success: true, errors: [], warnings: [] },
-      };
-      mockParsePayloadToSchema.mockResolvedValue(parsingResult);
-      repository.findConfigByVersionAndTransactionType.mockResolvedValue(null); // No version conflict
+        {
+          name: 'currency',
+          path: 'currency',
+          type: FieldType.STRING,
+          isRequired: false,
+        },
+      ]);
+
+      repository.findConfigByMsgFamVersionAndTransactionType.mockResolvedValue(
+        null,
+      ); // No version conflict
       repository.createConfig.mockResolvedValue(2);
       const configWithPreferredUsername = {
         ...mockConfig,
@@ -340,35 +300,28 @@ describe('ConfigService', () => {
         transactionType: 'Payments',
         payload: '{"amount":100,"currency":"USD"}',
       };
-      const parsingResult = {
-        success: true,
-        sourceFields: [
-          {
-            name: 'amount',
-            path: 'amount',
-            type: FieldType.NUMBER,
-            isRequired: true,
-          },
-          {
-            name: 'currency',
-            path: 'currency',
-            type: FieldType.STRING,
-            isRequired: false,
-          },
-        ],
-        jsonSchema: mockJSONSchema,
-        metadata: {
-          totalFields: 2,
-          requiredFields: 1,
-          optionalFields: 1,
-          nestedLevels: 1,
-          originalSize: 100,
-          processingTime: 50,
+
+      // Mock schema inference to return fields
+      (
+        schemaInferenceService.inferSchemaFromPayload as jest.Mock
+      ).mockResolvedValueOnce([
+        {
+          name: 'amount',
+          path: 'amount',
+          type: FieldType.NUMBER,
+          isRequired: true,
         },
-        validation: { success: true, errors: [], warnings: [] },
-      };
-      mockParsePayloadToSchema.mockResolvedValue(parsingResult);
-      repository.findConfigByVersionAndTransactionType.mockResolvedValue(null); // No version conflict
+        {
+          name: 'currency',
+          path: 'currency',
+          type: FieldType.STRING,
+          isRequired: false,
+        },
+      ]);
+
+      repository.findConfigByMsgFamVersionAndTransactionType.mockResolvedValue(
+        null,
+      ); // No version conflict
       repository.createConfig.mockResolvedValue(3);
       const configWithAutoPath = {
         ...mockConfig,
@@ -389,35 +342,28 @@ describe('ConfigService', () => {
         transactionType: 'Payments',
         payload: '{"amount":100,"currency":"USD"}',
       };
-      const parsingResult = {
-        success: true,
-        sourceFields: [
-          {
-            name: 'amount',
-            path: 'amount',
-            type: FieldType.NUMBER,
-            isRequired: true,
-          },
-          {
-            name: 'currency',
-            path: 'currency',
-            type: FieldType.STRING,
-            isRequired: false,
-          },
-        ],
-        jsonSchema: mockJSONSchema,
-        metadata: {
-          totalFields: 2,
-          requiredFields: 1,
-          optionalFields: 1,
-          nestedLevels: 1,
-          originalSize: 100,
-          processingTime: 50,
+
+      // Mock schema inference to return fields
+      (
+        schemaInferenceService.inferSchemaFromPayload as jest.Mock
+      ).mockResolvedValueOnce([
+        {
+          name: 'amount',
+          path: 'amount',
+          type: FieldType.NUMBER,
+          isRequired: true,
         },
-        validation: { success: true, errors: [], warnings: [] },
-      };
-      mockParsePayloadToSchema.mockResolvedValue(parsingResult);
-      repository.findConfigByVersionAndTransactionType.mockResolvedValue(null); // No version conflict
+        {
+          name: 'currency',
+          path: 'currency',
+          type: FieldType.STRING,
+          isRequired: false,
+        },
+      ]);
+
+      repository.findConfigByMsgFamVersionAndTransactionType.mockResolvedValue(
+        null,
+      ); // No version conflict
       repository.createConfig.mockResolvedValue(4);
       const configWithAutoPath = {
         ...mockConfig,
@@ -439,30 +385,12 @@ describe('ConfigService', () => {
         transactionType: 'Payments',
         payload: 'invalid json',
       };
-      const parsingResult = {
-        success: false,
-        sourceFields: [],
-        jsonSchema: {
-          $schema: 'https://json-schema.org/draft/2020-12/schema',
-          type: 'object' as const,
-          properties: {},
-          additionalProperties: false,
-        },
-        metadata: {
-          totalFields: 0,
-          requiredFields: 0,
-          optionalFields: 0,
-          nestedLevels: 0,
-          originalSize: 0,
-          processingTime: 0,
-        },
-        validation: {
-          success: false,
-          errors: ['Invalid JSON'],
-          warnings: [],
-        },
-      };
-      mockParsePayloadToSchema.mockResolvedValue(parsingResult);
+
+      // Mock the schema inference service to throw an error
+      (
+        schemaInferenceService.inferSchemaFromPayload as jest.Mock
+      ).mockRejectedValueOnce(new Error('Invalid JSON'));
+
       const result = await service.createConfig(dto, 'test-tenant', 'user-123');
       expect(result.success).toBe(false);
       expect(result.message).toBe('Failed to parse payload');
@@ -509,42 +437,33 @@ describe('ConfigService', () => {
         payload: '{"amount":100,"currency":"USD"}',
       };
 
-      const parsingResultWithDuplicates = {
-        success: true,
-        sourceFields: [
-          {
-            name: 'amount',
-            path: 'amount',
-            type: FieldType.NUMBER,
-            isRequired: true,
-          },
-          {
-            name: 'amount', // Duplicate name
-            path: 'totalAmount',
-            type: FieldType.NUMBER,
-            isRequired: false,
-          },
-          {
-            name: 'currency',
-            path: 'currency',
-            type: FieldType.STRING,
-            isRequired: false,
-          },
-        ],
-        jsonSchema: mockJSONSchema,
-        metadata: {
-          totalFields: 3,
-          requiredFields: 1,
-          optionalFields: 2,
-          nestedLevels: 1,
-          originalSize: 100,
-          processingTime: 50,
+      const sourceFieldsWithDuplicates = [
+        {
+          name: 'amount',
+          path: 'amount',
+          type: FieldType.NUMBER,
+          isRequired: true,
         },
-        validation: { success: true, errors: [], warnings: [] },
-      };
+        {
+          name: 'amount', // Duplicate name
+          path: 'totalAmount',
+          type: FieldType.NUMBER,
+          isRequired: false,
+        },
+        {
+          name: 'currency',
+          path: 'currency',
+          type: FieldType.STRING,
+          isRequired: false,
+        },
+      ];
 
-      mockParsePayloadToSchema.mockResolvedValue(parsingResultWithDuplicates);
-      repository.findConfigByVersionAndTransactionType.mockResolvedValue(null);
+      (
+        schemaInferenceService.inferSchemaFromPayload as jest.Mock
+      ).mockResolvedValueOnce(sourceFieldsWithDuplicates);
+      repository.findConfigByMsgFamVersionAndTransactionType.mockResolvedValue(
+        null,
+      );
 
       const result = await service.createConfig(dto, 'test-tenant', 'user-123');
 
@@ -564,44 +483,33 @@ describe('ConfigService', () => {
         payload: '{"amount":100,"currency":"USD"}',
       };
 
-      const parsingResultWithDuplicatePaths = {
-        success: true,
-        sourceFields: [
-          {
-            name: 'amount',
-            path: 'payment.amount',
-            type: FieldType.NUMBER,
-            isRequired: true,
-          },
-          {
-            name: 'totalAmount',
-            path: 'payment.amount', // Duplicate path
-            type: FieldType.NUMBER,
-            isRequired: false,
-          },
-          {
-            name: 'currency',
-            path: 'currency',
-            type: FieldType.STRING,
-            isRequired: false,
-          },
-        ],
-        jsonSchema: mockJSONSchema,
-        metadata: {
-          totalFields: 3,
-          requiredFields: 1,
-          optionalFields: 2,
-          nestedLevels: 1,
-          originalSize: 100,
-          processingTime: 50,
+      const sourceFieldsWithDuplicatePaths = [
+        {
+          name: 'amount',
+          path: 'payment.amount',
+          type: FieldType.NUMBER,
+          isRequired: true,
         },
-        validation: { success: true, errors: [], warnings: [] },
-      };
+        {
+          name: 'totalAmount',
+          path: 'payment.amount', // Duplicate path
+          type: FieldType.NUMBER,
+          isRequired: false,
+        },
+        {
+          name: 'currency',
+          path: 'currency',
+          type: FieldType.STRING,
+          isRequired: false,
+        },
+      ];
 
-      mockParsePayloadToSchema.mockResolvedValue(
-        parsingResultWithDuplicatePaths,
+      (
+        schemaInferenceService.inferSchemaFromPayload as jest.Mock
+      ).mockResolvedValueOnce(sourceFieldsWithDuplicatePaths);
+      repository.findConfigByMsgFamVersionAndTransactionType.mockResolvedValue(
+        null,
       );
-      repository.findConfigByVersionAndTransactionType.mockResolvedValue(null);
 
       const result = await service.createConfig(dto, 'test-tenant', 'user-123');
 
@@ -818,7 +726,7 @@ describe('ConfigService', () => {
         functions: [
           {
             params: ['redis.dbtrAcctId', 'transaction.tenantId'],
-            functionName: 'addAccount' as AllowedFunctionName,
+            functionName: 'addAccountHolder' as AllowedFunctionName,
           },
         ],
       };

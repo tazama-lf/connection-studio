@@ -18,7 +18,7 @@ import { JobService } from './job.service';
 @Controller('job')
 // @UseGuards(TazamaAuthGuard)
 export class JobController {
-  constructor(private readonly jobService: JobService) { }
+  constructor(private readonly jobService: JobService) {}
 
   @Post('/create/push')
   @RequireEditorRole()
@@ -62,12 +62,7 @@ export class JobController {
     @Query('status') status: JobStatus,
     @Query('type') type: ConfigType,
   ) {
-    return await this.jobService.updateStatus(
-      id,
-      status,
-      type,
-      '1234'
-    );
+    return await this.jobService.updateStatus(id, status, type, '1234');
   }
 
   @Patch('/update/activation/:id')

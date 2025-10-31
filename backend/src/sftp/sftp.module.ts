@@ -8,6 +8,6 @@ import { ConfigModule } from '@nestjs/config';
   providers: [SftpService],
   exports: [SftpService],
   imports: [LoggerModule, ConfigModule],
-  controllers: [SftpController]
+  controllers: [SftpController],
 })
-export class SftpModule { }
+export class SftpModule {}

@@ -17,7 +17,7 @@ import { SftpModule } from 'src/sftp/sftp.module';
     AuditModule,
     DryRunModule,
     ConfigModule,
-    SftpModule
+    SftpModule,
   ],
 })
-export class JobModule { }
+export class JobModule {}

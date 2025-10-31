@@ -373,9 +373,23 @@ export class ConfigController {
       getUserClaims(user),
     );
   }
-
+  @Post(':id/workflow/export')
+  @RequireClaims(TazamaClaims.EXPORTER)
+  async exportConfig(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: StatusTransitionDto,
+    @User() user: AuthenticatedUser,
+  ): Promise<ConfigResponseDto> {
+    return this.configService.exportConfig(
+      id,
+      dto,
+      getTenantId(user),
+      getUserId(user),
+      getUserClaims(user),
+    );
+  }
   @Post(':id/workflow/deploy')
-  @RequireClaims(TazamaClaims.APPROVER)
+  @RequireClaims(TazamaClaims.PUBLISHER)
   async deployConfig(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: DeploymentDto,

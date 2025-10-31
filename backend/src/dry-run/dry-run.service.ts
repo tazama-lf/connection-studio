@@ -3,7 +3,9 @@ import { Injectable } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { CreatePullJobDto } from '../job/dto/create-pull-job.dto';
 import {
-  AuthType, FileType, SourceType,
+  AuthType,
+  FileType,
+  SourceType,
   FileSettings,
   HTTPConnection,
   SFTPConnection,
@@ -19,7 +21,7 @@ export class DryRunService {
   constructor(
     private readonly loggerService: LoggerService,
     private readonly httpService: HttpService,
-  ) { }
+  ) {}
 
   async transformFileToJSON(
     sftp: SFTPClient,

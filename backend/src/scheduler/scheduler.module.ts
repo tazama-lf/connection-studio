@@ -10,4 +10,4 @@ import { SftpModule } from 'src/sftp/sftp.module';
   providers: [SchedulerService],
   controllers: [SchedulerController],
 })
-export class SchedulerModule { }
+export class SchedulerModule {}
