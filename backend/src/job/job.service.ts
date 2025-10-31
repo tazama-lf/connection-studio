@@ -81,6 +81,7 @@ export class JobService {
 
   async createPull(job: CreatePullJobDto, tenantId: string, status: JobStatus = JobStatus.INPROGRESS): Promise<ISuccess> {
     try {
+
       // await this.validateExisting(job.table_name);
 
       const checkScheduleQuery = `
@@ -119,7 +120,6 @@ export class JobService {
           };
         }
       }
-
       await this.dryRunService.dryRun(job);
 
       const jobWithId = { ...job, id: v4(), connection, tenant_id: tenantId, status };
@@ -376,13 +376,14 @@ export class JobService {
 
         case JobStatus.DEPLOYED: {
           if (type === ConfigType.PULL) {
-            const connection = { ...existingJob.connection } as SFTPConnection;
+            let connection = { ...existingJob.connection } as SFTPConnection;
 
-            if (existingJob.AuthType === AuthType.USERNAME_PASSWORD && connection.password) {
+            if (connection.auth_type === AuthType.USERNAME_PASSWORD && connection.password) {
               connection.password = decrypt(connection.password);
             } else if (connection.private_key) {
               connection.private_key = decrypt(connection.private_key);
             }
+
 
             const { schedule, ...jobPayload } = existingJob;
 
@@ -423,7 +424,7 @@ export class JobService {
       };
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
-      this.loggerService.error(`Error updating job status: ${message}`);
+      this.loggerService.error(`${message}`);
       throw new BadRequestException(message);
     }
   }

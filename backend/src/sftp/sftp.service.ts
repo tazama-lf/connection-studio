@@ -20,12 +20,12 @@ export class SftpService implements OnModuleInit, OnModuleDestroy {
     }
 
 
-    async onModuleInit() {
+    async onModuleInit(): Promise<void> {
         await this.connectConsumer();
         await this.connectProducer();
     }
 
-    private async connectConsumer() {
+    private async connectConsumer(): Promise<void> {
         const host = this.configService.get<string>('SFTP_HOST_CONSUMER');
         const port = this.configService.get<number>('SFTP_PORT_CONSUMER');
         const username = this.configService.get<string>('SFTP_USERNAME_CONSUMER');
@@ -45,7 +45,7 @@ export class SftpService implements OnModuleInit, OnModuleDestroy {
         }
     }
 
-    private async connectProducer() {
+    private async connectProducer(): Promise<void> {
         const host = this.configService.get<string>('SFTP_HOST_PRODUCER');
         const port = this.configService.get<number>('SFTP_PORT_PRODUCER');
         const username = this.configService.get<string>('SFTP_USERNAME_PRODUCER');
@@ -65,7 +65,7 @@ export class SftpService implements OnModuleInit, OnModuleDestroy {
         }
     }
 
-    async onModuleDestroy() {
+    async onModuleDestroy(): Promise<void> {
         await Promise.allSettled([
             this.consumerSftp.end(),
             this.producerSftp.end(),
