@@ -8,47 +8,59 @@ import {
   Patch,
   Post,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { SchedulerService } from './scheduler.service';
 import { CreateScheduleJobDto } from './dto/create-schedule.dto';
 import { UpdateScheduleJobDto } from './dto/update-schedule-dto';
 import { JobStatus } from '@tazama-lf/tcs-lib';
+import { TazamaAuthGuard } from 'src/auth/tazama-auth.guard';
+import { type AuthenticatedUser } from 'src/auth/auth.types';
+import { RequireAnyClaims, RequireEditorRole } from 'src/auth/auth.decorator';
 
 @Controller('scheduler')
+@UseGuards(TazamaAuthGuard)
 export class SchedulerController {
   constructor(private readonly schedulerService: SchedulerService) { }
 
   @Post('/create')
-  async createJob(@Body() schedule: CreateScheduleJobDto) {
-    return this.schedulerService.create(schedule, '1234');
+  @RequireEditorRole()
+  async createJob(@Body() schedule: CreateScheduleJobDto, user: AuthenticatedUser) {
+    return this.schedulerService.create(schedule, user.tenantId);
   }
 
   @Get('/all')
+  @RequireAnyClaims()
   async getAll(
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+    user: AuthenticatedUser
   ) {
-    return this.schedulerService.findAll(page, limit, '1234');
+    return this.schedulerService.findAll(page, limit, user.tenantId);
   }
 
   @Patch('/update/:id')
-  async update(@Param('id') id: string, @Body() body: UpdateScheduleJobDto) {
-    return this.schedulerService.update(id, body, '1234');
+  @RequireEditorRole()
+  async update(@Param('id') id: string, @Body() body: UpdateScheduleJobDto, user: AuthenticatedUser) {
+    return this.schedulerService.update(id, body, user.tenantId);
   }
 
   @Get('/:id')
+  @RequireAnyClaims()
   async getById(@Param('id') id: string) {
     return this.schedulerService.findOne(id);
   }
 
   @Patch('/update/status/:id')
+  @RequireAnyClaims()
   async updateStatus(
     @Param('id') id: string,
     @Query('status') status: JobStatus,
+    user: AuthenticatedUser
   ) {
     return await this.schedulerService.updateStatus(
       id,
-      '1234',
+      user.tenantId,
       status,
     );
   }
