@@ -109,7 +109,7 @@ export const ExporterJobList: React.FC<ExporterJobListProps> = (props) => {
               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                 CREATED AT
               </th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+              <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
                 ACTIONS
               </th>
             </tr>
@@ -162,8 +162,8 @@ export const ExporterJobList: React.FC<ExporterJobListProps> = (props) => {
                       }
                     </div>
                   </td>
-                  <td className="px-6 py-4 relative">
-                    <div className="flex items-center justify-end space-x-2">
+                  <td className="px-6 py-4 relative text-center">
+                    <div className="flex items-center justify-center space-x-2">
                       <div className="relative actions-dropdown">
                         <button
                           onClick={(e) => {

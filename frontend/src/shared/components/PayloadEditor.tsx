@@ -197,13 +197,11 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
       const inferredFields: InferredField[] = [];
       
       fields.forEach(field => {
-        // Calculate level from the path itself (count dots and [0] separately)
+        // Calculate level from the path itself (count dots and .0. separately)
         // For "CstmrCdtTrfInitn.GrpHdr.InitgPty.Id.PrvtId.Othr" -> level 5
-        // For "CstmrCdtTrfInitn.GrpHdr.InitgPty.Id.PrvtId.Othr[0].Id" -> level 6
-        const pathWithoutBrackets = field.path.replace(/\[0\]/g, ''); // Remove [0] temporarily
-        const dotCount = (pathWithoutBrackets.match(/\./g) || []).length;
-        const bracketCount = (field.path.match(/\[0\]/g) || []).length;
-        const level = dotCount + bracketCount;
+        // For "CstmrCdtTrfInitn.GrpHdr.InitgPty.Id.PrvtId.Othr.0.Id" -> level 7
+        const dotCount = (field.path.match(/\./g) || []).length;
+        const level = dotCount;
         
         // Debug logging for array fields
         if (field.type === 'array' && field.children) {
@@ -219,9 +217,9 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
           path: field.path,
           type: capitalizeFirstLetter(field.type) as InferredField['type'],
           level,
-          parent: field.path.includes('.') || field.path.includes('[') 
-            ? (field.path.includes('[') 
-                ? field.path.substring(0, field.path.lastIndexOf('[')) 
+          parent: field.path.includes('.') 
+            ? (field.path.includes('.0.') 
+                ? field.path.substring(0, field.path.lastIndexOf('.0.') + 2) 
                 : field.path.substring(0, field.path.lastIndexOf('.'))) 
             : undefined,
           required: field.isRequired
@@ -580,9 +578,9 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
           
           if (typeof firstElement === 'object' && firstElement !== null && !Array.isArray(firstElement)) {
             // Generate schema for array elements with objects
-            // IMPORTANT: Recursively process the object to get all nested fields with [0] notation
-            console.log(`    🔄 Recursing into array element object at ${fieldPath}[0]`);
-            field.children = generateJSONSchema(firstElement, `${fieldPath}[0]`);
+            // IMPORTANT: Recursively process the object to get all nested fields with .0 notation
+            console.log(`    🔄 Recursing into array element object at ${fieldPath}.0`);
+            field.children = generateJSONSchema(firstElement, `${fieldPath}.0`);
             field.arrayElementType = 'object';
           } else if (Array.isArray(firstElement)) {
             // Handle arrays of arrays
@@ -662,7 +660,7 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
           if (elements.length > 0) {
             // Use first element as template for array items
             // Generate schema but only use the children, not the element wrapper itself
-            const templateSchema = generateXMLSchema(elements[0], `${fieldPath}.${tagName}[0]`);
+            const templateSchema = generateXMLSchema(elements[0], `${fieldPath}.${tagName}.0`);
             if (templateSchema.length > 0 && templateSchema[0].children) {
               // Extract only the children to avoid duplicate nesting
               // (disciplines.discipline -> just the children of discipline, not discipline itself)

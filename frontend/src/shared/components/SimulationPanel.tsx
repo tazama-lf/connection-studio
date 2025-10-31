@@ -99,7 +99,7 @@ export const SimulationPanel: React.FC<SimulationPanelProps> = ({
           <textarea 
             value={testPayload} 
             onChange={e => setTestPayload(e.target.value)} 
-            className="w-full h-48 p-4 font-mono text-sm bg-gray-50" 
+            className="w-full h-96 p-4 font-mono text-sm bg-gray-50" 
             spellCheck="false" 
             placeholder="Enter or upload a test payload to simulate the transformation..." 
             readOnly={readOnly}

@@ -36,7 +36,7 @@ export const CronJobModal: React.FC<CronJobModalProps> = ({
         {/* Modal Header */}
         <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-200">
           <h2 className="text-2xl font-semibold text-gray-800">
-            Create New CRON Job
+            Create New Cron Job
           </h2>
           <button
             onClick={onClose}

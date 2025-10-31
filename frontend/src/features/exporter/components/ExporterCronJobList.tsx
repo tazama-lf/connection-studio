@@ -106,6 +106,9 @@ export const ExporterCronJobList: React.FC<ExporterCronJobListProps> = (props) =
                 END DATE
               </th>
               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                CREATED AT
+              </th>
+              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                 STATUS
               </th>
               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
@@ -156,12 +159,24 @@ export const ExporterCronJobList: React.FC<ExporterCronJobListProps> = (props) =
                     </div>
                   </td>
                   <td className="px-6 py-4">
+                    <div className="text-sm text-gray-600">
+                      {schedule.created_at
+                        ? new Date(schedule.created_at).toLocaleDateString('en-US', {
+                            month: 'numeric',
+                            day: 'numeric',
+                            year: 'numeric'
+                          })
+                        : 'N/A'
+                      }
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(schedule.status || 'approved')}`}>
                       {getStatusLabel(schedule.status || 'approved')}
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="flex items-center justify-end space-x-2">
+                    <div className="flex items-center justify-center space-x-2">
                       <div className="relative actions-dropdown">
                         <button
                           onClick={() => {

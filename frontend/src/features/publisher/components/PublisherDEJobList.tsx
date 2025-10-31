@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Eye, MoreVertical } from 'lucide-react';
+import { Eye, MoreVertical, PlayIcon, PauseIcon } from 'lucide-react';
 import type { DataEnrichmentJobResponse } from '../../data-enrichment/types';
 import { DropdownMenuWithAutoDirection } from '../../../shared/components/DropdownMenuWithAutoDirection';
 import { getStatusColor, getStatusLabel } from '../../../shared/utils/statusColors';
@@ -10,6 +10,7 @@ interface PublisherDEJobListProps {
   onViewDetails?: (jobId: string) => void;
   onRefresh?: () => void;
   searchQuery?: string;
+  onToggleStatus?: (jobId: string, newStatus: 'active' | 'in-active') => void;
 }
 
 export const PublisherDEJobList: React.FC<PublisherDEJobListProps> = (props) => {
@@ -19,6 +20,7 @@ export const PublisherDEJobList: React.FC<PublisherDEJobListProps> = (props) => 
     onViewDetails,
     onRefresh,
     searchQuery = '',
+    onToggleStatus,
   } = props;
 
   const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
@@ -109,7 +111,7 @@ export const PublisherDEJobList: React.FC<PublisherDEJobListProps> = (props) => 
               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                 STATUS
               </th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+              <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
                 ACTIONS
               </th>
             </tr>
@@ -171,8 +173,8 @@ export const PublisherDEJobList: React.FC<PublisherDEJobListProps> = (props) => 
                       {getStatusLabel(job.status || 'in-progress')}
                     </span>
                   </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center justify-end space-x-2">
+                  <td className="px-6 py-4 text-center">
+                    <div className="flex items-center justify-center space-x-2">
                       <div className="relative actions-dropdown">
                         <button
                           onClick={() => {
@@ -200,6 +202,33 @@ export const PublisherDEJobList: React.FC<PublisherDEJobListProps> = (props) => 
                                 <Eye className="w-4 h-4 mr-2" />
                                 View
                               </button>
+                              {onToggleStatus && (
+                                <>
+                                  {job.record_status === 'active' ? (
+                                    <button
+                                      onClick={() => {
+                                        onToggleStatus(job.id, 'in-active');
+                                        setDropdownOpen(null);
+                                      }}
+                                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                    >
+                                      <PauseIcon className="w-4 h-4 mr-2" />
+                                      Deactivate
+                                    </button>
+                                  ) : (
+                                    <button
+                                      onClick={() => {
+                                        onToggleStatus(job.id, 'active');
+                                        setDropdownOpen(null);
+                                      }}
+                                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                    >
+                                      <PlayIcon className="w-4 h-4 mr-2" />
+                                      Activate
+                                    </button>
+                                  )}
+                                </>
+                              )}
                             </div>
                           </DropdownMenuWithAutoDirection>
                         )}

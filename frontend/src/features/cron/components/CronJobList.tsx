@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { PlayIcon, PauseIcon, EditIcon, EyeIcon, XIcon, MoreVerticalIcon, ChevronDownIcon, ChevronUpIcon, ChevronDownIcon as ChevronDownIconAlias } from 'lucide-react';
+import { EditIcon, EyeIcon, XIcon, MoreVerticalIcon, ChevronDownIcon, ChevronUpIcon, ChevronDownIcon as ChevronDownIconAlias } from 'lucide-react';
 import { dataEnrichmentApi } from '../../data-enrichment/services';
 import type { ScheduleResponse } from '../../data-enrichment/types';
 import { useToast } from '../../../shared/providers/ToastProvider';
@@ -211,41 +211,8 @@ export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => 
       start_date: schedule.start_date || '',
       end_date: schedule.end_date || '',
     });
-    setIsEditJobSaved(false);
+    setIsEditJobSaved(false); // Reset the saved state when opening edit modal
     setEditModalOpen(true);
-  };
-
-  // Handle pause/activate toggle
-  const handleToggleStatus = async (schedule: ScheduleResponse) => {
-    // Prevent multiple simultaneous calls
-    if (isActionInProgress) {
-      console.log('⚠️ Action already in progress, ignoring duplicate call');
-      return;
-    }
-
-    setIsActionInProgress(true);
-
-    try {
-      const newStatus = schedule.schedule_status === 'active' ? 'in-active' : 'active';
-      
-      // Send the full schedule data with updated status
-      await dataEnrichmentApi.updateSchedule(schedule.id, {
-        name: schedule.name,
-        cron: schedule.cron,
-        iterations: schedule.iterations,
-        schedule_status: newStatus,
-        start_date: schedule.start_date,
-        end_date: schedule.end_date || undefined,
-      });
-      
-      showSuccess(`Schedule ${newStatus === 'active' ? 'activated' : 'de-activated'} successfully`);
-      loadSchedules();
-    } catch (err) {
-      console.error('Failed to update schedule status:', err);
-      showError('Failed to update schedule status');
-    } finally {
-      setIsActionInProgress(false);
-    }
   };
 
   // Handle save edit
@@ -253,6 +220,8 @@ export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => 
     if (!selectedSchedule) return;
 
     try {
+      setIsActionInProgress(true);
+      
       // Clean up the form data: remove empty strings for optional date fields
       const cleanedForm = {
         ...editForm,
@@ -269,6 +238,26 @@ export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => 
     } catch (err) {
       console.error('Failed to update schedule:', err);
       showError('Failed to update schedule');
+    } finally {
+      setIsActionInProgress(false);
+    }
+  };
+
+  // Handle send for approval
+  const handleSendForApproval = async () => {
+    if (!selectedSchedule) return;
+
+    try {
+      setIsActionInProgress(true);
+      await dataEnrichmentApi.updateScheduleStatus(selectedSchedule.id, 'under-review');
+      showSuccess('Cron job submitted for approval');
+      setEditModalOpen(false);
+      loadSchedules();
+    } catch (error) {
+      console.error('Failed to submit for approval:', error);
+      showError('Failed to submit cron job for approval');
+    } finally {
+      setIsActionInProgress(false);
     }
   };
 
@@ -343,7 +332,7 @@ export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => 
                 </div>
               </th>
               <th 
-                className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
                 onClick={() => handleSort('end_date')}
               >
                 <div className="flex items-center space-x-1">
@@ -356,7 +345,21 @@ export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => 
                 </div>
               </th>
               <th 
-                className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100 relative"
+                className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
+                onClick={() => handleSort('created_at')}
+              >
+                <div className="flex items-center space-x-1">
+                  <span>Created At</span>
+                  {sortField === 'created_at' && (
+                    sortDirection === 'asc' ? 
+                      <ChevronUpIcon className="w-4 h-4 ml-1" /> : 
+                      <ChevronDownIcon className="w-4 h-4 ml-1" />
+                  )}
+                </div>
+              </th>
+            
+              <th 
+                className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider relative"
                 onClick={() => handleSort('status')}
               >
                 <div className="flex items-center space-x-1">
@@ -436,19 +439,19 @@ export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => 
           <tbody className="bg-white">
             {loading ? (
               <tr>
-                <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
+                <td colSpan={8} className="px-6 py-4 text-center text-sm text-gray-500">
                   Loading schedules...
                 </td>
               </tr>
             ) : error ? (
               <tr>
-                <td colSpan={7} className="px-6 py-4 text-center text-sm text-red-500">
+                <td colSpan={8} className="px-6 py-4 text-center text-sm text-red-500">
                   {error}
                 </td>
               </tr>
             ) : sortedSchedules.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
+                <td colSpan={8} className="px-6 py-4 text-center text-sm text-gray-500">
                   No schedules found
                 </td>
               </tr>
@@ -477,13 +480,16 @@ export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => 
                       {formatDate(schedule.end_date)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                      {formatDate(schedule.created_at)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(schedule.status)}`}>
                         <span className="w-2 h-2 rounded-full bg-current mr-2"></span>
                         {getStatusLabel(schedule.status)}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex justify-end items-center">
+                    <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                      <div className="flex justify-center items-center">
                         {/* Actions dropdown with three-dot menu */}
                         <div className="relative actions-dropdown">
                           <button
@@ -507,61 +513,62 @@ export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => 
                                   <EyeIcon className="w-4 h-4 mr-2" />
                                   View
                                 </button>
-                                <button
-                                  onClick={() => {
-                                    setOpenDropdown(null);
-                                    handleEdit(schedule);
-                                  }}
-                                  disabled={schedule.status?.toLowerCase() !== 'in-progress' || isActionInProgress}
-                                  className={`flex items-center w-full px-4 py-2 text-sm hover:bg-gray-100 ${
-                                    schedule.status !== 'in-progress'
-                                      ? 'text-gray-400 cursor-not-allowed'
-                                      : isActionInProgress
-                                      ? 'text-gray-400 cursor-not-allowed opacity-50'
-                                      : 'text-gray-700'
-                                  }`}
-                                  title={
-                                    schedule.status !== 'in-progress'
-                                      ? 'Can only edit jobs with in-progress status' 
-                                      : isActionInProgress
-                                      ? 'Action in progress...'
-                                      : ''
-                                  }
-                                >
-                                  <EditIcon className="w-4 h-4 mr-2" />
-                                  Edit
-                                </button>
+                                {(userIsEditor || userIsApprover) && (
+                                  <button
+                                    onClick={() => {
+                                      setOpenDropdown(null);
+                                      handleEdit(schedule);
+                                    }}
+                                    disabled={schedule.status?.toLowerCase() !== 'in-progress' || isActionInProgress}
+                                    className={`flex items-center w-full px-4 py-2 text-sm hover:bg-gray-100 ${
+                                      schedule.status !== 'in-progress'
+                                        ? 'text-gray-400 cursor-not-allowed'
+                                        : isActionInProgress
+                                        ? 'text-gray-400 cursor-not-allowed opacity-50'
+                                        : 'text-gray-700'
+                                    }`}
+                                    title={
+                                      schedule.status !== 'in-progress'
+                                        ? 'Can only edit jobs with in-progress status' 
+                                        : isActionInProgress
+                                        ? 'Action in progress...'
+                                        : ''
+                                    }
+                                  >
+                                    <EditIcon className="w-4 h-4 mr-2" />
+                                    Edit
+                                  </button>
+                                )}
+                                {userIsExporter && schedule.status?.toLowerCase() === 'approved' && (
+                                  <button
+                                    onClick={async () => {
+                                      try {
+                                        setIsActionInProgress(true);
+                                        setOpenDropdown(null);
+                                        await dataEnrichmentApi.updateScheduleStatus(schedule.id, 'exported');
+                                        showSuccess('Cron job exported successfully');
+                                        await loadSchedules();
+                                      } catch (error) {
+                                        console.error('Failed to export cron job:', error);
+                                        showError('Failed to export cron job');
+                                      } finally {
+                                        setIsActionInProgress(false);
+                                      }
+                                    }}
+                                    disabled={isActionInProgress}
+                                    className={`flex items-center w-full px-4 py-2 text-sm hover:bg-gray-100 ${
+                                      isActionInProgress ? 'text-gray-400 cursor-not-allowed opacity-50' : 'text-gray-700'
+                                    }`}
+                                  >
+                                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                    Export
+                                  </button>
+                                )}
                                 {userIsPublisher && (
                                   <>
-                                    {schedule.schedule_status === 'active' ? (
-                                      <button
-                                        onClick={() => {
-                                          setOpenDropdown(null);
-                                          handleToggleStatus(schedule);
-                                        }}
-                                        disabled={isActionInProgress}
-                                        className={`flex items-center w-full px-4 py-2 text-sm hover:bg-gray-100 ${
-                                          isActionInProgress ? 'text-gray-400 cursor-not-allowed opacity-50' : 'text-gray-700'
-                                        }`}
-                                      >
-                                        <PauseIcon className="w-4 h-4 mr-2" />
-                                        Deactivate
-                                      </button>
-                                    ) : (
-                                      <button
-                                        onClick={() => {
-                                          setOpenDropdown(null);
-                                          handleToggleStatus(schedule);
-                                        }}
-                                        disabled={isActionInProgress}
-                                        className={`flex items-center w-full px-4 py-2 text-sm hover:bg-gray-100 ${
-                                          isActionInProgress ? 'text-gray-400 cursor-not-allowed opacity-50' : 'text-gray-700'
-                                        }`}
-                                      >
-                                        <PlayIcon className="w-4 h-4 mr-2" />
-                                        Activate
-                                      </button>
-                                    )}
+                                    {/* Publisher actions removed - activation functionality moved to publisher end */}
                                   </>
                                 )}
                               </div>
@@ -889,6 +896,19 @@ export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => 
                   }`}
                 >
                   {isActionInProgress ? 'Saving...' : 'Save'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSendForApproval}
+                  disabled={!isEditJobSaved || isActionInProgress}
+                  className={`px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
+                    !isEditJobSaved || isActionInProgress
+                      ? 'bg-gray-400 cursor-not-allowed opacity-50'
+                      : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
+                  }`}
+                  title={!isEditJobSaved ? 'Please save the changes first' : ''}
+                >
+                  {isActionInProgress ? 'Submitting...' : 'Send for Approval'}
                 </button>
               </div>
             </div>

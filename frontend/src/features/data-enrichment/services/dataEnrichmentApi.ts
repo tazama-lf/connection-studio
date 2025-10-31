@@ -391,4 +391,33 @@ export const dataEnrichmentApi = {
     }
   },
 
-  };
+  previewData: async (
+    connectionData: Partial<CreatePullJobDto | CreatePushJobDto>,
+  ): Promise<{
+    totalRows: number;
+    validRows: number;
+    invalidRows: number;
+    previewRows: Record<string, any>[];
+    validationErrors: Array<{ row: number; field: string; error: string }>;
+  }> => {
+    try {
+      return await apiRequest<{
+        totalRows: number;
+        validRows: number;
+        invalidRows: number;
+        previewRows: Record<string, any>[];
+        validationErrors: Array<{ row: number; field: string; error: string }>;
+      }>(
+        `${DATA_ENRICHMENT_BASE_URL}/job/preview/data`,
+        {
+          method: 'POST',
+          body: JSON.stringify(connectionData),
+        },
+      );
+    } catch (error) {
+      console.error('Data preview failed:', error);
+      throw error;
+    }
+  },
+
+};

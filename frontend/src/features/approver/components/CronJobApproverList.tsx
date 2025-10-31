@@ -154,7 +154,7 @@ export const CronJobApproverList: React.FC<CronJobApproverListProps> = (props) =
               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                 STATUS
               </th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+              <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
                 ACTIONS
               </th>
             </tr>
@@ -219,8 +219,8 @@ export const CronJobApproverList: React.FC<CronJobApproverListProps> = (props) =
                       {getStatusLabel(schedule.status)}
                     </span>
                   </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center justify-end space-x-2">
+                  <td className="px-6 py-4 text-center">
+                    <div className="flex items-center justify-center space-x-2">
                       {/* Actions Dropdown */}
                       <div className="relative actions-dropdown">
                         <button

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Eye, MoreVertical, ChevronDown, FilterIcon, Edit } from 'lucide-react';
+import { Eye, MoreVertical, ChevronDown, FilterIcon, Edit, ChevronDownIcon, ChevronUpIcon } from 'lucide-react';
 import type { DataEnrichmentJobResponse, JobStatus } from '../types';
 import { Button } from '../../../shared/components/Button';
 import { useAuth } from '../../auth/contexts/AuthContext';
@@ -16,10 +16,6 @@ interface JobListProps {
   statusFilter?: JobStatus | 'ALL';
   onStatusFilterChange?: (status: JobStatus | 'ALL') => void;
   searchQuery?: string;
-  recordStatusFilter?: 'active' | 'in-active' | 'not-set' | 'ALL';
-  onRecordStatusFilterChange?: (status: 'active' | 'in-active' | 'not-set' | 'ALL') => void;
-  dateFilter?: 'today' | 'week' | 'month' | 'ALL';
-  onDateFilterChange?: (period: 'today' | 'week' | 'month' | 'ALL') => void;
   typeFilter?: 'push' | 'pull' | 'ALL';
   onTypeFilterChange?: (type: 'push' | 'pull' | 'ALL') => void;
 }
@@ -36,29 +32,8 @@ const StatusBadge: React.FC<{ status: JobStatus }> = ({ status }) => {
   );
 };
 
-const ActivationBadge: React.FC<{ recordStatus: 'active' | 'in-active' | null | undefined }> = ({ recordStatus }) => {
-  const isActive = recordStatus === 'active';
-  
-  if (!recordStatus) {
-    return (
-      <span className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-full bg-gray-100 text-gray-600">
-        <span className="w-2 h-2 rounded-full mr-2 bg-gray-400"></span>
-        NOT SET
-      </span>
-    );
-  }
-  
-  return (
-    <span className={`inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-full ${
-      isActive ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-600'
-    }`}>
-      <span className={`w-2 h-2 rounded-full mr-2 ${
-        isActive ? 'bg-green-500' : 'bg-gray-500'
-      }`}></span>
-      {isActive ? 'ACTIVE' : 'INACTIVE'}
-    </span>
-  );
-};
+type SortField = 'endpoint_path' | 'type' | 'status' | 'created_at';
+type SortDirection = 'asc' | 'desc';
 
 export const JobList: React.FC<JobListProps> = (props) => {
   // IMMEDIATE LOGGING - Log props as soon as component receives them
@@ -85,10 +60,6 @@ export const JobList: React.FC<JobListProps> = (props) => {
     statusFilter = 'ALL',
     onStatusFilterChange,
     searchQuery = '',
-    recordStatusFilter = 'ALL',
-    onRecordStatusFilterChange,
-    dateFilter = 'ALL',
-    onDateFilterChange,
     typeFilter = 'ALL',
     onTypeFilterChange,
   } = props;
@@ -98,9 +69,11 @@ export const JobList: React.FC<JobListProps> = (props) => {
   const userIsExporter = user?.claims ? isExporter(user.claims) : false;
   const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
   const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
-  const [recordStatusDropdownOpen, setRecordStatusDropdownOpen] = useState(false);
-  const [dateDropdownOpen, setDateDropdownOpen] = useState(false);
   const [typeDropdownOpen, setTypeDropdownOpen] = useState(false);
+
+  // Sorting state
+  const [sortField, setSortField] = useState<SortField>('created_at');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
   // Close dropdowns when clicking outside
   React.useEffect(() => {
@@ -113,20 +86,74 @@ export const JobList: React.FC<JobListProps> = (props) => {
       }
       
       setStatusDropdownOpen(false);
-      setRecordStatusDropdownOpen(false);
-      setDateDropdownOpen(false);
       setTypeDropdownOpen(false);
       setDropdownOpen(null);
     };
 
-    if (statusDropdownOpen || recordStatusDropdownOpen || dateDropdownOpen || dropdownOpen) {
+    if (statusDropdownOpen || dropdownOpen) {
       document.addEventListener('click', handleClickOutside);
       return () => document.removeEventListener('click', handleClickOutside);
     }
-  }, [statusDropdownOpen, recordStatusDropdownOpen, dateDropdownOpen, dropdownOpen]);
+  }, [statusDropdownOpen, dateDropdownOpen, dropdownOpen]);
+
+  // Handle column sorting
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
 
   // Jobs are already filtered and paginated by parent component
   console.log('Jobs received (already filtered & paginated):', jobs.length);
+
+  // Sort jobs
+  const sortedJobs = [...jobs].sort((a, b) => {
+    let aValue: any;
+    let bValue: any;
+
+    // Handle special cases for sorting
+    if (sortField === 'created_at') {
+      aValue = a.created_at ? new Date(a.created_at).getTime() : 0;
+      bValue = b.created_at ? new Date(b.created_at).getTime() : 0;
+    } else if (sortField === 'endpoint_path') {
+      // For endpoint path, use the computed path
+      const getEndpointPathA = () => {
+        if (a.type?.toLowerCase() === 'push') {
+          return a.path || `/tenant-${a.endpoint_name?.substring(0, 6)}/${a.table_name || 'data'}`;
+        } else {
+          return `/tenant-${a.endpoint_name?.substring(0, 6) || '001'}/${a.table_name || a.endpoint_name}`;
+        }
+      };
+      const getEndpointPathB = () => {
+        if (b.type?.toLowerCase() === 'push') {
+          return b.path || `/tenant-${b.endpoint_name?.substring(0, 6)}/${b.table_name || 'data'}`;
+        } else {
+          return `/tenant-${b.endpoint_name?.substring(0, 6) || '001'}/${b.table_name || b.endpoint_name}`;
+        }
+      };
+      aValue = getEndpointPathA();
+      bValue = getEndpointPathB();
+    } else if (sortField === 'type') {
+      aValue = a.type || a.config_type?.toLowerCase() || 'pull';
+      bValue = b.type || b.config_type?.toLowerCase() || 'pull';
+    } else if (sortField === 'status') {
+      aValue = a.status || 'in-progress';
+      bValue = b.status || 'in-progress';
+    }
+
+    // Handle null/undefined values
+    if (aValue == null && bValue == null) return 0;
+    if (aValue == null) return sortDirection === 'asc' ? 1 : -1;
+    if (bValue == null) return sortDirection === 'asc' ? -1 : 1;
+
+    // Compare values
+    if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+    if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+    return 0;
+  });
 
   if (isLoading) {
     console.log('🔄 Rendering LOADING state');
@@ -145,8 +172,6 @@ export const JobList: React.FC<JobListProps> = (props) => {
     // Check if any filters are active
     const hasActiveFilters = 
       (statusFilter && statusFilter !== 'ALL') ||
-      (recordStatusFilter && recordStatusFilter !== 'ALL') ||
-      (dateFilter && dateFilter !== 'ALL') ||
       (typeFilter && typeFilter !== 'ALL') ||
       (searchQuery && searchQuery.trim() !== '');
     
@@ -165,8 +190,6 @@ export const JobList: React.FC<JobListProps> = (props) => {
               onClick={() => {
                 // Clear all filters
                 onStatusFilterChange?.('ALL');
-                onRecordStatusFilterChange?.('ALL');
-                onDateFilterChange?.('ALL');
                 onTypeFilterChange?.('ALL');
                 onRefresh?.();
               }} 
@@ -226,12 +249,30 @@ export const JobList: React.FC<JobListProps> = (props) => {
         <table className="min-w-full relative">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                ENDPOINT PATH
+              <th 
+                className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort('endpoint_path')}
+              >
+                <div className="flex items-center space-x-1">
+                  <span>ENDPOINT PATH</span>
+                  {sortField === 'endpoint_path' && (
+                    sortDirection === 'asc' ? 
+                      <ChevronUpIcon className="w-4 h-4 ml-1" /> : 
+                      <ChevronDownIcon className="w-4 h-4 ml-1" />
+                  )}
+                </div>
               </th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+              <th 
+                className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort('type')}
+              >
                 <div className="flex items-center space-x-2">
                   <span>TYPE</span>
+                  {sortField === 'type' && (
+                    sortDirection === 'asc' ? 
+                      <ChevronUpIcon className="w-4 h-4 ml-1" /> : 
+                      <ChevronDownIcon className="w-4 h-4 ml-1" />
+                  )}
                   <div className="relative filter-dropdown">
                     <button
                       onClick={(e) => {
@@ -282,10 +323,18 @@ export const JobList: React.FC<JobListProps> = (props) => {
                   </div>
                 </div>
               </th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+              <th 
+                className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort('status')}
+              >
                 <div className="flex items-center space-x-2">
                   <FilterIcon className="w-4 h-4 text-gray-400" />
                   <span>STATUS</span>
+                  {sortField === 'status' && (
+                    sortDirection === 'asc' ? 
+                      <ChevronUpIcon className="w-4 h-4 ml-1" /> : 
+                      <ChevronDownIcon className="w-4 h-4 ml-1" />
+                  )}
                   <div className="relative filter-dropdown">
                     <button
                       onClick={(e) => {
@@ -388,142 +437,29 @@ export const JobList: React.FC<JobListProps> = (props) => {
                   </div>
                 </div>
               </th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                <div className="flex items-center space-x-2">
-                  <span>ACTIVATION</span>
-                  <div className="relative filter-dropdown">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setRecordStatusDropdownOpen(!recordStatusDropdownOpen);
-                      }}
-                      className="p-1 hover:bg-gray-200 rounded transition-colors"
-                      title="Filter by activation status"
-                    >
-                      <ChevronDown size={16} className={`text-gray-500 transition-transform ${recordStatusDropdownOpen ? 'rotate-180' : ''}`} />
-                    </button>
-                    {recordStatusDropdownOpen && (
-                      <div className="absolute top-full left-0 mt-1 w-48 bg-white rounded-md shadow-lg z-[999] border border-gray-200 dropdown-menu">
-                        <div className="py-1">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onRecordStatusFilterChange?.('ALL');
-                              setRecordStatusDropdownOpen(false);
-                            }}
-                            className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${recordStatusFilter === 'ALL' ? 'bg-gray-100 font-medium' : 'text-gray-700'}`}
-                          >
-                            All Activation Status
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onRecordStatusFilterChange?.('active');
-                              setRecordStatusDropdownOpen(false);
-                            }}
-                            className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${recordStatusFilter === 'active' ? 'bg-gray-100 font-medium' : 'text-gray-700'}`}
-                          >
-                            Active
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onRecordStatusFilterChange?.('in-active');
-                              setRecordStatusDropdownOpen(false);
-                            }}
-                            className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${recordStatusFilter === 'in-active' ? 'bg-gray-100 font-medium' : 'text-gray-700'}`}
-                          >
-                            Inactive
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onRecordStatusFilterChange?.('not-set');
-                              setRecordStatusDropdownOpen(false);
-                            }}
-                            className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${recordStatusFilter === 'not-set' ? 'bg-gray-100 font-medium' : 'text-gray-700'}`}
-                          >
-                            Not Set
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+              <th 
+                className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort('created_at')}
+              >
                 <div className="flex items-center space-x-2">
                   <span>CREATED TIME</span>
-                  <div className="relative filter-dropdown">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setDateDropdownOpen(!dateDropdownOpen);
-                      }}
-                      className="p-1 hover:bg-gray-200 rounded transition-colors"
-                      title="Filter by date"
-                    >
-                      <ChevronDown size={16} className={`text-gray-500 transition-transform ${dateDropdownOpen ? 'rotate-180' : ''}`} />
-                    </button>
-                    {dateDropdownOpen && (
-                      <div className="absolute top-full left-0 mt-1 w-48 bg-white rounded-md shadow-lg z-[999] border border-gray-200 dropdown-menu">
-                        <div className="py-1">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onDateFilterChange?.('ALL');
-                              setDateDropdownOpen(false);
-                            }}
-                            className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${dateFilter === 'ALL' ? 'bg-gray-100 font-medium' : 'text-gray-700'}`}
-                          >
-                            All Time
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onDateFilterChange?.('today');
-                              setDateDropdownOpen(false);
-                            }}
-                            className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${dateFilter === 'today' ? 'bg-gray-100 font-medium' : 'text-gray-700'}`}
-                          >
-                            Today
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onDateFilterChange?.('week');
-                              setDateDropdownOpen(false);
-                            }}
-                            className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${dateFilter === 'week' ? 'bg-gray-100 font-medium' : 'text-gray-700'}`}
-                          >
-                            This Week
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onDateFilterChange?.('month');
-                              setDateDropdownOpen(false);
-                            }}
-                            className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${dateFilter === 'month' ? 'bg-gray-100 font-medium' : 'text-gray-700'}`}
-                          >
-                            This Month
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                  {sortField === 'created_at' && (
+                    sortDirection === 'asc' ? 
+                      <ChevronUpIcon className="w-4 h-4 ml-1" /> : 
+                      <ChevronDownIcon className="w-4 h-4 ml-1" />
+                  )}
                 </div>
               </th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+              <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
                 ACTIONS
               </th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-100">
-            {jobs.map((job, index) => {
+            {sortedJobs.map((job, index) => {
               // Determine dropdown direction: first row opens down, last row opens up
               const isFirstRow = index === 0;
-              const isLastRow = index === jobs.length - 1;
+              const isLastRow = index === sortedJobs.length - 1;
               const forceDirection = isFirstRow ? 'bottom' : isLastRow ? 'top' : 'auto';
               
               // Get job type - normalize to uppercase for API calls
@@ -590,9 +526,6 @@ export const JobList: React.FC<JobListProps> = (props) => {
                     <StatusBadge status={displayStatus} />
                   </td>
                   <td className="px-6 py-4">
-                    <ActivationBadge recordStatus={job.record_status} />
-                  </td>
-                  <td className="px-6 py-4">
                     <div className="flex items-center text-sm text-gray-600">
                       <svg className="h-4 w-4 text-gray-400 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -612,7 +545,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
                       </span>
                     </div>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-6 py-4 text-center">
                     <div className="flex items-center justify-center space-x-2">
                     {/* Actions Dropdown */}
                     <div className="relative actions-dropdown">
@@ -634,73 +567,27 @@ export const JobList: React.FC<JobListProps> = (props) => {
                       {dropdownOpen === job.id && (
                         <DropdownMenuWithAutoDirection forceDirection={forceDirection}>
                           <div className="py-1">
-                            {/* View Details - Separate logic for Editors vs Approvers vs Exporters */}
-                            {userIsEditor ? (
-                              // Editors use the onViewLogs handler
-                              onViewLogs && (
-                                <button
-                                  onClick={() => {
-                                    onViewLogs(job.id);
-                                    setDropdownOpen(null);
-                                  }}
-                                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                >
-                                  <Eye className="w-4 h-4 mr-2" />
-                                  View
-                                </button>
-                              )
-                            ) : userIsApprover ? (
-                              // Approvers have their own direct view handler
+                            {/* View Details - Available to all roles that have view permissions */}
+                            {((userIsEditor && onViewLogs) ||
+                              (userIsApprover) ||
+                              (userIsExporter && (displayStatus === 'approved' || displayStatus === 'exported'))) && (
                               <button
-                                onClick={async () => {
-                                  try {
-                                    console.log('Approver viewing job:', job.id);
-                                    // Call the handler if it exists, otherwise use fallback
-                                    if (onViewLogs) {
-                                      onViewLogs(job.id);
-                                    } else {
-                                      // Fallback: Call API directly for approvers
-                                      console.log('Using fallback view for approver');
-                                      alert('Opening job details...');
-                                      // You can add direct API call here if needed
-                                    }
-                                    setDropdownOpen(null);
-                                  } catch (error) {
-                                    console.error('Error viewing job:', error);
+                                onClick={() => {
+                                  if (onViewLogs) {
+                                    onViewLogs(job.id);
+                                  } else {
+                                    // Fallback for approvers/exporters without handler
+                                    console.log('Opening job details for user with roles:', { userIsEditor, userIsApprover, userIsExporter });
+                                    alert('Opening job details...');
                                   }
+                                  setDropdownOpen(null);
                                 }}
                                 className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                               >
                                 <Eye className="w-4 h-4 mr-2" />
                                 View
                               </button>
-                            ) : userIsExporter ? (
-                              // Exporters can view approved/exported jobs
-                              (displayStatus === 'approved' || displayStatus === 'exported') && (
-                                <button
-                                  onClick={async () => {
-                                    try {
-                                      console.log('Exporter viewing job:', job.id);
-                                      // Call the handler if it exists, otherwise use fallback
-                                      if (onViewLogs) {
-                                        onViewLogs(job.id);
-                                      } else {
-                                        // Fallback: This should not happen now that exporters have proper handler
-                                        console.error('No onViewLogs handler available for exporter');
-                                        alert('Unable to view job details. Please refresh the page and try again.');
-                                      }
-                                      setDropdownOpen(null);
-                                    } catch (error) {
-                                      console.error('Error viewing job:', error);
-                                    }
-                                  }}
-                                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                >
-                                  <Eye className="w-4 h-4 mr-2" />
-                                  View
-                                </button>
-                              )
-                            ) : null}
+                            )}
 
                             {/* Edit - Only for Editors and only for in-progress jobs */}
                             {userIsEditor && onEdit && displayStatus === 'in-progress' && (

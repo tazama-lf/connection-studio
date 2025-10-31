@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { AuthHeader } from '../../../shared/components/AuthHeader';
 import { Button } from '../../../shared/components/Button';
-import { Plus, Clock } from 'lucide-react';
+import { Plus } from 'lucide-react';
 
 // New job management components
 import JobList from '../components/JobList';
 import JobDetailsModal from '../components/JobDetailsModal';
-import CronJobManagement from '../components/CronJobManagement';
 import { DataEnrichmentFormModal } from '../../../shared/components/DataEnrichmentFormModal';
 import { dataEnrichmentApi } from '../services/dataEnrichmentApi';
 import type { DataEnrichmentJobResponse, JobStatus, CreatePushJobDto, CreatePullJobDto } from '../types';
@@ -32,8 +31,6 @@ const DataEnrichmentModule: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(UI_CONFIG.pagination.defaultPageSize);
   const [statusFilter, setStatusFilter] = useState<JobStatus | 'ALL'>('ALL');
-  const [recordStatusFilter, setRecordStatusFilter] = useState<'active' | 'in-active' | 'not-set' | 'ALL'>('ALL');
-  const [dateFilter, setDateFilter] = useState<'today' | 'week' | 'month' | 'ALL'>('ALL');
   const [typeFilter, setTypeFilter] = useState<'push' | 'pull' | 'ALL'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -412,8 +409,6 @@ const DataEnrichmentModule: React.FC = () => {
     console.log('Total jobs:', jobs.length);
     console.log('Applied filters:', {
       statusFilter,
-      recordStatusFilter,
-      dateFilter,
       typeFilter,
       searchQuery: searchQuery.trim()
     });
@@ -457,43 +452,6 @@ const DataEnrichmentModule: React.FC = () => {
       console.log(`After status filter (${statusFilter}): ${beforeCount} → ${filtered.length}`);
     }
 
-    // Record status filter (AND operation)
-    if (recordStatusFilter !== 'ALL') {
-      const beforeCount = filtered.length;
-      filtered = filtered.filter(job => {
-        if (recordStatusFilter === 'not-set') {
-          return !job.record_status;
-        }
-        return job.record_status === recordStatusFilter;
-      });
-      console.log(`After record status filter (${recordStatusFilter}): ${beforeCount} → ${filtered.length}`);
-    }
-
-    // Date filter (AND operation)
-    if (dateFilter !== 'ALL') {
-      const beforeCount = filtered.length;
-      filtered = filtered.filter(job => {
-        if (!job.created_at) return false;
-        const jobDate = new Date(job.created_at);
-        const now = new Date();
-        
-        switch (dateFilter) {
-          case 'today':
-            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-            return jobDate >= today;
-          case 'week':
-            const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-            return jobDate >= weekAgo;
-          case 'month':
-            const monthAgo = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
-            return jobDate >= monthAgo;
-          default:
-            return true;
-        }
-      });
-      console.log(`After date filter (${dateFilter}): ${beforeCount} → ${filtered.length}`);
-    }
-
     // Type filter (AND operation)
     if (typeFilter !== 'ALL') {
       const beforeCount = filtered.length;
@@ -509,7 +467,7 @@ const DataEnrichmentModule: React.FC = () => {
     console.log('Final filtered count:', filtered.length);
     console.log('=== END FRONTEND FILTERING DEBUG ===');
     return filtered;
-  }, [jobs, searchQuery, statusFilter, recordStatusFilter, dateFilter, typeFilter, userIsExporter]);
+  }, [jobs, searchQuery, statusFilter, typeFilter, userIsExporter]);
 
   // Calculate pagination based on filtered results
   const totalItems = filteredJobs.length;
@@ -647,16 +605,6 @@ const DataEnrichmentModule: React.FC = () => {
             setCurrentPage(1); // Reset to first page when filter changes
           }}
           searchQuery={searchQuery}
-          recordStatusFilter={recordStatusFilter}
-          onRecordStatusFilterChange={(newStatus) => {
-            setRecordStatusFilter(newStatus);
-            setCurrentPage(1); // Reset to first page when filter changes
-          }}
-          dateFilter={dateFilter}
-          onDateFilterChange={(newPeriod) => {
-            setDateFilter(newPeriod);
-            setCurrentPage(1); // Reset to first page when filter changes
-          }}
           typeFilter={typeFilter}
           onTypeFilterChange={(newType) => {
             setTypeFilter(newType);

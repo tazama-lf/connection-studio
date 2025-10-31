@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Eye, MoreVertical } from 'lucide-react';
+import { Eye, MoreVertical, PlayIcon, PauseIcon, ChevronDownIcon, ChevronUpIcon } from 'lucide-react';
 import type { ScheduleResponse } from '../../data-enrichment/types';
 import { DropdownMenuWithAutoDirection } from '../../../shared/components/DropdownMenuWithAutoDirection';
 import { getStatusColor, getStatusLabel } from '../../../shared/utils/statusColors';
@@ -8,26 +8,72 @@ interface PublisherCronJobListProps {
   schedules: ScheduleResponse[];
   isLoading?: boolean;
   onViewDetails?: (scheduleId: string) => void;
-  onRefresh?: () => void;
   searchQuery?: string;
+  onToggleStatus?: (scheduleId: string, newStatus: 'active' | 'in-active') => void;
 }
 
-export const PublisherCronJobList: React.FC<PublisherCronJobListProps> = (props) => {
-  const {
-    schedules,
-    isLoading = false,
-    onViewDetails,
-    onRefresh,
-    searchQuery = '',
-  } = props;
+type SortField = 'name' | 'cron' | 'iterations' | 'start_date' | 'end_date' | 'created_at' | 'status';
+type SortDirection = 'asc' | 'desc';
 
+export const PublisherCronJobList: React.FC<PublisherCronJobListProps> = ({
+  schedules,
+  isLoading,
+  onViewDetails,
+  searchQuery = '',
+  onToggleStatus
+}) => {
   const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
+  
+  // Sorting state
+  const [sortField, setSortField] = useState<SortField>('created_at');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+
+  // Handle column sorting
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
 
   // Filter schedules based on search query
   const filteredSchedules = schedules.filter(schedule =>
     schedule.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     schedule.cron?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Sort filtered schedules
+  const sortedSchedules = [...filteredSchedules].sort((a, b) => {
+    let aValue: any = a[sortField];
+    let bValue: any = b[sortField];
+
+    // Handle special cases for sorting
+    if (sortField === 'created_at') {
+      aValue = a.created_at ? new Date(a.created_at).getTime() : 0;
+      bValue = b.created_at ? new Date(b.created_at).getTime() : 0;
+    } else if (sortField === 'start_date') {
+      aValue = a.start_date ? new Date(a.start_date).getTime() : 0;
+      bValue = b.start_date ? new Date(b.start_date).getTime() : 0;
+    } else if (sortField === 'end_date') {
+      aValue = a.end_date ? new Date(a.end_date).getTime() : 0;
+      bValue = b.end_date ? new Date(b.end_date).getTime() : 0;
+    } else if (sortField === 'status') {
+      aValue = a.status || '';
+      bValue = b.status || '';
+    }
+
+    // Handle null/undefined values
+    if (aValue == null && bValue == null) return 0;
+    if (aValue == null) return sortDirection === 'asc' ? 1 : -1;
+    if (bValue == null) return sortDirection === 'asc' ? -1 : 1;
+
+    // Compare values
+    if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+    if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+    return 0;
+  });
 
   // Close dropdowns when clicking outside
   React.useEffect(() => {
@@ -93,20 +139,96 @@ export const PublisherCronJobList: React.FC<PublisherCronJobListProps> = (props)
         <table className="min-w-full">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                SCHEDULE NAME
+              <th 
+                className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort('name')}
+              >
+                <div className="flex items-center space-x-1">
+                  <span>SCHEDULE NAME</span>
+                  {sortField === 'name' && (
+                    sortDirection === 'asc' ? 
+                      <ChevronUpIcon className="w-4 h-4 ml-1" /> : 
+                      <ChevronDownIcon className="w-4 h-4 ml-1" />
+                  )}
+                </div>
               </th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                CRON EXPRESSION
+              <th 
+                className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort('cron')}
+              >
+                <div className="flex items-center space-x-1">
+                  <span>CRON EXPRESSION</span>
+                  {sortField === 'cron' && (
+                    sortDirection === 'asc' ? 
+                      <ChevronUpIcon className="w-4 h-4 ml-1" /> : 
+                      <ChevronDownIcon className="w-4 h-4 ml-1" />
+                  )}
+                </div>
               </th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                ITERATIONS
+              <th 
+                className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort('iterations')}
+              >
+                <div className="flex items-center space-x-1">
+                  <span>ITERATIONS</span>
+                  {sortField === 'iterations' && (
+                    sortDirection === 'asc' ? 
+                      <ChevronUpIcon className="w-4 h-4 ml-1" /> : 
+                      <ChevronDownIcon className="w-4 h-4 ml-1" />
+                  )}
+                </div>
               </th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                START DATE
+              <th 
+                className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort('start_date')}
+              >
+                <div className="flex items-center space-x-1">
+                  <span>START DATE</span>
+                  {sortField === 'start_date' && (
+                    sortDirection === 'asc' ? 
+                      <ChevronUpIcon className="w-4 h-4 ml-1" /> : 
+                      <ChevronDownIcon className="w-4 h-4 ml-1" />
+                  )}
+                </div>
               </th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                STATUS
+              <th 
+                className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort('end_date')}
+              >
+                <div className="flex items-center space-x-1">
+                  <span>END DATE</span>
+                  {sortField === 'end_date' && (
+                    sortDirection === 'asc' ? 
+                      <ChevronUpIcon className="w-4 h-4 ml-1" /> : 
+                      <ChevronDownIcon className="w-4 h-4 ml-1" />
+                  )}
+                </div>
+              </th>
+              <th 
+                className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort('created_at')}
+              >
+                <div className="flex items-center space-x-1">
+                  <span>CREATED AT</span>
+                  {sortField === 'created_at' && (
+                    sortDirection === 'asc' ? 
+                      <ChevronUpIcon className="w-4 h-4 ml-1" /> : 
+                      <ChevronDownIcon className="w-4 h-4 ml-1" />
+                  )}
+                </div>
+              </th>
+              <th 
+                className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort('status')}
+              >
+                <div className="flex items-center space-x-1">
+                  <span>STATUS</span>
+                  {sortField === 'status' && (
+                    sortDirection === 'asc' ? 
+                      <ChevronUpIcon className="w-4 h-4 ml-1" /> : 
+                      <ChevronDownIcon className="w-4 h-4 ml-1" />
+                  )}
+                </div>
               </th>
               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                 ACTIONS
@@ -114,7 +236,7 @@ export const PublisherCronJobList: React.FC<PublisherCronJobListProps> = (props)
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-100">
-            {filteredSchedules.map((schedule, index) => {
+            {sortedSchedules.map((schedule, index) => {
               const isFirstRow = index === 0;
               const isLastRow = index === filteredSchedules.length - 1;
               const forceDirection = isFirstRow ? 'bottom' : isLastRow ? 'top' : 'auto';
@@ -149,12 +271,36 @@ export const PublisherCronJobList: React.FC<PublisherCronJobListProps> = (props)
                     </div>
                   </td>
                   <td className="px-6 py-4">
+                    <div className="text-sm text-gray-600">
+                      {schedule.end_date
+                        ? new Date(schedule.end_date).toLocaleDateString('en-US', {
+                            month: 'numeric',
+                            day: 'numeric',
+                            year: 'numeric',
+                          })
+                        : 'No end date'
+                      }
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="text-sm text-gray-600">
+                      {schedule.created_at
+                        ? new Date(schedule.created_at).toLocaleDateString('en-US', {
+                            month: 'numeric',
+                            day: 'numeric',
+                            year: 'numeric',
+                          })
+                        : 'N/A'
+                      }
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(schedule.status)}`}>
                       {getStatusLabel(schedule.status)}
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="flex items-center justify-end space-x-2">
+                    <div className="flex items-center justify-center space-x-2">
                       <div className="relative actions-dropdown">
                         <button
                           onClick={() => {
@@ -182,6 +328,33 @@ export const PublisherCronJobList: React.FC<PublisherCronJobListProps> = (props)
                                 <Eye className="w-4 h-4 mr-2" />
                                 View
                               </button>
+                              {onToggleStatus && (
+                                <>
+                                  {schedule.schedule_status === 'active' ? (
+                                    <button
+                                      onClick={() => {
+                                        onToggleStatus(schedule.id, 'in-active');
+                                        setDropdownOpen(null);
+                                      }}
+                                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                    >
+                                      <PauseIcon className="w-4 h-4 mr-2" />
+                                      Deactivate
+                                    </button>
+                                  ) : (
+                                    <button
+                                      onClick={() => {
+                                        onToggleStatus(schedule.id, 'active');
+                                        setDropdownOpen(null);
+                                      }}
+                                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                    >
+                                      <PlayIcon className="w-4 h-4 mr-2" />
+                                      Activate
+                                    </button>
+                                  )}
+                                </>
+                              )}
                             </div>
                           </DropdownMenuWithAutoDirection>
                         )}

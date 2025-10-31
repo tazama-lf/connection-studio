@@ -46,6 +46,17 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
   // Password visibility state
   const [showPassword, setShowPassword] = useState(false);
   
+  // Preview data state
+  const [previewData, setPreviewData] = useState({
+    totalRows: 0,
+    validRows: 0,
+    invalidRows: 0,
+    previewRows: [],
+    validationErrors: [],
+    isDemo: false,
+    message: ''
+  });
+  
   const [formData, setFormData] = useState({
     name: '',
     description: '',
