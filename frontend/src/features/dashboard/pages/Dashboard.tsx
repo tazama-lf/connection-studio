@@ -113,7 +113,7 @@ const Dashboard: React.FC = () => {
   }));
 
   return <div className="min-h-screen bg-gray-50" data-id="element-1151">
-      <AuthHeader title={isUserPublisher ? "Publisher Dashboard" : isUserExporter ? "Exporter Dashboard" : APP_CONFIG.name} data-id="element-1152" />
+      <AuthHeader title={APP_CONFIG.name} data-id="element-1152" />
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8" data-id="element-1153">
         
         

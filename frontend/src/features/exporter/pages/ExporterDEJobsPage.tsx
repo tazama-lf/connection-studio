@@ -130,16 +130,8 @@ export const ExporterDEJobsPage: React.FC = () => {
       <AuthHeader title="Data Enrichment" showBackButton={true} />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* Header Section */}
         <div className="mb-6">
-          <div className="sm:flex sm:items-center sm:justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Data Enrichment</h1>
-              <p className="mt-1 text-sm text-gray-600">
-                View and export approved data enrichment jobs
-              </p>
-            </div>
-          </div>
+          
 
           {/* Search Bar */}
           <div className="mt-4">

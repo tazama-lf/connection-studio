@@ -33,7 +33,7 @@ export const ApproverModule: React.FC = () => {
     },
     {
       id: 'de-jobs',
-      name: 'Data Enrichment Jobs',
+      name: 'Data Enrichment',
       description: 'Approve or reject data enrichment job requests and monitor their status.',
       icon: <Database size={24} />,
       color: 'bg-green-100 text-green-600',

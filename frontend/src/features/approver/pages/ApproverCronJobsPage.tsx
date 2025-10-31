@@ -112,15 +112,10 @@ const ApproverCronJobsPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <AuthHeader title="Cron Jobs" showBackButton={true} />
+      <AuthHeader title="Cron Job Management" showBackButton={true} />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Description */}
-        <div className="mb-6">
-          <p className="text-sm text-gray-600">
-            Review and approve scheduled cron job configurations and executions.
-          </p>
-        </div>
+       
 
         {/* Search Bar */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">

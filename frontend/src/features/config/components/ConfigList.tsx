@@ -100,6 +100,69 @@ export const ConfigList: React.FC<ConfigListProps> = ({
       setLoading(false);
     }
   };
+const getStatusText = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'active':
+        return 'READY FOR APPROVAL';
+      case 'draft':
+      case 'in-progress':
+        return 'IN-PROGRESS';
+      case 'suspended':
+        return 'SUSPENDED';
+      case 'cloned':
+        return 'CLONED';
+      case 'approved':
+        return 'APPROVED';
+      case 'under review':
+        return 'UNDER REVIEW';
+      case 'deployed':
+        return 'DEPLOYED';
+      case 'rejected':
+        return 'REJECTED';
+      case 'changes_requested':
+      case 'changes requested':
+        return 'CHANGES REQUESTED';
+      default:
+        return status.toUpperCase().replace(/_/g, ' ');
+    }
+  };
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'numeric',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'active':
+      case 'ready for approval':
+      case 'approved':
+        return 'bg-green-50 text-green-600 border border-green-200';
+      case 'in-progress':
+      case 'draft':
+        return 'bg-yellow-50 text-yellow-600 border border-yellow-200';
+      case 'suspended':
+      case 'rejected':
+        return 'bg-red-50 text-red-600 border border-red-200';
+      case 'cloned':
+        return 'bg-purple-50 text-purple-600 border border-purple-200';
+      case 'under_review':
+      case 'under review':
+        return 'bg-blue-50 text-blue-600 border border-blue-200';
+      case 'deployed':
+        return 'bg-indigo-50 text-indigo-600 border border-indigo-200';
+      case 'changes_requested':
+      case 'changes requested':
+        return 'bg-orange-50 text-orange-600 border border-orange-200';
+      default:
+        return 'bg-gray-50 text-gray-600 border border-gray-200';
+    }
+  };
 
   // Filter configs by search term and status
   const filteredConfigs = configs.filter(config => {
@@ -108,7 +171,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
       config.endpointPath.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (config.msgFam && config.msgFam.toLowerCase().includes(searchTerm.toLowerCase()));
     
-    const matchesStatus = statusFilter === 'all' || config.status.toLowerCase() === statusFilter.toLowerCase();
+    const matchesStatus = statusFilter === 'all' || getStatusText(config.status) === statusFilter;
     
     // Role-based filtering: exporters can only see approved and deployed configs
     let matchesRole = true;
@@ -159,80 +222,15 @@ export const ConfigList: React.FC<ConfigListProps> = ({
     setCurrentPage(1); // Reset to first page when sorting
   };
 
-  // Handle status filter
-  const handleStatusFilter = (status: string) => {
-    setStatusFilter(status);
+  // Handle status filter (now works with display text)
+  const handleStatusFilter = (displayText: string) => {
+    setStatusFilter(displayText);
     setShowStatusFilter(false);
     setCurrentPage(1); // Reset to first page when filtering
   };
 
-  // Get unique statuses for filter dropdown
-  const uniqueStatuses = Array.from(new Set(configs.map(config => config.status))).sort();
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'numeric',
-      day: 'numeric',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    });
-  };
-
-  const getStatusBadge = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'active':
-      case 'ready for approval':
-      case 'approved':
-        return 'bg-green-50 text-green-600 border border-green-200';
-      case 'in-progress':
-      case 'draft':
-        return 'bg-yellow-50 text-yellow-600 border border-yellow-200';
-      case 'suspended':
-      case 'rejected':
-        return 'bg-red-50 text-red-600 border border-red-200';
-      case 'cloned':
-        return 'bg-purple-50 text-purple-600 border border-purple-200';
-      case 'under_review':
-      case 'under review':
-        return 'bg-blue-50 text-blue-600 border border-blue-200';
-      case 'deployed':
-        return 'bg-indigo-50 text-indigo-600 border border-indigo-200';
-      case 'changes_requested':
-      case 'changes requested':
-        return 'bg-orange-50 text-orange-600 border border-orange-200';
-      default:
-        return 'bg-gray-50 text-gray-600 border border-gray-200';
-    }
-  };
-
-  const getStatusText = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'active':
-        return 'READY FOR APPROVAL';
-      case 'draft':
-      case 'in-progress':
-        return 'IN-PROGRESS';
-      case 'suspended':
-        return 'SUSPENDED';
-      case 'cloned':
-        return 'CLONED';
-      case 'approved':
-        return 'APPROVED';
-      case 'under review':
-        return 'UNDER REVIEW';
-      case 'deployed':
-        return 'DEPLOYED';
-      case 'rejected':
-        return 'REJECTED';
-      case 'changes_requested':
-      case 'changes requested':
-        return 'CHANGES REQUESTED';
-      default:
-        return status.toUpperCase().replace(/_/g, ' ');
-    }
-  };
+  // Get unique statuses for filter dropdown (normalized to avoid duplicates)
+  const uniqueStatuses = Array.from(new Set(configs.map(config => getStatusText(config.status)))).sort();
 
   // Load configs when component mounts
   useEffect(() => {
@@ -336,7 +334,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
                             statusFilter === status ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
                           }`}
                         >
-                          {getStatusText(status)}
+                          {status}
                         </button>
                       ))}
                     </div>

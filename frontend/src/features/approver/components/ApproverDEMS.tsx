@@ -35,13 +35,13 @@ const ApproverDEMS: React.FC<ApproverDEMSProps> = ({ onBack }) => {
     }
   };
 
-  const handleReject = async (config: Config) => {
+  const handleReject = async (configId: number) => {
     try {
       const reason = prompt('Please provide a reason for rejection (optional):');
       // Allow empty reason, don't cancel on empty string
       
-      console.log('Rejecting config:', config.id, 'with reason:', reason);
-      const result = await configApi.requestChanges(config.id, reason || 'Configuration rejected by approver');
+      console.log('Rejecting config:', configId, 'with reason:', reason);
+      const result = await configApi.requestChanges(configId, reason || 'Configuration rejected by approver');
       
       if (result.success) {
         showSuccess('Configuration rejected and returned to editor for changes');
@@ -74,7 +74,6 @@ const ApproverDEMS: React.FC<ApproverDEMSProps> = ({ onBack }) => {
       <AuthHeader title="Dynamic Endpoint Monitoring Service" />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* Header Section */}
         <div className="mb-6 flex items-center">
           <button
             onClick={onBack}

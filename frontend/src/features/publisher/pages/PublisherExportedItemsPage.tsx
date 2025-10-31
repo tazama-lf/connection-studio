@@ -183,13 +183,11 @@ const PublisherExportedItemsPage: React.FC = () => {
       id: 'cron' as TabType,
       name: 'Cron Jobs',
       icon: <Clock size={18} />,
-      count: exportedItems.filter(item => item.name.includes('_cron_')).length,
     },
     {
       id: 'de' as TabType,
       name: 'DE Jobs',
       icon: <Database size={18} />,
-      count: exportedItems.filter(item => item.name.includes('_de_')).length,
     },
   ];
 
@@ -198,13 +196,7 @@ const PublisherExportedItemsPage: React.FC = () => {
       <AuthHeader title="Exported Items" showBackButton={true} />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* Header Section */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Exported Items</h1>
-          <p className="text-gray-600 mt-1">
-            Review and publish exported items that are ready for deployment
-          </p>
-        </div>
+      
 
         {/* Tabs */}
         <div className="border-b border-gray-200 mb-6">
@@ -223,15 +215,6 @@ const PublisherExportedItemsPage: React.FC = () => {
               >
                 {tab.icon}
                 {tab.name}
-                <span className={`
-                  ml-2 py-0.5 px-2.5 rounded-full text-xs font-medium
-                  ${activeTab === tab.id
-                    ? 'bg-blue-100 text-blue-600'
-                    : 'bg-gray-100 text-gray-600'
-                  }
-                `}>
-                  {tab.count}
-                </span>
               </button>
             ))}
           </nav>
