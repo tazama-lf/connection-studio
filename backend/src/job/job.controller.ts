@@ -11,7 +11,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ConfigType, JobStatus, ScheduleStatus } from '@tazama-lf/tcs-lib';
-import { RequireAnyClaims, RequireEditorRole } from '../auth/auth.decorator';
+import { RequireAnyClaims, RequireEditorRole, TazamaClaims } from '../auth/auth.decorator';
 import { CreatePullJobDto } from './dto/create-pull-job.dto';
 import { CreatePushJobDto } from './dto/create-push-job.dto';
 import { JobService } from './job.service';
@@ -24,19 +24,19 @@ export class JobController {
   constructor(private readonly jobService: JobService) { }
 
   @Post('/create/push')
-  @RequireEditorRole()
+  @RequireAnyClaims(TazamaClaims.EDITOR)
   async createPushJob(@Body() job: CreatePushJobDto, user: AuthenticatedUser) {
     return await this.jobService.createPush(job, user.tenantId);
   }
 
   @Post('/create/pull')
-  @RequireEditorRole()
+  @RequireAnyClaims(TazamaClaims.EDITOR)
   async createPullJob(@Body() job: CreatePullJobDto, user: AuthenticatedUser) {
     return await this.jobService.createPull(job, user.tenantId);
   }
 
   @Get('/all')
-  @RequireAnyClaims()
+  @RequireAnyClaims(TazamaClaims.EDITOR, TazamaClaims.APPROVER, TazamaClaims.EXPORTER, TazamaClaims.PUBLISHER)
   async getAll(
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
@@ -46,13 +46,13 @@ export class JobController {
   }
 
   @Get('/:id')
-  @RequireAnyClaims()
+  @RequireAnyClaims(TazamaClaims.EDITOR, TazamaClaims.APPROVER, TazamaClaims.EXPORTER, TazamaClaims.PUBLISHER)
   async getById(@Param('id') id: string, @Query('type') type: ConfigType) {
     return await this.jobService.findOne(id, type);
   }
 
   @Get('/get/status')
-  @RequireAnyClaims()
+  @RequireAnyClaims(TazamaClaims.EDITOR, TazamaClaims.APPROVER, TazamaClaims.EXPORTER, TazamaClaims.PUBLISHER)
   async getByStatus(
     @Query('status') status: JobStatus,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
@@ -62,7 +62,7 @@ export class JobController {
   }
 
   @Patch('/update/status/:id')
-  @RequireAnyClaims()
+  @RequireAnyClaims(TazamaClaims.EDITOR, TazamaClaims.APPROVER, TazamaClaims.EXPORTER, TazamaClaims.PUBLISHER)
   async updateStatus(
     @Param('id') id: string,
     @Query('status') status: JobStatus,
@@ -78,7 +78,7 @@ export class JobController {
   }
 
   @Patch('/update/activation/:id')
-  @RequireEditorRole()
+  @RequireAnyClaims(TazamaClaims.EDITOR)
   async update(
     @Param('id') id: string,
     @Query('status') status: ScheduleStatus,
