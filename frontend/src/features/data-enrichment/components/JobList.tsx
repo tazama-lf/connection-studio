@@ -3,7 +3,7 @@ import { Eye, MoreVertical, ChevronDown, FilterIcon, Edit } from 'lucide-react';
 import type { DataEnrichmentJobResponse, JobStatus } from '../types';
 import { Button } from '../../../shared/components/Button';
 import { useAuth } from '../../auth/contexts/AuthContext';
-import { isEditor, isApprover } from '../../../utils/roleUtils';
+import { isEditor, isApprover, isExporter } from '../../../utils/roleUtils';
 import { DropdownMenuWithAutoDirection } from './DropdownMenuWithAutoDirection';
 import { getStatusColor, getStatusLabel } from '../../../shared/utils/statusColors';
 
@@ -94,6 +94,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
   const { user } = useAuth();
   const userIsEditor = user?.claims ? isEditor(user.claims) : false;
   const userIsApprover = user?.claims ? isApprover(user.claims) : false;
+  const userIsExporter = user?.claims ? isExporter(user.claims) : false;
   const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
   const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
   const [recordStatusDropdownOpen, setRecordStatusDropdownOpen] = useState(false);
@@ -250,7 +251,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
                       <ChevronDown size={16} className={`text-gray-500 transition-transform ${typeDropdownOpen ? 'rotate-180' : ''}`} />
                     </button>
                     {typeDropdownOpen && (
-                      <div className="absolute bottom-full left-0 mb-1 w-48 bg-white rounded-md shadow-lg z-[999] border border-gray-200 dropdown-menu">
+                      <div className="absolute top-full left-0 mt-1 w-48 bg-white rounded-md shadow-lg z-[999] border border-gray-200 dropdown-menu">
                         <div className="py-1">
                           <button
                             onClick={(e) => {
@@ -300,7 +301,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
                         console.log('=== STATUS DROPDOWN TOGGLE CLICKED ===');
                         console.log('Current statusDropdownOpen:', statusDropdownOpen);
                         console.log('Will toggle to:', !statusDropdownOpen);
-                        console.log('User roles:', { userIsEditor, userIsApprover });
+                        console.log('User roles:', { userIsEditor, userIsApprover, userIsExporter });
                         setStatusDropdownOpen(!statusDropdownOpen);
                         console.log('Dropdown toggle complete - new state:', !statusDropdownOpen);
                       }}
@@ -310,7 +311,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
                       <ChevronDown size={16} className={`text-gray-500 transition-transform ${statusDropdownOpen ? 'rotate-180' : ''}`} />
                     </button>
                     {statusDropdownOpen && (
-                      <div className="absolute bottom-full left-0 mb-1 w-48 bg-white rounded-md shadow-lg z-[999] border border-gray-200 dropdown-menu">
+                      <div className="absolute top-full left-0 mt-1 w-48 bg-white rounded-md shadow-lg z-[999] border border-gray-200 dropdown-menu">
                         <div className="py-1">
                           <button
                             onClick={(e) => {
@@ -319,7 +320,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
                               console.log('=== STATUS FILTER CLICKED ===');
                               console.log('Changing status filter to: ALL');
                               console.log('onStatusFilterChange function:', typeof onStatusFilterChange);
-                              console.log('User roles:', { userIsEditor, userIsApprover });
+                              console.log('User roles:', { userIsEditor, userIsApprover, userIsExporter });
                               
                               if (onStatusFilterChange) {
                                 onStatusFilterChange('ALL');
@@ -342,7 +343,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
                               console.log('=== STATUS FILTER CLICKED ===');
                               console.log('Changing status filter to: pending');
                               console.log('onStatusFilterChange function:', typeof onStatusFilterChange);
-                              console.log('User roles:', { userIsEditor, userIsApprover });
+                              console.log('User roles:', { userIsEditor, userIsApprover, userIsExporter });
                               
                               if (onStatusFilterChange) {
                                 onStatusFilterChange('in-progress');
@@ -409,7 +410,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
                       <ChevronDown size={16} className={`text-gray-500 transition-transform ${recordStatusDropdownOpen ? 'rotate-180' : ''}`} />
                     </button>
                     {recordStatusDropdownOpen && (
-                      <div className="absolute bottom-full left-0 mb-1 w-48 bg-white rounded-md shadow-lg z-[999] border border-gray-200 dropdown-menu">
+                      <div className="absolute top-full left-0 mt-1 w-48 bg-white rounded-md shadow-lg z-[999] border border-gray-200 dropdown-menu">
                         <div className="py-1">
                           <button
                             onClick={(e) => {
@@ -472,7 +473,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
                       <ChevronDown size={16} className={`text-gray-500 transition-transform ${dateDropdownOpen ? 'rotate-180' : ''}`} />
                     </button>
                     {dateDropdownOpen && (
-                      <div className="absolute bottom-full left-0 mb-1 w-48 bg-white rounded-md shadow-lg z-[999] border border-gray-200 dropdown-menu">
+                      <div className="absolute top-full left-0 mt-1 w-48 bg-white rounded-md shadow-lg z-[999] border border-gray-200 dropdown-menu">
                         <div className="py-1">
                           <button
                             onClick={(e) => {
@@ -625,11 +626,11 @@ export const JobList: React.FC<JobListProps> = (props) => {
                           console.log('Job ID:', job.id);
                           console.log('Current dropdownOpen:', dropdownOpen);
                           console.log('Will set to:', dropdownOpen === job.id ? null : job.id);
-                          console.log('User roles:', { userIsEditor, userIsApprover });
+                          console.log('User roles:', { userIsEditor, userIsApprover, userIsExporter });
                           setDropdownOpen(dropdownOpen === job.id ? null : job.id);
                         }}
                         className={`p-1 rounded-md hover:bg-gray-100 ${dropdownOpen === job.id ? 'bg-blue-100 text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
-                        title={`Roles: Editor=${userIsEditor}, Approver=${userIsApprover}`}
+                        title={`Roles: Editor=${userIsEditor}, Approver=${userIsApprover}, Exporter=${userIsExporter}`}
                       >
                         <MoreVertical className="w-4 h-4" />
                       </button>
@@ -637,7 +638,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
                       {dropdownOpen === job.id && (
                         <DropdownMenuWithAutoDirection forceDirection={forceDirection}>
                           <div className="py-1">
-                            {/* View Details - Separate logic for Editors vs Approvers */}
+                            {/* View Details - Separate logic for Editors vs Approvers vs Exporters */}
                             {userIsEditor ? (
                               // Editors use the onViewLogs handler
                               onViewLogs && (
@@ -677,6 +678,32 @@ export const JobList: React.FC<JobListProps> = (props) => {
                                 <Eye className="w-4 h-4 mr-2" />
                                 View
                               </button>
+                            ) : userIsExporter ? (
+                              // Exporters can view approved/exported jobs
+                              (displayStatus === 'approved' || displayStatus === 'exported') && (
+                                <button
+                                  onClick={async () => {
+                                    try {
+                                      console.log('Exporter viewing job:', job.id);
+                                      // Call the handler if it exists, otherwise use fallback
+                                      if (onViewLogs) {
+                                        onViewLogs(job.id);
+                                      } else {
+                                        // Fallback: This should not happen now that exporters have proper handler
+                                        console.error('No onViewLogs handler available for exporter');
+                                        alert('Unable to view job details. Please refresh the page and try again.');
+                                      }
+                                      setDropdownOpen(null);
+                                    } catch (error) {
+                                      console.error('Error viewing job:', error);
+                                    }
+                                  }}
+                                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                >
+                                  <Eye className="w-4 h-4 mr-2" />
+                                  View
+                                </button>
+                              )
                             ) : null}
 
                             {/* Edit - Only for Editors and only for in-progress jobs */}

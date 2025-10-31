@@ -6,10 +6,13 @@ import Login from '../features/auth/pages/Login';
 import Dashboard from '../features/dashboard/pages/Dashboard';
 import DEMSModule from '../features/dems/pages/DEMSModule';
 import ApproverModule from '../features/approver/pages/ApproverModule';
-import ExporterModule from '../features/exporter/pages/ExporterModule';
+import ExporterConfigsPage from '../features/exporter/pages/ExporterConfigsPage';
+import ExporterDEJobsPage from '../features/exporter/pages/ExporterDEJobsPage';
+import ExporterCronJobsPage from '../features/exporter/pages/ExporterCronJobsPage';
 import PublisherModule from '../features/publisher/pages/PublisherModule';
 import PublisherCronJobsPage from '../features/publisher/pages/PublisherCronJobsPage';
 import PublisherDEJobsPage from '../features/publisher/pages/PublisherDEJobsPage';
+import PublisherConfigsPage from '../features/publisher/pages/PublisherConfigsPage';
 import PublisherExportedItemsPage from '../features/publisher/pages/PublisherExportedItemsPage';
 import CRONModule from '../features/cron/pages/CRONModule';
 import DataEnrichmentModule from '../features/data-enrichment/pages/DataEnrichmentModule';
@@ -52,7 +55,7 @@ const PublisherRoute = ({
   if (!isAuthenticated) {
     return <Navigate to={ROUTES.LOGIN} />;
   }
-  if (!user?.claims || !isPublisher(user.claims)) {
+  if (!user?.claims || (!isPublisher(user.claims) && !isExporter(user.claims))) {
     return <Navigate to={ROUTES.DASHBOARD} />;
   }
   return <>{children}</>;
@@ -117,14 +120,29 @@ export const AppRoutes: React.FC = () => {
           <ApproverModule />
         </ApproverRoute>
       } />
-      <Route path={ROUTES.EXPORTER} element={
+      <Route path="/exporter/configs" element={
         <ExporterRoute>
-          <ExporterModule />
+          <ExporterConfigsPage />
+        </ExporterRoute>
+      } />
+      <Route path="/exporter/jobs" element={
+        <ExporterRoute>
+          <ExporterDEJobsPage />
+        </ExporterRoute>
+      } />
+      <Route path="/exporter/cron-jobs" element={
+        <ExporterRoute>
+          <ExporterCronJobsPage />
         </ExporterRoute>
       } />
       <Route path={ROUTES.PUBLISHER} element={
         <PublisherRoute>
           <PublisherModule />
+        </PublisherRoute>
+      } />
+      <Route path="/publisher/configs" element={
+        <PublisherRoute>
+          <PublisherConfigsPage />
         </PublisherRoute>
       } />
       <Route path="/publisher/cron-jobs" element={

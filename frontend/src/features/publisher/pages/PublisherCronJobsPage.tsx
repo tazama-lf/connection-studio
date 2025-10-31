@@ -65,13 +65,13 @@ const PublisherCronJobsPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <AuthHeader title="Published Cron Jobs" showBackButton={true} />
+            <AuthHeader title="Cron Job Management" showBackButton={true} />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Header Section */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Published Cron Jobs</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Cron Job Management</h1>
             <p className="text-gray-600 mt-1">
               View and manage deployed cron jobs ({schedules.length} total)
             </p>

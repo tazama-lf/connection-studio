@@ -91,7 +91,7 @@ export const getStatusLabel = (status: string | undefined): string => {
     case 'pending approval':
       return 'PENDING APPROVAL';
     case 'exported':
-      return 'READY FOR DEPLOYMENT';
+      return 'EXPORTED';
     case 'ready-for-deployment':
     case 'ready for deployment':
       return 'READY FOR DEPLOYMENT';

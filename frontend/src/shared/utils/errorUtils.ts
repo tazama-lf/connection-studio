@@ -1,3 +1,5 @@
+import { SftpError } from '../../features/exporter/services/sftpApi';
+
 /**
  * Utility functions for handling and displaying user-friendly error messages
  */
@@ -9,6 +11,26 @@
  * @returns A user-friendly error message string
  */
 export const getUserFriendlyErrorMessage = (error: any, operation: string = 'operation'): string => {
+  // Handle SFTP-specific errors
+  if (error instanceof SftpError) {
+    switch (error.errorType) {
+      case 'CORRUPTED_FILE':
+        return 'File appears to be corrupted or missing. The file or its integrity verification failed.';
+      case 'NOT_FOUND':
+        return 'File not found on the server. It may have been deleted or moved.';
+      case 'UNAUTHORIZED':
+        return 'Unauthorized access to the file. Please check your permissions.';
+      default:
+        return error.message;
+    }
+  }
+
+  // Handle file corruption errors from backend messages
+  if (error?.message === 'File or its integrity file not found' ||
+      (error?.message && error.message.includes('File or its integrity file not found'))) {
+    return 'File appears to be corrupted or missing. The file or its integrity verification failed.';
+  }
+
   // Handle network/connection errors
   if (error?.code === 'NETWORK_ERROR' || error?.message?.includes('fetch')) {
     return 'Unable to connect to the server. Please check your internet connection and try again.';

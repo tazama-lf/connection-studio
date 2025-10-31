@@ -636,7 +636,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                   onClose();
                 }}
               >
-                Reject Job
+                Reject
               </Button>
             )}
             {onApprove && (
@@ -649,7 +649,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                 }}
                 className="bg-green-600 hover:bg-green-700 text-white"
               >
-                Approve Job
+                Approve
               </Button>
             )}
           </div>

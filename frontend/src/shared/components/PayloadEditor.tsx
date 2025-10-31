@@ -12,7 +12,7 @@ interface PayloadEditorProps {
   configId?: number; // Optional config ID for schema updates
   onFieldAdjustmentsChange?: (fieldAdjustments: FieldAdjustment[]) => void; // Callback for field adjustments
   onSchemaChange?: (schema: any) => void; // Callback for current schema
-  existingSchemaFields?: SchemaField[]; // Existing schema fields when editing
+  existingSchemaFields?: SchemaField[] | InferredField[]; // Existing schema fields when editing (can be either format)
   isEditMode?: boolean; // Explicitly control whether to show Add/Remove field buttons
   tenantId?: string; // Tenant ID for endpoint preview
   readOnly?: boolean; // When true, disable all editing functionality
@@ -193,15 +193,37 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
 
   // Convert SchemaField array to InferredField array for editing existing configs
   const convertSchemaFieldsToInferredFields = (schemaFields: SchemaField[]): InferredField[] => {
-    const convertFields = (fields: SchemaField[], level = 0): InferredField[] => {
+    const convertFields = (fields: SchemaField[]): InferredField[] => {
       const inferredFields: InferredField[] = [];
       
       fields.forEach(field => {
+        // Calculate level from the path itself (count dots and [0] separately)
+        // For "CstmrCdtTrfInitn.GrpHdr.InitgPty.Id.PrvtId.Othr" -> level 5
+        // For "CstmrCdtTrfInitn.GrpHdr.InitgPty.Id.PrvtId.Othr[0].Id" -> level 6
+        const pathWithoutBrackets = field.path.replace(/\[0\]/g, ''); // Remove [0] temporarily
+        const dotCount = (pathWithoutBrackets.match(/\./g) || []).length;
+        const bracketCount = (field.path.match(/\[0\]/g) || []).length;
+        const level = dotCount + bracketCount;
+        
+        // Debug logging for array fields
+        if (field.type === 'array' && field.children) {
+          console.log(`🔍 Processing array field: ${field.path}`, {
+            arrayElementType: field.arrayElementType,
+            childrenCount: field.children.length,
+            childrenPaths: field.children.map(c => c.path),
+            level
+          });
+        }
+        
         const inferredField: InferredField = {
           path: field.path,
           type: capitalizeFirstLetter(field.type) as InferredField['type'],
           level,
-          parent: field.path.includes('.') ? field.path.substring(0, field.path.lastIndexOf('.')) : undefined,
+          parent: field.path.includes('.') || field.path.includes('[') 
+            ? (field.path.includes('[') 
+                ? field.path.substring(0, field.path.lastIndexOf('[')) 
+                : field.path.substring(0, field.path.lastIndexOf('.'))) 
+            : undefined,
           required: field.isRequired
         };
         
@@ -209,7 +231,11 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
         
         // Recursively convert child fields
         if (field.children && field.children.length > 0) {
-          const childFields = convertFields(field.children, level + 1);
+          // Process children regardless of type - they have their own paths and levels
+          const childFields = convertFields(field.children);
+          if (field.type === 'array' && field.arrayElementType === 'object') {
+            console.log(`✅ Array ${field.path} generated ${childFields.length} child fields:`, childFields.map(f => f.path));
+          }
           inferredFields.push(...childFields);
         }
       });
@@ -232,12 +258,30 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
   useEffect(() => {
     // Only initialize if user hasn't made manual edits yet
     if (!hasUserMadeEdits && existingSchemaFields && existingSchemaFields.length > 0) {
+      console.log('🚨🚨🚨 ARRAY DEBUG START 🚨🚨🚨');
       console.log('PayloadEditor - Converting existing schema fields (initial load):', existingSchemaFields);
-      const inferredFields = convertSchemaFieldsToInferredFields(existingSchemaFields);
-      setInferredFields(inferredFields);
-      setShowInferredFields(true);
-      console.log('PayloadEditor - Initialized with existing schema fields:', inferredFields);
-      console.log(`PayloadEditor - Total fields loaded: ${inferredFields.length}`);
+      console.log('🔢 Raw schema fields received:', existingSchemaFields.length);
+
+      // Check if existingSchemaFields is already InferredField[] format
+      if (existingSchemaFields[0] && typeof existingSchemaFields[0] === 'object' && 'path' in existingSchemaFields[0] && 'type' in existingSchemaFields[0] && 'level' in existingSchemaFields[0]) {
+        console.log('🚨 Schema is already InferredField[] format, using directly');
+        setInferredFields(existingSchemaFields as InferredField[]);
+        setShowInferredFields(true);
+        console.log('PayloadEditor - Initialized with existing InferredField[]:', existingSchemaFields);
+        console.log(`🔢 FINAL RESULT: Total fields loaded: ${existingSchemaFields.length}`);
+      } else {
+        // Legacy: Convert SchemaField[] to InferredField[]
+        console.log('🚨 Schema is SchemaField[] format, converting to InferredField[]');
+        console.log('🚨 First few SchemaFields:', existingSchemaFields.slice(0, 5).map((f: any) => ({ name: f.name, path: f.path, type: f.type })));
+        const inferredFields = convertSchemaFieldsToInferredFields(existingSchemaFields as SchemaField[]);
+        console.log('🚨 First few InferredFields after conversion:', inferredFields.slice(0, 5).map(f => ({ path: f.path, type: f.type, level: f.level })));
+        setInferredFields(inferredFields);
+        setShowInferredFields(true);
+        console.log('PayloadEditor - Initialized with existing schema fields:', inferredFields);
+        console.log(`🔢 FINAL RESULT: Total fields loaded: ${inferredFields.length}`);
+      }
+
+      console.log('🚨🚨🚨 ARRAY DEBUG END 🚨🚨🚨');
     } else if (!hasUserMadeEdits && configId && (!existingSchemaFields || existingSchemaFields.length === 0)) {
       // When editing existing config but no schema fields exist, show empty schema editor
       console.log('PayloadEditor - Showing empty schema editor for existing config');
@@ -273,10 +317,9 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
   // Notify parent component when schema changes
   useEffect(() => {
     if (onSchemaChange && inferredFields.length > 0) {
-      const currentSchema = convertInferredFieldsToJsonSchema(inferredFields);
-      if (currentSchema) {
-        onSchemaChange(currentSchema);
-      }
+      // Instead of converting to JSON Schema (which loses array element paths),
+      // pass the InferredField[] array directly to preserve all field information
+      onSchemaChange(inferredFields);
     }
   }, [inferredFields, onSchemaChange]);
 
@@ -537,9 +580,9 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
           
           if (typeof firstElement === 'object' && firstElement !== null && !Array.isArray(firstElement)) {
             // Generate schema for array elements with objects
-            // IMPORTANT: Recursively process the object to get all nested fields
-            console.log(`    🔄 Recursing into array element object at ${fieldPath}`);
-            field.children = generateJSONSchema(firstElement, fieldPath);
+            // IMPORTANT: Recursively process the object to get all nested fields with [0] notation
+            console.log(`    🔄 Recursing into array element object at ${fieldPath}[0]`);
+            field.children = generateJSONSchema(firstElement, `${fieldPath}[0]`);
             field.arrayElementType = 'object';
           } else if (Array.isArray(firstElement)) {
             // Handle arrays of arrays

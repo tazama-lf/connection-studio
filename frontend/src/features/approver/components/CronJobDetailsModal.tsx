@@ -205,7 +205,7 @@ const CronJobDetailsModal: React.FC<CronJobDetailsModalProps> = ({
               variant="secondary"
               onClick={onClose}
             >
-              Close
+              Cancel
             </Button>
             
             {/* Show Approve/Reject buttons for under-review schedules */}
@@ -219,7 +219,7 @@ const CronJobDetailsModal: React.FC<CronJobDetailsModalProps> = ({
                       onClose();
                     }}
                   >
-                    Reject Schedule
+                    Reject
                   </Button>
                 )}
                 {onApprove && (
@@ -231,7 +231,7 @@ const CronJobDetailsModal: React.FC<CronJobDetailsModalProps> = ({
                     }}
                     className="bg-green-600 hover:bg-green-700 text-white"
                   >
-                    Approve Schedule
+                    Approve
                   </Button>
                 )}
               </>

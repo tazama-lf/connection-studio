@@ -1,149 +1,195 @@
 import React, { useState, useEffect } from 'react';
 import { AuthHeader } from '../../../shared/components/AuthHeader';
-import { SearchIcon, Clock, Database, Layers } from 'lucide-react';
-import { dataEnrichmentApi } from '../../data-enrichment/services/dataEnrichmentApi';
+import { SearchIcon, Clock, Database } from 'lucide-react';
+import { sftpApi, SftpError } from '../../exporter/services/sftpApi';
 import { useToast } from '../../../shared/providers/ToastProvider';
-import type { ScheduleResponse, DataEnrichmentJobResponse } from '../../data-enrichment/types';
-import ExportedCronJobList from '../components/ExportedCronJobList';
-import ExportedDEJobList from '../components/ExportedDEJobList';
-import PublisherCronJobDetailsModal from '../components/PublisherCronJobDetailsModal';
-import PublisherDEJobDetailsModal from '../components/PublisherDEJobDetailsModal';
+import type { SftpFileInfo, SftpFileContent, SftpFormat } from '../../exporter/services/sftpApi';
+import { ExportedItemsList } from '../../exporter/components/ExportedItemsList';
+import { ExportedItemDetailsModal } from '../../exporter/components/ExportedItemDetailsModal';
+import { useAuth } from '../../../features/auth/contexts/AuthContext';
+import { isExporter, isPublisher } from '../../../utils/roleUtils';
 
-type TabType = 'cron-jobs' | 'de-jobs' | 'dems';
+type TabType = 'cron' | 'de';
 
 const PublisherExportedItemsPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<TabType>('cron-jobs');
+  const [activeTab, setActiveTab] = useState<TabType>('cron');
   const [searchTerm, setSearchTerm] = useState('');
   
-  // Cron Jobs state
-  const [cronJobs, setCronJobs] = useState<ScheduleResponse[]>([]);
-  const [cronJobsLoading, setCronJobsLoading] = useState(false);
-  const [selectedCronJob, setSelectedCronJob] = useState<ScheduleResponse | null>(null);
-  const [selectedDEJob, setSelectedDEJob] = useState<DataEnrichmentJobResponse | null>(null);
-  const [isCronJobModalOpen, setIsCronJobModalOpen] = useState(false);
-  const [isDEJobModalOpen, setIsDEJobModalOpen] = useState(false);
+  // SFTP Exported Items state
+  const [exportedItems, setExportedItems] = useState<SftpFileInfo[]>([]);
+  const [exportedItemsLoading, setExportedItemsLoading] = useState(false);
+  const [selectedExportedItem, setSelectedExportedItem] = useState<SftpFileContent | null>(null);
+  const [showExportedItemDetails, setShowExportedItemDetails] = useState(false);
+  const [exportedItemDetailsLoading, setExportedItemDetailsLoading] = useState(false);
   
-  // DE Jobs state (placeholder)
-  const [deJobs, setDeJobs] = useState<DataEnrichmentJobResponse[]>([]);
-  const [deJobsLoading, setDeJobsLoading] = useState(false);
-  
-  const { showError } = useToast();
+  const { showError, showSuccess } = useToast();
+  const { user } = useAuth();
+
+  const userIsExporter = user?.claims ? isExporter(user.claims) : false;
+  const userIsPublisher = user?.claims ? isPublisher(user.claims) : false;
 
   useEffect(() => {
-    if (activeTab === 'cron-jobs') {
-      loadExportedCronJobs();
-    } else if (activeTab === 'de-jobs') {
-      loadExportedDEJobs();
-    } else if (activeTab === 'dems') {
-      loadExportedDEMS();
-    }
+    loadExportedItems();
   }, [activeTab]);
 
-  const loadExportedCronJobs = async () => {
-    console.log('PublisherExportedItemsPage: loadExportedCronJobs called');
-    setCronJobsLoading(true);
+  const loadExportedItems = async () => {
+    console.log('PublisherExportedItemsPage: loadExportedItems called with format:', activeTab);
+    setExportedItemsLoading(true);
     try {
-      const response = await dataEnrichmentApi.getAllSchedules();
-      console.log('PublisherExportedItemsPage: Schedules loaded:', response?.length || 0);
-      
-      // Filter for exported schedules that are ready for publishing
-      const exportedSchedules = response?.filter((schedule: ScheduleResponse) => 
-        schedule.status === 'exported'
-      ) || [];
-      
-      // Sort by created_at descending (newest first)
-      const sortedSchedules = exportedSchedules.sort((a: any, b: any) => {
-        const dateA = new Date(a.created_at || 0).getTime();
-        const dateB = new Date(b.created_at || 0).getTime();
-        return dateB - dateA;
-      });
-      
-      setCronJobs(sortedSchedules);
+      const files = await sftpApi.getAllFiles(activeTab);
+      console.log('PublisherExportedItemsPage: Exported items loaded:', files.length);
+      setExportedItems(files);
     } catch (error) {
-      console.error('Failed to load exported cron jobs:', error);
-      showError('Failed to load exported cron jobs');
-      setCronJobs([]);
+      console.error('Failed to load exported items:', error);
+      
+      let errorMessage = 'Failed to load exported items';
+      if (error instanceof SftpError) {
+        switch (error.errorType) {
+          case 'CORRUPTED_FILE':
+            errorMessage = 'Some files appear to be corrupted or missing integrity verification';
+            break;
+          case 'NOT_FOUND':
+            errorMessage = 'SFTP directory not found or inaccessible';
+            break;
+          case 'UNAUTHORIZED':
+            errorMessage = 'Unauthorized access to SFTP server';
+            break;
+          default:
+            errorMessage = error.message;
+        }
+      }
+      
+      showError(errorMessage);
+      setExportedItems([]);
     } finally {
-      setCronJobsLoading(false);
+      setExportedItemsLoading(false);
     }
   };
 
-  const loadExportedDEJobs = async () => {
-    console.log('PublisherExportedItemsPage: loadExportedDEJobs called');
-    setDeJobsLoading(true);
+  const handleViewExportedItemDetails = async (filename: string) => {
+    console.log('PublisherExportedItemsPage: View exported item details clicked for:', filename);
     try {
-      const response = await dataEnrichmentApi.getAllJobs();
-      console.log('PublisherExportedItemsPage: DE Jobs loaded:', response?.jobs?.length || 0);
+      setExportedItemDetailsLoading(true);
+      setShowExportedItemDetails(true);
       
-      // Filter for exported jobs
-      const exportedJobs = response?.jobs?.filter((job: DataEnrichmentJobResponse) => 
-        job.status === 'exported'
-      ) || [];
+      const content = await sftpApi.readFile(filename);
       
-      // Sort by created_at descending
-      const sortedJobs = exportedJobs.sort((a: any, b: any) => {
-        const dateA = new Date(a.created_at || 0).getTime();
-        const dateB = new Date(b.created_at || 0).getTime();
-        return dateB - dateA;
-      });
+      // Check user role and item status permissions
+      const allowedStatuses = userIsExporter ? ['exported', 'approved'] : ['exported', 'approved', 'ready-for-deployment', 'deployed'];
+      if (!allowedStatuses.includes(content.status || '')) {
+        showError(`You don't have permission to view items with status "${content.status || 'unknown'}"`);
+        setShowExportedItemDetails(false);
+        return;
+      }
       
-      setDeJobs(sortedJobs);
+      setSelectedExportedItem(content);
     } catch (error) {
-      console.error('Failed to load exported DE jobs:', error);
-      showError('Failed to load exported DE jobs');
-      setDeJobs([]);
+      console.error('Failed to load exported item details:', error);
+      
+      let errorMessage = 'Failed to load exported item details';
+      if (error instanceof SftpError) {
+        switch (error.errorType) {
+          case 'CORRUPTED_FILE':
+            errorMessage = `File "${filename}" is corrupted or has failed integrity verification. The file may be incomplete or damaged.`;
+            break;
+          case 'NOT_FOUND':
+            errorMessage = `File "${filename}" not found on the SFTP server`;
+            break;
+          case 'UNAUTHORIZED':
+            errorMessage = 'Unauthorized access to read the file';
+            break;
+          default:
+            errorMessage = `Failed to read file "${filename}": ${error.message}`;
+        }
+      }
+      
+      showError(errorMessage);
+      setShowExportedItemDetails(false);
     } finally {
-      setDeJobsLoading(false);
+      setExportedItemDetailsLoading(false);
     }
   };
 
-  const loadExportedDEMS = async () => {
-    console.log('PublisherExportedItemsPage: loadExportedDEMS called - Not implemented yet');
-    // TODO: Implement DEMS loading when API is available
-  };
+  const handlePublishExportedItem = async (id: string, format: SftpFormat, type?: 'PULL' | 'PUSH' | string) => {
+    // Check if user has permission to publish based on their role
+    if (userIsExporter && selectedExportedItem && !['exported', 'approved'].includes(selectedExportedItem.status || '')) {
+      showError('Exporters can only publish items with "exported" or "approved" status');
+      return;
+    }
+    
+    if (userIsPublisher && selectedExportedItem && !['exported', 'ready-for-deployment'].includes(selectedExportedItem.status || '')) {
+      showError('Publishers can only publish items with "exported" or "ready-for-deployment" status');
+      return;
+    }
 
-  const handleViewCronJobDetails = (scheduleId: string) => {
-    const schedule = cronJobs.find(s => s.id === scheduleId);
-    if (schedule) {
-      setSelectedCronJob(schedule);
-      setIsCronJobModalOpen(true);
+    try {
+      console.log('Publishing exported item:', { id, format, type });
+      await sftpApi.publishItem(id, format, type);
+      showSuccess(`${format === 'cron' ? 'Cron job' : 'Data enrichment job'} published successfully`);
+      loadExportedItems();
+      setShowExportedItemDetails(false);
+    } catch (error) {
+      console.error('Failed to publish exported item:', error);
+      
+      let errorMessage = `Failed to publish ${format === 'cron' ? 'cron job' : 'data enrichment job'}`;
+      
+      // Handle different types of errors
+      if (error instanceof SftpError) {
+        switch (error.errorType) {
+          case 'CORRUPTED_FILE':
+            errorMessage = 'Cannot publish: File is corrupted or has failed integrity verification';
+            break;
+          case 'NOT_FOUND':
+            errorMessage = 'Cannot publish: Item not found or has been removed';
+            break;
+          case 'UNAUTHORIZED':
+            errorMessage = 'Unauthorized to publish this item';
+            break;
+          default:
+            errorMessage = `Failed to publish: ${error.message}`;
+        }
+      } else if (error instanceof Error) {
+        // Handle backend validation errors
+        const errorMsg = error.message.toLowerCase();
+        
+        if (errorMsg.includes('dry run failed') && errorMsg.includes('sftp')) {
+          errorMessage = 'Cannot publish: SFTP connection validation failed. Please check SFTP credentials and connectivity.';
+        } else if (errorMsg.includes('sftp connection failed')) {
+          errorMessage = 'Cannot publish: SFTP server connection failed. Please verify SFTP server settings.';
+        } else if (errorMsg.includes('authentication methods failed')) {
+          errorMessage = 'Cannot publish: SFTP authentication failed. Please check username, password, and key settings.';
+        } else if (errorMsg.includes('job type') && errorMsg.includes('required')) {
+          errorMessage = 'Cannot publish: Job type information is missing. Please ensure the job configuration is complete.';
+        } else {
+          // Generic error message for other backend errors
+          errorMessage = `Publish failed: ${error.message}`;
+        }
+      } else {
+        // Fallback for unknown error types
+        errorMessage = 'An unexpected error occurred during publishing. Please try again.';
+      }
+      
+      showError(errorMessage);
     }
   };
 
-  const handleViewDEJobDetails = (jobId: string) => {
-    const job = deJobs.find(j => j.id === jobId);
-    if (job) {
-      setSelectedDEJob(job);
-      setIsDEJobModalOpen(true);
-    }
-  };
-
-  const handlePublishSuccess = () => {
-    if (activeTab === 'cron-jobs') {
-      loadExportedCronJobs();
-    } else if (activeTab === 'de-jobs') {
-      loadExportedDEJobs();
-    }
+  const handleExportedItemsRefresh = () => {
+    console.log('PublisherExportedItemsPage: handleExportedItemsRefresh called');
+    loadExportedItems();
   };
 
   const tabs = [
     {
-      id: 'cron-jobs' as TabType,
+      id: 'cron' as TabType,
       name: 'Cron Jobs',
       icon: <Clock size={18} />,
-      count: cronJobs.length,
+      count: exportedItems.filter(item => item.name.includes('_cron_')).length,
     },
     {
-      id: 'de-jobs' as TabType,
+      id: 'de' as TabType,
       name: 'DE Jobs',
       icon: <Database size={18} />,
-      count: deJobs.length,
-    },
-    {
-      id: 'dems' as TabType,
-      name: 'DEMS',
-      icon: <Layers size={18} />,
-      count: 0,
+      count: exportedItems.filter(item => item.name.includes('_de_')).length,
     },
   ];
 
@@ -207,50 +253,25 @@ const PublisherExportedItemsPage: React.FC = () => {
 
         {/* Tab Content */}
         <div className="bg-white rounded-lg shadow">
-          {activeTab === 'cron-jobs' && (
-            <ExportedCronJobList
-              schedules={cronJobs}
-              isLoading={cronJobsLoading}
-              onViewDetails={handleViewCronJobDetails}
-              onRefresh={loadExportedCronJobs}
-              searchQuery={searchTerm}
-            />
-          )}
-
-          {activeTab === 'de-jobs' && (
-            <ExportedDEJobList
-              jobs={deJobs}
-              isLoading={deJobsLoading}
-              onViewDetails={handleViewDEJobDetails}
-              onRefresh={loadExportedDEJobs}
-              searchQuery={searchTerm}
-            />
-          )}
-
-          {activeTab === 'dems' && (
-            <div className="p-8 text-center text-gray-500">
-              <Layers size={48} className="mx-auto mb-4 text-gray-400" />
-              <p className="text-lg font-medium">DEMS</p>
-              <p className="mt-2">UI component coming soon</p>
-            </div>
-          )}
+          <ExportedItemsList
+            files={exportedItems}
+            isLoading={exportedItemsLoading}
+            onViewDetails={handleViewExportedItemDetails}
+            onRefresh={handleExportedItemsRefresh}
+            searchQuery={searchTerm}
+            format={activeTab}
+          />
         </div>
       </div>
 
-      {/* Cron Job Details Modal */}
-      <PublisherCronJobDetailsModal
-        isOpen={isCronJobModalOpen}
-        onClose={() => setIsCronJobModalOpen(false)}
-        schedule={selectedCronJob}
-        onPublishSuccess={handlePublishSuccess}
-      />
-
-      {/* DE Job Details Modal */}
-      <PublisherDEJobDetailsModal
-        isOpen={isDEJobModalOpen}
-        onClose={() => setIsDEJobModalOpen(false)}
-        job={selectedDEJob}
-        onPublishSuccess={handlePublishSuccess}
+      {/* Exported Item Details Modal */}
+      <ExportedItemDetailsModal
+        isOpen={showExportedItemDetails}
+        onClose={() => setShowExportedItemDetails(false)}
+        content={selectedExportedItem}
+        isLoading={exportedItemDetailsLoading}
+        onPublish={handlePublishExportedItem}
+        format={activeTab}
       />
     </div>
   );

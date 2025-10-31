@@ -9,7 +9,6 @@ export const ROUTES = {
   DATA_ENRICHMENT: '/de',
   CRON: '/cron',
   APPROVER: '/approver',
-  EXPORTER: '/exporter',
   PUBLISHER: '/publisher',
 
   // Nested routes
@@ -57,14 +56,6 @@ export const NAVIGATION = {
       path: ROUTES.APPROVER,
       icon: 'CheckCircleIcon',
       color: 'bg-yellow-100 text-yellow-600',
-    },
-    {
-      id: 'exporter',
-      name: 'Exporter Dashboard',
-      description: 'Export approved configurations and jobs for deployment',
-      path: ROUTES.EXPORTER,
-      icon: 'DownloadIcon',
-      color: 'bg-indigo-100 text-indigo-600',
     },
     {
       id: 'publisher',

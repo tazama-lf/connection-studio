@@ -16,3 +16,4 @@ export { TokenExpirationModal } from './TokenExpirationModal';
 export { TokenExpirationChecker } from './TokenExpirationChecker';
 export { default as Toast } from './Toast';
 export type { Toast as ToastType } from './Toast';
+export { FileCorruptionError } from './FileCorruptionError';

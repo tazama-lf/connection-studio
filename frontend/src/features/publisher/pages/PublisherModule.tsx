@@ -1,39 +1,39 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthHeader } from '../../../shared/components/AuthHeader';
-import { Clock, Database, Settings, Server, PackageOpen } from 'lucide-react';
+import { Clock, Database, Settings, PackageOpen } from 'lucide-react';
 
 const PublisherModule: React.FC = () => {
   const navigate = useNavigate();
 
   const modules = [
     {
-      id: 'cron-jobs',
-      name: 'Cron Job Management',
-      description: 'View and manage published/deployed cron job schedules',
-      icon: <Clock size={24} />,
-      color: 'bg-blue-100 text-blue-600',
-      path: '/publisher/cron-jobs',
-    },
-    {
-      id: 'de-jobs',
-      name: 'Data Enrichment Jobs',
-      description: 'View and manage published/deployed data enrichment jobs',
-      icon: <Database size={24} />,
-      color: 'bg-green-100 text-green-600',
-      path: '/publisher/de-jobs',
-    },
-    {
       id: 'configs',
-      name: 'Dynamic Endpoint Monitoring System',
+      name: 'Dynamic Endpoint Monitoring Service',
       description: 'Review and publish approved configurations',
       icon: <Settings size={24} />,
       color: 'bg-purple-100 text-purple-600',
       path: '/publisher/configs',
     },
+    {
+      id: 'de-jobs',
+      name: 'Data Enrichment',
+      description: 'Review and publish exported data enrichment jobs',
+      icon: <Database size={24} />,
+      color: 'bg-green-100 text-green-600',
+      path: '/publisher/de-jobs',
+    },
+    {
+      id: 'cron-jobs',
+      name: 'Cron Job Management',
+      description: 'Review and publish exported cron job schedules',
+      icon: <Clock size={24} />,
+      color: 'bg-blue-100 text-blue-600',
+      path: '/publisher/cron-jobs',
+    },
    
     {
-      id: 'Exported ',
+      id: 'exported-items',
       name: 'Exported Items',
       description: 'Review exported items ready for publishing (Cron Jobs, DE Jobs, DEMS)',
       icon: <PackageOpen size={24} />,

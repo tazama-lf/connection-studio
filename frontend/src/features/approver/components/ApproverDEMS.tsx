@@ -5,7 +5,7 @@ import { ConfigList } from '../../config/components/ConfigList';
 import { configApi } from '../../config/services/configApi';
 import { useToast } from '../../../shared/providers/ToastProvider';
 import type { Config } from '../../config/index';
-import EditEndpointModal from '../../../shared/components/EditEndpointModal';
+import { ApproverConfigDetailsModal } from './ApproverConfigDetailsModal';
 
 interface ApproverDEMSProps {
   onBack: () => void;
@@ -138,12 +138,12 @@ const ApproverDEMS: React.FC<ApproverDEMSProps> = ({ onBack }) => {
 
       {/* View Config Modal */}
       {showViewModal && selectedConfig && (
-        <EditEndpointModal
+        <ApproverConfigDetailsModal
           isOpen={showViewModal}
           onClose={handleCloseViewModal}
-          endpointId={selectedConfig.id}
-          readOnly={true}
-          onSuccess={() => {}} // No-op since it's read-only
+          config={selectedConfig}
+          onApprove={handleApprove}
+          onReject={handleReject}
         />
       )}
     </div>

@@ -12,7 +12,7 @@ import { dataEnrichmentApi } from '../services/dataEnrichmentApi';
 import type { DataEnrichmentJobResponse, JobStatus, CreatePushJobDto, CreatePullJobDto } from '../types';
 import { useToast } from '../../../shared/providers/ToastProvider';
 import { useAuth } from '../../auth/contexts/AuthContext';
-import { isEditor, isApprover } from '../../../utils/roleUtils';
+import { isEditor, isApprover, isExporter } from '../../../utils/roleUtils';
 import { UI_CONFIG } from '../../../shared/config/app.config';
 import { getUserFriendlyErrorMessage } from '../../../shared/utils/errorUtils';
 
@@ -23,6 +23,7 @@ const DataEnrichmentModule: React.FC = () => {
   // User role detection
   const userIsEditor = user?.claims ? isEditor(user.claims) : false;
   const userIsApprover = user?.claims ? isApprover(user.claims) : false;
+  const userIsExporter = user?.claims ? isExporter(user.claims) : false;
   
   // Job management state
   const [jobs, setJobs] = useState<DataEnrichmentJobResponse[]>([]);
@@ -419,6 +420,19 @@ const DataEnrichmentModule: React.FC = () => {
     
     let filtered = jobs;
 
+    // Role-based filtering: exporters can only see approved and exported jobs
+    if (userIsExporter) {
+      console.log('Applying exporter role filter - only showing approved and exported jobs');
+      filtered = filtered.filter(job => {
+        const jobStatus = job.status || 'in-progress';
+        const allowedStatuses = ['approved', 'exported'];
+        const isAllowed = allowedStatuses.includes(jobStatus);
+        console.log(`Job ${job.id}: status="${jobStatus}", allowed=${isAllowed}`);
+        return isAllowed;
+      });
+      console.log('After exporter role filter:', filtered.length);
+    }
+
     // Search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
@@ -495,7 +509,7 @@ const DataEnrichmentModule: React.FC = () => {
     console.log('Final filtered count:', filtered.length);
     console.log('=== END FRONTEND FILTERING DEBUG ===');
     return filtered;
-  }, [jobs, searchQuery, statusFilter, recordStatusFilter, dateFilter, typeFilter]);
+  }, [jobs, searchQuery, statusFilter, recordStatusFilter, dateFilter, typeFilter, userIsExporter]);
 
   // Calculate pagination based on filtered results
   const totalItems = filteredJobs.length;

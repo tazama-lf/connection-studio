@@ -26,47 +26,19 @@ interface FunctionSelectionFormProps {
 const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({ onAddFunction, onClose }) => {
   const [selectedFunction, setSelectedFunction] = useState<AllowedFunctionName>('addAccount');
   const [selectedConfiguration, setSelectedConfiguration] = useState('');
-  const [selectedOptionalParams, setSelectedOptionalParams] = useState<string[]>([]);
-  const [showOptionalDropdown, setShowOptionalDropdown] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setShowOptionalDropdown(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   const functionConfig = FUNCTION_CONFIGS[selectedFunction];
-  
+
   const handleAddFunction = () => {
     const config = functionConfig.configurations.find(c => c.name === selectedConfiguration);
     if (!config) return;
-    
-    // Combine base parameters with selected optional parameters
-    const baseParams = config.parameters.split(', ').map(p => p.trim());
-    const allParams = [...baseParams, ...selectedOptionalParams];
-    
+
+    const params = config.parameters.split(', ').map(p => p.trim());
     onAddFunction({
       functionName: selectedFunction,
-      params: allParams
+      params
     });
   };
-
-  const handleOptionalParamToggle = (paramName: string) => {
-    setSelectedOptionalParams(prev => 
-      prev.includes(paramName) 
-        ? prev.filter(p => p !== paramName)
-        : [...prev, paramName]
-    );
-  };
-
-  const hasOptionalParams = functionConfig.optionalParameters && functionConfig.optionalParameters.length > 0;
 
   return (
     <div className="space-y-4">
@@ -77,8 +49,6 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({ onAddFunc
           onChange={(e) => {
             setSelectedFunction(e.target.value as AllowedFunctionName);
             setSelectedConfiguration(''); // Reset configuration when function changes
-            setSelectedOptionalParams([]); // Reset optional params when function changes
-            setShowOptionalDropdown(false);
           }}
           className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         >
@@ -122,90 +92,6 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({ onAddFunc
         </div>
       </div>
 
-      {/* Optional Parameters Section - Only show if function has optional parameters */}
-      {hasOptionalParams && selectedConfiguration && (
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Optional Parameters</label>
-          <div className="relative" ref={dropdownRef}>
-            <button
-              type="button"
-              onClick={() => setShowOptionalDropdown(!showOptionalDropdown)}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-left flex justify-between items-center"
-            >
-              <span className="text-gray-700">
-                {selectedOptionalParams.length === 0 
-                  ? 'Select optional parameters...' 
-                  : `${selectedOptionalParams.length} selected`
-                }
-              </span>
-              <svg 
-                className={`w-5 h-5 text-gray-400 transform transition-transform ${showOptionalDropdown ? 'rotate-180' : ''}`} 
-                fill="none" 
-                stroke="currentColor" 
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-
-            {showOptionalDropdown && (
-              <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                <div className="p-2">
-                  {functionConfig.optionalParameters.map((param) => (
-                    <div key={param.name} className="flex items-start space-x-2 p-2 hover:bg-gray-50 rounded">
-                      <input
-                        type="checkbox"
-                        id={`param-${param.name}`}
-                        checked={selectedOptionalParams.includes(param.name)}
-                        onChange={() => handleOptionalParamToggle(param.name)}
-                        className="text-blue-600 mt-1"
-                      />
-                      <div className="flex-1">
-                        <label 
-                          htmlFor={`param-${param.name}`} 
-                          className="font-medium text-gray-900 cursor-pointer"
-                        >
-                          {param.displayName}
-                        </label>
-                        <span className="text-sm text-gray-500 ml-2">({param.name})</span>
-                        <p className="text-xs text-gray-600 mt-1">{param.description}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Selected Optional Parameters Display */}
-          {selectedOptionalParams.length > 0 && (
-            <div className="mt-3">
-              <p className="text-sm font-medium text-gray-700 mb-2">Selected Optional Parameters:</p>
-              <div className="flex flex-wrap gap-2">
-                {selectedOptionalParams.map((paramName) => {
-                  const param = functionConfig.optionalParameters.find(p => p.name === paramName);
-                  return (
-                    <span 
-                      key={paramName}
-                      className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800"
-                    >
-                      {param?.displayName || paramName}
-                      <button
-                        type="button"
-                        onClick={() => handleOptionalParamToggle(paramName)}
-                        className="ml-1 text-green-600 hover:text-green-800"
-                      >
-                        ×
-                      </button>
-                    </span>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
       <div className="flex justify-end space-x-3 pt-4">
         <Button variant="secondary" onClick={onClose}>
           Cancel
@@ -220,7 +106,6 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({ onAddFunc
     </div>
   );
 };
-
 interface EndpointData {
   version: string;
   transactionType: string;
@@ -922,7 +807,19 @@ interface EditEndpointModalProps {
     }
 
     // Check if fields have been generated from payload
-    if (!currentSchema || !currentSchema.properties || Object.keys(currentSchema.properties).length === 0) {
+    // currentSchema can be either InferredField[] array or JSON Schema object
+    console.log('🔍 Validation - currentSchema:', currentSchema);
+    console.log('🔍 Validation - isArray:', Array.isArray(currentSchema));
+    console.log('🔍 Validation - array length:', Array.isArray(currentSchema) ? currentSchema.length : 'N/A');
+    
+    const hasGeneratedFields = currentSchema && (
+      (Array.isArray(currentSchema) && currentSchema.length > 0) || // InferredField[] array
+      (currentSchema.properties && Object.keys(currentSchema.properties).length > 0) // JSON Schema object
+    );
+    
+    console.log('🔍 Validation - hasGeneratedFields:', hasGeneratedFields);
+    
+    if (!hasGeneratedFields) {
       validationErrors.push('Please generate fields from your payload before saving');
     }
 
@@ -959,8 +856,91 @@ interface EditEndpointModalProps {
       };
 
       // CRITICAL: Use the current schema from PayloadEditor (includes user edits)
-      // If no currentSchema but we have a payload, regenerate schema from payload
+      // If currentSchema is an InferredField[] array, convert it to JSON Schema format
       let finalSchema = currentSchema;
+      
+      // Convert InferredField[] array to JSON Schema if needed
+      if (finalSchema && Array.isArray(finalSchema)) {
+        console.log('🔄 Converting InferredField[] array to JSON Schema format...');
+        
+        const convertToJSONSchema = (fields: any[]): any => {
+
+          // Build nested structure from flat InferredField array
+          const buildNestedSchema = (currentPath: string, remainingFields: any[]): any => {
+            const currentSchema: any = {
+              type: 'object',
+              properties: {},
+              required: [],
+              additionalProperties: false
+            };
+
+            // Find all direct children of the current path
+            const directChildren = remainingFields.filter(field => {
+              if (currentPath === '') {
+                // Root level - no dots or only one level deep
+                return !field.path.includes('.') && !field.path.includes('[');
+              } else {
+                // Check if this field is a direct child
+                const relativePath = field.path.startsWith(currentPath + '.') 
+                  ? field.path.substring(currentPath.length + 1)
+                  : field.path.startsWith(currentPath + '[0].') 
+                    ? field.path.substring(currentPath.length + 4) // Skip "[0]."
+                    : '';
+                return relativePath && !relativePath.includes('.') && !relativePath.includes('[');
+              }
+            });
+
+            directChildren.forEach(field => {
+              const fieldName = field.path.split('.').pop()?.replace(/\[0\]/g, '') || field.path;
+              console.log(`🔍 Processing field: ${field.path} -> ${fieldName} (type: ${field.type})`);
+
+              if (field.type.toLowerCase() === 'object') {
+                // Find children and recursively build
+                const childPath = field.path;
+                const childFields = remainingFields.filter(f => f.path.startsWith(childPath + '.'));
+                if (childFields.length > 0) {
+                  currentSchema.properties[fieldName] = buildNestedSchema(childPath, remainingFields);
+                } else {
+                  currentSchema.properties[fieldName] = { type: 'object', additionalProperties: false };
+                }
+              } else if (field.type.toLowerCase() === 'array') {
+                // Find array element children
+                const arrayElementPath = field.path + '[0]';
+                const arrayChildren = remainingFields.filter(f => f.path.startsWith(arrayElementPath + '.'));
+                if (arrayChildren.length > 0) {
+                  const itemsSchema = buildNestedSchema(arrayElementPath, remainingFields);
+                  currentSchema.properties[fieldName] = {
+                    type: 'array',
+                    items: itemsSchema
+                  };
+                } else {
+                  currentSchema.properties[fieldName] = { type: 'array' };
+                }
+              } else {
+                // Simple field types
+                let jsonType = 'string';
+                if (field.type.toLowerCase() === 'number') jsonType = 'number';
+                else if (field.type.toLowerCase() === 'boolean') jsonType = 'boolean';
+
+                currentSchema.properties[fieldName] = { type: jsonType };
+              }
+
+              if (field.required) {
+                currentSchema.required.push(fieldName);
+              }
+            });
+
+            return currentSchema;
+          };
+
+          return buildNestedSchema('', fields);
+        };
+        
+        finalSchema = convertToJSONSchema(finalSchema);
+        console.log('✅ Converted to JSON Schema:', JSON.stringify(finalSchema, null, 2));
+      }
+      
+      // If no currentSchema but we have a payload, regenerate schema from payload
       if (!finalSchema && payload.trim()) {
         console.log('🔄 No current schema from PayloadEditor, regenerating from payload...');
         try {
@@ -1078,10 +1058,13 @@ interface EditEndpointModalProps {
       // Validate schema before sending to backend
       if (finalSchema) {
         console.log('🔍 Validating schema before send:', finalSchema);
+        console.log('🔍 Schema type check - isArray:', Array.isArray(finalSchema));
+        console.log('🔍 Schema type check - hasProperties:', finalSchema.properties ? true : false);
         
-        // Check if schema has properties
+        // After conversion, finalSchema should be a JSON Schema object with properties
         if (!finalSchema.properties || Object.keys(finalSchema.properties).length === 0) {
           console.error('❌ Schema validation failed: Schema has no properties');
+          console.error('❌ Schema structure:', JSON.stringify(finalSchema, null, 2));
           setError('Invalid schema: No fields were generated from your payload. Please check your JSON/XML format and try again.');
           setLoading(false);
           return;
@@ -1143,7 +1126,7 @@ interface EditEndpointModalProps {
         
         // Determine whether to move to next step or stay on current step
         // "Save and Next" should always advance to next step, except for deploy step which has special logic
-        const shouldAdvanceToNextStep = currentStep !== 'deploy';
+        const shouldAdvanceToNextStep = (currentStep as string) !== 'deploy';
 
         if (shouldAdvanceToNextStep) {
           // Always move to next step for non-deploy steps
@@ -1344,7 +1327,8 @@ interface EditEndpointModalProps {
                           if (fieldType === 'array' && fieldSchema.items) {
                             if (fieldSchema.items.type === 'object' && fieldSchema.items.properties) {
                               schemaField.arrayElementType = 'object';
-                              schemaField.children = convertAjvToSchemaFields(fieldSchema.items, fieldPath);
+                              // For array elements, append [0] to the path for proper display
+                              schemaField.children = convertAjvToSchemaFields(fieldSchema.items, `${fieldPath}[0]`);
                             } else {
                               schemaField.arrayElementType = fieldSchema.items.type || 'string';
                             }
@@ -1357,7 +1341,10 @@ interface EditEndpointModalProps {
                       return schemaFields;
                     };
                     
-                    return convertAjvToSchemaFields(schemaToUse);
+                    const convertedFields = convertAjvToSchemaFields(schemaToUse);
+                    console.log('🔍 EditEndpointModal - Converted schema fields for PayloadEditor:', convertedFields);
+                    console.log('🔍 First few fields:', convertedFields.slice(0, 5).map(f => ({ name: f.name, path: f.path, type: f.type })));
+                    return convertedFields;
                   })()}
                   data-id="element-740" 
                 />

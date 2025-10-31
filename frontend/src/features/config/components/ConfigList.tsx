@@ -3,6 +3,8 @@ import { EyeIcon, MoreVerticalIcon, EditIcon, CopyIcon, HistoryIcon, ChevronUpIc
 import { configApi } from '../services/configApi';
 import { UI_CONFIG } from '../../../shared/config/app.config';
 import { DropdownMenuWithAutoDirection } from '../../../shared/components/DropdownMenuWithAutoDirection';
+import { useAuth } from '../../../features/auth/contexts/AuthContext';
+import { isExporter } from '../../../utils/roleUtils';
 
 interface Config {
   id: number;
@@ -64,6 +66,10 @@ export const ConfigList: React.FC<ConfigListProps> = ({
   // Use external search term if provided, otherwise use empty string
   const searchTerm = externalSearchTerm || '';
 
+  // Auth context for role-based filtering
+  const { user } = useAuth();
+  const userIsExporter = user?.claims ? isExporter(user.claims) : false;
+
   // Fetch configs based on showPendingApprovals flag
   const fetchConfigs = async () => {
     try {
@@ -103,8 +109,15 @@ export const ConfigList: React.FC<ConfigListProps> = ({
       (config.msgFam && config.msgFam.toLowerCase().includes(searchTerm.toLowerCase()));
     
     const matchesStatus = statusFilter === 'all' || config.status.toLowerCase() === statusFilter.toLowerCase();
+    
+    // Role-based filtering: exporters can only see approved and deployed configs
+    let matchesRole = true;
+    if (userIsExporter) {
+      const allowedStatuses = ['approved', 'deployed'];
+      matchesRole = allowedStatuses.includes(config.status.toLowerCase());
+    }
       
-    return matchesSearch && matchesStatus;
+    return matchesSearch && matchesStatus && matchesRole;
   });
 
   // Sort filtered configs
@@ -275,7 +288,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
 
       {/* Table */}
       <div className="overflow-x-auto">
-        <table className="min-w-full">
+        <table className="min-w-full relative">
           <thead className="bg-gray-50">
             <tr>
               <th 
@@ -305,7 +318,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
                   )}
                 </div>
                 {showStatusFilter && (
-                  <div className="absolute bottom-full left-0 mb-1 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-[999]">
+                  <div className="absolute top-full left-0 mt-1 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-[999]">
                     <div className="py-1">
                       <button
                         onClick={() => handleStatusFilter('all')}

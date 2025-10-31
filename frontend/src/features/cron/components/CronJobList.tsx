@@ -68,11 +68,21 @@ export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => 
     }
   };
 
-  // Filter schedules based on search term
-  const filteredSchedules = schedules.filter(schedule =>
-    schedule.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    schedule.cron.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filter schedules based on search term and user role
+  const filteredSchedules = schedules.filter(schedule => {
+    // Search term filter
+    const matchesSearch = schedule.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      schedule.cron.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    // Role-based filtering: exporters can only see approved and exported schedules
+    let matchesRole = true;
+    if (userIsExporter) {
+      const allowedStatuses = ['approved', 'exported'];
+      matchesRole = allowedStatuses.includes(schedule.status || '');
+    }
+    
+    return matchesSearch && matchesRole;
+  });
 
   // Sort filtered schedules by creation date (latest first)
   const sortedSchedules = filteredSchedules.sort((a, b) => {

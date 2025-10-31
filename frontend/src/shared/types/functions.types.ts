@@ -116,8 +116,14 @@ export const FUNCTION_CONFIGS: Record<AllowedFunctionName, FunctionConfig> = {
     optionalParameters: [],
     configurations: [
       {
-        name: 'create-account-holder',
-        displayName: 'Create Account Holder',
+        name: 'debtor-account-holder',
+        displayName: 'Debtor Account Holder',
+        parameters: 'accountHolderId, name, tenantId',
+        description: 'Parameters: accountHolderId, name, tenantId',
+      },
+      {
+        name: 'creditor-account-holder',
+        displayName: 'Creditor Account Holder',
         parameters: 'accountHolderId, name, tenantId',
         description: 'Parameters: accountHolderId, name, tenantId',
       },

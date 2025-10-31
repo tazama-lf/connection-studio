@@ -17,31 +17,31 @@ const Dashboard: React.FC = () => {
   const isUserPublisher = isPublisher(userClaims);
   const isUserExporter = isExporter(userClaims);
   
-  // If user is a publisher, show the publisher's 5 boxes
+  // If user is a publisher, show the publisher's 4 boxes
   const publisherModules = [
     {
-      id: 'cron-jobs',
-      name: 'Cron Jobs',
-      description: 'View and manage published/deployed cron job schedules',
-      icon: <ClockIcon size={24} />,
-      color: 'bg-blue-100 text-blue-600',
-      path: '/publisher/cron-jobs',
+      id: 'configs',
+      name: 'Dynamic Endpoint Monitoring Service',
+      description: 'Review and publish approved configurations',
+      icon: <Settings size={24} />,
+      color: 'bg-purple-100 text-purple-600',
+      path: '/publisher/configs',
     },
     {
       id: 'de-jobs',
-      name: 'Data Enrichment Jobs',
+      name: 'Data Enrichment',
       description: 'Review and publish exported data enrichment jobs',
       icon: <DatabaseIcon size={24} />,
       color: 'bg-green-100 text-green-600',
       path: '/publisher/de-jobs',
     },
     {
-      id: 'configs',
-      name: 'Configurations',
-      description: 'Review and publish approved configurations',
-      icon: <Settings size={24} />,
-      color: 'bg-purple-100 text-purple-600',
-      path: '/publisher/configs',
+      id: 'cron-jobs',
+      name: 'Cron Job Management',
+      description: 'Review and publish exported cron job schedules',
+      icon: <ClockIcon size={24} />,
+      color: 'bg-blue-100 text-blue-600',
+      path: '/publisher/cron-jobs',
     },
    
     {
@@ -53,25 +53,55 @@ const Dashboard: React.FC = () => {
       path: '/publisher/exported-items',
     },
   ];
+
+  // If user is an exporter, show the exporter's 3 boxes directly
+  const exporterModules = [
+    {
+      id: 'dems',
+      name: 'Dynamic Endpoint Monitoring Service',
+      description: 'View and export approved configurations',
+      icon: <Settings size={24} />,
+      color: 'bg-purple-100 text-purple-600',
+      path: '/exporter/configs',
+    },
+    {
+      id: 'de-jobs',
+      name: 'Data Enrichment',
+      description: 'View and export approved data enrichment jobs',
+      icon: <DatabaseIcon size={24} />,
+      color: 'bg-green-100 text-green-600',
+      path: '/exporter/jobs',
+    },
+    {
+      id: 'cron-jobs',
+      name: 'Cron Job Management',
+      description: 'View and export approved cron job schedules',
+      icon: <ClockIcon size={24} />,
+      color: 'bg-blue-100 text-blue-600',
+      path: '/exporter/cron-jobs',
+    }
+  ];
   
   const filteredModules = NAVIGATION.mainModules.filter(module => {
     // If user is an approver, only show the approver module
     if (isUserApprover) {
       return module.id === 'approver';
     }
-    // If user is an exporter, only show the exporter module
+    // If user is an exporter, don't use navigation modules (we'll use exporterModules)
     if (isUserExporter) {
-      return module.id === 'exporter';
+      return false;
     }
     // If user is a publisher, don't use navigation modules (we'll use publisherModules)
     if (isUserPublisher) {
       return false;
     }
-    // For everyone else (editors), show all modules except approver, exporter, and publisher
-    return module.id !== 'approver' && module.id !== 'exporter' && module.id !== 'publisher';
+    // For everyone else (editors), show all modules except approver and publisher
+    return module.id !== 'approver' && module.id !== 'publisher';
   });
   
-  const modules = isUserPublisher ? publisherModules : filteredModules.map((module: any) => ({
+  const modules = isUserPublisher ? publisherModules : 
+                  isUserExporter ? exporterModules : 
+                  filteredModules.map((module: any) => ({
     ...module,
     icon: module.icon === 'ActivityIcon' ? <ActivityIcon size={24} /> :
           module.icon === 'DatabaseIcon' ? <DatabaseIcon size={24} /> :
@@ -83,11 +113,11 @@ const Dashboard: React.FC = () => {
   }));
 
   return <div className="min-h-screen bg-gray-50" data-id="element-1151">
-      <AuthHeader title={isUserPublisher ? "Publisher Dashboard" : APP_CONFIG.name} data-id="element-1152" />
+      <AuthHeader title={isUserPublisher ? "Publisher Dashboard" : isUserExporter ? "Exporter Dashboard" : APP_CONFIG.name} data-id="element-1152" />
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8" data-id="element-1153">
         
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6" data-id="element-1154">
+        <div className={`grid grid-cols-1 md:grid-cols-2 ${isUserExporter ? 'lg:grid-cols-3' : 'lg:grid-cols-2'} gap-6`} data-id="element-1154">
           {modules.map(module => <div key={module.id} className="bg-white rounded-lg shadow p-6 cursor-pointer hover:shadow-md transition-shadow duration-200" onClick={() => navigate(module.path || module.action)} data-id="element-1155">
               <div className="flex items-start" data-id="element-1156">
                 <div className={`p-3 rounded-lg ${module.color}`} data-id="element-1157">
