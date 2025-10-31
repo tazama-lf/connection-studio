@@ -22,6 +22,7 @@ import { SftpService } from '../sftp/sftp.service';
 import { decrypt, encrypt, validateFileType, validateTableName } from '../utils/helpers';
 import { CreatePullJobDto, SFTPConnectionDto } from './dto/create-pull-job.dto';
 import { CreatePushJobDto } from './dto/create-push-job.dto';
+import { NotifyService } from 'src/notify/notify.service';
 
 @Injectable()
 export class JobService {
@@ -31,6 +32,7 @@ export class JobService {
     private readonly loggerService: LoggerService,
     private readonly dryRunService: DryRunService,
     private readonly sftpService: SftpService,
+    private readonly notifyService: NotifyService,
   ) { }
 
   async validateExisting(table_name: string): Promise<void> {
@@ -95,7 +97,7 @@ export class JobService {
         job.schedule_id,
       ]);
       const exist = scheduleResult.rows[0];
-      if (!exist || exist.status != JobStatus.APPROVED) {
+      if (!exist || exist.status != JobStatus.APPROVED && exist.status != JobStatus.EXPORTED) {
         throw new BadRequestException(
           `Schedule with Id "${job.schedule_id}" not found or is not approved yet.`,
         );
@@ -392,8 +394,10 @@ export class JobService {
               tenantId,
               JobStatus.DEPLOYED
             );
+            await this.notifyService.notifyEnrichment(existingJob.id, ConfigType.PULL)
           } else {
             await this.createPush(existingJob, tenantId, JobStatus.DEPLOYED);
+            await this.notifyService.notifyEnrichment(existingJob.id, ConfigType.PUSH)
           }
           await this.sftpService.deleteFile(fileName)
           break;
