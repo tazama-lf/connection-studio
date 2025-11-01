@@ -20,8 +20,8 @@ export class ConfigWorkflowService {
         ConfigStatus.REJECTED,
         ConfigStatus.CHANGES_REQUESTED,
       ],
-      [ConfigStatus.APPROVED]: ['EXPORTED'],
-      EXPORTED: [ConfigStatus.DEPLOYED],
+      [ConfigStatus.APPROVED]: [ConfigStatus.DEPLOYED, ConfigStatus.EXPORTED],
+      [ConfigStatus.EXPORTED]: [ConfigStatus.DEPLOYED],
       [ConfigStatus.DEPLOYED]: [],
       [ConfigStatus.REJECTED]: [ConfigStatus.IN_PROGRESS],
       [ConfigStatus.CHANGES_REQUESTED]: [
@@ -61,14 +61,14 @@ export class ConfigWorkflowService {
     const hasExporterRole = userClaims.includes('exporter');
 
     const result: WorkflowValidationResult = {
-      canEdit: false,
-      canSubmit: false,
-      canApprove: false,
-      canReject: false,
-      canRequestChanges: false,
-      canExport: false,
-      canDeploy: false,
-      canReturnToProgress: false,
+  canEdit: false,
+  canSubmit: false,
+  canApprove: false,
+  canReject: false,
+  canRequestChanges: false,
+  canExport: false,
+  canDeploy: false,
+  canReturnToProgress: false,
     };
 
     if (hasEditorRole) {
@@ -104,13 +104,13 @@ export class ConfigWorkflowService {
 
   getTargetStatus(action: any): string {
     const actionToStatusMap: Record<string, string> = {
-      submit_for_approval: ConfigStatus.UNDER_REVIEW,
-      approve: ConfigStatus.APPROVED,
-      reject: ConfigStatus.REJECTED,
-      request_changes: ConfigStatus.CHANGES_REQUESTED,
-      export: 'EXPORTED',
-      deploy: ConfigStatus.DEPLOYED,
-      return_to_progress: ConfigStatus.IN_PROGRESS,
+  submit_for_approval: ConfigStatus.UNDER_REVIEW,
+  approve: ConfigStatus.APPROVED,
+  reject: ConfigStatus.REJECTED,
+  request_changes: ConfigStatus.CHANGES_REQUESTED,
+  export: ConfigStatus.EXPORTED,
+  deploy: ConfigStatus.DEPLOYED,
+  return_to_progress: ConfigStatus.IN_PROGRESS,
     };
 
     return actionToStatusMap[action];
@@ -232,13 +232,13 @@ export class ConfigWorkflowService {
 
   getActionDescription(action: WorkflowAction): string {
     const descriptions: Record<WorkflowAction, string> = {
-      submit_for_approval: 'Submit for Approval',
-      approve: 'Approve',
-      reject: 'Reject',
-      request_changes: 'Request Changes',
-      export: 'Export',
-      deploy: 'Deploy',
-      return_to_progress: 'Return to Progress',
+  submit_for_approval: 'Submit for Approval',
+  approve: 'Approve',
+  reject: 'Reject',
+  request_changes: 'Request Changes',
+  export: 'Export',
+  deploy: 'Deploy',
+  return_to_progress: 'Return to Progress',
     };
 
     return descriptions[action] || action;
