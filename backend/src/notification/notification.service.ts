@@ -66,7 +66,7 @@ export class NotificationService {
           );
           this.isConfigured = false;
         } else {
-          this.logger.log(`✅ SMTP configured and ready: ${smtpHost}`);
+          this.logger.log(` SMTP configured and ready: ${smtpHost}`);
           this.isConfigured = true;
         }
       });
@@ -146,12 +146,12 @@ Tenant: ${context.tenantId}
     `.trim();
 
     const html = `
-<div style="font-family: Arial, sans-serif; max-width: 600px; padding: 20px; background-color: #f9f9f9;">
+<div style="font-family: Arial, sans-serif; max-inline-size: 600px; padding: 20px; background-color: #f9f9f9;">
   <h2 style="color: #d32f2f;">⚠️ Changes Requested</h2>
   
   <div style="background-color: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
-    <h3 style="margin-top: 0;">Configuration Details</h3>
-    <table style="width: 100%; border-collapse: collapse;">
+    <h3 style="margin-block-start: 0;">Configuration Details</h3>
+    <table style="inline-size: 100%; border-collapse: collapse;">
       <tr>
         <td style="padding: 8px; font-weight: bold; color: #666;">Configuration:</td>
         <td style="padding: 8px;">${context.configName}</td>
@@ -171,16 +171,16 @@ Tenant: ${context.tenantId}
     </table>
   </div>
 
-  <div style="background-color: #fff3cd; padding: 15px; border-left: 4px solid #ffc107; margin: 20px 0;">
+  <div style="background-color: #fff3cd; padding: 15px; border-inline-start: 4px solid #ffc107; margin: 20px 0;">
     <p style="margin: 0; font-weight: bold;">Approver: ${context.requesterName || context.requesterEmail}</p>
     ${context.comment ? `<p style="margin: 10px 0 0 0;"><strong>Comments:</strong><br/>${context.comment.replace(/\n/g, '<br/>')}</p>` : ''}
   </div>
 
-  <p style="color: #666; margin-top: 30px;">
+  <p style="color: #666; margin-block-start: 30px;">
     Please review the requested changes and resubmit the configuration when ready.
   </p>
 
-  <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 30px 0;"/>
+  <hr style="border: none; border-block-start: 1px solid #e0e0e0; margin: 30px 0;"/>
   <p style="color: #999; font-size: 12px;">
     This is an automated notification from Tazama Connection Studio.<br/>
     Tenant: ${context.tenantId}
@@ -231,12 +231,12 @@ Tenant: ${context.tenantId}
     `.trim();
 
     const html = `
-<div style="font-family: Arial, sans-serif; max-width: 600px; padding: 20px; background-color: #f9f9f9;">
+<div style="font-family: Arial, sans-serif; max-inline-size: 600px; padding: 20px; background-color: #f9f9f9;">
   <h2 style="color: #2196F3;">📋 Approval Required</h2>
   
   <div style="background-color: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
-    <h3 style="margin-top: 0;">Configuration Details</h3>
-    <table style="width: 100%; border-collapse: collapse;">
+    <h3 style="margin-block-start: 0;">Configuration Details</h3>
+    <table style="inline-size: 100%; border-collapse: collapse;">
       <tr>
         <td style="padding: 8px; font-weight: bold; color: #666;">Configuration:</td>
         <td style="padding: 8px;">${context.configName}</td>
@@ -256,16 +256,16 @@ Tenant: ${context.tenantId}
     </table>
   </div>
 
-  <div style="background-color: #e3f2fd; padding: 15px; border-left: 4px solid #2196F3; margin: 20px 0;">
+  <div style="background-color: #e3f2fd; padding: 15px; border-inline-start: 4px solid #2196F3; margin: 20px 0;">
     <p style="margin: 0; font-weight: bold;">Submitted by: ${context.requesterName || context.requesterEmail}</p>
     ${context.comment ? `<p style="margin: 10px 0 0 0;"><strong>Comments:</strong><br/>${context.comment.replace(/\n/g, '<br/>')}</p>` : ''}
   </div>
 
-  <p style="color: #666; margin-top: 30px;">
+  <p style="color: #666; margin-block-start: 30px;">
     Please review this configuration and approve or request changes as needed.
   </p>
 
-  <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 30px 0;"/>
+  <hr style="border: none; border-block-start: 1px solid #e0e0e0; margin: 30px 0;"/>
   <p style="color: #999; font-size: 12px;">
     This is an automated notification from Tazama Connection Studio.<br/>
     Tenant: ${context.tenantId}<br/>
