@@ -16,6 +16,7 @@ import { JSONSchemaConverterService } from '../schemas/json-schema-converter.ser
 import { SchemaInferenceService } from '../schemas/schema-inference.service';
 import { NotificationService } from '../notification/notification.service';
 import { DatabaseService } from '@tazama-lf/tcs-lib';
+import { decrypt } from '../utils/helpers';
 
 import { TazamaDataModelService } from '../tazama-data-model/tazama-data-model.service';
 import { ConfigWorkflowService } from './config-workflow.service';
@@ -2339,29 +2340,27 @@ export class ConfigService {
 
     const newStatus = 'EXPORTED' as any;
 
-    // Generate filename similar to job.service.ts
-    const nodeEnv = this.nestConfigService.get<string>('NODE_ENV');
-    const fileName = `${nodeEnv}_config_${tenantId}_${id}`;
+    const fileName = `dems_${tenantId}_${id}`;
 
     try {
-      // Ensure config includes createTableQuery
       const configToExport = { ...config };
-      if (!(configToExport as any).createTableQuery) {
-        // Regenerate query if missing
-        const transactionType = config.transactionType.replace(
-          /[^a-zA-Z0-9_]/g,
-          '_',
-        );
-        const tableName = `${transactionType}_${tenantId}`;
-        (configToExport as any).createTableQuery =
-          `CREATE TABLE IF NOT EXISTS "${tableName}" (
-          id SERIAL PRIMARY KEY,
-          config_id INTEGER,
-          timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          details JSONB
-        );`;
-      }
-      // Upload config to SFTP with status READY (similar to job.service.ts)
+      
+      // Generate CREATE TABLE query
+      const transactionType = config.transactionType.replace(
+        /[^a-zA-Z0-9_]/g,
+        '_',
+      );
+      const tableName = transactionType;
+      (configToExport as any).createTableQuery =
+        `CREATE TABLE IF NOT EXISTS "${tableName}" (
+  id SERIAL PRIMARY KEY,
+  endToEndId TEXT NULL,
+  tenantId TEXT NOT NULL,
+  document JSONB NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);`;
+
+      // Upload config to SFTP with status 'ready'
       await this.sftpService.createFile(fileName, {
         ...configToExport,
         status: 'ready',
@@ -2371,7 +2370,6 @@ export class ConfigService {
         `Successfully uploaded config file (${fileName}) to SFTP server.`,
       );
 
-      // Update status
       await this.configRepository.updateConfig(
         id,
         tenantId,
@@ -2398,7 +2396,7 @@ export class ConfigService {
         entityId: id.toString(),
         actor: userId,
         tenantId,
-        details: `Configuration exported to SFTP${dto.comment ? `: ${dto.comment}` : ''}`,
+        details: `Configuration exported to SFTP as ${fileName}${dto.comment ? `: ${dto.comment}` : ''}`,
         newValues: { status: newStatus },
       });
 
@@ -2451,16 +2449,65 @@ export class ConfigService {
     }
 
     const newStatus = ConfigStatus.DEPLOYED;
+    const fileName = `dems_${tenantId}_${id}`;
 
-    // Update status
-    await this.configRepository.updateConfig(
-      id,
-      tenantId,
-      {
-        status: newStatus,
-      },
-      token,
-    );
+    try {
+      // Read config from SFTP
+      this.logger.log(`Reading config file from SFTP: ${fileName}`);
+      const fileContent = await this.sftpService.readFile(fileName);
+      const configData = JSON.parse(fileContent);
+
+      // Decrypt credentials if present
+      if (configData.credentials) {
+        if (configData.credentials.password) {
+          configData.credentials.password = decrypt(configData.credentials.password);
+          this.logger.log('Decrypted password');
+        }
+        if (configData.credentials.private_key) {
+          configData.credentials.private_key = decrypt(configData.credentials.private_key);
+          this.logger.log('Decrypted private_key');
+        }
+      }
+
+      // Execute CREATE TABLE query from config
+      if (configData.createTableQuery) {
+        this.logger.log(`📋 Executing CREATE TABLE query from config ${id}:`);
+        this.logger.log(configData.createTableQuery);
+        
+        await this.databaseService.executeRawQuery(configData.createTableQuery);
+        
+        this.logger.log(`✅ Successfully executed CREATE TABLE from deployed config`);
+        
+        // Log to audit
+        await this.auditService.logAction({
+          action: 'execute_create_table_on_deploy',
+          entityType: 'config',
+          entityId: id.toString(),
+          actor: userId,
+          tenantId,
+          details: `Executed CREATE TABLE query during deployment`,
+        });
+      } else {
+        this.logger.warn(`No createTableQuery found in config file ${fileName}`);
+      }
+
+      // Update config status on SFTP to 'deployed'
+      await this.sftpService.createFile(fileName, { 
+        ...configData, 
+        status: 'deployed' 
+      });
+
+      this.logger.log(`Updated config file (${fileName}) status to deployed on SFTP`);
+
+      // Update database status
+      await this.configRepository.updateConfig(
+        id,
+        tenantId,
+        {
+          status: newStatus,
+        },
+        token,
+      );
 
       // Log the action
       await this.logStatusChange(
@@ -2483,13 +2530,19 @@ export class ConfigService {
         newValues: { status: newStatus },
       });
 
-    return {
-      success: true,
-      message: 'Configuration deployed successfully',
-      config:
-        (await this.configRepository.findConfigById(id, tenantId, token)) ||
-        undefined,
-    };
+      return {
+        success: true,
+        message: `Configuration deployed successfully`,
+        config:
+          (await this.configRepository.findConfigById(id, tenantId, token)) ||
+          undefined,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to deploy config: ${error.message}`);
+      throw new BadRequestException(
+        `Failed to deploy configuration: ${error.message}`,
+      );
+    }
   }
 
   /**

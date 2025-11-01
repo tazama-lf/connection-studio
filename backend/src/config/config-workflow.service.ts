@@ -22,7 +22,7 @@ export class ConfigWorkflowService {
         ConfigStatus.IN_PROGRESS, // For changes requested, return to in progress
       ],
       [ConfigStatus.APPROVED]: [ConfigStatus.EXPORTED],
-      [ConfigStatus.EXPORTED]: [ConfigStatus.READY_FOR_DEPLOYMENT],
+      [ConfigStatus.EXPORTED]: [ConfigStatus.DEPLOYED],
       [ConfigStatus.READY_FOR_DEPLOYMENT]: [ConfigStatus.DEPLOYED],
       [ConfigStatus.DEPLOYED]: [],
       [ConfigStatus.REJECTED]: [ConfigStatus.IN_PROGRESS],
@@ -92,7 +92,7 @@ export class ConfigWorkflowService {
     }
 
     if (hasPublisherRole) {
-      result.canDeploy = currentStatus === ConfigStatus.READY_FOR_DEPLOYMENT;
+      result.canDeploy = currentStatus === ConfigStatus.EXPORTED;
     }
 
     return result;
@@ -179,7 +179,7 @@ export class ConfigWorkflowService {
           return {
             canPerform: false,
             message:
-              'Only publishers can deploy configurations in APPROVED status',
+              'Only publishers can deploy configurations in EXPORTED status',
           };
         }
         break;

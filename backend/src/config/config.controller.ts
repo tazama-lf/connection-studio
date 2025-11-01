@@ -481,12 +481,16 @@ export class ConfigController {
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: DeploymentDto,
     @User() user: AuthenticatedUser,
+    @Headers('authorization') authorization?: string,
   ): Promise<ConfigResponseDto> {
-    return this.adminServiceClient.forwardRequest(
-      'POST',
-      `/v1/admin/tcs/config/${id}/workflow/deploy`,
+    const token = authorization?.replace('Bearer ', '') || '';
+    return this.configService.deployConfig(
+      id,
       dto,
-      buildForwardHeaders(user),
+      getTenantId(user),
+      getUserId(user),
+      getUserClaims(user),
+      token,
     );
   }
 
