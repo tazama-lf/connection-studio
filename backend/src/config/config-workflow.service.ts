@@ -20,8 +20,9 @@ export class ConfigWorkflowService {
         ConfigStatus.REJECTED,
         ConfigStatus.CHANGES_REQUESTED,
       ],
-      [ConfigStatus.APPROVED]: [ConfigStatus.DEPLOYED],
+      [ConfigStatus.APPROVED]: [ConfigStatus.DEPLOYED, ConfigStatus.EXPORTED],
       [ConfigStatus.DEPLOYED]: [],
+      [ConfigStatus.EXPORTED]: [],
       [ConfigStatus.REJECTED]: [ConfigStatus.IN_PROGRESS],
       [ConfigStatus.CHANGES_REQUESTED]: [ConfigStatus.IN_PROGRESS],
     };
@@ -63,6 +64,7 @@ export class ConfigWorkflowService {
       canRequestChanges: false,
       canDeploy: false,
       canReturnToProgress: false,
+      canExport: false,
     };
 
     if (hasEditorRole) {
@@ -85,6 +87,7 @@ export class ConfigWorkflowService {
 
     if (hasPublisherRole) {
       result.canDeploy = currentStatus === ConfigStatus.APPROVED;
+      result.canExport = currentStatus === ConfigStatus.APPROVED;
     }
 
     return result;
@@ -98,6 +101,7 @@ export class ConfigWorkflowService {
       request_changes: ConfigStatus.CHANGES_REQUESTED,
       deploy: ConfigStatus.DEPLOYED,
       return_to_progress: ConfigStatus.IN_PROGRESS,
+      export: ConfigStatus.EXPORTED,
     };
 
     return actionToStatusMap[action];
@@ -225,6 +229,7 @@ export class ConfigWorkflowService {
       request_changes: 'Request Changes',
       deploy: 'Deploy',
       return_to_progress: 'Return to Progress',
+      export: 'Export',
     };
 
     return descriptions[action] || action;

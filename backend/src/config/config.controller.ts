@@ -15,6 +15,7 @@ import {
   UseInterceptors,
   UploadedFile,
   Req,
+  Logger,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AdminServiceClient } from '../services/admin-service-client.service';
@@ -58,7 +59,17 @@ function decodeTokenString(tokenString: string): any {
 }
 function getUserId(user: AuthenticatedUser): string {
   const decodedToken = decodeTokenString(user.token.tokenString);
-  return decodedToken.preferred_username;
+  const userId = decodedToken.preferred_username;
+  
+  // ✅ LOG: Extract email from JWT in Connection Studio Controller
+  Logger.log(`📧 [ConfigController] Extracted user ID (email) from JWT:`);
+  Logger.log(`   - preferred_username: ${decodedToken.preferred_username || 'N/A'}`);
+  Logger.log(`   - email field: ${decodedToken.email || 'N/A'}`);
+  Logger.log(`   - Final userId: ${userId || 'NOT FOUND'}`);
+  Logger.log(`   - sub: ${decodedToken.sub || 'N/A'}`);
+  Logger.log(`   - clientId: ${decodedToken.clientId || 'N/A'}`);
+  
+  return userId;
 }
 
 function getUserClaims(user: AuthenticatedUser): string[] {

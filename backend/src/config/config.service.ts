@@ -14,6 +14,8 @@ import {
 } from '@tazama-lf/tcs-lib';
 import { AuditService } from '../audit/audit.service';
 import { JSONSchemaConverterService } from '../schemas/json-schema-converter.service';
+import { NotificationService } from '../notification/notification.service';
+import { DatabaseService } from '@tazama-lf/tcs-lib';
 
 import { TazamaDataModelService } from '../tazama-data-model/tazama-data-model.service';
 import { ConfigWorkflowService } from './config-workflow.service';
@@ -63,6 +65,8 @@ export class ConfigService {
     private readonly jsonSchemaConverter: JSONSchemaConverterService,
     private readonly tazamaDataModelService: TazamaDataModelService,
     private readonly workflowService: ConfigWorkflowService,
+    private readonly notificationService: NotificationService,
+    private readonly databaseService: DatabaseService,
   ) {}
 
   async createConfig(
@@ -1883,6 +1887,15 @@ export class ConfigService {
       newValues: { status: newStatus },
     });
 
+    // Send email notifications to approvers (async, non-blocking)
+    this.sendApprovalNotification(id, config, tenantId, userId, dto.comment).catch(
+      (err) => {
+        this.logger.error(
+          `Failed to send approval notification for config ${id}: ${err.message}`,
+        );
+      },
+    );
+
     return {
       success: true,
       message: 'Configuration submitted for approval successfully',
@@ -2091,6 +2104,19 @@ export class ConfigService {
       tenantId,
       details: `Changes requested: ${dto.comment}`,
       newValues: { status: newStatus },
+    });
+
+    // Send email notification to editor (async, non-blocking)
+    this.sendChangesRequestedNotification(
+      id,
+      config,
+      tenantId,
+      userId,
+      dto.comment,
+    ).catch((err) => {
+      this.logger.error(
+        `Failed to send changes requested notification for config ${id}: ${err.message}`,
+      );
     });
 
     return {
@@ -2354,11 +2380,126 @@ export class ConfigService {
       [ConfigStatus.APPROVED]:
         'Configuration has been approved and ready for deployment',
       [ConfigStatus.DEPLOYED]: 'Configuration has been deployed to production',
+      [ConfigStatus.EXPORTED]: 'Configuration has been exported',
       [ConfigStatus.REJECTED]: 'Configuration has been rejected',
       [ConfigStatus.CHANGES_REQUESTED]:
         'Changes have been requested for this configuration',
     };
 
     return descriptions[status] || status;
+  }
+
+  /**
+   * Send approval notification to all approvers
+   * Uses in-memory cache to get approver emails
+   */
+  private async sendApprovalNotification(
+    configId: number,
+    config: Config,
+    tenantId: string,
+    requesterId: string,
+    comment?: string,
+  ): Promise<void> {
+    try {
+      // Get all approver emails from cache
+      const approverEmails = await this.databaseService.getEmailsByRole(
+        tenantId,
+        'approver',
+      );
+
+      if (approverEmails.length === 0) {
+        this.logger.warn(
+          `No approvers found in cache for tenant ${tenantId}. Emails will not be sent.`,
+        );
+        return;
+      }
+
+      // Get requester email from cache
+      const requesterEmail =
+        (await this.databaseService.getEmailByUserId(tenantId, requesterId)) ||
+        'unknown@example.com';
+
+      // Build notification context
+      const context = {
+        configId,
+        configName: config.msgFam || config.transactionType,
+        version: config.version,
+        transactionType: config.transactionType,
+        requesterEmail,
+        comment: comment || 'No comment provided',
+        tenantId,
+      };
+
+      // Send email notification
+      await this.notificationService.sendSubmitForApproval(
+        approverEmails,
+        context,
+      );
+
+      this.logger.log(
+        `Sent approval notification for config ${configId} to ${approverEmails.length} approver(s)`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to send approval notification: ${error.message}`,
+      );
+      // Don't throw - notification failure shouldn't block workflow
+    }
+  }
+
+  /**
+   * Send changes requested notification to editor
+   * Uses in-memory cache to get editor email
+   */
+  private async sendChangesRequestedNotification(
+    configId: number,
+    config: Config,
+    tenantId: string,
+    approverId: string,
+    comment?: string,
+  ): Promise<void> {
+    try {
+      // Get editor email from cache (createdBy is the editor)
+      const editorUserId = config.createdBy || 'unknown';
+      const editorEmail = await this.databaseService.getEmailByUserId(
+        tenantId,
+        editorUserId,
+      );
+
+      if (!editorEmail) {
+        this.logger.warn(
+          `No email found for editor ${config.createdBy} in tenant ${tenantId}. Email will not be sent.`,
+        );
+        return;
+      }
+
+      // Get approver email from cache
+      const approverEmail =
+        (await this.databaseService.getEmailByUserId(tenantId, approverId)) ||
+        'unknown@example.com';
+
+      // Build notification context
+      const context = {
+        configId,
+        configName: config.msgFam || config.transactionType,
+        version: config.version,
+        transactionType: config.transactionType,
+        requesterEmail: approverEmail,
+        comment: comment || 'No comment provided',
+        tenantId,
+      };
+
+      // Send email notification
+      await this.notificationService.sendChangesRequested(editorEmail, context);
+
+      this.logger.log(
+        `Sent changes requested notification for config ${configId} to ${editorEmail}`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to send changes requested notification: ${error.message}`,
+      );
+      // Don't throw - notification failure shouldn't block workflow
+    }
   }
 }

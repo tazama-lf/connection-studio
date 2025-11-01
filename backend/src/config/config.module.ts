@@ -10,9 +10,18 @@ import { TazamaDataModelModule } from '../tazama-data-model/tazama-data-model.mo
 import { PayloadParsingService } from '../services/payload-parsing.service';
 import { FileParsingService } from '../services/file-parsing.service';
 import { AdminServiceClient } from '../services/admin-service-client.service';
+import { NotificationModule } from '../notification/notification.module';
+import { ConfigService as NestConfigService } from '@nestjs/config';
+import { DatabaseService } from '@tazama-lf/tcs-lib';
 
 @Module({
-  imports: [HttpModule, SchemasModule, AuditModule, TazamaDataModelModule],
+  imports: [
+    HttpModule,
+    SchemasModule,
+    AuditModule,
+    TazamaDataModelModule,
+    NotificationModule,
+  ],
   controllers: [ConfigController],
   providers: [
     ConfigService,
@@ -21,6 +30,20 @@ import { AdminServiceClient } from '../services/admin-service-client.service';
     PayloadParsingService,
     FileParsingService,
     AdminServiceClient,
+    {
+      provide: DatabaseService,
+      useFactory: (nestConfigService: NestConfigService) => {
+        const dbConfig = {
+          host: nestConfigService.get<string>('DB_HOST') || 'localhost',
+          port: nestConfigService.get<number>('DB_PORT') || 5432,
+          database: nestConfigService.get<string>('DB_NAME') || 'postgres',
+          user: nestConfigService.get<string>('DB_USER') || 'postgres',
+          password: nestConfigService.get<string>('DB_PASS') || 'newpassword',
+        };
+        return new DatabaseService(dbConfig);
+      },
+      inject: [NestConfigService],
+    },
   ],
   exports: [
     ConfigService,
