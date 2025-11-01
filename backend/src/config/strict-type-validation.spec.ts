@@ -3,8 +3,11 @@ import { ConfigService } from './config.service';
 import { ConfigRepository } from './config.repository';
 import { AuditService } from '../audit/audit.service';
 import { JSONSchemaConverterService } from '../schemas/json-schema-converter.service';
+import { SchemaInferenceService } from '../schemas/schema-inference.service';
 import { TazamaDataModelService } from '../tazama-data-model/tazama-data-model.service';
 import { ConfigWorkflowService } from './config-workflow.service';
+import { SftpService } from '../sftp/sftp.service';
+import { ConfigService as NestConfigService } from '@nestjs/config';
 import { AddMappingDto } from './config.interfaces';
 
 describe('Strict Type Validation', () => {
@@ -37,6 +40,20 @@ describe('Strict Type Validation', () => {
   };
 
   beforeEach(async () => {
+    const mockSchemaInferenceService = {
+      inferSchema: jest.fn(),
+      validateFields: jest.fn(),
+    };
+
+    const mockSftpService = {
+      createFile: jest.fn(),
+      deleteFile: jest.fn(),
+    };
+
+    const mockNestConfigService = {
+      get: jest.fn().mockReturnValue('test'),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ConfigService,
@@ -68,6 +85,12 @@ describe('Strict Type Validation', () => {
           provide: ConfigWorkflowService,
           useValue: {},
         },
+        {
+          provide: SchemaInferenceService,
+          useValue: mockSchemaInferenceService,
+        },
+        { provide: SftpService, useValue: mockSftpService },
+        { provide: NestConfigService, useValue: mockNestConfigService },
       ],
     }).compile();
 

@@ -7,6 +7,9 @@ import { AuditService } from '../audit/audit.service';
 import { JSONSchemaConverterService } from '../schemas/json-schema-converter.service';
 import { SchemaInferenceService } from '../schemas/schema-inference.service';
 import { TazamaDataModelService } from '../tazama-data-model/tazama-data-model.service';
+import { SftpService } from '../sftp/sftp.service';
+import { PayloadParsingService } from '../services/payload-parsing.service';
+import { ConfigService as NestConfigService } from '@nestjs/config';
 import {
   Config,
   ContentType,
@@ -20,7 +23,6 @@ import {
 
 // Mock @tazama-lf/tcs-lib functions
 jest.mock('@tazama-lf/tcs-lib', () => ({
-  parsePayloadToSchema: jest.fn(),
   applyFieldAdjustments: jest.fn(),
   JSONSchema: {},
   FieldType: {},
@@ -29,16 +31,18 @@ jest.mock('@tazama-lf/tcs-lib', () => ({
     XML: 'application/xml',
     YAML: 'application/yaml',
   },
+  ConfigStatus: {
+    IN_PROGRESS: 'in_progress',
+    UNDER_REVIEW: 'under_review',
+    APPROVED: 'approved',
+    REJECTED: 'rejected',
+    CHANGES_REQUESTED: 'changes_requested',
+    DEPLOYED: 'deployed',
+  },
 }));
 
-import {
-  parsePayloadToSchema,
-  applyFieldAdjustments,
-} from '@tazama-lf/tcs-lib';
+import { applyFieldAdjustments } from '@tazama-lf/tcs-lib';
 
-const mockParsePayloadToSchema = parsePayloadToSchema as jest.MockedFunction<
-  typeof parsePayloadToSchema
->;
 const mockApplyFieldAdjustments = applyFieldAdjustments as jest.MockedFunction<
   typeof applyFieldAdjustments
 >;
@@ -48,6 +52,12 @@ describe('ConfigService', () => {
   let repository: jest.Mocked<ConfigRepository>;
   let auditService: jest.Mocked<AuditService>;
   let jsonSchemaConverter: jest.Mocked<JSONSchemaConverterService>;
+  let schemaInferenceService: jest.Mocked<SchemaInferenceService>;
+  let payloadParsingService: any;
+
+  // Mock token for authentication
+  const mockToken = 'mock-jwt-token-for-testing';
+
   const mockJSONSchema: JSONSchema = {
     $schema: 'https://json-schema.org/draft/2020-12/schema',
     type: 'object',
@@ -86,6 +96,7 @@ describe('ConfigService', () => {
       findConfigByMsgFamVersionAndTransactionType: jest.fn(),
       updateConfig: jest.fn(),
       deleteConfig: jest.fn(),
+      runRawQuery: jest.fn(),
     };
     const mockAuditService = {
       logAction: jest.fn(),
@@ -162,17 +173,66 @@ describe('ConfigService', () => {
           provide: ConfigWorkflowService,
           useValue: mockConfigWorkflowService,
         },
+        {
+          provide: SftpService,
+          useValue: {
+            createFile: jest.fn(),
+            deleteFile: jest.fn(),
+          },
+        },
+        {
+          provide: NestConfigService,
+          useValue: {
+            get: jest.fn().mockReturnValue('test'),
+          },
+        },
+        {
+          provide: PayloadParsingService,
+          useValue: {
+            parsePayloadToSchema: jest.fn().mockResolvedValue({
+              success: true,
+              sourceFields: [
+                {
+                  name: 'amount',
+                  path: 'amount',
+                  type: FieldType.NUMBER,
+                  isRequired: true,
+                },
+                {
+                  name: 'currency',
+                  path: 'currency',
+                  type: FieldType.STRING,
+                  isRequired: false,
+                },
+              ],
+              jsonSchema: mockJSONSchema,
+              metadata: {
+                totalFields: 2,
+                requiredFields: 1,
+                optionalFields: 1,
+                nestedLevels: 0,
+                originalSize: 100,
+                processingTime: 10,
+              },
+              validation: { success: true, errors: [], warnings: [] },
+            }),
+            applyFieldAdjustments: jest.fn(),
+            validatePayloadStructure: jest.fn(),
+          },
+        },
       ],
     }).compile();
     service = module.get<ConfigService>(ConfigService);
     repository = module.get(ConfigRepository);
     auditService = module.get(AuditService);
     jsonSchemaConverter = module.get(JSONSchemaConverterService);
-    
-    const schemaInferenceService = module.get(SchemaInferenceService);
+    schemaInferenceService = module.get(SchemaInferenceService);
+    payloadParsingService = module.get(PayloadParsingService);
 
     // Set up default mock return values
-    (schemaInferenceService.inferSchemaFromPayload as jest.Mock).mockResolvedValue([
+    (
+      schemaInferenceService.inferSchemaFromPayload as jest.Mock
+    ).mockResolvedValue([
       {
         name: 'amount',
         path: 'amount',
@@ -198,50 +258,6 @@ describe('ConfigService', () => {
         isRequired: false,
       },
     ]);
-    
-    mockParsePayloadToSchema.mockResolvedValue({
-      success: true,
-      jsonSchema: mockJSONSchema,
-      sourceFields: [
-        {
-          name: 'amount',
-          path: 'amount',
-          type: FieldType.NUMBER,
-          isRequired: true,
-        },
-        {
-          name: 'currency',
-          path: 'currency',
-          type: FieldType.STRING,
-          isRequired: false,
-        },
-        {
-          name: 'firstName',
-          path: 'firstName',
-          type: FieldType.STRING,
-          isRequired: false,
-        },
-        {
-          name: 'lastName',
-          path: 'lastName',
-          type: FieldType.STRING,
-          isRequired: false,
-        },
-      ],
-      metadata: {
-        totalFields: 4,
-        requiredFields: 1,
-        optionalFields: 3,
-        nestedLevels: 1,
-        originalSize: 100,
-        processingTime: 50,
-      },
-      validation: {
-        success: true,
-        errors: [],
-        warnings: [],
-      },
-    });
 
     mockApplyFieldAdjustments.mockReturnValue([]);
 
@@ -261,7 +277,12 @@ describe('ConfigService', () => {
       repository.findConfigByVersionAndTransactionType.mockResolvedValue(null); // No version conflict
       repository.createConfig.mockResolvedValue(1);
       repository.findConfigById.mockResolvedValue(mockConfig);
-      const result = await service.createConfig(dto, 'test-tenant', 'user-123');
+      const result = await service.createConfig(
+        dto,
+        'test-tenant',
+        'user-123',
+        mockToken,
+      );
       expect(result.success).toBe(true);
       expect(result.config).toEqual(mockConfig);
       expect(repository.createConfig).toHaveBeenCalled();
@@ -269,6 +290,7 @@ describe('ConfigService', () => {
         expect.objectContaining({
           status: ConfigStatus.IN_PROGRESS,
         }),
+        mockToken,
       );
       expect(auditService.logAction).toHaveBeenCalledWith({
         action: 'CREATE_CONFIG',
@@ -284,35 +306,28 @@ describe('ConfigService', () => {
         transactionType: 'Payments',
         payload: '{"amount":200,"currency":"EUR"}',
       };
-      const parsingResult = {
-        success: true,
-        sourceFields: [
-          {
-            name: 'amount',
-            path: 'amount',
-            type: FieldType.NUMBER,
-            isRequired: true,
-          },
-          {
-            name: 'currency',
-            path: 'currency',
-            type: FieldType.STRING,
-            isRequired: false,
-          },
-        ],
-        jsonSchema: mockJSONSchema,
-        metadata: {
-          totalFields: 2,
-          requiredFields: 1,
-          optionalFields: 1,
-          nestedLevels: 1,
-          originalSize: 100,
-          processingTime: 50,
+
+      // Mock schema inference to return fields
+      (
+        schemaInferenceService.inferSchemaFromPayload as jest.Mock
+      ).mockResolvedValueOnce([
+        {
+          name: 'amount',
+          path: 'amount',
+          type: FieldType.NUMBER,
+          isRequired: true,
         },
-        validation: { success: true, errors: [], warnings: [] },
-      };
-      mockParsePayloadToSchema.mockResolvedValue(parsingResult);
-      repository.findConfigByVersionAndTransactionType.mockResolvedValue(null); // No version conflict
+        {
+          name: 'currency',
+          path: 'currency',
+          type: FieldType.STRING,
+          isRequired: false,
+        },
+      ]);
+
+      repository.findConfigByMsgFamVersionAndTransactionType.mockResolvedValue(
+        null,
+      ); // No version conflict
       repository.createConfig.mockResolvedValue(2);
       const configWithPreferredUsername = {
         ...mockConfig,
@@ -324,6 +339,7 @@ describe('ConfigService', () => {
         dto,
         'tenant-xyz',
         'preferred_user',
+        mockToken,
       );
       expect(result.success).toBe(true);
       expect(result.config).toBeDefined();
@@ -332,6 +348,7 @@ describe('ConfigService', () => {
       }
       expect(repository.createConfig).toHaveBeenCalledWith(
         expect.objectContaining({ createdBy: 'preferred_user' }),
+        mockToken,
       );
     });
     it('should auto-generate endpoint path with msgFam', async () => {
@@ -340,35 +357,28 @@ describe('ConfigService', () => {
         transactionType: 'Payments',
         payload: '{"amount":100,"currency":"USD"}',
       };
-      const parsingResult = {
-        success: true,
-        sourceFields: [
-          {
-            name: 'amount',
-            path: 'amount',
-            type: FieldType.NUMBER,
-            isRequired: true,
-          },
-          {
-            name: 'currency',
-            path: 'currency',
-            type: FieldType.STRING,
-            isRequired: false,
-          },
-        ],
-        jsonSchema: mockJSONSchema,
-        metadata: {
-          totalFields: 2,
-          requiredFields: 1,
-          optionalFields: 1,
-          nestedLevels: 1,
-          originalSize: 100,
-          processingTime: 50,
+
+      // Mock schema inference to return fields
+      (
+        schemaInferenceService.inferSchemaFromPayload as jest.Mock
+      ).mockResolvedValueOnce([
+        {
+          name: 'amount',
+          path: 'amount',
+          type: FieldType.NUMBER,
+          isRequired: true,
         },
-        validation: { success: true, errors: [], warnings: [] },
-      };
-      mockParsePayloadToSchema.mockResolvedValue(parsingResult);
-      repository.findConfigByVersionAndTransactionType.mockResolvedValue(null); // No version conflict
+        {
+          name: 'currency',
+          path: 'currency',
+          type: FieldType.STRING,
+          isRequired: false,
+        },
+      ]);
+
+      repository.findConfigByMsgFamVersionAndTransactionType.mockResolvedValue(
+        null,
+      ); // No version conflict
       repository.createConfig.mockResolvedValue(3);
       const configWithAutoPath = {
         ...mockConfig,
@@ -376,12 +386,18 @@ describe('ConfigService', () => {
         endpointPath: '/test-tenant/v1/pain.001/Payments',
       };
       repository.findConfigById.mockResolvedValue(configWithAutoPath);
-      const result = await service.createConfig(dto, 'test-tenant', 'user-123');
+      const result = await service.createConfig(
+        dto,
+        'test-tenant',
+        'user-123',
+        mockToken,
+      );
       expect(result.success).toBe(true);
       expect(repository.createConfig).toHaveBeenCalledWith(
         expect.objectContaining({
           endpointPath: '/test-tenant/v1/pain.001/Payments',
         }),
+        mockToken,
       );
     });
     it('should auto-generate endpoint path without msgFam', async () => {
@@ -389,35 +405,28 @@ describe('ConfigService', () => {
         transactionType: 'Payments',
         payload: '{"amount":100,"currency":"USD"}',
       };
-      const parsingResult = {
-        success: true,
-        sourceFields: [
-          {
-            name: 'amount',
-            path: 'amount',
-            type: FieldType.NUMBER,
-            isRequired: true,
-          },
-          {
-            name: 'currency',
-            path: 'currency',
-            type: FieldType.STRING,
-            isRequired: false,
-          },
-        ],
-        jsonSchema: mockJSONSchema,
-        metadata: {
-          totalFields: 2,
-          requiredFields: 1,
-          optionalFields: 1,
-          nestedLevels: 1,
-          originalSize: 100,
-          processingTime: 50,
+
+      // Mock schema inference to return fields
+      (
+        schemaInferenceService.inferSchemaFromPayload as jest.Mock
+      ).mockResolvedValueOnce([
+        {
+          name: 'amount',
+          path: 'amount',
+          type: FieldType.NUMBER,
+          isRequired: true,
         },
-        validation: { success: true, errors: [], warnings: [] },
-      };
-      mockParsePayloadToSchema.mockResolvedValue(parsingResult);
-      repository.findConfigByVersionAndTransactionType.mockResolvedValue(null); // No version conflict
+        {
+          name: 'currency',
+          path: 'currency',
+          type: FieldType.STRING,
+          isRequired: false,
+        },
+      ]);
+
+      repository.findConfigByMsgFamVersionAndTransactionType.mockResolvedValue(
+        null,
+      ); // No version conflict
       repository.createConfig.mockResolvedValue(4);
       const configWithAutoPath = {
         ...mockConfig,
@@ -425,12 +434,18 @@ describe('ConfigService', () => {
         endpointPath: '/test-tenant/v1/Payments',
       };
       repository.findConfigById.mockResolvedValue(configWithAutoPath);
-      const result = await service.createConfig(dto, 'test-tenant', 'user-123');
+      const result = await service.createConfig(
+        dto,
+        'test-tenant',
+        'user-123',
+        mockToken,
+      );
       expect(result.success).toBe(true);
       expect(repository.createConfig).toHaveBeenCalledWith(
         expect.objectContaining({
           endpointPath: '/test-tenant/v1/Payments',
         }),
+        mockToken,
       );
     });
     it('should handle parsing failure', async () => {
@@ -439,15 +454,12 @@ describe('ConfigService', () => {
         transactionType: 'Payments',
         payload: 'invalid json',
       };
-      const parsingResult = {
+
+      // Mock the payload parsing service to return failure
+      payloadParsingService.parsePayloadToSchema.mockResolvedValueOnce({
         success: false,
         sourceFields: [],
-        jsonSchema: {
-          $schema: 'https://json-schema.org/draft/2020-12/schema',
-          type: 'object' as const,
-          properties: {},
-          additionalProperties: false,
-        },
+        jsonSchema: {},
         metadata: {
           totalFields: 0,
           requiredFields: 0,
@@ -456,14 +468,15 @@ describe('ConfigService', () => {
           originalSize: 0,
           processingTime: 0,
         },
-        validation: {
-          success: false,
-          errors: ['Invalid JSON'],
-          warnings: [],
-        },
-      };
-      mockParsePayloadToSchema.mockResolvedValue(parsingResult);
-      const result = await service.createConfig(dto, 'test-tenant', 'user-123');
+        validation: { success: false, errors: ['Invalid JSON'], warnings: [] },
+      });
+
+      const result = await service.createConfig(
+        dto,
+        'test-tenant',
+        'user-123',
+        mockToken,
+      );
       expect(result.success).toBe(false);
       expect(result.message).toBe('Failed to parse payload');
     });
@@ -478,7 +491,12 @@ describe('ConfigService', () => {
       repository.findConfigByMsgFamVersionAndTransactionType.mockResolvedValue(
         existingConfig,
       );
-      const result = await service.createConfig(dto, 'test-tenant', 'user-123');
+      const result = await service.createConfig(
+        dto,
+        'test-tenant',
+        'user-123',
+        mockToken,
+      );
       expect(result.success).toBe(false);
       expect(result.message).toBe(
         // eslint-disable-next-line quotes
@@ -486,7 +504,13 @@ describe('ConfigService', () => {
       );
       expect(
         repository.findConfigByMsgFamVersionAndTransactionType,
-      ).toHaveBeenCalledWith('pain.001', 'v1', 'Payments', 'test-tenant');
+      ).toHaveBeenCalledWith(
+        'pain.001',
+        'v1',
+        'Payments',
+        'test-tenant',
+        mockToken,
+      );
       expect(repository.createConfig).not.toHaveBeenCalled();
     });
     it('should validate payload is required', async () => {
@@ -494,7 +518,12 @@ describe('ConfigService', () => {
         msgFam: 'pain.001',
         transactionType: 'Payments',
       };
-      const result = await service.createConfig(dto, 'test-tenant', 'user-123');
+      const result = await service.createConfig(
+        dto,
+        'test-tenant',
+        'user-123',
+        mockToken,
+      );
       expect(result.success).toBe(false);
       expect(result.message).toBe(
         'Payload is required. Provide either payload text or upload a file.',
@@ -509,44 +538,51 @@ describe('ConfigService', () => {
         payload: '{"amount":100,"currency":"USD"}',
       };
 
-      const parsingResultWithDuplicates = {
+      const sourceFieldsWithDuplicates = [
+        {
+          name: 'amount',
+          path: 'amount',
+          type: FieldType.NUMBER,
+          isRequired: true,
+        },
+        {
+          name: 'amount', // Duplicate name
+          path: 'totalAmount',
+          type: FieldType.NUMBER,
+          isRequired: false,
+        },
+        {
+          name: 'currency',
+          path: 'currency',
+          type: FieldType.STRING,
+          isRequired: false,
+        },
+      ];
+
+      payloadParsingService.parsePayloadToSchema.mockResolvedValueOnce({
         success: true,
-        sourceFields: [
-          {
-            name: 'amount',
-            path: 'amount',
-            type: FieldType.NUMBER,
-            isRequired: true,
-          },
-          {
-            name: 'amount', // Duplicate name
-            path: 'totalAmount',
-            type: FieldType.NUMBER,
-            isRequired: false,
-          },
-          {
-            name: 'currency',
-            path: 'currency',
-            type: FieldType.STRING,
-            isRequired: false,
-          },
-        ],
+        sourceFields: sourceFieldsWithDuplicates,
         jsonSchema: mockJSONSchema,
         metadata: {
           totalFields: 3,
           requiredFields: 1,
           optionalFields: 2,
-          nestedLevels: 1,
+          nestedLevels: 0,
           originalSize: 100,
-          processingTime: 50,
+          processingTime: 10,
         },
         validation: { success: true, errors: [], warnings: [] },
-      };
+      });
+      repository.findConfigByMsgFamVersionAndTransactionType.mockResolvedValue(
+        null,
+      );
 
-      mockParsePayloadToSchema.mockResolvedValue(parsingResultWithDuplicates);
-      repository.findConfigByVersionAndTransactionType.mockResolvedValue(null);
-
-      const result = await service.createConfig(dto, 'test-tenant', 'user-123');
+      const result = await service.createConfig(
+        dto,
+        'test-tenant',
+        'user-123',
+        mockToken,
+      );
 
       expect(result.success).toBe(false);
       expect(result.message).toBe('Schema contains duplicate fields');
@@ -564,46 +600,51 @@ describe('ConfigService', () => {
         payload: '{"amount":100,"currency":"USD"}',
       };
 
-      const parsingResultWithDuplicatePaths = {
+      const sourceFieldsWithDuplicatePaths = [
+        {
+          name: 'amount',
+          path: 'payment.amount',
+          type: FieldType.NUMBER,
+          isRequired: true,
+        },
+        {
+          name: 'totalAmount',
+          path: 'payment.amount', // Duplicate path
+          type: FieldType.NUMBER,
+          isRequired: false,
+        },
+        {
+          name: 'currency',
+          path: 'currency',
+          type: FieldType.STRING,
+          isRequired: false,
+        },
+      ];
+
+      payloadParsingService.parsePayloadToSchema.mockResolvedValueOnce({
         success: true,
-        sourceFields: [
-          {
-            name: 'amount',
-            path: 'payment.amount',
-            type: FieldType.NUMBER,
-            isRequired: true,
-          },
-          {
-            name: 'totalAmount',
-            path: 'payment.amount', // Duplicate path
-            type: FieldType.NUMBER,
-            isRequired: false,
-          },
-          {
-            name: 'currency',
-            path: 'currency',
-            type: FieldType.STRING,
-            isRequired: false,
-          },
-        ],
+        sourceFields: sourceFieldsWithDuplicatePaths,
         jsonSchema: mockJSONSchema,
         metadata: {
           totalFields: 3,
           requiredFields: 1,
           optionalFields: 2,
-          nestedLevels: 1,
+          nestedLevels: 0,
           originalSize: 100,
-          processingTime: 50,
+          processingTime: 10,
         },
         validation: { success: true, errors: [], warnings: [] },
-      };
-
-      mockParsePayloadToSchema.mockResolvedValue(
-        parsingResultWithDuplicatePaths,
+      });
+      repository.findConfigByMsgFamVersionAndTransactionType.mockResolvedValue(
+        null,
       );
-      repository.findConfigByVersionAndTransactionType.mockResolvedValue(null);
 
-      const result = await service.createConfig(dto, 'test-tenant', 'user-123');
+      const result = await service.createConfig(
+        dto,
+        'test-tenant',
+        'user-123',
+        mockToken,
+      );
 
       expect(result.success).toBe(false);
       expect(result.message).toBe('Schema contains duplicate fields');
@@ -617,13 +658,17 @@ describe('ConfigService', () => {
   describe('getConfigById', () => {
     it('should return config by ID', async () => {
       repository.findConfigById.mockResolvedValue(mockConfig);
-      const result = await service.getConfigById(1, 'test-tenant');
+      const result = await service.getConfigById(1, 'test-tenant', mockToken);
       expect(result).toEqual(mockConfig);
-      expect(repository.findConfigById).toHaveBeenCalledWith(1, 'test-tenant');
+      expect(repository.findConfigById).toHaveBeenCalledWith(
+        1,
+        'test-tenant',
+        mockToken,
+      );
     });
     it('should return null if not found', async () => {
       repository.findConfigById.mockResolvedValue(null);
-      const result = await service.getConfigById(999, 'test-tenant');
+      const result = await service.getConfigById(999, 'test-tenant', mockToken);
       expect(result).toBeNull();
     });
   });
@@ -646,6 +691,7 @@ describe('ConfigService', () => {
         mappingDto,
         'test-tenant',
         'user-123',
+        mockToken,
       );
       expect(result.success).toBe(true);
       expect(result.config?.mapping).toHaveLength(1);
@@ -675,6 +721,7 @@ describe('ConfigService', () => {
         mappingDto,
         'test-tenant',
         'user-123',
+        mockToken,
       );
       expect(result.success).toBe(true);
       expect(result.config?.mapping).toHaveLength(1);
@@ -686,7 +733,7 @@ describe('ConfigService', () => {
       };
       repository.findConfigById.mockResolvedValue(mockConfig);
       await expect(
-        service.addMapping(1, mappingDto, 'test-tenant', 'user-123'),
+        service.addMapping(1, mappingDto, 'test-tenant', 'user-123', mockToken),
       ).rejects.toThrow('Concat mapping requires at least 2 source fields');
     });
   });
@@ -710,6 +757,7 @@ describe('ConfigService', () => {
         0,
         'test-tenant',
         'user-123',
+        mockToken,
       );
       expect(result.success).toBe(true);
       expect(result.config?.mapping).toHaveLength(1);
@@ -717,7 +765,7 @@ describe('ConfigService', () => {
     it('should throw error for invalid mapping index', async () => {
       repository.findConfigById.mockResolvedValue(mockConfig);
       await expect(
-        service.removeMapping(1, 5, 'test-tenant', 'user-123'),
+        service.removeMapping(1, 5, 'test-tenant', 'user-123', mockToken),
       ).rejects.toThrow('Invalid mapping index');
     });
   });
@@ -739,6 +787,7 @@ describe('ConfigService', () => {
         updateDto,
         'test-tenant',
         'user-123',
+        mockToken,
       );
 
       expect(result.success).toBe(true);
@@ -778,6 +827,7 @@ describe('ConfigService', () => {
         { endpointPath: '/new-path' },
         'test-tenant',
         'user-123',
+        mockToken,
       );
 
       console.log('Result:', result);
@@ -791,22 +841,31 @@ describe('ConfigService', () => {
     it('should throw error if config not found', async () => {
       repository.findConfigById.mockResolvedValue(null);
       await expect(
-        service.updateConfig(999, {}, 'test-tenant', 'user-123'),
+        service.updateConfig(999, {}, 'test-tenant', 'user-123', mockToken),
       ).rejects.toThrow('Config with ID 999 not found');
     });
   });
   describe('deleteConfig', () => {
     it('should delete config successfully', async () => {
       repository.findConfigById.mockResolvedValue(mockConfig);
-      const result = await service.deleteConfig(1, 'test-tenant', 'user-123');
+      const result = await service.deleteConfig(
+        1,
+        'test-tenant',
+        'user-123',
+        mockToken,
+      );
       expect(result.success).toBe(true);
-      expect(repository.deleteConfig).toHaveBeenCalledWith(1, 'test-tenant');
+      expect(repository.deleteConfig).toHaveBeenCalledWith(
+        1,
+        'test-tenant',
+        mockToken,
+      );
       expect(auditService.logAction).toHaveBeenCalled();
     });
     it('should throw error if config not found', async () => {
       repository.findConfigById.mockResolvedValue(null);
       await expect(
-        service.deleteConfig(999, 'test-tenant', 'user-123'),
+        service.deleteConfig(999, 'test-tenant', 'user-123', mockToken),
       ).rejects.toThrow('Config with ID 999 not found');
     });
   });
@@ -870,20 +929,26 @@ describe('ConfigService', () => {
         functionDto,
         'test-tenant',
         'user-123',
+        mockToken,
       );
 
       expect(result.success).toBe(true);
       expect(result.message).toBe('Function added successfully');
       expect(result.config?.functions).toBeDefined();
       expect(result.config?.functions?.length).toBe(1);
-      expect(repository.updateConfig).toHaveBeenCalledWith(1, 'test-tenant', {
-        functions: expect.arrayContaining([
-          expect.objectContaining({
-            functionName: 'addAccount',
-            params: ['redis.dbtrAcctId', 'transaction.tenantId'],
-          }),
-        ]),
-      });
+      expect(repository.updateConfig).toHaveBeenCalledWith(
+        1,
+        'test-tenant',
+        {
+          functions: expect.arrayContaining([
+            expect.objectContaining({
+              functionName: 'addAccount',
+              params: ['redis.dbtrAcctId', 'transaction.tenantId'],
+            }),
+          ]),
+        },
+        mockToken,
+      );
       expect(auditService.logAction).toHaveBeenCalledWith({
         entityType: 'FUNCTION',
         action: 'ADD_FUNCTION',
@@ -902,7 +967,13 @@ describe('ConfigService', () => {
       };
 
       await expect(
-        service.addFunction(999, functionDto, 'test-tenant', 'user-123'),
+        service.addFunction(
+          999,
+          functionDto,
+          'test-tenant',
+          'user-123',
+          mockToken,
+        ),
       ).rejects.toThrow('Config with ID 999 not found');
     });
 
@@ -915,7 +986,13 @@ describe('ConfigService', () => {
       };
 
       await expect(
-        service.addFunction(1, invalidFunctionDto, 'test-tenant', 'user-123'),
+        service.addFunction(
+          1,
+          invalidFunctionDto,
+          'test-tenant',
+          'user-123',
+          mockToken,
+        ),
       ).rejects.toThrow('Function must have at least one parameter');
     });
 
@@ -928,7 +1005,13 @@ describe('ConfigService', () => {
       };
 
       await expect(
-        service.addFunction(1, invalidFunctionDto, 'test-tenant', 'user-123'),
+        service.addFunction(
+          1,
+          invalidFunctionDto,
+          'test-tenant',
+          'user-123',
+          mockToken,
+        ),
       ).rejects.toThrow(
         'Invalid function name. Only the following functions are allowed: addAccountHolder, addEntity, addAccount, transactionRelationship',
       );
@@ -960,20 +1043,26 @@ describe('ConfigService', () => {
         0,
         'test-tenant',
         'user-123',
+        mockToken,
       );
 
       expect(result.success).toBe(true);
       expect(result.message).toBe('Function removed successfully');
-      expect(repository.updateConfig).toHaveBeenCalledWith(1, 'test-tenant', {
-        functions: [],
-      });
+      expect(repository.updateConfig).toHaveBeenCalledWith(
+        1,
+        'test-tenant',
+        {
+          functions: [],
+        },
+        mockToken,
+      );
     });
 
     it('should throw error for invalid function index', async () => {
       repository.findConfigById.mockResolvedValue(mockConfig);
 
       await expect(
-        service.removeFunction(1, 0, 'test-tenant', 'user-123'),
+        service.removeFunction(1, 0, 'test-tenant', 'user-123', mockToken),
       ).rejects.toThrow('Invalid function index');
     });
   });
@@ -1007,15 +1096,21 @@ describe('ConfigService', () => {
         'test-tenant',
         'user-123',
         ['editor'],
+        mockToken,
       );
 
       expect(result.success).toBe(true);
       expect(result.message).toBe(
         'Configuration submitted for approval successfully',
       );
-      expect(repository.updateConfig).toHaveBeenCalledWith(1, 'test-tenant', {
-        status: ConfigStatus.UNDER_REVIEW,
-      });
+      expect(repository.updateConfig).toHaveBeenCalledWith(
+        1,
+        'test-tenant',
+        {
+          status: ConfigStatus.UNDER_REVIEW,
+        },
+        mockToken,
+      );
     });
 
     it('should allow submission with empty mapping array', async () => {
@@ -1046,15 +1141,21 @@ describe('ConfigService', () => {
         'test-tenant',
         'user-123',
         ['editor'],
+        mockToken,
       );
 
       expect(result.success).toBe(true);
       expect(result.message).toBe(
         'Configuration submitted for approval successfully',
       );
-      expect(repository.updateConfig).toHaveBeenCalledWith(1, 'test-tenant', {
-        status: ConfigStatus.UNDER_REVIEW,
-      });
+      expect(repository.updateConfig).toHaveBeenCalledWith(
+        1,
+        'test-tenant',
+        {
+          status: ConfigStatus.UNDER_REVIEW,
+        },
+        mockToken,
+      );
     });
   });
 });

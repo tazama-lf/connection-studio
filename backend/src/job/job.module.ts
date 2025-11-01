@@ -22,4 +22,4 @@ import { NotifyModule } from 'src/notify/notify.module';
     NotifyModule
   ],
 })
-export class JobModule { }
+export class JobModule {}

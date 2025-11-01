@@ -1,7 +1,6 @@
 import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Pool, QueryResult } from 'pg';
-import SFTPClient from 'ssh2-sftp-client';
 
 @Injectable()
 export class DatabaseService implements OnModuleDestroy {
@@ -14,7 +13,10 @@ export class DatabaseService implements OnModuleDestroy {
     });
   }
 
-  async query<T = unknown>(sql: string, params?: unknown[]): Promise<QueryResult<T>> {
+  async query<T = unknown>(
+    sql: string,
+    params?: unknown[],
+  ): Promise<QueryResult<T>> {
     const result = await this.pool.query(sql, params);
     return result;
   }

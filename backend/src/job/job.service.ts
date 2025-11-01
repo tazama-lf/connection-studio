@@ -1,7 +1,7 @@
 import {
   BadRequestException,
   Injectable,
-  NotFoundException
+  NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
@@ -13,13 +13,18 @@ import {
   JobStatus,
   ScheduleStatus,
   SFTPConnection,
-  SourceType
+  SourceType,
 } from '@tazama-lf/tcs-lib';
 import { v4 } from 'uuid';
 import { DatabaseService } from '../database/database.service';
 import { DryRunService } from '../dry-run/dry-run.service';
 import { SftpService } from '../sftp/sftp.service';
-import { decrypt, encrypt, validateFileType, validateTableName } from '../utils/helpers';
+import {
+  decrypt,
+  encrypt,
+  validateFileType,
+  validateTableName,
+} from '../utils/helpers';
 import { CreatePullJobDto, SFTPConnectionDto } from './dto/create-pull-job.dto';
 import { CreatePushJobDto } from './dto/create-push-job.dto';
 import { NotifyService } from 'src/notify/notify.service';
@@ -54,7 +59,11 @@ export class JobService {
     }
   }
 
-  async createPush(job: CreatePushJobDto, tenantId: string, status: JobStatus = JobStatus.INPROGRESS): Promise<Job> {
+  async createPush(
+    job: CreatePushJobDto,
+    tenantId: string,
+    status: JobStatus = JobStatus.INPROGRESS,
+  ): Promise<Job> {
     try {
       // await this.validateExisting(job.table_name);
 
@@ -73,6 +82,7 @@ export class JobService {
 
       const insertRes = await this.db.query(insertQuery, values);
       const newJob = insertRes.rows[0];
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { tenant_id, ...safeJob } = newJob;
       return safeJob;
     } catch (err) {
@@ -81,7 +91,11 @@ export class JobService {
     }
   }
 
-  async createPull(job: CreatePullJobDto, tenantId: string, status: JobStatus = JobStatus.INPROGRESS): Promise<ISuccess> {
+  async createPull(
+    job: CreatePullJobDto,
+    tenantId: string,
+    status: JobStatus = JobStatus.INPROGRESS,
+  ): Promise<ISuccess> {
     try {
 
       // await this.validateExisting(job.table_name);
@@ -124,7 +138,13 @@ export class JobService {
       }
       await this.dryRunService.dryRun(job);
 
-      const jobWithId = { ...job, id: v4(), connection, tenant_id: tenantId, status };
+      const jobWithId = {
+        ...job,
+        id: v4(),
+        connection,
+        tenant_id: tenantId,
+        status,
+      };
       const keys = Object.keys(jobWithId);
       const values = Object.values(jobWithId);
       const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
@@ -140,7 +160,7 @@ export class JobService {
       return {
         success: true,
         message: `Job with id ${id} successfully updated`,
-      }
+      };
     } catch (err: unknown) {
       if (err instanceof Error) {
         this.loggerService.error(err.message);
@@ -168,7 +188,6 @@ export class JobService {
       throw new BadRequestException(
         'Page and limit must be positive integers.',
       );
-
     }
 
     const offset = (page - 1) * limit;
@@ -230,10 +249,12 @@ export class JobService {
         );
       }
 
-
       if (tableName === 'job' && record.schedule_id) {
-        const scheduleQuery = `SELECT id, name, cron FROM schedule WHERE id = $1 LIMIT 1;`;
-        const scheduleResult = await this.db.query(scheduleQuery, [record.schedule_id]);
+        const scheduleQuery =
+          'SELECT id, name, cron FROM schedule WHERE id = $1 LIMIT 1;';
+        const scheduleResult = await this.db.query(scheduleQuery, [
+          record.schedule_id,
+        ]);
         const schedule = scheduleResult.rows[0] || null;
 
         return {
@@ -314,10 +335,16 @@ export class JobService {
     }
   }
 
-  async updateActivation(id: string, status: ScheduleStatus, table_name: string): Promise<ISuccess> {
+  async updateActivation(
+    id: string,
+    status: ScheduleStatus,
+    table_name: string,
+  ): Promise<ISuccess> {
     try {
       if (!status || !table_name) {
-        throw new BadRequestException('Both status and table_name are required.');
+        throw new BadRequestException(
+          'Both status and table_name are required.',
+        );
       }
 
       const query = `
@@ -392,14 +419,14 @@ export class JobService {
             await this.createPull(
               { ...jobPayload, connection },
               tenantId,
-              JobStatus.DEPLOYED
+              JobStatus.DEPLOYED,
             );
             await this.notifyService.notifyEnrichment(existingJob.id, ConfigType.PULL)
           } else {
             await this.createPush(existingJob, tenantId, JobStatus.DEPLOYED);
             await this.notifyService.notifyEnrichment(existingJob.id, ConfigType.PUSH)
           }
-          await this.sftpService.deleteFile(fileName)
+          await this.sftpService.deleteFile(fileName);
           break;
         }
 

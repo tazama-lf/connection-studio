@@ -45,13 +45,6 @@ export function decrypt(text: string): string {
   }
 }
 
-const encryptedText = encrypt('password');
-console.log("ENCRYPTED TEXT", encryptedText);
-
-const decryptedText = decrypt(encryptedText);
-console.log("DECRYPTED TEXT", decryptedText);
-
-
 
 export function validateCronExpression(expression: string): void {
   try {

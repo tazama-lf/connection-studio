@@ -22,7 +22,7 @@ import { User } from 'src/auth/user.decorator';
 @Controller('job')
 @UseGuards(TazamaAuthGuard)
 export class JobController {
-  constructor(private readonly jobService: JobService) { }
+  constructor(private readonly jobService: JobService) {}
 
   @Post('/create/push')
   @RequireAnyClaims(TazamaClaims.EDITOR)

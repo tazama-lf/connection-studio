@@ -1,5 +1,5 @@
 ﻿import { Injectable, Logger } from '@nestjs/common';
-import { ConfigRepository } from '../config/config.repository';
+import { AdminServiceClient } from '../services/admin-service-client.service';
 import { Config, FieldMapping } from '../config/config.interfaces';
 import { AuditService } from '../audit/audit.service';
 import {
@@ -56,7 +56,7 @@ export class SimulationService {
   private readonly logger = new Logger(SimulationService.name);
 
   constructor(
-    private readonly configRepository: ConfigRepository,
+    private readonly adminServiceClient: AdminServiceClient,
     private readonly auditService: AuditService,
   ) {}
 
@@ -64,6 +64,7 @@ export class SimulationService {
     dto: SimulatePayloadDto,
     tenantId: string,
     userId?: string,
+    token?: string,
   ): Promise<SimulationResult> {
     const timestamp = new Date().toISOString();
     const stages: ValidationStage[] = [];
@@ -73,8 +74,52 @@ export class SimulationService {
     let mappingsApplied = 0;
 
     try {
+      // Validate endpointId
+      if (!dto.endpointId || isNaN(Number(dto.endpointId))) {
+        return {
+          status: 'FAILED',
+          errors: [
+            {
+              field: 'endpointId',
+              message: `Invalid endpoint ID: ${dto.endpointId}. Must be a valid number.`,
+            },
+          ],
+          stages: [
+            {
+              name: 'Validation',
+              status: 'FAILED',
+              message: 'Invalid endpoint ID provided',
+              errors: [
+                {
+                  field: 'endpointId',
+                  message: `Invalid endpoint ID: ${dto.endpointId}. Must be a valid number.`,
+                },
+              ],
+            },
+          ],
+          tcsResult: null,
+          transformedPayload: {},
+          summary: {
+            endpointId: dto.endpointId as any,
+            tenantId,
+            timestamp,
+            mappingsApplied: 0,
+            totalStages: 1,
+            passedStages: 0,
+            failedStages: 1,
+          },
+        };
+      }
+
+      // Ensure endpointId is a number
+      const endpointId = Number(dto.endpointId);
+
       // Stage 1: Load Configuration
-      const configStage = await this.stageLoadConfig(dto.endpointId, tenantId);
+      const configStage = await this.stageLoadConfig(
+        endpointId,
+        tenantId,
+        token,
+      );
       stages.push(configStage);
 
       if (configStage.status === 'FAILED') {
@@ -271,11 +316,26 @@ export class SimulationService {
   private async stageLoadConfig(
     endpointId: number,
     tenantId: string,
+    token?: string,
   ): Promise<ValidationStage> {
     try {
-      const config = await this.configRepository.findConfigById(
+      if (!token) {
+        return {
+          name: '1. Load Configuration',
+          status: 'FAILED',
+          message: 'Authentication token required',
+          errors: [
+            {
+              field: 'token',
+              message: 'Missing authentication token',
+            },
+          ],
+        };
+      }
+
+      const config = await this.adminServiceClient.getConfigById(
         endpointId,
-        tenantId,
+        token,
       );
 
       if (!config) {
@@ -451,9 +511,9 @@ export class SimulationService {
         // Source is always an array for consistency
         const sources = mapping.source || [];
 
-        const normalizedSources = sources.map((source) =>
-          source.replace(/\[(\d+)\]/g, '.$1'),
-        );
+        const normalizedSources = (
+          Array.isArray(sources) ? sources : [sources]
+        ).map((source) => source.replace(/\[(\d+)\]/g, '.$1'));
 
         // Handle SPLIT transformations: create multiple TCS mappings for multiple destinations
         if (
@@ -528,8 +588,8 @@ export class SimulationService {
         Array.isArray(mapping.destination)
       ) {
         // Extract source values from original payload
-        const sourceValues = sources.map((sourcePath) =>
-          this.getValueByPath(originalPayload, sourcePath),
+        const sourceValues = (Array.isArray(sources) ? sources : [sources]).map(
+          (sourcePath) => this.getValueByPath(originalPayload, sourcePath),
         );
 
         // Apply SPLIT transformation to get the split values
@@ -568,9 +628,12 @@ export class SimulationService {
                 : splitValues; // fallback to full result
           }
 
+          const normalizedSourcesArr = Array.isArray(sources)
+            ? sources
+            : [sources];
           details.push({
             destination: destination || '',
-            sources,
+            sources: normalizedSourcesArr,
             sourceValues,
             transformation: mapping.transformation || 'NONE',
             resultValue,
@@ -587,8 +650,8 @@ export class SimulationService {
           : mapping.destination;
 
         // Extract source values from original payload
-        const sourceValues = sources.map((sourcePath) =>
-          this.getValueByPath(originalPayload, sourcePath),
+        const sourceValues = (Array.isArray(sources) ? sources : [sources]).map(
+          (sourcePath) => this.getValueByPath(originalPayload, sourcePath),
         );
 
         // Determine the result value from tcsResult based on destination
@@ -617,9 +680,12 @@ export class SimulationService {
           );
         }
 
+        const normalizedSourcesArr = Array.isArray(sources)
+          ? sources
+          : [sources];
         details.push({
           destination: destination || '',
-          sources,
+          sources: normalizedSourcesArr,
           sourceValues,
           transformation: mapping.transformation || 'NONE',
           resultValue,
@@ -768,8 +834,9 @@ export class SimulationService {
   private async getEndpointConfig(
     endpointId: number,
     tenantId: string,
+    token: string,
   ): Promise<Config | null> {
-    return this.configRepository.findConfigById(endpointId, tenantId);
+    return this.adminServiceClient.getConfigById(endpointId, token);
   }
 
   private async parsePayload(payload: any, payloadType: string): Promise<any> {

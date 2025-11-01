@@ -1,9 +1,9 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Post } from '@nestjs/common';
 import { DatabaseService } from './database.service';
 
 @Controller('database')
 export class DatabaseController {
-  constructor(private readonly db: DatabaseService) { }
+  constructor(private readonly db: DatabaseService) {}
 
   @Post('execute')
   async executeQuery(@Body('query') query: string) {

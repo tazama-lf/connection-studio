@@ -25,9 +25,7 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json",
-    "migrate:make": "knex --knexfile knex/knexfile.ts migrate:make",
-    "migrate:latest": "knex --knexfile knex/knexfile.ts migrate:latest"
+    "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
     "@nestjs/axios": "^4.0.1",
@@ -46,6 +44,7 @@
     "@tazama-lf/tcs-lib": "^1.0.1",
     "@types/cache-manager-redis-store": "^2.0.4",
     "@types/multer": "^2.0.0",
+    "@types/nodemailer": "^7.0.3",
     "@types/xml2js": "^0.4.14",
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
@@ -59,8 +58,8 @@
     "dotenv": "^16.4.7",
     "iconv-lite": "^0.7.0",
     "jsonwebtoken": "^9.0.2",
-    "knex": "^3.1.0",
     "lodash": "^4.17.21",
+    "nodemailer": "^7.0.10",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "pg": "^8.16.3",
