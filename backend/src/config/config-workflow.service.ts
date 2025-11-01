@@ -9,18 +9,19 @@ import {
 @Injectable()
 export class ConfigWorkflowService {
   validateStatusTransition(
-    fromStatus: ConfigStatus,
-    toStatus: ConfigStatus,
-    _action: WorkflowAction,
+    fromStatus: string,
+    toStatus: string,
+    _action: any,
   ): StatusTransitionValidation {
-    const validTransitions: Record<ConfigStatus, ConfigStatus[]> = {
+    const validTransitions: Record<string, string[]> = {
       [ConfigStatus.IN_PROGRESS]: [ConfigStatus.UNDER_REVIEW],
       [ConfigStatus.UNDER_REVIEW]: [
         ConfigStatus.APPROVED,
         ConfigStatus.REJECTED,
         ConfigStatus.CHANGES_REQUESTED,
       ],
-      [ConfigStatus.APPROVED]: [ConfigStatus.DEPLOYED],
+      [ConfigStatus.APPROVED]: ['EXPORTED'],
+      EXPORTED: [ConfigStatus.DEPLOYED],
       [ConfigStatus.DEPLOYED]: [],
       [ConfigStatus.REJECTED]: [ConfigStatus.IN_PROGRESS],
       [ConfigStatus.CHANGES_REQUESTED]: [
@@ -34,18 +35,18 @@ export class ConfigWorkflowService {
     if (!allowedTransitions?.includes(toStatus)) {
       return {
         isValid: false,
-        currentStatus: fromStatus,
-        targetStatus: toStatus,
-        allowedNextStatuses: allowedTransitions || [],
+        currentStatus: fromStatus as any,
+        targetStatus: toStatus as any,
+        allowedNextStatuses: (allowedTransitions || []) as any,
         reason: `Invalid transition from ${fromStatus} to ${toStatus}`,
       };
     }
 
     return {
       isValid: true,
-      currentStatus: fromStatus,
-      targetStatus: toStatus,
-      allowedNextStatuses: allowedTransitions,
+      currentStatus: fromStatus as any,
+      targetStatus: toStatus as any,
+      allowedNextStatuses: allowedTransitions as any,
     };
   }
 
@@ -57,6 +58,7 @@ export class ConfigWorkflowService {
     const hasEditorRole = userClaims.includes('editor');
     const hasApproverRole = userClaims.includes('approver');
     const hasPublisherRole = userClaims.includes('publisher');
+    const hasExporterRole = userClaims.includes('exporter');
 
     const result: WorkflowValidationResult = {
       canEdit: false,
@@ -64,6 +66,7 @@ export class ConfigWorkflowService {
       canApprove: false,
       canReject: false,
       canRequestChanges: false,
+      canExport: false,
       canDeploy: false,
       canReturnToProgress: false,
     };
@@ -74,12 +77,12 @@ export class ConfigWorkflowService {
         ConfigStatus.IN_PROGRESS,
         ConfigStatus.REJECTED,
         ConfigStatus.CHANGES_REQUESTED,
-      ].includes(currentStatus);
+      ].includes(currentStatus as any);
 
       result.canSubmit = [
         ConfigStatus.IN_PROGRESS,
         ConfigStatus.CHANGES_REQUESTED,
-      ].includes(currentStatus);
+      ].includes(currentStatus as any);
     }
 
     if (hasApproverRole) {
@@ -88,20 +91,24 @@ export class ConfigWorkflowService {
       result.canReject = canApproverAct;
       result.canRequestChanges = canApproverAct;
     }
+    if (hasExporterRole) {
+      result.canExport = currentStatus === ConfigStatus.APPROVED;
+    }
 
     if (hasPublisherRole) {
-      result.canDeploy = currentStatus === ConfigStatus.APPROVED;
+      result.canDeploy = currentStatus === ConfigStatus.EXPORTED;
     }
 
     return result;
   }
 
-  getTargetStatus(action: WorkflowAction): ConfigStatus {
-    const actionToStatusMap: Record<WorkflowAction, ConfigStatus> = {
+  getTargetStatus(action: any): string {
+    const actionToStatusMap: Record<string, string> = {
       submit_for_approval: ConfigStatus.UNDER_REVIEW,
       approve: ConfigStatus.APPROVED,
       reject: ConfigStatus.REJECTED,
       request_changes: ConfigStatus.CHANGES_REQUESTED,
+      export: 'EXPORTED',
       deploy: ConfigStatus.DEPLOYED,
       return_to_progress: ConfigStatus.IN_PROGRESS,
     };
@@ -111,12 +118,12 @@ export class ConfigWorkflowService {
 
   canPerformAction(
     userClaims: string[],
-    currentStatus: ConfigStatus,
-    action: WorkflowAction,
+    currentStatus: ConfigStatus | string,
+    action: any,
   ): { canPerform: boolean; message?: string } {
     const permissions = this.validateUserPermissions(
       userClaims,
-      currentStatus,
+      currentStatus as ConfigStatus,
       action,
     );
     const targetStatus = this.getTargetStatus(action);
@@ -185,7 +192,7 @@ export class ConfigWorkflowService {
         const canReturn =
           userClaims.includes('editor') &&
           [ConfigStatus.REJECTED, ConfigStatus.CHANGES_REQUESTED].includes(
-            currentStatus,
+            currentStatus as any,
           );
         if (!canReturn) {
           return {
@@ -229,6 +236,7 @@ export class ConfigWorkflowService {
       approve: 'Approve',
       reject: 'Reject',
       request_changes: 'Request Changes',
+      export: 'Export',
       deploy: 'Deploy',
       return_to_progress: 'Return to Progress',
     };

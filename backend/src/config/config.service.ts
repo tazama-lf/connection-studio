@@ -9,7 +9,6 @@ import { ConfigRepository } from './config.repository';
 import {
   FieldType,
   JSONSchema,
-  parsePayloadToSchema,
   applyFieldAdjustments,
 } from '@tazama-lf/tcs-lib';
 import { AuditService } from '../audit/audit.service';
@@ -18,6 +17,9 @@ import { SchemaInferenceService } from '../schemas/schema-inference.service';
 
 import { TazamaDataModelService } from '../tazama-data-model/tazama-data-model.service';
 import { ConfigWorkflowService } from './config-workflow.service';
+import { SftpService } from '../sftp/sftp.service';
+import { ConfigService as NestConfigService } from '@nestjs/config';
+import { PayloadParsingService } from '../services/payload-parsing.service';
 import {
   Config,
   CreateConfigDto,
@@ -65,6 +67,9 @@ export class ConfigService {
     private readonly schemaInference: SchemaInferenceService,
     private readonly tazamaDataModelService: TazamaDataModelService,
     private readonly workflowService: ConfigWorkflowService,
+    private readonly sftpService: SftpService,
+    private readonly nestConfigService: NestConfigService,
+    private readonly payloadParsingService: PayloadParsingService,
   ) {}
 
   async createConfig(
@@ -113,10 +118,11 @@ export class ConfigService {
         };
       }
 
-      const parsingResult = await parsePayloadToSchema(
-        dto.payload,
-        dto.contentType || ContentType.JSON,
-      );
+      const parsingResult =
+        await this.payloadParsingService.parsePayloadToSchema(
+          dto.payload,
+          dto.contentType || ContentType.JSON,
+        );
 
       if (!parsingResult?.success) {
         this.logger.error(
@@ -276,6 +282,7 @@ export class ConfigService {
       const sourceConfig = await this.configRepository.findConfigById(
         dto.sourceConfigId,
         tenantId,
+        token,
       );
 
       if (!sourceConfig) {
@@ -376,6 +383,7 @@ export class ConfigService {
       const newConfig = await this.configRepository.findConfigById(
         newConfigId,
         tenantId,
+        token,
       );
 
       this.logger.log(
@@ -402,8 +410,12 @@ export class ConfigService {
     }
   }
 
-  async getConfigById(id: number, tenantId: string): Promise<Config | null> {
-    return this.configRepository.findConfigById(id, tenantId);
+  async getConfigById(
+    id: number,
+    tenantId: string,
+    token: string,
+  ): Promise<Config | null> {
+    return this.configRepository.findConfigById(id, tenantId, token);
   }
 
   async testMethod(): Promise<boolean> {
@@ -414,21 +426,28 @@ export class ConfigService {
     endpointPath: string,
     version: string,
     tenantId: string,
+    token: string,
   ): Promise<Config | null> {
     return this.configRepository.findConfigByEndpoint(
       endpointPath,
       version,
       tenantId,
+      token,
     );
   }
 
-  async getAllConfigs(tenantId: string): Promise<Config[]> {
-    return this.configRepository.findConfigsByTenant(tenantId);
+  async getAllConfigs(tenantId: string, token: string): Promise<Config[]> {
+    return this.configRepository.findConfigsByTenant(tenantId, token);
   }
 
-  async getPendingApprovals(tenantId: string): Promise<Config[]> {
-    const allConfigs =
-      await this.configRepository.findConfigsByTenant(tenantId);
+  async getPendingApprovals(
+    tenantId: string,
+    token: string,
+  ): Promise<Config[]> {
+    const allConfigs = await this.configRepository.findConfigsByTenant(
+      tenantId,
+      token,
+    );
     return allConfigs.filter((config) => {
       const status: string | undefined = config.status as string | undefined;
       return status === 'under_review' || status === 'approved';
@@ -438,10 +457,12 @@ export class ConfigService {
   async getConfigsByTransactionType(
     transactionType: TransactionType,
     tenantId: string,
+    token: string,
   ): Promise<Config[]> {
     return this.configRepository.findConfigsByTransactionType(
       transactionType,
       tenantId,
+      token,
     );
   }
 
@@ -452,7 +473,11 @@ export class ConfigService {
     userId: string,
     token: string,
   ): Promise<ConfigResponseDto> {
-    const config = await this.configRepository.findConfigById(id, tenantId);
+    const config = await this.configRepository.findConfigById(
+      id,
+      tenantId,
+      token,
+    );
 
     if (!config) {
       throw new NotFoundException(`Config with ID ${id} not found`);
@@ -621,6 +646,7 @@ export class ConfigService {
       const newConfig = await this.configRepository.findConfigById(
         newConfigId,
         tenantId,
+        token,
       );
 
       return {
@@ -690,6 +716,7 @@ export class ConfigService {
     const updatedConfig = await this.configRepository.findConfigById(
       id,
       tenantId,
+      token,
     );
 
     return {
@@ -705,7 +732,11 @@ export class ConfigService {
     userId: string,
     token: string,
   ): Promise<ConfigResponseDto> {
-    const config = await this.configRepository.findConfigById(id, tenantId);
+    const config = await this.configRepository.findConfigById(
+      id,
+      tenantId,
+      token,
+    );
 
     if (!config) {
       throw new NotFoundException(`Config with ID ${id} not found`);
@@ -734,7 +765,11 @@ export class ConfigService {
     userId: string,
     token: string,
   ): Promise<ConfigResponseDto> {
-    const config = await this.configRepository.findConfigById(id, tenantId);
+    const config = await this.configRepository.findConfigById(
+      id,
+      tenantId,
+      token,
+    );
 
     if (!config) {
       throw new NotFoundException(`Config with ID ${id} not found`);
@@ -765,6 +800,7 @@ export class ConfigService {
     const updatedConfig = await this.configRepository.findConfigById(
       id,
       tenantId,
+      token,
     );
 
     return {
@@ -781,7 +817,11 @@ export class ConfigService {
     userId: string,
     token: string,
   ): Promise<ConfigResponseDto> {
-    const config = await this.configRepository.findConfigById(id, tenantId);
+    const config = await this.configRepository.findConfigById(
+      id,
+      tenantId,
+      token,
+    );
 
     if (!config) {
       throw new NotFoundException(`Config with ID ${id} not found`);
@@ -815,6 +855,7 @@ export class ConfigService {
     const updatedConfig = await this.configRepository.findConfigById(
       id,
       tenantId,
+      token,
     );
 
     return {
@@ -832,7 +873,11 @@ export class ConfigService {
     userId: string,
     token: string,
   ): Promise<ConfigResponseDto> {
-    const config = await this.configRepository.findConfigById(id, tenantId);
+    const config = await this.configRepository.findConfigById(
+      id,
+      tenantId,
+      token,
+    );
 
     if (!config) {
       throw new NotFoundException(`Config with ID ${id} not found`);
@@ -868,6 +913,7 @@ export class ConfigService {
     const updatedConfig = await this.configRepository.findConfigById(
       id,
       tenantId,
+      token,
     );
 
     return {
@@ -884,7 +930,11 @@ export class ConfigService {
     userId: string,
     token: string,
   ): Promise<ConfigResponseDto> {
-    const config = await this.configRepository.findConfigById(id, tenantId);
+    const config = await this.configRepository.findConfigById(
+      id,
+      tenantId,
+      token,
+    );
 
     if (!config) {
       throw new NotFoundException(`Config with ID ${id} not found`);
@@ -915,6 +965,7 @@ export class ConfigService {
     const updatedConfig = await this.configRepository.findConfigById(
       id,
       tenantId,
+      token,
     );
 
     return {
@@ -931,7 +982,11 @@ export class ConfigService {
     userId: string,
     token: string,
   ): Promise<ConfigResponseDto> {
-    const config = await this.configRepository.findConfigById(id, tenantId);
+    const config = await this.configRepository.findConfigById(
+      id,
+      tenantId,
+      token,
+    );
 
     if (!config) {
       throw new NotFoundException(`Config with ID ${id} not found`);
@@ -965,6 +1020,7 @@ export class ConfigService {
     const updatedConfig = await this.configRepository.findConfigById(
       id,
       tenantId,
+      token,
     );
 
     return {
@@ -982,7 +1038,11 @@ export class ConfigService {
     userId: string,
     token: string,
   ): Promise<ConfigResponseDto> {
-    const config = await this.configRepository.findConfigById(id, tenantId);
+    const config = await this.configRepository.findConfigById(
+      id,
+      tenantId,
+      token,
+    );
 
     if (!config) {
       throw new NotFoundException(`Config with ID ${id} not found`);
@@ -1018,6 +1078,7 @@ export class ConfigService {
     const updatedConfig = await this.configRepository.findConfigById(
       id,
       tenantId,
+      token,
     );
 
     return {
@@ -1820,10 +1881,12 @@ export class ConfigService {
     configId: number,
     fieldPath: string,
     tenantId: string,
+    token: string,
   ): Promise<{ type: FieldType; isRequired: boolean } | null> {
     const config = await this.configRepository.findConfigById(
       configId,
       tenantId,
+      token,
     );
     if (!config) {
       return null;
@@ -1879,7 +1942,11 @@ export class ConfigService {
     userClaims: string[],
     token: string,
   ): Promise<ConfigResponseDto> {
-    const config = await this.configRepository.findConfigById(id, tenantId);
+    const config = await this.configRepository.findConfigById(
+      id,
+      tenantId,
+      token,
+    );
     if (!config) {
       throw new NotFoundException(`Config with ID ${id} not found`);
     }
@@ -1929,12 +1996,49 @@ export class ConfigService {
       details: `Configuration submitted for approval${dto.comment ? `: ${dto.comment}` : ''}`,
       newValues: { status: newStatus },
     });
+    let createTableQuery = '';
+    try {
+      const transactionType = config.transactionType.replace(
+        /[^a-zA-Z0-9_]/g,
+        '_',
+      );
+      const tableName = `${transactionType}_${tenantId}`;
+      createTableQuery = `CREATE TABLE IF NOT EXISTS "${tableName}" (
+        id SERIAL PRIMARY KEY,
+        config_id INTEGER,
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        details JSONB
+      );`;
+      await this.configRepository.runRawQuery(createTableQuery, token);
+      this.logger.log(`Created transaction history table: ${tableName}`);
+      await this.auditService.logAction({
+        action: 'create_transaction_history_table',
+        entityType: 'config',
+        entityId: id.toString(),
+        actor: userId,
+        tenantId,
+        details: `Created transaction history table: ${tableName}`,
+      });
+    } catch (err) {
+      this.logger.error(
+        `Failed to create transaction history table: ${err.message}`,
+      );
+    }
+
+    // Store the query in the config for later export
+    const updatedConfig = await this.configRepository.findConfigById(
+      id,
+      tenantId,
+      token,
+    );
+    if (updatedConfig) {
+      (updatedConfig as any).createTableQuery = createTableQuery;
+    }
 
     return {
       success: true,
       message: 'Configuration submitted for approval successfully',
-      config:
-        (await this.configRepository.findConfigById(id, tenantId)) || undefined,
+      config: updatedConfig || undefined,
     };
   }
 
@@ -1949,7 +2053,11 @@ export class ConfigService {
     userClaims: string[],
     token: string,
   ): Promise<ConfigResponseDto> {
-    const config = await this.configRepository.findConfigById(id, tenantId);
+    const config = await this.configRepository.findConfigById(
+      id,
+      tenantId,
+      token,
+    );
     if (!config) {
       throw new NotFoundException(`Config with ID ${id} not found`);
     }
@@ -2004,7 +2112,8 @@ export class ConfigService {
       success: true,
       message: 'Configuration approved successfully',
       config:
-        (await this.configRepository.findConfigById(id, tenantId)) || undefined,
+        (await this.configRepository.findConfigById(id, tenantId, token)) ||
+        undefined,
     };
   }
 
@@ -2019,7 +2128,11 @@ export class ConfigService {
     userClaims: string[],
     token: string,
   ): Promise<ConfigResponseDto> {
-    const config = await this.configRepository.findConfigById(id, tenantId);
+    const config = await this.configRepository.findConfigById(
+      id,
+      tenantId,
+      token,
+    );
     if (!config) {
       throw new NotFoundException(`Config with ID ${id} not found`);
     }
@@ -2074,7 +2187,8 @@ export class ConfigService {
       success: true,
       message: 'Configuration rejected successfully',
       config:
-        (await this.configRepository.findConfigById(id, tenantId)) || undefined,
+        (await this.configRepository.findConfigById(id, tenantId, token)) ||
+        undefined,
     };
   }
 
@@ -2089,7 +2203,11 @@ export class ConfigService {
     userClaims: string[],
     token: string,
   ): Promise<ConfigResponseDto> {
-    const config = await this.configRepository.findConfigById(id, tenantId);
+    const config = await this.configRepository.findConfigById(
+      id,
+      tenantId,
+      token,
+    );
     if (!config) {
       throw new NotFoundException(`Config with ID ${id} not found`);
     }
@@ -2144,8 +2262,121 @@ export class ConfigService {
       success: true,
       message: 'Changes requested successfully',
       config:
-        (await this.configRepository.findConfigById(id, tenantId)) || undefined,
+        (await this.configRepository.findConfigById(id, tenantId, token)) ||
+        undefined,
     };
+  }
+  /**
+   * Export configuration to SFTP
+   */
+  async exportConfig(
+    id: number,
+    dto: StatusTransitionDto,
+    tenantId: string,
+    userId: string,
+    userClaims: string[],
+    token: string,
+  ): Promise<ConfigResponseDto> {
+    const config = await this.configRepository.findConfigById(
+      id,
+      tenantId,
+      token,
+    );
+    if (!config) {
+      throw new NotFoundException(`Config with ID ${id} not found`);
+    }
+
+    const currentStatus = config.status!;
+    const action = 'export'; // Extended workflow action
+
+    // Validate user can perform this action
+    const validation = this.workflowService.canPerformAction(
+      userClaims,
+      currentStatus,
+      action as any,
+    );
+    if (!validation.canPerform) {
+      throw new ForbiddenException(validation.message);
+    }
+
+    const newStatus = 'EXPORTED' as any;
+
+    // Generate filename similar to job.service.ts
+    const nodeEnv = this.nestConfigService.get<string>('NODE_ENV');
+    const fileName = `${nodeEnv}_config_${tenantId}_${id}`;
+
+    try {
+      // Ensure config includes createTableQuery
+      const configToExport = { ...config };
+      if (!(configToExport as any).createTableQuery) {
+        // Regenerate query if missing
+        const transactionType = config.transactionType.replace(
+          /[^a-zA-Z0-9_]/g,
+          '_',
+        );
+        const tableName = `${transactionType}_${tenantId}`;
+        (configToExport as any).createTableQuery =
+          `CREATE TABLE IF NOT EXISTS "${tableName}" (
+          id SERIAL PRIMARY KEY,
+          config_id INTEGER,
+          timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          details JSONB
+        );`;
+      }
+      // Upload config to SFTP with status READY (similar to job.service.ts)
+      await this.sftpService.createFile(fileName, {
+        ...configToExport,
+        status: 'ready',
+      });
+
+      this.logger.log(
+        `Successfully uploaded config file (${fileName}) to SFTP server.`,
+      );
+
+      // Update status
+      await this.configRepository.updateConfig(
+        id,
+        tenantId,
+        {
+          status: newStatus,
+        },
+        token,
+      );
+
+      // Log the action
+      await this.logStatusChange(
+        id,
+        currentStatus,
+        newStatus,
+        action as any,
+        userId,
+        dto.comment,
+      );
+
+      // Audit the action
+      await this.auditService.logAction({
+        action: 'export_config',
+        entityType: 'config',
+        entityId: id.toString(),
+        actor: userId,
+        tenantId,
+        details: `Configuration exported to SFTP${dto.comment ? `: ${dto.comment}` : ''}`,
+        newValues: { status: newStatus },
+      });
+
+      return {
+        success: true,
+        message: `Configuration exported successfully to SFTP (${fileName})`,
+        config:
+          (await this.configRepository.findConfigById(id, tenantId, token)) ||
+          undefined,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to export config to SFTP: ${error.message}`);
+      throw new BadRequestException(
+        `Failed to export configuration to SFTP: ${error.message}`,
+      );
+    }
   }
 
   /**
@@ -2159,7 +2390,11 @@ export class ConfigService {
     userClaims: string[],
     token: string,
   ): Promise<ConfigResponseDto> {
-    const config = await this.configRepository.findConfigById(id, tenantId);
+    const config = await this.configRepository.findConfigById(
+      id,
+      tenantId,
+      token,
+    );
     if (!config) {
       throw new NotFoundException(`Config with ID ${id} not found`);
     }
@@ -2214,7 +2449,8 @@ export class ConfigService {
       success: true,
       message: 'Configuration deployed successfully',
       config:
-        (await this.configRepository.findConfigById(id, tenantId)) || undefined,
+        (await this.configRepository.findConfigById(id, tenantId, token)) ||
+        undefined,
     };
   }
 
@@ -2229,17 +2465,21 @@ export class ConfigService {
     userClaims: string[],
     token: string,
   ): Promise<ConfigResponseDto> {
-    const config = await this.configRepository.findConfigById(id, tenantId);
+    const config = await this.configRepository.findConfigById(
+      id,
+      tenantId,
+      token,
+    );
     if (!config) {
       throw new NotFoundException(`Config with ID ${id} not found`);
     }
 
-    const currentStatus = config.status as ConfigStatus;
-    const action: WorkflowAction = 'return_to_progress';
+    const currentStatus = config.status!;
+    const action = 'return_to_progress' as any; // Extended workflow action
 
     // Validate user can perform this action
     const validation = this.workflowService.canPerformAction(
-      userClaims,
+      userClaims as any,
       currentStatus,
       action,
     );
@@ -2284,7 +2524,8 @@ export class ConfigService {
       success: true,
       message: 'Configuration returned to progress successfully',
       config:
-        (await this.configRepository.findConfigById(id, tenantId)) || undefined,
+        (await this.configRepository.findConfigById(id, tenantId, token)) ||
+        undefined,
     };
   }
 
@@ -2295,8 +2536,13 @@ export class ConfigService {
     id: number,
     tenantId: string,
     userClaims: string[],
+    token: string,
   ): Promise<any> {
-    const config = await this.configRepository.findConfigById(id, tenantId);
+    const config = await this.configRepository.findConfigById(
+      id,
+      tenantId,
+      token,
+    );
     if (!config) {
       throw new NotFoundException(`Config with ID ${id} not found`);
     }
@@ -2330,6 +2576,7 @@ export class ConfigService {
   async getAuditHistory(
     id: number,
     tenantId: string,
+    token: string,
   ): Promise<{
     configId: number;
     history: Array<{
@@ -2341,7 +2588,11 @@ export class ConfigService {
       newStatus?: string;
     }>;
   }> {
-    const config = await this.configRepository.findConfigById(id, tenantId);
+    const config = await this.configRepository.findConfigById(
+      id,
+      tenantId,
+      token,
+    );
     if (!config) {
       throw new NotFoundException(`Config with ID ${id} not found`);
     }
@@ -2394,12 +2645,14 @@ export class ConfigService {
   /**
    * Get human-readable status description
    */
-  private getStatusDescription(status: ConfigStatus): string {
-    const descriptions: Record<ConfigStatus, string> = {
+  private getStatusDescription(status: string): string {
+    const descriptions: Record<string, string> = {
       [ConfigStatus.IN_PROGRESS]: 'Configuration is being edited',
       [ConfigStatus.UNDER_REVIEW]: 'Configuration is under review by approvers',
       [ConfigStatus.APPROVED]:
-        'Configuration has been approved and ready for deployment',
+        'Configuration has been approved and ready for export',
+      EXPORTED:
+        'Configuration has been exported to SFTP and ready for deployment',
       [ConfigStatus.DEPLOYED]: 'Configuration has been deployed to production',
       [ConfigStatus.REJECTED]: 'Configuration has been rejected',
       [ConfigStatus.CHANGES_REQUESTED]:

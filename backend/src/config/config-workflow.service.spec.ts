@@ -69,10 +69,10 @@ describe('ConfigWorkflowService', () => {
       expect(result.canRequestChanges).toBe(true);
     });
 
-    it('should allow publisher to deploy in APPROVED status', () => {
+    it('should allow publisher to deploy in EXPORTED status', () => {
       const result = service.validateUserPermissions(
         ['publisher'],
-        ConfigStatus.APPROVED,
+        ConfigStatus.EXPORTED,
         'deploy',
       );
       expect(result.canDeploy).toBe(true);

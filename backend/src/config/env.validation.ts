@@ -35,6 +35,9 @@ class EnvironmentVariables {
   @IsString()
   CONFIGURATION_DATABASE_PASSWORD: string;
 
+  @IsString()
+  ENCRYPTION_KEY: string;
+
   @IsOptional()
   @IsNumberString()
   SESSION_TIMEOUT_MINUTES?: string;

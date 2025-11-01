@@ -21,10 +21,21 @@ export type {
   WorkflowValidationResult,
   StatusTransitionValidation,
   WorkflowAction,
+  TransactionType,
 } from '@tazama-lf/tcs-lib';
 
 export { ContentType, ConfigStatus } from '@tazama-lf/tcs-lib';
-export type { TransactionType } from '@tazama-lf/tcs-lib';
+
+// Additional status values used by the backend
+export const AdditionalConfigStatus = {
+  EXPORTED: 'EXPORTED' as const,
+} as const;
+
+// Additional workflow actions used by the backend
+export const AdditionalWorkflowAction = {
+  EXPORT: 'export' as const,
+  RETURN_TO_PROGRESS: 'return_to_progress' as const,
+} as const;
 
 // Keep backend-specific interfaces
 export interface MappingSource {

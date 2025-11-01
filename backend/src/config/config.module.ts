@@ -10,9 +10,16 @@ import { TazamaDataModelModule } from '../tazama-data-model/tazama-data-model.mo
 import { PayloadParsingService } from '../services/payload-parsing.service';
 import { FileParsingService } from '../services/file-parsing.service';
 import { AdminServiceClient } from '../services/admin-service-client.service';
+import { SftpModule } from '../sftp/sftp.module';
 
 @Module({
-  imports: [HttpModule, SchemasModule, AuditModule, TazamaDataModelModule],
+  imports: [
+    HttpModule,
+    SchemasModule,
+    AuditModule,
+    TazamaDataModelModule,
+    SftpModule,
+  ],
   controllers: [ConfigController],
   providers: [
     ConfigService,

@@ -88,10 +88,10 @@ describe('Session Timeout Functionality', () => {
         tenantId,
       );
 
-      // Wait a small amount
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      // Wait a small amount to ensure some time passes
+      await new Promise((resolve) => setTimeout(resolve, 1500));
 
-      // Record activity again
+      // Record activity again - this should reset the timer
       sessionManager.recordActivity(userId, tenantId, tokenString);
       const newTimeRemaining = sessionManager.getSessionTimeRemaining(
         userId,
@@ -102,7 +102,6 @@ describe('Session Timeout Functionality', () => {
     });
 
     it('should expire session after timeout period', async () => {
-      // Mock a very short timeout for testing
       jest.spyOn(configService, 'get').mockReturnValue(0.001); // ~60ms timeout
 
       // Create new session manager with short timeout

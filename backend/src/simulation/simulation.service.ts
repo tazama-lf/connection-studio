@@ -511,9 +511,9 @@ export class SimulationService {
         // Source is always an array for consistency
         const sources = mapping.source || [];
 
-        const normalizedSources = (Array.isArray(sources) ? sources : [sources]).map((source) =>
-          source.replace(/\[(\d+)\]/g, '.$1'),
-        );
+        const normalizedSources = (
+          Array.isArray(sources) ? sources : [sources]
+        ).map((source) => source.replace(/\[(\d+)\]/g, '.$1'));
 
         // Handle SPLIT transformations: create multiple TCS mappings for multiple destinations
         if (
@@ -588,8 +588,8 @@ export class SimulationService {
         Array.isArray(mapping.destination)
       ) {
         // Extract source values from original payload
-        const sourceValues = (Array.isArray(sources) ? sources : [sources]).map((sourcePath) =>
-          this.getValueByPath(originalPayload, sourcePath),
+        const sourceValues = (Array.isArray(sources) ? sources : [sources]).map(
+          (sourcePath) => this.getValueByPath(originalPayload, sourcePath),
         );
 
         // Apply SPLIT transformation to get the split values
@@ -628,7 +628,9 @@ export class SimulationService {
                 : splitValues; // fallback to full result
           }
 
-          const normalizedSourcesArr = Array.isArray(sources) ? sources : [sources];
+          const normalizedSourcesArr = Array.isArray(sources)
+            ? sources
+            : [sources];
           details.push({
             destination: destination || '',
             sources: normalizedSourcesArr,
@@ -648,8 +650,8 @@ export class SimulationService {
           : mapping.destination;
 
         // Extract source values from original payload
-        const sourceValues = (Array.isArray(sources) ? sources : [sources]).map((sourcePath) =>
-          this.getValueByPath(originalPayload, sourcePath),
+        const sourceValues = (Array.isArray(sources) ? sources : [sources]).map(
+          (sourcePath) => this.getValueByPath(originalPayload, sourcePath),
         );
 
         // Determine the result value from tcsResult based on destination
@@ -678,7 +680,9 @@ export class SimulationService {
           );
         }
 
-        const normalizedSourcesArr = Array.isArray(sources) ? sources : [sources];
+        const normalizedSourcesArr = Array.isArray(sources)
+          ? sources
+          : [sources];
         details.push({
           destination: destination || '',
           sources: normalizedSourcesArr,

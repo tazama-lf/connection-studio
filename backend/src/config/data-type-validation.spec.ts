@@ -4,7 +4,10 @@ import { ConfigRepository } from './config.repository';
 import { AuditService } from '../audit/audit.service';
 import { TazamaDataModelService } from '../tazama-data-model/tazama-data-model.service';
 import { JSONSchemaConverterService } from '../schemas/json-schema-converter.service';
+import { SchemaInferenceService } from '../schemas/schema-inference.service';
 import { ConfigWorkflowService } from './config-workflow.service';
+import { SftpService } from '../sftp/sftp.service';
+import { ConfigService as NestConfigService } from '@nestjs/config';
 import { BadRequestException } from '@nestjs/common';
 
 describe('Data Type Validation for Mappings', () => {
@@ -79,6 +82,20 @@ describe('Data Type Validation for Mappings', () => {
       isStatusTransitionAllowed: jest.fn(),
     };
 
+    const mockSchemaInferenceService = {
+      inferSchema: jest.fn(),
+      validateFields: jest.fn(),
+    };
+
+    const mockSftpService = {
+      createFile: jest.fn(),
+      deleteFile: jest.fn(),
+    };
+
+    const mockNestConfigService = {
+      get: jest.fn().mockReturnValue('test'),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ConfigService,
@@ -93,6 +110,12 @@ describe('Data Type Validation for Mappings', () => {
           useValue: mockJsonSchemaConverterService,
         },
         { provide: ConfigWorkflowService, useValue: mockConfigWorkflowService },
+        {
+          provide: SchemaInferenceService,
+          useValue: mockSchemaInferenceService,
+        },
+        { provide: SftpService, useValue: mockSftpService },
+        { provide: NestConfigService, useValue: mockNestConfigService },
       ],
     }).compile();
 
@@ -117,13 +140,13 @@ describe('Data Type Validation for Mappings', () => {
     it('should reject string to number mapping (strict typing)', async () => {
       tazamaDataModelService.getFieldType.mockReturnValue('NUMBER');
 
-      const mappingDto = {
+      const stringToNumber = {
         source: 'stringField',
         destination: 'entities.id',
       };
 
       await expect(
-        service.addMapping(1, mappingDto, 'test-tenant', 'test-user'),
+        service.addMapping(1, stringToNumber, 'test-tenant', 'test-user'),
       ).rejects.toThrow(/Direct mapping type mismatch.*string.*number/);
     });
 
@@ -305,6 +328,7 @@ describe('Data Type Validation for Mappings', () => {
         destination: 'entities.id', // number field
       };
 
+      // Should reject string constant to number field
       await expect(
         service.addMapping(1, mappingDto, 'test-tenant', 'test-user'),
       ).rejects.toThrow(/Constant value type mismatch/);

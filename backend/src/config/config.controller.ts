@@ -15,6 +15,7 @@ import {
   UseInterceptors,
   UploadedFile,
   Req,
+  Headers,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AdminServiceClient } from '../services/admin-service-client.service';
@@ -444,9 +445,26 @@ export class ConfigController {
       buildForwardHeaders(user),
     );
   }
-
+  @Post(':id/workflow/export')
+  @RequireClaims(TazamaClaims.EXPORTER)
+  async exportConfig(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: StatusTransitionDto,
+    @User() user: AuthenticatedUser,
+    @Headers('authorization') authorization?: string,
+  ): Promise<ConfigResponseDto> {
+    const token = authorization?.replace('Bearer ', '') || '';
+    return this.configService.exportConfig(
+      id,
+      dto,
+      getTenantId(user),
+      getUserId(user),
+      getUserClaims(user),
+      token,
+    );
+  }
   @Post(':id/workflow/deploy')
-  @RequireClaims(TazamaClaims.APPROVER)
+  @RequireClaims(TazamaClaims.PUBLISHER)
   async deployConfig(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: DeploymentDto,

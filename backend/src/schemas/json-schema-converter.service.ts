@@ -142,7 +142,7 @@ export class JSONSchemaConverterService {
     if (parentPath) {
       const remaining = fullPath.replace(`${parentPath}.`, '');
       const parts = remaining.split('.');
-      return parts.find(part => !/^\d+$/.test(part)) || parts[0];
+      return parts.find((part) => !/^\d+$/.test(part)) || parts[0];
     }
     const parts = fullPath.split('.');
     return parts[parts.length - 1];
