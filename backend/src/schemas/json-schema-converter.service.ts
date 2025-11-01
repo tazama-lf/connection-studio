@@ -84,13 +84,12 @@ export class JSONSchemaConverterService {
         break;
       case FieldType.ARRAY:
         property.type = JSONSchemaType.ARRAY;
-        if (field.arrayElementType) {
-          property.items = this.convertElementTypeToProperty(
-            field.arrayElementType,
-          );
-        } else if (field.children && field.children.length > 0) {
+        
+        // Handle arrays with object children
+        if (field.children && field.children.length > 0) {
           const itemProperties: { [key: string]: JSONSchemaProperty } = {};
           const itemRequired: string[] = [];
+          
           for (const child of field.children) {
             const childName = this.extractFieldName(child.path, field.path);
             itemProperties[childName] = this.convertFieldToProperty(child);
@@ -98,11 +97,24 @@ export class JSONSchemaConverterService {
               itemRequired.push(childName);
             }
           }
+          
           property.items = {
             type: JSONSchemaType.OBJECT,
             properties: itemProperties,
             required: itemRequired.length > 0 ? itemRequired : undefined,
             additionalProperties: false,
+          };
+        } 
+        // Handle arrays with primitive element types
+        else if (field.arrayElementType) {
+          property.items = this.convertElementTypeToProperty(
+            field.arrayElementType,
+          );
+        }
+        // Fallback to string array
+        else {
+          property.items = {
+            type: JSONSchemaType.STRING,
           };
         }
         break;
@@ -140,11 +152,22 @@ export class JSONSchemaConverterService {
   }
   private extractFieldName(fullPath: string, parentPath?: string): string {
     if (parentPath) {
-      const remaining = fullPath.replace(`${parentPath}.`, '');
+      // Remove parent path and leading dot/separator
+      let remaining = fullPath.replace(`${parentPath}.`, '');
+      
+      // Handle array notation: remove .0, .1, [0], [1] etc.
+      remaining = remaining.replace(/\.\d+\./g, '.').replace(/^\d+\./, '');
+      
+      // Split and get the first non-numeric part
       const parts = remaining.split('.');
-      return parts[0];
+      const firstNonNumeric = parts.find((part) => !/^\d+$/.test(part));
+      
+      return firstNonNumeric || parts[0];
     }
-    const parts = fullPath.split('.');
+    
+    // For root level, get the last part after removing array indices
+    const cleaned = fullPath.replace(/\.\d+\./g, '.').replace(/^\d+\./, '');
+    const parts = cleaned.split('.');
     return parts[parts.length - 1];
   }
   convertFromJSONSchema(schema: JSONSchema): SchemaField[] {
