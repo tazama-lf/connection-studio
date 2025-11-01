@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import {
@@ -8,11 +8,11 @@ import {
 import { ConfigType } from '@tazama-lf/tcs-lib';
 
 @Injectable()
-export class NotifyService {
+export class NotifyService implements OnModuleInit {
     private readonly natsService: IStartupService;
     private readonly ackService: IStartupService;
-    private readonly consumerStream: string;
-    private readonly producerStream: string;
+    private consumerStream: string;
+    private producerStream: string;
 
     constructor(
         private readonly logger: LoggerService,
@@ -20,22 +20,27 @@ export class NotifyService {
     ) {
         this.natsService = new StartupFactory();
         this.ackService = new StartupFactory();
-        this.consumerStream = this.configService.get<string>('CONSUMER_STREAM', 'config.notification');
-        this.producerStream = this.configService.get<string>('PRODUCER_STREAM', 'config.notification.response');
     }
 
     async onModuleInit(): Promise<void> {
         try {
-            await this.natsService.initProducer(this.logger, this.consumerStream);
-            this.logger.log(`NATS producer initialized - sending to ${this.consumerStream}`, 'NotificationController');
+
+            this.consumerStream = this.configService.get<string>('CONSUMER_STREAM', 'config.notification.response');
+            this.producerStream = this.configService.get<string>('PRODUCER_STREAM', 'config.notification');
+
+            this.logger.log(`Consumer Stream: ${this.consumerStream}`, 'NotifyService');
+            this.logger.log(`Producer Stream: ${this.producerStream}`, 'NotifyService');
+
+            await this.natsService.initProducer(this.logger, this.producerStream);
+            this.logger.log('NATS producer initialized - sending to config.notification', 'NotificationController');
 
             await this.ackService.init(
-                this.handleAckMessage.bind(this) as never,
+                this.handleAckMessage.bind(this),
                 this.logger,
-                [this.producerStream],
+                [this.consumerStream],
                 'tcs.ack.response'
             );
-            this.logger.log(`ACK receiver initialized - listening on ${this.producerStream}`, 'NotificationController');
+            this.logger.log('ACK receiver initialized - listening on config.notification.response', 'NotificationController');
         } catch (error: unknown) {
             const errorMessage =
                 error instanceof Error ? error.message : 'Unknown error';
@@ -64,8 +69,7 @@ export class NotifyService {
 
     async notifyEnrichment(id: string, type: ConfigType): Promise<void> {
         try {
-            await this.natsService.handleResponse({ TxTp: id, tenant_id: type }, ['config.enrichment']);
-
+            await this.natsService.handleResponse({ TxTp: id, TenantId: type });
 
       this.logger.log(`Configuration (ID: ${id}) sent to DATA-ENRICHMENT`);
     } catch (error) {

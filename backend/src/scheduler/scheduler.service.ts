@@ -5,23 +5,21 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
+import { ISuccess, JobStatus, Schedule } from '@tazama-lf/tcs-lib';
+import { v4 } from 'uuid';
 import { DatabaseService } from '../database/database.service';
+import { SftpService } from '../sftp/sftp.service';
 import { validateCronExpression } from '../utils/helpers';
 import { CreateScheduleJobDto } from './dto/create-schedule.dto';
 import { UpdateScheduleJobDto } from './dto/update-schedule-dto';
-import { Schedule, ISuccess, JobStatus } from '@tazama-lf/tcs-lib';
-import { ConfigService } from '@nestjs/config';
-import { SftpService } from '../sftp/sftp.service';
-import { v4 } from 'uuid';
 
 @Injectable()
 export class SchedulerService {
   constructor(
     private readonly db: DatabaseService,
     private readonly loggerService: LoggerService,
-    private readonly configService: ConfigService,
-    private readonly sftpService: SftpService,
-  ) {}
+    private readonly sftpService: SftpService
+  ) { }
 
   async create(
     schedule: CreateScheduleJobDto,
@@ -148,7 +146,6 @@ export class SchedulerService {
         );
       }
 
-      const nodeEnv = this.configService.get<string>('NODE_ENV');
       const fileName = `cron_${tenantId}_${id}`;
 
       switch (status) {
@@ -168,8 +165,11 @@ export class SchedulerService {
         case JobStatus.DEPLOYED: {
           const existing = await this.sftpService.readFile(`cron_${tenantId}_${id}`)
           await this.create(existing, tenantId, JobStatus.DEPLOYED);
-          await this.sftpService.deleteFile(fileName);
-          break;
+          await this.sftpService.deleteFile(fileName)
+          return {
+            success: true,
+            message: `Job with id ${id} successfully deployed.`,
+          };
         }
 
         default:

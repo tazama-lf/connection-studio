@@ -11,13 +11,16 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ConfigType, JobStatus, ScheduleStatus } from '@tazama-lf/tcs-lib';
-import { RequireAnyClaims, RequireEditorRole, TazamaClaims } from '../auth/auth.decorator';
+import { plainToInstance } from 'class-transformer';
+import { type AuthenticatedUser } from 'src/auth/auth.types';
+import { TazamaAuthGuard } from 'src/auth/tazama-auth.guard';
+import { User } from 'src/auth/user.decorator';
+import { RequireAnyClaims, TazamaClaims } from '../auth/auth.decorator';
 import { CreatePullJobDto } from './dto/create-pull-job.dto';
 import { CreatePushJobDto } from './dto/create-push-job.dto';
+import { PullJobResponseDto } from './dto/fetch-pull-job.dto';
+import { PushJob } from './dto/push-job.dto';
 import { JobService } from './job.service';
-import { TazamaAuthGuard } from 'src/auth/tazama-auth.guard';
-import { type AuthenticatedUser } from 'src/auth/auth.types';
-import { User } from 'src/auth/user.decorator';
 
 @Controller('job')
 @UseGuards(TazamaAuthGuard)
@@ -26,13 +29,13 @@ export class JobController {
 
   @Post('/create/push')
   @RequireAnyClaims(TazamaClaims.EDITOR)
-  async createPushJob(@Body() job: CreatePushJobDto,@User() user: AuthenticatedUser) {
+  async createPushJob(@Body() job: CreatePushJobDto, @User() user: AuthenticatedUser) {
     return await this.jobService.createPush(job, user.tenantId);
   }
 
   @Post('/create/pull')
   @RequireAnyClaims(TazamaClaims.EDITOR)
-  async createPullJob(@Body() job: CreatePullJobDto,@User() user: AuthenticatedUser) {
+  async createPullJob(@Body() job: CreatePullJobDto, @User() user: AuthenticatedUser) {
     return await this.jobService.createPull(job, user.tenantId);
   }
 
@@ -49,7 +52,12 @@ export class JobController {
   @Get('/:id')
   @RequireAnyClaims(TazamaClaims.EDITOR, TazamaClaims.APPROVER, TazamaClaims.EXPORTER, TazamaClaims.PUBLISHER)
   async getById(@Param('id') id: string, @Query('type') type: ConfigType) {
-    return await this.jobService.findOne(id, type);
+    const record = await this.jobService.findOne(id, type);
+    if (type === ConfigType.PULL) {
+      return plainToInstance(PullJobResponseDto, record, { excludeExtraneousValues: true });
+    }
+
+    return plainToInstance(PushJob, record, { excludeExtraneousValues: true });
   }
 
   @Get('/get/status')
@@ -90,5 +98,11 @@ export class JobController {
       status,
       type === ConfigType.PUSH ? 'endpoints' : 'job',
     );
+  }
+
+  @Post('/notify')
+  @RequireAnyClaims(TazamaClaims.EDITOR)
+  async testNotify() {
+    return await this.jobService.notify()
   }
 }

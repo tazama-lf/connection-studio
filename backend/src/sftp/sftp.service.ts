@@ -26,16 +26,16 @@ export class SftpService implements OnModuleInit, OnModuleDestroy {
     this.producerSftp = new SFTPClient();
   }
 
-    async onModuleInit(): Promise<void> {
-        await this.connectConsumer();
-        await this.connectProducer();
-    }
+  async onModuleInit(): Promise<void> {
+    await this.connectConsumer();
+    await this.connectProducer();
+  }
 
-    private async connectConsumer(): Promise<void> {
-        const host = this.configService.get<string>('SFTP_HOST_CONSUMER');
-        const port = this.configService.get<number>('SFTP_PORT_CONSUMER');
-        const username = this.configService.get<string>('SFTP_USERNAME_CONSUMER');
-        const password = this.configService.get<string>('SFTP_PASSWORD_CONSUMER');
+  private async connectConsumer(): Promise<void> {
+    const host = this.configService.get<string>('SFTP_HOST_CONSUMER');
+    const port = this.configService.get<number>('SFTP_PORT_CONSUMER');
+    const username = this.configService.get<string>('SFTP_USERNAME_CONSUMER');
+    const password = this.configService.get<string>('SFTP_PASSWORD_CONSUMER');
 
     if (!host || !port || !username || !password) {
       this.loggerService.warn(
@@ -53,11 +53,11 @@ export class SftpService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-    private async connectProducer(): Promise<void> {
-        const host = this.configService.get<string>('SFTP_HOST_PRODUCER');
-        const port = this.configService.get<number>('SFTP_PORT_PRODUCER');
-        const username = this.configService.get<string>('SFTP_USERNAME_PRODUCER');
-        const password = this.configService.get<string>('SFTP_PASSWORD_PRODUCER');
+  private async connectProducer(): Promise<void> {
+    const host = this.configService.get<string>('SFTP_HOST_PRODUCER');
+    const port = this.configService.get<number>('SFTP_PORT_PRODUCER');
+    const username = this.configService.get<string>('SFTP_USERNAME_PRODUCER');
+    const password = this.configService.get<string>('SFTP_PASSWORD_PRODUCER');
 
     if (!host || !port || !username || !password) {
       this.loggerService.warn(
@@ -75,13 +75,13 @@ export class SftpService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-    async onModuleDestroy(): Promise<void> {
-        await Promise.allSettled([
-            this.consumerSftp.end(),
-            this.producerSftp.end(),
-        ]);
-        this.loggerService.log('SFTP connections closed.');
-    }
+  async onModuleDestroy(): Promise<void> {
+    await Promise.allSettled([
+      this.consumerSftp.end(),
+      this.producerSftp.end(),
+    ]);
+    this.loggerService.log('SFTP connections closed.');
+  }
 
   async createFile(fileName: string, data: unknown): Promise<void> {
     try {
@@ -122,13 +122,13 @@ export class SftpService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-    async readFile(fileName: string): Promise<any> {
-        try {
+  async readFile(fileName: string): Promise<any> {
+    try {
 
-            const sftpHost = this.configService.get<string>('SFTP_HOST_PRODUCER');
-            if (!sftpHost) {
-                throw new BadRequestException(`Producer SFTP server credentials not provided.`);
-            }
+      const sftpHost = this.configService.get<string>('SFTP_HOST_PRODUCER');
+      if (!sftpHost) {
+        throw new BadRequestException(`Producer SFTP server credentials not provided.`);
+      }
 
       const path = `/upload/${fileName}.json`;
       const integrityFilePath = `/upload/${fileName}.hash`;
@@ -215,17 +215,16 @@ export class SftpService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-    async listFiles(remoteDir: string, format: 'de' | 'cron'): Promise<SftpFile[]> {
-        try {
-            const regex = /\.json$/i;
+  async listFiles(remoteDir: string, format: 'de' | 'cron'): Promise<SftpFile[]> {
+    try {
+      const regex = new RegExp(`^${format}_[a-zA-Z0-9-]+_${uuidPattern}\\.json$`);
+      const files: SftpFile[] = await this.producerSftp.list('/upload', (file: SftpFile) => regex.test(file.name));
+      this.loggerService.log(`Found ${files.length} matching config files in ${remoteDir}`);
+      return files;
+    } catch (error: unknown) {
 
-            const files: SftpFile[] = await this.producerSftp.list('/upload', (file: SftpFile) => regex.test(file.name));
-            this.loggerService.log(`Found ${files.length} matching config files in ${remoteDir}`);
-            return files;
-        } catch (error: unknown) {
-
-            const message =
-                error instanceof Error ? error.message : JSON.stringify(error);
+      const message =
+        error instanceof Error ? error.message : JSON.stringify(error);
 
       this.loggerService.error(
         `Failed to list files in ${remoteDir}: ${message}`,

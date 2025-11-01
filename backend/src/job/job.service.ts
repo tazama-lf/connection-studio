@@ -250,11 +250,8 @@ export class JobService {
       }
 
       if (tableName === 'job' && record.schedule_id) {
-        const scheduleQuery =
-          'SELECT id, name, cron FROM schedule WHERE id = $1 LIMIT 1;';
-        const scheduleResult = await this.db.query(scheduleQuery, [
-          record.schedule_id,
-        ]);
+        const scheduleQuery = `SELECT name, cron FROM schedule WHERE id = $1 LIMIT 1;`;
+        const scheduleResult = await this.db.query(scheduleQuery, [record.schedule_id]);
         const schedule = scheduleResult.rows[0] || null;
 
         return {
@@ -374,6 +371,11 @@ export class JobService {
     }
   }
 
+
+  async notify() {
+    await this.notifyService.notifyEnrichment('c1d4794e-0eae-45ea-8f22-9fc41140b1a7', ConfigType.PUSH)
+  }
+
   async updateStatus(
     id: string,
     status: JobStatus,
@@ -385,13 +387,11 @@ export class JobService {
         throw new BadRequestException('Both status and type are required.');
       }
 
-      const tableName = type === ConfigType.PUSH ? 'endpoints' : 'job';
-      const existingJob = await this.findOne(id, type);
-      const nodeEnv = this.configService.get<string>('NODE_ENV');
-      const fileName = `${nodeEnv}_de_${tenantId}_${id}`;
+      const fileName = `de_${tenantId}_${id}`;
 
       switch (status) {
         case JobStatus.EXPORTED: {
+          const existingJob = await this.findOne(id, type);
           await this.sftpService.createFile(fileName, {
             ...existingJob,
             status: JobStatus.READY,
@@ -404,6 +404,7 @@ export class JobService {
         }
 
         case JobStatus.DEPLOYED: {
+          const existingJob = await this.sftpService.readFile(fileName);
           if (type === ConfigType.PULL) {
             let connection = { ...existingJob.connection } as SFTPConnection;
 
@@ -426,14 +427,18 @@ export class JobService {
             await this.createPush(existingJob, tenantId, JobStatus.DEPLOYED);
             await this.notifyService.notifyEnrichment(existingJob.id, ConfigType.PUSH)
           }
-          await this.sftpService.deleteFile(fileName);
-          break;
+          await this.sftpService.deleteFile(fileName)
+          return {
+            success: true,
+            message: `$Job with id ${id} successfully deployed.`,
+          };
         }
 
         default:
           break;
       }
 
+      const tableName = type === ConfigType.PUSH ? 'endpoints' : 'job';
       const updateQuery = `
       UPDATE ${tableName}
       SET status = $1, updated_at = NOW()
