@@ -122,9 +122,25 @@ export class ConfigService {
         };
       }
 
+      let payloadString: string;
+      if (typeof dto.payload === 'string') {
+        payloadString = dto.payload;
+      } else if (typeof dto.payload === 'object') {
+        payloadString = JSON.stringify(dto.payload, null, 2);
+      } else {
+        return {
+          success: false,
+          message: 'Invalid payload format. Expected string or object.',
+        };
+      }
+
+      this.logger.log(
+        `Payload converted to string (${payloadString.length} chars)`,
+      );
+
       const parsingResult =
         await this.payloadParsingService.parsePayloadToSchema(
-          dto.payload,
+          payloadString,
           dto.contentType || ContentType.JSON,
         );
 
@@ -224,6 +240,9 @@ export class ConfigService {
         dto.msgFam,
       );
 
+      // Use string literal to ensure compatibility with database constraint
+      const initialStatus = 'IN_PROGRESS'; // Try uppercase format
+      
       const configData: Omit<Config, 'id' | 'createdAt' | 'updatedAt'> = {
         msgFam: dto.msgFam || '',
         transactionType: dto.transactionType,
@@ -232,10 +251,14 @@ export class ConfigService {
         contentType: dto.contentType || ContentType.JSON,
         schema: finalSchema,
         mapping: dto.mapping,
-        status: ConfigStatus.IN_PROGRESS,
+        status: initialStatus as any,
         tenantId,
         createdBy: userId,
       };
+
+      this.logger.log(
+        `Config data prepared with status: "${configData.status}" (type: ${typeof configData.status})`,
+      );
 
       const configId = await this.configRepository.createConfig(
         configData,
@@ -248,6 +271,7 @@ export class ConfigService {
         actor: userId,
         tenantId,
         endpointName: `${dto.msgFam || ''} - ${endpointPath}`,
+        details: `Created config with ${sourceFields.length} fields. Payload size: ${payloadString.length} chars`,
       });
 
       const config = await this.configRepository.findConfigById(
@@ -1980,6 +2004,13 @@ export class ConfigService {
       token,
     );
 
+    // Fetch the updated config
+    const updatedConfig = await this.configRepository.findConfigById(
+      id,
+      tenantId,
+      token,
+    );
+
     // Log the action
     await this.logStatusChange(
       id,
@@ -2000,58 +2031,11 @@ export class ConfigService {
       details: `Configuration submitted for approval${dto.comment ? `: ${dto.comment}` : ''}`,
       newValues: { status: newStatus },
     });
-    let createTableQuery = '';
-    try {
-      const transactionType = config.transactionType.replace(
-        /[^a-zA-Z0-9_]/g,
-        '_',
-      );
-      const tableName = `${transactionType}_${tenantId}`;
-      createTableQuery = `CREATE TABLE IF NOT EXISTS "${tableName}" (
-        id SERIAL PRIMARY KEY,
-        config_id INTEGER,
-        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        details JSONB
-      );`;
-      await this.configRepository.runRawQuery(createTableQuery, token);
-      this.logger.log(`Created transaction history table: ${tableName}`);
-      await this.auditService.logAction({
-        action: 'create_transaction_history_table',
-        entityType: 'config',
-        entityId: id.toString(),
-        actor: userId,
-        tenantId,
-        details: `Created transaction history table: ${tableName}`,
-      });
-    } catch (err) {
-      this.logger.error(
-        `Failed to create transaction history table: ${err.message}`,
-      );
-    }
-
-    // Store the query in the config for later export
-    const updatedConfig = await this.configRepository.findConfigById(
-      id,
-      tenantId,
-      token,
-    );
-    if (updatedConfig) {
-      (updatedConfig as any).createTableQuery = createTableQuery;
-    }
-
-    // Send email notifications to approvers (async, non-blocking)
-    this.sendApprovalNotification(id, config, tenantId, userId, dto.comment).catch(
-      (err) => {
-        this.logger.error(
-          `Failed to send approval notification for config ${id}: ${err.message}`,
-        );
-      },
-    );
 
     return {
       success: true,
       message: 'Configuration submitted for approval successfully',
-      config: updatedConfig || undefined,
+      config: updatedConfig ?? undefined,
     };
   }
 
