@@ -15,19 +15,17 @@ export class ConfigWorkflowService {
   ): StatusTransitionValidation {
     const validTransitions: Record<string, string[]> = {
       [ConfigStatus.IN_PROGRESS]: [ConfigStatus.UNDER_REVIEW],
+      [ConfigStatus.SUSPENDED]: [ConfigStatus.IN_PROGRESS],
       [ConfigStatus.UNDER_REVIEW]: [
         ConfigStatus.APPROVED,
         ConfigStatus.REJECTED,
-        ConfigStatus.CHANGES_REQUESTED,
+        ConfigStatus.IN_PROGRESS, // For changes requested, return to in progress
       ],
       [ConfigStatus.APPROVED]: [ConfigStatus.EXPORTED],
-      [ConfigStatus.EXPORTED]: [ConfigStatus.DEPLOYED],
+      [ConfigStatus.EXPORTED]: [ConfigStatus.READY_FOR_DEPLOYMENT],
+      [ConfigStatus.READY_FOR_DEPLOYMENT]: [ConfigStatus.DEPLOYED],
       [ConfigStatus.DEPLOYED]: [],
       [ConfigStatus.REJECTED]: [ConfigStatus.IN_PROGRESS],
-      [ConfigStatus.CHANGES_REQUESTED]: [
-        ConfigStatus.IN_PROGRESS,
-        ConfigStatus.UNDER_REVIEW,
-      ],
     };
 
     const allowedTransitions = validTransitions[fromStatus];
@@ -72,16 +70,14 @@ export class ConfigWorkflowService {
     };
 
     if (hasEditorRole) {
-      // Can edit only in editable states
+      // Can edit only in editable states (IN_PROGRESS or REJECTED with changes)
       result.canEdit = [
         ConfigStatus.IN_PROGRESS,
         ConfigStatus.REJECTED,
-        ConfigStatus.CHANGES_REQUESTED,
       ].includes(currentStatus as any);
 
       result.canSubmit = [
         ConfigStatus.IN_PROGRESS,
-        ConfigStatus.CHANGES_REQUESTED,
       ].includes(currentStatus as any);
     }
 
@@ -96,7 +92,7 @@ export class ConfigWorkflowService {
     }
 
     if (hasPublisherRole) {
-      result.canDeploy = currentStatus === ConfigStatus.EXPORTED;
+      result.canDeploy = currentStatus === ConfigStatus.READY_FOR_DEPLOYMENT;
     }
 
     return result;
@@ -107,7 +103,7 @@ export class ConfigWorkflowService {
   submit_for_approval: ConfigStatus.UNDER_REVIEW,
   approve: ConfigStatus.APPROVED,
   reject: ConfigStatus.REJECTED,
-  request_changes: ConfigStatus.CHANGES_REQUESTED,
+  request_changes: ConfigStatus.IN_PROGRESS, // Return to in progress for edits
   export: ConfigStatus.EXPORTED,
   deploy: ConfigStatus.DEPLOYED,
   return_to_progress: ConfigStatus.IN_PROGRESS,
@@ -191,14 +187,14 @@ export class ConfigWorkflowService {
       case 'return_to_progress': {
         const canReturn =
           userClaims.includes('editor') &&
-          [ConfigStatus.REJECTED, ConfigStatus.CHANGES_REQUESTED].includes(
+          [ConfigStatus.REJECTED].includes(
             currentStatus as any,
           );
         if (!canReturn) {
           return {
             canPerform: false,
             message:
-              'Only editors can return rejected or change-requested configurations to progress',
+              'Only editors can return rejected configurations to progress',
           };
         }
         break;
@@ -217,7 +213,7 @@ export class ConfigWorkflowService {
   } {
     const editableStatuses = [
       ConfigStatus.IN_PROGRESS,
-      ConfigStatus.CHANGES_REQUESTED,
+      ConfigStatus.REJECTED, // Can edit after rejection
     ];
 
     if (!editableStatuses.includes(currentStatus)) {

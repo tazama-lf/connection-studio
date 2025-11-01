@@ -240,9 +240,6 @@ export class ConfigService {
         dto.msgFam,
       );
 
-      // Use string literal to ensure compatibility with database constraint
-      const initialStatus = 'IN_PROGRESS'; // Try uppercase format
-      
       const configData: Omit<Config, 'id' | 'createdAt' | 'updatedAt'> = {
         msgFam: dto.msgFam || '',
         transactionType: dto.transactionType,
@@ -251,7 +248,7 @@ export class ConfigService {
         contentType: dto.contentType || ContentType.JSON,
         schema: finalSchema,
         mapping: dto.mapping,
-        status: initialStatus as any,
+        status: ConfigStatus.IN_PROGRESS,
         tenantId,
         createdBy: userId,
       };
@@ -2252,7 +2249,8 @@ export class ConfigService {
       throw new ForbiddenException(validation.message);
     }
 
-    const newStatus = ConfigStatus.CHANGES_REQUESTED;
+    // When changes are requested, return to IN_PROGRESS for editor to make changes
+    const newStatus = ConfigStatus.IN_PROGRESS;
 
     // Update status
     await this.configRepository.updateConfig(
@@ -2688,16 +2686,14 @@ export class ConfigService {
   private getStatusDescription(status: string): string {
     const descriptions: Record<string, string> = {
       [ConfigStatus.IN_PROGRESS]: 'Configuration is being edited',
+      [ConfigStatus.SUSPENDED]: 'Configuration has been suspended',
       [ConfigStatus.UNDER_REVIEW]: 'Configuration is under review by approvers',
       [ConfigStatus.APPROVED]:
         'Configuration has been approved and ready for export',
-      EXPORTED:
-        'Configuration has been exported to SFTP and ready for deployment',
+      [ConfigStatus.REJECTED]: 'Configuration has been rejected or changes requested',
+      [ConfigStatus.EXPORTED]: 'Configuration has been exported to SFTP',
+      [ConfigStatus.READY_FOR_DEPLOYMENT]: 'Configuration is ready for deployment',
       [ConfigStatus.DEPLOYED]: 'Configuration has been deployed to production',
-      [ConfigStatus.EXPORTED]: 'Configuration has been exported',
-      [ConfigStatus.REJECTED]: 'Configuration has been rejected',
-      [ConfigStatus.CHANGES_REQUESTED]:
-        'Changes have been requested for this configuration',
     };
 
     return descriptions[status] || status;
