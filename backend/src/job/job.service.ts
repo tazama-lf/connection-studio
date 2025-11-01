@@ -371,11 +371,6 @@ export class JobService {
     }
   }
 
-
-  async notify() {
-    await this.notifyService.notifyEnrichment('c1d4794e-0eae-45ea-8f22-9fc41140b1a7', ConfigType.PUSH)
-  }
-
   async updateStatus(
     id: string,
     status: JobStatus,

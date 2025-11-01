@@ -49,7 +49,6 @@ export class SftpService implements OnModuleInit, OnModuleDestroy {
       this.loggerService.log(`Connected to CONSUMER SFTP at ${host}:${port}`);
     } catch (err) {
       this.loggerService.error('Failed to connect to CONSUMER SFTP', err);
-      throw err;
     }
   }
 
@@ -71,7 +70,6 @@ export class SftpService implements OnModuleInit, OnModuleDestroy {
       this.loggerService.log(`Connected to PRODUCER SFTP at ${host}:${port}`);
     } catch (err) {
       this.loggerService.error('Failed to connect to PRODUCER SFTP', err);
-      throw err;
     }
   }
 

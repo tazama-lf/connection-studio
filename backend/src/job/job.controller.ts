@@ -99,10 +99,4 @@ export class JobController {
       type === ConfigType.PUSH ? 'endpoints' : 'job',
     );
   }
-
-  @Post('/notify')
-  @RequireAnyClaims(TazamaClaims.EDITOR)
-  async testNotify() {
-    return await this.jobService.notify()
-  }
 }
