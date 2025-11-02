@@ -63,13 +63,17 @@ export class JobService {
     job: CreatePushJobDto,
     tenantId: string,
     status: JobStatus = JobStatus.INPROGRESS,
-  ): Promise<Job> {
+  ): Promise<ISuccess> {
     try {
       // await this.validateExisting(job.table_name);
+      const id = v4()
 
-      const path = `/tcs/${job.version}/${tenantId}/enrichment${job.path}`;
+      const path =
+        status === JobStatus.DEPLOYED
+          ? job.path
+          : `/${tenantId}/enrichment/${job.version}/${job.path}`;
 
-      const jobWithId = { ...job, id: v4(), path, tenant_id: tenantId, status };
+      const jobWithId = { ...job, id, path, tenant_id: tenantId, status };
       const keys = Object.keys(jobWithId);
       const values = Object.values(jobWithId);
       const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
@@ -82,9 +86,21 @@ export class JobService {
 
       const insertRes = await this.db.query(insertQuery, values);
       const newJob = insertRes.rows[0];
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { tenant_id, ...safeJob } = newJob;
-      return safeJob;
+
+      if (!newJob) {
+        this.loggerService.error("Failed to create push job.")
+        throw new Error('Failed to create push job.');
+      }
+
+      if (status === JobStatus.DEPLOYED) {
+        this.loggerService.log("Sending notification to DEAPI")
+        await this.notifyService.notifyEnrichment(id, ConfigType.PUSH);
+      }
+
+      return {
+        success: true,
+        message: `Job with id ${id} successfully updated`,
+      };
     } catch (err) {
       this.loggerService.error(err.message);
       throw new BadRequestException(err.message);
@@ -138,9 +154,12 @@ export class JobService {
       }
       await this.dryRunService.dryRun(job);
 
+
+      const new_id = v4()
+
       const jobWithId = {
         ...job,
-        id: v4(),
+        id: new_id,
         connection,
         tenant_id: tenantId,
         status,
@@ -156,6 +175,12 @@ export class JobService {
                      `;
       const insertResult = await this.db.query(insertQuery, values);
       const { id } = insertResult.rows[0];
+
+
+      if (status === JobStatus.DEPLOYED) {
+        await this.notifyService.notifyEnrichment(new_id, ConfigType.PUSH)
+      }
+
 
       return {
         success: true,
@@ -178,7 +203,7 @@ export class JobService {
     }
   }
 
-  async findAll(page: number, limit: number, tenantId: string) {
+  async findAll(page: number, limit: number, tenantId: string): Promise<[]> {
     if (
       !Number.isInteger(page) ||
       !Number.isInteger(limit) ||
@@ -232,7 +257,7 @@ export class JobService {
     return result.rows;
   }
 
-  async findOne(id: string, type: ConfigType) {
+  async findOne(id: string, type: ConfigType): Promise<{}> {
     try {
       if (!id || !type) {
         throw new BadRequestException('Both id and type are required.');
@@ -409,7 +434,6 @@ export class JobService {
               connection.private_key = decrypt(connection.private_key);
             }
 
-
             const { schedule, ...jobPayload } = existingJob;
 
             await this.createPull(
@@ -417,10 +441,8 @@ export class JobService {
               tenantId,
               JobStatus.DEPLOYED,
             );
-            await this.notifyService.notifyEnrichment(existingJob.id, ConfigType.PULL)
           } else {
             await this.createPush(existingJob, tenantId, JobStatus.DEPLOYED);
-            await this.notifyService.notifyEnrichment(existingJob.id, ConfigType.PUSH)
           }
           await this.sftpService.deleteFile(fileName)
           return {
