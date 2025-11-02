@@ -461,10 +461,9 @@ export class ConfigApiService {
       console.log('  - Config ID:', id);
       console.log('  - New status:', status);
 
-      const response = await fetch(`${this.baseURL}/config/${id}/status`, {
+      const response = await fetch(`${this.baseURL}/config/update/status/${id}?status=${status}`, {
         method: 'PATCH',
         headers: this.getAuthHeaders(),
-        body: JSON.stringify({ status }),
       });
 
       const result = await this.handleResponse<ConfigResponse>(response);

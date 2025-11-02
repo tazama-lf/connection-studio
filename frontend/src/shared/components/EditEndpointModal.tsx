@@ -15,7 +15,7 @@ import type {
   AllowedFunctionName
 } from '../types/functions.types';
 import { FUNCTION_CONFIGS } from '../types/functions.types';
-import { isApprover, isEditor } from '../../utils/roleUtils';
+import { isApprover, isEditor, isExporter } from '../../utils/roleUtils';
 
 // Function Selection Form Component
 interface FunctionSelectionFormProps {
@@ -32,16 +32,30 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({ onAddFunc
 
   const handleAddFunction = () => {
     const config = functionConfig.configurations.find(c => c.name === selectedConfiguration);
-    if (!config) return;
+    if (!config) {
+      console.error('No configuration found for:', selectedConfiguration);
+      return;
+    }
 
     // Combine required parameters from configuration with selected optional parameters
-    const requiredParams = config.parameters.split(', ').map(p => p.trim());
+    const requiredParams = config.parameters.split(', ').map(p => p.trim()).filter(p => p.length > 0);
     const allParams = [...requiredParams, ...selectedOptionalParams];
     
-    onAddFunction({
+    console.log('🔧 Function form - handleAddFunction:');
+    console.log('Selected Function:', selectedFunction);
+    console.log('Selected Configuration:', selectedConfiguration);
+    console.log('Config Parameters String:', config.parameters);
+    console.log('Required Params:', requiredParams);
+    console.log('Optional Params:', selectedOptionalParams);
+    console.log('All Params:', allParams);
+    
+    const functionData = {
       functionName: selectedFunction,
       params: allParams
-    });
+    };
+    
+    console.log('Final Function Data:', functionData);
+    onAddFunction(functionData);
   };
 
   const handleOptionalParamToggle = (paramName: string) => {
@@ -259,7 +273,8 @@ interface EditEndpointModalProps {
     label: 'Simulation'
   }, {
     id: 'deploy',
-    label: isApprover(user?.claims || []) ? 'Send for Deployment' : 'Submit for Approval'
+    label: isApprover(user?.claims || []) ? 'Send for Deployment' : 
+           isExporter(user?.claims || []) ? 'Export' : 'Submit for Approval'
   }];
 
   // Load existing config data when editing
@@ -648,7 +663,12 @@ interface EditEndpointModalProps {
       setLoading(true);
       const configId = createdEndpoint?.id || existingConfig?.id;
       
-      console.log('💾 Adding function to backend:', functionData);
+      console.log('💾 Adding function to backend:');
+      console.log('Config ID:', configId);
+      console.log('Function Data:', JSON.stringify(functionData, null, 2));
+      console.log('Function Name:', functionData.functionName);
+      console.log('Function Params:', functionData.params);
+      
       const response = await FunctionsApiService.addFunction(configId, functionData);
       
       if (response.success) {
@@ -1553,21 +1573,23 @@ interface EditEndpointModalProps {
                   (currentStep === 'mapping' && !isMappingValid) || 
                   (currentStep === 'simulation' && !isSimulationSuccess && !readOnly) ||
                   (currentStep !== 'payload' && !createdEndpoint && !existingConfig) ||
-                  (currentStep === 'deploy' && !isApprover(user?.claims || []) && (createdEndpoint?.status === 'under_review' || createdEndpoint?.status === 'under review' || createdEndpoint?.status === 'approved' || existingConfig?.status === 'under_review' || existingConfig?.status === 'under review' || existingConfig?.status === 'approved')) ||
-                  (currentStep === 'deploy' && isApprover(user?.claims || []) && (createdEndpoint?.status === 'approved' || existingConfig?.status === 'approved'))
+                  (currentStep === 'deploy' && !isApprover(user?.claims || []) && !isExporter(user?.claims || []) && (createdEndpoint?.status === 'under_review' || createdEndpoint?.status === 'under review' || createdEndpoint?.status === 'approved' || existingConfig?.status === 'under_review' || existingConfig?.status === 'under review' || existingConfig?.status === 'approved')) ||
+                  (currentStep === 'deploy' && isApprover(user?.claims || []) && (createdEndpoint?.status === 'approved' || existingConfig?.status === 'approved')) ||
+                  (currentStep === 'deploy' && isExporter(user?.claims || []) && (createdEndpoint?.status !== 'approved' && existingConfig?.status !== 'approved'))
                 } data-id="element-749">
                   {loading ? 'Processing...' : (
                     currentStep === 'deploy' ? (
                       isApprover(user?.claims || []) && (createdEndpoint?.status !== 'approved' && existingConfig?.status !== 'approved') ? 'Send for Deployment' : 
-                      !isApprover(user?.claims || []) ? 'Submit for Approval' :
+                      isExporter(user?.claims || []) && (createdEndpoint?.status === 'approved' || existingConfig?.status === 'approved') ? 'Export' :
+                      !isApprover(user?.claims || []) && !isExporter(user?.claims || []) ? 'Submit for Approval' :
                       'Configuration Approved'
                     ) : 
                     'Save and Next'
                   )}
                 </Button>
               )}
-              {/* Show Next button for approvers and editors in read-only mode on all steps */}
-              {readOnly && (isApprover(user?.claims || []) || isEditor(user?.claims || [])) && (
+              {/* Show Next button for approvers, editors, and exporters in read-only mode on all steps */}
+              {readOnly && (isApprover(user?.claims || []) || isEditor(user?.claims || []) || isExporter(user?.claims || [])) && (
                 <>
                   {(() => {
                     const currentIndex = steps.findIndex(s => s.id === currentStep);
@@ -1597,6 +1619,20 @@ interface EditEndpointModalProps {
                                 className="bg-green-600 hover:bg-green-700 text-white"
                               >
                                 Send for Deployment
+                              </Button>
+                            )}
+                          </>
+                        )}
+                        {/* Show export button for exporters on the last step */}
+                        {isExporter(user?.claims || []) && currentStep === 'deploy' && (
+                          <>
+                            {onSendForDeployment && (createdEndpoint?.status === 'approved' || existingConfig?.status === 'approved') && (
+                              <Button 
+                                variant="primary" 
+                                onClick={onSendForDeployment}
+                                className="bg-blue-600 hover:bg-blue-700 text-white"
+                              >
+                                Export
                               </Button>
                             )}
                           </>

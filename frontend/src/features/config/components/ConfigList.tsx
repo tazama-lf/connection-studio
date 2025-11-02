@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { EyeIcon, MoreVerticalIcon, EditIcon, CopyIcon, HistoryIcon, ChevronUpIcon, ChevronDownIcon, FilterIcon } from 'lucide-react';
+import { EyeIcon, MoreVerticalIcon, EditIcon, CopyIcon, HistoryIcon, ChevronUpIcon, ChevronDownIcon, FilterIcon, Upload, Rocket } from 'lucide-react';
 import { configApi } from '../services/configApi';
+import { sftpApi } from '../../../features/exporter/services/sftpApi';
 import { UI_CONFIG } from '../../../shared/config/app.config';
 import { DropdownMenuWithAutoDirection } from '../../../shared/components/DropdownMenuWithAutoDirection';
 import { useAuth } from '../../../features/auth/contexts/AuthContext';
-import { isExporter } from '../../../utils/roleUtils';
+import { isExporter, isPublisher } from '../../../utils/roleUtils';
+import { useToast } from '../../../shared/providers/ToastProvider';
 
 interface Config {
   id: number;
@@ -43,6 +45,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
   onConfigClone,
   onViewDetails,
   onViewHistory,
+  onRefresh,
   searchTerm: externalSearchTerm,
   showPendingApprovals = false,
   showApprovedConfigs = false,
@@ -71,6 +74,8 @@ export const ConfigList: React.FC<ConfigListProps> = ({
   // Auth context for role-based filtering
   const { user } = useAuth();
   const userIsExporter = user?.claims ? isExporter(user.claims) : false;
+  const userIsPublisher = user?.claims ? isPublisher(user.claims) : false;
+  const { showSuccess, showError } = useToast();
 
   // Fetch configs based on flags
   const fetchConfigs = async () => {
@@ -372,6 +377,35 @@ const getStatusText = (status: string) => {
     }
   };
 
+  const handleExportConfig = async (config: Config) => {
+    try {
+      await configApi.updateConfigStatus(config.id, 'exported');
+      showSuccess("Success", `Config "${config.msgFam}" has been exported successfully.`);
+      // Trigger refresh if available
+      if (onRefresh) {
+        onRefresh();
+      }
+    } catch (error) {
+      console.error('Error exporting config:', error);
+      showError("Error", "Failed to export config. Please try again.");
+    }
+  };
+
+  const handlePublishConfig = async (config: Config) => {
+    try {
+      await sftpApi.publishItem(config.msgFam, 'dems');
+      await configApi.updateConfigStatus(config.id, 'deployed');
+      showSuccess("Success", `Config "${config.msgFam}" has been published successfully.`);
+      // Trigger refresh if available
+      if (onRefresh) {
+        onRefresh();
+      }
+    } catch (error) {
+      console.error('Error publishing config:', error);
+      showError("Error", "Failed to publish config. Please try again.");
+    }
+  };
+
   const handlePreviousPage = () => {
     setCurrentPage(prev => Math.max(prev - 1, 1));
   };
@@ -561,6 +595,30 @@ const getStatusText = (status: string) => {
                                 >
                                   <CopyIcon className="w-4 h-4 mr-2" />
                                   Clone
+                                </button>
+                              )}
+                              {userIsExporter && normalizeStatus(config.status) === 'approved' && (
+                                <button
+                                  onClick={() => {
+                                    handleExportConfig(config);
+                                    setOpenDropdown(null);
+                                  }}
+                                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                >
+                                  <Upload className="w-4 h-4 mr-2" />
+                                  Export
+                                </button>
+                              )}
+                              {userIsPublisher && normalizeStatus(config.status) === 'exported' && (
+                                <button
+                                  onClick={() => {
+                                    handlePublishConfig(config);
+                                    setOpenDropdown(null);
+                                  }}
+                                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                >
+                                  <Rocket className="w-4 h-4 mr-2" />
+                                  Publish
                                 </button>
                               )}
                              

@@ -862,8 +862,8 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
           </div>
         )}
 
-        {/* Send for Approval Footer - Show for editors when viewing job with status='in-progress' */}
-        {job && !isLoading && !editMode && job.status === 'in-progress' && onSendForApproval && (
+        {/* Send for Approval Footer - Show for anyone with editor role when viewing job with status='in-progress' */}
+        {job && !isLoading && !editMode && !cloneMode && job.status === 'in-progress' && onSendForApproval && (
           <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
             <Button
               variant="secondary"
@@ -886,7 +886,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
         )}
 
         {/* Action Buttons Footer - Only show for approvers when status is under-review */}
-        {job && !isLoading && !editMode && userIsApprover && (onApprove || onReject) && job.status === 'under-review' && (
+        {job && !isLoading && !editMode && !cloneMode && userIsApprover && (onApprove || onReject) && job.status === 'under-review' && (
           <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
             <Button
               variant="secondary"
@@ -919,7 +919,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
         )}
 
         {/* Export Button Footer - Show for exporters when status is approved (ready to export) */}
-        {job && !isLoading && !editMode && onExport && userIsExporter && job.status === 'approved' && (
+        {job && !isLoading && !editMode && !cloneMode && onExport && userIsExporter && job.status === 'approved' && (
           <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3 bg-gray-50">
             <Button
               variant="secondary"
@@ -941,8 +941,11 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
           </div>
         )}
 
-        {/* Default Footer - Show when no other footer is displayed */}
-        {job && !isLoading && !editMode && !userIsApprover && !userIsExporter && (
+        {/* Default Footer - Show when no other specific footer is displayed */}
+        {job && !isLoading && !editMode && !cloneMode && 
+         !(job.status === 'in-progress' && onSendForApproval) &&
+         !(userIsApprover && (onApprove || onReject) && job.status === 'under-review') &&
+         !(onExport && userIsExporter && job.status === 'approved') && (
           <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3 bg-gray-50">
             <Button
               variant="secondary"

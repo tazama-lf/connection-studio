@@ -51,7 +51,7 @@ export interface SftpFileContent {
   [key: string]: any;
 }
 
-export type SftpFormat = 'de' | 'cron';
+export type SftpFormat = 'de' | 'cron' | 'dems';
 
 // SFTP API service
 export class SftpApiService {
@@ -192,6 +192,7 @@ export class SftpApiService {
   extractFormatFromFilename(filename: string): SftpFormat | null {
     if (filename.includes('_cron_')) return 'cron';
     if (filename.includes('_de_')) return 'de';
+    if (filename.includes('_dems_')) return 'dems';
     return null;
   }
 
@@ -200,6 +201,7 @@ export class SftpApiService {
    * This will update the status to 'deployed' in the respective service
    * For 'cron' format: updates schedule status via /api/scheduler/update/status/:id
    * For 'de' format: updates job status via /api/job/update/status/:id
+   * For 'dems' format: updates config status via /api/config/update/status/:id
    */
   async publishItem(id: string, format: SftpFormat, type?: 'PULL' | 'PUSH' | string): Promise<void> {
     try {
@@ -216,8 +218,19 @@ export class SftpApiService {
             method: 'PATCH',
           },
         );
+      } else if (format === 'dems') {
+        // Update config status using the config API endpoint
+        const queryParams = new URLSearchParams();
+        queryParams.append('status', 'deployed');
+        
+        await this.apiRequest<{ success: boolean; message: string }>(
+          `${this.baseURL}/config/update/status/${id}?${queryParams.toString()}`,
+          {
+            method: 'PATCH',
+          },
+        );
       } else {
-        // Update job status - requires type parameter
+        // Update job status - requires type parameter (for 'de' format)
         let jobType: string | undefined = type;
         
         // Normalize the type to uppercase
