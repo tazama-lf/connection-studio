@@ -140,12 +140,27 @@ export class JSONSchemaConverterService {
   }
   private extractFieldName(fullPath: string, parentPath?: string): string {
     if (parentPath) {
+      // Remove parent path prefix
       const remaining = fullPath.replace(`${parentPath}.`, '');
       const parts = remaining.split('.');
-      return parts.find((part) => !/^\d+$/.test(part)) || parts[0];
+      
+      // For array children paths like "0.PaymentId", we want to skip the numeric index
+      // and return the first non-numeric part
+      const nonNumericParts = parts.filter((part) => !/^\d+$/.test(part));
+      if (nonNumericParts.length > 0) {
+        return nonNumericParts[0];
+      }
+      
+      // Fallback to first part if all are numeric (edge case)
+      return parts[0];
     }
+    
+    // For paths without parent, get the last non-numeric part
     const parts = fullPath.split('.');
-    return parts[parts.length - 1];
+    const nonNumericParts = parts.filter((part) => !/^\d+$/.test(part));
+    return nonNumericParts.length > 0 
+      ? nonNumericParts[nonNumericParts.length - 1] 
+      : parts[parts.length - 1];
   }
   convertFromJSONSchema(schema: JSONSchema): SchemaField[] {
     this.logger.log('Converting JSON Schema to custom SchemaField format');
