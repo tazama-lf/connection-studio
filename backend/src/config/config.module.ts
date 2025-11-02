@@ -12,6 +12,7 @@ import { FileParsingService } from '../services/file-parsing.service';
 import { AdminServiceClient } from '../services/admin-service-client.service';
 import { SftpModule } from '../sftp/sftp.module';
 import { NotificationModule } from '../notification/notification.module';
+import { NotifyModule } from '../notify/notify.module';
 import { ConfigService as NestConfigService } from '@nestjs/config';
 import { DatabaseService } from '@tazama-lf/tcs-lib';
 
@@ -27,6 +28,7 @@ import { DatabaseService } from '@tazama-lf/tcs-lib';
     TazamaDataModelModule,
     SftpModule,
     NotificationModule,
+    NotifyModule,
   ],
   controllers: [ConfigController],
   providers: [

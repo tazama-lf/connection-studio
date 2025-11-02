@@ -16,6 +16,7 @@ import { AuditService } from '../audit/audit.service';
 import { JSONSchemaConverterService } from '../schemas/json-schema-converter.service';
 import { SchemaInferenceService } from '../schemas/schema-inference.service';
 import { NotificationService } from '../notification/notification.service';
+import { NotifyService } from '../notify/notify.service';
 import { DatabaseService } from '@tazama-lf/tcs-lib';
 import { decrypt } from '../utils/helpers';
 
@@ -77,6 +78,7 @@ export class ConfigService {
     private readonly payloadParsingService: PayloadParsingService,
     private readonly notificationService: NotificationService,
     private readonly databaseService: DatabaseService,
+    private readonly notifyService: NotifyService,
   ) {}
 
   async createConfig(
@@ -2552,6 +2554,11 @@ export class ConfigService {
         details: `Configuration deployed${dto.comment ? `: ${dto.comment}` : ''}`,
         newValues: { status: newStatus },
       });
+
+      // Notify DEMS (Data Enrichment Microservice) via NATS
+      this.logger.log(`Sending NATS notification to DEMS for config ${id}`);
+      await this.notifyService.notifyDems(id.toString(), tenantId);
+      this.logger.log(`✅ NATS notification sent to DEMS for config ${id}`);
 
       return {
         success: true,

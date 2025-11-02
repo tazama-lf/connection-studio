@@ -81,4 +81,24 @@ export class NotifyService implements OnModuleInit {
       );
     }
   }
+
+  async notifyDems(configId: string, tenantId: string): Promise<void> {
+    try {
+      await this.natsService.handleResponse({ 
+        configId, 
+        tenantId,
+        type: 'CONFIG_DEPLOYMENT',
+        timestamp: new Date().toISOString()
+      });
+
+      this.logger.log(`Config deployment notification (ID: ${configId}) sent to DEMS`);
+    } catch (error) {
+      this.logger.error(
+        new Error(
+          `Failed to send DEMS notification: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        ),
+        'NotifyService',
+      );
+    }
+  }
 }
