@@ -10,6 +10,7 @@ import {
   FieldType,
   JSONSchema,
   applyFieldAdjustments,
+  SchemaField,
 } from '@tazama-lf/tcs-lib';
 import { AuditService } from '../audit/audit.service';
 import { JSONSchemaConverterService } from '../schemas/json-schema-converter.service';
@@ -175,6 +176,21 @@ export class ConfigService {
           },
         };
       }
+
+      // Always add tenantId field to source schema for mapping
+      const tenantIdField: SchemaField = {
+        name: 'tenantId',
+        path: 'tenantId',
+        type: FieldType.STRING,
+        isRequired: true,
+      };
+      
+      // Add tenantId as the first field
+      sourceFields = [tenantIdField, ...sourceFields];
+      
+      this.logger.log(
+        `Added tenantId field to schema. Total fields: ${sourceFields.length}`,
+      );
 
       const duplicateErrors =
         this.validateNoDuplicateSchemaFields(sourceFields);

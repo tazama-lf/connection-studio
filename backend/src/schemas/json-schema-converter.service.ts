@@ -18,6 +18,13 @@ export class JSONSchemaConverterService {
     this.logger.log('Converting custom schema to JSON Schema format');
     const properties: { [key: string]: JSONSchemaProperty } = {};
     const required: string[] = [];
+    
+    // Always add tenantId field first
+    properties['tenantId'] = {
+      type: JSONSchemaType.STRING,
+    };
+    required.push('tenantId');
+    
     for (const field of fields) {
       properties[field.name] = this.convertFieldToProperty(field);
       if (field.isRequired) {
@@ -33,7 +40,7 @@ export class JSONSchemaConverterService {
       schema.required = required;
     }
     this.logger.log(
-      `Generated JSON Schema with ${Object.keys(properties).length} properties, ${required.length} required`,
+      `Generated JSON Schema with ${Object.keys(properties).length} properties (including tenantId), ${required.length} required`,
     );
 
     this.auditService.logAction({
@@ -41,7 +48,7 @@ export class JSONSchemaConverterService {
       action: 'CONVERT_TO_JSON_SCHEMA',
       actor: 'SYSTEM',
       tenantId: 'default-tenant',
-      details: `Converted ${fields.length} fields to JSON Schema with ${Object.keys(properties).length} properties`,
+      details: `Converted ${fields.length} fields to JSON Schema with ${Object.keys(properties).length} properties (including auto-added tenantId)`,
       status: 'SUCCESS',
       severity: 'LOW',
     });
