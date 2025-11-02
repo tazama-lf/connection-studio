@@ -1145,6 +1145,7 @@ export class ConfigService {
     }
 
     const allowedFunctions: AllowedFunctionName[] = [
+      'saveTransactionDetails',
       'addAccountHolder',
       'addEntity',
       'addAccount',

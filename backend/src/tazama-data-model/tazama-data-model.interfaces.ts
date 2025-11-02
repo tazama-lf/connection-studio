@@ -64,6 +64,24 @@ export interface TransactionDetails {
   TxSts?: string;
 }
 
+export interface DataCache {
+  dbtrId?: string;
+  cdtrId?: string;
+  dbtrAcctId?: string;
+  cdtrAcctId?: string;
+  evtId?: string;
+  creDtTm?: string;
+  instdAmt?: {
+    amt: number;
+    ccy: string;
+  };
+  intrBkSttlmAmt?: {
+    amt: number;
+    ccy: string;
+  };
+  xchgRate?: number;
+}
+
 export const TAZAMA_DATA_MODEL_SCHEMAS: TazamaCollectionSchema[] = [
   {
     name: 'entities',
