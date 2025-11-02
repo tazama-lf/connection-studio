@@ -2361,7 +2361,7 @@ export class ConfigService {
       throw new ForbiddenException(validation.message);
     }
 
-    const newStatus = 'EXPORTED' as any;
+    const newStatus = ConfigStatus.EXPORTED;
 
     const fileName = `dems_${tenantId}_${id}`;
 
