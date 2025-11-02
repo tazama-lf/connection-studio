@@ -15,7 +15,7 @@ import { plainToInstance } from 'class-transformer';
 import { type AuthenticatedUser } from 'src/auth/auth.types';
 import { TazamaAuthGuard } from 'src/auth/tazama-auth.guard';
 import { User } from 'src/auth/user.decorator';
-import { RequireAnyClaims, TazamaClaims } from '../auth/auth.decorator';
+import { RequireAnyClaims, RequireEditorRole, TazamaClaims } from '../auth/auth.decorator';
 import { CreatePullJobDto } from './dto/create-pull-job.dto';
 import { CreatePushJobDto } from './dto/create-push-job.dto';
 import { PullJobResponseDto } from './dto/fetch-pull-job.dto';
@@ -25,7 +25,7 @@ import { JobService } from './job.service';
 @Controller('job')
 @UseGuards(TazamaAuthGuard)
 export class JobController {
-  constructor(private readonly jobService: JobService) {}
+  constructor(private readonly jobService: JobService) { }
 
   @Post('/create/push')
   @RequireAnyClaims(TazamaClaims.EDITOR)
@@ -37,6 +37,12 @@ export class JobController {
   @RequireAnyClaims(TazamaClaims.EDITOR)
   async createPullJob(@Body() job: CreatePullJobDto, @User() user: AuthenticatedUser) {
     return await this.jobService.createPull(job, user.tenantId);
+  }
+
+  @Patch('/update/job/:id')
+  @RequireEditorRole()
+  async updateJob(@Param("id") id: string, @Body() job: CreatePullJobDto, @Query('type') type: ConfigType) {
+    return await this.jobService.updateJob(id, job, type);
   }
 
   @Get('/all')

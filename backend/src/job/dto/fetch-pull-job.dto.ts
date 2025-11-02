@@ -50,8 +50,8 @@ export class PullJobResponseDto {
   @Expose()
   tenant_id: string;
 
-  // @Expose()
-  // schedule_id: string;
+  @Expose()
+  schedule_id: string;
 
   @Expose()
   endpoint_name: string;

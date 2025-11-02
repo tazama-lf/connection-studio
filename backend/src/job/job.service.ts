@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -28,6 +29,8 @@ import {
 import { CreatePullJobDto, SFTPConnectionDto } from './dto/create-pull-job.dto';
 import { CreatePushJobDto } from './dto/create-push-job.dto';
 import { NotifyService } from 'src/notify/notify.service';
+import { UpdatePushJobDto } from './dto/update-push-job.dto';
+import { UpdatePullJobDto } from './dto/update-pull-job.dto';
 
 @Injectable()
 export class JobService {
@@ -59,13 +62,79 @@ export class JobService {
     }
   }
 
+
+  async updateJob(
+    id: string,
+    job: UpdatePushJobDto | UpdatePullJobDto,
+    type: ConfigType,
+  ): Promise<ISuccess> {
+
+    const tableName = type === ConfigType.PUSH ? 'endpoints' : 'job';
+
+    const existingJob = await this.findOne(id, ConfigType.PUSH);
+
+    if (existingJob.status !== JobStatus.INPROGRESS) {
+      throw new ForbiddenException('Only In-Progress jobs can be edited');
+    }
+
+    const keys = Object.keys(job);
+    const values = Object.values(job);
+    const setClause = keys.map((key, i) => `${key} = $${i + 1}`).join(', ');
+    const query = `UPDATE ${tableName} SET ${setClause} WHERE id = $${keys.length + 1};`;
+
+
+    const result = await this.db.query(query, [...values, id]);
+
+    if (!result.rowCount) {
+      throw new NotFoundException(
+        `${type} Job with id ${id} not found or no changes were made`,
+      );
+    }
+
+    return {
+      success: true,
+      message: `Job with id ${id} successfully updated`,
+    };
+
+  }
+  async updatePull(id: string, job: UpdatePullJobDto): Promise<ISuccess> {
+    const existingJob = await this.findOne(id, ConfigType.PULL);
+
+    if (existingJob.status !== JobStatus.INPROGRESS) {
+      throw new ForbiddenException(
+        'Only In-Progress Pull jobs can be edited',
+      );
+    }
+
+    const keys = Object.keys(job);
+    const values = Object.values(job);
+    const setClause = keys.map((key, i) => `${key} = $${i + 1}`).join(', ');
+    const query = `UPDATE job SET ${setClause} WHERE id = $${keys.length + 1};`;
+
+    const result = await this.db.query(query, [...values, id]);
+
+    const updatedRows = result.rowCount;
+
+    if (!updatedRows) {
+      throw new NotFoundException(
+        `Pull Job with id ${id} not found or no changes were made`,
+      );
+    }
+
+    return {
+      success: true,
+      message: `Job with id ${id} successfully updated`,
+    };
+
+  }
+
   async createPush(
     job: CreatePushJobDto,
     tenantId: string,
     status: JobStatus = JobStatus.INPROGRESS,
   ): Promise<ISuccess> {
     try {
-      // await this.validateExisting(job.table_name);
+      await this.validateExisting(job.table_name);
       const id = v4()
 
       const path =
@@ -114,7 +183,7 @@ export class JobService {
   ): Promise<ISuccess> {
     try {
 
-      // await this.validateExisting(job.table_name);
+      await this.validateExisting(job.table_name);
 
       const checkScheduleQuery = `
                  SELECT * 
@@ -257,7 +326,7 @@ export class JobService {
     return result.rows;
   }
 
-  async findOne(id: string, type: ConfigType): Promise<{}> {
+  async findOne(id: string, type: ConfigType) {
     try {
       if (!id || !type) {
         throw new BadRequestException('Both id and type are required.');
