@@ -104,9 +104,9 @@ export class SchedulerService {
     try {
       const existingSchedule = await this.findOne(id);
 
-      if (existingSchedule.status === JobStatus.APPROVED) {
+      if (existingSchedule.status !== JobStatus.INPROGRESS) {
         throw new ForbiddenException(
-          'Approved cron jobs cannot be edited. Please create a new cron job instead.',
+          'Only In-Progress Cron jobs can be edited',
         );
       }
 
