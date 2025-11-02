@@ -45,6 +45,7 @@ import {
   ChangeRequestDto,
   DeploymentDto,
   WorkflowAction,
+  ConfigWithSourceFields,
 } from './config.interfaces';
 
 @Injectable()
@@ -296,10 +297,13 @@ export class ConfigService {
 
       this.logger.log('Successfully created config ' + configId);
 
+      // Enrich config with source fields for mapping UI
+      const enrichedConfig = this.enrichConfigWithSourceFields(config!);
+
       return {
         success: true,
         message: 'Config created successfully',
-        config: config!,
+        config: enrichedConfig,
         validation,
       };
     } catch (error) {
@@ -457,7 +461,8 @@ export class ConfigService {
     tenantId: string,
     token: string,
   ): Promise<Config | null> {
-    return this.configRepository.findConfigById(id, tenantId, token);
+    const config = await this.configRepository.findConfigById(id, tenantId, token);
+    return config ? this.enrichConfigWithSourceFields(config) : null;
   }
 
   async testMethod(): Promise<boolean> {
@@ -470,16 +475,18 @@ export class ConfigService {
     tenantId: string,
     token: string,
   ): Promise<Config | null> {
-    return this.configRepository.findConfigByEndpoint(
+    const config = await this.configRepository.findConfigByEndpoint(
       endpointPath,
       version,
       tenantId,
       token,
     );
+    return config ? this.enrichConfigWithSourceFields(config) : null;
   }
 
   async getAllConfigs(tenantId: string, token: string): Promise<Config[]> {
-    return this.configRepository.findConfigsByTenant(tenantId, token);
+    const configs = await this.configRepository.findConfigsByTenant(tenantId, token);
+    return configs.map(config => this.enrichConfigWithSourceFields(config));
   }
 
   async getPendingApprovals(
@@ -2880,5 +2887,28 @@ export class ConfigService {
       );
       // Don't throw - notification failure shouldn't block workflow
     }
+  }
+
+  /**
+   * Enrich config with sourceFields array for mapping UI
+   * This converts the JSON Schema back to SchemaField[] with .0. notation preserved
+   */
+  private enrichConfigWithSourceFields(config: Config): ConfigWithSourceFields {
+    try {
+      if (config && config.schema) {
+        const sourceFields = this.jsonSchemaConverter.convertFromJSONSchema(
+          config.schema,
+        );
+        return {
+          ...config,
+          sourceFields,
+        };
+      }
+    } catch (error) {
+      this.logger.warn(
+        `Failed to enrich config with source fields: ${error.message}`,
+      );
+    }
+    return config;
   }
 }
