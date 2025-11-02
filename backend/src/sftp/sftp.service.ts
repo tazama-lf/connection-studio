@@ -213,9 +213,9 @@ export class SftpService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  async listFiles(remoteDir: string, format: 'de' | 'cron'): Promise<SftpFile[]> {
+  async listFiles(remoteDir: string, format: 'de' | 'cron', tenant_id: string): Promise<SftpFile[]> {
     try {
-      const regex = new RegExp(`^${format}_[a-zA-Z0-9-]+_${uuidPattern}\\.json$`);
+      const regex = new RegExp(`^${format}_${tenant_id}_${uuidPattern}\\.json$`);
       const files: SftpFile[] = await this.producerSftp.list('/upload', (file: SftpFile) => regex.test(file.name));
       this.loggerService.log(`Found ${files.length} matching config files in ${remoteDir}`);
       return files;
