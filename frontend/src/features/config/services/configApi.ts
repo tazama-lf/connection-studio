@@ -263,9 +263,26 @@ export class ConfigApiService {
         headers: this.getAuthHeaders(),
       });
 
-      const configs = await this.handleResponse<Config[]>(response);
-      console.log('Fetched configs:', configs);
-      return { configs };
+      const responseData = await this.handleResponse<{success: boolean, configs: Config[]} | Config[]>(response);
+      console.log('Fetched configs raw response:', responseData);
+      
+      // Handle both response formats: {success: true, configs: [...]} or direct array [...]
+      let configsArray: Config[] = [];
+      if (Array.isArray(responseData)) {
+        // Direct array response
+        configsArray = responseData;
+        console.log('Response is direct array, length:', configsArray.length);
+      } else if (responseData && typeof responseData === 'object' && 'configs' in responseData) {
+        // Object response with configs property
+        configsArray = Array.isArray(responseData.configs) ? responseData.configs : [];
+        console.log('Response is object with configs property, length:', configsArray.length);
+      }
+      
+      const result = { configs: configsArray };
+      console.log('Final wrapped response:', result);
+      console.log('Final configs count:', result.configs.length);
+      
+      return result;
     } catch (error) {
       console.error('Configs fetch failed:', error);
       throw error;
@@ -286,9 +303,26 @@ export class ConfigApiService {
         headers: headers,
       });
 
-      const configs = await this.handleResponse<Config[]>(response);
-      console.log('✅ getPendingApprovals - Success:', configs);
-      return { configs };
+      console.log('🚀 getPendingApprovals - Raw response status:', response.status);
+      console.log('🚀 getPendingApprovals - Raw response ok:', response.ok);
+      
+      const responseData = await this.handleResponse<any>(response);
+      console.log('✅ getPendingApprovals - Full response data:', responseData);
+      console.log('✅ getPendingApprovals - Response type:', typeof responseData);
+      console.log('✅ getPendingApprovals - Response has success:', 'success' in responseData);
+      console.log('✅ getPendingApprovals - Response has configs:', 'configs' in responseData);
+      
+      // Handle the actual response structure from admin service: { success: true, configs: [...] }
+      if (responseData && typeof responseData === 'object' && 'configs' in responseData) {
+        console.log('✅ getPendingApprovals - Response has configs property, configs length:', responseData.configs?.length);
+        return { configs: responseData.configs || [] };
+      } else if (Array.isArray(responseData)) {
+        console.log('✅ getPendingApprovals - Response is array, returning as is');
+        return { configs: responseData };
+      } else {
+        console.log('✅ getPendingApprovals - Response format unknown, returning empty array');
+        return { configs: [] };
+      }
     } catch (error) {
       console.error('❌ getPendingApprovals - Failed:', error);
       throw error;
@@ -520,19 +554,23 @@ export class ConfigApiService {
     }
   }
 
-  async deployConfig(id: number): Promise<ConfigResponse> {
+  async deployConfig(id: number, notes?: string): Promise<ConfigResponse> {
     try {
       const response = await fetch(
         `${this.baseURL}/config/${id}/workflow/deploy`,
         {
           method: 'POST',
           headers: this.getAuthHeaders(),
+          body: JSON.stringify({ 
+            notes: notes || 'Deployed to production',
+            actionBy: 'publisher' 
+          }),
         },
       );
 
       return await this.handleResponse<ConfigResponse>(response);
     } catch (error) {
-      console.error('Config deployment failed:', error);
+      console.error('Deploy config failed:', error);
       throw error;
     }
   }
@@ -592,6 +630,104 @@ export class ConfigApiService {
       return await this.handleResponse<ConfigResponse>(response);
     } catch (error) {
       console.error('Request changes failed:', error);
+      throw error;
+    }
+  }
+
+  // Export config (approver -> exporter workflow)
+  async exportConfig(id: number, notes?: string): Promise<ConfigResponse> {
+    try {
+      console.log(`🚀 Starting export for config ID: ${id}`);
+      console.log(`📋 Export notes: "${notes || 'Exported for deployment'}"`);
+      console.log(`🔗 Export endpoint: ${this.baseURL}/config/${id}/workflow/export`);
+      
+      const requestBody = { 
+        comment: notes || 'Exported for deployment',
+        userId: 'system', // Backend extracts real user from JWT
+        userRole: 'exporter' // Backend validates role from JWT claims
+      };
+      console.log('📤 Request body:', requestBody);
+      
+      const response = await fetch(
+        `${this.baseURL}/config/${id}/workflow/export`,
+        {
+          method: 'POST',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify(requestBody),
+        },
+      );
+
+      console.log(`📡 Response status: ${response.status} ${response.statusText}`);
+      console.log(`📡 Response headers:`, Object.fromEntries(response.headers.entries()));
+      
+      const result = await this.handleResponse<ConfigResponse>(response);
+      console.log(`✅ Export successful for config ${id}:`, result);
+      return result;
+    } catch (error) {
+      console.error(`❌ Export config failed for ID ${id}:`, error);
+      throw error;
+    }
+  }
+
+
+
+  // Get configs by status for different workflows
+  async getConfigsByStatus(status: 'approved' | 'exported'): Promise<{ configs: Config[] }> {
+    try {
+      console.log(`Fetching configs with status: ${status}`);
+      // Fetch all configs since backend doesn't support status filtering via query params
+      const response = await fetch(`${this.baseURL}/config`, {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      });
+
+      const responseData = await this.handleResponse<{success: boolean, configs: Config[]} | Config[]>(response);
+      console.log(`Fetched all configs for ${status} filtering:`, responseData);
+      
+      // Handle both response formats: {success: true, configs: [...]} or direct array [...]
+      let configsArray: Config[] = [];
+      if (Array.isArray(responseData)) {
+        configsArray = responseData;
+      } else if (responseData && typeof responseData === 'object' && 'configs' in responseData) {
+        configsArray = Array.isArray(responseData.configs) ? responseData.configs : [];
+      }
+      
+      // Filter by status on frontend
+      console.log(`🔍 All configs before filtering:`, configsArray.map(c => ({ id: c.id, status: c.status })));
+      
+      const filteredConfigs = configsArray.filter(config => {
+        const configStatus = config.status?.toLowerCase() || '';
+        const targetStatus = status.toLowerCase();
+        
+        let matches = false;
+        // Handle both formats: 'approved' and 'STATUS_04_APPROVED'
+        if (targetStatus === 'approved') {
+          matches = configStatus === 'approved' || 
+                   configStatus === 'status_04_approved' ||
+                   configStatus.includes('approved');
+        } else if (targetStatus === 'exported') {
+          matches = configStatus === 'exported' || 
+                   configStatus === 'status_06_exported' ||
+                   configStatus.includes('exported');
+        } else {
+          matches = configStatus === targetStatus;
+        }
+        
+        if (matches) {
+          console.log(`✅ Config ${config.id} matches ${targetStatus}: ${config.status}`);
+        }
+        
+        return matches;
+      });
+      
+      console.log(`🔍 Filtered configs for ${status}:`, filteredConfigs.map(c => ({ id: c.id, status: c.status })));
+      
+      const result = { configs: filteredConfigs };
+      console.log(`Final ${status} configs:`, result.configs.length);
+      
+      return result;
+    } catch (error) {
+      console.error(`Failed to fetch ${status} configs:`, error);
       throw error;
     }
   }

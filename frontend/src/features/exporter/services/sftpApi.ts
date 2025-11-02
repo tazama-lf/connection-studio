@@ -1,5 +1,4 @@
 import { API_CONFIG } from '../../../shared/config/api.config';
-import { apiRequest } from '../../../shared/services/tokenManager';
 
 // Custom error types for SFTP operations
 export class SftpError extends Error {
@@ -69,6 +68,28 @@ export class SftpApiService {
       Accept: 'application/json',
       ...(token && { Authorization: `Bearer ${token}` }),
     };
+  }
+
+  private async apiRequest<T>(url: string, options: RequestInit = {}): Promise<T> {
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        ...this.getAuthHeaders(),
+        ...options.headers,
+      },
+    });
+
+    if (response.status === 401) {
+      localStorage.removeItem('authToken');
+      throw new Error('Authentication failed');
+    }
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+    }
+
+    return await response.json();
   }
 
   private async handleResponse<T>(response: Response): Promise<T> {
@@ -189,7 +210,7 @@ export class SftpApiService {
         const queryParams = new URLSearchParams();
         queryParams.append('status', 'deployed');
         
-        await apiRequest<{ success: boolean; message: string }>(
+        await this.apiRequest<{ success: boolean; message: string }>(
           `${this.baseURL}/scheduler/update/status/${id}?${queryParams.toString()}`,
           {
             method: 'PATCH',
@@ -213,7 +234,7 @@ export class SftpApiService {
         queryParams.append('status', 'deployed');
         queryParams.append('type', jobType.toLowerCase());
         
-        await apiRequest<{ success: boolean; message: string }>(
+        await this.apiRequest<{ success: boolean; message: string }>(
           `${this.baseURL}/job/update/status/${id}?${queryParams.toString()}`,
           {
             method: 'PATCH',

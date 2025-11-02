@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { X, Calendar, Clock, Database, Globe, Settings, Save, Download } from 'lucide-react';
-import type { DataEnrichmentJobResponse, JobStatus } from '../types';
+import { X, Calendar, Clock, Database, Globe, Settings, Download, Copy } from 'lucide-react';
+import type { DataEnrichmentJobResponse } from '../types';
 import { Button } from '../../../shared/components/Button';
 import { useAuth } from '../../auth/contexts/AuthContext';
 import { isApprover, isExporter } from '../../../utils/roleUtils';
 import { getJobTypeColor, getStatusColor as getCentralizedStatusColor, getStatusLabel } from '../../../shared/utils/statusColors';
+import { JobRejectionDialog } from '../../../shared/components/JobRejectionDialog';
 
 interface JobDetailsModalProps {
   isOpen: boolean;
@@ -12,7 +13,9 @@ interface JobDetailsModalProps {
   job: DataEnrichmentJobResponse | null;
   isLoading?: boolean;
   editMode?: boolean;
+  cloneMode?: boolean;
   onSave?: (updatedJob: Partial<DataEnrichmentJobResponse>) => Promise<void>;
+  onClone?: (job: DataEnrichmentJobResponse) => Promise<void>;
   onSendForApproval?: (jobId: string, jobType: 'PULL' | 'PUSH') => void;
   onApprove?: (jobId: string, jobType: 'PULL' | 'PUSH') => void;
   onReject?: (jobId: string, jobType: 'PULL' | 'PUSH') => void;
@@ -28,13 +31,59 @@ const getJobType = (job: DataEnrichmentJobResponse): 'push' | 'pull' => {
   return (job.path && !job.source_type) ? 'push' : 'pull';
 };
 
+// Helper function to determine connection type from connection object
+const getConnectionType = (job: DataEnrichmentJobResponse): 'HTTP' | 'SFTP' | null => {
+  console.log('🔍 getConnectionType called for job:', job.endpoint_name);
+  console.log('🔍 job.source_type:', job.source_type);
+  console.log('🔍 job.connection:', job.connection);
+  console.log('🔍 job.connection type:', typeof job.connection);
+  console.log('🔍 job.connection keys:', job.connection ? Object.keys(job.connection) : 'none');
+  console.log('🔍 Full job object keys:', Object.keys(job));
+  
+  // First check explicit source_type
+  if (job.source_type) {
+    console.log('🔍 Using explicit source_type:', job.source_type);
+    return job.source_type as 'HTTP' | 'SFTP';
+  }
+  
+  // Auto-detect from connection object structure
+  if (job.connection && typeof job.connection === 'object') {
+    // Handle case where connection might be a string (JSON string)
+    let connectionObj = job.connection;
+    if (typeof job.connection === 'string') {
+      try {
+        connectionObj = JSON.parse(job.connection);
+        console.log('🔍 Parsed connection string:', connectionObj);
+      } catch (e) {
+        console.log('🔍 Failed to parse connection string:', e);
+        return null;
+      }
+    }
+    
+    if (connectionObj && typeof connectionObj === 'object') {
+      if ('host' in connectionObj && connectionObj.host) {
+        console.log('🔍 Auto-detected SFTP from connection.host:', connectionObj.host);
+        return 'SFTP';
+      } else if ('url' in connectionObj && connectionObj.url) {
+        console.log('🔍 Auto-detected HTTP from connection.url:', connectionObj.url);
+        return 'HTTP';
+      }
+    }
+  }
+  
+  console.log('🔍 Could not determine connection type, returning null');
+  return null;
+};
+
 const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
   isOpen,
   onClose,
   job,
   isLoading = false,
   editMode = false,
+  cloneMode = false,
   onSave,
+  onClone,
   onSendForApproval,
   onApprove,
   onReject,
@@ -43,8 +92,48 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
   const { user } = useAuth();
   const userIsApprover = user?.claims ? isApprover(user.claims) : false;
   const userIsExporter = user?.claims ? isExporter(user.claims) : false;
+  
+  // State for rejection dialog
+  const [showRejectionDialog, setShowRejectionDialog] = useState(false);
+
+  // Handle rejection with reason
+  const handleRejectionConfirm = (reason: string) => {
+    if (onReject && job) {
+      const jobType = getJobType(job) === 'push' ? 'PUSH' : 'PULL';
+      // TODO: Update onReject to accept reason when backend is implemented
+      onReject(job.id, jobType);
+      console.log('Job rejected with reason:', reason); // For now, just log the reason
+      onClose();
+    }
+  };
   console.log('=== JOB DETAILS MODAL RENDER ===');
   console.log('isOpen:', isOpen);
+  console.log('🔍 JobDetailsModal received props:', {
+    editMode,
+    cloneMode,
+    job: job ? {
+      id: job.id,
+      type: job.type,
+      source_type: job.source_type,
+      connection: job.connection,
+      connectionType: typeof job.connection,
+      connectionKeys: job.connection ? (typeof job.connection === 'string' ? 'STRING' : Object.keys(job.connection)) : 'none',
+      hasConnection: !!job.connection,
+      allJobKeys: Object.keys(job)
+    } : 'null'
+  });
+
+  // Track job prop changes
+  useEffect(() => {
+    console.log('🔄 JobDetailsModal job prop changed:', {
+      isOpen,
+      cloneMode,
+      editMode,
+      jobExists: !!job,
+      jobId: job?.id,
+      timestamp: new Date().toISOString()
+    });
+  }, [job, isOpen, cloneMode, editMode]);
   console.log('editMode:', editMode);
   console.log('isLoading:', isLoading);
   console.log('job:', job);
@@ -58,9 +147,9 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
   const [editedJob, setEditedJob] = useState<Partial<DataEnrichmentJobResponse>>({});
   const [isSaving, setIsSaving] = useState(false);
 
-  // Initialize edited job data when job changes or editMode is enabled
+  // Initialize edited job data when job changes or editMode/cloneMode is enabled
   useEffect(() => {
-    if (job && editMode) {
+    if (job && (editMode || cloneMode)) {
       const jobType = getJobType(job);
       const baseData = {
         endpoint_name: job.endpoint_name,
@@ -84,7 +173,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
         });
       }
     }
-  }, [job, editMode]);
+  }, [job, editMode, cloneMode]);
 
   const handleInputChange = (field: keyof DataEnrichmentJobResponse, value: any) => {
     setEditedJob(prev => ({
@@ -156,9 +245,12 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
       <div className="bg-white rounded-lg shadow-2xl relative z-10 w-full max-w-4xl max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h3 className="text-lg leading-6 font-medium text-gray-900">
-            {editMode ? 'Edit' : 'View'} Data Enrichment Endpoint: {job?.endpoint_name || 'Loading...'}
-          </h3>
+          <div>
+            <h3 className="text-lg leading-6 font-medium text-gray-900">
+              {cloneMode ? 'Clone' : editMode ? 'Edit' : 'View'} Data Enrichment Endpoint: {job?.endpoint_name || 'Loading...'}
+            </h3>
+         
+          </div>
           <div className="flex items-center space-x-2">
             <button
               onClick={onClose}
@@ -178,11 +270,13 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
             </div>
           ) : job ? (
             <div className="space-y-6">
+
+
               {/* Configuration Type */}
               <div>
                 <h4 className="text-sm font-medium text-gray-900 mb-3">Configuration Type</h4>
                 <div className="flex space-x-4">
-                  <label className={`flex items-center ${editMode ? 'cursor-pointer' : 'cursor-not-allowed'}`}>
+                  <label className={`flex items-center ${(editMode && !cloneMode) ? 'cursor-pointer' : 'cursor-not-allowed'}`}>
                     <input
                       type="radio"
                       name="configType"
@@ -191,15 +285,15 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                         ? (editedJob.type?.toLowerCase() || job.type?.toLowerCase() || getJobType(job)) === 'pull'
                         : (job.type?.toLowerCase() || getJobType(job)) === 'pull'
                       }
-                      onChange={() => editMode && handleInputChange('type', 'pull')}
-                      disabled={!editMode}
+                      onChange={() => editMode && !cloneMode && handleInputChange('type', 'pull')}
+                      disabled={!editMode || cloneMode}
                       className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
                     />
                     <span className="ml-2 text-sm text-gray-700">
                       ↓ Pull (SFTP/HTTSP)
                     </span>
                   </label>
-                  <label className={`flex items-center ${editMode ? 'cursor-pointer' : 'cursor-not-allowed'}`}>
+                  <label className={`flex items-center ${(editMode && !cloneMode) ? 'cursor-pointer' : 'cursor-not-allowed'}`}>
                     <input
                       type="radio"
                       name="configType"
@@ -208,8 +302,8 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                         ? (editedJob.type?.toLowerCase() || job.type?.toLowerCase() || getJobType(job)) === 'push'
                         : (job.type?.toLowerCase() || getJobType(job)) === 'push'
                       }
-                      onChange={() => editMode && handleInputChange('type', 'push')}
-                      disabled={!editMode}
+                      onChange={() => editMode && !cloneMode && handleInputChange('type', 'push')}
+                      disabled={!editMode || cloneMode}
                       className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
                     />
                     <span className="ml-2 text-sm text-gray-700">
@@ -232,11 +326,11 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                   </label>
                   <input
                     type="text"
-                    value={editMode ? (editedJob.endpoint_name || '') : (job.endpoint_name || 'N/A')}
-                    onChange={(e) => editMode && handleInputChange('endpoint_name', e.target.value)}
-                    readOnly={!editMode}
+                    value={editMode ? (editedJob.endpoint_name || '') : cloneMode ? (editedJob.endpoint_name || job.endpoint_name || '') : (job.endpoint_name || 'N/A')}
+                    onChange={(e) => (editMode || (cloneMode && job && getJobType(job) === 'pull')) && handleInputChange('endpoint_name', e.target.value)}
+                    readOnly={!editMode && !(cloneMode && job && getJobType(job) === 'pull')}
                     className={`w-full px-3 py-2 border border-gray-300 rounded-md ${
-                      editMode ? 'bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500' : 'bg-gray-50 text-gray-900'
+                      (editMode || (cloneMode && job && getJobType(job) === 'pull')) ? 'bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500' : 'bg-gray-50 text-gray-900'
                     }`}
                   />
                 </div>
@@ -249,11 +343,11 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                     </label>
                     <input
                       type="text"
-                      value={editMode ? (editedJob.path || '') : (job.path || 'Path not set')}
-                      onChange={(e) => editMode && handleInputChange('path', e.target.value)}
-                      readOnly={!editMode}
+                      value={editMode ? (editedJob.path || '') : cloneMode ? (job.path || 'Path not set') : (job.path || 'Path not set')}
+                      onChange={(e) => editMode && !cloneMode && handleInputChange('path', e.target.value)}
+                      readOnly={!editMode || cloneMode}
                       className={`w-full px-3 py-2 border border-gray-300 rounded-md ${
-                        editMode ? 'bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500' : 'bg-gray-50 text-gray-900'
+                        (editMode && !cloneMode) ? 'bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500' : 'bg-gray-50 text-gray-900'
                       }`}
                     />
                   </div>
@@ -263,9 +357,9 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                       Source Type
                     </label>
                     <select
-                      value={editMode ? (editedJob.source_type || '') : (job.source_type || '')}
-                      onChange={(e) => editMode && handleInputChange('source_type', e.target.value)}
-                      disabled={true} // Source type cannot be changed during editing
+                      value={editMode ? (editedJob.source_type || '') : cloneMode ? (job.source_type || '') : (job.source_type || '')}
+                      onChange={(e) => editMode && !cloneMode && handleInputChange('source_type', e.target.value)}
+                      disabled={true} // Source type cannot be changed during editing or cloning
                       className={`w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900`}
                     >
                       <option value="">Select source type</option>
@@ -286,11 +380,11 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                   </label>
                   <input
                     type="text"
-                    value={editMode ? (editedJob.version || '') : (job.version || 'v1')}
-                    onChange={(e) => editMode && handleInputChange('version', e.target.value)}
-                    readOnly={!editMode}
+                    value={editMode ? (editedJob.version || '') : cloneMode ? (editedJob.version || job.version || 'v1') : (job.version || 'v1')}
+                    onChange={(e) => (editMode || (cloneMode && job && getJobType(job) === 'pull')) && handleInputChange('version', e.target.value)}
+                    readOnly={!editMode && !(cloneMode && job && getJobType(job) === 'pull')}
                     className={`w-full px-3 py-2 border border-gray-300 rounded-md ${
-                      editMode ? 'bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500' : 'bg-gray-50 text-gray-900'
+                      (editMode || (cloneMode && job && getJobType(job) === 'pull')) ? 'bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500' : 'bg-gray-50 text-gray-900'
                     }`}
                   />
                 </div>
@@ -316,12 +410,12 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                   Description
                 </label>
                 <textarea
-                  value={editMode ? (editedJob.description || '') : (job.description || 'No description provided')}
-                  onChange={(e) => editMode && handleInputChange('description', e.target.value)}
-                  readOnly={!editMode}
+                  value={editMode ? (editedJob.description || '') : cloneMode ? (job.description || 'No description provided') : (job.description || 'No description provided')}
+                  onChange={(e) => editMode && !cloneMode && handleInputChange('description', e.target.value)}
+                  readOnly={!editMode || cloneMode}
                   rows={3}
                   className={`w-full px-3 py-2 border border-gray-300 rounded-md resize-none ${
-                    editMode ? 'bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500' : 'bg-gray-50 text-gray-900'
+                    (editMode && !cloneMode) ? 'bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500' : 'bg-gray-50 text-gray-900'
                   }`}
                 />
               </div>
@@ -339,11 +433,11 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                       Ingest Mode
                     </label>
                     <select
-                      value={editMode ? (editedJob.mode?.toLowerCase() || 'append') : (job.mode?.toLowerCase() || 'append')}
-                      onChange={(e) => editMode && handleInputChange('mode', e.target.value)}
-                      disabled={!editMode}
+                      value={editMode ? (editedJob.mode?.toLowerCase() || 'append') : cloneMode ? (job.mode?.toLowerCase() || 'append') : (job.mode?.toLowerCase() || 'append')}
+                      onChange={(e) => editMode && !cloneMode && handleInputChange('mode', e.target.value)}
+                      disabled={!editMode || cloneMode}
                       className={`w-full px-3 py-2 border border-gray-300 rounded-md ${
-                        editMode ? 'bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500' : 'bg-gray-50 text-gray-900'
+                        (editMode && !cloneMode) ? 'bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500' : 'bg-gray-50 text-gray-900'
                       }`}
                     >
                       <option value="append">Append - Add new records to existing data</option>
@@ -361,11 +455,11 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                     </label>
                     <input
                       type="text"
-                      value={editMode ? (editedJob.table_name || '') : (job.table_name || '')}
-                      onChange={(e) => editMode && handleInputChange('table_name', e.target.value)}
-                      readOnly={!editMode}
+                      value={editMode ? (editedJob.table_name || '') : cloneMode ? (job.table_name || '') : (job.table_name || '')}
+                      onChange={(e) => editMode && !cloneMode && handleInputChange('table_name', e.target.value)}
+                      readOnly={!editMode || cloneMode}
                       className={`w-full px-3 py-2 border border-gray-300 rounded-md ${
-                        editMode ? 'bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500' : 'bg-gray-50 text-gray-900'
+                        (editMode && !cloneMode) ? 'bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500' : 'bg-gray-50 text-gray-900'
                       }`}
                     />
                   </div>
@@ -377,12 +471,30 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                 <h4 className="text-sm font-medium text-gray-900 mb-4">Technical Details</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-3">
-                    {job.source_type && (
+                    {(() => {
+                      const jobType = getJobType(job);
+                      const isPull = jobType === 'pull';
+                      const sourceType = getConnectionType(job);
+                      console.log('🔍 Source Type display logic:', {
+                        jobType,
+                        isPull,
+                        sourceType,
+                        cloneMode,
+                        jobKeys: Object.keys(job)
+                      });
+                      return isPull;
+                    })() && (
                       <div className="flex items-start space-x-3">
                         <Database size={18} className="text-gray-400 mt-0.5 flex-shrink-0" />
                         <div className="flex-1 min-w-0">
                           <span className="text-sm font-medium text-gray-700 block">Source Type:</span>
-                          <span className="text-sm text-gray-900 block">{job.source_type}</span>
+                          <span className="text-sm text-gray-900 block">
+                            {(() => {
+                              const sourceType = getConnectionType(job);
+                              console.log('🔍 Rendering source type:', sourceType, 'for job:', job.endpoint_name);
+                              return sourceType || 'Unknown';
+                            })()}
+                          </span>
                         </div>
                       </div>
                     )}
@@ -438,14 +550,43 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
               </div>
 
               {/* Connection Details for PULL Jobs */}
-              {getJobType(job) === 'pull' && job.connection && (
+              {(() => {
+                const jobType = getJobType(job);
+                const hasConnection = !!job.connection;
+                const shouldShow = jobType === 'pull' && hasConnection;
+                console.log('🔍 Connection Details rendering logic:', {
+                  jobType,
+                  hasConnection,
+                  shouldShow,
+                  connectionKeys: job.connection ? Object.keys(job.connection) : 'none',
+                  cloneMode,
+                  jobEndpoint: job.endpoint_name,
+                  fullConnectionObject: job.connection
+                });
+                return shouldShow;
+              })() && (
                 <div className="bg-blue-50 p-4 rounded-lg">
                   <h4 className="text-sm font-medium text-gray-900 mb-3 flex items-center">
                     <Globe size={16} className="mr-2" />
-                    Connection Details ({job.source_type})
+                    Connection Details ({getConnectionType(job) || 'Unknown'})
                   </h4>
 
-                  {job.source_type === 'HTTP' && 'url' in job.connection && (
+                  {(() => {
+                    const connectionType = getConnectionType(job);
+                    let connectionObj = job.connection;
+                    
+                    // Handle case where connection might be a string
+                    if (typeof job.connection === 'string') {
+                      try {
+                        connectionObj = JSON.parse(job.connection);
+                      } catch (e) {
+                        console.log('🔍 Failed to parse connection string for HTTP display:', e);
+                        return null;
+                      }
+                    }
+                    
+                    return connectionType === 'HTTP' && connectionObj && typeof connectionObj === 'object' && 'url' in connectionObj;
+                  })() && (
                     <>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -453,19 +594,49 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                         </label>
                         <input
                           type="text"
-                          value={job.connection.url}
+                          value={(() => {
+                            let connectionObj = job.connection;
+                            if (typeof job.connection === 'string') {
+                              try {
+                                connectionObj = JSON.parse(job.connection);
+                              } catch (e) {
+                                return 'Error parsing connection';
+                              }
+                            }
+                            return (connectionObj as any)?.url || 'N/A';
+                          })()}
                           readOnly
                           className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900"
                         />
                       </div>
-                      {job.connection.headers && Object.keys(job.connection.headers).length > 0 && (
+                      {(() => {
+                        let connectionObj = job.connection;
+                        if (typeof job.connection === 'string') {
+                          try {
+                            connectionObj = JSON.parse(job.connection);
+                          } catch (e) {
+                            return null;
+                          }
+                        }
+                        return (connectionObj as any)?.headers && Object.keys((connectionObj as any).headers).length > 0;
+                      })() && (
                         <div className="mt-3">
                           <label className="block text-sm font-medium text-gray-700 mb-2">
                             Headers
                           </label>
                           <div className="bg-white border border-gray-300 rounded-md p-3">
                             <pre className="text-xs text-gray-900 whitespace-pre-wrap">
-                              {JSON.stringify(job.connection.headers, null, 2)}
+                              {(() => {
+                                let connectionObj = job.connection;
+                                if (typeof job.connection === 'string') {
+                                  try {
+                                    connectionObj = JSON.parse(job.connection);
+                                  } catch (e) {
+                                    return 'Error parsing headers';
+                                  }
+                                }
+                                return JSON.stringify((connectionObj as any)?.headers, null, 2);
+                              })()}
                             </pre>
                           </div>
                         </div>
@@ -473,7 +644,22 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                     </>
                   )}
 
-                  {job.source_type === 'SFTP' && 'host' in job.connection && (
+                  {(() => {
+                    const connectionType = getConnectionType(job);
+                    let connectionObj = job.connection;
+                    
+                    // Handle case where connection might be a string
+                    if (typeof job.connection === 'string') {
+                      try {
+                        connectionObj = JSON.parse(job.connection);
+                      } catch (e) {
+                        console.log('🔍 Failed to parse connection string for SFTP display:', e);
+                        return null;
+                      }
+                    }
+                    
+                    return connectionType === 'SFTP' && connectionObj && typeof connectionObj === 'object' && 'host' in connectionObj;
+                  })() && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -481,7 +667,17 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                         </label>
                         <input
                           type="text"
-                          value={job.connection.host}
+                          value={(() => {
+                            let connectionObj = job.connection;
+                            if (typeof job.connection === 'string') {
+                              try {
+                                connectionObj = JSON.parse(job.connection);
+                              } catch (e) {
+                                return 'Error parsing connection';
+                              }
+                            }
+                            return (connectionObj as any)?.host || 'N/A';
+                          })()}
                           readOnly
                           className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900"
                         />
@@ -492,7 +688,17 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                         </label>
                         <input
                           type="text"
-                          value={job.connection.port?.toString() || 'N/A'}
+                          value={(() => {
+                            let connectionObj = job.connection;
+                            if (typeof job.connection === 'string') {
+                              try {
+                                connectionObj = JSON.parse(job.connection);
+                              } catch (e) {
+                                return 'Error parsing connection';
+                              }
+                            }
+                            return (connectionObj as any)?.port?.toString() || 'N/A';
+                          })()}
                           readOnly
                           className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900"
                         />
@@ -503,7 +709,17 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                         </label>
                         <input
                           type="text"
-                          value={job.connection.user_name || 'N/A'}
+                          value={(() => {
+                            let connectionObj = job.connection;
+                            if (typeof job.connection === 'string') {
+                              try {
+                                connectionObj = JSON.parse(job.connection);
+                              } catch (e) {
+                                return 'Error parsing connection';
+                              }
+                            }
+                            return (connectionObj as any)?.user_name || 'N/A';
+                          })()}
                           readOnly
                           className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900"
                         />
@@ -514,7 +730,17 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                         </label>
                         <input
                           type="text"
-                          value={job.connection.auth_type || 'N/A'}
+                          value={(() => {
+                            let connectionObj = job.connection;
+                            if (typeof job.connection === 'string') {
+                              try {
+                                connectionObj = JSON.parse(job.connection);
+                              } catch (e) {
+                                return 'Error parsing connection';
+                              }
+                            }
+                            return (connectionObj as any)?.auth_type || 'N/A';
+                          })()}
                           readOnly
                           className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900"
                         />
@@ -523,7 +749,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                   )}
 
                   {/* File Settings for SFTP */}
-                  {job.source_type === 'SFTP' && job.file && (
+                  {getConnectionType(job) === 'SFTP' && job.file && (
                     <div className="mt-4 pt-4 border-t border-blue-200">
                       <h5 className="text-sm font-medium text-gray-900 mb-3">File Settings</h5>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -569,6 +795,10 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
           ) : (
             <div className="text-center py-8">
               <p className="text-gray-500">Job details not found</p>
+              <p className="text-xs text-gray-400 mt-2">
+                Debug: job is {job === null ? 'null' : job === undefined ? 'undefined' : 'defined'}, 
+                cloneMode: {cloneMode ? 'true' : 'false'}
+              </p>
             </div>
           )}
         </div>
@@ -591,6 +821,42 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                 size="md"
               >
                 {isSaving ? 'Saving...' : 'Save'}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Clone Mode Footer - Shows "Clone Job" button when in clone mode */}
+        {cloneMode && onClone && job && (
+          <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4">
+            <div className="flex justify-between items-center">
+              <Button
+                onClick={onClose}
+                variant="secondary"
+                size="md"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  if (!job || !onClone) return;
+                  
+                  // Create clone data - just pass the modified fields, parent will handle the API call
+                  const cloneData = {
+                    ...job,
+                    endpoint_name: editedJob.endpoint_name || job.endpoint_name,
+                    version: editedJob.version || job.version
+                  };
+                  
+                  console.log('🚀 Clone button clicked with data:', cloneData);
+                  onClone(cloneData);
+                }}
+                variant="primary"
+                size="md"
+                className="flex items-center space-x-2"
+              >
+                <Copy className="w-4 h-4" />
+                <span>Create Clone</span>
               </Button>
             </div>
           </div>
@@ -631,11 +897,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
             {onReject && (
               <Button
                 variant="danger"
-                onClick={() => {
-                  const jobType = getJobType(job) === 'push' ? 'PUSH' : 'PULL';
-                  onReject(job.id, jobType);
-                  onClose();
-                }}
+                onClick={() => setShowRejectionDialog(true)}
               >
                 Reject
               </Button>
@@ -691,6 +953,15 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
           </div>
         )}
       </div>
+
+      {/* Rejection Dialog */}
+      <JobRejectionDialog
+        isOpen={showRejectionDialog}
+        onClose={() => setShowRejectionDialog(false)}
+        onConfirm={handleRejectionConfirm}
+        jobName={job?.endpoint_name || job?.id || 'Unknown Job'}
+        jobType="Data Enrichment Job"
+      />
     </div>
   );
 };

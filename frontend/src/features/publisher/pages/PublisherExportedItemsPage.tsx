@@ -1,15 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { AuthHeader } from '../../../shared/components/AuthHeader';
-import { SearchIcon, Clock, Database } from 'lucide-react';
+import { SearchIcon, Clock, Database, Settings } from 'lucide-react';
 import { sftpApi, SftpError } from '../../exporter/services/sftpApi';
 import { useToast } from '../../../shared/providers/ToastProvider';
 import type { SftpFileInfo, SftpFileContent, SftpFormat } from '../../exporter/services/sftpApi';
 import { ExportedItemsList } from '../../exporter/components/ExportedItemsList';
 import { ExportedItemDetailsModal } from '../../exporter/components/ExportedItemDetailsModal';
+import { ConfigList } from '../../config/components/ConfigList';
+import ConfigDetailsModal from '../../config/components/ConfigDetailsModal';
+import { configApi } from '../../config/services/configApi';
 import { useAuth } from '../../../features/auth/contexts/AuthContext';
 import { isExporter, isPublisher } from '../../../utils/roleUtils';
+import type { Config } from '../../config/index';
 
-type TabType = 'cron' | 'de';
+type TabType = 'cron' | 'de' | 'dems';
 
 const PublisherExportedItemsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('cron');
@@ -22,6 +26,13 @@ const PublisherExportedItemsPage: React.FC = () => {
   const [showExportedItemDetails, setShowExportedItemDetails] = useState(false);
   const [exportedItemDetailsLoading, setExportedItemDetailsLoading] = useState(false);
   
+  // DEMS (exported configs) state
+  const [exportedConfigs, setExportedConfigs] = useState<Config[]>([]);
+  const [exportedConfigsLoading, setExportedConfigsLoading] = useState(false);
+  const [selectedConfig, setSelectedConfig] = useState<Config | null>(null);
+  const [showConfigDetails, setShowConfigDetails] = useState(false);
+  const [configDetailsLoading, setConfigDetailsLoading] = useState(false);
+  
   const { showError, showSuccess } = useToast();
   const { user } = useAuth();
 
@@ -29,14 +40,20 @@ const PublisherExportedItemsPage: React.FC = () => {
   const userIsPublisher = user?.claims ? isPublisher(user.claims) : false;
 
   useEffect(() => {
-    loadExportedItems();
+    if (activeTab === 'dems') {
+      loadExportedConfigs();
+    } else {
+      loadExportedItems();
+    }
   }, [activeTab]);
 
   const loadExportedItems = async () => {
+    if (activeTab === 'dems') return;
+    
     console.log('PublisherExportedItemsPage: loadExportedItems called with format:', activeTab);
     setExportedItemsLoading(true);
     try {
-      const files = await sftpApi.getAllFiles(activeTab);
+      const files = await sftpApi.getAllFiles(activeTab as SftpFormat);
       console.log('PublisherExportedItemsPage: Exported items loaded:', files.length);
       setExportedItems(files);
     } catch (error) {
@@ -63,6 +80,23 @@ const PublisherExportedItemsPage: React.FC = () => {
       setExportedItems([]);
     } finally {
       setExportedItemsLoading(false);
+    }
+  };
+
+  const loadExportedConfigs = async () => {
+    console.log('PublisherExportedItemsPage: loadExportedConfigs called');
+    setExportedConfigsLoading(true);
+    try {
+      const response = await configApi.getConfigsByStatus('exported');
+      console.log('PublisherExportedItemsPage: Exported configs loaded:', response.configs.length);
+      setExportedConfigs(response.configs);
+    } catch (error) {
+      console.error('Failed to load exported configs:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load exported configurations';
+      showError(errorMessage);
+      setExportedConfigs([]);
+    } finally {
+      setExportedConfigsLoading(false);
     }
   };
 
@@ -175,7 +209,31 @@ const PublisherExportedItemsPage: React.FC = () => {
 
   const handleExportedItemsRefresh = () => {
     console.log('PublisherExportedItemsPage: handleExportedItemsRefresh called');
-    loadExportedItems();
+    if (activeTab === 'dems') {
+      loadExportedConfigs();
+    } else {
+      loadExportedItems();
+    }
+  };
+
+  // Config handlers for DEMS tab
+  const handleViewConfig = async (config: Config) => {
+    setSelectedConfig(config);
+    setConfigDetailsLoading(false);
+    setShowConfigDetails(true);
+  };
+
+  const handleDeployConfig = async (configId: number, notes?: string) => {
+    try {
+      await configApi.deployConfig(configId, notes);
+      showSuccess('Configuration deployed successfully');
+      loadExportedConfigs(); // Refresh the list
+    } catch (error) {
+      console.error('Deploy failed:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to deploy configuration';
+      showError(errorMessage);
+      throw error; // Re-throw to let modal handle it
+    }
   };
 
   const tabs = [
@@ -188,6 +246,11 @@ const PublisherExportedItemsPage: React.FC = () => {
       id: 'de' as TabType,
       name: 'DE Jobs',
       icon: <Database size={18} />,
+    },
+    {
+      id: 'dems' as TabType,
+      name: 'DEMS',
+      icon: <Settings size={18} />,
     },
   ];
 
@@ -236,14 +299,22 @@ const PublisherExportedItemsPage: React.FC = () => {
 
         {/* Tab Content */}
         <div className="bg-white rounded-lg shadow">
-          <ExportedItemsList
-            files={exportedItems}
-            isLoading={exportedItemsLoading}
-            onViewDetails={handleViewExportedItemDetails}
-            onRefresh={handleExportedItemsRefresh}
-            searchQuery={searchTerm}
-            format={activeTab}
-          />
+          {activeTab === 'dems' ? (
+            <ConfigList
+              searchTerm={searchTerm}
+              onViewDetails={handleViewConfig}
+              onRefresh={handleExportedItemsRefresh}
+            />
+          ) : (
+            <ExportedItemsList
+              files={exportedItems}
+              isLoading={exportedItemsLoading}
+              onViewDetails={handleViewExportedItemDetails}
+              onRefresh={handleExportedItemsRefresh}
+              searchQuery={searchTerm}
+              format={activeTab as SftpFormat}
+            />
+          )}
         </div>
       </div>
 
@@ -254,7 +325,16 @@ const PublisherExportedItemsPage: React.FC = () => {
         content={selectedExportedItem}
         isLoading={exportedItemDetailsLoading}
         onPublish={handlePublishExportedItem}
-        format={activeTab}
+        format={activeTab as SftpFormat}
+      />
+
+      {/* Config Details Modal for DEMS */}
+      <ConfigDetailsModal
+        isOpen={showConfigDetails}
+        onClose={() => setShowConfigDetails(false)}
+        config={selectedConfig}
+        isLoading={configDetailsLoading}
+        onDeploy={handleDeployConfig}
       />
     </div>
   );

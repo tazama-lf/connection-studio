@@ -27,16 +27,22 @@ const PublisherDEJobsPage: React.FC = () => {
       const response = await dataEnrichmentApi.getAllJobs();
       console.log('PublisherDEJobsPage: DE Jobs loaded:', response?.jobs?.length || 0);
       
-      // Filter for deployed DE jobs (already published/active)
+      // Filter for exported and deployed DE jobs (publishers can see both)
       const allJobs = response?.jobs || [];
-      const deployedJobs = allJobs.filter((job: DataEnrichmentJobResponse) => 
-        job.status === 'deployed'
+      const publisherJobs = allJobs.filter((job: DataEnrichmentJobResponse) => 
+        job.status === 'exported' || job.status === 'deployed'
       );
       
-      console.log('PublisherDEJobsPage: Deployed jobs:', deployedJobs.length);
+      console.log('PublisherDEJobsPage: Publisher jobs (exported + deployed):', publisherJobs.length);
+      
+      // Transform exported status to deployed for publishers (display purposes)
+      const transformedJobs = publisherJobs.map(job => ({
+        ...job,
+        status: job.status === 'exported' ? 'deployed' : job.status
+      }));
       
       // Sort by created_at descending (newest first)
-      const sortedJobs = deployedJobs.sort((a: any, b: any) => {
+      const sortedJobs = transformedJobs.sort((a: any, b: any) => {
         const dateA = new Date(a.created_at || 0).getTime();
         const dateB = new Date(b.created_at || 0).getTime();
         return dateB - dateA;
@@ -65,7 +71,7 @@ const PublisherDEJobsPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div c8lassName="min-h-screen bg-gray-50">
       <AuthHeader title="Data Enrichment" showBackButton={true} />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">

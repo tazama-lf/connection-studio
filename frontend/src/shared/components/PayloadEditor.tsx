@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from './Button';
-import { UploadIcon, SaveIcon, SparklesIcon } from 'lucide-react';
+import { UploadIcon, SparklesIcon } from 'lucide-react';
 import { type SchemaField, type FieldAdjustment } from '../../features/config/services/configApi';
-import { convertInferredFieldsToJsonSchema } from '../utils/schemaUtils';
+
 
 interface PayloadEditorProps {
   value: string;
@@ -1275,109 +1275,108 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
                 </div>
               )}
 
-              <div className="space-y-2">
-                {inferredFields.map((field, index) => (
-                <div key={index} className={`${field.level > 0 ? 'ml-' + (field.level * 4) + ' border-l-2 border-gray-300 pl-3' : ''} p-3 bg-white rounded border border-gray-200 hover:border-gray-300 transition-colors`}>
-                  <div className="grid grid-cols-12 gap-3 items-center">
-                    <div className="col-span-6">
-                      <div className="flex items-center gap-2">
-                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium border ${
-                          field.level === 0 ? 'bg-slate-50 text-slate-600 border-slate-200' : 
-                          field.level === 1 ? 'bg-gray-50 text-gray-500 border-gray-200' : 
-                          'bg-neutral-50 text-neutral-500 border-neutral-200'
-                        }`}>
-                          L{field.level}
-                        </span>
-                        <input 
-                          type="text" 
-                          value={field.path} 
-                          readOnly 
-                          className="flex-1 px-2 py-1.5 bg-gray-50 border border-gray-200 rounded text-sm text-gray-900 font-mono text-xs" 
-                          title={field.path}
-                        />
-                      </div>
-                    </div>
-                    <div className="col-span-2">
-                      <select
-                        value={field.type}
-                        onChange={(e) => {
-                          console.log(`🔄 Type changed for field "${field.path}": ${field.type} → ${e.target.value}`);
-                          const updatedFields = [...inferredFields];
-                          updatedFields[index] = { ...field, type: e.target.value as InferredField['type'] };
-                          console.log('📊 Updated fields after type change:', updatedFields.map(f => ({ path: f.path, type: f.type, required: f.required })));
-                          setInferredFields(updatedFields);
-                          setHasUserMadeEdits(true);
-                        }}
-                        disabled={readOnly}
-                        className="w-full px-2 py-1.5 bg-white border border-gray-200 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
-                      >
-                        <option value="String">String</option>
-                        <option value="Number">Number</option>
-                        <option value="Boolean">Boolean</option>
-                        <option value="Object">Object</option>
-                        <option value="Array">Array</option>
-                      </select>
-                    </div>
-                    <div className="col-span-3 flex items-center justify-between">
-                      <div className="flex items-center">
-                        <input 
-                          type="checkbox" 
-                          id={`required-${index}`}
-                          checked={field.required}
-                          onChange={(e) => {
-                            console.log(`☑️ Required changed for field "${field.path}": ${field.required} → ${e.target.checked}`);
-                            const updatedFields = [...inferredFields];
-                            
-                            // Update current field
-                            updatedFields[index] = { ...field, required: e.target.checked };
-                            
-                            // Update all child fields with same required status
-                            updatedFields.forEach((f, i) => {
-                              if (f.path.startsWith(field.path + '.')) {
-                                updatedFields[i] = { ...f, required: e.target.checked };
-                              }
-                            });
-                            
-                            console.log('📊 Updated fields after required change (with children):', updatedFields.map(f => ({ path: f.path, type: f.type, required: f.required })));
-                            setInferredFields(updatedFields);
-                            setHasUserMadeEdits(true);
-                          }}
-                          disabled={readOnly}
-                          className="h-3.5 w-3.5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-                        />
-                        <label htmlFor={`required-${index}`} className="ml-1.5 text-xs text-gray-600 cursor-pointer">
-                          Required
-                        </label>
-                      </div>
-                      
-                      {/* Remove Button - Only show when editing existing configs and not read-only */}
-                      {isEditMode && !readOnly && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            console.log(`🗑️ Deleting field "${field.path}" and all children`);
-                            // Remove this field and any child fields
-                            const updatedFields = inferredFields.filter(f => 
-                              f.path !== field.path && !f.path.startsWith(field.path + '.')
-                            );
-                            console.log('📊 Updated fields after deletion:', updatedFields.map(f => ({ path: f.path, type: f.type, required: f.required })));
-                            setInferredFields(updatedFields);
-                            setHasUserMadeEdits(true);
-                          }}
-                          className="inline-flex items-center px-2 py-1 border border-red-200 text-xs rounded text-red-600 bg-red-50 hover:bg-red-100 focus:outline-none focus:ring-1 focus:ring-red-300 transition-colors"
-                          title={`Remove ${field.path} and all its children`}
-                        >
-                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                          </svg>
-                        </button>
-                      )}
-                    </div>
+              {/* Fields container with single scroll for all fields */}
+              <div className="overflow-x-auto overflow-y-auto max-h-96 border border-gray-200 rounded-lg">
+                <div className="space-y-2 p-2" style={{ minWidth: `${Math.max(1000, 800 + Math.max(...inferredFields.map(f => f.level)) * 40)}px` }}>
+                  {inferredFields.map((field, index) => (
+                    <div key={index} className="p-3 bg-white rounded border border-gray-200 hover:border-gray-300 transition-colors">
+                      <div className="flex gap-3 items-center w-full">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center">
+                            {/* Simple spacing-based indentation with full width */}
+                            <div className="flex items-center w-full" style={{ paddingLeft: `${field.level * 24}px` }}>
+                              <input 
+                                type="text" 
+                                value={field.path} 
+                                readOnly 
+                                className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded text-sm text-gray-900 font-mono min-w-0" 
+                                title={field.path}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                        <div className="w-32 flex-shrink-0">
+                          <select
+                            value={field.type}
+                            onChange={(e) => {
+                              console.log(`🔄 Type changed for field "${field.path}": ${field.type} → ${e.target.value}`);
+                              const updatedFields = [...inferredFields];
+                              updatedFields[index] = { ...field, type: e.target.value as InferredField['type'] };
+                              console.log('📊 Updated fields after type change:', updatedFields.map(f => ({ path: f.path, type: f.type, required: f.required })));
+                              setInferredFields(updatedFields);
+                              setHasUserMadeEdits(true);
+                            }}
+                            disabled={readOnly}
+                            className="w-full px-2 py-2 bg-white border border-gray-200 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
+                          >
+                            <option value="String">String</option>
+                            <option value="Number">Number</option>
+                            <option value="Boolean">Boolean</option>
+                            <option value="Object">Object</option>
+                            <option value="Array">Array</option>
+                          </select>
+                        </div>
+                        <div className="w-28 flex-shrink-0 flex items-center justify-between">
+                          <div className="flex items-center">
+                            <input 
+                              type="checkbox" 
+                              id={`required-${index}`}
+                              checked={field.required}
+                              onChange={(e) => {
+                                console.log(`☑️ Required changed for field "${field.path}": ${field.required} → ${e.target.checked}`);
+                                const updatedFields = [...inferredFields];
+                                
+                                // Update current field
+                                updatedFields[index] = { ...field, required: e.target.checked };
+                                
+                                // Update all child fields with same required status
+                                updatedFields.forEach((f, i) => {
+                                  if (f.path.startsWith(field.path + '.')) {
+                                    updatedFields[i] = { ...f, required: e.target.checked };
+                                  }
+                                });
+                                
+                                console.log('📊 Updated fields after required change (with children):', updatedFields.map(f => ({ path: f.path, type: f.type, required: f.required })));
+                                setInferredFields(updatedFields);
+                                setHasUserMadeEdits(true);
+                              }}
+                              disabled={readOnly}
+                              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                            />
+                            <label htmlFor={`required-${index}`} className="ml-2 text-sm text-gray-600 cursor-pointer whitespace-nowrap">
+                              Required
+                            </label>
+                          </div>
+                          
+                          {/* Remove Button - Only show when editing existing configs and not read-only */}
+                          {isEditMode && !readOnly && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                console.log(`🗑️ Deleting field "${field.path}" and all children`);
+                                // Remove this field and any child fields
+                                const updatedFields = inferredFields.filter(f => 
+                                  f.path !== field.path && !f.path.startsWith(field.path + '.')
+                                );
+                                console.log('📊 Updated fields after deletion:', updatedFields.map(f => ({ path: f.path, type: f.type, required: f.required })));
+                                setInferredFields(updatedFields);
+                                setHasUserMadeEdits(true);
+                              }}
+                              className="inline-flex items-center px-2 py-1 border border-red-200 text-xs rounded text-red-600 bg-red-50 hover:bg-red-100 focus:outline-none focus:ring-1 focus:ring-red-300 transition-colors ml-2"
+                              title={`Remove ${field.path} and all its children`}
+                            >
+                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+                </div>
               </div>
             </>
           )}

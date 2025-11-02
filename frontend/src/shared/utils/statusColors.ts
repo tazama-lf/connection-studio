@@ -10,7 +10,8 @@ export type JobWorkflowStatus =
   | 'rejected' 
   | 'exported' 
   | 'ready-for-deployment'
-  | 'deployed';
+  | 'deployed'
+  | 'suspended';
 
 export type ScheduleStatus = 'active' | 'in-active' | 'pending_approval';
 
@@ -23,16 +24,27 @@ export const getStatusColor = (status: string | undefined): string => {
   
   const normalizedStatus = status.toLowerCase().trim();
   
-  switch (normalizedStatus) {
+  // Handle STATUS_XX_NAME format from database
+  let statusName = normalizedStatus;
+  if (normalizedStatus.startsWith('status_')) {
+    const parts = normalizedStatus.split('_');
+    if (parts.length >= 3) {
+      statusName = parts.slice(2).join('_'); // Get everything after STATUS_XX_
+    }
+  }
+  
+  switch (statusName) {
     // In Progress - Blue
     case 'in-progress':
     case 'in progress':
+    case 'in_progress':
     case 'draft':
       return 'bg-blue-100 text-blue-800';
     
     // Under Review / Pending - Yellow
     case 'under-review':
     case 'under review':
+    case 'under_review':
     case 'pending':
     case 'pending_approval':
     case 'pending approval':
@@ -43,15 +55,17 @@ export const getStatusColor = (status: string | undefined): string => {
     case 'active':
       return 'bg-green-100 text-green-800';
     
-    // Rejected - Red
+    // Rejected / Suspended - Red
     case 'rejected':
     case 'failed':
+    case 'suspended':
       return 'bg-red-100 text-red-800';
     
     // Exported / Ready for Deployment - Indigo
     case 'exported':
     case 'ready-for-deployment':
     case 'ready for deployment':
+    case 'ready_for_deployment':
     case 'ready':
       return 'bg-indigo-100 text-indigo-800';
     
@@ -80,12 +94,23 @@ export const getStatusLabel = (status: string | undefined): string => {
   
   const normalizedStatus = status.toLowerCase().trim();
   
-  switch (normalizedStatus) {
+  // Handle STATUS_XX_NAME format from database
+  let statusName = normalizedStatus;
+  if (normalizedStatus.startsWith('status_')) {
+    const parts = normalizedStatus.split('_');
+    if (parts.length >= 3) {
+      statusName = parts.slice(2).join('_'); // Get everything after STATUS_XX_
+    }
+  }
+  
+  switch (statusName) {
     case 'in-progress':
     case 'in progress':
+    case 'in_progress':
       return 'IN PROGRESS';
     case 'under-review':
     case 'under review':
+    case 'under_review':
       return 'UNDER REVIEW';
     case 'pending_approval':
     case 'pending approval':
@@ -94,9 +119,16 @@ export const getStatusLabel = (status: string | undefined): string => {
       return 'EXPORTED';
     case 'ready-for-deployment':
     case 'ready for deployment':
+    case 'ready_for_deployment':
       return 'READY FOR DEPLOYMENT';
     case 'in-active':
+    case 'inactive':
       return 'INACTIVE';
+    case 'changes_requested':
+    case 'changes requested':
+      return 'CHANGES REQUESTED';
+    case 'suspended':
+      return 'SUSPENDED';
     default:
       return status.toUpperCase();
   }

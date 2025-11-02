@@ -27,15 +27,21 @@ const PublisherCronJobsPage: React.FC = () => {
       const response = await dataEnrichmentApi.getAllSchedules();
       console.log('PublisherCronJobsPage: Schedules loaded:', response?.length || 0);
       
-      // Filter for deployed schedules (already published/active cron jobs)
-      const deployedSchedules = response?.filter((schedule: ScheduleResponse) => 
-        schedule.status === 'deployed'
+      // Filter for exported and deployed schedules (publishers can see both)
+      const publisherSchedules = response?.filter((schedule: ScheduleResponse) => 
+        schedule.status === 'exported' || schedule.status === 'deployed'
       ) || [];
       
-      console.log('PublisherCronJobsPage: Deployed schedules:', deployedSchedules.length);
+      console.log('PublisherCronJobsPage: Publisher schedules (exported + deployed):', publisherSchedules.length);
+      
+      // Transform exported status to deployed for publishers (display purposes)
+      const transformedSchedules = publisherSchedules.map(schedule => ({
+        ...schedule,
+        status: schedule.status === 'exported' ? 'deployed' : schedule.status
+      }));
       
       // Sort by created_at descending (newest first)
-      const sortedSchedules = deployedSchedules.sort((a: any, b: any) => {
+      const sortedSchedules = transformedSchedules.sort((a: any, b: any) => {
         const dateA = new Date(a.created_at || 0).getTime();
         const dateB = new Date(b.created_at || 0).getTime();
         return dateB - dateA;
@@ -89,7 +95,6 @@ const PublisherCronJobsPage: React.FC = () => {
           schedules={schedules}
           isLoading={schedulesLoading}
           onViewDetails={handleViewDetails}
-          onRefresh={loadCronJobs}
           searchQuery={searchTerm}
         />
       </div>

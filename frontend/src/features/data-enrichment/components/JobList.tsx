@@ -1,17 +1,20 @@
 import React, { useState } from 'react';
-import { Eye, MoreVertical, ChevronDown, FilterIcon, Edit, ChevronDownIcon, ChevronUpIcon } from 'lucide-react';
+import { Eye, MoreVertical, ChevronDown, FilterIcon, Edit, ChevronDownIcon, ChevronUpIcon, Copy, Play, Pause } from 'lucide-react';
 import type { DataEnrichmentJobResponse, JobStatus } from '../types';
 import { Button } from '../../../shared/components/Button';
 import { useAuth } from '../../auth/contexts/AuthContext';
-import { isEditor, isApprover, isExporter } from '../../../utils/roleUtils';
+import { isEditor, isApprover, isExporter, isPublisher } from '../../../utils/roleUtils';
 import { DropdownMenuWithAutoDirection } from './DropdownMenuWithAutoDirection';
 import { getStatusColor, getStatusLabel } from '../../../shared/utils/statusColors';
+import { useToast } from '../../../shared/providers/ToastProvider';
+import { dataEnrichmentApi } from '../services';
 
 interface JobListProps {
   jobs: DataEnrichmentJobResponse[];
   isLoading?: boolean;
   onViewLogs?: (jobId: string) => void;
   onEdit?: (job: DataEnrichmentJobResponse) => void;
+  onClone?: (job: DataEnrichmentJobResponse) => void;
   onRefresh?: () => void;
   statusFilter?: JobStatus | 'ALL';
   onStatusFilterChange?: (status: JobStatus | 'ALL') => void;
@@ -67,13 +70,18 @@ export const JobList: React.FC<JobListProps> = (props) => {
   const userIsEditor = user?.claims ? isEditor(user.claims) : false;
   const userIsApprover = user?.claims ? isApprover(user.claims) : false;
   const userIsExporter = user?.claims ? isExporter(user.claims) : false;
+  const userIsPublisher = user?.claims ? isPublisher(user.claims) : false;
   const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
   const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
   const [typeDropdownOpen, setTypeDropdownOpen] = useState(false);
+  const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
 
   // Sorting state
   const [sortField, setSortField] = useState<SortField>('created_at');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+
+  // Toast hook
+  const { showSuccess, showError } = useToast();
 
   // Close dropdowns when clicking outside
   React.useEffect(() => {
@@ -154,6 +162,41 @@ export const JobList: React.FC<JobListProps> = (props) => {
     if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
     return 0;
   });
+
+  // Status update handlers
+  const handleSuspendJob = async (job: DataEnrichmentJobResponse) => {
+    try {
+      setUpdatingStatus(job.id);
+      await dataEnrichmentApi.updateJobStatus(job.id, 'suspended', job.type?.toUpperCase() as 'PULL' | 'PUSH');
+      showSuccess(`Job ${job.endpoint_name || job.id} suspended successfully`);
+      if (props.onRefresh) {
+        props.onRefresh();
+      }
+    } catch (error) {
+      console.error('Failed to suspend job:', error);
+      showError('Failed to suspend job');
+    } finally {
+      setUpdatingStatus(null);
+      setDropdownOpen(null);
+    }
+  };
+
+  const handleResumeJob = async (job: DataEnrichmentJobResponse) => {
+    try {
+      setUpdatingStatus(job.id);
+      await dataEnrichmentApi.updateJobStatus(job.id, 'in-progress', job.type?.toUpperCase() as 'PULL' | 'PUSH');
+      showSuccess(`Job ${job.endpoint_name || job.id} resumed successfully`);
+      if (props.onRefresh) {
+        props.onRefresh();
+      }
+    } catch (error) {
+      console.error('Failed to resume job:', error);
+      showError('Failed to resume job');
+    } finally {
+      setUpdatingStatus(null);
+      setDropdownOpen(null);
+    }
+  };
 
   if (isLoading) {
     console.log('🔄 Rendering LOADING state');
@@ -570,7 +613,8 @@ export const JobList: React.FC<JobListProps> = (props) => {
                             {/* View Details - Available to all roles that have view permissions */}
                             {((userIsEditor && onViewLogs) ||
                               (userIsApprover) ||
-                              (userIsExporter && (displayStatus === 'approved' || displayStatus === 'exported'))) && (
+                              (userIsExporter && (displayStatus === 'approved' || displayStatus === 'exported' || displayStatus === 'deployed')) ||
+                              (userIsPublisher && (displayStatus === 'exported' || displayStatus === 'deployed'))) && (
                               <button
                                 onClick={() => {
                                   if (onViewLogs) {
@@ -589,7 +633,21 @@ export const JobList: React.FC<JobListProps> = (props) => {
                               </button>
                             )}
 
-                            {/* Edit - Only for Editors and only for in-progress jobs */}
+                            {/* Clone - Available to all roles, except for suspended jobs */}
+                            {props.onClone && displayStatus !== 'suspended' && (
+                              <button
+                                onClick={() => {
+                                  props.onClone!(job);
+                                  setDropdownOpen(null);
+                                }}
+                                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                              >
+                                <Copy className="w-4 h-4 mr-2" />
+                                Clone
+                              </button>
+                            )}
+
+                            {/* Edit - Only for Editors and only for in-progress jobs (not suspended) */}
                             {userIsEditor && onEdit && displayStatus === 'in-progress' && (
                               <button
                                 onClick={() => {
@@ -601,6 +659,35 @@ export const JobList: React.FC<JobListProps> = (props) => {
                                 <Edit className="w-4 h-4 mr-2" />
                                 Edit
                               </button>
+                            )}
+
+                            {/* Suspend/Resume - Available to Editors and Approvers */}
+                            {(userIsEditor || userIsApprover) && (
+                              <>
+                                {displayStatus === 'rejected' ? (
+                                  <button
+                                    onClick={() => handleResumeJob(job)}
+                                    disabled={updatingStatus === job.id}
+                                    className={`flex items-center w-full px-4 py-2 text-sm hover:bg-gray-100 ${
+                                      updatingStatus === job.id ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700'
+                                    }`}
+                                  >
+                                    <Play className="w-4 h-4 mr-2" />
+                                    {updatingStatus === job.id ? 'Resuming...' : 'Resume Job'}
+                                  </button>
+                                ) : (displayStatus === 'in-progress' && (
+                                  <button
+                                    onClick={() => handleSuspendJob(job)}
+                                    disabled={updatingStatus === job.id}
+                                    className={`flex items-center w-full px-4 py-2 text-sm hover:bg-gray-100 ${
+                                      updatingStatus === job.id ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700'
+                                    }`}
+                                  >
+                                    <Pause className="w-4 h-4 mr-2" />
+                                    {updatingStatus === job.id ? 'Suspending...' : 'Suspend Job'}
+                                  </button>
+                                ))}
+                              </>
                             )}
                           </div>
                         </DropdownMenuWithAutoDirection>

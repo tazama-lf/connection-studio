@@ -1,5 +1,4 @@
 import { API_CONFIG } from '../config/api.config';
-import { globalTokenManager } from './tokenManager';
 
 // Types matching backend interfaces
 export interface SimulatePayloadRequest {
@@ -65,7 +64,8 @@ export class SimulationApiService {
     if (!response.ok) {
       // Handle token expiration
       if (response.status === 401) {
-        globalTokenManager.handleTokenExpiration();
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('user');
         throw new Error('Unauthorized - Token expired');
       }
 

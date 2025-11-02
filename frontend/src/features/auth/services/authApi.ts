@@ -1,5 +1,4 @@
 import { API_CONFIG } from '../../../shared/config/api.config';
-import { globalTokenManager } from '../../../shared/services/tokenManager';
 
 // Types for authentication
 export interface LoginCredentials {
@@ -36,7 +35,6 @@ export class AuthApiService {
       method?: string;
       body?: unknown;
       headers?: Record<string, string>;
-      skipTokenExpirationHandler?: boolean; // Add flag to skip token expiration handling
     } = {},
   ): Promise<T> {
     const url = `${this.authBaseURL}${endpoint}`;
@@ -60,18 +58,15 @@ export class AuthApiService {
         console.log('URL:', url);
         console.log('Method:', config.method || 'GET');
         console.log('Endpoint:', endpoint);
-        console.log('Skip token handler:', config.skipTokenExpirationHandler);
 
-        // Only trigger token expiration modal if NOT a login attempt
-        // Login failures should be handled by the login form, not the global handler
-        if (!config.skipTokenExpirationHandler && endpoint !== API_CONFIG.ENDPOINTS.AUTH.LOGIN) {
-          console.log('Triggering token expiration handler');
-          globalTokenManager.handleTokenExpiration();
-        } else {
-          console.log('Skipping token expiration handler - login failure or explicit skip');
+        // For 401 responses on non-login endpoints, clear tokens
+        if (endpoint !== API_CONFIG.ENDPOINTS.AUTH.LOGIN) {
+          console.log('Clearing expired tokens');
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('user');
         }
         
-        throw new Error('Unauthorized');
+        throw new Error('Unauthorized - Token expired');
       }
 
       if (!response.ok) {
@@ -136,7 +131,7 @@ export class AuthApiService {
           tenantId: decodedToken.tenantId || userData.tenantId,
           tokenString: token
         },
-        skipTokenExpirationHandler: true, // Don't trigger logout on 401 for session refresh
+
       });
     } catch (error) {
       console.error('Failed to decode token for session refresh:', error);

@@ -1,5 +1,5 @@
 import { ENV } from '../../../shared/config/environment.config';
-import { apiRequest } from '../../../shared/services/tokenManager';
+
 import type {
   CreatePullJobDto,
   CreatePushJobDto,
@@ -14,6 +14,38 @@ import type {
 
 const DATA_ENRICHMENT_BASE_URL = ENV.DATA_ENRICHMENT_SERVICE_URL;
 const API_BASE_URL = ENV.API_BASE_URL;
+
+// Helper function for API requests
+const getAuthHeaders = (): HeadersInit => {
+  const token = localStorage.getItem('authToken');
+  return {
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+    ...(token && { Authorization: `Bearer ${token}` }),
+  };
+};
+
+const apiRequest = async <T>(url: string, options: RequestInit = {}): Promise<T> => {
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      ...getAuthHeaders(),
+      ...options.headers,
+    },
+  });
+
+  if (response.status === 401) {
+    localStorage.removeItem('authToken');
+    throw new Error('Authentication failed');
+  }
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+  }
+
+  return await response.json();
+};
 
 export const dataEnrichmentApi = {
   // Job endpoints
@@ -240,7 +272,7 @@ export const dataEnrichmentApi = {
 
   updateJobStatus: async (
     id: string,
-    status: 'pending' | 'approved' | 'in-progress' | 'rejected' | 'exported' | 'under-review' | 'ready-for-deployment' | 'deployed',
+    status: 'pending' | 'approved' | 'in-progress' | 'rejected' | 'exported' | 'under-review' | 'ready-for-deployment' | 'deployed' | 'suspended',
     type: 'PULL' | 'PUSH',
   ): Promise<{ success: boolean; message: string }> => {
     try {

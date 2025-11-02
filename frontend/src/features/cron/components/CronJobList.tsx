@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { EditIcon, EyeIcon, XIcon, MoreVerticalIcon, ChevronDownIcon, ChevronUpIcon, ChevronDownIcon as ChevronDownIconAlias } from 'lucide-react';
+import { EditIcon, EyeIcon, XIcon, MoreVerticalIcon, ChevronDownIcon, ChevronUpIcon, ChevronDownIcon as ChevronDownIconAlias, PlayIcon, PauseIcon } from 'lucide-react';
 import { dataEnrichmentApi } from '../../data-enrichment/services';
 import type { ScheduleResponse } from '../../data-enrichment/types';
 import { useToast } from '../../../shared/providers/ToastProvider';
@@ -8,6 +8,7 @@ import { DropdownMenuWithAutoDirection } from '../../../features/data-enrichment
 import { useAuth } from '../../auth/contexts/AuthContext';
 import { isEditor, isExporter, isApprover, isPublisher } from '../../../utils/roleUtils';
 import { getStatusColor, getStatusLabel } from '../../../shared/utils/statusColors';
+import { JobRejectionDialog } from '../../../shared/components/JobRejectionDialog';
 
 interface CronJobListProps {
   searchTerm?: string;
@@ -26,6 +27,7 @@ export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => 
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [selectedSchedule, setSelectedSchedule] = useState<ScheduleResponse | null>(null);
+  const [showRejectionDialog, setShowRejectionDialog] = useState(false);
   
   // Edit form state
   const [editForm, setEditForm] = useState({
@@ -52,6 +54,7 @@ export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => 
 
   // Action state for debouncing
   const [isActionInProgress, setIsActionInProgress] = useState(false);
+  const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
 
   // Helper function for pluralization
   const getIterationText = (count: number) => {
@@ -85,6 +88,58 @@ export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => 
     }
   };
 
+  // Status update handlers
+  const handleSuspendSchedule = async (schedule: ScheduleResponse) => {
+    try {
+      setUpdatingStatus(schedule.id);
+      // Use 'suspended' status
+      await dataEnrichmentApi.updateScheduleStatus(schedule.id, 'suspended');
+      showSuccess(`Schedule ${schedule.name} suspended successfully`);
+      loadSchedules();
+    } catch (error) {
+      console.error('Failed to suspend schedule:', error);
+      showError('Failed to suspend schedule');
+    } finally {
+      setUpdatingStatus(null);
+      setOpenDropdown(null);
+    }
+  };
+
+  const handleResumeSchedule = async (schedule: ScheduleResponse) => {
+    try {
+      setUpdatingStatus(schedule.id);
+      await dataEnrichmentApi.updateScheduleStatus(schedule.id, 'in-progress');
+      showSuccess(`Schedule ${schedule.name} resumed successfully`);
+      loadSchedules();
+    } catch (error) {
+      console.error('Failed to resume schedule:', error);
+      showError('Failed to resume schedule');
+    } finally {
+      setUpdatingStatus(null);
+      setOpenDropdown(null);
+    }
+  };
+
+  // Handle rejection with reason
+  const handleRejectionConfirm = async (reason: string) => {
+    if (selectedSchedule) {
+      try {
+        setIsActionInProgress(true);
+        // TODO: When backend supports rejection reasons, pass the reason parameter
+        await dataEnrichmentApi.updateScheduleStatus(selectedSchedule.id, 'rejected');
+        console.log('Cron job rejected with reason:', reason); // For now, just log the reason
+        showSuccess('Cron job rejected successfully');
+        setViewModalOpen(false);
+        await loadSchedules();
+      } catch (error) {
+        console.error('Failed to reject cron job:', error);
+        showError('Failed to reject cron job');
+      } finally {
+        setIsActionInProgress(false);
+      }
+    }
+  };
+
   // Handle column sorting
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -112,18 +167,32 @@ export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => 
     // Status filter - check if 'all' is selected or if schedule status matches selected status (case-insensitive)
     const matchesStatus = selectedStatus === 'all' || schedule.status?.toLowerCase() === selectedStatus;
     
-    // Role-based filtering: exporters can only see approved and exported schedules (case-insensitive)
+    // Role-based filtering: exporters can only see approved, exported and deployed schedules (case-insensitive)
     let matchesRole = true;
     if (userIsExporter) {
-      const allowedStatuses = ['approved', 'exported'];
+      const allowedStatuses = ['approved', 'exported', 'deployed'];
+      matchesRole = allowedStatuses.includes(schedule.status?.toLowerCase() || '');
+    }
+    
+    // Role-based filtering: publishers can only see exported and deployed schedules (case-insensitive)
+    if (userIsPublisher) {
+      const allowedStatuses = ['exported', 'deployed'];
       matchesRole = allowedStatuses.includes(schedule.status?.toLowerCase() || '');
     }
     
     return matchesSearch && matchesStatus && matchesRole;
   });
 
+  // Transform exported status to deployed for publishers
+  const statusTransformedSchedules = userIsPublisher 
+    ? filteredSchedules.map(schedule => ({
+        ...schedule,
+        status: schedule.status === 'exported' ? 'deployed' : schedule.status
+      }))
+    : filteredSchedules;
+
   // Sort filtered schedules
-  const sortedSchedules = filteredSchedules.sort((a, b) => {
+  const sortedSchedules = statusTransformedSchedules.sort((a, b) => {
     let aValue: any = a[sortField];
     let bValue: any = b[sortField];
 
@@ -427,6 +496,14 @@ export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => 
                       >
                         Deployed
                       </button>
+                      <button
+                        onClick={() => handleStatusFilterChange('suspended')}
+                        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${
+                          selectedStatus === 'suspended' ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-700'
+                        }`}
+                      >
+                        Suspended
+                      </button>
                     </div>
                   </div>
                 )}
@@ -513,7 +590,8 @@ export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => 
                                   <EyeIcon className="w-4 h-4 mr-2" />
                                   View
                                 </button>
-                                {(userIsEditor || userIsApprover) && (
+                                {/* Edit - Only for Editors/Approvers and only for in-progress jobs (not suspended) */}
+                                {(userIsEditor || userIsApprover) && schedule.status?.toLowerCase() !== 'suspended' && (
                                   <button
                                     onClick={() => {
                                       setOpenDropdown(null);
@@ -539,7 +617,8 @@ export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => 
                                     Edit
                                   </button>
                                 )}
-                                {userIsExporter && schedule.status?.toLowerCase() === 'approved' && (
+                                {/* Export - Only for approved and non-suspended items */}
+                                {userIsExporter && schedule.status?.toLowerCase() === 'approved' && schedule.status?.toLowerCase() !== 'suspended' && (
                                   <button
                                     onClick={async () => {
                                       try {
@@ -566,6 +645,38 @@ export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => 
                                     Export
                                   </button>
                                 )}
+
+                                {/* Suspend/Resume - Available to Editors and Approvers */}
+                                {(userIsEditor || userIsApprover) && (
+                                  <>
+                                    {schedule.status?.toLowerCase() === 'suspended' ? (
+                                      <button
+                                        onClick={() => handleResumeSchedule(schedule)}
+                                        disabled={updatingStatus === schedule.id}
+                                        className={`flex items-center w-full px-4 py-2 text-sm hover:bg-gray-100 ${
+                                          updatingStatus === schedule.id ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700'
+                                        }`}
+                                      >
+                                        <PlayIcon className="w-4 h-4 mr-2" />
+                                        {updatingStatus === schedule.id ? 'Resuming...' : 'Resume Schedule'}
+                                      </button>
+                                    ) : (
+                                      schedule.status?.toLowerCase() === 'in-progress' && (
+                                        <button
+                                          onClick={() => handleSuspendSchedule(schedule)}
+                                          disabled={updatingStatus === schedule.id}
+                                          className={`flex items-center w-full px-4 py-2 text-sm hover:bg-gray-100 ${
+                                            updatingStatus === schedule.id ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700'
+                                          }`}
+                                        >
+                                          <PauseIcon className="w-4 h-4 mr-2" />
+                                          {updatingStatus === schedule.id ? 'Suspending...' : 'Suspend Schedule'}
+                                        </button>
+                                      )
+                                    )}
+                                  </>
+                                )}
+
                                 {userIsPublisher && (
                                   <>
                                     {/* Publisher actions removed - activation functionality moved to publisher end */}
@@ -774,6 +885,39 @@ export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => 
                   {isActionInProgress ? 'Submitting...' : 'Send for Approval'}
                 </button>
               )}
+              
+              {/* Approve/Reject buttons for under-review status - Only for Approvers */}
+              {userIsApprover && selectedSchedule.status?.toLowerCase() === 'under-review' && (
+                <>
+                  <button
+                    onClick={() => setShowRejectionDialog(true)}
+                    disabled={isActionInProgress}
+                    className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isActionInProgress ? 'Rejecting...' : 'Reject'}
+                  </button>
+                  <button
+                    onClick={async () => {
+                      try {
+                        setIsActionInProgress(true);
+                        await dataEnrichmentApi.updateScheduleStatus(selectedSchedule.id, 'approved');
+                        showSuccess('Cron job approved successfully');
+                        setViewModalOpen(false);
+                        await loadSchedules();
+                      } catch (error) {
+                        console.error('Failed to approve cron job:', error);
+                        showError('Failed to approve cron job');
+                      } finally {
+                        setIsActionInProgress(false);
+                      }
+                    }}
+                    disabled={isActionInProgress}
+                    className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isActionInProgress ? 'Approving...' : 'Approve'}
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -915,6 +1059,15 @@ export const CronJobList: React.FC<CronJobListProps> = ({ searchTerm = '' }) => 
         </div>
       </div>
     )}
+
+    {/* Rejection Dialog */}
+    <JobRejectionDialog
+      isOpen={showRejectionDialog}
+      onClose={() => setShowRejectionDialog(false)}
+      onConfirm={handleRejectionConfirm}
+      jobName={selectedSchedule?.name || 'Unknown Schedule'}
+      jobType="Cron Job"
+    />
     </div>;
 };
 

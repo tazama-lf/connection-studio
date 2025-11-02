@@ -138,11 +138,29 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
         console.log('Loaded job data:', job);
         
         // Populate form with job data
+        // Use jobType prop first (most reliable), then fallback to job data
+        const detectedConfigType = jobType || (job.config_type || job.type)?.toLowerCase() as 'pull' | 'push';
+        
+        console.log('🔍 JOB LOADING DEBUG:');
+        console.log('job.config_type:', job.config_type);
+        console.log('job.type:', job.type);
+        console.log('jobType prop (highest priority):', jobType);
+        console.log('detectedConfigType (final):', detectedConfigType);
+        
+        // Push jobs can be identified by having a 'path' field and no 'source_type'
+        const isPushJob = job.path && !job.source_type;
+        const finalConfigType = isPushJob ? 'push' : detectedConfigType;
+        
+        console.log('job.path exists:', !!job.path);
+        console.log('job.source_type exists:', !!job.source_type);
+        console.log('isPushJob (has path, no source_type):', isPushJob);
+        console.log('finalConfigType:', finalConfigType);
+        
         setFormData({
           ...formData,
           name: job.endpoint_name,
           description: job.description || '',
-          configurationType: (job.config_type || job.type)?.toLowerCase() as 'pull' | 'push',
+          configurationType: finalConfigType,
           sourceType: job.source_type?.toLowerCase() || 'sftp',
           // Populate other fields based on job type and source type
           targetTable: job.table_name || '',
@@ -152,7 +170,8 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
           setSelectedScheduleId(job.schedule_id);
         }
         
-        setConfigurationType((job.config_type || job.type)?.toLowerCase() as 'pull' | 'push');
+        setConfigurationType(finalConfigType);
+        console.log('📝 Final configurationType set to:', finalConfigType);
         
       } catch (error) {
         console.error('Failed to load job data:', error);
@@ -164,6 +183,18 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
 
     loadJobData();
   }, [isOpen, editMode, jobId, jobType]);
+
+  // Set configuration type for new job creation
+  useEffect(() => {
+    if (isOpen && !editMode && jobType) {
+      console.log('🆕 NEW JOB - Using jobType prop:', jobType);
+      setConfigurationType(jobType);
+      setFormData(prev => ({
+        ...prev,
+        configurationType: jobType
+      }));
+    }
+  }, [isOpen, editMode, jobType]);
 
   console.log('DataEnrichmentFormModal render:', { isOpen, editMode, jobId, jobType });
 
@@ -490,15 +521,22 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
       }
 
       // Build the request payload based on source type
-      const basePayload = {
+      const basePayload: any = {
         endpoint_name: formData.name,
-        schedule_id: selectedScheduleId!, // Required - validation ensures it's set
         source_type: formData.sourceType.toUpperCase() as 'HTTP' | 'SFTP',
         description: formData.description,
         table_name: formData.targetTable || formData.name.toLowerCase().replace(/\s+/g, '_'),
         mode: formData.ingestMode as 'append' | 'replace',
         version: '1.0.0'
       };
+
+      // Only add schedule_id for pull configurations
+      if (configurationType === 'pull') {
+        basePayload.schedule_id = selectedScheduleId!; // Required for pull - validation ensures it's set
+        console.log('Added schedule_id to basePayload for pull job:', selectedScheduleId);
+      } else {
+        console.log('Skipping schedule_id for push job, configurationType:', configurationType);
+      }
       
       // Additional validation
       if (!basePayload.endpoint_name || !basePayload.description || !basePayload.table_name) {
@@ -527,6 +565,13 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
           mode: formData.ingestMode as 'append' | 'replace',
           version: cleanVersion
         };
+        
+        // Explicitly ensure no schedule_id is in push payload
+        if (payload.schedule_id) {
+          delete payload.schedule_id;
+          console.log('🚨 Removed schedule_id from push payload');
+        }
+        console.log('✅ Created PUSH job payload (no schedule_id):', payload);
       } else if (formData.sourceType === 'http') {
         // Pull HTTP configuration
         let headers = { 'content-type': 'application/json' };
@@ -539,6 +584,7 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
           }
           // Note: No 'file' field for HTTP requests
         };
+        console.log('✅ Created PULL HTTP job payload (with schedule_id):', payload);
       } else {
         // Pull SFTP configuration
         payload = {
@@ -557,6 +603,7 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
             delimiter: formData.delimiter || ','
           }
         };
+        console.log('✅ Created PULL SFTP job payload (with schedule_id):', payload);
       }
 
       // Validate payload before sending
@@ -579,14 +626,34 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
       console.log('Full payload object:', payload);
       console.log('Payload as JSON string:', JSON.stringify(payload, null, 2));
       console.log('API endpoint:', configurationType === 'pull' ? 'createPullJob' : 'createPushJob');
+      console.log('configurationType value:', configurationType);
+      console.log('configurationType type:', typeof configurationType);
+      console.log('configurationType === "pull":', configurationType === 'pull');
+      console.log('configurationType === "push":', configurationType === 'push');
       console.log('=== END COMPLETE JOB PAYLOAD ===');
       
       let response;
       
-      // Always create new job (both pull and push jobs create new jobs when edited)
-      response = configurationType === 'pull' 
-        ? await dataEnrichmentApi.createPullJob(payload)
-        : await dataEnrichmentApi.createPushJob(payload);
+      // Use update APIs when editing, create APIs when creating new jobs
+      if (editMode && jobId) {
+        console.log('📝 EDITING MODE - Using update APIs');
+        if (configurationType === 'pull') {
+          console.log('🔵 Calling updatePullJob API for job ID:', jobId);
+          response = await dataEnrichmentApi.updatePullJob(jobId, payload);
+        } else {
+          console.log('🟢 Calling updatePushJob API for job ID:', jobId);
+          response = await dataEnrichmentApi.updatePushJob(jobId, payload);
+        }
+      } else {
+        console.log('🆕 CREATE MODE - Using create APIs');
+        if (configurationType === 'pull') {
+          console.log('🔵 Calling createPullJob API');
+          response = await dataEnrichmentApi.createPullJob(payload);
+        } else {
+          console.log('🟢 Calling createPushJob API');
+          response = await dataEnrichmentApi.createPushJob(payload);
+        }
+      }
       
       console.log('=== API RESPONSE RECEIVED ===');
       console.log('Response object:', response);
@@ -594,7 +661,10 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
       console.log('Response keys:', Object.keys(response || {}));
       console.log('=== END API RESPONSE ===');
       
-      setCreateSuccess(`Data enrichment endpoint "${formData.name}" created successfully!`);
+      const successMessage = editMode 
+        ? `Data enrichment endpoint "${formData.name}" updated successfully!`
+        : `Data enrichment endpoint "${formData.name}" created successfully!`;
+      setCreateSuccess(successMessage);
       
       // Call the parent's onSave with the created/updated job
       onSave(response);

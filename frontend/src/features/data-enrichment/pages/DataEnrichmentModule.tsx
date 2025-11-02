@@ -7,11 +7,12 @@ import { Plus } from 'lucide-react';
 import JobList from '../components/JobList';
 import JobDetailsModal from '../components/JobDetailsModal';
 import { DataEnrichmentFormModal } from '../../../shared/components/DataEnrichmentFormModal';
+// CloneJobModal removed - now using JobDetailsModal in clone mode
 import { dataEnrichmentApi } from '../services/dataEnrichmentApi';
 import type { DataEnrichmentJobResponse, JobStatus, CreatePushJobDto, CreatePullJobDto } from '../types';
 import { useToast } from '../../../shared/providers/ToastProvider';
 import { useAuth } from '../../auth/contexts/AuthContext';
-import { isEditor, isApprover, isExporter } from '../../../utils/roleUtils';
+import { isEditor, isApprover, isExporter, isPublisher } from '../../../utils/roleUtils';
 import { UI_CONFIG } from '../../../shared/config/app.config';
 import { getUserFriendlyErrorMessage } from '../../../shared/utils/errorUtils';
 
@@ -23,6 +24,7 @@ const DataEnrichmentModule: React.FC = () => {
   const userIsEditor = user?.claims ? isEditor(user.claims) : false;
   const userIsApprover = user?.claims ? isApprover(user.claims) : false;
   const userIsExporter = user?.claims ? isExporter(user.claims) : false;
+  const userIsPublisher = user?.claims ? isPublisher(user.claims) : false;
   
   // Job management state
   const [jobs, setJobs] = useState<DataEnrichmentJobResponse[]>([]);
@@ -42,6 +44,10 @@ const DataEnrichmentModule: React.FC = () => {
 
   // Edit job state - keep for backwards compatibility but use JobDetailsModal instead
   const [editJob, setEditJob] = useState<DataEnrichmentJobResponse | null>(null);
+
+  // Clone job state - now using JobDetailsModal in clone mode
+  const [showCloneModal, setShowCloneModal] = useState(false);
+  const [jobToClone, setJobToClone] = useState<DataEnrichmentJobResponse | null>(null);
 
   // Load jobs on component mount only (no pagination dependency since we fetch all)
   useEffect(() => {
@@ -403,6 +409,101 @@ const DataEnrichmentModule: React.FC = () => {
     setShowJobForm(false);
   };
 
+  const handleCloneJob = useCallback(async (job: DataEnrichmentJobResponse) => {
+    console.log('🚀 handleCloneJob called - fetching complete job details...');
+    
+    try {
+      // Fetch complete pull job details with all connection information
+      const fullJobDetails = await dataEnrichmentApi.getJob(job.id, 'PULL');
+      
+      console.log('🚀 Complete job details fetched:', fullJobDetails);
+      
+      // Set the complete job data and open modal
+      setJobToClone(fullJobDetails);
+      setShowCloneModal(true);
+      
+    } catch (error) {
+      console.error('Failed to fetch complete job details for clone:', error);
+      showError('Failed to load job details for cloning');
+    }
+  }, []);
+
+  const handleCloneSuccess = useCallback(() => {
+    console.log('Clone operation successful, refreshing jobs...');
+    setShowCloneModal(false);
+    setJobToClone(null);
+    loadJobs(); // Refresh the job list
+  }, [loadJobs]);
+
+  const handleActualClone = useCallback(async (job: DataEnrichmentJobResponse) => {
+    try {
+      console.log('� Cloning pull job:', job.endpoint_name);
+      console.log('🚀 Job data:', job);
+
+      // Validate required data
+      if (!job.connection) {
+        showError('Cannot clone job: Missing connection information');
+        return;
+      }
+
+      if (!job.source_type) {
+        showError('Cannot clone job: Missing source type information');
+        return;
+      }
+
+      // Use existing schedule_id or find/create one
+      let scheduleId = job.schedule_id;
+      if (!scheduleId) {
+        const schedules = await dataEnrichmentApi.getAllSchedules();
+        const approvedSchedules = schedules.filter((schedule: any) => 
+          schedule.status === 'approved' || schedule.status === 'exported' || schedule.status === 'deployed'
+        );
+        
+        if (approvedSchedules.length > 0) {
+          scheduleId = approvedSchedules[0].id;
+        } else {
+          const defaultSchedule = await dataEnrichmentApi.createSchedule({
+            name: `Schedule for ${job.endpoint_name}`,
+            cron: '0 */6 * * *',
+            iterations: -1
+          });
+          if (defaultSchedule.success) {
+            const createdSchedules = await dataEnrichmentApi.getAllSchedules();
+            const newSchedule = createdSchedules.find((s: any) => s.name.includes(job.endpoint_name));
+            scheduleId = newSchedule?.id;
+          }
+        }
+      }
+
+      if (!scheduleId) {
+        showError('Could not find or create a schedule for the cloned job');
+        return;
+      }
+
+      // Create the pull job with user-modified endpoint_name and version
+      const pullJobData = {
+        endpoint_name: job.endpoint_name, // This now comes from the modal with user modifications
+        version: job.version,  // This now comes from the modal with user modifications
+        schedule_id: scheduleId,
+        source_type: job.source_type as 'HTTP' | 'SFTP',
+        description: job.description || '',
+        connection: job.connection,
+        table_name: job.table_name || '',
+        mode: job.mode || 'append' as 'append' | 'replace',
+        ...(job.file && { file: job.file })
+      };
+
+      console.log('🚀 Creating pull job with:', pullJobData);
+      await dataEnrichmentApi.createPullJob(pullJobData);
+
+      showSuccess(`Pull job "${job.endpoint_name}" created successfully!`);
+      handleCloneSuccess();
+    } catch (error) {
+      console.error('Clone operation failed:', error);
+      showError(`Failed to clone job: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }, [showSuccess, showError, handleCloneSuccess]);
+
   // Calculate filtered jobs based on all applied filters
   const filteredJobs = useMemo(() => {
     console.log('=== FRONTEND FILTERING DEBUG ===');
@@ -415,17 +516,36 @@ const DataEnrichmentModule: React.FC = () => {
     
     let filtered = jobs;
 
-    // Role-based filtering: exporters can only see approved and exported jobs
+    // Role-based filtering: exporters can only see approved, exported and deployed jobs
     if (userIsExporter) {
-      console.log('Applying exporter role filter - only showing approved and exported jobs');
+      console.log('Applying exporter role filter - only showing approved, exported and deployed jobs');
       filtered = filtered.filter(job => {
         const jobStatus = job.status || 'in-progress';
-        const allowedStatuses = ['approved', 'exported'];
+        const allowedStatuses = ['approved', 'exported', 'deployed'];
         const isAllowed = allowedStatuses.includes(jobStatus);
         console.log(`Job ${job.id}: status="${jobStatus}", allowed=${isAllowed}`);
         return isAllowed;
       });
       console.log('After exporter role filter:', filtered.length);
+    }
+
+    // Role-based filtering: publishers can only see exported and deployed jobs (exported shown as deployed)
+    if (userIsPublisher) {
+      console.log('Applying publisher role filter - only showing exported and deployed jobs');
+      filtered = filtered.filter(job => {
+        const jobStatus = job.status || 'in-progress';
+        const allowedStatuses = ['exported', 'deployed'];
+        const isAllowed = allowedStatuses.includes(jobStatus);
+        console.log(`Job ${job.id}: status="${jobStatus}", allowed=${isAllowed}`);
+        return isAllowed;
+      });
+      
+      // Transform exported status to deployed for publishers
+      filtered = filtered.map(job => ({
+        ...job,
+        status: job.status === 'exported' ? 'deployed' : job.status
+      }));
+      console.log('After publisher role filter and status transformation:', filtered.length);
     }
 
     // Search filter
@@ -467,7 +587,7 @@ const DataEnrichmentModule: React.FC = () => {
     console.log('Final filtered count:', filtered.length);
     console.log('=== END FRONTEND FILTERING DEBUG ===');
     return filtered;
-  }, [jobs, searchQuery, statusFilter, typeFilter, userIsExporter]);
+  }, [jobs, searchQuery, statusFilter, typeFilter, userIsExporter, userIsPublisher]);
 
   // Calculate pagination based on filtered results
   const totalItems = filteredJobs.length;
@@ -598,6 +718,7 @@ const DataEnrichmentModule: React.FC = () => {
           isLoading={jobsLoading}
           onViewLogs={handleViewJobDetails}
           onEdit={handleEditJob}
+          onClone={handleCloneJob}
           onRefresh={loadJobs}
           statusFilter={statusFilter}
           onStatusFilterChange={(newStatus) => {
@@ -661,6 +782,18 @@ const DataEnrichmentModule: React.FC = () => {
           editMode={jobDetailsEditMode}
           onSave={handleSaveJobChanges}
           onSendForApproval={handleSendForApproval}
+        />
+
+        {/* Modal for cloning jobs - using JobDetailsModal in clone mode */}
+        <JobDetailsModal
+          isOpen={showCloneModal}
+          onClose={() => {
+            setShowCloneModal(false);
+            setJobToClone(null);
+          }}
+          job={jobToClone}
+          cloneMode={true}
+          onClone={handleActualClone}
         />
       </div>
     </div>

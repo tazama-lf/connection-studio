@@ -35,6 +35,7 @@ export type FieldType = (typeof FieldType)[keyof typeof FieldType];
 
 export const EndpointStatus = {
   IN_PROGRESS: 'IN_PROGRESS',
+  STATUS_01_IN_PROGRESS: 'IN_PROGRESS',
   PENDING_APPROVAL: 'PENDING_APPROVAL',
   UNDER_REVIEW: 'UNDER_REVIEW',
   READY_FOR_DEPLOYMENT: 'READY_FOR_DEPLOYMENT',

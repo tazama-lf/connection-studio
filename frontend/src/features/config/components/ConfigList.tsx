@@ -31,6 +31,7 @@ interface ConfigListProps {
   onRefresh?: () => void;
   searchTerm?: string;
   showPendingApprovals?: boolean;
+  showApprovedConfigs?: boolean;
   onApprove?: (configId: number) => void;
   onReject?: (config: Config) => void;
   onSendForDeployment?: (configId: number) => void;
@@ -44,6 +45,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
   onViewHistory,
   searchTerm: externalSearchTerm,
   showPendingApprovals = false,
+  showApprovedConfigs = false,
   onApprove,
   onReject,
   onSendForDeployment
@@ -70,7 +72,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
   const { user } = useAuth();
   const userIsExporter = user?.claims ? isExporter(user.claims) : false;
 
-  // Fetch configs based on showPendingApprovals flag
+  // Fetch configs based on flags
   const fetchConfigs = async () => {
     try {
       setLoading(true);
@@ -83,12 +85,25 @@ export const ConfigList: React.FC<ConfigListProps> = ({
         console.log('🔍 ConfigList - Pending approvals response:', response);
         console.log('🔍 ConfigList - Pending approvals configs array:', response.configs);
         console.log('🔍 ConfigList - Pending approvals count:', response.configs?.length || 0);
+        
+        // Debug: Log each config's status
+        if (response.configs && Array.isArray(response.configs)) {
+          response.configs.forEach((config: any, index: number) => {
+            console.log(`🔍 ConfigList - Config ${index + 1} status:`, config.status, 'ID:', config.id);
+          });
+        }
+      } else if (showApprovedConfigs) {
+        console.log('🔍 ConfigList - Fetching approved configurations...');
+        response = await configApi.getConfigsByStatus('approved');
+        console.log('🔍 ConfigList - Approved configs response:', response);
+        console.log('🔍 ConfigList - Approved configs array:', response.configs);
+        console.log('🔍 ConfigList - Approved configs count:', response.configs?.length || 0);
       } else {
         console.log('🔍 ConfigList - Fetching all configurations...');
         response = await configApi.getAllConfigs();
       }
       
-      const configsArray = response.configs || [];
+      const configsArray = Array.isArray(response.configs) ? response.configs : [];
       setConfigs(configsArray);
       console.log('✅ ConfigList - Final configs set to state:', configsArray);
       console.log('✅ ConfigList - Final configs count:', configsArray.length);
@@ -101,19 +116,57 @@ export const ConfigList: React.FC<ConfigListProps> = ({
     }
   };
 const getStatusText = (status: string) => {
-    switch (status.toLowerCase()) {
+    const normalizedStatus = status.toLowerCase();
+    
+    // Handle STATUS_XX_NAME format from database
+    if (normalizedStatus.startsWith('status_')) {
+      // Extract the name part after the number (e.g., STATUS_03_UNDER_REVIEW -> UNDER_REVIEW)
+      const parts = normalizedStatus.split('_');
+      if (parts.length >= 3) {
+        const statusName = parts.slice(2).join('_'); // Get everything after STATUS_XX_
+        switch (statusName) {
+          case 'in_progress':
+            return 'IN-PROGRESS';
+          case 'under_review':
+            return 'UNDER REVIEW';
+          case 'approved':
+            return 'APPROVED';
+          case 'rejected':
+            return 'REJECTED';
+          case 'changes_requested':
+            return 'CHANGES REQUESTED';
+          case 'exported':
+            return 'EXPORTED';
+          case 'ready_for_deployment':
+            return 'READY FOR DEPLOYMENT';
+          case 'deployed':
+            return 'DEPLOYED';
+          case 'suspended':
+            return 'SUSPENDED';
+          default:
+            return statusName.toUpperCase().replace(/_/g, ' ');
+        }
+      }
+    }
+    
+    // Handle legacy status formats
+    switch (normalizedStatus) {
       case 'active':
         return 'READY FOR APPROVAL';
       case 'draft':
       case 'in-progress':
+      case 'in_progress':
         return 'IN-PROGRESS';
       case 'suspended':
         return 'SUSPENDED';
+      case 'status_01_in_progress':
+        return 'IN-PROGRESS';
       case 'cloned':
         return 'CLONED';
       case 'approved':
         return 'APPROVED';
       case 'under review':
+      case 'under_review':
         return 'UNDER REVIEW';
       case 'deployed':
         return 'DEPLOYED';
@@ -122,6 +175,11 @@ const getStatusText = (status: string) => {
       case 'changes_requested':
       case 'changes requested':
         return 'CHANGES REQUESTED';
+      case 'exported':
+        return 'EXPORTED';
+      case 'ready_for_deployment':
+      case 'ready for deployment':
+        return 'READY FOR DEPLOYMENT';
       default:
         return status.toUpperCase().replace(/_/g, ' ');
     }
@@ -138,13 +196,48 @@ const getStatusText = (status: string) => {
   };
 
   const getStatusBadge = (status: string) => {
-    switch (status.toLowerCase()) {
+    const normalizedStatus = status.toLowerCase();
+    
+    // Handle STATUS_XX_NAME format from database
+    if (normalizedStatus.startsWith('status_')) {
+      const parts = normalizedStatus.split('_');
+      if (parts.length >= 3) {
+        const statusName = parts.slice(2).join('_'); // Get everything after STATUS_XX_
+        switch (statusName) {
+          case 'in_progress':
+            return 'bg-yellow-50 text-yellow-600 border border-yellow-200';
+          case 'under_review':
+            return 'bg-blue-50 text-blue-600 border border-blue-200';
+          case 'approved':
+            return 'bg-green-50 text-green-600 border border-green-200';
+          case 'rejected':
+            return 'bg-red-50 text-red-600 border border-red-200';
+          case 'changes_requested':
+            return 'bg-orange-50 text-orange-600 border border-orange-200';
+          case 'exported':
+            return 'bg-cyan-50 text-cyan-600 border border-cyan-200';
+          case 'ready_for_deployment':
+            return 'bg-emerald-50 text-emerald-600 border border-emerald-200';
+          case 'deployed':
+            return 'bg-indigo-50 text-indigo-600 border border-indigo-200';
+          case 'suspended':
+            return 'bg-red-50 text-red-600 border border-red-200';
+          default:
+            return 'bg-gray-50 text-gray-600 border border-gray-200';
+        }
+      }
+    }
+    
+    // Handle legacy status formats
+    switch (normalizedStatus) {
       case 'active':
       case 'ready for approval':
       case 'approved':
         return 'bg-green-50 text-green-600 border border-green-200';
       case 'in-progress':
+      case 'in_progress':
       case 'draft':
+      case 'status_01_in_progress':
         return 'bg-yellow-50 text-yellow-600 border border-yellow-200';
       case 'suspended':
       case 'rejected':
@@ -159,13 +252,33 @@ const getStatusText = (status: string) => {
       case 'changes_requested':
       case 'changes requested':
         return 'bg-orange-50 text-orange-600 border border-orange-200';
+      case 'exported':
+        return 'bg-cyan-50 text-cyan-600 border border-cyan-200';
+      case 'ready_for_deployment':
+      case 'ready for deployment':
+        return 'bg-emerald-50 text-emerald-600 border border-emerald-200';
       default:
         return 'bg-gray-50 text-gray-600 border border-gray-200';
     }
   };
 
+  // Helper function to normalize status for comparisons
+  const normalizeStatus = (status: string): string => {
+    const normalizedStatus = status.toLowerCase();
+    
+    // Handle STATUS_XX_NAME format from database
+    if (normalizedStatus.startsWith('status_')) {
+      const parts = normalizedStatus.split('_');
+      if (parts.length >= 3) {
+        return parts.slice(2).join('_'); // Get everything after STATUS_XX_
+      }
+    }
+    
+    return normalizedStatus;
+  };
+
   // Filter configs by search term and status
-  const filteredConfigs = configs.filter(config => {
+  const filteredConfigs = (Array.isArray(configs) ? configs : []).filter(config => {
     const matchesSearch = searchTerm === '' || 
       config.transactionType.toLowerCase().includes(searchTerm.toLowerCase()) ||
       config.endpointPath.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -177,7 +290,8 @@ const getStatusText = (status: string) => {
     let matchesRole = true;
     if (userIsExporter) {
       const allowedStatuses = ['approved', 'deployed'];
-      matchesRole = allowedStatuses.includes(config.status.toLowerCase());
+      const normalizedConfigStatus = normalizeStatus(config.status);
+      matchesRole = allowedStatuses.includes(normalizedConfigStatus);
     }
       
     return matchesSearch && matchesStatus && matchesRole;
@@ -360,10 +474,15 @@ const getStatusText = (status: string) => {
             </tr>
           </thead>
           <tbody className="bg-white">
-            {paginatedConfigs.length === 0 && !showPendingApprovals ? (
+            {paginatedConfigs.length === 0 ? (
               <tr>
                 <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
-                  {configs.length === 0 ? 'No configurations found' : 'No configurations match your search criteria'}
+                  {showPendingApprovals 
+                    ? (configs.length === 0 ? 'No configurations found for review' : 'No configurations match your search criteria')
+                    : showApprovedConfigs
+                    ? (configs.length === 0 ? 'No approved configurations found' : 'No configurations match your search criteria')
+                    : (configs.length === 0 ? 'No configurations found' : 'No configurations match your search criteria')
+                  }
                 </td>
               </tr>
             ) : (
@@ -415,9 +534,15 @@ const getStatusText = (status: string) => {
                                     onConfigEdit(config);
                                     setOpenDropdown(null);
                                   }}
-                                  disabled={config.status === 'under_review' || config.status === 'under review' || config.status === 'approved'}
+                                  disabled={(() => {
+                                    const normalizedStatus = normalizeStatus(config.status);
+                                    return normalizedStatus === 'under_review' || normalizedStatus === 'approved';
+                                  })()}
                                   className={`flex items-center w-full px-4 py-2 text-sm hover:bg-gray-100 ${
-                                    config.status === 'under_review' || config.status === 'under review' || config.status === 'approved'
+                                    (() => {
+                                      const normalizedStatus = normalizeStatus(config.status);
+                                      return normalizedStatus === 'under_review' || normalizedStatus === 'approved';
+                                    })()
                                       ? 'text-gray-400 cursor-not-allowed'
                                       : 'text-gray-700'
                                   }`}

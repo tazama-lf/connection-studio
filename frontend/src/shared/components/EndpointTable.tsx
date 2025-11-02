@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import { Button } from './Button';
 import { MoreVerticalIcon, ClockIcon, PlayIcon, PauseIcon, HistoryIcon, EyeIcon, CheckCircleIcon, DownloadIcon, UploadIcon, CopyIcon } from 'lucide-react';
 import { EndpointHistoryModal } from './EndpointHistoryModal';
+import { configApi } from '../../features/config/services/configApi';
+import { useToast } from '../providers/ToastProvider';
 interface Endpoint {
   id: number;
   path: string;
   createdOn: string;
   lastUpdated: string;
-  status: 'In-Progress' | 'Ready for Approval' | 'Suspended' | 'Cloned';
+  status: 'In-Progress' | 'Ready for Approval' | 'Suspended' | 'Cloned' | 'IN_PROGRESS' | 'SUSPENDED';
   tenantId: string;
   workflowStatus?: 'active' | 'paused';
   type?: 'Push' | 'Pull';
@@ -18,6 +20,7 @@ interface EndpointTableProps {
   onEdit: (id: number) => void;
   onDelete: (id: number) => void;
   onClone?: (id: number) => void;
+  onStatusUpdate?: () => void; // Callback to refresh data after status changes
   showStatusColumn?: boolean;
   createdTimeLabel?: string;
   showTypeColumn?: boolean;
@@ -29,6 +32,7 @@ interface EndpointTableProps {
   onEdit,
   onDelete: _onDelete,
   onClone,
+  onStatusUpdate,
   showStatusColumn = true,
   createdTimeLabel = 'Created Time',
   showTypeColumn = false,
@@ -36,29 +40,35 @@ interface EndpointTableProps {
 }) => {
   const [activeDropdown, setActiveDropdown] = useState<number | null>(null);
   const [showHistory, setShowHistory] = useState<number | null>(null);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState<number | null>(null);
+  const { showSuccess, showError } = useToast();
   const getStatusColor = (status: Endpoint['status']) => {
-    switch (status) {
-      case 'Ready for Approval':
+    const normalizedStatus = status?.toLowerCase();
+    switch (normalizedStatus) {
+      case 'ready for approval':
         return 'bg-green-100 text-green-800';
-      case 'In-Progress':
+      case 'in-progress':
+      case 'in_progress':
         return 'bg-yellow-100 text-yellow-800';
-      case 'Suspended':
+      case 'suspended':
         return 'bg-red-100 text-red-800';
-      case 'Cloned':
+      case 'cloned':
         return 'bg-purple-100 text-purple-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
   };
   const getStatusIcon = (status: Endpoint['status']) => {
-    switch (status) {
-      case 'Ready for Approval':
+    const normalizedStatus = status?.toLowerCase();
+    switch (normalizedStatus) {
+      case 'ready for approval':
         return <CheckCircleIcon size={12} className="mr-1" data-id="element-750" />;
-      case 'In-Progress':
+      case 'in-progress':
+      case 'in_progress':
         return <ClockIcon size={12} className="mr-1" data-id="element-751" />;
-      case 'Suspended':
+      case 'suspended':
         return <PauseIcon size={12} className="mr-1" data-id="element-752" />;
-      case 'Cloned':
+      case 'cloned':
         return <CopyIcon size={12} className="mr-1" data-id="element-753" />;
       default:
         return null;
@@ -74,35 +84,52 @@ interface EndpointTableProps {
         return null;
     }
   };
-  const handleAction = (action: string, endpoint: Endpoint) => {
-    switch (action) {
-      case 'view':
-        onView(endpoint.id);
-        break;
-      case 'edit':
-        onEdit(endpoint.id);
-        break;
-      case 'history':
-        setShowHistory(endpoint.id);
-        break;
-      case 'approve':
-        console.log('Approve endpoint', endpoint.id);
-        break;
-      case 'suspend':
-        console.log('Suspend endpoint', endpoint.id);
-        break;
-      case 'resume':
-        console.log('Resume endpoint', endpoint.id);
-        break;
-      case 'clone':
-        if (onClone) {
-          onClone(endpoint.id);
-        }
-        break;
-      default:
-        console.log('Action:', action, 'Endpoint:', endpoint.id);
+  const handleAction = async (action: string, endpoint: Endpoint) => {
+    try {
+      switch (action) {
+        case 'view':
+          onView(endpoint.id);
+          break;
+        case 'edit':
+          onEdit(endpoint.id);
+          break;
+        case 'history':
+          setShowHistory(endpoint.id);
+          break;
+        case 'approve':
+          console.log('Approve endpoint', endpoint.id);
+          break;
+        case 'suspend':
+          setIsUpdatingStatus(endpoint.id);
+          await configApi.updateConfigStatus(endpoint.id, 'SUSPENDED');
+          showSuccess('Configuration suspended successfully');
+          if (onStatusUpdate) {
+            onStatusUpdate();
+          }
+          break;
+        case 'resume':
+          setIsUpdatingStatus(endpoint.id);
+          await configApi.updateConfigStatus(endpoint.id, 'IN_PROGRESS');
+          showSuccess('Configuration resumed successfully');
+          if (onStatusUpdate) {
+            onStatusUpdate();
+          }
+          break;
+        case 'clone':
+          if (onClone) {
+            onClone(endpoint.id);
+          }
+          break;
+        default:
+          console.log('Action:', action, 'Endpoint:', endpoint.id);
+      }
+    } catch (error) {
+      console.error('Action failed:', error);
+      showError(`Failed to ${action} configuration`);
+    } finally {
+      setIsUpdatingStatus(null);
+      setActiveDropdown(null);
     }
-    setActiveDropdown(null);
   };
   return <div className="overflow-x-auto bg-white rounded-lg shadow" data-id="element-756">
       <table className="min-w-full divide-y divide-gray-200" data-id="element-757">
@@ -176,27 +203,58 @@ interface EndpointTableProps {
                                 <EyeIcon size={14} className="mr-2" data-id="element-792" />
                                 View Configuration
                               </button>
-                              <button onClick={() => handleAction('edit', endpoint)} className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" data-id="element-793">
-                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                </svg>
-                                Edit Configuration
-                              </button>
-                              <button onClick={() => handleAction('clone', endpoint)} className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" data-id="element-799">
-                                <CopyIcon size={14} className="mr-2" data-id="element-800" />
-                                Clone Configuration
-                              </button>
-                              {endpoint.status === 'Suspended' ? <button onClick={() => handleAction('resume', endpoint)} className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" data-id="element-793">
+                              
+                              {/* Edit and Clone - Only available for non-suspended items */}
+                              {endpoint.status?.toLowerCase() !== 'suspended' && (
+                                <>
+                                  <button onClick={() => handleAction('edit', endpoint)} className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" data-id="element-793">
+                                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                    </svg>
+                                    Edit Configuration
+                                  </button>
+                                  <button onClick={() => handleAction('clone', endpoint)} className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" data-id="element-799">
+                                    <CopyIcon size={14} className="mr-2" data-id="element-800" />
+                                    Clone Configuration
+                                  </button>
+                                </>
+                              )}
+                              {/* Suspend/Resume buttons */}
+                              {endpoint.status?.toLowerCase() === 'suspended' ? (
+                                <button 
+                                  onClick={() => handleAction('resume', endpoint)} 
+                                  disabled={isUpdatingStatus === endpoint.id}
+                                  className={`flex items-center w-full px-4 py-2 text-sm hover:bg-gray-100 ${
+                                    isUpdatingStatus === endpoint.id ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700'
+                                  }`}
+                                  data-id="element-793"
+                                >
                                   <PlayIcon size={14} className="mr-2" data-id="element-794" />
-                                  Resume Endpoint
-                                </button> : <button onClick={() => handleAction('suspend', endpoint)} className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" data-id="element-795">
+                                  {isUpdatingStatus === endpoint.id ? 'Resuming...' : 'Resume Endpoint'}
+                                </button>
+                              ) : (
+                                <button 
+                                  onClick={() => handleAction('suspend', endpoint)}
+                                  disabled={isUpdatingStatus === endpoint.id}
+                                  className={`flex items-center w-full px-4 py-2 text-sm hover:bg-gray-100 ${
+                                    isUpdatingStatus === endpoint.id ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700'
+                                  }`}
+                                  data-id="element-795"
+                                >
                                   <PauseIcon size={14} className="mr-2" data-id="element-796" />
-                                  Suspend Endpoint
-                                </button>}
-                              {endpoint.status === 'In-Progress' && <button onClick={() => handleAction('approve', endpoint)} className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" data-id="element-797">
+                                  {isUpdatingStatus === endpoint.id ? 'Suspending...' : 'Suspend Endpoint'}
+                                </button>
+                              )}
+                              {(endpoint.status?.toLowerCase() === 'in-progress' || endpoint.status?.toLowerCase() === 'in_progress') && (
+                                <button 
+                                  onClick={() => handleAction('approve', endpoint)} 
+                                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" 
+                                  data-id="element-797"
+                                >
                                   <CheckCircleIcon size={14} className="mr-2" data-id="element-798" />
                                   Submit for Approval
-                                </button>}
+                                </button>
+                              )}
                             </div>
                           </div>}
                       </div>}
