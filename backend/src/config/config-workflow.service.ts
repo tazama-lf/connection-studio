@@ -8,11 +8,34 @@ import {
 
 @Injectable()
 export class ConfigWorkflowService {
+  private normalizeStatus(status: string): string {
+    // Convert STATUS_XX_NAME format to ConfigStatus enum value
+    if (status && status.startsWith('STATUS_')) {
+      const parts = status.split('_');
+      if (parts.length >= 3) {
+        const statusName = parts.slice(2).join('_').toLowerCase();
+        // Map to ConfigStatus enum values
+        const statusMap: Record<string, string> = {
+          'in_progress': ConfigStatus.IN_PROGRESS,
+          'under_review': ConfigStatus.UNDER_REVIEW,
+          'approved': ConfigStatus.APPROVED,
+          'rejected': ConfigStatus.REJECTED,
+          'exported': ConfigStatus.EXPORTED,
+          'deployed': ConfigStatus.DEPLOYED,
+          'changes_requested': 'changes_requested'
+        };
+        return statusMap[statusName] || status;
+      }
+    }
+    return status;
+  }
   validateStatusTransition(
     fromStatus: string,
     toStatus: string,
     _action: any,
   ): StatusTransitionValidation {
+    const normalizedFromStatus = this.normalizeStatus(fromStatus);
+    const normalizedToStatus = this.normalizeStatus(toStatus);
     const validTransitions: Record<string, string[]> = {
       [ConfigStatus.IN_PROGRESS]: [ConfigStatus.UNDER_REVIEW],
       [ConfigStatus.SUSPENDED]: [ConfigStatus.IN_PROGRESS],
@@ -28,15 +51,14 @@ export class ConfigWorkflowService {
       [ConfigStatus.REJECTED]: [ConfigStatus.IN_PROGRESS],
     };
 
-    const allowedTransitions = validTransitions[fromStatus];
-
-    if (!allowedTransitions?.includes(toStatus)) {
+    const allowedTransitions = validTransitions[normalizedFromStatus];
+    if (!allowedTransitions?.includes(normalizedToStatus)) {
       return {
         isValid: false,
-        currentStatus: fromStatus as any,
-        targetStatus: toStatus as any,
+        currentStatus: normalizedFromStatus as any,
+        targetStatus: normalizedToStatus as any,
         allowedNextStatuses: (allowedTransitions || []) as any,
-        reason: `Invalid transition from ${fromStatus} to ${toStatus}`,
+        reason: `Invalid transition from ${normalizedFromStatus} to ${normalizedToStatus}`,
       };
     }
 
@@ -195,6 +217,21 @@ export class ConfigWorkflowService {
             canPerform: false,
             message:
               'Only editors can return rejected configurations to progress',
+          };
+        }
+        break;
+      }
+      case 'export': {
+        const canExport =
+          userClaims.includes('exporter') &&
+          [ConfigStatus.APPROVED].includes(
+            currentStatus as any,
+          );
+        if (!canExport) {
+          return {
+            canPerform: false,
+            message:
+              'Only exporters can export configurations in APPROVED status',
           };
         }
         break;

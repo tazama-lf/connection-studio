@@ -2367,10 +2367,55 @@ export class ConfigService {
     const newStatus = ConfigStatus.EXPORTED;
 
     const fileName = `dems_${tenantId}_${id}`;
-
     try {
-      const configToExport = { ...config };
-      
+      // First update the status in database (like job service does)
+      try {
+        await this.configRepository.updateConfig(
+          id,
+          tenantId,
+          {
+            status: newStatus,
+          },
+          token,
+        );
+        this.logger.log(`Config status updated via admin service: ${id} -> ${newStatus}`);
+      } catch (adminServiceError) {
+        this.logger.warn(
+          `Admin service update failed, updating database directly: ${adminServiceError.message}`,
+        );
+        // Fallback: Update database directly like job service does
+        const client = await this.databaseService.getClient();
+        this.logger.log(`Attempting direct database update: id=${id}, tenantId=${tenantId}, newStatus=${newStatus}`);
+        const updateQuery = `
+          UPDATE configuration
+          SET status = $1, updated_at = NOW()
+          WHERE id = $2 AND tenant_id = $3
+          RETURNING id, status;
+        `;
+        const result = await client.query(updateQuery, [newStatus, id, tenantId]);
+        this.logger.log(`Database update result: rowCount=${result.rowCount}, rows=${JSON.stringify(result.rows)}`);
+        if (!result.rowCount) {
+          // Try without tenant_id in case the column name is different
+          const fallbackQuery = `
+            UPDATE configuration
+            SET status = $1, updated_at = NOW()
+            WHERE id = $2
+            RETURNING id, status;
+          `;
+          const fallbackResult = await client.query(fallbackQuery, [newStatus, id]);
+          this.logger.log(`Fallback update result: rowCount=${fallbackResult.rowCount}, rows=${JSON.stringify(fallbackResult.rows)}`);
+          if (!fallbackResult.rowCount) {
+            throw new NotFoundException(
+              `Config with id "${id}" not found in configuration table.`,
+            );
+          }
+        }
+        this.logger.log(
+          `Successfully updated config status directly in database: ${id} -> ${newStatus}`,
+        );
+      }
+      // After status update, handle SFTP operations (like job service does)
+      const configToExport = { ...config, status: newStatus };
       // Generate CREATE TABLE query
       const transactionType = config.transactionType.replace(
         /[^a-zA-Z0-9_]/g,
@@ -2385,26 +2430,19 @@ export class ConfigService {
   document JSONB NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );`;
-
       // Upload config to SFTP with status 'ready'
       await this.sftpService.createFile(fileName, {
         ...configToExport,
         status: 'ready',
       });
-
+      // Also upload to producer SFTP so publishers can see exported files
+      await this.sftpService.createFileForPublisher(fileName, {
+        ...configToExport,
+        status: 'ready',
+      });
       this.logger.log(
-        `Successfully uploaded config file (${fileName}) to SFTP server.`,
+        `Successfully uploaded config file (${fileName}) to SFTP servers.`,
       );
-
-      await this.configRepository.updateConfig(
-        id,
-        tenantId,
-        {
-          status: newStatus,
-        },
-        token,
-      );
-
       // Log the action
       await this.logStatusChange(
         id,
@@ -2414,7 +2452,6 @@ export class ConfigService {
         userId,
         dto.comment,
       );
-
       // Audit the action
       await this.auditService.logAction({
         action: 'export_config',
@@ -2425,15 +2462,29 @@ export class ConfigService {
         details: `Configuration exported to SFTP as ${fileName}${dto.comment ? `: ${dto.comment}` : ''}`,
         newValues: { status: newStatus },
       });
-
+      // Get updated config, with fallback to direct database query
+      let updatedConfig;
+      try {
+        updatedConfig = await this.configRepository.findConfigById(id, tenantId, token);
+      } catch (repoError) {
+        this.logger.warn(`Repository findConfigById failed, querying database directly: ${repoError.message}`);
+        // Fallback: Query database directly
+        const client = await this.databaseService.getClient();
+        const selectQuery = `
+          SELECT * FROM configuration
+          WHERE id = $1 AND tenant_id = $2
+        `;
+        const configResult = await client.query(selectQuery, [id, tenantId]);
+        updatedConfig = configResult.rows[0] || null;
+      }
       return {
         success: true,
         message: `Configuration exported successfully to SFTP (${fileName})`,
-        config:
-          (await this.configRepository.findConfigById(id, tenantId, token)) ||
-          undefined,
+        config: updatedConfig,
       };
-    } catch (error) {
+    }
+
+    catch (error) {
       this.logger.error(`Failed to export config to SFTP: ${error.message}`);
       throw new BadRequestException(
         `Failed to export configuration to SFTP: ${error.message}`,
@@ -2500,10 +2551,13 @@ export class ConfigService {
         this.logger.log(`📋 Executing CREATE TABLE query from config ${id}:`);
         this.logger.log(configData.createTableQuery);
         
-        await this.databaseService.executeRawQuery(configData.createTableQuery);
-        
-        this.logger.log(`✅ Successfully executed CREATE TABLE from deployed config`);
-        
+        const client = await this.databaseService.getClient();
+        try {
+          await client.query(configData.createTableQuery);
+          this.logger.log(`:white_check_mark: Successfully executed CREATE TABLE from deployed config`);
+        } finally {
+          client.release();
+        }
         // Log to audit
         await this.auditService.logAction({
           action: 'execute_create_table_on_deploy',

@@ -38,6 +38,7 @@ import {
   type ApprovalDto,
   type RejectionDto,
   type ChangeRequestDto,
+  ConfigStatus,
   type DeploymentDto,
   type StatusTransitionDto,
 } from './config.interfaces';
@@ -542,6 +543,22 @@ export class ConfigController {
       'GET',
       `/v1/admin/tcs/config/${id}/audit-history`,
       undefined,
+      buildForwardHeaders(user),
+    );
+  }
+  @Patch('/update/status/:id')
+  @RequireAnyClaims(TazamaClaims.EXPORTER, TazamaClaims.PUBLISHER)
+  async updateStatus(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('status') status: ConfigStatus,
+    @User() user: AuthenticatedUser,
+  ): Promise<any> {
+    // Forward request to admin service to update config status
+    // Support for export (sets status to 'exported') and publish (sets status to 'deployed')
+    return this.adminServiceClient.forwardRequest(
+      'PATCH',
+      `/v1/admin/tcs/config/${id}/status`,
+      { status },
       buildForwardHeaders(user),
     );
   }
