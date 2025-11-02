@@ -2430,18 +2430,18 @@ export class ConfigService {
   document JSONB NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );`;
-      // Upload config to SFTP with status 'ready'
+      // Upload config to SFTP with status 'exported' (matching database status)
       await this.sftpService.createFile(fileName, {
         ...configToExport,
-        status: 'ready',
+        status: 'exported',  // Changed from 'ready' to 'exported' to match database
       });
       // Also upload to producer SFTP so publishers can see exported files
       await this.sftpService.createFileForPublisher(fileName, {
         ...configToExport,
-        status: 'ready',
+        status: 'exported',  // Changed from 'ready' to 'exported' to match database
       });
       this.logger.log(
-        `Successfully uploaded config file (${fileName}) to SFTP servers.`,
+        `Successfully uploaded config file (${fileName}) with status 'exported' to SFTP servers.`,
       );
       // Log the action
       await this.logStatusChange(

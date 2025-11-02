@@ -1229,6 +1229,9 @@ export class SimulationService {
 
   private validateMappings(payload: any, mappings: any[]): SimulationError[] {
     const errors: SimulationError[] = [];
+    
+    // Special fields that are provided at runtime as context variables, not from payload
+    const runtimeContextFields = ['tenantId', 'tenant_id', 'userId', 'user_id'];
 
     for (let i = 0; i < mappings.length; i++) {
       const mapping = mappings[i];
@@ -1244,8 +1247,17 @@ export class SimulationService {
 
       let anySourceExists = false;
       const missingSources: string[] = [];
+      const allSourcesAreRuntimeContext = sources.every((src: string) => 
+        runtimeContextFields.includes(src)
+      );
 
       for (const source of sources) {
+        // Skip validation for runtime context fields - they're provided during execution
+        if (runtimeContextFields.includes(source)) {
+          anySourceExists = true;
+          break;
+        }
+        
         const fieldValue = this.getFieldValue(payload, source);
         if (fieldValue !== undefined && fieldValue !== null) {
           anySourceExists = true;
@@ -1255,13 +1267,21 @@ export class SimulationService {
         }
       }
 
-      if (!anySourceExists && sources.length > 0) {
-        errors.push({
-          field: 'mapping',
-          message: `Mapping #${i + 1}: None of the source fields exist in payload: ${missingSources.join(', ')}`,
-          path: `mappings[${i}]`,
-          value: mapping,
-        });
+      // Only report error if no sources exist AND they're not all runtime context fields
+      if (!anySourceExists && sources.length > 0 && !allSourcesAreRuntimeContext) {
+        // Filter out runtime context fields from error message
+        const nonRuntimeMissing = missingSources.filter(
+          src => !runtimeContextFields.includes(src)
+        );
+        
+        if (nonRuntimeMissing.length > 0) {
+          errors.push({
+            field: 'mapping',
+            message: `Mapping #${i + 1}: None of the source fields exist in payload: ${nonRuntimeMissing.join(', ')}`,
+            path: `mappings[${i}]`,
+            value: mapping,
+          });
+        }
       }
 
       // Validate destination format
@@ -1324,6 +1344,20 @@ export class SimulationService {
 
     const strictSchema = { ...schema };
 
+    // Runtime context fields that are provided at execution time, not from payload
+    const runtimeContextFields = ['tenantId', 'tenant_id', 'userId', 'user_id'];
+
+    // Remove runtime context fields from required array
+    if (strictSchema.required && Array.isArray(strictSchema.required)) {
+      strictSchema.required = strictSchema.required.filter(
+        (field: string) => !runtimeContextFields.includes(field)
+      );
+      // If no required fields left, remove the required property
+      if (strictSchema.required.length === 0) {
+        delete strictSchema.required;
+      }
+    }
+
     // Handle array schemas
     if (strictSchema.type === 'array') {
       if (strictSchema.items) {
@@ -1385,3 +1419,5 @@ export class SimulationService {
     return strictSchema;
   }
 }
+
+
