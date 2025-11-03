@@ -8,10 +8,10 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import { uuidPattern } from '../utils/constants';
+import { createHash } from 'crypto';
 import SFTPClient from 'ssh2-sftp-client';
 import { SftpFile } from './types/sftp.interface';
-import { createHash } from 'crypto';
+import { uuidPattern } from 'src/utils/constants';
 
 @Injectable()
 export class SftpService implements OnModuleInit, OnModuleDestroy {
@@ -309,11 +309,11 @@ export class SftpService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  async listFiles(remoteDir: string, format: 'de' | 'cron' | 'dems'): Promise<SftpFile[]> {
+  async listFiles(remoteDir: string, format: 'de' | 'cron' | 'dems', tenant_id: string): Promise<SftpFile[]> {
     try {
       // Updated regex pattern to match actual file naming: format_tenantId_configId.json
       // Examples: dems_tenant-id_123.json, de_my-tenant_456.json, cron_test-tenant_789.json
-      const regex = new RegExp(`^${format}_[a-zA-Z0-9\\-_]+_\\d+\\.json$`);
+      const regex = new RegExp(`^${format}_${tenant_id}_${uuidPattern}\\.json$`);
       // First get all files to debug
       const allFiles = await this.producerSftp.list('/upload');
       this.loggerService.log(`All files in ${remoteDir}:`, allFiles.map(f => f.name));

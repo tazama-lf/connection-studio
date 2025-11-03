@@ -34,7 +34,7 @@ export class SftpController {
       throw new BadRequestException(`Producer SFTP server credentials not provided.`);
     }
 
-    return await this.sftpService.listFiles('/upload', format);
+    return await this.sftpService.listFiles('/upload', format,user.tenantId);
   }
 
   @Get('/read')
