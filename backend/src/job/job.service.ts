@@ -97,36 +97,6 @@ export class JobService {
     };
 
   }
-  async updatePull(id: string, job: UpdatePullJobDto): Promise<ISuccess> {
-    const existingJob = await this.findOne(id, ConfigType.PULL);
-
-    if (existingJob.status !== JobStatus.INPROGRESS) {
-      throw new ForbiddenException(
-        'Only In-Progress Pull jobs can be edited',
-      );
-    }
-
-    const keys = Object.keys(job);
-    const values = Object.values(job);
-    const setClause = keys.map((key, i) => `${key} = $${i + 1}`).join(', ');
-    const query = `UPDATE job SET ${setClause} WHERE id = $${keys.length + 1};`;
-
-    const result = await this.db.query(query, [...values, id]);
-
-    const updatedRows = result.rowCount;
-
-    if (!updatedRows) {
-      throw new NotFoundException(
-        `Pull Job with id ${id} not found or no changes were made`,
-      );
-    }
-
-    return {
-      success: true,
-      message: `Job with id ${id} successfully updated`,
-    };
-
-  }
 
   async createPush(
     job: CreatePushJobDto,

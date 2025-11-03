@@ -21,6 +21,8 @@ import { CreatePushJobDto } from './dto/create-push-job.dto';
 import { PullJobResponseDto } from './dto/fetch-pull-job.dto';
 import { PushJob } from './dto/push-job.dto';
 import { JobService } from './job.service';
+import { UpdatePushJobDto } from './dto/update-push-job.dto';
+import { UpdatePullJobDto } from './dto/update-pull-job.dto';
 
 @Controller('job')
 @UseGuards(TazamaAuthGuard)
@@ -39,9 +41,9 @@ export class JobController {
     return await this.jobService.createPull(job, user.tenantId);
   }
 
-  @Patch('/update/job/:id')
+  @Patch('/update/:id')
   @RequireEditorRole()
-  async updateJob(@Param("id") id: string, @Body() job: CreatePullJobDto, @Query('type') type: ConfigType) {
+  async updateJob(@Param("id") id: string, @Body() job: UpdatePushJobDto | UpdatePullJobDto, @Query('type') type: ConfigType) {
     return await this.jobService.updateJob(id, job, type);
   }
 
