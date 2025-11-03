@@ -28,7 +28,7 @@ import {
 } from '../utils/helpers';
 import { CreatePullJobDto, SFTPConnectionDto } from './dto/create-pull-job.dto';
 import { CreatePushJobDto } from './dto/create-push-job.dto';
-import { NotifyService } from 'src/notify/notify.service';
+import { NotifyService } from '../notify/notify.service';
 import { UpdatePushJobDto } from './dto/update-push-job.dto';
 import { UpdatePullJobDto } from './dto/update-pull-job.dto';
 

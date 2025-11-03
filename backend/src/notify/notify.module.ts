@@ -1,10 +1,11 @@
 import { Module } from '@nestjs/common';
 import { NotifyService } from './notify.service';
 import { LoggerModule } from 'src/logger-service/logger-service.module';
+import { ConfigModule } from '@nestjs/config';
 
 @Module({
   providers: [NotifyService],
-  imports: [LoggerModule],
+  imports: [LoggerModule, ConfigModule],
   exports: [NotifyService]
 })
-export class NotifyModule {}
+export class NotifyModule { }

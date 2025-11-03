@@ -5,13 +5,18 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 import { Test, TestingModule } from '@nestjs/testing';
 import { NotifyService } from './notify.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
+import { ConfigService } from '@nestjs/config';
 
 describe('NotifyService', () => {
   let service: NotifyService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [NotifyService, { provide: LoggerService, useValue: {} }],
+      providers: [
+        NotifyService,
+        { provide: LoggerService, useValue: {} },
+        { provide: ConfigService, useValue: {} }
+      ],
     }).compile();
 
     service = module.get<NotifyService>(NotifyService);

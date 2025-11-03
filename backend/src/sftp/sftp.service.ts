@@ -11,7 +11,7 @@ import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { createHash } from 'crypto';
 import SFTPClient from 'ssh2-sftp-client';
 import { SftpFile } from './types/sftp.interface';
-import { uuidPattern } from 'src/utils/constants';
+import { uuidPattern } from '../utils/constants';
 
 @Injectable()
 export class SftpService implements OnModuleInit, OnModuleDestroy {

@@ -5,6 +5,7 @@ import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { DryRunService } from '../dry-run/dry-run.service';
 import { ConfigService } from '@nestjs/config';
 import { SftpService } from '../sftp/sftp.service';
+import { NotifyService } from '../notify/notify.service';
 
 describe('JobService', () => {
   let service: JobService;
@@ -27,6 +28,10 @@ describe('JobService', () => {
         },
         {
           provide: SftpService,
+          useValue: {},
+        },
+        {
+          provide: NotifyService,
           useValue: {},
         },
         {
