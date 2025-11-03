@@ -1610,7 +1610,7 @@ interface EditEndpointModalProps {
                                 onClick={onRevertToEditor}
                                 className="bg-red-600 hover:bg-red-700 text-white"
                               >
-                                Revert to Editor
+                                Reject
                               </Button>
                             )}
                             {onSendForDeployment && (!isStatus(createdEndpoint?.status, 'approved') && !isStatus(existingConfig?.status, 'approved')) && (
@@ -1619,7 +1619,7 @@ interface EditEndpointModalProps {
                                 onClick={onSendForDeployment}
                                 className="bg-green-600 hover:bg-green-700 text-white"
                               >
-                                Send for Deployment
+                                Approve
                               </Button>
                             )}
                           </>
