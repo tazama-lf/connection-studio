@@ -457,6 +457,24 @@ export class ConfigController {
       buildForwardHeaders(user),
     );
   }
+  @Post(':id/update-status-to-exported')
+  @RequireClaims(TazamaClaims.EXPORTER)
+  async updateStatusToExported(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: StatusTransitionDto,
+    @User() user: AuthenticatedUser,
+    @Headers('authorization') authorization?: string,
+  ): Promise<ConfigResponseDto> {
+    const token = authorization?.replace('Bearer ', '') || '';
+    return this.configService.updateStatusToExported(
+      id,
+      dto,
+      getTenantId(user),
+      getUserId(user),
+      getUserClaims(user),
+      token,
+    );
+  }
   @Post(':id/workflow/export')
   @RequireClaims(TazamaClaims.EXPORTER)
   async exportConfig(

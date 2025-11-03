@@ -5,28 +5,11 @@ import {
   StatusTransitionValidation,
   WorkflowValidationResult,
 } from './config.interfaces';
-
 @Injectable()
 export class ConfigWorkflowService {
   private normalizeStatus(status: string): string {
-    // Convert STATUS_XX_NAME format to ConfigStatus enum value
-    if (status && status.startsWith('STATUS_')) {
-      const parts = status.split('_');
-      if (parts.length >= 3) {
-        const statusName = parts.slice(2).join('_').toLowerCase();
-        // Map to ConfigStatus enum values
-        const statusMap: Record<string, string> = {
-          'in_progress': ConfigStatus.IN_PROGRESS,
-          'under_review': ConfigStatus.UNDER_REVIEW,
-          'approved': ConfigStatus.APPROVED,
-          'rejected': ConfigStatus.REJECTED,
-          'exported': ConfigStatus.EXPORTED,
-          'deployed': ConfigStatus.DEPLOYED,
-          'changes_requested': 'changes_requested'
-        };
-        return statusMap[statusName] || status;
-      }
-    }
+    // The enum values are already in STATUS_XX_NAME format
+    // This method exists for backward compatibility
     return status;
   }
   validateStatusTransition(
@@ -44,13 +27,12 @@ export class ConfigWorkflowService {
         ConfigStatus.REJECTED,
         ConfigStatus.IN_PROGRESS, // For changes requested, return to in progress
       ],
-      [ConfigStatus.APPROVED]: [ConfigStatus.EXPORTED],
+      [ConfigStatus.APPROVED]: [ConfigStatus.EXPORTED, ConfigStatus.DEPLOYED],
       [ConfigStatus.EXPORTED]: [ConfigStatus.DEPLOYED],
       [ConfigStatus.READY_FOR_DEPLOYMENT]: [ConfigStatus.DEPLOYED],
       [ConfigStatus.DEPLOYED]: [],
       [ConfigStatus.REJECTED]: [ConfigStatus.IN_PROGRESS],
     };
-
     const allowedTransitions = validTransitions[normalizedFromStatus];
     if (!allowedTransitions?.includes(normalizedToStatus)) {
       return {
@@ -61,7 +43,6 @@ export class ConfigWorkflowService {
         reason: `Invalid transition from ${normalizedFromStatus} to ${normalizedToStatus}`,
       };
     }
-
     return {
       isValid: true,
       currentStatus: fromStatus as any,
@@ -69,7 +50,6 @@ export class ConfigWorkflowService {
       allowedNextStatuses: allowedTransitions as any,
     };
   }
-
   validateUserPermissions(
     userClaims: string[],
     currentStatus: ConfigStatus,
@@ -79,7 +59,6 @@ export class ConfigWorkflowService {
     const hasApproverRole = userClaims.includes('approver');
     const hasPublisherRole = userClaims.includes('publisher');
     const hasExporterRole = userClaims.includes('exporter');
-
     const result: WorkflowValidationResult = {
   canEdit: false,
   canSubmit: false,
@@ -90,19 +69,16 @@ export class ConfigWorkflowService {
   canDeploy: false,
   canReturnToProgress: false,
     };
-
     if (hasEditorRole) {
       // Can edit only in editable states (IN_PROGRESS or REJECTED with changes)
       result.canEdit = [
         ConfigStatus.IN_PROGRESS,
         ConfigStatus.REJECTED,
       ].includes(currentStatus as any);
-
       result.canSubmit = [
         ConfigStatus.IN_PROGRESS,
       ].includes(currentStatus as any);
     }
-
     if (hasApproverRole) {
       const canApproverAct = currentStatus === ConfigStatus.UNDER_REVIEW;
       result.canApprove = canApproverAct;
@@ -112,14 +88,14 @@ export class ConfigWorkflowService {
     if (hasExporterRole) {
       result.canExport = currentStatus === ConfigStatus.APPROVED;
     }
-
     if (hasPublisherRole) {
-      result.canDeploy = currentStatus === ConfigStatus.EXPORTED;
+      result.canDeploy = [
+        ConfigStatus.APPROVED,
+        ConfigStatus.EXPORTED,
+      ].includes(currentStatus as any);
     }
-
     return result;
   }
-
   getTargetStatus(action: any): string {
     const actionToStatusMap: Record<string, string> = {
   submit_for_approval: ConfigStatus.UNDER_REVIEW,
@@ -130,10 +106,8 @@ export class ConfigWorkflowService {
   deploy: ConfigStatus.DEPLOYED,
   return_to_progress: ConfigStatus.IN_PROGRESS,
     };
-
     return actionToStatusMap[action];
   }
-
   canPerformAction(
     userClaims: string[],
     currentStatus: ConfigStatus | string,
@@ -150,11 +124,9 @@ export class ConfigWorkflowService {
       targetStatus,
       action,
     );
-
     if (!transition.isValid) {
       return { canPerform: false, message: transition.reason };
     }
-
     switch (action) {
       case 'submit_for_approval':
         if (!permissions.canSubmit) {
@@ -165,7 +137,6 @@ export class ConfigWorkflowService {
           };
         }
         break;
-
       case 'approve':
         if (!permissions.canApprove) {
           return {
@@ -175,7 +146,6 @@ export class ConfigWorkflowService {
           };
         }
         break;
-
       case 'reject':
         if (!permissions.canReject) {
           return {
@@ -185,7 +155,6 @@ export class ConfigWorkflowService {
           };
         }
         break;
-
       case 'request_changes':
         if (!permissions.canRequestChanges) {
           return {
@@ -195,7 +164,6 @@ export class ConfigWorkflowService {
           };
         }
         break;
-
       case 'deploy':
         if (!permissions.canDeploy) {
           return {
@@ -205,7 +173,6 @@ export class ConfigWorkflowService {
           };
         }
         break;
-
       case 'return_to_progress': {
         const canReturn =
           userClaims.includes('editor') &&
@@ -236,14 +203,11 @@ export class ConfigWorkflowService {
         }
         break;
       }
-
       default:
         return { canPerform: false, message: 'Unknown action' };
     }
-
     return { canPerform: true };
   }
-
   canEditConfig(currentStatus: ConfigStatus): {
     canEdit: boolean;
     message?: string;
@@ -252,17 +216,14 @@ export class ConfigWorkflowService {
       ConfigStatus.IN_PROGRESS,
       ConfigStatus.REJECTED, // Can edit after rejection
     ];
-
     if (!editableStatuses.includes(currentStatus)) {
       return {
         canEdit: false,
         message: 'Editing not allowed. Please clone to create a new version.',
       };
     }
-
     return { canEdit: true };
   }
-
   getActionDescription(action: WorkflowAction): string {
     const descriptions: Record<WorkflowAction, string> = {
   submit_for_approval: 'Submit for Approval',
@@ -273,7 +234,6 @@ export class ConfigWorkflowService {
   deploy: 'Deploy',
   return_to_progress: 'Return to Progress',
     };
-
     return descriptions[action] || action;
   }
 }
