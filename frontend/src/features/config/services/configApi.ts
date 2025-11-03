@@ -460,11 +460,26 @@ export class ConfigApiService {
       console.log('🚀 configApi.updateConfigStatus called:');
       console.log('  - Config ID:', id);
       console.log('  - New status:', status);
+      
+      const url = `${this.baseURL}/config/update/status/${id}?status=${status}`;
+      const headers = this.getAuthHeaders();
+      const method = 'PATCH';
+      
+      console.log('📤 About to send request:');
+      console.log('  - URL:', url);
+      console.log('  - Method:', method);
+      console.log('  - Headers:', JSON.stringify(headers, null, 2));
 
-      const response = await fetch(`${this.baseURL}/config/update/status/${id}?status=${status}`, {
-        method: 'PATCH',
-        headers: this.getAuthHeaders(),
+      const response = await fetch(url, {
+        method: method,
+        headers: headers,
       });
+
+      console.log('📥 Response received:');
+      console.log('  - Status:', response.status);
+      console.log('  - Status Text:', response.statusText);
+      console.log('  - URL:', response.url);
+      console.log('  - Redirected:', response.redirected);
 
       const result = await this.handleResponse<ConfigResponse>(response);
       console.log('✅ Config status updated:', result);
@@ -472,6 +487,7 @@ export class ConfigApiService {
       return result;
     } catch (error) {
       console.error('💥 Config status update failed:', error);
+      console.error('💥 Full error object:', JSON.stringify(error, null, 2));
       throw error;
     }
   }
@@ -634,6 +650,38 @@ export class ConfigApiService {
   }
 
   // Export config (approver -> exporter workflow)
+  async updateStatusToExported(id: number, comment?: string): Promise<ConfigResponse> {
+    try {
+      console.log(`🚀 Updating status to EXPORTED for config ID: ${id}`);
+      console.log(`📋 Comment: "${comment || 'Status updated to exported'}"`);
+      console.log(`🔗 API endpoint: ${this.baseURL}/config/${id}/update-status-to-exported`);
+      
+      const requestBody = { 
+        comment: comment || 'Status updated to exported',
+        userId: 'system', // Backend extracts real user from JWT
+      };
+      console.log('📤 Request body:', requestBody);
+      
+      const response = await fetch(
+        `${this.baseURL}/config/${id}/update-status-to-exported`,
+        {
+          method: 'POST',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify(requestBody),
+        },
+      );
+
+      console.log(`📡 Response status: ${response.status} ${response.statusText}`);
+      
+      const result = await this.handleResponse<ConfigResponse>(response);
+      console.log(`✅ Status update successful for config ${id}:`, result);
+      return result;
+    } catch (error) {
+      console.error(`❌ Status update failed for ID ${id}:`, error);
+      throw error;
+    }
+  }
+
   async exportConfig(id: number, notes?: string): Promise<ConfigResponse> {
     try {
       console.log(`🚀 Starting export for config ID: ${id}`);

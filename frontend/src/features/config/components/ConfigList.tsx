@@ -98,11 +98,23 @@ export const ConfigList: React.FC<ConfigListProps> = ({
           });
         }
       } else if (showApprovedConfigs) {
-        console.log('🔍 ConfigList - Fetching approved configurations...');
-        response = await configApi.getConfigsByStatus('approved');
-        console.log('🔍 ConfigList - Approved configs response:', response);
-        console.log('🔍 ConfigList - Approved configs array:', response.configs);
-        console.log('🔍 ConfigList - Approved configs count:', response.configs?.length || 0);
+        console.log('🔍 ConfigList - Fetching approved and exported configurations...');
+        // Fetch both approved and exported configs
+        const [approvedResponse, exportedResponse] = await Promise.all([
+          configApi.getConfigsByStatus('approved'),
+          configApi.getConfigsByStatus('exported')
+        ]);
+        console.log('🔍 ConfigList - Approved configs response:', approvedResponse);
+        console.log('🔍 ConfigList - Exported configs response:', exportedResponse);
+        
+        // Combine both arrays
+        const combinedConfigs = [
+          ...(Array.isArray(approvedResponse.configs) ? approvedResponse.configs : []),
+          ...(Array.isArray(exportedResponse.configs) ? exportedResponse.configs : [])
+        ];
+        
+        response = { configs: combinedConfigs };
+        console.log('🔍 ConfigList - Combined configs count:', combinedConfigs.length);
       } else {
         console.log('🔍 ConfigList - Fetching all configurations...');
         response = await configApi.getAllConfigs();
@@ -379,9 +391,13 @@ const getStatusText = (status: string) => {
 
   const handleExportConfig = async (config: Config) => {
     try {
-      await configApi.updateConfigStatus(config.id, 'exported');
-      showSuccess("Success", `Config "${config.msgFam}" has been exported successfully.`);
-      // Trigger refresh if available
+      await configApi.exportConfig(config.id, 'Exported for deployment');
+      showSuccess("Success", `Config "${config.msgFam}" has been exported to SFTP and status updated to EXPORTED.`);
+      
+      // Refetch configs to update the UI
+      await fetchConfigs();
+      
+      // Trigger parent refresh if available
       if (onRefresh) {
         onRefresh();
       }

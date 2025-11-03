@@ -24,7 +24,7 @@ export const getStatusColor = (status: string | undefined): string => {
   
   const normalizedStatus = status.toLowerCase().trim();
   
-  // Handle STATUS_XX_NAME format from database
+  // Handle STATUS_XX_NAME format from database - extract the name part
   let statusName = normalizedStatus;
   if (normalizedStatus.startsWith('status_')) {
     const parts = normalizedStatus.split('_');
@@ -35,16 +35,18 @@ export const getStatusColor = (status: string | undefined): string => {
   
   switch (statusName) {
     // In Progress - Blue
-    case 'in-progress':
-    case 'in progress':
     case 'in_progress':
+    case 'in progress':
     case 'draft':
       return 'bg-blue-100 text-blue-800';
     
+    // Suspended - Orange
+    case 'suspended':
+      return 'bg-orange-100 text-orange-800';
+    
     // Under Review / Pending - Yellow
-    case 'under-review':
-    case 'under review':
     case 'under_review':
+    case 'under review':
     case 'pending':
     case 'pending_approval':
     case 'pending approval':
@@ -55,17 +57,15 @@ export const getStatusColor = (status: string | undefined): string => {
     case 'active':
       return 'bg-green-100 text-green-800';
     
-    // Rejected / Suspended - Red
+    // Rejected / Failed - Red
     case 'rejected':
     case 'failed':
-    case 'suspended':
       return 'bg-red-100 text-red-800';
     
     // Exported / Ready for Deployment - Indigo
     case 'exported':
-    case 'ready-for-deployment':
-    case 'ready for deployment':
     case 'ready_for_deployment':
+    case 'ready for deployment':
     case 'ready':
       return 'bg-indigo-100 text-indigo-800';
     
@@ -73,6 +73,11 @@ export const getStatusColor = (status: string | undefined): string => {
     case 'deployed':
     case 'published':
       return 'bg-teal-100 text-teal-800';
+    
+    // Changes Requested - Purple
+    case 'changes_requested':
+    case 'changes requested':
+      return 'bg-purple-100 text-purple-800';
     
     // Inactive - Gray
     case 'in-active':
@@ -94,7 +99,7 @@ export const getStatusLabel = (status: string | undefined): string => {
   
   const normalizedStatus = status.toLowerCase().trim();
   
-  // Handle STATUS_XX_NAME format from database
+  // Handle STATUS_XX_NAME format from database - extract the name part
   let statusName = normalizedStatus;
   if (normalizedStatus.startsWith('status_')) {
     const parts = normalizedStatus.split('_');
@@ -104,34 +109,65 @@ export const getStatusLabel = (status: string | undefined): string => {
   }
   
   switch (statusName) {
-    case 'in-progress':
-    case 'in progress':
     case 'in_progress':
+    case 'in progress':
       return 'IN PROGRESS';
-    case 'under-review':
-    case 'under review':
+    case 'suspended':
+      return 'SUSPENDED';
     case 'under_review':
+    case 'under review':
       return 'UNDER REVIEW';
     case 'pending_approval':
     case 'pending approval':
       return 'PENDING APPROVAL';
+    case 'approved':
+      return 'APPROVED';
+    case 'rejected':
+      return 'REJECTED';
     case 'exported':
-      return 'EXPORTED';
-    case 'ready-for-deployment':
-    case 'ready for deployment':
     case 'ready_for_deployment':
+    case 'ready for deployment':
+    case 'ready':
       return 'READY FOR DEPLOYMENT';
-    case 'in-active':
-    case 'inactive':
-      return 'INACTIVE';
+    case 'deployed':
+      return 'DEPLOYED';
     case 'changes_requested':
     case 'changes requested':
       return 'CHANGES REQUESTED';
-    case 'suspended':
-      return 'SUSPENDED';
+    case 'in-active':
+    case 'inactive':
+      return 'INACTIVE';
     default:
       return status.toUpperCase();
   }
+};
+
+/**
+ * Normalize status value - extract the status name from STATUS_XX_NAME format
+ */
+export const normalizeStatus = (status: string | undefined): string => {
+  if (!status) return '';
+  
+  const normalizedStatus = status.toLowerCase().trim();
+  
+  // Handle STATUS_XX_NAME format from database - extract the name part
+  if (normalizedStatus.startsWith('status_')) {
+    const parts = normalizedStatus.split('_');
+    if (parts.length >= 3) {
+      return parts.slice(2).join('_'); // Get everything after STATUS_XX_
+    }
+  }
+  
+  return normalizedStatus;
+};
+
+/**
+ * Check if a status matches a specific value (handles both formats)
+ */
+export const isStatus = (actualStatus: string | undefined, expectedStatus: string): boolean => {
+  const normalized = normalizeStatus(actualStatus);
+  const expected = expectedStatus.toLowerCase().replace(/[\s-]/g, '_');
+  return normalized === expected;
 };
 
 /**

@@ -16,6 +16,7 @@ import type {
 } from '../types/functions.types';
 import { FUNCTION_CONFIGS } from '../types/functions.types';
 import { isApprover, isEditor, isExporter } from '../../utils/roleUtils';
+import { isStatus } from '../utils/statusColors';
 
 // Function Selection Form Component
 interface FunctionSelectionFormProps {
@@ -1573,14 +1574,14 @@ interface EditEndpointModalProps {
                   (currentStep === 'mapping' && !isMappingValid) || 
                   (currentStep === 'simulation' && !isSimulationSuccess && !readOnly) ||
                   (currentStep !== 'payload' && !createdEndpoint && !existingConfig) ||
-                  (currentStep === 'deploy' && !isApprover(user?.claims || []) && !isExporter(user?.claims || []) && (createdEndpoint?.status === 'under_review' || createdEndpoint?.status === 'under review' || createdEndpoint?.status === 'approved' || existingConfig?.status === 'under_review' || existingConfig?.status === 'under review' || existingConfig?.status === 'approved')) ||
-                  (currentStep === 'deploy' && isApprover(user?.claims || []) && (createdEndpoint?.status === 'approved' || existingConfig?.status === 'approved')) ||
-                  (currentStep === 'deploy' && isExporter(user?.claims || []) && (createdEndpoint?.status !== 'approved' && existingConfig?.status !== 'approved'))
+                  (currentStep === 'deploy' && !isApprover(user?.claims || []) && !isExporter(user?.claims || []) && (isStatus(createdEndpoint?.status, 'under_review') || isStatus(createdEndpoint?.status, 'approved') || isStatus(existingConfig?.status, 'under_review') || isStatus(existingConfig?.status, 'approved'))) ||
+                  (currentStep === 'deploy' && isApprover(user?.claims || []) && (isStatus(createdEndpoint?.status, 'approved') || isStatus(existingConfig?.status, 'approved'))) ||
+                  (currentStep === 'deploy' && isExporter(user?.claims || []) && (!isStatus(createdEndpoint?.status, 'approved') && !isStatus(existingConfig?.status, 'approved')))
                 } data-id="element-749">
                   {loading ? 'Processing...' : (
                     currentStep === 'deploy' ? (
-                      isApprover(user?.claims || []) && (createdEndpoint?.status !== 'approved' && existingConfig?.status !== 'approved') ? 'Send for Deployment' : 
-                      isExporter(user?.claims || []) && (createdEndpoint?.status === 'approved' || existingConfig?.status === 'approved') ? 'Export' :
+                      isApprover(user?.claims || []) && (!isStatus(createdEndpoint?.status, 'approved') && !isStatus(existingConfig?.status, 'approved')) ? 'Send for Deployment' : 
+                      isExporter(user?.claims || []) && (isStatus(createdEndpoint?.status, 'approved') || isStatus(existingConfig?.status, 'approved')) ? 'Export' :
                       !isApprover(user?.claims || []) && !isExporter(user?.claims || []) ? 'Submit for Approval' :
                       'Configuration Approved'
                     ) : 
@@ -1603,7 +1604,7 @@ interface EditEndpointModalProps {
                         {/* Show approver action buttons on the last step (deployment) */}
                         {isApprover(user?.claims || []) && currentStep === 'deploy' && (
                           <>
-                            {onRevertToEditor && (createdEndpoint?.status !== 'approved' && existingConfig?.status !== 'approved') && (
+                            {onRevertToEditor && (!isStatus(createdEndpoint?.status, 'approved') && !isStatus(existingConfig?.status, 'approved')) && (
                               <Button 
                                 variant="primary" 
                                 onClick={onRevertToEditor}
@@ -1612,7 +1613,7 @@ interface EditEndpointModalProps {
                                 Revert to Editor
                               </Button>
                             )}
-                            {onSendForDeployment && (createdEndpoint?.status !== 'approved' && existingConfig?.status !== 'approved') && (
+                            {onSendForDeployment && (!isStatus(createdEndpoint?.status, 'approved') && !isStatus(existingConfig?.status, 'approved')) && (
                               <Button 
                                 variant="primary" 
                                 onClick={onSendForDeployment}
@@ -1626,7 +1627,7 @@ interface EditEndpointModalProps {
                         {/* Show export button for exporters on the last step */}
                         {isExporter(user?.claims || []) && currentStep === 'deploy' && (
                           <>
-                            {onSendForDeployment && (createdEndpoint?.status === 'approved' || existingConfig?.status === 'approved') && (
+                            {onSendForDeployment && (isStatus(createdEndpoint?.status, 'approved') || isStatus(existingConfig?.status, 'approved')) && (
                               <Button 
                                 variant="primary" 
                                 onClick={onSendForDeployment}
@@ -1641,8 +1642,8 @@ interface EditEndpointModalProps {
                         {isEditor(user?.claims || []) && currentStep === 'deploy' && (
                           <>
                             {/* Show Submit for Approval button for draft configs or when config is ready for submission */}
-                            {((createdEndpoint?.status !== 'under_review' && createdEndpoint?.status !== 'under review' && createdEndpoint?.status !== 'approved') || 
-                              (existingConfig?.status !== 'under_review' && existingConfig?.status !== 'under review' && existingConfig?.status !== 'approved') ||
+                            {((!isStatus(createdEndpoint?.status, 'under_review') && !isStatus(createdEndpoint?.status, 'approved')) || 
+                              (!isStatus(existingConfig?.status, 'under_review') && !isStatus(existingConfig?.status, 'approved')) ||
                               (!createdEndpoint?.status && !existingConfig?.status)) && (
                               <Button 
                                 variant="primary" 

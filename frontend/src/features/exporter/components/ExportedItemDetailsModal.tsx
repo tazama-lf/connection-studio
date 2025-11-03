@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { X, Upload } from 'lucide-react';
 import type { SftpFileContent, SftpFormat } from '../services/sftpApi';
 import { Button } from '../../../shared/components/Button';
-import { getStatusColor, getStatusLabel } from '../../../shared/utils/statusColors';
+import { getStatusColor, getStatusLabel, isStatus } from '../../../shared/utils/statusColors';
 import { dataEnrichmentApi } from '../../data-enrichment/services/dataEnrichmentApi';
 import { useAuth } from '../../../features/auth/contexts/AuthContext';
 import { isExporter, isPublisher } from '../../../utils/roleUtils';
@@ -142,7 +142,7 @@ export const ExportedItemDetailsModal: React.FC<ExportedItemDetailsModalProps> =
         }
       }
 
-      // For DE jobs, we need to pass the type (PULL/PUSH)
+      // For DE jobs, we need to pass the type (PULL/PUSH). For DEMS and CRON, type is not required.
       await onPublish(content.id, format, jobType);
       onClose();
     } catch (error) {
@@ -154,13 +154,13 @@ export const ExportedItemDetailsModal: React.FC<ExportedItemDetailsModalProps> =
   };
 
   // Check if already deployed
-  const isDeployed = content.status === 'deployed';
+  const isDeployed = isStatus(content.status, 'deployed');
   
   // Check if user can publish this item based on their role and item status
   const canPublish = userIsExporter 
-    ? ['exported', 'approved'].includes(content.status || '')
+    ? (isStatus(content.status, 'exported') || isStatus(content.status, 'approved'))
     : userIsPublisher 
-    ? ['exported', 'ready-for-deployment'].includes(content.status || '')
+    ? (isStatus(content.status, 'exported') || isStatus(content.status, 'ready') || isStatus(content.status, 'ready-for-deployment'))
     : false;
 
   return (
@@ -177,7 +177,7 @@ export const ExportedItemDetailsModal: React.FC<ExportedItemDetailsModalProps> =
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
             <h2 className="text-xl font-semibold text-gray-900">
-              {format === 'cron' ? 'Cron Job' : 'Data Enrichment Job'} Details
+              {format === 'cron' ? 'Cron Job' : format === 'de' ? 'Data Enrichment Job' : 'DEMS Configuration'} Details
             </h2>
             <button
               onClick={onClose}
@@ -255,6 +255,43 @@ export const ExportedItemDetailsModal: React.FC<ExportedItemDetailsModalProps> =
                     </div>
                   )}
 
+                  {format === 'dems' && (
+                    <>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Endpoint Path
+                        </label>
+                        <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded border border-gray-200 font-mono">
+                          {content.endpointPath || 'N/A'}
+                        </p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Transaction Type
+                        </label>
+                        <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded border border-gray-200">
+                          {content.transactionType || 'N/A'}
+                        </p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Version
+                        </label>
+                        <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded border border-gray-200">
+                          {content.version || 'N/A'}
+                        </p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Content Type
+                        </label>
+                        <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded border border-gray-200">
+                          {content.contentType || 'N/A'}
+                        </p>
+                      </div>
+                    </>
+                  )}
+
                   {format === 'cron' && content.iterations !== undefined && (
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -327,8 +364,8 @@ export const ExportedItemDetailsModal: React.FC<ExportedItemDetailsModalProps> =
                       Created At
                     </label>
                     <p className="text-sm text-gray-900">
-                      {content.created_at
-                        ? new Date(content.created_at).toLocaleString('en-US', {
+                      {(content.created_at || content.createdAt)
+                        ? new Date(content.created_at || content.createdAt).toLocaleString('en-US', {
                             month: 'short',
                             day: 'numeric',
                             year: 'numeric',

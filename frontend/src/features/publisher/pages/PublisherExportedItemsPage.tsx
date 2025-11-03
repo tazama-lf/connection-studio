@@ -6,12 +6,10 @@ import { useToast } from '../../../shared/providers/ToastProvider';
 import type { SftpFileInfo, SftpFileContent, SftpFormat } from '../../exporter/services/sftpApi';
 import { ExportedItemsList } from '../../exporter/components/ExportedItemsList';
 import { ExportedItemDetailsModal } from '../../exporter/components/ExportedItemDetailsModal';
-import { ConfigList } from '../../config/components/ConfigList';
-import ConfigDetailsModal from '../../config/components/ConfigDetailsModal';
-import { configApi } from '../../config/services/configApi';
+import { isStatus } from '../../../shared/utils/statusColors';
 import { useAuth } from '../../../features/auth/contexts/AuthContext';
 import { isExporter, isPublisher } from '../../../utils/roleUtils';
-import type { Config } from '../../config/index';
+
 
 type TabType = 'cron' | 'de' | 'dems';
 
@@ -26,12 +24,7 @@ const PublisherExportedItemsPage: React.FC = () => {
   const [showExportedItemDetails, setShowExportedItemDetails] = useState(false);
   const [exportedItemDetailsLoading, setExportedItemDetailsLoading] = useState(false);
   
-  // DEMS (exported configs) state
-  const [exportedConfigs, setExportedConfigs] = useState<Config[]>([]);
-  const [exportedConfigsLoading, setExportedConfigsLoading] = useState(false);
-  const [selectedConfig, setSelectedConfig] = useState<Config | null>(null);
-  const [showConfigDetails, setShowConfigDetails] = useState(false);
-  const [configDetailsLoading, setConfigDetailsLoading] = useState(false);
+
   
   const { showError, showSuccess } = useToast();
   const { user } = useAuth();
@@ -40,16 +33,10 @@ const PublisherExportedItemsPage: React.FC = () => {
   const userIsPublisher = user?.claims ? isPublisher(user.claims) : false;
 
   useEffect(() => {
-    if (activeTab === 'dems') {
-      loadExportedConfigs();
-    } else {
-      loadExportedItems();
-    }
+    loadExportedItems();
   }, [activeTab]);
 
   const loadExportedItems = async () => {
-    if (activeTab === 'dems') return;
-    
     console.log('PublisherExportedItemsPage: loadExportedItems called with format:', activeTab);
     setExportedItemsLoading(true);
     try {
@@ -83,22 +70,7 @@ const PublisherExportedItemsPage: React.FC = () => {
     }
   };
 
-  const loadExportedConfigs = async () => {
-    console.log('PublisherExportedItemsPage: loadExportedConfigs called');
-    setExportedConfigsLoading(true);
-    try {
-      const response = await configApi.getConfigsByStatus('exported');
-      console.log('PublisherExportedItemsPage: Exported configs loaded:', response.configs.length);
-      setExportedConfigs(response.configs);
-    } catch (error) {
-      console.error('Failed to load exported configs:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to load exported configurations';
-      showError(errorMessage);
-      setExportedConfigs([]);
-    } finally {
-      setExportedConfigsLoading(false);
-    }
-  };
+
 
   const handleViewExportedItemDetails = async (filename: string) => {
     console.log('PublisherExportedItemsPage: View exported item details clicked for:', filename);
@@ -109,9 +81,17 @@ const PublisherExportedItemsPage: React.FC = () => {
       const content = await sftpApi.readFile(filename);
       
       // Check user role and item status permissions
-      const allowedStatuses = userIsExporter ? ['exported', 'approved'] : ['exported', 'approved', 'ready-for-deployment', 'deployed'];
-      if (!allowedStatuses.includes(content.status || '')) {
-        showError(`You don't have permission to view items with status "${content.status || 'unknown'}"`);
+      // Publishers can view exported, approved, ready, ready-for-deployment, and deployed configs
+      // Exporters can view exported and approved configs
+      const statusValue = content.status || '';
+      const canView = userIsExporter 
+        ? (isStatus(statusValue, 'exported') || isStatus(statusValue, 'approved'))
+        : (isStatus(statusValue, 'exported') || isStatus(statusValue, 'approved') || 
+           isStatus(statusValue, 'ready') || isStatus(statusValue, 'ready-for-deployment') || 
+           isStatus(statusValue, 'deployed'));
+      
+      if (!canView) {
+        showError(`You don't have permission to view items with status "${statusValue}"`);
         setShowExportedItemDetails(false);
         return;
       }
@@ -146,14 +126,20 @@ const PublisherExportedItemsPage: React.FC = () => {
 
   const handlePublishExportedItem = async (id: string, format: SftpFormat, type?: 'PULL' | 'PUSH' | string) => {
     // Check if user has permission to publish based on their role
-    if (userIsExporter && selectedExportedItem && !['exported', 'approved'].includes(selectedExportedItem.status || '')) {
-      showError('Exporters can only publish items with "exported" or "approved" status');
-      return;
+    if (userIsExporter && selectedExportedItem) {
+      const status = selectedExportedItem.status || '';
+      if (!isStatus(status, 'exported') && !isStatus(status, 'approved')) {
+        showError('Exporters can only publish items with "exported" or "approved" status');
+        return;
+      }
     }
     
-    if (userIsPublisher && selectedExportedItem && !['exported', 'ready-for-deployment'].includes(selectedExportedItem.status || '')) {
-      showError('Publishers can only publish items with "exported" or "ready-for-deployment" status');
-      return;
+    if (userIsPublisher && selectedExportedItem) {
+      const status = selectedExportedItem.status || '';
+      if (!isStatus(status, 'exported') && !isStatus(status, 'ready') && !isStatus(status, 'ready-for-deployment')) {
+        showError('Publishers can only publish items with "exported", "ready", or "ready-for-deployment" status');
+        return;
+      }
     }
 
     try {
@@ -209,34 +195,17 @@ const PublisherExportedItemsPage: React.FC = () => {
 
   const handleExportedItemsRefresh = () => {
     console.log('PublisherExportedItemsPage: handleExportedItemsRefresh called');
-    if (activeTab === 'dems') {
-      loadExportedConfigs();
-    } else {
-      loadExportedItems();
-    }
+    loadExportedItems();
   };
 
-  // Config handlers for DEMS tab
-  const handleViewConfig = async (config: Config) => {
-    setSelectedConfig(config);
-    setConfigDetailsLoading(false);
-    setShowConfigDetails(true);
-  };
 
-  const handleDeployConfig = async (configId: number, notes?: string) => {
-    try {
-      await configApi.deployConfig(configId, notes);
-      showSuccess('Configuration deployed successfully');
-      loadExportedConfigs(); // Refresh the list
-    } catch (error) {
-      console.error('Deploy failed:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to deploy configuration';
-      showError(errorMessage);
-      throw error; // Re-throw to let modal handle it
-    }
-  };
 
   const tabs = [
+     {
+      id: 'dems' as TabType,
+      name: 'DEMS',
+      icon: <Settings size={18} />,
+    },
     {
       id: 'cron' as TabType,
       name: 'Cron Jobs',
@@ -246,12 +215,8 @@ const PublisherExportedItemsPage: React.FC = () => {
       id: 'de' as TabType,
       name: 'DE Jobs',
       icon: <Database size={18} />,
-    },
-    {
-      id: 'dems' as TabType,
-      name: 'DEMS',
-      icon: <Settings size={18} />,
-    },
+    }
+   
   ];
 
   return (
@@ -299,22 +264,14 @@ const PublisherExportedItemsPage: React.FC = () => {
 
         {/* Tab Content */}
         <div className="bg-white rounded-lg shadow">
-          {activeTab === 'dems' ? (
-            <ConfigList
-              searchTerm={searchTerm}
-              onViewDetails={handleViewConfig}
-              onRefresh={handleExportedItemsRefresh}
-            />
-          ) : (
-            <ExportedItemsList
-              files={exportedItems}
-              isLoading={exportedItemsLoading}
-              onViewDetails={handleViewExportedItemDetails}
-              onRefresh={handleExportedItemsRefresh}
-              searchQuery={searchTerm}
-              format={activeTab as SftpFormat}
-            />
-          )}
+          <ExportedItemsList
+            files={exportedItems}
+            isLoading={exportedItemsLoading}
+            onViewDetails={handleViewExportedItemDetails}
+            onRefresh={handleExportedItemsRefresh}
+            searchQuery={searchTerm}
+            format={activeTab as SftpFormat}
+          />
         </div>
       </div>
 
@@ -326,15 +283,6 @@ const PublisherExportedItemsPage: React.FC = () => {
         isLoading={exportedItemDetailsLoading}
         onPublish={handlePublishExportedItem}
         format={activeTab as SftpFormat}
-      />
-
-      {/* Config Details Modal for DEMS */}
-      <ConfigDetailsModal
-        isOpen={showConfigDetails}
-        onClose={() => setShowConfigDetails(false)}
-        config={selectedConfig}
-        isLoading={configDetailsLoading}
-        onDeploy={handleDeployConfig}
       />
     </div>
   );

@@ -53,11 +53,11 @@ export const ExporterConfigsPage: React.FC = () => {
 
   const handleExportConfig = async (configId: number) => {
     try {
-      console.log(`🔄 ExporterConfigsPage - Starting export for config ID: ${configId}`);
+      console.log(`🔄 ExporterConfigsPage - Starting export to SFTP for config ID: ${configId}`);
       console.log(`👤 ExporterConfigsPage - User info:`, { userId: user?.id, email: user?.email });
       const result = await configApi.exportConfig(configId, 'Exported for deployment');
       console.log(`✅ ExporterConfigsPage - Export completed:`, result);
-      showSuccess('Configuration exported successfully');
+      showSuccess('Configuration exported to SFTP and status updated to EXPORTED successfully');
       console.log('🔄 ExporterConfigsPage - Refreshing config list...');
       setRefreshKey(prev => prev + 1); // Refresh the list
     } catch (error) {
@@ -91,24 +91,7 @@ export const ExporterConfigsPage: React.FC = () => {
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="mb-6">
-          {/* Header Info Banner */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <h3 className="text-sm font-medium text-blue-800">
-                  Approved Configurations Ready for Export
-                </h3>
-                <p className="mt-1 text-sm text-blue-700">
-                  These configurations have been approved and are ready to be exported for deployment.
-                </p>
-              </div>
-            </div>
-          </div>
+        
 
           {/* Search Bar and Export Actions */}
           <div className="flex items-center justify-between">
@@ -127,25 +110,7 @@ export const ExporterConfigsPage: React.FC = () => {
               />
             </div>
             
-            {/* Export Actions */}
-            <div className="flex items-center space-x-3">
-              <button
-                onClick={handleRefresh}
-                className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                Refresh
-              </button>
-              
-              <div className="inline-flex items-center px-3 py-2 border border-blue-300 rounded-md shadow-sm text-sm font-medium text-blue-700 bg-blue-50">
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
-                </svg>
-                Export available via dropdown menu
-              </div>
-            </div>
+           
           </div>
         </div>
 

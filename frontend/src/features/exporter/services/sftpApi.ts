@@ -201,7 +201,7 @@ export class SftpApiService {
    * This will update the status to 'deployed' in the respective service
    * For 'cron' format: updates schedule status via /api/scheduler/update/status/:id
    * For 'de' format: updates job status via /api/job/update/status/:id
-   * For 'dems' format: updates config status via /api/config/update/status/:id
+   * For 'dems' format: triggers workflow deploy via /api/config/:id/workflow/deploy
    */
   async publishItem(id: string, format: SftpFormat, type?: 'PULL' | 'PUSH' | string): Promise<void> {
     try {
@@ -219,14 +219,18 @@ export class SftpApiService {
           },
         );
       } else if (format === 'dems') {
-        // Update config status using the config API endpoint
-        const queryParams = new URLSearchParams();
-        queryParams.append('status', 'deployed');
-        
+        // Update config status using the workflow deploy endpoint
+        // This will change status to 'deployed' AND execute CREATE TABLE query
         await this.apiRequest<{ success: boolean; message: string }>(
-          `${this.baseURL}/config/update/status/${id}?${queryParams.toString()}`,
+          `${this.baseURL}/config/${id}/workflow/deploy`,
           {
-            method: 'PATCH',
+            method: 'POST',
+            body: JSON.stringify({
+              configId: parseInt(id), // Required by DeploymentDto
+              userId: 'publisher', // This should ideally come from auth context
+              deploymentNotes: 'Published via SFTP',
+              deploymentEnvironment: 'production',
+            }),
           },
         );
       } else {

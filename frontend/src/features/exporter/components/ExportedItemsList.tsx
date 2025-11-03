@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Eye, MoreVertical, Clock, Database } from 'lucide-react';
 import type { SftpFileInfo, SftpFormat } from '../services/sftpApi';
+import { sftpApi } from '../services/sftpApi';
 import { Button } from '../../../shared/components/Button';
 import { DropdownMenuWithAutoDirection } from '../../data-enrichment/components/DropdownMenuWithAutoDirection';
 
@@ -11,6 +12,13 @@ interface ExportedItemsListProps {
   onRefresh?: () => void;
   searchQuery?: string;
   format: SftpFormat;
+}
+
+interface DemsFileData {
+  endpointPath?: string;
+  status?: string;
+  createdAt?: string;
+  transactionType?: string;
 }
 
 export const ExportedItemsList: React.FC<ExportedItemsListProps> = (props) => {
@@ -24,11 +32,95 @@ export const ExportedItemsList: React.FC<ExportedItemsListProps> = (props) => {
   } = props;
 
   const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
+  const [demsFileData, setDemsFileData] = useState<Record<string, DemsFileData>>({});
+  const [loadingDemsData, setLoadingDemsData] = useState(false);
+
+  // Load DEMS file content when format is 'dems'
+  useEffect(() => {
+    if (format === 'dems' && files.length > 0) {
+      setLoadingDemsData(true);
+      const loadDemsData = async () => {
+        const newDemsData: Record<string, DemsFileData> = {};
+        
+        for (const file of files) {
+          try {
+            const content = await sftpApi.readFile(file.name);
+            newDemsData[file.name] = {
+              endpointPath: content.endpointPath,
+              status: content.status,
+              createdAt: content.createdAt || content.created_at,
+              transactionType: content.transactionType
+            };
+          } catch (error) {
+            console.error(`Failed to load DEMS data for ${file.name}:`, error);
+            // Use fallback data based on filename
+            newDemsData[file.name] = {
+              endpointPath: file.name.replace('.json', ''),
+              status: 'ready',
+              createdAt: new Date(file.modifyTime).toISOString(),
+              transactionType: 'Unknown'
+            };
+          }
+        }
+        
+        setDemsFileData(newDemsData);
+        setLoadingDemsData(false);
+      };
+      
+      loadDemsData();
+    }
+  }, [format, files]);
 
   // Filter files based on search query
-  const filteredFiles = files.filter(file =>
-    file.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredFiles = files.filter(file => {
+    const query = searchQuery.toLowerCase();
+    if (format === 'dems') {
+      const fileData = demsFileData[file.name];
+      return (
+        file.name.toLowerCase().includes(query) ||
+        (fileData?.endpointPath?.toLowerCase().includes(query)) ||
+        (fileData?.transactionType?.toLowerCase().includes(query)) ||
+        (fileData?.status?.toLowerCase().includes(query))
+      );
+    }
+    return file.name.toLowerCase().includes(query);
+  });
+
+  // Load DEMS file content to get endpoint paths and statuses
+  useEffect(() => {
+    if (format === 'dems' && files.length > 0) {
+      const loadDemsData = async () => {
+        const dataMap: Record<string, DemsFileData> = {};
+        
+        // Load file content for each DEMS file
+        await Promise.all(
+          files.map(async (file) => {
+            try {
+              const content = await sftpApi.readFile(file.name);
+              dataMap[file.name] = {
+                endpointPath: content.endpointPath,
+                status: content.status,
+                createdAt: content.createdAt,
+                transactionType: content.transactionType,
+              };
+            } catch (error) {
+              console.error(`Failed to load content for ${file.name}:`, error);
+              // Keep default values
+              dataMap[file.name] = {
+                endpointPath: file.name,
+                status: 'unknown',
+                createdAt: new Date(file.modifyTime).toISOString(),
+              };
+            }
+          })
+        );
+        
+        setDemsFileData(dataMap);
+      };
+      
+      loadDemsData();
+    }
+  }, [format, files]);
 
   // Close dropdowns when clicking outside
   React.useEffect(() => {
@@ -78,7 +170,7 @@ export const ExportedItemsList: React.FC<ExportedItemsListProps> = (props) => {
 
   if (filteredFiles.length === 0) {
     const hasSearchQuery = searchQuery && searchQuery.trim() !== '';
-    const formatLabel = format === 'cron' ? 'Cron Jobs' : 'Data Enrichment Jobs';
+    const formatLabel = format === 'cron' ? 'Cron Jobs' : format === 'de' ? 'Data Enrichment Jobs' : 'DEMS Configurations';
 
     return (
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12">
@@ -86,8 +178,10 @@ export const ExportedItemsList: React.FC<ExportedItemsListProps> = (props) => {
           <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
             {format === 'cron' ? (
               <Clock className="w-12 h-12 text-gray-400" />
-            ) : (
+            ) : format === 'de' ? (
               <Database className="w-12 h-12 text-gray-400" />
+            ) : (
+              <Eye className="w-12 h-12 text-gray-400" />
             )}
           </div>
           <h3 className="text-lg font-medium text-gray-900 mb-2">
@@ -116,13 +210,15 @@ export const ExportedItemsList: React.FC<ExportedItemsListProps> = (props) => {
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                FILENAME
+                {format === 'dems' ? 'ENDPOINT PATH' : 'FILENAME'}
               </th>
+              {format !== 'dems' && (
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  SIZE
+                </th>
+              )}
               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                SIZE
-              </th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                MODIFIED
+                {format === 'dems' ? 'CREATED TIME' : 'MODIFIED'}
               </th>
               <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
                 ACTIONS
@@ -135,21 +231,34 @@ export const ExportedItemsList: React.FC<ExportedItemsListProps> = (props) => {
               const isLastRow = index === filteredFiles.length - 1;
               const forceDirection = isFirstRow ? 'top' : isLastRow ? 'top' : 'auto';
               
+              const fileData = format === 'dems' ? demsFileData[file.name] : null;
+              
               return (
                 <tr key={file.name} className={`hover:bg-gray-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
                   <td className="px-6 py-4">
-                    <div className="text-sm font-medium text-gray-900 font-mono">
-                      {file.name}
-                    </div>
+                    {format === 'dems' ? (
+                      <div className="text-sm font-medium text-gray-900">
+                        {fileData?.endpointPath || file.name}
+                      </div>
+                    ) : (
+                      <div className="text-sm font-medium text-gray-900 font-mono">
+                        {file.name}
+                      </div>
+                    )}
                   </td>
+                  {format !== 'dems' && (
+                    <td className="px-6 py-4">
+                      <div className="text-sm text-gray-600">
+                        {formatFileSize(file.size)}
+                      </div>
+                    </td>
+                  )}
                   <td className="px-6 py-4">
                     <div className="text-sm text-gray-600">
-                      {formatFileSize(file.size)}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm text-gray-600">
-                      {formatDate(file.modifyTime)}
+                      {format === 'dems' && fileData?.createdAt 
+                        ? formatDate(new Date(fileData.createdAt).getTime())
+                        : formatDate(file.modifyTime)
+                      }
                     </div>
                   </td>
                   <td className="px-6 py-4 relative overflow-visible text-center">
