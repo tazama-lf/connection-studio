@@ -166,7 +166,9 @@ export class JobService {
         job.schedule_id,
       ]);
       const exist = scheduleResult.rows[0];
-      if (!exist || exist.status != JobStatus.APPROVED || exist.status != JobStatus.EXPORTED || exist.status != JobStatus.DEPLOYED) {
+      if (!exist || (exist.status !== JobStatus.APPROVED &&
+        exist.status !== JobStatus.EXPORTED &&
+        exist.status !== JobStatus.DEPLOYED)) {
         throw new BadRequestException(
           `Schedule with Id "${job.schedule_id}" not found or is not approved yet.`,
         );
