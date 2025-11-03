@@ -248,13 +248,13 @@ export const PublisherCronJobDetailsModal: React.FC<PublisherCronJobDetailsModal
 
         {/* Footer */}
         {/* Footer - No Publish button since these are already deployed */}
-        <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 bg-gray-50">
+        <div className="flex items-center justify-between gap-3 p-6 border-t border-gray-200 bg-gray-50">
           <button
             onClick={handleClose}
             disabled={isPublishing}
             className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            Close
+            Cancel
           </button>
         </div>
       </div>

@@ -400,7 +400,7 @@ export const ExportedItemDetailsModal: React.FC<ExportedItemDetailsModalProps> =
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50">
+          <div className="flex items-center justify-between space-x-3 p-6 border-t border-gray-200 bg-gray-50">
             <Button
               onClick={() => {
                 console.log('Close button clicked');
@@ -409,7 +409,7 @@ export const ExportedItemDetailsModal: React.FC<ExportedItemDetailsModalProps> =
               variant="secondary"
               disabled={isPublishing}
             >
-              Close
+              Cancel
             </Button>
             <Button
               onClick={() => {
@@ -417,19 +417,20 @@ export const ExportedItemDetailsModal: React.FC<ExportedItemDetailsModalProps> =
                 handlePublish();
               }}
               variant="primary"
-              disabled={isPublishing || isDeployed || isLoading || !canPublish}
+              // disabled={isPublishing || isDeployed || isLoading || !canPublish}
               className="flex items-center space-x-2"
             >
-              <Upload className="w-4 h-4" />
+              {/* <Upload className="w-4 h-4" /> */}
               <span>
-                {isPublishing 
+                {/* {isPublishing 
                   ? 'Publishing...' 
                   : isDeployed 
                   ? 'Already Deployed' 
                   : !canPublish
                   ? 'Cannot Publish'
                   : 'Publish'
-                }
+                } */}
+                  Deploy
               </span>
             </Button>
           </div>

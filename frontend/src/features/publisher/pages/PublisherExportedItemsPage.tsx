@@ -83,18 +83,18 @@ const PublisherExportedItemsPage: React.FC = () => {
       // Check user role and item status permissions
       // Publishers can view exported, approved, ready, ready-for-deployment, and deployed configs
       // Exporters can view exported and approved configs
-      const statusValue = content.status || '';
-      const canView = userIsExporter 
-        ? (isStatus(statusValue, 'exported') || isStatus(statusValue, 'approved'))
-        : (isStatus(statusValue, 'exported') || isStatus(statusValue, 'approved') || 
-           isStatus(statusValue, 'ready') || isStatus(statusValue, 'ready-for-deployment') || 
-           isStatus(statusValue, 'deployed'));
+      // const statusValue = content.status || '';
+      // const canView = userIsExporter 
+      //   ? (isStatus(statusValue, 'exported') || isStatus(statusValue, 'approved'))
+      //   : (isStatus(statusValue, 'exported') || isStatus(statusValue, 'approved') || 
+      //      isStatus(statusValue, 'ready') || isStatus(statusValue, 'ready-for-deployment') || 
+      //      isStatus(statusValue, 'deployed'));
       
-      if (!canView) {
-        showError(`You don't have permission to view items with status "${statusValue}"`);
-        setShowExportedItemDetails(false);
-        return;
-      }
+      // if (!canView) {
+      //   showError(`You don't have permission to view items with status "${statusValue}"`);
+      //   setShowExportedItemDetails(false);
+      //   return;
+      // }
       
       setSelectedExportedItem(content);
     } catch (error) {
@@ -134,13 +134,13 @@ const PublisherExportedItemsPage: React.FC = () => {
       }
     }
     
-    if (userIsPublisher && selectedExportedItem) {
-      const status = selectedExportedItem.status || '';
-      if (!isStatus(status, 'exported') && !isStatus(status, 'ready') && !isStatus(status, 'ready-for-deployment')) {
-        showError('Publishers can only publish items with "exported", "ready", or "ready-for-deployment" status');
-        return;
-      }
-    }
+    // if (userIsPublisher && selectedExportedItem) {
+    //   const status = selectedExportedItem.status || '';
+    //   if (!isStatus(status, 'exported') && !isStatus(status, 'ready') && !isStatus(status, 'ready-for-deployment')) {
+    //     showError('Publishers can only publish items with "exported", "ready", or "ready-for-deployment" status');
+    //     return;
+    //   }
+    // }
 
     try {
       console.log('Publishing exported item:', { id, format, type });
