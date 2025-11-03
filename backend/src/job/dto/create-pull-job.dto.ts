@@ -4,6 +4,7 @@ import {
   IsNotEmpty,
   IsNumber,
   IsObject,
+  IsOptional,
   IsString,
   IsUUID,
   ValidateIf,
@@ -58,6 +59,11 @@ class FileSettingDto {
 }
 
 export class CreatePullJobDto {
+
+  @IsOptional()
+  @IsString()
+  id: string
+
   @IsString()
   @IsNotEmpty()
   endpoint_name: string;

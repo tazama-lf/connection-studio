@@ -31,7 +31,7 @@ export class SchedulerService {
 
       const scheduleWithId = {
         ...schedule,
-        id: v4(),
+        id: schedule?.id ?? v4(),
         tenant_id: tenantId,
         status,
       };

@@ -1,7 +1,12 @@
-import { IsEnum, IsNotEmpty, IsString, Matches } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsOptional, IsString, Matches } from 'class-validator';
 import { IngestMode } from '@tazama-lf/tcs-lib';
 
 export class CreatePushJobDto {
+
+  @IsOptional()
+  @IsString()
+  id: string
+
   @IsString()
   @IsNotEmpty()
   endpoint_name: string;

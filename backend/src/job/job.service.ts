@@ -105,7 +105,7 @@ export class JobService {
   ): Promise<ISuccess> {
     try {
       await this.validateExisting(job.table_name);
-      const id = v4()
+      const id = job.id ?? v4()
 
       const path =
         status === JobStatus.DEPLOYED
@@ -195,8 +195,7 @@ export class JobService {
       }
       await this.dryRunService.dryRun(job);
 
-
-      const new_id = v4()
+      const new_id = job.id ?? v4()
 
       const jobWithId = {
         ...job,
