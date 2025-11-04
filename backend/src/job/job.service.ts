@@ -113,6 +113,7 @@ export class JobService {
           : `/${tenantId}/enrichment/${job.version}/${job.path}`;
 
       const jobWithId = { ...job, id, path, tenant_id: tenantId, status };
+
       const keys = Object.keys(jobWithId);
       const values = Object.values(jobWithId);
       const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
@@ -129,11 +130,6 @@ export class JobService {
       if (!newJob) {
         this.loggerService.error("Failed to create push job.")
         throw new Error('Failed to create push job.');
-      }
-
-      if (status === JobStatus.DEPLOYED) {
-        this.loggerService.log("Sending notification to DEAPI")
-        await this.notifyService.notifyEnrichment(id, ConfigType.PUSH);
       }
 
       return {
@@ -204,6 +200,7 @@ export class JobService {
         tenant_id: tenantId,
         status,
       };
+
       const keys = Object.keys(jobWithId);
       const values = Object.values(jobWithId);
       const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
@@ -220,7 +217,6 @@ export class JobService {
       if (status === JobStatus.DEPLOYED) {
         await this.notifyService.notifyEnrichment(new_id, ConfigType.PUSH)
       }
-
 
       return {
         success: true,
@@ -266,7 +262,7 @@ export class JobService {
         description,
         version,
         status,
-        record_status,
+        publishing_status,
         created_at,
         'push' AS type
       FROM endpoints
@@ -283,7 +279,7 @@ export class JobService {
         description,
         version,
         status,
-        record_status,
+        publishing_status,
         created_at,
         'pull' AS type
       FROM job
@@ -361,7 +357,7 @@ export class JobService {
           description,
           version,
           status,
-          record_status,
+          publishing_status,
           created_at,
           'push' AS type
         FROM endpoints
@@ -378,7 +374,7 @@ export class JobService {
           description,
           version,
           status,
-          record_status,
+          publishing_status,
           created_at,
           'pull' AS type
         FROM job
@@ -411,7 +407,7 @@ export class JobService {
 
       const query = `
                  UPDATE ${table_name}
-                 SET record_status = $1, updated_at = NOW()
+                 SET publishing_status = $1, updated_at = NOW()
                  WHERE id = $2
                  RETURNING *;
                     `;
@@ -477,12 +473,12 @@ export class JobService {
             const { schedule, ...jobPayload } = existingJob;
 
             await this.createPull(
-              { ...jobPayload, connection },
+              { ...jobPayload, connection, publishing_status: ScheduleStatus.ACTIVE },
               tenantId,
               JobStatus.DEPLOYED,
             );
           } else {
-            await this.createPush(existingJob, tenantId, JobStatus.DEPLOYED);
+            await this.createPush({ ...existingJob, publishing_status: ScheduleStatus.ACTIVE }, tenantId, JobStatus.DEPLOYED);
           }
           await this.sftpService.deleteFile(fileName)
           return {

@@ -98,7 +98,7 @@ export class PullJobResponseDto {
   status: JobStatus;
 
   @Expose()
-  record_status: ScheduleStatus;
+  publishing_status: ScheduleStatus;
 
   @Expose()
   schedule: Schedule;

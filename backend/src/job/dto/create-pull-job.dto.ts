@@ -10,7 +10,7 @@ import {
   ValidateIf,
   ValidateNested,
 } from 'class-validator';
-import { AuthType, FileType, IngestMode, SourceType } from '@tazama-lf/tcs-lib';
+import { AuthType, FileType, IngestMode, ScheduleStatus, SourceType } from '@tazama-lf/tcs-lib';
 
 class HTTPConnectionDto {
   @IsString()
@@ -107,10 +107,15 @@ export class CreatePullJobDto {
   @IsNotEmpty()
   table_name: string;
 
+  @IsOptional()
   @IsEnum(IngestMode)
   mode: IngestMode = IngestMode.APPEND;
 
   @IsString()
   @IsNotEmpty()
   version: string;
+
+  @IsOptional()
+  @IsString()
+  publishing_status: ScheduleStatus = ScheduleStatus.INACTIVE
 }
