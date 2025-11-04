@@ -91,11 +91,30 @@ export class JSONSchemaConverterService {
         break;
       case FieldType.ARRAY:
         property.type = JSONSchemaType.ARRAY;
-        if (field.arrayElementType) {
+        if (field.arrayElementType && field.arrayElementType === FieldType.OBJECT && field.children && field.children.length > 0) {
+          // For object arrays with children, build the full items schema
+          const itemProperties: { [key: string]: JSONSchemaProperty } = {};
+          const itemRequired: string[] = [];
+          for (const child of field.children) {
+            const childName = this.extractFieldName(child.path, field.path);
+            itemProperties[childName] = this.convertFieldToProperty(child);
+            if (child.isRequired) {
+              itemRequired.push(childName);
+            }
+          }
+          property.items = {
+            type: JSONSchemaType.OBJECT,
+            properties: itemProperties,
+            required: itemRequired.length > 0 ? itemRequired : undefined,
+            additionalProperties: false,
+          };
+        } else if (field.arrayElementType) {
+          // For simple array types (string, number, etc.)
           property.items = this.convertElementTypeToProperty(
             field.arrayElementType,
           );
         } else if (field.children && field.children.length > 0) {
+          // Fallback: if no arrayElementType but has children
           const itemProperties: { [key: string]: JSONSchemaProperty } = {};
           const itemRequired: string[] = [];
           for (const child of field.children) {

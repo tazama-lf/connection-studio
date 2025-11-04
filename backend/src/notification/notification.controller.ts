@@ -71,6 +71,38 @@ export class NotificationController {
   }
 
   /**
+   * Send rejection notification to editor
+   * Called by admin-service when approver rejects config
+   */
+  @Post('rejection')
+  @HttpCode(HttpStatus.OK)
+  async sendRejection(
+    @Body()
+    data: {
+      editorEmail: string;
+      context: ConfigNotificationContext;
+    },
+  ) {
+    try {
+      const result = await this.notificationService.sendRejectionNotification(
+        data.editorEmail,
+        data.context,
+      );
+      return {
+        success: result,
+        message: result
+          ? 'Rejection email sent successfully'
+          : 'Email failed or SMTP not configured (dry run)',
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `Failed to send rejection email: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      };
+    }
+  }
+
+  /**
    * Send test email to verify SMTP configuration
    */
   @Post('test')

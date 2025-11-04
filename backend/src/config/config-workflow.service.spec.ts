@@ -154,7 +154,6 @@ describe('ConfigWorkflowService', () => {
         submit_for_approval: ConfigStatus.UNDER_REVIEW,
         approve: ConfigStatus.APPROVED,
         reject: ConfigStatus.REJECTED,
-        request_changes: ConfigStatus.CHANGES_REQUESTED,
         deploy: ConfigStatus.DEPLOYED,
         return_to_progress: ConfigStatus.IN_PROGRESS,
       };

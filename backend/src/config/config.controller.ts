@@ -443,20 +443,6 @@ export class ConfigController {
     );
   }
 
-  @Post(':id/workflow/request-changes')
-  @RequireClaims(TazamaClaims.APPROVER)
-  async requestChanges(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: ChangeRequestDto,
-    @User() user: AuthenticatedUser,
-  ): Promise<ConfigResponseDto> {
-    return this.adminServiceClient.forwardRequest(
-      'POST',
-      `/v1/admin/tcs/config/${id}/workflow/request-changes`,
-      dto,
-      buildForwardHeaders(user),
-    );
-  }
   @Post(':id/update-status-to-exported')
   @RequireClaims(TazamaClaims.EXPORTER)
   async updateStatusToExported(

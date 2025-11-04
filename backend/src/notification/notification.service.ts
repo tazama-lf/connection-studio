@@ -7,6 +7,7 @@ export interface EmailOptions {
   subject: string;
   text: string;
   html?: string;
+  replyTo?: string;
 }
 
 export interface ConfigNotificationContext {
@@ -97,13 +98,19 @@ export class NotificationService {
         this.configService.get<string>('SMTP_FROM_NAME') ||
         'Tazama Connection Studio';
 
-      const mailOptions = {
+      const mailOptions: nodemailer.SendMailOptions = {
         from: `"${fromName}" <${fromEmail}>`,
         to: Array.isArray(options.to) ? options.to.join(', ') : options.to,
         subject: options.subject,
         text: options.text,
         html: options.html || `<p>${options.text}</p>`,
       };
+
+      // Add Reply-To header if provided (for editor emails)
+      if (options.replyTo) {
+        mailOptions.replyTo = options.replyTo;
+        this.logger.log(`📧 Setting Reply-To: ${options.replyTo}`);
+      }
 
       const info = await this.transporter.sendMail(mailOptions);
       this.logger.log(
@@ -213,17 +220,16 @@ Tenant: ${context.tenantId}
     const text = `
 Hello,
 
-A new configuration has been submitted for your approval:
+${context.requesterName || context.requesterEmail} has submitted a configuration for your approval:
 
 Configuration: ${context.configName}
 Version: ${context.version}
 Transaction Type: ${context.transactionType}
 Config ID: ${context.configId}
-
-Submitted by: ${context.requesterName || context.requesterEmail}
 ${context.comment ? `\nComments:\n${context.comment}` : ''}
 
 Please review and approve or request changes as needed.
+Click "Reply" to respond directly to ${context.requesterName || context.requesterEmail}.
 
 ---
 This is an automated notification from Tazama Connection Studio.
@@ -233,6 +239,89 @@ Tenant: ${context.tenantId}
     const html = `
 <div style="font-family: Arial, sans-serif; max-inline-size: 600px; padding: 20px; background-color: #f9f9f9;">
   <h2 style="color: #2196F3;">📋 Approval Required</h2>
+  
+  <div style="background-color: #e3f2fd; padding: 15px; border-inline-start: 4px solid #2196F3; margin: 20px 0;">
+    <p style="margin: 0; font-weight: bold; font-size: 16px;">From: ${context.requesterName || context.requesterEmail}</p>
+    <p style="margin: 5px 0 0 0; color: #666; font-size: 14px;">
+      <a href="mailto:${context.requesterEmail}" style="color: #2196F3; text-decoration: none;">${context.requesterEmail}</a>
+    </p>
+    ${context.comment ? `<p style="margin: 10px 0 0 0;"><strong>Message:</strong><br/>${context.comment.replace(/\n/g, '<br/>')}</p>` : ''}
+  </div>
+
+  <div style="background-color: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
+    <h3 style="margin-block-start: 0;">Configuration Details</h3>
+    <table style="inline-size: 100%; border-collapse: collapse;">
+      <tr>
+        <td style="padding: 8px; font-weight: bold; color: #666;">Configuration:</td>
+        <td style="padding: 8px;">${context.configName}</td>
+      </tr>
+      <tr style="background-color: #f5f5f5;">
+        <td style="padding: 8px; font-weight: bold; color: #666;">Version:</td>
+        <td style="padding: 8px;">${context.version}</td>
+      </tr>
+      <tr>
+        <td style="padding: 8px; font-weight: bold; color: #666;">Transaction Type:</td>
+        <td style="padding: 8px;">${context.transactionType}</td>
+      </tr>
+      <tr style="background-color: #f5f5f5;">
+        <td style="padding: 8px; font-weight: bold; color: #666;">Config ID:</td>
+        <td style="padding: 8px;">${context.configId}</td>
+      </tr>
+    </table>
+  </div>
+
+  <p style="color: #666; margin-block-start: 30px;">
+    Please review this configuration and approve or request changes as needed.<br/>
+    <strong>Click "Reply" to respond directly to the editor.</strong>
+  </p>
+
+  <hr style="border: none; border-block-start: 1px solid #e0e0e0; margin: 30px 0;"/>
+  <p style="color: #999; font-size: 12px;">
+    This is an automated notification from Tazama Connection Studio.<br/>
+    Tenant: ${context.tenantId}
+  </p>
+</div>
+    `;
+
+    return await this.sendEmail({
+      to: approverEmails,
+      subject,
+      text,
+      html,
+      replyTo: context.requesterEmail, // Editor's email - replies go to them
+    });
+  }
+
+  
+  async sendRejectionNotification(
+    editorEmail: string,
+    context: ConfigNotificationContext,
+  ): Promise<boolean> {
+    const subject = `Configuration Rejected: ${context.configName} v${context.version}`;
+
+    const text = `
+Hello,
+
+Your configuration has been rejected by an approver:
+
+Configuration: ${context.configName}
+Version: ${context.version}
+Transaction Type: ${context.transactionType}
+Config ID: ${context.configId}
+
+Approver: ${context.requesterName || context.requesterEmail}
+${context.comment ? `\nRejection Reason:\n${context.comment}` : ''}
+
+You can review the feedback and make necessary changes before resubmitting.
+
+---
+This is an automated notification from Tazama Connection Studio.
+Tenant: ${context.tenantId}
+    `.trim();
+
+    const html = `
+<div style="font-family: Arial, sans-serif; max-inline-size: 600px; padding: 20px; background-color: #f9f9f9;">
+  <h2 style="color: #d32f2f;">❌ Configuration Rejected</h2>
   
   <div style="background-color: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
     <h3 style="margin-block-start: 0;">Configuration Details</h3>
@@ -256,29 +345,29 @@ Tenant: ${context.tenantId}
     </table>
   </div>
 
-  <div style="background-color: #e3f2fd; padding: 15px; border-inline-start: 4px solid #2196F3; margin: 20px 0;">
-    <p style="margin: 0; font-weight: bold;">Submitted by: ${context.requesterName || context.requesterEmail}</p>
-    ${context.comment ? `<p style="margin: 10px 0 0 0;"><strong>Comments:</strong><br/>${context.comment.replace(/\n/g, '<br/>')}</p>` : ''}
+  <div style="background-color: #ffebee; padding: 15px; border-inline-start: 4px solid #d32f2f; margin: 20px 0;">
+    <p style="margin: 0; font-weight: bold;">Approver: ${context.requesterName || context.requesterEmail}</p>
+    ${context.comment ? `<p style="margin: 10px 0 0 0;"><strong>Rejection Reason:</strong><br/>${context.comment.replace(/\n/g, '<br/>')}</p>` : ''}
   </div>
 
   <p style="color: #666; margin-block-start: 30px;">
-    Please review this configuration and approve or request changes as needed.
+    You can review the feedback and make necessary changes before resubmitting.
   </p>
 
   <hr style="border: none; border-block-start: 1px solid #e0e0e0; margin: 30px 0;"/>
   <p style="color: #999; font-size: 12px;">
     This is an automated notification from Tazama Connection Studio.<br/>
-    Tenant: ${context.tenantId}<br/>
-    This email was sent to all approvers in your tenant.
+    Tenant: ${context.tenantId}
   </p>
 </div>
     `;
 
     return await this.sendEmail({
-      to: approverEmails,
+      to: editorEmail,
       subject,
       text,
       html,
+      replyTo: context.requesterEmail, // Approver's email - editor can reply
     });
   }
 

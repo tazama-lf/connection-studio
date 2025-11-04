@@ -2243,94 +2243,6 @@ export class ConfigService {
     };
   }
 
-  /**
-   * Request changes for configuration
-   */
-  async requestChanges(
-    id: number,
-    dto: ChangeRequestDto,
-    tenantId: string,
-    userId: string,
-    userClaims: string[],
-    token: string,
-  ): Promise<ConfigResponseDto> {
-    const config = await this.configRepository.findConfigById(
-      id,
-      tenantId,
-      token,
-    );
-    if (!config) {
-      throw new NotFoundException(`Config with ID ${id} not found`);
-    }
-
-    const currentStatus = config.status as ConfigStatus;
-    const action: WorkflowAction = 'request_changes';
-
-    // Validate user can perform this action
-    const validation = this.workflowService.canPerformAction(
-      userClaims,
-      currentStatus,
-      action,
-    );
-    if (!validation.canPerform) {
-      throw new ForbiddenException(validation.message);
-    }
-
-    // When changes are requested, return to IN_PROGRESS for editor to make changes
-    const newStatus = ConfigStatus.IN_PROGRESS;
-
-    // Update status
-    await this.configRepository.updateConfig(
-      id,
-      tenantId,
-      {
-        status: newStatus,
-      },
-      token,
-    );
-
-    // Log the action
-    await this.logStatusChange(
-      id,
-      currentStatus,
-      newStatus,
-      action,
-      userId,
-      dto.comment,
-    );
-
-    // Audit the action
-    await this.auditService.logAction({
-      action: 'request_changes',
-      entityType: 'config',
-      entityId: id.toString(),
-      actor: userId,
-      tenantId,
-      details: `Changes requested: ${dto.comment}`,
-      newValues: { status: newStatus },
-    });
-
-    // Send email notification to editor (async, non-blocking)
-    this.sendChangesRequestedNotification(
-      id,
-      config,
-      tenantId,
-      userId,
-      dto.comment,
-    ).catch((err) => {
-      this.logger.error(
-        `Failed to send changes requested notification for config ${id}: ${err.message}`,
-      );
-    });
-
-    return {
-      success: true,
-      message: 'Changes requested successfully',
-      config:
-        (await this.configRepository.findConfigById(id, tenantId, token)) ||
-        undefined,
-    };
-  }
 
   /**
    * Update status from APPROVED to EXPORTED
@@ -2836,11 +2748,11 @@ export class ConfigService {
   private getStatusDescription(status: string): string {
     const descriptions: Record<string, string> = {
       [ConfigStatus.IN_PROGRESS]: 'Configuration is being edited',
-      [ConfigStatus.SUSPENDED]: 'Configuration has been suspended',
+      [ConfigStatus.ON_HOLD]: 'Configuration is on hold',
       [ConfigStatus.UNDER_REVIEW]: 'Configuration is under review by approvers',
       [ConfigStatus.APPROVED]:
         'Configuration has been approved and ready for export',
-      [ConfigStatus.REJECTED]: 'Configuration has been rejected or changes requested',
+      [ConfigStatus.REJECTED]: 'Configuration has been rejected',
       [ConfigStatus.EXPORTED]: 'Configuration has been exported to SFTP',
       [ConfigStatus.READY_FOR_DEPLOYMENT]: 'Configuration is ready for deployment',
       [ConfigStatus.DEPLOYED]: 'Configuration has been deployed to production',

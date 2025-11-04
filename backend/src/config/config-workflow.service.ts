@@ -20,8 +20,8 @@ export class ConfigWorkflowService {
     const normalizedFromStatus = this.normalizeStatus(fromStatus);
     const normalizedToStatus = this.normalizeStatus(toStatus);
     const validTransitions: Record<string, string[]> = {
-      [ConfigStatus.IN_PROGRESS]: [ConfigStatus.UNDER_REVIEW],
-      [ConfigStatus.SUSPENDED]: [ConfigStatus.IN_PROGRESS],
+        [ConfigStatus.IN_PROGRESS]: [ConfigStatus.UNDER_REVIEW],
+        [ConfigStatus.ON_HOLD]: [ConfigStatus.IN_PROGRESS],
       [ConfigStatus.UNDER_REVIEW]: [
         ConfigStatus.APPROVED,
         ConfigStatus.REJECTED,
@@ -101,7 +101,6 @@ export class ConfigWorkflowService {
   submit_for_approval: ConfigStatus.UNDER_REVIEW,
   approve: ConfigStatus.APPROVED,
   reject: ConfigStatus.REJECTED,
-  request_changes: ConfigStatus.IN_PROGRESS, // Return to in progress for edits
   export: ConfigStatus.EXPORTED,
   deploy: ConfigStatus.DEPLOYED,
   return_to_progress: ConfigStatus.IN_PROGRESS,
@@ -152,15 +151,6 @@ export class ConfigWorkflowService {
             canPerform: false,
             message:
               'Only approvers can reject configurations in UNDER_REVIEW status',
-          };
-        }
-        break;
-      case 'request_changes':
-        if (!permissions.canRequestChanges) {
-          return {
-            canPerform: false,
-            message:
-              'Only approvers can request changes for configurations in UNDER_REVIEW status',
           };
         }
         break;
@@ -229,7 +219,6 @@ export class ConfigWorkflowService {
   submit_for_approval: 'Submit for Approval',
   approve: 'Approve',
   reject: 'Reject',
-  request_changes: 'Request Changes',
   export: 'Export',
   deploy: 'Deploy',
   return_to_progress: 'Return to Progress',
