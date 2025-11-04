@@ -3,7 +3,7 @@ export type AllowedFunctionName =
   | 'addAccount'
   | 'addAccountHolder'
   | 'addEntity'
-  | 'transactionRelationship';
+  | 'saveTransactionDetails';
 
 export interface FunctionDefinition {
   params: string[];
@@ -192,9 +192,10 @@ export const FUNCTION_CONFIGS: Record<AllowedFunctionName, FunctionConfig> = {
       },
     ],
   },
-  transactionRelationship: {
-    name: 'transactionRelationship',  
-    displayName: 'Transaction Relationship',
+  saveTransactionDetails: {
+    name: 'saveTransactionDetails',  
+    // saveTransactionDetails
+    displayName: 'Save Transaction Details',
     requiredParameters: [
       {
         name: 'from',
