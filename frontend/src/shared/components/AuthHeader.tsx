@@ -47,12 +47,24 @@ interface AuthHeaderProps {
                 <span className="font-medium">{user.username}</span>
                 {user.claims && user.claims.length > 0 && (
                   <>
+                    {console.log('AuthHeader - User claims:', user.claims)}
                     <span className="mx-1">-</span>
-                    <span>{user.claims.includes('approver') ? 'Approver' : 
-                           user.claims.includes('editor') ? 'Editor' : 
-                           user.claims.includes('publisher') ? 'Publisher' :
-                           user.claims.includes('exporter') ? 'Exporter' : 'User'}
-                           </span>
+                    <span>
+                      {(() => {
+                        const roleMapping = {
+                          'approver': 'Approver',
+                          'editor': 'Editor',
+                          'publisher': 'Publisher',
+                          'exporter': 'Exporter'
+                        };
+                        
+                        const userRoles = user.claims
+                          .filter(claim => roleMapping[claim as keyof typeof roleMapping])
+                          .map(claim => roleMapping[claim as keyof typeof roleMapping]);
+                        
+                        return userRoles.length > 0 ? userRoles.join(', ') : 'User';
+                      })()}
+                    </span>
                            
                   </>
                 )}
