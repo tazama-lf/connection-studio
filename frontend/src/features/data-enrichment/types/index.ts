@@ -135,7 +135,7 @@ export interface DataEnrichmentJobResponse {
   description: string;
   version: string;
   status?: JobStatus | null; // Note: backend returns 'status' not 'job_status'
-  record_status?: 'active' | 'in-active' | null; // Activation status
+   publishing_status?: 'active' | 'in-active' | null; // Activation status
   created_at?: string;
   updated_at?: string;
   type: 'push' | 'pull'; // Backend returns lowercase type

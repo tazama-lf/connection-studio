@@ -203,7 +203,7 @@ export const PublisherDEJobList: React.FC<PublisherDEJobListProps> = (props) => 
                               </button>
                               {onToggleStatus && (
                                 <>
-                                  {job.record_status === 'active' ? (
+                                  {job. publishing_status === 'active' ? (
                                     <button
                                       onClick={() => {
                                         onToggleStatus(job.id, 'in-active');
