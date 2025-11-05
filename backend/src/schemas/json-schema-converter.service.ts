@@ -18,13 +18,13 @@ export class JSONSchemaConverterService {
     this.logger.log('Converting custom schema to JSON Schema format');
     const properties: { [key: string]: JSONSchemaProperty } = {};
     const required: string[] = [];
-    
+
     // Always add tenantId field first
     properties['tenantId'] = {
       type: JSONSchemaType.STRING,
     };
     required.push('tenantId');
-    
+
     for (const field of fields) {
       properties[field.name] = this.convertFieldToProperty(field);
       if (field.isRequired) {
@@ -91,7 +91,12 @@ export class JSONSchemaConverterService {
         break;
       case FieldType.ARRAY:
         property.type = JSONSchemaType.ARRAY;
-        if (field.arrayElementType && field.arrayElementType === FieldType.OBJECT && field.children && field.children.length > 0) {
+        if (
+          field.arrayElementType &&
+          field.arrayElementType === FieldType.OBJECT &&
+          field.children &&
+          field.children.length > 0
+        ) {
           // For object arrays with children, build the full items schema
           const itemProperties: { [key: string]: JSONSchemaProperty } = {};
           const itemRequired: string[] = [];
@@ -169,23 +174,23 @@ export class JSONSchemaConverterService {
       // Remove parent path prefix
       const remaining = fullPath.replace(`${parentPath}.`, '');
       const parts = remaining.split('.');
-      
+
       // For array children paths like "0.PaymentId", we want to skip the numeric index
       // and return the first non-numeric part
       const nonNumericParts = parts.filter((part) => !/^\d+$/.test(part));
       if (nonNumericParts.length > 0) {
         return nonNumericParts[0];
       }
-      
+
       // Fallback to first part if all are numeric (edge case)
       return parts[0];
     }
-    
+
     // For paths without parent, get the last non-numeric part
     const parts = fullPath.split('.');
     const nonNumericParts = parts.filter((part) => !/^\d+$/.test(part));
-    return nonNumericParts.length > 0 
-      ? nonNumericParts[nonNumericParts.length - 1] 
+    return nonNumericParts.length > 0
+      ? nonNumericParts[nonNumericParts.length - 1]
       : parts[parts.length - 1];
   }
   convertFromJSONSchema(schema: JSONSchema): SchemaField[] {

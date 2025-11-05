@@ -25,7 +25,11 @@ export type {
   ConfigResponseDto,
 } from '@tazama-lf/tcs-lib';
 
-import type { Config, ConfigResponseDto, SchemaField } from '@tazama-lf/tcs-lib';
+import type {
+  Config,
+  ConfigResponseDto,
+  SchemaField,
+} from '@tazama-lf/tcs-lib';
 
 export { ContentType, ConfigStatus } from '@tazama-lf/tcs-lib';
 

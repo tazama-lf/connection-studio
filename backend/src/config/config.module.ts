@@ -18,13 +18,12 @@ import { DatabaseService } from '@tazama-lf/tcs-lib';
 
 @Module({
   imports: [
-    
     HttpModule,
-   
+
     SchemasModule,
-   
+
     AuditModule,
-   
+
     TazamaDataModelModule,
     SftpModule,
     NotificationModule,

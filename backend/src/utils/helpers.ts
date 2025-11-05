@@ -45,7 +45,6 @@ export function decrypt(text: string): string {
   }
 }
 
-
 export function validateCronExpression(expression: string): void {
   try {
     new CronTime(expression);

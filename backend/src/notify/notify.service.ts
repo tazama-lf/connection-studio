@@ -13,10 +13,11 @@ export class NotifyService implements OnModuleInit {
   private readonly ackService: IStartupService;
   private consumerStream: string;
   private producerStream: string;
+  private demsStream: string;
 
   constructor(
     private readonly logger: LoggerService,
-    private readonly configService: ConfigService
+    private readonly configService: ConfigService,
   ) {
     this.natsService = new StartupFactory();
     this.ackService = new StartupFactory();
@@ -24,23 +25,45 @@ export class NotifyService implements OnModuleInit {
 
   async onModuleInit(): Promise<void> {
     try {
+      this.consumerStream = this.configService.get<string>(
+        'CONSUMER_STREAM',
+        'config.notification.response',
+      );
+      this.producerStream = this.configService.get<string>(
+        'PRODUCER_STREAM',
+        'config.notification',
+      );
+      this.demsStream = this.configService.get<string>(
+        'DEMS_STREAM',
+        'dems.notify',
+      );
 
-      this.consumerStream = this.configService.get<string>('CONSUMER_STREAM', 'config.notification.response');
-      this.producerStream = this.configService.get<string>('PRODUCER_STREAM', 'config.notification');
-
-      this.logger.log(`Consumer Stream: ${this.consumerStream}`, 'NotifyService');
-      this.logger.log(`Producer Stream: ${this.producerStream}`, 'NotifyService');
+      this.logger.log(
+        `Consumer Stream: ${this.consumerStream}`,
+        'NotifyService',
+      );
+      this.logger.log(
+        `Producer Stream: ${this.producerStream}`,
+        'NotifyService',
+      );
+      this.logger.log(`DEMS Stream: ${this.demsStream}`, 'NotifyService');
 
       await this.natsService.initProducer(this.logger, this.producerStream);
-      this.logger.log('NATS producer initialized - sending to config.notification', 'NotificationController');
+      this.logger.log(
+        'NATS producer initialized - sending to config.notification',
+        'NotificationController',
+      );
 
       await this.ackService.init(
         this.handleAckMessage.bind(this),
         this.logger,
-        [this.consumerStream],
-        'tcs.ack.response'
+        [this.consumerStream, this.demsStream],
+        'tcs.ack.response',
       );
-      this.logger.log('ACK receiver initialized - listening on config.notification.response', 'NotificationController');
+      this.logger.log(
+        'ACK receiver initialized - listening on config.notification.response',
+        'NotificationController',
+      );
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error';
@@ -82,16 +105,36 @@ export class NotifyService implements OnModuleInit {
     }
   }
 
-  async notifyDems(configId: string, tenantId: string): Promise<void> {
+  async notifyDems(
+    configId: string,
+    tenantId: string,
+    demsData: {
+      transactionType: string;
+      tableName: string;
+      endpointPath: string;
+      createTableQuery: string;
+    },
+  ): Promise<void> {
     try {
-      await this.natsService.handleResponse({ 
-        configId, 
+      this.logger.log(
+        `Sending notification to DEMS stream: ${this.demsStream}`,
+      );
+
+      await this.natsService.handleResponse({
+        configId,
         tenantId,
+        transactionType: demsData.transactionType,
+        tableName: demsData.tableName,
+        endpointPath: demsData.endpointPath,
+        createTableQuery: demsData.createTableQuery,
         type: 'CONFIG_DEPLOYMENT',
-        timestamp: new Date().toISOString()
+        stream: this.demsStream,
+        timestamp: new Date().toISOString(),
       });
 
-      this.logger.log(`Config deployment notification (ID: ${configId}) sent to DEMS`);
+      this.logger.log(
+        `Config deployment notification (ID: ${configId}) sent to DEMS stream ${this.demsStream} with transaction type ${demsData.transactionType}`,
+      );
     } catch (error) {
       this.logger.error(
         new Error(

@@ -2,10 +2,9 @@ import { Type } from 'class-transformer';
 import { IsDate, IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class CreateScheduleJobDto {
-
   @IsOptional()
   @IsString()
-  id: string
+  id: string;
 
   @IsString()
   name: string;

@@ -31,7 +31,6 @@ export class NotificationService {
     this.initializeTransporter();
   }
 
-  
   private initializeTransporter(): void {
     const smtpHost = this.configService.get<string>('SMTP_HOST');
     const smtpPort = this.configService.get<number>('SMTP_PORT');
@@ -43,7 +42,9 @@ export class NotificationService {
       this.logger.warn(
         '⚠️  SMTP NOT CONFIGURED - Email notifications will be logged but not sent',
       );
-      this.logger.warn('   Set SMTP_HOST, SMTP_USER, SMTP_PASS in .env to enable emails');
+      this.logger.warn(
+        '   Set SMTP_HOST, SMTP_USER, SMTP_PASS in .env to enable emails',
+      );
       this.isConfigured = false;
       return;
     }
@@ -79,7 +80,6 @@ export class NotificationService {
     }
   }
 
-  
   async sendEmail(options: EmailOptions): Promise<boolean> {
     if (!this.isConfigured || !this.transporter) {
       this.logger.warn(
@@ -125,7 +125,6 @@ export class NotificationService {
     }
   }
 
-  
   async sendChangesRequested(
     editorEmail: string,
     context: ConfigNotificationContext,
@@ -203,7 +202,6 @@ Tenant: ${context.tenantId}
     });
   }
 
-  
   async sendSubmitForApproval(
     approverEmails: string[],
     context: ConfigNotificationContext,
@@ -292,7 +290,6 @@ Tenant: ${context.tenantId}
     });
   }
 
-  
   async sendRejectionNotification(
     editorEmail: string,
     context: ConfigNotificationContext,
@@ -371,7 +368,6 @@ Tenant: ${context.tenantId}
     });
   }
 
-  
   async sendTestEmail(to: string): Promise<boolean> {
     return await this.sendEmail({
       to,
@@ -381,4 +377,3 @@ Tenant: ${context.tenantId}
     });
   }
 }
-

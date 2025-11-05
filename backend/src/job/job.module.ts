@@ -19,7 +19,7 @@ import { NotifyModule } from 'src/notify/notify.module';
     DryRunModule,
     ConfigModule,
     SftpModule,
-    NotifyModule
+    NotifyModule,
   ],
 })
 export class JobModule {}

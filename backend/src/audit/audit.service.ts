@@ -52,7 +52,7 @@ export class AuditService {
       actor,
       endpointName,
       tenantId,
-  version: version !== undefined ? Number(version) : undefined,
+      version: version !== undefined ? Number(version) : undefined,
     });
   }
 
@@ -68,7 +68,7 @@ export class AuditService {
       actor,
       endpointName,
       tenantId,
-  version: version !== undefined ? Number(version) : undefined,
+      version: version !== undefined ? Number(version) : undefined,
     });
   }
 
@@ -84,7 +84,7 @@ export class AuditService {
       actor,
       endpointName,
       tenantId,
-  version: version !== undefined ? Number(version) : undefined,
+      version: version !== undefined ? Number(version) : undefined,
     });
   }
 
@@ -100,7 +100,7 @@ export class AuditService {
       actor,
       endpointName,
       tenantId,
-  version: version !== undefined ? Number(version) : undefined,
+      version: version !== undefined ? Number(version) : undefined,
     });
   }
 
@@ -314,7 +314,7 @@ export class AuditService {
       tenantId: entry.tenantId,
       endpointName: entry.endpointName,
       mappingName: entry.mappingName,
-  version: entry.version !== undefined ? Number(entry.version) : undefined,
+      version: entry.version !== undefined ? Number(entry.version) : undefined,
     });
   }
 

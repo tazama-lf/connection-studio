@@ -1229,7 +1229,7 @@ export class SimulationService {
 
   private validateMappings(payload: any, mappings: any[]): SimulationError[] {
     const errors: SimulationError[] = [];
-    
+
     // Special fields that are provided at runtime as context variables, not from payload
     const runtimeContextFields = ['tenantId', 'tenant_id', 'userId', 'user_id'];
 
@@ -1247,8 +1247,8 @@ export class SimulationService {
 
       let anySourceExists = false;
       const missingSources: string[] = [];
-      const allSourcesAreRuntimeContext = sources.every((src: string) => 
-        runtimeContextFields.includes(src)
+      const allSourcesAreRuntimeContext = sources.every((src: string) =>
+        runtimeContextFields.includes(src),
       );
 
       for (const source of sources) {
@@ -1257,7 +1257,7 @@ export class SimulationService {
           anySourceExists = true;
           break;
         }
-        
+
         const fieldValue = this.getFieldValue(payload, source);
         if (fieldValue !== undefined && fieldValue !== null) {
           anySourceExists = true;
@@ -1268,12 +1268,16 @@ export class SimulationService {
       }
 
       // Only report error if no sources exist AND they're not all runtime context fields
-      if (!anySourceExists && sources.length > 0 && !allSourcesAreRuntimeContext) {
+      if (
+        !anySourceExists &&
+        sources.length > 0 &&
+        !allSourcesAreRuntimeContext
+      ) {
         // Filter out runtime context fields from error message
         const nonRuntimeMissing = missingSources.filter(
-          src => !runtimeContextFields.includes(src)
+          (src) => !runtimeContextFields.includes(src),
         );
-        
+
         if (nonRuntimeMissing.length > 0) {
           errors.push({
             field: 'mapping',
@@ -1350,7 +1354,7 @@ export class SimulationService {
     // Remove runtime context fields from required array
     if (strictSchema.required && Array.isArray(strictSchema.required)) {
       strictSchema.required = strictSchema.required.filter(
-        (field: string) => !runtimeContextFields.includes(field)
+        (field: string) => !runtimeContextFields.includes(field),
       );
       // If no required fields left, remove the required property
       if (strictSchema.required.length === 0) {
@@ -1419,5 +1423,3 @@ export class SimulationService {
     return strictSchema;
   }
 }
-
-

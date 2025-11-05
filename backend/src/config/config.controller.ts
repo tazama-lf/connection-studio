@@ -62,15 +62,17 @@ function decodeTokenString(tokenString: string): any {
 function getUserId(user: AuthenticatedUser): string {
   const decodedToken = decodeTokenString(user.token.tokenString);
   const userId = decodedToken.preferred_username;
-  
+
   // ✅ LOG: Extract email from JWT in Connection Studio Controller
-  Logger.log(`📧 [ConfigController] Extracted user ID (email) from JWT:`);
-  Logger.log(`   - preferred_username: ${decodedToken.preferred_username || 'N/A'}`);
+  Logger.log('📧 [ConfigController] Extracted user ID (email) from JWT:');
+  Logger.log(
+    `   - preferred_username: ${decodedToken.preferred_username || 'N/A'}`,
+  );
   Logger.log(`   - email field: ${decodedToken.email || 'N/A'}`);
   Logger.log(`   - Final userId: ${userId || 'NOT FOUND'}`);
   Logger.log(`   - sub: ${decodedToken.sub || 'N/A'}`);
   Logger.log(`   - clientId: ${decodedToken.clientId || 'N/A'}`);
-  
+
   return userId;
 }
 
@@ -564,6 +566,22 @@ export class ConfigController {
       `/v1/admin/tcs/config/${id}/status`,
       { status },
       buildForwardHeaders(user),
+    );
+  }
+
+  @Patch(':id/publishing-status')
+  @RequireAnyClaims(TazamaClaims.PUBLISHER)
+  async updatePublishingStatus(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: { publishing_status: 'active' | 'inactive' },
+    @User() user: AuthenticatedUser,
+  ): Promise<ConfigResponseDto> {
+    return this.configService.updatePublishingStatus(
+      id,
+      dto.publishing_status,
+      user.tenantId,
+      user.userId,
+      user.token.tokenString,
     );
   }
 }

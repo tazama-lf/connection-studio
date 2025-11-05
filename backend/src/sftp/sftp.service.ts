@@ -142,7 +142,9 @@ export class SftpService implements OnModuleInit, OnModuleDestroy {
         Buffer.from(integrityValue, 'utf8'),
         integrityFilePath,
       );
-      this.loggerService.log(`File uploaded to producer SFTP for publishers: ${fileName}`);
+      this.loggerService.log(
+        `File uploaded to producer SFTP for publishers: ${fileName}`,
+      );
     } catch (error) {
       this.loggerService.error(
         `Failed to upload file for publishers ${fileName}: ${error.message}`,
@@ -153,10 +155,11 @@ export class SftpService implements OnModuleInit, OnModuleDestroy {
 
   async readFile(fileName: string): Promise<any> {
     try {
-
       const sftpHost = this.configService.get<string>('SFTP_HOST_PRODUCER');
       if (!sftpHost) {
-        throw new BadRequestException(`Producer SFTP server credentials not provided.`);
+        throw new BadRequestException(
+          'Producer SFTP server credentials not provided.',
+        );
       }
 
       const path = `/upload/${fileName}.json`;
@@ -206,7 +209,9 @@ export class SftpService implements OnModuleInit, OnModuleDestroy {
       );
     }
   }
-  async publishFile(fileName: string): Promise<{ success: boolean; message: string }> {
+  async publishFile(
+    fileName: string,
+  ): Promise<{ success: boolean; message: string }> {
     try {
       const producerHost = this.configService.get<string>('SFTP_HOST_PRODUCER');
       if (!producerHost) {
@@ -222,7 +227,9 @@ export class SftpService implements OnModuleInit, OnModuleDestroy {
         this.producerSftp.exists(integrityFilePath),
       ]);
       if (!fileExists || !hashExists) {
-        this.loggerService.warn(`File or integrity file not found for ${fileName}`);
+        this.loggerService.warn(
+          `File or integrity file not found for ${fileName}`,
+        );
         throw new NotFoundException(
           `File or its integrity file not found for ${fileName}`,
         );
@@ -254,7 +261,10 @@ export class SftpService implements OnModuleInit, OnModuleDestroy {
         integrityFilePath,
       );
       this.loggerService.log(`File ${fileName} published successfully`);
-      return { success: true, message: `File ${fileName} published successfully` };
+      return {
+        success: true,
+        message: `File ${fileName} published successfully`,
+      };
     } catch (error: unknown) {
       if (
         error instanceof NotFoundException ||
@@ -264,13 +274,14 @@ export class SftpService implements OnModuleInit, OnModuleDestroy {
       }
       const message =
         error instanceof Error ? error.message : JSON.stringify(error);
-      this.loggerService.error(`Failed to publish file ${fileName}: ${message}`);
+      this.loggerService.error(
+        `Failed to publish file ${fileName}: ${message}`,
+      );
       throw new InternalServerErrorException(
         `Unable to publish file ${fileName}`,
       );
     }
   }
-
 
   async deleteFile(fileName: string): Promise<void> {
     try {
@@ -309,20 +320,36 @@ export class SftpService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  async listFiles(remoteDir: string, format: 'de' | 'cron' | 'dems', tenant_id: string): Promise<SftpFile[]> {
+  async listFiles(
+    remoteDir: string,
+    format: 'de' | 'cron' | 'dems',
+    tenant_id: string,
+  ): Promise<SftpFile[]> {
     try {
       // Updated regex pattern to match actual file naming: format_tenantId_configId.json
       // Examples: dems_tenant-id_123.json, de_my-tenant_456.json, cron_test-tenant_789.json
-      const regex = new RegExp(`^${format}_${tenant_id}_${uuidPattern}\\.json$`);
+      const regex = new RegExp(
+        `^${format}_${tenant_id}_${uuidPattern}\\.json$`,
+      );
       // First get all files to debug
       const allFiles = await this.producerSftp.list('/upload');
-      this.loggerService.log(`All files in ${remoteDir}:`, allFiles.map(f => f.name));
-      const files: SftpFile[] = await this.producerSftp.list('/upload', (file: SftpFile) => {
-        const matches = regex.test(file.name);
-        this.loggerService.log(`File ${file.name} matches pattern ${regex.source}: ${matches}`);
-        return matches;
-      });
-      this.loggerService.log(`Found ${files.length} matching ${format} files in ${remoteDir}`);
+      this.loggerService.log(
+        `All files in ${remoteDir}:`,
+        allFiles.map((f) => f.name),
+      );
+      const files: SftpFile[] = await this.producerSftp.list(
+        '/upload',
+        (file: SftpFile) => {
+          const matches = regex.test(file.name);
+          this.loggerService.log(
+            `File ${file.name} matches pattern ${regex.source}: ${matches}`,
+          );
+          return matches;
+        },
+      );
+      this.loggerService.log(
+        `Found ${files.length} matching ${format} files in ${remoteDir}`,
+      );
       return files;
     } catch (error: unknown) {
       const message =

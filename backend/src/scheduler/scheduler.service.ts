@@ -18,8 +18,8 @@ export class SchedulerService {
   constructor(
     private readonly db: DatabaseService,
     private readonly loggerService: LoggerService,
-    private readonly sftpService: SftpService
-  ) { }
+    private readonly sftpService: SftpService,
+  ) {}
 
   async create(
     schedule: CreateScheduleJobDto,
@@ -163,9 +163,11 @@ export class SchedulerService {
         }
 
         case JobStatus.DEPLOYED: {
-          const existing = await this.sftpService.readFile(`cron_${tenantId}_${id}`)
+          const existing = await this.sftpService.readFile(
+            `cron_${tenantId}_${id}`,
+          );
           await this.create(existing, tenantId, JobStatus.DEPLOYED);
-          await this.sftpService.deleteFile(fileName)
+          await this.sftpService.deleteFile(fileName);
           return {
             success: true,
             message: `Job with id ${id} successfully deployed.`,

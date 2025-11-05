@@ -15,7 +15,7 @@ describe('NotifyService', () => {
       providers: [
         NotifyService,
         { provide: LoggerService, useValue: {} },
-        { provide: ConfigService, useValue: {} }
+        { provide: ConfigService, useValue: {} },
       ],
     }).compile();
 

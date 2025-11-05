@@ -48,6 +48,7 @@ import {
   WorkflowAction,
   ConfigWithSourceFields,
 } from './config.interfaces';
+import { ApiGatewayTimeoutResponse } from '@nestjs/swagger';
 
 @Injectable()
 export class ConfigService {
@@ -187,10 +188,10 @@ export class ConfigService {
         type: FieldType.STRING,
         isRequired: true,
       };
-      
+
       // Add tenantId as the first field
       sourceFields = [tenantIdField, ...sourceFields];
-      
+
       this.logger.log(
         `Added tenantId field to schema. Total fields: ${sourceFields.length}`,
       );
@@ -463,7 +464,11 @@ export class ConfigService {
     tenantId: string,
     token: string,
   ): Promise<Config | null> {
-    const config = await this.configRepository.findConfigById(id, tenantId, token);
+    const config = await this.configRepository.findConfigById(
+      id,
+      tenantId,
+      token,
+    );
     return config ? this.enrichConfigWithSourceFields(config) : null;
   }
 
@@ -487,8 +492,11 @@ export class ConfigService {
   }
 
   async getAllConfigs(tenantId: string, token: string): Promise<Config[]> {
-    const configs = await this.configRepository.findConfigsByTenant(tenantId, token);
-    return configs.map(config => this.enrichConfigWithSourceFields(config));
+    const configs = await this.configRepository.findConfigsByTenant(
+      tenantId,
+      token,
+    );
+    return configs.map((config) => this.enrichConfigWithSourceFields(config));
   }
 
   async getPendingApprovals(
@@ -501,7 +509,9 @@ export class ConfigService {
     );
     return allConfigs.filter((config) => {
       const status: string | undefined = config.status as string | undefined;
-      return status === ConfigStatus.UNDER_REVIEW || status === ConfigStatus.APPROVED;
+      return (
+        status === ConfigStatus.UNDER_REVIEW || status === ConfigStatus.APPROVED
+      );
     });
   }
 
@@ -2131,7 +2141,10 @@ export class ConfigService {
 
     let createTableQuery = '';
     try {
-      const transactionType = config.transactionType.replace(/[^a-zA-Z0-9_]/g, '_');
+      const transactionType = config.transactionType.replace(
+        /[^a-zA-Z0-9_]/g,
+        '_',
+      );
       const tableName = `${transactionType}_${tenantId}`;
       createTableQuery = `CREATE TABLE IF NOT EXISTS "${tableName}" (
         id SERIAL PRIMARY KEY,
@@ -2150,11 +2163,16 @@ export class ConfigService {
         details: `Created transaction history table: ${tableName}`,
       });
     } catch (err) {
-      this.logger.error(`Failed to create transaction history table: ${err.message}`);
+      this.logger.error(
+        `Failed to create transaction history table: ${err.message}`,
+      );
     }
 
     // Store the query in the config for later export
-    const updatedConfig = await this.configRepository.findConfigById(id, tenantId);
+    const updatedConfig = await this.configRepository.findConfigById(
+      id,
+      tenantId,
+    );
     if (updatedConfig) {
       (updatedConfig as any).createTableQuery = createTableQuery;
     }
@@ -2243,7 +2261,6 @@ export class ConfigService {
     };
   }
 
-
   /**
    * Update status from APPROVED to EXPORTED
    */
@@ -2281,8 +2298,12 @@ export class ConfigService {
 
     const newStatus = ConfigStatus.EXPORTED;
 
-    this.logger.log(`🔄 BACKEND - Updating config ${id} status to: "${newStatus}" (type: ${typeof newStatus})`);
-    this.logger.log(`🔄 BACKEND - ConfigStatus.EXPORTED value: "${ConfigStatus.EXPORTED}"`);
+    this.logger.log(
+      `🔄 BACKEND - Updating config ${id} status to: "${newStatus}" (type: ${typeof newStatus})`,
+    );
+    this.logger.log(
+      `🔄 BACKEND - ConfigStatus.EXPORTED value: "${ConfigStatus.EXPORTED}"`,
+    );
 
     // Update the status in database
     await this.configRepository.updateConfig(
@@ -2321,7 +2342,9 @@ export class ConfigService {
         newValues: { status: newStatus },
       });
     } catch (auditError) {
-      this.logger.warn(`Failed to log audit entry for config ${id} status update: ${auditError.message}`);
+      this.logger.warn(
+        `Failed to log audit entry for config ${id} status update: ${auditError.message}`,
+      );
     }
 
     // Get updated config
@@ -2377,7 +2400,7 @@ export class ConfigService {
     try {
       // Step 1: Prepare config data for export
       const configToExport = { ...config, status: newStatus };
-      
+
       // Generate CREATE TABLE query
       const transactionType = config.transactionType.replace(
         /[^a-zA-Z0-9_]/g,
@@ -2396,14 +2419,14 @@ export class ConfigService {
       // Step 2: Upload to SFTP (EXACTLY like job/scheduler service)
       await this.sftpService.createFile(fileName, {
         ...configToExport,
-        status: ConfigStatus.EXPORTED,
+        status: ConfigStatus.READY_FOR_DEPLOYMENT,
       });
-      
-      await this.sftpService.createFileForPublisher(fileName, {
-        ...configToExport,
-        status: ConfigStatus.EXPORTED,
-      });
-      
+
+      // await this.sftpService.createFileForPublisher(fileName, {
+      //   ...configToExport,
+      //   status: ConfigStatus.EXPORTED,
+      // });
+
       this.logger.log(
         `Successfully uploaded config file (${fileName}) with status '${ConfigStatus.EXPORTED}' to SFTP servers.`,
       );
@@ -2416,15 +2439,15 @@ export class ConfigService {
         WHERE id = $2 AND tenant_id = $3
         RETURNING id;
       `;
-      
+
       const result = await client.query(updateQuery, [newStatus, id, tenantId]);
-      
+
       if (!result.rowCount) {
         throw new NotFoundException(
           `Config with id "${id}" not found in config table.`,
         );
       }
-      
+
       this.logger.log(
         `Successfully updated config ${id} status to ${newStatus} in database`,
       );
@@ -2486,11 +2509,15 @@ export class ConfigService {
       // Decrypt credentials if present
       if (configData.credentials) {
         if (configData.credentials.password) {
-          configData.credentials.password = decrypt(configData.credentials.password);
+          configData.credentials.password = decrypt(
+            configData.credentials.password,
+          );
           this.logger.log('Decrypted password');
         }
         if (configData.credentials.private_key) {
-          configData.credentials.private_key = decrypt(configData.credentials.private_key);
+          configData.credentials.private_key = decrypt(
+            configData.credentials.private_key,
+          );
           this.logger.log('Decrypted private_key');
         }
       }
@@ -2499,19 +2526,73 @@ export class ConfigService {
       if (configData.createTableQuery) {
         this.logger.log(`📋 Executing CREATE TABLE query from config ${id}:`);
         this.logger.log(configData.createTableQuery);
-        
+
         const client = await this.databaseService.getClient();
         try {
           await client.query(configData.createTableQuery);
-          this.logger.log(`✅ Successfully executed CREATE TABLE from deployed config`);
+          this.logger.log(
+            '✅ Successfully executed CREATE TABLE from deployed config',
+          );
         } finally {
           client.release();
         }
       } else {
-        this.logger.warn(`No createTableQuery found in config file ${fileName}`);
+        this.logger.warn(
+          `No createTableQuery found in config file ${fileName}`,
+        );
       }
 
-      // Step 2: Delete from SFTP (EXACTLY like job/scheduler service)
+      // Step 2: Insert config data as a row in the config table before deleting from SFTP
+      try {
+        this.logger.log(
+          `📝 Inserting config data into config table for config ${id}`,
+        );
+
+        const client = await this.databaseService.getClient();
+        try {
+          const insertQuery = `
+            INSERT INTO config (
+              tenant_id, msg_fam, transaction_type, version, content_type,
+              endpoint_path, status, publishing_status, schema, mapping,
+              functions, payload, credentials, created_by, created_at, updated_at
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+            RETURNING id;
+          `;
+
+          const result = await client.query(insertQuery, [
+            tenantId,
+            configData.msgFam,
+            configData.transactionType,
+            configData.version,
+            configData.contentType,
+            configData.endpointPath,
+            configData.status,
+            configData.publishing_status,
+            JSON.stringify(configData.schema),
+            JSON.stringify(configData.mapping || []),
+            JSON.stringify(configData.functions || []),
+            JSON.stringify(configData.payload),
+            JSON.stringify(configData.credentials || {}),
+            configData.createdBy,
+            configData.createdAt || new Date(),
+            configData.updatedAt || new Date(),
+          ]);
+
+          this.logger.log(
+            `✅ Successfully inserted config data into config table, new record id: ${result.rows[0].id}`,
+          );
+        } finally {
+          client.release();
+        }
+      } catch (insertError) {
+        this.logger.error(
+          `Failed to insert config data into config table: ${insertError.message}`,
+        );
+        // Don't throw - allow deployment to continue even if insert fails
+      }
+
+      // Step 3: Delete from SFTP (EXACTLY like job/scheduler service)
       await this.sftpService.deleteFile(fileName);
       this.logger.log(`Deleted config file from SFTP: ${fileName}`);
 
@@ -2523,22 +2604,30 @@ export class ConfigService {
         WHERE id = $2 AND tenant_id = $3
         RETURNING id;
       `;
-      
+
       const result = await client.query(updateQuery, [newStatus, id, tenantId]);
-      
+
       if (!result.rowCount) {
         throw new NotFoundException(
           `Config with id "${id}" not found in config table.`,
         );
       }
-      
+
       this.logger.log(
         `Successfully updated config ${id} status to ${newStatus} in database`,
       );
 
       // Notify DEMS (Data Enrichment Microservice) via NATS
       this.logger.log(`Sending NATS notification to DEMS for config ${id}`);
-      await this.notifyService.notifyDems(id.toString(), tenantId);
+      await this.notifyService.notifyDems(id.toString(), tenantId, {
+        transactionType: configData.transactionType || config.transactionType,
+        tableName:
+          configData.tableName || `transaction_${config.transactionType}`,
+        endpointPath:
+          configData.endpointPath || `/api/${config.transactionType}`,
+        createTableQuery: configData.createTableQuery || '',
+      });
+
       this.logger.log(`✅ NATS notification sent to DEMS for config ${id}`);
 
       // Return success (EXACTLY like job/scheduler service)
@@ -2754,7 +2843,8 @@ export class ConfigService {
         'Configuration has been approved and ready for export',
       [ConfigStatus.REJECTED]: 'Configuration has been rejected',
       [ConfigStatus.EXPORTED]: 'Configuration has been exported to SFTP',
-      [ConfigStatus.READY_FOR_DEPLOYMENT]: 'Configuration is ready for deployment',
+      [ConfigStatus.READY_FOR_DEPLOYMENT]:
+        'Configuration is ready for deployment',
       [ConfigStatus.DEPLOYED]: 'Configuration has been deployed to production',
     };
 
@@ -2876,15 +2966,107 @@ export class ConfigService {
   }
 
   /**
-   * Enrich config with sourceFields array for mapping UI
-   * This converts the JSON Schema back to SchemaField[] with .0. notation preserved
+   * Update publishing status and trigger NATS notification when set to ACTIVE
    */
+  async updatePublishingStatus(
+    id: number,
+    publishingStatus: 'active' | 'inactive',
+    tenantId: string,
+    userId: string,
+    token: string,
+  ): Promise<ConfigResponseDto> {
+    const config = await this.configRepository.findConfigById(
+      id,
+      tenantId,
+      token,
+    );
+
+    if (!config) {
+      throw new NotFoundException(`Config with ID ${id} not found`);
+    }
+
+    // Update publishing_status in database
+    await this.configRepository.updateConfig(
+      id,
+      tenantId,
+      { publishing_status: publishingStatus },
+      token,
+    );
+
+    // If publishing_status is set to ACTIVE, send NATS notification to DEMS
+    if (publishingStatus.toLowerCase() === 'active') {
+      this.logger.log(
+        `Publishing status set to ACTIVE for config ${id}, sending NATS notification to DEMS`,
+      );
+
+      try {
+        // Extract table information from config
+        const transactionType = config.transactionType || 'unknown';
+        const tableName = transactionType.replace(/[^a-zA-Z0-9_]/g, '_');
+
+        // Read additional deployment data from SFTP if available
+        const fileName = `dems_${tenantId}_${id}`;
+        let configData: any = {};
+        let createTableQuery = '';
+
+        try {
+          configData = await this.sftpService.readFile(fileName);
+          createTableQuery = configData.createTableQuery || '';
+        } catch (error) {
+          this.logger.warn(
+            `Could not read config file from SFTP: ${fileName}. Using basic table info.`,
+          );
+          // Generate basic CREATE TABLE query if not available
+          createTableQuery = `
+CREATE TABLE IF NOT EXISTS "${tableName}" (
+  id SERIAL PRIMARY KEY,
+  endToEndId TEXT NULL,
+  tenantId TEXT NOT NULL,
+  document JSONB NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);`;
+        }
+
+        await this.notifyService.notifyDems(id.toString(), tenantId, {
+          transactionType: transactionType,
+          tableName: tableName,
+          endpointPath: configData.endpointPath || `/api/${transactionType}`,
+          createTableQuery: createTableQuery,
+        });
+
+        this.logger.log(
+          `✅ NATS notification sent to DEMS for activated config ${id}`,
+        );
+      } catch (error) {
+        this.logger.error(
+          `Failed to send NATS notification for config ${id}: ${error.message}`,
+        );
+        throw new BadRequestException(
+          `Failed to activate config: ${error.message}`,
+        );
+      }
+    }
+
+    const updatedConfig = await this.configRepository.findConfigById(
+      id,
+      tenantId,
+      token,
+    );
+
+    return {
+      success: true,
+      message: `Publishing status updated to ${publishingStatus}`,
+      config: updatedConfig!,
+    };
+  }
+
   private enrichConfigWithSourceFields(config: Config): ConfigWithSourceFields {
     try {
       if (config && config.schema) {
-        const sourceFields = this.jsonSchemaConverter.convertFromJSONSchema(
-          config.schema,
-        );
+        const hierarchicalFields =
+          this.jsonSchemaConverter.convertFromJSONSchema(config.schema);
+        // Flatten the hierarchical structure to include all leaf paths with .0. notation
+        const sourceFields = this.flattenSchemaFields(hierarchicalFields);
         return {
           ...config,
           sourceFields,
@@ -2896,5 +3078,31 @@ export class ConfigService {
       );
     }
     return config;
+  }
+
+  /**
+   * Recursively flatten SchemaField[] to include all leaf nodes with complete paths
+   * Preserves .0. notation for array elements
+   */
+  private flattenSchemaFields(fields: SchemaField[]): SchemaField[] {
+    const flattened: SchemaField[] = [];
+
+    for (const field of fields) {
+      // Always include the current field
+      flattened.push({
+        name: field.name,
+        path: field.path,
+        type: field.type,
+        isRequired: field.isRequired,
+      });
+
+      // Recursively flatten children
+      if (field.children && field.children.length > 0) {
+        const flattenedChildren = this.flattenSchemaFields(field.children);
+        flattened.push(...flattenedChildren);
+      }
+    }
+
+    return flattened;
   }
 }

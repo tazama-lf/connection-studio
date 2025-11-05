@@ -1,11 +1,16 @@
-import { IsEnum, IsNotEmpty, IsOptional, IsString, Matches } from 'class-validator';
+import {
+  IsEnum,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  Matches,
+} from 'class-validator';
 import { IngestMode, ScheduleStatus } from '@tazama-lf/tcs-lib';
 
 export class CreatePushJobDto {
-
   @IsOptional()
   @IsString()
-  id: string
+  id: string;
 
   @IsString()
   @IsNotEmpty()
@@ -34,5 +39,5 @@ export class CreatePushJobDto {
 
   @IsOptional()
   @IsString()
-  publishing_status: ScheduleStatus = ScheduleStatus.INACTIVE
+  publishing_status: ScheduleStatus = ScheduleStatus.INACTIVE;
 }

@@ -20,8 +20,8 @@ export class ConfigWorkflowService {
     const normalizedFromStatus = this.normalizeStatus(fromStatus);
     const normalizedToStatus = this.normalizeStatus(toStatus);
     const validTransitions: Record<string, string[]> = {
-        [ConfigStatus.IN_PROGRESS]: [ConfigStatus.UNDER_REVIEW],
-        [ConfigStatus.ON_HOLD]: [ConfigStatus.IN_PROGRESS],
+      [ConfigStatus.IN_PROGRESS]: [ConfigStatus.UNDER_REVIEW],
+      [ConfigStatus.ON_HOLD]: [ConfigStatus.IN_PROGRESS],
       [ConfigStatus.UNDER_REVIEW]: [
         ConfigStatus.APPROVED,
         ConfigStatus.REJECTED,
@@ -60,14 +60,14 @@ export class ConfigWorkflowService {
     const hasPublisherRole = userClaims.includes('publisher');
     const hasExporterRole = userClaims.includes('exporter');
     const result: WorkflowValidationResult = {
-  canEdit: false,
-  canSubmit: false,
-  canApprove: false,
-  canReject: false,
-  canRequestChanges: false,
-  canExport: false,
-  canDeploy: false,
-  canReturnToProgress: false,
+      canEdit: false,
+      canSubmit: false,
+      canApprove: false,
+      canReject: false,
+      canRequestChanges: false,
+      canExport: false,
+      canDeploy: false,
+      canReturnToProgress: false,
     };
     if (hasEditorRole) {
       // Can edit only in editable states (IN_PROGRESS or REJECTED with changes)
@@ -75,9 +75,9 @@ export class ConfigWorkflowService {
         ConfigStatus.IN_PROGRESS,
         ConfigStatus.REJECTED,
       ].includes(currentStatus as any);
-      result.canSubmit = [
-        ConfigStatus.IN_PROGRESS,
-      ].includes(currentStatus as any);
+      result.canSubmit = [ConfigStatus.IN_PROGRESS].includes(
+        currentStatus as any,
+      );
     }
     if (hasApproverRole) {
       const canApproverAct = currentStatus === ConfigStatus.UNDER_REVIEW;
@@ -98,12 +98,12 @@ export class ConfigWorkflowService {
   }
   getTargetStatus(action: any): string {
     const actionToStatusMap: Record<string, string> = {
-  submit_for_approval: ConfigStatus.UNDER_REVIEW,
-  approve: ConfigStatus.APPROVED,
-  reject: ConfigStatus.REJECTED,
-  export: ConfigStatus.EXPORTED,
-  deploy: ConfigStatus.DEPLOYED,
-  return_to_progress: ConfigStatus.IN_PROGRESS,
+      submit_for_approval: ConfigStatus.UNDER_REVIEW,
+      approve: ConfigStatus.APPROVED,
+      reject: ConfigStatus.REJECTED,
+      export: ConfigStatus.EXPORTED,
+      deploy: ConfigStatus.DEPLOYED,
+      return_to_progress: ConfigStatus.IN_PROGRESS,
     };
     return actionToStatusMap[action];
   }
@@ -166,9 +166,7 @@ export class ConfigWorkflowService {
       case 'return_to_progress': {
         const canReturn =
           userClaims.includes('editor') &&
-          [ConfigStatus.REJECTED].includes(
-            currentStatus as any,
-          );
+          [ConfigStatus.REJECTED].includes(currentStatus as any);
         if (!canReturn) {
           return {
             canPerform: false,
@@ -181,9 +179,7 @@ export class ConfigWorkflowService {
       case 'export': {
         const canExport =
           userClaims.includes('exporter') &&
-          [ConfigStatus.APPROVED].includes(
-            currentStatus as any,
-          );
+          [ConfigStatus.APPROVED].includes(currentStatus as any);
         if (!canExport) {
           return {
             canPerform: false,
@@ -216,12 +212,12 @@ export class ConfigWorkflowService {
   }
   getActionDescription(action: WorkflowAction): string {
     const descriptions: Record<WorkflowAction, string> = {
-  submit_for_approval: 'Submit for Approval',
-  approve: 'Approve',
-  reject: 'Reject',
-  export: 'Export',
-  deploy: 'Deploy',
-  return_to_progress: 'Return to Progress',
+      submit_for_approval: 'Submit for Approval',
+      approve: 'Approve',
+      reject: 'Reject',
+      export: 'Export',
+      deploy: 'Deploy',
+      return_to_progress: 'Return to Progress',
     };
     return descriptions[action] || action;
   }

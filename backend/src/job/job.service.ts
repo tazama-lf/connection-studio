@@ -41,7 +41,7 @@ export class JobService {
     private readonly dryRunService: DryRunService,
     private readonly sftpService: SftpService,
     private readonly notifyService: NotifyService,
-  ) { }
+  ) {}
 
   async validateExisting(table_name: string): Promise<void> {
     validateTableName(table_name);
@@ -62,13 +62,11 @@ export class JobService {
     }
   }
 
-
   async updateJob(
     id: string,
     job: UpdatePushJobDto | UpdatePullJobDto,
     type: ConfigType,
   ): Promise<ISuccess> {
-
     const tableName = type === ConfigType.PUSH ? 'endpoints' : 'job';
 
     const existingJob = await this.findOne(id, ConfigType.PUSH);
@@ -82,7 +80,6 @@ export class JobService {
     const setClause = keys.map((key, i) => `${key} = $${i + 1}`).join(', ');
     const query = `UPDATE ${tableName} SET ${setClause} WHERE id = $${keys.length + 1};`;
 
-
     const result = await this.db.query(query, [...values, id]);
 
     if (!result.rowCount) {
@@ -95,7 +92,6 @@ export class JobService {
       success: true,
       message: `Job with id ${id} successfully updated`,
     };
-
   }
 
   async createPush(
@@ -105,7 +101,7 @@ export class JobService {
   ): Promise<ISuccess> {
     try {
       await this.validateExisting(job.table_name);
-      const id = job.id ?? v4()
+      const id = job.id ?? v4();
 
       const path =
         status === JobStatus.DEPLOYED
@@ -128,7 +124,7 @@ export class JobService {
       const newJob = insertRes.rows[0];
 
       if (!newJob) {
-        this.loggerService.error("Failed to create push job.")
+        this.loggerService.error('Failed to create push job.');
         throw new Error('Failed to create push job.');
       }
 
@@ -148,7 +144,6 @@ export class JobService {
     status: JobStatus = JobStatus.INPROGRESS,
   ): Promise<ISuccess> {
     try {
-
       await this.validateExisting(job.table_name);
 
       const checkScheduleQuery = `
@@ -162,9 +157,12 @@ export class JobService {
         job.schedule_id,
       ]);
       const exist = scheduleResult.rows[0];
-      if (!exist || (exist.status !== JobStatus.APPROVED &&
-        exist.status !== JobStatus.EXPORTED &&
-        exist.status !== JobStatus.DEPLOYED)) {
+      if (
+        !exist ||
+        (exist.status !== JobStatus.APPROVED &&
+          exist.status !== JobStatus.EXPORTED &&
+          exist.status !== JobStatus.DEPLOYED)
+      ) {
         throw new BadRequestException(
           `Schedule with Id "${job.schedule_id}" not found or is not approved yet.`,
         );
@@ -191,7 +189,7 @@ export class JobService {
       }
       await this.dryRunService.dryRun(job);
 
-      const new_id = job.id ?? v4()
+      const new_id = job.id ?? v4();
 
       const jobWithId = {
         ...job,
@@ -213,9 +211,8 @@ export class JobService {
       const insertResult = await this.db.query(insertQuery, values);
       const { id } = insertResult.rows[0];
 
-
       if (status === JobStatus.DEPLOYED) {
-        await this.notifyService.notifyEnrichment(new_id, ConfigType.PUSH)
+        await this.notifyService.notifyEnrichment(new_id, ConfigType.PUSH);
       }
 
       return {
@@ -311,8 +308,11 @@ export class JobService {
       }
 
       if (tableName === 'job' && record.schedule_id) {
-        const scheduleQuery = `SELECT name, cron FROM schedule WHERE id = $1 LIMIT 1;`;
-        const scheduleResult = await this.db.query(scheduleQuery, [record.schedule_id]);
+        const scheduleQuery =
+          'SELECT name, cron FROM schedule WHERE id = $1 LIMIT 1;';
+        const scheduleResult = await this.db.query(scheduleQuery, [
+          record.schedule_id,
+        ]);
         const schedule = scheduleResult.rows[0] || null;
 
         return {
@@ -462,9 +462,12 @@ export class JobService {
         case JobStatus.DEPLOYED: {
           const existingJob = await this.sftpService.readFile(fileName);
           if (type === ConfigType.PULL) {
-            let connection = { ...existingJob.connection } as SFTPConnection;
+            const connection = { ...existingJob.connection } as SFTPConnection;
 
-            if (connection.auth_type === AuthType.USERNAME_PASSWORD && connection.password) {
+            if (
+              connection.auth_type === AuthType.USERNAME_PASSWORD &&
+              connection.password
+            ) {
               connection.password = decrypt(connection.password);
             } else if (connection.private_key) {
               connection.private_key = decrypt(connection.private_key);
@@ -473,14 +476,22 @@ export class JobService {
             const { schedule, ...jobPayload } = existingJob;
 
             await this.createPull(
-              { ...jobPayload, connection, publishing_status: ScheduleStatus.ACTIVE },
+              {
+                ...jobPayload,
+                connection,
+                publishing_status: ScheduleStatus.ACTIVE,
+              },
               tenantId,
               JobStatus.DEPLOYED,
             );
           } else {
-            await this.createPush({ ...existingJob, publishing_status: ScheduleStatus.ACTIVE }, tenantId, JobStatus.DEPLOYED);
+            await this.createPush(
+              { ...existingJob, publishing_status: ScheduleStatus.ACTIVE },
+              tenantId,
+              JobStatus.DEPLOYED,
+            );
           }
-          await this.sftpService.deleteFile(fileName)
+          await this.sftpService.deleteFile(fileName);
           return {
             success: true,
             message: `$Job with id ${id} successfully deployed.`,
