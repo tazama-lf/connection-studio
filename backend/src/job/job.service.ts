@@ -41,7 +41,7 @@ export class JobService {
     private readonly dryRunService: DryRunService,
     private readonly sftpService: SftpService,
     private readonly notifyService: NotifyService,
-  ) {}
+  ) { }
 
   async validateExisting(table_name: string): Promise<void> {
     validateTableName(table_name);
@@ -127,6 +127,11 @@ export class JobService {
         this.loggerService.error('Failed to create push job.');
         throw new Error('Failed to create push job.');
       }
+
+      if (status === JobStatus.DEPLOYED) {
+        await this.notifyService.notifyEnrichment(job.id, ConfigType.PUSH);
+      }
+
 
       return {
         success: true,

@@ -2,6 +2,10 @@ import { Expose } from 'class-transformer';
 import { IngestMode } from '@tazama-lf/tcs-lib';
 
 export class PushJob {
+
+  @Expose()
+  id: string
+
   @Expose()
   endpoint_name: string;
 

@@ -45,7 +45,7 @@ class FileSettingDto {
 
 export class PullJobResponseDto {
   @Expose()
-  id: number;
+  id: string;
 
   @Expose()
   tenant_id: string;
