@@ -2494,7 +2494,57 @@ export class ConfigService {
       this.logger.log(`Reading config file from SFTP: ${fileName}`);
       const configData = await this.sftpService.readFile(fileName);
 
-      // Decrypt credentials if present
+      // Step 2: Insert raw config data as read from SFTP into config table FIRST
+      try {
+        this.logger.log(
+          `📝 Inserting raw config data (as read from SFTP) into config table for config ${id}`,
+        );
+
+        const client = await this.databaseService.getClient();
+        try {
+          const insertQuery = `
+            INSERT INTO config (
+              tenant_id, msg_fam, transaction_type, version, content_type,
+              endpoint_path, status, publishing_status, schema, mapping,
+              functions, payload, credentials, created_by, created_at, updated_at
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+            RETURNING id;
+          `;
+
+          const result = await client.query(insertQuery, [
+            tenantId,
+            configData.msgFam || '',
+            configData.transactionType || '',
+            configData.version || 'v1',
+            configData.contentType || 'application/json',
+            configData.endpointPath || '',
+            newStatus, // Set to DEPLOYED status
+            configData.publishing_status || 'inactive',
+            JSON.stringify(configData.schema || {}),
+            JSON.stringify(configData.mapping || []),
+            JSON.stringify(configData.functions || []),
+            JSON.stringify(configData.payload || {}),
+            JSON.stringify(configData.credentials || {}), // Store encrypted credentials as-is
+            configData.createdBy || userId,
+            configData.createdAt || new Date(),
+            new Date(), // updated_at
+          ]);
+
+          this.logger.log(
+            `✅ Successfully inserted raw config data into config table, new record id: ${result.rows[0].id}`,
+          );
+        } finally {
+          client.release();
+        }
+      } catch (insertError) {
+        this.logger.error(
+          `Failed to insert config data into config table: ${insertError.message}`,
+        );
+        // Don't throw - allow deployment to continue even if insert fails
+      }
+
+      // Step 3: Decrypt credentials if present (for further processing)
       if (configData.credentials) {
         if (configData.credentials.password) {
           configData.credentials.password = decrypt(
@@ -2510,7 +2560,7 @@ export class ConfigService {
         }
       }
 
-      // Execute CREATE TABLE query from config
+      // Step 4: Execute CREATE TABLE query from config
       if (configData.createTableQuery) {
         this.logger.log(`📋 Executing CREATE TABLE query from config ${id}:`);
         this.logger.log(configData.createTableQuery);
@@ -2530,61 +2580,11 @@ export class ConfigService {
         );
       }
 
-      // Step 2: Insert config data as a row in the config table before deleting from SFTP
-      try {
-        this.logger.log(
-          `📝 Inserting config data into config table for config ${id}`,
-        );
-
-        const client = await this.databaseService.getClient();
-        try {
-          const insertQuery = `
-            INSERT INTO config (
-              tenant_id, msg_fam, transaction_type, version, content_type,
-              endpoint_path, status, publishing_status, schema, mapping,
-              functions, payload, credentials, created_by, created_at, updated_at
-            )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
-            RETURNING id;
-          `;
-
-          const result = await client.query(insertQuery, [
-            tenantId,
-            configData.msgFam,
-            configData.transactionType,
-            configData.version,
-            configData.contentType,
-            configData.endpointPath,
-            configData.status,
-            configData.publishing_status,
-            JSON.stringify(configData.schema),
-            JSON.stringify(configData.mapping || []),
-            JSON.stringify(configData.functions || []),
-            JSON.stringify(configData.payload),
-            JSON.stringify(configData.credentials || {}),
-            configData.createdBy,
-            configData.createdAt || new Date(),
-            configData.updatedAt || new Date(),
-          ]);
-
-          this.logger.log(
-            `✅ Successfully inserted config data into config table, new record id: ${result.rows[0].id}`,
-          );
-        } finally {
-          client.release();
-        }
-      } catch (insertError) {
-        this.logger.error(
-          `Failed to insert config data into config table: ${insertError.message}`,
-        );
-        // Don't throw - allow deployment to continue even if insert fails
-      }
-
-      // Step 3: Delete from SFTP (EXACTLY like job/scheduler service)
+      // Step 5: Delete from SFTP (EXACTLY like job/scheduler service)
       await this.sftpService.deleteFile(fileName);
       this.logger.log(`Deleted config file from SFTP: ${fileName}`);
 
-      // Step 3: Update database with direct SQL (EXACTLY like job/scheduler service)
+      // Step 6: Update original config status in database with direct SQL
       const client = await this.databaseService.getClient();
       const updateQuery = `
         UPDATE config
@@ -2602,10 +2602,10 @@ export class ConfigService {
       }
 
       this.logger.log(
-        `Successfully updated config ${id} status to ${newStatus} in database`,
+        `Successfully updated original config ${id} status to ${newStatus} in database`,
       );
 
-      // Notify DEMS (Data Enrichment Microservice) via NATS
+      // Step 7: Notify DEMS (Data Enrichment Microservice) via NATS
       this.logger.log(`Sending NATS notification to DEMS for config ${id}`);
       await this.notifyService.notifyDems(id.toString(), tenantId, {
         transactionType: configData.transactionType || config.transactionType,
