@@ -6,6 +6,7 @@ import { configApi } from '../../config/services/configApi';
 import { useToast } from '../../../shared/providers/ToastProvider';
 import type { Config } from '../../config/index';
 import { ApproverConfigDetailsModal } from './ApproverConfigDetailsModal';
+import { useAuth } from '../../auth/contexts/AuthContext';
 
 interface ApproverDEMSProps {
   onBack: () => void;
@@ -17,6 +18,7 @@ const ApproverDEMS: React.FC<ApproverDEMSProps> = ({ onBack }) => {
   const [selectedConfig, setSelectedConfig] = useState<Config | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const { showSuccess, showError } = useToast();
+const { user } = useAuth();
 
   const handleApprove = async (configId: number) => {
     try {
@@ -35,13 +37,14 @@ const ApproverDEMS: React.FC<ApproverDEMSProps> = ({ onBack }) => {
     }
   };
 
-  const handleReject = async (configId: number) => {
+  const handleReject = async (config: Config) => {
     try {
       const reason = prompt('Please provide a reason for rejection (optional):');
       // Allow empty reason, don't cancel on empty string
       
-      console.log('Rejecting config:', configId, 'with reason:', reason);
-      const result = await configApi.rejectConfig(configId, reason || 'Configuration rejected by approver');
+     console.log('Rejecting config:', config.id, 'with reason:', reason);
+      const userId = user?.email || user?.username || 'system';
+      const result = await configApi.rejectConfig(config.id, userId, reason || 'Configuration rejected by approver');
       
       if (result.success) {
         showSuccess('Configuration rejected and returned to editor for changes');

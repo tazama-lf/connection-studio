@@ -554,14 +554,14 @@ export class ConfigApiService {
     }
   }
 
-  async rejectConfig(id: number, reason?: string): Promise<ConfigResponse> {
+  async rejectConfig(id: number, userId: string, reason?: string): Promise<ConfigResponse> {
     try {
       const response = await fetch(`${this.baseURL}/config/${id}/reject`, {
         method: 'PATCH',
         headers: this.getAuthHeaders(),
         body: JSON.stringify({
-          userId: 'system', // Backend extracts real user from JWT
-          userRole: 'approver', // Backend validates role from JWT claims
+         userId: userId,
+        
           rejectionReason: reason || 'Configuration rejected by approver',
         }),
       });

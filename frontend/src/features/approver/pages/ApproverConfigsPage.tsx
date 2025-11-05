@@ -9,6 +9,7 @@ import { ConfigReviewModal } from '../../../shared/components/ConfigReviewModal'
 import { ChangeRequestDialog } from '../../../shared/components/ChangeRequestDialog';
 import EditEndpointModal from '../../../shared/components/EditEndpointModal';
 import { AuthHeader } from '../../../shared/components/AuthHeader';
+import { useAuth } from '../../auth/contexts/AuthContext';
 
 const ApproverConfigsPage: React.FC = () => {
   // Config-related state
@@ -22,7 +23,7 @@ const ApproverConfigsPage: React.FC = () => {
   const [showChangeRequestDialog, setShowChangeRequestDialog] = useState(false);
   const [configToReject, setConfigToReject] = useState<Config | null>(null);
   const [configToRequestChanges, setConfigToRequestChanges] = useState<Config | null>(null);
-
+const { user } = useAuth();
   const { showSuccess, showError } = useToast();
 
   const handleCloseModal = () => {
@@ -77,7 +78,8 @@ const ApproverConfigsPage: React.FC = () => {
     if (!configToReject) return;
 
     try {
-      const response = await configApi.rejectConfig(configToReject.id, reason);
+const userId = user?.email || user?.username || 'system';
+      const response = await configApi.rejectConfig(configToReject.id, userId, reason);
       if (response.success) {
         showSuccess('Configuration rejected successfully');
         setRefreshKey(prev => prev + 1);
@@ -101,8 +103,9 @@ const ApproverConfigsPage: React.FC = () => {
     if (!configToRequestChanges) return;
 
     try {
-      const response = await configApi.rejectConfig(configToRequestChanges.id, requestedChanges);
-      if (response.success) {
+const userId = user?.email || user?.username || 'system';
+      const response = await configApi.rejectConfig(configToRequestChanges.id, userId, requestedChanges);   
+         if (response.success) {
         showSuccess('Change request sent to editor successfully');
         setRefreshKey(prev => prev + 1);
         // Close the modal after successful change request

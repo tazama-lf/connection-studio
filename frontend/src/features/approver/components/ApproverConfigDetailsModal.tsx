@@ -9,7 +9,7 @@ interface ApproverConfigDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
   onApprove: (configId: number) => Promise<void>;
-  onReject: (configId: number) => Promise<void>;
+  onReject: (config: Config) => Promise<void>;
 }
 
 export const ApproverConfigDetailsModal: React.FC<ApproverConfigDetailsModalProps> = ({
@@ -44,7 +44,7 @@ export const ApproverConfigDetailsModal: React.FC<ApproverConfigDetailsModalProp
     console.log('Reject clicked for config:', config.id);
     setIsRejecting(true);
     try {
-      await onReject(config.id);
+      await onReject(config);
       onClose();
     } catch (error) {
       console.error('Reject error:', error);
