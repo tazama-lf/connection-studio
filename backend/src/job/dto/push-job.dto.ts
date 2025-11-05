@@ -1,8 +1,7 @@
 import { Expose } from 'class-transformer';
-import { IngestMode } from '@tazama-lf/tcs-lib';
+import { IngestMode, JobStatus } from '@tazama-lf/tcs-lib';
 
 export class PushJob {
-
   @Expose()
   id: string
 
@@ -23,4 +22,7 @@ export class PushJob {
 
   @Expose()
   version: string;
+
+  @Expose()
+  status: JobStatus
 }
