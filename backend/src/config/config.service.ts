@@ -2410,10 +2410,7 @@ export class ConfigService {
       (configToExport as any).createTableQuery =
         `CREATE TABLE IF NOT EXISTS "${tableName}" (
   id SERIAL PRIMARY KEY,
-  endToEndId TEXT NULL,
-  tenantId TEXT NOT NULL,
   document JSONB NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
 );`;
 
       // Step 2: Upload to SFTP (EXACTLY like job/scheduler service)
@@ -3020,10 +3017,7 @@ export class ConfigService {
           createTableQuery = `
 CREATE TABLE IF NOT EXISTS "${tableName}" (
   id SERIAL PRIMARY KEY,
-  endToEndId TEXT NULL,
-  tenantId TEXT NOT NULL,
   document JSONB NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
 );`;
         }
 

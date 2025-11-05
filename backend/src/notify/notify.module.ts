@@ -4,9 +4,8 @@ import { LoggerModule } from 'src/logger-service/logger-service.module';
 import { ConfigModule } from '@nestjs/config';
 
 @Module({
-  controllers: [],
   providers: [NotifyService],
   imports: [LoggerModule, ConfigModule],
-  exports: [NotifyService],
+  exports: [NotifyService]
 })
-export class NotifyModule {}
+export class NotifyModule { }
