@@ -2502,37 +2502,75 @@ export class ConfigService {
 
         const client = await this.databaseService.getClient();
         try {
-          const insertQuery = `
-            INSERT INTO config (
-              tenant_id, msg_fam, transaction_type, version, content_type,
-              endpoint_path, status, publishing_status, schema, mapping,
-              functions, payload, credentials, created_by, created_at, updated_at
-            )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
-            RETURNING id;
-          `;
+      const configWithId = { ...configData};
+      configWithId.msg_fam = configData.msgFam || '';
+      delete configWithId.msgFam;
+      configWithId.transaction_type = configData.transactionType || '';
+      delete configWithId.transactionType;
+      configWithId.content_type = configData.contentType || 'application/json';
+      delete configWithId.contentType;
+      configWithId.endpoint_path = configData.endpointPath || '';
+      delete configWithId.endpointPath;
+      configWithId.status = newStatus; // Set to DEPLOYED status
+      configWithId.publishing_status =
+        configData.publishing_status || 'active';
+        configWithId.tenant_id = tenantId;
+        delete configWithId.tenantId;
+        configWithId.created_by = configData.createdBy;
+        delete configWithId.createdBy;
+        configWithId.created_at =
+          configData.createdAt || new Date();
+        delete configWithId.createdAt;
+        configWithId.updated_at = new Date();
+        delete configWithId.updatedAt;
+        
 
-          const result = await client.query(insertQuery, [
-            tenantId,
-            configData.msgFam || '',
-            configData.transactionType || '',
-            configData.version || 'v1',
-            configData.contentType || 'application/json',
-            configData.endpointPath || '',
-            newStatus, // Set to DEPLOYED status
-            configData.publishing_status || 'inactive',
-            JSON.stringify(configData.schema || {}),
-            JSON.stringify(configData.mapping || []),
-            JSON.stringify(configData.functions || []),
-            JSON.stringify(configData.payload || {}),
-            JSON.stringify(configData.credentials || {}), // Store encrypted credentials as-is
-            configData.createdBy || userId,
-            configData.createdAt || new Date(),
-            new Date(), // updated_at
-          ]);
+
+      // delete configWithId.createTableQuery; // Remove id to allow auto-generation
+
+      const keys = Object.keys(configWithId);
+      const values = Object.values(configWithId);
+      const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
+
+      const insertQuery = `
+                 INSERT INTO config (${keys.join(', ')})
+                  VALUES (${placeholders})
+                  RETURNING *;
+                     `;
+      const insertResult = await client.query(insertQuery, values);
+      const { id } = insertResult.rows[0];
+
+          // const insertQuery = `
+          //   INSERT INTO config (
+          //     tenant_id, msg_fam, transaction_type, version, content_type,
+          //     endpoint_path, status, publishing_status, schema, mapping,
+          //     functions, payload, credentials, created_by, created_at, updated_at
+          //   )
+          //   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+          //   RETURNING id;
+          // `;
+
+          // const result = await client.query(insertQuery, [
+          //   tenantId,
+          //   configData.msgFam || '',
+          //   configData.transactionType || '',
+          //   configData.version || 'v1',
+          //   configData.contentType || 'application/json',
+          //   configData.endpointPath || '',
+          //   newStatus, // Set to DEPLOYED status
+          //   configData.publishing_status || 'inactive',
+          //   JSON.stringify(configData.schema || {}),
+          //   JSON.stringify(configData.mapping || []),
+          //   JSON.stringify(configData.functions || []),
+          //   JSON.stringify(configData.payload || {}),
+          //   JSON.stringify(configData.credentials || {}), // Store encrypted credentials as-is
+          //   configData.createdBy || userId,
+          //   configData.createdAt || new Date(),
+          //   new Date(), // updated_at
+          // ]);
 
           this.logger.log(
-            `✅ Successfully inserted raw config data into config table, new record id: ${result.rows[0].id}`,
+            `✅ Successfully inserted raw config data into config table, new record id: ${id}`,
           );
         } finally {
           client.release();
