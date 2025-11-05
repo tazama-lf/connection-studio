@@ -663,7 +663,7 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
       
       const successMessage = editMode 
         ? `Data enrichment endpoint "${formData.name}" updated successfully!`
-        : `Data enrichment endpoint "${formData.name}" created successfully!`;
+        : `Data enrichment endpoint "${formData.name}" created successfully! You can now send it for approval.`;
       setCreateSuccess(successMessage);
       
       // Call the parent's onSave with the created/updated job
@@ -710,6 +710,7 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
       setIsCreating(false);
     }
   };
+
   const renderConfigTypeSelector = () => <div className="mb-6" data-id="element-806">
       <label className="block text-sm font-medium text-gray-700 mb-2" data-id="element-807">
         Configuration Type
@@ -1465,7 +1466,7 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
                   Back to Configuration
                 </Button>
                 <Button variant="primary" onClick={() => setCurrentStep('summary')}>
-                  Send for Approval
+                  Continue
                 </Button>
               </>
             )}
@@ -1476,7 +1477,7 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
                   Back
                 </Button>
                 <Button variant="primary" onClick={handleSave} disabled={isCreating}>
-                  {isCreating ? 'Creating Endpoint...' : 'Send for Approval'}
+                  {isCreating ? 'Saving...' : editMode ? 'Save' : 'Save'}
                 </Button>
               </>
             )}

@@ -3,7 +3,7 @@ import { X, Calendar, Clock, Database, Globe, Settings, Download, Copy } from 'l
 import type { DataEnrichmentJobResponse } from '../types';
 import { Button } from '../../../shared/components/Button';
 import { useAuth } from '../../auth/contexts/AuthContext';
-import { isApprover, isExporter } from '../../../utils/roleUtils';
+import { isApprover, isExporter, isEditor } from '../../../utils/roleUtils';
 import { getJobTypeColor, getStatusColor as getCentralizedStatusColor, getStatusLabel } from '../../../shared/utils/statusColors';
 import { JobRejectionDialog } from '../../../shared/components/JobRejectionDialog';
 
@@ -92,17 +92,17 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
   const { user } = useAuth();
   const userIsApprover = user?.claims ? isApprover(user.claims) : false;
   const userIsExporter = user?.claims ? isExporter(user.claims) : false;
+  const userIsEditor = user?.claims ? isEditor(user.claims) : false;
   
   // State for rejection dialog
   const [showRejectionDialog, setShowRejectionDialog] = useState(false);
 
   // Handle rejection with reason
-  const handleRejectionConfirm = (reason: string) => {
+  const handleRejectionConfirm = (_reason: string) => {
     if (onReject && job) {
       const jobType = getJobType(job) === 'push' ? 'PUSH' : 'PULL';
       // TODO: Update onReject to accept reason when backend is implemented
       onReject(job.id, jobType);
-      console.log('Job rejected with reason:', reason); // For now, just log the reason
       onClose();
     }
   };
@@ -803,7 +803,6 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
           )}
         </div>
 
-        {/* Edit Mode Footer - Shows "Save" button when creating/editing */}
         {editMode && (
           <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4">
             <div className="flex justify-between items-center">
@@ -826,7 +825,6 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
           </div>
         )}
 
-        {/* Clone Mode Footer - Shows "Clone Job" button when in clone mode */}
         {cloneMode && onClone && job && (
           <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4">
             <div className="flex justify-between items-center">
@@ -841,7 +839,6 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                 onClick={() => {
                   if (!job || !onClone) return;
                   
-                  // Create clone data - just pass the modified fields, parent will handle the API call
                   const cloneData = {
                     ...job,
                     endpoint_name: editedJob.endpoint_name || job.endpoint_name,
@@ -862,8 +859,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
           </div>
         )}
 
-        {/* Send for Approval Footer - Show for anyone with editor role when viewing job with status='in-progress' */}
-        {job && !isLoading && !editMode && !cloneMode && job.status === 'in-progress' && onSendForApproval && (
+        {job && !isLoading && !editMode && !cloneMode && userIsEditor && job.status === 'in-progress' && onSendForApproval && ( 
           <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
             <Button
               variant="secondary"
@@ -885,7 +881,6 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
           </div>
         )}
 
-        {/* Action Buttons Footer - Only show for approvers when status is under-review */}
         {job && !isLoading && !editMode && !cloneMode && userIsApprover && (onApprove || onReject) && job.status === 'under-review' && (
           <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
             <Button
@@ -918,8 +913,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
           </div>
         )}
 
-        {/* Export Button Footer - Show for exporters when status is approved (ready to export) */}
-        {job && !isLoading && !editMode && !cloneMode && onExport && userIsExporter && job.status === 'approved' && (
+       {job && !isLoading && !editMode && !cloneMode && onExport && userIsExporter && job.status === 'approved' && (
           <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3 bg-gray-50">
             <Button
               variant="secondary"
@@ -941,9 +935,8 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
           </div>
         )}
 
-        {/* Default Footer - Show when no other specific footer is displayed */}
         {job && !isLoading && !editMode && !cloneMode && 
-         !(job.status === 'in-progress' && onSendForApproval) &&
+         !(userIsEditor && job.status === 'in-progress' && onSendForApproval) &&
          !(userIsApprover && (onApprove || onReject) && job.status === 'under-review') &&
          !(onExport && userIsExporter && job.status === 'approved') && (
           <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3 bg-gray-50">
