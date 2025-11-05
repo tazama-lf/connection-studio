@@ -2401,17 +2401,8 @@ export class ConfigService {
       // Step 1: Prepare config data for export
       const configToExport = { ...config, status: newStatus };
 
-      // Generate CREATE TABLE query
-      const transactionType = config.transactionType.replace(
-        /[^a-zA-Z0-9_]/g,
-        '_',
-      );
-      const tableName = transactionType;
-      (configToExport as any).createTableQuery =
-        `CREATE TABLE IF NOT EXISTS "${tableName}" (
-  id SERIAL PRIMARY KEY,
-  document JSONB NOT NULL,
-);`;
+      
+     
 
       // Step 2: Upload to SFTP (EXACTLY like job/scheduler service)
       await this.sftpService.createFile(fileName, {
