@@ -2,7 +2,7 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
-  NotFoundException,
+  NotFoundException
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
@@ -10,15 +10,15 @@ import {
   AuthType,
   ConfigType,
   ISuccess,
-  Job,
   JobStatus,
   ScheduleStatus,
   SFTPConnection,
-  SourceType,
+  SourceType
 } from '@tazama-lf/tcs-lib';
 import { v4 } from 'uuid';
 import { DatabaseService } from '../database/database.service';
 import { DryRunService } from '../dry-run/dry-run.service';
+import { NotifyService } from '../notify/notify.service';
 import { SftpService } from '../sftp/sftp.service';
 import {
   decrypt,
@@ -28,9 +28,9 @@ import {
 } from '../utils/helpers';
 import { CreatePullJobDto, SFTPConnectionDto } from './dto/create-pull-job.dto';
 import { CreatePushJobDto } from './dto/create-push-job.dto';
-import { NotifyService } from '../notify/notify.service';
-import { UpdatePushJobDto } from './dto/update-push-job.dto';
 import { UpdatePullJobDto } from './dto/update-pull-job.dto';
+import { UpdatePushJobDto } from './dto/update-push-job.dto';
+import { type EndpointJobRecord } from './types/job.interface';
 
 @Injectable()
 export class JobService {
@@ -236,20 +236,25 @@ export class JobService {
     }
   }
 
-  async findAll(page: number, limit: number, tenantId: string): Promise<[]> {
-    if (
-      !Number.isInteger(page) ||
-      !Number.isInteger(limit) ||
-      page < 1 ||
-      limit < 1
-    ) {
-      throw new BadRequestException(
-        'Page and limit must be positive integers.',
-      );
-    }
+  async findAll(
+    page: number,
+    limit: number,
+    tenantId: string
+  ): Promise<EndpointJobRecord[]> {
+    try {
+      if (
+        !Number.isInteger(page) ||
+        !Number.isInteger(limit) ||
+        page < 1 ||
+        limit < 1
+      ) {
+        throw new BadRequestException(
+          'Page and limit must be positive integers.',
+        );
+      }
 
-    const offset = (page - 1) * limit;
-    const query = `
+      const offset = (page - 1) * limit;
+      const query = `
       SELECT 
         id,
         endpoint_name,
@@ -263,7 +268,7 @@ export class JobService {
         created_at,
         'push' AS type
       FROM endpoints
-       WHERE tenant_id = $3
+      WHERE tenant_id = $3
 
       UNION ALL
 
@@ -280,15 +285,21 @@ export class JobService {
         created_at,
         'pull' AS type
       FROM job
+      WHERE tenant_id = $3
 
       ORDER BY created_at DESC
       LIMIT $1 OFFSET $2;
     `;
 
-    const result = await this.db.query(query, [limit, offset, tenantId]);
-
-    return result.rows;
+      const result = await this.db.query(query, [limit, offset, tenantId]);
+      return result.rows as EndpointJobRecord[];
+    } catch (error) {
+      this.loggerService.error(`Error fetching records: ${error.message}`);
+      throw error;
+    }
   }
+
+
 
   async findOne(id: string, type: ConfigType) {
     try {

@@ -328,9 +328,7 @@ export class SftpService implements OnModuleInit, OnModuleDestroy {
     try {
       // Updated regex pattern to match actual file naming: format_tenantId_configId.json
       // Examples: dems_tenant-id_123.json, de_my-tenant_456.json, cron_test-tenant_789.json
-      const regex = new RegExp(
-        `^${format}_${tenant_id}_${uuidPattern}\\.json$`,
-      );
+      const regex = new RegExp(`^${format}_${tenant_id}_[A-Za-z0-9_-]+\\.json$`);
       // First get all files to debug
       const allFiles = await this.producerSftp.list('/upload');
       this.loggerService.log(
