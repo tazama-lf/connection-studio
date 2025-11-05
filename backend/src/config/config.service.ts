@@ -2598,23 +2598,29 @@ export class ConfigService {
         }
       }
 
-      // Step 4: Execute CREATE TABLE query from config
-      if (configData.createTableQuery) {
-        this.logger.log(`📋 Executing CREATE TABLE query from config ${id}:`);
-        this.logger.log(configData.createTableQuery);
+      // Step 4: Execute CREATE TABLE query using transaction_type
+      const transactionType = configData.transactionType || config.transactionType;
+      if (transactionType) {
+        const createTableQuery = `CREATE TABLE IF NOT EXISTS "${transactionType}" (
+  id SERIAL PRIMARY KEY,
+  document JSONB NOT NULL
+);`;
+
+        this.logger.log(`Executing CREATE TABLE query from config ${id}:`);
+        this.logger.log(createTableQuery);
 
         const client = await this.databaseService.getClient();
         try {
-          await client.query(configData.createTableQuery);
+          await client.query(createTableQuery);
           this.logger.log(
-            '✅ Successfully executed CREATE TABLE from deployed config',
+            `Successfully created table "${transactionType}" from deployed config`,
           );
         } finally {
           client.release();
         }
       } else {
         this.logger.warn(
-          `No createTableQuery found in config file ${fileName}`,
+          `No transactionType found in config file ${fileName}`,
         );
       }
 
