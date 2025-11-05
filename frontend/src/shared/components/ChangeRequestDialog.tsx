@@ -47,7 +47,7 @@ export const ChangeRequestDialog: React.FC<ChangeRequestDialogProps> = ({
       <div className="absolute inset-0 backdrop-blur-sm backdrop-saturate-150" onClick={handleClose}></div>
       <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 relative z-10">
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">Request Changes</h3>
+          <h3 className="text-lg font-semibold text-gray-900">Reject Configuration</h3>
           <button
             onClick={handleClose}
             className="text-gray-400 hover:text-gray-600"
@@ -59,16 +59,16 @@ export const ChangeRequestDialog: React.FC<ChangeRequestDialogProps> = ({
         <form onSubmit={handleSubmit} className="p-6">
           <div className="mb-4">
             <p className="text-sm text-gray-600 mb-3">
-              You are requesting changes to the configuration: <strong>{configName}</strong>
+              You are rejecting changes to the configuration: <strong>{configName}</strong>
             </p>
             <p className="text-sm text-gray-600 mb-4">
-              This will send the configuration back to the editor with your change requirements.
+              This will send the configuration back to the editor with your reason for rejection.
             </p>
           </div>
 
           <div className="mb-4">
             <label htmlFor="requestedChanges" className="block text-sm font-medium text-gray-700 mb-2">
-              Requested Changes <span className="text-red-500">*</span>
+              Comments <span className="text-red-500">*</span>
             </label>
             <textarea
               id="requestedChanges"
@@ -102,7 +102,7 @@ export const ChangeRequestDialog: React.FC<ChangeRequestDialogProps> = ({
               variant="primary"
               disabled={!requestedChanges.trim()}
             >
-              Request Changes
+              Submit
             </Button>
           </div>
         </form>

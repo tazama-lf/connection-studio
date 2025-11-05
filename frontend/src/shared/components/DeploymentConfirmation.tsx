@@ -129,7 +129,7 @@ export const DeploymentConfirmation: React.FC<DeploymentConfirmationProps> = ({
       <div className="bg-gray-50 p-6 rounded-md space-y-6" data-id="element-160">
         {/* Endpoint Information */}
         <div data-id="element-161">
-          <h4 className="text-sm font-medium text-gray-700 mb-3" data-id="element-162">📍 Endpoint Information</h4>
+          <h4 className="text-sm font-medium text-gray-700 mb-3" data-id="element-162"> Endpoint Information</h4>
           <div className="bg-white p-4 rounded border border-gray-200 space-y-2">
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -160,7 +160,7 @@ export const DeploymentConfirmation: React.FC<DeploymentConfirmationProps> = ({
 
         {/* Payload/Schema */}
         <div>
-          <h4 className="text-sm font-medium text-gray-700 mb-3">📄 Payload & Schema</h4>
+          <h4 className="text-sm font-medium text-gray-700 mb-3"> Payload & Schema</h4>
           <div className="bg-white p-4 rounded border border-gray-200">
             <div className="space-y-4">
               {configData.payload && (

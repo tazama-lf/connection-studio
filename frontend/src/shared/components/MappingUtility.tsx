@@ -238,8 +238,17 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
         rootNodes.push(node);
       } else {
         // Child node - find parent
-        const parentPath = pathParts.slice(0, -1).join('.');
-        const parentNode = nodeMap.get(parentPath);
+       // For paths like "Othr.0.Id", the parent should be "Othr" not "Othr.0"
+        // So we need to handle .0. notation specially
+        let parentPath = pathParts.slice(0, -1).join('.');
+        let parentNode = nodeMap.get(parentPath);
+        
+        // If parent not found and the immediate parent part is "0" (array index),
+        // try finding the grandparent (skip the .0)
+        if (!parentNode && pathParts.length > 2 && pathParts[pathParts.length - 2] === '0') {
+          parentPath = pathParts.slice(0, -2).join('.');
+          parentNode = nodeMap.get(parentPath);
+        }
         if (parentNode) {
           if (!parentNode.children) {
             parentNode.children = [];
@@ -320,16 +329,82 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       return a.localeCompare(b); // alphabetical for others
     });
 
+    // Helper function to build nested tree structure from dot-separated paths
+    const buildNestedTree = (collectionName: string, fields: DestinationOption[]): TreeNode[] => {
+      // Create a tree structure where each node can have children
+      const rootMap = new Map<string, { node: TreeNode; children: Map<string, any> }>();
+
+      fields.forEach(field => {
+        // Split field path into parts (e.g., "intrBkSttlmAmt.amt" -> ["intrBkSttlmAmt", "amt"])
+        const parts = field.field.split('.');
+        
+        if (parts.length === 1) {
+          // Simple field - add directly to root
+          const fieldName = parts[0];
+          if (!rootMap.has(fieldName)) {
+            rootMap.set(fieldName, {
+              node: {
+                id: field.value,
+                name: fieldName,
+                path: [collectionName, fieldName],
+                type: field.type.toLowerCase() as 'string' | 'number' | 'boolean' | 'date' | 'object' | 'array'
+              },
+              children: new Map()
+            });
+          }
+        } else {
+          // Nested field - build hierarchy
+          let currentLevel = rootMap;
+          let currentPath: string[] = [collectionName];
+          
+          parts.forEach((part, index) => {
+            currentPath = [...currentPath, part];
+            const pathKey = parts.slice(0, index + 1).join('.');
+            const fullPath = `${collectionName}.${pathKey}`;
+            
+            if (!currentLevel.has(part)) {
+              const isLeaf = index === parts.length - 1;
+              currentLevel.set(part, {
+                node: {
+                  id: isLeaf ? field.value : fullPath,
+                  name: part,
+                  path: currentPath,
+                  type: isLeaf 
+                    ? (field.type.toLowerCase() as 'string' | 'number' | 'boolean' | 'date' | 'object' | 'array')
+                    : 'object'
+                },
+                children: new Map()
+              });
+            }
+            
+            // Move to next level
+            const entry = currentLevel.get(part)!;
+            currentLevel = entry.children;
+          });
+        }
+      });
+
+      // Convert map structure to TreeNode array with children
+      const convertMapToNodes = (map: Map<string, any>): TreeNode[] => {
+        return Array.from(map.values()).map(({ node, children }) => {
+          if (children.size > 0) {
+            return {
+              ...node,
+              children: convertMapToNodes(children)
+            };
+          }
+          return node;
+        });
+      };
+
+      return convertMapToNodes(rootMap);
+    };
+
     return sortedCollections.map(([collectionName, fields]) => ({
       id: collectionName,
       name: collectionName.charAt(0).toUpperCase() + collectionName.slice(1),
       path: [collectionName],
-      children: fields.map(field => ({
-        id: field.value,
-        name: field.field,
-        path: [collectionName, field.field],
-        type: field.type.toLowerCase() as 'string' | 'number' | 'boolean' | 'date' | 'object' | 'array'
-      }))
+      children: buildNestedTree(collectionName, fields)
     }));
   };
   const [expandedSourceNodes, setExpandedSourceNodes] = useState<string[]>([]);
@@ -559,7 +634,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
     }
   };
 
-  const renderTree = (nodes: TreeNode[], expanded: string[], toggleFn: (id: string) => void, onSelect: (path: string[], type?: any) => void, selectedPaths: string[] = [], type: 'source' | 'destination' | 'redis' = 'source') => {
+  const renderTree = (nodes: TreeNode[], expanded: string[], toggleFn: (id: string) => void, onSelect: (path: string[], type?: any) => void, selectedPaths: string[] = [], type: 'source' | 'destination' | 'redis' = 'source', depth: number = 0) => {
     return <div className="space-y-1" data-id="element-176">
       {nodes.map((node, index) => {
         const hasChildren = node.children && node.children.length > 0;
@@ -569,14 +644,14 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
         const nodeType = node.id.startsWith('redis') ? 'redis' : type;
         const isRedis = node.id === 'redis';
 
-        return <div key={node.id} className="ml-2" data-id="element-177">
+        return <div key={node.id} data-id="element-177">
           {/* Add spacing and heading before redis section */}
           {isRedis && index > 0 && (
             <div className="mt-4 mb-2">
               <div className="text-sm text-gray-500">Redis Cache (Update)</div>
             </div>
           )}
-          <div className={`flex items-center p-1 rounded hover:bg-gray-100 ${isSelected ? 'bg-blue-100' : ''}`} data-id="element-178">
+          <div className={`flex items-center p-1 rounded hover:bg-gray-100 ${isSelected ? 'bg-blue-100' : ''}`} style={{ paddingLeft: `${depth * 20 + 4}px` }} data-id="element-178">
             {hasChildren ? <button onClick={() => toggleFn(node.id)} className="p-1 text-gray-500 hover:text-gray-700" data-id="element-179">
               <ChevronRightIcon size={16} className={`transform transition-transform ${isExpanded ? 'rotate-90' : ''}`} data-id="element-180" />
             </button> : <span className="w-6" data-id="element-181"></span>}
@@ -600,9 +675,9 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
               </span>
             )}
           </div>
-          {hasChildren && isExpanded && <div className="ml-4 pl-2 border-l border-gray-200" data-id="element-187">
-            {renderTree(node.children ?? [], expanded, toggleFn, onSelect, selectedPaths, nodeType)}
-          </div>}
+          {hasChildren && isExpanded && (
+            renderTree(node.children ?? [], expanded, toggleFn, onSelect, selectedPaths, nodeType, depth + 1)
+          )}
         </div>;
       })}
     </div>;

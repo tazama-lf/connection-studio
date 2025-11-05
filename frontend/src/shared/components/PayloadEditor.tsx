@@ -727,18 +727,18 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
 
 
   const sampleJsonPayload = `{
-  "transaction": {
-    "id": "TX12345",
-    "amount": 100.5,
-    "currency": "USD",
-    "status": "pending"
-  },
-  "customer": {
-    "id": "C789",
-    "name": "John Doe",
-    "email": "john@example.com"
-  }
-}`;
+    "transaction": {
+      "id": "TX12345",
+      "amount": 100.5,
+      "currency": "USD",
+      "status": "pending"
+    },
+    "customer": {
+      "id": "C789",
+      "name": "John Doe",
+      "email": "john@example.com"
+    }
+  }`;
 
   const sampleXmlPayload = `<?xml version="1.0" encoding="UTF-8"?>
 <Document xmlns="urn:iso:std:iso:20022:tech:xsd:pacs.008.001.11">

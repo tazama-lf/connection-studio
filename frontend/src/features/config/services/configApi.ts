@@ -263,9 +263,9 @@ export class ConfigApiService {
         headers: this.getAuthHeaders(),
       });
 
-      const responseData = await this.handleResponse<{success: boolean, configs: Config[]} | Config[]>(response);
+      const responseData = await this.handleResponse<{ success: boolean, configs: Config[] } | Config[]>(response);
       console.log('Fetched configs raw response:', responseData);
-      
+
       // Handle both response formats: {success: true, configs: [...]} or direct array [...]
       let configsArray: Config[] = [];
       if (Array.isArray(responseData)) {
@@ -277,11 +277,11 @@ export class ConfigApiService {
         configsArray = Array.isArray(responseData.configs) ? responseData.configs : [];
         console.log('Response is object with configs property, length:', configsArray.length);
       }
-      
+
       const result = { configs: configsArray };
       console.log('Final wrapped response:', result);
       console.log('Final configs count:', result.configs.length);
-      
+
       return result;
     } catch (error) {
       console.error('Configs fetch failed:', error);
@@ -305,13 +305,13 @@ export class ConfigApiService {
 
       console.log('🚀 getPendingApprovals - Raw response status:', response.status);
       console.log('🚀 getPendingApprovals - Raw response ok:', response.ok);
-      
+
       const responseData = await this.handleResponse<any>(response);
       console.log('✅ getPendingApprovals - Full response data:', responseData);
       console.log('✅ getPendingApprovals - Response type:', typeof responseData);
       console.log('✅ getPendingApprovals - Response has success:', 'success' in responseData);
       console.log('✅ getPendingApprovals - Response has configs:', 'configs' in responseData);
-      
+
       // Handle the actual response structure from admin service: { success: true, configs: [...] }
       if (responseData && typeof responseData === 'object' && 'configs' in responseData) {
         console.log('✅ getPendingApprovals - Response has configs property, configs length:', responseData.configs?.length);
@@ -460,11 +460,11 @@ export class ConfigApiService {
       console.log('🚀 configApi.updateConfigStatus called:');
       console.log('  - Config ID:', id);
       console.log('  - New status:', status);
-      
+
       const url = `${this.baseURL}/config/update/status/${id}?status=${status}`;
       const headers = this.getAuthHeaders();
       const method = 'PATCH';
-      
+
       console.log('📤 About to send request:');
       console.log('  - URL:', url);
       console.log('  - Method:', method);
@@ -559,10 +559,15 @@ export class ConfigApiService {
       const response = await fetch(`${this.baseURL}/config/${id}/reject`, {
         method: 'PATCH',
         headers: this.getAuthHeaders(),
-        body: reason ? JSON.stringify({ reason }) : undefined,
+        body: JSON.stringify({
+          userId: 'system', // Backend extracts real user from JWT
+          userRole: 'approver', // Backend validates role from JWT claims
+          rejectionReason: reason || 'Configuration rejected by approver',
+        }),
       });
 
-      return await this.handleResponse<ConfigResponse>(response);
+      const result = await this.handleResponse<ConfigResponse>(response);
+      return result;
     } catch (error) {
       console.error('Config rejection failed:', error);
       throw error;
@@ -576,9 +581,9 @@ export class ConfigApiService {
         {
           method: 'POST',
           headers: this.getAuthHeaders(),
-          body: JSON.stringify({ 
+          body: JSON.stringify({
             notes: notes || 'Deployed to production',
-            actionBy: 'publisher' 
+            actionBy: 'publisher'
           }),
         },
       );
@@ -655,13 +660,13 @@ export class ConfigApiService {
       console.log(`🚀 Updating status to EXPORTED for config ID: ${id}`);
       console.log(`📋 Comment: "${comment || 'Status updated to exported'}"`);
       console.log(`🔗 API endpoint: ${this.baseURL}/config/${id}/update-status-to-exported`);
-      
-      const requestBody = { 
+
+      const requestBody = {
         comment: comment || 'Status updated to exported',
         userId: 'system', // Backend extracts real user from JWT
       };
       console.log('📤 Request body:', requestBody);
-      
+
       const response = await fetch(
         `${this.baseURL}/config/${id}/update-status-to-exported`,
         {
@@ -672,7 +677,7 @@ export class ConfigApiService {
       );
 
       console.log(`📡 Response status: ${response.status} ${response.statusText}`);
-      
+
       const result = await this.handleResponse<ConfigResponse>(response);
       console.log(`✅ Status update successful for config ${id}:`, result);
       return result;
@@ -687,14 +692,14 @@ export class ConfigApiService {
       console.log(`🚀 Starting export for config ID: ${id}`);
       console.log(`📋 Export notes: "${notes || 'Exported for deployment'}"`);
       console.log(`🔗 Export endpoint: ${this.baseURL}/config/${id}/workflow/export`);
-      
-      const requestBody = { 
+
+      const requestBody = {
         comment: notes || 'Exported for deployment',
         userId: 'system', // Backend extracts real user from JWT
         userRole: 'exporter' // Backend validates role from JWT claims
       };
       console.log('📤 Request body:', requestBody);
-      
+
       const response = await fetch(
         `${this.baseURL}/config/${id}/workflow/export`,
         {
@@ -706,7 +711,7 @@ export class ConfigApiService {
 
       console.log(`📡 Response status: ${response.status} ${response.statusText}`);
       console.log(`📡 Response headers:`, Object.fromEntries(response.headers.entries()));
-      
+
       const result = await this.handleResponse<ConfigResponse>(response);
       console.log(`✅ Export successful for config ${id}:`, result);
       return result;
@@ -728,9 +733,9 @@ export class ConfigApiService {
         headers: this.getAuthHeaders(),
       });
 
-      const responseData = await this.handleResponse<{success: boolean, configs: Config[]} | Config[]>(response);
+      const responseData = await this.handleResponse<{ success: boolean, configs: Config[] } | Config[]>(response);
       console.log(`Fetched all configs for ${status} filtering:`, responseData);
-      
+
       // Handle both response formats: {success: true, configs: [...]} or direct array [...]
       let configsArray: Config[] = [];
       if (Array.isArray(responseData)) {
@@ -738,40 +743,40 @@ export class ConfigApiService {
       } else if (responseData && typeof responseData === 'object' && 'configs' in responseData) {
         configsArray = Array.isArray(responseData.configs) ? responseData.configs : [];
       }
-      
+
       // Filter by status on frontend
       console.log(`🔍 All configs before filtering:`, configsArray.map(c => ({ id: c.id, status: c.status })));
-      
+
       const filteredConfigs = configsArray.filter(config => {
         const configStatus = config.status?.toLowerCase() || '';
         const targetStatus = status.toLowerCase();
-        
+
         let matches = false;
         // Handle both formats: 'approved' and 'STATUS_04_APPROVED'
         if (targetStatus === 'approved') {
-          matches = configStatus === 'approved' || 
-                   configStatus === 'status_04_approved' ||
-                   configStatus.includes('approved');
+          matches = configStatus === 'approved' ||
+            configStatus === 'status_04_approved' ||
+            configStatus.includes('approved');
         } else if (targetStatus === 'exported') {
-          matches = configStatus === 'exported' || 
-                   configStatus === 'status_06_exported' ||
-                   configStatus.includes('exported');
+          matches = configStatus === 'exported' ||
+            configStatus === 'status_06_exported' ||
+            configStatus.includes('exported');
         } else {
           matches = configStatus === targetStatus;
         }
-        
+
         if (matches) {
           console.log(`✅ Config ${config.id} matches ${targetStatus}: ${config.status}`);
         }
-        
+
         return matches;
       });
-      
+
       console.log(`🔍 Filtered configs for ${status}:`, filteredConfigs.map(c => ({ id: c.id, status: c.status })));
-      
+
       const result = { configs: filteredConfigs };
       console.log(`Final ${status} configs:`, result.configs.length);
-      
+
       return result;
     } catch (error) {
       console.error(`Failed to fetch ${status} configs:`, error);

@@ -41,7 +41,7 @@ const ApproverDEMS: React.FC<ApproverDEMSProps> = ({ onBack }) => {
       // Allow empty reason, don't cancel on empty string
       
       console.log('Rejecting config:', configId, 'with reason:', reason);
-      const result = await configApi.requestChanges(configId, reason || 'Configuration rejected by approver');
+      const result = await configApi.rejectConfig(configId, reason || 'Configuration rejected by approver');
       
       if (result.success) {
         showSuccess('Configuration rejected and returned to editor for changes');

@@ -101,7 +101,7 @@ const ApproverConfigsPage: React.FC = () => {
     if (!configToRequestChanges) return;
 
     try {
-      const response = await configApi.requestChanges(configToRequestChanges.id, requestedChanges);
+      const response = await configApi.rejectConfig(configToRequestChanges.id, requestedChanges);
       if (response.success) {
         showSuccess('Change request sent to editor successfully');
         setRefreshKey(prev => prev + 1);

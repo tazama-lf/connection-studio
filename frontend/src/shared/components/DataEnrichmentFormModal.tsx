@@ -523,7 +523,7 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
       // Build the request payload based on source type
       const basePayload: any = {
         endpoint_name: formData.name,
-        source_type: formData.sourceType.toUpperCase() as 'HTTP' | 'SFTP',
+        source_type: formData.sourceType.toUpperCase() as 'HTTPS' | 'SFTP',
         description: formData.description,
         table_name: formData.targetTable || formData.name.toLowerCase().replace(/\s+/g, '_'),
         mode: formData.ingestMode as 'append' | 'replace',
@@ -749,7 +749,7 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
           </label>
           <select id="sourceType" name="sourceType" value={formData.sourceType} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required data-id="element-825">
             <option value="sftp" data-id="element-826">SFTP</option>
-            <option value="http" data-id="element-827">HTTP</option>
+            <option value="http" data-id="element-827">HTTPS</option>
           </select>
         </div>
       </div>
@@ -1128,11 +1128,11 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
               value={formData.endpointVersion} 
               onChange={handleInputChange} 
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" 
-              placeholder="/v1/enrich" 
+              placeholder="1.0" 
               required 
               data-id="element-900a" 
             />
-            <p className="mt-1 text-xs text-gray-500">e.g., /v1/enrich, /v2/enrich</p>
+          
           </div>
           <div className="md:col-span-3" data-id="element-896b">
             <label htmlFor="endpointPath" className="block text-sm font-medium text-gray-700 mb-1" data-id="element-897">
@@ -1149,7 +1149,7 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
               required 
               data-id="element-900" 
             />
-            <p className="mt-1 text-xs text-gray-500">Full path: {formData.endpointVersion || '/v1/enrich'}{formData.endpointPath || '/customers/data'}</p>
+            <p className="mt-1 text-xs text-gray-500">Full path: {formData.endpointVersion || '1.0'}{formData.endpointPath || '/customers/data'}</p>
           </div>
         </div>
       </div>
@@ -1321,7 +1321,7 @@ export const DataEnrichmentFormModal: React.FC<DataEnrichmentFormModalProps> = (
             <div className="col-span-2 text-sm text-gray-900 flex items-center" data-id="element-1001">
               {configurationType === 'pull' ? <>
                   <DownloadIcon size={16} className="mr-1 text-blue-500" data-id="element-1002" />
-                  Pull Configuration (SFTP/HTTP)
+                  Pull Configuration (SFTP/HTTPS)
                 </> : <>
                   <UploadIcon size={16} className="mr-1 text-purple-500" data-id="element-1003" />
                   Push Configuration (REST API)

@@ -218,7 +218,7 @@ export const ExportedItemsList: React.FC<ExportedItemsListProps> = (props) => {
                 </th>
               )}
               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                {format === 'dems' ? 'CREATED TIME' : 'MODIFIED'}
+              CREATED AT
               </th>
               <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
                 ACTIONS
@@ -230,6 +230,7 @@ export const ExportedItemsList: React.FC<ExportedItemsListProps> = (props) => {
               const isFirstRow = index === 0;
               const isLastRow = index === filteredFiles.length - 1;
               const forceDirection = isFirstRow ? 'top' : isLastRow ? 'top' : 'auto';
+              
               
               const fileData = format === 'dems' ? demsFileData[file.name] : null;
               

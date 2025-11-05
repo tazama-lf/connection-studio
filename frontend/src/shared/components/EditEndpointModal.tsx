@@ -342,7 +342,7 @@ interface EditEndpointModalProps {
             
             // Set the existing config as the "created" endpoint for all subsequent steps
             setCreatedEndpoint(config);
-            setInferredSchema(config.schema);
+            setInferredSchema(config);
             
             // Load existing functions if available
             if (config.functions && Array.isArray(config.functions)) {
