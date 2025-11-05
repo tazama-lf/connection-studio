@@ -21,6 +21,13 @@ interface DemsFileData {
   transactionType?: string;
 }
 
+// Helper function for descending order sort
+const descOrder = (a: string, b: string) => {
+  if (a < b) return 1;
+  if (a > b) return -1;
+  return 0;
+};
+
 export const ExportedItemsList: React.FC<ExportedItemsListProps> = (props) => {
   const {
     files,
@@ -33,12 +40,10 @@ export const ExportedItemsList: React.FC<ExportedItemsListProps> = (props) => {
 
   const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
   const [demsFileData, setDemsFileData] = useState<Record<string, DemsFileData>>({});
-  const [loadingDemsData, setLoadingDemsData] = useState(false);
 
   // Load DEMS file content when format is 'dems'
   useEffect(() => {
     if (format === 'dems' && files.length > 0) {
-      setLoadingDemsData(true);
       const loadDemsData = async () => {
         const newDemsData: Record<string, DemsFileData> = {};
         
@@ -64,7 +69,6 @@ export const ExportedItemsList: React.FC<ExportedItemsListProps> = (props) => {
         }
         
         setDemsFileData(newDemsData);
-        setLoadingDemsData(false);
       };
       
       loadDemsData();
@@ -72,19 +76,32 @@ export const ExportedItemsList: React.FC<ExportedItemsListProps> = (props) => {
   }, [format, files]);
 
   // Filter files based on search query
-  const filteredFiles = files.filter(file => {
-    const query = searchQuery.toLowerCase();
-    if (format === 'dems') {
-      const fileData = demsFileData[file.name];
-      return (
-        file.name.toLowerCase().includes(query) ||
-        (fileData?.endpointPath?.toLowerCase().includes(query)) ||
-        (fileData?.transactionType?.toLowerCase().includes(query)) ||
-        (fileData?.status?.toLowerCase().includes(query))
-      );
-    }
-    return file.name.toLowerCase().includes(query);
-  });
+  const filteredFiles = files
+    .filter(file => {
+      const query = searchQuery.toLowerCase();
+      if (format === 'dems') {
+        const fileData = demsFileData[file.name];
+        return (
+          file.name.toLowerCase().includes(query) ||
+          (fileData?.endpointPath?.toLowerCase().includes(query)) ||
+          (fileData?.transactionType?.toLowerCase().includes(query)) ||
+          (fileData?.status?.toLowerCase().includes(query))
+        );
+      }
+      return file.name.toLowerCase().includes(query);
+    })
+    .sort((a, b) => {
+      // Sort by created_at in descending order
+      if (format === 'dems') {
+        const aCreatedAt = demsFileData[a.name]?.createdAt;
+        const bCreatedAt = demsFileData[b.name]?.createdAt;
+        if (aCreatedAt && bCreatedAt) {
+          return descOrder(aCreatedAt, bCreatedAt);
+        }
+      }
+      // For non-DEMS or when createdAt is not available, sort by modifyTime
+      return descOrder(a.modifyTime.toString(), b.modifyTime.toString());
+    });
 
   // Load DEMS file content to get endpoint paths and statuses
   useEffect(() => {
@@ -230,7 +247,7 @@ export const ExportedItemsList: React.FC<ExportedItemsListProps> = (props) => {
               const isFirstRow = index === 0;
               const isLastRow = index === filteredFiles.length - 1;
               const forceDirection = isFirstRow ? 'top' : isLastRow ? 'top' : 'auto';
-              
+
               
               const fileData = format === 'dems' ? demsFileData[file.name] : null;
               

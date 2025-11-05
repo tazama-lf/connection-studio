@@ -14,7 +14,7 @@ import { isExporter, isPublisher } from '../../../utils/roleUtils';
 type TabType = 'cron' | 'de' | 'dems';
 
 const PublisherExportedItemsPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<TabType>('cron');
+  const [activeTab, setActiveTab] = useState<TabType>('dems');
   const [searchTerm, setSearchTerm] = useState('');
   
   // SFTP Exported Items state
