@@ -2555,6 +2555,11 @@ export class ConfigService {
 
         const client = await this.databaseService.getClient();
         try {
+      this.logger.log(`🔍 Raw configData from SFTP: ${JSON.stringify(Object.keys(configData))}`);
+      this.logger.log(`🔍 configData.mapping exists: ${!!configData.mapping}, type: ${typeof configData.mapping}`);
+      this.logger.log(`🔍 configData.functions exists: ${!!configData.functions}, type: ${typeof configData.functions}`);
+      this.logger.log(`🔍 configData.schema exists: ${!!configData.schema}, type: ${typeof configData.schema}`);
+      
       const configWithId = { ...configData};
       configWithId.msg_fam = configData.msgFam || '';
       delete configWithId.msgFam;
@@ -2567,9 +2572,20 @@ export class ConfigService {
       configWithId.status = newStatus; // Set to DEPLOYED status
       configWithId.publishing_status =
       configData.publishing_status = configData.publishing_status|| 'active';
-      configWithId.mapping = configData.mapping;
-      delete configWithId.mapping
-        configWithId.tenant_id = tenantId;
+      
+      configWithId.schema = typeof configData.schema === 'string' 
+        ? configData.schema 
+        : JSON.stringify(configData.schema || {});
+      configWithId.mapping = typeof configData.mapping === 'string' 
+        ? configData.mapping 
+        : JSON.stringify(configData.mapping || null);
+      configWithId.functions = typeof configData.functions === 'string'
+        ? configData.functions
+        : JSON.stringify(configData.functions || null);
+        
+      this.logger.log(`🔍 After processing - schema length: ${configWithId.schema?.length}, mapping length: ${configWithId.mapping?.length}, functions length: ${configWithId.functions?.length}`);
+      
+      configWithId.tenant_id = tenantId;
         delete configWithId.tenantId;
         configWithId.created_by = configData.createdBy;
         delete configWithId.createdBy;
