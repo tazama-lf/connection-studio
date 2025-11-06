@@ -12,6 +12,7 @@ import { SftpService } from '../sftp/sftp.service';
 import { validateCronExpression } from '../utils/helpers';
 import { CreateScheduleJobDto } from './dto/create-schedule.dto';
 import { UpdateScheduleJobDto } from './dto/update-schedule-dto';
+import { AdminServiceClient } from 'src/services/admin-service-client.service';
 
 @Injectable()
 export class SchedulerService {
@@ -19,11 +20,13 @@ export class SchedulerService {
     private readonly db: DatabaseService,
     private readonly loggerService: LoggerService,
     private readonly sftpService: SftpService,
-  ) {}
+    private readonly adminServiceClient: AdminServiceClient
+  ) { }
 
   async create(
     schedule: CreateScheduleJobDto,
     tenantId: string,
+    token: string,
     status: JobStatus = JobStatus.INPROGRESS,
   ): Promise<ISuccess> {
     try {
@@ -31,25 +34,30 @@ export class SchedulerService {
 
       const scheduleWithId = {
         ...schedule,
-        id: schedule?.id ?? v4(),
+        id: schedule.id ?? v4(),
         tenant_id: tenantId,
         status,
       };
+
+
       const keys = Object.keys(scheduleWithId);
       const values = Object.values(scheduleWithId);
       const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
 
       const insertQuery = `
-      INSERT INTO schedule (${keys.join(', ')})
-      VALUES (${placeholders})
-      RETURNING id;
-    `;
+        INSERT INTO schedule (${keys.join(', ')})
+        VALUES (${placeholders})
+        RETURNING id;
+      `;
       const result = await this.db.query(insertQuery, values);
-      const insertedId = result.rows[0].id;
+      const id = result.rows[0].id;
+
+
+      // const {id} = await this.adminServiceClient.createSchedule(scheduleWithId, token)
 
       return {
         success: true,
-        message: `Schedule with id ${insertedId} successfully created`,
+        message: `Schedule with id ${id} successfully created`,
       };
     } catch (error) {
       this.loggerService.error(
@@ -134,10 +142,50 @@ export class SchedulerService {
     }
   }
 
+  async findByStatus(
+    status: JobStatus,
+    page: number,
+    limit: number,
+    tenant_id: string
+  ): Promise<[]> {
+    try {
+      if (!status || !page || !limit) {
+        throw new BadRequestException('Status, page, and limit are required.');
+      }
+
+      if (page < 1 || limit < 1) {
+        throw new BadRequestException(
+          'Page and limit must be positive integers.',
+        );
+      }
+
+      const offset = (page - 1) * limit;
+
+      const query = `
+      SELECT *
+      FROM schedule
+      WHERE tenant_id = $1
+        AND status = $2
+      ORDER BY created_at DESC
+      LIMIT $3 OFFSET $4;
+    `;
+
+      const result = await this.db.query(query, [tenant_id, status, limit, offset]);
+      return result.rows;
+    } catch (err) {
+      this.loggerService.error(
+        `Error fetching records by status: ${err.message}`,
+      );
+      throw new BadRequestException(err.message);
+    }
+  }
+
   async updateStatus(
     id: string,
     tenantId: string,
     status: JobStatus,
+    token: string,
+    reason?: string
   ): Promise<ISuccess> {
     try {
       if (!status) {
@@ -149,6 +197,14 @@ export class SchedulerService {
       const fileName = `cron_${tenantId}_${id}`;
 
       switch (status) {
+        case JobStatus.REJECTED: {
+          if (!reason) {
+            throw new BadRequestException(
+              'Rejection reason is required when rejecting a job.',
+            );
+          }
+          break;
+        }
         case JobStatus.EXPORTED: {
           const existing = await this.findOne(id);
           await this.sftpService.createFile(fileName, {
@@ -161,12 +217,11 @@ export class SchedulerService {
           );
           break;
         }
-
         case JobStatus.DEPLOYED: {
           const existing = await this.sftpService.readFile(
             `cron_${tenantId}_${id}`,
           );
-          await this.create(existing, tenantId, JobStatus.DEPLOYED);
+          await this.create(existing, tenantId, token, JobStatus.DEPLOYED);
           await this.sftpService.deleteFile(fileName);
           return {
             success: true,
@@ -178,14 +233,25 @@ export class SchedulerService {
           break;
       }
 
-      const query = `
-                  UPDATE schedule
-                   SET status = $1, updated_at = NOW()
-                       WHERE id = $2
-                          RETURNING *;
-                      `;
+      const query =
+        status === JobStatus.REJECTED
+          ? `
+          UPDATE schedule
+          SET status = $1, comments = $2, updated_at = NOW()
+          WHERE id = $3
+          RETURNING id;
+        `
+          : `
+          UPDATE schedule
+          SET status = $1, updated_at = NOW()
+          WHERE id = $2
+          RETURNING id;
+        `;
 
-      const result = await this.db.query(query, [status, id]);
+      const params =
+        status === JobStatus.REJECTED ? [status, reason, id] : [status, id];
+
+      const result = await this.db.query(query, params);
 
       if (result.rowCount === 0) {
         throw new NotFoundException(`Record with id "${id}" not found`);

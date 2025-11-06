@@ -25,10 +25,6 @@ describe('SchedulerService', () => {
           },
         },
         {
-          provide: ConfigService,
-          useValue: {},
-        },
-        {
           provide: SftpService,
           useValue: {},
         },
