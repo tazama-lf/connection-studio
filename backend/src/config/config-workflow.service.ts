@@ -92,6 +92,7 @@ export class ConfigWorkflowService {
       result.canDeploy = [
         ConfigStatus.APPROVED,
         ConfigStatus.EXPORTED,
+        ConfigStatus.READY_FOR_DEPLOYMENT,
       ].includes(currentStatus as any);
     }
     return result;

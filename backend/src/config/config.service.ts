@@ -2704,18 +2704,7 @@ export class ConfigService {
         `Successfully updated original config ${id} status to ${newStatus} in database`,
       );
 
-      // Step 7: Notify DEMS (Data Enrichment Microservice) via NATS
-      this.logger.log(`Sending NATS notification to DEMS for config ${id}`);
-      await this.notifyService.notifyDems(id.toString(), tenantId, {
-        transactionType: configData.transactionType || config.transactionType,
-        tableName:
-          configData.tableName || `transaction_${config.transactionType}`,
-        endpointPath:
-          configData.endpointPath || `/api/${config.transactionType}`,
-        createTableQuery: configData.createTableQuery || '',
-      });
-
-      this.logger.log(`✅ NATS notification sent to DEMS for config ${id}`);
+  
 
       // Return success (EXACTLY like job/scheduler service)
       return {
