@@ -9,6 +9,16 @@ import { getStatusColor, getStatusLabel } from '../../../shared/utils/statusColo
 import { useToast } from '../../../shared/providers/ToastProvider';
 import { dataEnrichmentApi } from '../services';
 
+const STATUS_OPTIONS = [
+  { value: 'ALL', label: 'All Statuses' },
+  { value: 'in-progress', label: 'In Progress' },
+  { value: 'approved', label: 'Approved' },
+  { value: 'exported', label: 'Exported' },
+  { value: 'deployed', label: 'Deployed' },
+  { value: 'rejected', label: 'Rejected' },
+  { value: 'suspended', label: 'Suspended' }
+] as const;
+
 interface JobListProps {
   jobs: DataEnrichmentJobResponse[];
   isLoading?: boolean;
@@ -208,38 +218,165 @@ export const JobList: React.FC<JobListProps> = (props) => {
     );
   }
 
+  // Check if any filters are active
+  const hasActiveFilters = 
+    (statusFilter && statusFilter !== 'ALL') ||
+    (typeFilter && typeFilter !== 'ALL') ||
+    (searchQuery && searchQuery.trim() !== '');
+
   if (!jobs || jobs.length === 0) {
     console.log('⚠️ Rendering NO JOBS FOUND state');
     console.log('Reason: jobs =', jobs, '| jobs.length =', jobs?.length);
     
-    // Check if any filters are active
-    const hasActiveFilters = 
-      (statusFilter && statusFilter !== 'ALL') ||
-      (typeFilter && typeFilter !== 'ALL') ||
-      (searchQuery && searchQuery.trim() !== '');
-    
     if (hasActiveFilters) {
-      // Show "no results match filters" message with button to clear filters
+      // Show table with filters but empty body when filters are active
       return (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12">
-          <div className="text-center">
-            {/* <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-              <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-              </svg>
-            </div> */}
-           
-            {/* <Button 
-              onClick={() => {
-                // Clear all filters
-                onStatusFilterChange?.('ALL');
-                onTypeFilterChange?.('ALL');
-                onRefresh?.();
-              }} 
-              variant="primary"
-            >
-              Refresh
-            </Button> */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+          <div className="overflow-x-auto">
+            <table className="min-w-full relative w-full">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th 
+                    className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort('endpoint_path')}
+                  >
+                    <div className="flex items-center space-x-1">
+                      <span>ENDPOINT PATH</span>
+                      {sortField === 'endpoint_path' && (
+                        sortDirection === 'asc' ? 
+                          <ChevronUpIcon className="w-4 h-4 ml-1" /> : 
+                          <ChevronDownIcon className="w-4 h-4 ml-1" />
+                      )}
+                    </div>
+                  </th>
+                  <th 
+                    className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort('type')}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <span>TYPE</span>
+                      <div className="relative filter-dropdown">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setTypeDropdownOpen(!typeDropdownOpen);
+                          }}
+                          className="p-1 hover:bg-gray-200 rounded transition-colors"
+                          title="Filter by type"
+                        >
+                          <ChevronDown size={16} className={`text-gray-500 transition-transform ${typeDropdownOpen ? 'rotate-180' : ''}`} />
+                        </button>
+                        {typeDropdownOpen && (
+                          <div className="absolute top-full left-0 mt-1 w-48 bg-white rounded-md shadow-lg z-[999] border border-gray-200 dropdown-menu">
+                            <div className="py-1">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onTypeFilterChange?.('ALL');
+                                  setTypeDropdownOpen(false);
+                                }}
+                                className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${typeFilter === 'ALL' ? 'bg-gray-100 font-medium' : 'text-gray-700'}`}
+                              >
+                                All Types
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onTypeFilterChange?.('push');
+                                  setTypeDropdownOpen(false);
+                                }}
+                                className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${typeFilter === 'push' ? 'bg-gray-100 font-medium' : 'text-gray-700'}`}
+                              >
+                                Push
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onTypeFilterChange?.('pull');
+                                  setTypeDropdownOpen(false);
+                                }}
+                                className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${typeFilter === 'pull' ? 'bg-gray-100 font-medium' : 'text-gray-700'}`}
+                              >
+                                Pull
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </th>
+                  <th 
+                    className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort('status')}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <FilterIcon className="w-4 h-4 text-gray-400" />
+                      <span>STATUS</span>
+                      <div className="relative filter-dropdown">
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setStatusDropdownOpen(!statusDropdownOpen);
+                          }}
+                          className="p-1 hover:bg-gray-200 rounded transition-colors"
+                          title="Filter by status"
+                        >
+                          <ChevronDown size={16} className={`text-gray-500 transition-transform ${statusDropdownOpen ? 'rotate-180' : ''}`} />
+                        </button>
+                        {statusDropdownOpen && (
+                          <div className="absolute top-full left-0 mt-1 w-48 bg-white rounded-md shadow-lg z-[999] border border-gray-200 dropdown-menu">
+                            <div className="py-1">
+                              {STATUS_OPTIONS.map((option) => (
+                                <button
+                                  key={option.value}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    if (onStatusFilterChange) {
+                                      onStatusFilterChange(option.value as JobStatus | 'ALL');
+                                    }
+                                    setStatusDropdownOpen(false);
+                                  }}
+                                  className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${
+                                    statusFilter === option.value ? 'bg-gray-100 font-medium' : 'text-gray-700'
+                                  }`}
+                                >
+                                  {option.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </th>
+                  <th 
+                    className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort('created_at')}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <span>CREATED TIME</span>
+                      {sortField === 'created_at' && (
+                        sortDirection === 'asc' ? 
+                          <ChevronUpIcon className="w-4 h-4 ml-1" /> : 
+                          <ChevronDownIcon className="w-4 h-4 ml-1" />
+                      )}
+                    </div>
+                  </th>
+                  <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    ACTIONSxxx
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white">
+                <tr>
+                  <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                    No jobs found
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       );
@@ -251,7 +388,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
         <div className="text-center">
           <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
             <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 016.586 13H4" />
             </svg>
           </div>
           <h3 className="text-lg font-medium text-gray-900 mb-2">No Data Enrichment Jobs Yet</h3>
@@ -261,24 +398,6 @@ export const JobList: React.FC<JobListProps> = (props) => {
               Refresh
             </Button>
           )}
-        </div>
-      </div>
-    );
-  }
-
-  if (jobs.length === 0 && searchQuery.trim()) {
-    return (
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12">
-        <div className="text-center">
-          <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-            <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-          </div>
-          <h3 className="text-base font-medium text-gray-900 mb-2">No endpoints match your search</h3>
-            <p className="text-sm text-gray-500 mb-6">
-              Try adjusting your search terms or browse all endpoints.
-            </p>
         </div>
       </div>
     );
@@ -311,11 +430,11 @@ export const JobList: React.FC<JobListProps> = (props) => {
               >
                 <div className="flex items-center space-x-2">
                   <span>TYPE</span>
-                  {sortField === 'type' && (
+                  {/* {sortField === 'type' && (
                     sortDirection === 'asc' ? 
                       <ChevronUpIcon className="w-4 h-4 ml-1" /> : 
                       <ChevronDownIcon className="w-4 h-4 ml-1" />
-                  )}
+                  )} */}
                   <div className="relative filter-dropdown">
                     <button
                       onClick={(e) => {
@@ -373,11 +492,11 @@ export const JobList: React.FC<JobListProps> = (props) => {
                 <div className="flex items-center space-x-2">
                   <FilterIcon className="w-4 h-4 text-gray-400" />
                   <span>STATUS</span>
-                  {sortField === 'status' && (
+                  {/* {sortField === 'status' && (
                     sortDirection === 'asc' ? 
                       <ChevronUpIcon className="w-4 h-4 ml-1" /> : 
                       <ChevronDownIcon className="w-4 h-4 ml-1" />
-                  )}
+                  )} */}
                   <div className="relative filter-dropdown">
                     <button
                       onClick={(e) => {
@@ -398,82 +517,24 @@ export const JobList: React.FC<JobListProps> = (props) => {
                     {statusDropdownOpen && (
                       <div className="absolute top-full left-0 mt-1 w-48 bg-white rounded-md shadow-lg z-[999] border border-gray-200 dropdown-menu">
                         <div className="py-1">
-                          <button
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              console.log('=== STATUS FILTER CLICKED ===');
-                              console.log('Changing status filter to: ALL');
-                              console.log('onStatusFilterChange function:', typeof onStatusFilterChange);
-                              console.log('User roles:', { userIsEditor, userIsApprover, userIsExporter });
-                              
-                              if (onStatusFilterChange) {
-                                onStatusFilterChange('ALL');
-                                console.log('✅ Status filter changed to ALL');
-                              } else {
-                                console.error('❌ onStatusFilterChange not available');
-                              }
-                              
-                              setStatusDropdownOpen(false);
-                              console.log('Status filter change complete');
-                            }}
-                            className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${statusFilter === 'ALL' ? 'bg-gray-100 font-medium' : 'text-gray-700'}`}
-                          >
-                            All Statuses
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              console.log('=== STATUS FILTER CLICKED ===');
-                              console.log('Changing status filter to: pending');
-                              console.log('onStatusFilterChange function:', typeof onStatusFilterChange);
-                              console.log('User roles:', { userIsEditor, userIsApprover, userIsExporter });
-                              
-                              if (onStatusFilterChange) {
-                                onStatusFilterChange('in-progress');
-                                console.log('✅ Status filter changed to in-progress');
-                              } else {
-                                console.error('❌ onStatusFilterChange not available');
-                              }
-                              
-                              setStatusDropdownOpen(false);
-                              console.log('Status filter change complete');
-                            }}
-                            className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${statusFilter === 'in-progress' ? 'bg-gray-100 font-medium' : 'text-gray-700'}`}
-                          >
-                            In Progress
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onStatusFilterChange?.('approved');
-                              setStatusDropdownOpen(false);
-                            }}
-                            className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${statusFilter === 'approved' ? 'bg-gray-100 font-medium' : 'text-gray-700'}`}
-                          >
-                            Approved
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onStatusFilterChange?.('in-progress');
-                              setStatusDropdownOpen(false);
-                            }}
-                            className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${statusFilter === 'in-progress' ? 'bg-gray-100 font-medium' : 'text-gray-700'}`}
-                          >
-                            In Progress
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onStatusFilterChange?.('rejected');
-                              setStatusDropdownOpen(false);
-                            }}
-                            className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${statusFilter === 'rejected' ? 'bg-gray-100 font-medium' : 'text-gray-700'}`}
-                          >
-                            Rejected
-                          </button>
+                          {STATUS_OPTIONS.map((option) => (
+                            <button
+                              key={option.value}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                if (onStatusFilterChange) {
+                                  onStatusFilterChange(option.value as JobStatus | 'ALL');
+                                }
+                                setStatusDropdownOpen(false);
+                              }}
+                              className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${
+                                statusFilter === option.value ? 'bg-gray-100 font-medium' : 'text-gray-700'
+                              }`}
+                            >
+                              {option.label}
+                            </button>
+                          ))}
                         </div>
                       </div>
                     )}
