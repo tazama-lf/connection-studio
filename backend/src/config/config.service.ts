@@ -2499,7 +2499,32 @@ export class ConfigService {
       throw new NotFoundException(`Config with ID ${id} not found`);
     }
 
-    const currentStatus = config.status as ConfigStatus;
+
+    const fileName = `dems_${tenantId}_${id}`;
+    let currentStatus: ConfigStatus;
+    
+    try {
+      const configData = await this.sftpService.readFile(fileName);
+      
+      if (configData && configData.status) {
+        currentStatus = configData.status as ConfigStatus;
+      } else if (config.status) {
+        currentStatus = config.status as ConfigStatus;
+      } else {
+        throw new BadRequestException(
+          `Cannot deploy config ${id}: status not found in SFTP or database. Please ensure the config has been exported first.`
+        );
+      }
+    } catch (error) {
+      if (config.status) {
+        currentStatus = config.status as ConfigStatus;
+      } else {
+        throw new BadRequestException(
+          `Cannot deploy config ${id}: status is undefined and SFTP read failed. Error: ${error.message}`
+        );
+      }
+    }
+
     const action: WorkflowAction = 'deploy';
 
     // Validate user can perform this action
@@ -2508,12 +2533,14 @@ export class ConfigService {
       currentStatus,
       action,
     );
+    
+    
     if (!validation.canPerform) {
       throw new ForbiddenException(validation.message);
     }
 
     const newStatus = ConfigStatus.DEPLOYED;
-    const fileName = `dems_${tenantId}_${id}`;
+    // fileName already declared above
 
     try {
       // Step 1: Read config from SFTP (EXACTLY like job/scheduler service)
