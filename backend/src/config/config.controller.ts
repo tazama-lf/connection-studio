@@ -17,6 +17,8 @@ import {
   Req,
   Headers,
   Logger,
+  BadRequestException,
+  NotFoundException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AdminServiceClient } from '../services/admin-service-client.service';
@@ -140,7 +142,7 @@ export class ConfigController {
     @User() user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
     if (!file) {
-      throw new Error('No file uploaded');
+      throw new BadRequestException('No file uploaded');
     }
     const content = file.buffer.toString('utf8');
     const autoDetectedContentType = this.autoDetectContentType(
@@ -164,7 +166,7 @@ export class ConfigController {
     );
 
     if (!result.success) {
-      throw new Error(result.message || 'Failed to create config');
+      throw new BadRequestException(result.message || 'Failed to create config');
     }
 
     return {
@@ -194,7 +196,7 @@ export class ConfigController {
     );
 
     if (!result.success) {
-      throw new Error(result.message || 'Failed to create config');
+      throw new BadRequestException(result.message || 'Failed to create config');
     }
 
     return {
@@ -243,7 +245,7 @@ export class ConfigController {
       buildForwardHeaders(user),
     );
     if (!config) {
-      throw new Error(`Config not found for path ${path} version ${version}`);
+      throw new NotFoundException(`Config not found for path ${path} version ${version}`);
     }
     return config;
   }
@@ -265,7 +267,7 @@ export class ConfigController {
       buildForwardHeaders(user),
     );
     if (!config) {
-      throw new Error(`Configuration with ID ${id} not found`);
+      throw new NotFoundException(`Configuration with ID ${id} not found`);
     }
     return config;
   }

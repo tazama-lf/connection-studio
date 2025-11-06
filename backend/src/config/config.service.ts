@@ -155,12 +155,17 @@ export class ConfigService {
           'Failed to parse payload:',
           parsingResult?.validation || 'Unknown error',
         );
+        
+        const errorDetails = parsingResult?.validation ? 
+          ` Details: ${JSON.stringify(parsingResult.validation)}` : 
+          '';
+        
         return {
           success: false,
-          message: 'Failed to parse payload',
+          message: `Unable to parse your ${dto.contentType === ContentType.JSON ? 'JSON' : 'XML'} payload. Please check the format and try again.${errorDetails}`,
           validation: {
             success: false,
-            errors: ['Parsing failed'],
+            errors: parsingResult?.validation?.errors || ['Invalid payload format'],
             warnings: [],
           },
         };
@@ -172,10 +177,10 @@ export class ConfigService {
         this.logger.error('Parsing result contains no source fields');
         return {
           success: false,
-          message: 'Failed to generate fields from payload',
+          message: `No fields could be extracted from your ${dto.contentType === ContentType.JSON ? 'JSON' : 'XML'} payload. Please ensure it contains valid data with field names and values.`,
           validation: {
             success: false,
-            errors: ['No fields generated'],
+            errors: ['No fields found in payload - payload may be empty or malformed'],
             warnings: [],
           },
         };
@@ -215,7 +220,7 @@ export class ConfigService {
         );
         return {
           success: false,
-          message: 'Schema contains duplicate fields',
+          message: 'Your payload contains duplicate field names. Each field must have a unique name within the schema.',
           validation: {
             success: false,
             errors: duplicateErrors,
@@ -314,9 +319,29 @@ export class ConfigService {
         `Failed to create config: ${error.message}`,
         error.stack,
       );
+      
+      const msgFam = dto.msgFam || 'unknown';
+      const transactionType = dto.transactionType;
+      const version = dto.version || 'v1';
+      
+      let userMessage = 'Failed to create configuration. Please check your input and try again.';
+      
+      if (error.message && (
+        error.message.includes('duplicate key value') ||
+        error.message.includes('unique constraint')
+      )) {
+        userMessage = `A configuration with Message Family '${msgFam}', Transaction Type '${transactionType}', and Version '${version}' already exists. Please use different values.`;
+      } else if (error.message && error.message.includes('validation')) {
+        userMessage = `Validation error: ${error.message}`;
+      } else if (error.message && error.message.includes('schema')) {
+        userMessage = `Schema error: ${error.message}`;
+      } else if (error.message) {
+        userMessage = error.message;
+      }
+      
       return {
         success: false,
-        message: `Failed to create config: ${error.message}`,
+        message: userMessage,
       };
     }
   }
@@ -411,6 +436,7 @@ export class ConfigService {
         contentType: sourceConfig.contentType,
         schema: finalSchema,
         mapping: sourceConfig.mapping, // Clone the mappings
+        functions: dto.functions || sourceConfig.functions, 
         status: ConfigStatus.IN_PROGRESS,
         tenantId,
         createdBy: userId,
@@ -2513,7 +2539,9 @@ export class ConfigService {
       delete configWithId.endpointPath;
       configWithId.status = newStatus; // Set to DEPLOYED status
       configWithId.publishing_status =
-        configData.publishing_status || 'active';
+      configData.publishing_status = configData.publishing_status|| 'active';
+      configWithId.mapping = configData.mapping;
+      delete configWithId.mapping
         configWithId.tenant_id = tenantId;
         delete configWithId.tenantId;
         configWithId.created_by = configData.createdBy;
@@ -2883,123 +2911,6 @@ export class ConfigService {
     return descriptions[status] || status;
   }
 
-  /**
-   * Send approval notification to all approvers
-   * Uses in-memory cache to get approver emails
-   */
-  private async sendApprovalNotification(
-    configId: number,
-    config: Config,
-    tenantId: string,
-    requesterId: string,
-    comment?: string,
-  ): Promise<void> {
-    try {
-      // Get all approver emails from cache
-      const approverEmails = await this.databaseService.getEmailsByRole(
-        tenantId,
-        'approver',
-      );
-
-      if (approverEmails.length === 0) {
-        this.logger.warn(
-          `No approvers found in cache for tenant ${tenantId}. Emails will not be sent.`,
-        );
-        return;
-      }
-
-      // Get requester email from cache
-      const requesterEmail =
-        (await this.databaseService.getEmailByUserId(tenantId, requesterId)) ||
-        'unknown@example.com';
-
-      // Build notification context
-      const context = {
-        configId,
-        configName: config.msgFam || config.transactionType,
-        version: config.version,
-        transactionType: config.transactionType,
-        requesterEmail,
-        comment: comment || 'No comment provided',
-        tenantId,
-      };
-
-      // Send email notification
-      await this.notificationService.sendSubmitForApproval(
-        approverEmails,
-        context,
-      );
-
-      this.logger.log(
-        `Sent approval notification for config ${configId} to ${approverEmails.length} approver(s)`,
-      );
-    } catch (error) {
-      this.logger.error(
-        `Failed to send approval notification: ${error.message}`,
-      );
-      // Don't throw - notification failure shouldn't block workflow
-    }
-  }
-
-  /**
-   * Send changes requested notification to editor
-   * Uses in-memory cache to get editor email
-   */
-  private async sendChangesRequestedNotification(
-    configId: number,
-    config: Config,
-    tenantId: string,
-    approverId: string,
-    comment?: string,
-  ): Promise<void> {
-    try {
-      // Get editor email from cache (createdBy is the editor)
-      const editorUserId = config.createdBy || 'unknown';
-      const editorEmail = await this.databaseService.getEmailByUserId(
-        tenantId,
-        editorUserId,
-      );
-
-      if (!editorEmail) {
-        this.logger.warn(
-          `No email found for editor ${config.createdBy} in tenant ${tenantId}. Email will not be sent.`,
-        );
-        return;
-      }
-
-      // Get approver email from cache
-      const approverEmail =
-        (await this.databaseService.getEmailByUserId(tenantId, approverId)) ||
-        'unknown@example.com';
-
-      // Build notification context
-      const context = {
-        configId,
-        configName: config.msgFam || config.transactionType,
-        version: config.version,
-        transactionType: config.transactionType,
-        requesterEmail: approverEmail,
-        comment: comment || 'No comment provided',
-        tenantId,
-      };
-
-      // Send email notification
-      await this.notificationService.sendChangesRequested(editorEmail, context);
-
-      this.logger.log(
-        `Sent changes requested notification for config ${configId} to ${editorEmail}`,
-      );
-    } catch (error) {
-      this.logger.error(
-        `Failed to send changes requested notification: ${error.message}`,
-      );
-      // Don't throw - notification failure shouldn't block workflow
-    }
-  }
-
-  /**
-   * Update publishing status and trigger NATS notification when set to ACTIVE
-   */
   async updatePublishingStatus(
     id: number,
     publishingStatus: 'active' | 'inactive',
@@ -3109,10 +3020,7 @@ CREATE TABLE IF NOT EXISTS "${tableName}" (
     return config;
   }
 
-  /**
-   * Recursively flatten SchemaField[] to include all leaf nodes with complete paths
-   * Preserves .0. notation for array elements
-   */
+
   private flattenSchemaFields(fields: SchemaField[]): SchemaField[] {
     const flattened: SchemaField[] = [];
 
