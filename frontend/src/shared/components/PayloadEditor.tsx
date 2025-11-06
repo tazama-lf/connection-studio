@@ -584,7 +584,9 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
             // Generate schema for array elements with objects
             // IMPORTANT: Use [0] notation for arrays to match schema utils expectations
             console.log(`    🔄 Recursing into array element object at ${fieldPath}[0]`);
-            field.children = generateJSONSchema(firstElement, `${fieldPath}.0`);
+            // Update the field path to include [0] so it matches children paths
+            field.path = `${fieldPath}[0]`;
+            field.children = generateJSONSchema(firstElement, `${fieldPath}[0]`);
             field.arrayElementType = 'object';
           } else if (Array.isArray(firstElement)) {
             // Handle arrays of arrays
@@ -731,7 +733,7 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
 
 
   const sampleJsonPayload = `{
-  "pain.001": {
+  "pain001": {
     "GroupHeader": {
       "MessageId": "MSG20251031001",
       "CreationDateTime": "2025-10-31T15:19:24Z",

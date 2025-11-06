@@ -213,68 +213,86 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
   const buildSourceTreeFromArray = (schemaArray: any[]): TreeNode[] => {
     if (!schemaArray || !Array.isArray(schemaArray)) return [];
 
-    // Build a tree structure from flat array of schema fields
     const nodeMap = new Map<string, TreeNode>();
     const rootNodes: TreeNode[] = [];
 
+    console.log('🏗️ Building source tree from', schemaArray.length, 'fields');
+
     // First pass: create all nodes
     schemaArray.forEach((field) => {
-      // IMPORTANT: Preserve the exact path format from the schema (including [0] notation)
       const originalPath = field.path || field.name || 'unknown';
+      const pathParts = originalPath.split(/\.(?![^\[]*\])/);
       
-      // For display purposes, split path - but handle [0] notation correctly
-      // Split by . but keep [0] as part of the segment (e.g., "field[0]" stays together)
-      const pathParts = originalPath.split(/\.(?![^\[]*\])/); // Split by . but not if inside []
+      // Determine if this represents an array
+      // If path ends with [0], it's an array element container
+      const isArrayElement = /\[0\]$/.test(originalPath);
+      
+      // Extract proper name - if it's an array element, keep the [0] in the name
+      let nodeName;
+      if (isArrayElement) {
+        // For "a.b.c[0]", name should be "c[0]"
+        nodeName = pathParts[pathParts.length - 1];
+      } else {
+        // Use field.name if available, otherwise last part of path
+        nodeName = field.name || pathParts[pathParts.length - 1] || 'unknown';
+      }
+      
+      const fieldType = isArrayElement ? 'array' : (field.type?.toLowerCase() || 'string');
+      
+      console.log('📝 Field:', originalPath, 'Type:', fieldType, 'Name:', nodeName, 'IsArray:', isArrayElement);
       
       const node: TreeNode = {
-        id: originalPath, // Use original path as ID
-        name: field.name || pathParts[pathParts.length - 1] || 'unknown',
-        path: [originalPath], // Store as single-element array with full path
-        type: field.type?.toLowerCase() || 'string',
+        id: originalPath,
+        name: nodeName,
+        path: [originalPath],
+        type: fieldType,
         children: []
       };
-      nodeMap.set(node.id, node);
+      
+      nodeMap.set(originalPath, node);
     });
 
     // Second pass: build parent-child relationships
+    console.log('📊 All nodes in map:', Array.from(nodeMap.keys()));
+    
     nodeMap.forEach((node, nodeId) => {
-      // Handle both . and [0] notation when finding parent
       let parentPath = '';
       
-      // Try to find parent by removing last segment
-      // For "pain.001.GroupHeader.MessageId" -> parent is "pain.001.GroupHeader"
-      // For "pain.001.Array[0].Field" -> parent is "pain.001.Array[0]"
-      const lastDotIndex = nodeId.lastIndexOf('.');
-      const lastBracketSegment = nodeId.match(/\[[0-9]+\][^.\[]*$/); // Match [0] or [0].something at end
+      // Find parent by removing the last segment
+      // For "a.b.c[0].d" -> parent is "a.b.c[0]"
+      // For "a.b.c[0]" -> parent is "a.b"
+      // For "a.b.c" -> parent is "a.b"
       
-      if (lastBracketSegment) {
-        // Has array notation at the end - parent is everything before the last segment after [0]
-        const lastSegmentStart = nodeId.lastIndexOf('.', nodeId.indexOf(lastBracketSegment[0]));
-        if (lastSegmentStart > 0) {
-          parentPath = nodeId.substring(0, lastSegmentStart);
-        }
-      } else if (lastDotIndex > 0) {
-        // Simple case - just remove last .segment
+      const lastDotIndex = nodeId.lastIndexOf('.');
+      if (lastDotIndex > 0) {
         parentPath = nodeId.substring(0, lastDotIndex);
       }
       
-      if (parentPath) {
-        const parentNode = nodeMap.get(parentPath);
-        if (parentNode) {
-          if (!parentNode.children) {
-            parentNode.children = [];
-          }
-          parentNode.children.push(node);
-        } else {
-          // Parent not found, treat as root
-          rootNodes.push(node);
+      console.log('🔗 Node:', nodeId, '-> Looking for parent:', parentPath || '(root)', 'Exists?', nodeMap.has(parentPath));
+      
+      if (parentPath && nodeMap.has(parentPath)) {
+        const parentNode = nodeMap.get(parentPath)!;
+        if (!parentNode.children) {
+          parentNode.children = [];
         }
+        parentNode.children.push(node);
+        console.log('  ✅ Added to parent. Parent now has', parentNode.children.length, 'children');
       } else {
-        // Top-level node
+        // Root node
         rootNodes.push(node);
+        console.log('  📍 Added to root');
       }
     });
 
+    console.log('🌳 Tree built. Root nodes:', rootNodes.map(n => n.id).join(', '));
+    
+    // Log nodes with children
+    nodeMap.forEach((node, nodeId) => {
+      if (node.children && node.children.length > 0) {
+        console.log('👨‍👧‍👦 Node with children:', nodeId, 'has', node.children.length, 'children:', node.children.map(c => c.name).join(', '));
+      }
+    });
+    
     return rootNodes;
   };  // Generate source tree from the provided schema (memoized to prevent recalculation)
   const sourceTree: TreeNode[] = useMemo(() => {
@@ -351,50 +369,40 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
         // Split field path into parts (e.g., "intrBkSttlmAmt.amt" -> ["intrBkSttlmAmt", "amt"])
         const parts = field.field.split('.');
         
-        if (parts.length === 1) {
-          // Simple field - add directly to root
-          const fieldName = parts[0];
-          if (!rootMap.has(fieldName)) {
-            rootMap.set(fieldName, {
+        // Always build hierarchy for all fields
+        let currentLevel = rootMap;
+        let currentPath: string[] = [collectionName];
+        
+        parts.forEach((part, index) => {
+          const isLeaf = index === parts.length - 1;
+          currentPath = [...currentPath, part];
+          const pathKey = parts.slice(0, index + 1).join('.');
+          const fullPath = `${collectionName}.${pathKey}`;
+          
+          if (!currentLevel.has(part)) {
+            // Create new node
+            currentLevel.set(part, {
               node: {
-                id: field.value,
-                name: fieldName,
-                path: [collectionName, fieldName],
-                type: field.type.toLowerCase() as 'string' | 'number' | 'boolean' | 'date' | 'object' | 'array'
+                id: isLeaf ? field.value : fullPath,
+                name: part,
+                path: [...currentPath],
+                type: isLeaf 
+                  ? (field.type.toLowerCase() as 'string' | 'number' | 'boolean' | 'date' | 'object' | 'array')
+                  : 'object'
               },
               children: new Map()
             });
+          } else if (isLeaf) {
+            // Update existing node if this is the leaf (actual field definition)
+            const existing = currentLevel.get(part)!;
+            existing.node.id = field.value;
+            existing.node.type = field.type.toLowerCase() as 'string' | 'number' | 'boolean' | 'date' | 'object' | 'array';
           }
-        } else {
-          // Nested field - build hierarchy
-          let currentLevel = rootMap;
-          let currentPath: string[] = [collectionName];
           
-          parts.forEach((part, index) => {
-            currentPath = [...currentPath, part];
-            const pathKey = parts.slice(0, index + 1).join('.');
-            const fullPath = `${collectionName}.${pathKey}`;
-            
-            if (!currentLevel.has(part)) {
-              const isLeaf = index === parts.length - 1;
-              currentLevel.set(part, {
-                node: {
-                  id: isLeaf ? field.value : fullPath,
-                  name: part,
-                  path: currentPath,
-                  type: isLeaf 
-                    ? (field.type.toLowerCase() as 'string' | 'number' | 'boolean' | 'date' | 'object' | 'array')
-                    : 'object'
-                },
-                children: new Map()
-              });
-            }
-            
-            // Move to next level
-            const entry = currentLevel.get(part)!;
-            currentLevel = entry.children;
-          });
-        }
+          // Move to next level
+          const entry = currentLevel.get(part)!;
+          currentLevel = entry.children;
+        });
       });
 
       // Convert map structure to TreeNode array with children
@@ -656,6 +664,8 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
   const renderTree = (nodes: TreeNode[], expanded: string[], toggleFn: (id: string) => void, onSelect: (path: string[], type?: any) => void, selectedPaths: string[] = [], type: 'source' | 'destination' | 'redis' = 'source', depth: number = 0) => {
     return <div className="space-y-1" data-id="element-176">
       {nodes.map((node, index) => {
+            console.log("TREE", nodes, expanded, selectedPaths, type, depth);
+
         const hasChildren = node.children && node.children.length > 0;
         const isExpanded = expanded.includes(node.id);
         const isSelected = selectedPaths.includes(node.path.join('.'));

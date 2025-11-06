@@ -743,9 +743,102 @@ console.log('Cur map:', currentMappings);
 
   const handleProceedFromFunctions = () => {
     console.log('✅ Proceeding to simulation step with functions:', selectedFunctions);
+    
+    // Only validate if not in readOnly mode (i.e., only for editors, not approvers/viewers)
+    if (!readOnly) {
+      const validationErrors = validateFunctionParameters();
+      
+      if (validationErrors.length > 0) {
+        // Show all validation errors
+        const errorMessage = validationErrors.join('\n');
+        setError(errorMessage);
+        return;
+      }
+    }
+    
     setError(null); // Clear any previous errors before moving to next step
     setCurrentStep('simulation');
   };
+
+  // Validate that all function parameters have corresponding mappings
+  const validateFunctionParameters = (): string[] => {
+    const errors: string[] = [];
+    
+    if (selectedFunctions.length === 0) {
+      // No functions to validate
+      return errors;
+    }
+
+    // Runtime context fields that are provided at execution time, not from mappings
+    const runtimeContextFields = ['tenantid', 'tenant_id', 'userid', 'user_id'];
+    
+    // Extract all destination fields from currentMappings (store in lowercase for case-insensitive comparison)
+    // Also strip common prefixes like "redis.", "transactionDetails.", "dataCache.", etc.
+    const mappedDestinations = new Set<string>();
+    const mappedDestinationsOriginal = new Map<string, string>(); // Map lowercase -> original case
+    
+    currentMappings.forEach((mapping: any) => {
+      const processDestination = (dest: string) => {
+        // Strip common prefixes before storing
+        const withoutPrefix = dest.replace(/^(redis\.|transactionDetails\.|dataCache\.|transaction\.|cache\.)/i, '');
+        const lowerDest = withoutPrefix.toLowerCase();
+        mappedDestinations.add(lowerDest);
+        mappedDestinationsOriginal.set(lowerDest, dest); // Store original with prefix for logging
+      };
+      
+      if (mapping.destination) {
+        // Handle both single destination and array of destinations
+        if (Array.isArray(mapping.destination)) {
+          mapping.destination.forEach((dest: string) => processDestination(dest));
+        } else {
+          processDestination(mapping.destination);
+        }
+      }
+      if (mapping.destinations && Array.isArray(mapping.destinations)) {
+        mapping.destinations.forEach((dest: string) => processDestination(dest));
+      }
+    });
+
+    console.log('🔍 Mapped destinations (lowercase, without prefixes):', Array.from(mappedDestinations));
+    console.log('🔍 Runtime context fields (lowercase):', runtimeContextFields);
+    
+    // Check each function's parameters
+    selectedFunctions.forEach((func, funcIndex) => {
+      const functionConfig = FUNCTION_CONFIGS[func.functionName];
+      
+      if (!functionConfig) {
+        errors.push(`⚠️ Function #${funcIndex + 1} (${func.functionName}): Unknown function configuration`);
+        return;
+      }
+
+      // Check each parameter
+      func.params.forEach((param) => {
+        // Strip prefix from parameter too before comparing
+        const paramWithoutPrefix = param.replace(/^(redis\.|transactionDetails\.|dataCache\.|transaction\.|cache\.)/i, '');
+        const paramLower = paramWithoutPrefix.toLowerCase();
+        
+        // Skip runtime context fields - they're provided at execution time
+        if (runtimeContextFields.includes(paramLower)) {
+          console.log(`✓ Parameter "${param}" is a runtime context field (will be provided at execution time)`);
+          return;
+        }
+
+        // Check if parameter is mapped (case-insensitive, after stripping prefixes from both sides)
+        if (!mappedDestinations.has(paramLower)) {
+          errors.push(
+            `❌ Function "${functionConfig.displayName}": Parameter "${param}" is not mapped. ` +
+            `Please create a mapping with destination "${paramWithoutPrefix}" (can use prefixes like redis., transactionDetails., etc.) in the Mapping step.`
+          );
+        } else {
+          const mappedAs = mappedDestinationsOriginal.get(paramLower);
+          console.log(`✓ Parameter "${param}" (stripped: "${paramWithoutPrefix}") is mapped (as "${mappedAs}")`);
+        }
+      });
+    });
+
+    return errors;
+  };
+
 
   // Step 4: Submit for Approval (simulation is handled by SimulationPanel)
   const handleRunSimulation = async () => {
@@ -1488,6 +1581,26 @@ console.log('Cur map:', currentMappings);
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold">Select Functions</h3>
 
+                  {/* Validation Warning - Show if there are unmapped parameters (only for editors, not approvers/viewers) */}
+                  {!readOnly && selectedFunctions.length > 0 && (() => {
+                    const validationErrors = validateFunctionParameters();
+                    if (validationErrors.length > 0) {
+                      return;
+                    }
+                    return (
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                        <div className="flex items-center gap-2">
+                          <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          <p className="text-sm text-green-700 font-medium">
+                            ✓ All function parameters are properly mapped
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   {/* Add Function Button - Only show when not read-only */}
                   {!readOnly && (
                     <div className="flex justify-end">
@@ -1508,23 +1621,97 @@ console.log('Cur map:', currentMappings);
                         <p className="text-gray-500 mb-4">No functions selected. {!readOnly ? 'Click "Add Function" to select functions to call at runtime.' : ''}</p>
                       </div>
                     ) : (
-                      selectedFunctions.map((func, index) => (
-                        <div key={index} className="bg-gray-50 p-4 rounded-lg border flex justify-between items-center">
-                          <div>
-                            <h4 className="font-medium">{func.functionName}</h4>
-                            <p className="text-sm text-gray-600">Parameters: {func.params.join(', ')}</p>
+                      selectedFunctions.map((func, index) => {
+                        // Check which parameters are missing mappings for this function (case-insensitive, strip prefixes)
+                        const runtimeContextFields = ['tenantid', 'tenant_id', 'userid', 'user_id'];
+                        const mappedDestinations = new Set<string>();
+                        
+                        currentMappings.forEach((mapping: any) => {
+                          const processDestination = (dest: string) => {
+                            // Strip common prefixes before storing
+                            const withoutPrefix = dest.replace(/^(redis\.|transactionDetails\.|dataCache\.|transaction\.|cache\.)/i, '');
+                            mappedDestinations.add(withoutPrefix.toLowerCase());
+                          };
+                          
+                          if (mapping.destination) {
+                            if (Array.isArray(mapping.destination)) {
+                              mapping.destination.forEach((dest: string) => processDestination(dest));
+                            } else {
+                              processDestination(mapping.destination);
+                            }
+                          }
+                          if (mapping.destinations && Array.isArray(mapping.destinations)) {
+                            mapping.destinations.forEach((dest: string) => processDestination(dest));
+                          }
+                        });
+
+                        const unmappedParams = func.params.filter(param => {
+                          // Strip prefix from parameter before checking
+                          const paramWithoutPrefix = param.replace(/^(redis\.|transactionDetails\.|dataCache\.|transaction\.|cache\.)/i, '');
+                          const paramLower = paramWithoutPrefix.toLowerCase();
+                          return !runtimeContextFields.includes(paramLower) && !mappedDestinations.has(paramLower);
+                        });
+
+                        return (
+                          <div 
+                            key={index} 
+                            className={`p-4 rounded-lg border flex justify-between items-center ${
+                              unmappedParams.length > 0 ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200'
+                            }`}
+                          >
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-medium">{func.functionName}</h4>
+                                {unmappedParams.length > 0 && (
+                                  <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full">
+                                    {unmappedParams.length} unmapped
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-sm text-gray-600 mt-1">
+                                Parameters: {func.params.map(param => {
+                                  // Strip prefix from parameter before checking
+                                  const paramWithoutPrefix = param.replace(/^(redis\.|transactionDetails\.|dataCache\.|transaction\.|cache\.)/i, '');
+                                  const paramLower = paramWithoutPrefix.toLowerCase();
+                                  const isMapped = runtimeContextFields.includes(paramLower) || mappedDestinations.has(paramLower);
+                                  const isRuntime = runtimeContextFields.includes(paramLower);
+                                  return (
+                                    <span 
+                                      key={param}
+                                      className={
+                                        isRuntime ? 'text-blue-600' : 
+                                        isMapped ? 'text-green-600' : 
+                                        'text-red-600 font-medium'
+                                      }
+                                      title={
+                                        isRuntime ? 'Runtime context field' :
+                                        isMapped ? 'Mapped' : 
+                                        'Not mapped - please create a mapping for this parameter'
+                                      }
+                                    >
+                                      {param}
+                                    </span>
+                                  );
+                                }).reduce((prev, curr) => [prev, ', ', curr] as any)}
+                              </p>
+                              {unmappedParams.length > 0 && (
+                                <p className="text-xs text-red-600 mt-2">
+                                  ⚠️ Missing mappings: {unmappedParams.join(', ')}
+                                </p>
+                              )}
+                            </div>
+                            {/* Remove button - Only show when not read-only */}
+                            {!readOnly && (
+                              <button
+                                onClick={() => handleRemoveFunction(index)}
+                                className="text-red-600 hover:text-red-800 px-2 py-1 ml-4"
+                              >
+                                ×
+                              </button>
+                            )}
                           </div>
-                          {/* Remove button - Only show when not read-only */}
-                          {!readOnly && (
-                            <button
-                              onClick={() => handleRemoveFunction(index)}
-                              className="text-red-600 hover:text-red-800 px-2 py-1"
-                            >
-                              ×
-                            </button>
-                          )}
-                        </div>
-                      ))
+                        );
+                      })
                     )}
                   </div>
 
