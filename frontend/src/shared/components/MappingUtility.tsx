@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { ArrowRightIcon, PlusIcon, XIcon, ChevronRightIcon, FolderIcon, DatabaseIcon, ServerIcon } from 'lucide-react';
 import { Button } from './Button';
 import { configApi, type FieldMapping } from '../../features/config/services/configApi';
@@ -219,11 +219,17 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
 
     // First pass: create all nodes
     schemaArray.forEach((field) => {
-      const pathParts = field.path ? field.path.split('.') : [field.name || 'unknown'];
+      // IMPORTANT: Preserve the exact path format from the schema (including [0] notation)
+      const originalPath = field.path || field.name || 'unknown';
+      
+      // For display purposes, split path - but handle [0] notation correctly
+      // Split by . but keep [0] as part of the segment (e.g., "field[0]" stays together)
+      const pathParts = originalPath.split(/\.(?![^\[]*\])/); // Split by . but not if inside []
+      
       const node: TreeNode = {
-        id: field.path || field.name || 'unknown',
+        id: originalPath, // Use original path as ID
         name: field.name || pathParts[pathParts.length - 1] || 'unknown',
-        path: pathParts,
+        path: [originalPath], // Store as single-element array with full path
         type: field.type?.toLowerCase() || 'string',
         children: []
       };
@@ -232,23 +238,28 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
 
     // Second pass: build parent-child relationships
     nodeMap.forEach((node, nodeId) => {
-      const pathParts = nodeId.split('.');
-      if (pathParts.length === 1) {
-        // Top-level node
-        rootNodes.push(node);
-      } else {
-        // Child node - find parent
-       // For paths like "Othr.0.Id", the parent should be "Othr" not "Othr.0"
-        // So we need to handle .0. notation specially
-        let parentPath = pathParts.slice(0, -1).join('.');
-        let parentNode = nodeMap.get(parentPath);
-        
-        // If parent not found and the immediate parent part is "0" (array index),
-        // try finding the grandparent (skip the .0)
-        if (!parentNode && pathParts.length > 2 && pathParts[pathParts.length - 2] === '0') {
-          parentPath = pathParts.slice(0, -2).join('.');
-          parentNode = nodeMap.get(parentPath);
-        }
+      // Handle both . and [0] notation when finding parent
+      let parentPath = '';
+      
+      // Try to find parent by removing last segment
+      // For "pain.001.GroupHeader.MessageId" -> parent is "pain.001.GroupHeader"
+      // For "pain.001.Array[0].Field" -> parent is "pain.001.Array[0]"
+      const lastDotIndex = nodeId.lastIndexOf('.');
+      const lastBracketSegment = nodeId.match(/\[[0-9]+\][^.\[]*$/); // Match [0] or [0].something at end
+      
+      if (lastBracketSegment) {
+        // Has array notation at the end - parent is everything before the last segment after [0]
+        const lastSegmentStart = nodeId.lastIndexOf('.', nodeId.indexOf(lastBracketSegment[0]));
+        if (lastSegmentStart > 0) {
+          parentPath = nodeId.substring(0, lastSegmentStart);
+        }
+      } else if (lastDotIndex > 0) {
+        // Simple case - just remove last .segment
+        parentPath = nodeId.substring(0, lastDotIndex);
+      }
+      
+      if (parentPath) {
+        const parentNode = nodeMap.get(parentPath);
         if (parentNode) {
           if (!parentNode.children) {
             parentNode.children = [];
@@ -258,14 +269,16 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
           // Parent not found, treat as root
           rootNodes.push(node);
         }
+      } else {
+        // Top-level node
+        rootNodes.push(node);
       }
     });
 
     return rootNodes;
-  };
-
-  // Generate source tree from the provided schema
-  const sourceTree: TreeNode[] = (() => {
+  };  // Generate source tree from the provided schema (memoized to prevent recalculation)
+  const sourceTree: TreeNode[] = useMemo(() => {
+    console.log('🔄 Recalculating sourceTree');
     console.log('MappingUtility sourceSchema:', sourceSchema);
     console.log('MappingUtility sourceSchema type:', typeof sourceSchema);
     console.log('MappingUtility configId:', configId);
@@ -310,7 +323,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
         type: typeof sourceSchema[key] === 'string' ? 'string' : 'object'
       }))
     }];
-  })();
+  }, [sourceSchema]); // Only recalculate when sourceSchema changes
   // Helper function to convert API destination options to TreeNode format
   const convertDestinationOptionsToTree = (options: DestinationOption[]): TreeNode[] => {
     // Group options by collection to create a hierarchical structure
@@ -465,9 +478,12 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
     }
   };
   const handleSourceSelect = (path: string[]) => {
-    // Toggle selection
-    const pathStr = path.join('.');
-    console.log('Source field selected:', pathStr);
+    // Path is now stored as single-element array with full path including [0] notation
+    // So path[0] is the complete path like "pain.001.CreditTransferTransactionInformation[0].PaymentId.EndToEndId"
+    const pathStr = path[0] || path.join('.'); // Use first element if available, otherwise join
+    console.log('🎯 Source field selected - RAW path array:', path);
+    console.log('🎯 Source field selected - FINAL pathStr:', pathStr);
+    console.log('🎯 Contains [0] notation?', pathStr.includes('[0]'));
     if (selectedSources.includes(pathStr)) {
       setSelectedSources(selectedSources.filter(p => p !== pathStr));
     } else {
@@ -589,6 +605,9 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
     // Call API to save mapping directly
     try {
       console.log('💾 Saving mapping to backend:', mappingRequest);
+      console.log('💾 Selected sources array:', selectedSources);
+      console.log('💾 Source to be saved:', mappingRequest.source);
+      console.log('💾 Contains [0]?', mappingRequest.source?.includes('[0]'));
       const response = await configApi.addMapping(configId!, mappingRequest);
 
       if (response.success) {

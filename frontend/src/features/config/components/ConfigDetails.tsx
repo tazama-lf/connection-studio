@@ -213,6 +213,12 @@ export const ConfigDetails: React.FC<ConfigDetailsProps> = ({
             </div>
           )}
 
+
+
+
+
+          
+
           {config && (
             <div className="space-y-6">
               {/* Basic Information */}

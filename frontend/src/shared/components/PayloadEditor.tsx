@@ -68,7 +68,6 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
 
   const [fieldGenerationError, setFieldGenerationError] = useState<string | null>(null);
   const [isGeneratingFields, setIsGeneratingFields] = useState(false);
-  const [hasUserMadeEdits, setHasUserMadeEdits] = useState(false);
   const [showAddFieldForm, setShowAddFieldForm] = useState(false);
   const [newField, setNewField] = useState({
     path: '',
@@ -176,7 +175,6 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
 
     // Add to fields list
     setInferredFields(prev => [...prev, fieldToAdd].sort((a, b) => a.path.localeCompare(b.path)));
-    setHasUserMadeEdits(true);
     
     // Reset form
     setNewField({
@@ -252,12 +250,12 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
     }
   }, [initialEndpointData]);
 
-  // Initialize with existing schema fields when editing, but don't overwrite user edits
+  // Initialize with existing schema fields when editing, or when returning from other steps
   useEffect(() => {
-    // Only initialize if user hasn't made manual edits yet
-    if (!hasUserMadeEdits && existingSchemaFields && existingSchemaFields.length > 0) {
+    // Load existing schema fields whenever they change (including when returning from other steps)
+    if (existingSchemaFields && existingSchemaFields.length > 0) {
       console.log('🚨🚨🚨 ARRAY DEBUG START 🚨🚨🚨');
-      console.log('PayloadEditor - Converting existing schema fields (initial load):', existingSchemaFields);
+      console.log('PayloadEditor - Converting existing schema fields:', existingSchemaFields);
       console.log('🔢 Raw schema fields received:', existingSchemaFields.length);
 
       // Check if existingSchemaFields is already InferredField[] format
@@ -280,20 +278,18 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
       }
 
       console.log('🚨🚨🚨 ARRAY DEBUG END 🚨🚨🚨');
-    } else if (!hasUserMadeEdits && configId && (!existingSchemaFields || existingSchemaFields.length === 0)) {
+    } else if (configId && (!existingSchemaFields || existingSchemaFields.length === 0)) {
       // When editing existing config but no schema fields exist, show empty schema editor
       console.log('PayloadEditor - Showing empty schema editor for existing config');
       setShowInferredFields(true);
       setInferredFields([]);
-    } else if (!hasUserMadeEdits && !configId) {
+    } else if (!configId) {
       console.log('PayloadEditor - No existing schema fields provided');
       // For new endpoints, also show the schema editor
       setShowInferredFields(true);
       setInferredFields([]);
-    } else if (hasUserMadeEdits) {
-      console.log('🔒 User has made manual edits - preserving current schema fields');
     }
-  }, [existingSchemaFields, configId, hasUserMadeEdits]);
+  }, [existingSchemaFields, configId]); // Removed hasUserMadeEdits dependency
 
   // Always show the schema fields section (no auto-generation)
   useEffect(() => {
@@ -314,10 +310,19 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
 
   // Notify parent component when schema changes
   useEffect(() => {
-    if (onSchemaChange && inferredFields.length > 0) {
-      // Instead of converting to JSON Schema (which loses array element paths),
-      // pass the InferredField[] array directly to preserve all field information
-      onSchemaChange(inferredFields);
+    if (onSchemaChange) {
+      // IMPORTANT: Call onSchemaChange whenever inferredFields changes, even if empty
+      // This ensures parent component (EditEndpointModal) always has the latest schema state
+      if (inferredFields.length > 0) {
+        // Pass the InferredField[] array directly to preserve all field information
+        console.log('📤 PayloadEditor: Notifying parent of schema change:', inferredFields.length, 'fields');
+        onSchemaChange(inferredFields);
+      } else {
+        // If no fields, notify parent with null to prevent stale data
+        console.log('📤 PayloadEditor: Notifying parent of empty schema');
+        // Don't set to null - let parent decide what to do with existing schema
+        // onSchemaChange(null);
+      }
     }
   }, [inferredFields, onSchemaChange]);
 
@@ -378,7 +383,6 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
         
         setInferredFields(fields);
         setShowInferredFields(true);
-        setHasUserMadeEdits(true); // Mark that fields have been generated/regenerated
         
         console.log('✅ Fields successfully set in state');
       } else {
@@ -578,8 +582,8 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
           
           if (typeof firstElement === 'object' && firstElement !== null && !Array.isArray(firstElement)) {
             // Generate schema for array elements with objects
-            // IMPORTANT: Recursively process the object to get all nested fields with .0 notation
-            console.log(`    🔄 Recursing into array element object at ${fieldPath}.0`);
+            // IMPORTANT: Use [0] notation for arrays to match schema utils expectations
+            console.log(`    🔄 Recursing into array element object at ${fieldPath}[0]`);
             field.children = generateJSONSchema(firstElement, `${fieldPath}.0`);
             field.arrayElementType = 'object';
           } else if (Array.isArray(firstElement)) {
@@ -727,18 +731,53 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
 
 
   const sampleJsonPayload = `{
-    "transaction": {
-      "id": "TX12345",
-      "amount": 100.5,
-      "currency": "USD",
-      "status": "pending"
+  "pain.001": {
+    "GroupHeader": {
+      "MessageId": "MSG20251031001",
+      "CreationDateTime": "2025-10-31T15:19:24Z",
+      "NumberOfTransactions": "1",
+      "InitiatingParty": {
+        "Name": "ACME Corp"
+      }
     },
-    "customer": {
-      "id": "C789",
-      "name": "John Doe",
-      "email": "john@example.com"
+    "PaymentInformation": {
+      "PaymentInformationId": "PMTINF20251031001",
+      "PaymentMethod": "TRF",
+      "RequestedExecutionDate": "2025-11-01",
+      "Debtor": {
+        "Name": "ACME Corp"
+      },
+      "DebtorAccount": {
+        "IBAN": "DE89370400440532013000"
+      },
+      "DebtorAgent": {
+        "BIC": "DEUTDEFF"
+      },
+      "CreditTransferTransactionInformation": [
+        {
+          "PaymentId": {
+            "EndToEndId": "E2E20251031001"
+          },
+          "Amount": {
+            "InstructedAmount": {
+              "Currency": "EUR",
+              "Value": "1000.00"
+            }
+          },
+          "CreditorAgent": {
+            "BIC": "COBADEFF"
+          },
+          "Creditor": {
+            "Name": "John Doe"
+          },
+          "CreditorAccount": {
+            "IBAN": "DE75512108001245126199"
+          }
+        }
+      ]
     }
-  }`;
+  }
+}`;
 
   const sampleXmlPayload = `<?xml version="1.0" encoding="UTF-8"?>
 <Document xmlns="urn:iso:std:iso:20022:tech:xsd:pacs.008.001.11">
@@ -1304,7 +1343,6 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
                               updatedFields[index] = { ...field, type: e.target.value as InferredField['type'] };
                               console.log('📊 Updated fields after type change:', updatedFields.map(f => ({ path: f.path, type: f.type, required: f.required })));
                               setInferredFields(updatedFields);
-                              setHasUserMadeEdits(true);
                             }}
                             disabled={readOnly}
                             className="w-full px-2 py-2 bg-white border border-gray-200 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
@@ -1338,7 +1376,6 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
                                 
                                 console.log('📊 Updated fields after required change (with children):', updatedFields.map(f => ({ path: f.path, type: f.type, required: f.required })));
                                 setInferredFields(updatedFields);
-                                setHasUserMadeEdits(true);
                               }}
                               disabled={readOnly}
                               className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1362,7 +1399,6 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
                                 );
                                 console.log('📊 Updated fields after deletion:', updatedFields.map(f => ({ path: f.path, type: f.type, required: f.required })));
                                 setInferredFields(updatedFields);
-                                setHasUserMadeEdits(true);
                               }}
                               className="inline-flex items-center px-2 py-1 border border-red-200 text-xs rounded text-red-600 bg-red-50 hover:bg-red-100 focus:outline-none focus:ring-1 focus:ring-red-300 transition-colors ml-2"
                               title={`Remove ${field.path} and all its children`}
