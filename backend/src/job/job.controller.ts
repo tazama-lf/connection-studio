@@ -31,7 +31,7 @@ import { UpdatePullJobDto } from './dto/update-pull-job.dto';
 @Controller('job')
 @UseGuards(TazamaAuthGuard)
 export class JobController {
-  constructor(private readonly jobService: JobService) {}
+  constructor(private readonly jobService: JobService) { }
 
   @Post('/create/push')
   @RequireAnyClaims(TazamaClaims.EDITOR)
@@ -105,8 +105,9 @@ export class JobController {
     @Query('status') status: JobStatus,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+    @User() user: AuthenticatedUser
   ) {
-    return await this.jobService.findByStatus(status, page, limit);
+    return await this.jobService.findByStatus(status, page, limit, user.tenantId);
   }
 
   @Patch('/update/status/:id')
@@ -121,8 +122,9 @@ export class JobController {
     @Query('status') status: JobStatus,
     @Query('type') type: ConfigType,
     @User() user: AuthenticatedUser,
+    @Body('reason') reason?: string,
   ) {
-    return await this.jobService.updateStatus(id, status, type, user.tenantId);
+    return await this.jobService.updateStatus(id, status, type, user.tenantId, reason);
   }
 
   @Patch('/update/activation/:id')
@@ -138,4 +140,6 @@ export class JobController {
       type === ConfigType.PUSH ? 'endpoints' : 'job',
     );
   }
+
+
 }

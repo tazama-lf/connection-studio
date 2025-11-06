@@ -4,7 +4,6 @@ import {
   Injectable,
   NotFoundException
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import {
   AuthType,
@@ -36,7 +35,6 @@ import { type EndpointJobRecord } from './types/job.interface';
 export class JobService {
   constructor(
     private readonly db: DatabaseService,
-    private readonly configService: ConfigService,
     private readonly loggerService: LoggerService,
     private readonly dryRunService: DryRunService,
     private readonly sftpService: SftpService,
@@ -100,15 +98,16 @@ export class JobService {
     status: JobStatus = JobStatus.INPROGRESS,
   ): Promise<ISuccess> {
     try {
-      await this.validateExisting(job.table_name);
+      const table_name = `${tenantId}_${job.table_name}`
+      await this.validateExisting(table_name);
       const id = job.id ?? v4();
 
       const path =
         status === JobStatus.DEPLOYED
           ? job.path
-          : `/${tenantId}/enrichment/${job.version}/${job.path}`;
+          : `/${tenantId}/enrichment/${job.version}${job.path}`;
 
-      const jobWithId = { ...job, id, path, tenant_id: tenantId, status };
+      const jobWithId = { ...job, id, path, tenant_id: tenantId, status, table_name };
 
       const keys = Object.keys(jobWithId);
       const values = Object.values(jobWithId);
@@ -132,7 +131,6 @@ export class JobService {
         await this.notifyService.notifyEnrichment(job.id, ConfigType.PUSH);
       }
 
-
       return {
         success: true,
         message: `Job with id ${id} successfully updated`,
@@ -149,7 +147,8 @@ export class JobService {
     status: JobStatus = JobStatus.INPROGRESS,
   ): Promise<ISuccess> {
     try {
-      await this.validateExisting(job.table_name);
+      const table_name = `${tenantId}_${job.table_name}`
+      await this.validateExisting(table_name);
 
       const checkScheduleQuery = `
                  SELECT * 
@@ -202,6 +201,7 @@ export class JobService {
         connection,
         tenant_id: tenantId,
         status,
+        table_name
       };
 
       const keys = Object.keys(jobWithId);
@@ -348,10 +348,13 @@ export class JobService {
     status: JobStatus,
     page: number,
     limit: number,
+    tenantId: string,
   ): Promise<[]> {
     try {
-      if (!status || !page || !limit) {
-        throw new BadRequestException('Status, page, and limit are required.');
+      if (!tenantId || !status || !page || !limit) {
+        throw new BadRequestException(
+          'Tenant ID, status, page, and limit are required.',
+        );
       }
 
       if (page < 1 || limit < 1) {
@@ -377,7 +380,8 @@ export class JobService {
           created_at,
           'push' AS type
         FROM endpoints
-        WHERE status = $1
+        WHERE tenant_id = $1
+          AND status = $2
       )
       UNION ALL
       (
@@ -394,25 +398,29 @@ export class JobService {
           created_at,
           'pull' AS type
         FROM job
+        WHERE tenant_id = $1
+          AND status = $2
       )
       ORDER BY created_at DESC
-      LIMIT $2 OFFSET $3;
+      LIMIT $3 OFFSET $4;
     `;
 
-      const result = await this.db.query(query, [status, limit, offset]);
+      const result = await this.db.query(query, [tenantId, status, limit, offset]);
       return result.rows;
     } catch (err) {
       this.loggerService.error(
-        `Error fetching records by status: ${err.message}`,
+        `Error fetching records by status for tenant ${tenantId}: ${err.message}`,
       );
       throw new BadRequestException(err.message);
     }
   }
 
+
   async updateActivation(
     id: string,
     status: ScheduleStatus,
     table_name: string,
+
   ): Promise<ISuccess> {
     try {
       if (!status || !table_name) {
@@ -420,6 +428,8 @@ export class JobService {
           'Both status and table_name are required.',
         );
       }
+
+
 
       const query = `
                  UPDATE ${table_name}
@@ -435,6 +445,8 @@ export class JobService {
           `Record with id "${id}" not found in table "${table_name}".`,
         );
       }
+
+      await this.notifyService.notifyEnrichment(id, ConfigType.PUSH);
 
       return {
         success: true,
@@ -453,6 +465,7 @@ export class JobService {
     status: JobStatus,
     type: ConfigType,
     tenantId: string,
+    reason?: string
   ): Promise<ISuccess> {
     try {
       if (!status || !type) {
@@ -462,6 +475,14 @@ export class JobService {
       const fileName = `de_${tenantId}_${id}`;
 
       switch (status) {
+        case JobStatus.REJECTED: {
+          if (!reason) {
+            throw new BadRequestException(
+              'Rejection reason is required when rejecting a job.',
+            );
+          }
+          break;
+        }
         case JobStatus.EXPORTED: {
           const existingJob = await this.findOne(id, type);
           await this.sftpService.createFile(fileName, {
@@ -474,7 +495,6 @@ export class JobService {
           );
           break;
         }
-
         case JobStatus.DEPLOYED: {
           const existingJob = await this.sftpService.readFile(fileName);
           if (type === ConfigType.PULL) {
@@ -519,14 +539,26 @@ export class JobService {
       }
 
       const tableName = type === ConfigType.PUSH ? 'endpoints' : 'job';
-      const updateQuery = `
-      UPDATE ${tableName}
-      SET status = $1, updated_at = NOW()
-      WHERE id = $2
-      RETURNING id;
-    `;
+      const updateQuery =
+        status === JobStatus.REJECTED
+          ? `
+          UPDATE ${tableName}
+          SET status = $1, comments = $2, updated_at = NOW()
+          WHERE id = $3
+          RETURNING id;
+        `
+          : `
+          UPDATE ${tableName}
+          SET status = $1, updated_at = NOW()
+          WHERE id = $2
+          RETURNING id;
+        `;
 
-      const result = await this.db.query(updateQuery, [status, id]);
+      const params =
+        status === JobStatus.REJECTED ? [status, reason, id] : [status, id];
+
+      const result = await this.db.query(updateQuery, params);
+
 
       if (!result.rowCount) {
         throw new NotFoundException(
