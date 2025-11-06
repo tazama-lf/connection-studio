@@ -98,8 +98,8 @@ export class JobService {
     status: JobStatus = JobStatus.INPROGRESS,
   ): Promise<ISuccess> {
     try {
-      const table_name = `${tenantId}_${job.table_name}`
-      await this.validateExisting(table_name);
+
+      await this.validateExisting(job.table_name);
       const id = job.id ?? v4();
 
       const path =
@@ -107,7 +107,7 @@ export class JobService {
           ? job.path
           : `/${tenantId}/enrichment/${job.version}${job.path}`;
 
-      const jobWithId = { ...job, id, path, tenant_id: tenantId, status, table_name };
+      const jobWithId = { ...job, id, path, tenant_id: tenantId, status };
 
       const keys = Object.keys(jobWithId);
       const values = Object.values(jobWithId);
@@ -147,8 +147,7 @@ export class JobService {
     status: JobStatus = JobStatus.INPROGRESS,
   ): Promise<ISuccess> {
     try {
-      const table_name = `${tenantId}_${job.table_name}`
-      await this.validateExisting(table_name);
+      await this.validateExisting(job.table_name);
 
       const checkScheduleQuery = `
                  SELECT * 
@@ -200,8 +199,7 @@ export class JobService {
         id: new_id,
         connection,
         tenant_id: tenantId,
-        status,
-        table_name
+        status
       };
 
       const keys = Object.keys(jobWithId);
