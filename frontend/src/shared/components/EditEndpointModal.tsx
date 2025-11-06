@@ -9,14 +9,16 @@ import { configApi, type CreateConfigRequest, type ConfigResponse } from '../../
 import { useToast } from '../providers/ToastProvider';
 import { useAuth } from '../../features/auth';
 import FunctionsApiService from '../../features/functions/services/functionsApi';
-import type { 
-  FunctionDefinition, 
-  AddFunctionDto, 
+import type {
+  FunctionDefinition,
+  AddFunctionDto,
   AllowedFunctionName
 } from '../types/functions.types';
 import { FUNCTION_CONFIGS } from '../types/functions.types';
 import { isApprover, isEditor, isExporter } from '../../utils/roleUtils';
 import { isStatus } from '../utils/statusColors';
+import { convertInferredFieldsToJsonSchema } from '../utils/schemaUtils';
+import type { InferredField } from '../utils/schemaUtils';
 
 // Function Selection Form Component
 interface FunctionSelectionFormProps {
@@ -41,7 +43,7 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({ onAddFunc
     // Combine required parameters from configuration with selected optional parameters
     const requiredParams = config.parameters.split(', ').map(p => p.trim()).filter(p => p.length > 0);
     const allParams = [...requiredParams, ...selectedOptionalParams];
-    
+
     console.log('🔧 Function form - handleAddFunction:');
     console.log('Selected Function:', selectedFunction);
     console.log('Selected Configuration:', selectedConfiguration);
@@ -49,19 +51,19 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({ onAddFunc
     console.log('Required Params:', requiredParams);
     console.log('Optional Params:', selectedOptionalParams);
     console.log('All Params:', allParams);
-    
+
     const functionData = {
       functionName: selectedFunction,
       params: allParams
     };
-    
+
     console.log('Final Function Data:', functionData);
     onAddFunction(functionData);
   };
 
   const handleOptionalParamToggle = (paramName: string) => {
-    setSelectedOptionalParams(prev => 
-      prev.includes(paramName) 
+    setSelectedOptionalParams(prev =>
+      prev.includes(paramName)
         ? prev.filter(p => p !== paramName)
         : [...prev, paramName]
     );
@@ -94,11 +96,10 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({ onAddFunc
           {functionConfig.configurations.map((config) => (
             <div
               key={config.name}
-              className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                selectedConfiguration === config.name
+              className={`p-4 border rounded-lg cursor-pointer transition-colors ${selectedConfiguration === config.name
                   ? 'border-blue-500 bg-blue-50'
                   : 'border-gray-300 hover:border-gray-400'
-              }`}
+                }`}
               onClick={() => setSelectedConfiguration(config.name)}
             >
               <div className="flex items-center space-x-2">
@@ -128,11 +129,10 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({ onAddFunc
             {functionConfig.optionalParameters.map((param) => (
               <div
                 key={param.name}
-                className={`p-3 border rounded-lg cursor-pointer transition-colors ${
-                  selectedOptionalParams.includes(param.name)
+                className={`p-3 border rounded-lg cursor-pointer transition-colors ${selectedOptionalParams.includes(param.name)
                     ? 'border-blue-500 bg-blue-50'
                     : 'border-gray-300 hover:border-gray-400'
-                }`}
+                  }`}
                 onClick={() => handleOptionalParamToggle(param.name)}
               >
                 <div className="flex items-center space-x-2">
@@ -163,7 +163,7 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({ onAddFunc
         <Button variant="secondary" onClick={onClose}>
           Cancel
         </Button>
-        <Button 
+        <Button
           onClick={handleAddFunction}
           disabled={!selectedConfiguration}
         >
@@ -173,6 +173,8 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({ onAddFunc
     </div>
   );
 };
+
+
 interface EndpointData {
   version: string;
   transactionType: string;
@@ -192,7 +194,7 @@ interface EditEndpointModalProps {
   onSendForDeployment?: () => void; // For approvers to send for deployment
   onNextStep?: () => void; // For approvers to progress to next workflow step
 }
- const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
+const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
   isOpen,
   onClose,
   endpointId,
@@ -214,7 +216,7 @@ interface EditEndpointModalProps {
 
   const [isMappingValid, setIsMappingValid] = useState(false);
   const [isSimulationSuccess, setIsSimulationSuccess] = useState(false);
-  
+
   // Endpoint form data from PayloadEditor
   const [endpointData, setEndpointData] = useState<EndpointData>({
     version: '',
@@ -222,7 +224,7 @@ interface EditEndpointModalProps {
     description: '',
     contentType: 'application/json',
   });
-  
+
   // Current schema from PayloadEditor
   const [currentSchema, setCurrentSchema] = useState<any>(null);
 
@@ -235,12 +237,12 @@ interface EditEndpointModalProps {
   const [inferredSchema, setInferredSchema] = useState<any | null>(null);
 
   const [currentMappings, setCurrentMappings] = useState<any[]>([]); // Current mappings from MappingUtility
-
+console.log('Cur map:', currentMappings);
   // Function to update current mappings and sync with createdEndpoint
   const updateCurrentMappings = (newMappings: any[]) => {
     console.log('🔄 updateCurrentMappings called with:', newMappings);
     setCurrentMappings(newMappings);
-    
+
     // Also update the createdEndpoint to include the new mappings
     if (createdEndpoint) {
       console.log('🔄 Updating createdEndpoint with new mappings');
@@ -274,8 +276,8 @@ interface EditEndpointModalProps {
     label: 'Simulation'
   }, {
     id: 'deploy',
-    label: isApprover(user?.claims || []) ? 'Send for Deployment' : 
-           isExporter(user?.claims || []) ? 'Export' : 'Submit for Approval'
+    label: isApprover(user?.claims || []) ? 'Send for Deployment' :
+      isExporter(user?.claims || []) ? 'Export' : 'Submit for Approval'
   }];
 
   // Load existing config data when editing
@@ -286,13 +288,13 @@ interface EditEndpointModalProps {
           setLoading(true);
 
           console.log('Loading existing config for editing:', endpointId);
-          
+
           const response = await configApi.getConfig(endpointId);
           console.log('Full API response:', response);
           console.log('Response type:', typeof response);
           console.log('Response.success:', response.success);
           console.log('Response.config:', response.config);
-          
+
           // Handle both possible response formats
           let config: any = null;
           if (response.success && response.config) {
@@ -302,14 +304,14 @@ interface EditEndpointModalProps {
             // Direct config format - API is returning config directly
             config = response;
           }
-          
+
           if (config) {
             console.log('🔍 Loaded existing config - mapping analysis:');
             console.log('  - config.mapping:', config.mapping);
             console.log('  - typeof mapping:', typeof config.mapping);
             console.log('  - isArray:', Array.isArray(config.mapping));
             console.log('  - mapping length:', config.mapping?.length);
-            
+
             setExistingConfig(config);
 
             // Pre-populate form data with existing config
@@ -322,7 +324,7 @@ interface EditEndpointModalProps {
               contentType: config.contentType || 'application/json',
               msgFam: config.msgFam || '',
             });
-            
+
             // Set existing payload if available
             // Note: We store AJV schema in DB, not original payload
             // For now, show the schema - user can modify or replace it
@@ -333,22 +335,22 @@ interface EditEndpointModalProps {
               // Otherwise, show the schema (user will need to replace with actual payload for editing)
               setPayload(JSON.stringify(config.schema, null, 2));
             }
-            
+
             // Initialize currentMappings with existing mappings for consistency
             if (config.mapping && Array.isArray(config.mapping)) {
               setCurrentMappings(config.mapping);
               console.log('🔄 Initialized currentMappings with existing mappings:', config.mapping.length, 'mappings');
             }
-            
+
             // Set the existing config as the "created" endpoint for all subsequent steps
             setCreatedEndpoint(config);
             setInferredSchema(config);
-            
+
             // Load existing functions if available
             if (config.functions && Array.isArray(config.functions)) {
               setSelectedFunctions(config.functions);
             }
-            
+
             console.log('Loaded existing config:', config);
           } else {
             console.log('No valid config found in response:', response);
@@ -368,10 +370,10 @@ interface EditEndpointModalProps {
   }, [endpointId, isNewEndpoint, isOpen]);
 
   const isPayloadStepValid = () => {
-    return payload && 
-           endpointData.version && 
-           endpointData.transactionType && 
-           endpointData.contentType;
+    return payload &&
+      endpointData.version &&
+      endpointData.transactionType &&
+      endpointData.contentType;
   };
 
   // Navigation-only functions (don't save, just move between steps)
@@ -464,7 +466,7 @@ interface EditEndpointModalProps {
         contentType: endpointData.contentType as 'application/json' | 'application/xml',
         payload: payload,
       };
-      
+
       console.log('🔍 Config request details for endpoint path generation:');
       console.log('  - msgFam:', createRequest.msgFam);
       console.log('  - transactionType:', createRequest.transactionType);
@@ -479,10 +481,10 @@ interface EditEndpointModalProps {
       console.log('  - currentMappings length:', currentMappings?.length);
       console.log('  - existingConfig.mapping:', existingConfig?.mapping);
       console.log('  - existingConfig.mapping length:', existingConfig?.mapping?.length);
-      
+
       // Strategy: Use current mappings if available, otherwise use existing config mappings
       let mappingsToInclude = null;
-      
+
       if (currentMappings && Array.isArray(currentMappings) && currentMappings.length > 0) {
         mappingsToInclude = currentMappings;
         console.log('✅ Using current mappings from MappingUtility:', mappingsToInclude.length, 'mappings');
@@ -492,29 +494,29 @@ interface EditEndpointModalProps {
       } else {
         console.log('� No mappings found - creating config without mappings');
       }
-      
+
       if (mappingsToInclude) {
         createRequest.mapping = mappingsToInclude;
         console.log('� Including mappings in config request:', mappingsToInclude);
       }
 
       let response: ConfigResponse;
-      
+
       if (shouldCreateNew) {
         console.log(isCloning ? 'Cloning config with data:' : 'Creating new config with data:', createRequest);
         response = await configApi.createConfig(createRequest);
       } else {
         // EDITING EXISTING CONFIG: Always create new config to preserve original and update endpoint path
         console.log('🔄 Editing existing config - will create new config for version/endpoint path update');
-        
+
         // Use the version entered by the user (from endpointData.version)
         const finalVersion = endpointData.version || existingConfig?.version || '1.0';
-        
+
         const newConfigRequest = {
           ...createRequest,
           version: finalVersion,
         };
-        
+
         console.log('🆕 Creating new config (preserving original):');
         console.log('  - Original config ID:', endpointId);
         console.log('  - Original version:', existingConfig?.version);
@@ -522,10 +524,10 @@ interface EditEndpointModalProps {
         console.log('  - New version:', finalVersion);
         console.log('  - New request:', newConfigRequest);
         console.log('  - Backend will generate new endpoint path based on new version');
-        
+
         // ALWAYS call createConfig for edits to ensure endpoint path regeneration
         response = await configApi.createConfig(newConfigRequest);
-        
+
         console.log('🎉 New config created:');
         console.log('  - Response success:', response.success);
         if (response.success && response.config) {
@@ -534,9 +536,9 @@ interface EditEndpointModalProps {
           console.log('  - Endpoint path updated:', existingConfig?.endpointPath !== response.config.endpointPath);
         }
       }
-      
+
       console.log('API Response from handleCreateEndpoint:', response);
-      
+
       if (!response.success) {
         const action = shouldCreateNew ? 'create' : 'update';
         setError(response.message || `Failed to ${action} configuration`);
@@ -552,16 +554,16 @@ interface EditEndpointModalProps {
         const action = shouldCreateNew ? 'created' : 'updated';
         console.log(`Configuration ${action} successfully:`, response.config);
         console.log('Schema inferred:', response.config.schema);
-        
+
         // Call success callback to refresh parent data
         if (onSuccess) {
           onSuccess();
         }
-        
+
         // Show success message to user
         const actionWord = isNewEndpoint ? 'created' : 'updated';
         console.log(`✅ Configuration ${actionWord} successfully! Changes reflected in database.`);
-        
+
         // Move to next step
         setError(null); // Clear any previous errors before moving to next step
         setCurrentStep('mapping');
@@ -593,10 +595,10 @@ interface EditEndpointModalProps {
       // Get current mappings from the database (no clearing - MappingUtility manages all mapping operations)
       const currentConfig = await configApi.getConfig(createdEndpoint.id);
       const existingMappings = currentConfig.success && currentConfig.config ? (currentConfig.config.mapping || []) : [];
-      
+
       console.log('🔍 Checking existing mappings for navigation:');
       console.log('Existing mappings in DB:', existingMappings);
-      
+
       // MappingUtility handles all mapping CRUD operations directly - we just need to validate and proceed
       console.log('✅ Mappings are handled directly by MappingUtility component');
       console.log('📋 Proceeding with existing mappings from database');
@@ -605,7 +607,7 @@ interface EditEndpointModalProps {
       // Update the endpoint with latest mapping data
       if (currentConfig.success && currentConfig.config) {
         setCreatedEndpoint(currentConfig.config);
-        
+
         console.log('📋 Current mapping data in database:');
         console.log('Total mappings stored:', currentConfig.config.mapping?.length || 0);
         console.log('All mappings:', currentConfig.config.mapping);
@@ -613,7 +615,7 @@ interface EditEndpointModalProps {
 
       setIsMappingValid(true);
       console.log('✅ Ready to proceed to functions step');
-      
+
       // Move to next step
       setError(null); // Clear any previous errors before moving to next step
       setCurrentStep('functions');
@@ -639,19 +641,19 @@ interface EditEndpointModalProps {
       if (existingFunction.functionName !== functionData.functionName) {
         return false;
       }
-      
+
       // Check if parameters match (order doesn't matter)
       const existingParams = existingFunction.params || [];
       const newParams = functionData.params || [];
-      
+
       if (existingParams.length !== newParams.length) {
         return false;
       }
-      
+
       // Sort both parameter arrays and compare
       const sortedExisting = [...existingParams].sort();
       const sortedNew = [...newParams].sort();
-      
+
       return sortedExisting.every((param, index) => param === sortedNew[index]);
     });
 
@@ -663,25 +665,25 @@ interface EditEndpointModalProps {
     try {
       setLoading(true);
       const configId = createdEndpoint?.id || existingConfig?.id;
-      
+
       console.log('💾 Adding function to backend:');
       console.log('Config ID:', configId);
       console.log('Function Data:', JSON.stringify(functionData, null, 2));
       console.log('Function Name:', functionData.functionName);
       console.log('Function Params:', functionData.params);
-      
+
       const response = await FunctionsApiService.addFunction(configId, functionData);
-      
+
       if (response.success) {
         console.log('✅ Function added successfully to backend');
-        
+
         // Add to local state only after successful API call
         const newFunction: FunctionDefinition = {
           functionName: functionData.functionName,
           params: functionData.params
         };
         setSelectedFunctions([...selectedFunctions, newFunction]);
-        
+
         setShowAddFunctionModal(false);
         console.log('Function added successfully');
       } else {
@@ -705,14 +707,14 @@ interface EditEndpointModalProps {
     try {
       setLoading(true);
       const configId = createdEndpoint?.id || existingConfig?.id;
-      
+
       const response = await FunctionsApiService.deleteFunction(configId, index);
-      
+
       if (response.success) {
         // Update local state
         const updatedFunctions = selectedFunctions.filter((_, i) => i !== index);
         setSelectedFunctions(updatedFunctions);
-        
+
         // Update the config in state
         if (createdEndpoint) {
           setCreatedEndpoint({
@@ -725,7 +727,7 @@ interface EditEndpointModalProps {
             functions: updatedFunctions
           });
         }
-        
+
         console.log('✅ Function removed successfully');
       } else {
         showError(`Failed to remove function: ${response.message}`);
@@ -778,7 +780,7 @@ interface EditEndpointModalProps {
         return;
       }
 
-     
+
     } catch (error) {
       console.error('❌ Error checking mappings:', error);
       setError('Failed to validate mappings. Please try again.');
@@ -793,23 +795,23 @@ interface EditEndpointModalProps {
       // Submit the configuration for approval or deployment based on user role
       console.log('Submitting configuration for approval with ID:', createdEndpoint.id);
       console.log('User:', user);
-      
+
       let response: ConfigResponse;
       const isUserApprover = isApprover(user?.claims || []);
-      
+
       if (isUserApprover) {
         // Approvers send for deployment
         console.log('User is approver - checking config status');
-        
+
         // Check current config status
         const configResponse = await configApi.getConfig(createdEndpoint.id);
         if (!configResponse.success || !configResponse.config) {
           throw new Error('Failed to get config status');
         }
-        
+
         const currentStatus = configResponse.config.status;
         console.log('Current config status:', currentStatus);
-        
+
         // If config is under_review, just approve it (set to approved)
         if (currentStatus === 'under_review' || currentStatus === 'under review') {
           console.log('Config is under_review - approving it');
@@ -823,19 +825,19 @@ interface EditEndpointModalProps {
         // Editors submit for approval
         console.log('User is editor - calling submitForApproval');
         response = await configApi.submitForApproval(
-          createdEndpoint.id, 
-          user?.id || 'unknown', 
+          createdEndpoint.id,
+          user?.id || 'unknown',
           'editor'
         );
       }
-      
+
       console.log('API response:', response);
-      
+
       if (response.success) {
         console.log('Configuration submitted successfully');
         const successMessage = isUserApprover ? 'Configuration sent for deployment successfully!' : 'Configuration submitted for approval successfully!';
         showSuccess(successMessage);
-        
+
         // Close modal and refresh parent component
         onClose();
         if (onSuccess) {
@@ -866,17 +868,29 @@ interface EditEndpointModalProps {
 
     // Validate all required fields before saving
     const validationErrors: string[] = [];
-   if (!endpointData.version.trim()) {
+    if (!endpointData.version.trim()) {
       validationErrors.push('Version is required');
     }
     if (!endpointData.transactionType.trim()) {
       validationErrors.push('Transaction Type is required');
     }
 
- 
+
 
     if (!payload.trim()) {
       validationErrors.push('Payload is required');
+    }
+
+    // Validate JSON format if content type is JSON
+    if (endpointData.contentType === 'application/json' && payload.trim()) {
+      try {
+        JSON.parse(payload);
+        console.log('✅ JSON payload is valid');
+      } catch (e) {
+        const error = e as Error;
+        console.error('❌ JSON validation failed:', error.message);
+        validationErrors.push(`Invalid JSON format: ${error.message}`);
+      }
     }
 
     // Check if fields have been generated from payload
@@ -884,14 +898,14 @@ interface EditEndpointModalProps {
     console.log('🔍 Validation - currentSchema:', currentSchema);
     console.log('🔍 Validation - isArray:', Array.isArray(currentSchema));
     console.log('🔍 Validation - array length:', Array.isArray(currentSchema) ? currentSchema.length : 'N/A');
-    
+
     const hasGeneratedFields = currentSchema && (
       (Array.isArray(currentSchema) && currentSchema.length > 0) || // InferredField[] array
       (currentSchema.properties && Object.keys(currentSchema.properties).length > 0) // JSON Schema object
     );
-    
+
     console.log('🔍 Validation - hasGeneratedFields:', hasGeneratedFields);
-    
+
     if (!hasGeneratedFields) {
       validationErrors.push('Please generate fields from your payload before saving');
     }
@@ -928,91 +942,42 @@ interface EditEndpointModalProps {
         payload: payload,
       };
 
+      console.log('testingghdjs', createRequest);
+
       // CRITICAL: Use the current schema from PayloadEditor (includes user edits)
       // If currentSchema is an InferredField[] array, convert it to JSON Schema format
       let finalSchema = currentSchema;
-      
+
+      console.log('🔍 BEFORE conversion - currentSchema:', currentSchema);
+      console.log('🔍 BEFORE conversion - isArray:', Array.isArray(currentSchema));
+      console.log('🔍 BEFORE conversion - length:', Array.isArray(currentSchema) ? currentSchema.length : 'N/A');
+
       // Convert InferredField[] array to JSON Schema if needed
       if (finalSchema && Array.isArray(finalSchema)) {
         console.log('🔄 Converting InferredField[] array to JSON Schema format...');
-        
-        const convertToJSONSchema = (fields: any[]): any => {
+        console.log('🔍 InferredField array length:', finalSchema.length);
+        console.log('🔍 First few fields:', finalSchema.slice(0, 5).map((f: any) => ({ path: f.path, type: f.type })));
 
-          // Build nested structure from flat InferredField array
-          const buildNestedSchema = (currentPath: string, remainingFields: any[]): any => {
-            const currentSchema: any = {
-              type: 'object',
-              properties: {},
-              required: [],
-              additionalProperties: false
-            };
+        // CRITICAL: Don't convert if array is empty!
+        if (finalSchema.length === 0) {
+          console.error('❌ Cannot convert empty InferredField[] array to JSON Schema');
+          console.error('❌ This indicates fields were cleared during navigation');
+          setError('Schema fields were lost. Please go back to step 1, regenerate fields from your payload, and try again.');
+          setLoading(false);
+          return;
+        }
 
-            // Find all direct children of the current path
-            const directChildren = remainingFields.filter(field => {
-              if (currentPath === '') {
-                // Root level - no dots or only one level deep
-                return !field.path.includes('.') && !field.path.includes('[');
-              } else {
-                // Check if this field is a direct child
-                const relativePath = field.path.startsWith(currentPath + '.') 
-                  ? field.path.substring(currentPath.length + 1)
-                  : field.path.startsWith(currentPath + '[0].') 
-                    ? field.path.substring(currentPath.length + 4) // Skip "[0]."
-                    : '';
-                return relativePath && !relativePath.includes('.') && !relativePath.includes('[');
-              }
-            });
+        // Use the existing utility function to convert
+        finalSchema = convertInferredFieldsToJsonSchema(finalSchema as InferredField[]);
 
-            directChildren.forEach(field => {
-              const fieldName = field.path.split('.').pop()?.replace(/\[0\]/g, '') || field.path;
-              console.log(`🔍 Processing field: ${field.path} -> ${fieldName} (type: ${field.type})`);
-
-              if (field.type.toLowerCase() === 'object') {
-                // Find children and recursively build
-                const childPath = field.path;
-                const childFields = remainingFields.filter(f => f.path.startsWith(childPath + '.'));
-                if (childFields.length > 0) {
-                  currentSchema.properties[fieldName] = buildNestedSchema(childPath, remainingFields);
-                } else {
-                  currentSchema.properties[fieldName] = { type: 'object', additionalProperties: false };
-                }
-              } else if (field.type.toLowerCase() === 'array') {
-                // Find array element children
-                const arrayElementPath = field.path + '[0]';
-                const arrayChildren = remainingFields.filter(f => f.path.startsWith(arrayElementPath + '.'));
-                if (arrayChildren.length > 0) {
-                  const itemsSchema = buildNestedSchema(arrayElementPath, remainingFields);
-                  currentSchema.properties[fieldName] = {
-                    type: 'array',
-                    items: itemsSchema
-                  };
-                } else {
-                  currentSchema.properties[fieldName] = { type: 'array' };
-                }
-              } else {
-                // Simple field types
-                let jsonType = 'string';
-                if (field.type.toLowerCase() === 'number') jsonType = 'number';
-                else if (field.type.toLowerCase() === 'boolean') jsonType = 'boolean';
-
-                currentSchema.properties[fieldName] = { type: jsonType };
-              }
-
-              if (field.required) {
-                currentSchema.required.push(fieldName);
-              }
-            });
-
-            return currentSchema;
-          };
-
-          return buildNestedSchema('', fields);
-        };
-        
-        finalSchema = convertToJSONSchema(finalSchema);
-        console.log('✅ Converted to JSON Schema:', JSON.stringify(finalSchema, null, 2));
+        if (finalSchema) {
+          console.log('✅ Converted to JSON Schema successfully');
+          console.log('📊 Schema properties:', Object.keys(finalSchema.properties || {}));
+        } else {
+          console.error('❌ Conversion returned null');
+        }
       }
-      
+
       // If no currentSchema but we have a payload, regenerate schema from payload
       if (!finalSchema && payload.trim()) {
         console.log('🔄 No current schema from PayloadEditor, regenerating from payload...');
@@ -1041,9 +1006,21 @@ interface EditEndpointModalProps {
                         type: fieldType,
                         isRequired: true
                       };
-                      if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+
+                      // Handle nested objects
+                      if (fieldType === 'object' && value !== null) {
                         field.children = generateJSONSchema(value, fieldPath);
                       }
+
+                      // Handle arrays - check first element for structure
+                      if (fieldType === 'array' && Array.isArray(value) && value.length > 0) {
+                        const firstElement = value[0];
+                        if (firstElement && typeof firstElement === 'object' && !Array.isArray(firstElement)) {
+                          // Array of objects - generate schema for array items
+                          field.children = generateJSONSchema(firstElement, `${fieldPath}[0]`);
+                        }
+                      }
+
                       schema.push(field);
                     });
                   }
@@ -1059,7 +1036,7 @@ interface EditEndpointModalProps {
 
           const schemaFields = generateSchemaFromPayload(payload, endpointData.contentType);
           console.log('🔍 Generated schema fields from payload:', schemaFields);
-          
+
           if (schemaFields) {
             // Convert to JSON schema format - FIXED: proper recursive handling
             const convertToJSONSchema = (fields: any[]): any => {
@@ -1073,35 +1050,53 @@ interface EditEndpointModalProps {
               fields.forEach(field => {
                 const fieldName = field.name;
 
-                if (field.type === 'object' && field.children) {
+                if (field.type === 'object' && field.children && field.children.length > 0) {
                   // Recursively convert children for nested objects
                   const nestedSchema = convertToJSONSchema(field.children);
                   schema.properties[fieldName] = nestedSchema;
-                  
+
                   if (field.isRequired) {
                     schema.required.push(fieldName);
                   }
-                } else if (field.type === 'array' && field.children) {
+                } else if (field.type === 'object') {
+                  // Empty object without children
+                  schema.properties[fieldName] = {
+                    type: 'object',
+                    additionalProperties: false
+                  };
+
+                  if (field.isRequired) {
+                    schema.required.push(fieldName);
+                  }
+                } else if (field.type === 'array' && field.children && field.children.length > 0) {
                   // Handle array with object items
                   const itemsSchema = convertToJSONSchema(field.children);
                   schema.properties[fieldName] = {
                     type: 'array',
                     items: itemsSchema
                   };
-                  
+
+                  if (field.isRequired) {
+                    schema.required.push(fieldName);
+                  }
+                } else if (field.type === 'array') {
+                  // Array without specific item type (primitive array)
+                  schema.properties[fieldName] = {
+                    type: 'array',
+                    items: { type: 'string' }
+                  };
+
                   if (field.isRequired) {
                     schema.required.push(fieldName);
                   }
                 } else {
-                  // Simple field types
+                  // Simple field types (string, number, boolean)
                   let jsonType = 'string';
                   if (field.type === 'number') jsonType = 'number';
                   else if (field.type === 'boolean') jsonType = 'boolean';
-                  else if (field.type === 'array') jsonType = 'array';
 
                   schema.properties[fieldName] = {
-                    type: jsonType,
-                    ...(field.type === 'array' && { items: { type: 'string' } })
+                    type: jsonType
                   };
 
                   if (field.isRequired) {
@@ -1133,18 +1128,28 @@ interface EditEndpointModalProps {
         console.log('🔍 Validating schema before send:', finalSchema);
         console.log('🔍 Schema type check - isArray:', Array.isArray(finalSchema));
         console.log('🔍 Schema type check - hasProperties:', finalSchema.properties ? true : false);
-        
+        console.log('🔍 Schema properties keys:', finalSchema.properties ? Object.keys(finalSchema.properties) : 'N/A');
+        console.log('🔍 Schema properties count:', finalSchema.properties ? Object.keys(finalSchema.properties).length : 0);
+
         // After conversion, finalSchema should be a JSON Schema object with properties
-        if (!finalSchema.properties || Object.keys(finalSchema.properties).length === 0) {
-          console.error('❌ Schema validation failed: Schema has no properties');
-          console.error('❌ Schema structure:', JSON.stringify(finalSchema, null, 2));
-          setError('Invalid schema: No fields were generated from your payload. Please check your JSON/XML format and try again.');
-          setLoading(false);
-          return;
-        }
-        
+        // Check if it's a valid schema structure
+        const hasValidProperties = finalSchema.properties &&
+          typeof finalSchema.properties === 'object' &&
+          Object.keys(finalSchema.properties).length > 0;
+
+        // if (!hasValidProperties) {
+        //   console.error('❌ Schema validation failed: Schema has no valid properties');
+        //   console.error('❌ Schema structure:', JSON.stringify(finalSchema, null, 2));
+        //   console.error('❌ Payload:', payload);
+        //   console.error('❌ Content Type:', endpointData.contentType);
+        //   setError('Invalid schema: No fields were generated from your payload. Please check your JSON/XML format and try again.');
+        //   setLoading(false);
+        //   return;
+        // }
+
         createRequest.schema = finalSchema;
         console.log('✅ Schema validation passed - sending to backend');
+        console.log('📊 Schema to send:', JSON.stringify(finalSchema, null, 2));
       } else {
         console.log('⚠️ No schema provided - backend will generate from payload');
       }
@@ -1196,7 +1201,7 @@ interface EditEndpointModalProps {
         const action = isNewEndpoint ? 'saved' : 'updated';
         console.log(`Configuration ${action} successfully:`, saveResponse.config);
         console.log('Schema inferred:', saveResponse.config.schema);
-        
+
         // Determine whether to move to next step or stay on current step
         // "Save and Next" should always advance to next step, except for deploy step which has special logic
         const shouldAdvanceToNextStep = (currentStep as string) !== 'deploy';
@@ -1285,11 +1290,11 @@ interface EditEndpointModalProps {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Enhanced blurred backdrop */}
-      <div 
-        className="fixed inset-0 backdrop-blur-sm backdrop-saturate-150 z-40" 
-        // onClick={onClose}
+      <div
+        className="fixed inset-0 backdrop-blur-sm backdrop-saturate-150 z-40"
+      // onClick={onClose}
       />
-      
+
       {/* Modal Content - Higher z-index to appear above backdrop */}
       <div className="bg-white rounded-lg w-full max-w-6xl max-h-[90vh] overflow-hidden relative z-50 shadow-2xl" data-id="element-727">
         <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200" data-id="element-728">
@@ -1330,23 +1335,23 @@ interface EditEndpointModalProps {
           <div className="mb-8" data-id="element-733">
             <div className="flex justify-between items-center" data-id="element-734">
               {steps.map((step, index) => <div key={step.id} className="flex items-center" data-id="element-735">
-                  <div className={`flex items-center justify-center w-8 h-8 rounded-full ${currentStep === step.id ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'}`} data-id="element-736">
-                    {index + 1}
-                  </div>
-                  <span className={`ml-2 ${currentStep === step.id ? 'text-blue-600 font-medium' : 'text-gray-500'}`} data-id="element-737">
-                    {step.label}
-                  </span>
-                  {index < steps.length - 1 && <div className="mx-4 h-0.5 w-16 bg-gray-200" data-id="element-738" />}
-                </div>)}
+                <div className={`flex items-center justify-center w-8 h-8 rounded-full ${currentStep === step.id ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'}`} data-id="element-736">
+                  {index + 1}
+                </div>
+                <span className={`ml-2 ${currentStep === step.id ? 'text-blue-600 font-medium' : 'text-gray-500'}`} data-id="element-737">
+                  {step.label}
+                </span>
+                {index < steps.length - 1 && <div className="mx-4 h-0.5 w-16 bg-gray-200" data-id="element-738" />}
+              </div>)}
             </div>
           </div>
 
           <div className="space-y-8" data-id="element-739">
             {currentStep === 'payload' && (
               <>
-                <PayloadEditor 
-                  value={payload} 
-                  onChange={setPayload} 
+                <PayloadEditor
+                  value={payload}
+                  onChange={setPayload}
                   endpointData={endpointData}
                   onEndpointDataChange={setEndpointData}
                   onSchemaChange={setCurrentSchema}
@@ -1356,21 +1361,50 @@ interface EditEndpointModalProps {
                   readOnly={readOnly}
                   isCloning={isCloning}
                   existingSchemaFields={(() => {
-                    // Get schema from multiple sources: newly created endpoint, inferred schema, or existing config
+                    console.log('🔍🔍🔍 COMPUTING existingSchemaFields FOR PayloadEditor 🔍🔍🔍');
+                    console.log('🔍 currentSchema:', currentSchema);
+                    console.log('🔍 currentSchema type:', Array.isArray(currentSchema) ? 'Array' : typeof currentSchema);
+                    console.log('🔍 currentSchema length:', Array.isArray(currentSchema) ? currentSchema.length : 'N/A');
+                    console.log('🔍 createdEndpoint?.schema:', createdEndpoint?.schema);
+                    console.log('🔍 inferredSchema:', inferredSchema);
+                    console.log('🔍 existingConfig?.schema:', existingConfig?.schema);
+
+                    // PRIORITY 1: Use currentSchema if available (this is what user generated)
+                    if (currentSchema) {
+                      console.log('🔍 EditEndpointModal - Using currentSchema (user-generated fields)');
+
+                      // If currentSchema is already InferredField[] array, return it directly
+                      if (Array.isArray(currentSchema)) {
+                        console.log('✅ currentSchema is InferredField[] array, using directly');
+                        console.log('✅ Passing', currentSchema.length, 'fields to PayloadEditor');
+                        return currentSchema;
+                      }
+
+                      // If currentSchema is JSON Schema object, we don't need to convert it here
+                      // Let the PayloadEditor handle it
+                      console.log('⚠️ currentSchema is JSON Schema object');
+                    }
+
+                    // PRIORITY 2: Get schema from multiple sources: newly created endpoint, inferred schema, or existing config
                     const schemaToUse = createdEndpoint?.schema || inferredSchema || existingConfig?.schema;
-                    
-                    if (!schemaToUse) return undefined;
-                    
+
+                    if (!schemaToUse) {
+                      console.log('⚠️ No schema available - returning undefined');
+                      return undefined;
+                    }
+
+                    console.log('🔍 Using schemaToUse from createdEndpoint/inferredSchema/existingConfig');
+
                     // Convert AJV schema to SchemaField array for editing
                     const convertAjvToSchemaFields = (ajvSchema: any, parentPath = ''): any[] => {
                       if (!ajvSchema || typeof ajvSchema !== 'object') return [];
-                      
+
                       const schemaFields: any[] = [];
-                      
+
                       if (ajvSchema.properties) {
                         Object.entries(ajvSchema.properties).forEach(([fieldName, fieldSchema]: [string, any]) => {
                           const fieldPath = parentPath ? `${parentPath}.${fieldName}` : fieldName;
-                          
+
                           let fieldType: string = 'string';
                           if (fieldSchema.type) {
                             switch (fieldSchema.type) {
@@ -1383,19 +1417,19 @@ interface EditEndpointModalProps {
                               default: fieldType = 'string';
                             }
                           }
-                          
+
                           const schemaField: any = {
                             name: fieldName,
                             path: fieldPath,
                             type: fieldType,
                             isRequired: ajvSchema.required?.includes(fieldName) || false
                           };
-                          
+
                           // Handle nested objects
                           if (fieldType === 'object' && fieldSchema.properties) {
                             schemaField.children = convertAjvToSchemaFields(fieldSchema, fieldPath);
                           }
-                          
+
                           // Handle arrays with object items
                           if (fieldType === 'array' && fieldSchema.items) {
                             if (fieldSchema.items.type === 'object' && fieldSchema.items.properties) {
@@ -1406,45 +1440,46 @@ interface EditEndpointModalProps {
                               schemaField.arrayElementType = fieldSchema.items.type || 'string';
                             }
                           }
-                          
+
                           schemaFields.push(schemaField);
                         });
                       }
-                      
+
                       return schemaFields;
                     };
-                    
+
                     const convertedFields = convertAjvToSchemaFields(schemaToUse);
                     console.log('🔍 EditEndpointModal - Converted schema fields for PayloadEditor:', convertedFields);
                     console.log('🔍 First few fields:', convertedFields.slice(0, 5).map(f => ({ name: f.name, path: f.path, type: f.type })));
                     return convertedFields;
                   })()}
-                  data-id="element-740" 
+                  data-id="element-740"
                 />
-                
-               
+
+
               </>
             )}
             {currentStep === 'mapping' && (
               <>
                 {console.log('EditEndpointModal - inferredSchema:', inferredSchema)}
                 {console.log('EditEndpointModal - createdEndpoint:', createdEndpoint)}
-                <MappingUtility 
-                  onMappingChange={setIsMappingValid} 
+                {console.log('EditEndpointModal - currentSchema for mapping:', currentSchema)}
+                <MappingUtility
+                  onMappingChange={setIsMappingValid}
                   onCurrentMappingsChange={updateCurrentMappings}
-                  sourceSchema={createdEndpoint?.schema || inferredSchema?.schema || existingConfig?.schema}
+                  sourceSchema={currentSchema || createdEndpoint?.schema || inferredSchema?.schema || existingConfig?.schema}
                   templateType="Acmt.023"
                   configId={createdEndpoint?.id || existingConfig?.id}
                   existingMappings={
                     // Priority: currentMappings (most recent) > createdEndpoint.mapping > existingConfig.mapping > empty array
-                    currentMappings.length > 0 
-                      ? currentMappings 
-                      : (!isNewEndpoint && existingConfig?.mapping 
-                        ? existingConfig.mapping 
+                    currentMappings.length > 0
+                      ? currentMappings
+                      : (!isNewEndpoint && existingConfig?.mapping
+                        ? existingConfig.mapping
                         : createdEndpoint?.mapping || [])
                   }
                   readOnly={readOnly}
-                  data-id="element-741" 
+                  data-id="element-741"
                 />
               </>
             )}
@@ -1453,7 +1488,7 @@ interface EditEndpointModalProps {
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold">Select Functions</h3>
 
-                    {/* Add Function Button - Only show when not read-only */}
+                  {/* Add Function Button - Only show when not read-only */}
                   {!readOnly && (
                     <div className="flex justify-end">
                       <Button
@@ -1465,7 +1500,7 @@ interface EditEndpointModalProps {
                       </Button>
                     </div>
                   )}
-                  
+
                   {/* Functions List */}
                   <div className="space-y-3">
                     {selectedFunctions.length === 0 ? (
@@ -1492,32 +1527,32 @@ interface EditEndpointModalProps {
                       ))
                     )}
                   </div>
-                  
-                
-                  
+
+
+
                 </div>
 
                 {/* Add Function Modal */}
                 {showAddFunctionModal && (
                   <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                     {/* Enhanced blurred backdrop - matching other modals */}
-                    <div 
-                      className="fixed inset-0 backdrop-blur-sm backdrop-saturate-150 z-40" 
+                    <div
+                      className="fixed inset-0 backdrop-blur-sm backdrop-saturate-150 z-40"
                       onClick={() => setShowAddFunctionModal(false)}
                     />
-                    
+
                     {/* Modal Content - Higher z-index to appear above backdrop */}
                     <div className="bg-white rounded-lg p-6 w-full max-w-2xl relative z-50 shadow-2xl">
                       <div className="flex justify-between items-center mb-4">
                         <h3 className="text-lg font-semibold">Add Function</h3>
-                        <button 
+                        <button
                           onClick={() => setShowAddFunctionModal(false)}
                           className="text-gray-500 hover:text-gray-700"
                         >
                           <XIcon className="w-5 h-5" />
                         </button>
                       </div>
-                      
+
                       <FunctionSelectionForm
                         onAddFunction={handleAddFunction}
                         onClose={() => setShowAddFunctionModal(false)}
@@ -1528,12 +1563,12 @@ interface EditEndpointModalProps {
               </>
             )}
             {currentStep === 'simulation' && (
-              <SimulationPanel 
+              <SimulationPanel
                 endpointId={createdEndpoint?.id || existingConfig?.id}
                 contentType={endpointData.contentType as 'application/json' | 'application/xml'}
                 onSimulationComplete={setIsSimulationSuccess}
                 readOnly={readOnly}
-                data-id="element-742" 
+                data-id="element-742"
               />
             )}
             {currentStep === 'deploy' && (() => {
@@ -1554,13 +1589,13 @@ interface EditEndpointModalProps {
             <div className="flex items-center space-x-4" data-id="element-746">
               {currentStep !== 'payload' && (
                 <Button variant="secondary" onClick={() => {
-                const currentIndex = steps.findIndex(s => s.id === currentStep);
-                if (currentIndex > 0) {
-                  // Clear any previous step-specific errors when navigating backward
-                  setError(null);
-                  setCurrentStep(steps[currentIndex - 1].id as any);
-                }
-              }} data-id="element-745">
+                  const currentIndex = steps.findIndex(s => s.id === currentStep);
+                  if (currentIndex > 0) {
+                    // Clear any previous step-specific errors when navigating backward
+                    setError(null);
+                    setCurrentStep(steps[currentIndex - 1].id as any);
+                  }
+                }} data-id="element-745">
                   Back
                 </Button>
               )}
@@ -1570,8 +1605,8 @@ interface EditEndpointModalProps {
                   console.log('createdEndpoint:', createdEndpoint);
                   console.log('existingConfig:', existingConfig);
                   await handleSaveAndNext();
-                }} disabled={loading || 
-                  (currentStep === 'mapping' && !isMappingValid) || 
+                }} disabled={loading ||
+                  (currentStep === 'mapping' && !isMappingValid) ||
                   (currentStep === 'simulation' && !isSimulationSuccess && !readOnly) ||
                   (currentStep !== 'payload' && !createdEndpoint && !existingConfig) ||
                   (currentStep === 'deploy' && !isApprover(user?.claims || []) && !isExporter(user?.claims || []) && (isStatus(createdEndpoint?.status, 'under_review') || isStatus(createdEndpoint?.status, 'approved') || isStatus(existingConfig?.status, 'under_review') || isStatus(existingConfig?.status, 'approved'))) ||
@@ -1580,12 +1615,12 @@ interface EditEndpointModalProps {
                 } data-id="element-749">
                   {loading ? 'Processing...' : (
                     currentStep === 'deploy' ? (
-                      isApprover(user?.claims || []) && (!isStatus(createdEndpoint?.status, 'approved') && !isStatus(existingConfig?.status, 'approved')) ? 'Send for Deployment' : 
-                      isExporter(user?.claims || []) && (isStatus(createdEndpoint?.status, 'approved') || isStatus(existingConfig?.status, 'approved')) ? 'Export' :
-                      !isApprover(user?.claims || []) && !isExporter(user?.claims || []) ? 'Submit for Approval' :
-                      'Configuration Approved'
-                    ) : 
-                    'Save and Next'
+                      isApprover(user?.claims || []) && (!isStatus(createdEndpoint?.status, 'approved') && !isStatus(existingConfig?.status, 'approved')) ? 'Send for Deployment' :
+                        isExporter(user?.claims || []) && (isStatus(createdEndpoint?.status, 'approved') || isStatus(existingConfig?.status, 'approved')) ? 'Export' :
+                          !isApprover(user?.claims || []) && !isExporter(user?.claims || []) ? 'Submit for Approval' :
+                            'Configuration Approved'
+                    ) :
+                      'Save and Next'
                   )}
                 </Button>
               )}
@@ -1605,8 +1640,8 @@ interface EditEndpointModalProps {
                         {isApprover(user?.claims || []) && currentStep === 'deploy' && (
                           <>
                             {onRevertToEditor && (!isStatus(createdEndpoint?.status, 'approved') && !isStatus(existingConfig?.status, 'approved')) && (
-                              <Button 
-                                variant="primary" 
+                              <Button
+                                variant="primary"
                                 onClick={onRevertToEditor}
                                 className="bg-red-600 hover:bg-red-700 text-white"
                               >
@@ -1614,8 +1649,8 @@ interface EditEndpointModalProps {
                               </Button>
                             )}
                             {onSendForDeployment && (!isStatus(createdEndpoint?.status, 'approved') && !isStatus(existingConfig?.status, 'approved')) && (
-                              <Button 
-                                variant="primary" 
+                              <Button
+                                variant="primary"
                                 onClick={onSendForDeployment}
                                 className="bg-green-600 hover:bg-green-700 text-white"
                               >
@@ -1628,8 +1663,8 @@ interface EditEndpointModalProps {
                         {isExporter(user?.claims || []) && currentStep === 'deploy' && (
                           <>
                             {onSendForDeployment && (isStatus(createdEndpoint?.status, 'approved') || isStatus(existingConfig?.status, 'approved')) && (
-                              <Button 
-                                variant="primary" 
+                              <Button
+                                variant="primary"
                                 onClick={onSendForDeployment}
                                 className="bg-blue-600 hover:bg-blue-700 text-white"
                               >
@@ -1642,18 +1677,18 @@ interface EditEndpointModalProps {
                         {isEditor(user?.claims || []) && currentStep === 'deploy' && (
                           <>
                             {/* Show Submit for Approval button for draft configs or when config is ready for submission */}
-                            {((!isStatus(createdEndpoint?.status, 'under_review') && !isStatus(createdEndpoint?.status, 'approved')) || 
+                            {((!isStatus(createdEndpoint?.status, 'under_review') && !isStatus(createdEndpoint?.status, 'approved')) ||
                               (!isStatus(existingConfig?.status, 'under_review') && !isStatus(existingConfig?.status, 'approved')) ||
                               (!createdEndpoint?.status && !existingConfig?.status)) && (
-                              <Button 
-                                variant="primary" 
-                                onClick={async () => await handleSaveAndNext()}
-                                disabled={loading}
-                                className="bg-blue-600 hover:bg-blue-700 text-white"
-                              >
-                                {loading ? 'Processing...' : 'Submit for Approval'}
-                              </Button>
-                            )}
+                                <Button
+                                  variant="primary"
+                                  onClick={async () => await handleSaveAndNext()}
+                                  disabled={loading}
+                                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                                >
+                                  {loading ? 'Processing...' : 'Submit for Approval'}
+                                </Button>
+                              )}
                           </>
                         )}
                       </>
