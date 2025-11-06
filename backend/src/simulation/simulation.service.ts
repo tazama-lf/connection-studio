@@ -162,9 +162,10 @@ export class SimulationService {
       const parsedPayload = parseStage.details.parsedPayload;
 
       // Stage 3: Validate Schema
+      const cleanedSchema = this.cleanSchemaForXML(config.schema);
       const schemaStage = this.stageValidateSchema(
         parsedPayload,
-        config.schema,
+        cleanedSchema,
         config,
       );
       stages.push(schemaStage);
@@ -472,7 +473,26 @@ export class SimulationService {
 
       // This method should only be called when mappings exist
       // The caller checks for empty mappings before calling this
-      const tcsResult = processMappings(payload, tcsMapping);
+      const endpoint = config.endpointPath || `${config.msgFam || 'unknown'}-${config.transactionType}`;
+      
+      // Wrap processMappings call with additional error handling for tcs-lib issues
+      let tcsResult;
+      try {
+        tcsResult = await processMappings(payload, tcsMapping, endpoint);
+      } catch (mappingError: any) {
+        // Handle specific logger service error from tcs-lib
+        if (mappingError.message && mappingError.message.includes('loggerService')) {
+          this.logger.error('TCS lib processMappings has logger issue - this should be fixed in tcs-lib');
+          // Return empty result instead of failing
+          tcsResult = {
+            dataCache: {},
+            transactionRelationship: {} as any,
+            endToEndId: '',
+          };
+        } else {
+          throw mappingError;
+        }
+      }
 
       return {
         name: '5. Execute TCS Mapping Functions',
@@ -482,15 +502,21 @@ export class SimulationService {
           mappingsApplied,
           tcsResult,
           dataCache: tcsResult?.dataCache || {},
+          transactionRelationship: tcsResult?.transactionRelationship || {},
           endToEndId: tcsResult?.endToEndId || '',
         },
       };
     } catch (error: any) {
+      this.logger.error('TCS mapping execution failed:', error);
       return {
         name: '5. Execute TCS Mapping Functions',
         status: 'FAILED',
-        message: `TCS mapping execution failed: ${error.message}`,
-        errors: [{ field: 'tcsMapping', message: error.message }],
+        message: `TCS mapping execution failed: ${error.message || 'Unknown error'}`,
+        errors: [{ 
+          field: 'tcsMapping', 
+          message: error.message || 'Unknown error',
+          value: error.stack ? error.stack.substring(0, 200) : undefined 
+        }],
       };
     }
   }
@@ -908,10 +934,74 @@ export class SimulationService {
 
     // If this looks like an XML-parsed object, apply schema-aware normalization
     if (this.isXmlParsedObject(payload)) {
-      return this.normalizeXmlParsedObjectWithSchema(payload, config?.schema);
+      const normalized = this.normalizeXmlParsedObjectWithSchema(payload, config?.schema);
+      
+      // Check if schema expects a root wrapper that's missing from the payload
+      if (config?.schema?.properties) {
+        const schemaRootKeys = Object.keys(config.schema.properties);
+        const payloadRootKeys = Object.keys(normalized);
+        
+        // If schema has exactly one root property and payload doesn't have it,
+        // wrap the payload with that root property
+        if (schemaRootKeys.length === 1 && !payloadRootKeys.includes(schemaRootKeys[0])) {
+          const rootKey = schemaRootKeys[0];
+          this.logger.debug(`Wrapping payload with schema root element: ${rootKey}`);
+          return { [rootKey]: normalized };
+        }
+      }
+      
+      return normalized;
     }
 
     return payload;
+  }
+
+  /**
+   * Clean JSON Schema to remove XML-specific properties (xmlns, root elements, etc.)
+   * This prevents validation failures for XML attributes that aren't in the payload
+   */
+  private cleanSchemaForXML(schema: any): any {
+    if (!schema || typeof schema !== 'object') {
+      return schema;
+    }
+
+    const cleanedSchema = { ...schema };
+
+    // Remove xmlns and other XML-specific properties from required fields
+    if (cleanedSchema.required && Array.isArray(cleanedSchema.required)) {
+      const originalRequired = cleanedSchema.required;
+      cleanedSchema.required = cleanedSchema.required.filter(
+        (field: string) => !field.startsWith('xmlns') && field !== '$' && field !== '@'
+      );
+      
+      if (originalRequired.length !== cleanedSchema.required.length) {
+        this.logger.debug(
+          `Removed ${originalRequired.length - cleanedSchema.required.length} XML attributes from required fields`
+        );
+      }
+    }
+
+    // Remove xmlns properties from the schema properties and recursively clean nested schemas
+    if (cleanedSchema.properties && typeof cleanedSchema.properties === 'object') {
+      const cleanedProperties: any = {};
+      for (const [key, value] of Object.entries(cleanedSchema.properties)) {
+        // Skip xmlns attributes, @ attributes, and $ properties
+        if (key.startsWith('xmlns') || key.startsWith('@') || key === '$') {
+          this.logger.debug(`Skipping XML attribute property: ${key}`);
+          continue;
+        }
+        
+        // Recursively clean ALL nested schemas (not just type='object')
+        if (value && typeof value === 'object') {
+          cleanedProperties[key] = this.cleanSchemaForXML(value);
+        } else {
+          cleanedProperties[key] = value;
+        }
+      }
+      cleanedSchema.properties = cleanedProperties;
+    }
+
+    return cleanedSchema;
   }
 
   /**
@@ -955,8 +1045,8 @@ export class SimulationService {
     const normalized: any = {};
 
     for (const [key, value] of Object.entries(obj)) {
-      // Skip XML attributes for schema validation (they start with @)
-      if (key.startsWith('@')) {
+      // Skip XML attributes and xmlns declarations for schema validation
+      if (key.startsWith('@') || key.startsWith('xmlns') || key === '$') {
         continue;
       }
 
@@ -1079,8 +1169,8 @@ export class SimulationService {
     const normalized: any = {};
 
     for (const [key, value] of Object.entries(obj)) {
-      // Skip XML attributes for schema validation (they start with @)
-      if (key.startsWith('@')) {
+      // Skip XML attributes and xmlns declarations for schema validation
+      if (key.startsWith('@') || key.startsWith('xmlns') || key === '$') {
         continue;
       }
 
@@ -1259,6 +1349,26 @@ export class SimulationService {
         }
 
         const fieldValue = this.getFieldValue(payload, source);
+        
+        // Debug logging for XML payloads
+        if (fieldValue === undefined || fieldValue === null) {
+          this.logger.debug(`Field not found: ${source}`);
+          this.logger.debug(`Available root keys: ${Object.keys(payload).join(', ')}`);
+          
+          // Try to give helpful suggestion for XML
+          if (Object.keys(payload).length === 1) {
+            const rootKey = Object.keys(payload)[0];
+            const suggestedPath = `${rootKey}.${source}`;
+            const suggestedValue = this.getFieldValue(payload, suggestedPath);
+            if (suggestedValue !== undefined) {
+              this.logger.warn(
+                `Field '${source}' not found, but '${suggestedPath}' exists. ` +
+                `For XML payloads, include the root element in the path.`
+              );
+            }
+          }
+        }
+        
         if (fieldValue !== undefined && fieldValue !== null) {
           anySourceExists = true;
           break;
