@@ -15,7 +15,8 @@ export class JSONSchemaConverterService {
   constructor(private readonly auditService: AuditService) {}
 
   convertToJSONSchema(fields: SchemaField[], _rootTitle?: string): JSONSchema {
-    this.logger.log('Converting custom schema to JSON Schema format');
+   
+    
     const properties: { [key: string]: JSONSchemaProperty } = {};
     const required: string[] = [];
 
@@ -26,6 +27,10 @@ export class JSONSchemaConverterService {
     required.push('tenantId');
 
     for (const field of fields) {
+      // Skip tenantId if it's already in the fields array to avoid duplicate
+      if (field.name === 'tenantId') {
+        continue;
+      }
       properties[field.name] = this.convertFieldToProperty(field);
       if (field.isRequired) {
         required.push(field.name);
@@ -39,9 +44,6 @@ export class JSONSchemaConverterService {
     if (required.length > 0) {
       schema.required = required;
     }
-    this.logger.log(
-      `Generated JSON Schema with ${Object.keys(properties).length} properties (including tenantId), ${required.length} required`,
-    );
 
     this.auditService.logAction({
       entityType: 'SCHEMA',

@@ -9,6 +9,8 @@ import { ConfigRepository } from './config.repository';
 import {
   FieldType,
   JSONSchema,
+  JSONSchemaProperty,
+  JSONSchemaType,
   applyFieldAdjustments,
   SchemaField,
 } from '@tazama-lf/tcs-lib';
@@ -197,10 +199,6 @@ export class ConfigService {
       // Add tenantId as the first field
       sourceFields = [tenantIdField, ...sourceFields];
 
-      this.logger.log(
-        `Added tenantId field to schema. Total fields: ${sourceFields.length}`,
-      );
-
       const duplicateErrors =
         this.validateNoDuplicateSchemaFields(sourceFields);
       if (duplicateErrors.length > 0) {
@@ -243,8 +241,11 @@ export class ConfigService {
       } else {
         this.logger.log('No field adjustments to apply');
       }
-      const finalSchema =
+      let finalSchema =
         this.jsonSchemaConverter.convertToJSONSchema(sourceFields);
+      
+      // Ensure tenantId is in the schema (double-check)
+      finalSchema = this.ensureTenantIdInSchema(finalSchema);
 
       this.logger.log(
         `Generated schema with ${Object.keys(finalSchema.properties || {}).length} properties`,
@@ -265,6 +266,8 @@ export class ConfigService {
         dto.transactionType,
         dto.msgFam,
       );
+
+    
 
       const configData: Omit<Config, 'id' | 'createdAt' | 'updatedAt'> = {
         msgFam: dto.msgFam || '',
@@ -287,6 +290,7 @@ export class ConfigService {
         configData,
         token,
       );
+      
 
       await this.auditService.logAction({
         entityType: 'CONFIG',
@@ -303,10 +307,12 @@ export class ConfigService {
         token,
       );
 
-      this.logger.log('Successfully created config ' + configId);
-
       // Enrich config with source fields for mapping UI
       const enrichedConfig = this.enrichConfigWithSourceFields(config!);
+      
+      if (enrichedConfig.sourceFields && enrichedConfig.sourceFields.length > 0) {
+        this.logger.log('🔥🔥🔥 FIRST 5 SOURCE FIELDS: ' + enrichedConfig.sourceFields.slice(0, 5).map(f => f.name).join(', '));
+      }
 
       return {
         success: true,
@@ -637,6 +643,9 @@ export class ConfigService {
       // Regenerate JSON schema with adjusted fields
       finalSchema =
         this.jsonSchemaConverter.convertToJSONSchema(adjustedSourceFields);
+      
+      // Ensure tenantId is in the schema
+      finalSchema = this.ensureTenantIdInSchema(finalSchema);
 
       this.logger.log(
         'Successfully applied field adjustments and regenerated schema',
@@ -651,6 +660,13 @@ export class ConfigService {
         };
       }
     }
+    
+    // If schema is being updated directly (not via field adjustments), ensure tenantId
+    if (finalSchema && !dto.fieldAdjustments) {
+      finalSchema = this.ensureTenantIdInSchema(finalSchema);
+      this.logger.log('Ensured tenantId is in directly updated schema');
+    }
+    
     const updateData = { ...dto };
 
     // Use finalSchema if field adjustments were applied
@@ -1204,9 +1220,8 @@ export class ConfigService {
       params: dto.params
         .map((p) => {
           const trimmed = p.trim();
-          // tenantId gets transaction. prefix, others get redis. prefix
-          return trimmed === 'tenantId'
-            ? `transaction.${trimmed}`
+          return trimmed === 'TenantId'
+            ? `transactionDetails.${trimmed}`
             : `redis.${trimmed}`;
         })
         .filter((p) => p.length > 0),
@@ -2423,12 +2438,10 @@ export class ConfigService {
     const newStatus = ConfigStatus.EXPORTED;
 
     const fileName = `dems_${tenantId}_${id}`;
+    
     try {
       // Step 1: Prepare config data for export
       const configToExport = { ...config, status: newStatus };
-
-      
-     
 
       // Step 2: Upload to SFTP (EXACTLY like job/scheduler service)
       await this.sftpService.createFile(fileName, {
@@ -2444,9 +2457,8 @@ export class ConfigService {
       this.logger.log(
         `Successfully uploaded config file (${fileName}) with status '${ConfigStatus.EXPORTED}' to SFTP servers.`,
       );
-
+      ///move to admin service
       // Step 3: Update database with direct SQL (EXACTLY like job/scheduler service)
-      const client = await this.databaseService.getClient();
       const updateQuery = `
         UPDATE config
         SET status = $1, updated_at = NOW()
@@ -2454,7 +2466,7 @@ export class ConfigService {
         RETURNING id;
       `;
 
-      const result = await client.query(updateQuery, [newStatus, id, tenantId]);
+      const result = await this.databaseService.query(updateQuery, [newStatus, id, tenantId]);
 
       if (!result.rowCount) {
         throw new NotFoundException(
@@ -2502,9 +2514,12 @@ export class ConfigService {
 
     const fileName = `dems_${tenantId}_${id}`;
     let currentStatus: ConfigStatus;
+    let configData: any;
     
+    // Step 1: Read config from SFTP once (EXACTLY like job/scheduler service)
     try {
-      const configData = await this.sftpService.readFile(fileName);
+      this.logger.log(`Reading config file from SFTP: ${fileName}`);
+      configData = await this.sftpService.readFile(fileName);
       
       if (configData && configData.status) {
         currentStatus = configData.status as ConfigStatus;
@@ -2540,25 +2555,11 @@ export class ConfigService {
     }
 
     const newStatus = ConfigStatus.DEPLOYED;
-    // fileName already declared above
 
     try {
-      // Step 1: Read config from SFTP (EXACTLY like job/scheduler service)
-      this.logger.log(`Reading config file from SFTP: ${fileName}`);
-      const configData = await this.sftpService.readFile(fileName);
-
       // Step 2: Insert raw config data as read from SFTP into config table FIRST
       try {
-        this.logger.log(
-          `📝 Inserting raw config data (as read from SFTP) into config table for config ${id}`,
-        );
-
-        const client = await this.databaseService.getClient();
-        try {
-      this.logger.log(`🔍 Raw configData from SFTP: ${JSON.stringify(Object.keys(configData))}`);
-      this.logger.log(`🔍 configData.mapping exists: ${!!configData.mapping}, type: ${typeof configData.mapping}`);
-      this.logger.log(`🔍 configData.functions exists: ${!!configData.functions}, type: ${typeof configData.functions}`);
-      this.logger.log(`🔍 configData.schema exists: ${!!configData.schema}, type: ${typeof configData.schema}`);
+        
       
       const configWithId = { ...configData};
       configWithId.msg_fam = configData.msgFam || '';
@@ -2594,10 +2595,6 @@ export class ConfigService {
         delete configWithId.createdAt;
         configWithId.updated_at = new Date();
         delete configWithId.updatedAt;
-        
-
-
-      // delete configWithId.createTableQuery; // Remove id to allow auto-generation
 
       const keys = Object.keys(configWithId);
       const values = Object.values(configWithId);
@@ -2608,49 +2605,16 @@ export class ConfigService {
                   VALUES (${placeholders})
                   RETURNING *;
                      `;
-      const insertResult = await client.query(insertQuery, values);
-      const { id } = insertResult.rows[0];
-
-          // const insertQuery = `
-          //   INSERT INTO config (
-          //     tenant_id, msg_fam, transaction_type, version, content_type,
-          //     endpoint_path, status, publishing_status, schema, mapping,
-          //     functions, payload, credentials, created_by, created_at, updated_at
-          //   )
-          //   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
-          //   RETURNING id;
-          // `;
-
-          // const result = await client.query(insertQuery, [
-          //   tenantId,
-          //   configData.msgFam || '',
-          //   configData.transactionType || '',
-          //   configData.version || 'v1',
-          //   configData.contentType || 'application/json',
-          //   configData.endpointPath || '',
-          //   newStatus, // Set to DEPLOYED status
-          //   configData.publishing_status || 'inactive',
-          //   JSON.stringify(configData.schema || {}),
-          //   JSON.stringify(configData.mapping || []),
-          //   JSON.stringify(configData.functions || []),
-          //   JSON.stringify(configData.payload || {}),
-          //   JSON.stringify(configData.credentials || {}), // Store encrypted credentials as-is
-          //   configData.createdBy || userId,
-          //   configData.createdAt || new Date(),
-          //   new Date(), // updated_at
-          // ]);
+      const insertResult = await this.databaseService.query(insertQuery, values);
+      const insertedId = insertResult.rows[0].id;
 
           this.logger.log(
-            `✅ Successfully inserted raw config data into config table, new record id: ${id}`,
+            `✅ Successfully inserted raw config data into config table, new record id: ${insertedId}`,
           );
-        } finally {
-          client.release();
-        }
       } catch (insertError) {
         this.logger.error(
           `Failed to insert config data into config table: ${insertError.message}`,
         );
-        // Don't throw - allow deployment to continue even if insert fails
       }
 
       // Step 3: Decrypt credentials if present (for further processing)
@@ -2680,15 +2644,10 @@ export class ConfigService {
         this.logger.log(`Executing CREATE TABLE query from config ${id}:`);
         this.logger.log(createTableQuery);
 
-        const client = await this.databaseService.getClient();
-        try {
-          await client.query(createTableQuery);
-          this.logger.log(
-            `Successfully created table "${transactionType}" from deployed config`,
-          );
-        } finally {
-          client.release();
-        }
+        await this.databaseService.query(createTableQuery);
+        this.logger.log(
+          `Successfully created table "${transactionType}" from deployed config`,
+        );
       } else {
         this.logger.warn(
           `No transactionType found in config file ${fileName}`,
@@ -2700,7 +2659,6 @@ export class ConfigService {
       this.logger.log(`Deleted config file from SFTP: ${fileName}`);
 
       // Step 6: Update original config status in database with direct SQL
-      const client = await this.databaseService.getClient();
       const updateQuery = `
         UPDATE config
         SET status = $1, updated_at = NOW()
@@ -2708,7 +2666,7 @@ export class ConfigService {
         RETURNING id;
       `;
 
-      const result = await client.query(updateQuery, [newStatus, id, tenantId]);
+      const result = await this.databaseService.query(updateQuery, [newStatus, id, tenantId]);
 
       if (!result.rowCount) {
         throw new NotFoundException(
@@ -3035,10 +2993,30 @@ CREATE TABLE IF NOT EXISTS "${tableName}" (
   private enrichConfigWithSourceFields(config: Config): ConfigWithSourceFields {
     try {
       if (config && config.schema) {
+        
         const hierarchicalFields =
           this.jsonSchemaConverter.convertFromJSONSchema(config.schema);
-        // Flatten the hierarchical structure to include all leaf paths with .0. notation
-        const sourceFields = this.flattenSchemaFields(hierarchicalFields);
+          
+        
+        let sourceFields = this.flattenSchemaFields(hierarchicalFields);
+                
+        // Always ensure tenantId field is present as the first field
+        const hasTenantId = sourceFields.some(f => f.name === 'tenantId' || f.path === 'tenantId');
+        
+        if (!hasTenantId) {
+          const tenantIdField: SchemaField = {
+            name: 'tenantId',
+            path: 'tenantId',
+            type: FieldType.STRING,
+            isRequired: true,
+          };
+          sourceFields = [tenantIdField, ...sourceFields];
+          this.logger.log(`✅ Added tenantId field to source fields for config ${config.id}`);
+        }
+        
+        this.logger.log(`🔍 Final source fields count: ${sourceFields.length}`);
+        this.logger.log(`🔍 Final source field names: ${sourceFields.slice(0, 5).map(f => f.name).join(', ')}...`);
+        
         return {
           ...config,
           sourceFields,
@@ -3052,6 +3030,44 @@ CREATE TABLE IF NOT EXISTS "${tableName}" (
     return config;
   }
 
+  /**
+   * Ensures that a JSON Schema always has tenantId as the first property
+   * This is critical for all mapping operations
+   */
+  private ensureTenantIdInSchema(schema: JSONSchema): JSONSchema {
+    
+    if (!schema.properties) {
+      schema.properties = {};
+    }
+    
+    
+    // Check if tenantId already exists
+    if (!schema.properties['tenantId']) {
+      
+      // Create new properties object with tenantId first
+      const newProperties: { [key: string]: JSONSchemaProperty } = {
+        tenantId: {
+          type: JSONSchemaType.STRING,
+        },
+        ...schema.properties
+      };
+      
+      schema.properties = newProperties;
+      
+      // Ensure tenantId is in required array
+      if (!schema.required) {
+        schema.required = [];
+      }
+      if (!schema.required.includes('tenantId')) {
+        schema.required = ['tenantId', ...schema.required];
+      }
+      
+    } else {
+      this.logger.log('🔥 tenantId already exists in schema');
+    }
+    
+    return schema;
+  }
 
   private flattenSchemaFields(fields: SchemaField[]): SchemaField[] {
     const flattened: SchemaField[] = [];
