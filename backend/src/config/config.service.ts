@@ -2448,32 +2448,31 @@ export class ConfigService {
         ...configToExport,
         status: ConfigStatus.READY_FOR_DEPLOYMENT,
       });
+      this.logger.log(
+        `Successfully uploaded config file (${fileName}) with status '${ConfigStatus.READY_FOR_DEPLOYMENT}' to SFTP servers.`,
+      );
 
       // await this.sftpService.createFileForPublisher(fileName, {
       //   ...configToExport,
       //   status: ConfigStatus.EXPORTED,
       // });
-
-      this.logger.log(
-        `Successfully uploaded config file (${fileName}) with status '${ConfigStatus.EXPORTED}' to SFTP servers.`,
-      );
-      ///move to admin service
-      // Step 3: Update database with direct SQL (EXACTLY like job/scheduler service)
       const updateQuery = `
         UPDATE config
-        SET status = $1, updated_at = NOW()
+        SET status = $1
         WHERE id = $2 AND tenant_id = $3
         RETURNING id;
       `;
 
-      const result = await this.databaseService.query(updateQuery, [newStatus, id, tenantId]);
 
+      const result = await this.databaseService.query(updateQuery, [newStatus, id, tenantId]);
       if (!result.rowCount) {
         throw new NotFoundException(
           `Config with id "${id}" not found in config table.`,
         );
       }
 
+
+      
       this.logger.log(
         `Successfully updated config ${id} status to ${newStatus} in database`,
       );
