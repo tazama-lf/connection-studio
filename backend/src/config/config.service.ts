@@ -2449,7 +2449,7 @@ export class ConfigService {
         status: ConfigStatus.READY_FOR_DEPLOYMENT,
       });
       this.logger.log(
-        `Successfully uploaded config file (${fileName}) with status '${ConfigStatus.READY_FOR_DEPLOYMENT}' to SFTP servers.`,
+        `Successfully uploaded FATIMA ALI config file (${fileName}) with status '${ConfigStatus.READY_FOR_DEPLOYMENT}' to SFTP servers.`,
       );
 
       // await this.sftpService.createFileForPublisher(fileName, {
