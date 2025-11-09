@@ -1343,9 +1343,12 @@ export class SimulationService {
 
     for (let i = 0; i < mappings.length; i++) {
       const mapping = mappings[i];
-      // Source is always an array for consistency
-      const sources = mapping.source || [];
-
+      let sources: string[] = [];
+      if (mapping.sources && Array.isArray(mapping.sources)) {
+        sources = mapping.sources;
+      } else if (mapping.source) {
+        sources = Array.isArray(mapping.source) ? mapping.source : [mapping.source];
+      }
       if (
         mapping.transformation === 'CONSTANT' ||
         mapping.constantValue !== undefined

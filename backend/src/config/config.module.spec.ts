@@ -13,7 +13,6 @@ import { TazamaDataModelService } from '../tazama-data-model/tazama-data-model.s
 import { AuditService } from '../audit/audit.service';
 import { SftpService } from '../sftp/sftp.service';
 import { ConfigService as NestConfigService } from '@nestjs/config';
-import { DatabaseService } from '../database/database.service';
 
 describe('ConfigModule', () => {
   let controller: ConfigController;
