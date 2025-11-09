@@ -291,6 +291,14 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
     }
   }, [existingSchemaFields, configId]); // Removed hasUserMadeEdits dependency
 
+  // Auto-generate fields in edit mode when payload exists but no schema fields provided
+  useEffect(() => {
+    if (isEditMode && value && !existingSchemaFields && inferredFields.length === 0 && !isGeneratingFields) {
+      console.log('🔄 Auto-generating fields for edit mode with existing payload');
+      handleGenerateFields();
+    }
+  }, [isEditMode, value, existingSchemaFields]);
+
   // Always show the schema fields section (no auto-generation)
   useEffect(() => {
     setShowInferredFields(true);

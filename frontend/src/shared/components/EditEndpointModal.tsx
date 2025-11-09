@@ -19,6 +19,7 @@ import { isApprover, isEditor, isExporter } from '../../utils/roleUtils';
 import { isStatus } from '../utils/statusColors';
 import { convertInferredFieldsToJsonSchema } from '../utils/schemaUtils';
 import type { InferredField } from '../utils/schemaUtils';
+import { endpointDataSchema, payloadSchema, validateForm } from '../../utils/validationSchemas';
 
 // Function Selection Form Component
 interface FunctionSelectionFormProps {
@@ -52,9 +53,26 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({ onAddFunc
     console.log('Optional Params:', selectedOptionalParams);
     console.log('All Params:', allParams);
 
+    // Add prefixes to parameters: 'transactionDetails.' for tenantId, 'redis.' for others
+    const prefixedParams = allParams.map(param => {
+      const trimmed = param.trim();
+      const lowerParam = trimmed.toLowerCase();
+      
+      // Check if it's tenantId (case-insensitive)
+      if (lowerParam === 'tenantid' || lowerParam === 'tenant_id') {
+        console.log(`🔧 Adding 'transactionDetails.' prefix to: ${trimmed}`);
+        return `transactionDetails.${trimmed}`;
+      } else {
+        console.log(`🔧 Adding 'redis.' prefix to: ${trimmed}`);
+        return `redis.${trimmed}`;
+      }
+    });
+
+    console.log('Prefixed Params:', prefixedParams);
+
     const functionData = {
       functionName: selectedFunction,
-      params: allParams
+      params: prefixedParams
     };
 
     console.log('Final Function Data:', functionData);
@@ -273,7 +291,7 @@ console.log('Cur map:', currentMappings);
     label: 'Functions'
   }, {
     id: 'simulation',
-    label: 'Simulation'
+    label: 'Dry Run'
   }, {
     id: 'deploy',
     label: isApprover(user?.claims || []) ? 'Send for Deployment' :
@@ -331,9 +349,12 @@ console.log('Cur map:', currentMappings);
             if (config.payload) {
               // If original payload is stored, use it
               setPayload(config.payload);
+              // Don't set currentSchema here - let PayloadEditor regenerate it from the payload
+              // This ensures consistent field structure between create and edit modes
             } else if (config.schema) {
               // Otherwise, show the schema (user will need to replace with actual payload for editing)
               setPayload(JSON.stringify(config.schema, null, 2));
+              // Don't set currentSchema here - let PayloadEditor regenerate it
             }
 
             // Initialize currentMappings with existing mappings for consistency
@@ -342,9 +363,15 @@ console.log('Cur map:', currentMappings);
               console.log('🔄 Initialized currentMappings with existing mappings:', config.mapping.length, 'mappings');
             }
 
-            // Set the existing config as the "created" endpoint for all subsequent steps
-            setCreatedEndpoint(config);
-            setInferredSchema(config);
+            // CRITICAL: In clone mode, DON'T set createdEndpoint (we want to create a NEW config)
+            // Only set it in edit mode (not cloning)
+            if (!isCloning) {
+              // Set the existing config as the "created" endpoint for all subsequent steps
+              setCreatedEndpoint(config);
+              setInferredSchema(config);
+            } else {
+              console.log('🔄 Clone mode - NOT setting createdEndpoint (will create new config)');
+            }
 
             // Load existing functions if available
             if (config.functions && Array.isArray(config.functions)) {
@@ -368,6 +395,35 @@ console.log('Cur map:', currentMappings);
 
     loadExistingConfig();
   }, [endpointId, isNewEndpoint, isOpen]);
+
+  // Update endpoint path when endpointData changes (version, transactionType, msgFam)
+  useEffect(() => {
+    if (createdEndpoint || existingConfig) {
+      const newEndpointPath = `/${tenantId}/${endpointData.version || 'v1'}/${endpointData.msgFam ? `${endpointData.msgFam}/` : ''}${endpointData.transactionType}`;
+      
+      console.log('🔄 EndpointData changed, updating endpoint path:', newEndpointPath);
+      
+      if (createdEndpoint) {
+        setCreatedEndpoint({
+          ...createdEndpoint,
+          endpointPath: newEndpointPath,
+          version: endpointData.version,
+          transactionType: endpointData.transactionType,
+          msgFam: endpointData.msgFam,
+        });
+      }
+      
+      if (existingConfig) {
+        setExistingConfig({
+          ...existingConfig,
+          endpointPath: newEndpointPath,
+          version: endpointData.version,
+          transactionType: endpointData.transactionType,
+          msgFam: endpointData.msgFam,
+        });
+      }
+    }
+  }, [endpointData.version, endpointData.transactionType, endpointData.msgFam, tenantId]);
 
   const isPayloadStepValid = () => {
     return payload &&
@@ -423,41 +479,36 @@ console.log('Cur map:', currentMappings);
 
   // Step 1: Create or Update Endpoint with Payload
   const handleCreateEndpoint = async () => {
-    // Validate all required fields before saving
-    const validationErrors: string[] = [];
-
-    if (!endpointData.transactionType.trim()) {
-      validationErrors.push('Transaction Type is required');
-    }
-
-    if (!endpointData.version.trim()) {
-      validationErrors.push('Version is required');
-    }
-
-    if (!payload.trim()) {
-      validationErrors.push('Payload is required');
-    }
-
-    // If there are validation errors, show them and scroll to top
-    if (validationErrors.length > 0) {
-      const errorMessage = validationErrors.join('. ');
-      setError(errorMessage);
-
-      // Scroll to the error message at the top
-      setTimeout(() => {
-        const errorElement = document.querySelector('.bg-red-50.border-red-200');
-        if (errorElement) {
-          errorElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-      }, 100);
-
-      return;
-    }
-
     setLoading(true);
     setError(null);
 
     try {
+      // Validate using Yup schema
+      const validationErrors = await validateForm(endpointDataSchema, endpointData);
+      
+      // Validate payload separately
+      const payloadErrors = await validateForm(payloadSchema, { payload });
+      
+      // Combine all errors
+      const allErrors = { ...validationErrors, ...payloadErrors };
+      
+      if (Object.keys(allErrors).length > 0) {
+        // Create user-friendly error message
+        const errorMessages = Object.values(allErrors).filter(Boolean);
+        const errorMessage = errorMessages.join('. ');
+        setError(errorMessage);
+
+        // Scroll to the error message at the top
+        setTimeout(() => {
+          const errorElement = document.querySelector('.bg-red-50.border-red-200');
+          if (errorElement) {
+            errorElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }, 100);
+
+        setLoading(false);
+        return;
+      }
       // Create configuration request using user-entered data
       const createRequest: CreateConfigRequest = {
         msgFam: endpointData.msgFam?.trim() || undefined, // Use user-provided msgFam or leave undefined
@@ -769,8 +820,9 @@ console.log('Cur map:', currentMappings);
       return errors;
     }
 
-    // Runtime context fields that are provided at execution time, not from mappings
-    const runtimeContextFields = ['tenantid', 'tenant_id', 'userid', 'user_id'];
+    // Runtime context fields that are provided at execution time from auth context, not from mappings
+    // Note: tenantId is NOT included here because it should be mapped from source fields
+    const runtimeContextFields = ['userid', 'user_id'];
     
     // Extract all destination fields from currentMappings (store in lowercase for case-insensitive comparison)
     // Also strip common prefixes like "redis.", "transactionDetails.", "dataCache.", etc.
@@ -1037,6 +1089,56 @@ console.log('Cur map:', currentMappings);
 
       console.log('testingghdjs', createRequest);
 
+      // MAPPING PERSISTENCE STRATEGY: Include mappings from MappingUtility or existing config
+      console.log('🔍 handleSaveAndNext - Mapping persistence debugging:');
+      console.log('  - currentMappings from MappingUtility:', currentMappings);
+      console.log('  - currentMappings type:', typeof currentMappings);
+      console.log('  - currentMappings length:', currentMappings?.length);
+      console.log('  - existingConfig.mapping:', existingConfig?.mapping);
+      console.log('  - existingConfig.mapping length:', existingConfig?.mapping?.length);
+
+      // Strategy: Use current mappings if available, otherwise use existing config mappings
+      let mappingsToInclude = null;
+
+      if (currentMappings && Array.isArray(currentMappings) && currentMappings.length > 0) {
+        mappingsToInclude = currentMappings;
+        console.log('✅ Using current mappings from MappingUtility:', mappingsToInclude.length, 'mappings');
+      } else if (!isNewEndpoint && existingConfig?.mapping && Array.isArray(existingConfig.mapping) && existingConfig.mapping.length > 0) {
+        mappingsToInclude = existingConfig.mapping;
+        console.log('🔄 Using existing config mappings as fallback:', mappingsToInclude.length, 'mappings');
+      } else {
+        console.log('ℹ️ No mappings found - creating config without mappings');
+      }
+
+      if (mappingsToInclude) {
+        createRequest.mapping = mappingsToInclude;
+        console.log('📋 Including mappings in config request:', mappingsToInclude);
+      }
+
+      // Function persistence - similar to mapping strategy
+      console.log('🔍 handleSaveAndNext - Function persistence debugging:');
+      console.log('  - selectedFunctions:', selectedFunctions);
+      console.log('  - selectedFunctions length:', selectedFunctions?.length);
+      console.log('  - existingConfig.functions:', existingConfig?.functions);
+      console.log('  - existingConfig.functions length:', existingConfig?.functions?.length);
+
+      let functionsToInclude = null;
+
+      if (selectedFunctions && Array.isArray(selectedFunctions) && selectedFunctions.length > 0) {
+        functionsToInclude = selectedFunctions;
+        console.log('✅ Using current selectedFunctions:', functionsToInclude.length, 'functions');
+      } else if (!isNewEndpoint && existingConfig?.functions && Array.isArray(existingConfig.functions) && existingConfig.functions.length > 0) {
+        functionsToInclude = existingConfig.functions;
+        console.log('🔄 Using existing config functions as fallback:', functionsToInclude.length, 'functions');
+      } else {
+        console.log('ℹ️ No functions found - creating config without functions');
+      }
+
+      if (functionsToInclude) {
+        createRequest.functions = functionsToInclude;
+        console.log('⚙️ Including functions in config request:', functionsToInclude);
+      }
+
       // CRITICAL: Use the current schema from PayloadEditor (includes user edits)
       // If currentSchema is an InferredField[] array, convert it to JSON Schema format
       let finalSchema = currentSchema;
@@ -1256,15 +1358,21 @@ console.log('Cur map:', currentMappings);
 
       // Determine actual config ID to use
       const actualConfigId = createdEndpoint?.id || existingConfig?.id || endpointId;
-      const shouldCreate = !createdEndpoint && !existingConfig && isNewEndpoint;
-      const isCloningOperation = isCloning && existingConfig; // True when we're cloning an existing config
-      const action = (shouldCreate || isCloningOperation) ? 'create' : 'update';
+      
+      // Clone logic: If we're in clone mode AND have already created a config (createdEndpoint exists),
+      // then we should UPDATE that config instead of creating another one
+      const hasAlreadyCreatedInCloneMode = isCloning && createdEndpoint;
+      
+      // Create only if: (1) New endpoint with no created config, OR (2) First save in clone mode (no createdEndpoint yet)
+      const shouldCreate = (isNewEndpoint && !createdEndpoint) || (isCloning && !createdEndpoint && existingConfig);
+      const action = shouldCreate ? 'create' : 'update';
 
-      if (shouldCreate || isCloningOperation) {
-        console.log(isCloningOperation ? 'Cloning config - creating new config...' : 'Creating NEW config...');
+      if (shouldCreate) {
+        console.log(isCloning ? 'Cloning config - creating new config (first save)...' : 'Creating NEW config...');
         saveResponse = await configApi.createConfig(createRequest);
       } else {
         console.log('Updating EXISTING config with ID:', actualConfigId);
+        console.log(hasAlreadyCreatedInCloneMode ? '(Clone mode - updating previously created config)' : '(Edit mode)');
         saveResponse = await configApi.updateConfig(actualConfigId, createRequest);
       }
 
@@ -1594,7 +1702,7 @@ console.log('Cur map:', currentMappings);
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                           </svg>
                           <p className="text-sm text-green-700 font-medium">
-                            ✓ All function parameters are properly mapped
+                            All function parameters are properly mapped
                           </p>
                         </div>
                       </div>
@@ -1623,7 +1731,8 @@ console.log('Cur map:', currentMappings);
                     ) : (
                       selectedFunctions.map((func, index) => {
                         // Check which parameters are missing mappings for this function (case-insensitive, strip prefixes)
-                        const runtimeContextFields = ['tenantid', 'tenant_id', 'userid', 'user_id'];
+                        // Note: tenantId is NOT included in runtime context because it should be mapped from source fields
+                        const runtimeContextFields = ['userid', 'user_id'];
                         const mappedDestinations = new Set<string>();
                         
                         currentMappings.forEach((mapping: any) => {

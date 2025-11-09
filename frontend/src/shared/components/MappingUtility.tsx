@@ -218,39 +218,52 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
 
     console.log('🏗️ Building source tree from', schemaArray.length, 'fields');
 
-    // First pass: create all nodes
+    // First pass: create all nodes AND their parent nodes
     schemaArray.forEach((field) => {
       const originalPath = field.path || field.name || 'unknown';
       const pathParts = originalPath.split(/\.(?![^\[]*\])/);
       
-      // Determine if this represents an array
-      // If path ends with [0], it's an array element container
-      const isArrayElement = /\[0\]$/.test(originalPath);
-      
-      // Extract proper name - if it's an array element, keep the [0] in the name
-      let nodeName;
-      if (isArrayElement) {
-        // For "a.b.c[0]", name should be "c[0]"
-        nodeName = pathParts[pathParts.length - 1];
-      } else {
-        // Use field.name if available, otherwise last part of path
-        nodeName = field.name || pathParts[pathParts.length - 1] || 'unknown';
-      }
-      
-      const fieldType = isArrayElement ? 'array' : (field.type?.toLowerCase() || 'string');
-      
-      console.log('📝 Field:', originalPath, 'Type:', fieldType, 'Name:', nodeName, 'IsArray:', isArrayElement);
-      
-      const node: TreeNode = {
-        id: originalPath,
-        name: nodeName,
-        path: [originalPath],
-        type: fieldType,
+      // Create all parent nodes in the path if they don't exist
+      let currentPath = '';
+      pathParts.forEach((part, index) => {
+        const previousPath = currentPath;
+        currentPath = currentPath ? `${currentPath}.${part}` : part;
+        
+        // Skip if this node already exists
+        if (nodeMap.has(currentPath)) return;
+        
+        const isArrayElement = /\[0\]$/.test(currentPath);
+        const nodeName = part;
+        const fieldType = isArrayElement ? 'array' : 
+                         (index === pathParts.length - 1 ? (field.type?.toLowerCase() || 'object') : 'object');
+        
+        const node: TreeNode = {
+          id: currentPath,
+          name: nodeName,
+          path: [currentPath],
+          type: fieldType,
+          children: []
+        };
+        
+        nodeMap.set(currentPath, node);
+        console.log('📝 Created node:', currentPath, 'Type:', fieldType, 'Name:', nodeName);
+      });
+    });
+
+    // Add hardcoded tenantId field at root level if not already present
+    if (!nodeMap.has('tenantId')) {
+      const tenantIdNode: TreeNode = {
+        id: 'tenantId',
+        name: 'tenantId',
+        path: ['tenantId'],
+        type: 'string',
         children: []
       };
-      
-      nodeMap.set(originalPath, node);
-    });
+      nodeMap.set('tenantId', tenantIdNode);
+      console.log('📌 Added hardcoded tenantId field to source tree');
+    } else {
+      console.log('📌 tenantId already exists at root level, skipping hardcoded addition');
+    }
 
     // Second pass: build parent-child relationships
     console.log('📊 All nodes in map:', Array.from(nodeMap.keys()));
@@ -259,10 +272,6 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       let parentPath = '';
       
       // Find parent by removing the last segment
-      // For "a.b.c[0].d" -> parent is "a.b.c[0]"
-      // For "a.b.c[0]" -> parent is "a.b"
-      // For "a.b.c" -> parent is "a.b"
-      
       const lastDotIndex = nodeId.lastIndexOf('.');
       if (lastDotIndex > 0) {
         parentPath = nodeId.substring(0, lastDotIndex);
@@ -278,9 +287,14 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
         parentNode.children.push(node);
         console.log('  ✅ Added to parent. Parent now has', parentNode.children.length, 'children');
       } else {
-        // Root node
-        rootNodes.push(node);
-        console.log('  📍 Added to root');
+        // Root node - only add if not already in rootNodes
+        const alreadyInRoot = rootNodes.some(n => n.id === nodeId);
+        if (!alreadyInRoot) {
+          rootNodes.push(node);
+          console.log('  📍 Added to root');
+        } else {
+          console.log('  ⏭️ Already in root, skipping');
+        }
       }
     });
 

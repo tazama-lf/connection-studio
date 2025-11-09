@@ -125,6 +125,7 @@ export const getStatusLabel = (status: string | undefined): string => {
     case 'rejected':
       return 'REJECTED';
     case 'exported':
+      return 'EXPORTED';
     case 'ready_for_deployment':
     case 'ready for deployment':
     case 'ready':

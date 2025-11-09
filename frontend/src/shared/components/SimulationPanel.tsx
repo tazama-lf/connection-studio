@@ -46,24 +46,24 @@ export const SimulationPanel: React.FC<SimulationPanelProps> = ({
     setSimulationResult(null);
 
     try {
-      // Parse payload based on content type
-      let parsedPayload: any;
+      // Validate payload format based on content type
       try {
         if (contentType === 'application/json') {
-          parsedPayload = JSON.parse(testPayload);
-        } else {
-          // For XML, send as string - backend will parse it
-          parsedPayload = testPayload;
+          JSON.parse(testPayload); // Just validate, don't store
         }
+        // For XML, we can add validation later if needed
       } catch (parseError) {
         throw new Error(`Invalid ${contentType} format: ${parseError instanceof Error ? parseError.message : 'Parse error'}`);
       }
 
+      // Convert content type to backend enum format
+      const payloadType = contentType === 'application/json' ? 'json' : 'xml';
+
       // Run simulation via API
       const result = await simulationApi.runSimulation({
-        endpointId,
-        payloadType: contentType,
-        payload: parsedPayload
+        configId: endpointId,
+        payloadType: payloadType as 'json' | 'xml',
+        testPayload: testPayload
       });
 
       setSimulationResult(result);

@@ -10,6 +10,7 @@ export interface CreateConfigRequest {
   payload: string;
   schema?: any; // Complete JSON Schema object
   mapping?: FieldMapping[];
+  functions?: any[]; // Function definitions
   fieldAdjustments?: FieldAdjustment[];
 }
 
