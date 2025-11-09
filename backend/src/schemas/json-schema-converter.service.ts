@@ -234,6 +234,7 @@ export class JSONSchemaConverterService {
       if (typeof property.items === 'object' && property.items.type) {
         if (property.items.type === 'object' && property.items.properties) {
           field.children = [];
+          field.arrayElementType = FieldType.OBJECT; // FIX: Preserve array element type for object arrays
           const itemRequired = property.items.required || [];
           for (const [itemPropName, itemProp] of Object.entries(
             property.items.properties,
