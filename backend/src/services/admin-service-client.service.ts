@@ -126,7 +126,7 @@ export class AdminServiceClient {
 
   // ==================== SCHEDULER OPERATIONS ====================
 
-  async createSchedule(schedule: unknown, token: string): Promise<{ success: boolean; message: string; id: string }> {
+  async createSchedule(schedule: unknown, token: string): Promise<{ success: boolean; message: string; }> {
     this.logger.log(
       `Validating schedule creation: ${schedule}`,
     );
@@ -173,7 +173,7 @@ export class AdminServiceClient {
     }
   }
 
-  async updateSchedule(id: string, schedule: unknown, token: string): Promise<{ success: boolean; message: string; id: string }> {
+  async updateSchedule(id: string, schedule: unknown, token: string): Promise<{ success: boolean; message: string }> {
     this.logger.log(
       `Validating schedule update with id : ${id}`,
     );
@@ -199,7 +199,7 @@ export class AdminServiceClient {
     }
   }
 
-  async getAllSchedule(page: number, limit: number, tenant_id: string, token: string): Promise<[]> {
+  async getAllSchedule(page: number, limit: number, tenant_id: string, token: string): Promise<Schedule[]> {
     this.logger.log(`Getting all schedules`);
 
     try {
@@ -225,7 +225,7 @@ export class AdminServiceClient {
     }
   }
 
-  async getScheduleByStatus(status: JobStatus, page: number, limit: number, tenant_id: string, token: string): Promise<[]> {
+  async getScheduleByStatus(status: JobStatus, page: number, limit: number, tenant_id: string, token: string): Promise<Schedule[]> {
     this.logger.log(`Getting schedules with statuses: ${status}`);
 
     try {
@@ -252,7 +252,7 @@ export class AdminServiceClient {
     }
   }
 
-  async updateScheduleByStatus(id: string, status: JobStatus, tenantId: string, token: string, reason?: string): Promise<{ success: boolean; message: string; id: string }> {
+  async updateScheduleByStatus(id: string, status: JobStatus, tenantId: string, token: string, reason?: string): Promise<{ success: boolean; message: string }> {
     this.logger.log(
       `Validating schedule update with id : ${id}`,
     );

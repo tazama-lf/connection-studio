@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { ISuccess, JobStatus, Schedule } from '@tazama-lf/tcs-lib';
-import { AdminServiceClient } from 'src/services/admin-service-client.service';
+import { AdminServiceClient } from '../services/admin-service-client.service';
 import { v4 } from 'uuid';
 import { DatabaseService } from '../database/database.service';
 import { SftpService } from '../sftp/sftp.service';
