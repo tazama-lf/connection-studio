@@ -135,6 +135,18 @@ export class ConfigRepository {
     await this.adminServiceClient.writeConfigUpdate(id, updateData, token);
   }
 
+  async updatePublishingStatus(
+    id: number,
+    publishingStatus: 'active' | 'inactive',
+    token: string,
+  ): Promise<any> {
+    return this.adminServiceClient.updatePublishingStatus(
+      id,
+      publishingStatus,
+      token,
+    );
+  }
+
   async deleteConfig(
     id: number,
     tenantId: string,

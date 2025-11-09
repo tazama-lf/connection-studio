@@ -6,13 +6,12 @@ import { HttpModule } from '@nestjs/axios';
 import { LoggerModule } from 'src/logger-service/logger-service.module';
 import { TazamaAuthGuard } from './tazama-auth.guard';
 import { AuditModule } from '../audit/audit.module';
-import { SessionManagerService } from './session-manager.service';
 
 @Global()
 @Module({
   imports: [ConfigModule, LoggerModule, HttpModule, AuditModule],
-  providers: [AuthService, TazamaAuthGuard, SessionManagerService],
-  exports: [AuthService, TazamaAuthGuard, SessionManagerService],
+  providers: [AuthService, TazamaAuthGuard],
+  exports: [AuthService, TazamaAuthGuard],
   controllers: [AuthController],
 })
 export class AuthModule {}

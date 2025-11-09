@@ -1,12 +1,11 @@
 import { Controller, Post, Body, UseGuards, Logger } from '@nestjs/common';
 import { SimulationService } from './simulation.service';
-import type {
-  SimulatePayloadDto,
-  SimulationResult,
-} from './simulation.service';
+import type { SimulationResult } from './simulation.service';
+import { SimulatePayloadDto } from './dto/simulate-payload.dto';
 import { TazamaAuthGuard } from '../auth/tazama-auth.guard';
 import { RequireAnyClaims, TazamaClaims } from '../auth/auth.decorator';
 import { User } from '../auth/user.decorator';
+import type { AuthenticatedUser } from '../auth/auth.types';
 
 @Controller('simulation')
 @UseGuards(TazamaAuthGuard)
@@ -18,39 +17,31 @@ export class SimulationController {
 
   @Post('run')
   async simulateMapping(
-    @Body() body: any,
-    @User() user?: any,
+    @Body() dto: SimulatePayloadDto,
+    @User() user?: AuthenticatedUser,
   ): Promise<SimulationResult> {
-    this.logger.log(`DEBUG - Full body received: ${JSON.stringify(body)}`);
-
-    // Map frontend field names to backend DTO
-    const dto: SimulatePayloadDto = {
-      endpointId: body.configId || body.endpointId,
-      payload: body.testPayload || body.payload,
-      payloadType: body.payloadType,
-      tcsMapping: body.tcsMapping,
+    // WHY: Map frontend field names to internal service interface
+    const serviceDto: any = {
+      endpointId: dto.configId,
+      payload: dto.testPayload,
+      payloadType:
+        dto.payloadType === 'json' ? 'application/json' : 'application/xml',
+      tcsMapping: dto.tcsMapping,
     };
 
-    this.logger.log(`DEBUG - Mapped DTO: ${JSON.stringify(dto)}`);
     this.logger.log(
-      `TCS simulation requested for endpoint ${dto.endpointId} by user ${user?.id || 'unknown'}`,
+      `TCS simulation requested for endpoint ${serviceDto.endpointId}`,
     );
 
-    const userId = user?.id || user?.sub;
-    const tenantId =
-      user?.tenantId ||
-      user?.tenant_id ||
-      user?.realm ||
-      user?.organization ||
-      user?.org ||
-      user?.org_id;
+    const userId = user?.token?.sub;
+    const tenantId = user?.token?.tenantId;
 
     if (!tenantId) {
       throw new Error('Tenant ID not found in user context');
     }
 
     const result = await this.simulationService.simulateMapping(
-      dto,
+      serviceDto,
       tenantId,
       userId,
       user?.token?.tokenString,

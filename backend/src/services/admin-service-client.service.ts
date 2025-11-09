@@ -456,6 +456,35 @@ export class AdminServiceClient {
     }
   }
 
+  async updatePublishingStatus(
+    id: number,
+    publishingStatus: 'active' | 'inactive',
+    token: string,
+  ): Promise<any> {
+    this.logger.log(
+      `Updating publishing_status to ${publishingStatus} for config ${id}`,
+    );
+
+    try {
+      const response = await firstValueFrom(
+        this.httpService.patch(
+          `${this.adminServiceUrl}/v1/admin/tcs/config/${id}/publishing-status`,
+          { publishing_status: publishingStatus },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+          },
+        ),
+      );
+
+      return response.data;
+    } catch (error) {
+      return this.handleError(error, 'updatePublishingStatus');
+    }
+  }
+
   private handleError(error: any, operation: string): any {
     if (error.response) {
       const { status, data } = error.response;

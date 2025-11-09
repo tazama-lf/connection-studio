@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { SimulationService } from './simulation.service';
 import { ConfigRepository } from '../config/config.repository';
 import { AuditService } from '../audit/audit.service';
+import { AdminServiceClient } from '../services/admin-service-client.service';
 
 describe('XML Simulation - Comprehensive Tests', () => {
   let service: SimulationService;
@@ -99,6 +100,13 @@ describe('XML Simulation - Comprehensive Tests', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SimulationService,
+        {
+          provide: AdminServiceClient,
+          useValue: {
+            forwardRequest: jest.fn(),
+            getConfigById: jest.fn().mockResolvedValue(mockConfig),
+          },
+        },
         {
           provide: ConfigRepository,
           useValue: {

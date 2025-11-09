@@ -473,16 +473,20 @@ export class SimulationService {
 
       // This method should only be called when mappings exist
       // The caller checks for empty mappings before calling this
-      const endpoint = config.endpointPath || `${config.msgFam || 'unknown'}-${config.transactionType}`;
-      
+      const endpoint =
+        config.endpointPath ||
+        `${config.msgFam || 'unknown'}-${config.transactionType}`;
+
       // Wrap processMappings call with additional error handling for tcs-lib issues
       let tcsResult;
       try {
         tcsResult = await processMappings(payload, tcsMapping, endpoint);
       } catch (mappingError: any) {
         // Handle specific logger service error from tcs-lib
-        if (mappingError.message && mappingError.message.includes('loggerService')) {
-          this.logger.error('TCS lib processMappings has logger issue - this should be fixed in tcs-lib');
+        if (mappingError.message?.includes('loggerService')) {
+          this.logger.error(
+            'TCS lib processMappings has logger issue - this should be fixed in tcs-lib',
+          );
           // Return empty result instead of failing
           tcsResult = {
             dataCache: {},
@@ -512,11 +516,13 @@ export class SimulationService {
         name: '5. Execute TCS Mapping Functions',
         status: 'FAILED',
         message: `TCS mapping execution failed: ${error.message || 'Unknown error'}`,
-        errors: [{ 
-          field: 'tcsMapping', 
-          message: error.message || 'Unknown error',
-          value: error.stack ? error.stack.substring(0, 200) : undefined 
-        }],
+        errors: [
+          {
+            field: 'tcsMapping',
+            message: error.message || 'Unknown error',
+            value: error.stack ? error.stack.substring(0, 200) : undefined,
+          },
+        ],
       };
     }
   }
@@ -934,22 +940,30 @@ export class SimulationService {
 
     // If this looks like an XML-parsed object, apply schema-aware normalization
     if (this.isXmlParsedObject(payload)) {
-      const normalized = this.normalizeXmlParsedObjectWithSchema(payload, config?.schema);
-      
+      const normalized = this.normalizeXmlParsedObjectWithSchema(
+        payload,
+        config?.schema,
+      );
+
       // Check if schema expects a root wrapper that's missing from the payload
       if (config?.schema?.properties) {
         const schemaRootKeys = Object.keys(config.schema.properties);
         const payloadRootKeys = Object.keys(normalized);
-        
+
         // If schema has exactly one root property and payload doesn't have it,
         // wrap the payload with that root property
-        if (schemaRootKeys.length === 1 && !payloadRootKeys.includes(schemaRootKeys[0])) {
+        if (
+          schemaRootKeys.length === 1 &&
+          !payloadRootKeys.includes(schemaRootKeys[0])
+        ) {
           const rootKey = schemaRootKeys[0];
-          this.logger.debug(`Wrapping payload with schema root element: ${rootKey}`);
+          this.logger.debug(
+            `Wrapping payload with schema root element: ${rootKey}`,
+          );
           return { [rootKey]: normalized };
         }
       }
-      
+
       return normalized;
     }
 
@@ -971,18 +985,22 @@ export class SimulationService {
     if (cleanedSchema.required && Array.isArray(cleanedSchema.required)) {
       const originalRequired = cleanedSchema.required;
       cleanedSchema.required = cleanedSchema.required.filter(
-        (field: string) => !field.startsWith('xmlns') && field !== '$' && field !== '@'
+        (field: string) =>
+          !field.startsWith('xmlns') && field !== '$' && field !== '@',
       );
-      
+
       if (originalRequired.length !== cleanedSchema.required.length) {
         this.logger.debug(
-          `Removed ${originalRequired.length - cleanedSchema.required.length} XML attributes from required fields`
+          `Removed ${originalRequired.length - cleanedSchema.required.length} XML attributes from required fields`,
         );
       }
     }
 
     // Remove xmlns properties from the schema properties and recursively clean nested schemas
-    if (cleanedSchema.properties && typeof cleanedSchema.properties === 'object') {
+    if (
+      cleanedSchema.properties &&
+      typeof cleanedSchema.properties === 'object'
+    ) {
       const cleanedProperties: any = {};
       for (const [key, value] of Object.entries(cleanedSchema.properties)) {
         // Skip xmlns attributes, @ attributes, and $ properties
@@ -990,7 +1008,7 @@ export class SimulationService {
           this.logger.debug(`Skipping XML attribute property: ${key}`);
           continue;
         }
-        
+
         // Recursively clean ALL nested schemas (not just type='object')
         if (value && typeof value === 'object') {
           cleanedProperties[key] = this.cleanSchemaForXML(value);
@@ -1349,12 +1367,14 @@ export class SimulationService {
         }
 
         const fieldValue = this.getFieldValue(payload, source);
-        
+
         // Debug logging for XML payloads
         if (fieldValue === undefined || fieldValue === null) {
           this.logger.debug(`Field not found: ${source}`);
-          this.logger.debug(`Available root keys: ${Object.keys(payload).join(', ')}`);
-          
+          this.logger.debug(
+            `Available root keys: ${Object.keys(payload).join(', ')}`,
+          );
+
           // Try to give helpful suggestion for XML
           if (Object.keys(payload).length === 1) {
             const rootKey = Object.keys(payload)[0];
@@ -1363,12 +1383,12 @@ export class SimulationService {
             if (suggestedValue !== undefined) {
               this.logger.warn(
                 `Field '${source}' not found, but '${suggestedPath}' exists. ` +
-                `For XML payloads, include the root element in the path.`
+                  'For XML payloads, include the root element in the path.',
               );
             }
           }
         }
-        
+
         if (fieldValue !== undefined && fieldValue !== null) {
           anySourceExists = true;
           break;

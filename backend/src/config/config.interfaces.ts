@@ -14,7 +14,6 @@ export type {
   SubmitForApprovalDto,
   ApprovalDto,
   RejectionDto,
-  ChangeRequestDto,
   DeploymentDto,
   WorkflowValidationResult,
   StatusTransitionValidation,

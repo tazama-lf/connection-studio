@@ -163,10 +163,9 @@ export class NotificationController {
         fromEmail: smtpFromEmail,
       },
       status: isConfigured
-        ? '✅ Email system is ready'
-        : '⚠️  SMTP not configured - running in dry run mode',
+        ? 'Email system is ready'
+        : 'SMTP not configured - running in dry run mode',
       dryRunMode: !isConfigured,
     };
   }
 }
-

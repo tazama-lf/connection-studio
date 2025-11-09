@@ -1,3 +1,4 @@
+import './jest.setup'; // Load environment variables first
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from './config.service';
 import { ConfigRepository } from './config.repository';
@@ -16,6 +17,7 @@ import {
   ConfigStatus,
   CreateConfigDto,
   UpdateConfigDto,
+  CloneConfigDto,
   AddMappingDto,
   AddFunctionDto,
   AllowedFunctionName,
@@ -861,6 +863,101 @@ describe('ConfigService', () => {
         mockToken,
       );
       expect(auditService.logAction).toHaveBeenCalled();
+    });
+    it('should throw error if config not found', async () => {
+      repository.findConfigById.mockResolvedValue(null);
+      await expect(
+        service.deleteConfig(999, 'test-tenant', 'user-123', mockToken),
+      ).rejects.toThrow('Config with ID 999 not found');
+    });
+  });
+
+  describe('addFunction', () => {
+    it('should add function successfully', async () => {
+      const mockConfigWithFunction = {
+        ...mockConfig,
+        functions: [
+          {
+            params: ['redis.dbtrAcctId', 'transaction.tenantId'],
+            functionName: 'addAccountHolder' as AllowedFunctionName,
+          },
+        ],
+      };
+
+      const mockSourceFields = [
+        {
+          path: 'amount',
+          name: 'amount',
+          type: 'number' as any,
+          isRequired: true,
+        },
+        {
+          path: 'currency',
+          name: 'currency',
+          type: 'string' as any,
+          isRequired: false,
+        },
+        {
+          path: 'firstName',
+          name: 'firstName',
+          type: 'string' as any,
+          isRequired: false,
+        },
+        {
+          path: 'lastName',
+          name: 'lastName',
+          type: 'string' as any,
+          isRequired: false,
+        },
+      ];
+
+      repository.findConfigById.mockResolvedValue(mockConfig);
+      repository.findConfigById
+        .mockResolvedValueOnce(mockConfig)
+        .mockResolvedValueOnce(mockConfigWithFunction);
+
+      // Mock the JSON schema converter to return mock fields
+      jsonSchemaConverter.convertFromJSONSchema.mockReturnValue(
+        mockSourceFields,
+      );
+
+      const functionDto: AddFunctionDto = {
+        params: ['dbtrAcctId', 'tenantId'],
+        functionName: 'addAccount',
+      };
+
+      const result = await service.addFunction(
+        1,
+        functionDto,
+        'test-tenant',
+        'user-123',
+        mockToken,
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.message).toBe('Function added successfully');
+      expect(result.config?.functions).toBeDefined();
+      expect(result.config?.functions?.length).toBe(1);
+      expect(repository.updateConfig).toHaveBeenCalledWith(
+        1,
+        'test-tenant',
+        {
+          functions: expect.arrayContaining([
+            expect.objectContaining({
+              functionName: 'addAccount',
+              params: ['redis.dbtrAcctId', 'transaction.tenantId'],
+            }),
+          ]),
+        },
+        mockToken,
+      );
+      expect(auditService.logAction).toHaveBeenCalledWith({
+        entityType: 'FUNCTION',
+        action: 'ADD_FUNCTION',
+        actor: 'user-123',
+        tenantId: 'test-tenant',
+        endpointName: 'Config 1',
+      });
     });
     it('should throw error if config not found', async () => {
       repository.findConfigById.mockResolvedValue(null);

@@ -14,40 +14,22 @@ import { User } from './user.decorator';
 import { TazamaAuthGuard } from './tazama-auth.guard';
 import { RequireClaims, TazamaClaims } from './auth.decorator';
 import { AuditService } from '../audit/audit.service';
-import { SessionManagerService } from './session-manager.service';
+
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly auditService: AuditService,
-    private readonly sessionManager: SessionManagerService,
     private readonly logger: LoggerService,
   ) {}
   @Post('login')
   @HttpCode(200)
   async login(@Body() body: { username: string; password: string }) {
     try {
-      this.logger.log(`Attempting login for user ${body.username}`);
       const result = await this.authService.login(body.username, body.password);
-      this.logger.log(`User ${JSON.stringify(result)} logged in successfully`);
-      // Decode the token to extract user information
-      const jwt = require('jsonwebtoken');
-      const decodedToken = jwt.decode(result.token);
-      if (decodedToken?.clientId && decodedToken.tenantId) {
-        // Create session for the user immediately after successful login
-        this.sessionManager.recordActivity(
-          decodedToken.clientId,
-          decodedToken.tenantId,
-          result.token,
-        );
-        this.logger.log(
-          `Session created for user: ${decodedToken.clientId}, tenant: ${decodedToken.tenantId}`,
-        );
-      } else {
-        this.logger.warn(
-          'Token does not contain required clientId/tenantId fields',
-        );
-      }
+
+      this.logger.log('Login successful', AuthController.name);
+
       const response: any = {
         message: 'Login successful',
         token: result.token,
@@ -57,10 +39,7 @@ export class AuthController {
       }
       return response;
     } catch (error) {
-      this.logger.warn(
-        `Login failed for user ${body.username}: ${error.message}`,
-        AuthController.name,
-      );
+      this.logger.warn(`Login failed: ${error.message}`, AuthController.name);
       throw new UnauthorizedException('Invalid credentials');
     }
   }
@@ -103,121 +82,6 @@ export class AuthController {
         endDate,
         limit: parsedLimit,
       },
-    };
-  }
-  @UseGuards(TazamaAuthGuard)
-  @RequireClaims(TazamaClaims.VIEW_PROFILE)
-  @Get('session/status')
-  getSessionStatus(@User() user: any) {
-    const userId = user?.token?.clientId || user?.userId;
-    const tenantId = user?.token?.tenantId || user?.tenantId;
-    const sessionInfo = this.sessionManager.getSessionInfo(userId, tenantId);
-    const timeRemaining = this.sessionManager.getSessionTimeRemaining(
-      userId,
-      tenantId,
-    );
-    return {
-      success: true,
-      session: {
-        ...sessionInfo,
-        timeRemainingSeconds: timeRemaining,
-        timeRemainingMinutes: Math.floor(timeRemaining / 60),
-        sessionTimeoutMinutes: Math.floor(
-          this.sessionManager.getSessionTimeout() / (60 * 1000),
-        ),
-      },
-    };
-  }
-  @UseGuards(TazamaAuthGuard)
-  @RequireClaims(TazamaClaims.VIEW_PROFILE)
-  @Post('session/refresh')
-  @HttpCode(200)
-  refreshSession(@User() user: any) {
-    const userId = user?.token?.clientId || user?.userId;
-    const tenantId = user?.token?.tenantId || user?.tenantId;
-    const tokenString = user?.token?.tokenString || '';
-    // Record activity to extend session
-    this.sessionManager.recordActivity(userId, tenantId, tokenString);
-    const timeRemaining = this.sessionManager.getSessionTimeRemaining(
-      userId,
-      tenantId,
-    );
-    this.logger.log(`Session refreshed for user ${userId}, tenant ${tenantId}`);
-    return {
-      success: true,
-      message: 'Session refreshed successfully',
-      timeRemainingSeconds: timeRemaining,
-      timeRemainingMinutes: Math.floor(timeRemaining / 60),
-    };
-  }
-  @UseGuards(TazamaAuthGuard)
-  @RequireClaims(TazamaClaims.VIEW_PROFILE)
-  @Post('token/refresh')
-  @HttpCode(200)
-  async refreshToken(@User() user: any) {
-    const userId = user?.token?.clientId || user?.userId;
-    const tenantId = user?.token?.tenantId || user?.tenantId;
-    // Check if session is still active
-    if (!this.sessionManager.isSessionActive(userId, tenantId)) {
-      this.logger.warn(
-        `Token refresh rejected - session expired for user: ${userId}`,
-      );
-      throw new UnauthorizedException(
-        'Session has expired. Please log in again.',
-      );
-    }
-    // Get the original token to extract username for re-authentication
-    const originalToken = user?.token;
-    if (!originalToken?.preferred_username) {
-      this.logger.error('Could not extract username from token for refresh');
-      throw new UnauthorizedException(
-        'Invalid token data. Please log in again.',
-      );
-    }
-    try {
-      // Re-authenticate with the auth service to get a fresh token
-      // Note: In production, you might want to store refresh tokens or use a different mechanism
-      // For now, we'll return the same token and just extend the session
-      // This is a limitation since we don't control the external auth service
-      // Record activity to extend session
-      const currentTokenString = user?.token?.tokenString || '';
-      this.sessionManager.recordActivity(userId, tenantId, currentTokenString);
-      const timeRemaining = this.sessionManager.getSessionTimeRemaining(
-        userId,
-        tenantId,
-      );
-      this.logger.log(
-        `Token refresh successful for user ${userId} (session extended)`,
-      );
-      // Return the current token (we can't issue new JWT without re-authentication)
-      // The session has been extended, so this will work until JWT expires
-      return {
-        success: true,
-        message: 'Session extended - token refresh requires re-authentication',
-        token: currentTokenString,
-        timeRemainingSeconds: timeRemaining,
-        timeRemainingMinutes: Math.floor(timeRemaining / 60),
-        requiresReauth: false, // Set to true when JWT is close to expiring
-      };
-    } catch (error) {
-      this.logger.error(`Token refresh failed: ${error.message}`);
-      throw new UnauthorizedException(
-        'Token refresh failed. Please log in again.',
-      );
-    }
-  }
-  @UseGuards(TazamaAuthGuard)
-  @RequireClaims(TazamaClaims.VIEW_PROFILE)
-  @Post('logout')
-  @HttpCode(200)
-  logout(@User() user: any) {
-    const userId = user?.token?.clientId || user?.userId;
-    const tenantId = user?.token?.tenantId || user?.tenantId;
-    this.sessionManager.invalidateSession(userId, tenantId);
-    this.logger.log(`User ${userId} logged out from tenant ${tenantId}`);
-    return {
-      success: true,
-      message: 'Logged out successfully',
     };
   }
 }

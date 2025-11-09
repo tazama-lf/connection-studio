@@ -4,25 +4,22 @@ import {
   ExecutionContext,
   UnauthorizedException,
   Logger,
-  Inject,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { validateTokenAndClaims } from '@tazama-lf/auth-lib';
+import * as jwt from 'jsonwebtoken';
 import type {
   TazamaToken,
   ClaimValidationResult,
   AuthenticatedUser,
 } from './auth.types';
 import { CLAIMS_KEY, IS_PUBLIC_KEY, ANY_CLAIMS_KEY } from './auth.decorator';
-import { SessionManagerService } from './session-manager.service';
+
 @Injectable()
 export class TazamaAuthGuard implements CanActivate {
   private readonly logger = new Logger(TazamaAuthGuard.name);
-  constructor(
-    private reflector: Reflector,
-    @Inject(SessionManagerService)
-    private sessionManager: SessionManagerService,
-  ) {}
+
+  constructor(private reflector: Reflector) {}
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const logContext = 'TazamaAuthGuard.canActivate()';
 
@@ -129,11 +126,6 @@ export class TazamaAuthGuard implements CanActivate {
 
       request.user = authenticatedUser;
 
-      this.sessionManager.recordActivity(
-        decodedToken.clientId || '',
-        decodedToken.tenantId || '',
-        token,
-      );
       this.logger.log(
         `Authentication successful for clientId: ${decodedToken.clientId}, tenantId: ${decodedToken.tenantId}, claims: [${validClaims.join(', ')}]`,
         logContext,
@@ -141,47 +133,7 @@ export class TazamaAuthGuard implements CanActivate {
       return true;
     } catch (error) {
       const err = error as Error;
-      // Check if this is a token expiration error
-      const isTokenExpiredError =
-        err.message.includes('token expired') ||
-        err.message.includes('jwt expired') ||
-        err.message.includes('401 Unauthorized');
-      // If token expired, check if user was still active
-      if (isTokenExpiredError) {
-        try {
-          // Try to decode the token to get user info (even if expired)
-          const jwt = require('jsonwebtoken');
-          const decoded = jwt.decode(authHeader.split(' ')[1]);
-          if (decoded?.clientId && decoded.tenantId) {
-            const userId = decoded.clientId;
-            const tenantId = decoded.tenantId;
-            // Check if session was active
-            if (this.sessionManager.isSessionActive(userId, tenantId)) {
-              this.logger.warn(
-                `Token expired but session was still active for user: ${userId}. User needs to re-authenticate.`,
-                logContext,
-              );
-              throw new UnauthorizedException(
-                'Your session token has expired. Please log in again to continue.',
-              );
-            } else {
-              this.logger.warn(
-                `Token expired and session inactive for user: ${userId}`,
-                logContext,
-              );
-              throw new UnauthorizedException(
-                'Session has expired due to inactivity. Please log in again.',
-              );
-            }
-          }
-        } catch (decodeError) {
-          // If we can't decode, fall through to generic error
-          this.logger.error(
-            `Could not decode expired token: ${decodeError}`,
-            logContext,
-          );
-        }
-      }
+
       this.logger.error(
         `Authentication failed: ${err.name}: ${err.message}`,
         logContext,
@@ -192,14 +144,15 @@ export class TazamaAuthGuard implements CanActivate {
       throw new UnauthorizedException('Token validation failed');
     }
   }
+
   private extractTokenPayload(token: string): TazamaToken {
     try {
       // Decode JWT without verification (since validation is done by tazama-auth-lib)
-      const jwt = require('jsonwebtoken');
       const decoded = jwt.decode(token) as TazamaToken;
       if (!decoded) {
         throw new Error('Failed to decode token');
       }
+
       // Validate required TazamaToken fields
       if (!decoded.clientId) {
         throw new Error('Token missing clientId');
@@ -210,6 +163,7 @@ export class TazamaAuthGuard implements CanActivate {
       if (!decoded.claims || !Array.isArray(decoded.claims)) {
         throw new Error('Token missing or invalid claims array');
       }
+
       return decoded;
     } catch (error) {
       const err = error as Error;

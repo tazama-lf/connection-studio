@@ -1,3 +1,4 @@
+import './jest.setup'; // Load environment variables first
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from './config.service';
 import { ConfigRepository } from './config.repository';
@@ -9,6 +10,10 @@ import { ConfigWorkflowService } from './config-workflow.service';
 import { SftpService } from '../sftp/sftp.service';
 import { ConfigService as NestConfigService } from '@nestjs/config';
 import { BadRequestException } from '@nestjs/common';
+import { PayloadParsingService } from '../services/payload-parsing.service';
+import { NotificationService } from '../notification/notification.service';
+import { DatabaseService } from '@tazama-lf/tcs-lib';
+import { NotifyService } from '../notify/notify.service';
 
 describe('Data Type Validation for Mappings', () => {
   let service: ConfigService;
@@ -96,6 +101,22 @@ describe('Data Type Validation for Mappings', () => {
       get: jest.fn().mockReturnValue('test'),
     };
 
+    const mockPayloadParsingService = {
+      parsePayload: jest.fn(),
+    };
+
+    const mockNotificationService = {
+      sendEmail: jest.fn(),
+    };
+
+    const mockDatabaseService = {
+      query: jest.fn(),
+    };
+
+    const mockNotifyService = {
+      notify: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ConfigService,
@@ -116,6 +137,10 @@ describe('Data Type Validation for Mappings', () => {
         },
         { provide: SftpService, useValue: mockSftpService },
         { provide: NestConfigService, useValue: mockNestConfigService },
+        { provide: PayloadParsingService, useValue: mockPayloadParsingService },
+        { provide: NotificationService, useValue: mockNotificationService },
+        { provide: DatabaseService, useValue: mockDatabaseService },
+        { provide: NotifyService, useValue: mockNotifyService },
       ],
     }).compile();
 
@@ -133,7 +158,13 @@ describe('Data Type Validation for Mappings', () => {
       };
 
       await expect(
-        service.addMapping(1, mappingDto, 'test-tenant', 'test-user'),
+        service.addMapping(
+          1,
+          mappingDto,
+          'test-tenant',
+          'test-user',
+          'mock-token',
+        ),
       ).resolves.toBeDefined();
     });
 
@@ -146,7 +177,13 @@ describe('Data Type Validation for Mappings', () => {
       };
 
       await expect(
-        service.addMapping(1, stringToNumber, 'test-tenant', 'test-user'),
+        service.addMapping(
+          1,
+          stringToNumber,
+          'test-tenant',
+          'test-user',
+          'mock-token',
+        ),
       ).rejects.toThrow(/Direct mapping type mismatch.*string.*number/);
     });
 
@@ -159,7 +196,13 @@ describe('Data Type Validation for Mappings', () => {
       };
 
       await expect(
-        service.addMapping(1, mappingDto, 'test-tenant', 'test-user'),
+        service.addMapping(
+          1,
+          mappingDto,
+          'test-tenant',
+          'test-user',
+          'mock-token',
+        ),
       ).rejects.toThrow(/Direct mapping type mismatch.*number.*string/);
     });
 
@@ -172,7 +215,13 @@ describe('Data Type Validation for Mappings', () => {
       };
 
       await expect(
-        service.addMapping(1, mappingDto, 'test-tenant', 'test-user'),
+        service.addMapping(
+          1,
+          mappingDto,
+          'test-tenant',
+          'test-user',
+          'mock-token',
+        ),
       ).rejects.toThrow(/Direct mapping type mismatch.*boolean.*string/);
     });
 
@@ -185,7 +234,13 @@ describe('Data Type Validation for Mappings', () => {
       };
 
       await expect(
-        service.addMapping(1, mappingDto, 'test-tenant', 'test-user'),
+        service.addMapping(
+          1,
+          mappingDto,
+          'test-tenant',
+          'test-user',
+          'mock-token',
+        ),
       ).resolves.toBeDefined();
     });
 
@@ -198,7 +253,13 @@ describe('Data Type Validation for Mappings', () => {
       };
 
       await expect(
-        service.addMapping(1, mappingDto, 'test-tenant', 'test-user'),
+        service.addMapping(
+          1,
+          mappingDto,
+          'test-tenant',
+          'test-user',
+          'mock-token',
+        ),
       ).resolves.toBeDefined();
     });
   });
@@ -213,11 +274,23 @@ describe('Data Type Validation for Mappings', () => {
       };
 
       await expect(
-        service.addMapping(1, mappingDto, 'test-tenant', 'test-user'),
+        service.addMapping(
+          1,
+          mappingDto,
+          'test-tenant',
+          'test-user',
+          'mock-token',
+        ),
       ).rejects.toThrow(BadRequestException);
 
       await expect(
-        service.addMapping(1, mappingDto, 'test-tenant', 'test-user'),
+        service.addMapping(
+          1,
+          mappingDto,
+          'test-tenant',
+          'test-user',
+          'mock-token',
+        ),
       ).rejects.toThrow(/Direct mapping type mismatch.*array.*string/);
     });
 
@@ -230,7 +303,13 @@ describe('Data Type Validation for Mappings', () => {
       };
 
       await expect(
-        service.addMapping(1, mappingDto, 'test-tenant', 'test-user'),
+        service.addMapping(
+          1,
+          mappingDto,
+          'test-tenant',
+          'test-user',
+          'mock-token',
+        ),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -243,11 +322,23 @@ describe('Data Type Validation for Mappings', () => {
       };
 
       await expect(
-        service.addMapping(1, mappingDto, 'test-tenant', 'test-user'),
+        service.addMapping(
+          1,
+          mappingDto,
+          'test-tenant',
+          'test-user',
+          'mock-token',
+        ),
       ).rejects.toThrow(BadRequestException);
 
       await expect(
-        service.addMapping(1, mappingDto, 'test-tenant', 'test-user'),
+        service.addMapping(
+          1,
+          mappingDto,
+          'test-tenant',
+          'test-user',
+          'mock-token',
+        ),
       ).rejects.toThrow(/Direct mapping type mismatch.*string.*array/);
     });
 
@@ -260,7 +351,13 @@ describe('Data Type Validation for Mappings', () => {
       };
 
       await expect(
-        service.addMapping(1, mappingDto, 'test-tenant', 'test-user'),
+        service.addMapping(
+          1,
+          mappingDto,
+          'test-tenant',
+          'test-user',
+          'mock-token',
+        ),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -273,7 +370,13 @@ describe('Data Type Validation for Mappings', () => {
       };
 
       await expect(
-        service.addMapping(1, mappingDto, 'test-tenant', 'test-user'),
+        service.addMapping(
+          1,
+          mappingDto,
+          'test-tenant',
+          'test-user',
+          'mock-token',
+        ),
       ).rejects.toThrow(BadRequestException);
     });
   });
@@ -288,7 +391,13 @@ describe('Data Type Validation for Mappings', () => {
       };
 
       await expect(
-        service.addMapping(1, mappingDto, 'test-tenant', 'test-user'),
+        service.addMapping(
+          1,
+          mappingDto,
+          'test-tenant',
+          'test-user',
+          'mock-token',
+        ),
       ).resolves.toBeDefined();
     });
 
@@ -301,7 +410,13 @@ describe('Data Type Validation for Mappings', () => {
       };
 
       await expect(
-        service.addMapping(1, mappingDto, 'test-tenant', 'test-user'),
+        service.addMapping(
+          1,
+          mappingDto,
+          'test-tenant',
+          'test-user',
+          'mock-token',
+        ),
       ).resolves.toBeDefined();
     });
 
@@ -314,7 +429,13 @@ describe('Data Type Validation for Mappings', () => {
       };
 
       await expect(
-        service.addMapping(1, mappingDto, 'test-tenant', 'test-user'),
+        service.addMapping(
+          1,
+          mappingDto,
+          'test-tenant',
+          'test-user',
+          'mock-token',
+        ),
       ).rejects.toThrow(BadRequestException);
     });
   });
@@ -330,7 +451,13 @@ describe('Data Type Validation for Mappings', () => {
 
       // Should reject string constant to number field
       await expect(
-        service.addMapping(1, mappingDto, 'test-tenant', 'test-user'),
+        service.addMapping(
+          1,
+          mappingDto,
+          'test-tenant',
+          'test-user',
+          'mock-token',
+        ),
       ).rejects.toThrow(/Constant value type mismatch/);
     });
 
@@ -343,7 +470,13 @@ describe('Data Type Validation for Mappings', () => {
       };
 
       await expect(
-        service.addMapping(1, mappingDto, 'test-tenant', 'test-user'),
+        service.addMapping(
+          1,
+          mappingDto,
+          'test-tenant',
+          'test-user',
+          'mock-token',
+        ),
       ).resolves.toBeDefined();
     });
   });
@@ -358,7 +491,13 @@ describe('Data Type Validation for Mappings', () => {
       };
 
       try {
-        await service.addMapping(1, mappingDto, 'test-tenant', 'test-user');
+        await service.addMapping(
+          1,
+          mappingDto,
+          'test-tenant',
+          'test-user',
+          'mock-token',
+        );
         fail('Should have thrown BadRequestException');
       } catch (error) {
         expect(error).toBeInstanceOf(BadRequestException);
@@ -373,4 +512,4 @@ describe('Data Type Validation for Mappings', () => {
   });
 });
 
-console.log('✓ Data type validation tests completed');
+console.log('Data type validation tests completed');

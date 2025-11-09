@@ -45,7 +45,6 @@ import {
   SubmitForApprovalDto,
   ApprovalDto,
   RejectionDto,
-  ChangeRequestDto,
   DeploymentDto,
   WorkflowAction,
   ConfigWithSourceFields,
@@ -157,17 +156,19 @@ export class ConfigService {
           'Failed to parse payload:',
           parsingResult?.validation || 'Unknown error',
         );
-        
-        const errorDetails = parsingResult?.validation ? 
-          ` Details: ${JSON.stringify(parsingResult.validation)}` : 
-          '';
-        
+
+        const errorDetails = parsingResult?.validation
+          ? ` Details: ${JSON.stringify(parsingResult.validation)}`
+          : '';
+
         return {
           success: false,
           message: `Unable to parse your ${dto.contentType === ContentType.JSON ? 'JSON' : 'XML'} payload. Please check the format and try again.${errorDetails}`,
           validation: {
             success: false,
-            errors: parsingResult?.validation?.errors || ['Invalid payload format'],
+            errors: parsingResult?.validation?.errors || [
+              'Invalid payload format',
+            ],
             warnings: [],
           },
         };
@@ -182,22 +183,13 @@ export class ConfigService {
           message: `No fields could be extracted from your ${dto.contentType === ContentType.JSON ? 'JSON' : 'XML'} payload. Please ensure it contains valid data with field names and values.`,
           validation: {
             success: false,
-            errors: ['No fields found in payload - payload may be empty or malformed'],
+            errors: [
+              'No fields found in payload - payload may be empty or malformed',
+            ],
             warnings: [],
           },
         };
       }
-
-      // Always add tenantId field to source schema for mapping
-      const tenantIdField: SchemaField = {
-        name: 'tenantId',
-        path: 'tenantId',
-        type: FieldType.STRING,
-        isRequired: true,
-      };
-
-      // Add tenantId as the first field
-      sourceFields = [tenantIdField, ...sourceFields];
 
       const duplicateErrors =
         this.validateNoDuplicateSchemaFields(sourceFields);
@@ -218,7 +210,8 @@ export class ConfigService {
         );
         return {
           success: false,
-          message: 'Your payload contains duplicate field names. Each field must have a unique name within the schema.',
+          message:
+            'Your payload contains duplicate field names. Each field must have a unique name within the schema.',
           validation: {
             success: false,
             errors: duplicateErrors,
@@ -241,11 +234,8 @@ export class ConfigService {
       } else {
         this.logger.log('No field adjustments to apply');
       }
-      let finalSchema =
+      const finalSchema =
         this.jsonSchemaConverter.convertToJSONSchema(sourceFields);
-      
-      // Ensure tenantId is in the schema (double-check)
-      finalSchema = this.ensureTenantIdInSchema(finalSchema);
 
       this.logger.log(
         `Generated schema with ${Object.keys(finalSchema.properties || {}).length} properties`,
@@ -266,8 +256,6 @@ export class ConfigService {
         dto.transactionType,
         dto.msgFam,
       );
-
-    
 
       const configData: Omit<Config, 'id' | 'createdAt' | 'updatedAt'> = {
         msgFam: dto.msgFam || '',
@@ -290,7 +278,6 @@ export class ConfigService {
         configData,
         token,
       );
-      
 
       await this.auditService.logAction({
         entityType: 'CONFIG',
@@ -309,9 +296,18 @@ export class ConfigService {
 
       // Enrich config with source fields for mapping UI
       const enrichedConfig = this.enrichConfigWithSourceFields(config!);
-      
-      if (enrichedConfig.sourceFields && enrichedConfig.sourceFields.length > 0) {
-        this.logger.log('🔥🔥🔥 FIRST 5 SOURCE FIELDS: ' + enrichedConfig.sourceFields.slice(0, 5).map(f => f.name).join(', '));
+
+      if (
+        enrichedConfig.sourceFields &&
+        enrichedConfig.sourceFields.length > 0
+      ) {
+        this.logger.log(
+          'FIRST 5 SOURCE FIELDS: ' +
+            enrichedConfig.sourceFields
+              .slice(0, 5)
+              .map((f) => f.name)
+              .join(', '),
+        );
       }
 
       return {
@@ -325,26 +321,28 @@ export class ConfigService {
         `Failed to create config: ${error.message}`,
         error.stack,
       );
-      
+
       const msgFam = dto.msgFam || 'unknown';
       const transactionType = dto.transactionType;
       const version = dto.version || 'v1';
-      
-      let userMessage = 'Failed to create configuration. Please check your input and try again.';
-      
-      if (error.message && (
-        error.message.includes('duplicate key value') ||
-        error.message.includes('unique constraint')
-      )) {
+
+      let userMessage =
+        'Failed to create configuration. Please check your input and try again.';
+
+      if (
+        error.message &&
+        (error.message.includes('duplicate key value') ||
+          error.message.includes('unique constraint'))
+      ) {
         userMessage = `A configuration with Message Family '${msgFam}', Transaction Type '${transactionType}', and Version '${version}' already exists. Please use different values.`;
-      } else if (error.message && error.message.includes('validation')) {
+      } else if (error.message?.includes('validation')) {
         userMessage = `Validation error: ${error.message}`;
-      } else if (error.message && error.message.includes('schema')) {
+      } else if (error.message?.includes('schema')) {
         userMessage = `Schema error: ${error.message}`;
       } else if (error.message) {
         userMessage = error.message;
       }
-      
+
       return {
         success: false,
         message: userMessage,
@@ -442,7 +440,7 @@ export class ConfigService {
         contentType: sourceConfig.contentType,
         schema: finalSchema,
         mapping: sourceConfig.mapping, // Clone the mappings
-        functions: dto.functions || sourceConfig.functions, 
+        functions: dto.functions || sourceConfig.functions,
         status: ConfigStatus.IN_PROGRESS,
         tenantId,
         createdBy: userId,
@@ -643,9 +641,6 @@ export class ConfigService {
       // Regenerate JSON schema with adjusted fields
       finalSchema =
         this.jsonSchemaConverter.convertToJSONSchema(adjustedSourceFields);
-      
-      // Ensure tenantId is in the schema
-      finalSchema = this.ensureTenantIdInSchema(finalSchema);
 
       this.logger.log(
         'Successfully applied field adjustments and regenerated schema',
@@ -660,13 +655,7 @@ export class ConfigService {
         };
       }
     }
-    
-    // If schema is being updated directly (not via field adjustments), ensure tenantId
-    if (finalSchema && !dto.fieldAdjustments) {
-      finalSchema = this.ensureTenantIdInSchema(finalSchema);
-      this.logger.log('Ensured tenantId is in directly updated schema');
-    }
-    
+
     const updateData = { ...dto };
 
     // Use finalSchema if field adjustments were applied
@@ -1201,7 +1190,6 @@ export class ConfigService {
       'addAccountHolder',
       'addEntity',
       'addAccount',
-      'transactionRelationship',
     ];
     if (!allowedFunctions.includes(dto.functionName)) {
       throw new BadRequestException(
@@ -2340,10 +2328,10 @@ export class ConfigService {
     const newStatus = ConfigStatus.EXPORTED;
 
     this.logger.log(
-      `🔄 BACKEND - Updating config ${id} status to: "${newStatus}" (type: ${typeof newStatus})`,
+      `BACKEND - Updating config ${id} status to: "${newStatus}" (type: ${typeof newStatus})`,
     );
     this.logger.log(
-      `🔄 BACKEND - ConfigStatus.EXPORTED value: "${ConfigStatus.EXPORTED}"`,
+      `BACKEND - ConfigStatus.EXPORTED value: "${ConfigStatus.EXPORTED}"`,
     );
 
     // Update the status in database
@@ -2438,7 +2426,7 @@ export class ConfigService {
     const newStatus = ConfigStatus.EXPORTED;
 
     const fileName = `dems_${tenantId}_${id}`;
-    
+
     try {
       // Step 1: Prepare config data for export
       const configToExport = { ...config, status: newStatus };
@@ -2463,16 +2451,15 @@ export class ConfigService {
         RETURNING id;
       `;
 
-
-      const result = await this.databaseService.query(updateQuery, [newStatus, id, tenantId]);
+      const result = await this.databaseService
+        .getPool()
+        .query(updateQuery, [newStatus, id, tenantId]);
       if (!result.rowCount) {
         throw new NotFoundException(
           `Config with id "${id}" not found in config table.`,
         );
       }
 
-
-      
       this.logger.log(
         `Successfully updated config ${id} status to ${newStatus} in database`,
       );
@@ -2510,31 +2497,30 @@ export class ConfigService {
       throw new NotFoundException(`Config with ID ${id} not found`);
     }
 
-
     const fileName = `dems_${tenantId}_${id}`;
     let currentStatus: ConfigStatus;
     let configData: any;
-    
+
     // Step 1: Read config from SFTP once (EXACTLY like job/scheduler service)
     try {
       this.logger.log(`Reading config file from SFTP: ${fileName}`);
       configData = await this.sftpService.readFile(fileName);
-      
-      if (configData && configData.status) {
+
+      if (configData?.status) {
         currentStatus = configData.status as ConfigStatus;
       } else if (config.status) {
-        currentStatus = config.status as ConfigStatus;
+        currentStatus = config.status;
       } else {
         throw new BadRequestException(
-          `Cannot deploy config ${id}: status not found in SFTP or database. Please ensure the config has been exported first.`
+          `Cannot deploy config ${id}: status not found in SFTP or database. Please ensure the config has been exported first.`,
         );
       }
     } catch (error) {
       if (config.status) {
-        currentStatus = config.status as ConfigStatus;
+        currentStatus = config.status;
       } else {
         throw new BadRequestException(
-          `Cannot deploy config ${id}: status is undefined and SFTP read failed. Error: ${error.message}`
+          `Cannot deploy config ${id}: status is undefined and SFTP read failed. Error: ${error.message}`,
         );
       }
     }
@@ -2547,8 +2533,7 @@ export class ConfigService {
       currentStatus,
       action,
     );
-    
-    
+
     if (!validation.canPerform) {
       throw new ForbiddenException(validation.message);
     }
@@ -2558,58 +2543,63 @@ export class ConfigService {
     try {
       // Step 2: Insert raw config data as read from SFTP into config table FIRST
       try {
-        
-      
-      const configWithId = { ...configData};
-      configWithId.msg_fam = configData.msgFam || '';
-      delete configWithId.msgFam;
-      configWithId.transaction_type = configData.transactionType || '';
-      delete configWithId.transactionType;
-      configWithId.content_type = configData.contentType || 'application/json';
-      delete configWithId.contentType;
-      configWithId.endpoint_path = configData.endpointPath || '';
-      delete configWithId.endpointPath;
-      configWithId.status = newStatus; // Set to DEPLOYED status
-      configWithId.publishing_status =
-      configData.publishing_status = configData.publishing_status|| 'active';
-      
-      configWithId.schema = typeof configData.schema === 'string' 
-        ? configData.schema 
-        : JSON.stringify(configData.schema || {});
-      configWithId.mapping = typeof configData.mapping === 'string' 
-        ? configData.mapping 
-        : JSON.stringify(configData.mapping || null);
-      configWithId.functions = typeof configData.functions === 'string'
-        ? configData.functions
-        : JSON.stringify(configData.functions || null);
-        
-      this.logger.log(`🔍 After processing - schema length: ${configWithId.schema?.length}, mapping length: ${configWithId.mapping?.length}, functions length: ${configWithId.functions?.length}`);
-      
-      configWithId.tenant_id = tenantId;
+        const configWithId = { ...configData };
+        configWithId.msg_fam = configData.msgFam || '';
+        delete configWithId.msgFam;
+        configWithId.transaction_type = configData.transactionType || '';
+        delete configWithId.transactionType;
+        configWithId.content_type =
+          configData.contentType || 'application/json';
+        delete configWithId.contentType;
+        configWithId.endpoint_path = configData.endpointPath || '';
+        delete configWithId.endpointPath;
+        configWithId.status = newStatus; // Set to DEPLOYED status
+        configWithId.publishing_status = configData.publishing_status =
+          configData.publishing_status || 'active';
+
+        configWithId.schema =
+          typeof configData.schema === 'string'
+            ? configData.schema
+            : JSON.stringify(configData.schema || {});
+        configWithId.mapping =
+          typeof configData.mapping === 'string'
+            ? configData.mapping
+            : JSON.stringify(configData.mapping || null);
+        configWithId.functions =
+          typeof configData.functions === 'string'
+            ? configData.functions
+            : JSON.stringify(configData.functions || null);
+
+        this.logger.log(
+          `After processing - schema length: ${configWithId.schema?.length}, mapping length: ${configWithId.mapping?.length}, functions length: ${configWithId.functions?.length}`,
+        );
+
+        configWithId.tenant_id = tenantId;
         delete configWithId.tenantId;
         configWithId.created_by = configData.createdBy;
         delete configWithId.createdBy;
-        configWithId.created_at =
-          configData.createdAt || new Date();
+        configWithId.created_at = configData.createdAt || new Date();
         delete configWithId.createdAt;
         configWithId.updated_at = new Date();
         delete configWithId.updatedAt;
 
-      const keys = Object.keys(configWithId);
-      const values = Object.values(configWithId);
-      const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
+        const keys = Object.keys(configWithId);
+        const values = Object.values(configWithId);
+        const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
 
-      const insertQuery = `
+        const insertQuery = `
                  INSERT INTO config (${keys.join(', ')})
                   VALUES (${placeholders})
-                  RETURNING *;
+                  RETURNING id;
                      `;
-      const insertResult = await this.databaseService.query(insertQuery, values);
-      const insertedId = insertResult.rows[0].id;
+        const insertResult = await this.databaseService
+          .getPool()
+          .query(insertQuery, values);
+        const insertedId = insertResult.rows[0].id;
 
-          this.logger.log(
-            `✅ Successfully inserted raw config data into config table, new record id: ${insertedId}`,
-          );
+        this.logger.log(
+          `Successfully inserted raw config data into config table, new record id: ${insertedId}`,
+        );
       } catch (insertError) {
         this.logger.error(
           `Failed to insert config data into config table: ${insertError.message}`,
@@ -2633,7 +2623,8 @@ export class ConfigService {
       }
 
       // Step 4: Execute CREATE TABLE query using transaction_type
-      const transactionType = configData.transactionType || config.transactionType;
+      const transactionType =
+        configData.transactionType || config.transactionType;
       if (transactionType) {
         const createTableQuery = `CREATE TABLE IF NOT EXISTS "${transactionType}" (
   id SERIAL PRIMARY KEY,
@@ -2643,14 +2634,12 @@ export class ConfigService {
         this.logger.log(`Executing CREATE TABLE query from config ${id}:`);
         this.logger.log(createTableQuery);
 
-        await this.databaseService.query(createTableQuery);
+        await this.databaseService.getPool().query(createTableQuery);
         this.logger.log(
           `Successfully created table "${transactionType}" from deployed config`,
         );
       } else {
-        this.logger.warn(
-          `No transactionType found in config file ${fileName}`,
-        );
+        this.logger.warn(`No transactionType found in config file ${fileName}`);
       }
 
       // Step 5: Delete from SFTP (EXACTLY like job/scheduler service)
@@ -2665,7 +2654,9 @@ export class ConfigService {
         RETURNING id;
       `;
 
-      const result = await this.databaseService.query(updateQuery, [newStatus, id, tenantId]);
+      const result = await this.databaseService
+        .getPool()
+        .query(updateQuery, [newStatus, id, tenantId]);
 
       if (!result.rowCount) {
         throw new NotFoundException(
@@ -2676,8 +2667,6 @@ export class ConfigService {
       this.logger.log(
         `Successfully updated original config ${id} status to ${newStatus} in database`,
       );
-
-  
 
       // Return success (EXACTLY like job/scheduler service)
       return {
@@ -2900,6 +2889,21 @@ export class ConfigService {
     return descriptions[status] || status;
   }
 
+  /**
+   * Updates the publishing_status field for a configuration.
+   * When set to 'active', triggers NATS notification to DEMS stream with only configId.
+   * When set to 'inactive', only updates the database status.
+   * All database operations are routed through admin-service for centralized data management.
+   *
+   * @param id - Configuration ID (database row identifier)
+   * @param publishingStatus - New status value ('active' | 'inactive')
+   * @param tenantId - Tenant identifier for multi-tenancy isolation
+   * @param userId - User ID performing the action (for audit trail)
+   * @param token - JWT Bearer token for admin-service authentication
+   * @returns ConfigResponseDto with updated configuration and success status
+   * @throws NotFoundException if configuration with given ID does not exist
+   * @throws BadRequestException if NATS notification fails during activation
+   */
   async updatePublishingStatus(
     id: number,
     publishingStatus: 'active' | 'inactive',
@@ -2907,64 +2911,30 @@ export class ConfigService {
     userId: string,
     token: string,
   ): Promise<ConfigResponseDto> {
-    const config = await this.configRepository.findConfigById(
+    // Route DB operation to admin service
+    const result = await this.configRepository.updatePublishingStatus(
       id,
-      tenantId,
+      publishingStatus,
       token,
     );
 
-    if (!config) {
-      throw new NotFoundException(`Config with ID ${id} not found`);
+    if (!result.success) {
+      throw new NotFoundException(
+        result.message || `Config with ID ${id} not found`,
+      );
     }
 
-    // Update publishing_status in database
-    await this.configRepository.updateConfig(
-      id,
-      tenantId,
-      { publishing_status: publishingStatus },
-      token,
-    );
-
-    // If publishing_status is set to ACTIVE, send NATS notification to DEMS
+    // If publishing_status is set to ACTIVE, send NATS notification to DEMS with only config ID
     if (publishingStatus.toLowerCase() === 'active') {
       this.logger.log(
         `Publishing status set to ACTIVE for config ${id}, sending NATS notification to DEMS`,
       );
 
       try {
-        // Extract table information from config
-        const transactionType = config.transactionType || 'unknown';
-        const tableName = transactionType.replace(/[^a-zA-Z0-9_]/g, '_');
-
-        // Read additional deployment data from SFTP if available
-        const fileName = `dems_${tenantId}_${id}`;
-        let configData: any = {};
-        let createTableQuery = '';
-
-        try {
-          configData = await this.sftpService.readFile(fileName);
-          createTableQuery = configData.createTableQuery || '';
-        } catch (error) {
-          this.logger.warn(
-            `Could not read config file from SFTP: ${fileName}. Using basic table info.`,
-          );
-          // Generate basic CREATE TABLE query if not available
-          createTableQuery = `
-CREATE TABLE IF NOT EXISTS "${tableName}" (
-  id SERIAL PRIMARY KEY,
-  document JSONB NOT NULL,
-);`;
-        }
-
-        await this.notifyService.notifyDems(id.toString(), tenantId, {
-          transactionType: transactionType,
-          tableName: tableName,
-          endpointPath: configData.endpointPath || `/api/${transactionType}`,
-          createTableQuery: createTableQuery,
-        });
+        await this.notifyService.notifyDems(id.toString(), tenantId);
 
         this.logger.log(
-          `✅ NATS notification sent to DEMS for activated config ${id}`,
+          `NATS notification sent to DEMS for activated config ${id}`,
         );
       } catch (error) {
         this.logger.error(
@@ -2976,46 +2946,21 @@ CREATE TABLE IF NOT EXISTS "${tableName}" (
       }
     }
 
-    const updatedConfig = await this.configRepository.findConfigById(
-      id,
-      tenantId,
-      token,
-    );
-
     return {
       success: true,
       message: `Publishing status updated to ${publishingStatus}`,
-      config: updatedConfig!,
+      config: result.config,
     };
   }
 
   private enrichConfigWithSourceFields(config: Config): ConfigWithSourceFields {
     try {
       if (config && config.schema) {
-        
         const hierarchicalFields =
           this.jsonSchemaConverter.convertFromJSONSchema(config.schema);
-          
-        
-        let sourceFields = this.flattenSchemaFields(hierarchicalFields);
-                
-        // Always ensure tenantId field is present as the first field
-        const hasTenantId = sourceFields.some(f => f.name === 'tenantId' || f.path === 'tenantId');
-        
-        if (!hasTenantId) {
-          const tenantIdField: SchemaField = {
-            name: 'tenantId',
-            path: 'tenantId',
-            type: FieldType.STRING,
-            isRequired: true,
-          };
-          sourceFields = [tenantIdField, ...sourceFields];
-          this.logger.log(`✅ Added tenantId field to source fields for config ${config.id}`);
-        }
-        
-        this.logger.log(`🔍 Final source fields count: ${sourceFields.length}`);
-        this.logger.log(`🔍 Final source field names: ${sourceFields.slice(0, 5).map(f => f.name).join(', ')}...`);
-        
+
+        const sourceFields = this.flattenSchemaFields(hierarchicalFields);
+
         return {
           ...config,
           sourceFields,
@@ -3027,45 +2972,6 @@ CREATE TABLE IF NOT EXISTS "${tableName}" (
       );
     }
     return config;
-  }
-
-  /**
-   * Ensures that a JSON Schema always has tenantId as the first property
-   * This is critical for all mapping operations
-   */
-  private ensureTenantIdInSchema(schema: JSONSchema): JSONSchema {
-    
-    if (!schema.properties) {
-      schema.properties = {};
-    }
-    
-    
-    // Check if tenantId already exists
-    if (!schema.properties['tenantId']) {
-      
-      // Create new properties object with tenantId first
-      const newProperties: { [key: string]: JSONSchemaProperty } = {
-        tenantId: {
-          type: JSONSchemaType.STRING,
-        },
-        ...schema.properties
-      };
-      
-      schema.properties = newProperties;
-      
-      // Ensure tenantId is in required array
-      if (!schema.required) {
-        schema.required = [];
-      }
-      if (!schema.required.includes('tenantId')) {
-        schema.required = ['tenantId', ...schema.required];
-      }
-      
-    } else {
-      this.logger.log('🔥 tenantId already exists in schema');
-    }
-    
-    return schema;
   }
 
   private flattenSchemaFields(fields: SchemaField[]): SchemaField[] {
