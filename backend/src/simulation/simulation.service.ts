@@ -275,6 +275,8 @@ export class SimulationService {
         actor: userId || 'SYSTEM',
         tenantId,
         entityId: dto.endpointId.toString(),
+        endpointName: config.endpointPath || undefined,
+        version: config.version ? Number(config.version) : undefined,
         details: `Simulation ${finalStatus} for endpoint ${dto.endpointId}, mappings applied: ${mappingsApplied}, stages: ${stages.filter((s) => s.status === 'PASSED').length}/${stages.length}`,
         status: finalStatus === 'PASSED' ? 'SUCCESS' : 'FAILURE',
         severity: finalStatus === 'PASSED' ? 'LOW' : 'MEDIUM',
@@ -863,13 +865,7 @@ export class SimulationService {
     };
   }
 
-  private async getEndpointConfig(
-    endpointId: number,
-    tenantId: string,
-    token: string,
-  ): Promise<Config | null> {
-    return this.adminServiceClient.getConfigById(endpointId, token);
-  }
+
 
   private async parsePayload(payload: any, payloadType: string): Promise<any> {
     if (!payloadType) {

@@ -109,12 +109,13 @@ export class NotificationService {
       // Add Reply-To header if provided (for editor emails)
       if (options.replyTo) {
         mailOptions.replyTo = options.replyTo;
-        this.logger.log(`Setting Reply-To: ${options.replyTo}`);
+        this.logger.log(`Reply-To header set`); // Don't log email address (PII)
       }
 
       const info = await this.transporter.sendMail(mailOptions);
+      const recipientCount = Array.isArray(mailOptions.to) ? mailOptions.to.length : 1;
       this.logger.log(
-        `Email sent successfully to ${mailOptions.to}: ${info.messageId}`,
+        `Email sent successfully to ${recipientCount} recipient(s): ${info.messageId}`,
       );
       return true;
     } catch (error) {
