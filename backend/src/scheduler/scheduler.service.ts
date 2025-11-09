@@ -1,18 +1,17 @@
 import {
   BadRequestException,
   ForbiddenException,
-  Injectable,
-  NotFoundException,
+  Injectable
 } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { ISuccess, JobStatus, Schedule } from '@tazama-lf/tcs-lib';
+import { AdminServiceClient } from 'src/services/admin-service-client.service';
 import { v4 } from 'uuid';
 import { DatabaseService } from '../database/database.service';
 import { SftpService } from '../sftp/sftp.service';
 import { validateCronExpression } from '../utils/helpers';
 import { CreateScheduleJobDto } from './dto/create-schedule.dto';
 import { UpdateScheduleJobDto } from './dto/update-schedule-dto';
-import { AdminServiceClient } from 'src/services/admin-service-client.service';
 
 @Injectable()
 export class SchedulerService {
@@ -39,26 +38,8 @@ export class SchedulerService {
         status,
       };
 
+      return await this.adminServiceClient.createSchedule(scheduleWithId, token)
 
-      const keys = Object.keys(scheduleWithId);
-      const values = Object.values(scheduleWithId);
-      const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
-
-      const insertQuery = `
-        INSERT INTO schedule (${keys.join(', ')})
-        VALUES (${placeholders})
-        RETURNING id;
-      `;
-      const result = await this.db.query(insertQuery, values);
-      const id = result.rows[0].id;
-
-
-      // const {id} = await this.adminServiceClient.createSchedule(scheduleWithId, token)
-
-      return {
-        success: true,
-        message: `Schedule with id ${id} successfully created`,
-      };
     } catch (error) {
       this.loggerService.error(
         `Error While Creating Schedule : ${error.message}`,
@@ -67,20 +48,15 @@ export class SchedulerService {
     }
   }
 
-  async findOne(id: string): Promise<Schedule> {
-    const query = 'SELECT * FROM schedule WHERE id = $1 LIMIT 1;';
-    const result = await this.db.query(query, [id]);
-    const schedule = result.rows[0] || null;
-    if (!schedule) {
-      throw new NotFoundException(`Configuration with id ${id} not found`);
-    }
-    return schedule;
+  async findOne(id: string, token: string): Promise<Schedule | null> {
+    return await this.adminServiceClient.findScheduleById(id, token)
   }
 
   async findAll(
     page: number,
     limit: number,
     tenantId: string,
+    token: string,
   ): Promise<Schedule[]> {
     if (
       !Number.isInteger(page) ||
@@ -93,49 +69,25 @@ export class SchedulerService {
       );
     }
 
-    const offset = (page - 1) * limit;
-    const result = await this.db.query(
-      'SELECT * FROM schedule WHERE tenant_id = $1 LIMIT $2 OFFSET $3;',
-      [tenantId, limit, offset],
-    );
-
-    const data = result.rows;
-
-    return data;
+    return await this.adminServiceClient.getAllSchedule(page,limit,tenantId,token)
   }
 
   async update(
     id: string,
     attr: UpdateScheduleJobDto,
-    _tenantId: string,
+    token: string
   ): Promise<ISuccess> {
     try {
-      const existingSchedule = await this.findOne(id);
+      const existingSchedule = await this.findOne(id, token);
 
-      if (existingSchedule.status !== JobStatus.INPROGRESS) {
+      if (existingSchedule?.status !== JobStatus.INPROGRESS) {
         throw new ForbiddenException(
           'Only In-Progress Cron jobs can be edited',
         );
       }
 
-      const keys = Object.keys(attr);
-      const values = Object.values(attr);
-      const setClause = keys.map((key, i) => `${key} = $${i + 1}`).join(', ');
-      const query = `UPDATE schedule SET ${setClause} WHERE id = $${keys.length + 1};`;
+      return await this.adminServiceClient.updateSchedule(id, attr, token)
 
-      const result = await this.db.query(query, [...values, id]);
-
-      const updatedRows = result.rowCount;
-
-      if (!updatedRows) {
-        throw new NotFoundException(
-          `Schedule with id ${id} not found or no changes were made`,
-        );
-      }
-      return {
-        success: true,
-        message: `Schedule with id ${id} successfully updated`,
-      };
     } catch (err) {
       this.loggerService.error(`Error updating schedule: ${err.message}`);
       throw err;
@@ -146,8 +98,9 @@ export class SchedulerService {
     status: JobStatus,
     page: number,
     limit: number,
-    tenant_id: string
-  ): Promise<[]> {
+    tenant_id: string,
+    token: string
+  ): Promise<Schedule[]> {
     try {
       if (!status || !page || !limit) {
         throw new BadRequestException('Status, page, and limit are required.');
@@ -159,19 +112,8 @@ export class SchedulerService {
         );
       }
 
-      const offset = (page - 1) * limit;
+      return await this.adminServiceClient.getScheduleByStatus(status, page, limit, tenant_id, token)
 
-      const query = `
-      SELECT *
-      FROM schedule
-      WHERE tenant_id = $1
-        AND status = $2
-      ORDER BY created_at DESC
-      LIMIT $3 OFFSET $4;
-    `;
-
-      const result = await this.db.query(query, [tenant_id, status, limit, offset]);
-      return result.rows;
     } catch (err) {
       this.loggerService.error(
         `Error fetching records by status: ${err.message}`,
@@ -206,7 +148,7 @@ export class SchedulerService {
           break;
         }
         case JobStatus.EXPORTED: {
-          const existing = await this.findOne(id);
+          const existing = await this.findOne(id, token);
           await this.sftpService.createFile(fileName, {
             ...existing,
             status: JobStatus.READY,
@@ -233,34 +175,8 @@ export class SchedulerService {
           break;
       }
 
-      const query =
-        status === JobStatus.REJECTED
-          ? `
-          UPDATE schedule
-          SET status = $1, comments = $2, updated_at = NOW()
-          WHERE id = $3
-          RETURNING id;
-        `
-          : `
-          UPDATE schedule
-          SET status = $1, updated_at = NOW()
-          WHERE id = $2
-          RETURNING id;
-        `;
+      return await this.adminServiceClient.updateScheduleByStatus(id, status, tenantId, token, reason)
 
-      const params =
-        status === JobStatus.REJECTED ? [status, reason, id] : [status, id];
-
-      const result = await this.db.query(query, params);
-
-      if (result.rowCount === 0) {
-        throw new NotFoundException(`Record with id "${id}" not found`);
-      }
-
-      return {
-        success: true,
-        message: `Cron Job with id ${id} successfully updated`,
-      };
     } catch (err) {
       this.loggerService.error(err.message);
       throw new BadRequestException(err.message);

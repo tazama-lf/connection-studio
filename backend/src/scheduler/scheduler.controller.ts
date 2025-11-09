@@ -48,7 +48,7 @@ export class SchedulerController {
     @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
     @User() user: AuthenticatedUser,
   ) {
-    return this.schedulerService.findAll(page, limit, user.tenantId);
+    return this.schedulerService.findAll(page, limit, user.tenantId, user.token.tokenString);
   }
 
   @Patch('/update/:id')
@@ -58,7 +58,7 @@ export class SchedulerController {
     @Body() body: UpdateScheduleJobDto,
     @User() user: AuthenticatedUser,
   ) {
-    return this.schedulerService.update(id, body, user.tenantId);
+    return this.schedulerService.update(id, body, user.token.tokenString);
   }
 
   @Get('/:id')
@@ -68,8 +68,8 @@ export class SchedulerController {
     TazamaClaims.EXPORTER,
     TazamaClaims.PUBLISHER,
   )
-  async getById(@Param('id') id: string) {
-    return this.schedulerService.findOne(id);
+  async getById(@Param('id') id: string, @User() user: AuthenticatedUser) {
+    return this.schedulerService.findOne(id, user.token.tokenString);
   }
 
   @Get('/get/status')
@@ -85,7 +85,7 @@ export class SchedulerController {
     @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
     @User() user: AuthenticatedUser
   ) {
-    return await this.schedulerService.findByStatus(status, page, limit, user.tenantId);
+    return await this.schedulerService.findByStatus(status, page, limit, user.tenantId, user.token.tokenString);
   }
 
   @Patch('/update/status/:id')
