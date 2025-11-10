@@ -1,18 +1,18 @@
-import { Plus } from 'lucide-react';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { AuthHeader } from '../../../shared/components/AuthHeader';
-import { Button } from '../../../shared/components/Button';
-import { DataEnrichmentFormModal } from '../../../shared/components/DataEnrichmentFormModal';
-import { UI_CONFIG } from '../../../shared/config/app.config';
-import { useToast } from '../../../shared/providers/ToastProvider';
-import { getUserFriendlyErrorMessage } from '../../../shared/utils/errorUtils';
+import { useAuth } from '@features/auth/contexts/AuthContext';
+import { AuthHeader } from '@shared/components/AuthHeader';
+import { Button } from '@shared/components/Button';
+import { DataEnrichmentFormModal } from '@shared/components/DataEnrichmentFormModal';
+import { UI_CONFIG } from '@shared/config/app.config';
+import { useToast } from '@shared/providers/ToastProvider';
+import { getUserFriendlyErrorMessage } from '@shared/utils/errorUtils';
 import {
   isApprover,
   isEditor,
   isExporter,
   isPublisher,
-} from '../../../utils/roleUtils';
-import { useAuth } from '../../auth/contexts/AuthContext';
+} from '@utils/roleUtils';
+import { Plus } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import JobDetailsModal from '../components/JobDetailsModal';
 import JobList from '../components/JobList';
 import { dataEnrichmentApi } from '../services/dataEnrichmentApi';
@@ -24,16 +24,9 @@ import type {
 } from '../types';
 
 const DataEnrichmentModule: React.FC = () => {
-  const { showSuccess, showError } = useToast();
   const { user } = useAuth();
+  const { showSuccess, showError } = useToast();
 
-  // User role detection
-  const userIsEditor = user?.claims ? isEditor(user.claims) : false;
-  const userIsApprover = user?.claims ? isApprover(user.claims) : false;
-  const userIsExporter = user?.claims ? isExporter(user.claims) : false;
-  const userIsPublisher = user?.claims ? isPublisher(user.claims) : false;
-
-  // Job management state
   const [jobs, setJobs] = useState<DataEnrichmentJobResponse[]>([]);
   const [jobsLoading, setJobsLoading] = useState(false);
   const [showJobForm, setShowJobForm] = useState(false);
@@ -42,28 +35,28 @@ const DataEnrichmentModule: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<JobStatus | 'ALL'>('ALL');
   const [typeFilter, setTypeFilter] = useState<'push' | 'pull' | 'ALL'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
-
-  // Job details modal state
   const [showJobDetails, setShowJobDetails] = useState(false);
   const [selectedJob, setSelectedJob] =
     useState<DataEnrichmentJobResponse | null>(null);
   const [jobDetailsLoading, setJobDetailsLoading] = useState(false);
   const [jobDetailsEditMode, setJobDetailsEditMode] = useState(false);
-
-  // Edit job state - keep for backwards compatibility but use JobDetailsModal instead
   const [editJob, setEditJob] = useState<DataEnrichmentJobResponse | null>(
     null,
   );
-
-  // Clone job state - now using JobDetailsModal in clone mode
   const [showCloneModal, setShowCloneModal] = useState(false);
   const [jobToClone, setJobToClone] =
     useState<DataEnrichmentJobResponse | null>(null);
 
+  // User role detection
+  const userIsEditor = user?.claims ? isEditor(user.claims) : false;
+  const userIsApprover = user?.claims ? isApprover(user.claims) : false;
+  const userIsExporter = user?.claims ? isExporter(user.claims) : false;
+  const userIsPublisher = user?.claims ? isPublisher(user.claims) : false;
+
   // Load jobs on component mount only (no pagination dependency since we fetch all)
   useEffect(() => {
     loadJobs();
-  }, []); // Remove pagination dependencies since we fetch all jobs
+  }, []);
 
   // Reset to first page when search query changes
   useEffect(() => {

@@ -24,6 +24,7 @@
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
+    "@playwright/test": "^1.56.1",
     "@remix-run/router": "^1.23.0",
     "@tailwindcss/postcss": "^4.1.13",
     "@types/react-router-dom": "^5.3.3",
