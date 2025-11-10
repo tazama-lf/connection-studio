@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { EyeIcon, MoreVerticalIcon, EditIcon, CopyIcon, HistoryIcon, ChevronUpIcon, ChevronDownIcon, FilterIcon, Upload, Rocket } from 'lucide-react';
+import { EyeIcon, MoreVerticalIcon, EditIcon, CopyIcon, HistoryIcon, ChevronUpIcon, ChevronDownIcon, FilterIcon, Upload, Rocket, Power, PowerOff } from 'lucide-react';
 import { configApi } from '../services/configApi';
 import { sftpApi } from '../../../features/exporter/services/sftpApi';
 import { UI_CONFIG } from '../../../shared/config/app.config';
@@ -16,6 +16,7 @@ interface Config {
   version: string;
   contentType: string;
   status: string;
+  publishing_status?: 'active' | 'inactive';
   tenantId: string;
   createdBy: string;
   createdAt: string;
@@ -422,6 +423,38 @@ const getStatusText = (status: string) => {
     }
   };
 
+  const handleActivateConfig = async (config: Config) => {
+    try {
+      await configApi.updatePublishingStatus(config.id, 'active');
+      showSuccess("Success", `Config "${config.msgFam}" has been activated.`);
+      // Refetch configs to update the UI
+      await fetchConfigs();
+      // Trigger parent refresh if available
+      if (onRefresh) {
+        onRefresh();
+      }
+    } catch (error) {
+      console.error('Error activating config:', error);
+      showError("Error", "Failed to activate config. Please try again.");
+    }
+  };
+
+  const handleDeactivateConfig = async (config: Config) => {
+    try {
+      await configApi.updatePublishingStatus(config.id, 'inactive');
+      showSuccess("Success", `Config "${config.msgFam}" has been deactivated.`);
+      // Refetch configs to update the UI
+      await fetchConfigs();
+      // Trigger parent refresh if available
+      if (onRefresh) {
+        onRefresh();
+      }
+    } catch (error) {
+      console.error('Error deactivating config:', error);
+      showError("Error", "Failed to deactivate config. Please try again.");
+    }
+  };
+
   const handlePreviousPage = () => {
     setCurrentPage(prev => Math.max(prev - 1, 1));
   };
@@ -518,6 +551,11 @@ const getStatusText = (status: string) => {
                   )}
                 </div>
               </th>
+              {userIsPublisher && (
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  PUBLISHING STATUS
+                </th>
+              )}
               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                 ACTIONS
               </th>
@@ -526,7 +564,7 @@ const getStatusText = (status: string) => {
           <tbody className="bg-white">
             {paginatedConfigs.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
+                <td colSpan={userIsPublisher ? 5 : 4} className="px-6 py-8 text-center text-gray-500">
                   {showPendingApprovals 
                     ? (configs.length === 0 ? 'No configurations found for review' : 'No configurations match your search criteria')
                     : showApprovedConfigs
@@ -555,6 +593,21 @@ const getStatusText = (status: string) => {
                       {formatDate(config.createdAt)}
                     </div>
                   </td>
+                  {userIsPublisher && (
+                    <td className="px-6 py-4">
+                      {config.publishing_status === 'active' ? (
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800 border border-green-200">
+                          <span className="w-2 h-2 rounded-full bg-green-600 mr-2"></span>
+                          ACTIVE
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600 border border-gray-200">
+                          <span className="w-2 h-2 rounded-full bg-gray-400 mr-2"></span>
+                          INACTIVE
+                        </span>
+                      )}
+                    </td>
+                  )}
                   <td className="px-6 py-4">
                     <div className="flex items-center">
                       {/* Actions dropdown */}
@@ -636,6 +689,34 @@ const getStatusText = (status: string) => {
                                   <Rocket className="w-4 h-4 mr-2" />
                                   Publish
                                 </button>
+                              )}
+                              {userIsPublisher && (
+                                <>
+                                  {config.publishing_status !== 'active' && (
+                                    <button
+                                      onClick={() => {
+                                        handleActivateConfig(config);
+                                        setOpenDropdown(null);
+                                      }}
+                                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                    >
+                                      <Power className="w-4 h-4 mr-2" />
+                                      Activate
+                                    </button>
+                                  )}
+                                  {config.publishing_status === 'active' && (
+                                    <button
+                                      onClick={() => {
+                                        handleDeactivateConfig(config);
+                                        setOpenDropdown(null);
+                                      }}
+                                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                    >
+                                      <PowerOff className="w-4 h-4 mr-2" />
+                                      Deactivate
+                                    </button>
+                                  )}
+                                </>
                               )}
                              
                             </div>

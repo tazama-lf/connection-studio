@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Calendar, Clock, Database, Globe, Settings, Download, Upload } from 'lucide-react';
+import { X, Calendar, Clock, Database, Globe, Settings, Download, Upload, Power, PowerOff } from 'lucide-react';
 import type { Config } from '../index';
 import { Button } from '../../../shared/components/Button';
 import { useAuth } from '../../auth/contexts/AuthContext';
@@ -15,6 +15,8 @@ interface ConfigDetailsModalProps {
   onDeploy?: (configId: number, notes?: string) => Promise<void>;
   onApprove?: (configId: number) => void;
   onReject?: (config: Config) => void;
+  onActivate?: (configId: number) => Promise<void>;
+  onDeactivate?: (configId: number) => Promise<void>;
 }
 
 const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
@@ -26,6 +28,8 @@ const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
   onDeploy,
   onApprove,
   onReject,
+  onActivate,
+  onDeactivate,
 }) => {
   const { user } = useAuth();
   const userIsApprover = user?.claims ? isApprover(user.claims) : false;
@@ -36,6 +40,8 @@ const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
   const [deployNotes, setDeployNotes] = useState('');
   const [isExporting, setIsExporting] = useState(false);
   const [isDeploying, setIsDeploying] = useState(false);
+  const [isActivating, setIsActivating] = useState(false);
+  const [isDeactivating, setIsDeactivating] = useState(false);
 
   if (!isOpen) {
     return null;
@@ -90,6 +96,34 @@ const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
       console.error('Deploy failed:', error);
     } finally {
       setIsDeploying(false);
+    }
+  };
+
+  const handleActivate = async () => {
+    if (!onActivate || !config) return;
+    
+    try {
+      setIsActivating(true);
+      await onActivate(config.id);
+      onClose();
+    } catch (error) {
+      console.error('Activate failed:', error);
+    } finally {
+      setIsActivating(false);
+    }
+  };
+
+  const handleDeactivate = async () => {
+    if (!onDeactivate || !config) return;
+    
+    try {
+      setIsDeactivating(true);
+      await onDeactivate(config.id);
+      onClose();
+    } catch (error) {
+      console.error('Deactivate failed:', error);
+    } finally {
+      setIsDeactivating(false);
     }
   };
 
@@ -419,7 +453,35 @@ const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
          })()) &&
          !(userIsExporter && config.status === 'approved') &&
          !(userIsPublisher && config.status === 'exported') && (
-          <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3 bg-gray-50">
+          <div className="px-6 py-4 border-t border-gray-200 flex justify-between space-x-3 bg-gray-50">
+            <div className="flex space-x-3">
+              {userIsPublisher && onActivate && onDeactivate && (
+                <>
+                  {config.publishing_status !== 'active' && (
+                    <Button
+                      variant="primary"
+                      onClick={handleActivate}
+                      disabled={isActivating}
+                      className="flex items-center space-x-2 bg-green-600 hover:bg-green-700 text-white"
+                    >
+                      <Power className="w-4 h-4" />
+                      <span>{isActivating ? 'Activating...' : 'Activate'}</span>
+                    </Button>
+                  )}
+                  {config.publishing_status === 'active' && (
+                    <Button
+                      variant="primary"
+                      onClick={handleDeactivate}
+                      disabled={isDeactivating}
+                      className="flex items-center space-x-2 bg-orange-600 hover:bg-orange-700 text-white"
+                    >
+                      <PowerOff className="w-4 h-4" />
+                      <span>{isDeactivating ? 'Deactivating...' : 'Deactivate'}</span>
+                    </Button>
+                  )}
+                </>
+              )}
+            </div>
             <Button variant="secondary" onClick={onClose}>
               Close
             </Button>

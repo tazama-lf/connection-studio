@@ -11,6 +11,7 @@ export interface Config {
   version: string;
   contentType: string;
   status: string;
+  publishing_status?: 'active' | 'inactive';
   tenantId: string;
   createdBy: string;
   createdAt: string;

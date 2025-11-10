@@ -4,6 +4,8 @@ import { useToast } from '../../../shared/providers/ToastProvider';
 import { useAuth } from '../../auth/contexts/AuthContext';
 import { ConfigList } from '../../config/components/ConfigList';
 import { isPublisher } from '../../../utils/roleUtils';
+import type { Config } from '../../config/index';
+import EditEndpointModal from '../../../shared/components/EditEndpointModal';
 
 export const PublisherConfigsPage: React.FC = () => {
   const { showError } = useToast();
@@ -14,6 +16,9 @@ export const PublisherConfigsPage: React.FC = () => {
 
   // State
   const [searchTerm, setSearchTerm] = useState('');
+  const [editingEndpointId, setEditingEndpointId] = useState<number | null>(null);
+  const [editingConfig, setEditingConfig] = useState<Config | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Role-based access check
   useEffect(() => {
@@ -21,6 +26,28 @@ export const PublisherConfigsPage: React.FC = () => {
       showError('You do not have permission to access this page');
     }
   }, [isAuthenticated, user, userIsPublisher, showError]);
+
+  const handleCloseModal = () => {
+    setEditingEndpointId(null);
+    setEditingConfig(null);
+    // Refresh the config list when modal closes
+    setRefreshKey(prev => prev + 1);
+  };
+
+  const handleConfigSuccess = () => {
+    // Refresh immediately when config is saved/updated
+    setRefreshKey(prev => prev + 1);
+  };
+
+  const handleViewDetails = (config: Config) => {
+    // Open EditEndpointModal for viewing - same workflow as approver
+    setEditingEndpointId(config.id);
+    setEditingConfig(config);
+  };
+
+  const handleRefresh = () => {
+    setRefreshKey(prev => prev + 1);
+  };
 
   if (!isAuthenticated || !userIsPublisher) {
     return (
@@ -64,9 +91,23 @@ export const PublisherConfigsPage: React.FC = () => {
 
         {/* Configurations Table */}
         <ConfigList
+          key={refreshKey}
           searchTerm={searchTerm}
+          onViewDetails={handleViewDetails}
+          onRefresh={handleRefresh}
         />
       </div>
+
+      {/* Edit Modal for viewing configs */}
+      {editingEndpointId !== null && (
+        <EditEndpointModal
+          isOpen={editingEndpointId !== null}
+          onClose={handleCloseModal}
+          endpointId={editingEndpointId}
+          onSuccess={handleConfigSuccess}
+          readOnly={true}
+        />
+      )}
     </div>
   );
 };

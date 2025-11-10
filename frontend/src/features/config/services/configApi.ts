@@ -10,6 +10,7 @@ export interface CreateConfigRequest {
   payload: string;
   schema?: any; // Complete JSON Schema object
   mapping?: FieldMapping[];
+  functions?: any[]; // Function definitions
   fieldAdjustments?: FieldAdjustment[];
 }
 
@@ -650,6 +651,46 @@ export class ConfigApiService {
       return await this.handleResponse<ConfigResponse>(response);
     } catch (error) {
       console.error('Request changes failed:', error);
+      throw error;
+    }
+  }
+
+  // Update publishing status (activate/deactivate)
+  async updatePublishingStatus(
+    id: number,
+    publishingStatus: 'active' | 'inactive',
+  ): Promise<ConfigResponse> {
+    try {
+      console.log('🚀 configApi.updatePublishingStatus called:');
+      console.log('  - Config ID:', id);
+      console.log('  - New publishing status:', publishingStatus);
+
+      const url = `${this.baseURL}/config/${id}/publishing-status`;
+      const headers = this.getAuthHeaders();
+      const method = 'PATCH';
+
+      console.log('📤 About to send request:');
+      console.log('  - URL:', url);
+      console.log('  - Method:', method);
+      console.log('  - Headers:', JSON.stringify(headers, null, 2));
+
+      const response = await fetch(url, {
+        method: method,
+        headers: headers,
+        body: JSON.stringify({ publishing_status: publishingStatus }),
+      });
+
+      console.log('📥 Response received:');
+      console.log('  - Status:', response.status);
+      console.log('  - Status Text:', response.statusText);
+
+      const result = await this.handleResponse<ConfigResponse>(response);
+      console.log('✅ Publishing status updated:', result);
+
+      return result;
+    } catch (error) {
+      console.error('💥 Publishing status update failed:', error);
+      console.error('💥 Full error object:', JSON.stringify(error, null, 2));
       throw error;
     }
   }
