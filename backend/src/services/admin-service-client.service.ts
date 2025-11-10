@@ -435,19 +435,22 @@ export class AdminServiceClient {
     }
   }
 
-  async getAllConfigs(token: string): Promise<any[]> {
-    this.logger.log('Getting all configs');
+  async getAllConfigs(token: string, limit: number = 10, offset: number = 0): Promise<{ configs: any[]; pagination: { total: number; limit: number; offset: number; pages: number } }> {
+    this.logger.log(`Getting all configs (limit: ${limit}, offset: ${offset})`);
 
     try {
       const response = await firstValueFrom(
-        this.httpService.get(`${this.adminServiceUrl}/v1/admin/tcs/config`, {
+        this.httpService.get(`${this.adminServiceUrl}/v1/admin/tcs/config/${offset}/${limit}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
         }),
       );
 
-      return response.data.configs || [];
+      return {
+        configs: response.data.configs || [],
+        pagination: response.data.pagination || { total: 0, limit, offset, pages: 0 },
+      };
     } catch (error) {
       return this.handleError(error, 'getAllConfigs');
     }
@@ -529,17 +532,18 @@ export class AdminServiceClient {
     endpointPath: string,
     version: string,
     token: string,
-  ): Promise<any> {
+    limit: number = 10,
+    offset: number = 0,
+  ): Promise<{ configs: any[]; pagination: { total: number; limit: number; offset: number; pages: number } }> {
     this.logger.log(
-      `Getting config by endpoint: ${endpointPath}, version: ${version}`,
+      `Getting config by endpoint: ${endpointPath}, version: ${version} (limit: ${limit}, offset: ${offset})`,
     );
 
     try {
       const response = await firstValueFrom(
         this.httpService.get(
-          `${this.adminServiceUrl}/v1/admin/tcs/config/endpoint`,
+          `${this.adminServiceUrl}/v1/admin/tcs/config/endpoint/${endpointPath}/${version}/${offset}/${limit}`,
           {
-            params: { endpointPath, version },
             headers: {
               Authorization: `Bearer ${token}`,
             },
@@ -547,7 +551,10 @@ export class AdminServiceClient {
         ),
       );
 
-      return response.data.config || null;
+      return {
+        configs: response.data.configs || [],
+        pagination: response.data.pagination || { total: 0, limit, offset, pages: 0 },
+      };
     } catch (error) {
       return this.handleError(error, 'getConfigByEndpoint');
     }
@@ -556,13 +563,15 @@ export class AdminServiceClient {
   async getConfigsByTransactionType(
     transactionType: string,
     token: string,
-  ): Promise<any[]> {
-    this.logger.log(`Getting configs by transaction type: ${transactionType}`);
+    limit: number = 10,
+    offset: number = 0,
+  ): Promise<{ configs: any[]; pagination: { total: number; limit: number; offset: number; pages: number } }> {
+    this.logger.log(`Getting configs by transaction type: ${transactionType} (limit: ${limit}, offset: ${offset})`);
 
     try {
       const response = await firstValueFrom(
         this.httpService.get(
-          `${this.adminServiceUrl}/v1/admin/tcs/config/transaction/${transactionType}`,
+          `${this.adminServiceUrl}/v1/admin/tcs/config/transaction/${transactionType}/${offset}/${limit}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -571,7 +580,10 @@ export class AdminServiceClient {
         ),
       );
 
-      return response.data.configs || [];
+      return {
+        configs: response.data.configs || [],
+        pagination: response.data.pagination || { total: 0, limit, offset, pages: 0 },
+      };
     } catch (error) {
       return this.handleError(error, 'getConfigsByTransactionType');
     }
