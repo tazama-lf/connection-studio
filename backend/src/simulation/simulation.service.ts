@@ -276,7 +276,7 @@ export class SimulationService {
         tenantId,
         entityId: dto.endpointId.toString(),
         endpointName: config.endpointPath || undefined,
-        version: config.version ? Number(config.version) : undefined,
+        version: config.version || undefined,
         details: `Simulation ${finalStatus} for endpoint ${dto.endpointId}, mappings applied: ${mappingsApplied}, stages: ${stages.filter((s) => s.status === 'PASSED').length}/${stages.length}`,
         status: finalStatus === 'PASSED' ? 'SUCCESS' : 'FAILURE',
         severity: finalStatus === 'PASSED' ? 'LOW' : 'MEDIUM',
