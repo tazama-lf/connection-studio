@@ -112,11 +112,7 @@ export class NotifyService implements OnModuleInit {
       );
 
       await this.natsService.handleResponse({
-        configId,
-        tenantId,
-        type: 'CONFIG_ACTIVATION',
-        stream: this.demsStream,
-        timestamp: new Date().toISOString(),
+        transactionID: configId,
       });
 
       this.logger.log(
