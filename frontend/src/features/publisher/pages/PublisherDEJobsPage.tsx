@@ -70,8 +70,31 @@ const PublisherDEJobsPage: React.FC = () => {
     loadDEJobs(); // Refresh the list after successful publish
   };
 
+  const handleToggleStatus = async (jobId: string, newStatus: 'active' | 'in-active') => {
+    try {
+      // Find the job to get its type
+      const job = jobs.find(j => j.id === jobId);
+      if (!job) {
+        showError('Job not found');
+        return;
+      }
+
+      // Determine job type
+      const jobType = job.type?.toUpperCase() === 'PUSH' ? 'PUSH' : 'PULL';
+
+      // Call the API to update activation status
+      await dataEnrichmentApi.updateJobActivation(jobId, newStatus === 'active', jobType as 'PULL' | 'PUSH');
+      
+      // Refresh the jobs list
+      await loadDEJobs();
+    } catch (error) {
+      console.error('Failed to toggle job status:', error);
+      showError('Failed to update job status');
+    }
+  };
+
   return (
-    <div c8lassName="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50">
       <AuthHeader title="Data Enrichment" showBackButton={true} />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -98,6 +121,7 @@ const PublisherDEJobsPage: React.FC = () => {
           onViewDetails={handleViewDetails}
           onRefresh={loadDEJobs}
           searchQuery={searchTerm}
+          onToggleStatus={handleToggleStatus}
         />
       </div>
 

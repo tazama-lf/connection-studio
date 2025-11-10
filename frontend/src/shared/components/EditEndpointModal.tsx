@@ -15,7 +15,7 @@ import type {
   AllowedFunctionName
 } from '../types/functions.types';
 import { FUNCTION_CONFIGS } from '../types/functions.types';
-import { isApprover, isEditor, isExporter } from '../../utils/roleUtils';
+import { isApprover, isEditor, isExporter, isPublisher } from '../../utils/roleUtils';
 import { isStatus } from '../utils/statusColors';
 import { convertInferredFieldsToJsonSchema } from '../utils/schemaUtils';
 import type { InferredField } from '../utils/schemaUtils';
@@ -1920,8 +1920,8 @@ console.log('Cur map:', currentMappings);
                   )}
                 </Button>
               )}
-              {/* Show Next button for approvers, editors, and exporters in read-only mode on all steps */}
-              {readOnly && (isApprover(user?.claims || []) || isEditor(user?.claims || []) || isExporter(user?.claims || [])) && (
+              {/* Show Next button for approvers, editors, exporters, and publishers in read-only mode on all steps */}
+              {readOnly && (isApprover(user?.claims || []) || isEditor(user?.claims || []) || isExporter(user?.claims || []) || isPublisher(user?.claims || [])) && (
                 <>
                   {(() => {
                     const currentIndex = steps.findIndex(s => s.id === currentStep);

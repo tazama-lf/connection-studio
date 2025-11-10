@@ -110,6 +110,9 @@ export const PublisherDEJobList: React.FC<PublisherDEJobListProps> = (props) => 
               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                 STATUS
               </th>
+              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                PUBLISHING STATUS
+              </th>
               <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
                 ACTIONS
               </th>
@@ -172,6 +175,19 @@ export const PublisherDEJobList: React.FC<PublisherDEJobListProps> = (props) => 
                       {getStatusLabel(job.status || 'in-progress')}
                     </span>
                   </td>
+                  <td className="px-6 py-4">
+                    {job.publishing_status === 'active' ? (
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800 border border-green-200">
+                        <span className="w-2 h-2 rounded-full bg-green-600 mr-2"></span>
+                        ACTIVE
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600 border border-gray-200">
+                        <span className="w-2 h-2 rounded-full bg-gray-400 mr-2"></span>
+                        INACTIVE
+                      </span>
+                    )}
+                  </td>
                   <td className="px-6 py-4 text-center">
                     <div className="flex items-center justify-center space-x-2">
                       <div className="relative actions-dropdown">
@@ -203,7 +219,7 @@ export const PublisherDEJobList: React.FC<PublisherDEJobListProps> = (props) => 
                               </button>
                               {onToggleStatus && (
                                 <>
-                                  {job. publishing_status === 'active' ? (
+                                  {job.publishing_status === 'active' ? (
                                     <button
                                       onClick={() => {
                                         onToggleStatus(job.id, 'in-active');
