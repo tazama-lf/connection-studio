@@ -75,7 +75,7 @@ export class CreatePullJobDto {
 
   @IsUUID()
   @IsNotEmpty()
-  schedule_id: number;
+  schedule_id: string;
 
   @IsEnum(SourceType)
   @IsNotEmpty()

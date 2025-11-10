@@ -68,8 +68,7 @@ export class SchedulerService {
         'Page and limit must be positive integers.',
       );
     }
-
-    return await this.adminServiceClient.getAllSchedule(page,limit,tenantId,token)
+    return await this.adminServiceClient.getAllSchedule(page, limit, tenantId, token)
   }
 
   async update(
@@ -160,9 +159,7 @@ export class SchedulerService {
           break;
         }
         case JobStatus.DEPLOYED: {
-          const existing = await this.sftpService.readFile(
-            `cron_${tenantId}_${id}`,
-          );
+          const existing = await this.sftpService.readFile(fileName);
           await this.create(existing, tenantId, token, JobStatus.DEPLOYED);
           await this.sftpService.deleteFile(fileName);
           return {

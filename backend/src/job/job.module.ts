@@ -8,9 +8,11 @@ import { DryRunModule } from '../dry-run/dry-run.module';
 import { ConfigModule } from '@nestjs/config';
 import { SftpModule } from 'src/sftp/sftp.module';
 import { NotifyModule } from 'src/notify/notify.module';
+import { AdminServiceClient } from 'src/services/admin-service-client.service';
+import { HttpModule } from '@nestjs/axios';
 
 @Module({
-  providers: [JobService],
+  providers: [JobService, AdminServiceClient],
   controllers: [JobController],
   imports: [
     LoggerModule,
@@ -20,6 +22,8 @@ import { NotifyModule } from 'src/notify/notify.module';
     ConfigModule,
     SftpModule,
     NotifyModule,
+    HttpModule
   ],
+  exports: [AdminServiceClient]
 })
-export class JobModule {}
+export class JobModule { }

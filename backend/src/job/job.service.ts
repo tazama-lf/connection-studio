@@ -9,7 +9,9 @@ import {
   AuthType,
   ConfigType,
   ISuccess,
+  Job,
   JobStatus,
+  JobSummary,
   ScheduleStatus,
   SFTPConnection,
   SourceType
@@ -30,6 +32,7 @@ import { CreatePushJobDto } from './dto/create-push-job.dto';
 import { UpdatePullJobDto } from './dto/update-pull-job.dto';
 import { UpdatePushJobDto } from './dto/update-push-job.dto';
 import { type EndpointJobRecord } from './types/job.interface';
+import { AdminServiceClient } from 'src/services/admin-service-client.service';
 
 @Injectable()
 export class JobService {
@@ -39,6 +42,7 @@ export class JobService {
     private readonly dryRunService: DryRunService,
     private readonly sftpService: SftpService,
     private readonly notifyService: NotifyService,
+    private readonly adminServiceClient: AdminServiceClient
   ) { }
 
   async validateExisting(table_name: string): Promise<void> {
@@ -64,10 +68,11 @@ export class JobService {
     id: string,
     job: UpdatePushJobDto | UpdatePullJobDto,
     type: ConfigType,
+    token: string
   ): Promise<ISuccess> {
     const tableName = type === ConfigType.PUSH ? 'endpoints' : 'job';
 
-    const existingJob = await this.findOne(id, ConfigType.PUSH);
+    const existingJob = await this.findOne(id, ConfigType.PUSH, token);
 
     if (existingJob.status !== JobStatus.INPROGRESS) {
       throw new ForbiddenException('Only In-Progress jobs can be edited');
@@ -95,6 +100,7 @@ export class JobService {
   async createPush(
     job: CreatePushJobDto,
     tenantId: string,
+    token: string,
     status: JobStatus = JobStatus.INPROGRESS,
   ): Promise<ISuccess> {
     try {
@@ -109,20 +115,10 @@ export class JobService {
 
       const jobWithId = { ...job, id, path, tenant_id: tenantId, status };
 
-      const keys = Object.keys(jobWithId);
-      const values = Object.values(jobWithId);
-      const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
+      const { id: newId } = await this.adminServiceClient.createPushJob(jobWithId, token)
 
-      const insertQuery = `
-                    INSERT INTO endpoints (${keys.join(', ')})
-                     VALUES (${placeholders})
-                      RETURNING *;
-                      `;
 
-      const insertRes = await this.db.query(insertQuery, values);
-      const newJob = insertRes.rows[0];
-
-      if (!newJob) {
+      if (!newId) {
         this.loggerService.error('Failed to create push job.');
         throw new Error('Failed to create push job.');
       }
@@ -133,7 +129,7 @@ export class JobService {
 
       return {
         success: true,
-        message: `Job with id ${id} successfully updated`,
+        message: `Job with id ${id} successfully created`,
       };
     } catch (err) {
       this.loggerService.error(err.message);
@@ -144,22 +140,14 @@ export class JobService {
   async createPull(
     job: CreatePullJobDto,
     tenantId: string,
+    token: string,
     status: JobStatus = JobStatus.INPROGRESS,
   ): Promise<ISuccess> {
     try {
       await this.validateExisting(job.table_name);
 
-      const checkScheduleQuery = `
-                 SELECT * 
-                  FROM schedule 
-                     WHERE id = $1 
-                         LIMIT 1;
-                     `;
+      const exist = await this.adminServiceClient.findScheduleById(job.schedule_id, token)
 
-      const scheduleResult = await this.db.query(checkScheduleQuery, [
-        job.schedule_id,
-      ]);
-      const exist = scheduleResult.rows[0];
       if (
         !exist ||
         (exist.status !== JobStatus.APPROVED &&
@@ -202,17 +190,7 @@ export class JobService {
         status
       };
 
-      const keys = Object.keys(jobWithId);
-      const values = Object.values(jobWithId);
-      const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
-
-      const insertQuery = `
-                 INSERT INTO job (${keys.join(', ')})
-                  VALUES (${placeholders})
-                  RETURNING *;
-                     `;
-      const insertResult = await this.db.query(insertQuery, values);
-      const { id } = insertResult.rows[0];
+      const { id } = await this.adminServiceClient.createPullJob(jobWithId, token)
 
       if (status === JobStatus.DEPLOYED) {
         await this.notifyService.notifyEnrichment(new_id, ConfigType.PUSH);
@@ -220,7 +198,7 @@ export class JobService {
 
       return {
         success: true,
-        message: `Job with id ${id} successfully updated`,
+        message: `Job with id ${id} successfully created`,
       };
     } catch (err: unknown) {
       if (err instanceof Error) {
@@ -242,7 +220,8 @@ export class JobService {
   async findAll(
     page: number,
     limit: number,
-    tenantId: string
+    tenantId: string,
+    token: string
   ): Promise<EndpointJobRecord[]> {
     try {
       if (
@@ -256,46 +235,7 @@ export class JobService {
         );
       }
 
-      const offset = (page - 1) * limit;
-      const query = `
-      SELECT 
-        id,
-        endpoint_name,
-        path,
-        mode,
-        table_name,
-        description,
-        version,
-        status,
-        publishing_status,
-        created_at,
-        'push' AS type
-      FROM endpoints
-      WHERE tenant_id = $3
-
-      UNION ALL
-
-      SELECT 
-        id,
-        endpoint_name,
-        NULL AS path,
-        mode,
-        table_name,
-        description,
-        version,
-        status,
-        publishing_status,
-        created_at,
-        'pull' AS type
-      FROM job
-      WHERE tenant_id = $3
-
-      ORDER BY created_at DESC
-      LIMIT $1 OFFSET $2;
-    `;
-
-      const result = await this.db.query(query, [limit, offset, tenantId]);
-      return result.rows as EndpointJobRecord[];
+      return (await this.adminServiceClient.getAllJobs(page, limit, tenantId, token) as EndpointJobRecord[])
     } catch (error) {
       this.loggerService.error(`Error fetching records: ${error.message}`);
       throw error;
@@ -304,17 +244,14 @@ export class JobService {
 
 
 
-  async findOne(id: string, type: ConfigType) {
+  async findOne(id: string, type: ConfigType, token: string): Promise<Job> {
     try {
       if (!id || !type) {
         throw new BadRequestException('Both id and type are required.');
       }
       const tableName = type === ConfigType.PUSH ? 'endpoints' : 'job';
 
-      const query = `SELECT * FROM ${tableName} WHERE id = $1 LIMIT 1;`;
-      const result = await this.db.query(query, [id]);
-
-      const record = result.rows[0];
+      const record = await this.adminServiceClient.findJobById(id, tableName, token)
       if (!record) {
         throw new BadRequestException(
           `${type === ConfigType.PUSH ? 'Endpoint' : 'Job'} with id ${id} not found.`,
@@ -331,7 +268,7 @@ export class JobService {
 
         return {
           ...record,
-          schedule,
+          ...schedule,
         };
       }
 
@@ -347,7 +284,8 @@ export class JobService {
     page: number,
     limit: number,
     tenantId: string,
-  ): Promise<[]> {
+    token: string
+  ): Promise<JobSummary[]> {
     try {
       if (!tenantId || !status || !page || !limit) {
         throw new BadRequestException(
@@ -361,50 +299,8 @@ export class JobService {
         );
       }
 
-      const offset = (page - 1) * limit;
+      return await this.adminServiceClient.findJobByStatus(tenantId, status, page, limit, token)
 
-      const query = `
-      (
-        SELECT 
-          id,
-          endpoint_name,
-          path,
-          mode,
-          table_name,
-          description,
-          version,
-          status,
-          publishing_status,
-          created_at,
-          'push' AS type
-        FROM endpoints
-        WHERE tenant_id = $1
-          AND status = $2
-      )
-      UNION ALL
-      (
-        SELECT 
-          id,
-          endpoint_name,
-          NULL AS path,
-          mode,
-          table_name,
-          description,
-          version,
-          status,
-          publishing_status,
-          created_at,
-          'pull' AS type
-        FROM job
-        WHERE tenant_id = $1
-          AND status = $2
-      )
-      ORDER BY created_at DESC
-      LIMIT $3 OFFSET $4;
-    `;
-
-      const result = await this.db.query(query, [tenantId, status, limit, offset]);
-      return result.rows;
     } catch (err) {
       this.loggerService.error(
         `Error fetching records by status for tenant ${tenantId}: ${err.message}`,
@@ -418,7 +314,7 @@ export class JobService {
     id: string,
     status: ScheduleStatus,
     table_name: string,
-
+    token: string,
   ): Promise<ISuccess> {
     try {
       if (!status || !table_name) {
@@ -426,25 +322,11 @@ export class JobService {
           'Both status and table_name are required.',
         );
       }
+      const { success } = await this.adminServiceClient.updateJobActivation(id, status, table_name, token)
 
-
-
-      const query = `
-                 UPDATE ${table_name}
-                 SET publishing_status = $1, updated_at = NOW()
-                 WHERE id = $2
-                 RETURNING *;
-                    `;
-
-      const result = await this.db.query(query, [status, id]);
-
-      if (result.rowCount === 0) {
-        throw new NotFoundException(
-          `Record with id "${id}" not found in table "${table_name}".`,
-        );
+      if (success) {
+        await this.notifyService.notifyEnrichment(id, ConfigType.PUSH);
       }
-
-      await this.notifyService.notifyEnrichment(id, ConfigType.PUSH);
 
       return {
         success: true,
@@ -463,6 +345,7 @@ export class JobService {
     status: JobStatus,
     type: ConfigType,
     tenantId: string,
+    token: string,
     reason?: string
   ): Promise<ISuccess> {
     try {
@@ -482,7 +365,7 @@ export class JobService {
           break;
         }
         case JobStatus.EXPORTED: {
-          const existingJob = await this.findOne(id, type);
+          const existingJob = await this.findOne(id, type, token);
           await this.sftpService.createFile(fileName, {
             ...existingJob,
             status: JobStatus.READY,
@@ -536,38 +419,8 @@ export class JobService {
           break;
       }
 
-      const tableName = type === ConfigType.PUSH ? 'endpoints' : 'job';
-      const updateQuery =
-        status === JobStatus.REJECTED
-          ? `
-          UPDATE ${tableName}
-          SET status = $1, comments = $2, updated_at = NOW()
-          WHERE id = $3
-          RETURNING id;
-        `
-          : `
-          UPDATE ${tableName}
-          SET status = $1, updated_at = NOW()
-          WHERE id = $2
-          RETURNING id;
-        `;
 
-      const params =
-        status === JobStatus.REJECTED ? [status, reason, id] : [status, id];
-
-      const result = await this.db.query(updateQuery, params);
-
-
-      if (!result.rowCount) {
-        throw new NotFoundException(
-          `Record with id "${id}" not found in table "${tableName}".`,
-        );
-      }
-
-      return {
-        success: true,
-        message: `${tableName} with id ${id} successfully updated.`,
-      };
+      return await this.adminServiceClient.updateJobByStatus(id, status, tenantId, type, token, reason)
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
       this.loggerService.error(`${message}`);

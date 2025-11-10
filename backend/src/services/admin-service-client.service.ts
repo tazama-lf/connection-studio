@@ -1,8 +1,10 @@
 import { HttpService } from '@nestjs/axios';
 import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { JobStatus, Schedule } from '@tazama-lf/tcs-lib';
+import { ConfigType, Job, JobStatus, JobSummary, Schedule, ScheduleStatus } from '@tazama-lf/tcs-lib';
 import { firstValueFrom } from 'rxjs';
+import { EndpointJobRecord } from 'src/job/types/job.interface';
+import { UpdateScheduleJobDto } from 'src/scheduler/dto/update-schedule-dto';
 
 @Injectable()
 export class AdminServiceClient {
@@ -124,9 +126,200 @@ export class AdminServiceClient {
   }
 
 
+  // ==================== JOB OPERATIONS ====================
+
+  async createPushJob(job: Record<string, unknown>, token: string): Promise<{ id: string }> {
+    this.logger.log(
+      `Validating job creation: ${job}`,
+    );
+
+    try {
+      const response = await firstValueFrom(
+        this.httpService.post(
+          `${this.adminServiceUrl}/v1/admin/tcs/push/create`,
+          job,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+          },
+        ),
+      );
+
+      this.logger.log(`Validation response: ${JSON.stringify(response.data)}`);
+      return response.data;
+    } catch (error) {
+      return this.handleError(error, 'jobCreation');
+    }
+  }
+
+
+  async createPullJob(job: Record<string, unknown>, token: string): Promise<{ id: string }> {
+    this.logger.log(
+      `Validating job creation: ${job}`,
+    );
+
+    try {
+      const response = await firstValueFrom(
+        this.httpService.post(
+          `${this.adminServiceUrl}/v1/admin/tcs/pull/create`,
+          job,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+          },
+        ),
+      );
+
+      this.logger.log(`Validation response: ${JSON.stringify(response.data)}`);
+      return response.data;
+    } catch (error) {
+      return this.handleError(error, 'jobCreation');
+    }
+  }
+
+  async getAllJobs(page: number, limit: number, tenant_id: string, token: string): Promise<EndpointJobRecord[]> {
+    this.logger.log(`Getting all jobs`);
+
+    try {
+      const response = await firstValueFrom(
+        this.httpService.get(
+          `${this.adminServiceUrl}/v1/admin/tcs/job/get/all`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+            params: {
+              tenantId: tenant_id,
+              page,
+              limit
+            }
+          },
+        ),
+      );
+
+      return response.data;
+    } catch (error) {
+      return this.handleError(error, 'getScheduleByStatus');
+    }
+  }
+
+  async findJobById(id: string, tableName: string, token: string): Promise<Job | null> {
+    this.logger.log(`Getting job by ID: ${id} with token ${token}`);
+
+    try {
+      const response = await firstValueFrom(
+        this.httpService.get(
+          `${this.adminServiceUrl}/v1/admin/tcs/job/get/${id}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+
+            params: {
+              tableName
+            }
+          },
+        ),
+      );
+
+      return response.data;
+    } catch (error) {
+      return this.handleError(error, 'getJobById');
+    }
+  }
+
+  async findJobByStatus(tenantId: string, status: JobStatus, page: number, limit: number, token: string): Promise<JobSummary[]> {
+    this.logger.log(`Getting job by status`);
+
+    try {
+      const response = await firstValueFrom(
+        this.httpService.get(
+          `${this.adminServiceUrl}/v1/admin/tcs/job/get/status`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+            params: {
+              tenantId,
+              status,
+              page,
+              limit
+            }
+          },
+        ),
+      );
+
+      return response.data;
+    } catch (error) {
+      return this.handleError(error, 'getJobById');
+    }
+  }
+
+
+  async updateJobActivation(id: string, status: ScheduleStatus, tableName: string, token: string): Promise<{ success: boolean; message: string }> {
+    this.logger.log(
+      `Validating job update with id : ${id}`,
+    );
+
+    try {
+      const response = await firstValueFrom(
+        this.httpService.put(
+          `${this.adminServiceUrl}/v1/admin/tcs/job/update/activation/${id}`,
+          { status, tableName },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+          },
+        ),
+      );
+
+      this.logger.log(`Validation response: ${JSON.stringify(response.data)}`);
+      return response.data;
+    } catch (error) {
+      return this.handleError(error, 'jobActivation');
+    }
+  }
+
+  async updateJobByStatus(id: string, status: JobStatus, tenantId: string, type: ConfigType, token: string, reason?: string): Promise<{ success: boolean; message: string }> {
+    this.logger.log(
+      `Validating job update with id : ${id}`,
+    );
+
+    try {
+      const body: Record<string, unknown> = {};
+      if (reason) body.reason = reason;
+      const response = await firstValueFrom(
+        this.httpService.put(
+          `${this.adminServiceUrl}/v1/admin/tcs/job/update/status/${id}`,
+          body,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            params: {
+              tenantId, type, status
+            }
+          },
+        ),
+      );
+
+      this.logger.log(`Validation response: ${JSON.stringify(response.data)}`);
+      return response.data;
+    } catch (error) {
+      return this.handleError(error, 'updateScheduleStatus');
+    }
+  }
+
   // ==================== SCHEDULER OPERATIONS ====================
 
-  async createSchedule(schedule: unknown, token: string): Promise<{ success: boolean; message: string; }> {
+  async createSchedule(schedule: Record<string, unknown>, token: string): Promise<{ success: boolean; message: string; }> {
     this.logger.log(
       `Validating schedule creation: ${schedule}`,
     );
@@ -153,7 +346,7 @@ export class AdminServiceClient {
   }
 
   async findScheduleById(id: string, token: string): Promise<Schedule | null> {
-    this.logger.log(`Getting config by ID: ${id} with token ${token}`);
+    this.logger.log(`Getting schedule by ID: ${id} with token ${token}`);
 
     try {
       const response = await firstValueFrom(
@@ -173,7 +366,9 @@ export class AdminServiceClient {
     }
   }
 
-  async updateSchedule(id: string, schedule: unknown, token: string): Promise<{ success: boolean; message: string }> {
+
+
+  async updateSchedule(id: string, schedule: UpdateScheduleJobDto, token: string): Promise<{ success: boolean; message: string }> {
     this.logger.log(
       `Validating schedule update with id : ${id}`,
     );
@@ -669,7 +864,10 @@ export class AdminServiceClient {
         `${operation} failed with status ${status}: ${JSON.stringify(data)}`,
       );
 
-      return data;
+      throw new HttpException(
+        data?.message || 'Admin service returned an error response',
+        status || HttpStatus.BAD_GATEWAY,
+      );
     } else if (error.request) {
       this.logger.error(
         `${operation} - No response from admin-service: ${error.message}`,

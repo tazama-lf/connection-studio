@@ -6,6 +6,7 @@ import { DryRunService } from '../dry-run/dry-run.service';
 import { ConfigService } from '@nestjs/config';
 import { SftpService } from '../sftp/sftp.service';
 import { NotifyService } from '../notify/notify.service';
+import { AdminServiceClient } from 'src/services/admin-service-client.service';
 
 describe('JobService', () => {
   let service: JobService;
@@ -38,6 +39,12 @@ describe('JobService', () => {
           provide: LoggerService,
           useValue: {
             error: jest.fn(),
+          },
+        },
+        {
+          provide: AdminServiceClient,
+          useValue: {
+            createPushJob: jest.fn(),
           },
         },
       ],
