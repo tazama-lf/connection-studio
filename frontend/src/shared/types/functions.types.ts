@@ -276,8 +276,8 @@ export const FUNCTION_CONFIGS: Record<AllowedFunctionName, FunctionConfig> = {
       {
         name: 'create-transaction-relationship',
         displayName: 'Create Transaction Relationship',
-        parameters: 'from, to, TxTp, MsgId, CreDtTm, EndToEndId, TenantId',
-        description: 'Parameters: from, to, TxTp, MsgId, CreDtTm, EndToEndId, TenantId',
+        parameters: 'source, destination, TxTp, MsgId, CreDtTm, EndToEndId, TenantId',
+        description: 'Parameters: source, destination, TxTp, MsgId, CreDtTm, EndToEndId, TenantId',
       },
     ],
   }
