@@ -399,6 +399,7 @@ export class JobService {
                 publishing_status: ScheduleStatus.ACTIVE,
               },
               tenantId,
+              token,
               JobStatus.DEPLOYED,
             );
           } else {
