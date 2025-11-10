@@ -39,7 +39,6 @@ import {
   type SubmitForApprovalDto,
   type ApprovalDto,
   type RejectionDto,
-  type ChangeRequestDto,
   ConfigStatus,
   type DeploymentDto,
   type StatusTransitionDto,
@@ -50,32 +49,27 @@ import {
   RequireAnyClaims,
 } from '../auth/auth.decorator';
 import { FileParsingService } from '../services/file-parsing.service';
+import * as jwt from 'jsonwebtoken';
+
 function getTenantId(user: AuthenticatedUser): string {
   return user.token.tenantId || 'default';
 }
-function decodeTokenString(tokenString: string): any {
+
+function decodeTokenString(tokenString: string): jwt.JwtPayload | null {
   try {
-    const jwt = require('jsonwebtoken');
-    return jwt.decode(tokenString);
+    return jwt.decode(tokenString) as jwt.JwtPayload;
   } catch {
     return null;
   }
 }
+
 function getUserId(user: AuthenticatedUser): string {
   const decodedToken = decodeTokenString(user.token.tokenString);
-  const userId = decodedToken.preferred_username;
-
-  // ✅ LOG: Extract email from JWT in Connection Studio Controller
-  Logger.log('📧 [ConfigController] Extracted user ID (email) from JWT:');
-  Logger.log(
-    `   - preferred_username: ${decodedToken.preferred_username || 'N/A'}`,
-  );
-  Logger.log(`   - email field: ${decodedToken.email || 'N/A'}`);
-  Logger.log(`   - Final userId: ${userId || 'NOT FOUND'}`);
-  Logger.log(`   - sub: ${decodedToken.sub || 'N/A'}`);
-  Logger.log(`   - clientId: ${decodedToken.clientId || 'N/A'}`);
-
-  return userId;
+  if (!decodedToken) {
+    return 'unknown';
+  }
+  const userId = decodedToken.preferred_username as string;
+  return userId || 'unknown';
 }
 
 function getUserClaims(user: AuthenticatedUser): string[] {
@@ -96,7 +90,7 @@ function buildForwardHeaders(user: AuthenticatedUser): Record<string, string> {
 export class ConfigController {
   constructor(
     private readonly adminServiceClient: AdminServiceClient,
-    private readonly fileParsingService: FileParsingService,
+    // private readonly fileParsingService: FileParsingService,
     private readonly configService: ConfigService,
   ) {}
   private autoDetectContentType(
@@ -166,7 +160,9 @@ export class ConfigController {
     );
 
     if (!result.success) {
-      throw new BadRequestException(result.message || 'Failed to create config');
+      throw new BadRequestException(
+        result.message || 'Failed to create config',
+      );
     }
 
     return {
@@ -196,7 +192,9 @@ export class ConfigController {
     );
 
     if (!result.success) {
-      throw new BadRequestException(result.message || 'Failed to create config');
+      throw new BadRequestException(
+        result.message || 'Failed to create config',
+      );
     }
 
     return {
@@ -245,7 +243,9 @@ export class ConfigController {
       buildForwardHeaders(user),
     );
     if (!config) {
-      throw new NotFoundException(`Config not found for path ${path} version ${version}`);
+      throw new NotFoundException(
+        `Config not found for path ${path} version ${version}`,
+      );
     }
     return config;
   }

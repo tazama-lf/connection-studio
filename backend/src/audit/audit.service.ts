@@ -1,9 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import {
-  DatabaseService,
-  DbAuditLogEntry as AuditLogEntry,
-} from '@tazama-lf/tcs-lib';
+import { DatabaseService, AuditLogEntry } from '@tazama-lf/tcs-lib';
 
 export interface MappingAuditLogEntry {
   action: 'CREATE' | 'UPDATE' | 'DELETE' | 'ROLLBACK' | 'APPROVE' | 'PUBLISH';

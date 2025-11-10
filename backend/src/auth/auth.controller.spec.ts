@@ -3,7 +3,6 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { AuditService } from '../audit/audit.service';
-import { SessionManagerService } from './session-manager.service';
 import { TazamaAuthGuard } from './tazama-auth.guard';
 
 describe('AuthController', () => {
@@ -28,20 +27,6 @@ describe('AuthController', () => {
           useValue: {
             getAuditLogs: jest.fn().mockResolvedValue([]),
             logAction: jest.fn().mockResolvedValue(undefined),
-          },
-        },
-        {
-          provide: SessionManagerService,
-          useValue: {
-            recordActivity: jest.fn(),
-            isSessionActive: jest.fn().mockReturnValue(true),
-            getSessionTimeRemaining: jest.fn().mockReturnValue(1800),
-            getSessionInfo: jest.fn().mockReturnValue({
-              active: true,
-              lastActivity: new Date(),
-              expiresAt: new Date(Date.now() + 1800000),
-            }),
-            invalidateSession: jest.fn(),
           },
         },
         {

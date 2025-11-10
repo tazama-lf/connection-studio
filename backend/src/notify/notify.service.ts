@@ -105,16 +105,7 @@ export class NotifyService implements OnModuleInit {
     }
   }
 
-  async notifyDems(
-    configId: string,
-    tenantId: string,
-    demsData: {
-      transactionType: string;
-      tableName: string;
-      endpointPath: string;
-      createTableQuery: string;
-    },
-  ): Promise<void> {
+  async notifyDems(configId: string, tenantId: string): Promise<void> {
     try {
       this.logger.log(
         `Sending notification to DEMS stream: ${this.demsStream}`,
@@ -123,17 +114,13 @@ export class NotifyService implements OnModuleInit {
       await this.natsService.handleResponse({
         configId,
         tenantId,
-        transactionType: demsData.transactionType,
-        tableName: demsData.tableName,
-        endpointPath: demsData.endpointPath,
-        createTableQuery: demsData.createTableQuery,
-        type: 'CONFIG_DEPLOYMENT',
+        type: 'CONFIG_ACTIVATION',
         stream: this.demsStream,
         timestamp: new Date().toISOString(),
       });
 
       this.logger.log(
-        `Config deployment notification (ID: ${configId}) sent to DEMS stream ${this.demsStream} with transaction type ${demsData.transactionType}`,
+        `Config activation notification (ID: ${configId}) sent to DEMS stream ${this.demsStream}`,
       );
     } catch (error) {
       this.logger.error(

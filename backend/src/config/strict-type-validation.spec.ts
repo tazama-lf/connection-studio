@@ -1,3 +1,4 @@
+import './jest.setup'; // Load environment variables first
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from './config.service';
 import { ConfigRepository } from './config.repository';

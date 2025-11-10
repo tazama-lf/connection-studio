@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { SimulationService } from './simulation.service';
 import { ConfigRepository } from '../config/config.repository';
 import { AuditService } from '../audit/audit.service';
+import { AdminServiceClient } from '../services/admin-service-client.service';
 
 describe('User Reported Issues Test', () => {
   let service: SimulationService;
@@ -121,9 +122,15 @@ describe('User Reported Issues Test', () => {
       logAction: jest.fn(),
     };
 
+    const mockAdminServiceClient = {
+      forwardRequest: jest.fn(),
+      getConfigById: jest.fn().mockResolvedValue(mockConfig),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SimulationService,
+        { provide: AdminServiceClient, useValue: mockAdminServiceClient },
         { provide: ConfigRepository, useValue: mockConfigRepository },
         { provide: AuditService, useValue: mockAuditService },
       ],
@@ -139,7 +146,7 @@ describe('User Reported Issues Test', () => {
       payload: userPayload,
     };
 
-    const result = await service.simulateMapping(dto, 'tenant-1', 'user-1');
+    const result = await service.simulateMapping(dto, 'tenant-1', 'user-1', 'test-token');
 
     // Check that simulation passes
     expect(result.status).toBe('PASSED');

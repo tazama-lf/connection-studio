@@ -15,22 +15,10 @@ export class JSONSchemaConverterService {
   constructor(private readonly auditService: AuditService) {}
 
   convertToJSONSchema(fields: SchemaField[], _rootTitle?: string): JSONSchema {
-   
-    
     const properties: { [key: string]: JSONSchemaProperty } = {};
     const required: string[] = [];
 
-    // Always add tenantId field first
-    properties['tenantId'] = {
-      type: JSONSchemaType.STRING,
-    };
-    required.push('tenantId');
-
     for (const field of fields) {
-      // Skip tenantId if it's already in the fields array to avoid duplicate
-      if (field.name === 'tenantId') {
-        continue;
-      }
       properties[field.name] = this.convertFieldToProperty(field);
       if (field.isRequired) {
         required.push(field.name);
@@ -50,7 +38,7 @@ export class JSONSchemaConverterService {
       action: 'CONVERT_TO_JSON_SCHEMA',
       actor: 'SYSTEM',
       tenantId: 'default-tenant',
-      details: `Converted ${fields.length} fields to JSON Schema with ${Object.keys(properties).length} properties (including auto-added tenantId)`,
+      details: `Converted ${fields.length} fields to JSON Schema with ${Object.keys(properties).length} properties`,
       status: 'SUCCESS',
       severity: 'LOW',
     });
@@ -246,6 +234,7 @@ export class JSONSchemaConverterService {
       if (typeof property.items === 'object' && property.items.type) {
         if (property.items.type === 'object' && property.items.properties) {
           field.children = [];
+          field.arrayElementType = FieldType.OBJECT; // FIX: Preserve array element type for object arrays
           const itemRequired = property.items.required || [];
           for (const [itemPropName, itemProp] of Object.entries(
             property.items.properties,

@@ -2,11 +2,13 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { SimulationService } from './simulation.service';
 import { ConfigRepository } from '../config/config.repository';
 import { AuditService } from '../audit/audit.service';
+import { AdminServiceClient } from '../services/admin-service-client.service';
 import { Config, ContentType, ConfigStatus } from '../config/config.interfaces';
 
 describe('SimulationService', () => {
   let service: SimulationService;
   let configRepository: jest.Mocked<ConfigRepository>;
+  let adminServiceClient: jest.Mocked<AdminServiceClient>;
 
   const mockConfig: Config = {
     id: 1,
@@ -42,9 +44,18 @@ describe('SimulationService', () => {
       logAction: jest.fn(),
     };
 
+    const mockAdminServiceClient = {
+      forwardRequest: jest.fn(),
+      getConfigById: jest.fn().mockResolvedValue(mockConfig),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SimulationService,
+        {
+          provide: AdminServiceClient,
+          useValue: mockAdminServiceClient,
+        },
         {
           provide: ConfigRepository,
           useValue: mockConfigRepository,
@@ -58,6 +69,7 @@ describe('SimulationService', () => {
 
     service = module.get<SimulationService>(SimulationService);
     configRepository = module.get(ConfigRepository);
+    adminServiceClient = module.get(AdminServiceClient);
   });
 
   it('should be defined', () => {
@@ -83,6 +95,7 @@ describe('SimulationService', () => {
         simulateDto,
         'test-tenant',
         'user-123',
+        'test-token',
       );
 
       // Check that the schema validation stage passes
@@ -118,6 +131,7 @@ describe('SimulationService', () => {
         simulateDto,
         'test-tenant',
         'user-123',
+        'test-token',
       );
 
       // Should still validate required fields
@@ -137,7 +151,7 @@ describe('SimulationService', () => {
 
   describe('Config Not Found', () => {
     it('should fail when config is not found', async () => {
-      configRepository.findConfigById.mockResolvedValue(null);
+      adminServiceClient.getConfigById.mockResolvedValue(null);
 
       const simulateDto = {
         endpointId: 999,
@@ -149,6 +163,7 @@ describe('SimulationService', () => {
         simulateDto,
         'test-tenant',
         'user-123',
+        'test-token',
       );
 
       expect(result.status).toBe('FAILED');
@@ -244,6 +259,7 @@ describe('SimulationService', () => {
         dto,
         'test-tenant',
         'user-123',
+        'test-token',
       );
 
       expect(result.status).toBe('PASSED');
