@@ -498,14 +498,14 @@ export class ConfigService {
     version: string,
     tenantId: string,
     token: string,
-  ): Promise<Config | null> {
-    const config = await this.configRepository.findConfigByEndpoint(
+  ): Promise<Config[]> {
+    const configs = await this.configRepository.findConfigByEndpoint(
       endpointPath,
       version,
       tenantId,
       token,
     );
-    return config ? this.enrichConfigWithSourceFields(config) : null;
+    return configs.map((config) => this.enrichConfigWithSourceFields(config));
   }
 
   async getAllConfigs(tenantId: string, token: string): Promise<Config[]> {

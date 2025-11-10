@@ -49,10 +49,10 @@ export class ConfigRepository {
     token?: string,
   ): Promise<Config | null> {
     try {
-      const allConfigs = await this.adminServiceClient.getAllConfigs(
+      const result = await this.adminServiceClient.getAllConfigs(
         token || tenantId,
       );
-      const match = allConfigs.find(
+      const match = result.configs.find(
         (c) =>
           c.msgFam === msgFam &&
           c.version === version &&
@@ -69,24 +69,32 @@ export class ConfigRepository {
     version: string,
     tenantId: string,
     token?: string,
-  ): Promise<Config | null> {
+    limit: number = 10,
+    offset: number = 0,
+  ): Promise<Config[]> {
     try {
-      return await this.adminServiceClient.getConfigByEndpoint(
+      const result = await this.adminServiceClient.getConfigByEndpoint(
         endpointPath,
         version,
         token || tenantId,
+        limit,
+        offset,
       );
+      return result.configs;
     } catch {
-      return null;
+      return [];
     }
   }
 
   async findConfigsByTenant(
     tenantId: string,
     token?: string,
+    limit: number = 10,
+    offset: number = 0,
   ): Promise<Config[]> {
     try {
-      return await this.adminServiceClient.getAllConfigs(token || tenantId);
+      const result = await this.adminServiceClient.getAllConfigs(token || tenantId, limit, offset);
+      return result.configs;
     } catch {
       return [];
     }
@@ -96,12 +104,17 @@ export class ConfigRepository {
     transactionType: TransactionType,
     tenantId: string,
     token?: string,
+    limit: number = 10,
+    offset: number = 0,
   ): Promise<Config[]> {
     try {
-      return await this.adminServiceClient.getConfigsByTransactionType(
+      const result = await this.adminServiceClient.getConfigsByTransactionType(
         transactionType,
         token || tenantId,
+        limit,
+        offset,
       );
+      return result.configs;
     } catch {
       return [];
     }
@@ -114,10 +127,10 @@ export class ConfigRepository {
     token?: string,
   ): Promise<Config | null> {
     try {
-      const allConfigs = await this.adminServiceClient.getAllConfigs(
+      const result = await this.adminServiceClient.getAllConfigs(
         token || tenantId,
       );
-      const match = allConfigs.find(
+      const match = result.configs.find(
         (c) => c.version === version && c.transactionType === transactionType,
       );
       return match || null;

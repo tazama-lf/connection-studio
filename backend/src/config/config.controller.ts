@@ -50,6 +50,7 @@ import {
 } from '../auth/auth.decorator';
 import { FileParsingService } from '../services/file-parsing.service';
 import * as jwt from 'jsonwebtoken';
+import { filter } from 'rxjs';
 
 function getTenantId(user: AuthenticatedUser): string {
   return user.token.tenantId || 'default';
@@ -123,6 +124,26 @@ export class ConfigController {
       return `${basePath}/${msgFam}/${transactionType}`;
     }
     return `${basePath}/${transactionType}`;
+  }
+    @Post('/:offset/:limit')
+  @RequireAnyClaims(
+    TazamaClaims.EDITOR,
+    TazamaClaims.APPROVER,
+    TazamaClaims.PUBLISHER,
+    TazamaClaims.EXPORTER,
+  )
+  async getAllConfigs(
+    @Param('offset') offset: string,
+    @Param('limit') limit: string,
+    @User() user: AuthenticatedUser,
+    @Body() filters?: Record<string, any>,
+  ): Promise<Config[]> {
+    return this.adminServiceClient.forwardRequest(
+      'POST',
+      `/v1/admin/tcs/config/${offset}/${limit}`,
+      filters,
+      buildForwardHeaders(user),
+    );
   }
   @Post('upload')
   @RequireClaims(TazamaClaims.EDITOR)
@@ -204,50 +225,53 @@ export class ConfigController {
       validation: result.validation,
     };
   }
-  @Get('pending-approvals')
+  @Get('pending-approvals/:offset/:limit')
   @RequireClaims(TazamaClaims.APPROVER)
   async getPendingApprovals(
+    @Param('offset') offset: string,
+    @Param('limit') limit: string,
     @User() user: AuthenticatedUser,
   ): Promise<ConfigResponseDto[]> {
     return this.adminServiceClient.forwardRequest(
       'GET',
-      '/v1/admin/tcs/config/pending-approvals',
+      `/v1/admin/tcs/config/pending-approvals/${offset}/${limit}`,
       undefined,
       buildForwardHeaders(user),
     );
   }
-  @Get('transaction/:type')
+
+  @Get('transaction/:type/:offset/:limit')
   @RequireClaims(TazamaClaims.EDITOR)
   async getConfigsByTransactionType(
     @Param('type') type: TransactionType,
+    @Param('offset') offset: string,
+    @Param('limit') limit: string,
     @User() user: AuthenticatedUser,
   ): Promise<Config[]> {
     return this.adminServiceClient.forwardRequest(
       'GET',
-      `/v1/admin/tcs/config/transaction/${type}`,
+      `/v1/admin/tcs/config/transaction/${type}/${offset}/${limit}`,
       undefined,
       buildForwardHeaders(user),
     );
   }
-  @Get('endpoint')
+
+  @Get('endpoint/:path/:version/:offset/:limit')
   @RequireClaims(TazamaClaims.EDITOR)
   async getConfigByEndpoint(
-    @Query('path') path: string,
-    @Query('version') version: string,
+    @Param('path') path: string,
+    @Param('version') version: string,
+    @Param('offset') offset: string,
+    @Param('limit') limit: string,
     @User() user: AuthenticatedUser,
-  ): Promise<Config> {
-    const config = await this.adminServiceClient.forwardRequest(
+  ): Promise<Config[]> {
+    const configs = await this.adminServiceClient.forwardRequest(
       'GET',
-      `/v1/admin/tcs/config/endpoint?path=${encodeURIComponent(path)}&version=${encodeURIComponent(version || 'v1')}`,
+      `/v1/admin/tcs/config/endpoint/${encodeURIComponent(path)}/${encodeURIComponent(version || 'v1')}/${offset}/${limit}`,
       undefined,
       buildForwardHeaders(user),
     );
-    if (!config) {
-      throw new NotFoundException(
-        `Config not found for path ${path} version ${version}`,
-      );
-    }
-    return config;
+    return configs;
   }
   @Get(':id')
   @RequireAnyClaims(
@@ -271,21 +295,7 @@ export class ConfigController {
     }
     return config;
   }
-  @Get()
-  @RequireAnyClaims(
-    TazamaClaims.EDITOR,
-    TazamaClaims.APPROVER,
-    TazamaClaims.PUBLISHER,
-    TazamaClaims.EXPORTER,
-  )
-  async getAllConfigs(@User() user: AuthenticatedUser): Promise<Config[]> {
-    return this.adminServiceClient.forwardRequest(
-      'GET',
-      '/v1/admin/tcs/config',
-      undefined,
-      buildForwardHeaders(user),
-    );
-  }
+
   @Put(':id')
   @RequireClaims(TazamaClaims.EDITOR)
   async updateConfig(
@@ -300,6 +310,7 @@ export class ConfigController {
       buildForwardHeaders(user),
     );
   }
+
   @Post('clone')
   @RequireClaims(TazamaClaims.EDITOR)
   async cloneConfig(
