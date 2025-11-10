@@ -15,6 +15,8 @@ import { TokenExpiryInterceptor } from './auth/token-expiry.interceptor';
 import { AuditInterceptor } from './audit/audit.interceptor';
 import { SftpModule } from './sftp/sftp.module';
 import { NotifyModule } from './notify/notify.module';
+import { SchedulerModule } from './scheduler/scheduler.module';
+import { JobModule } from './job/job.module';
 
 @Module({
   imports: [
@@ -32,6 +34,8 @@ import { NotifyModule } from './notify/notify.module';
     TazamaDataModelModule,
     SftpModule,
     NotifyModule,
+    SchedulerModule,
+    JobModule
   ],
   controllers: [AppController],
   providers: [
@@ -46,4 +50,4 @@ import { NotifyModule } from './notify/notify.module';
     },
   ],
 })
-export class AppModule {}
+export class AppModule { }
