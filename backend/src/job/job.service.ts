@@ -406,6 +406,7 @@ export class JobService {
             await this.createPush(
               { ...existingJob, publishing_status: ScheduleStatus.ACTIVE },
               tenantId,
+              token,
               JobStatus.DEPLOYED,
             );
           }
