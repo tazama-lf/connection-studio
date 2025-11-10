@@ -258,9 +258,12 @@ export class ConfigApiService {
   async getAllConfigs(): Promise<{ configs: Config[] }> {
     try {
       console.log('Fetching all configs from:', `${this.baseURL}/config`);
-      const response = await fetch(`${this.baseURL}/config`, {
-        method: 'GET',
+      const response = await fetch(`${this.baseURL}/config/0/10`, {
+        method: 'POST',
         headers: this.getAuthHeaders(),
+        body: JSON.stringify({
+          status:'STATUS_01_IN_PROGRESS',
+        }),
       });
 
       const responseData = await this.handleResponse<{ success: boolean, configs: Config[] } | Config[]>(response);
@@ -298,8 +301,8 @@ export class ConfigApiService {
       const headers = this.getAuthHeaders();
       console.log('🚀 getPendingApprovals - Headers:', headers);
 
-      const response = await fetch(`${this.baseURL}/config/pending-approvals`, {
-        method: 'GET',
+      const response = await fetch(`${this.baseURL}/config/pending-approvals/10/0`, {
+        method: 'POST',
         headers: headers,
       });
 

@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { AuthHeader } from '../../../shared/components/AuthHeader';
-import { ConfigList } from '../../config/components/ConfigList';
-import VersionHistoryModal from '../../config/components/VersionHistoryModal';
-import { Button } from '../../../shared/components/Button';
+import { AuthHeader } from '@shared/components/AuthHeader';
+import { ConfigList } from '@features/config/components/ConfigList';
+import VersionHistoryModal from '@features/config/components/VersionHistoryModal';
+import { Button } from '@shared/components/Button';
 import { PlusIcon, SearchIcon, AlertTriangleIcon } from 'lucide-react';
-import EditEndpointModal from '../../../shared/components/EditEndpointModal';
-import ValidationLogsTable from '../../../shared/components/ValidationLogsTable';
-import type { Config } from '../../config/index';
+import EditEndpointModal from '@shared/components/EditEndpointModal';
+import ValidationLogsTable from '@shared/components/ValidationLogsTable';
+import type { Config } from '@features/config/index';
+import CustomTable from '@common/Tables/CustomTable';
+
 // DEMS Module now uses real backend configurations instead of mock data
 const DEMSModule: React.FC = () => {
   const [editingEndpointId, setEditingEndpointId] = useState<number | null>(null);
@@ -85,6 +87,14 @@ const DEMSModule: React.FC = () => {
                 className="pl-10 pr-4 py-2 w-80 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
+            
+            {/* <Button 
+              variant="secondary" 
+              onClick={() => setShowValidationLogs(!showValidationLogs)} 
+              icon={<AlertTriangleIcon size={16} />}
+            >
+              Validation Logs
+            </Button> */}
           </div>
           <Button 
             onClick={handleAddNew} 
@@ -98,7 +108,7 @@ const DEMSModule: React.FC = () => {
         {showValidationLogs ? (
           <ValidationLogsTable />
         ) : (
-          <div className="bg-white rounded-lg shadow">
+          // <div className="bg-white rounded-lg shadow">
             <ConfigList
               key={refreshKey}
               searchTerm={searchTerm}
@@ -108,7 +118,7 @@ const DEMSModule: React.FC = () => {
               onViewHistory={handleViewHistory}
               onRefresh={handleRefresh}
             />
-          </div>
+          // </div>
         )}
       </div>
 

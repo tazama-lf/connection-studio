@@ -1,5 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { EyeIcon, MoreVerticalIcon, EditIcon, CopyIcon, HistoryIcon, ChevronUpIcon, ChevronDownIcon, FilterIcon, Upload, Rocket } from 'lucide-react';
+import {
+  EyeIcon,
+  MoreVerticalIcon,
+  EditIcon,
+  CopyIcon,
+  HistoryIcon,
+  ChevronUpIcon,
+  ChevronDownIcon,
+  FilterIcon,
+  Upload,
+  Rocket,
+} from 'lucide-react';
 import { configApi } from '../services/configApi';
 import { sftpApi } from '../../../features/exporter/services/sftpApi';
 import { UI_CONFIG } from '../../../shared/config/app.config';
@@ -7,6 +18,9 @@ import { DropdownMenuWithAutoDirection } from '../../../shared/components/Dropdo
 import { useAuth } from '../../../features/auth/contexts/AuthContext';
 import { isExporter, isPublisher } from '../../../utils/roleUtils';
 import { useToast } from '../../../shared/providers/ToastProvider';
+import CustomTable from '@common/Tables/CustomTable';
+import { Box, Pagination } from '@mui/material';
+import { handleInputFilter } from '@shared/helpers';
 
 interface Config {
   id: number;
@@ -51,7 +65,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
   showApprovedConfigs = false,
   onApprove,
   onReject,
-  onSendForDeployment
+  onSendForDeployment,
 }) => {
   const [configs, setConfigs] = useState<Config[]>([]);
   const [loading, setLoading] = useState(true);
@@ -82,59 +96,88 @@ export const ConfigList: React.FC<ConfigListProps> = ({
     try {
       setLoading(true);
       setError(null);
-      
+
       let response;
       if (showPendingApprovals) {
         console.log('🔍 ConfigList - Fetching pending approvals...');
         response = await configApi.getPendingApprovals();
         console.log('🔍 ConfigList - Pending approvals response:', response);
-        console.log('🔍 ConfigList - Pending approvals configs array:', response.configs);
-        console.log('🔍 ConfigList - Pending approvals count:', response.configs?.length || 0);
-        
+        console.log(
+          '🔍 ConfigList - Pending approvals configs array:',
+          response.configs,
+        );
+        console.log(
+          '🔍 ConfigList - Pending approvals count:',
+          response.configs?.length || 0,
+        );
+
         // Debug: Log each config's status
         if (response.configs && Array.isArray(response.configs)) {
           response.configs.forEach((config: any, index: number) => {
-            console.log(`🔍 ConfigList - Config ${index + 1} status:`, config.status, 'ID:', config.id);
+            console.log(
+              `🔍 ConfigList - Config ${index + 1} status:`,
+              config.status,
+              'ID:',
+              config.id,
+            );
           });
         }
       } else if (showApprovedConfigs) {
-        console.log('🔍 ConfigList - Fetching approved and exported configurations...');
+        console.log(
+          '🔍 ConfigList - Fetching approved and exported configurations...',
+        );
         // Fetch both approved and exported configs
         const [approvedResponse, exportedResponse] = await Promise.all([
           configApi.getConfigsByStatus('approved'),
-          configApi.getConfigsByStatus('exported')
+          configApi.getConfigsByStatus('exported'),
         ]);
-        console.log('🔍 ConfigList - Approved configs response:', approvedResponse);
-        console.log('🔍 ConfigList - Exported configs response:', exportedResponse);
-        
+        console.log(
+          '🔍 ConfigList - Approved configs response:',
+          approvedResponse,
+        );
+        console.log(
+          '🔍 ConfigList - Exported configs response:',
+          exportedResponse,
+        );
+
         // Combine both arrays
         const combinedConfigs = [
-          ...(Array.isArray(approvedResponse.configs) ? approvedResponse.configs : []),
-          ...(Array.isArray(exportedResponse.configs) ? exportedResponse.configs : [])
+          ...(Array.isArray(approvedResponse.configs)
+            ? approvedResponse.configs
+            : []),
+          ...(Array.isArray(exportedResponse.configs)
+            ? exportedResponse.configs
+            : []),
         ];
-        
+
         response = { configs: combinedConfigs };
-        console.log('🔍 ConfigList - Combined configs count:', combinedConfigs.length);
+        console.log(
+          '🔍 ConfigList - Combined configs count:',
+          combinedConfigs.length,
+        );
       } else {
         console.log('🔍 ConfigList - Fetching all configurations...');
         response = await configApi.getAllConfigs();
       }
-      
-      const configsArray = Array.isArray(response.configs) ? response.configs : [];
+
+      const configsArray = Array.isArray(response.configs)
+        ? response.configs
+        : [];
       setConfigs(configsArray);
       console.log('✅ ConfigList - Final configs set to state:', configsArray);
       console.log('✅ ConfigList - Final configs count:', configsArray.length);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch configurations';
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to fetch configurations';
       setError(errorMessage);
       console.error('❌ ConfigList - Error fetching configs:', err);
     } finally {
       setLoading(false);
     }
   };
-const getStatusText = (status: string) => {
+  const getStatusText = (status: string) => {
     const normalizedStatus = status.toLowerCase();
-    
+
     // Handle STATUS_XX_NAME format from database
     if (normalizedStatus.startsWith('status_')) {
       // Extract the name part after the number (e.g., STATUS_03_UNDER_REVIEW -> UNDER_REVIEW)
@@ -165,7 +208,7 @@ const getStatusText = (status: string) => {
         }
       }
     }
-    
+
     // Handle legacy status formats
     switch (normalizedStatus) {
       case 'active':
@@ -208,13 +251,13 @@ const getStatusText = (status: string) => {
       year: 'numeric',
       hour: 'numeric',
       minute: '2-digit',
-      hour12: true
+      hour12: true,
     });
   };
 
   const getStatusBadge = (status: string) => {
     const normalizedStatus = status.toLowerCase();
-    
+
     // Handle STATUS_XX_NAME format from database
     if (normalizedStatus.startsWith('status_')) {
       const parts = normalizedStatus.split('_');
@@ -244,7 +287,7 @@ const getStatusText = (status: string) => {
         }
       }
     }
-    
+
     // Handle legacy status formats
     switch (normalizedStatus) {
       case 'active':
@@ -282,7 +325,7 @@ const getStatusText = (status: string) => {
   // Helper function to normalize status for comparisons
   const normalizeStatus = (status: string): string => {
     const normalizedStatus = status.toLowerCase();
-    
+
     // Handle STATUS_XX_NAME format from database
     if (normalizedStatus.startsWith('status_')) {
       const parts = normalizedStatus.split('_');
@@ -290,29 +333,36 @@ const getStatusText = (status: string) => {
         return parts.slice(2).join('_'); // Get everything after STATUS_XX_
       }
     }
-    
+
     return normalizedStatus;
   };
 
   // Filter configs by search term and status
-  const filteredConfigs = (Array.isArray(configs) ? configs : []).filter(config => {
-    const matchesSearch = searchTerm === '' || 
-      config.transactionType.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      config.endpointPath.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (config.msgFam && config.msgFam.toLowerCase().includes(searchTerm.toLowerCase()));
-    
-    const matchesStatus = statusFilter === 'all' || getStatusText(config.status) === statusFilter;
-    
-    // Role-based filtering: exporters can only see approved and deployed configs
-    let matchesRole = true;
-    if (userIsExporter) {
-      const allowedStatuses = ['approved', 'deployed'];
-      const normalizedConfigStatus = normalizeStatus(config.status);
-      matchesRole = allowedStatuses.includes(normalizedConfigStatus);
-    }
-      
-    return matchesSearch && matchesStatus && matchesRole;
-  });
+  const filteredConfigs = (Array.isArray(configs) ? configs : []).filter(
+    (config) => {
+      const matchesSearch =
+        searchTerm === '' ||
+        config.transactionType
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase()) ||
+        config.endpointPath.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (config.msgFam &&
+          config.msgFam.toLowerCase().includes(searchTerm.toLowerCase()));
+
+      const matchesStatus =
+        statusFilter === 'all' || getStatusText(config.status) === statusFilter;
+
+      // Role-based filtering: exporters can only see approved and deployed configs
+      let matchesRole = true;
+      if (userIsExporter) {
+        const allowedStatuses = ['approved', 'deployed'];
+        const normalizedConfigStatus = normalizeStatus(config.status);
+        matchesRole = allowedStatuses.includes(normalizedConfigStatus);
+      }
+
+      return matchesSearch && matchesStatus && matchesRole;
+    },
+  );
 
   // Sort filtered configs
   const sortedConfigs = [...filteredConfigs].sort((a, b) => {
@@ -361,7 +411,9 @@ const getStatusText = (status: string) => {
   };
 
   // Get unique statuses for filter dropdown (normalized to avoid duplicates)
-  const uniqueStatuses = Array.from(new Set(configs.map(config => getStatusText(config.status)))).sort();
+  const uniqueStatuses = Array.from(
+    new Set(configs.map((config) => getStatusText(config.status))),
+  ).sort();
 
   // Load configs when component mounts
   useEffect(() => {
@@ -371,7 +423,10 @@ const getStatusText = (status: string) => {
   // Close status filter dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (showStatusFilter && !(event.target as Element).closest('.status-filter-container')) {
+      if (
+        showStatusFilter &&
+        !(event.target as Element).closest('.status-filter-container')
+      ) {
         setShowStatusFilter(false);
       }
     };
@@ -392,18 +447,21 @@ const getStatusText = (status: string) => {
   const handleExportConfig = async (config: Config) => {
     try {
       await configApi.exportConfig(config.id, 'Exported for deployment');
-      showSuccess("Success", `Config "${config.msgFam}" has been exported to SFTP and status updated to EXPORTED.`);
-      
+      showSuccess(
+        'Success',
+        `Config "${config.msgFam}" has been exported to SFTP and status updated to EXPORTED.`,
+      );
+
       // Refetch configs to update the UI
       await fetchConfigs();
-      
+
       // Trigger parent refresh if available
       if (onRefresh) {
         onRefresh();
       }
     } catch (error) {
       console.error('Error exporting config:', error);
-      showError("Error", "Failed to export config. Please try again.");
+      showError('Error', 'Failed to export config. Please try again.');
     }
   };
 
@@ -411,24 +469,97 @@ const getStatusText = (status: string) => {
     try {
       await sftpApi.publishItem(config.msgFam, 'dems');
       await configApi.updateConfigStatus(config.id, 'deployed');
-      showSuccess("Success", `Config "${config.msgFam}" has been published successfully.`);
+      showSuccess(
+        'Success',
+        `Config "${config.msgFam}" has been published successfully.`,
+      );
       // Trigger refresh if available
       if (onRefresh) {
         onRefresh();
       }
     } catch (error) {
       console.error('Error publishing config:', error);
-      showError("Error", "Failed to publish config. Please try again.");
+      showError('Error', 'Failed to publish config. Please try again.');
     }
   };
 
   const handlePreviousPage = () => {
-    setCurrentPage(prev => Math.max(prev - 1, 1));
+    setCurrentPage((prev) => Math.max(prev - 1, 1));
   };
 
   const handleNextPage = () => {
-    setCurrentPage(prev => Math.min(prev + 1, totalPages));
+    setCurrentPage((prev) => Math.min(prev + 1, totalPages));
   };
+
+  // CustomTable columns configuration
+  const columns = [
+    {
+      field: 'endpointPath',
+      headerName: 'Endpoint Path',
+      flex: 1,
+      minWidth: 200,
+      sortable: false,
+      disableColumnMenu: true,
+      renderHeader: () => (
+        <Box sx={{display:'flex', flexDirection:'column', gap:'8px'}}>
+          <Box sx={{ fontSize: '14px', fontWeight: '600' }}>Endpoint Path</Box>
+          {handleInputFilter({
+            fieldName: 'endpointPath',
+            searchingFilters: {},
+            setSearchingFilters: () => {},
+          })}
+        </Box>
+      ),
+    },
+    {
+      field: 'status',
+      headerName: 'Status',
+      width: 200,
+      sortable: false,
+      disableColumnMenu: true,
+      renderCell: (params: any) => (
+        <span
+          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${getStatusBadge(params.row.status)}`}
+        >
+          <span className="w-2 h-2 rounded-full bg-current mr-2"></span>
+          {getStatusText(params.row.status)}
+        </span>
+      ),
+    },
+    {
+      field: 'createdAt',
+      headerName: 'Created Time',
+      width: 200,
+      sortable: false,
+      disableColumnMenu: true,
+      renderCell: (params: any) => (
+        <div className="flex items-center">
+          <svg
+            className="w-4 h-4 mr-1 text-gray-400"
+            fill="currentColor"
+            viewBox="0 0 20 20"
+          >
+            <path
+              fillRule="evenodd"
+              d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z"
+              clipRule="evenodd"
+            />
+          </svg>
+          {formatDate(params.row.createdAt)}
+        </div>
+      ),
+    },
+    {
+      field: 'actions',
+      headerName: 'Actions',
+      width: 100,
+      sortable: false,
+      renderCell: (params: any) => {
+        const config = params.row;
+        return <></>;
+      },
+    },
+  ];
 
   if (loading) {
     return (
@@ -440,15 +571,16 @@ const getStatusText = (status: string) => {
   }
 
   return (
+    <>
+      {/* 
     <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-      {/* Error Display */}
+      
       {error && (
         <div className="px-6 py-4 bg-red-50 border-l-4 border-red-400">
           <div className="text-red-800 text-sm">{error}</div>
         </div>
       )}
 
-      {/* Table */}
       <div className="overflow-x-auto">
         <table className="min-w-full relative w-full">
           <thead className="bg-gray-50">
@@ -557,7 +689,7 @@ const getStatusText = (status: string) => {
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center">
-                      {/* Actions dropdown */}
+
                       <div className="relative dropdown-container">
                         <button
                           onClick={() => setOpenDropdown(openDropdown === config.id ? null : config.id)}
@@ -651,7 +783,6 @@ const getStatusText = (status: string) => {
         </table>
       </div>
 
-      {/* Pagination */}
       {sortedConfigs.length > 0 && (
         <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
           <div className="text-sm text-gray-700">
@@ -678,7 +809,61 @@ const getStatusText = (status: string) => {
           </div>
         </div>
       )}
-    </div>
+    </div> */}
+
+      {/* Error Display */}
+      {error && (
+        <div className="px-6 py-4 bg-red-50 border-l-4 border-red-400">
+          <div className="text-red-800 text-sm">{error}</div>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex items-center justify-center p-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <span className="ml-2 text-gray-600">Loading configurations...</span>
+        </div>
+      ) : (
+        <CustomTable
+          columns={columns}
+          rows={filteredConfigs}
+          search={true}
+          pageSize={itemsPerPage}
+          pageSizeOptions={[10, 20, 50]}
+          onRowClick={(params) => handleViewConfig(params.row)}
+          disableRowSelection={true}
+          pagination={
+            sortedConfigs.length > 0 && (
+              <div className="px-6 py-4 border-t border-gray-200 bg-white rounded-b-lg flex items-center justify-between">
+                <div className="text-sm text-gray-700">
+                  Showing{' '}
+                  <span className=" font-medium">{startIndex + 1} </span> to{' '}
+                  <span className=" font-medium">
+                    {Math.min(endIndex, sortedConfigs.length)}
+                  </span>{' '}
+                  of{' '}
+                  <span className=" font-medium">{sortedConfigs.length}</span>{' '}
+                  results
+                </div>
+                <div className="flex items-center space-x-3">
+                  <Box>
+                    <Pagination
+                      count={sortedConfigs.length}
+                      variant="outlined"
+                      sx={{
+                        '& .MuiPaginationItem-page.Mui-selected': {
+                          backgroundColor: '#fbf9fa',
+                        },
+                      }}
+                    />
+                  </Box>
+                </div>
+              </div>
+            )
+          }
+        />
+      )}
+    </>
   );
 };
 
