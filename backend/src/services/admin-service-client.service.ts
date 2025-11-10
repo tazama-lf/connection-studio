@@ -1,6 +1,7 @@
-import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
+import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { JobStatus, Schedule } from '@tazama-lf/tcs-lib';
 import { firstValueFrom } from 'rxjs';
 
 @Injectable()
@@ -121,6 +122,170 @@ export class AdminServiceClient {
       }
     }
   }
+
+
+  // ==================== SCHEDULER OPERATIONS ====================
+
+  async createSchedule(schedule: unknown, token: string): Promise<{ success: boolean; message: string; }> {
+    this.logger.log(
+      `Validating schedule creation: ${schedule}`,
+    );
+
+    try {
+      const response = await firstValueFrom(
+        this.httpService.post(
+          `${this.adminServiceUrl}/v1/admin/tcs/schedule/create`,
+          schedule,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+          },
+        ),
+      );
+
+      this.logger.log(`Validation response: ${JSON.stringify(response.data)}`);
+      return response.data;
+    } catch (error) {
+      return this.handleError(error, 'scheduleCreation');
+    }
+  }
+
+  async findScheduleById(id: string, token: string): Promise<Schedule | null> {
+    this.logger.log(`Getting config by ID: ${id} with token ${token}`);
+
+    try {
+      const response = await firstValueFrom(
+        this.httpService.get(
+          `${this.adminServiceUrl}/v1/admin/tcs/schedule/${id}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          },
+        ),
+      );
+
+      return response.data;
+    } catch (error) {
+      return this.handleError(error, 'getScheduleById');
+    }
+  }
+
+  async updateSchedule(id: string, schedule: unknown, token: string): Promise<{ success: boolean; message: string }> {
+    this.logger.log(
+      `Validating schedule update with id : ${id}`,
+    );
+
+    try {
+      const response = await firstValueFrom(
+        this.httpService.put(
+          `${this.adminServiceUrl}/v1/admin/tcs/schedule/update/${id}`,
+          schedule,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+          },
+        ),
+      );
+
+      this.logger.log(`Validation response: ${JSON.stringify(response.data)}`);
+      return response.data;
+    } catch (error) {
+      return this.handleError(error, 'scheduleCreation');
+    }
+  }
+
+  async getAllSchedule(page: number, limit: number, tenant_id: string, token: string): Promise<Schedule[]> {
+    this.logger.log(`Getting all schedules`);
+
+    try {
+      const response = await firstValueFrom(
+        this.httpService.get(
+          `${this.adminServiceUrl}/v1/admin/tcs/schedule/get/all`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+            params: {
+              tenantId: tenant_id,
+              page,
+              limit
+            }
+          },
+        ),
+      );
+
+      return response.data;
+    } catch (error) {
+      return this.handleError(error, 'getScheduleByStatus');
+    }
+  }
+
+  async getScheduleByStatus(status: JobStatus, page: number, limit: number, tenant_id: string, token: string): Promise<Schedule[]> {
+    this.logger.log(`Getting schedules with statuses: ${status}`);
+
+    try {
+      const response = await firstValueFrom(
+        this.httpService.get(
+          `${this.adminServiceUrl}/v1/admin/tcs/schedule/get/status`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+            params: {
+              status: status,
+              tenantId: tenant_id,
+              page,
+              limit
+            }
+          },
+        ),
+      );
+
+      return response.data;
+    } catch (error) {
+      return this.handleError(error, 'getScheduleByStatus');
+    }
+  }
+
+  async updateScheduleByStatus(id: string, status: JobStatus, tenantId: string, token: string, reason?: string): Promise<{ success: boolean; message: string }> {
+    this.logger.log(
+      `Validating schedule update with id : ${id}`,
+    );
+
+    try {
+      const body: Record<string, unknown> = { tenantId };
+      if (reason) body.reason = reason;
+      const response = await firstValueFrom(
+        this.httpService.put(
+          `${this.adminServiceUrl}/v1/admin/tcs/schedule/update/status/${id}`,
+          body,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            params: {
+              status,
+            },
+          },
+        ),
+      );
+
+      this.logger.log(`Validation response: ${JSON.stringify(response.data)}`);
+      return response.data;
+    } catch (error) {
+      return this.handleError(error, 'updateScheduleStatus');
+    }
+  }
+
+
+
+  // ==================== TCS OPERATIONS ====================
 
   async validateConfigCreation(
     msgFam: string,
