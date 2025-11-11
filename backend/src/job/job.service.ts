@@ -15,7 +15,7 @@ import {
   SFTPConnection,
   SourceType
 } from '@tazama-lf/tcs-lib';
-import { AdminServiceClient } from 'src/services/admin-service-client.service';
+import { AdminServiceClient } from '../services/admin-service-client.service';
 import { v4 } from 'uuid';
 import { DatabaseService } from '../database/database.service';
 import { DryRunService } from '../dry-run/dry-run.service';
