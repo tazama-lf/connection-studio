@@ -147,8 +147,6 @@ export class TazamaDataModelService {
     field: string;
     type: TazamaFieldType;
     required: boolean;
-    description?: string;
-    example?: any;
     properties?: any[];
   }> {
     const options: any[] = [];
@@ -156,10 +154,16 @@ export class TazamaDataModelService {
       schemaName: string,
       field: any,
       parentPath?: string,
+      parentFieldPath?: string,
     ) => {
       const path = parentPath
         ? `${parentPath}.${field.name}`
         : `${schemaName}.${field.name}`;
+      
+      const fieldPath = parentFieldPath
+        ? `${parentFieldPath}.${field.name}`
+        : field.name;
+      
       const base: {
         value: string;
         label: string;
@@ -167,30 +171,24 @@ export class TazamaDataModelService {
         field: string;
         type: string;
         required: boolean;
-        description?: string;
-        example?: any;
         properties?: any[];
       } = {
         value: path,
         label: path,
         collection: schemaName,
-        field: field.name,
+        field: fieldPath, // Full field path relative to collection
         type: field.type.toUpperCase(),
         required: field.required,
-        description: field.description,
-        example: field.example,
       };
       if (field.type === 'object' && field.properties?.length) {
         base.properties = field.properties.map((prop: any) => ({
           name: prop.name,
           type: prop.type,
           required: prop.required,
-          description: prop.description,
-          example: prop.example,
         }));
         options.push(base);
         field.properties.forEach((sub: any) =>
-          processField(schemaName, sub, path),
+          processField(schemaName, sub, path, fieldPath),
         );
       } else {
         options.push(base);
