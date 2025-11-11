@@ -2552,12 +2552,11 @@ export class ConfigService {
       throw new NotFoundException(`Config with ID ${id} not found`);
     }
 
-
     const fileName = `dems_${tenantId}_${id}`;
     let currentStatus: ConfigStatus;
     let configData: any;
     
-    // Step 1: Read config from SFTP once (EXACTLY like job/scheduler service)
+    // Step 1: Read config from SFTP
     try {
       this.logger.log(`Reading config file from SFTP: ${fileName}`);
       configData = await this.sftpService.readFile(fileName);
@@ -2590,7 +2589,6 @@ export class ConfigService {
       action,
     );
     
-    
     if (!validation.canPerform) {
       throw new ForbiddenException(validation.message);
     }
@@ -2598,94 +2596,69 @@ export class ConfigService {
     const newStatus = ConfigStatus.DEPLOYED;
 
     try {
-      // Step 2: Insert raw config data as read from SFTP into config table FIRST
+      // Step 2: Insert deployed config data via repository
       try {
+        const deployedConfigData = {
+          msg_fam: configData.msgFam || '',
+          transaction_type: configData.transactionType || '',
+          content_type: configData.contentType || 'application/json',
+          endpoint_path: configData.endpointPath || '',
+          status: newStatus,
+          publishing_status: configData.publishing_status || 'active',
+          version: configData.version,
+          schema: typeof configData.schema === 'string' 
+            ? configData.schema 
+            : JSON.stringify(configData.schema || {}),
+          mapping: typeof configData.mapping === 'string' 
+            ? configData.mapping 
+            : JSON.stringify(configData.mapping || null),
+          functions: typeof configData.functions === 'string'
+            ? configData.functions
+            : JSON.stringify(configData.functions || null),
+          credentials: configData.credentials,
+          tenant_id: tenantId,
+          created_by: configData.createdBy || userId,
+          created_at: configData.createdAt || new Date(),
+          updated_at: new Date(),
+        };
         
-      
-      const configWithId = { ...configData};
-      configWithId.msg_fam = configData.msgFam || '';
-      delete configWithId.msgFam;
-      configWithId.transaction_type = configData.transactionType || '';
-      delete configWithId.transactionType;
-      configWithId.content_type = configData.contentType || 'application/json';
-      delete configWithId.contentType;
-      configWithId.endpoint_path = configData.endpointPath || '';
-      delete configWithId.endpointPath;
-      configWithId.status = newStatus; // Set to DEPLOYED status
-      configWithId.publishing_status =
-      configData.publishing_status = configData.publishing_status|| 'active';
-      
-      configWithId.schema = typeof configData.schema === 'string' 
-        ? configData.schema 
-        : JSON.stringify(configData.schema || {});
-      configWithId.mapping = typeof configData.mapping === 'string' 
-        ? configData.mapping 
-        : JSON.stringify(configData.mapping || null);
-      configWithId.functions = typeof configData.functions === 'string'
-        ? configData.functions
-        : JSON.stringify(configData.functions || null);
+        this.logger.log(`Deploying config data - schema length: ${deployedConfigData.schema?.length}, mapping length: ${deployedConfigData.mapping?.length}`);
         
-      this.logger.log(`After processing - schema length: ${configWithId.schema?.length}, mapping length: ${configWithId.mapping?.length}, functions length: ${configWithId.functions?.length}`);
-      
-      configWithId.tenant_id = tenantId;
-        delete configWithId.tenantId;
-        configWithId.created_by = configData.createdBy;
-        delete configWithId.createdBy;
-        configWithId.created_at =
-          configData.createdAt || new Date();
-        delete configWithId.createdAt;
-        configWithId.updated_at = new Date();
-        delete configWithId.updatedAt;
+        const insertedId = await this.configRepository.createDeployedConfig(
+          deployedConfigData,
+          token,
+        );
 
-      const keys = Object.keys(configWithId);
-      const values = Object.values(configWithId);
-      const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
-
-      const insertQuery = `
-                 INSERT INTO config (${keys.join(', ')})
-                  VALUES (${placeholders})
-                  RETURNING id;
-                     `;
-      const insertResult = await this.databaseService.getPool().query(insertQuery, values);
-      const insertedId = insertResult.rows[0].id;
-
-          this.logger.log(
-            `Successfully inserted raw config data into config table, new record id: ${insertedId}`,
-          );
+        this.logger.log(
+          `Successfully inserted deployed config, new record id: ${insertedId}`,
+        );
       } catch (insertError) {
         this.logger.error(
-          `Failed to insert config data into config table: ${insertError.message}`,
+          `Failed to insert deployed config: ${insertError.message}`,
         );
+        throw insertError;
       }
 
-      // Step 3: Decrypt credentials if present (for further processing)
+      // Step 3: Decrypt credentials if present (for logging/validation only)
       if (configData.credentials) {
         if (configData.credentials.password) {
-          configData.credentials.password = decrypt(
-            configData.credentials.password,
-          );
-          this.logger.log('Decrypted password');
+          decrypt(configData.credentials.password);
+          this.logger.log('Password credential present');
         }
         if (configData.credentials.private_key) {
-          configData.credentials.private_key = decrypt(
-            configData.credentials.private_key,
-          );
-          this.logger.log('Decrypted private_key');
+          decrypt(configData.credentials.private_key);
+          this.logger.log('Private key credential present');
         }
       }
 
-      // Step 4: Execute CREATE TABLE query using transaction_type
+      // Step 4: Create transaction type table via repository
       const transactionType = configData.transactionType || config.transactionType;
       if (transactionType) {
-        const createTableQuery = `CREATE TABLE IF NOT EXISTS "${transactionType}" (
-  id SERIAL PRIMARY KEY,
-  document JSONB NOT NULL
-);`;
-
-        this.logger.log(`Executing CREATE TABLE query from config ${id}:`);
-        this.logger.log(createTableQuery);
-
-        await this.databaseService.getPool().query(createTableQuery);
+        this.logger.log(`Creating table for transaction type: ${transactionType}`);
+        await this.configRepository.createTransactionTypeTable(
+          transactionType,
+          token,
+        );
         this.logger.log(
           `Successfully created table "${transactionType}" from deployed config`,
         );
@@ -2695,33 +2668,23 @@ export class ConfigService {
         );
       }
 
-      // Step 5: Delete from SFTP (EXACTLY like job/scheduler service)
+      // Step 5: Delete from SFTP
       await this.sftpService.deleteFile(fileName);
       this.logger.log(`Deleted config file from SFTP: ${fileName}`);
 
-      // Step 6: Update original config status in database with direct SQL
-      const updateQuery = `
-        UPDATE config
-        SET status = $1, updated_at = NOW()
-        WHERE id = $2 AND tenant_id = $3
-        RETURNING id;
-      `;
-
-      const result = await this.databaseService.getPool().query(updateQuery, [newStatus, id, tenantId]);
-
-      if (!result.rowCount) {
-        throw new NotFoundException(
-          `Config with id "${id}" not found in config table.`,
-        );
-      }
-
-      this.logger.log(
-        `Successfully updated original config ${id} status to ${newStatus} in database`,
+      // Step 6: Update original config status via repository
+      await this.configRepository.updateConfigStatus(
+        id,
+        tenantId,
+        newStatus,
+        token,
       );
 
-  
+      this.logger.log(
+        `Successfully updated original config ${id} status to ${newStatus}`,
+      );
 
-      // Return success (EXACTLY like job/scheduler service)
+
       return {
         success: true,
         message: `Configuration ${id} deployed successfully`,
@@ -2734,9 +2697,6 @@ export class ConfigService {
     }
   }
 
-  /**
-   * Return configuration to progress (from rejected or changes requested)
-   */
   async returnToProgress(
     id: number,
     dto: StatusTransitionDto,
@@ -2849,10 +2809,7 @@ export class ConfigService {
     };
   }
 
-  /**
-   * Get audit history for a configuration
-   * Includes all workflow actions with comments from approvers
-   */
+  
   async getAuditHistory(
     id: number,
     tenantId: string,

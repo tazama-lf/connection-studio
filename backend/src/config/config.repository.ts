@@ -167,4 +167,45 @@ export class ConfigRepository {
   ): Promise<void> {
     await this.adminServiceClient.writeConfigDelete(id, token);
   }
+
+  async createDeployedConfig(
+    configData: any,
+    token: string,
+  ): Promise<number> {
+    this.logger.log('Creating deployed config via admin-service');
+    const result = await this.adminServiceClient.writeConfig(
+      configData,
+      token,
+    );
+    if (!result?.id) {
+      throw new Error('Failed to create deployed config: no ID returned');
+    }
+    return result.id;
+  }
+
+  async createTransactionTypeTable(
+    transactionType: string,
+    token: string,
+  ): Promise<void> {
+    this.logger.log(`Creating table for transaction type: ${transactionType}`);
+    const createTableQuery = `CREATE TABLE IF NOT EXISTS "${transactionType}" (
+  id SERIAL PRIMARY KEY,
+  document JSONB NOT NULL
+);`;
+    await this.adminServiceClient.runRawQuery(createTableQuery, token);
+  }
+
+  async updateConfigStatus(
+    id: number,
+    tenantId: string,
+    status: string,
+    token: string,
+  ): Promise<void> {
+    this.logger.log(`Updating config ${id} status to ${status}`);
+    await this.adminServiceClient.writeConfigUpdate(
+      id,
+      { status },
+      token,
+    );
+  }
 }
