@@ -56,30 +56,12 @@ export interface TransactionDetails {
   TenantId: string;
   MsgId: string;
   CreDtTm: string;
-  Amt?: number;
+  Amt?: string;
   Ccy?: string;
   EndToEndId: string;
   lat?: string;
   long?: string;
   TxSts?: string;
-}
-
-export interface DataCache {
-  dbtrId?: string;
-  cdtrId?: string;
-  dbtrAcctId?: string;
-  cdtrAcctId?: string;
-  evtId?: string;
-  creDtTm?: string;
-  instdAmt?: {
-    amt: number;
-    ccy: string;
-  };
-  intrBkSttlmAmt?: {
-    amt: number;
-    ccy: string;
-  };
-  xchgRate?: number;
 }
 
 export const TAZAMA_DATA_MODEL_SCHEMAS: TazamaCollectionSchema[] = [
@@ -197,10 +179,10 @@ export const TAZAMA_DATA_MODEL_SCHEMAS: TazamaCollectionSchema[] = [
       },
       {
         name: 'Amt',
-        type: 'number',
+        type: 'string',
         required: false,
         description: 'Transaction amount',
-        example: 1000.5,
+        example: '1000.50',
       },
       {
         name: 'Ccy',

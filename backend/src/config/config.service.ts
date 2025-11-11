@@ -254,6 +254,15 @@ export class ConfigService {
 
     
 
+      if (dto.mapping && dto.mapping.length > 0) {
+        for (let i = 0; i < dto.mapping.length; i++) {
+          const mapping = dto.mapping[i];
+          this.validateMapping(mapping, finalSchema, tenantId);
+          
+          this.validateNoDuplicateDestination(mapping, dto.mapping.slice(0, i), false);
+        }
+      }
+
       const configData: Omit<Config, 'id' | 'createdAt' | 'updatedAt'> = {
         msgFam: dto.msgFam || '',
         transactionType: dto.transactionType,
@@ -643,6 +652,15 @@ export class ConfigService {
       }
     }
     
+    if (dto.mapping && dto.mapping.length > 0) {
+      const schemaToValidate = finalSchema || dto.schema || config.schema;
+      for (let i = 0; i < dto.mapping.length; i++) {
+        const mapping = dto.mapping[i];
+        this.validateMapping(mapping, schemaToValidate, tenantId);
+        
+        this.validateNoDuplicateDestination(mapping, dto.mapping.slice(0, i), false);
+      }
+    }
     
     const updateData = { ...dto };
 
@@ -705,6 +723,15 @@ export class ConfigService {
         tenantId,
         createdBy: userId,
       };
+
+      if (newConfigData.mapping && newConfigData.mapping.length > 0) {
+        for (let i = 0; i < newConfigData.mapping.length; i++) {
+          const mapping = newConfigData.mapping[i];
+          this.validateMapping(mapping, newConfigData.schema, tenantId);
+          
+          this.validateNoDuplicateDestination(mapping, newConfigData.mapping.slice(0, i), false);
+        }
+      }
 
       this.logger.log(
         `Creating new config with msgFam: ${newMsgFam}, version: ${newVersion}, transactionType: ${newTransactionType}`,
@@ -858,6 +885,8 @@ export class ConfigService {
     const newMapping = this.createMappingFromDto(mappingDto);
     this.validateMapping(newMapping, config.schema, tenantId);
 
+    this.validateNoDuplicateDestination(newMapping, config.mapping || [], false);
+
     const updatedMappings = [...(config.mapping || []), newMapping];
 
     await this.configRepository.updateConfig(
@@ -969,6 +998,9 @@ export class ConfigService {
 
     const updatedMapping = this.createMappingFromDto(mappingDto);
     this.validateMapping(updatedMapping, config.schema, tenantId);
+
+    // Check if the destination is already mapped (excluding the mapping being updated)
+    this.validateNoDuplicateDestination(updatedMapping, config.mapping, true, mappingIndex);
 
     const updatedMappings = [...config.mapping];
     updatedMappings[mappingIndex] = updatedMapping;
@@ -1586,9 +1618,44 @@ export class ConfigService {
     sourceType: string,
     destinationType: string,
   ): boolean {
-    // STRICT TYPE MATCHING: Only exact type matches are allowed
-    // No type conversions are permitted (string <-> number, etc.)
+    
     return sourceType === destinationType;
+  }
+
+  private validateNoDuplicateDestination(
+    newMapping: FieldMapping,
+    existingMappings: FieldMapping[],
+    isUpdate: boolean = false,
+    updateIndex?: number,
+  ): void {
+    const newDestinations = Array.isArray(newMapping.destination)
+      ? newMapping.destination
+      : [newMapping.destination];
+
+    for (const newDest of newDestinations) {
+      if (typeof newDest !== 'string' || !newDest) {
+        continue;
+      }
+
+      for (let i = 0; i < existingMappings.length; i++) {
+        if (isUpdate && updateIndex !== undefined && i === updateIndex) {
+          continue;
+        }
+
+        const existingMapping = existingMappings[i];
+        const existingDestinations = Array.isArray(existingMapping.destination)
+          ? existingMapping.destination
+          : [existingMapping.destination];
+
+        for (const existingDest of existingDestinations) {
+          if (existingDest === newDest) {
+            throw new BadRequestException(
+              `Duplicate destination mapping detected: Destination field '${newDest}' is already mapped. Each destination field can only be mapped once. Please remove the existing mapping first or use a different destination field.`,
+            );
+          }
+        }
+      }
+    }
   }
 
   private validateMapping(
@@ -1906,7 +1973,7 @@ export class ConfigService {
     if (!this.areTypesCompatible(sourceType, destinationType)) {
       throw new BadRequestException(
         `Direct mapping type mismatch: Cannot map source field '${src}' of type '${sourceType}' to destination field '${destinationPath}' of type '${destinationType}'. ` +
-          'STRICT TYPE MATCHING: Only exact type matches are allowed. String fields can only map to string fields, number fields can only map to number fields, etc.',
+          'STRICT TYPE MATCHING: Only exact type matches are allowed. String fields can only map to string fields, number fields can only map to number fields.',
       );
     }
   }
@@ -2941,9 +3008,20 @@ export class ConfigService {
         
         const hierarchicalFields =
           this.jsonSchemaConverter.convertFromJSONSchema(config.schema);
-          
+        
+        this.logger.debug(`Hierarchical fields count: ${hierarchicalFields.length}`);
+        if (hierarchicalFields.length > 0) {
+          this.logger.debug(`First hierarchical field: ${JSON.stringify(hierarchicalFields[0])}`);
+        }
         
         let sourceFields = this.flattenSchemaFields(hierarchicalFields);
+        
+        this.logger.debug(`Flattened source fields count: ${sourceFields.length}`);
+        if (sourceFields.length === 0) {
+          this.logger.warn('No source fields found after flattening. This might indicate an issue with schema structure.');
+          this.logger.debug(`Schema: ${JSON.stringify(config.schema)}`);
+          this.logger.debug(`Hierarchical fields: ${JSON.stringify(hierarchicalFields)}`);
+        }
         
         return {
           ...config,
@@ -2951,9 +3029,10 @@ export class ConfigService {
         };
       }
     } catch (error) {
-      this.logger.warn(
+      this.logger.error(
         `Failed to enrich config with source fields: ${error.message}`,
       );
+      this.logger.error(`Error stack: ${error.stack}`);
     }
     return config;
   }
@@ -2962,7 +3041,7 @@ export class ConfigService {
     const flattened: SchemaField[] = [];
 
     for (const field of fields) {
-      // Always include the current field
+      // Include root-level fields (even if not required, we need them for mapping)
       flattened.push({
         name: field.name,
         path: field.path,
@@ -2970,7 +3049,9 @@ export class ConfigService {
         isRequired: field.isRequired,
       });
 
-      // Recursively flatten children
+      // Recursively flatten children (regardless of parent's isRequired status)
+      // This ensures that even if a root object is marked as not required,
+      // its child fields are still available for mapping
       if (field.children && field.children.length > 0) {
         const flattenedChildren = this.flattenSchemaFields(field.children);
         flattened.push(...flattenedChildren);
