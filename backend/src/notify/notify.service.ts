@@ -10,6 +10,7 @@ import { ConfigType } from '@tazama-lf/tcs-lib';
 @Injectable()
 export class NotifyService implements OnModuleInit {
   private readonly natsService: IStartupService;
+  private readonly demsNatsService: IStartupService;
   private readonly ackService: IStartupService;
   private consumerStream: string;
   private producerStream: string;
@@ -20,6 +21,7 @@ export class NotifyService implements OnModuleInit {
     private readonly configService: ConfigService,
   ) {
     this.natsService = new StartupFactory();
+    this.demsNatsService = new StartupFactory();
     this.ackService = new StartupFactory();
   }
 
@@ -52,6 +54,12 @@ export class NotifyService implements OnModuleInit {
       this.logger.log(
         'NATS producer initialized - sending to config.notification',
         'NotificationController',
+      );
+
+      await this.demsNatsService.initProducer(this.logger, this.demsStream);
+      this.logger.log(
+        `DEMS NATS producer initialized - sending to ${this.demsStream}`,
+        'NotifyService',
       );
 
       await this.ackService.init(
@@ -111,7 +119,7 @@ export class NotifyService implements OnModuleInit {
         `Sending notification to DEMS stream: ${this.demsStream}`,
       );
 
-      await this.natsService.handleResponse({
+      await this.demsNatsService.handleResponse({
         transactionID: configId,
       });
 
