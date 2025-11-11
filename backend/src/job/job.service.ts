@@ -221,20 +221,6 @@ export class JobService {
         );
       }
 
-      if (tableName === 'job' && record.schedule_id) {
-        const scheduleQuery =
-          'SELECT name, cron FROM schedule WHERE id = $1 LIMIT 1;';
-        const scheduleResult = await this.db.query(scheduleQuery, [
-          record.schedule_id,
-        ]);
-        const schedule = scheduleResult.rows[0] || null;
-
-        return {
-          ...record,
-          ...schedule,
-        };
-      }
-
       return record;
     } catch (err) {
       this.loggerService.error(`Error fetching ${type} record: ${err.message}`);
@@ -353,11 +339,9 @@ export class JobService {
               connection.private_key = decrypt(connection.private_key);
             }
 
-            const { schedule, ...jobPayload } = existingJob;
-
             await this.createPull(
               {
-                ...jobPayload,
+                ...existingJob,
                 connection,
                 publishing_status: ScheduleStatus.ACTIVE,
               },
