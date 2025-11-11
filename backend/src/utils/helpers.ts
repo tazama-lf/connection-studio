@@ -1,10 +1,9 @@
-import * as path from 'path';
-import dotenv from 'dotenv';
-dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 import { BadRequestException } from '@nestjs/common';
 import { CronTime } from 'cron';
-import { RESERVED_KEYWORDS } from './constants';
 import * as crypto from 'crypto';
+import dotenv from 'dotenv';
+import * as path from 'path';
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 const IV_LENGTH = parseInt(process.env.IV_LENGTH!);
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY!;
@@ -50,26 +49,6 @@ export function validateCronExpression(expression: string): void {
     new CronTime(expression);
   } catch (error) {
     throw new BadRequestException(`Invalid Cron Expression : ${error.message}`);
-  }
-}
-
-export function validateTableName(tableName: string): void {
-  if (!/^[A-Z_]\w*$/i.test(tableName)) {
-    throw new BadRequestException(
-      `Invalid table name "${tableName}". Only letters, numbers, and underscores are allowed, and it must start with a letter or underscore.`,
-    );
-  }
-
-  if (tableName.length > 63) {
-    throw new BadRequestException(
-      `Invalid table name "${tableName}". Must not exceed 63 characters.`,
-    );
-  }
-
-  if (RESERVED_KEYWORDS.has(tableName.toLowerCase())) {
-    throw new BadRequestException(
-      `Invalid table name "${tableName}". It is a reserved SQL keyword.`,
-    );
   }
 }
 

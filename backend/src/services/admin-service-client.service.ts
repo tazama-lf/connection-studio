@@ -3,6 +3,8 @@ import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ConfigType, Job, JobStatus, JobSummary, Schedule, ScheduleStatus } from '@tazama-lf/tcs-lib';
 import { firstValueFrom } from 'rxjs';
+import { UpdatePullJobDto } from 'src/job/dto/update-pull-job.dto';
+import { UpdatePushJobDto } from 'src/job/dto/update-push-job.dto';
 import { EndpointJobRecord } from 'src/job/types/job.interface';
 import { UpdateScheduleJobDto } from 'src/scheduler/dto/update-schedule-dto';
 
@@ -316,6 +318,57 @@ export class AdminServiceClient {
       return this.handleError(error, 'updateScheduleStatus');
     }
   }
+
+  async updateJob(id: string, job: UpdatePushJobDto | UpdatePullJobDto, type: ConfigType, token: string): Promise<{ success: boolean; message: string }> {
+    this.logger.log(
+      `Validating job update with id : ${id}`,
+    );
+
+    try {
+      const response = await firstValueFrom(
+        this.httpService.put(
+          `${this.adminServiceUrl}/v1/admin/tcs/job/update/${id}`,
+          { job, type },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+          },
+        ),
+      );
+
+      this.logger.log(`Validation response: ${JSON.stringify(response.data)}`);
+      return response.data;
+    } catch (error) {
+      return this.handleError(error, 'scheduleCreation');
+    }
+  }
+
+  async validateExisting(tableName: string, token: string): Promise<JobSummary[]> {
+    this.logger.log(`Validating Existing table`);
+
+    try {
+      const response = await firstValueFrom(
+        this.httpService.get(
+          `${this.adminServiceUrl}/v1/admin/tcs/job/table`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+            params: {
+              tableName
+            }
+          },
+        ),
+      );
+
+      return response.data;
+    } catch (error) {
+      return this.handleError(error, 'validateTable');
+    }
+  }
+
 
   // ==================== SCHEDULER OPERATIONS ====================
 

@@ -1,8 +1,7 @@
 import {
   BadRequestException,
   ForbiddenException,
-  Injectable,
-  NotFoundException
+  Injectable
 } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import {
@@ -16,6 +15,7 @@ import {
   SFTPConnection,
   SourceType
 } from '@tazama-lf/tcs-lib';
+import { AdminServiceClient } from 'src/services/admin-service-client.service';
 import { v4 } from 'uuid';
 import { DatabaseService } from '../database/database.service';
 import { DryRunService } from '../dry-run/dry-run.service';
@@ -24,15 +24,13 @@ import { SftpService } from '../sftp/sftp.service';
 import {
   decrypt,
   encrypt,
-  validateFileType,
-  validateTableName,
+  validateFileType
 } from '../utils/helpers';
 import { CreatePullJobDto, SFTPConnectionDto } from './dto/create-pull-job.dto';
 import { CreatePushJobDto } from './dto/create-push-job.dto';
 import { UpdatePullJobDto } from './dto/update-pull-job.dto';
 import { UpdatePushJobDto } from './dto/update-push-job.dto';
 import { type EndpointJobRecord } from './types/job.interface';
-import { AdminServiceClient } from 'src/services/admin-service-client.service';
 
 @Injectable()
 export class JobService {
@@ -45,24 +43,6 @@ export class JobService {
     private readonly adminServiceClient: AdminServiceClient
   ) { }
 
-  async validateExisting(table_name: string): Promise<void> {
-    validateTableName(table_name);
-    const jobResult = await this.db.query(
-      'SELECT * FROM job WHERE table_name = $1 LIMIT 1;',
-      [table_name],
-    );
-    const endpointResult = await this.db.query(
-      'SELECT * FROM endpoints WHERE table_name = $1 LIMIT 1;',
-      [table_name],
-    );
-
-    const existingJob = jobResult.rows[0] || endpointResult.rows[0];
-    const exists = (await this.db.tableExist(table_name)) || existingJob;
-    if (exists) {
-      this.loggerService.error('Table Already Exists');
-      throw new BadRequestException('Table Already Exists');
-    }
-  }
 
   async updateJob(
     id: string,
@@ -70,7 +50,6 @@ export class JobService {
     type: ConfigType,
     token: string
   ): Promise<ISuccess> {
-    const tableName = type === ConfigType.PUSH ? 'endpoints' : 'job';
 
     const existingJob = await this.findOne(id, ConfigType.PUSH, token);
 
@@ -78,23 +57,7 @@ export class JobService {
       throw new ForbiddenException('Only In-Progress jobs can be edited');
     }
 
-    const keys = Object.keys(job);
-    const values = Object.values(job);
-    const setClause = keys.map((key, i) => `${key} = $${i + 1}`).join(', ');
-    const query = `UPDATE ${tableName} SET ${setClause} WHERE id = $${keys.length + 1};`;
-
-    const result = await this.db.query(query, [...values, id]);
-
-    if (!result.rowCount) {
-      throw new NotFoundException(
-        `${type} Job with id ${id} not found or no changes were made`,
-      );
-    }
-
-    return {
-      success: true,
-      message: `Job with id ${id} successfully updated`,
-    };
+    return await this.adminServiceClient.updateJob(id, job, type, token)
   }
 
   async createPush(
@@ -105,7 +68,7 @@ export class JobService {
   ): Promise<ISuccess> {
     try {
 
-      await this.validateExisting(job.table_name);
+      await this.adminServiceClient.validateExisting(job.table_name, token);
       const id = job.id ?? v4();
 
       const path =
@@ -144,7 +107,7 @@ export class JobService {
     status: JobStatus = JobStatus.INPROGRESS,
   ): Promise<ISuccess> {
     try {
-      await this.validateExisting(job.table_name);
+      await this.adminServiceClient.validateExisting(job.table_name, token);
 
       const exist = await this.adminServiceClient.findScheduleById(job.schedule_id, token)
 
