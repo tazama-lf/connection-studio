@@ -74,7 +74,7 @@ export class JobService {
       const path =
         status === JobStatus.DEPLOYED
           ? job.path
-          : `/${tenantId}/enrichment/${job.version}${job.path}`;
+          : `/${tenantId}/enrichment/${job.version}/${job.path}`;
 
       const jobWithId = { ...job, id, path, tenant_id: tenantId, status };
 
