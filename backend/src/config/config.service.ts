@@ -1618,15 +1618,10 @@ export class ConfigService {
     sourceType: string,
     destinationType: string,
   ): boolean {
-    // STRICT TYPE MATCHING: Only exact type matches are allowed
-    // No type conversions are permitted (string <-> number, etc.)
+    
     return sourceType === destinationType;
   }
 
-  /**
-   * Validates that a destination field is not already mapped in the existing mappings
-   * Each destination can only be mapped ONCE to prevent conflicts
-   */
   private validateNoDuplicateDestination(
     newMapping: FieldMapping,
     existingMappings: FieldMapping[],
@@ -1637,15 +1632,12 @@ export class ConfigService {
       ? newMapping.destination
       : [newMapping.destination];
 
-    // Check each destination in the new mapping
     for (const newDest of newDestinations) {
       if (typeof newDest !== 'string' || !newDest) {
         continue;
       }
 
-      // Check against all existing mappings
       for (let i = 0; i < existingMappings.length; i++) {
-        // Skip the mapping being updated (if this is an update operation)
         if (isUpdate && updateIndex !== undefined && i === updateIndex) {
           continue;
         }
@@ -1655,7 +1647,6 @@ export class ConfigService {
           ? existingMapping.destination
           : [existingMapping.destination];
 
-        // Check if any existing destination matches the new destination
         for (const existingDest of existingDestinations) {
           if (existingDest === newDest) {
             throw new BadRequestException(
@@ -1982,7 +1973,7 @@ export class ConfigService {
     if (!this.areTypesCompatible(sourceType, destinationType)) {
       throw new BadRequestException(
         `Direct mapping type mismatch: Cannot map source field '${src}' of type '${sourceType}' to destination field '${destinationPath}' of type '${destinationType}'. ` +
-          'STRICT TYPE MATCHING: Only exact type matches are allowed. String fields can only map to string fields, number fields can only map to number fields, etc.',
+          'STRICT TYPE MATCHING: Only exact type matches are allowed. String fields can only map to string fields, number fields can only map to number fields.',
       );
     }
   }
