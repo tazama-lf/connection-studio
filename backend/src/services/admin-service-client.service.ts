@@ -1,7 +1,7 @@
 import { HttpService } from '@nestjs/axios';
 import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ConfigType, Job, JobStatus, JobSummary, Schedule, ScheduleStatus } from '@tazama-lf/tcs-lib';
+import { ConfigType, ISuccess, Job, JobStatus, JobSummary, Schedule, ScheduleStatus } from '@tazama-lf/tcs-lib';
 import { firstValueFrom } from 'rxjs';
 import { UpdatePullJobDto } from 'src/job/dto/update-pull-job.dto';
 import { UpdatePushJobDto } from 'src/job/dto/update-push-job.dto';
@@ -130,7 +130,7 @@ export class AdminServiceClient {
 
   // ==================== JOB OPERATIONS ====================
 
-  async createPushJob(job: Record<string, unknown>, token: string): Promise<{ id: string }> {
+  async createPushJob(job: Record<string, unknown>, token: string): Promise<{ id: string | null }> {
     this.logger.log(
       `Validating job creation: ${job}`,
     );
@@ -345,7 +345,7 @@ export class AdminServiceClient {
     }
   }
 
-  async validateExisting(tableName: string, token: string): Promise<JobSummary[]> {
+  async validateExisting(tableName: string, token: string): Promise<ISuccess> {
     this.logger.log(`Validating Existing table`);
 
     try {

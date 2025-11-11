@@ -16,7 +16,6 @@ import { UpdateScheduleJobDto } from './dto/update-schedule-dto';
 @Injectable()
 export class SchedulerService {
   constructor(
-    private readonly db: DatabaseService,
     private readonly loggerService: LoggerService,
     private readonly sftpService: SftpService,
     private readonly adminServiceClient: AdminServiceClient
