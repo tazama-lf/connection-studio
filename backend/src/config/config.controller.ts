@@ -428,9 +428,24 @@ export class ConfigController {
     );
   }
 
-  @Patch(':id/approve')
+  @Post(':id/workflow/approve')
   @RequireClaims(TazamaClaims.APPROVER)
   async approveConfig(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: ApprovalDto,
+    @User() user: AuthenticatedUser,
+  ): Promise<ConfigResponseDto> {
+    return this.adminServiceClient.forwardRequest(
+      'POST',
+      `/v1/admin/tcs/config/${id}/workflow/approve`,
+      dto,
+      buildForwardHeaders(user),
+    );
+  }
+
+  @Patch(':id/approve')
+  @RequireClaims(TazamaClaims.APPROVER)
+  async approveConfigLegacy(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: ApprovalDto,
     @User() user: AuthenticatedUser,
@@ -476,6 +491,7 @@ export class ConfigController {
       token,
     );
   }
+
   @Post(':id/workflow/export')
   @RequireClaims(TazamaClaims.EXPORTER)
   async exportConfig(
@@ -589,6 +605,7 @@ export class ConfigController {
     @Body() dto: { publishing_status: 'active' | 'inactive' },
     @User() user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
+    console.log('Updating publishing status:', {id});
     return this.configService.updatePublishingStatus(
       id,
       dto.publishing_status,
