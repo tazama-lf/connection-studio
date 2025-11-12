@@ -176,7 +176,7 @@ export class TazamaDataModelService {
         value: path,
         label: path,
         collection: schemaName,
-        field: fieldPath, // Full field path relative to collection
+        field: fieldPath, 
         type: field.type.toUpperCase(),
         required: field.required,
       };
@@ -205,9 +205,6 @@ export class TazamaDataModelService {
 
   getCollectionTypes(): string[] {
     return [
-      'entities',
-      'accounts',
-      'account_holder',
       'transactionDetails',
       'redis',
     ];
@@ -218,9 +215,6 @@ export class TazamaDataModelService {
   ): TazamaCollectionName | null {
     const [collectionName] = path.split('.');
     const validCollections: TazamaCollectionName[] = [
-      'entities',
-      'accounts',
-      'account_holder',
       'transactionDetails',
       'redis',
     ];

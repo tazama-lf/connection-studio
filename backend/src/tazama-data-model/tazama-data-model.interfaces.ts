@@ -2,9 +2,6 @@
  * Tazama Internal Data Model Interfaces
  */
 export type TazamaCollectionName =
-  | 'entities'
-  | 'accounts'
-  | 'account_holder'
   | 'transactionDetails'
   | 'redis';
 export type TazamaFieldType =
@@ -65,71 +62,6 @@ export interface TransactionDetails {
 }
 
 export const TAZAMA_DATA_MODEL_SCHEMAS: TazamaCollectionSchema[] = [
-  {
-    name: 'entities',
-    type: 'node',
-    description:
-      'Entity - Individuals or organizations involved in transactions',
-    fields: [
-      {
-        name: 'id',
-        type: 'string',
-        required: true,
-        description: 'Entity identifier (entityId + schemeProprietary)',
-        example: 'ENTITY001-SCHEME',
-      },
-      {
-        name: 'creDtTm',
-        type: 'string',
-        required: true,
-        description: 'Creation date time',
-        example: '2023-10-15T14:30:00Z',
-      },
-    ],
-  },
-  {
-    name: 'accounts',
-    type: 'node',
-    description: 'Account - Financial accounts',
-    fields: [
-      {
-        name: 'id',
-        type: 'string',
-        required: true,
-        description:
-          'Account identifier (accountId + schemeProprietary + agtMemberId)',
-        example: 'ACC001-SCHEME-MEMBER',
-      },
-    ],
-  },
-  {
-    name: 'account_holder',
-    type: 'edge',
-    description: 'Account Holder - Relationships between entities and accounts',
-    fields: [
-      {
-        name: 'source',
-        type: 'string',
-        required: true,
-        description: 'Entity ID (source of the edge)',
-        example: 'ENTITY001-SCHEME',
-      },
-      {
-        name: 'destination',
-        type: 'string',
-        required: true,
-        description: 'Account ID (destination of the edge)',
-        example: 'ACC001-SCHEME-MEMBER',
-      },
-      {
-        name: 'creDtTm',
-        type: 'string',
-        required: true,
-        description: 'Creation date time',
-        example: '2023-10-15T14:30:00Z',
-      },
-    ],
-  },
   {
     name: 'transactionDetails',
     type: 'node',
