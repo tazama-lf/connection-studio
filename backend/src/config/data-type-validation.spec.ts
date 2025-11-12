@@ -154,7 +154,7 @@ describe('Data Type Validation for Mappings', () => {
 
       const mappingDto = {
         source: 'stringField',
-        destination: 'entities.id',
+        destination: 'transactionDetails.source',
       };
 
       await expect(
@@ -173,7 +173,7 @@ describe('Data Type Validation for Mappings', () => {
 
       const stringToNumber = {
         source: 'stringField',
-        destination: 'entities.id',
+        destination: 'transactionDetails.source',
       };
 
       await expect(
@@ -192,7 +192,7 @@ describe('Data Type Validation for Mappings', () => {
 
       const mappingDto = {
         source: 'numberField',
-        destination: 'entities.id',
+        destination: 'transactionDetails.source',
       };
 
       await expect(
@@ -211,7 +211,7 @@ describe('Data Type Validation for Mappings', () => {
 
       const mappingDto = {
         source: 'booleanField',
-        destination: 'entities.id',
+        destination: 'transactionDetails.source',
       };
 
       await expect(
@@ -230,7 +230,7 @@ describe('Data Type Validation for Mappings', () => {
 
       const mappingDto = {
         source: 'numberField',
-        destination: 'entities.id',
+        destination: 'transactionDetails.source',
       };
 
       await expect(
@@ -249,7 +249,7 @@ describe('Data Type Validation for Mappings', () => {
 
       const mappingDto = {
         source: 'arrayField',
-        destination: 'entities.id',
+        destination: 'transactionDetails.source',
       };
 
       await expect(
@@ -270,7 +270,7 @@ describe('Data Type Validation for Mappings', () => {
 
       const mappingDto = {
         source: 'arrayField',
-        destination: 'entities.id',
+        destination: 'transactionDetails.source',
       };
 
       await expect(
@@ -299,7 +299,7 @@ describe('Data Type Validation for Mappings', () => {
 
       const mappingDto = {
         source: 'arrayField',
-        destination: 'entities.id',
+        destination: 'transactionDetails.source',
       };
 
       await expect(
@@ -318,7 +318,7 @@ describe('Data Type Validation for Mappings', () => {
 
       const mappingDto = {
         source: 'stringField',
-        destination: 'entities.id',
+        destination: 'transactionDetails.source',
       };
 
       await expect(
@@ -347,7 +347,7 @@ describe('Data Type Validation for Mappings', () => {
 
       const mappingDto = {
         source: 'objectField',
-        destination: 'entities.id',
+        destination: 'transactionDetails.source',
       };
 
       await expect(
@@ -366,7 +366,7 @@ describe('Data Type Validation for Mappings', () => {
 
       const mappingDto = {
         source: 'numberField',
-        destination: 'entities.id',
+        destination: 'transactionDetails.source',
       };
 
       await expect(
@@ -387,7 +387,7 @@ describe('Data Type Validation for Mappings', () => {
 
       const mappingDto = {
         source: 'teams[0].teamId',
-        destination: 'entities.id',
+        destination: 'transactionDetails.source',
       };
 
       await expect(
@@ -406,7 +406,7 @@ describe('Data Type Validation for Mappings', () => {
 
       const mappingDto = {
         source: 'teams.0.memberCount',
-        destination: 'entities.id',
+        destination: 'transactionDetails.source',
       };
 
       await expect(
@@ -425,7 +425,7 @@ describe('Data Type Validation for Mappings', () => {
 
       const mappingDto = {
         source: 'teams[0].teamId', // string field
-        destination: 'entities.id', // array field
+        destination: 'transactionDetails.source', // array field
       };
 
       await expect(
@@ -446,7 +446,7 @@ describe('Data Type Validation for Mappings', () => {
 
       const mappingDto = {
         constantValue: 'some constant', // string constant
-        destination: 'entities.id', // number field
+        destination: 'transactionDetails.source', // number field
       };
 
       // Should reject string constant to number field
@@ -466,7 +466,7 @@ describe('Data Type Validation for Mappings', () => {
 
       const mappingDto = {
         source: 'stringField',
-        destination: 'entities.id',
+        destination: 'transactionDetails.source',
       };
 
       await expect(
@@ -487,7 +487,7 @@ describe('Data Type Validation for Mappings', () => {
 
       const mappingDto = {
         source: 'stringField',
-        destination: 'entities.id',
+        destination: 'transactionDetails.source',
       };
 
       try {
@@ -504,7 +504,7 @@ describe('Data Type Validation for Mappings', () => {
         expect(error.message).toContain('Direct mapping type mismatch');
         expect(error.message).toContain('stringField');
         expect(error.message).toContain('string');
-        expect(error.message).toContain('entities.id');
+        expect(error.message).toContain('transactionDetails.source');
         expect(error.message).toContain('array');
         expect(error.message).toContain('STRICT TYPE MATCHING');
       }
@@ -513,3 +513,5 @@ describe('Data Type Validation for Mappings', () => {
 });
 
 console.log('Data type validation tests completed');
+
+

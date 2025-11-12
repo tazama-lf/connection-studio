@@ -516,4 +516,98 @@ describe('SchemaInferenceService', () => {
     expect(validation.isValid).toBe(true);
     expect(validation.errors.length).toBe(0);
   });
+
+  describe('inferXmlType edge cases', () => {
+    it('should handle actual number type (not string)', () => {
+      // Directly test the private method with actual number type
+      const numberType = service['inferXmlType'](42);
+      expect(numberType).toBe(FieldType.NUMBER);
+    });
+
+    it('should handle actual boolean type (not string)', () => {
+      // Directly test the private method with actual boolean type
+      const booleanType = service['inferXmlType'](true);
+      expect(booleanType).toBe(FieldType.BOOLEAN);
+
+      const booleanTypeFalse = service['inferXmlType'](false);
+      expect(booleanTypeFalse).toBe(FieldType.BOOLEAN);
+    });
+
+    it('should handle array type in XML', () => {
+      const arrayType = service['inferXmlType']([1, 2, 3]);
+      expect(arrayType).toBe(FieldType.ARRAY);
+    });
+
+    it('should handle object type in XML', () => {
+      const objectType = service['inferXmlType']({ key: 'value' });
+      expect(objectType).toBe(FieldType.OBJECT);
+    });
+
+    it('should handle null value as string in XML', () => {
+      const nullType = service['inferXmlType'](null);
+      expect(nullType).toBe(FieldType.STRING);
+    });
+
+    it('should handle undefined value as string in XML', () => {
+      const undefinedType = service['inferXmlType'](undefined);
+      expect(undefinedType).toBe(FieldType.STRING);
+    });
+
+    it('should handle numeric string in XML', () => {
+      const numericString = service['inferXmlType']('123.45');
+      expect(numericString).toBe(FieldType.NUMBER);
+
+      const negativeNumeric = service['inferXmlType']('-987');
+      expect(negativeNumeric).toBe(FieldType.NUMBER);
+    });
+
+    it('should handle boolean string in XML', () => {
+      const trueString = service['inferXmlType']('true');
+      expect(trueString).toBe(FieldType.BOOLEAN);
+
+      const falseString = service['inferXmlType']('FALSE');
+      expect(falseString).toBe(FieldType.BOOLEAN);
+
+      const mixedCaseTrue = service['inferXmlType']('TrUe');
+      expect(mixedCaseTrue).toBe(FieldType.BOOLEAN);
+    });
+
+    it('should handle regular string in XML', () => {
+      const regularString = service['inferXmlType']('hello world');
+      expect(regularString).toBe(FieldType.STRING);
+    });
+  });
+
+  describe('analyzeXmlObject edge cases', () => {
+    it('should handle non-object XML value (primitive at root)', () => {
+      // Test analyzeXmlObject with a primitive value (not an object)
+      const fields = service['analyzeXmlObject']('simple text', 'textNode', '');
+      expect(fields.length).toBe(1);
+      expect(fields[0].name).toBe('textNode');
+      expect(fields[0].path).toBe('textNode');
+      expect(fields[0].type).toBe(FieldType.STRING);
+      expect(fields[0].isRequired).toBe(true);
+    });
+
+    it('should handle null XML value', () => {
+      const fields = service['analyzeXmlObject'](null, 'nullNode', 'parent');
+      expect(fields.length).toBe(1);
+      expect(fields[0].name).toBe('nullNode');
+      expect(fields[0].path).toBe('parent.nullNode');
+      expect(fields[0].type).toBe(FieldType.STRING);
+    });
+
+    it('should handle number XML value', () => {
+      const fields = service['analyzeXmlObject'](42, 'numberNode', '');
+      expect(fields.length).toBe(1);
+      expect(fields[0].type).toBe(FieldType.NUMBER);
+    });
+
+    it('should handle boolean XML value', () => {
+      const fields = service['analyzeXmlObject'](true, 'boolNode', 'root');
+      expect(fields.length).toBe(1);
+      expect(fields[0].path).toBe('root.boolNode');
+      expect(fields[0].type).toBe(FieldType.BOOLEAN);
+    });
+  });
 });
