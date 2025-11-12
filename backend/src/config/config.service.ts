@@ -1704,7 +1704,7 @@ export class ConfigService {
       const isValid = this.tazamaDataModelService.isValidDestinationPath(dest);
       if (!isValid) {
         throw new BadRequestException(
-          `Destination field '${dest}' is not a valid Tazama data model field. Use a field from the Tazama internal data model (e.g., entities.id, accounts.id, transactionDetails.Amt).`,
+          `Destination field '${dest}' is not a valid Tazama data model field. Use a field from the Tazama internal data model (e.g., transactionDetails.Amt, redis.dbtrId).`,
         );
       }
 
@@ -2468,23 +2468,14 @@ export class ConfigService {
     const currentStatus = config.status!;
     const action = 'export'; // Extended workflow action
 
-    // Validate user can perform this action
-    const validation = this.workflowService.canPerformAction(
-      userClaims,
-      currentStatus,
-      action as any,
-    );
-    if (!validation.canPerform) {
-      throw new ForbiddenException(validation.message);
-    }
+    
 
-    const newStatus = ConfigStatus.EXPORTED;
 
     const fileName = `dems_${tenantId}_${id}`;
     
     try {
       // Step 1: Prepare config data for export
-      const configToExport = { ...config, status: newStatus };
+      const configToExport = { ...config, status: currentStatus };
 
       // Step 2: Upload to SFTP (EXACTLY like job/scheduler service)
       await this.sftpService.createFile(fileName, {
@@ -2494,6 +2485,9 @@ export class ConfigService {
       this.logger.log(
         `Successfully uploaded FATIMA ALI config file (${fileName}) with status '${ConfigStatus.READY_FOR_DEPLOYMENT}' to SFTP servers.`,
       );
+
+
+
 
       // await this.sftpService.createFileForPublisher(fileName, {
       //   ...configToExport,
@@ -2506,7 +2500,7 @@ export class ConfigService {
         RETURNING id;
       `;
 
-      const result = await this.databaseService.getPool().query(updateQuery, [newStatus, id, tenantId]);
+      const result = await this.databaseService.getPool().query(updateQuery, [currentStatus, id, tenantId]);
       if (!result.rowCount) {
         throw new NotFoundException(
           `Config with id "${id}" not found in config table.`,
@@ -2514,15 +2508,18 @@ export class ConfigService {
       }
 
 
+
+
+
       
       this.logger.log(
-        `Successfully updated config ${id} status to ${newStatus} in database`,
+        `Successfully updated config ${id} status to ${currentStatus} in database`,
       );
 
       // Return success (EXACTLY like job/scheduler service)
       return {
         success: true,
-        message: `Configuration ${id} exported successfully to SFTP and updated to ${newStatus}`,
+        message: `Configuration ${id} exported successfully to SFTP and updated to ${currentStatus}`,
       };
     } catch (error) {
       this.logger.error(`Failed to export config to SFTP: ${error.message}`);
@@ -2599,11 +2596,11 @@ export class ConfigService {
       // Step 2: Insert deployed config data via repository
       try {
         const deployedConfigData = {
-          msg_fam: configData.msgFam || '',
-          transaction_type: configData.transactionType || '',
+          msg_fam: configData.msgFam || null,
+          transaction_type: configData.transactionType || null,
           content_type: configData.contentType || 'application/json',
-          endpoint_path: configData.endpointPath || '',
-          status: newStatus,
+          endpoint_path: configData.endpointPath || null,
+          status: currentStatus,
           publishing_status: configData.publishing_status || 'active',
           version: configData.version,
           schema: typeof configData.schema === 'string' 
@@ -2621,6 +2618,9 @@ export class ConfigService {
           created_at: configData.createdAt || new Date(),
           updated_at: new Date(),
         };
+        
+
+        console.log("deployedConfigData", {deployedConfigData}, {configData}, {config})
         
         this.logger.log(`Deploying config data - schema length: ${deployedConfigData.schema?.length}, mapping length: ${deployedConfigData.mapping?.length}`);
         
@@ -2930,11 +2930,11 @@ export class ConfigService {
       );
     }
 
-    // If publishing_status is set to ACTIVE, send NATS notification to DEMS with only config ID
-    if (publishingStatus.toLowerCase() === 'active') {
-      this.logger.log(
-        `Publishing status set to ACTIVE for config ${id}, sending NATS notification to DEMS`,
-      );
+    // // If publishing_status is set to ACTIVE, send NATS notification to DEMS with only config ID
+    // if (publishingStatus.toLowerCase() === 'active') {
+    //   this.logger.log(
+    //     `Publishing status set to ACTIVE for config ${id}, sending NATS notification to DEMS`,
+    //   );
 
       try {
         await this.notifyService.notifyDems(id.toString(), tenantId);
@@ -2950,7 +2950,7 @@ export class ConfigService {
           `Failed to activate config: ${error.message}`,
         );
       }
-    }
+    
 
     return {
       success: true,
