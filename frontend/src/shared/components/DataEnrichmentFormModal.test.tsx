@@ -1,6 +1,12 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
-import { DataEnrichmentFormModal } from './DataEnrichmentFormModal';
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  within,
+} from '@testing-library/react';
+import { DataEnrichmentFormModal } from '../../features/data-enrichment/components/DataEnrichmentFormModal';
 
 // Mock the dataEnrichmentApi
 jest.mock('../../features/data-enrichment/services', () => ({
@@ -31,7 +37,9 @@ jest.mock('./Button', () => ({
 
 import { dataEnrichmentApi } from '../../features/data-enrichment/services';
 
-const mockDataEnrichmentApi = dataEnrichmentApi as jest.Mocked<typeof dataEnrichmentApi>;
+const mockDataEnrichmentApi = dataEnrichmentApi as jest.Mocked<
+  typeof dataEnrichmentApi
+>;
 
 describe('DataEnrichmentFormModal', () => {
   const defaultProps = {
@@ -53,12 +61,16 @@ describe('DataEnrichmentFormModal', () => {
   describe('Modal Rendering', () => {
     it('renders modal when isOpen is true', () => {
       render(<DataEnrichmentFormModal {...defaultProps} />);
-      expect(screen.getByText('Define New Data Enrichment Endpoint')).toBeInTheDocument();
+      expect(
+        screen.getByText('Define New Data Enrichment Endpoint'),
+      ).toBeInTheDocument();
     });
 
     it('does not render modal when isOpen is false', () => {
       render(<DataEnrichmentFormModal {...defaultProps} isOpen={false} />);
-      expect(screen.queryByText('Define New Data Enrichment Endpoint')).not.toBeInTheDocument();
+      expect(
+        screen.queryByText('Define New Data Enrichment Endpoint'),
+      ).not.toBeInTheDocument();
     });
 
     it('loads schedules on mount when modal is open', async () => {
@@ -132,7 +144,9 @@ describe('DataEnrichmentFormModal', () => {
     it('loads and displays available schedules', async () => {
       render(<DataEnrichmentFormModal {...defaultProps} />);
       await waitFor(() => {
-        expect(screen.getByText('Daily Schedule - 0 9 * * * (1 iterations)')).toBeInTheDocument();
+        expect(
+          screen.getByText('Daily Schedule - 0 9 * * * (1 iterations)'),
+        ).toBeInTheDocument();
       });
     });
 
@@ -146,9 +160,14 @@ describe('DataEnrichmentFormModal', () => {
 
     it('creates a new schedule successfully', async () => {
       mockDataEnrichmentApi.getAllSchedules.mockResolvedValue([]);
-      mockDataEnrichmentApi.createSchedule.mockResolvedValue({ id: 3, name: 'New Schedule', cron: '0 10 * * *', iterations: 1 });
+      mockDataEnrichmentApi.createSchedule.mockResolvedValue({
+        id: 3,
+        name: 'New Schedule',
+        cron: '0 10 * * *',
+        iterations: 1,
+      });
       mockDataEnrichmentApi.getAllSchedules.mockResolvedValue([
-        { id: 3, name: 'New Schedule', cron: '0 10 * * *', iterations: 1 }
+        { id: 3, name: 'New Schedule', cron: '0 10 * * *', iterations: 1 },
       ]);
 
       render(<DataEnrichmentFormModal {...defaultProps} />);
@@ -157,9 +176,15 @@ describe('DataEnrichmentFormModal', () => {
       });
 
       fireEvent.click(screen.getByText('Create a new schedule'));
-      fireEvent.change(screen.getByLabelText(/Schedule Name/), { target: { value: 'New Schedule' } });
-      fireEvent.change(screen.getByLabelText(/Cron Expression/), { target: { value: '0 10 * * *' } });
-      fireEvent.change(screen.getByLabelText(/Iterations/), { target: { value: '1' } });
+      fireEvent.change(screen.getByLabelText(/Schedule Name/), {
+        target: { value: 'New Schedule' },
+      });
+      fireEvent.change(screen.getByLabelText(/Cron Expression/), {
+        target: { value: '0 10 * * *' },
+      });
+      fireEvent.change(screen.getByLabelText(/Iterations/), {
+        target: { value: '1' },
+      });
 
       fireEvent.click(screen.getByText('Create Schedule'));
       await waitFor(() => {
@@ -181,14 +206,30 @@ describe('DataEnrichmentFormModal', () => {
 
     it('enables test run when required fields are filled for SFTP', () => {
       render(<DataEnrichmentFormModal {...defaultProps} />);
-      fireEvent.change(screen.getByLabelText(/Endpoint Name/), { target: { value: 'Test Endpoint' } });
-      fireEvent.change(screen.getByLabelText(/Description/), { target: { value: 'Test Description' } });
-      fireEvent.change(screen.getByDisplayValue('sftp'), { target: { value: 'sftp' } });
-      fireEvent.change(screen.getByLabelText(/Host/), { target: { value: 'localhost' } });
-      fireEvent.change(screen.getByLabelText(/Username/), { target: { value: 'user' } });
-      fireEvent.change(screen.getByLabelText(/Password/), { target: { value: 'password' } });
-      fireEvent.change(screen.getByLabelText(/Path\/Pattern/), { target: { value: '/data/*.csv' } });
-      fireEvent.change(screen.getByLabelText(/Table/), { target: { value: 'test_table' } });
+      fireEvent.change(screen.getByLabelText(/Endpoint Name/), {
+        target: { value: 'Test Endpoint' },
+      });
+      fireEvent.change(screen.getByLabelText(/Description/), {
+        target: { value: 'Test Description' },
+      });
+      fireEvent.change(screen.getByDisplayValue('sftp'), {
+        target: { value: 'sftp' },
+      });
+      fireEvent.change(screen.getByLabelText(/Host/), {
+        target: { value: 'localhost' },
+      });
+      fireEvent.change(screen.getByLabelText(/Username/), {
+        target: { value: 'user' },
+      });
+      fireEvent.change(screen.getByLabelText(/Password/), {
+        target: { value: 'password' },
+      });
+      fireEvent.change(screen.getByLabelText(/Path\/Pattern/), {
+        target: { value: '/data/*.csv' },
+      });
+      fireEvent.change(screen.getByLabelText(/Table/), {
+        target: { value: 'test_table' },
+      });
 
       const scheduleSelect = screen.getByDisplayValue('');
       fireEvent.change(scheduleSelect, { target: { value: '1' } });
@@ -199,9 +240,15 @@ describe('DataEnrichmentFormModal', () => {
 
     it('validates file format matches file extension', () => {
       render(<DataEnrichmentFormModal {...defaultProps} />);
-      fireEvent.change(screen.getByDisplayValue('sftp'), { target: { value: 'sftp' } });
-      fireEvent.change(screen.getByLabelText(/Path\/Pattern/), { target: { value: '/data/test.json' } });
-      fireEvent.change(screen.getByDisplayValue('csv'), { target: { value: 'csv' } });
+      fireEvent.change(screen.getByDisplayValue('sftp'), {
+        target: { value: 'sftp' },
+      });
+      fireEvent.change(screen.getByLabelText(/Path\/Pattern/), {
+        target: { value: '/data/test.json' },
+      });
+      fireEvent.change(screen.getByDisplayValue('csv'), {
+        target: { value: 'csv' },
+      });
 
       expect(screen.getByText(/File format mismatch/)).toBeInTheDocument();
     });
@@ -223,14 +270,30 @@ describe('DataEnrichmentFormModal', () => {
       render(<DataEnrichmentFormModal {...defaultProps} />);
 
       // Fill required fields
-      fireEvent.change(screen.getByLabelText(/Endpoint Name/), { target: { value: 'Test Endpoint' } });
-      fireEvent.change(screen.getByLabelText(/Description/), { target: { value: 'Test Description' } });
-      fireEvent.change(screen.getByDisplayValue('sftp'), { target: { value: 'sftp' } });
-      fireEvent.change(screen.getByLabelText(/Host/), { target: { value: 'localhost' } });
-      fireEvent.change(screen.getByLabelText(/Username/), { target: { value: 'user' } });
-      fireEvent.change(screen.getByLabelText(/Password/), { target: { value: 'password' } });
-      fireEvent.change(screen.getByLabelText(/Path\/Pattern/), { target: { value: '/data/*.csv' } });
-      fireEvent.change(screen.getByLabelText(/Table/), { target: { value: 'test_table' } });
+      fireEvent.change(screen.getByLabelText(/Endpoint Name/), {
+        target: { value: 'Test Endpoint' },
+      });
+      fireEvent.change(screen.getByLabelText(/Description/), {
+        target: { value: 'Test Description' },
+      });
+      fireEvent.change(screen.getByDisplayValue('sftp'), {
+        target: { value: 'sftp' },
+      });
+      fireEvent.change(screen.getByLabelText(/Host/), {
+        target: { value: 'localhost' },
+      });
+      fireEvent.change(screen.getByLabelText(/Username/), {
+        target: { value: 'user' },
+      });
+      fireEvent.change(screen.getByLabelText(/Password/), {
+        target: { value: 'password' },
+      });
+      fireEvent.change(screen.getByLabelText(/Path\/Pattern/), {
+        target: { value: '/data/*.csv' },
+      });
+      fireEvent.change(screen.getByLabelText(/Table/), {
+        target: { value: 'test_table' },
+      });
 
       const scheduleSelect = screen.getByDisplayValue('');
       fireEvent.change(scheduleSelect, { target: { value: '1' } });
@@ -245,21 +308,39 @@ describe('DataEnrichmentFormModal', () => {
       render(<DataEnrichmentFormModal {...defaultProps} />);
 
       // Fill required fields
-      fireEvent.change(screen.getByLabelText(/Endpoint Name/), { target: { value: 'Test Endpoint' } });
-      fireEvent.change(screen.getByLabelText(/Description/), { target: { value: 'Test Description' } });
-      fireEvent.change(screen.getByDisplayValue('sftp'), { target: { value: 'sftp' } });
-      fireEvent.change(screen.getByLabelText(/Host/), { target: { value: 'localhost' } });
-      fireEvent.change(screen.getByLabelText(/Username/), { target: { value: 'user' } });
-      fireEvent.change(screen.getByLabelText(/Password/), { target: { value: 'password' } });
-      fireEvent.change(screen.getByLabelText(/Path\/Pattern/), { target: { value: '/data/*.csv' } });
-      fireEvent.change(screen.getByLabelText(/Table/), { target: { value: 'test_table' } });
+      fireEvent.change(screen.getByLabelText(/Endpoint Name/), {
+        target: { value: 'Test Endpoint' },
+      });
+      fireEvent.change(screen.getByLabelText(/Description/), {
+        target: { value: 'Test Description' },
+      });
+      fireEvent.change(screen.getByDisplayValue('sftp'), {
+        target: { value: 'sftp' },
+      });
+      fireEvent.change(screen.getByLabelText(/Host/), {
+        target: { value: 'localhost' },
+      });
+      fireEvent.change(screen.getByLabelText(/Username/), {
+        target: { value: 'user' },
+      });
+      fireEvent.change(screen.getByLabelText(/Password/), {
+        target: { value: 'password' },
+      });
+      fireEvent.change(screen.getByLabelText(/Path\/Pattern/), {
+        target: { value: '/data/*.csv' },
+      });
+      fireEvent.change(screen.getByLabelText(/Table/), {
+        target: { value: 'test_table' },
+      });
 
       const scheduleSelect = screen.getByDisplayValue('');
       fireEvent.change(scheduleSelect, { target: { value: '1' } });
 
       fireEvent.click(screen.getByText('Test Run'));
       await waitFor(() => {
-        expect(screen.getByText('Ready to Create Endpoint')).toBeInTheDocument();
+        expect(
+          screen.getByText('Ready to Create Endpoint'),
+        ).toBeInTheDocument();
       });
     });
   });
@@ -277,14 +358,30 @@ describe('DataEnrichmentFormModal', () => {
       render(<DataEnrichmentFormModal {...defaultProps} />);
 
       // Fill required fields and move to summary
-      fireEvent.change(screen.getByLabelText(/Endpoint Name/), { target: { value: 'Test Endpoint' } });
-      fireEvent.change(screen.getByLabelText(/Description/), { target: { value: 'Test Description' } });
-      fireEvent.change(screen.getByDisplayValue('sftp'), { target: { value: 'sftp' } });
-      fireEvent.change(screen.getByLabelText(/Host/), { target: { value: 'localhost' } });
-      fireEvent.change(screen.getByLabelText(/Username/), { target: { value: 'user' } });
-      fireEvent.change(screen.getByLabelText(/Password/), { target: { value: 'password' } });
-      fireEvent.change(screen.getByLabelText(/Path\/Pattern/), { target: { value: '/data/*.csv' } });
-      fireEvent.change(screen.getByLabelText(/Table/), { target: { value: 'test_table' } });
+      fireEvent.change(screen.getByLabelText(/Endpoint Name/), {
+        target: { value: 'Test Endpoint' },
+      });
+      fireEvent.change(screen.getByLabelText(/Description/), {
+        target: { value: 'Test Description' },
+      });
+      fireEvent.change(screen.getByDisplayValue('sftp'), {
+        target: { value: 'sftp' },
+      });
+      fireEvent.change(screen.getByLabelText(/Host/), {
+        target: { value: 'localhost' },
+      });
+      fireEvent.change(screen.getByLabelText(/Username/), {
+        target: { value: 'user' },
+      });
+      fireEvent.change(screen.getByLabelText(/Password/), {
+        target: { value: 'password' },
+      });
+      fireEvent.change(screen.getByLabelText(/Path\/Pattern/), {
+        target: { value: '/data/*.csv' },
+      });
+      fireEvent.change(screen.getByLabelText(/Table/), {
+        target: { value: 'test_table' },
+      });
 
       const scheduleSelect = screen.getByDisplayValue('');
       fireEvent.change(scheduleSelect, { target: { value: '1' } });
@@ -301,7 +398,9 @@ describe('DataEnrichmentFormModal', () => {
 
       fireEvent.click(screen.getByText('Test Run'));
       await waitFor(() => {
-        expect(screen.getByText('Ready to Create Endpoint')).toBeInTheDocument();
+        expect(
+          screen.getByText('Ready to Create Endpoint'),
+        ).toBeInTheDocument();
       });
 
       fireEvent.click(screen.getByText('Create Endpoint'));
@@ -325,10 +424,18 @@ describe('DataEnrichmentFormModal', () => {
       fireEvent.click(pushRadio);
 
       // Fill push configuration fields
-      fireEvent.change(screen.getByLabelText(/Endpoint Name/), { target: { value: 'Push Endpoint' } });
-      fireEvent.change(screen.getByLabelText(/Description/), { target: { value: 'Push Description' } });
-      fireEvent.change(screen.getByLabelText(/API Path Pattern/), { target: { value: 'customers/data' } });
-      fireEvent.change(screen.getByLabelText(/Target Collection/), { target: { value: 'customers' } });
+      fireEvent.change(screen.getByLabelText(/Endpoint Name/), {
+        target: { value: 'Push Endpoint' },
+      });
+      fireEvent.change(screen.getByLabelText(/Description/), {
+        target: { value: 'Push Description' },
+      });
+      fireEvent.change(screen.getByLabelText(/API Path Pattern/), {
+        target: { value: 'customers/data' },
+      });
+      fireEvent.change(screen.getByLabelText(/Target Collection/), {
+        target: { value: 'customers' },
+      });
 
       // Mock successful test
       mockDataEnrichmentApi.testConnection.mockResolvedValue({});
@@ -343,7 +450,9 @@ describe('DataEnrichmentFormModal', () => {
 
       fireEvent.click(screen.getByText('Test Run'));
       await waitFor(() => {
-        expect(screen.getByText('Ready to Create Endpoint')).toBeInTheDocument();
+        expect(
+          screen.getByText('Ready to Create Endpoint'),
+        ).toBeInTheDocument();
       });
 
       fireEvent.click(screen.getByText('Create Endpoint'));
@@ -354,19 +463,37 @@ describe('DataEnrichmentFormModal', () => {
     });
 
     it('handles creation errors', async () => {
-      mockDataEnrichmentApi.createPullJob.mockRejectedValue(new Error('Creation failed'));
+      mockDataEnrichmentApi.createPullJob.mockRejectedValue(
+        new Error('Creation failed'),
+      );
 
       render(<DataEnrichmentFormModal {...defaultProps} />);
 
       // Fill required fields and move to summary
-      fireEvent.change(screen.getByLabelText(/Endpoint Name/), { target: { value: 'Test Endpoint' } });
-      fireEvent.change(screen.getByLabelText(/Description/), { target: { value: 'Test Description' } });
-      fireEvent.change(screen.getByDisplayValue('sftp'), { target: { value: 'sftp' } });
-      fireEvent.change(screen.getByLabelText(/Host/), { target: { value: 'localhost' } });
-      fireEvent.change(screen.getByLabelText(/Username/), { target: { value: 'user' } });
-      fireEvent.change(screen.getByLabelText(/Password/), { target: { value: 'password' } });
-      fireEvent.change(screen.getByLabelText(/Path\/Pattern/), { target: { value: '/data/*.csv' } });
-      fireEvent.change(screen.getByLabelText(/Table/), { target: { value: 'test_table' } });
+      fireEvent.change(screen.getByLabelText(/Endpoint Name/), {
+        target: { value: 'Test Endpoint' },
+      });
+      fireEvent.change(screen.getByLabelText(/Description/), {
+        target: { value: 'Test Description' },
+      });
+      fireEvent.change(screen.getByDisplayValue('sftp'), {
+        target: { value: 'sftp' },
+      });
+      fireEvent.change(screen.getByLabelText(/Host/), {
+        target: { value: 'localhost' },
+      });
+      fireEvent.change(screen.getByLabelText(/Username/), {
+        target: { value: 'user' },
+      });
+      fireEvent.change(screen.getByLabelText(/Password/), {
+        target: { value: 'password' },
+      });
+      fireEvent.change(screen.getByLabelText(/Path\/Pattern/), {
+        target: { value: '/data/*.csv' },
+      });
+      fireEvent.change(screen.getByLabelText(/Table/), {
+        target: { value: 'test_table' },
+      });
 
       const scheduleSelect = screen.getByDisplayValue('');
       fireEvent.change(scheduleSelect, { target: { value: '1' } });
@@ -383,12 +510,16 @@ describe('DataEnrichmentFormModal', () => {
 
       fireEvent.click(screen.getByText('Test Run'));
       await waitFor(() => {
-        expect(screen.getByText('Ready to Create Endpoint')).toBeInTheDocument();
+        expect(
+          screen.getByText('Ready to Create Endpoint'),
+        ).toBeInTheDocument();
       });
 
       fireEvent.click(screen.getByText('Create Endpoint'));
       await waitFor(() => {
-        expect(screen.getByText('Failed to create endpoint: Creation failed')).toBeInTheDocument();
+        expect(
+          screen.getByText('Failed to create endpoint: Creation failed'),
+        ).toBeInTheDocument();
       });
     });
   });
@@ -420,13 +551,23 @@ describe('DataEnrichmentFormModal', () => {
       render(<DataEnrichmentFormModal {...defaultProps} />);
 
       // Fill SFTP fields
-      fireEvent.change(screen.getByDisplayValue('sftp'), { target: { value: 'sftp' } });
-      fireEvent.change(screen.getByLabelText(/Username/), { target: { value: 'user' } });
-      fireEvent.change(screen.getByLabelText(/Password/), { target: { value: 'password' } });
-      fireEvent.change(screen.getByLabelText(/Path\/Pattern/), { target: { value: '/data/*.csv' } });
+      fireEvent.change(screen.getByDisplayValue('sftp'), {
+        target: { value: 'sftp' },
+      });
+      fireEvent.change(screen.getByLabelText(/Username/), {
+        target: { value: 'user' },
+      });
+      fireEvent.change(screen.getByLabelText(/Password/), {
+        target: { value: 'password' },
+      });
+      fireEvent.change(screen.getByLabelText(/Path\/Pattern/), {
+        target: { value: '/data/*.csv' },
+      });
 
       // Switch to http
-      fireEvent.change(screen.getByDisplayValue('sftp'), { target: { value: 'http' } });
+      fireEvent.change(screen.getByDisplayValue('sftp'), {
+        target: { value: 'http' },
+      });
 
       // Check that SFTP fields are cleared
       expect(screen.getByLabelText(/Username/)).toHaveValue('');
@@ -436,7 +577,9 @@ describe('DataEnrichmentFormModal', () => {
 
     it('shows password field for password auth type', () => {
       render(<DataEnrichmentFormModal {...defaultProps} />);
-      fireEvent.change(screen.getByDisplayValue('sftp'), { target: { value: 'sftp' } });
+      fireEvent.change(screen.getByDisplayValue('sftp'), {
+        target: { value: 'sftp' },
+      });
 
       const authTypeSelect = screen.getByLabelText(/Authentication Type/);
       fireEvent.change(authTypeSelect, { target: { value: 'password' } });
@@ -446,17 +589,23 @@ describe('DataEnrichmentFormModal', () => {
 
     it('shows private key field for key auth type', () => {
       render(<DataEnrichmentFormModal {...defaultProps} />);
-      fireEvent.change(screen.getByDisplayValue('sftp'), { target: { value: 'sftp' } });
+      fireEvent.change(screen.getByDisplayValue('sftp'), {
+        target: { value: 'sftp' },
+      });
 
       const authTypeSelect = screen.getByLabelText(/Authentication Type/);
       fireEvent.change(authTypeSelect, { target: { value: 'key' } });
 
-      expect(screen.getByPlaceholderText(/Enter private key/)).toBeInTheDocument();
+      expect(
+        screen.getByPlaceholderText(/Enter private key/),
+      ).toBeInTheDocument();
     });
 
     it('shows delimiter field for CSV format', () => {
       render(<DataEnrichmentFormModal {...defaultProps} />);
-      fireEvent.change(screen.getByDisplayValue('sftp'), { target: { value: 'sftp' } });
+      fireEvent.change(screen.getByDisplayValue('sftp'), {
+        target: { value: 'sftp' },
+      });
 
       const fileFormatSelect = screen.getByLabelText(/File Format/);
       fireEvent.change(fileFormatSelect, { target: { value: 'csv' } });
@@ -467,7 +616,9 @@ describe('DataEnrichmentFormModal', () => {
 
   describe('Error Handling', () => {
     it('handles schedule loading errors gracefully', async () => {
-      mockDataEnrichmentApi.getAllSchedules.mockRejectedValue(new Error('Failed to load schedules'));
+      mockDataEnrichmentApi.getAllSchedules.mockRejectedValue(
+        new Error('Failed to load schedules'),
+      );
 
       render(<DataEnrichmentFormModal {...defaultProps} />);
 
@@ -480,26 +631,48 @@ describe('DataEnrichmentFormModal', () => {
     });
 
     it('shows connection test errors', async () => {
-      mockDataEnrichmentApi.testConnection.mockRejectedValue(new Error('Connection failed'));
+      mockDataEnrichmentApi.testConnection.mockRejectedValue(
+        new Error('Connection failed'),
+      );
 
       render(<DataEnrichmentFormModal {...defaultProps} />);
 
       // Fill required fields
-      fireEvent.change(screen.getByLabelText(/Endpoint Name/), { target: { value: 'Test Endpoint' } });
-      fireEvent.change(screen.getByLabelText(/Description/), { target: { value: 'Test Description' } });
-      fireEvent.change(screen.getByDisplayValue('sftp'), { target: { value: 'sftp' } });
-      fireEvent.change(screen.getByLabelText(/Host/), { target: { value: 'invalid-host' } });
-      fireEvent.change(screen.getByLabelText(/Username/), { target: { value: 'user' } });
-      fireEvent.change(screen.getByLabelText(/Password/), { target: { value: 'password' } });
-      fireEvent.change(screen.getByLabelText(/Path\/Pattern/), { target: { value: '/data/*.csv' } });
-      fireEvent.change(screen.getByLabelText(/Table/), { target: { value: 'test_table' } });
+      fireEvent.change(screen.getByLabelText(/Endpoint Name/), {
+        target: { value: 'Test Endpoint' },
+      });
+      fireEvent.change(screen.getByLabelText(/Description/), {
+        target: { value: 'Test Description' },
+      });
+      fireEvent.change(screen.getByDisplayValue('sftp'), {
+        target: { value: 'sftp' },
+      });
+      fireEvent.change(screen.getByLabelText(/Host/), {
+        target: { value: 'invalid-host' },
+      });
+      fireEvent.change(screen.getByLabelText(/Username/), {
+        target: { value: 'user' },
+      });
+      fireEvent.change(screen.getByLabelText(/Password/), {
+        target: { value: 'password' },
+      });
+      fireEvent.change(screen.getByLabelText(/Path\/Pattern/), {
+        target: { value: '/data/*.csv' },
+      });
+      fireEvent.change(screen.getByLabelText(/Table/), {
+        target: { value: 'test_table' },
+      });
 
       const scheduleSelect = screen.getByDisplayValue('');
       fireEvent.change(scheduleSelect, { target: { value: '1' } });
 
       fireEvent.click(screen.getByText('Test Run'));
       await waitFor(() => {
-        expect(screen.getByText('Connection test failed. Please check your configuration.')).toBeInTheDocument();
+        expect(
+          screen.getByText(
+            'Connection test failed. Please check your configuration.',
+          ),
+        ).toBeInTheDocument();
       });
     });
   });

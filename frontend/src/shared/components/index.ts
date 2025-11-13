@@ -9,7 +9,7 @@ export { PayloadEditor } from './PayloadEditor';
 export { MappingUtility } from './MappingUtility';
 export { SimulationPanel } from './SimulationPanel';
 export { DeploymentConfirmation } from './DeploymentConfirmation';
-export { DataEnrichmentFormModal } from './DataEnrichmentFormModal';
+export { DataEnrichmentFormModal } from '../../features/data-enrichment/components/DataEnrichmentFormModal';
 export { JsonDataModal } from './JsonDataModal';
 export { EndpointHistoryModal } from './EndpointHistoryModal';
 
