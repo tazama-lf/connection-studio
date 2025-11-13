@@ -100,7 +100,12 @@ export class NotifyService implements OnModuleInit {
 
   async notifyEnrichment(id: string, type: ConfigType): Promise<void> {
     try {
-      await this.natsService.handleResponse({ TxTp: id, TenantId: type });
+
+      const payload = {
+        dataPayload: JSON.stringify({ endpoint_id: id, config_type: type }),
+      };
+
+      await this.natsService.handleResponse(payload);
 
       this.logger.log(`Configuration (ID: ${id}) sent to DATA-ENRICHMENT`);
     } catch (error) {
