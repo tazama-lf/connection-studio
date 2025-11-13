@@ -5,9 +5,9 @@ import {
 } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { ISuccess, JobStatus, Schedule } from '@tazama-lf/tcs-lib';
-import { AdminServiceClient } from '../services/admin-service-client.service';
+import { AuthenticatedUser } from 'src/auth/auth.types';
 import { v4 } from 'uuid';
-import { DatabaseService } from '../database/database.service';
+import { AdminServiceClient } from '../services/admin-service-client.service';
 import { SftpService } from '../sftp/sftp.service';
 import { validateCronExpression } from '../utils/helpers';
 import { CreateScheduleJobDto } from './dto/create-schedule.dto';
@@ -52,22 +52,12 @@ export class SchedulerService {
   }
 
   async findAll(
-    page: number,
-    limit: number,
-    tenantId: string,
-    token: string,
-  ): Promise<Schedule[]> {
-    if (
-      !Number.isInteger(page) ||
-      !Number.isInteger(limit) ||
-      page < 1 ||
-      limit < 1
-    ) {
-      throw new BadRequestException(
-        'Page and limit must be positive integers.',
-      );
-    }
-    return await this.adminServiceClient.getAllSchedule(page, limit, tenantId, token)
+    offset: string,
+    limit: string,
+    user: AuthenticatedUser,
+    filters?: Record<string, unknown>,
+  ): Promise<{}> {
+    return await this.adminServiceClient.getAllSchedule(offset, limit, user, filters)
   }
 
   async update(

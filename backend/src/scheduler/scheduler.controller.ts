@@ -36,7 +36,7 @@ export class SchedulerController {
     return this.schedulerService.create(schedule, user.tenantId, user.token.tokenString);
   }
 
-  @Get('/all')
+  @Post('/all')
   @RequireAnyClaims(
     TazamaClaims.EDITOR,
     TazamaClaims.APPROVER,
@@ -44,11 +44,12 @@ export class SchedulerController {
     TazamaClaims.PUBLISHER,
   )
   async getAll(
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+    @Param('offset') offset: string,
+    @Param('limit') limit: string,
     @User() user: AuthenticatedUser,
+    @Body() filters?: Record<string, unknown>,
   ) {
-    return this.schedulerService.findAll(page, limit, user.tenantId, user.token.tokenString);
+    return this.schedulerService.findAll(offset, limit, user, filters);
   }
 
   @Patch('/update/:id')

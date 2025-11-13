@@ -15,11 +15,12 @@ import {
   SFTPConnection,
   SourceType
 } from '@tazama-lf/tcs-lib';
-import { AdminServiceClient } from '../services/admin-service-client.service';
+import { AuthenticatedUser } from 'src/auth/auth.types';
 import { v4 } from 'uuid';
 import { DatabaseService } from '../database/database.service';
 import { DryRunService } from '../dry-run/dry-run.service';
 import { NotifyService } from '../notify/notify.service';
+import { AdminServiceClient } from '../services/admin-service-client.service';
 import { SftpService } from '../sftp/sftp.service';
 import {
   decrypt,
@@ -30,7 +31,6 @@ import { CreatePullJobDto, SFTPConnectionDto } from './dto/create-pull-job.dto';
 import { CreatePushJobDto } from './dto/create-push-job.dto';
 import { UpdatePullJobDto } from './dto/update-pull-job.dto';
 import { UpdatePushJobDto } from './dto/update-push-job.dto';
-import { type EndpointJobRecord } from './types/job.interface';
 
 @Injectable()
 export class JobService {
@@ -181,31 +181,18 @@ export class JobService {
   }
 
   async findAll(
-    page: number,
-    limit: number,
-    tenantId: string,
-    token: string
-  ): Promise<EndpointJobRecord[]> {
+    offset: string,
+    limit: string,
+    user: AuthenticatedUser,
+    filters?: Record<string, unknown>,
+  ): Promise<{}> {
     try {
-      if (
-        !Number.isInteger(page) ||
-        !Number.isInteger(limit) ||
-        page < 1 ||
-        limit < 1
-      ) {
-        throw new BadRequestException(
-          'Page and limit must be positive integers.',
-        );
-      }
-
-      return (await this.adminServiceClient.getAllJobs(page, limit, tenantId, token) as EndpointJobRecord[])
+      return await this.adminServiceClient.getAllJobs(offset, limit, user, filters)
     } catch (error) {
       this.loggerService.error(`Error fetching records: ${error.message}`);
       throw error;
     }
   }
-
-
 
   async findOne(id: string, type: ConfigType, token: string): Promise<Job> {
     try {

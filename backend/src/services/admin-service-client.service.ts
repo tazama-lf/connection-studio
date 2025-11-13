@@ -3,6 +3,7 @@ import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ConfigType, ISuccess, Job, JobStatus, JobSummary, Schedule, ScheduleStatus } from '@tazama-lf/tcs-lib';
 import { firstValueFrom } from 'rxjs';
+import { AuthenticatedUser } from 'src/auth/auth.types';
 import { UpdatePullJobDto } from 'src/job/dto/update-pull-job.dto';
 import { UpdatePushJobDto } from 'src/job/dto/update-push-job.dto';
 import { EndpointJobRecord } from 'src/job/types/job.interface';
@@ -183,20 +184,24 @@ export class AdminServiceClient {
     }
   }
 
-  async getAllJobs(page: number, limit: number, tenant_id: string, token: string): Promise<EndpointJobRecord[]> {
-    this.logger.log(`Getting all jobs`);
-
+  async getAllJobs(offset: string,
+    limit: string,
+    user: AuthenticatedUser,
+    filters?: Record<string, unknown>,
+  ): Promise<{}> {
     try {
       const response = await firstValueFrom(
-        this.httpService.get(
+        this.httpService.post(
           `${this.adminServiceUrl}/v1/admin/tcs/job/get/all`,
           {
+            ...filters
+          },
+          {
             headers: {
-              Authorization: `Bearer ${token}`,
+              Authorization: `Bearer ${user.token.tokenString}`,
             },
             params: {
-              tenantId: tenant_id,
-              page,
+              offset,
               limit
             }
           },
@@ -447,20 +452,25 @@ export class AdminServiceClient {
     }
   }
 
-  async getAllSchedule(page: number, limit: number, tenant_id: string, token: string): Promise<Schedule[]> {
+  async getAllSchedule(offset: string,
+    limit: string,
+    user: AuthenticatedUser,
+    filters?: Record<string, unknown>): Promise<{}> {
     this.logger.log(`Getting all schedules`);
 
     try {
       const response = await firstValueFrom(
-        this.httpService.get(
+        this.httpService.post(
           `${this.adminServiceUrl}/v1/admin/tcs/schedule/get/all`,
           {
+            ...filters
+          },
+          {
             headers: {
-              Authorization: `Bearer ${token}`,
+              Authorization: `Bearer ${user.token.tokenString}`,
             },
             params: {
-              tenantId: tenant_id,
-              page,
+              offset,
               limit
             }
           },

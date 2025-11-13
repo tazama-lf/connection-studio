@@ -24,9 +24,9 @@ import { CreatePullJobDto } from './dto/create-pull-job.dto';
 import { CreatePushJobDto } from './dto/create-push-job.dto';
 import { PullJobResponseDto } from './dto/fetch-pull-job.dto';
 import { PushJob } from './dto/push-job.dto';
-import { JobService } from './job.service';
-import { UpdatePushJobDto } from './dto/update-push-job.dto';
 import { UpdatePullJobDto } from './dto/update-pull-job.dto';
+import { UpdatePushJobDto } from './dto/update-push-job.dto';
+import { JobService } from './job.service';
 
 @Controller('job')
 @UseGuards(TazamaAuthGuard)
@@ -62,7 +62,7 @@ export class JobController {
     return await this.jobService.updateJob(id, job, type, user.token.tokenString);
   }
 
-  @Get('/all')
+  @Post('/all')
   @RequireAnyClaims(
     TazamaClaims.EDITOR,
     TazamaClaims.APPROVER,
@@ -70,11 +70,12 @@ export class JobController {
     TazamaClaims.PUBLISHER,
   )
   async getAll(
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+    @Param('offset') offset: string,
+    @Param('limit') limit: string,
     @User() user: AuthenticatedUser,
+    @Body() filters?: Record<string, unknown>,
   ) {
-    return this.jobService.findAll(page, limit, user.tenantId, user.token.tokenString);
+    return this.jobService.findAll(offset, limit, user, filters);
   }
 
   @Get('/:id')
