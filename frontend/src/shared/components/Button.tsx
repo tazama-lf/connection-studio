@@ -19,7 +19,7 @@ interface ButtonProps {
   type = 'button',
   disabled = false
 }) => {
-  const baseStyles = 'inline-flex items-center justify-center font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2';
+  const baseStyles = 'cursor-pointer inline-flex items-center justify-center font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2';
   const variantStyles = {
     primary: disabled 
       ? 'text-gray-400 bg-gray-100 cursor-not-allowed border border-gray-300'

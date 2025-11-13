@@ -1,12 +1,31 @@
 import React, { useState, useEffect } from 'react';
-import { EyeIcon, MoreVerticalIcon, EditIcon, CopyIcon, HistoryIcon, ChevronUpIcon, ChevronDownIcon, FilterIcon, Upload, Rocket } from 'lucide-react';
+import {
+  EyeIcon,
+  MoreVerticalIcon,
+  EditIcon,
+  CopyIcon,
+  HistoryIcon,
+  ChevronUpIcon,
+  ChevronDownIcon,
+  FilterIcon,
+  Upload,
+  Rocket,
+} from 'lucide-react';
 import { configApi } from '../services/configApi';
 import { sftpApi } from '../../../features/exporter/services/sftpApi';
 import { UI_CONFIG } from '../../../shared/config/app.config';
 import { DropdownMenuWithAutoDirection } from '../../../shared/components/DropdownMenuWithAutoDirection';
 import { useAuth } from '../../../features/auth/contexts/AuthContext';
-import { isExporter, isPublisher } from '../../../utils/roleUtils';
+import {
+  getPrimaryRole,
+  isExporter,
+  isPublisher,
+} from '../../../utils/roleUtils';
 import { useToast } from '../../../shared/providers/ToastProvider';
+import CustomTable from '@common/Tables/CustomTable';
+import { Box, Pagination } from '@mui/material';
+import { handleInputFilter, handleSelectFilter } from '@shared/helpers';
+import { getDemsStatusLov } from '@shared/lovs';
 
 interface Config {
   id: number;
@@ -39,6 +58,20 @@ interface ConfigListProps {
   onSendForDeployment?: (configId: number) => void;
 }
 
+interface PaginatedConfigResponse {
+  success: boolean;
+  configs: Config[];
+  total: number;
+  limit: number;
+  offset: number;
+  pages: number;
+}
+
+interface PaginationParams {
+  limit: number;
+  offset: number;
+}
+
 export const ConfigList: React.FC<ConfigListProps> = ({
   onConfigSelect,
   onConfigEdit,
@@ -51,18 +84,13 @@ export const ConfigList: React.FC<ConfigListProps> = ({
   showApprovedConfigs = false,
   onApprove,
   onReject,
-  onSendForDeployment
+  onSendForDeployment,
 }) => {
   const [configs, setConfigs] = useState<Config[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(UI_CONFIG.pagination.defaultPageSize);
   const [openDropdown, setOpenDropdown] = useState<number | null>(null);
-
-  // Sorting state
-  const [sortField, setSortField] = useState<string>('createdAt');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   // Status filtering state
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -76,65 +104,61 @@ export const ConfigList: React.FC<ConfigListProps> = ({
   const userIsExporter = user?.claims ? isExporter(user.claims) : false;
   const userIsPublisher = user?.claims ? isPublisher(user.claims) : false;
   const { showSuccess, showError } = useToast();
+  console.log('user', user);
+
+  const userRole = user?.claims ? getPrimaryRole(user?.claims) : false;
 
   // Fetch configs based on flags
   const fetchConfigs = async () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       let response;
       if (showPendingApprovals) {
-        console.log('🔍 ConfigList - Fetching pending approvals...');
         response = await configApi.getPendingApprovals();
-        console.log('🔍 ConfigList - Pending approvals response:', response);
-        console.log('🔍 ConfigList - Pending approvals configs array:', response.configs);
-        console.log('🔍 ConfigList - Pending approvals count:', response.configs?.length || 0);
-        
+
         // Debug: Log each config's status
         if (response.configs && Array.isArray(response.configs)) {
-          response.configs.forEach((config: any, index: number) => {
-            console.log(`🔍 ConfigList - Config ${index + 1} status:`, config.status, 'ID:', config.id);
-          });
+          response.configs.forEach((config: any, index: number) => {});
         }
       } else if (showApprovedConfigs) {
-        console.log('🔍 ConfigList - Fetching approved and exported configurations...');
         // Fetch both approved and exported configs
         const [approvedResponse, exportedResponse] = await Promise.all([
           configApi.getConfigsByStatus('approved'),
-          configApi.getConfigsByStatus('exported')
+          configApi.getConfigsByStatus('exported'),
         ]);
-        console.log('🔍 ConfigList - Approved configs response:', approvedResponse);
-        console.log('🔍 ConfigList - Exported configs response:', exportedResponse);
-        
+
         // Combine both arrays
         const combinedConfigs = [
-          ...(Array.isArray(approvedResponse.configs) ? approvedResponse.configs : []),
-          ...(Array.isArray(exportedResponse.configs) ? exportedResponse.configs : [])
+          ...(Array.isArray(approvedResponse.configs)
+            ? approvedResponse.configs
+            : []),
+          ...(Array.isArray(exportedResponse.configs)
+            ? exportedResponse.configs
+            : []),
         ];
-        
+
         response = { configs: combinedConfigs };
-        console.log('🔍 ConfigList - Combined configs count:', combinedConfigs.length);
       } else {
-        console.log('🔍 ConfigList - Fetching all configurations...');
         response = await configApi.getAllConfigs();
       }
-      
-      const configsArray = Array.isArray(response.configs) ? response.configs : [];
+
+      const configsArray = Array.isArray(response.configs)
+        ? response.configs
+        : [];
       setConfigs(configsArray);
-      console.log('✅ ConfigList - Final configs set to state:', configsArray);
-      console.log('✅ ConfigList - Final configs count:', configsArray.length);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch configurations';
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to fetch configurations';
       setError(errorMessage);
-      console.error('❌ ConfigList - Error fetching configs:', err);
     } finally {
       setLoading(false);
     }
   };
-const getStatusText = (status: string) => {
+  const getStatusText = (status: string) => {
     const normalizedStatus = status.toLowerCase();
-    
+
     // Handle STATUS_XX_NAME format from database
     if (normalizedStatus.startsWith('status_')) {
       // Extract the name part after the number (e.g., STATUS_03_UNDER_REVIEW -> UNDER_REVIEW)
@@ -165,7 +189,7 @@ const getStatusText = (status: string) => {
         }
       }
     }
-    
+
     // Handle legacy status formats
     switch (normalizedStatus) {
       case 'active':
@@ -208,13 +232,13 @@ const getStatusText = (status: string) => {
       year: 'numeric',
       hour: 'numeric',
       minute: '2-digit',
-      hour12: true
+      hour12: true,
     });
   };
 
   const getStatusBadge = (status: string) => {
     const normalizedStatus = status.toLowerCase();
-    
+
     // Handle STATUS_XX_NAME format from database
     if (normalizedStatus.startsWith('status_')) {
       const parts = normalizedStatus.split('_');
@@ -244,7 +268,7 @@ const getStatusText = (status: string) => {
         }
       }
     }
-    
+
     // Handle legacy status formats
     switch (normalizedStatus) {
       case 'active':
@@ -282,7 +306,7 @@ const getStatusText = (status: string) => {
   // Helper function to normalize status for comparisons
   const normalizeStatus = (status: string): string => {
     const normalizedStatus = status.toLowerCase();
-    
+
     // Handle STATUS_XX_NAME format from database
     if (normalizedStatus.startsWith('status_')) {
       const parts = normalizedStatus.split('_');
@@ -290,88 +314,49 @@ const getStatusText = (status: string) => {
         return parts.slice(2).join('_'); // Get everything after STATUS_XX_
       }
     }
-    
+
     return normalizedStatus;
   };
 
   // Filter configs by search term and status
-  const filteredConfigs = (Array.isArray(configs) ? configs : []).filter(config => {
-    const matchesSearch = searchTerm === '' || 
-      config.transactionType.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      config.endpointPath.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (config.msgFam && config.msgFam.toLowerCase().includes(searchTerm.toLowerCase()));
-    
-    const matchesStatus = statusFilter === 'all' || getStatusText(config.status) === statusFilter;
-    
-    // Role-based filtering: exporters can only see approved and deployed configs
-    let matchesRole = true;
-    if (userIsExporter) {
-      const allowedStatuses = ['approved', 'deployed'];
-      const normalizedConfigStatus = normalizeStatus(config.status);
-      matchesRole = allowedStatuses.includes(normalizedConfigStatus);
-    }
-      
-    return matchesSearch && matchesStatus && matchesRole;
-  });
+  const filteredConfigs = (Array.isArray(configs) ? configs : []).filter(
+    (config) => {
+      const matchesSearch =
+        searchTerm === '' ||
+        config.transactionType
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase()) ||
+        config.endpointPath.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (config.msgFam &&
+          config.msgFam.toLowerCase().includes(searchTerm.toLowerCase()));
 
-  // Sort filtered configs
-  const sortedConfigs = [...filteredConfigs].sort((a, b) => {
-    let aValue: any = a[sortField as keyof Config];
-    let bValue: any = b[sortField as keyof Config];
+      const matchesStatus =
+        statusFilter === 'all' || getStatusText(config.status) === statusFilter;
 
-    // Handle date sorting
-    if (sortField === 'createdAt' || sortField === 'updatedAt') {
-      aValue = new Date(aValue).getTime();
-      bValue = new Date(bValue).getTime();
-    } else {
-      // String sorting for other fields
-      aValue = String(aValue || '').toLowerCase();
-      bValue = String(bValue || '').toLowerCase();
-    }
+      // Role-based filtering: exporters can only see approved and deployed configs
+      let matchesRole = true;
+      if (userIsExporter) {
+        const allowedStatuses = ['approved', 'deployed'];
+        const normalizedConfigStatus = normalizeStatus(config.status);
+        matchesRole = allowedStatuses.includes(normalizedConfigStatus);
+      }
 
-    if (sortDirection === 'asc') {
-      return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
-    } else {
-      return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;
-    }
-  });
-
-  // Pagination logic
-  const totalPages = Math.ceil(sortedConfigs.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedConfigs = sortedConfigs.slice(startIndex, endIndex);
-
-  // Handle sorting
-  const handleSort = (field: string) => {
-    if (sortField === field) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortDirection('asc');
-    }
-    setCurrentPage(1); // Reset to first page when sorting
-  };
-
-  // Handle status filter (now works with display text)
-  const handleStatusFilter = (displayText: string) => {
-    setStatusFilter(displayText);
-    setShowStatusFilter(false);
-    setCurrentPage(1); // Reset to first page when filtering
-  };
-
-  // Get unique statuses for filter dropdown (normalized to avoid duplicates)
-  const uniqueStatuses = Array.from(new Set(configs.map(config => getStatusText(config.status)))).sort();
+      return matchesSearch && matchesStatus && matchesRole;
+    },
+  );
 
   // Load configs when component mounts
-  useEffect(() => {
-    fetchConfigs();
-  }, []);
+  // useEffect(() => {
+  // fetchConfigs();
+  // }, []);
 
   // Close status filter dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (showStatusFilter && !(event.target as Element).closest('.status-filter-container')) {
+      if (
+        showStatusFilter &&
+        !(event.target as Element).closest('.status-filter-container')
+      ) {
         setShowStatusFilter(false);
       }
     };
@@ -392,18 +377,21 @@ const getStatusText = (status: string) => {
   const handleExportConfig = async (config: Config) => {
     try {
       await configApi.exportConfig(config.id, 'Exported for deployment');
-      showSuccess("Success", `Config "${config.msgFam}" has been exported to SFTP and status updated to EXPORTED.`);
-      
+      showSuccess(
+        'Success',
+        `Config "${config.msgFam}" has been exported to SFTP and status updated to EXPORTED.`,
+      );
+
       // Refetch configs to update the UI
       await fetchConfigs();
-      
+
       // Trigger parent refresh if available
       if (onRefresh) {
         onRefresh();
       }
     } catch (error) {
       console.error('Error exporting config:', error);
-      showError("Error", "Failed to export config. Please try again.");
+      showError('Error', 'Failed to export config. Please try again.');
     }
   };
 
@@ -411,24 +399,284 @@ const getStatusText = (status: string) => {
     try {
       await sftpApi.publishItem(config.msgFam, 'dems');
       await configApi.updateConfigStatus(config.id, 'deployed');
-      showSuccess("Success", `Config "${config.msgFam}" has been published successfully.`);
+      showSuccess(
+        'Success',
+        `Config "${config.msgFam}" has been published successfully.`,
+      );
       // Trigger refresh if available
       if (onRefresh) {
         onRefresh();
       }
     } catch (error) {
       console.error('Error publishing config:', error);
-      showError("Error", "Failed to publish config. Please try again.");
+      showError('Error', 'Failed to publish config. Please try again.');
     }
   };
 
-  const handlePreviousPage = () => {
-    setCurrentPage(prev => Math.max(prev - 1, 1));
+  const [page, setPage] = useState<number>(1);
+  const [totalPages, setTotalPages] = useState<number>(0);
+  const [totalRecords, setTotalRecords] = useState<number>(0);
+  const [searchingFilters, setSearchingFilters] = useState({});
+
+  // CustomTable columns configuration
+  const columns = [
+    {
+      field: 'endpointPath',
+      headerName: 'Endpoint Path',
+      flex: 1,
+      minWidth: 400,
+      sortable: false,
+      disableColumnMenu: true,
+      renderHeader: () => (
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+            width: '100%',
+            py: '12px',
+          }}
+        >
+          <Box sx={{ fontSize: '14px', fontWeight: '600' }}>Endpoint Path</Box>
+          {handleInputFilter({
+            fieldName: 'endpointPath',
+            searchingFilters,
+            setSearchingFilters,
+          })}
+        </Box>
+      ),
+    },
+    {
+      field: 'status',
+      headerName: 'Status',
+      minWidth: 260,
+      flex: 1,
+      sortable: false,
+      disableColumnMenu: true,
+      renderHeader: () => (
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+            width: '100%',
+            py: '12px',
+          }}
+        >
+          <Box sx={{ fontSize: '14px', fontWeight: '600' }}>Status</Box>
+          {handleSelectFilter({
+            fieldName: 'status',
+            options:
+              getDemsStatusLov[userRole as keyof typeof getDemsStatusLov] || [],
+            searchingFilters,
+            setSearchingFilters,
+          })}
+        </Box>
+      ),
+      renderCell: (params: any) => (
+        <span
+          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${getStatusBadge(params.row.status)}`}
+        >
+          <span className="w-2 h-2 rounded-full bg-current mr-2"></span>
+          {getStatusText(params.row.status)}
+        </span>
+      ),
+    },
+    {
+      field: 'createdAt',
+      headerName: 'Created Time',
+      minWidth: 260,
+      flex: 1,
+      sortable: false,
+      disableColumnMenu: true,
+      renderHeader: () => (
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-start',
+            gap: '8px',
+            width: '100%',
+            height: '100%',
+            py: '12px',
+          }}
+        >
+          <Box sx={{ fontSize: '14px', fontWeight: '600' }}>Created At</Box>
+        </Box>
+      ),
+      renderCell: (params: any) => (
+        <div className="flex items-center">
+          <svg
+            className="w-4 h-4 mr-1 text-gray-400"
+            fill="currentColor"
+            viewBox="0 0 20 20"
+          >
+            <path
+              fillRule="evenodd"
+              d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z"
+              clipRule="evenodd"
+            />
+          </svg>
+          {formatDate(params.row.createdAt)}
+        </div>
+      ),
+    },
+    {
+      field: 'actions',
+      headerName: 'Actions',
+      minWidth: 280,
+      flex: 1,
+      sortable: false,
+      disableColumnMenu: true,
+      renderHeader: () => (
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-start',
+            gap: '8px',
+            width: '100%',
+            height: '100%',
+            py: '12px',
+          }}
+        >
+          <Box sx={{ fontSize: '14px', fontWeight: '600' }}>Actions</Box>
+        </Box>
+      ),
+      renderCell: (params: any) => {
+        const config = params.row;
+
+        return (
+          <div className=" flex items-center gap-2 h-full">
+            {/* <div className="relative dropdown-container"> */}
+            {/* <button
+                onClick={() =>
+                  setOpenDropdown(openDropdown === config.id ? null : config.id)
+                }
+                className="p-1 text-gray-400 hover:text-gray-600 rounded-md hover:bg-gray-100"
+              >
+                <MoreVerticalIcon className="w-4 h-4" />
+              </button> */}
+            {/* {openDropdown === config.id && (
+                <DropdownMenuWithAutoDirection
+                  onClose={() => setOpenDropdown(null)}
+                > */}
+            <button
+              onClick={() => {
+                handleViewConfig(config);
+                setOpenDropdown(null);
+              }}
+              // className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              className="inline-flex items-center rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none transition-colors cursor-pointer"
+            >
+              <EyeIcon className="w-4 h-4 mr-2" />
+              View
+            </button>
+            {onConfigEdit && (
+              <button
+                onClick={() => {
+                  onConfigEdit(config);
+                  setOpenDropdown(null);
+                }}
+                disabled={(() => {
+                  const normalizedStatus = normalizeStatus(config.status);
+                  return (
+                    normalizedStatus === 'under_review' ||
+                    normalizedStatus === 'approved'
+                  );
+                })()}
+                className={`inline-flex items-center rounded-md px-3 py-1.5 text-xs font-medium shadow-sm focus:outline-none transition-colors cursor-pointer ${
+                  (() => {
+                    const normalizedStatus = normalizeStatus(config.status);
+                    return (
+                      normalizedStatus === 'under_review' ||
+                      normalizedStatus === 'approved'
+                    );
+                  })()
+                    ? 'bg-yellow-50 text-yellow-700 cursor-not-allowed border border-yellow-300 hover:bg-yellow-50'
+                    : 'bg-yellow-500 text-white border border-yellow-500 hover:bg-yellow-600 focus:ring-yellow-500'
+                }`}
+              >
+                <EditIcon className="w-4 h-4 mr-2" />
+                Edit
+              </button>
+            )}
+            {onConfigClone && !showPendingApprovals && (
+              <button
+                onClick={() => {
+                  onConfigClone(config);
+                  setOpenDropdown(null);
+                }}
+                className="inline-flex items-center rounded-md bg-green-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none transition-colors cursor-pointer"
+              >
+                <CopyIcon className="w-4 h-4 mr-2" />
+                Clone
+              </button>
+            )}
+            {userIsExporter &&
+              normalizeStatus(config.status) === 'approved' && (
+                <button
+                  onClick={() => {
+                    handleExportConfig(config);
+                    setOpenDropdown(null);
+                  }}
+                  className="inline-flex items-center rounded-md bg-cyan-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-cyan-700 focus:outline-none transition-colors cursor-pointer"
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  Export
+                </button>
+              )}
+            {userIsPublisher &&
+              normalizeStatus(config.status) === 'exported' && (
+                <button
+                  onClick={() => {
+                    handlePublishConfig(config);
+                    setOpenDropdown(null);
+                  }}
+                  className="inline-flex items-center rounded-md bg-purple-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-purple-700 focus:outline-none transition-colors cursor-pointer"
+                >
+                  <Rocket className="w-4 h-4 mr-2" />
+                  Publish
+                </button>
+              )}
+
+            {/* </DropdownMenuWithAutoDirection> */}
+            {/* )}
+            </div> */}
+          </div>
+        );
+      },
+    },
+  ];
+
+  const fetchConfigsTemp = async (pageNumber: number = 1): Promise<void> => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const limit: number = itemsPerPage;
+      const offset: number = pageNumber - 1;
+
+      const params: PaginationParams = { limit, offset };
+
+      const response: PaginatedConfigResponse =
+        await configApi.getConfigsPaginated(params, searchingFilters);
+
+      setConfigs(response.configs);
+      setTotalPages(response.pages);
+      setTotalRecords(response.total);
+    } catch (err: unknown) {
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to fetch configurations';
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleNextPage = () => {
-    setCurrentPage(prev => Math.min(prev + 1, totalPages));
-  };
+  useEffect(() => {
+    fetchConfigsTemp(page);
+  }, [page, searchingFilters]);
 
   if (loading) {
     return (
@@ -440,245 +688,62 @@ const getStatusText = (status: string) => {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-      {/* Error Display */}
+    <>
       {error && (
         <div className="px-6 py-4 bg-red-50 border-l-4 border-red-400">
           <div className="text-red-800 text-sm">{error}</div>
         </div>
       )}
 
-      {/* Table */}
-      <div className="overflow-x-auto">
-        <table className="min-w-full relative w-full">
-          <thead className="bg-gray-50">
-            <tr>
-              <th 
-                className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
-                onClick={() => handleSort('endpointPath')}
-              >
-                <div className="flex items-center">
-                  ENDPOINT PATH
-                  {sortField === 'endpointPath' && (
-                    sortDirection === 'asc' ? 
-                      <ChevronUpIcon className="w-4 h-4 ml-1" /> : 
-                      <ChevronDownIcon className="w-4 h-4 ml-1" />
-                  )}
-                </div>
-              </th>
-              <th 
-                className="status-filter-container relative px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
-                onClick={() => setShowStatusFilter(!showStatusFilter)}
-              >
-                <div className="flex items-center">
-                  STATUS
-                  <FilterIcon className="w-4 h-4 ml-1" />
-                  {statusFilter !== 'all' && (
-                    <span className="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-blue-100 text-blue-800">
-                      {statusFilter}
-                    </span>
-                  )}
-                </div>
-                {showStatusFilter && (
-                  <div className="absolute top-full left-0 mt-1 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-[999]">
-                    <div className="py-1">
-                      <button
-                        onClick={() => handleStatusFilter('all')}
-                        className={`flex items-center w-full px-4 py-2 text-sm hover:bg-gray-100 ${
-                          statusFilter === 'all' ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
-                        }`}
-                      >
-                        All Statuses
-                      </button>
-                      {uniqueStatuses.map(status => (
-                        <button
-                          key={status}
-                          onClick={() => handleStatusFilter(status)}
-                          className={`flex items-center w-full px-4 py-2 text-sm hover:bg-gray-100 ${
-                            statusFilter === status ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
-                          }`}
-                        >
-                          {status}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </th>
-              <th 
-                className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
-                onClick={() => handleSort('createdAt')}
-              >
-                <div className="flex items-center">
-                  CREATED TIME
-                  {sortField === 'createdAt' && (
-                    sortDirection === 'asc' ? 
-                      <ChevronUpIcon className="w-4 h-4 ml-1" /> : 
-                      <ChevronDownIcon className="w-4 h-4 ml-1" />
-                  )}
-                </div>
-              </th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                ACTIONS
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white">
-            {paginatedConfigs.length === 0 ? (
-              <tr>
-                <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
-                  {showPendingApprovals 
-                    ? (configs.length === 0 ? 'No configurations found for review' : 'No configurations match your search criteria')
-                    : showApprovedConfigs
-                    ? (configs.length === 0 ? 'No approved configurations found' : 'No configurations match your search criteria')
-                    : (configs.length === 0 ? 'No configurations found' : 'No configurations match your search criteria')
-                  }
-                </td>
-              </tr>
-            ) : (
-              paginatedConfigs.map((config) => (
-                <tr key={config.id} className="border-b border-gray-200 hover:bg-gray-50">
-                  <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                    {config.endpointPath}
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${getStatusBadge(config.status)}`}>
-                      <span className="w-2 h-2 rounded-full bg-current mr-2"></span>
-                      {getStatusText(config.status)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">
-                    <div className="flex items-center">
-                      <svg className="w-4 h-4 mr-1 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
-                      </svg>
-                      {formatDate(config.createdAt)}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center">
-                      {/* Actions dropdown */}
-                      <div className="relative dropdown-container">
-                        <button
-                          onClick={() => setOpenDropdown(openDropdown === config.id ? null : config.id)}
-                          className="p-1 text-gray-400 hover:text-gray-600 rounded-md hover:bg-gray-100"
-                        >
-                          <MoreVerticalIcon className="w-4 h-4" />
-                        </button>
-                        {openDropdown === config.id && (
-                          <DropdownMenuWithAutoDirection onClose={() => setOpenDropdown(null)}>
-                            <div className="py-1">
-                              <button
-                                onClick={() => {
-                                  handleViewConfig(config);
-                                  setOpenDropdown(null);
-                                }}
-                                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                              >
-                                <EyeIcon className="w-4 h-4 mr-2" />
-                                View
-                              </button>
-                              {onConfigEdit && (
-                                <button
-                                  onClick={() => {
-                                    onConfigEdit(config);
-                                    setOpenDropdown(null);
-                                  }}
-                                  disabled={(() => {
-                                    const normalizedStatus = normalizeStatus(config.status);
-                                    return normalizedStatus === 'under_review' || normalizedStatus === 'approved';
-                                  })()}
-                                  className={`flex items-center w-full px-4 py-2 text-sm hover:bg-gray-100 ${
-                                    (() => {
-                                      const normalizedStatus = normalizeStatus(config.status);
-                                      return normalizedStatus === 'under_review' || normalizedStatus === 'approved';
-                                    })()
-                                      ? 'text-gray-400 cursor-not-allowed'
-                                      : 'text-gray-700'
-                                  }`}
-                                >
-                                  <EditIcon className="w-4 h-4 mr-2" />
-                                  Edit
-                                </button>
-                              )}
-                              {onConfigClone && !showPendingApprovals && (
-                                <button
-                                  onClick={() => {
-                                    onConfigClone(config);
-                                    setOpenDropdown(null);
-                                  }}
-                                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                >
-                                  <CopyIcon className="w-4 h-4 mr-2" />
-                                  Clone
-                                </button>
-                              )}
-                              {userIsExporter && normalizeStatus(config.status) === 'approved' && (
-                                <button
-                                  onClick={() => {
-                                    handleExportConfig(config);
-                                    setOpenDropdown(null);
-                                  }}
-                                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                >
-                                  <Upload className="w-4 h-4 mr-2" />
-                                  Export
-                                </button>
-                              )}
-                              {userIsPublisher && normalizeStatus(config.status) === 'exported' && (
-                                <button
-                                  onClick={() => {
-                                    handlePublishConfig(config);
-                                    setOpenDropdown(null);
-                                  }}
-                                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                >
-                                  <Rocket className="w-4 h-4 mr-2" />
-                                  Publish
-                                </button>
-                              )}
-                             
-                            </div>
-                          </DropdownMenuWithAutoDirection>
-                        )}
-                      </div>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Pagination */}
-      {sortedConfigs.length > 0 && (
-        <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-          <div className="text-sm text-gray-700">
-            Showing {startIndex + 1} to {Math.min(endIndex, sortedConfigs.length)} of {sortedConfigs.length} results
-          </div>
-          <div className="flex items-center space-x-3">
-            <button
-              onClick={handlePreviousPage}
-              disabled={currentPage === 1}
-              className="px-4 py-2 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 flex items-center"
-            >
-              ← Previous
-            </button>
-            <span className="text-sm text-gray-700 px-2">
-              Page {currentPage} of {totalPages}
-            </span>
-            <button
-              onClick={handleNextPage}
-              disabled={currentPage === totalPages}
-              className="px-4 py-2 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 flex items-center"
-            >
-              Next →
-            </button>
-          </div>
+      {loading ? (
+        <div className="flex items-center justify-center p-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <span className="ml-2 text-gray-600">Loading configurations...</span>
         </div>
+      ) : (
+        <CustomTable
+          columns={columns}
+          rows={filteredConfigs}
+          search={true}
+          pageSize={itemsPerPage}
+          pageSizeOptions={[10, 20, 50]}
+          // onRowClick={(params) => handleViewConfig(params.row)}
+          disableRowSelection={true}
+          pagination={
+            configs.length > 0 && (
+              <div className="px-6 py-4 border-t border-gray-200 bg-white rounded-b-lg flex items-center justify-between">
+                <div className="text-sm text-gray-700">
+                  Showing{' '}
+                  <span className="font-medium">
+                    {(page - 1) * itemsPerPage + 1}
+                  </span>{' '}
+                  to{' '}
+                  <span className="font-medium">
+                    {Math.min(page * itemsPerPage, totalRecords)}
+                  </span>{' '}
+                  of <span className="font-medium">{totalRecords}</span> results
+                </div>
+                <div className="flex items-center space-x-3">
+                  <Box>
+                    <Pagination
+                      page={page}
+                      count={totalPages}
+                      onChange={(_, newPage: number) => setPage(newPage)}
+                      variant="outlined"
+                      sx={{
+                        '& .MuiPaginationItem-page.Mui-selected': {
+                          backgroundColor: '#fbf9fa',
+                        },
+                      }}
+                    />
+                  </Box>
+                </div>
+              </div>
+            )
+          }
+        />
       )}
-    </div>
+    </>
   );
 };
 

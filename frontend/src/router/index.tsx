@@ -4,7 +4,7 @@ import { useAuth } from '../features/auth/contexts/AuthContext';
 import { isApprover, isPublisher, isExporter } from '../utils/roleUtils';
 import Login from '../features/auth/pages/Login';
 import Dashboard from '../features/dashboard/pages/Dashboard';
-import DEMSModule from '../features/dems/pages/DEMSModule';
+import DEMSModule from '@pages/dems';
 import ApproverModule from '../features/approver/pages/ApproverModule';
 import ApproverConfigsPage from '../features/approver/pages/ApproverConfigsPage';
 import ApproverDEJobsPage from '../features/approver/pages/ApproverDEJobsPage';
