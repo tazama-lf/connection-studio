@@ -39,7 +39,7 @@
     "@nestjs/swagger": "^11.2.0",
     "@prisma/client": "^6.12.0",
     "@tazama-lf/auth-lib": "^2.1.0",
-    "@tazama-lf/frms-coe-lib": "^6.0.0-rc.6",
+    "@tazama-lf/frms-coe-lib": "6.0.0-proto.0",
     "@tazama-lf/frms-coe-startup-lib": "3.0.0-rc.1",
     "@tazama-lf/tcs-lib": "1.0.22",
     "@types/cache-manager-redis-store": "^2.0.4",
