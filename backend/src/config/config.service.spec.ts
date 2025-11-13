@@ -134,7 +134,7 @@ describe('ConfigService', () => {
         const editableStates = [
           ConfigStatus.IN_PROGRESS,
           ConfigStatus.REJECTED,
-          ConfigStatus.CHANGES_REQUESTED,
+          // ConfigStatus.CHANGES_REQUESTED,
         ];
         const canEdit = editableStates.includes(status);
         return {

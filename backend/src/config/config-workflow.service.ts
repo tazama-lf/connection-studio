@@ -8,8 +8,6 @@ import {
 @Injectable()
 export class ConfigWorkflowService {
   private normalizeStatus(status: string): string {
-    // The enum values are already in STATUS_XX_NAME format
-    // This method exists for backward compatibility
     return status;
   }
   validateStatusTransition(

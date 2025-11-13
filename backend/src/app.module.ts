@@ -17,6 +17,7 @@ import { SftpModule } from './sftp/sftp.module';
 import { NotifyModule } from './notify/notify.module';
 import { SchedulerModule } from './scheduler/scheduler.module';
 import { JobModule } from './job/job.module';
+import { NotificationModule } from './notification/notification.module';
 
 @Module({
   imports: [
@@ -35,7 +36,8 @@ import { JobModule } from './job/job.module';
     SftpModule,
     NotifyModule,
     SchedulerModule,
-    JobModule
+    JobModule,
+    NotificationModule
   ],
   controllers: [AppController],
   providers: [

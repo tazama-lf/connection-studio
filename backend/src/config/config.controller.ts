@@ -501,7 +501,14 @@ export class ConfigController {
     @Headers('authorization') authorization?: string,
   ): Promise<ConfigResponseDto> {
     const token = authorization?.replace('Bearer ', '') || '';
-    return this.configService.exportConfig(
+     await this.adminServiceClient.forwardRequest(
+      'POST',
+      `/v1/admin/tcs/config/${id}/workflow/export`,
+      dto,
+      buildForwardHeaders(user),
+    );
+
+     return this.configService.exportConfig(
       id,
       dto,
       getTenantId(user),
@@ -509,6 +516,8 @@ export class ConfigController {
       getUserClaims(user),
       token,
     );
+
+
   }
 
   @Post(':id/workflow/deploy')
@@ -519,14 +528,21 @@ export class ConfigController {
     @User() user: AuthenticatedUser,
     @Headers('authorization') authorization?: string,
   ): Promise<ConfigResponseDto> {
-    const token = authorization?.replace('Bearer ', '') || '';
-    return this.configService.deployConfig(
-      id,
+    const token = authorization?.replace('Bearer ', '') || '';    
+    // await this.configService.deployConfig(
+    //   id,
+    //   dto,
+    //   getTenantId(user),
+    //   getUserId(user),
+    //   getUserClaims(user),
+    //   token,
+    // );
+
+    return await this.adminServiceClient.forwardRequest(
+      'POST',
+      `/v1/admin/tcs/config/${id}/workflow/export`,
       dto,
-      getTenantId(user),
-      getUserId(user),
-      getUserClaims(user),
-      token,
+      buildForwardHeaders(user),
     );
   }
 
@@ -588,8 +604,6 @@ export class ConfigController {
     @Query('status') status: ConfigStatus,
     @User() user: AuthenticatedUser,
   ): Promise<any> {
-    // Forward request to admin service to update config status
-    // Support for export (sets status to 'exported') and publish (sets status to 'deployed')
     return this.adminServiceClient.forwardRequest(
       'PATCH',
       `/v1/admin/tcs/config/${id}/status`,

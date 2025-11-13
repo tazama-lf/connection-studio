@@ -112,6 +112,64 @@ export class NotificationController {
     }
   }
 
+  @Post('generic-workflow')
+  @HttpCode(HttpStatus.OK)
+  async sendGenericWorkflowNotification(
+    @Body()
+    data: {
+      event: 'editor_submit' | 'approver_approve' | 'exporter_export' | 'publisher_deploy' | 'publisher_activate' | 'publisher_deactivate';
+      configId: number;
+      config: any;
+      tenantId: string;
+      actorEmail: string;
+      actorName: string;
+      comment?: string;2
+      recipientEmails: string[];
+    },
+  ) {
+    try {
+      const result = await this.notificationService.sendGenericWorkflowNotification(data);
+      return {
+        success: result.success,
+        message: result.message,
+        recipients: result.recipients,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `Failed to send generic workflow notification: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      };
+    }
+  }
+
+  @Post('publishing-status')
+  @HttpCode(HttpStatus.OK)
+  async sendPublishingStatusNotification(
+    @Body()
+    data: {
+      configId: number;
+      config: any;
+      tenantId: string;
+      publishingStatus: 'active' | 'inactive';
+      actorEmail: string;
+      actorName: string;
+    },
+  ) {
+    try {
+      const result = await this.notificationService.sendPublishingStatusNotification(data);
+      return {
+        success: result.success,
+        message: result.message,
+        recipients: result.recipients,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `Failed to send publishing status notification: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      };
+    }
+  }
+
   /**
    * Send test email to verify SMTP configuration
    */
