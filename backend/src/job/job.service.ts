@@ -156,7 +156,7 @@ export class JobService {
       const { id } = await this.adminServiceClient.createPullJob(jobWithId, token)
 
       if (status === JobStatus.DEPLOYED) {
-        await this.notifyService.notifyEnrichment(new_id, ConfigType.PUSH);
+        await this.notifyService.notifyEnrichment(new_id, ConfigType.PULL);
       }
 
       return {

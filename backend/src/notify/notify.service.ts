@@ -107,7 +107,7 @@ export class NotifyService implements OnModuleInit {
 
       await this.natsService.handleResponse(payload);
 
-      this.logger.log(`Configuration (ID: ${id}) sent to DATA-ENRICHMENT`);
+      this.logger.log(`Configuration with endpoint_id : ${id} and config_type : ${type} sent to DATA-ENRICHMENT`);
     } catch (error) {
       this.logger.error(
         new Error(
