@@ -10,6 +10,7 @@ import { ConfigService } from '@nestjs/config';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { createHash } from 'crypto';
 import SFTPClient from 'ssh2-sftp-client';
+import * as utils from "../utils/helpers";
 import { SftpFile } from './types/sftp.interface';
 
 @Injectable()
@@ -44,7 +45,7 @@ export class SftpService implements OnModuleInit, OnModuleDestroy {
     }
 
     try {
-      await this.consumerSftp.connect({ host, port, username, password });
+      await this.consumerSftp.connect({ host, port, username, password: utils.decrypt(password) });
       this.loggerService.log(`Connected to CONSUMER SFTP at ${host}:${port}`);
     } catch (err) {
       this.loggerService.error('Failed to connect to CONSUMER SFTP', err);
@@ -65,7 +66,7 @@ export class SftpService implements OnModuleInit, OnModuleDestroy {
     }
 
     try {
-      await this.producerSftp.connect({ host, port, username, password });
+      await this.consumerSftp.connect({ host, port, username, password: utils.decrypt(password) });
       this.loggerService.log(`Connected to PRODUCER SFTP at ${host}:${port}`);
     } catch (err) {
       this.loggerService.error('Failed to connect to PRODUCER SFTP', err);
