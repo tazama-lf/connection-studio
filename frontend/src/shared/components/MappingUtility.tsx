@@ -218,39 +218,72 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
 
     console.log('🏗️ Building source tree from', schemaArray.length, 'fields');
 
-    // First pass: create all nodes
+    // First pass: create all nodes AND their parent nodes
     schemaArray.forEach((field) => {
       const originalPath = field.path || field.name || 'unknown';
-      const pathParts = originalPath.split(/\.(?![^\[]*\])/);
       
-      // Determine if this represents an array
-      // If path ends with [0], it's an array element container
-      const isArrayElement = /\[0\]$/.test(originalPath);
+      // Remove [0] notation to get clean path, but remember which paths are arrays
+      const cleanPath = originalPath.replace(/\[0\]/g, '');
+      const pathParts = cleanPath.split('.').filter((p: string) => p); // Remove empty parts
       
-      // Extract proper name - if it's an array element, keep the [0] in the name
-      let nodeName;
-      if (isArrayElement) {
-        // For "a.b.c[0]", name should be "c[0]"
-        nodeName = pathParts[pathParts.length - 1];
-      } else {
-        // Use field.name if available, otherwise last part of path
-        nodeName = field.name || pathParts[pathParts.length - 1] || 'unknown';
-      }
+      console.log('🔍 Processing field:', originalPath, '-> Clean path:', cleanPath, '-> Parts:', pathParts);
       
-      const fieldType = isArrayElement ? 'array' : (field.type?.toLowerCase() || 'string');
+      // Track which parts of the path represent arrays
+      const arrayPaths = new Set<string>();
+      let tempPath = '';
+      originalPath.split('.').forEach((part: string) => {
+        if (part.includes('[0]')) {
+          const cleanPart = part.replace('[0]', '');
+          tempPath = tempPath ? `${tempPath}.${cleanPart}` : cleanPart;
+          arrayPaths.add(tempPath);
+        } else {
+          tempPath = tempPath ? `${tempPath}.${part}` : part;
+        }
+      });
       
-      console.log('📝 Field:', originalPath, 'Type:', fieldType, 'Name:', nodeName, 'IsArray:', isArrayElement);
+      console.log('📋 Array paths detected:', Array.from(arrayPaths));
       
-      const node: TreeNode = {
-        id: originalPath,
-        name: nodeName,
-        path: [originalPath],
-        type: fieldType,
+      // Create all parent nodes in the path if they don't exist
+      let currentPath = '';
+      pathParts.forEach((part: string, index: number) => {
+        currentPath = currentPath ? `${currentPath}.${part}` : part;
+        
+        // Skip if this node already exists
+        if (nodeMap.has(currentPath)) return;
+        
+        const isArrayContainer = arrayPaths.has(currentPath);
+        const nodeName = part;
+        const isLastPart = index === pathParts.length - 1;
+        const fieldType = isArrayContainer ? 'array' : 
+                         (isLastPart ? (field.type?.toLowerCase() || 'object') : 'object');
+        
+        const node: TreeNode = {
+          id: currentPath,
+          name: nodeName,
+          path: [currentPath],
+          type: fieldType,
+          children: []
+        };
+        
+        nodeMap.set(currentPath, node);
+        console.log('📝 Created node:', currentPath, 'Type:', fieldType, 'Name:', nodeName, 'Is Array?', isArrayContainer);
+      });
+    });
+
+    // Add hardcoded tenantId field at root level if not already present
+    if (!nodeMap.has('tenantId')) {
+      const tenantIdNode: TreeNode = {
+        id: 'tenantId',
+        name: 'tenantId',
+        path: ['tenantId'],
+        type: 'string',
         children: []
       };
-      
-      nodeMap.set(originalPath, node);
-    });
+      nodeMap.set('tenantId', tenantIdNode);
+      console.log('📌 Added hardcoded tenantId field to source tree');
+    } else {
+      console.log('📌 tenantId already exists at root level, skipping hardcoded addition');
+    }
 
     // Second pass: build parent-child relationships
     console.log('📊 All nodes in map:', Array.from(nodeMap.keys()));
@@ -259,10 +292,6 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       let parentPath = '';
       
       // Find parent by removing the last segment
-      // For "a.b.c[0].d" -> parent is "a.b.c[0]"
-      // For "a.b.c[0]" -> parent is "a.b"
-      // For "a.b.c" -> parent is "a.b"
-      
       const lastDotIndex = nodeId.lastIndexOf('.');
       if (lastDotIndex > 0) {
         parentPath = nodeId.substring(0, lastDotIndex);
@@ -278,9 +307,14 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
         parentNode.children.push(node);
         console.log('  ✅ Added to parent. Parent now has', parentNode.children.length, 'children');
       } else {
-        // Root node
-        rootNodes.push(node);
-        console.log('  📍 Added to root');
+        // Root node - only add if not already in rootNodes
+        const alreadyInRoot = rootNodes.some(n => n.id === nodeId);
+        if (!alreadyInRoot) {
+          rootNodes.push(node);
+          console.log('  📍 Added to root');
+        } else {
+          console.log('  ⏭️ Already in root, skipping');
+        }
       }
     });
 
@@ -434,19 +468,114 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
   const [selectedSources, setSelectedSources] = useState<string[]>([]);
   const [selectedDestinations, setSelectedDestinations] = useState<string[]>([]);
   const [selectedTransformation, setSelectedTransformation] = useState<'concatenate' | 'sum' | 'split' | 'none' | 'constant'>('none');
-  const [delimiter, setDelimiter] = useState<string>(' ');
+  const [delimiter, setDelimiter] = useState<string>('');
   const [prefix, setPrefix] = useState<string>('');
 
   // Helper function to check if current selection is valid for the transformation type
   const isCurrentMappingValid = () => {
+
+    const getFieldType = (fieldPath: string): string | undefined => {
+      if (Array.isArray(sourceSchema)) {
+        const field = sourceSchema.find(f => {
+          const cleanPath = (f.path || f.name || '').replace(/\[0\]/g, '');
+          return cleanPath === fieldPath || f.path === fieldPath;
+        });
+        return field?.type?.toLowerCase();
+      }
+      return undefined;
+    };
+
+    const getDestinationType = (fieldPath: string): string | undefined => {      
+      const parts = fieldPath.split('.');
+      if (parts.length === 0) return undefined;
+      
+      const findType = (nodes: TreeNode[], pathParts: string[], depth: number = 0): string | undefined => {       
+        if (pathParts.length === 0) return undefined;
+  
+        const [first, ...rest] = pathParts;
+        const node = nodes.find(n => n.name.toLowerCase() === first.toLowerCase());
+            
+        if (!node) return undefined;
+        if (rest.length === 0) {
+          return node.type;
+        }
+        if (node.children) return findType(node.children, rest, depth + 1);
+        
+        return undefined;
+      };
+      
+      const result = findType(destinationTree, parts);
+      return result;
+    };
+
+    const areTypesCompatible = (sourceType: string | undefined, destType: string | undefined): boolean => {
+      if (!sourceType || !destType) return true; 
+      
+      const normalizeType = (type: string) => {
+        if (type === 'integer' || type === 'number' || type === 'double' || type === 'float') return 'number';
+        if (type === 'text' || type === 'varchar') return 'string';
+        return type;
+      };
+      
+      const normSource = normalizeType(sourceType);
+      const normDest = normalizeType(destType);
+
+      return normSource === normDest;
+    };
+
     if (selectedTransformation === 'concatenate') {
-      return selectedSources.length >= 2 && selectedDestinations.length === 1;
+      if (selectedSources.length < 2 || selectedDestinations.length !== 1) {
+        return false;
+      }
+      const allStrings = selectedSources.every(src => {
+        const type = getFieldType(src);
+        return !type || type === 'string' || type === 'text';
+      });
+      
+      const destType = getDestinationType(selectedDestinations[0]);
+      const destIsString = !destType || destType === 'string' || destType === 'text';
+      
+      return allStrings && destIsString;
+      
     } else if (selectedTransformation === 'sum') {
-      return selectedSources.length >= 2 && selectedDestinations.length === 1;
+      if (selectedSources.length < 2 || selectedDestinations.length !== 1) {
+        return false;
+      }
+      const allNumbers = selectedSources.every(src => {
+        const type = getFieldType(src);
+        return !type || type === 'number' || type === 'integer' || type === 'double' || type === 'float';
+      });
+      
+      const destType = getDestinationType(selectedDestinations[0]);
+      const destIsNumber = !destType || destType === 'number' || destType === 'integer' || destType === 'double' || destType === 'float';
+      
+      return allNumbers && destIsNumber;
+      
     } else if (selectedTransformation === 'split') {
-      return selectedSources.length === 1 && selectedDestinations.length >= 2;
+      if (selectedSources.length !== 1 || selectedDestinations.length < 2) {
+        return false;
+      }
+      const sourceType = getFieldType(selectedSources[0]);
+      const sourceIsString = !sourceType || sourceType === 'string' || sourceType === 'text';
+      
+      const allDestsString = selectedDestinations.every(dest => {
+        const type = getDestinationType(dest);
+        return !type || type === 'string' || type === 'text';
+      });
+      
+      return sourceIsString && allDestsString;
+      
     } else if (selectedTransformation === 'none') {
-      return selectedSources.length === 1 && selectedDestinations.length === 1;
+      
+      if (selectedSources.length !== 1 || selectedDestinations.length !== 1) {
+        return false;
+      }
+      // Check type compatibility for direct mapping
+      const sourceType = getFieldType(selectedSources[0]);
+      const destType = getDestinationType(selectedDestinations[0]);
+      
+      return areTypesCompatible(sourceType, destType);
+      
     } else if (selectedTransformation === 'constant') {
       return selectedDestinations.length === 1;
     }
@@ -465,7 +594,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
     setSelectedSources([]);
     setSelectedDestinations([]);
     setSelectedTransformation('none');
-    setDelimiter(' '); // Reset delimiter to default
+    setDelimiter(''); // Reset delimiter to empty
     setPrefix(''); // Reset prefix to default
     setMappingError(null); // Clear any previous errors
     setShowAddMapping(true);
@@ -486,16 +615,35 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
     }
   };
   const handleSourceSelect = (path: string[]) => {
-    // Path is now stored as single-element array with full path including [0] notation
-    // So path[0] is the complete path like "pain.001.CreditTransferTransactionInformation[0].PaymentId.EndToEndId"
-    const pathStr = path[0] || path.join('.'); // Use first element if available, otherwise join
+    // Path is stored as clean path without [0], but we need to check if we need to add it back
+    // For fields that are inside arrays, we need to reconstruct the original path with [0]
+    const pathStr = path[0] || path.join('.');
+    
     console.log('🎯 Source field selected - RAW path array:', path);
     console.log('🎯 Source field selected - FINAL pathStr:', pathStr);
-    console.log('🎯 Contains [0] notation?', pathStr.includes('[0]'));
-    if (selectedSources.includes(pathStr)) {
-      setSelectedSources(selectedSources.filter(p => p !== pathStr));
+    
+    // Check if this path needs [0] notation by looking at the original schema
+    let finalPath = pathStr;
+    if (Array.isArray(sourceSchema)) {
+      const matchingField = sourceSchema.find(f => {
+        const cleanFieldPath = (f.path || f.name || '').replace(/\[0\]/g, '');
+        return cleanFieldPath === pathStr;
+      });
+      
+      if (matchingField && matchingField.path && matchingField.path.includes('[0]')) {
+        // Use the original path with [0] notation
+        finalPath = matchingField.path.replace(/\[0\]/g, '.0');
+        console.log('🎯 Found original path with [0]:', finalPath);
+      }
+    }
+    
+    console.log('🎯 Final path to use:', finalPath.replace(/\[0\]/g, '.0'));
+    console.log('🎯 Contains [0] notation?', finalPath.includes('[0]'));
+    
+    if (selectedSources.includes(finalPath)) {
+      setSelectedSources(selectedSources.filter(p => p !== finalPath));
     } else {
-      setSelectedSources([...selectedSources, pathStr]);
+      setSelectedSources([...selectedSources, finalPath]);
     }
   };
   const handleDestinationSelect = (path: string[], type: 'database' | 'redis' | 'model') => {
@@ -604,8 +752,8 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       sources: selectedTransformation === 'concatenate' ? selectedSources : undefined,
       sumFields: selectedTransformation === 'sum' ? selectedSources : undefined,
       destinations: selectedTransformation === 'split' ? selectedDestinations : undefined,
-      delimiter: selectedTransformation === 'split' ? delimiter : undefined,
-      separator: selectedTransformation === 'concatenate' ? delimiter : undefined,
+      delimiter: selectedTransformation === 'split' ? (delimiter || ' ') : undefined,
+      separator: selectedTransformation === 'concatenate' ? (delimiter || ' ') : undefined,
       constantValue: selectedTransformation === 'constant' ? selectedSources[0] : undefined,
       prefix: prefix.trim() || undefined,
     };
@@ -630,8 +778,8 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
           destination: selectedTransformation === 'split' ? undefined : selectedDestinations[0],
           sources: selectedTransformation === 'concatenate' || selectedTransformation === 'sum' ? selectedSources : undefined,
           destinations: selectedTransformation === 'split' ? selectedDestinations : undefined,
-          delimiter: selectedTransformation === 'split' ? delimiter : undefined,
-          separator: selectedTransformation === 'concatenate' ? delimiter : undefined,
+          delimiter: selectedTransformation === 'split' ? (delimiter || ' ') : undefined,
+          separator: selectedTransformation === 'concatenate' ? (delimiter || ' ') : undefined,
           constantValue: selectedTransformation === 'constant' ? selectedSources[0] : undefined,
           transformation: selectedTransformation.toUpperCase(),
           operator: selectedTransformation === 'sum' ? 'SUM' : undefined,
@@ -661,14 +809,15 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
     }
   };
 
-  const renderTree = (nodes: TreeNode[], expanded: string[], toggleFn: (id: string) => void, onSelect: (path: string[], type?: any) => void, selectedPaths: string[] = [], type: 'source' | 'destination' | 'redis' = 'source', depth: number = 0) => {
+  const renderTree = (nodes: TreeNode[], expanded: string[], toggleFn: (id: string) => void, onSelect: (path: string[], type?: any, expanded?: string[], selectedPaths?: string[]) => void, selectedPaths: string[] = [], type: 'source' | 'destination' | 'redis' = 'source', depth: number = 0) => {
     return <div className="space-y-1" data-id="element-176">
       {nodes.map((node, index) => {
             console.log("TREE", nodes, expanded, selectedPaths, type, depth);
 
         const hasChildren = node.children && node.children.length > 0;
         const isExpanded = expanded.includes(node.id);
-        const isSelected = selectedPaths.includes(node.path.join('.'));
+        const isSelected = selectedPaths.map(path => path.replace(/\.0\./g, '.')).includes(node.path.join('.'));
+        
         // Determine the actual type for this node - redis nodes should be purple
         const nodeType = node.id.startsWith('redis') ? 'redis' : type;
         const isRedis = node.id === 'redis';
@@ -677,19 +826,19 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
           {/* Add spacing and heading before redis section */}
           {isRedis && index > 0 && (
             <div className="mt-4 mb-2">
-              <div className="text-sm text-gray-500">Redis Cache (Update)</div>
+              <div className="text-sm text-gray-500">Data Cache</div>
             </div>
           )}
           <div className={`flex items-center p-1 rounded hover:bg-gray-100 ${isSelected ? 'bg-blue-100' : ''}`} style={{ paddingLeft: `${depth * 20 + 4}px` }} data-id="element-178">
             {hasChildren ? <button onClick={() => toggleFn(node.id)} className="p-1 text-gray-500 hover:text-gray-700" data-id="element-179">
               <ChevronRightIcon size={16} className={`transform transition-transform ${isExpanded ? 'rotate-90' : ''}`} data-id="element-180" />
             </button> : <span className="w-6" data-id="element-181"></span>}
-            {nodeType === 'source' && <FolderIcon size={16} className="mr-2 text-blue-500" data-id="element-182" />}
+            {/* {nodeType === 'source' && <FolderIcon size={16} className="mr-2 text-blue-500" data-id="element-182" />}
             {nodeType === 'destination' && <DatabaseIcon size={16} className="mr-2 text-green-500" data-id="element-183" />}
-            {nodeType === 'redis' && <ServerIcon size={16} className="mr-2 text-purple-500" data-id="element-184" />}
+            {nodeType === 'redis' && <ServerIcon size={16} className="mr-2 text-purple-500" data-id="element-184" />} */}
             {/* Only allow selection for leaf nodes (no children, not object/array) */}
             {(!hasChildren && node.type !== 'object' && node.type !== 'array') ? (
-              <button onClick={() => onSelect(node.path, nodeType === 'redis' ? 'redis' : 'database')} className="text-left flex-1 text-sm hover:text-blue-700" data-id="element-185">
+              <button onClick={() => onSelect(node.path, nodeType === 'redis' ? 'redis' : 'database',expanded,selectedPaths )} className="text-left flex-1 text-sm hover:text-blue-700" data-id="element-185">
                 {node.name}
                 {node.type && <span className="ml-2 text-xs text-gray-500" data-id="element-186">
                   ({node.type})
@@ -775,7 +924,6 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                 <select value={selectedTransformation} onChange={e => setSelectedTransformation(e.target.value as 'concatenate' | 'sum' | 'split' | 'none' | 'constant')} className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" data-id="element-205">
                   <option value="none" data-id="element-206">None (Direct Mapping)</option>
                   <option value="concatenate" data-id="element-207">Concatenate</option>
-                  <option value="sum" data-id="element-208">Sum</option>
                   <option value="split" data-id="element-209">Split</option>
                   <option value="constant" data-id="element-constant-option">Constant Value</option>
                 </select>
@@ -788,34 +936,19 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                   <input
                     type="text"
                     value={delimiter}
-                    onChange={e => setDelimiter(e.target.value)}
-                    placeholder={selectedTransformation === 'split' ? ' ' : ' '}
+                    onChange={e => setDelimiter(e.target.value.slice(0, 1))}
+                    placeholder=""
                     className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    {selectedTransformation === 'split'
-                      ? 'Character(s) to split by (e.g., space " " or comma ",")'
-                      : 'Character(s) to join with (e.g., space " " or comma ",")'
+                     {selectedTransformation === 'split'
+                        ? 'Split using character (default: space)'
+                        : 'Join using character (default: space)'
                     }
                   </p>
                 </div>
               )}
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Prefix (Optional)
-                </label>
-                <input
-                  type="text"
-                  value={prefix}
-                  onChange={e => setPrefix(e.target.value)}
-                  placeholder="Enter prefix to prepend to result"
-                  className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Optional prefix to add before the mapped value (e.g., "PREFIX_" + result)
-                </p>
-              </div>
-              <div className="flex-1 flex items-center justify-center" data-id="element-210">
+              <div className="flex-1 flex items-end justify-center" data-id="element-210">
                 {selectedTransformation === 'concatenate' && <div className="text-center p-4 bg-gray-50 rounded-md" data-id="element-211">
                   <h5 className="font-medium text-gray-700 mb-2" data-id="element-212">
                     Concatenate
@@ -825,15 +958,6 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                     <br data-id="element-214" />
                     <br data-id="element-215" />
                     Example: "John" + " " + "Doe" → "John Doe"
-                  </p>
-                </div>}
-                {selectedTransformation === 'sum' && <div className="text-center p-4 bg-gray-50 rounded-md" data-id="element-216">
-                  <h5 className="font-medium text-gray-700 mb-2" data-id="element-217">Sum</h5>
-                  <p className="text-sm text-gray-600" data-id="element-218">
-                    Adds numeric values from multiple source fields.
-                    <br data-id="element-219" />
-                    <br data-id="element-220" />
-                    Example: 10 + 20 + 30 → 60
                   </p>
                 </div>}
                 {selectedTransformation === 'split' && <div className="text-center p-4 bg-gray-50 rounded-md" data-id="element-221">
@@ -887,17 +1011,24 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
         </div>
         {/* Error Display */}
         {mappingError && (
-          <div className="bg-red-50 border border-red-200 rounded-md p-3 mt-4">
-            <div className="text-red-800 text-sm">{mappingError}</div>
+          <div className="bg-red-50 border border-red-200 rounded-md p-3 mt-4 relative">
+            <button
+              onClick={() => setMappingError(null)}
+              className="cursor-pointer absolute top-1/2 -translate-y-1/2 right-2 text-red-600 hover:text-red-800"
+            >
+              <XIcon size={16} />
+            </button>
+            <div className="text-red-800 text-sm pr-6">{mappingError}</div>
           </div>
         )}
 
         <div className="flex justify-end space-x-3 mt-6" data-id="element-235">
-          <Button variant="secondary" onClick={() => setShowAddMapping(false)} data-id="element-236">
+          <Button variant="secondary" className='!pb-[6px] !pt-[4px]' onClick={() => setShowAddMapping(false)} data-id="element-236">
             Cancel
           </Button>
           <Button
             variant="primary"
+            className='!pb-[6px] !pt-[4px]'
             onClick={handleSaveMapping}
             disabled={!isCurrentMappingValid()}
             data-id="element-237"
@@ -911,11 +1042,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
 
   return <div className="space-y-6" data-id="element-271">
     {/* Error Display */}
-    {mappingError && (
-      <div className="p-4 bg-red-50 border border-red-200 rounded-md">
-        <div className="text-red-800 text-sm">{mappingError}</div>
-      </div>
-    )}
+ 
     <div className="flex justify-between items-center mb-4" data-id="element-272">
       <h3 className="text-lg font-medium text-gray-900" data-id="element-273">Field Mapping</h3>
       <Button variant="secondary" size="sm" onClick={addNewMapping} icon={<PlusIcon size={16} data-id="element-279" />} disabled={readOnly} data-id="element-278">
@@ -939,6 +1066,9 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
           {currentMappings.map((mapping, index) => (
             <div key={index} className="flex items-center justify-between bg-white p-2 rounded border">
               <div className="flex items-center space-x-2">
+                  {mapping.transformation && (
+                  <span className="text-xs text-blue-600 font-medium">[{mapping.transformation === 'NONE' ? 'DIRECT' : mapping.transformation}]</span>
+                )}
                 <span className="text-sm text-gray-600">
                   {mapping.transformation === 'CONSTANT' ?
                     `"${mapping.constantValue}"` :
@@ -947,20 +1077,25 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                   }
                   <ArrowRightIcon size={16} className="inline mx-2" />
                   {mapping.prefix ? `"${mapping.prefix}" + ` : ''}
-                  {Array.isArray(mapping.destination) ? mapping.destination.join(' + ') : mapping.destination}
+                  {/* Fixed: Show destinations for SPLIT transformation */}
+                  {mapping.destinations ? mapping.destinations.join(' + ') : 
+                    (Array.isArray(mapping.destination) ? mapping.destination.join(' + ') : mapping.destination)
+                  }
                 </span>
                 {mapping.separator && (
-                  <span className="text-xs text-gray-500">({mapping.separator})</span>
+                  <span className="text-xs text-gray-500">(separator: "{mapping.separator}")</span>
                 )}
-                {mapping.transformation && mapping.transformation !== 'NONE' && (
-                  <span className="text-xs text-blue-600 font-medium">[{mapping.transformation}]</span>
+                {mapping.delimiter && (
+                  <span className="text-xs text-gray-500">(separator: "{mapping.delimiter}")</span>
                 )}
+              
               </div>
               <Button
                 variant="secondary"
                 size="sm"
                 onClick={() => removeMappingFromBackend(index)}
                 disabled={readOnly}
+                className="text-red-500 hover:bg-red-500 hover:text-white"
               >
                 Remove
               </Button>

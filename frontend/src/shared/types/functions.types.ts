@@ -90,6 +90,51 @@ export const FUNCTION_CONFIGS: Record<AllowedFunctionName, FunctionConfig> = {
       },
     ],
   },
+  addEntity: {
+    name: 'addEntity',
+    displayName: 'Add Entity',
+    requiredParameters: [
+      {
+        name: 'cdtrId',
+        displayName: 'Creditor ID',
+        type: 'string',
+        description: 'Entity identifier for creditor',
+      },
+      {
+        name: 'dbtrId',
+        displayName: 'Debtor ID',
+        type: 'string',
+        description: 'Entity identifier for debtor',
+      },
+      {
+        name: 'TenantId',
+        displayName: 'Tenant ID',
+        type: 'string',
+        description: 'Tenant identifier',
+      },
+      {
+        name: 'CreDtTm',
+        displayName: 'Creation Date Time',
+        type: 'string',
+        description: 'Creation timestamp',
+      },
+    ],
+    optionalParameters: [],
+    configurations: [
+      {
+        name: 'creditor-entity',
+        displayName: 'Creditor Entity',
+        parameters: 'cdtrId, TenantId, CreDtTm',
+        description: 'Parameters: cdtrId, TenantId, CreDtTm',
+      },
+      {
+        name: 'debtor-entity',
+        displayName: 'Debtor Entity',
+        parameters: 'dbtrId, TenantId, CreDtTm',
+        description: 'Parameters: dbtrId, TenantId, CreDtTm',
+      },
+    ],
+  },
   addAccountHolder: {
     name: 'addAccountHolder',
     displayName: 'Add Account Holder',
@@ -144,51 +189,6 @@ export const FUNCTION_CONFIGS: Record<AllowedFunctionName, FunctionConfig> = {
         displayName: 'Creditor Account Holder',
         parameters: 'cdtrId, cdtrAcctId, CreDtTm, TenantId',
         description: 'Parameters: cdtrId, cdtrAcctId, CreDtTm, TenantId',
-      },
-    ],
-  },
-  addEntity: {
-    name: 'addEntity',
-    displayName: 'Add Entity',
-    requiredParameters: [
-      {
-        name: 'cdtrId',
-        displayName: 'Creditor ID',
-        type: 'string',
-        description: 'Entity identifier for creditor',
-      },
-      {
-        name: 'dbtrId',
-        displayName: 'Debtor ID',
-        type: 'string',
-        description: 'Entity identifier for debtor',
-      },
-      {
-        name: 'TenantId',
-        displayName: 'Tenant ID',
-        type: 'string',
-        description: 'Tenant identifier',
-      },
-      {
-        name: 'CreDtTm',
-        displayName: 'Creation Date Time',
-        type: 'string',
-        description: 'Creation timestamp',
-      },
-    ],
-    optionalParameters: [],
-    configurations: [
-      {
-        name: 'creditor-entity',
-        displayName: 'Creditor Entity',
-        parameters: 'cdtrId, TenantId, CreDtTm',
-        description: 'Parameters: cdtrId, TenantId, CreDtTm',
-      },
-      {
-        name: 'debtor-entity',
-        displayName: 'Debtor Entity',
-        parameters: 'dbtrId, tenantId, CreDtTm',
-        description: 'Parameters: dbtrId, tenantId, CreDtTm',
       },
     ],
   },
@@ -276,8 +276,8 @@ export const FUNCTION_CONFIGS: Record<AllowedFunctionName, FunctionConfig> = {
       {
         name: 'create-transaction-relationship',
         displayName: 'Create Transaction Relationship',
-        parameters: 'from, to, TxTp, MsgId, CreDtTm, EndToEndId, TenantId',
-        description: 'Parameters: from, to, TxTp, MsgId, CreDtTm, EndToEndId, TenantId',
+        parameters: 'source, destination, TxTp, MsgId, CreDtTm, EndToEndId, TenantId',
+        description: 'Parameters: source, destination, TxTp, MsgId, CreDtTm, EndToEndId, TenantId',
       },
     ],
   }

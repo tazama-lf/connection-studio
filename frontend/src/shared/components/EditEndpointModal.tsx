@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { XIcon } from 'lucide-react';
+import { XIcon, FileJson, GitBranch, Cog, PlayCircle, Rocket, PlusIcon } from 'lucide-react';
 import { PayloadEditor } from './PayloadEditor';
 import { MappingUtility } from './MappingUtility';
 import { SimulationPanel } from './SimulationPanel';
@@ -20,6 +20,38 @@ import { isStatus } from '../utils/statusColors';
 import { convertInferredFieldsToJsonSchema } from '../utils/schemaUtils';
 import type { InferredField } from '../utils/schemaUtils';
 
+import Box from '@mui/material/Box';
+import Stepper from '@mui/material/Stepper';
+import Step from '@mui/material/Step';
+import StepLabel from '@mui/material/StepLabel';
+import type { StepIconProps } from '@mui/material/StepIcon';
+
+// Custom Step Icon Component
+const CustomStepIcon = (props: StepIconProps) => {
+  const { active, completed, icon } = props;
+  
+  const icons: { [index: string]: React.ReactElement } = {
+    1: <FileJson size={24} />,
+    2: <GitBranch size={24} />,
+    3: <Cog size={24} />,
+    4: <PlayCircle size={24} />,
+    5: <Rocket size={24} />,
+  };
+
+  return (
+    <div
+      style={{
+        color: completed ? '#10b981' : active ? '#3b82f6' : '#9ca3af',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      {icons[String(icon)]}
+    </div>
+  );
+};
+
 // Function Selection Form Component
 interface FunctionSelectionFormProps {
   onAddFunction: (functionData: AddFunctionDto) => void;
@@ -30,37 +62,44 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({ onAddFunc
   const [selectedFunction, setSelectedFunction] = useState<AllowedFunctionName>('addAccount');
   const [selectedConfiguration, setSelectedConfiguration] = useState('');
   const [selectedOptionalParams, setSelectedOptionalParams] = useState<string[]>([]);
-
   const functionConfig = FUNCTION_CONFIGS[selectedFunction];
-
   const handleAddFunction = () => {
     const config = functionConfig.configurations.find(c => c.name === selectedConfiguration);
     if (!config) {
       console.error('No configuration found for:', selectedConfiguration);
       return;
     }
-
     // Combine required parameters from configuration with selected optional parameters
     const requiredParams = config.parameters.split(', ').map(p => p.trim()).filter(p => p.length > 0);
     const allParams = [...requiredParams, ...selectedOptionalParams];
-
-    console.log('🔧 Function form - handleAddFunction:');
+    console.log(':wrench: Function form - handleAddFunction:');
     console.log('Selected Function:', selectedFunction);
     console.log('Selected Configuration:', selectedConfiguration);
     console.log('Config Parameters String:', config.parameters);
     console.log('Required Params:', requiredParams);
     console.log('Optional Params:', selectedOptionalParams);
     console.log('All Params:', allParams);
-
+    // Add prefixes to parameters: 'transactionDetails.' for tenantId, 'redis.' for others
+    const prefixedParams = allParams.map(param => {
+      const trimmed = param.trim();
+      const lowerParam = trimmed.toLowerCase();
+      // Check if it's tenantId (case-insensitive)
+      if (lowerParam === 'tenantid' || lowerParam === 'tenant_id') {
+        console.log(`:wrench: Adding 'transactionDetails.' prefix to: ${trimmed}`);
+        return `transactionDetails.${trimmed}`;
+      } else {
+        console.log(`:wrench: Adding 'redis.' prefix to: ${trimmed}`);
+        return `redis.${trimmed}`;
+      }
+    });
+    console.log('Prefixed Params:', prefixedParams);
     const functionData = {
       functionName: selectedFunction,
-      params: allParams
+      params: prefixedParams
     };
-
     console.log('Final Function Data:', functionData);
     onAddFunction(functionData);
   };
-
   const handleOptionalParamToggle = (paramName: string) => {
     setSelectedOptionalParams(prev =>
       prev.includes(paramName)
@@ -68,7 +107,6 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({ onAddFunc
         : [...prev, paramName]
     );
   };
-
   return (
     <div className="space-y-4">
       <div>
@@ -89,7 +127,6 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({ onAddFunc
           ))}
         </select>
       </div>
-
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">Select Parameter Configuration</label>
         <div className="space-y-2">
@@ -120,7 +157,6 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({ onAddFunc
           ))}
         </div>
       </div>
-
       {/* Optional Parameters Selection */}
       {functionConfig.optionalParameters && functionConfig.optionalParameters.length > 0 && (
         <div>
@@ -158,7 +194,6 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({ onAddFunc
           )}
         </div>
       )}
-
       <div className="flex justify-end space-x-3 pt-4">
         <Button variant="secondary" onClick={onClose}>
           Cancel
@@ -634,64 +669,52 @@ console.log('Cur map:', currentMappings);
       showError('No configuration ID available to add function');
       return;
     }
-
     // Check for duplicate functions in local state first
     const isDuplicate = selectedFunctions.some(existingFunction => {
       // Check if function name matches
       if (existingFunction.functionName !== functionData.functionName) {
         return false;
       }
-
       // Check if parameters match (order doesn't matter)
       const existingParams = existingFunction.params || [];
       const newParams = functionData.params || [];
-
       if (existingParams.length !== newParams.length) {
         return false;
       }
-
       // Sort both parameter arrays and compare
       const sortedExisting = [...existingParams].sort();
       const sortedNew = [...newParams].sort();
-
       return sortedExisting.every((param, index) => param === sortedNew[index]);
     });
-
     if (isDuplicate) {
       showError('This function with the same parameters already exists. Please modify the parameters or choose a different function.');
       return;
     }
-
     try {
       setLoading(true);
       const configId = createdEndpoint?.id || existingConfig?.id;
-
-      console.log('💾 Adding function to backend:');
+      console.log(':floppy_disk: Adding function to backend:');
       console.log('Config ID:', configId);
       console.log('Function Data:', JSON.stringify(functionData, null, 2));
       console.log('Function Name:', functionData.functionName);
       console.log('Function Params:', functionData.params);
-
       const response = await FunctionsApiService.addFunction(configId, functionData);
-
       if (response.success) {
-        console.log('✅ Function added successfully to backend');
-
+        console.log(':white_check_mark: Function added successfully to backend');
         // Add to local state only after successful API call
         const newFunction: FunctionDefinition = {
           functionName: functionData.functionName,
           params: functionData.params
         };
         setSelectedFunctions([...selectedFunctions, newFunction]);
-
         setShowAddFunctionModal(false);
         console.log('Function added successfully');
       } else {
-        console.error('❌ Failed to add function:', response.message);
+        console.error(':x: Failed to add function:', response.message);
         showError(`Failed to add function: ${response.message}`);
       }
     } catch (error) {
-      console.error('❌ Error adding function:', error);
+      console.error(':x: Error adding function:', error);
       showError('Failed to add function. Please try again.');
     } finally {
       setLoading(false);
@@ -703,18 +726,14 @@ console.log('Cur map:', currentMappings);
       showError('No configuration ID available to remove function');
       return;
     }
-
     try {
       setLoading(true);
       const configId = createdEndpoint?.id || existingConfig?.id;
-
       const response = await FunctionsApiService.deleteFunction(configId, index);
-
       if (response.success) {
         // Update local state
         const updatedFunctions = selectedFunctions.filter((_, i) => i !== index);
         setSelectedFunctions(updatedFunctions);
-
         // Update the config in state
         if (createdEndpoint) {
           setCreatedEndpoint({
@@ -727,8 +746,7 @@ console.log('Cur map:', currentMappings);
             functions: updatedFunctions
           });
         }
-
-        console.log('✅ Function removed successfully');
+        console.log(':white_check_mark: Function removed successfully');
       } else {
         showError(`Failed to remove function: ${response.message}`);
       }
@@ -1425,19 +1443,16 @@ console.log('Cur map:', currentMappings);
             </div>
           )}
 
-          <div className="mb-8" data-id="element-733">
-            <div className="flex justify-between items-center" data-id="element-734">
-              {steps.map((step, index) => <div key={step.id} className="flex items-center" data-id="element-735">
-                <div className={`flex items-center justify-center w-8 h-8 rounded-full ${currentStep === step.id ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'}`} data-id="element-736">
-                  {index + 1}
-                </div>
-                <span className={`ml-2 ${currentStep === step.id ? 'text-blue-600 font-medium' : 'text-gray-500'}`} data-id="element-737">
-                  {step.label}
-                </span>
-                {index < steps.length - 1 && <div className="mx-4 h-0.5 w-16 bg-gray-200" data-id="element-738" />}
-              </div>)}
-            </div>
-          </div>
+          {/* MUI Stepper */}
+          <Box sx={{ width: '100%', mb: 4 }}>
+            <Stepper activeStep={steps.findIndex(s => s.id === currentStep)} alternativeLabel>
+              {steps.map((step) => (
+                <Step key={step.id}>
+                  <StepLabel StepIconComponent={CustomStepIcon}>{step.label}</StepLabel>
+                </Step>
+              ))}
+            </Stepper>
+          </Box>
 
           <div className="space-y-8" data-id="element-739">
             {currentStep === 'payload' && (
@@ -1594,7 +1609,7 @@ console.log('Cur map:', currentMappings);
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                           </svg>
                           <p className="text-sm text-green-700 font-medium">
-                            ✓ All function parameters are properly mapped
+                            All function parameters are properly mapped
                           </p>
                         </div>
                       </div>
@@ -1607,9 +1622,10 @@ console.log('Cur map:', currentMappings);
                       <Button
                         onClick={() => setShowAddFunctionModal(true)}
                         variant="secondary"
-                        className="border-blue-600 text-blue-600 hover:bg-blue-50"
+                        size="sm"
+                        icon={<PlusIcon size={16} />}
                       >
-                        + Add Function
+                        Add Function
                       </Button>
                     </div>
                   )}
@@ -1623,7 +1639,8 @@ console.log('Cur map:', currentMappings);
                     ) : (
                       selectedFunctions.map((func, index) => {
                         // Check which parameters are missing mappings for this function (case-insensitive, strip prefixes)
-                        const runtimeContextFields = ['tenantid', 'tenant_id', 'userid', 'user_id'];
+                        // Note: tenantId is NOT included in runtime context because it should be mapped from source fields
+                        const runtimeContextFields = ['userid', 'user_id'];
                         const mappedDestinations = new Set<string>();
                         
                         currentMappings.forEach((mapping: any) => {
@@ -1702,12 +1719,14 @@ console.log('Cur map:', currentMappings);
                             </div>
                             {/* Remove button - Only show when not read-only */}
                             {!readOnly && (
-                              <button
+                              <Button
+                                variant="secondary"
+                                size="sm"
                                 onClick={() => handleRemoveFunction(index)}
-                                className="text-red-600 hover:text-red-800 px-2 py-1 ml-4"
+                                className="text-red-500 hover:bg-red-500 hover:text-white"
                               >
-                                ×
-                              </button>
+                                Remove
+                              </Button>
                             )}
                           </div>
                         );
@@ -1767,15 +1786,15 @@ console.log('Cur map:', currentMappings);
             })()}
           </div>
         </div>
-        <div className="px-6 py-4 border-t border-gray-200 flex justify-between" data-id="element-744">
-          <Button variant="secondary" onClick={onClose} data-id="element-747">
+        <div className="px-6 py-3 border-t border-gray-200 flex justify-between" data-id="element-744">
+          <Button variant="secondary" onClick={onClose} data-id="element-747" className=' !py-[6px]'>
             Cancel
           </Button>
           {/* Hide action buttons on deploy step when in read-only mode for non-approvers */}
           {!(readOnly && currentStep === 'deploy' && !isApprover(user?.claims || [])) && (
             <div className="flex items-center space-x-4" data-id="element-746">
               {currentStep !== 'payload' && (
-                <Button variant="secondary" onClick={() => {
+                <Button variant="secondary" className=' !pb-[6px] !pt-[4px]' onClick={() => {
                   const currentIndex = steps.findIndex(s => s.id === currentStep);
                   if (currentIndex > 0) {
                     // Clear any previous step-specific errors when navigating backward
@@ -1787,7 +1806,7 @@ console.log('Cur map:', currentMappings);
                 </Button>
               )}
               {!readOnly && (
-                <Button variant="primary" onClick={async () => {
+                <Button variant="primary" className=' !pb-[6px] !pt-[4px]' onClick={async () => {
                   console.log('🎯 Save and Next button clicked, currentStep:', currentStep);
                   console.log('createdEndpoint:', createdEndpoint);
                   console.log('existingConfig:', existingConfig);

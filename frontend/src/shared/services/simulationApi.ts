@@ -2,9 +2,9 @@ import { API_CONFIG } from '../config/api.config';
 
 // Types matching backend interfaces
 export interface SimulatePayloadRequest {
-  endpointId: number;
-  payloadType: 'application/json' | 'application/xml';
-  payload: Record<string, unknown>;
+  configId: number;
+  payloadType: 'json' | 'xml';
+  testPayload: string;
 }
 
 export interface SimulationError {
@@ -88,9 +88,9 @@ export class SimulationApiService {
    */
   async runSimulation(data: SimulatePayloadRequest): Promise<SimulationResult> {
     try {
-      console.log('Running simulation for endpoint:', data.endpointId);
+      console.log('Running simulation for config:', data.configId);
       console.log('Payload type:', data.payloadType);
-      console.log('Payload:', data.payload);
+      console.log('Test payload:', data.testPayload);
 
       const response = await fetch(`${this.baseURL}/simulation/run`, {
         method: 'POST',
@@ -116,8 +116,8 @@ export class SimulationApiService {
   ): Promise<ValidationResult> {
     try {
       console.log(
-        'Validating payload against schema for endpoint:',
-        data.endpointId,
+        'Validating payload against schema for config:',
+        data.configId,
       );
 
       const response = await fetch(`${this.baseURL}/simulation/validate`, {

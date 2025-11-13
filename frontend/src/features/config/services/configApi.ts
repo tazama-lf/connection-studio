@@ -1,3 +1,4 @@
+import { getDemsStatusLov } from '@shared/lovs';
 import { API_CONFIG } from '../../../shared/config/api.config';
 import type { Config, JsonSchema } from '../index';
 
@@ -83,6 +84,20 @@ export interface FieldAdjustment {
   path: string;
   type: 'STRING' | 'NUMBER' | 'BOOLEAN' | 'OBJECT' | 'ARRAY';
   isRequired: boolean;
+}
+
+interface PaginatedConfigResponse {
+  success: boolean;
+  configs: Config[];
+  total: number;
+  limit: number;
+  offset: number;
+  pages: number;
+}
+
+interface PaginationParams {
+  limit: number;
+  offset: number;
 }
 
 // Configuration API service
@@ -290,6 +305,35 @@ export class ConfigApiService {
       console.error('Configs fetch failed:', error);
       throw error;
     }
+  }
+
+async getConfigsPaginated(
+    params: PaginationParams,
+    searchingFilters?: Record<any, any>,
+  ): Promise<PaginatedConfigResponse> {
+
+    const {status, ...otherFilters} = searchingFilters || {};
+    let statusFilter;
+
+    if(!status){
+      statusFilter = getDemsStatusLov['editor']?.map(item => item.value)?.join(',') || [];
+    }
+    
+ 
+    const res = await fetch(`${this.baseURL}/config/${params.offset}/${params.limit}`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify({
+        ...otherFilters,
+        status: status || statusFilter,
+      }),
+    });
+
+    if (!res.ok) {
+      throw new Error("Failed to fetch paginated configs");
+    }
+
+    return (await res.json()) as PaginatedConfigResponse;
   }
 
   async getPendingApprovals(): Promise<{ configs: Config[] }> {

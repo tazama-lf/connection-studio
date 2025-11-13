@@ -52,7 +52,7 @@ export const DropdownMenuWithAutoDirection: React.FC<DropdownMenuWithAutoDirecti
     <div
       ref={menuRef}
       className={`absolute right-0 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-[9999] ${
-        position === 'top' ? 'bottom-full mb-2' : 'top-full mt-2'
+        position === 'top' ? 'bottom-full mb-2' : 'top-full -mt-3'
       }`}
     >
       {children}

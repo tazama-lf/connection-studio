@@ -4,7 +4,6 @@ import { DataGrid } from '@mui/x-data-grid';
 import type { GridColDef, GridRowParams } from '@mui/x-data-grid';
 import React from 'react';
 
-
 interface CustomTableProps {
   uniqueId?: string;
   columns: GridColDef[];
@@ -52,21 +51,6 @@ const CustomTable: React.FC<CustomTableProps> = ({
 
   return (
     <Box sx={{ padding: tablePadding }}>
-      {/* BUTTONS */}
-      {search && !buttonsComponent && <Box sx={{ minHeight: '3rem' }}></Box>}
-      {buttonsComponent && (
-        <Box
-          sx={{
-            display: 'flex',
-            justifyContent: 'flex-end',
-            gap: '12px',
-            marginBottom: '12px',
-          }}
-        >
-          {buttonsComponent}
-        </Box>
-      )}
-
       {/* TABLE */}
       <div
         style={{
@@ -99,6 +83,7 @@ const CustomTable: React.FC<CustomTableProps> = ({
             },
             '& .MuiDataGrid-cell': {
               fontSize: '12px',
+              overflow: 'visible',
             },
 
             ...(multilineHeader && {
@@ -137,12 +122,17 @@ const CustomTable: React.FC<CustomTableProps> = ({
               textTransform: 'none',
               px: '12px',
             },
+            '& .MuiDataGrid-columnHeaderTitleContainerContent': {
+              width: '100%',
+              height: '100%',
+            },
             '& .MuiDataGrid-columnHeader:focus-within, .MuiDataGrid-cell:focus, .MuiDataGrid-cell:focus-within':
               {
                 outline: 'none',
               },
             '& .MuiDataGrid-row': {
               cursor: 'pointer',
+              overflow: 'visible',
             },
             '& .MuiDataGrid-row:hover': {
               backgroundColor: '#f9fafb80',

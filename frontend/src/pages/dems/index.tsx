@@ -11,7 +11,9 @@ import CustomTable from '@common/Tables/CustomTable';
 
 // DEMS Module now uses real backend configurations instead of mock data
 const DEMSModule: React.FC = () => {
-  const [editingEndpointId, setEditingEndpointId] = useState<number | null>(null);
+  const [editingEndpointId, setEditingEndpointId] = useState<number | null>(
+    null,
+  );
   const [showValidationLogs, setShowValidationLogs] = useState(false);
   const [showVersionHistoryModal, setShowVersionHistoryModal] = useState(false);
   const [selectedConfig, setSelectedConfig] = useState<Config | null>(null);
@@ -29,12 +31,12 @@ const DEMSModule: React.FC = () => {
     setIsInCloneMode(false); // Reset clone mode
     setIsReadOnly(false); // Reset read-only mode
     // Refresh the config list when modal closes
-    setRefreshKey(prev => prev + 1);
+    setRefreshKey((prev) => prev + 1);
   };
 
   const handleConfigSuccess = () => {
     // Refresh immediately when config is saved/updated
-    setRefreshKey(prev => prev + 1);
+    setRefreshKey((prev) => prev + 1);
   };
 
   const handleViewDetails = (config: Config) => {
@@ -66,40 +68,25 @@ const DEMSModule: React.FC = () => {
   };
 
   const handleRefresh = () => {
-    setRefreshKey(prev => prev + 1);
+    setRefreshKey((prev) => prev + 1);
   };
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <AuthHeader title="Dynamic Endpoint Monitoring Service" showBackButton={true} />
-      
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+      <AuthHeader
+        title="Dynamic Endpoint Monitoring Service"
+        showBackButton={true}
+      />
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center my-8 gap-4">
           <div className="flex items-center space-x-4">
             {/* Search Bar */}
-            <div className="relative">
-              <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search endpoints..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-4 py-2 w-80 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-            
-            {/* <Button 
-              variant="secondary" 
-              onClick={() => setShowValidationLogs(!showValidationLogs)} 
-              icon={<AlertTriangleIcon size={16} />}
-            >
-              Validation Logs
-            </Button> */}
+            <h1 className="text-2xl font-bold text-gray-800">
+              Dynamic Endpoint Monitoring Service
+            </h1>
           </div>
-          <Button 
-            onClick={handleAddNew} 
-            icon={<PlusIcon size={16} />}
-          >
+          <Button onClick={handleAddNew} icon={<PlusIcon size={16} />}>
             Create New Connection
           </Button>
         </div>
@@ -109,15 +96,15 @@ const DEMSModule: React.FC = () => {
           <ValidationLogsTable />
         ) : (
           // <div className="bg-white rounded-lg shadow">
-            <ConfigList
-              key={refreshKey}
-              searchTerm={searchTerm}
-              onViewDetails={handleViewDetails}
-              onConfigEdit={handleEditConfig}
-              onConfigClone={handleCloneConfig}
-              onViewHistory={handleViewHistory}
-              onRefresh={handleRefresh}
-            />
+          <ConfigList
+            key={refreshKey}
+            searchTerm={searchTerm}
+            onViewDetails={handleViewDetails}
+            onConfigEdit={handleEditConfig}
+            onConfigClone={handleCloneConfig}
+            onViewHistory={handleViewHistory}
+            onRefresh={handleRefresh}
+          />
           // </div>
         )}
       </div>
