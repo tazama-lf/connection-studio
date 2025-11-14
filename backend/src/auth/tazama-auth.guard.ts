@@ -74,7 +74,6 @@ export class TazamaAuthGuard implements CanActivate {
       let validClaims: string[] = [];
       let invalidClaims: string[] = [];
       if (requiredClaims && requiredClaims.length > 0) {
-        // ALL required claims must be present
         const hasAllClaims = requiredClaims.every(
           (claim) => validated[claim] === true,
         );
@@ -90,7 +89,6 @@ export class TazamaAuthGuard implements CanActivate {
           );
         }
       } else if (anyRequiredClaims && anyRequiredClaims.length > 0) {
-        // ANY of the required claims can satisfy the requirement
         const hasAnyClaim = anyRequiredClaims.some(
           (claim) => validated[claim] === true,
         );
@@ -113,6 +111,8 @@ export class TazamaAuthGuard implements CanActivate {
       }
 
       const decodedToken = this.extractTokenPayload(token);
+
+      this.logger.log('decodedToken', decodedToken);
 
       (decodedToken as any).tokenString = token;
 
@@ -147,13 +147,11 @@ export class TazamaAuthGuard implements CanActivate {
 
   private extractTokenPayload(token: string): TazamaToken {
     try {
-      // Decode JWT without verification (since validation is done by tazama-auth-lib)
       const decoded = jwt.decode(token) as TazamaToken;
       if (!decoded) {
         throw new Error('Failed to decode token');
       }
 
-      // Validate required TazamaToken fields
       if (!decoded.clientId) {
         throw new Error('Token missing clientId');
       }

@@ -80,7 +80,9 @@ describe('AuthService', () => {
     it('should successfully login with token as string response', async () => {
       jest.spyOn(configService, 'get').mockReturnValue(authUrl);
       const mockToken = 'mock-jwt-token-string';
-      jest.spyOn(httpService, 'post').mockReturnValue(of({ data: mockToken }) as any);
+      jest
+        .spyOn(httpService, 'post')
+        .mockReturnValue(of({ data: mockToken }) as any);
 
       const result = await service.login(username, password);
 
@@ -99,9 +101,11 @@ describe('AuthService', () => {
     it('should successfully login with token in data.token field', async () => {
       jest.spyOn(configService, 'get').mockReturnValue(authUrl);
       const mockToken = 'mock-jwt-token';
-      jest.spyOn(httpService, 'post').mockReturnValue(
-        of({ data: { token: mockToken, expires_in: 3600 } }) as any,
-      );
+      jest
+        .spyOn(httpService, 'post')
+        .mockReturnValue(
+          of({ data: { token: mockToken, expires_in: 3600 } }) as any,
+        );
 
       const result = await service.login(username, password);
 
@@ -116,9 +120,11 @@ describe('AuthService', () => {
     it('should successfully login with token in data.access_token field', async () => {
       jest.spyOn(configService, 'get').mockReturnValue(authUrl);
       const mockToken = 'mock-access-token';
-      jest.spyOn(httpService, 'post').mockReturnValue(
-        of({ data: { access_token: mockToken, expiresIn: 7200 } }) as any,
-      );
+      jest
+        .spyOn(httpService, 'post')
+        .mockReturnValue(
+          of({ data: { access_token: mockToken, expiresIn: 7200 } }) as any,
+        );
 
       const result = await service.login(username, password);
 
@@ -132,9 +138,9 @@ describe('AuthService', () => {
     it('should successfully login with token in data.jwt field', async () => {
       jest.spyOn(configService, 'get').mockReturnValue(authUrl);
       const mockToken = 'mock-jwt';
-      jest.spyOn(httpService, 'post').mockReturnValue(
-        of({ data: { jwt: mockToken } }) as any,
-      );
+      jest
+        .spyOn(httpService, 'post')
+        .mockReturnValue(of({ data: { jwt: mockToken } }) as any);
 
       const result = await service.login(username, password);
 
@@ -148,9 +154,9 @@ describe('AuthService', () => {
     it('should successfully login with token in data.user.token field', async () => {
       jest.spyOn(configService, 'get').mockReturnValue(authUrl);
       const mockToken = 'mock-user-token';
-      jest.spyOn(httpService, 'post').mockReturnValue(
-        of({ data: { user: { token: mockToken } } }) as any,
-      );
+      jest
+        .spyOn(httpService, 'post')
+        .mockReturnValue(of({ data: { user: { token: mockToken } } }) as any);
 
       const result = await service.login(username, password);
 
@@ -181,7 +187,9 @@ describe('AuthService', () => {
         response: { status: 401 },
         message: 'Unauthorized',
       };
-      jest.spyOn(httpService, 'post').mockReturnValue(throwError(() => error) as any);
+      jest
+        .spyOn(httpService, 'post')
+        .mockReturnValue(throwError(() => error) as any);
 
       await expect(service.login(username, password)).rejects.toThrow(
         UnauthorizedException,
@@ -198,7 +206,9 @@ describe('AuthService', () => {
     it('should throw ServiceUnavailableException for network errors', async () => {
       jest.spyOn(configService, 'get').mockReturnValue(authUrl);
       const error = new Error('Network error');
-      jest.spyOn(httpService, 'post').mockReturnValue(throwError(() => error) as any);
+      jest
+        .spyOn(httpService, 'post')
+        .mockReturnValue(throwError(() => error) as any);
 
       await expect(service.login(username, password)).rejects.toThrow(
         ServiceUnavailableException,
@@ -215,7 +225,9 @@ describe('AuthService', () => {
         response: { status: 500 },
         message: 'Internal Server Error',
       };
-      jest.spyOn(httpService, 'post').mockReturnValue(throwError(() => error) as any);
+      jest
+        .spyOn(httpService, 'post')
+        .mockReturnValue(throwError(() => error) as any);
 
       await expect(service.login(username, password)).rejects.toThrow(
         ServiceUnavailableException,
