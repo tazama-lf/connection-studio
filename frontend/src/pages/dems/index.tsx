@@ -95,7 +95,6 @@ const DEMSModule: React.FC = () => {
         {showValidationLogs ? (
           <ValidationLogsTable />
         ) : (
-          // <div className="bg-white rounded-lg shadow">
           <ConfigList
             key={refreshKey}
             searchTerm={searchTerm}
@@ -105,7 +104,6 @@ const DEMSModule: React.FC = () => {
             onViewHistory={handleViewHistory}
             onRefresh={handleRefresh}
           />
-          // </div>
         )}
       </div>
 

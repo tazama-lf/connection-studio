@@ -1,13 +1,36 @@
 import React, { useState } from 'react';
-import { Eye, MoreVertical, ChevronDown, FilterIcon, Edit, ChevronDownIcon, ChevronUpIcon, Copy, Play, Pause } from 'lucide-react';
+import {
+  Eye,
+  MoreVertical,
+  ChevronDown,
+  FilterIcon,
+  Edit,
+  ChevronDownIcon,
+  ChevronUpIcon,
+  Copy,
+  Play,
+  Pause,
+} from 'lucide-react';
 import type { DataEnrichmentJobResponse, JobStatus } from '../types';
 import { Button } from '../../../shared/components/Button';
 import { useAuth } from '../../auth/contexts/AuthContext';
-import { isEditor, isApprover, isExporter, isPublisher } from '../../../utils/roleUtils';
+import {
+  isEditor,
+  isApprover,
+  isExporter,
+  isPublisher,
+} from '../../../utils/roleUtils';
 import { DropdownMenuWithAutoDirection } from './DropdownMenuWithAutoDirection';
-import { getStatusColor, getStatusLabel } from '../../../shared/utils/statusColors';
+import {
+  getStatusColor,
+  getStatusLabel,
+} from '../../../shared/utils/statusColors';
 import { useToast } from '../../../shared/providers/ToastProvider';
 import { dataEnrichmentApi } from '../services';
+import { Box, Pagination } from '@mui/material';
+import { handleInputFilter, handleSelectFilter } from '@shared/helpers';
+import { getDemsStatusLov } from '@shared/lovs';
+import CustomTable from '@common/Tables/CustomTable';
 
 const STATUS_OPTIONS = [
   { value: 'ALL', label: 'All Statuses' },
@@ -16,7 +39,7 @@ const STATUS_OPTIONS = [
   { value: 'exported', label: 'Exported' },
   { value: 'deployed', label: 'Deployed' },
   { value: 'rejected', label: 'Rejected' },
-  { value: 'suspended', label: 'Suspended' }
+  { value: 'suspended', label: 'Suspended' },
 ] as const;
 
 interface JobListProps {
@@ -26,43 +49,18 @@ interface JobListProps {
   onEdit?: (job: DataEnrichmentJobResponse) => void;
   onClone?: (job: DataEnrichmentJobResponse) => void;
   onRefresh?: () => void;
-  statusFilter?: JobStatus | 'ALL';
-  onStatusFilterChange?: (status: JobStatus | 'ALL') => void;
-  searchQuery?: string;
-  typeFilter?: 'push' | 'pull' | 'ALL';
-  onTypeFilterChange?: (type: 'push' | 'pull' | 'ALL') => void;
+  page?: number;
+  setPage?: (page: number) => void;
+  totalPages?: number;
+  totalRecords?: number;
+  itemsPerPage?: number;
+  searchingFilters?: any;
+  setSearchingFilters?: any;
+  error?: string | null;
+  loading?: boolean;
 }
 
-const StatusBadge: React.FC<{ status: JobStatus }> = ({ status }) => {
-  const statusColor = getStatusColor(status);
-  const statusLabel = getStatusLabel(status);
-
-  return (
-    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${statusColor}`}>
-      <span className="w-2 h-2 rounded-full bg-current mr-2"></span>
-      {statusLabel}
-    </span>
-  );
-};
-
-type SortField = 'endpoint_path' | 'type' | 'status' | 'created_at';
-type SortDirection = 'asc' | 'desc';
-
 export const JobList: React.FC<JobListProps> = (props) => {
-  // IMMEDIATE LOGGING - Log props as soon as component receives them
-  console.log('=== JobList COMPONENT PROPS RECEIVED ===');
-  console.log('Timestamp:', new Date().toISOString());
-  console.log('All props:', Object.keys(props));
-  console.log('Handler props received:');
-  console.log('  - onViewLogs type:', typeof props.onViewLogs);
-  console.log('  - onViewLogs value:', props.onViewLogs);
-  console.log('  - onEdit type:', typeof props.onEdit);
-  console.log('  - onEdit value:', props.onEdit);
-  console.log('  - onRefresh type:', typeof props.onRefresh);
-  console.log('  - onRefresh value:', props.onRefresh);
-  console.log('Jobs count:', props.jobs?.length || 0);
-  console.log('=== END PROPS RECEIVED ===');
-  
   // Destructure after logging
   const {
     jobs,
@@ -70,25 +68,35 @@ export const JobList: React.FC<JobListProps> = (props) => {
     onViewLogs,
     onEdit,
     onRefresh,
-    statusFilter = 'ALL',
-    onStatusFilterChange,
-    searchQuery = '',
-    typeFilter = 'ALL',
-    onTypeFilterChange,
+    page = 1,
+    setPage,
+    totalPages = 0,
+    totalRecords = 0,
+    itemsPerPage = 10,
+    searchingFilters,
+    setSearchingFilters,
+    error,
+    loading,
   } = props;
   const { user } = useAuth();
   const userIsEditor = user?.claims ? isEditor(user.claims) : false;
   const userIsApprover = user?.claims ? isApprover(user.claims) : false;
   const userIsExporter = user?.claims ? isExporter(user.claims) : false;
   const userIsPublisher = user?.claims ? isPublisher(user.claims) : false;
+
+  // Determine user role for status filter
+  const userRole = userIsPublisher
+    ? 'publisher'
+    : userIsExporter
+      ? 'exporter'
+      : userIsApprover
+        ? 'approver'
+        : 'editor';
+
   const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
   const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
   const [typeDropdownOpen, setTypeDropdownOpen] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
-
-  // Sorting state
-  const [sortField, setSortField] = useState<SortField>('created_at');
-  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
   // Toast hook
   const { showSuccess, showError } = useToast();
@@ -97,12 +105,16 @@ export const JobList: React.FC<JobListProps> = (props) => {
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
-      
+
       // Don't close if clicking on dropdown buttons or dropdown content
-      if (target.closest('.filter-dropdown') || target.closest('.dropdown-menu') || target.closest('.actions-dropdown')) {
+      if (
+        target.closest('.filter-dropdown') ||
+        target.closest('.dropdown-menu') ||
+        target.closest('.actions-dropdown')
+      ) {
         return;
       }
-      
+
       setStatusDropdownOpen(false);
       setTypeDropdownOpen(false);
       setDropdownOpen(null);
@@ -114,87 +126,14 @@ export const JobList: React.FC<JobListProps> = (props) => {
     }
   }, [statusDropdownOpen, dropdownOpen]);
 
-  // Handle column sorting
-  const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortDirection('asc');
-    }
-  };
-
-  // Jobs are already filtered and paginated by parent component
-  console.log('Jobs received (already filtered & paginated):', jobs.length);
-
-  // Sort jobs
-  const sortedJobs = [...jobs].sort((a, b) => {
-    let aValue: any;
-    let bValue: any;
-
-    // Handle special cases for sorting
-    if (sortField === 'created_at') {
-      aValue = a.created_at ? new Date(a.created_at).getTime() : 0;
-      bValue = b.created_at ? new Date(b.created_at).getTime() : 0;
-    } else if (sortField === 'endpoint_path') {
-      // For endpoint path, use the computed path
-      const getEndpointPathA = () => {
-        if (a.type?.toLowerCase() === 'push') {
-          return a.path || `/tenant-${a.endpoint_name?.substring(0, 6)}/${a.table_name || 'data'}`;
-        } else {
-          return `/tenant-${a.endpoint_name?.substring(0, 6) || '001'}/${a.table_name || a.endpoint_name}`;
-        }
-      };
-      const getEndpointPathB = () => {
-        if (b.type?.toLowerCase() === 'push') {
-          return b.path || `/tenant-${b.endpoint_name?.substring(0, 6)}/${b.table_name || 'data'}`;
-        } else {
-          return `/tenant-${b.endpoint_name?.substring(0, 6) || '001'}/${b.table_name || b.endpoint_name}`;
-        }
-      };
-      aValue = getEndpointPathA();
-      bValue = getEndpointPathB();
-    } else if (sortField === 'type') {
-      aValue = a.type || a.config_type?.toLowerCase() || 'pull';
-      bValue = b.type || b.config_type?.toLowerCase() || 'pull';
-    } else if (sortField === 'status') {
-      aValue = a.status || 'in-progress';
-      bValue = b.status || 'in-progress';
-    }
-
-    // Handle null/undefined values
-    if (aValue == null && bValue == null) return 0;
-    if (aValue == null) return sortDirection === 'asc' ? 1 : -1;
-    if (bValue == null) return sortDirection === 'asc' ? -1 : 1;
-
-    // Compare values
-    if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
-    if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
-    return 0;
-  });
-
-  // Status update handlers
-  const handleSuspendJob = async (job: DataEnrichmentJobResponse) => {
-    try {
-      setUpdatingStatus(job.id);
-      await dataEnrichmentApi.updateJobStatus(job.id, 'suspended', job.type?.toUpperCase() as 'PULL' | 'PUSH');
-      showSuccess(`Job ${job.endpoint_name || job.id} suspended successfully`);
-      if (props.onRefresh) {
-        props.onRefresh();
-      }
-    } catch (error) {
-      console.error('Failed to suspend job:', error);
-      showError('Failed to suspend job');
-    } finally {
-      setUpdatingStatus(null);
-      setDropdownOpen(null);
-    }
-  };
-
   const handleResumeJob = async (job: DataEnrichmentJobResponse) => {
     try {
       setUpdatingStatus(job.id);
-      await dataEnrichmentApi.updateJobStatus(job.id, 'in-progress', job.type?.toUpperCase() as 'PULL' | 'PUSH');
+      await dataEnrichmentApi.updateJobStatus(
+        job.id,
+        'in-progress',
+        job.type?.toUpperCase() as 'PULL' | 'PUSH',
+      );
       showSuccess(`Job ${job.endpoint_name || job.id} resumed successfully`);
       if (props.onRefresh) {
         props.onRefresh();
@@ -218,550 +157,422 @@ export const JobList: React.FC<JobListProps> = (props) => {
     );
   }
 
-  // Check if any filters are active
-  const hasActiveFilters = 
-    (statusFilter && statusFilter !== 'ALL') ||
-    (typeFilter && typeFilter !== 'ALL') ||
-    (searchQuery && searchQuery.trim() !== '');
+  const getStatusText = (status: string) => {
+    const normalizedStatus = status.toLowerCase();
 
-  if (!jobs || jobs.length === 0) {
-    console.log('⚠️ Rendering NO JOBS FOUND state');
-    console.log('Reason: jobs =', jobs, '| jobs.length =', jobs?.length);
-    
-    if (hasActiveFilters) {
-      // Show table with filters but empty body when filters are active
-      return (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-          <div className="overflow-x-auto">
-            <table className="min-w-full relative w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th 
-                    className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                    onClick={() => handleSort('endpoint_path')}
-                  >
-                    <div className="flex items-center space-x-1">
-                      <span>ENDPOINT PATH</span>
-                      {sortField === 'endpoint_path' && (
-                        sortDirection === 'asc' ? 
-                          <ChevronUpIcon className="w-4 h-4 ml-1" /> : 
-                          <ChevronDownIcon className="w-4 h-4 ml-1" />
-                      )}
-                    </div>
-                  </th>
-                  <th 
-                    className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                    onClick={() => handleSort('type')}
-                  >
-                    <div className="flex items-center space-x-2">
-                      <span>TYPE</span>
-                      <div className="relative filter-dropdown">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setTypeDropdownOpen(!typeDropdownOpen);
-                          }}
-                          className="p-1 hover:bg-gray-200 rounded transition-colors"
-                          title="Filter by type"
-                        >
-                          <ChevronDown size={16} className={`text-gray-500 transition-transform ${typeDropdownOpen ? 'rotate-180' : ''}`} />
-                        </button>
-                        {typeDropdownOpen && (
-                          <div className="absolute top-full left-0 mt-1 w-48 bg-white rounded-md shadow-lg z-[999] border border-gray-200 dropdown-menu">
-                            <div className="py-1">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onTypeFilterChange?.('ALL');
-                                  setTypeDropdownOpen(false);
-                                }}
-                                className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${typeFilter === 'ALL' ? 'bg-gray-100 font-medium' : 'text-gray-700'}`}
-                              >
-                                All Types
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onTypeFilterChange?.('push');
-                                  setTypeDropdownOpen(false);
-                                }}
-                                className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${typeFilter === 'push' ? 'bg-gray-100 font-medium' : 'text-gray-700'}`}
-                              >
-                                Push
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onTypeFilterChange?.('pull');
-                                  setTypeDropdownOpen(false);
-                                }}
-                                className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${typeFilter === 'pull' ? 'bg-gray-100 font-medium' : 'text-gray-700'}`}
-                              >
-                                Pull
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </th>
-                  <th 
-                    className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                    onClick={() => handleSort('status')}
-                  >
-                    <div className="flex items-center space-x-2">
-                      <FilterIcon className="w-4 h-4 text-gray-400" />
-                      <span>STATUS</span>
-                      <div className="relative filter-dropdown">
-                        <button
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setStatusDropdownOpen(!statusDropdownOpen);
-                          }}
-                          className="p-1 hover:bg-gray-200 rounded transition-colors"
-                          title="Filter by status"
-                        >
-                          <ChevronDown size={16} className={`text-gray-500 transition-transform ${statusDropdownOpen ? 'rotate-180' : ''}`} />
-                        </button>
-                        {statusDropdownOpen && (
-                          <div className="absolute top-full left-0 mt-1 w-48 bg-white rounded-md shadow-lg z-[999] border border-gray-200 dropdown-menu">
-                            <div className="py-1">
-                              {STATUS_OPTIONS.map((option) => (
-                                <button
-                                  key={option.value}
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    if (onStatusFilterChange) {
-                                      onStatusFilterChange(option.value as JobStatus | 'ALL');
-                                    }
-                                    setStatusDropdownOpen(false);
-                                  }}
-                                  className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${
-                                    statusFilter === option.value ? 'bg-gray-100 font-medium' : 'text-gray-700'
-                                  }`}
-                                >
-                                  {option.label}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </th>
-                  <th 
-                    className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                    onClick={() => handleSort('created_at')}
-                  >
-                    <div className="flex items-center space-x-2">
-                      <span>CREATED TIME</span>
-                      {sortField === 'created_at' && (
-                        sortDirection === 'asc' ? 
-                          <ChevronUpIcon className="w-4 h-4 ml-1" /> : 
-                          <ChevronDownIcon className="w-4 h-4 ml-1" />
-                      )}
-                    </div>
-                  </th>
-                  <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    ACTIONSxxx
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white">
-                <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
-                    No jobs found
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      );
+    // Handle STATUS_XX_NAME format from database
+    if (normalizedStatus.startsWith('status_')) {
+      // Extract the name part after the number (e.g., STATUS_03_UNDER_REVIEW -> UNDER_REVIEW)
+      const parts = normalizedStatus.split('_');
+      if (parts.length >= 3) {
+        const statusName = parts.slice(2).join('_'); // Get everything after STATUS_XX_
+        switch (statusName) {
+          case 'in_progress':
+            return 'IN-PROGRESS';
+          case 'under_review':
+            return 'UNDER REVIEW';
+          case 'approved':
+            return 'APPROVED';
+          case 'rejected':
+            return 'REJECTED';
+          case 'changes_requested':
+            return 'CHANGES REQUESTED';
+          case 'exported':
+            return 'EXPORTED';
+          case 'ready_for_deployment':
+            return 'READY FOR DEPLOYMENT';
+          case 'deployed':
+            return 'DEPLOYED';
+          case 'suspended':
+            return 'SUSPENDED';
+          default:
+            return statusName.toUpperCase().replace(/_/g, ' ');
+        }
+      }
     }
-    
-    // Show "no jobs yet" message for empty system
-    return (
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12">
-        <div className="text-center">
-          <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-            <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 016.586 13H4" />
-            </svg>
-          </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No Data Enrichment Jobs Yet</h3>
-         
-          {onRefresh && (
-            <Button onClick={onRefresh} variant="secondary">
-              Refresh
-            </Button>
-          )}
-        </div>
-      </div>
-    );
-  }
 
-  console.log('✅ Rendering JOBS TABLE with', jobs.length, 'jobs');
+    // Handle legacy status formats
+    switch (normalizedStatus) {
+      case 'active':
+        return 'READY FOR APPROVAL';
+      case 'draft':
+      case 'in-progress':
+      case 'in_progress':
+        return 'IN-PROGRESS';
+      case 'suspended':
+        return 'SUSPENDED';
+      case 'status_01_in_progress':
+        return 'IN-PROGRESS';
+      case 'cloned':
+        return 'CLONED';
+      case 'approved':
+        return 'APPROVED';
+      case 'under review':
+      case 'under_review':
+        return 'UNDER REVIEW';
+      case 'deployed':
+        return 'DEPLOYED';
+      case 'rejected':
+        return 'REJECTED';
+      case 'changes_requested':
+      case 'changes requested':
+        return 'CHANGES REQUESTED';
+      case 'exported':
+        return 'EXPORTED';
+      case 'ready_for_deployment':
+      case 'ready for deployment':
+        return 'READY FOR DEPLOYMENT';
+      default:
+        return status.toUpperCase().replace(/_/g, ' ');
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'numeric',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+  };
+
+  const getStatusBadge = (status: string) => {
+    const normalizedStatus = status.toLowerCase();
+
+    // Handle STATUS_XX_NAME format from database
+    if (normalizedStatus.startsWith('status_')) {
+      const parts = normalizedStatus.split('_');
+      if (parts.length >= 3) {
+        const statusName = parts.slice(2).join('_'); // Get everything after STATUS_XX_
+        switch (statusName) {
+          case 'in_progress':
+            return 'bg-yellow-50 text-yellow-600 border border-yellow-200';
+          case 'under_review':
+            return 'bg-blue-50 text-blue-600 border border-blue-200';
+          case 'approved':
+            return 'bg-green-50 text-green-600 border border-green-200';
+          case 'rejected':
+            return 'bg-red-50 text-red-600 border border-red-200';
+          case 'changes_requested':
+            return 'bg-orange-50 text-orange-600 border border-orange-200';
+          case 'exported':
+            return 'bg-cyan-50 text-cyan-600 border border-cyan-200';
+          case 'ready_for_deployment':
+            return 'bg-emerald-50 text-emerald-600 border border-emerald-200';
+          case 'deployed':
+            return 'bg-indigo-50 text-indigo-600 border border-indigo-200';
+          case 'suspended':
+            return 'bg-red-50 text-red-600 border border-red-200';
+          default:
+            return 'bg-gray-50 text-gray-600 border border-gray-200';
+        }
+      }
+    }
+
+    // Handle legacy status formats
+    switch (normalizedStatus) {
+      case 'active':
+      case 'ready for approval':
+      case 'approved':
+        return 'bg-green-50 text-green-600 border border-green-200';
+      case 'in-progress':
+      case 'in_progress':
+      case 'draft':
+      case 'status_01_in_progress':
+        return 'bg-yellow-50 text-yellow-600 border border-yellow-200';
+      case 'suspended':
+      case 'rejected':
+        return 'bg-red-50 text-red-600 border border-red-200';
+      case 'cloned':
+        return 'bg-purple-50 text-purple-600 border border-purple-200';
+      case 'under_review':
+      case 'under review':
+        return 'bg-blue-50 text-blue-600 border border-blue-200';
+      case 'deployed':
+        return 'bg-indigo-50 text-indigo-600 border border-indigo-200';
+      case 'changes_requested':
+      case 'changes requested':
+        return 'bg-orange-50 text-orange-600 border border-orange-200';
+      case 'exported':
+        return 'bg-cyan-50 text-cyan-600 border border-cyan-200';
+      case 'ready_for_deployment':
+      case 'ready for deployment':
+        return 'bg-emerald-50 text-emerald-600 border border-emerald-200';
+      default:
+        return 'bg-gray-50 text-gray-600 border border-gray-200';
+    }
+  };
+
+  // Helper function to normalize status for comparisons
+  const normalizeStatus = (status: string): string => {
+    const normalizedStatus = status.toLowerCase();
+
+    // Handle STATUS_XX_NAME format from database
+    if (normalizedStatus.startsWith('status_')) {
+      const parts = normalizedStatus.split('_');
+      if (parts.length >= 3) {
+        return parts.slice(2).join('_'); // Get everything after STATUS_XX_
+      }
+    }
+
+    return normalizedStatus;
+  };
+
+  // CustomTable columns configuration
+  const columns = [
+    {
+      field: 'endpoint_name',
+      headerName: 'Endpoint Path',
+      flex: 1,
+      minWidth: 400,
+      sortable: false,
+      disableColumnMenu: true,
+      renderHeader: () => (
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+            width: '100%',
+            py: '12px',
+          }}
+        >
+          <Box sx={{ fontSize: '14px', fontWeight: '600' }}>Endpoint Path</Box>
+          {handleInputFilter({
+            fieldName: 'endpointName',
+            searchingFilters,
+            setSearchingFilters,
+          })}
+        </Box>
+      ),
+    },
+    {
+      field: 'status',
+      headerName: 'Status',
+      minWidth: 260,
+      flex: 1,
+      sortable: false,
+      disableColumnMenu: true,
+      renderHeader: () => (
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+            width: '100%',
+            py: '12px',
+          }}
+        >
+          <Box sx={{ fontSize: '14px', fontWeight: '600' }}>Status</Box>
+          {handleSelectFilter({
+            fieldName: 'status',
+            options:
+              getDemsStatusLov[userRole as keyof typeof getDemsStatusLov] || [],
+            searchingFilters,
+            setSearchingFilters,
+          })}
+        </Box>
+      ),
+      renderCell: (_params: any) => (
+        <span
+          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${getStatusBadge(_params.row.status)}`}
+        >
+          <span className="w-2 h-2 rounded-full bg-current mr-2"></span>
+          {getStatusText(_params.row.status)}
+        </span>
+      ),
+    },
+    {
+      field: 'created_at',
+      headerName: 'Created Time',
+      minWidth: 260,
+      flex: 1,
+      sortable: false,
+      disableColumnMenu: true,
+      renderHeader: () => (
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-start',
+            gap: '8px',
+            width: '100%',
+            height: '100%',
+            py: '12px',
+          }}
+        >
+          <Box sx={{ fontSize: '14px', fontWeight: '600' }}>Created At</Box>
+        </Box>
+      ),
+      renderCell: (_params: any) => (
+        <div className="flex items-center">
+          <svg
+            className="w-4 h-4 mr-1 text-gray-400"
+            fill="currentColor"
+            viewBox="0 0 20 20"
+          >
+            <path
+              fillRule="evenodd"
+              d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z"
+              clipRule="evenodd"
+            />
+          </svg>
+          {formatDate(_params.row.created_at)}
+        </div>
+      ),
+    },
+    {
+      field: 'actions',
+      headerName: 'Actions',
+      minWidth: 280,
+      flex: 1,
+      sortable: false,
+      disableColumnMenu: true,
+      renderHeader: () => (
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-start',
+            gap: '8px',
+            width: '100%',
+            height: '100%',
+            py: '12px',
+          }}
+        >
+          <Box sx={{ fontSize: '14px', fontWeight: '600' }}>Actions</Box>
+        </Box>
+      ),
+      renderCell: (_params: any) => {
+        const job = _params.row;
+
+        return (
+          <div className=" flex items-center gap-2 h-full">
+            {/* View Details - Available to all roles that have view permissions */}
+            {((userIsEditor && onViewLogs) ||
+              userIsApprover ||
+              (userIsExporter &&
+                (job.status === 'approved' ||
+                  job.status === 'exported' ||
+                  job.status === 'deployed')) ||
+              (userIsPublisher &&
+                (job.status === 'exported' || job.status === 'deployed'))) && (
+              <button
+                onClick={() => {
+                  if (onViewLogs) {
+                    onViewLogs(job.id);
+                  } else {
+                    // Fallback for approvers/exporters without handler
+                    console.log('Opening job details for user with roles:', {
+                      userIsEditor,
+                      userIsApprover,
+                      userIsExporter,
+                    });
+                    alert('Opening job details...');
+                  }
+                  setDropdownOpen(null);
+                }}
+                className="inline-flex items-center rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none transition-colors cursor-pointer"
+              >
+                <Eye className="w-4 h-4 mr-2" />
+                View
+              </button>
+            )}
+
+            {/* Edit - Only for Editors and only for in-progress jobs (not suspended) */}
+            {userIsEditor && onEdit && job.status === 'in-progress' && (
+              <button
+                onClick={() => {
+                  onEdit(job);
+                  setDropdownOpen(null);
+                }}
+                className="inline-flex items-center rounded-md px-3 py-1.5 text-xs font-medium shadow-sm focus:outline-none transition-colors cursor-pointer bg-yellow-500 text-white border border-yellow-500 hover:bg-yellow-600 focus:ring-yellow-500"
+              >
+                <Edit className="w-4 h-4 mr-2" />
+                Edit
+              </button>
+            )}
+
+            {/* Suspend/Resume - Available to Editors and Approvers */}
+            {(userIsEditor || userIsApprover) && job.status === 'rejected' && (
+              <button
+                onClick={() => handleResumeJob(job)}
+                disabled={updatingStatus === job.id}
+                className={`inline-flex items-center rounded-md  px-3 py-1.5 text-xs font-medium text-white shadow-sm focus:outline-none transition-colors cursor-pointer ${
+                  updatingStatus === job.id
+                    ? ' bg-gray-400 cursor-not-allowed'
+                    : 'bg-cyan-600 hover:bg-cyan-700'
+                }`}
+              >
+                <Play className="w-4 h-4 mr-2" />
+                {updatingStatus === job.id ? 'Resuming...' : 'Resume Job'}
+              </button>
+            )}
+          </div>
+        );
+      },
+    },
+  ];
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-      <div className="overflow-x-auto">
-        <table className="min-w-full relative w-full">
-          <thead className="bg-gray-50 border-b border-gray-200">
-            <tr>
-              <th 
-                className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                onClick={() => handleSort('endpoint_path')}
-              >
-                <div className="flex items-center space-x-1">
-                  <span>ENDPOINT PATH</span>
-                  {sortField === 'endpoint_path' && (
-                    sortDirection === 'asc' ? 
-                      <ChevronUpIcon className="w-4 h-4 ml-1" /> : 
-                      <ChevronDownIcon className="w-4 h-4 ml-1" />
-                  )}
+    <>
+      {error && (
+        <div className="px-6 py-4 bg-red-50 border-l-4 border-red-400">
+          <div className="text-red-800 text-sm">{error}</div>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex items-center justify-center p-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <span className="ml-2 text-gray-600">Loading configurations...</span>
+        </div>
+      ) : (
+        <CustomTable
+          columns={columns}
+          rows={jobs}
+          search={true}
+          pageSize={itemsPerPage}
+          pageSizeOptions={[10, 20, 50]}
+          // onRowClick={(params) => handleViewConfig(params.row)}
+          disableRowSelection={true}
+          pagination={
+            jobs.length > 0 && (
+              <div className="px-6 py-4 border-t border-gray-200 bg-white rounded-b-lg flex items-center justify-between">
+                <div className="text-sm text-gray-700">
+                  Showing{' '}
+                  <span className="font-medium">
+                    {(page - 1) * itemsPerPage + 1}
+                  </span>{' '}
+                  to{' '}
+                  <span className="font-medium">
+                    {Math.min(page * itemsPerPage, totalRecords)}
+                  </span>{' '}
+                  of <span className="font-medium">{totalRecords}</span> results
                 </div>
-              </th>
-              <th 
-                className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                onClick={() => handleSort('type')}
-              >
-                <div className="flex items-center space-x-2">
-                  <span>TYPE</span>
-                  {/* {sortField === 'type' && (
-                    sortDirection === 'asc' ? 
-                      <ChevronUpIcon className="w-4 h-4 ml-1" /> : 
-                      <ChevronDownIcon className="w-4 h-4 ml-1" />
-                  )} */}
-                  <div className="relative filter-dropdown">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setTypeDropdownOpen(!typeDropdownOpen);
+                <div className="flex items-center space-x-3">
+                  <Box>
+                    <Pagination
+                      page={page}
+                      count={totalPages}
+                      onChange={(_, newPage: number) => setPage?.(newPage)}
+                      variant="outlined"
+                      sx={{
+                        '& .MuiPaginationItem-page.Mui-selected': {
+                          backgroundColor: '#fbf9fa',
+                        },
                       }}
-                      className="p-1 hover:bg-gray-200 rounded transition-colors"
-                      title="Filter by type"
-                    >
-                      <ChevronDown size={16} className={`text-gray-500 transition-transform ${typeDropdownOpen ? 'rotate-180' : ''}`} />
-                    </button>
-                    {typeDropdownOpen && (
-                      <div className="absolute top-full left-0 mt-1 w-48 bg-white rounded-md shadow-lg z-[999] border border-gray-200 dropdown-menu">
-                        <div className="py-1">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onTypeFilterChange?.('ALL');
-                              setTypeDropdownOpen(false);
-                            }}
-                            className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${typeFilter === 'ALL' ? 'bg-gray-100 font-medium' : 'text-gray-700'}`}
-                          >
-                            All Types
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onTypeFilterChange?.('push');
-                              setTypeDropdownOpen(false);
-                            }}
-                            className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${typeFilter === 'push' ? 'bg-gray-100 font-medium' : 'text-gray-700'}`}
-                          >
-                            Push
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onTypeFilterChange?.('pull');
-                              setTypeDropdownOpen(false);
-                            }}
-                            className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${typeFilter === 'pull' ? 'bg-gray-100 font-medium' : 'text-gray-700'}`}
-                          >
-                            Pull
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                    />
+                  </Box>
                 </div>
-              </th>
-              <th 
-                className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                onClick={() => handleSort('status')}
-              >
-                <div className="flex items-center space-x-2">
-                  <FilterIcon className="w-4 h-4 text-gray-400" />
-                  <span>STATUS</span>
-                  {/* {sortField === 'status' && (
-                    sortDirection === 'asc' ? 
-                      <ChevronUpIcon className="w-4 h-4 ml-1" /> : 
-                      <ChevronDownIcon className="w-4 h-4 ml-1" />
-                  )} */}
-                  <div className="relative filter-dropdown">
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        console.log('=== STATUS DROPDOWN TOGGLE CLICKED ===');
-                        console.log('Current statusDropdownOpen:', statusDropdownOpen);
-                        console.log('Will toggle to:', !statusDropdownOpen);
-                        console.log('User roles:', { userIsEditor, userIsApprover, userIsExporter });
-                        setStatusDropdownOpen(!statusDropdownOpen);
-                        console.log('Dropdown toggle complete - new state:', !statusDropdownOpen);
-                      }}
-                      className="p-1 hover:bg-gray-200 rounded transition-colors"
-                      title="Filter by status"
-                    >
-                      <ChevronDown size={16} className={`text-gray-500 transition-transform ${statusDropdownOpen ? 'rotate-180' : ''}`} />
-                    </button>
-                    {statusDropdownOpen && (
-                      <div className="absolute top-full left-0 mt-1 w-48 bg-white rounded-md shadow-lg z-[999] border border-gray-200 dropdown-menu">
-                        <div className="py-1">
-                          {STATUS_OPTIONS.map((option) => (
-                            <button
-                              key={option.value}
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                if (onStatusFilterChange) {
-                                  onStatusFilterChange(option.value as JobStatus | 'ALL');
-                                }
-                                setStatusDropdownOpen(false);
-                              }}
-                              className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${
-                                statusFilter === option.value ? 'bg-gray-100 font-medium' : 'text-gray-700'
-                              }`}
-                            >
-                              {option.label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </th>
-              <th 
-                className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                onClick={() => handleSort('created_at')}
-              >
-                <div className="flex items-center space-x-2">
-                  <span>CREATED TIME</span>
-                  {sortField === 'created_at' && (
-                    sortDirection === 'asc' ? 
-                      <ChevronUpIcon className="w-4 h-4 ml-1" /> : 
-                      <ChevronDownIcon className="w-4 h-4 ml-1" />
-                  )}
-                </div>
-              </th>
-              <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                ACTIONS
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-100">
-            {sortedJobs.map((job, index) => {
-              // Determine dropdown direction: first row opens down, last row opens up
-              const isFirstRow = index === 0;
-              const isLastRow = index === sortedJobs.length - 1;
-              const forceDirection = isFirstRow ? 'bottom' : isLastRow ? 'top' : 'auto';
-              
-              // Get job type - normalize to uppercase for API calls
-              const rawJobType = job.type || job.config_type?.toLowerCase() || 'pull';
-              const jobType: 'PULL' | 'PUSH' = rawJobType?.toLowerCase() === 'push' ? 'PUSH' : 'PULL';
-              
-              console.log(`Job ${job.id} type determination:`, {
-                'job.type': job.type,
-                'job.config_type': job.config_type,
-                rawJobType,
-                finalJobType: jobType,
-                'rawJobType === push': rawJobType === 'push',
-                'rawJobType?.toLowerCase() === push': rawJobType?.toLowerCase() === 'push'
-              });
-              
-              // Build the endpoint path based on job type
-              const getEndpointPath = () => {
-                if (rawJobType === 'push') {
-                  // For push jobs, use the path field if available
-                  return job.path || `/tenant-${job.endpoint_name?.substring(0, 6)}/${job.table_name || 'data'}`;
-                } else {
-                  // For pull jobs, show a descriptive path
-                  return `/tenant-${job.endpoint_name?.substring(0, 6) || '001'}/${job.table_name || job.endpoint_name}`;
-                }
-              };
-              
-              // Status updates should be available for all jobs (both PUSH and PULL)
-              // Show status update buttons for all jobs, regardless of current status value
-              const hasStatus = true; // Allow status updates for all jobs
-              
-              // For display: show 'in-progress' for jobs without explicit status
-              const displayStatus: JobStatus = job.status || 'in-progress';
-              
-              // Debug logging for status update issues
-              console.log(`Job ${job.id} status debug:`, {
-                jobType: rawJobType,
-                rawStatus: job.status,
-                displayStatus,
-                hasStatus,
-                willShowStatusButtons: hasStatus
-              });
-
-              
-              return (
-                <tr key={job.id} className={`hover:bg-gray-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
-                  <td className="px-6 py-4">
-                    <div className="text-sm font-medium text-gray-900">
-                      {getEndpointPath()}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded ${
-                      jobType === 'PUSH' 
-                        ? 'bg-purple-100 text-purple-700' 
-                        : 'bg-blue-100 text-blue-700'
-                    }`}>
-                      <span className={`w-2 h-2 rounded-full mr-2 ${
-                        jobType === 'PUSH' ? 'bg-purple-500' : 'bg-blue-500'
-                      }`}></span>
-                      {jobType}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <StatusBadge status={displayStatus} />
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center text-sm text-gray-600">
-                      <svg className="h-4 w-4 text-gray-400 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                      <span className="font-medium">
-                        {job.created_at 
-                          ? new Date(job.created_at).toLocaleDateString('en-US', {
-                              month: 'numeric',
-                              day: 'numeric', 
-                              year: 'numeric',
-                              hour: 'numeric',
-                              minute: '2-digit',
-                              hour12: true
-                            })
-                          : 'N/A'
-                        }
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-center">
-                    <div className="flex items-center justify-center space-x-2">
-                    {/* Actions Dropdown */}
-                    <div className="relative actions-dropdown">
-                      <button
-                        onClick={() => {
-                          console.log('=== THREE-DOT MENU CLICKED ===');
-                          console.log('Job ID:', job.id);
-                          console.log('Current dropdownOpen:', dropdownOpen);
-                          console.log('Will set to:', dropdownOpen === job.id ? null : job.id);
-                          console.log('User roles:', { userIsEditor, userIsApprover, userIsExporter });
-                          setDropdownOpen(dropdownOpen === job.id ? null : job.id);
-                        }}
-                        className={`p-1 rounded-md hover:bg-gray-100 ${dropdownOpen === job.id ? 'bg-blue-100 text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
-                        title={`Roles: Editor=${userIsEditor}, Approver=${userIsApprover}, Exporter=${userIsExporter}`}
-                      >
-                        <MoreVertical className="w-4 h-4" />
-                      </button>
-
-                      {dropdownOpen === job.id && (
-                        <DropdownMenuWithAutoDirection forceDirection={forceDirection}>
-                          <div className="py-1">
-                            {/* View Details - Available to all roles that have view permissions */}
-                            {((userIsEditor && onViewLogs) ||
-                              (userIsApprover) ||
-                              (userIsExporter && (displayStatus === 'approved' || displayStatus === 'exported' || displayStatus === 'deployed')) ||
-                              (userIsPublisher && (displayStatus === 'exported' || displayStatus === 'deployed'))) && (
-                              <button
-                                onClick={() => {
-                                  if (onViewLogs) {
-                                    onViewLogs(job.id);
-                                  } else {
-                                    // Fallback for approvers/exporters without handler
-                                    console.log('Opening job details for user with roles:', { userIsEditor, userIsApprover, userIsExporter });
-                                    alert('Opening job details...');
-                                  }
-                                  setDropdownOpen(null);
-                                }}
-                                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                              >
-                                <Eye className="w-4 h-4 mr-2" />
-                                View
-                              </button>
-                            )}
-
-                            {/* Clone - Available to all roles, except for suspended jobs */}
-                            {props.onClone && displayStatus !== 'suspended' && (
-                              <button
-                                onClick={() => {
-                                  props.onClone!(job);
-                                  setDropdownOpen(null);
-                                }}
-                                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                              >
-                                <Copy className="w-4 h-4 mr-2" />
-                                Clone
-                              </button>
-                            )}
-
-                            {/* Edit - Only for Editors and only for in-progress jobs (not suspended) */}
-                            {userIsEditor && onEdit && displayStatus === 'in-progress' && (
-                              <button
-                                onClick={() => {
-                                  onEdit(job);
-                                  setDropdownOpen(null);
-                                }}
-                                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                              >
-                                <Edit className="w-4 h-4 mr-2" />
-                                Edit
-                              </button>
-                            )}
-
-                            {/* Suspend/Resume - Available to Editors and Approvers */}
-                            {(userIsEditor || userIsApprover) && (
-                              <>
-                                {displayStatus === 'rejected' ? (
-                                  <button
-                                    onClick={() => handleResumeJob(job)}
-                                    disabled={updatingStatus === job.id}
-                                    className={`flex items-center w-full px-4 py-2 text-sm hover:bg-gray-100 ${
-                                      updatingStatus === job.id ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700'
-                                    }`}
-                                  >
-                                    <Play className="w-4 h-4 mr-2" />
-                                    {updatingStatus === job.id ? 'Resuming...' : 'Resume Job'}
-                                  </button>
-                                ) : (displayStatus === 'in-progress' && (
-                                  <button
-                                    onClick={() => handleSuspendJob(job)}
-                                    disabled={updatingStatus === job.id}
-                                    className={`flex items-center w-full px-4 py-2 text-sm hover:bg-gray-100 ${
-                                      updatingStatus === job.id ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700'
-                                    }`}
-                                  >
-                                    <Pause className="w-4 h-4 mr-2" />
-                                    {updatingStatus === job.id ? 'Suspending...' : 'Suspend Job'}
-                                  </button>
-                                ))}
-                              </>
-                            )}
-                          </div>
-                        </DropdownMenuWithAutoDirection>
-                      )}
-                    </div>
-                  </div>
-                </td>
-              </tr>
-            );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </div>
+              </div>
+            )
+          }
+        />
+      )}
+    </>
   );
-};export default JobList;
+};
+export default JobList;

@@ -70,6 +70,7 @@ interface PaginatedConfigResponse {
 interface PaginationParams {
   limit: number;
   offset: number;
+  userRole: string;
 }
 
 export const ConfigList: React.FC<ConfigListProps> = ({
@@ -104,9 +105,8 @@ export const ConfigList: React.FC<ConfigListProps> = ({
   const userIsExporter = user?.claims ? isExporter(user.claims) : false;
   const userIsPublisher = user?.claims ? isPublisher(user.claims) : false;
   const { showSuccess, showError } = useToast();
-  console.log('user', user);
 
-  const userRole = user?.claims ? getPrimaryRole(user?.claims) : false;
+  const userRole =  getPrimaryRole(user?.claims as string[]);
 
   // Fetch configs based on flags
   const fetchConfigs = async () => {
@@ -225,6 +225,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
         return status.toUpperCase().replace(/_/g, ' ');
     }
   };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       month: 'numeric',
@@ -657,7 +658,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
       const limit: number = itemsPerPage;
       const offset: number = pageNumber - 1;
 
-      const params: PaginationParams = { limit, offset };
+      const params: PaginationParams = { limit, offset, userRole: userRole as string };
 
       const response: PaginatedConfigResponse =
         await configApi.getConfigsPaginated(params, searchingFilters);

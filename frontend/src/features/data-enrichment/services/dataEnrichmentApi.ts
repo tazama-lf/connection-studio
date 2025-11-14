@@ -1,3 +1,4 @@
+import { getDemsStatusLov } from '@shared/lovs';
 import { ENV } from '../../../shared/config/environment.config';
 
 import type {
@@ -14,6 +15,21 @@ import type {
 
 const DATA_ENRICHMENT_BASE_URL = ENV.DATA_ENRICHMENT_SERVICE_URL;
 const API_BASE_URL = ENV.API_BASE_URL;
+
+interface PaginatedJobResponse {
+  success: boolean;
+  jobs: DataEnrichmentJobResponse[];
+  total: number;
+  limit: number;
+  offset: number;
+  pages: number;
+}
+
+interface PaginationParams {
+  limit: number;
+  offset: number;
+  userRole: string;
+}
 
 // Helper function for API requests
 const getAuthHeaders = (): HeadersInit => {
@@ -86,62 +102,34 @@ export const dataEnrichmentApi = {
   },
 
   getAllJobs: async (
-    page?: number,
-    limit?: number,
-  ): Promise<JobListResponse> => {
-    console.log('\n=== getAllJobs API CALL START ===');
-    console.log('Time:', new Date().toISOString());
-    console.log('Input parameters:');
-    console.log('  - page:', page);
-    console.log('  - limit:', limit);
+    params: PaginationParams,
+ searchingFilters?: Record<any, any>,
+  ): Promise<PaginatedJobResponse> => {
+    
+    const url = `${API_BASE_URL}/job/all?${params?.offset !== undefined ? `offset=${params.offset}&` : ''}${params?.limit !== undefined ? `limit=${params.limit}` : ''}`;
+ 
+      const {status, ...otherFilters} = searchingFilters || {};
+        let statusFilter;
+    
+      // if(!status){
+      //   const userRole = params.userRole as keyof typeof getDemsStatusLov;
+      //   statusFilter = getDemsStatusLov[userRole]?.map(item => item.value)?.join(',') || '';
+      // }
 
-    const queryParams = new URLSearchParams();
-    if (page) queryParams.append('page', page.toString());
-    if (limit) queryParams.append('limit', limit.toString());
-
-    const url = `${API_BASE_URL}/job/all${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
-    console.log('API Configuration:');
-    console.log('  - API_BASE_URL:', API_BASE_URL);
-    console.log('  - Query params:', queryParams.toString() || 'none');
-    console.log('  - Full URL:', url);
-
-    try {
-      console.log('Making API request...');
-      const result = await apiRequest<DataEnrichmentJobResponse[] | JobListResponse>(url);
-      
-      console.log('=== API RESPONSE RECEIVED ===');
-      console.log('Response type:', typeof result);
-      console.log('Response is Array?:', Array.isArray(result));
-      console.log('Raw response:', JSON.stringify(result, null, 2));
-      
-      // Backend returns flat array, transform to paginated format
-      if (Array.isArray(result)) {
-        console.log('⚠️ Backend returned flat array, transforming to paginated format');
-        const jobs = result as DataEnrichmentJobResponse[];
-        const transformedResponse: JobListResponse = {
-          jobs: jobs,
-          page: page || 1,
-          limit: limit || 10,
-          total: jobs.length,
-          totalPages: Math.ceil(jobs.length / (limit || 10))
-        };
-        console.log('Transformed response:', transformedResponse);
-        console.log('=== getAllJobs API CALL SUCCESS (transformed) ===\n');
-        return transformedResponse;
-      }
-      
-      // If already in correct format, return as is
-      console.log('Response already in paginated format');
-      console.log('=== getAllJobs API CALL SUCCESS ===\n');
-      return result as JobListResponse;
-    } catch (error) {
-      console.error('=== getAllJobs API CALL FAILED ===');
-      console.error('Error type:', error?.constructor?.name);
-      console.error('Error message:', error instanceof Error ? error.message : String(error));
-      console.error('Full error:', error);
-      console.error('=== getAllJobs API CALL END ===\n');
-      throw error;
-    }
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({
+            ...otherFilters,
+            status: status || statusFilter,
+          }),
+        });
+    
+        if (!res.ok) {
+          throw new Error("Failed to fetch paginated configs");
+        }
+    
+        return (await res.json()) as PaginatedJobResponse;
   },
 
   getJob: async (id: string, type?: 'PULL' | 'PUSH'): Promise<DataEnrichmentJobResponse> => {
