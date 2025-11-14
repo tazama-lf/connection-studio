@@ -156,76 +156,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
       setLoading(false);
     }
   };
-  const getStatusText = (status: string) => {
-    const normalizedStatus = status.toLowerCase();
-
-    // Handle STATUS_XX_NAME format from database
-    if (normalizedStatus.startsWith('status_')) {
-      // Extract the name part after the number (e.g., STATUS_03_UNDER_REVIEW -> UNDER_REVIEW)
-      const parts = normalizedStatus.split('_');
-      if (parts.length >= 3) {
-        const statusName = parts.slice(2).join('_'); // Get everything after STATUS_XX_
-        switch (statusName) {
-          case 'in_progress':
-            return 'IN-PROGRESS';
-          case 'under_review':
-            return 'UNDER REVIEW';
-          case 'approved':
-            return 'APPROVED';
-          case 'rejected':
-            return 'REJECTED';
-          case 'changes_requested':
-            return 'CHANGES REQUESTED';
-          case 'exported':
-            return 'EXPORTED';
-          case 'ready_for_deployment':
-            return 'READY FOR DEPLOYMENT';
-          case 'deployed':
-            return 'DEPLOYED';
-          case 'suspended':
-            return 'SUSPENDED';
-          default:
-            return statusName.toUpperCase().replace(/_/g, ' ');
-        }
-      }
-    }
-
-    // Handle legacy status formats
-    switch (normalizedStatus) {
-      case 'active':
-        return 'READY FOR APPROVAL';
-      case 'draft':
-      case 'in-progress':
-      case 'in_progress':
-        return 'IN-PROGRESS';
-      case 'suspended':
-        return 'SUSPENDED';
-      case 'status_01_in_progress':
-        return 'IN-PROGRESS';
-      case 'cloned':
-        return 'CLONED';
-      case 'approved':
-        return 'APPROVED';
-      case 'under review':
-      case 'under_review':
-        return 'UNDER REVIEW';
-      case 'deployed':
-        return 'DEPLOYED';
-      case 'rejected':
-        return 'REJECTED';
-      case 'changes_requested':
-      case 'changes requested':
-        return 'CHANGES REQUESTED';
-      case 'exported':
-        return 'EXPORTED';
-      case 'ready_for_deployment':
-      case 'ready for deployment':
-        return 'READY FOR DEPLOYMENT';
-      default:
-        return status.toUpperCase().replace(/_/g, ' ');
-    }
-  };
-
+  
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       month: 'numeric',
@@ -332,7 +263,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
           config.msgFam.toLowerCase().includes(searchTerm.toLowerCase()));
 
       const matchesStatus =
-        statusFilter === 'all' || getStatusText(config.status) === statusFilter;
+        statusFilter === 'all' || config.status === statusFilter;
 
       // Role-based filtering: exporters can only see approved and deployed configs
       let matchesRole = true;
@@ -479,7 +410,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
           className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${getStatusBadge(params.row.status)}`}
         >
           <span className="w-2 h-2 rounded-full bg-current mr-2"></span>
-          {getStatusText(params.row.status)}
+          {params.row.status}
         </span>
       ),
     },

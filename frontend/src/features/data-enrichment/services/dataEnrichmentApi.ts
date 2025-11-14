@@ -111,10 +111,10 @@ export const dataEnrichmentApi = {
       const {status, ...otherFilters} = searchingFilters || {};
         let statusFilter;
     
-      // if(!status){
-      //   const userRole = params.userRole as keyof typeof getDemsStatusLov;
-      //   statusFilter = getDemsStatusLov[userRole]?.map(item => item.value)?.join(',') || '';
-      // }
+      if(!status){
+        const userRole = params.userRole as keyof typeof getDemsStatusLov;
+        statusFilter = getDemsStatusLov[userRole]?.map(item => item.value)?.join(',') || '';
+      }
 
         const res = await fetch(url, {
           method: 'POST',
