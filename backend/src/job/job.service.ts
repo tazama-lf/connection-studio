@@ -49,7 +49,7 @@ export class JobService {
     type: ConfigType,
     token: string,
   ): Promise<ISuccess> {
-    const existingJob = await this.findOne(id, ConfigType.PUSH, token);
+    const existingJob = await this.findOne(id, type, token);
 
     if (existingJob.status !== JobStatus.INPROGRESS) {
       throw new ForbiddenException('Only In-Progress jobs can be edited');
@@ -72,7 +72,7 @@ export class JobService {
       const path =
         status === JobStatus.DEPLOYED
           ? job.path
-          : `/${tenantId}/enrichment/${job.version}/${job.path}`;
+          : `/${tenantId}/enrichment/${job.version}${job.path}`;
 
       const jobWithId = { ...job, id, path, tenant_id: tenantId, status };
 
@@ -202,7 +202,7 @@ export class JobService {
         throw new BadRequestException('id is required.');
       }
 
-      const tableName = type === ConfigType.PUSH ? 'endpoints' : 'job';
+      const tableName = type === ConfigType.PUSH ? 'push_jobs' : 'pull_jobs';
 
       const record = await this.adminServiceClient.findJobById(
         id,
@@ -212,7 +212,7 @@ export class JobService {
 
       if (!record) {
         throw new BadRequestException(
-          `${type === ConfigType.PUSH ? 'Endpoint' : 'Job'} with id ${id} not found.`,
+          `${type === ConfigType.PUSH ? 'Push Job' : 'Pull Job'} with id ${id} not found.`,
         );
       }
 
@@ -268,7 +268,7 @@ export class JobService {
 
       return {
         success: true,
-        message: `${table_name} with id ${id} successfully updated`,
+        message: `Job with id ${id} successfully updated`,
       };
     } catch (err: unknown) {
       return this.handleError(err);

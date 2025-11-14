@@ -174,7 +174,7 @@ export class JobController {
     return await this.jobService.updateActivation(
       id,
       status,
-      type === ConfigType.PUSH ? 'endpoints' : 'job',
+      type === ConfigType.PUSH ? 'push_jobs' : 'pull_jobs',
       user.token.tokenString,
     );
   }
