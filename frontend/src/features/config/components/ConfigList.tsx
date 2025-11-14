@@ -70,6 +70,7 @@ interface PaginatedConfigResponse {
 interface PaginationParams {
   limit: number;
   offset: number;
+  userRole: string;
 }
 
 export const ConfigList: React.FC<ConfigListProps> = ({
@@ -104,9 +105,8 @@ export const ConfigList: React.FC<ConfigListProps> = ({
   const userIsExporter = user?.claims ? isExporter(user.claims) : false;
   const userIsPublisher = user?.claims ? isPublisher(user.claims) : false;
   const { showSuccess, showError } = useToast();
-  console.log('user', user);
 
-  const userRole = user?.claims ? getPrimaryRole(user?.claims) : false;
+  const userRole =  getPrimaryRole(user?.claims as string[]);
 
   // Fetch configs based on flags
   const fetchConfigs = async () => {
@@ -225,6 +225,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
         return status.toUpperCase().replace(/_/g, ' ');
     }
   };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       month: 'numeric',
@@ -657,7 +658,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
       const limit: number = itemsPerPage;
       const offset: number = pageNumber - 1;
 
-      const params: PaginationParams = { limit, offset };
+      const params: PaginationParams = { limit, offset, userRole: userRole as string };
 
       const response: PaginatedConfigResponse =
         await configApi.getConfigsPaginated(params, searchingFilters);
@@ -677,76 +678,6 @@ export const ConfigList: React.FC<ConfigListProps> = ({
   useEffect(() => {
     fetchConfigsTemp(page);
   }, [page, searchingFilters]);
-
-  // CustomTable columns configuration
-  const columns = [
-    {
-      field: 'endpointPath',
-      headerName: 'Endpoint Path',
-      flex: 1,
-      minWidth: 200,
-      sortable: false,
-      disableColumnMenu: true,
-      renderHeader: () => (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <Box sx={{ fontSize: '14px', fontWeight: '600' }}>Endpoint Path</Box>
-          {handleInputFilter({
-            fieldName: 'endpointPath',
-            searchingFilters: {},
-            setSearchingFilters: () => {},
-          })}
-        </Box>
-      ),
-    },
-    {
-      field: 'status',
-      headerName: 'Status',
-      width: 200,
-      sortable: false,
-      disableColumnMenu: true,
-      renderCell: (params: any) => (
-        <span
-          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${getStatusBadge(params.row.status)}`}
-        >
-          <span className="w-2 h-2 rounded-full bg-current mr-2"></span>
-          {getStatusText(params.row.status)}
-        </span>
-      ),
-    },
-    {
-      field: 'createdAt',
-      headerName: 'Created Time',
-      width: 200,
-      sortable: false,
-      disableColumnMenu: true,
-      renderCell: (params: any) => (
-        <div className="flex items-center">
-          <svg
-            className="w-4 h-4 mr-1 text-gray-400"
-            fill="currentColor"
-            viewBox="0 0 20 20"
-          >
-            <path
-              fillRule="evenodd"
-              d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z"
-              clipRule="evenodd"
-            />
-          </svg>
-          {formatDate(params.row.createdAt)}
-        </div>
-      ),
-    },
-    {
-      field: 'actions',
-      headerName: 'Actions',
-      width: 100,
-      sortable: false,
-      renderCell: (params: any) => {
-        const config = params.row;
-        return <></>;
-      },
-    },
-  ];
 
   if (loading) {
     return (

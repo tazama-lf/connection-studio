@@ -98,6 +98,7 @@ interface PaginatedConfigResponse {
 interface PaginationParams {
   limit: number;
   offset: number;
+  userRole: string;
 }
 
 // Configuration API service
@@ -316,7 +317,8 @@ async getConfigsPaginated(
     let statusFilter;
 
     if(!status){
-      statusFilter = getDemsStatusLov['editor']?.map(item => item.value)?.join(',') || [];
+      const userRole = params.userRole as keyof typeof getDemsStatusLov;
+      statusFilter = getDemsStatusLov[userRole]?.map(item => item.value)?.join(',') || '';
     }
     
  

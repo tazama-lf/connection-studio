@@ -22,6 +22,7 @@ import {
   isApprover,
   isExporter,
   isPublisher,
+  getPrimaryRole,
 } from '../../../utils/roleUtils';
 import { UI_CONFIG } from '../../../shared/config/app.config';
 import { getUserFriendlyErrorMessage } from '../../../shared/utils/errorUtils';
@@ -35,6 +36,8 @@ const DataEnrichmentModule: React.FC = () => {
   const userIsApprover = user?.claims ? isApprover(user.claims) : false;
   const userIsExporter = user?.claims ? isExporter(user.claims) : false;
   const userIsPublisher = user?.claims ? isPublisher(user.claims) : false;
+  
+  const userRole =  getPrimaryRole(user?.claims as string[]);
 
   // Job management state
   const [jobs, setJobs] = useState<DataEnrichmentJobResponse[]>([]);
@@ -63,152 +66,48 @@ const DataEnrichmentModule: React.FC = () => {
   const [jobToClone, setJobToClone] =
     useState<DataEnrichmentJobResponse | null>(null);
 
-  // Load jobs on component mount only (no pagination dependency since we fetch all)
-  useEffect(() => {
-    loadJobs();
-  }, []); // Remove pagination dependencies since we fetch all jobs
+       const [page, setPage] = useState<number>(1);
+      const [totalPages, setTotalPages] = useState<number>(0);
+      const [totalRecords, setTotalRecords] = useState<number>(0);
+      const [searchingFilters, setSearchingFilters] = useState({});
+        const [loading, setLoading] = useState(true);
+        const [error, setError] = useState<string | null>(null);
 
-  // Reset to first page when search query changes
-  useEffect(() => {
-    if (searchQuery.trim()) {
-      setCurrentPage(1);
-    }
-  }, [searchQuery]);
-
-  const loadJobs = async () => {
-    console.log('=== LOAD JOBS DEBUG START ===');
-    console.log('Time:', new Date().toISOString());
-    console.log('loadJobs called - fetching ALL jobs for frontend filtering');
-    console.log(
-      '  - API Base URL:',
-      import.meta.env.VITE_API_BASE_URL || 'Not set',
-    );
-
-    setJobsLoading(true);
-    console.log('Loading state set to TRUE');
-
+      const fetchDeJobs = async (pageNumber: number = 1): Promise<void> => {
     try {
-      let response;
-      console.log('Starting API call...');
+      setLoading(true);
+      setError(null);
 
-      // Fetch ALL jobs without pagination for frontend filtering
-      console.log('Fetching ALL jobs from API...');
-      console.log('API endpoint: /job/all');
-      response = await dataEnrichmentApi.getAllJobs(); // Remove pagination parameters
+      const limit: number = itemsPerPage;
+      const offset: number = pageNumber - 1;
 
-      console.log('=== API RESPONSE RECEIVED ===');
-      console.log('Response type:', typeof response);
-      console.log('Response is null?:', response === null);
-      console.log('Response is undefined?:', response === undefined);
-      console.log('Full response object:', JSON.stringify(response, null, 2));
+      const params = { limit, offset, userRole: userRole as string };
+      
+      const response =
+        await dataEnrichmentApi.getAllJobs(params, searchingFilters);
 
-      if (response) {
-        console.log('Response properties:');
-        console.log('  - response.jobs:', response.jobs);
-        console.log('  - response.jobs type:', typeof response.jobs);
-        console.log(
-          '  - response.jobs is Array?:',
-          Array.isArray(response.jobs),
-        );
-        console.log(
-          '  - response.jobs length:',
-          response.jobs?.length || 'N/A',
-        );
-        console.log('  - response.total:', response.total);
-        console.log('  - response.page:', response.page);
-        console.log('  - response.limit:', response.limit);
-        console.log('  - response.totalPages:', response.totalPages);
-
-        if (response.jobs && response.jobs.length > 0) {
-          console.log(
-            'First job sample:',
-            JSON.stringify(response.jobs[0], null, 2),
-          );
-        }
-      }
-
-      console.log('=== SETTING STATE ===');
-      const jobsArray = response?.jobs || [];
-
-      console.log(
-        'Setting jobs to state:',
-        jobsArray.length,
-        'jobs (ALL jobs for frontend filtering)',
-      );
-
-      // TEMPORARY: Add mock data if API returns empty
-      if (jobsArray.length === 0) {
-        console.warn(
-          '⚠️ API returned empty array. Check if backend has any jobs in database.',
-        );
-        console.warn('💡 TIP: Create a job using "Define New Endpoint" button');
-        console.warn(
-          '💡 TIP: Or check backend logs to see if the API endpoint is working',
-        );
-      }
-
-      // Sort jobs by created_at descending (newest first)
-      const sortedJobs = jobsArray.sort((a: any, b: any) => {
-        const dateA = new Date(a.created_at || a.createdAt || 0).getTime();
-        const dateB = new Date(b.created_at || b.createdAt || 0).getTime();
-        return dateB - dateA; // Descending order (newest first)
-      });
-
-      setJobs(sortedJobs);
-      // Note: totalItems will be calculated from filtered results in pagination logic
-
-      console.log('=== STATE SET COMPLETE ===');
-      console.log(
-        'Jobs array now contains:',
-        jobsArray.length,
-        'items (all jobs)',
-      );
-
-      console.log(
-        '✅ Jobs loaded successfully for frontend filtering and pagination',
-      );
-    } catch (error) {
-      console.error('=== ERROR LOADING JOBS ===');
-      console.error('Error type:', error?.constructor?.name);
-      console.error(
-        'Error message:',
-        error instanceof Error ? error.message : 'Unknown error',
-      );
-      console.error(
-        'Error stack:',
-        error instanceof Error ? error.stack : 'No stack trace',
-      );
-      console.error('Full error object:', error);
-
-      // Set empty state on error
-      console.log('Setting empty state due to error');
-      setJobs([]);
-
-      // Show user-friendly error message
-      if (error instanceof TypeError && error.message.includes('fetch')) {
-        console.warn(
-          '❌ Cannot connect to backend service. Check if backend is running.',
-        );
-        showError(
-          'Cannot connect to the data enrichment service. Please ensure the backend is running.',
-        );
-      } else {
-        const userFriendlyMessage = getUserFriendlyErrorMessage(error, 'load');
-        showError(userFriendlyMessage);
-      }
+      setJobs(response.jobs);
+      setTotalPages(response.pages);
+      setTotalRecords(response.total);
+    } catch (err: unknown) {
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to fetch configurations';
+      setError(errorMessage);
     } finally {
-      setJobsLoading(false);
-      console.log('Loading state set to FALSE');
-      console.log('=== LOAD JOBS COMPLETE ===\n');
+      setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchDeJobs(page);
+  }, [page, searchingFilters]);
 
   const handleCreateJob = async (jobResponse: any) => {
     try {
       console.log('Job created successfully:', jobResponse);
       // The DataEnrichmentFormModal already shows its own success message
       // We just need to refresh the jobs list
-      await loadJobs();
+      fetchDeJobs();
 
       // Show success message
       const jobName = jobResponse?.endpoint_name || 'New endpoint';
@@ -428,7 +327,7 @@ const DataEnrichmentModule: React.FC = () => {
       showSuccess('New job version created successfully!');
 
       // Refresh the jobs list
-      await loadJobs();
+       fetchDeJobs();
     } catch (error) {
       console.error('=== SAVE JOB ERROR ===');
       console.error('Error type:', error?.constructor?.name);
@@ -466,7 +365,7 @@ const DataEnrichmentModule: React.FC = () => {
       showSuccess('Job sent for approval successfully!');
 
       // Refresh the jobs list
-      await loadJobs();
+       fetchDeJobs();
 
       // Close the modal
       handleCloseJobDetails();
@@ -538,247 +437,6 @@ const DataEnrichmentModule: React.FC = () => {
   const handleCloseEditJob = () => {
     setEditJob(null);
     setShowJobForm(false);
-  };
-
-  const handleCloneJob = useCallback(async (job: DataEnrichmentJobResponse) => {
-    console.log('🚀 handleCloneJob called - fetching complete job details...');
-
-    try {
-      // Fetch complete pull job details with all connection information
-      const fullJobDetails = await dataEnrichmentApi.getJob(job.id, 'PULL');
-
-      console.log('🚀 Complete job details fetched:', fullJobDetails);
-
-      // Set the complete job data and open modal
-      setJobToClone(fullJobDetails);
-      setShowCloneModal(true);
-    } catch (error) {
-      console.error('Failed to fetch complete job details for clone:', error);
-      showError('Failed to load job details for cloning');
-    }
-  }, []);
-
-  const handleCloneSuccess = useCallback(() => {
-    console.log('Clone operation successful, refreshing jobs...');
-    setShowCloneModal(false);
-    setJobToClone(null);
-    loadJobs(); // Refresh the job list
-  }, [loadJobs]);
-
-  const handleActualClone = useCallback(
-    async (job: DataEnrichmentJobResponse) => {
-      try {
-        console.log('� Cloning pull job:', job.endpoint_name);
-        console.log('🚀 Job data:', job);
-
-        // Validate required data
-        if (!job.connection) {
-          showError('Cannot clone job: Missing connection information');
-          return;
-        }
-
-        if (!job.source_type) {
-          showError('Cannot clone job: Missing source type information');
-          return;
-        }
-
-        // Use existing schedule_id or find/create one
-        let scheduleId = job.schedule_id;
-        if (!scheduleId) {
-          const schedules = await dataEnrichmentApi.getAllSchedules();
-          const approvedSchedules = schedules.filter(
-            (schedule: any) =>
-              schedule.status === 'approved' ||
-              schedule.status === 'exported' ||
-              schedule.status === 'deployed',
-          );
-
-          if (approvedSchedules.length > 0) {
-            scheduleId = approvedSchedules[0].id;
-          } else {
-            const defaultSchedule = await dataEnrichmentApi.createSchedule({
-              name: `Schedule for ${job.endpoint_name}`,
-              cron: '0 */6 * * *',
-              iterations: -1,
-            });
-            if (defaultSchedule.success) {
-              const createdSchedules =
-                await dataEnrichmentApi.getAllSchedules();
-              const newSchedule = createdSchedules.find((s: any) =>
-                s.name.includes(job.endpoint_name),
-              );
-              scheduleId = newSchedule?.id;
-            }
-          }
-        }
-
-        if (!scheduleId) {
-          showError('Could not find or create a schedule for the cloned job');
-          return;
-        }
-
-        // Create the pull job with user-modified endpoint_name and version
-        const pullJobData = {
-          endpoint_name: job.endpoint_name, // This now comes from the modal with user modifications
-          version: job.version, // This now comes from the modal with user modifications
-          schedule_id: scheduleId,
-          source_type: job.source_type as 'HTTP' | 'SFTP',
-          description: job.description || '',
-          connection: job.connection,
-          table_name: job.table_name || '',
-          mode: job.mode || ('append' as 'append' | 'replace'),
-          ...(job.file && { file: job.file }),
-        };
-
-        console.log('🚀 Creating pull job with:', pullJobData);
-        await dataEnrichmentApi.createPullJob(pullJobData);
-
-        showSuccess(`Pull job "${job.endpoint_name}" created successfully!`);
-        handleCloneSuccess();
-      } catch (error) {
-        console.error('Clone operation failed:', error);
-        showError(
-          `Failed to clone job: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        );
-      }
-    },
-    [showSuccess, showError, handleCloneSuccess],
-  );
-
-  // Calculate filtered jobs based on all applied filters
-  const filteredJobs = useMemo(() => {
-    console.log('=== FRONTEND FILTERING DEBUG ===');
-    console.log('Total jobs:', jobs.length);
-    console.log('Applied filters:', {
-      statusFilter,
-      typeFilter,
-      searchQuery: searchQuery.trim(),
-    });
-
-    let filtered = jobs;
-
-    // Role-based filtering: exporters can only see approved, exported and deployed jobs
-    if (userIsExporter) {
-      console.log(
-        'Applying exporter role filter - only showing approved, exported and deployed jobs',
-      );
-      filtered = filtered.filter((job) => {
-        const jobStatus = job.status || 'in-progress';
-        const allowedStatuses = ['approved', 'exported', 'deployed'];
-        const isAllowed = allowedStatuses.includes(jobStatus);
-        console.log(
-          `Job ${job.id}: status="${jobStatus}", allowed=${isAllowed}`,
-        );
-        return isAllowed;
-      });
-      console.log('After exporter role filter:', filtered.length);
-    }
-
-    // Role-based filtering: publishers can only see exported and deployed jobs (exported shown as deployed)
-    if (userIsPublisher) {
-      console.log(
-        'Applying publisher role filter - only showing exported and deployed jobs',
-      );
-      filtered = filtered.filter((job) => {
-        const jobStatus = job.status || 'in-progress';
-        const allowedStatuses = ['exported', 'deployed'];
-        const isAllowed = allowedStatuses.includes(jobStatus);
-        console.log(
-          `Job ${job.id}: status="${jobStatus}", allowed=${isAllowed}`,
-        );
-        return isAllowed;
-      });
-
-      // Transform exported status to deployed for publishers
-      filtered = filtered.map((job) => ({
-        ...job,
-        status: job.status === 'exported' ? 'deployed' : job.status,
-      }));
-      console.log(
-        'After publisher role filter and status transformation:',
-        filtered.length,
-      );
-    }
-
-    // Search filter
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase().trim();
-      filtered = filtered.filter(
-        (job) =>
-          job.endpoint_name?.toLowerCase().includes(query) ||
-          job.table_name?.toLowerCase().includes(query) ||
-          job.description?.toLowerCase().includes(query) ||
-          job.type?.toLowerCase().includes(query),
-      );
-      console.log('After search filter:', filtered.length);
-    }
-
-    // Status filter (AND operation)
-    if (statusFilter !== 'ALL') {
-      const beforeCount = filtered.length;
-      filtered = filtered.filter((job) => {
-        const jobStatus = job.status || 'in-progress'; // Default to in-progress if no status
-        const matches = jobStatus === statusFilter;
-        console.log(
-          `Job ${job.id}: status="${jobStatus}", filter="${statusFilter}", matches=${matches}`,
-        );
-        return matches;
-      });
-      console.log(
-        `After status filter (${statusFilter}): ${beforeCount} → ${filtered.length}`,
-      );
-    }
-
-    // Type filter (AND operation)
-    if (typeFilter !== 'ALL') {
-      const beforeCount = filtered.length;
-      filtered = filtered.filter((job) => {
-        const rawJobType = job.type?.toLowerCase();
-        const matches = rawJobType === typeFilter;
-        console.log(
-          `Job ${job.id}: type="${rawJobType}", filter="${typeFilter}", matches=${matches}`,
-        );
-        return matches;
-      });
-      console.log(
-        `After type filter (${typeFilter}): ${beforeCount} → ${filtered.length}`,
-      );
-    }
-
-    console.log('Final filtered count:', filtered.length);
-    console.log('=== END FRONTEND FILTERING DEBUG ===');
-    return filtered;
-  }, [
-    jobs,
-    searchQuery,
-    statusFilter,
-    typeFilter,
-    userIsExporter,
-    userIsPublisher,
-  ]);
-
-  // Calculate pagination based on filtered results
-  const totalItems = filteredJobs.length;
-  const totalPages = Math.ceil(totalItems / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-
-  // Get paginated subset of filtered jobs
-  const paginatedJobs = filteredJobs.slice(startIndex, endIndex);
-
-  console.log('=== PAGINATION DEBUG ===');
-  console.log('Filtered jobs:', filteredJobs.length);
-  console.log('Total pages:', totalPages);
-  console.log('Current page:', currentPage);
-  console.log('Showing jobs:', startIndex, 'to', endIndex);
-  console.log('Paginated jobs count:', paginatedJobs.length);
-
-  const handlePreviousPage = () => {
-    setCurrentPage((prev) => Math.max(prev - 1, 1));
-  };
-
-  const handleNextPage = () => {
-    setCurrentPage((prev) => Math.min(prev + 1, totalPages));
   };
 
   return (
@@ -857,10 +515,10 @@ const DataEnrichmentModule: React.FC = () => {
               </div>
               <div className="flex items-center space-x-3">
                 <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-full">
-                  {
+                  {/* {
                     filteredJobs.filter((job) => job.status === 'in-progress')
                       .length
-                  }{' '}
+                  }{' '} */}
                   pending approvals
                 </span>
                 <Button
@@ -879,53 +537,21 @@ const DataEnrichmentModule: React.FC = () => {
         )}
 
         <JobList
-          jobs={paginatedJobs}
+          jobs={jobs}
           isLoading={jobsLoading}
           onViewLogs={handleViewJobDetails}
           onEdit={handleEditJob}
-          onClone={handleCloneJob}
-          onRefresh={loadJobs}
-          statusFilter={statusFilter}
-          onStatusFilterChange={(newStatus) => {
-            setStatusFilter(newStatus);
-            setCurrentPage(1); // Reset to first page when filter changes
-          }}
-          searchQuery={searchQuery}
-          typeFilter={typeFilter}
-          onTypeFilterChange={(newType) => {
-            setTypeFilter(newType);
-            setCurrentPage(1); // Reset to first page when filter changes
-          }}
+          onRefresh={fetchDeJobs}
+          page={page}
+          setPage={setPage}
+          itemsPerPage={itemsPerPage}
+          totalPages={totalPages}
+          totalRecords={totalRecords}
+          searchingFilters={searchingFilters}
+          setSearchingFilters={setSearchingFilters}
+          error={error}
+          loading={loading}
         />
-
-        {/* Pagination */}
-        {totalItems > 0 && (
-          <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between bg-white rounded-b-md">
-            <div className="text-sm text-gray-700">
-              Showing {startIndex + 1} to {Math.min(endIndex, totalItems)} of{' '}
-              {totalItems} results
-            </div>
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={handlePreviousPage}
-                disabled={currentPage === 1}
-                className="px-3 py-1 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-              >
-                Previous
-              </button>
-              <span className="text-sm text-gray-700">
-                Page {currentPage} of {totalPages}
-              </span>
-              <button
-                onClick={handleNextPage}
-                disabled={currentPage === totalPages}
-                className="px-3 py-1 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* Modal for creating new jobs */}
         {showJobForm && (
@@ -950,18 +576,6 @@ const DataEnrichmentModule: React.FC = () => {
           editMode={jobDetailsEditMode}
           onSave={handleSaveJobChanges}
           onSendForApproval={handleSendForApproval}
-        />
-
-        {/* Modal for cloning jobs - using JobDetailsModal in clone mode */}
-        <JobDetailsModal
-          isOpen={showCloneModal}
-          onClose={() => {
-            setShowCloneModal(false);
-            setJobToClone(null);
-          }}
-          job={jobToClone}
-          cloneMode={true}
-          onClone={handleActualClone}
         />
       </div>
     </div>
