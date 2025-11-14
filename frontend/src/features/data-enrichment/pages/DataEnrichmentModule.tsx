@@ -361,7 +361,7 @@ const DataEnrichmentModule: React.FC = () => {
   ) => {
     try {
       console.log('Sending job for approval:', jobId, jobType);
-      await dataEnrichmentApi.updateJobStatus(jobId, 'under-review', jobType);
+      await dataEnrichmentApi.updateJobStatus(jobId, 'STATUS_03_UNDER_REVIEW', jobType);
       showSuccess('Job sent for approval successfully!');
 
       // Refresh the jobs list
@@ -389,8 +389,8 @@ const DataEnrichmentModule: React.FC = () => {
       console.log('Job status:', job.status);
 
       // Prevent editing approved jobs
-      const jobStatus = job.status || 'in-progress';
-      if (jobStatus === 'approved') {
+      const jobStatus = job.status || 'STATUS_01_IN_PROGRESS';
+      if (jobStatus === 'STATUS_04_APPROVED') {
         console.warn('Attempted to edit approved job - blocking action');
         showError(
           'Approved jobs cannot be edited. Please create a new job instead.',
@@ -399,7 +399,7 @@ const DataEnrichmentModule: React.FC = () => {
       }
 
       // Only allow editing pending or rejected jobs
-      if (jobStatus !== 'in-progress' && jobStatus !== 'rejected') {
+      if (jobStatus !== 'STATUS_01_IN_PROGRESS' && jobStatus !== 'STATUS_05_REJECTED') {
         console.warn(
           `Attempted to edit job with status: ${jobStatus} - blocking action`,
         );
@@ -525,7 +525,7 @@ const DataEnrichmentModule: React.FC = () => {
                   variant="secondary"
                   size="sm"
                   onClick={() => {
-                    setStatusFilter('in-progress');
+                    setStatusFilter('STATUS_01_IN_PROGRESS');
                     setCurrentPage(1);
                   }}
                 >
