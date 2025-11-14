@@ -31,7 +31,7 @@ import { JobService } from './job.service';
 @Controller('job')
 @UseGuards(TazamaAuthGuard)
 export class JobController {
-  constructor(private readonly jobService: JobService) { }
+  constructor(private readonly jobService: JobService) {}
 
   @Post('/create/push')
   @RequireAnyClaims(TazamaClaims.EDITOR)
@@ -39,7 +39,11 @@ export class JobController {
     @Body() job: CreatePushJobDto,
     @User() user: AuthenticatedUser,
   ) {
-    return await this.jobService.createPush(job, user.tenantId, user.token.tokenString);
+    return await this.jobService.createPush(
+      job,
+      user.tenantId,
+      user.token.tokenString,
+    );
   }
 
   @Post('/create/pull')
@@ -48,7 +52,11 @@ export class JobController {
     @Body() job: CreatePullJobDto,
     @User() user: AuthenticatedUser,
   ) {
-    return await this.jobService.createPull(job, user.tenantId, user.token.tokenString);
+    return await this.jobService.createPull(
+      job,
+      user.tenantId,
+      user.token.tokenString,
+    );
   }
 
   @Patch('/update/:id')
@@ -57,9 +65,14 @@ export class JobController {
     @Param('id') id: string,
     @Body() job: UpdatePushJobDto | UpdatePullJobDto,
     @Query('type') type: ConfigType,
-    @User() user: AuthenticatedUser
+    @User() user: AuthenticatedUser,
   ) {
-    return await this.jobService.updateJob(id, job, type, user.token.tokenString);
+    return await this.jobService.updateJob(
+      id,
+      job,
+      type,
+      user.token.tokenString,
+    );
   }
 
   @Post('/all')
@@ -85,8 +98,16 @@ export class JobController {
     TazamaClaims.EXPORTER,
     TazamaClaims.PUBLISHER,
   )
-  async getById(@Param('id') id: string, @Query('type') type: ConfigType, @User() user: AuthenticatedUser) {
-    const record = await this.jobService.findOne(id, type, user.token.tokenString);
+  async getById(
+    @Param('id') id: string,
+    @Query('type') type: ConfigType,
+    @User() user: AuthenticatedUser,
+  ) {
+    const record = await this.jobService.findOne(
+      id,
+      type,
+      user.token.tokenString,
+    );
     if (type === ConfigType.PULL) {
       return plainToInstance(PullJobResponseDto, record, {
         excludeExtraneousValues: true,
@@ -107,9 +128,15 @@ export class JobController {
     @Query('status') status: JobStatus,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
-    @User() user: AuthenticatedUser
+    @User() user: AuthenticatedUser,
   ) {
-    return await this.jobService.findByStatus(status, page, limit, user.tenantId, user.token.tokenString);
+    return await this.jobService.findByStatus(
+      status,
+      page,
+      limit,
+      user.tenantId,
+      user.token.tokenString,
+    );
   }
 
   @Patch('/update/status/:id')
@@ -126,7 +153,14 @@ export class JobController {
     @User() user: AuthenticatedUser,
     @Body('reason') reason?: string,
   ) {
-    return await this.jobService.updateStatus(id, status, type, user.tenantId, user.token.tokenString, reason);
+    return await this.jobService.updateStatus(
+      id,
+      status,
+      type,
+      user.tenantId,
+      user.token.tokenString,
+      reason,
+    );
   }
 
   @Patch('/update/activation/:id')
@@ -135,15 +169,13 @@ export class JobController {
     @Param('id') id: string,
     @Query('status') status: ScheduleStatus,
     @Query('type') type: ConfigType,
-    @User() user: AuthenticatedUser
+    @User() user: AuthenticatedUser,
   ) {
     return await this.jobService.updateActivation(
       id,
       status,
       type === ConfigType.PUSH ? 'endpoints' : 'job',
-      user.token.tokenString
+      user.token.tokenString,
     );
   }
-
-
 }

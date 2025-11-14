@@ -22,8 +22,8 @@ import { HttpModule } from '@nestjs/axios';
     ConfigModule,
     SftpModule,
     NotifyModule,
-    HttpModule
+    HttpModule,
   ],
-  exports: [AdminServiceClient]
+  exports: [AdminServiceClient],
 })
-export class JobModule { }
+export class JobModule {}
