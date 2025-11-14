@@ -13,6 +13,9 @@ import { TazamaDataModelService } from '../tazama-data-model/tazama-data-model.s
 import { AuditService } from '../audit/audit.service';
 import { SftpService } from '../sftp/sftp.service';
 import { ConfigService as NestConfigService } from '@nestjs/config';
+import { DatabaseService } from '../database/database.service';
+import { NotifyService } from '../notify/notify.service';
+import { NotificationService } from '../notification/notification.service';
 
 describe('ConfigModule', () => {
   let controller: ConfigController;
@@ -94,6 +97,21 @@ describe('ConfigModule', () => {
             query: jest.fn(),
             getClient: jest.fn(),
             close: jest.fn(),
+          },
+        },
+        {
+          provide: NotifyService,
+          useValue: {
+            sendMessage: jest.fn(),
+            close: jest.fn(),
+          },
+        },
+        {
+          provide: NotificationService,
+          useValue: {
+            sendNotification: jest.fn(),
+            getNotificationStatus: jest.fn(),
+            retryNotification: jest.fn(),
           },
         },
       ],

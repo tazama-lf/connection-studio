@@ -25,6 +25,16 @@ describe('ConfigRepository', () => {
     publishing_status: 'inactive',
   };
 
+  const mockPaginatedResponse = (configs: any[]) => ({
+    configs,
+    pagination: {
+      total: configs.length,
+      limit: 10,
+      offset: 0,
+      pages: Math.ceil(configs.length / 10),
+    },
+  });
+
   beforeEach(async () => {
     const mockAdminServiceClient = {
       writeConfig: jest.fn(),
@@ -150,7 +160,7 @@ describe('ConfigRepository', () => {
 
   describe('findConfigByMsgFamVersionAndTransactionType', () => {
     it('should return matching config', async () => {
-      adminServiceClient.getAllConfigs.mockResolvedValue([mockConfig]);
+      adminServiceClient.getAllConfigs.mockResolvedValue(mockPaginatedResponse([mockConfig]));
 
       const result =
         await repository.findConfigByMsgFamVersionAndTransactionType(
@@ -165,7 +175,7 @@ describe('ConfigRepository', () => {
     });
 
     it('should return null when no match found', async () => {
-      adminServiceClient.getAllConfigs.mockResolvedValue([mockConfig]);
+      adminServiceClient.getAllConfigs.mockResolvedValue(mockPaginatedResponse([mockConfig]));
 
       const result =
         await repository.findConfigByMsgFamVersionAndTransactionType(
@@ -199,7 +209,7 @@ describe('ConfigRepository', () => {
 
   describe('findConfigByEndpoint', () => {
     it('should return config by endpoint path and version', async () => {
-      adminServiceClient.getConfigByEndpoint.mockResolvedValue(mockConfig);
+      adminServiceClient.getConfigByEndpoint.mockResolvedValue(mockPaginatedResponse([mockConfig]));
 
       const result = await repository.findConfigByEndpoint(
         '/tenant1/v1/pain/pacs.008',
@@ -208,11 +218,13 @@ describe('ConfigRepository', () => {
         'mock-token',
       );
 
-      expect(result).toEqual(mockConfig);
+      expect(result).toEqual([mockConfig]);
       expect(adminServiceClient.getConfigByEndpoint).toHaveBeenCalledWith(
         '/tenant1/v1/pain/pacs.008',
         'v1',
         'mock-token',
+        10,
+        0,
       );
     });
 
@@ -228,14 +240,14 @@ describe('ConfigRepository', () => {
         'mock-token',
       );
 
-      expect(result).toBeNull();
+      expect(result).toEqual([]);
     });
   });
 
   describe('findConfigsByTenant', () => {
     it('should return all configs for tenant', async () => {
       const mockConfigs = [mockConfig];
-      adminServiceClient.getAllConfigs.mockResolvedValue(mockConfigs);
+      adminServiceClient.getAllConfigs.mockResolvedValue(mockPaginatedResponse(mockConfigs));
 
       const result = await repository.findConfigsByTenant(
         'tenant1',
@@ -245,6 +257,8 @@ describe('ConfigRepository', () => {
       expect(result).toEqual(mockConfigs);
       expect(adminServiceClient.getAllConfigs).toHaveBeenCalledWith(
         'mock-token',
+        10,
+        0,
       );
     });
 
@@ -263,12 +277,12 @@ describe('ConfigRepository', () => {
 
     it('should use tenantId when token not provided', async () => {
       const mockConfigs = [mockConfig];
-      adminServiceClient.getAllConfigs.mockResolvedValue(mockConfigs);
+      adminServiceClient.getAllConfigs.mockResolvedValue(mockPaginatedResponse(mockConfigs));
 
       const result = await repository.findConfigsByTenant('tenant1');
 
       expect(result).toEqual(mockConfigs);
-      expect(adminServiceClient.getAllConfigs).toHaveBeenCalledWith('tenant1');
+      expect(adminServiceClient.getAllConfigs).toHaveBeenCalledWith('tenant1', 10, 0);
     });
   });
 
@@ -276,7 +290,7 @@ describe('ConfigRepository', () => {
     it('should return configs by transaction type', async () => {
       const mockConfigs = [mockConfig];
       adminServiceClient.getConfigsByTransactionType.mockResolvedValue(
-        mockConfigs,
+        mockPaginatedResponse(mockConfigs),
       );
 
       const result = await repository.findConfigsByTransactionType(
@@ -288,7 +302,7 @@ describe('ConfigRepository', () => {
       expect(result).toEqual(mockConfigs);
       expect(
         adminServiceClient.getConfigsByTransactionType,
-      ).toHaveBeenCalledWith('pacs.008', 'mock-token');
+      ).toHaveBeenCalledWith('pacs.008', 'mock-token', 10, 0);
     });
 
     it('should return empty array when service throws error', async () => {
@@ -308,7 +322,7 @@ describe('ConfigRepository', () => {
 
   describe('findConfigByVersionAndTransactionType', () => {
     it('should return matching config', async () => {
-      adminServiceClient.getAllConfigs.mockResolvedValue([mockConfig]);
+      adminServiceClient.getAllConfigs.mockResolvedValue(mockPaginatedResponse([mockConfig]));
 
       const result = await repository.findConfigByVersionAndTransactionType(
         'v1',
@@ -321,7 +335,7 @@ describe('ConfigRepository', () => {
     });
 
     it('should return null when no match found', async () => {
-      adminServiceClient.getAllConfigs.mockResolvedValue([mockConfig]);
+      adminServiceClient.getAllConfigs.mockResolvedValue(mockPaginatedResponse([mockConfig]));
 
       const result = await repository.findConfigByVersionAndTransactionType(
         'v2',

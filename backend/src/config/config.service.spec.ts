@@ -11,6 +11,7 @@ import { TazamaDataModelService } from '../tazama-data-model/tazama-data-model.s
 import { SftpService } from '../sftp/sftp.service';
 import { PayloadParsingService } from '../services/payload-parsing.service';
 import { ConfigService as NestConfigService } from '@nestjs/config';
+import { NotifyService } from '../notify/notify.service';
 import {
   Config,
   ContentType,
@@ -219,6 +220,13 @@ describe('ConfigService', () => {
             }),
             applyFieldAdjustments: jest.fn(),
             validatePayloadStructure: jest.fn(),
+          },
+        },
+        {
+          provide: NotifyService,
+          useValue: {
+            sendMessage: jest.fn(),
+            close: jest.fn(),
           },
         },
       ],
