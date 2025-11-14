@@ -2,66 +2,79 @@ import React, { useState, useEffect } from 'react';
 import { SearchIcon } from 'lucide-react';
 import { JobList } from '../../data-enrichment/components/JobList';
 import JobDetailsModal from '../../data-enrichment/components/JobDetailsModal';
-import type { DataEnrichmentJobResponse, JobStatus } from '../../data-enrichment/types';
+import type {
+  DataEnrichmentJobResponse,
+  JobStatus,
+} from '../../data-enrichment/types';
 import { dataEnrichmentApi } from '../../data-enrichment/services/dataEnrichmentApi';
 import { useToast } from '../../../shared/providers/ToastProvider';
 import { AuthHeader } from '../../../shared/components/AuthHeader';
+import { UI_CONFIG } from '@shared/config/app.config';
+import { getPrimaryRole } from '@utils/roleUtils';
+import { useAuth } from '@features/auth';
 
 const ApproverDEJobsPage: React.FC = () => {
   // Data Enrichment Job state
   const [jobs, setJobs] = useState<DataEnrichmentJobResponse[]>([]);
   const [jobsLoading, setJobsLoading] = useState(false);
   const [jobSearchTerm, setJobSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<JobStatus | 'ALL'>('in-progress'); // Default to in-progress for approvers
-  const [recordStatusFilter, setRecordStatusFilter] = useState<'active' | 'in-active' | 'not-set' | 'ALL'>('ALL');
-  const [dateFilter, setDateFilter] = useState<'today' | 'week' | 'month' | 'ALL'>('ALL');
-  const [typeFilter, setTypeFilter] = useState<'push' | 'pull' | 'ALL'>('ALL');
+
+  const { user } = useAuth();
+  const userRole = getPrimaryRole(user?.claims as string[]);
+
+  const [itemsPerPage] = useState(UI_CONFIG.pagination.defaultPageSize);
 
   // Job details modal state
   const [showJobDetails, setShowJobDetails] = useState(false);
-  const [selectedJob, setSelectedJob] = useState<DataEnrichmentJobResponse | null>(null);
+  const [selectedJob, setSelectedJob] =
+    useState<DataEnrichmentJobResponse | null>(null);
   const [jobDetailsLoading, setJobDetailsLoading] = useState(false);
+
+  const [page, setPage] = useState<number>(1);
+  const [totalPages, setTotalPages] = useState<number>(0);
+  const [totalRecords, setTotalRecords] = useState<number>(0);
+  const [searchingFilters, setSearchingFilters] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const { showSuccess, showError } = useToast();
 
-  useEffect(() => {
-    loadJobs();
-  }, []);
-
-  const loadJobs = async () => {
-    console.log('ApproverDEJobsPage: loadJobs called');
-    setJobsLoading(true);
+  const fetchDeJobs = async (pageNumber: number = 1): Promise<void> => {
     try {
-      const response = await dataEnrichmentApi.getAllJobs();
-      console.log('ApproverDEJobsPage: Jobs loaded:', response?.jobs?.length || 0);
+      setLoading(true);
+      setError(null);
 
-      // Show all statuses: under-review, approved, and rejected
-      const jobsArray = response?.jobs || [];
-      const relevantJobs = jobsArray.filter((j: any) =>
-        j.status === 'under-review' || j.status === 'approved' || j.status === 'rejected'
+      const limit: number = itemsPerPage;
+      const offset: number = pageNumber - 1;
+
+      const params = { limit, offset, userRole: userRole as string };
+
+      const response = await dataEnrichmentApi.getAllJobs(
+        params,
+        searchingFilters,
       );
-      console.log('ApproverDEJobsPage: Relevant jobs (under-review, approved, rejected):', relevantJobs.length);
 
-      // Sort jobs by created_at descending (newest first)
-      const sortedJobs = relevantJobs.sort((a: any, b: any) => {
-        const dateA = new Date(a.created_at || a.createdAt || 0).getTime();
-        const dateB = new Date(b.created_at || b.createdAt || 0).getTime();
-        return dateB - dateA; // Descending order (newest first)
-      });
-
-      setJobs(sortedJobs);
-    } catch (error) {
-      console.error('Failed to load jobs:', error);
-      showError('Failed to load data enrichment jobs');
-      setJobs([]);
+      setJobs(response.jobs);
+      setTotalPages(response.pages);
+      setTotalRecords(response.total);
+    } catch (err: unknown) {
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to fetch configurations';
+      setError(errorMessage);
     } finally {
-      setJobsLoading(false);
+      setLoading(false);
     }
   };
 
+  useEffect(() => {
+    fetchDeJobs(page);
+  }, [page, searchingFilters]);
+
   const handleJobRefresh = () => {
-    console.log('ApproverDEJobsPage: handleJobRefresh called - triggering loadJobs');
-    loadJobs();
+    console.log(
+      'ApproverDEJobsPage: handleJobRefresh called - triggering loadJobs',
+    );
+    fetchDeJobs(page);
   };
 
   const handleApproveJob = async (jobId: string, jobType: 'PULL' | 'PUSH') => {
@@ -93,7 +106,7 @@ const ApproverDEJobsPage: React.FC = () => {
       setShowJobDetails(true);
 
       // Find the job in the current list to determine its type
-      const job = jobs.find(j => j.id === jobId);
+      const job = jobs.find((j) => j.id === jobId);
       const jobType = job?.type?.toUpperCase() as 'PULL' | 'PUSH' | undefined;
 
       // Fetch job details from the API
@@ -117,8 +130,6 @@ const ApproverDEJobsPage: React.FC = () => {
       <AuthHeader title="Data Enrichment" showBackButton={true} />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-
-
         {/* Search Bar */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
           <div className="flex items-center space-x-4">
@@ -142,15 +153,15 @@ const ApproverDEJobsPage: React.FC = () => {
             isLoading={jobsLoading}
             onViewLogs={handleViewJobDetails}
             onRefresh={handleJobRefresh}
-            statusFilter={statusFilter}
-            onStatusFilterChange={setStatusFilter}
-            searchQuery={jobSearchTerm}
-            recordStatusFilter={recordStatusFilter}
-            onRecordStatusFilterChange={setRecordStatusFilter}
-            dateFilter={dateFilter}
-            onDateFilterChange={setDateFilter}
-            typeFilter={typeFilter}
-            onTypeFilterChange={setTypeFilter}
+            page={page}
+            setPage={setPage}
+            totalPages={totalPages}
+            totalRecords={totalRecords}
+            itemsPerPage={itemsPerPage}
+            searchingFilters={searchingFilters}
+            setSearchingFilters={setSearchingFilters}
+            error={error}
+            loading={loading}
           />
         </div>
       </main>
