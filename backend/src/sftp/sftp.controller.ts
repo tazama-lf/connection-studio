@@ -2,22 +2,20 @@ import {
   BadRequestException,
   Controller,
   Get,
-  Post,
   Query,
-  UseGuards,
+  UseGuards
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { SftpService } from './sftp.service';
-import { Serialize } from 'src/interceptors/serialize.interceptor';
-import { FetchSftpDto } from './dto/fetch-sftp.dto';
 import {
-  RequireAnyClaims,
   RequireClaims,
-  TazamaClaims,
+  TazamaClaims
 } from 'src/auth/auth.decorator';
+import { type AuthenticatedUser } from 'src/auth/auth.types';
 import { TazamaAuthGuard } from 'src/auth/tazama-auth.guard';
 import { User } from 'src/auth/user.decorator';
-import { type AuthenticatedUser } from 'src/auth/auth.types';
+import { Serialize } from 'src/interceptors/serialize.interceptor';
+import { FetchSftpDto } from './dto/fetch-sftp.dto';
+import { SftpService } from './sftp.service';
 
 @Controller('sftp')
 @UseGuards(TazamaAuthGuard)

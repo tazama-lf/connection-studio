@@ -8,11 +8,11 @@ import { JobStatus, Schedule } from '@tazama-lf/tcs-lib';
 import { CreateScheduleJobDto } from './dto/create-schedule.dto';
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { UpdateScheduleJobDto } from './dto/update-schedule-dto';
+import { AuthenticatedUser } from 'src/auth/auth.types';
 
 describe('SchedulerService', () => {
   let service: SchedulerService;
   let loggerService: jest.Mocked<LoggerService>;
-  let dbService: jest.Mocked<DatabaseService>;
   let sftpService: jest.Mocked<SftpService>;
   let adminServiceClient: jest.Mocked<AdminServiceClient>;
 
@@ -24,12 +24,19 @@ describe('SchedulerService', () => {
     comments: null,
     start_date: new Date('2025-01-01'),
     end_date: new Date('2025-12-31'),
-    tenant_id: 'tenant-123',
+    tenant_id: 'tenant_abc',
     status: JobStatus.INPROGRESS,
   };
 
+  const mockTenantId = 'tenant_abc';
+
+  const mockUser = {
+    tenantId: mockTenantId,
+    validClaims: ['EDITOR'],
+  };
+
+
   const mockToken = 'mock-jwt-token';
-  const mockTenantId = 'tenant-123';
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -73,7 +80,6 @@ describe('SchedulerService', () => {
 
     service = module.get<SchedulerService>(SchedulerService);
     loggerService = module.get(LoggerService) as jest.Mocked<LoggerService>;
-    dbService = module.get(DatabaseService) as jest.Mocked<DatabaseService>;
     sftpService = module.get(SftpService) as jest.Mocked<SftpService>;
     adminServiceClient = module.get(AdminServiceClient) as jest.Mocked<AdminServiceClient>;
   });
@@ -196,46 +202,47 @@ describe('SchedulerService', () => {
   });
 
   describe('findAll', () => {
-    const page = 1;
-    const limit = 10;
+    const offset = '0';
+    const limit = '10';
 
     it('should return all schedules with pagination', async () => {
       const mockSchedules = [mockSchedule];
       adminServiceClient.getAllSchedule.mockResolvedValue(mockSchedules);
 
-      const result = await service.findAll(page, limit, mockTenantId, mockToken);
+      const result = await service.findAll(offset, limit, mockUser as AuthenticatedUser);
 
       expect(result).toEqual(mockSchedules);
       expect(adminServiceClient.getAllSchedule).toHaveBeenCalledWith(
-        page,
+        offset,
         limit,
-        mockTenantId,
-        mockToken,
+        mockUser,
+        undefined,
       );
     });
 
-    it('should throw BadRequestException for invalid page number', async () => {
-      await expect(
-        service.findAll(0, limit, mockTenantId, mockToken),
-      ).rejects.toThrow(BadRequestException);
+    it('should return schedules with filters', async () => {
+      const mockSchedules = [mockSchedule];
+      const filters = { status: JobStatus.APPROVED };
+      adminServiceClient.getAllSchedule.mockResolvedValue(mockSchedules);
+
+      const result = await service.findAll(offset, limit, mockUser as AuthenticatedUser, filters);
+
+      expect(result).toEqual(mockSchedules);
+      expect(adminServiceClient.getAllSchedule).toHaveBeenCalledWith(
+        offset,
+        limit,
+        mockUser,
+        filters,
+      );
     });
 
-    it('should throw BadRequestException for invalid limit', async () => {
-      await expect(
-        service.findAll(page, 0, mockTenantId, mockToken),
-      ).rejects.toThrow(BadRequestException);
-    });
+    it('should handle errors from admin service', async () => {
+      const errorMessage = 'Service error';
+      adminServiceClient.getAllSchedule.mockRejectedValue(
+        new Error(errorMessage),
+      );
 
-    it('should throw BadRequestException for non-integer page', async () => {
-      await expect(
-        service.findAll(1.5, limit, mockTenantId, mockToken),
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('should throw BadRequestException for non-integer limit', async () => {
-      await expect(
-        service.findAll(page, 10.5, mockTenantId, mockToken),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.findAll(offset, limit, mockUser as AuthenticatedUser)).rejects.toThrow();
     });
   });
 
