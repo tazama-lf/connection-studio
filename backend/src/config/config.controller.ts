@@ -79,15 +79,12 @@ function decodeTokenString(tokenString: string): jwt.JwtPayload | null {
 }
 
 export function decodeValidatedToken(user: AuthenticatedUser): DecodedUserInfo {
-  // The user.token.tokenString might be a wrapper object containing the actual JWT
-  // First, try to decode it
   let decoded = decodeTokenString(user.token.tokenString);
 
   if (!decoded) {
     throw new Error('Invalid token: unable to decode');
   }
 
-  // If decoded.tokenString exists, it means we have a nested JWT - decode the inner one
   if (decoded.tokenString && typeof decoded.tokenString === 'string') {
     const innerDecoded = decodeTokenString(decoded.tokenString);
     if (innerDecoded) {
@@ -96,9 +93,7 @@ export function decodeValidatedToken(user: AuthenticatedUser): DecodedUserInfo {
   }
 
   if (!decoded.preferred_username) {
-    throw new Error(
-      `Invalid token: preferred_username missing. Available keys: ${Object.keys(decoded).join(', ')}`,
-    );
+    throw new Error(`Invalid token: preferred_username missing. Available keys: ${Object.keys(decoded).join(', ')}`);
   }
 
   if (!decoded.realm_access || !Array.isArray(decoded.realm_access.roles)) {
@@ -175,11 +170,7 @@ export class ConfigController {
   }
 
   private async sendWorkflowNotification(
-    event:
-      | 'editor_submit'
-      | 'approver_approve'
-      | 'exporter_export'
-      | 'publisher_deploy',
+    event: 'editor_submit' | 'approver_approve' | 'exporter_export' | 'publisher_deploy',
     configId: number,
     user: AuthenticatedUser,
     config: any,
@@ -599,7 +590,7 @@ export class ConfigController {
       id,
       dto,
       getTenantId(user),
-      decodeValidatedToken(user).preferredUsername,
+decodeValidatedToken(user).preferredUsername,
       getUserClaims(user),
       token,
     );
@@ -614,7 +605,7 @@ export class ConfigController {
     @Headers('authorization') authorization?: string,
   ): Promise<ConfigResponseDto> {
     const token = authorization?.replace('Bearer ', '') || getTokenString(user);
-
+    
     await this.configService.exportConfig(
       id,
       dto,
@@ -623,7 +614,7 @@ export class ConfigController {
       getUserClaims(user),
       token,
     );
-
+    
     const result = await this.adminServiceClient.forwardRequest(
       'POST',
       `/v1/admin/tcs/config/${id}/workflow/export`,
@@ -641,7 +632,7 @@ export class ConfigController {
         dto.comment,
       );
     }
-
+    
     return result;
   }
 
@@ -764,7 +755,7 @@ export class ConfigController {
       dto.publishing_status,
       getTenantId(user),
       decodeValidatedToken(user).preferredUsername,
-      getTokenString(user),
+      getTokenString(user)
     );
   }
 }
