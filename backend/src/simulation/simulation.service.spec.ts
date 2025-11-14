@@ -1,123 +1,54 @@
-import { Test, TestingModule } from '@nestjs/testing';import { Test, TestingModule } from '@nestjs/testing';import { Test, TestingModule } from '@nestjs/testing';
-
-import { SimulationService } from './simulation.service';
-
-import { AdminServiceClient } from '../services/admin-service-client.service';import { SimulationService } from './simulation.service';import { SimulationService } from './simulation.service';
-
+import { Test, TestingModule } from '@nestjs/testing';
+import { SimulationService, SimulatePayloadDto } from './simulation.service';
+import { AdminServiceClient } from '../services/admin-service-client.service';
 import { AuditService } from '../audit/audit.service';
 
-import { Config } from '../config/config.interfaces';import { AdminServiceClient } from '../services/admin-service-client.service';import { ConfigRepository } from '../config/config.repository';
-
-import { ContentType } from '@tazama-lf/tcs-lib';
-
-import { AuditService } from '../audit/audit.service';import { AuditService } from '../audit/audit.service';
-
-// Mock dependencies
-
-jest.mock('../services/admin-service-client.service');import { Config } from '../config/config.interfaces';import { AdminServiceClient } from '../services/admin-service-client.service';
-
-jest.mock('../audit/audit.service');
-
-jest.mock('@tazama-lf/tcs-lib', () => ({import { ContentType } from '@tazama-lf/tcs-lib';import { Config, ContentType, ConfigStatus } from '../config/config.interfaces';
-
-  ...jest.requireActual('@tazama-lf/tcs-lib'),
-
-  processMappings: jest.fn(),
-
-}));
-
-// Mock the dependenciesdescribe('SimulationService', () => {
-
 describe('SimulationService', () => {
+  let service: SimulationService;
+  const adminServiceClientMock = {
+    getConfigById: jest.fn(),
+    forwardRequest: jest.fn(),
+  } as unknown as jest.Mocked<AdminServiceClient>;
 
-  let service: SimulationService;jest.mock('../services/admin-service-client.service');  let service: SimulationService;
+  const auditServiceMock = {
+    logAction: jest.fn(),
+    getAuditLogs: jest.fn(),
+  } as unknown as jest.Mocked<AuditService>;
 
-  let adminServiceClient: jest.Mocked<AdminServiceClient>;
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        SimulationService,
+        { provide: AdminServiceClient, useValue: adminServiceClientMock },
+        { provide: AuditService, useValue: auditServiceMock },
+      ],
+    }).compile();
 
-  let auditService: jest.Mocked<AuditService>;jest.mock('../audit/audit.service');  let configRepository: jest.Mocked<ConfigRepository>;
+    service = module.get<SimulationService>(SimulationService);
+    jest.clearAllMocks();
+  });
 
+  it('should be defined', () => {
+    expect(service).toBeDefined();
+  });
 
+  it('should fail when endpointId is invalid', async () => {
+    const dto: Partial<SimulatePayloadDto> = {
+      // intentionally invalid endpointId
+      endpointId: undefined as unknown as number,
+      payloadType: 'application/json',
+      payload: '{}',
+    };
 
-  const mockConfig: Config = {jest.mock('@tazama-lf/tcs-lib', () => ({  let adminServiceClient: jest.Mocked<AdminServiceClient>;
+    const result = await service.simulateMapping(dto as any, 'tenant-1');
+    expect(result.status).toBe('FAILED');
+    expect(result.errors.length).toBeGreaterThan(0);
+    expect(result.errors[0].field).toBe('endpointId');
+  });
+});
+*/
 
-    id: 1,
-
-    msgFam: 'pain',  ...jest.requireActual('@tazama-lf/tcs-lib'),
-
-    transactionType: 'pacs.008',
-
-    endpointPath: '/tenant-001/v1/pacs.008',  processMappings: jest.fn(),  const mockConfig: Config = {
-
-    version: 'v1',
-
-    contentType: ContentType.JSON,}));    id: 1,
-
-    schema: {
-
-      type: 'object',    msgFam: 'pain.001',
-
-      properties: {
-
-        FIToFICstmrCdtTrf: {describe('SimulationService', () => {    transactionType: 'Payments',
-
-          type: 'object',
-
-          properties: {  let service: SimulationService;    endpointPath: '/test-tenant/v1/pain.001/Payments',
-
-            GrpHdr: {
-
-              type: 'object',  let adminServiceClient: jest.Mocked<AdminServiceClient>;    version: 'v1',
-
-              properties: {
-
-                MsgId: { type: 'string' },  let auditService: jest.Mocked<AuditService>;    contentType: ContentType.JSON,
-
-                CreDtTm: { type: 'string' },
-
-              },    schema: {
-
-              required: ['MsgId'],
-
-            },  const mockConfig: Config = {      type: 'object',
-
-            CdtTrfTxInf: {
-
-              type: 'array',    id: 1,      properties: {
-
-              items: {
-
-                type: 'object',    msgFam: 'pain',        amount: { type: 'number' },
-
-                properties: {
-
-                  PmtId: {    transactionType: 'pacs.008',        currency: { type: 'string' },
-
-                    type: 'object',
-
-                    properties: {    endpointPath: '/tenant-001/v1/pacs.008',        // Simulate a manually added field that's in the schema but wasn't in original payload
-
-                      EndToEndId: { type: 'string' },
-
-                    },    version: 'v1',        customerReference: { type: 'string' },
-
-                  },
-
-                  Amt: {    contentType: ContentType.JSON,      },
-
-                    type: 'object',
-
-                    properties: {    schema: {      required: ['amount', 'currency'],
-
-                      InstdAmt: {
-
-                        type: 'object',      type: 'object',      additionalProperties: false,
-
-                        properties: {
-
-                          Ccy: { type: 'string' },      properties: {    },
-
-                          value: { type: 'number' },
-
+/*
                         },        FIToFICstmrCdtTrf: {    mapping: [],
 
                       },

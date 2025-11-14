@@ -1,9 +1,7 @@
 /**
  * Tazama Internal Data Model Interfaces
  */
-export type TazamaCollectionName =
-  | 'transactionDetails'
-  | 'redis';
+export type TazamaCollectionName = 'transactionDetails' | 'redis';
 export type TazamaFieldType =
   | 'STRING'
   | 'NUMBER'

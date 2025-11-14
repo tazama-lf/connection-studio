@@ -33,16 +33,6 @@ export class JSONSchemaConverterService {
       schema.required = required;
     }
 
-    this.auditService.logAction({
-      entityType: 'SCHEMA',
-      action: 'CONVERT_TO_JSON_SCHEMA',
-      actor: 'SYSTEM',
-      tenantId: 'default-tenant',
-      details: `Converted ${fields.length} fields to JSON Schema with ${Object.keys(properties).length} properties`,
-      status: 'SUCCESS',
-      severity: 'LOW',
-    });
-
     return schema;
   }
   private convertFieldToProperty(field: SchemaField): JSONSchemaProperty {
@@ -161,22 +151,14 @@ export class JSONSchemaConverterService {
   }
   private extractFieldName(fullPath: string, parentPath?: string): string {
     if (parentPath) {
-      // Remove parent path prefix
       const remaining = fullPath.replace(`${parentPath}.`, '');
       const parts = remaining.split('.');
-
-      // For array children paths like "0.PaymentId", we want to skip the numeric index
-      // and return the first non-numeric part
       const nonNumericParts = parts.filter((part) => !/^\d+$/.test(part));
       if (nonNumericParts.length > 0) {
         return nonNumericParts[0];
       }
-
-      // Fallback to first part if all are numeric (edge case)
       return parts[0];
     }
-
-    // For paths without parent, get the last non-numeric part
     const parts = fullPath.split('.');
     const nonNumericParts = parts.filter((part) => !/^\d+$/.test(part));
     return nonNumericParts.length > 0

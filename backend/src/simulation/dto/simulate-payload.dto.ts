@@ -13,10 +13,6 @@ export enum PayloadType {
   XML = 'xml',
 }
 
-/**
- * DTO for simulation request
- * Used by: POST /api/v1/simulation/run
- */
 export class SimulatePayloadDto {
   @IsNumber()
   @Type(() => Number)

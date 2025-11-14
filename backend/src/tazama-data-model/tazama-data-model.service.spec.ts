@@ -28,7 +28,9 @@ describe('TazamaDataModelService', () => {
 
   describe('isValidDestinationPath', () => {
     it('should validate correct destination paths', () => {
-      expect(service.isValidDestinationPath('transactionDetails.source')).toBe(true);
+      expect(service.isValidDestinationPath('transactionDetails.source')).toBe(
+        true,
+      );
       expect(service.isValidDestinationPath('redis.dbtrId')).toBe(true);
       expect(service.isValidDestinationPath('transactionDetails.Amt')).toBe(
         true,
@@ -37,9 +39,9 @@ describe('TazamaDataModelService', () => {
 
     it('should reject invalid destination paths', () => {
       expect(service.isValidDestinationPath('invalid.field')).toBe(false);
-      expect(service.isValidDestinationPath('transactionDetails.nonexistent')).toBe(
-        false,
-      );
+      expect(
+        service.isValidDestinationPath('transactionDetails.nonexistent'),
+      ).toBe(false);
       expect(service.isValidDestinationPath('justtext')).toBe(false);
     });
   });
@@ -82,7 +84,9 @@ describe('TazamaDataModelService', () => {
 
   describe('extractCollectionName', () => {
     it('should extract collection name from path', () => {
-      expect(service.extractCollectionName('transactionDetails.source')).toBe('transactionDetails');
+      expect(service.extractCollectionName('transactionDetails.source')).toBe(
+        'transactionDetails',
+      );
       expect(service.extractCollectionName('redis.dbtrId')).toBe('redis');
     });
 
@@ -93,7 +97,9 @@ describe('TazamaDataModelService', () => {
 
   describe('extractFieldName', () => {
     it('should extract field name from path', () => {
-      expect(service.extractFieldName('transactionDetails.source')).toBe('source');
+      expect(service.extractFieldName('transactionDetails.source')).toBe(
+        'source',
+      );
       expect(service.extractFieldName('redis.dbtrId')).toBe('dbtrId');
     });
 
@@ -158,7 +164,8 @@ describe('TazamaDataModelService', () => {
     });
 
     it('should return different schemas for different collections', () => {
-      const transactionDetailsSchema = service.getCollectionSchema('transactionDetails');
+      const transactionDetailsSchema =
+        service.getCollectionSchema('transactionDetails');
       const redisSchema = service.getCollectionSchema('redis');
       expect(transactionDetailsSchema).not.toEqual(redisSchema);
     });
@@ -333,7 +340,9 @@ describe('TazamaDataModelService', () => {
     it('should sort options alphabetically by label', () => {
       const options = service.getDestinationOptions();
       for (let i = 1; i < options.length; i++) {
-        expect(options[i - 1].label.localeCompare(options[i].label)).toBeLessThanOrEqual(0);
+        expect(
+          options[i - 1].label.localeCompare(options[i].label),
+        ).toBeLessThanOrEqual(0);
       }
     });
 

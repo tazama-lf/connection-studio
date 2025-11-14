@@ -44,7 +44,12 @@ describe('JSONSchemaConverterService', () => {
   describe('convertToJSONSchema', () => {
     it('should convert simple fields to JSON Schema', () => {
       const fields: SchemaField[] = [
-        { name: 'name', path: 'name', type: FieldType.STRING, isRequired: true },
+        {
+          name: 'name',
+          path: 'name',
+          type: FieldType.STRING,
+          isRequired: true,
+        },
         { name: 'age', path: 'age', type: FieldType.NUMBER, isRequired: false },
         {
           name: 'active',
@@ -139,7 +144,9 @@ describe('JSONSchemaConverterService', () => {
       const schema = service.convertToJSONSchema(fields);
 
       expect(schema.properties!['tags'].type).toBe(JSONSchemaType.ARRAY);
-      expect(schema.properties!['tags'].items?.type).toBe(JSONSchemaType.STRING);
+      expect(schema.properties!['tags'].items?.type).toBe(
+        JSONSchemaType.STRING,
+      );
       expect(schema.properties!['scores'].items?.type).toBe(
         JSONSchemaType.NUMBER,
       );
@@ -269,7 +276,12 @@ describe('JSONSchemaConverterService', () => {
 
     it('should log audit action when converting', () => {
       const fields: SchemaField[] = [
-        { name: 'test', path: 'test', type: FieldType.STRING, isRequired: true },
+        {
+          name: 'test',
+          path: 'test',
+          type: FieldType.STRING,
+          isRequired: true,
+        },
       ];
 
       service.convertToJSONSchema(fields);
@@ -424,9 +436,9 @@ describe('JSONSchemaConverterService', () => {
       expect(fields[0].arrayElementType).toBe(FieldType.OBJECT);
       expect(fields[0].children).toHaveLength(2);
       expect(fields[0].children![0].path).toBe('users.0.id');
-      expect(
-        fields[0].children!.find((c) => c.name === 'id')?.isRequired,
-      ).toBe(true);
+      expect(fields[0].children!.find((c) => c.name === 'id')?.isRequired).toBe(
+        true,
+      );
     });
 
     it('should handle schema without required array', () => {
