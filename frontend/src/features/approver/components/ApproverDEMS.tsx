@@ -1,5 +1,4 @@
 ﻿import React, { useState } from 'react';
-import { AuthHeader } from '../../../shared/components/AuthHeader';
 import { ArrowLeft, SearchIcon } from 'lucide-react';
 import { ConfigList } from '../../config/components/ConfigList';
 import { configApi } from '../../config/services/configApi';
@@ -73,9 +72,7 @@ const { user } = useAuth();
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <AuthHeader title="Dynamic Endpoint Monitoring Service" />
-      
+    <div className="min-h-screen bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="mb-6 flex items-center">
           <button

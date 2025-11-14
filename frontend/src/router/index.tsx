@@ -21,7 +21,6 @@ import CRONModule from '../features/cron/pages/CRONModule';
 import DataEnrichmentModule from '../features/data-enrichment/pages/DataEnrichmentModule';
 import NotFoundPage from '../pages/NotFoundPage';
 import { ROUTES } from '../shared/config/routes.config';
-
 const ProtectedRoute = ({
   children
 }: {
@@ -33,7 +32,6 @@ const ProtectedRoute = ({
   }
   return <>{children}</>;
 };
-
 const ApproverRoute = ({
   children
 }: {
@@ -48,7 +46,6 @@ const ApproverRoute = ({
   }
   return <>{children}</>;
 };
-
 const PublisherRoute = ({
   children
 }: {
@@ -63,7 +60,6 @@ const PublisherRoute = ({
   }
   return <>{children}</>;
 };
-
 const ExporterRoute = ({
   children
 }: {
@@ -78,7 +74,6 @@ const ExporterRoute = ({
   }
   return <>{children}</>;
 };
-
 const EditorRoute = ({
   children
 }: {
@@ -93,105 +88,97 @@ const EditorRoute = ({
   }
   return <>{children}</>;
 };
-
 export const AppRoutes: React.FC = () => {
-  const { isAuthenticated, loading, user } = useAuth();
-
-  // Show loading while checking authentication
+  const { loading } = useAuth();
   if (loading) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
   }
-
   return (
     <Routes>
-      <Route path="/" element={
-        isAuthenticated ? (
-          user?.claims && isApprover(user.claims) ? 
-            <Navigate to={ROUTES.APPROVER} /> : 
-            <Navigate to={ROUTES.DASHBOARD} />
-        ) : <Navigate to={ROUTES.LOGIN} />
-      } />
+      <Route path="/" element={<Navigate to={ROUTES.LOGIN} replace />} />
       <Route path={ROUTES.LOGIN} element={<Login />} />
-      <Route path={ROUTES.DASHBOARD} element={
+      <Route element={
         <ProtectedRoute>
           <Dashboard />
         </ProtectedRoute>
-      } />
-      <Route path={ROUTES.DEMS} element={
-        <EditorRoute>
-          <DEMSModule />
-        </EditorRoute>
-      } />
-      <Route path={ROUTES.APPROVER} element={
-        <ApproverRoute>
-          <ApproverModule />
-        </ApproverRoute>
-      } />
-      <Route path="/approver/configs" element={
-        <ApproverRoute>
-          <ApproverConfigsPage />
-        </ApproverRoute>
-      } />
-      <Route path="/approver/jobs" element={
-        <ApproverRoute>
-          <ApproverDEJobsPage />
-        </ApproverRoute>
-      } />
-      <Route path="/approver/cron-jobs" element={
-        <ApproverRoute>
-          <ApproverCronJobsPage />
-        </ApproverRoute>
-      } />
-      <Route path="/exporter/configs" element={
-        <ExporterRoute>
-          <ExporterConfigsPage />
-        </ExporterRoute>
-      } />
-      <Route path="/exporter/jobs" element={
-        <ExporterRoute>
-          <ExporterDEJobsPage />
-        </ExporterRoute>
-      } />
-      <Route path="/exporter/cron-jobs" element={
-        <ExporterRoute>
-          <ExporterCronJobsPage />
-        </ExporterRoute>
-      } />
-      <Route path={ROUTES.PUBLISHER} element={
-        <PublisherRoute>
-          <PublisherModule />
-        </PublisherRoute>
-      } />
-      <Route path="/publisher/configs" element={
-        <PublisherRoute>
-          <PublisherConfigsPage />
-        </PublisherRoute>
-      } />
-      <Route path="/publisher/cron-jobs" element={
-        <PublisherRoute>
-          <PublisherCronJobsPage />
-        </PublisherRoute>
-      } />
-      <Route path="/publisher/de-jobs" element={
-        <PublisherRoute>
-          <PublisherDEJobsPage />
-        </PublisherRoute>
-      } />
-      <Route path="/publisher/exported-items" element={
-        <PublisherRoute>
-          <PublisherExportedItemsPage />
-        </PublisherRoute>
-      } />
-      <Route path={ROUTES.DATA_ENRICHMENT} element={
-        <EditorRoute>
-          <DataEnrichmentModule />
-        </EditorRoute>
-      } />
-      <Route path={ROUTES.CRON} element={
-        <EditorRoute>
-          <CRONModule />
-        </EditorRoute>
-      } />
+      }>
+        <Route path={ROUTES.DASHBOARD} element={<div />} />
+        <Route path={ROUTES.DEMS} element={
+          <EditorRoute>
+            <DEMSModule />
+          </EditorRoute>
+        } />
+        <Route path={ROUTES.APPROVER} element={
+          <ApproverRoute>
+            <ApproverModule />
+          </ApproverRoute>
+        } />
+        <Route path="/approver/configs" element={
+          <ApproverRoute>
+            <ApproverConfigsPage />
+          </ApproverRoute>
+        } />
+        <Route path="/approver/jobs" element={
+          <ApproverRoute>
+            <ApproverDEJobsPage />
+          </ApproverRoute>
+        } />
+        <Route path="/approver/cron-jobs" element={
+          <ApproverRoute>
+            <ApproverCronJobsPage />
+          </ApproverRoute>
+        } />
+        <Route path="/exporter/configs" element={
+          <ExporterRoute>
+            <ExporterConfigsPage />
+          </ExporterRoute>
+        } />
+        <Route path="/exporter/jobs" element={
+          <ExporterRoute>
+            <ExporterDEJobsPage />
+          </ExporterRoute>
+        } />
+        <Route path="/exporter/cron-jobs" element={
+          <ExporterRoute>
+            <ExporterCronJobsPage />
+          </ExporterRoute>
+        } />
+        <Route path={ROUTES.PUBLISHER} element={
+          <PublisherRoute>
+            <PublisherModule />
+          </PublisherRoute>
+        } />
+        <Route path="/publisher/configs" element={
+          <PublisherRoute>
+            <PublisherConfigsPage />
+          </PublisherRoute>
+        } />
+        <Route path="/publisher/cron-jobs" element={
+          <PublisherRoute>
+            <PublisherCronJobsPage />
+          </PublisherRoute>
+        } />
+        <Route path="/publisher/de-jobs" element={
+          <PublisherRoute>
+            <PublisherDEJobsPage />
+          </PublisherRoute>
+        } />
+        <Route path="/publisher/exported-items" element={
+          <PublisherRoute>
+            <PublisherExportedItemsPage />
+          </PublisherRoute>
+        } />
+        <Route path={ROUTES.DATA_ENRICHMENT} element={
+          <EditorRoute>
+            <DataEnrichmentModule />
+          </EditorRoute>
+        } />
+        <Route path={ROUTES.CRON} element={
+          <EditorRoute>
+            <CRONModule />
+          </EditorRoute>
+        } />
+      </Route>
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );

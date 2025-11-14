@@ -8,7 +8,6 @@ import type {
 } from '../../data-enrichment/types';
 import { dataEnrichmentApi } from '../../data-enrichment/services/dataEnrichmentApi';
 import { useToast } from '../../../shared/providers/ToastProvider';
-import { AuthHeader } from '../../../shared/components/AuthHeader';
 import { UI_CONFIG } from '@shared/config/app.config';
 import { getPrimaryRole } from '@utils/roleUtils';
 import { useAuth } from '@features/auth';
@@ -79,7 +78,7 @@ const ApproverDEJobsPage: React.FC = () => {
 
   const handleApproveJob = async (jobId: string, jobType: 'PULL' | 'PUSH') => {
     try {
-      await dataEnrichmentApi.updateJobStatus(jobId, 'approved', jobType);
+      await dataEnrichmentApi.updateJobStatus(jobId, 'STATUS_04_APPROVED', jobType);
       showSuccess('Job approved successfully');
       handleJobRefresh();
     } catch (error) {
@@ -90,7 +89,7 @@ const ApproverDEJobsPage: React.FC = () => {
 
   const handleRejectJob = async (jobId: string, jobType: 'PULL' | 'PUSH') => {
     try {
-      await dataEnrichmentApi.updateJobStatus(jobId, 'rejected', jobType);
+      await dataEnrichmentApi.updateJobStatus(jobId, 'STATUS_05_REJECTED', jobType);
       showSuccess('Job rejected successfully');
       handleJobRefresh();
     } catch (error) {
@@ -126,9 +125,7 @@ const ApproverDEJobsPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <AuthHeader title="Data Enrichment" showBackButton={true} />
-
+    <div className="min-h-screen bg-white">
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Search Bar */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">

@@ -1,6 +1,5 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AuthHeader } from '../../../shared/components/AuthHeader';
 import { Clock, Database, Settings, PackageOpen } from 'lucide-react';
 
 const PublisherModule: React.FC = () => {
@@ -43,9 +42,7 @@ const PublisherModule: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <AuthHeader title="Tazama Connection Studio" showBackButton={false} />
-      
+    <div className="min-h-screen bg-white">
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
         {/* Module Grid */}

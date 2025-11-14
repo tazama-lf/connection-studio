@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { AuthHeader } from '@shared/components/AuthHeader';
 import { ConfigList } from '@features/config/components/ConfigList';
 import VersionHistoryModal from '@features/config/components/VersionHistoryModal';
 import { Button } from '@shared/components/Button';
@@ -72,11 +71,11 @@ const DEMSModule: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <AuthHeader
+    <div className="min-h-screen bg-white">
+      {/* <AuthHeader
         title="Dynamic Endpoint Monitoring Service"
         showBackButton={true}
-      />
+      /> */}
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center my-8 gap-4">

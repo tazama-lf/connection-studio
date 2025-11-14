@@ -1,5 +1,4 @@
 ﻿import React, { useState } from 'react';
-import { AuthHeader } from '../../../shared/components/AuthHeader';
 import { ArrowLeft } from 'lucide-react';
 
 interface PublisherDEMSProps {
@@ -17,8 +16,7 @@ const PublisherDEMS: React.FC<PublisherDEMSProps> = ({ onBack }) => {
  
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <AuthHeader title="DEMS - Endpoint Deployment" />
+    <div className="min-h-screen bg-white">
       <div className="p-8">
         {onBack && (
           <div className="mb-6 flex items-center">

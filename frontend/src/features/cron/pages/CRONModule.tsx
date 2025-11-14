@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { AuthHeader } from '../../../shared/components/AuthHeader';
 import { CronJobList } from '../components/CronJobList';
 import { CronJobModal } from '../components/CronJobModal';
 import { Button } from '../../../shared/components/Button';
@@ -24,9 +23,7 @@ const CRONModule: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <AuthHeader title="Cron Job Management" showBackButton={true} />
-      
+    <div className="min-h-screen bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
           <div className="flex items-center space-x-4">

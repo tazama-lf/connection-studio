@@ -859,7 +859,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
           </div>
         )}
 
-        {job && !isLoading && !editMode && !cloneMode && userIsEditor && job.status === 'in-progress' && onSendForApproval && ( 
+        {job && !isLoading && !editMode && !cloneMode && userIsEditor && job.status === 'STATUS_01_IN_PROGRESS' && onSendForApproval && ( 
           <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
             <Button
               variant="secondary"
@@ -881,7 +881,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
           </div>
         )}
 
-        {job && !isLoading && !editMode && !cloneMode && userIsApprover && (onApprove || onReject) && job.status === 'under-review' && (
+        {job && !isLoading && !editMode && !cloneMode && userIsApprover && (onApprove || onReject) && job.status === 'STATUS_03_UNDER_REVIEW' && (
           <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
             <Button
               variant="secondary"
@@ -913,7 +913,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
           </div>
         )}
 
-       {job && !isLoading && !editMode && !cloneMode && onExport && userIsExporter && job.status === 'approved' && (
+       {job && !isLoading && !editMode && !cloneMode && onExport && userIsExporter && job.status === 'STATUS_04_APPROVED' && (
           <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3 bg-gray-50">
             <Button
               variant="secondary"
@@ -936,9 +936,9 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
         )}
 
         {job && !isLoading && !editMode && !cloneMode && 
-         !(userIsEditor && job.status === 'in-progress' && onSendForApproval) &&
-         !(userIsApprover && (onApprove || onReject) && job.status === 'under-review') &&
-         !(onExport && userIsExporter && job.status === 'approved') && (
+         !(userIsEditor && job.status === 'STATUS_01_IN_PROGRESS' && onSendForApproval) &&
+         !(userIsApprover && (onApprove || onReject) && job.status === 'STATUS_03_UNDER_REVIEW') &&
+         !(onExport && userIsExporter && job.status === 'STATUS_04_APPROVED') && (
           <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3 bg-gray-50">
             <Button
               variant="secondary"

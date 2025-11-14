@@ -5,7 +5,6 @@ import CronJobDetailsModal from '../components/CronJobDetailsModal';
 import type { ScheduleResponse } from '../../data-enrichment/types';
 import { dataEnrichmentApi } from '../../data-enrichment/services/dataEnrichmentApi';
 import { useToast } from '../../../shared/providers/ToastProvider';
-import { AuthHeader } from '../../../shared/components/AuthHeader';
 
 const ApproverCronJobsPage: React.FC = () => {
   // Cron Job state
@@ -111,9 +110,7 @@ const ApproverCronJobsPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <AuthHeader title="Cron Job Management" showBackButton={true} />
-
+    <div className="min-h-screen bg-white">
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
        
 

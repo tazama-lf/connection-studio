@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { AuthHeader } from '../../../shared/components/AuthHeader';
 import { Button } from '../../../shared/components/Button';
 import { Plus } from 'lucide-react';
 
@@ -440,9 +439,7 @@ const DataEnrichmentModule: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <AuthHeader title="Data Enrichment" showBackButton={true} />
-
+    <div className="min-h-screen bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Search and Create Button */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
