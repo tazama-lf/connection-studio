@@ -3,10 +3,11 @@ import {
   IsOptional,
   IsEnum,
   IsNotEmpty,
-  ValidateNested,
   IsObject,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { ContentType } from '@tazama-lf/tcs-lib';
+
+export { ContentType } from '@tazama-lf/tcs-lib';
 
 export enum TransactionType {
   PACS_008 = 'pacs.008.001.10',
@@ -15,15 +16,6 @@ export enum TransactionType {
   PAIN_013 = 'pain.013.001.09',
 }
 
-export enum ContentType {
-  JSON = 'json',
-  XML = 'xml',
-}
-
-/**
- * DTO for creating a new configuration
- * Used by: POST /api/v1/config
- */
 export class CreateConfigDto {
   @IsString()
   @IsOptional()
@@ -36,12 +28,12 @@ export class CreateConfigDto {
   transactionType: TransactionType;
 
   @IsString()
-  @IsNotEmpty()
-  tableName: string;
+  @IsOptional()
+  tableName?: string;
 
   @IsString()
-  @IsNotEmpty()
-  endpointPath: string;
+  @IsOptional()
+  endpointPath?: string;
 
   @IsString()
   @IsNotEmpty()
@@ -54,6 +46,10 @@ export class CreateConfigDto {
   @IsObject()
   @IsOptional()
   schema?: Record<string, any>;
+
+  @IsString()
+  @IsOptional()
+  payload?: string;
 
   @IsString()
   @IsOptional()

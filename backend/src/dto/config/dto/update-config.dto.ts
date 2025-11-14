@@ -1,10 +1,6 @@
 import { IsString, IsOptional, IsEnum, IsObject } from 'class-validator';
 import { TransactionType, ContentType } from './create-config.dto';
 
-/**
- * DTO for updating an existing configuration
- * Used by: PATCH /api/v1/config/:id
- */
 export class UpdateConfigDto {
   @IsString()
   @IsOptional()

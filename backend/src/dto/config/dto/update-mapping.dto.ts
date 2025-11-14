@@ -7,11 +7,6 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { TransformationDto } from './create-mapping.dto';
-
-/**
- * DTO for updating an existing field mapping
- * Used by: PATCH /api/v1/config/:configId/mappings/:mappingId
- */
 export class UpdateMappingDto {
   @IsString()
   @IsNotEmpty()

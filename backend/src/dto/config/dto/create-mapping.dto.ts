@@ -41,10 +41,6 @@ export class TransformationDto {
   replace?: string;
 }
 
-/**
- * DTO for creating a new field mapping
- * Used by: POST /api/v1/config/:id/mappings
- */
 export class CreateMappingDto {
   @IsString()
   @IsNotEmpty()

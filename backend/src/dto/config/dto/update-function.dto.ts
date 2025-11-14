@@ -1,9 +1,5 @@
 import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
 
-/**
- * DTO for updating an existing function mapping
- * Used by: PATCH /api/v1/config/:configId/functions/:functionId
- */
 export class UpdateFunctionDto {
   @IsString()
   @IsNotEmpty()
