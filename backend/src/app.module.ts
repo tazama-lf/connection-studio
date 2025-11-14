@@ -37,7 +37,7 @@ import { NotificationModule } from './notification/notification.module';
     NotifyModule,
     SchedulerModule,
     JobModule,
-    NotificationModule
+    NotificationModule,
   ],
   controllers: [AppController],
   providers: [
@@ -52,4 +52,4 @@ import { NotificationModule } from './notification/notification.module';
     },
   ],
 })
-export class AppModule { }
+export class AppModule {}
