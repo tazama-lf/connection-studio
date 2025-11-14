@@ -72,7 +72,6 @@ export class NotificationController {
     }
   }
 
-
   @Post('rejection')
   @HttpCode(HttpStatus.OK)
   async sendRejection(

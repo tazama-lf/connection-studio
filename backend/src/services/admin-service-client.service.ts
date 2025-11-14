@@ -1,7 +1,15 @@
 import { HttpService } from '@nestjs/axios';
 import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ConfigType, ISuccess, Job, JobStatus, JobSummary, Schedule, ScheduleStatus } from '@tazama-lf/tcs-lib';
+import {
+  ConfigType,
+  ISuccess,
+  Job,
+  JobStatus,
+  JobSummary,
+  Schedule,
+  ScheduleStatus,
+} from '@tazama-lf/tcs-lib';
 import { firstValueFrom } from 'rxjs';
 import { AuthenticatedUser } from 'src/auth/auth.types';
 import { UpdatePullJobDto } from 'src/job/dto/update-pull-job.dto';
@@ -128,13 +136,13 @@ export class AdminServiceClient {
     }
   }
 
-
   // ==================== JOB OPERATIONS ====================
 
-  async createPushJob(job: Record<string, unknown>, token: string): Promise<{ id: string | null }> {
-    this.logger.log(
-      `Validating job creation: ${job}`,
-    );
+  async createPushJob(
+    job: Record<string, unknown>,
+    token: string,
+  ): Promise<{ id: string | null }> {
+    this.logger.log(`Validating job creation: ${job}`);
 
     try {
       const response = await firstValueFrom(
@@ -157,11 +165,11 @@ export class AdminServiceClient {
     }
   }
 
-
-  async createPullJob(job: Record<string, unknown>, token: string): Promise<{ id: string }> {
-    this.logger.log(
-      `Validating job creation: ${job}`,
-    );
+  async createPullJob(
+    job: Record<string, unknown>,
+    token: string,
+  ): Promise<{ id: string }> {
+    this.logger.log(`Validating job creation: ${job}`);
 
     try {
       const response = await firstValueFrom(
@@ -184,7 +192,8 @@ export class AdminServiceClient {
     }
   }
 
-  async getAllJobs(offset: string,
+  async getAllJobs(
+    offset: string,
     limit: string,
     user: AuthenticatedUser,
     filters?: Record<string, unknown>,
@@ -194,7 +203,7 @@ export class AdminServiceClient {
         this.httpService.post(
           `${this.adminServiceUrl}/v1/admin/tcs/job/get/all`,
           {
-            ...filters
+            ...filters,
           },
           {
             headers: {
@@ -202,8 +211,8 @@ export class AdminServiceClient {
             },
             params: {
               offset,
-              limit
-            }
+              limit,
+            },
           },
         ),
       );
@@ -214,7 +223,11 @@ export class AdminServiceClient {
     }
   }
 
-  async findJobById(id: string, tableName: string, token: string): Promise<Job | null> {
+  async findJobById(
+    id: string,
+    tableName: string,
+    token: string,
+  ): Promise<Job | null> {
     this.logger.log(`Getting job by ID: ${id} with token ${token}`);
 
     try {
@@ -227,8 +240,8 @@ export class AdminServiceClient {
             },
 
             params: {
-              tableName
-            }
+              tableName,
+            },
           },
         ),
       );
@@ -239,7 +252,13 @@ export class AdminServiceClient {
     }
   }
 
-  async findJobByStatus(tenantId: string, status: JobStatus, page: number, limit: number, token: string): Promise<JobSummary[]> {
+  async findJobByStatus(
+    tenantId: string,
+    status: JobStatus,
+    page: number,
+    limit: number,
+    token: string,
+  ): Promise<JobSummary[]> {
     this.logger.log(`Getting job by status`);
 
     try {
@@ -254,8 +273,8 @@ export class AdminServiceClient {
               tenantId,
               status,
               page,
-              limit
-            }
+              limit,
+            },
           },
         ),
       );
@@ -266,11 +285,13 @@ export class AdminServiceClient {
     }
   }
 
-
-  async updateJobActivation(id: string, status: ScheduleStatus, tableName: string, token: string): Promise<{ success: boolean; message: string }> {
-    this.logger.log(
-      `Validating job update with id : ${id}`,
-    );
+  async updateJobActivation(
+    id: string,
+    status: ScheduleStatus,
+    tableName: string,
+    token: string,
+  ): Promise<{ success: boolean; message: string }> {
+    this.logger.log(`Validating job update with id : ${id}`);
 
     try {
       const response = await firstValueFrom(
@@ -293,10 +314,15 @@ export class AdminServiceClient {
     }
   }
 
-  async updateJobByStatus(id: string, status: JobStatus, tenantId: string, type: ConfigType, token: string, reason?: string): Promise<{ success: boolean; message: string }> {
-    this.logger.log(
-      `Validating job update with id : ${id}`,
-    );
+  async updateJobByStatus(
+    id: string,
+    status: JobStatus,
+    tenantId: string,
+    type: ConfigType,
+    token: string,
+    reason?: string,
+  ): Promise<{ success: boolean; message: string }> {
+    this.logger.log(`Validating job update with id : ${id}`);
 
     try {
       const body: Record<string, unknown> = {};
@@ -311,8 +337,10 @@ export class AdminServiceClient {
               'Content-Type': 'application/json',
             },
             params: {
-              tenantId, type, status
-            }
+              tenantId,
+              type,
+              status,
+            },
           },
         ),
       );
@@ -324,10 +352,13 @@ export class AdminServiceClient {
     }
   }
 
-  async updateJob(id: string, job: UpdatePushJobDto | UpdatePullJobDto, type: ConfigType, token: string): Promise<{ success: boolean; message: string }> {
-    this.logger.log(
-      `Validating job update with id : ${id}`,
-    );
+  async updateJob(
+    id: string,
+    job: UpdatePushJobDto | UpdatePullJobDto,
+    type: ConfigType,
+    token: string,
+  ): Promise<{ success: boolean; message: string }> {
+    this.logger.log(`Validating job update with id : ${id}`);
 
     try {
       const response = await firstValueFrom(
@@ -355,17 +386,14 @@ export class AdminServiceClient {
 
     try {
       const response = await firstValueFrom(
-        this.httpService.get(
-          `${this.adminServiceUrl}/v1/admin/tcs/job/table`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-            params: {
-              tableName
-            }
+        this.httpService.get(`${this.adminServiceUrl}/v1/admin/tcs/job/table`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
           },
-        ),
+          params: {
+            tableName,
+          },
+        }),
       );
 
       return response.data;
@@ -374,13 +402,13 @@ export class AdminServiceClient {
     }
   }
 
-
   // ==================== SCHEDULER OPERATIONS ====================
 
-  async createSchedule(schedule: Record<string, unknown>, token: string): Promise<{ success: boolean; message: string; }> {
-    this.logger.log(
-      `Validating schedule creation: ${schedule}`,
-    );
+  async createSchedule(
+    schedule: Record<string, unknown>,
+    token: string,
+  ): Promise<{ success: boolean; message: string }> {
+    this.logger.log(`Validating schedule creation: ${schedule}`);
 
     try {
       const response = await firstValueFrom(
@@ -424,12 +452,12 @@ export class AdminServiceClient {
     }
   }
 
-
-
-  async updateSchedule(id: string, schedule: UpdateScheduleJobDto, token: string): Promise<{ success: boolean; message: string }> {
-    this.logger.log(
-      `Validating schedule update with id : ${id}`,
-    );
+  async updateSchedule(
+    id: string,
+    schedule: UpdateScheduleJobDto,
+    token: string,
+  ): Promise<{ success: boolean; message: string }> {
+    this.logger.log(`Validating schedule update with id : ${id}`);
 
     try {
       const response = await firstValueFrom(
@@ -452,10 +480,12 @@ export class AdminServiceClient {
     }
   }
 
-  async getAllSchedule(offset: string,
+  async getAllSchedule(
+    offset: string,
     limit: string,
     user: AuthenticatedUser,
-    filters?: Record<string, unknown>): Promise<{}> {
+    filters?: Record<string, unknown>,
+  ): Promise<{}> {
     this.logger.log(`Getting all schedules`);
 
     try {
@@ -463,7 +493,7 @@ export class AdminServiceClient {
         this.httpService.post(
           `${this.adminServiceUrl}/v1/admin/tcs/schedule/get/all`,
           {
-            ...filters
+            ...filters,
           },
           {
             headers: {
@@ -471,8 +501,8 @@ export class AdminServiceClient {
             },
             params: {
               offset,
-              limit
-            }
+              limit,
+            },
           },
         ),
       );
@@ -483,7 +513,13 @@ export class AdminServiceClient {
     }
   }
 
-  async getScheduleByStatus(status: JobStatus, page: number, limit: number, tenant_id: string, token: string): Promise<Schedule[]> {
+  async getScheduleByStatus(
+    status: JobStatus,
+    page: number,
+    limit: number,
+    tenant_id: string,
+    token: string,
+  ): Promise<Schedule[]> {
     this.logger.log(`Getting schedules with statuses: ${status}`);
 
     try {
@@ -498,8 +534,8 @@ export class AdminServiceClient {
               status: status,
               tenantId: tenant_id,
               page,
-              limit
-            }
+              limit,
+            },
           },
         ),
       );
@@ -510,10 +546,14 @@ export class AdminServiceClient {
     }
   }
 
-  async updateScheduleByStatus(id: string, status: JobStatus, tenantId: string, token: string, reason?: string): Promise<{ success: boolean; message: string }> {
-    this.logger.log(
-      `Validating schedule update with id : ${id}`,
-    );
+  async updateScheduleByStatus(
+    id: string,
+    status: JobStatus,
+    tenantId: string,
+    token: string,
+    reason?: string,
+  ): Promise<{ success: boolean; message: string }> {
+    this.logger.log(`Validating schedule update with id : ${id}`);
 
     try {
       const body: Record<string, unknown> = { tenantId };
@@ -540,8 +580,6 @@ export class AdminServiceClient {
       return this.handleError(error, 'updateScheduleStatus');
     }
   }
-
-
 
   // ==================== TCS OPERATIONS ====================
 
@@ -693,21 +731,36 @@ export class AdminServiceClient {
     }
   }
 
-  async getAllConfigs(token: string, limit: number = 10, offset: number = 0): Promise<{ configs: any[]; pagination: { total: number; limit: number; offset: number; pages: number } }> {
+  async getAllConfigs(
+    token: string,
+    limit: number = 10,
+    offset: number = 0,
+  ): Promise<{
+    configs: any[];
+    pagination: { total: number; limit: number; offset: number; pages: number };
+  }> {
     this.logger.log(`Getting all configs (limit: ${limit}, offset: ${offset})`);
 
     try {
       const response = await firstValueFrom(
-        this.httpService.get(`${this.adminServiceUrl}/v1/admin/tcs/config/${offset}/${limit}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
+        this.httpService.get(
+          `${this.adminServiceUrl}/v1/admin/tcs/config/${offset}/${limit}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
           },
-        }),
+        ),
       );
 
       return {
         configs: response.data.configs || [],
-        pagination: response.data.pagination || { total: 0, limit, offset, pages: 0 },
+        pagination: response.data.pagination || {
+          total: 0,
+          limit,
+          offset,
+          pages: 0,
+        },
       };
     } catch (error) {
       return this.handleError(error, 'getAllConfigs');
@@ -792,7 +845,10 @@ export class AdminServiceClient {
     token: string,
     limit: number = 10,
     offset: number = 0,
-  ): Promise<{ configs: any[]; pagination: { total: number; limit: number; offset: number; pages: number } }> {
+  ): Promise<{
+    configs: any[];
+    pagination: { total: number; limit: number; offset: number; pages: number };
+  }> {
     this.logger.log(
       `Getting config by endpoint: ${endpointPath}, version: ${version} (limit: ${limit}, offset: ${offset})`,
     );
@@ -811,7 +867,12 @@ export class AdminServiceClient {
 
       return {
         configs: response.data.configs || [],
-        pagination: response.data.pagination || { total: 0, limit, offset, pages: 0 },
+        pagination: response.data.pagination || {
+          total: 0,
+          limit,
+          offset,
+          pages: 0,
+        },
       };
     } catch (error) {
       return this.handleError(error, 'getConfigByEndpoint');
@@ -823,8 +884,13 @@ export class AdminServiceClient {
     token: string,
     limit: number = 10,
     offset: number = 0,
-  ): Promise<{ configs: any[]; pagination: { total: number; limit: number; offset: number; pages: number } }> {
-    this.logger.log(`Getting configs by transaction type: ${transactionType} (limit: ${limit}, offset: ${offset})`);
+  ): Promise<{
+    configs: any[];
+    pagination: { total: number; limit: number; offset: number; pages: number };
+  }> {
+    this.logger.log(
+      `Getting configs by transaction type: ${transactionType} (limit: ${limit}, offset: ${offset})`,
+    );
 
     try {
       const response = await firstValueFrom(
@@ -840,7 +906,12 @@ export class AdminServiceClient {
 
       return {
         configs: response.data.configs || [],
-        pagination: response.data.pagination || { total: 0, limit, offset, pages: 0 },
+        pagination: response.data.pagination || {
+          total: 0,
+          limit,
+          offset,
+          pages: 0,
+        },
       };
     } catch (error) {
       return this.handleError(error, 'getConfigsByTransactionType');
@@ -890,7 +961,7 @@ export class AdminServiceClient {
       return this.handleError(error, 'runRawQuery');
     }
   }
- async updateConfigByStatus(
+  async updateConfigByStatus(
     id: number,
     status: string,
     token: string,

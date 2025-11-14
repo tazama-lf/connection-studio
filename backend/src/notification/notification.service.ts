@@ -344,7 +344,6 @@ export class NotificationService implements OnModuleInit {
     }
   }
 
-  
   async sendGenericWorkflowNotification(data: {
     event: string;
     configId: number;
