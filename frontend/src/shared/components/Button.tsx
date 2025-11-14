@@ -23,7 +23,7 @@ interface ButtonProps {
   const variantStyles = {
     primary: disabled 
       ? 'text-gray-400 bg-gray-100 cursor-not-allowed border border-gray-300'
-      : 'text-white bg-blue-600 hover:bg-blue-700 focus:ring-blue-500 border border-transparent',
+      : 'text-white bg-[#2b7fff] hover:bg-[#2b7fff] focus:ring-blue-500 border border-transparent',
     secondary: disabled
       ? 'text-gray-400 bg-gray-100 cursor-not-allowed border border-gray-300'
       : 'text-gray-700 bg-white hover:bg-gray-50 focus:ring-blue-500 border border-gray-300',

@@ -308,7 +308,7 @@ console.log('Cur map:', currentMappings);
     label: 'Functions'
   }, {
     id: 'simulation',
-    label: 'Simulation'
+    label: 'Dry Run'
   }, {
     id: 'deploy',
     label: isApprover(user?.claims || []) ? 'Send for Deployment' :
@@ -924,7 +924,7 @@ console.log('Cur map:', currentMappings);
         console.log('Current config status:', currentStatus);
 
         // If config is under_review, just approve it (set to approved)
-        if (currentStatus === 'under_review' || currentStatus === 'under review') {
+        if (currentStatus === 'STATUS_03_UNDER_REVIEW') {
           console.log('Config is under_review - approving it');
           response = await configApi.approveConfig(createdEndpoint.id);
         } else {
@@ -1815,14 +1815,14 @@ console.log('Cur map:', currentMappings);
                   (currentStep === 'mapping' && !isMappingValid) ||
                   (currentStep === 'simulation' && !isSimulationSuccess && !readOnly) ||
                   (currentStep !== 'payload' && !createdEndpoint && !existingConfig) ||
-                  (currentStep === 'deploy' && !isApprover(user?.claims || []) && !isExporter(user?.claims || []) && (isStatus(createdEndpoint?.status, 'under_review') || isStatus(createdEndpoint?.status, 'approved') || isStatus(existingConfig?.status, 'under_review') || isStatus(existingConfig?.status, 'approved'))) ||
-                  (currentStep === 'deploy' && isApprover(user?.claims || []) && (isStatus(createdEndpoint?.status, 'approved') || isStatus(existingConfig?.status, 'approved'))) ||
-                  (currentStep === 'deploy' && isExporter(user?.claims || []) && (!isStatus(createdEndpoint?.status, 'approved') && !isStatus(existingConfig?.status, 'approved')))
+                  (currentStep === 'deploy' && !isApprover(user?.claims || []) && !isExporter(user?.claims || []) && (isStatus(createdEndpoint?.status, 'STATUS_03_UNDER_REVIEW') || isStatus(createdEndpoint?.status, 'STATUS_04_APPROVED') || isStatus(existingConfig?.status, 'STATUS_03_UNDER_REVIEW') || isStatus(existingConfig?.status, 'STATUS_04_APPROVED'))) ||
+                  (currentStep === 'deploy' && isApprover(user?.claims || []) && (isStatus(createdEndpoint?.status, '') || isStatus(existingConfig?.status, 'STATUS_04_APPROVED'))) ||
+                  (currentStep === 'deploy' && isExporter(user?.claims || []) && (!isStatus(createdEndpoint?.status, 'STATUS_04_APPROVED') && !isStatus(existingConfig?.status, 'STATUS_04_APPROVED')))
                 } data-id="element-749">
                   {loading ? 'Processing...' : (
                     currentStep === 'deploy' ? (
-                      isApprover(user?.claims || []) && (!isStatus(createdEndpoint?.status, 'approved') && !isStatus(existingConfig?.status, 'approved')) ? 'Send for Deployment' :
-                        isExporter(user?.claims || []) && (isStatus(createdEndpoint?.status, 'approved') || isStatus(existingConfig?.status, 'approved')) ? 'Export' :
+                      isApprover(user?.claims || []) && (!isStatus(createdEndpoint?.status, 'STATUS_04_APPROVED') && !isStatus(existingConfig?.status, 'STATUS_04_APPROVED')) ? 'Send for Deployment' :
+                        isExporter(user?.claims || []) && (isStatus(createdEndpoint?.status, 'STATUS_04_APPROVED') || isStatus(existingConfig?.status, 'STATUS_04_APPROVED')) ? 'Export' :
                           !isApprover(user?.claims || []) && !isExporter(user?.claims || []) ? 'Submit for Approval' :
                             'Configuration Approved'
                     ) :
@@ -1845,7 +1845,7 @@ console.log('Cur map:', currentMappings);
                         {/* Show approver action buttons on the last step (deployment) */}
                         {isApprover(user?.claims || []) && currentStep === 'deploy' && (
                           <>
-                            {onRevertToEditor && (!isStatus(createdEndpoint?.status, 'approved') && !isStatus(existingConfig?.status, 'approved')) && (
+                            {onRevertToEditor && (!isStatus(createdEndpoint?.status, 'STATUS_04_APPROVED') && !isStatus(existingConfig?.status, 'STATUS_04_APPROVED')) && (
                               <Button
                                 variant="primary"
                                 onClick={onRevertToEditor}
@@ -1854,7 +1854,7 @@ console.log('Cur map:', currentMappings);
                                 Reject
                               </Button>
                             )}
-                            {onSendForDeployment && (!isStatus(createdEndpoint?.status, 'approved') && !isStatus(existingConfig?.status, 'approved')) && (
+                            {onSendForDeployment && (!isStatus(createdEndpoint?.status, 'STATUS_04_APPROVED') && !isStatus(existingConfig?.status, 'STATUS_04_APPROVED')) && (
                               <Button
                                 variant="primary"
                                 onClick={onSendForDeployment}
@@ -1868,7 +1868,7 @@ console.log('Cur map:', currentMappings);
                         {/* Show export button for exporters on the last step */}
                         {isExporter(user?.claims || []) && currentStep === 'deploy' && (
                           <>
-                            {onSendForDeployment && (isStatus(createdEndpoint?.status, 'approved') || isStatus(existingConfig?.status, 'approved')) && (
+                            {onSendForDeployment && (isStatus(createdEndpoint?.status, 'STATUS_04_APPROVED') || isStatus(existingConfig?.status, 'STATUS_04_APPROVED')) && (
                               <Button
                                 variant="primary"
                                 onClick={onSendForDeployment}
@@ -1883,8 +1883,8 @@ console.log('Cur map:', currentMappings);
                         {isEditor(user?.claims || []) && currentStep === 'deploy' && (
                           <>
                             {/* Show Submit for Approval button for draft configs or when config is ready for submission */}
-                            {((!isStatus(createdEndpoint?.status, 'under_review') && !isStatus(createdEndpoint?.status, 'approved')) ||
-                              (!isStatus(existingConfig?.status, 'under_review') && !isStatus(existingConfig?.status, 'approved')) ||
+                            {((!isStatus(createdEndpoint?.status, 'STATUS_03_UNDER_REVIEW') && !isStatus(createdEndpoint?.status, 'STATUS_04_APPROVED')) ||
+                              (!isStatus(existingConfig?.status, 'STATUS_03_UNDER_REVIEW') && !isStatus(existingConfig?.status, 'STATUS_04_APPROVED')) ||
                               (!createdEndpoint?.status && !existingConfig?.status)) && (
                                 <Button
                                   variant="primary"

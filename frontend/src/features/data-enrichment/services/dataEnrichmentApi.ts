@@ -241,7 +241,15 @@ export const dataEnrichmentApi = {
   updateJob: async (
     id: string,
     updates: Partial<{
-      job_status: 'pending' | 'approved' | 'in-progress' | 'rejected';
+      job_status: 
+    'STATUS_01_IN_PROGRESS'
+  | 'STATUS_02_ON_HOLD'
+  | 'STATUS_03_UNDER_REVIEW'
+  | 'STATUS_04_APPROVED'
+  | 'STATUS_05_REJECTED'
+  | 'STATUS_06_EXPORTED'
+  | 'STATUS_07_READY_FOR_DEPLOYMENT'
+  | 'STATUS_08_DEPLOYED';
     }>,
   ): Promise<{ success: boolean; message: string }> => {
     try {
@@ -260,7 +268,15 @@ export const dataEnrichmentApi = {
 
   updateJobStatus: async (
     id: string,
-    status: 'pending' | 'approved' | 'in-progress' | 'rejected' | 'exported' | 'under-review' | 'ready-for-deployment' | 'deployed' | 'suspended',
+    status: 
+   'STATUS_01_IN_PROGRESS'
+  | 'STATUS_02_ON_HOLD'
+  | 'STATUS_03_UNDER_REVIEW'
+  | 'STATUS_04_APPROVED'
+  | 'STATUS_05_REJECTED'
+  | 'STATUS_06_EXPORTED'
+  | 'STATUS_07_READY_FOR_DEPLOYMENT'
+  | 'STATUS_08_DEPLOYED',
     type: 'PULL' | 'PUSH',
   ): Promise<{ success: boolean; message: string }> => {
     try {

@@ -131,7 +131,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
       setUpdatingStatus(job.id);
       await dataEnrichmentApi.updateJobStatus(
         job.id,
-        'in-progress',
+        'STATUS_01_IN_PROGRESS',
         job.type?.toUpperCase() as 'PULL' | 'PUSH',
       );
       showSuccess(`Job ${job.endpoint_name || job.id} resumed successfully`);
@@ -454,11 +454,11 @@ export const JobList: React.FC<JobListProps> = (props) => {
             {((userIsEditor && onViewLogs) ||
               userIsApprover ||
               (userIsExporter &&
-                (job.status === 'approved' ||
-                  job.status === 'exported' ||
-                  job.status === 'deployed')) ||
+                (job.status === 'STATUS_04_APPROVED' ||
+                  job.status === 'STATUS_06_EXPORTED' ||
+                  job.status === 'STATUS_08_DEPLOYED')) ||
               (userIsPublisher &&
-                (job.status === 'exported' || job.status === 'deployed'))) && (
+                (job.status === 'STATUS_06_EXPORTED' || job.status === 'STATUS_08_DEPLOYED'))) && (
               <button
                 onClick={() => {
                   if (onViewLogs) {
@@ -482,7 +482,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
             )}
 
             {/* Edit - Only for Editors and only for in-progress jobs (not suspended) */}
-            {userIsEditor && onEdit && job.status === 'in-progress' && (
+            {userIsEditor && onEdit && job.status === 'STATUS_01_IN_PROGRESS' && (
               <button
                 onClick={() => {
                   onEdit(job);
@@ -496,7 +496,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
             )}
 
             {/* Suspend/Resume - Available to Editors and Approvers */}
-            {(userIsEditor || userIsApprover) && job.status === 'rejected' && (
+            {(userIsEditor || userIsApprover) && job.status === 'STATUS_05_REJECTED' && (
               <button
                 onClick={() => handleResumeJob(job)}
                 disabled={updatingStatus === job.id}

@@ -2,7 +2,15 @@
 
 export type ConfigType = 'Pull' | 'Push';
 export type SourceType = 'HTTP' | 'SFTP';
-export type JobStatus = 'in-progress' | 'under-review' | 'approved' | 'rejected' | 'exported' | 'ready-for-deployment' | 'deployed' | 'suspended';
+export type JobStatus = 
+  | 'STATUS_01_IN_PROGRESS'
+  | 'STATUS_02_ON_HOLD'
+  | 'STATUS_03_UNDER_REVIEW'
+  | 'STATUS_04_APPROVED'
+  | 'STATUS_05_REJECTED'
+  | 'STATUS_06_EXPORTED'
+  | 'STATUS_07_READY_FOR_DEPLOYMENT'
+  | 'STATUS_08_DEPLOYED';
 export type AuthType = 'USERNAME_PASSWORD' | 'PRIVATE_KEY';
 export type FileType = 'CSV' | 'JSON' | 'TSV';
 export type EncodingType = 'utf-8' | 'ascii' | 'latin1' | 'utf16le';

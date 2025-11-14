@@ -156,7 +156,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
       setLoading(false);
     }
   };
-  
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       month: 'numeric',
@@ -513,16 +513,16 @@ export const ConfigList: React.FC<ConfigListProps> = ({
                 disabled={(() => {
                   const normalizedStatus = normalizeStatus(config.status);
                   return (
-                    normalizedStatus === 'under_review' ||
-                    normalizedStatus === 'approved'
+                    normalizedStatus === 'STATUS_03_UNDER_REVIEW' ||
+                    normalizedStatus === 'STATUS_04_APPROVED'
                   );
                 })()}
                 className={`inline-flex items-center rounded-md px-3 py-1.5 text-xs font-medium shadow-sm focus:outline-none transition-colors cursor-pointer ${
                   (() => {
                     const normalizedStatus = normalizeStatus(config.status);
                     return (
-                      normalizedStatus === 'under_review' ||
-                      normalizedStatus === 'approved'
+                      normalizedStatus === 'STATUS_03_UNDER_REVIEW' ||
+                      normalizedStatus === 'STATUS_04_APPROVED'
                     );
                   })()
                     ? 'bg-yellow-50 text-yellow-700 cursor-not-allowed border border-yellow-300 hover:bg-yellow-50'
@@ -546,7 +546,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
               </button>
             )}
             {userIsExporter &&
-              normalizeStatus(config.status) === 'approved' && (
+              normalizeStatus(config.status) === 'STATUS_04_APPROVED' && (
                 <button
                   onClick={() => {
                     handleExportConfig(config);
@@ -559,7 +559,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
                 </button>
               )}
             {userIsPublisher &&
-              normalizeStatus(config.status) === 'exported' && (
+              normalizeStatus(config.status) === 'STATUS_06_EXPORTED' && (
                 <button
                   onClick={() => {
                     handlePublishConfig(config);
