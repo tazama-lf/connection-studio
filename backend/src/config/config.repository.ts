@@ -34,7 +34,6 @@ export class ConfigRepository {
     token?: string,
   ): Promise<Config | null> {
     try {
-      // If token is provided, use authenticated call; otherwise use tenantId (for backwards compatibility)
       return await this.adminServiceClient.getConfigById(id, token || tenantId);
     } catch {
       return null;
@@ -59,6 +58,22 @@ export class ConfigRepository {
           c.transactionType === transactionType,
       );
       return match || null;
+    } catch {
+      return null;
+    }
+  }
+  async getupdateConfigByStatus(
+    id: number,
+    status: string,
+    token: string,
+  ): Promise<Config | null> {
+    try {
+      const result = await this.adminServiceClient.updateConfigByStatus(
+        id,
+        status,
+        token,
+      );
+      return result || null;
     } catch {
       return null;
     }
@@ -93,7 +108,11 @@ export class ConfigRepository {
     offset: number = 0,
   ): Promise<Config[]> {
     try {
-      const result = await this.adminServiceClient.getAllConfigs(token || tenantId, limit, offset);
+      const result = await this.adminServiceClient.getAllConfigs(
+        token || tenantId,
+        limit,
+        offset,
+      );
       return result.configs;
     } catch {
       return [];
@@ -147,7 +166,6 @@ export class ConfigRepository {
   ): Promise<void> {
     await this.adminServiceClient.writeConfigUpdate(id, updateData, token);
   }
-
   async updatePublishingStatus(
     id: number,
     publishingStatus: 'active' | 'inactive',
@@ -168,15 +186,9 @@ export class ConfigRepository {
     await this.adminServiceClient.writeConfigDelete(id, token);
   }
 
-  async createDeployedConfig(
-    configData: any,
-    token: string,
-  ): Promise<number> {
+  async createDeployedConfig(configData: any, token: string): Promise<number> {
     this.logger.log('Creating deployed config via admin-service');
-    const result = await this.adminServiceClient.writeConfig(
-      configData,
-      token,
-    );
+    const result = await this.adminServiceClient.writeConfig(configData, token);
     if (!result?.id) {
       throw new Error('Failed to create deployed config: no ID returned');
     }
@@ -202,10 +214,6 @@ export class ConfigRepository {
     token: string,
   ): Promise<void> {
     this.logger.log(`Updating config ${id} status to ${status}`);
-    await this.adminServiceClient.writeConfigUpdate(
-      id,
-      { status },
-      token,
-    );
+    await this.adminServiceClient.writeConfigUpdate(id, { status }, token);
   }
 }

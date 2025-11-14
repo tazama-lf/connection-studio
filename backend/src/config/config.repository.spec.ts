@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigRepository } from './config.repository';
 import { AdminServiceClient } from '../services/admin-service-client.service';
-import { Config, ConfigStatus, ContentType } from './config.interfaces';
+import { ConfigStatus, ContentType } from './config.interfaces';
 
 describe('ConfigRepository', () => {
   let repository: ConfigRepository;

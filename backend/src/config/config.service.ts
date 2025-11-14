@@ -9,23 +9,16 @@ import { ConfigRepository } from './config.repository';
 import {
   FieldType,
   JSONSchema,
-  JSONSchemaProperty,
-  JSONSchemaType,
   applyFieldAdjustments,
   SchemaField,
 } from '@tazama-lf/tcs-lib';
 import { AuditService } from '../audit/audit.service';
 import { JSONSchemaConverterService } from '../schemas/json-schema-converter.service';
-import { SchemaInferenceService } from '../schemas/schema-inference.service';
-import { NotificationService } from '../notification/notification.service';
 import { NotifyService } from '../notify/notify.service';
-import { DatabaseService } from '@tazama-lf/tcs-lib';
-import { decrypt } from '../utils/helpers';
 
 import { TazamaDataModelService } from '../tazama-data-model/tazama-data-model.service';
 import { ConfigWorkflowService } from './config-workflow.service';
 import { SftpService } from '../sftp/sftp.service';
-import { ConfigService as NestConfigService } from '@nestjs/config';
 import { PayloadParsingService } from '../services/payload-parsing.service';
 import {
   Config,
@@ -54,6 +47,16 @@ import {
 export class ConfigService {
   private readonly logger = new Logger(ConfigService.name);
 
+  constructor(
+    private readonly configRepository: ConfigRepository,
+    private readonly auditService: AuditService,
+    private readonly jsonSchemaConverter: JSONSchemaConverterService,
+    private readonly tazamaDataModelService: TazamaDataModelService,
+    private readonly workflowService: ConfigWorkflowService,
+    private readonly sftpService: SftpService,
+    private readonly payloadParsingService: PayloadParsingService,
+    private readonly notifyService: NotifyService,
+  ) {}
   private generateEndpointPath(
     tenantId: string,
     version: string,
@@ -67,20 +70,112 @@ export class ConfigService {
     return `${basePath}/${transactionType}`;
   }
 
-  constructor(
-    private readonly configRepository: ConfigRepository,
-    private readonly auditService: AuditService,
-    private readonly jsonSchemaConverter: JSONSchemaConverterService,
-    private readonly schemaInference: SchemaInferenceService,
-    private readonly tazamaDataModelService: TazamaDataModelService,
-    private readonly workflowService: ConfigWorkflowService,
-    private readonly sftpService: SftpService,
-    private readonly nestConfigService: NestConfigService,
-    private readonly payloadParsingService: PayloadParsingService,
-    private readonly notificationService: NotificationService,
-    private readonly databaseService: DatabaseService,
-    private readonly notifyService: NotifyService,
-  ) {}
+  /**
+   * Fetch and validate config by ID
+   * @throws NotFoundException if config not found
+   */
+  private async getConfigOrThrow(
+    id: number,
+    tenantId: string,
+    token: string,
+  ): Promise<Config> {
+    const config = await this.configRepository.findConfigById(
+      id,
+      tenantId,
+      token,
+    );
+    if (!config) {
+      throw new NotFoundException(`Config with ID ${id} not found`);
+    }
+    return config;
+  }
+
+  /**
+   * Validate workflow action permissions
+   * @throws ForbiddenException if action not allowed
+   */
+  private validateWorkflowAction(
+    userClaims: string[],
+    currentStatus: ConfigStatus,
+    action: WorkflowAction,
+  ): void {
+    const validation = this.workflowService.canPerformAction(
+      userClaims,
+      currentStatus,
+      action,
+    );
+    if (!validation.canPerform) {
+      throw new ForbiddenException(validation.message);
+    }
+  }
+
+  private async updateConfigStatus(
+    id: number,
+    tenantId: string,
+    newStatus: ConfigStatus,
+    token: string,
+  ): Promise<Config> {
+    await this.configRepository.updateConfig(
+      id,
+      tenantId,
+      { status: newStatus },
+      token,
+    );
+
+    const updatedConfig = await this.configRepository.findConfigById(
+      id,
+      tenantId,
+      token,
+    );
+    return updatedConfig!;
+  }
+
+  /**
+   * Log workflow status transition with optional comment
+   */
+  private async logWorkflowTransition(
+    id: number,
+    currentStatus: ConfigStatus,
+    newStatus: ConfigStatus,
+    action: WorkflowAction,
+    userId: string,
+    tenantId: string,
+    comment?: string,
+  ): Promise<void> {
+    // Log status change
+    await this.logStatusChange(
+      id,
+      currentStatus,
+      newStatus,
+      action,
+      userId,
+      comment,
+    );
+
+    // Audit the action
+    await this.auditService.logAction({
+      action,
+      entityType: 'config',
+      entityId: id.toString(),
+      actor: userId,
+      tenantId,
+      details: `Configuration ${action.replace(/_/g, ' ')}${comment ? `: ${comment}` : ''}`,
+      newValues: { status: newStatus },
+    });
+  }
+
+  /**
+   * Build duplicate config error message
+   */
+  private buildDuplicateConfigMessage(
+    msgFam: string,
+    transactionType: string,
+    version: string,
+  ): string {
+    return `Config with message family '${msgFam}', transaction type '${transactionType}', and version '${version}' already exists for this tenant. Please use different values.`;
+  }
+
+  // ======================== CRUD OPERATIONS ========================
 
   async createConfig(
     dto: CreateConfigDto,
@@ -88,20 +183,9 @@ export class ConfigService {
     userId: string,
     token: string,
   ): Promise<ConfigResponseDto> {
-    this.logger.log(
-      `Creating config for msgFam: ${dto.msgFam}, transactionType: ${dto.transactionType}, version: ${dto.version}`,
-      `Payload: ${dto.payload}`,
-      `ContentType: ${dto.contentType}`,
-      `TenantId: ${tenantId}`,
-      `UserId: ${userId}`,
-    );
-
     try {
       const version = dto.version || 'v1';
       const msgFam = dto.msgFam || 'unknown';
-      this.logger.log(
-        `Checking uniqueness for msgFam: ${msgFam}, transactionType: ${dto.transactionType}, version: ${version}, tenantId: ${tenantId}`,
-      );
       const existingConfig =
         await this.configRepository.findConfigByMsgFamVersionAndTransactionType(
           msgFam,
@@ -116,7 +200,11 @@ export class ConfigService {
         );
         return {
           success: false,
-          message: `Config with message family '${msgFam}', transaction type '${dto.transactionType}', and version '${version}' already exists for this tenant. Please use different values.`,
+          message: this.buildDuplicateConfigMessage(
+            msgFam,
+            dto.transactionType,
+            version,
+          ),
         };
       }
 
@@ -139,33 +227,28 @@ export class ConfigService {
           message: 'Invalid payload format. Expected string or object.',
         };
       }
-
-      this.logger.log(
-        `Payload converted to string (${payloadString.length} chars)`,
-      );
-
       const parsingResult =
         await this.payloadParsingService.parsePayloadToSchema(
           payloadString,
           dto.contentType || ContentType.JSON,
         );
-
       if (!parsingResult?.success) {
         this.logger.error(
           'Failed to parse payload:',
           parsingResult?.validation || 'Unknown error',
         );
-        
-        const errorDetails = parsingResult?.validation ? 
-          ` Details: ${JSON.stringify(parsingResult.validation)}` : 
-          '';
-        
+        const errorDetails = parsingResult?.validation
+          ? ` Details: ${JSON.stringify(parsingResult.validation)}`
+          : '';
+
         return {
           success: false,
           message: `Unable to parse your ${dto.contentType === ContentType.JSON ? 'JSON' : 'XML'} payload. Please check the format and try again.${errorDetails}`,
           validation: {
             success: false,
-            errors: parsingResult?.validation?.errors || ['Invalid payload format'],
+            errors: parsingResult?.validation?.errors || [
+              'Invalid payload format',
+            ],
             warnings: [],
           },
         };
@@ -180,7 +263,9 @@ export class ConfigService {
           message: `No fields could be extracted from your ${dto.contentType === ContentType.JSON ? 'JSON' : 'XML'} payload. Please ensure it contains valid data with field names and values.`,
           validation: {
             success: false,
-            errors: ['No fields found in payload - payload may be empty or malformed'],
+            errors: [
+              'No fields found in payload - payload may be empty or malformed',
+            ],
             warnings: [],
           },
         };
@@ -205,7 +290,8 @@ export class ConfigService {
         );
         return {
           success: false,
-          message: 'Your payload contains duplicate field names. Each field must have a unique name within the schema.',
+          message:
+            'Your payload contains duplicate field names. Each field must have a unique name within the schema.',
           validation: {
             success: false,
             errors: duplicateErrors,
@@ -228,9 +314,8 @@ export class ConfigService {
       } else {
         this.logger.log('No field adjustments to apply');
       }
-      let finalSchema =
+      const finalSchema =
         this.jsonSchemaConverter.convertToJSONSchema(sourceFields);
-      
 
       this.logger.log(
         `Generated schema with ${Object.keys(finalSchema.properties || {}).length} properties`,
@@ -244,7 +329,6 @@ export class ConfigService {
           validation,
         };
       }
-
       const endpointPath = this.generateEndpointPath(
         tenantId,
         version,
@@ -252,14 +336,16 @@ export class ConfigService {
         dto.msgFam,
       );
 
-    
-
       if (dto.mapping && dto.mapping.length > 0) {
         for (let i = 0; i < dto.mapping.length; i++) {
           const mapping = dto.mapping[i];
           this.validateMapping(mapping, finalSchema, tenantId);
-          
-          this.validateNoDuplicateDestination(mapping, dto.mapping.slice(0, i), false);
+
+          this.validateNoDuplicateDestination(
+            mapping,
+            dto.mapping.slice(0, i),
+            false,
+          );
         }
       }
 
@@ -284,7 +370,6 @@ export class ConfigService {
         configData,
         token,
       );
-      
 
       await this.auditService.logAction({
         entityType: 'CONFIG',
@@ -303,9 +388,18 @@ export class ConfigService {
 
       // Enrich config with source fields for mapping UI
       const enrichedConfig = this.enrichConfigWithSourceFields(config!);
-      
-      if (enrichedConfig.sourceFields && enrichedConfig.sourceFields.length > 0) {
-        this.logger.log('FIRST 5 SOURCE FIELDS: ' + enrichedConfig.sourceFields.slice(0, 5).map(f => f.name).join(', '));
+
+      if (
+        enrichedConfig.sourceFields &&
+        enrichedConfig.sourceFields.length > 0
+      ) {
+        this.logger.log(
+          'FIRST 5 SOURCE FIELDS: ' +
+            enrichedConfig.sourceFields
+              .slice(0, 5)
+              .map((f) => f.name)
+              .join(', '),
+        );
       }
 
       return {
@@ -319,26 +413,28 @@ export class ConfigService {
         `Failed to create config: ${error.message}`,
         error.stack,
       );
-      
+
       const msgFam = dto.msgFam || 'unknown';
       const transactionType = dto.transactionType;
       const version = dto.version || 'v1';
-      
-      let userMessage = 'Failed to create configuration. Please check your input and try again.';
-      
-      if (error.message && (
-        error.message.includes('duplicate key value') ||
-        error.message.includes('unique constraint')
-      )) {
+
+      let userMessage =
+        'Failed to create configuration. Please check your input and try again.';
+
+      if (
+        error.message &&
+        (error.message.includes('duplicate key value') ||
+          error.message.includes('unique constraint'))
+      ) {
         userMessage = `A configuration with Message Family '${msgFam}', Transaction Type '${transactionType}', and Version '${version}' already exists. Please use different values.`;
-      } else if (error.message && error.message.includes('validation')) {
+      } else if (error.message?.includes('validation')) {
         userMessage = `Validation error: ${error.message}`;
-      } else if (error.message && error.message.includes('schema')) {
+      } else if (error.message?.includes('schema')) {
         userMessage = `Schema error: ${error.message}`;
       } else if (error.message) {
         userMessage = error.message;
       }
-      
+
       return {
         success: false,
         message: userMessage,
@@ -366,7 +462,6 @@ export class ConfigService {
         };
       }
 
-      // Check if the new combination already exists for this tenant
       const newMsgFam = dto.newMsgFam || sourceConfig.msgFam;
       const newVersion = dto.newVersion || sourceConfig.version;
 
@@ -382,27 +477,24 @@ export class ConfigService {
       if (existingConfig) {
         return {
           success: false,
-          message: `Config with message family '${newMsgFam}', transaction type '${dto.newTransactionType}', and version '${newVersion}' already exists for this tenant. Please use different values.`,
+          message: this.buildDuplicateConfigMessage(
+            newMsgFam,
+            dto.newTransactionType,
+            newVersion,
+          ),
         };
       }
-
-      // Prepare the new config data by cloning the source
-      // Generate new endpoint path
       const newEndpointPath = this.generateEndpointPath(
         tenantId,
         newVersion,
         dto.newTransactionType,
         newMsgFam,
       );
-
-      // Handle field adjustments if provided
       let finalSchema = sourceConfig.schema;
       if (dto.fieldAdjustments && dto.fieldAdjustments.length > 0) {
         this.logger.log(
           `Applying ${dto.fieldAdjustments.length} field adjustments to cloned config`,
         );
-
-        // Convert existing schema to source fields first
         const existingSourceFields =
           this.jsonSchemaConverter.convertFromJSONSchema(sourceConfig.schema);
 
@@ -436,7 +528,7 @@ export class ConfigService {
         contentType: sourceConfig.contentType,
         schema: finalSchema,
         mapping: sourceConfig.mapping, // Clone the mappings
-        functions: dto.functions || sourceConfig.functions, 
+        functions: dto.functions || sourceConfig.functions,
         status: ConfigStatus.IN_PROGRESS,
         tenantId,
         createdBy: userId,
@@ -496,10 +588,6 @@ export class ConfigService {
       token,
     );
     return config ? this.enrichConfigWithSourceFields(config) : null;
-  }
-
-  async testMethod(): Promise<boolean> {
-    return true;
   }
 
   async getConfigByEndpoint(
@@ -637,7 +725,7 @@ export class ConfigService {
       // Regenerate JSON schema with adjusted fields
       finalSchema =
         this.jsonSchemaConverter.convertToJSONSchema(adjustedSourceFields);
-      
+
       this.logger.log(
         'Successfully applied field adjustments and regenerated schema',
       );
@@ -651,32 +739,33 @@ export class ConfigService {
         };
       }
     }
-    
+
     if (dto.mapping && dto.mapping.length > 0) {
       const schemaToValidate = finalSchema || dto.schema || config.schema;
       for (let i = 0; i < dto.mapping.length; i++) {
         const mapping = dto.mapping[i];
         this.validateMapping(mapping, schemaToValidate, tenantId);
-        
-        this.validateNoDuplicateDestination(mapping, dto.mapping.slice(0, i), false);
+
+        this.validateNoDuplicateDestination(
+          mapping,
+          dto.mapping.slice(0, i),
+          false,
+        );
       }
     }
-    
+
     const updateData = { ...dto };
 
-    // Use finalSchema if field adjustments were applied
     if (finalSchema) {
       updateData.schema = finalSchema;
     }
 
-    // Check if msgFam or version is changing - if so, CREATE NEW CONFIG instead of updating
     const isVersionChanging =
       dto.version !== undefined && dto.version !== config.version;
     const isMsgFamChanging =
       dto.msgFam !== undefined && dto.msgFam !== config.msgFam;
 
     if (isVersionChanging || isMsgFamChanging) {
-      // msgFam or version change = NEW ENDPOINT = CREATE NEW CONFIG
       this.logger.log(
         `msgFam or version changed for config ${id}. Creating NEW config instead of updating.`,
       );
@@ -728,8 +817,12 @@ export class ConfigService {
         for (let i = 0; i < newConfigData.mapping.length; i++) {
           const mapping = newConfigData.mapping[i];
           this.validateMapping(mapping, newConfigData.schema, tenantId);
-          
-          this.validateNoDuplicateDestination(mapping, newConfigData.mapping.slice(0, i), false);
+
+          this.validateNoDuplicateDestination(
+            mapping,
+            newConfigData.mapping.slice(0, i),
+            false,
+          );
         }
       }
 
@@ -763,7 +856,6 @@ export class ConfigService {
       };
     }
 
-    // If only transactionType is changing (not msgFam or version), check for conflicts
     const isTransactionTypeChanging =
       dto.transactionType !== undefined &&
       dto.transactionType !== config.transactionType;
@@ -788,7 +880,6 @@ export class ConfigService {
       }
     }
 
-    // Auto-regenerate endpoint path if needed
     if (
       dto.transactionType !== undefined ||
       dto.msgFam !== undefined ||
@@ -885,7 +976,11 @@ export class ConfigService {
     const newMapping = this.createMappingFromDto(mappingDto);
     this.validateMapping(newMapping, config.schema, tenantId);
 
-    this.validateNoDuplicateDestination(newMapping, config.mapping || [], false);
+    this.validateNoDuplicateDestination(
+      newMapping,
+      config.mapping || [],
+      false,
+    );
 
     const updatedMappings = [...(config.mapping || []), newMapping];
 
@@ -999,8 +1094,12 @@ export class ConfigService {
     const updatedMapping = this.createMappingFromDto(mappingDto);
     this.validateMapping(updatedMapping, config.schema, tenantId);
 
-    // Check if the destination is already mapped (excluding the mapping being updated)
-    this.validateNoDuplicateDestination(updatedMapping, config.mapping, true, mappingIndex);
+    this.validateNoDuplicateDestination(
+      updatedMapping,
+      config.mapping,
+      true,
+      mappingIndex,
+    );
 
     const updatedMappings = [...config.mapping];
     updatedMappings[mappingIndex] = updatedMapping;
@@ -1385,7 +1484,6 @@ export class ConfigService {
       return mapping;
     }
 
-    // Many-to-one (sum logic)
     if (dto.sumFields && dto.sumFields.length > 0) {
       if (dto.sumFields.length < 2) {
         throw new BadRequestException(
@@ -1408,10 +1506,9 @@ export class ConfigService {
       return mapping;
     }
 
-    // One-to-many (split logic)
     if (dto.source && dto.destinations && dto.destinations.length > 0) {
       const mapping: any = {
-        source: [dto.source], // Always use array format for consistency
+        source: [dto.source],
         destination: dto.destinations,
       };
       if (dto.prefix !== undefined) {
@@ -1422,10 +1519,9 @@ export class ConfigService {
       return mapping;
     }
 
-    // Simple mapping
     if (dto.source && dto.destination) {
       const mapping: any = {
-        source: [dto.source], // Always use array format for consistency
+        source: [dto.source],
         destination: dto.destination,
       };
       if (dto.prefix !== undefined) {
@@ -1435,7 +1531,6 @@ export class ConfigService {
       return mapping;
     }
 
-    // Constant mapping
     if (dto.constantValue !== undefined && dto.destination) {
       const mapping: any = {
         destination: dto.destination,
@@ -1453,9 +1548,6 @@ export class ConfigService {
     );
   }
 
-  /**
-   * Create mapping with explicitly specified transformation
-   */
   private createMappingWithExplicitTransformation(
     dto: AddMappingDto,
   ): FieldMapping {
@@ -1618,7 +1710,6 @@ export class ConfigService {
     sourceType: string,
     destinationType: string,
   ): boolean {
-    
     return sourceType === destinationType;
   }
 
@@ -1663,19 +1754,16 @@ export class ConfigService {
     schema: JSONSchema,
     _tenantId: string,
   ): void {
-    // CONSTANT transformations skip source type validation since they don't use source fields
     if (
       mapping.transformation === 'CONSTANT' ||
       mapping.constantValue !== undefined
     ) {
-      // Still validate destination type for constants
       this.validateConstantMapping(mapping);
       return;
     }
 
     const allPaths = this.extractAllPathsFromSchema(schema);
     const sourceTypes: string[] = [];
-
     if (mapping.source && Array.isArray(mapping.source)) {
       for (const src of mapping.source) {
         if (!allPaths.includes(src)) {
@@ -1690,8 +1778,6 @@ export class ConfigService {
         }
       }
     }
-
-    // Validate destinations exist and check type compatibility
     const destinations = Array.isArray(mapping.destination)
       ? mapping.destination
       : [mapping.destination];
@@ -1707,8 +1793,6 @@ export class ConfigService {
           `Destination field '${dest}' is not a valid Tazama data model field. Use a field from the Tazama internal data model (e.g., transactionDetails.Amt, redis.dbtrId).`,
         );
       }
-
-      // Get destination field type and perform comprehensive type validation
       const destinationType = this.tazamaDataModelService.getFieldType(dest);
       if (destinationType && sourceTypes.length > 0) {
         this.validateMappingTypeCompatibility(
@@ -1720,10 +1804,6 @@ export class ConfigService {
       }
     }
   }
-
-  /**
-   * Validates constant mappings - ensures constant value type matches destination
-   */
   private validateConstantMapping(mapping: FieldMapping): void {
     if (mapping.constantValue === undefined) {
       return;
@@ -1737,7 +1817,6 @@ export class ConfigService {
       if (typeof dest !== 'string' || !dest) {
         continue;
       }
-
       const destinationType = this.tazamaDataModelService.getFieldType(dest);
       if (destinationType) {
         const constantType = typeof mapping.constantValue;
@@ -1752,9 +1831,6 @@ export class ConfigService {
     }
   }
 
-  /**
-   * Comprehensive type compatibility validation based on transformation type
-   */
   private validateMappingTypeCompatibility(
     mapping: FieldMapping,
     sourceTypes: string[],
@@ -1763,8 +1839,6 @@ export class ConfigService {
   ): void {
     const destTypeLower = destinationType.toLowerCase();
     const transformation = mapping.transformation || 'NONE';
-
-    // Log mapping validation for debugging
     this.logger.debug(
       `Validating mapping type compatibility: ${transformation} transformation`,
       {
@@ -1823,28 +1897,20 @@ export class ConfigService {
         break;
     }
   }
-
-  /**
-   * Validate CONCAT transformation: all sources must be string type, result is string
-   */
   private validateConcatTypeCompatibility(
     sourceTypes: string[],
     destinationType: string,
     destinationPath: string,
     mapping: FieldMapping,
   ): void {
-    // CONCAT always produces a string result
     if (destinationType !== 'string') {
       throw new BadRequestException(
         `CONCAT transformation type mismatch: CONCAT operations always produce string results, but destination field '${destinationPath}' is of type '${destinationType}'. Destination field must be of type 'string'.`,
       );
     }
-
-    // STRICT: All source fields must be strings (no type conversions)
     for (let i = 0; i < sourceTypes.length; i++) {
       const sourceType = sourceTypes[i];
       const src = mapping.source![i];
-
       if (sourceType !== 'string') {
         throw new BadRequestException(
           `CONCAT transformation type mismatch: Source field '${src}' of type '${sourceType}' cannot be concatenated. Only string type fields are allowed for concatenation.`,
@@ -1852,24 +1918,18 @@ export class ConfigService {
       }
     }
   }
-
-  /**
-   * Validate SUM transformation: all sources must be numeric, result must be numeric
-   */
   private validateSumTypeCompatibility(
     sourceTypes: string[],
     destinationType: string,
     destinationPath: string,
     mapping: FieldMapping,
   ): void {
-    // SUM always produces a numeric result - STRICT: must be number only
     if (destinationType !== 'number') {
       throw new BadRequestException(
         `SUM transformation type mismatch: SUM operations produce numeric results, but destination field '${destinationPath}' is of type '${destinationType}'. Destination field must be of type 'number'.`,
       );
     }
 
-    // All source fields must be numeric
     for (let i = 0; i < sourceTypes.length; i++) {
       const sourceType = sourceTypes[i];
       const src = mapping.source![i];
@@ -1881,24 +1941,18 @@ export class ConfigService {
       }
     }
   }
-
-  /**
-   * Validate MATH transformation: all sources must be numeric, result must be numeric
-   */
   private validateMathTypeCompatibility(
     sourceTypes: string[],
     destinationType: string,
     destinationPath: string,
     mapping: FieldMapping,
   ): void {
-    // MATH always produces a numeric result - STRICT: must be number only
     if (destinationType !== 'number') {
       throw new BadRequestException(
         `MATH transformation type mismatch: MATH operations produce numeric results, but destination field '${destinationPath}' is of type '${destinationType}'. Destination field must be of type 'number'.`,
       );
     }
 
-    // All source fields must be numeric
     for (let i = 0; i < sourceTypes.length; i++) {
       const sourceType = sourceTypes[i];
       const src = mapping.source![i];
@@ -1910,7 +1964,6 @@ export class ConfigService {
       }
     }
 
-    // Validate operator is specified for MATH transformation
     if (!mapping.operator) {
       throw new BadRequestException(
         'MATH transformation validation error: Mathematical operator (ADD, SUBTRACT, MULTIPLY, DIVIDE) must be specified for MATH transformations.',
@@ -1918,16 +1971,12 @@ export class ConfigService {
     }
   }
 
-  /**
-   * Validate SPLIT transformation: source must be string, destinations can be string-compatible
-   */
   private validateSplitTypeCompatibility(
     sourceTypes: string[],
     destinationType: string,
     destinationPath: string,
     mapping: FieldMapping,
   ): void {
-    // SPLIT requires exactly one source field
     if (sourceTypes.length !== 1) {
       throw new BadRequestException(
         `SPLIT transformation validation error: SPLIT operations require exactly one source field, but ${sourceTypes.length} source fields were provided.`,
@@ -1952,9 +2001,6 @@ export class ConfigService {
     }
   }
 
-  /**
-   * Validate direct mapping (NONE transformation): strict type compatibility
-   */
   private validateDirectTypeCompatibility(
     sourceTypes: string[],
     destinationType: string,
@@ -1998,7 +2044,6 @@ export class ConfigService {
           typeof propSchema.items === 'object' &&
           propSchema.items.type === 'object'
         ) {
-          // Generate indexed array paths (existing behavior)
           const arrayPaths = this.extractAllPathsFromSchema(
             propSchema.items as JSONSchema,
             `${path}[0]`,
@@ -2077,9 +2122,6 @@ export class ConfigService {
 
   // ======================== WORKFLOW METHODS ========================
 
-  /**
-   * Submit configuration for approval
-   */
   async submitForApproval(
     id: number,
     dto: SubmitForApprovalDto,
@@ -2088,78 +2130,36 @@ export class ConfigService {
     userClaims: string[],
     token: string,
   ): Promise<ConfigResponseDto> {
-    const config = await this.configRepository.findConfigById(
-      id,
-      tenantId,
-      token,
-    );
-    if (!config) {
-      throw new NotFoundException(`Config with ID ${id} not found`);
-    }
-
+    const config = await this.getConfigOrThrow(id, tenantId, token);
     const currentStatus = config.status as ConfigStatus;
     const action: WorkflowAction = 'submit_for_approval';
 
-    // Validate user can perform this action
-    const validation = this.workflowService.canPerformAction(
-      userClaims,
-      currentStatus,
-      action,
-    );
-    if (!validation.canPerform) {
-      throw new ForbiddenException(validation.message);
-    }
+    this.validateWorkflowAction(userClaims, currentStatus, action);
 
     const newStatus = ConfigStatus.UNDER_REVIEW;
-
-    // Update status
-    await this.configRepository.updateConfig(
+    const updatedConfig = await this.updateConfigStatus(
       id,
       tenantId,
-      {
-        status: newStatus,
-      },
+      newStatus,
       token,
     );
 
-    // Fetch the updated config
-    const updatedConfig = await this.configRepository.findConfigById(
-      id,
-      tenantId,
-      token,
-    );
-
-    // Log the action
-    await this.logStatusChange(
+    await this.logWorkflowTransition(
       id,
       currentStatus,
       newStatus,
       action,
       userId,
+      tenantId,
       dto.comment,
     );
-
-    // Audit the action
-    await this.auditService.logAction({
-      action: 'submit_for_approval',
-      entityType: 'config',
-      entityId: id.toString(),
-      actor: userId,
-      tenantId,
-      details: `Configuration submitted for approval${dto.comment ? `: ${dto.comment}` : ''}`,
-      newValues: { status: newStatus },
-    });
 
     return {
       success: true,
       message: 'Configuration submitted for approval successfully',
-      config: updatedConfig ?? undefined,
+      config: updatedConfig,
     };
   }
-
-  /**
-   * Approve configuration
-   */
   async approveConfig(
     id: number,
     dto: ApprovalDto,
@@ -2168,111 +2168,36 @@ export class ConfigService {
     userClaims: string[],
     token: string,
   ): Promise<ConfigResponseDto> {
-    const config = await this.configRepository.findConfigById(
-      id,
-      tenantId,
-      token,
-    );
-    if (!config) {
-      throw new NotFoundException(`Config with ID ${id} not found`);
-    }
-
+    const config = await this.getConfigOrThrow(id, tenantId, token);
     const currentStatus = config.status as ConfigStatus;
     const action: WorkflowAction = 'approve';
 
-    // Validate user can perform this action
-    const validation = this.workflowService.canPerformAction(
-      userClaims,
-      currentStatus,
-      action,
-    );
-    if (!validation.canPerform) {
-      throw new ForbiddenException(validation.message);
-    }
+    this.validateWorkflowAction(userClaims, currentStatus, action);
 
     const newStatus = ConfigStatus.APPROVED;
-
-    // Update status
-    await this.configRepository.updateConfig(
+    await this.updateConfigStatus(id, tenantId, newStatus, token);
+    const updatedConfig = await this.configRepository.findConfigById(
       id,
       tenantId,
-      {
-        status: newStatus,
-      },
       token,
     );
-
-    // Log the action
-    await this.logStatusChange(
+    await this.logWorkflowTransition(
       id,
       currentStatus,
       newStatus,
       action,
       userId,
+      tenantId,
       dto.comment,
     );
-
-    // Audit the action
-    await this.auditService.logAction({
-      action: 'approve_config',
-      entityType: 'config',
-      entityId: id.toString(),
-      actor: userId,
-      tenantId,
-      details: `Configuration approved${dto.comment ? `: ${dto.comment}` : ''}`,
-      newValues: { status: newStatus },
-    });
-
-    let createTableQuery = '';
-    try {
-      const transactionType = config.transactionType.replace(
-        /[^a-zA-Z0-9_]/g,
-        '_',
-      );
-      const tableName = `${transactionType}_${tenantId}`;
-      createTableQuery = `CREATE TABLE IF NOT EXISTS "${tableName}" (
-        id SERIAL PRIMARY KEY,
-        config_id INTEGER,
-        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        details JSONB
-      );`;
-      await this.configRepository.runRawQuery(createTableQuery, token);
-      this.logger.log(`Created transaction history table: ${tableName}`);
-      await this.auditService.logAction({
-        action: 'create_transaction_history_table',
-        entityType: 'config',
-        entityId: id.toString(),
-        actor: userId,
-        tenantId,
-        details: `Created transaction history table: ${tableName}`,
-      });
-    } catch (err) {
-      this.logger.error(
-        `Failed to create transaction history table: ${err.message}`,
-      );
-    }
-
-    // Store the query in the config for later export
-    const updatedConfig = await this.configRepository.findConfigById(
-      id,
-      tenantId,
-    );
-    if (updatedConfig) {
-      (updatedConfig as any).createTableQuery = createTableQuery;
-    }
 
     return {
       success: true,
       message: 'Configuration approved successfully',
-      config:
-        (await this.configRepository.findConfigById(id, tenantId, token)) ||
-        undefined,
+      config: updatedConfig || undefined,
     };
   }
 
-  /**
-   * Reject configuration
-   */
   async rejectConfig(
     id: number,
     dto: RejectionDto,
@@ -2281,73 +2206,37 @@ export class ConfigService {
     userClaims: string[],
     token: string,
   ): Promise<ConfigResponseDto> {
-    const config = await this.configRepository.findConfigById(
-      id,
-      tenantId,
-      token,
-    );
-    if (!config) {
-      throw new NotFoundException(`Config with ID ${id} not found`);
-    }
-
+    const config = await this.getConfigOrThrow(id, tenantId, token);
     const currentStatus = config.status as ConfigStatus;
     const action: WorkflowAction = 'reject';
 
-    // Validate user can perform this action
-    const validation = this.workflowService.canPerformAction(
-      userClaims,
-      currentStatus,
-      action,
-    );
-    if (!validation.canPerform) {
-      throw new ForbiddenException(validation.message);
-    }
+    this.validateWorkflowAction(userClaims, currentStatus, action);
 
     const newStatus = ConfigStatus.REJECTED;
-
-    // Update status
-    await this.configRepository.updateConfig(
+    const updatedConfig = await this.updateConfigStatus(
       id,
       tenantId,
-      {
-        status: newStatus,
-      },
+      newStatus,
       token,
     );
 
-    // Log the action
-    await this.logStatusChange(
+    await this.logWorkflowTransition(
       id,
       currentStatus,
       newStatus,
       action,
       userId,
+      tenantId,
       dto.comment,
     );
-
-    // Audit the action
-    await this.auditService.logAction({
-      action: 'reject_config',
-      entityType: 'config',
-      entityId: id.toString(),
-      actor: userId,
-      tenantId,
-      details: `Configuration rejected: ${dto.comment}`,
-      newValues: { status: newStatus },
-    });
 
     return {
       success: true,
       message: 'Configuration rejected successfully',
-      config:
-        (await this.configRepository.findConfigById(id, tenantId, token)) ||
-        undefined,
+      config: updatedConfig,
     };
   }
 
-  /**
-   * Update status from APPROVED to EXPORTED
-   */
   async updateStatusToExported(
     id: number,
     dto: StatusTransitionDto,
@@ -2356,7 +2245,6 @@ export class ConfigService {
     userClaims: string[],
     token: string,
   ): Promise<ConfigResponseDto> {
-    // Get the config
     const config = await this.configRepository.findConfigById(
       id,
       tenantId,
@@ -2367,29 +2255,17 @@ export class ConfigService {
     }
 
     const currentStatus = config.status!;
-
-    // Validate current status is APPROVED
     if (currentStatus !== ConfigStatus.APPROVED) {
       throw new BadRequestException(
         `Can only export configurations in APPROVED status. Current status: ${currentStatus}`,
       );
     }
-
-    // Validate user has EXPORTER role
     if (!userClaims.includes('exporter')) {
       throw new ForbiddenException('Only exporters can export configurations');
     }
 
     const newStatus = ConfigStatus.EXPORTED;
 
-    this.logger.log(
-      `BACKEND - Updating config ${id} status to: "${newStatus}" (type: ${typeof newStatus})`,
-    );
-    this.logger.log(
-      `BACKEND - ConfigStatus.EXPORTED value: "${ConfigStatus.EXPORTED}"`,
-    );
-
-    // Update the status in database
     await this.configRepository.updateConfig(
       id,
       tenantId,
@@ -2399,11 +2275,6 @@ export class ConfigService {
       token,
     );
 
-    this.logger.log(
-      `Config ${id} status updated from ${currentStatus} to ${newStatus} by user ${userId}`,
-    );
-
-    // Log the status change
     await this.logStatusChange(
       id,
       currentStatus,
@@ -2412,8 +2283,6 @@ export class ConfigService {
       userId,
       dto.comment,
     );
-
-    // Audit the action (don't let audit errors prevent status update)
     try {
       await this.auditService.logAction({
         action: 'update_status_to_exported',
@@ -2430,8 +2299,6 @@ export class ConfigService {
         `Failed to log audit entry for config ${id} status update: ${auditError.message}`,
       );
     }
-
-    // Get updated config
     const updatedConfig = await this.configRepository.findConfigById(
       id,
       tenantId,
@@ -2444,10 +2311,6 @@ export class ConfigService {
       config: updatedConfig || undefined,
     };
   }
-
-  /**
-   * Export configuration to SFTP
-   */
   async exportConfig(
     id: number,
     dto: StatusTransitionDto,
@@ -2455,7 +2318,7 @@ export class ConfigService {
     userId: string,
     userClaims: string[],
     token: string,
-  ): Promise<ConfigResponseDto> {
+  ): Promise<void> {
     const config = await this.configRepository.findConfigById(
       id,
       tenantId,
@@ -2465,73 +2328,33 @@ export class ConfigService {
       throw new NotFoundException(`Config with ID ${id} not found`);
     }
 
-    const currentStatus = config.status!;
-    const action = 'export'; // Extended workflow action
-
-    
-
-
     const fileName = `dems_${tenantId}_${id}`;
-    
-    try {
-      // Step 1: Prepare config data for export
-      const configToExport = { ...config, status: currentStatus };
 
-      // Step 2: Upload to SFTP (EXACTLY like job/scheduler service)
+    try {
+      const currentStatus = ConfigStatus.READY_FOR_DEPLOYMENT;
+      const configToExport = { ...config, status: currentStatus };
       await this.sftpService.createFile(fileName, {
         ...configToExport,
         status: ConfigStatus.READY_FOR_DEPLOYMENT,
       });
+
       this.logger.log(
-        `Successfully uploaded FATIMA ALI config file (${fileName}) with status '${ConfigStatus.READY_FOR_DEPLOYMENT}' to SFTP servers.`,
+        `Successfully uploaded config file (${fileName}) with status '${ConfigStatus.READY_FOR_DEPLOYMENT}' to SFTP servers.`,
       );
 
-
-
-
-      // await this.sftpService.createFileForPublisher(fileName, {
-      //   ...configToExport,
-      //   status: ConfigStatus.EXPORTED,
-      // });
-      const updateQuery = `
-        UPDATE config
-        SET status = $1
-        WHERE id = $2 AND tenant_id = $3
-        RETURNING id;
-      `;
-
-      const result = await this.databaseService.getPool().query(updateQuery, [currentStatus, id, tenantId]);
-      if (!result.rowCount) {
-        throw new NotFoundException(
-          `Config with id "${id}" not found in config table.`,
-        );
-      }
-
-
-
-
-
-      
-      this.logger.log(
-        `Successfully updated config ${id} status to ${currentStatus} in database`,
+      await this.configRepository.getupdateConfigByStatus(
+        id,
+        ConfigStatus.READY_FOR_DEPLOYMENT,
+        token,
       );
-
-      // Return success (EXACTLY like job/scheduler service)
-      return {
-        success: true,
-        message: `Configuration ${id} exported successfully to SFTP and updated to ${currentStatus}`,
-      };
     } catch (error) {
-      this.logger.error(`Failed to export config to SFTP: ${error.message}`);
+      this.logger.error(`Failed to export config: ${error.message}`);
       throw new BadRequestException(
-        `Failed to export configuration to SFTP: ${error.message}`,
+        `Failed to export config: ${error.message}`,
       );
     }
   }
 
-  /**
-   * Deploy configuration
-   */
   async deployConfig(
     id: number,
     dto: DeploymentDto,
@@ -2552,40 +2375,36 @@ export class ConfigService {
     const fileName = `dems_${tenantId}_${id}`;
     let currentStatus: ConfigStatus;
     let configData: any;
-    
-    // Step 1: Read config from SFTP
     try {
       this.logger.log(`Reading config file from SFTP: ${fileName}`);
       configData = await this.sftpService.readFile(fileName);
-      
-      if (configData && configData.status) {
+
+      if (configData?.status) {
         currentStatus = configData.status as ConfigStatus;
       } else if (config.status) {
-        currentStatus = config.status as ConfigStatus;
+        currentStatus = config.status;
       } else {
         throw new BadRequestException(
-          `Cannot deploy config ${id}: status not found in SFTP or database. Please ensure the config has been exported first.`
+          `Cannot deploy config ${id}: status not found in SFTP or database. Please ensure the config has been exported first.`,
         );
       }
     } catch (error) {
       if (config.status) {
-        currentStatus = config.status as ConfigStatus;
+        currentStatus = config.status;
       } else {
         throw new BadRequestException(
-          `Cannot deploy config ${id}: status is undefined and SFTP read failed. Error: ${error.message}`
+          `Cannot deploy config ${id}: status is undefined and SFTP read failed. Error: ${error.message}`,
         );
       }
     }
 
     const action: WorkflowAction = 'deploy';
-
-    // Validate user can perform this action
     const validation = this.workflowService.canPerformAction(
       userClaims,
       currentStatus,
       action,
     );
-    
+
     if (!validation.canPerform) {
       throw new ForbiddenException(validation.message);
     }
@@ -2593,7 +2412,6 @@ export class ConfigService {
     const newStatus = ConfigStatus.DEPLOYED;
 
     try {
-      // Step 2: Insert deployed config data via repository
       try {
         const deployedConfigData = {
           msg_fam: configData.msgFam || null,
@@ -2603,27 +2421,29 @@ export class ConfigService {
           status: currentStatus,
           publishing_status: configData.publishing_status || 'active',
           version: configData.version,
-          schema: typeof configData.schema === 'string' 
-            ? configData.schema 
-            : JSON.stringify(configData.schema || {}),
-          mapping: typeof configData.mapping === 'string' 
-            ? configData.mapping 
-            : JSON.stringify(configData.mapping || null),
-          functions: typeof configData.functions === 'string'
-            ? configData.functions
-            : JSON.stringify(configData.functions || null),
+          schema:
+            typeof configData.schema === 'string'
+              ? configData.schema
+              : JSON.stringify(configData.schema || {}),
+          mapping:
+            typeof configData.mapping === 'string'
+              ? configData.mapping
+              : JSON.stringify(configData.mapping || null),
+          functions:
+            typeof configData.functions === 'string'
+              ? configData.functions
+              : JSON.stringify(configData.functions || null),
           credentials: configData.credentials,
           tenant_id: tenantId,
           created_by: configData.createdBy || userId,
           created_at: configData.createdAt || new Date(),
           updated_at: new Date(),
         };
-        
 
-        console.log("deployedConfigData", {deployedConfigData}, {configData}, {config})
-        
-        this.logger.log(`Deploying config data - schema length: ${deployedConfigData.schema?.length}, mapping length: ${deployedConfigData.mapping?.length}`);
-        
+        this.logger.log(
+          `Deploying config data - schema length: ${deployedConfigData.schema?.length}, mapping length: ${deployedConfigData.mapping?.length}`,
+        );
+
         const insertedId = await this.configRepository.createDeployedConfig(
           deployedConfigData,
           token,
@@ -2639,22 +2459,16 @@ export class ConfigService {
         throw insertError;
       }
 
-      // Step 3: Decrypt credentials if present (for logging/validation only)
       if (configData.credentials) {
-        if (configData.credentials.password) {
-          decrypt(configData.credentials.password);
-          this.logger.log('Password credential present');
-        }
-        if (configData.credentials.private_key) {
-          decrypt(configData.credentials.private_key);
-          this.logger.log('Private key credential present');
-        }
+        this.logger.log('Credentials present in config');
       }
 
-      // Step 4: Create transaction type table via repository
-      const transactionType = configData.transactionType || config.transactionType;
+      const transactionType =
+        configData.transactionType || config.transactionType;
       if (transactionType) {
-        this.logger.log(`Creating table for transaction type: ${transactionType}`);
+        this.logger.log(
+          `Creating table for transaction type: ${transactionType}`,
+        );
         await this.configRepository.createTransactionTypeTable(
           transactionType,
           token,
@@ -2663,16 +2477,11 @@ export class ConfigService {
           `Successfully created table "${transactionType}" from deployed config`,
         );
       } else {
-        this.logger.warn(
-          `No transactionType found in config file ${fileName}`,
-        );
+        this.logger.warn(`No transactionType found in config file ${fileName}`);
       }
-
-      // Step 5: Delete from SFTP
       await this.sftpService.deleteFile(fileName);
       this.logger.log(`Deleted config file from SFTP: ${fileName}`);
 
-      // Step 6: Update original config status via repository
       await this.configRepository.updateConfigStatus(
         id,
         tenantId,
@@ -2683,7 +2492,6 @@ export class ConfigService {
       this.logger.log(
         `Successfully updated original config ${id} status to ${newStatus}`,
       );
-
 
       return {
         success: true,
@@ -2717,7 +2525,6 @@ export class ConfigService {
     const currentStatus = config.status!;
     const action = 'return_to_progress' as any; // Extended workflow action
 
-    // Validate user can perform this action
     const validation = this.workflowService.canPerformAction(
       userClaims as any,
       currentStatus,
@@ -2729,7 +2536,6 @@ export class ConfigService {
 
     const newStatus = ConfigStatus.IN_PROGRESS;
 
-    // Update status
     await this.configRepository.updateConfig(
       id,
       tenantId,
@@ -2739,7 +2545,6 @@ export class ConfigService {
       token,
     );
 
-    // Log the action
     await this.logStatusChange(
       id,
       currentStatus,
@@ -2749,7 +2554,6 @@ export class ConfigService {
       dto.comment,
     );
 
-    // Audit the action
     await this.auditService.logAction({
       action: 'return_to_progress',
       entityType: 'config',
@@ -2769,9 +2573,6 @@ export class ConfigService {
     };
   }
 
-  /**
-   * Get workflow status and available actions for a configuration
-   */
   async getWorkflowStatus(
     id: number,
     tenantId: string,
@@ -2809,7 +2610,6 @@ export class ConfigService {
     };
   }
 
-  
   async getAuditHistory(
     id: number,
     tenantId: string,
@@ -2833,8 +2633,6 @@ export class ConfigService {
     if (!config) {
       throw new NotFoundException(`Config with ID ${id} not found`);
     }
-
-    // Get audit logs for this config
     const auditLogs = await this.auditService.getAuditLogs(
       tenantId,
       'config',
@@ -2844,7 +2642,6 @@ export class ConfigService {
       100,
     );
 
-    // Filter logs for this specific config and extract relevant information
     const configLogs = auditLogs
       .filter((log) => log.entity_id === id.toString())
       .map((log) => ({
@@ -2862,9 +2659,6 @@ export class ConfigService {
     };
   }
 
-  /**
-   * Private method to log status changes
-   */
   private async logStatusChange(
     configId: number,
     previousStatus: ConfigStatus,
@@ -2873,15 +2667,11 @@ export class ConfigService {
     performedBy: string,
     comment?: string,
   ): Promise<void> {
-    // Log to a dedicated status change log if needed
     this.logger.log(
       `Config ${configId}: Status changed from ${previousStatus} to ${newStatus} by ${performedBy} (${action})${comment ? ` - ${comment}` : ''}`,
     );
   }
 
-  /**
-   * Get human-readable status description
-   */
   private getStatusDescription(status: string): string {
     const descriptions: Record<string, string> = {
       [ConfigStatus.IN_PROGRESS]: 'Configuration is being edited',
@@ -2899,17 +2689,6 @@ export class ConfigService {
     return descriptions[status] || status;
   }
 
-  /**
-
-   * @param id - Configuration ID (database row identifier)
-   * @param publishingStatus - New status value ('active' | 'inactive')
-   * @param tenantId - Tenant identifier for multi-tenancy isolation
-   * @param userId - User ID performing the action (for audit trail)
-   * @param token - JWT Bearer token for admin-service authentication
-   * @returns ConfigResponseDto with updated configuration and success status
-   * @throws NotFoundException if configuration with given ID does not exist
-   * @throws BadRequestException if NATS notification fails during activation
-   */
   async updatePublishingStatus(
     id: number,
     publishingStatus: 'active' | 'inactive',
@@ -2917,7 +2696,6 @@ export class ConfigService {
     userId: string,
     token: string,
   ): Promise<ConfigResponseDto> {
-    // Route DB operation to admin service
     const result = await this.configRepository.updatePublishingStatus(
       id,
       publishingStatus,
@@ -2930,27 +2708,19 @@ export class ConfigService {
       );
     }
 
-    // // If publishing_status is set to ACTIVE, send NATS notification to DEMS with only config ID
-    // if (publishingStatus.toLowerCase() === 'active') {
-    //   this.logger.log(
-    //     `Publishing status set to ACTIVE for config ${id}, sending NATS notification to DEMS`,
-    //   );
-
-      try {
-        await this.notifyService.notifyDems(id.toString(), tenantId);
-
-        this.logger.log(
-          `NATS notification sent to DEMS for activated config ${id}`,
-        );
-      } catch (error) {
-        this.logger.error(
-          `Failed to send NATS notification for config ${id}: ${error.message}`,
-        );
-        throw new BadRequestException(
-          `Failed to activate config: ${error.message}`,
-        );
-      }
-    
+    try {
+      await this.notifyService.notifyDems(id.toString(), tenantId);
+      this.logger.log(
+        `NATS notification sent to DEMS for activated config ${id}`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to send NATS notification for config ${id}: ${error.message}`,
+      );
+      throw new BadRequestException(
+        `Failed to activate config: ${error.message}`,
+      );
+    }
 
     return {
       success: true,
@@ -2962,24 +2732,33 @@ export class ConfigService {
   private enrichConfigWithSourceFields(config: Config): ConfigWithSourceFields {
     try {
       if (config && config.schema) {
-        
         const hierarchicalFields =
           this.jsonSchemaConverter.convertFromJSONSchema(config.schema);
-        
-        this.logger.debug(`Hierarchical fields count: ${hierarchicalFields.length}`);
+
+        this.logger.debug(
+          `Hierarchical fields count: ${hierarchicalFields.length}`,
+        );
         if (hierarchicalFields.length > 0) {
-          this.logger.debug(`First hierarchical field: ${JSON.stringify(hierarchicalFields[0])}`);
+          this.logger.debug(
+            `First hierarchical field: ${JSON.stringify(hierarchicalFields[0])}`,
+          );
         }
-        
-        let sourceFields = this.flattenSchemaFields(hierarchicalFields);
-        
-        this.logger.debug(`Flattened source fields count: ${sourceFields.length}`);
+
+        const sourceFields = this.flattenSchemaFields(hierarchicalFields);
+
+        this.logger.debug(
+          `Flattened source fields count: ${sourceFields.length}`,
+        );
         if (sourceFields.length === 0) {
-          this.logger.warn('No source fields found after flattening. This might indicate an issue with schema structure.');
+          this.logger.warn(
+            'No source fields found after flattening. This might indicate an issue with schema structure.',
+          );
           this.logger.debug(`Schema: ${JSON.stringify(config.schema)}`);
-          this.logger.debug(`Hierarchical fields: ${JSON.stringify(hierarchicalFields)}`);
+          this.logger.debug(
+            `Hierarchical fields: ${JSON.stringify(hierarchicalFields)}`,
+          );
         }
-        
+
         return {
           ...config,
           sourceFields,
@@ -2998,17 +2777,12 @@ export class ConfigService {
     const flattened: SchemaField[] = [];
 
     for (const field of fields) {
-      // Include root-level fields (even if not required, we need them for mapping)
       flattened.push({
         name: field.name,
         path: field.path,
         type: field.type,
         isRequired: field.isRequired,
       });
-
-      // Recursively flatten children (regardless of parent's isRequired status)
-      // This ensures that even if a root object is marked as not required,
-      // its child fields are still available for mapping
       if (field.children && field.children.length > 0) {
         const flattenedChildren = this.flattenSchemaFields(field.children);
         flattened.push(...flattenedChildren);

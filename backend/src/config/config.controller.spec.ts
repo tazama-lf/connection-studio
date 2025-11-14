@@ -4,20 +4,13 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { ConfigController } from './config.controller';
 import { ConfigService } from './config.service';
 import { AdminServiceClient } from '../services/admin-service-client.service';
-import { FileParsingService } from '../services/file-parsing.service';
 import {
   ContentType,
   ConfigStatus,
   CreateConfigDto,
   UpdateConfigDto,
-  CloneConfigDto,
   AddMappingDto,
   AddFunctionDto,
-  SubmitForApprovalDto,
-  ApprovalDto,
-  RejectionDto,
-  DeploymentDto,
-  StatusTransitionDto,
   ConfigResponseDto,
 } from './config.interfaces';
 import type { AuthenticatedUser } from '../auth/auth.types';
@@ -26,7 +19,6 @@ describe('ConfigController', () => {
   let controller: ConfigController;
   let configService: jest.Mocked<ConfigService>;
   let adminServiceClient: jest.Mocked<AdminServiceClient>;
-  let fileParsingService: jest.Mocked<FileParsingService>;
 
   const mockUser = {
     userId: 'user123',

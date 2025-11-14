@@ -16,44 +16,58 @@ import {
   UploadedFile,
   Req,
   Headers,
-  Logger,
   BadRequestException,
   NotFoundException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AdminServiceClient } from '../services/admin-service-client.service';
 import { ConfigService } from './config.service';
+import { NotificationService } from '../notification/notification.service';
 import { TazamaAuthGuard } from '../auth/tazama-auth.guard';
 import { User } from '../auth/user.decorator';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import {
-  type CreateConfigDto,
-  type UpdateConfigDto,
+  CreateConfigDto,
+  UpdateConfigDto,
+  CreateMappingDto,
+  UpdateMappingDto,
+  CreateFunctionDto,
+  UpdateFunctionDto,
+  UpdatePublishingStatusDto,
+  TransactionType,
+} from '../dto/config/dto';
+import {
   type CloneConfigDto,
   type AddMappingDto,
   type AddFunctionDto,
   type ConfigResponseDto,
   type Config,
   ContentType,
-  type TransactionType,
   type SubmitForApprovalDto,
   type ApprovalDto,
   type RejectionDto,
   ConfigStatus,
   type DeploymentDto,
   type StatusTransitionDto,
-} from './config.interfaces';
+} from '../config/config.interfaces';
 import {
   RequireClaims,
   TazamaClaims,
   RequireAnyClaims,
 } from '../auth/auth.decorator';
-import { FileParsingService } from '../services/file-parsing.service';
 import * as jwt from 'jsonwebtoken';
-import { filter } from 'rxjs';
+interface DecodedUserInfo {
+  preferredUsername: string;
+  realmRoles: string[];
+  tenantDetails: string[];
+}
 
 function getTenantId(user: AuthenticatedUser): string {
-  return user.token.tenantId || 'default';
+  const tenantId = user.token.tenantId || user.tenantId;
+  if (!tenantId) {
+    throw new Error('Tenant ID not found in user token or claims');
+  }
+  return tenantId;
 }
 
 function decodeTokenString(tokenString: string): jwt.JwtPayload | null {
@@ -64,24 +78,57 @@ function decodeTokenString(tokenString: string): jwt.JwtPayload | null {
   }
 }
 
-function getUserId(user: AuthenticatedUser): string {
-  const decodedToken = decodeTokenString(user.token.tokenString);
-  if (!decodedToken) {
-    return 'unknown';
+export function decodeValidatedToken(user: AuthenticatedUser): DecodedUserInfo {
+  // The user.token.tokenString might be a wrapper object containing the actual JWT
+  // First, try to decode it
+  let decoded = decodeTokenString(user.token.tokenString);
+
+  if (!decoded) {
+    throw new Error('Invalid token: unable to decode');
   }
-  const userId = decodedToken.preferred_username as string;
-  return userId || 'unknown';
+
+  // If decoded.tokenString exists, it means we have a nested JWT - decode the inner one
+  if (decoded.tokenString && typeof decoded.tokenString === 'string') {
+    const innerDecoded = decodeTokenString(decoded.tokenString);
+    if (innerDecoded) {
+      decoded = innerDecoded;
+    }
+  }
+
+  if (!decoded.preferred_username) {
+    throw new Error(
+      `Invalid token: preferred_username missing. Available keys: ${Object.keys(decoded).join(', ')}`,
+    );
+  }
+
+  if (!decoded.realm_access || !Array.isArray(decoded.realm_access.roles)) {
+    throw new Error('Invalid token: realm_access.roles missing or invalid');
+  }
+
+  if (!Array.isArray(decoded.tenant_details)) {
+    throw new Error('Invalid token: tenant_details missing or invalid');
+  }
+
+  return {
+    preferredUsername: decoded.preferred_username,
+    realmRoles: decoded.realm_access.roles,
+    tenantDetails: decoded.tenant_details,
+  };
 }
 
 function getUserClaims(user: AuthenticatedUser): string[] {
   return user.validClaims || [];
 }
 
+function getTokenString(user: AuthenticatedUser): string {
+  return user.token.tokenString;
+}
+
 function buildForwardHeaders(user: AuthenticatedUser): Record<string, string> {
   return {
-    Authorization: `Bearer ${user.token.tokenString}`,
+    Authorization: `Bearer ${getTokenString(user)}`,
     'x-tenant-id': getTenantId(user),
-    'x-user-id': getUserId(user),
+    'x-user-id': decodeValidatedToken(user).preferredUsername,
     'x-user-claims': JSON.stringify(getUserClaims(user)),
   };
 }
@@ -91,9 +138,10 @@ function buildForwardHeaders(user: AuthenticatedUser): Record<string, string> {
 export class ConfigController {
   constructor(
     private readonly adminServiceClient: AdminServiceClient,
-    // private readonly fileParsingService: FileParsingService,
     private readonly configService: ConfigService,
+    private readonly notificationService: NotificationService,
   ) {}
+
   private autoDetectContentType(
     filename: string,
     content: string,
@@ -125,7 +173,35 @@ export class ConfigController {
     }
     return `${basePath}/${transactionType}`;
   }
-    @Post('/:offset/:limit')
+
+  private async sendWorkflowNotification(
+    event:
+      | 'editor_submit'
+      | 'approver_approve'
+      | 'exporter_export'
+      | 'publisher_deploy',
+    configId: number,
+    user: AuthenticatedUser,
+    config: any,
+    comment?: string,
+  ): Promise<void> {
+    await this.notificationService.sendGenericWorkflowNotification({
+      event,
+      configId,
+      tenantId: getTenantId(user),
+      actorEmail: decodeValidatedToken(user).preferredUsername,
+      actorName: decodeValidatedToken(user).preferredUsername,
+      config: {
+        name: config.cfg_name,
+        version: config.cfg_version,
+        transactionType: config.transaction_type,
+        status: config.status,
+      },
+      comment,
+    });
+  }
+
+  @Post('/:offset/:limit')
   @RequireAnyClaims(
     TazamaClaims.EDITOR,
     TazamaClaims.APPROVER,
@@ -159,6 +235,14 @@ export class ConfigController {
     if (!file) {
       throw new BadRequestException('No file uploaded');
     }
+
+    const validTransactionTypes = Object.values(TransactionType);
+    if (!validTransactionTypes.includes(transactionType as TransactionType)) {
+      throw new BadRequestException(
+        `Invalid transactionType. Must be one of: ${validTransactionTypes.join(', ')}`,
+      );
+    }
+
     const content = file.buffer.toString('utf8');
     const autoDetectedContentType = this.autoDetectContentType(
       file.originalname,
@@ -167,7 +251,7 @@ export class ConfigController {
 
     const dto: CreateConfigDto = {
       msgFam,
-      transactionType,
+      transactionType: transactionType as TransactionType,
       version,
       payload: content,
       contentType: autoDetectedContentType,
@@ -176,7 +260,7 @@ export class ConfigController {
     const result = await this.configService.createConfig(
       dto,
       getTenantId(user),
-      getUserId(user),
+      decodeValidatedToken(user).preferredUsername,
       user.token.tokenString,
     );
 
@@ -208,7 +292,7 @@ export class ConfigController {
     const result = await this.configService.createConfig(
       dto,
       getTenantId(user),
-      getUserId(user),
+      decodeValidatedToken(user).preferredUsername,
       token,
     );
 
@@ -420,12 +504,25 @@ export class ConfigController {
     @Body() dto: SubmitForApprovalDto,
     @User() user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
-    return this.adminServiceClient.forwardRequest(
+    const result = await this.adminServiceClient.forwardRequest(
       'POST',
       `/v1/admin/tcs/config/${id}/workflow/submit`,
       dto,
       buildForwardHeaders(user),
     );
+
+    if (result?.success) {
+      const config = result.config || result.data || {};
+      await this.sendWorkflowNotification(
+        'editor_submit',
+        id,
+        user,
+        config,
+        dto.comment,
+      );
+    }
+
+    return result;
   }
 
   @Post(':id/workflow/approve')
@@ -435,14 +532,30 @@ export class ConfigController {
     @Body() dto: ApprovalDto,
     @User() user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
-    return this.adminServiceClient.forwardRequest(
+    const result = await this.adminServiceClient.forwardRequest(
       'POST',
       `/v1/admin/tcs/config/${id}/workflow/approve`,
       dto,
       buildForwardHeaders(user),
     );
+
+    if (result?.success) {
+      const config = result.config || result.data || {};
+      await this.sendWorkflowNotification(
+        'approver_approve',
+        id,
+        user,
+        config,
+        dto.comment,
+      );
+    }
+
+    return result;
   }
 
+  /**
+   * @deprecated Use POST /config/:id/workflow/approve instead
+   */
   @Patch(':id/approve')
   @RequireClaims(TazamaClaims.APPROVER)
   async approveConfigLegacy(
@@ -481,12 +594,12 @@ export class ConfigController {
     @User() user: AuthenticatedUser,
     @Headers('authorization') authorization?: string,
   ): Promise<ConfigResponseDto> {
-    const token = authorization?.replace('Bearer ', '') || '';
+    const token = authorization?.replace('Bearer ', '') || getTokenString(user);
     return this.configService.updateStatusToExported(
       id,
       dto,
       getTenantId(user),
-      getUserId(user),
+      decodeValidatedToken(user).preferredUsername,
       getUserClaims(user),
       token,
     );
@@ -500,24 +613,36 @@ export class ConfigController {
     @User() user: AuthenticatedUser,
     @Headers('authorization') authorization?: string,
   ): Promise<ConfigResponseDto> {
-    const token = authorization?.replace('Bearer ', '') || '';
-     await this.adminServiceClient.forwardRequest(
+    const token = authorization?.replace('Bearer ', '') || getTokenString(user);
+
+    await this.configService.exportConfig(
+      id,
+      dto,
+      getTenantId(user),
+      decodeValidatedToken(user).preferredUsername,
+      getUserClaims(user),
+      token,
+    );
+
+    const result = await this.adminServiceClient.forwardRequest(
       'POST',
       `/v1/admin/tcs/config/${id}/workflow/export`,
       dto,
       buildForwardHeaders(user),
     );
 
-     return this.configService.exportConfig(
-      id,
-      dto,
-      getTenantId(user),
-      getUserId(user),
-      getUserClaims(user),
-      token,
-    );
+    if (result?.success) {
+      const config = result.config || result.data || {};
+      await this.sendWorkflowNotification(
+        'exporter_export',
+        id,
+        user,
+        config,
+        dto.comment,
+      );
+    }
 
-
+    return result;
   }
 
   @Post(':id/workflow/deploy')
@@ -528,22 +653,36 @@ export class ConfigController {
     @User() user: AuthenticatedUser,
     @Headers('authorization') authorization?: string,
   ): Promise<ConfigResponseDto> {
-    const token = authorization?.replace('Bearer ', '') || '';    
-    // await this.configService.deployConfig(
-    //   id,
-    //   dto,
-    //   getTenantId(user),
-    //   getUserId(user),
-    //   getUserClaims(user),
-    //   token,
-    // );
+    const token = authorization?.replace('Bearer ', '') || getTokenString(user);
 
-    return await this.adminServiceClient.forwardRequest(
+    await this.configService.deployConfig(
+      id,
+      dto,
+      getTenantId(user),
+      decodeValidatedToken(user).preferredUsername,
+      getUserClaims(user),
+      token,
+    );
+
+    const result = await this.adminServiceClient.forwardRequest(
       'POST',
-      `/v1/admin/tcs/config/${id}/workflow/export`,
+      `/v1/admin/tcs/config/${id}/workflow/deploy`,
       dto,
       buildForwardHeaders(user),
     );
+
+    if (result?.success) {
+      const config = result.config || result.data || {};
+      await this.sendWorkflowNotification(
+        'publisher_deploy',
+        id,
+        user,
+        config,
+        dto.comment,
+      );
+    }
+
+    return result;
   }
 
   @Post(':id/workflow/return-to-progress')
@@ -597,6 +736,7 @@ export class ConfigController {
       buildForwardHeaders(user),
     );
   }
+
   @Patch('/update/status/:id')
   @RequireAnyClaims(TazamaClaims.EXPORTER, TazamaClaims.PUBLISHER)
   async updateStatus(
@@ -619,13 +759,12 @@ export class ConfigController {
     @Body() dto: { publishing_status: 'active' | 'inactive' },
     @User() user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
-    console.log('Updating publishing status:', {id});
     return this.configService.updatePublishingStatus(
       id,
       dto.publishing_status,
-      user.tenantId,
-      user.userId,
-      user.token.tokenString,
+      getTenantId(user),
+      decodeValidatedToken(user).preferredUsername,
+      getTokenString(user),
     );
   }
 }

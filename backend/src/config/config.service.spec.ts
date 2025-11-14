@@ -17,7 +17,6 @@ import {
   ConfigStatus,
   CreateConfigDto,
   UpdateConfigDto,
-  CloneConfigDto,
   AddMappingDto,
   AddFunctionDto,
   AllowedFunctionName,

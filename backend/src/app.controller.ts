@@ -23,5 +23,4 @@ export class AppController {
       timestamp: new Date().toISOString(),
     };
   }
-
 }

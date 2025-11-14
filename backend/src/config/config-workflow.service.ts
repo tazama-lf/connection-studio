@@ -23,8 +23,7 @@ export class ConfigWorkflowService {
       [ConfigStatus.UNDER_REVIEW]: [
         ConfigStatus.APPROVED,
         ConfigStatus.REJECTED,
-        ConfigStatus.IN_PROGRESS, // For changes requested, return to in progress
-      ],
+        ConfigStatus.IN_PROGRESS,],
       [ConfigStatus.APPROVED]: [ConfigStatus.EXPORTED, ConfigStatus.DEPLOYED],
       [ConfigStatus.EXPORTED]: [ConfigStatus.DEPLOYED],
       [ConfigStatus.READY_FOR_DEPLOYMENT]: [ConfigStatus.DEPLOYED],
@@ -68,7 +67,6 @@ export class ConfigWorkflowService {
       canReturnToProgress: false,
     };
     if (hasEditorRole) {
-      // Can edit only in editable states (IN_PROGRESS or REJECTED with changes)
       result.canEdit = [
         ConfigStatus.IN_PROGRESS,
         ConfigStatus.REJECTED,

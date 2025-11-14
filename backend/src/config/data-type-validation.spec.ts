@@ -513,5 +513,3 @@ describe('Data Type Validation for Mappings', () => {
 });
 
 console.log('Data type validation tests completed');
-
-
