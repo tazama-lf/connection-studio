@@ -173,7 +173,9 @@ describe('NotificationService', () => {
 
       expect(result).toBe(true);
       const callArgs = mockTransporter.sendMail.mock.calls[0][0];
-      expect(callArgs.from).toBe('"Tazama Connection Studio" <noreply@example.com>'); // Default name
+      expect(callArgs.from).toBe(
+        '"Tazama Connection Studio" <noreply@example.com>',
+      ); // Default name
     });
 
     it('should use SMTP_USER as FROM_EMAIL when SMTP_FROM_EMAIL not configured', async () => {
@@ -552,11 +554,13 @@ describe('NotificationService', () => {
         expect(result.success).toBe(true);
         expect(result.recipients).toBe(2);
         expect(mockTransporter.sendMail).toHaveBeenCalled();
-        
+
         const callArgs = mockTransporter.sendMail.mock.calls[0][0];
         expect(callArgs.subject).toContain('Approval Required');
         expect(callArgs.subject).toContain('pain.001');
-        expect(callArgs.to).toBe('recipient1@example.com, recipient2@example.com');
+        expect(callArgs.to).toBe(
+          'recipient1@example.com, recipient2@example.com',
+        );
         expect(callArgs.replyTo).toBe('actor@example.com');
         expect(callArgs.html).toContain('#2196F3'); // Blue theme
         expect(callArgs.html).toContain('Approval Required');
@@ -611,7 +615,7 @@ describe('NotificationService', () => {
 
         expect(result.success).toBe(true);
         expect(result.recipients).toBe(2);
-        
+
         const callArgs = mockTransporter.sendMail.mock.calls[0][0];
         expect(callArgs.subject).toContain('Configuration Approved');
         expect(callArgs.html).toContain('#4CAF50'); // Green theme
@@ -631,7 +635,7 @@ describe('NotificationService', () => {
 
         expect(result.success).toBe(true);
         expect(result.recipients).toBe(2);
-        
+
         const callArgs = mockTransporter.sendMail.mock.calls[0][0];
         expect(callArgs.subject).toContain('Configuration Exported');
         expect(callArgs.html).toContain('#FF9800'); // Orange theme
@@ -651,7 +655,7 @@ describe('NotificationService', () => {
 
         expect(result.success).toBe(true);
         expect(result.recipients).toBe(2);
-        
+
         const callArgs = mockTransporter.sendMail.mock.calls[0][0];
         expect(callArgs.subject).toContain('Configuration Deployed');
         expect(callArgs.html).toContain('#9C27B0'); // Purple theme
@@ -729,8 +733,13 @@ describe('NotificationService', () => {
         };
 
         // Test all 4 event types with fallbacks
-        const events = ['editor_submit', 'approver_approve', 'exporter_export', 'publisher_deploy'] as const;
-        
+        const events = [
+          'editor_submit',
+          'approver_approve',
+          'exporter_export',
+          'publisher_deploy',
+        ] as const;
+
         for (const event of events) {
           jest.clearAllMocks();
           const result = await service.sendGenericWorkflowNotification({
@@ -805,12 +814,16 @@ describe('NotificationService', () => {
       jest.clearAllMocks();
       const errorTransporter = {
         sendMail: jest.fn(),
-        verify: jest.fn((callback) => callback(new Error('SMTP connection failed'))),
+        verify: jest.fn((callback) =>
+          callback(new Error('SMTP connection failed')),
+        ),
       };
-      (nodemailer.createTransport as jest.Mock).mockReturnValue(errorTransporter);
+      (nodemailer.createTransport as jest.Mock).mockReturnValue(
+        errorTransporter,
+      );
 
       const newService = new NotificationService(configService);
-      
+
       // Service should be created but not configured
       expect(newService).toBeDefined();
     });
@@ -822,7 +835,7 @@ describe('NotificationService', () => {
       });
 
       const newService = new NotificationService(configService);
-      
+
       // Service should be created but not configured
       expect(newService).toBeDefined();
     });
