@@ -734,11 +734,8 @@ export const DatabaseTableInputField = ({
                         // Allow control keys
                         if (["Backspace", "Delete", "Tab", "Enter", "ArrowLeft", "ArrowRight"].includes(key)) return;
 
-                        // Convert uppercase to lowercase for table names
-                        const lowerKey = key.toLowerCase();
-
                         // Allow only valid table name characters (lowercase letters, numbers, underscores)
-                        if (!allowedChars.test(lowerKey)) {
+                        if (!/^[a-zA-Z0-9_]$/.test(key)) {
                             event.preventDefault();
                         }
                     }}

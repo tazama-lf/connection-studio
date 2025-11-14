@@ -771,7 +771,7 @@ export const DataEnrichmentFormModal: React.FC<
       </Box>
       <Grid container spacing={2}>
         <Grid size={{ xs: 12 }}>
-          <AlphaNumericInputField
+          <DatabaseTableInputField
             name="targetTable"
             control={control}
             fullWidth={true}
@@ -1128,117 +1128,6 @@ export const DataEnrichmentFormModal: React.FC<
     );
   };
 
-  const handleCreateSchedule = async () => {
-    try {
-      setIsCreatingSchedule(true);
-      setCreateError(null);
-
-      // Validate schedule data
-      if (!newSchedule.name || !newSchedule.cron || !newSchedule.iterations) {
-        setCreateError(
-          'Please fill in all schedule fields (name, cron expression, iterations)',
-        );
-        return;
-      }
-
-      // Create the schedule
-      await dataEnrichmentApi.createSchedule({
-        name: newSchedule.name,
-        cron: newSchedule.cron,
-        iterations: newSchedule.iterations,
-      });
-
-      // Reload schedules to get the newly created one with full details
-      const updatedSchedules = await dataEnrichmentApi.getAllSchedules();
-      // Filter schedules to only show approved, exported, and deployed schedules
-      const filteredSchedules = updatedSchedules.filter(
-        (schedule: any) =>
-          schedule.status === 'approved' ||
-          schedule.status === 'exported' ||
-          schedule.status === 'deployed',
-      );
-      setAvailableSchedules(filteredSchedules);
-
-      // Find the newly created schedule by name and select it
-      const newScheduleObj = updatedSchedules.find(
-        (s) => s.name === newSchedule.name,
-      );
-      if (newScheduleObj) {
-        setSelectedScheduleId(newScheduleObj.id);
-        setCreateSuccess(
-          `Schedule "${newScheduleObj.name}" created successfully!`,
-        );
-      } else {
-        setCreateSuccess('Schedule created successfully!');
-      }
-
-      // Reset form and close
-      setNewSchedule({ name: '', cron: '', iterations: 1 });
-      setShowCreateSchedule(false);
-
-      // Clear success message after 3 seconds
-      setTimeout(() => {
-        setCreateSuccess(null);
-      }, 3000);
-    } catch (error) {
-      console.error('Failed to create schedule:', error);
-      setCreateError(
-        error instanceof Error ? error.message : 'Failed to create schedule',
-      );
-    } finally {
-      setIsCreatingSchedule(false);
-    }
-  };
-
-  // Helper function to validate file format matches file extension
-  const validateFileFormat = () => {
-    if (!formData.pathPattern || !formData.pathPattern.trim()) {
-      return { isValid: true, error: '' };
-    }
-
-    const filePath = formData.pathPattern.trim();
-    // Extract filename from path (handle wildcards like *.csv)
-    const fileName = filePath.includes('*')
-      ? filePath.split('*')[1]
-      : filePath.split('/').pop() || '';
-    const fileExtension = fileName.split('.').pop()?.toLowerCase();
-
-    if (!fileExtension) {
-      return {
-        isValid: false,
-        error:
-          'Please specify a file with a valid extension (e.g., .csv, .tsv, .json)',
-      };
-    }
-
-    // Map file extensions to allowed formats
-    const extensionFormatMap: { [key: string]: string[] } = {
-      csv: ['csv'],
-      tsv: ['tsv'],
-      json: ['json'],
-      txt: ['csv', 'tsv'], // Text files can be either CSV or TSV
-    };
-
-    const allowedFormats = extensionFormatMap[fileExtension];
-
-    if (!allowedFormats) {
-      return {
-        isValid: false,
-        error: `Unsupported file extension: .${fileExtension}. Supported extensions: .csv, .tsv, .json`,
-      };
-    }
-
-    if (!allowedFormats.includes(formData.fileFormat.toLowerCase())) {
-      const formatName = formData.fileFormat.toUpperCase();
-      return {
-        isValid: false,
-        error: `File format mismatch: .${fileExtension} files must use ${allowedFormats.map((f) => f.toUpperCase()).join(' or ')} format, not ${formatName}`,
-      };
-    }
-
-    return { isValid: true, error: '' };
-  };
-
   const handleInputChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
@@ -1281,443 +1170,152 @@ export const DataEnrichmentFormModal: React.FC<
     }
   };
 
+  const handleContinue = () => {
+    setShowConfigForm(true);
+  };
+
   const handleSave = async () => {
     try {
       setIsCreating(true);
       setCreateError(null);
       setCreateSuccess(null);
-
-      // Validate required fields
-      if (!formData.name || !formData.description) {
-        setCreateError('Please fill in all required fields');
-        return;
-      }
-
-      // Schedule is only required for pull configurations
-      if (configurationType === 'pull' && !selectedScheduleId) {
-        setCreateError('Please select a schedule for pull configuration');
-        return;
-      }
-
-      // Validate configuration-specific fields
-      if (configurationType === 'push') {
-        if (!formData.endpointPath) {
-          setCreateError(
-            'Please provide an endpoint path for push configuration',
-          );
-          return;
-        }
-        if (!formData.endpointVersion) {
-          setCreateError('Please provide a version for the endpoint');
-          return;
-        }
-      } else {
-        // Pull configuration validation
-        if (formData.sourceType === 'http') {
-          if (!formData.host) {
-            setCreateError('Please provide a URL for HTTP configuration');
-            return;
-          }
-        } else if (formData.sourceType === 'sftp') {
-          if (!formData.host || !formData.username || !formData.password) {
-            setCreateError(
-              'Please fill in all SFTP connection details (host, username, password)',
-            );
-            return;
-          }
-
-          // Validate file format matches file extension
-          const formatValidation = validateFileFormat();
-          if (!formatValidation.isValid) {
-            setCreateError(formatValidation.error);
-            return;
-          }
-        }
-      }
-
-      // Build the request payload based on source type
-      const basePayload: any = {
-        endpoint_name: formData.name,
-        source_type: formData.sourceType.toUpperCase() as 'HTTPS' | 'SFTP',
-        description: formData.description,
-        table_name:
-          formData.targetTable ||
-          formData.name.toLowerCase().replace(/\s+/g, '_'),
-        mode: formData.ingestMode as 'append' | 'replace',
-        version: '1.0.0',
-      };
-
-      // Only add schedule_id for pull configurations
-      if (configurationType === 'pull') {
-        basePayload.schedule_id = selectedScheduleId!; // Required for pull - validation ensures it's set
-      }
-
-      // Additional validation
-      if (
-        !basePayload.endpoint_name ||
-        !basePayload.description ||
-        !basePayload.table_name
-      ) {
-        setCreateError(
-          'Missing required fields: endpoint_name, description, or table_name',
-        );
-        return;
-      }
-
+      const formValues = getValues();
       let payload: any;
 
       if (configurationType === 'push') {
-        // Push job payload - much simpler structure
-        // Clean up version and path by removing leading/trailing slashes
-        const cleanVersion = formData.endpointVersion.replace(/^\/+|\/+$/g, '');
-        const cleanPath = formData.endpointPath.replace(/^\/+|\/+$/g, '');
-
-        // Ensure version starts with / if not already
-        const versionPath = cleanVersion.startsWith('/')
-          ? cleanVersion
-          : `/${cleanVersion}`;
-        // Ensure path starts with / if not already
-        const fullPath = cleanPath.startsWith('/')
-          ? cleanPath
-          : `/${cleanPath}`;
-
         payload = {
-          endpoint_name: formData.name,
-          path: versionPath + fullPath, // version + path
-          description: formData.description,
-          table_name:
-            formData.targetTable ||
-            formData.name.toLowerCase().replace(/\s+/g, '_'),
-          mode: formData.ingestMode as 'append' | 'replace',
-          version: cleanVersion,
-        };
-
-        // Explicitly ensure no schedule_id is in push payload
-        if (payload.schedule_id) {
-          delete payload.schedule_id;
-        }
-      } else if (formData.sourceType === 'http') {
-        // Pull HTTP configuration
-        let headers = { 'content-type': 'application/json' };
-        payload = {
-          ...basePayload,
-          source_type: 'HTTP' as const,
-          connection: {
-            url: formData.host, // Using host field for URL in HTTP case
-            headers,
-          },
-          // Note: No 'file' field for HTTP requests
+          endpoint_name: formValues.name || null,
+          path: formValues.endpointPath || null,
+          description: formValues.description || null,
+          table_name: formValues.targetTable || null,
+          mode: formValues.ingestMode as 'append' | 'replace',
+          version:
+            formValues.version?.replace(/^v?\/*/g, '').replace(/\/+$/g, '') ||
+            null,
         };
       } else {
-        // Pull SFTP configuration
-        payload = {
-          ...basePayload,
-          source_type: 'SFTP' as const,
-          connection: {
-            host: formData.host,
-            port: parseInt(formData.port) || 22,
-            auth_type:
-              formData.authType === 'key'
-                ? ('PRIVATE_KEY' as const)
-                : ('USERNAME_PASSWORD' as const),
-            user_name: formData.username,
-            ...(formData.authType === 'password'
-              ? { password: formData.password }
-              : { private_key: formData.privateKey.replace(/\\n/g, '\n') }),
-          },
-          file: {
-            path: formData.pathPattern || '/data.csv',
-            file_type: formData.fileFormat.toUpperCase() as
-              | 'CSV'
-              | 'JSON'
-              | 'TSV',
-            delimiter: formData.delimiter || ',',
-          },
+        // Pull configuration payload
+        const basePayload = {
+          endpoint_name: formValues.name || null,
+          source_type: formValues.sourceType.toUpperCase() as 'HTTPS' | 'SFTP',
+          description: formValues.description || null,
+          table_name: formValues.targetTable || null,
+          mode: formValues.ingestMode as 'append' | 'replace',
+          version: formValues.version || null,
+          schedule_id: formValues.schedule || null,
         };
+
+        if (formValues.sourceType === 'https') {
+          // HTTPS Pull configuration
+          let headers;
+          try {
+            headers = formValues.headers
+              ? JSON.parse(formValues.headers)
+              : { 'content-type': 'application/json' };
+          } catch {
+            headers = { 'content-type': 'application/json' };
+          }
+
+          payload = {
+            ...basePayload,
+            source_type: 'HTTPS' as const,
+            connection: {
+              url: formValues.url,
+              headers,
+            },
+          };
+        } else {
+          // SFTP Pull configuration
+          payload = {
+            ...basePayload,
+            source_type: 'SFTP' as const,
+            connection: {
+              host: formValues.host,
+              port: parseInt(formValues.port) || null,
+              auth_type:
+                formValues.authType === 'key'
+                  ? ('PRIVATE_KEY' as const)
+                  : ('USERNAME_PASSWORD' as const),
+              user_name: formValues.username,
+              ...(formValues.authType === 'password'
+                ? { password: formValues.password }
+                : { private_key: formValues.password.replace(/\\n/g, '\n') }), // Using password field for private key
+            },
+            file: {
+              path: formValues.pathPattern || '/data.csv',
+              file_type: formValues.fileFormat.toUpperCase() as
+                | 'CSV'
+                | 'JSON'
+                | 'TSV',
+              delimiter: formValues.delimiter || ',',
+            },
+          };
+        }
       }
 
+      // Call appropriate API based on mode and configuration type
       let response;
-
-      // Use update APIs when editing, create APIs when creating new jobs
       if (editMode && jobId) {
-        if (configurationType === 'pull') {
-          response = await dataEnrichmentApi.updatePullJob(jobId, payload);
-        } else {
-          response = await dataEnrichmentApi.updatePushJob(jobId, payload);
-        }
+        response =
+          configurationType === 'pull'
+            ? await dataEnrichmentApi.updatePullJob(jobId, payload)
+            : await dataEnrichmentApi.updatePushJob(jobId, payload);
       } else {
-        if (configurationType === 'pull') {
-          response = await dataEnrichmentApi.createPullJob(payload);
-        } else {
-          response = await dataEnrichmentApi.createPushJob(payload);
-        }
+        response =
+          configurationType === 'pull'
+            ? await dataEnrichmentApi.createPullJob(payload)
+            : await dataEnrichmentApi.createPushJob(payload);
       }
 
       const successMessage = editMode
-        ? `Data enrichment endpoint "${formData.name}" updated successfully!`
-        : `Data enrichment endpoint "${formData.name}" created successfully! You can now send it for approval.`;
-      setCreateSuccess(successMessage);
+        ? `Data enrichment endpoint "${formValues.name}" updated successfully!`
+        : `Data enrichment endpoint "${formValues.name}" created successfully! You can now send it for approval.`;
 
-      // Call the parent's onSave with the created/updated job
+      setCreateSuccess(successMessage);
       onSave(response);
 
-      // Close modal after a brief delay to show success message
+      // Close modal after showing success message
       setTimeout(() => {
         onClose();
       }, 1500);
     } catch (error) {
-      console.error('=== CREATE ENDPOINT ERROR ===');
-      console.error('Error type:', error?.constructor?.name);
-      console.error('Error object:', error);
+      console.error('=== CREATE ENDPOINT ERROR ===', error);
 
-      // Try to extract detailed error information
+      let errorMessage = 'Failed to create endpoint';
+
       if (error && typeof error === 'object' && 'response' in error) {
         const apiError = error as any;
-        console.error('API Response Status:', apiError.response?.status);
-        console.error('API Response Data:', apiError.response?.data);
-        console.error('API Response Headers:', apiError.response?.headers);
-
-        // Show specific backend error message if available
         const backendMessage =
           apiError.response?.data?.message ||
           apiError.response?.data?.error ||
           apiError.response?.data?.details;
 
         if (backendMessage) {
-          setCreateError(`Backend error: ${backendMessage}`);
-          console.error('Backend error message:', backendMessage);
+          errorMessage = `Backend error: ${backendMessage}`;
         } else if (apiError.response?.status === 400) {
-          setCreateError(
-            'Bad Request (400): Invalid data sent to backend. Check console for payload details.',
-          );
+          errorMessage = 'Bad Request: Invalid data sent to backend';
         } else {
-          setCreateError(
-            `HTTP ${apiError.response?.status}: ${apiError.message || 'Unknown error'}`,
-          );
+          errorMessage = `HTTP ${apiError.response?.status}: ${apiError.message || 'Unknown error'}`;
         }
       } else if (
         error instanceof TypeError &&
         error.message.includes('fetch')
       ) {
-        setCreateError(
-          'Cannot connect to data enrichment service. Please ensure the service is running on http://localhost:3001',
-        );
+        errorMessage =
+          'Cannot connect to data enrichment service. Please ensure the service is running';
       } else {
-        const errorMessage =
+        errorMessage =
           error instanceof Error ? error.message : 'Unknown error occurred';
-        setCreateError(`Failed to create endpoint: ${errorMessage}`);
       }
 
-      console.error('=== END CREATE ENDPOINT ERROR ===');
+      setCreateError(errorMessage);
     } finally {
       setIsCreating(false);
     }
   };
 
-  const renderPreviewStep = () => (
-    <div className="space-y-6" data-id="element-945">
-      <div className="bg-green-50 p-4 rounded-md" data-id="element-946">
-        <h3
-          className="text-md font-medium text-green-900 mb-3"
-          data-id="element-947"
-        >
-          Test Run Results
-        </h3>
-        <div className="grid grid-cols-3 gap-4 mb-4" data-id="element-948">
-          <div
-            className="bg-white p-3 rounded-md shadow-sm"
-            data-id="element-949"
-          >
-            <p className="text-sm text-gray-500" data-id="element-950">
-              Total Rows
-            </p>
-            <p className="text-xl font-semibold" data-id="element-951">
-              {previewData.totalRows}
-            </p>
-          </div>
-          <div
-            className="bg-white p-3 rounded-md shadow-sm"
-            data-id="element-952"
-          >
-            <p className="text-sm text-gray-500" data-id="element-953">
-              Valid Rows
-            </p>
-            <p
-              className="text-xl font-semibold text-green-600"
-              data-id="element-954"
-            >
-              {previewData.validRows}
-            </p>
-          </div>
-          <div
-            className="bg-white p-3 rounded-md shadow-sm"
-            data-id="element-955"
-          >
-            <p className="text-sm text-gray-500" data-id="element-956">
-              Invalid Rows
-            </p>
-            <p
-              className="text-xl font-semibold text-red-600"
-              data-id="element-957"
-            >
-              {previewData.invalidRows}
-            </p>
-          </div>
-        </div>
-      </div>
-      {previewData.validationErrors.length > 0 && (
-        <div className="bg-red-50 p-4 rounded-md" data-id="element-958">
-          <h3
-            className="text-md font-medium text-red-900 mb-3"
-            data-id="element-959"
-          >
-            Validation Errors
-          </h3>
-          <div className="max-h-40 overflow-y-auto" data-id="element-960">
-            <table
-              className="min-w-full divide-y divide-gray-200"
-              data-id="element-961"
-            >
-              <thead className="bg-gray-50" data-id="element-962">
-                <tr data-id="element-963">
-                  <th
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    data-id="element-964"
-                  >
-                    Row
-                  </th>
-                  <th
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    data-id="element-965"
-                  >
-                    Field
-                  </th>
-                  <th
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    data-id="element-966"
-                  >
-                    Error
-                  </th>
-                </tr>
-              </thead>
-              <tbody
-                className="bg-white divide-y divide-gray-200"
-                data-id="element-967"
-              >
-                {previewData.validationErrors.map(
-                  (error: any, index: number) => (
-                    <tr key={index} data-id="element-968">
-                      <td
-                        className="px-6 py-2 whitespace-nowrap text-sm text-gray-500"
-                        data-id="element-969"
-                      >
-                        {error.row}
-                      </td>
-                      <td
-                        className="px-6 py-2 whitespace-nowrap text-sm text-gray-500"
-                        data-id="element-970"
-                      >
-                        {error.field}
-                      </td>
-                      <td
-                        className="px-6 py-2 whitespace-nowrap text-sm text-red-500"
-                        data-id="element-971"
-                      >
-                        {error.error}
-                      </td>
-                    </tr>
-                  ),
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-      <div
-        className="bg-white p-4 rounded-md shadow border border-gray-200"
-        data-id="element-972"
-      >
-        <h3
-          className="text-md font-medium text-gray-900 mb-3"
-          data-id="element-973"
-        >
-          Data Preview
-        </h3>
-        <div className="overflow-x-auto" data-id="element-974">
-          <table
-            className="min-w-full divide-y divide-gray-200"
-            data-id="element-975"
-          >
-            <thead className="bg-gray-50" data-id="element-976">
-              <tr data-id="element-977">
-                {previewData.previewRows.length > 0 &&
-                  Object.keys(previewData.previewRows[0]).map((header) => (
-                    <th
-                      key={header}
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      data-id="element-978"
-                    >
-                      {header}
-                    </th>
-                  ))}
-              </tr>
-            </thead>
-            <tbody
-              className="bg-white divide-y divide-gray-200"
-              data-id="element-979"
-            >
-              {previewData.previewRows.map(
-                (row: Record<string, any>, rowIndex: number) => (
-                  <tr key={rowIndex} data-id="element-980">
-                    {Object.values(row).map((value, colIndex) => (
-                      <td
-                        key={colIndex}
-                        className="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
-                        data-id="element-981"
-                      >
-                        {String(value)}
-                      </td>
-                    ))}
-                  </tr>
-                ),
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-      {configurationType === 'push' && (
-        <div className="bg-blue-50 p-4 rounded-md" data-id="element-982">
-          <h3
-            className="text-md font-medium text-blue-900 mb-3"
-            data-id="element-983"
-          >
-            API Response Example
-          </h3>
-          <pre
-            className="bg-white p-3 rounded border border-gray-200 text-sm font-mono overflow-x-auto"
-            data-id="element-984"
-          >
-            {`{
-  "success": true,
-  "correlationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-  "stats": {
-    "accepted": ${previewData.validRows},
-    "rejected": ${previewData.invalidRows},
-    "total": ${previewData.totalRows}
-  },
-  "timestamp": "${new Date().toISOString()}"
-}`}
-          </pre>
-        </div>
-      )}
-    </div>
-  );
-
-  const handleContinue = () => {
-    setShowConfigForm(true);
-  };
-
   if (!isOpen) return null;
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
