@@ -209,79 +209,6 @@ export class SftpService implements OnModuleInit, OnModuleDestroy {
       );
     }
   }
-  async publishFile(
-    fileName: string,
-  ): Promise<{ success: boolean; message: string }> {
-    try {
-      const producerHost = this.configService.get<string>('SFTP_HOST_PRODUCER');
-      if (!producerHost) {
-        throw new BadRequestException(
-          'Producer SFTP server credentials not provided.',
-        );
-      }
-      const path = `/upload/${fileName}.json`;
-      const integrityFilePath = `/upload/${fileName}.hash`;
-      // Check if files exist on producer SFTP
-      const [fileExists, hashExists] = await Promise.all([
-        this.producerSftp.exists(path),
-        this.producerSftp.exists(integrityFilePath),
-      ]);
-      if (!fileExists || !hashExists) {
-        this.loggerService.warn(
-          `File or integrity file not found for ${fileName}`,
-        );
-        throw new NotFoundException(
-          `File or its integrity file not found for ${fileName}`,
-        );
-      }
-      // Read and verify file integrity before publishing
-      const [fileBuffer, integrityBuffer] = await Promise.all([
-        this.producerSftp.get(path),
-        this.producerSftp.get(integrityFilePath),
-      ]);
-      const expectedValue = integrityBuffer.toString().trim();
-      const computedValue = this.computeSHA256(fileBuffer);
-      if (computedValue !== expectedValue) {
-        this.loggerService.error(`Integrity check failed for ${fileName}`);
-        throw new BadRequestException(
-          `Integrity validation failed for ${fileName}. File may be corrupted.`,
-        );
-      }
-      // File is valid - mark as published by updating status to 'deployed'
-      const data = JSON.parse(fileBuffer.toString('utf8').trim());
-      data.status = 'deployed';
-      data.published_at = new Date().toISOString();
-      // Update the file with deployed status
-      const updatedBuffer = Buffer.from(JSON.stringify(data, null, 2));
-      await this.producerSftp.put(updatedBuffer, path);
-      // Update integrity hash for the modified file
-      const newIntegrityValue = this.computeSHA256(updatedBuffer);
-      await this.producerSftp.put(
-        Buffer.from(newIntegrityValue, 'utf8'),
-        integrityFilePath,
-      );
-      this.loggerService.log(`File ${fileName} published successfully`);
-      return {
-        success: true,
-        message: `File ${fileName} published successfully`,
-      };
-    } catch (error: unknown) {
-      if (
-        error instanceof NotFoundException ||
-        error instanceof BadRequestException
-      ) {
-        throw error;
-      }
-      const message =
-        error instanceof Error ? error.message : JSON.stringify(error);
-      this.loggerService.error(
-        `Failed to publish file ${fileName}: ${message}`,
-      );
-      throw new InternalServerErrorException(
-        `Unable to publish file ${fileName}`,
-      );
-    }
-  }
 
   async deleteFile(fileName: string): Promise<void> {
     try {
@@ -326,17 +253,16 @@ export class SftpService implements OnModuleInit, OnModuleDestroy {
     tenant_id: string,
   ): Promise<SftpFile[]> {
     try {
-      // Updated regex pattern to match actual file naming: format_tenantId_configId.json
-      // Examples: dems_tenant-id_123.json, de_my-tenant_456.json, cron_test-tenant_789.json
       const regex = new RegExp(
         `^${format}_${tenant_id}_[A-Za-z0-9_-]+\\.json$`,
       );
-      // First get all files to debug
+
       const allFiles = await this.producerSftp.list('/upload');
       this.loggerService.log(
         `All files in ${remoteDir}:`,
         allFiles.map((f) => f.name),
       );
+
       const files: SftpFile[] = await this.producerSftp.list(
         '/upload',
         (file: SftpFile) => {

@@ -50,15 +50,4 @@ export class SftpController {
   async viewFile(@Query('name') name: string) {
     return await this.sftpService.readFile(name);
   }
-  @Post('/publish')
-  @RequireAnyClaims(TazamaClaims.PUBLISHER)
-  async publishFile(@Query('name') name: string) {
-    const sftpHost = this.configService.get<string>('SFTP_HOST_PRODUCER');
-    if (!sftpHost) {
-      throw new BadRequestException(
-        'Producer SFTP server credentials not provided.',
-      );
-    }
-    return await this.sftpService.publishFile(name);
-  }
 }
