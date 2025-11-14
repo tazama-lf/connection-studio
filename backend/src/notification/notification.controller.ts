@@ -15,10 +15,6 @@ import {
 export class NotificationController {
   constructor(private readonly notificationService: NotificationService) {}
 
-  /**
-   * Send submit for approval notification to approvers
-   * Called by admin-service when editor submits config
-   */
   @Post('submit-for-approval')
   @HttpCode(HttpStatus.OK)
   async sendSubmitForApproval(
@@ -48,10 +44,6 @@ export class NotificationController {
     }
   }
 
-  /**
-   * Send changes requested notification to editor
-   * Called by admin-service when approver requests changes
-   */
   @Post('changes-requested')
   @HttpCode(HttpStatus.OK)
   async sendChangesRequested(
@@ -80,10 +72,7 @@ export class NotificationController {
     }
   }
 
-  /**
-   * Send rejection notification to editor
-   * Called by admin-service when approver rejects config
-   */
+
   @Post('rejection')
   @HttpCode(HttpStatus.OK)
   async sendRejection(
@@ -117,18 +106,26 @@ export class NotificationController {
   async sendGenericWorkflowNotification(
     @Body()
     data: {
-      event: 'editor_submit' | 'approver_approve' | 'exporter_export' | 'publisher_deploy' | 'publisher_activate' | 'publisher_deactivate';
+      event:
+        | 'editor_submit'
+        | 'approver_approve'
+        | 'exporter_export'
+        | 'publisher_deploy'
+        | 'publisher_activate'
+        | 'publisher_deactivate';
       configId: number;
       config: any;
       tenantId: string;
       actorEmail: string;
       actorName: string;
-      comment?: string;2
+      comment?: string;
+      2;
       recipientEmails: string[];
     },
   ) {
     try {
-      const result = await this.notificationService.sendGenericWorkflowNotification(data);
+      const result =
+        await this.notificationService.sendGenericWorkflowNotification(data);
       return {
         success: result.success,
         message: result.message,
@@ -156,7 +153,8 @@ export class NotificationController {
     },
   ) {
     try {
-      const result = await this.notificationService.sendPublishingStatusNotification(data);
+      const result =
+        await this.notificationService.sendPublishingStatusNotification(data);
       return {
         success: result.success,
         message: result.message,
@@ -170,44 +168,16 @@ export class NotificationController {
     }
   }
 
-  /**
-   * Send test email to verify SMTP configuration
-   */
-  @Post('test')
-  @HttpCode(HttpStatus.OK)
-  async sendTestEmail(@Body() data: { to: string }) {
-    try {
-      const result = await this.notificationService.sendTestEmail(data.to);
-      return {
-        success: result,
-        message: result
-          ? 'Test email sent successfully'
-          : 'SMTP not configured (dry run mode)',
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: `Failed to send test email: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      };
-    }
-  }
-
-  /**
-   * Get email system status
-   * Shows SMTP configuration status
-   */
   @Get('status')
   async getEmailStatus() {
     const isConfigured = this.notificationService['isConfigured'];
     const hasTransporter = this.notificationService['transporter'] !== null;
 
-    // Safely get SMTP config (don't expose passwords)
     const smtpHost = process.env.SMTP_HOST || 'NOT_SET';
     const smtpUser = process.env.SMTP_USER || 'NOT_SET';
     const smtpFromEmail = process.env.SMTP_FROM_EMAIL || smtpUser;
     const smtpPort = process.env.SMTP_PORT || '587';
 
-    // Mask sensitive info
     const maskedUser =
       smtpUser !== 'NOT_SET' ? `${smtpUser.substring(0, 3)}***` : 'NOT_SET';
 

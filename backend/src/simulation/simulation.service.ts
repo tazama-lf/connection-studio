@@ -74,7 +74,6 @@ export class SimulationService {
     let mappingsApplied = 0;
 
     try {
-      // Validate endpointId
       if (!dto.endpointId || isNaN(Number(dto.endpointId))) {
         return {
           status: 'FAILED',
@@ -110,11 +109,7 @@ export class SimulationService {
           },
         };
       }
-
-      // Ensure endpointId is a number
       const endpointId = Number(dto.endpointId);
-
-      // Stage 1: Load Configuration
       const configStage = await this.stageLoadConfig(
         endpointId,
         tenantId,
@@ -138,7 +133,6 @@ export class SimulationService {
 
       const config = configStage.details.config as Config;
 
-      // Stage 2: Parse Payload
       const parseStage = await this.stageParsePayload(
         dto.payload,
         dto.payloadType,
@@ -161,7 +155,6 @@ export class SimulationService {
 
       const parsedPayload = parseStage.details.parsedPayload;
 
-      // Stage 3: Validate Schema
       const cleanedSchema = this.cleanSchemaForXML(config.schema);
       const schemaStage = this.stageValidateSchema(
         parsedPayload,
@@ -184,8 +177,6 @@ export class SimulationService {
         );
       }
 
-      // Stage 4: Validate Mappings Configuration (Optional)
-      // If no mappings are defined, skip mapping stages
       const hasMappings = config.mapping && config.mapping.length > 0;
 
       if (hasMappings) {
@@ -208,8 +199,6 @@ export class SimulationService {
             { originalPayload: parsedPayload },
           );
         }
-
-        // Stage 5: Execute TCS Mapping Functions
         const tcsStage = await this.stageExecuteTCSMapping(
           parsedPayload,
           config,
@@ -247,7 +236,6 @@ export class SimulationService {
           mappings: mappingDetails,
         };
       } else {
-        // No mappings defined - skip mapping stages
         stages.push({
           name: '4. Validate Mappings',
           status: 'SKIPPED',
@@ -259,14 +247,10 @@ export class SimulationService {
           status: 'SKIPPED',
           message: 'No mappings defined - skipping execution',
         });
-
-        // No mapping results, just include original payload
         transformedPayload = {
           originalPayload: parsedPayload,
         };
       }
-
-      // All stages passed!
       const finalStatus = errors.length === 0 ? 'PASSED' : 'FAILED';
 
       void this.auditService.logAction({
@@ -312,10 +296,6 @@ export class SimulationService {
       );
     }
   }
-
-  /**
-   * Stage 1: Load Configuration
-   */
   private async stageLoadConfig(
     endpointId: number,
     tenantId: string,
@@ -370,10 +350,6 @@ export class SimulationService {
       };
     }
   }
-
-  /**
-   * Stage 2: Parse Payload
-   */
   private async stageParsePayload(
     payload: any,
     payloadType: string,
@@ -397,9 +373,6 @@ export class SimulationService {
     }
   }
 
-  /**
-   * Stage 3: Validate Schema
-   */
   private stageValidateSchema(
     payload: any,
     schema: any,
@@ -428,15 +401,10 @@ export class SimulationService {
     };
   }
 
-  /**
-   * Stage 4: Validate Mappings
-   */
   private stageValidateMappings(
     payload: any,
     mappings: any[],
   ): ValidationStage {
-    // This method should only be called when mappings exist
-    // The caller checks for empty mappings before calling this
     const errors = this.validateMappings(payload, mappings);
 
     if (errors.length > 0) {
@@ -460,9 +428,6 @@ export class SimulationService {
     };
   }
 
-  /**
-   * Stage 5: Execute TCS Mapping Functions
-   */
   private async stageExecuteTCSMapping(
     payload: any,
     config: Config,
@@ -472,24 +437,17 @@ export class SimulationService {
       const tcsMapping =
         providedMapping || this.convertConfigToTCSMapping(config);
       const mappingsApplied = tcsMapping.mappings?.length || 0;
-
-      // This method should only be called when mappings exist
-      // The caller checks for empty mappings before calling this
       const endpoint =
         config.endpointPath ||
         `${config.msgFam || 'unknown'}-${config.transactionType}`;
-
-      // Wrap processMappings call with additional error handling for tcs-lib issues
       let tcsResult;
       try {
         tcsResult = await processMappings(payload, tcsMapping, endpoint);
       } catch (mappingError: any) {
-        // Handle specific logger service error from tcs-lib
         if (mappingError.message?.includes('loggerService')) {
           this.logger.error(
             'TCS lib processMappings has logger issue - this should be fixed in tcs-lib',
           );
-          // Return empty result instead of failing
           tcsResult = {
             dataCache: {},
             transactionRelationship: {} as any,
@@ -528,10 +486,6 @@ export class SimulationService {
       };
     }
   }
-
-  /**
-   * Convert config mappings to TCS lib format
-   */
   private convertConfigToTCSMapping(config: Config): iMappingConfiguration {
     const mappings: Array<{
       destination: string;
@@ -542,30 +496,25 @@ export class SimulationService {
 
     if (config.mapping && Array.isArray(config.mapping)) {
       for (const mapping of config.mapping) {
-        // Source is always an array for consistency
         const sources = mapping.source || [];
 
         const normalizedSources = (
           Array.isArray(sources) ? sources : [sources]
         ).map((source) => source.replace(/\[(\d+)\]/g, '.$1'));
-
-        // Handle SPLIT transformations: create multiple TCS mappings for multiple destinations
         if (
           mapping.transformation === 'SPLIT' &&
           Array.isArray(mapping.destination)
         ) {
-          // For SPLIT transformations, create one TCS mapping per destination
           for (let i = 0; i < mapping.destination.length; i++) {
             const destination = mapping.destination[i];
             mappings.push({
               destination: destination || '',
               sources: normalizedSources,
-              separator: mapping.delimiter || ' ', // Use delimiter for SPLIT
+              separator: mapping.delimiter || ' ',
               prefix: mapping.prefix,
             });
           }
         } else {
-          // For non-SPLIT transformations, use original logic
           const destination = Array.isArray(mapping.destination)
             ? mapping.destination[0]
             : mapping.destination;
@@ -616,17 +565,13 @@ export class SimulationService {
     for (const mapping of mappings) {
       const sources = mapping.source || [];
 
-      // Handle SPLIT transformations: create details for each destination
       if (
         mapping.transformation === 'SPLIT' &&
         Array.isArray(mapping.destination)
       ) {
-        // Extract source values from original payload
         const sourceValues = (Array.isArray(sources) ? sources : [sources]).map(
           (sourcePath) => this.getValueByPath(originalPayload, sourcePath),
         );
-
-        // Apply SPLIT transformation to get the split values
         const splitValues = this.applyTransformation(
           sourceValues,
           mapping.transformation,
@@ -636,11 +581,9 @@ export class SimulationService {
           mapping.prefix,
         );
 
-        // Create a detail entry for each destination
         for (let i = 0; i < mapping.destination.length; i++) {
           const destination = mapping.destination[i];
 
-          // Determine the result value from tcsResult based on destination
           let resultValue: any = null;
           if (tcsResult && destination) {
             const [collectionName, fieldName] = destination.split('.');
@@ -654,7 +597,6 @@ export class SimulationService {
             }
           }
 
-          // If no TCS result available, use the appropriate split value
           if (resultValue === null) {
             resultValue =
               Array.isArray(splitValues) && splitValues[i] !== undefined
@@ -678,17 +620,13 @@ export class SimulationService {
           });
         }
       } else {
-        // For non-SPLIT transformations, use original logic
         const destination = Array.isArray(mapping.destination)
           ? mapping.destination[0]
           : mapping.destination;
 
-        // Extract source values from original payload
         const sourceValues = (Array.isArray(sources) ? sources : [sources]).map(
           (sourcePath) => this.getValueByPath(originalPayload, sourcePath),
         );
-
-        // Determine the result value from tcsResult based on destination
         let resultValue: any = null;
         if (tcsResult && destination) {
           const [collectionName, fieldName] = destination.split('.');
@@ -744,9 +682,6 @@ export class SimulationService {
     }, obj);
   }
 
-  /**
-   * Apply transformation to source values to show preview of what the result would be
-   */
   private applyTransformation(
     sourceValues: any[],
     transformation: string | undefined,
@@ -756,7 +691,6 @@ export class SimulationService {
     prefix?: string,
   ): any {
     if (!transformation || transformation === 'NONE') {
-      // For no transformation, return first source value with prefix if applicable
       const value = sourceValues[0];
       return prefix ? `${prefix}${value}` : value;
     }
@@ -810,12 +744,10 @@ export class SimulationService {
       }
 
       case 'SPLIT': {
-        // For split transformation, this would be shown in preview
-        // but actual implementation would depend on how many destinations there are
         const splitValue = sourceValues[0];
         if (typeof splitValue === 'string' && delimiter) {
           const parts = splitValue.split(delimiter);
-          return prefix ? `${prefix}${parts[0]}` : parts[0]; // Show first part in preview
+          return prefix ? `${prefix}${parts[0]}` : parts[0];
         }
         return prefix ? `${prefix}${splitValue}` : splitValue;
       }
@@ -825,9 +757,6 @@ export class SimulationService {
     }
   }
 
-  /**
-   * Create stage-based result
-   */
   private createStageBasedResult(
     dto: SimulatePayloadDto,
     timestamp: string,
@@ -864,8 +793,6 @@ export class SimulationService {
       },
     };
   }
-
-
 
   private async parsePayload(payload: any, payloadType: string): Promise<any> {
     if (!payloadType) {
@@ -926,28 +853,20 @@ export class SimulationService {
     );
   }
 
-  /**
-   * Normalize payload for schema validation, handling XML-specific structures
-   */
   private normalizePayloadForValidation(payload: any, config?: Config): any {
     if (!payload || typeof payload !== 'object') {
       return payload;
     }
 
-    // If this looks like an XML-parsed object, apply schema-aware normalization
     if (this.isXmlParsedObject(payload)) {
       const normalized = this.normalizeXmlParsedObjectWithSchema(
         payload,
         config?.schema,
       );
-
-      // Check if schema expects a root wrapper that's missing from the payload
       if (config?.schema?.properties) {
         const schemaRootKeys = Object.keys(config.schema.properties);
         const payloadRootKeys = Object.keys(normalized);
 
-        // If schema has exactly one root property and payload doesn't have it,
-        // wrap the payload with that root property
         if (
           schemaRootKeys.length === 1 &&
           !payloadRootKeys.includes(schemaRootKeys[0])
@@ -966,10 +885,6 @@ export class SimulationService {
     return payload;
   }
 
-  /**
-   * Clean JSON Schema to remove XML-specific properties (xmlns, root elements, etc.)
-   * This prevents validation failures for XML attributes that aren't in the payload
-   */
   private cleanSchemaForXML(schema: any): any {
     if (!schema || typeof schema !== 'object') {
       return schema;
@@ -977,7 +892,6 @@ export class SimulationService {
 
     const cleanedSchema = { ...schema };
 
-    // Remove xmlns and other XML-specific properties from required fields
     if (cleanedSchema.required && Array.isArray(cleanedSchema.required)) {
       const originalRequired = cleanedSchema.required;
       cleanedSchema.required = cleanedSchema.required.filter(
@@ -991,21 +905,16 @@ export class SimulationService {
         );
       }
     }
-
-    // Remove xmlns properties from the schema properties and recursively clean nested schemas
     if (
       cleanedSchema.properties &&
       typeof cleanedSchema.properties === 'object'
     ) {
       const cleanedProperties: any = {};
       for (const [key, value] of Object.entries(cleanedSchema.properties)) {
-        // Skip xmlns attributes, @ attributes, and $ properties
         if (key.startsWith('xmlns') || key.startsWith('@') || key === '$') {
           this.logger.debug(`Skipping XML attribute property: ${key}`);
           continue;
         }
-
-        // Recursively clean ALL nested schemas (not just type='object')
         if (value && typeof value === 'object') {
           cleanedProperties[key] = this.cleanSchemaForXML(value);
         } else {
@@ -1018,15 +927,10 @@ export class SimulationService {
     return cleanedSchema;
   }
 
-  /**
-   * Check if object looks like it came from XML parsing
-   */
   private isXmlParsedObject(obj: any): boolean {
     if (!obj || typeof obj !== 'object') {
       return false;
     }
-
-    // Look for common XML parsing indicators
     const hasXmlAttributes = Object.keys(obj).some((key) =>
       key.startsWith('@'),
     );
@@ -1038,9 +942,6 @@ export class SimulationService {
     return hasXmlAttributes || hasTextContent || hasNestedStructure;
   }
 
-  /**
-   * Normalize XML-parsed object structure for schema validation with schema awareness
-   */
   private normalizeXmlParsedObjectWithSchema(
     obj: any,
     schema?: any,
@@ -1059,14 +960,10 @@ export class SimulationService {
     const normalized: any = {};
 
     for (const [key, value] of Object.entries(obj)) {
-      // Skip XML attributes and xmlns declarations for schema validation
       if (key.startsWith('@') || key.startsWith('xmlns') || key === '$') {
         continue;
       }
-
-      // Handle text content specially
       if (key === '#text') {
-        // Check if the parent object has attributes and text content
         const hasAttributes = Object.keys(obj).some(
           (k) => k !== '#text' && !k.startsWith('@'),
         );
@@ -1074,40 +971,28 @@ export class SimulationService {
           (k) => k === '#text' || k.startsWith('@') || !k.startsWith('@'),
         );
 
-        // If the schema expects a string at this path and we have text content with attributes,
-        // we should return just the text value for schema validation
         const expectedType = this.getSchemaTypeAtPath(schema, path);
 
         if (expectedType === 'string' && hasAttributes) {
-          // Return just the text content when schema expects string
           return value;
         }
 
-        // If the object only has text content, return just the text
         if (Object.keys(obj).length === 1 || hasOnlyTextAndAttributes) {
           return value;
         }
-
-        // Otherwise, include it as a property
         normalized['textContent'] = value;
         continue;
       }
-
-      // Build the current path for schema lookup
       const currentPath = path ? `${path}.${key}` : key;
 
-      // Get schema for this field
       const fieldSchema = this.getSchemaAtPath(schema, currentPath);
 
-      // Recursively normalize nested objects
       if (value && typeof value === 'object') {
         const normalizedValue = this.normalizeXmlParsedObjectWithSchema(
           value,
           fieldSchema,
           currentPath,
         );
-
-        // Special handling: if schema expects string but we got object with text content
         if (
           fieldSchema?.type === 'string' &&
           typeof normalizedValue === 'object' &&
@@ -1128,9 +1013,6 @@ export class SimulationService {
     return normalized;
   }
 
-  /**
-   * Get schema type at a specific path
-   */
   private getSchemaTypeAtPath(schema: any, path: string): string | null {
     if (!schema || !path) return null;
 
@@ -1148,9 +1030,6 @@ export class SimulationService {
     return current?.type || null;
   }
 
-  /**
-   * Get schema object at a specific path
-   */
   private getSchemaAtPath(schema: any, path: string): any {
     if (!schema || !path) return null;
 
@@ -1168,9 +1047,6 @@ export class SimulationService {
     return current;
   }
 
-  /**
-   * Normalize XML-parsed object structure for schema validation (legacy method)
-   */
   private normalizeXmlParsedObject(obj: any): any {
     if (!obj || typeof obj !== 'object') {
       return obj;
@@ -1183,23 +1059,17 @@ export class SimulationService {
     const normalized: any = {};
 
     for (const [key, value] of Object.entries(obj)) {
-      // Skip XML attributes and xmlns declarations for schema validation
       if (key.startsWith('@') || key.startsWith('xmlns') || key === '$') {
         continue;
       }
 
-      // Handle text content specially
       if (key === '#text') {
-        // If the object only has text content, return just the text
         if (Object.keys(obj).length === 1) {
           return value;
         }
-        // Otherwise, include it as a property
         normalized['textContent'] = value;
         continue;
       }
-
-      // Recursively normalize nested objects
       if (value && typeof value === 'object') {
         normalized[key] = this.normalizeXmlParsedObject(value);
       } else {
@@ -1210,9 +1080,6 @@ export class SimulationService {
     return normalized;
   }
 
-  /**
-   * Validate payload against JSON schema
-   */
   private validatePayloadAgainstSchema(
     payload: any,
     schema: any,
@@ -1235,7 +1102,6 @@ export class SimulationService {
     }
 
     try {
-      // Handle XML payload normalization for schema validation
       const normalizedPayload = this.normalizePayloadForValidation(
         payload,
         config,
@@ -1246,9 +1112,9 @@ export class SimulationService {
         strict: false,
         strictSchema: false,
         strictNumbers: true,
-        strictTypes: false, // More lenient for XML-parsed content
+        strictTypes: false,
         strictRequired: true,
-        allowUnionTypes: true, // Allow for XML attribute/text content variations
+        allowUnionTypes: true,
         validateFormats: false,
       });
 
@@ -1275,7 +1141,6 @@ export class SimulationService {
         );
 
         for (const error of validate.errors) {
-          // Skip certain benign errors for arrays
           if (
             error.keyword === 'additionalProperties' &&
             error.instancePath &&
@@ -1283,8 +1148,6 @@ export class SimulationService {
           ) {
             continue;
           }
-
-          // Handle array element type mismatches more gracefully
           if (error.keyword === 'type' && error.instancePath?.includes('/')) {
             const pathSegments = error.instancePath.split('/');
             const isArrayElement = pathSegments.some((segment) =>
@@ -1295,7 +1158,6 @@ export class SimulationService {
               this.logger.debug(
                 `Array element type mismatch at ${error.instancePath}: expected ${String(error.schema)}, got ${typeof error.data}`,
               );
-              // Convert array index errors to more user-friendly messages
               const friendlyPath = error.instancePath
                 .replace(/^\//, '')
                 .replace(/\//g, '.');
@@ -1334,7 +1196,6 @@ export class SimulationService {
   private validateMappings(payload: any, mappings: any[]): SimulationError[] {
     const errors: SimulationError[] = [];
 
-    // Special fields that are provided at runtime as context variables, not from payload
     const runtimeContextFields = ['tenantId', 'tenant_id', 'userId', 'user_id'];
 
     for (let i = 0; i < mappings.length; i++) {
@@ -1343,7 +1204,9 @@ export class SimulationService {
       if (mapping.sources && Array.isArray(mapping.sources)) {
         sources = mapping.sources;
       } else if (mapping.source) {
-        sources = Array.isArray(mapping.source) ? mapping.source : [mapping.source];
+        sources = Array.isArray(mapping.source)
+          ? mapping.source
+          : [mapping.source];
       }
       if (
         mapping.transformation === 'CONSTANT' ||
@@ -1359,22 +1222,17 @@ export class SimulationService {
       );
 
       for (const source of sources) {
-        // Skip validation for runtime context fields - they're provided during execution
         if (runtimeContextFields.includes(source)) {
           anySourceExists = true;
           break;
         }
 
         const fieldValue = this.getFieldValue(payload, source);
-
-        // Debug logging for XML payloads
         if (fieldValue === undefined || fieldValue === null) {
           this.logger.debug(`Field not found: ${source}`);
           this.logger.debug(
             `Available root keys: ${Object.keys(payload).join(', ')}`,
           );
-
-          // Try to give helpful suggestion for XML
           if (Object.keys(payload).length === 1) {
             const rootKey = Object.keys(payload)[0];
             const suggestedPath = `${rootKey}.${source}`;
@@ -1395,14 +1253,11 @@ export class SimulationService {
           missingSources.push(source);
         }
       }
-
-      // Only report error if no sources exist AND they're not all runtime context fields
       if (
         !anySourceExists &&
         sources.length > 0 &&
         !allSourcesAreRuntimeContext
       ) {
-        // Filter out runtime context fields from error message
         const nonRuntimeMissing = missingSources.filter(
           (src) => !runtimeContextFields.includes(src),
         );
@@ -1416,8 +1271,6 @@ export class SimulationService {
           });
         }
       }
-
-      // Validate destination format
       if (!mapping.destination) {
         errors.push({
           field: 'mapping',
@@ -1432,21 +1285,15 @@ export class SimulationService {
 
   private isArrayPath(obj: any, path: string): boolean {
     if (!path) return false;
-
-    // Convert JSON Pointer style path to dot notation
     const normalizedPath = path.replace(/^\//, '').replace(/\//g, '.');
     const pathParts = normalizedPath.split('.');
 
     let current = obj;
     for (let i = 0; i < pathParts.length; i++) {
       const part = pathParts[i];
-
-      // Check if current level is an array
       if (Array.isArray(current)) {
         return true;
       }
-
-      // Check if the part is a numeric index (indicating array access)
       if (/^\d+$/.test(part)) {
         return true;
       }
@@ -1464,7 +1311,6 @@ export class SimulationService {
   private getFieldValue(obj: any, path: string): any {
     if (!path) return undefined;
 
-    // Normalize array notation: convert [index] to .index
     const normalizedPath = path.replace(/\[(\d+)\]/g, '.$1');
 
     return _.get(obj, normalizedPath);
@@ -1477,21 +1323,17 @@ export class SimulationService {
 
     const strictSchema = { ...schema };
 
-    // Runtime context fields that are provided at execution time, not from payload
     const runtimeContextFields = ['tenantId', 'tenant_id', 'userId', 'user_id'];
 
-    // Remove runtime context fields from required array
     if (strictSchema.required && Array.isArray(strictSchema.required)) {
       strictSchema.required = strictSchema.required.filter(
         (field: string) => !runtimeContextFields.includes(field),
       );
-      // If no required fields left, remove the required property
       if (strictSchema.required.length === 0) {
         delete strictSchema.required;
       }
     }
 
-    // Handle array schemas
     if (strictSchema.type === 'array') {
       if (strictSchema.items) {
         if (typeof strictSchema.items === 'object') {
@@ -1500,7 +1342,6 @@ export class SimulationService {
             config,
           );
 
-          // For arrays of objects, ensure additionalProperties is allowed
           if (strictSchema.items.type === 'object') {
             strictSchema.items.additionalProperties = true;
           }
@@ -1509,12 +1350,10 @@ export class SimulationService {
       return strictSchema;
     }
 
-    // Handle object schemas
     if (strictSchema.type === 'object') {
       strictSchema.additionalProperties = true;
     }
 
-    // Recursively process nested schemas
     if (strictSchema.properties) {
       strictSchema.properties = Object.keys(strictSchema.properties).reduce(
         (acc, key) => {
@@ -1531,8 +1370,6 @@ export class SimulationService {
     if (strictSchema.items && strictSchema.type !== 'array') {
       strictSchema.items = this.enforceStrictSchema(strictSchema.items, config);
     }
-
-    // Handle schema composition keywords
     if (strictSchema.oneOf) {
       strictSchema.oneOf = strictSchema.oneOf.map((s: any) =>
         this.enforceStrictSchema(s, config),

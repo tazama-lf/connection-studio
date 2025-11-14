@@ -12,7 +12,12 @@ jest.mock('@tazama-lf/tcs-lib', () => ({
   getAllowedMimeTypes: jest.fn(),
 }));
 
-const { parseUploadedFile, validateFileType, detectContentType, getAllowedMimeTypes } = tcsLib;
+const {
+  parseUploadedFile,
+  validateFileType,
+  detectContentType,
+  getAllowedMimeTypes,
+} = tcsLib;
 
 describe('FileParsingService', () => {
   let service: FileParsingService;
@@ -82,10 +87,7 @@ describe('FileParsingService', () => {
 
       const result = service.parseUploadedFile(mockFile, ContentType.XML);
 
-      expect(parseUploadedFile).toHaveBeenCalledWith(
-        mockFile,
-        ContentType.XML,
-      );
+      expect(parseUploadedFile).toHaveBeenCalledWith(mockFile, ContentType.XML);
       expect(result).toEqual(mockResult);
     });
   });
@@ -170,7 +172,11 @@ describe('FileParsingService', () => {
 
       (validateFileType as jest.Mock).mockReturnValue(mockValidation);
 
-      const result = service.validateFileType(mockFile, ContentType.XML, content);
+      const result = service.validateFileType(
+        mockFile,
+        ContentType.XML,
+        content,
+      );
 
       expect(validateFileType).toHaveBeenCalledWith(
         mockFile,
@@ -266,11 +272,7 @@ describe('FileParsingService', () => {
     });
 
     it('should return array of allowed mime types', () => {
-      const mockMimeTypes = [
-        'application/json',
-        'text/csv',
-        'application/xml',
-      ];
+      const mockMimeTypes = ['application/json', 'text/csv', 'application/xml'];
 
       (getAllowedMimeTypes as jest.Mock).mockReturnValue(mockMimeTypes);
 

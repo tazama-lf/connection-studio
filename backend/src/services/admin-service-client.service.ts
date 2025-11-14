@@ -890,7 +890,31 @@ export class AdminServiceClient {
       return this.handleError(error, 'runRawQuery');
     }
   }
+ async updateConfigByStatus(
+    id: number,
+    status: string,
+    token: string,
+  ): Promise<any> {
+    this.logger.log(`Updating config status to ${status} for config ${id}`);
+    try {
+      const response = await firstValueFrom(
+        this.httpService.patch(
+          `${this.adminServiceUrl}/v1/admin/tcs/config/${id}/status`,
+          { status },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+          },
+        ),
+      );
 
+      return response.data.config;
+    } catch (error) {
+      return this.handleError(error, 'updateConfigByStatus');
+    }
+  }
   async updatePublishingStatus(
     id: number,
     publishingStatus: 'active' | 'inactive',

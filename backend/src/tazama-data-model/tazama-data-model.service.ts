@@ -159,11 +159,11 @@ export class TazamaDataModelService {
       const path = parentPath
         ? `${parentPath}.${field.name}`
         : `${schemaName}.${field.name}`;
-      
+
       const fieldPath = parentFieldPath
         ? `${parentFieldPath}.${field.name}`
         : field.name;
-      
+
       const base: {
         value: string;
         label: string;
@@ -176,7 +176,7 @@ export class TazamaDataModelService {
         value: path,
         label: path,
         collection: schemaName,
-        field: fieldPath, 
+        field: fieldPath,
         type: field.type.toUpperCase(),
         required: field.required,
       };
@@ -204,10 +204,7 @@ export class TazamaDataModelService {
   }
 
   getCollectionTypes(): string[] {
-    return [
-      'transactionDetails',
-      'redis',
-    ];
+    return ['transactionDetails', 'redis'];
   }
 
   extractCollectionName(

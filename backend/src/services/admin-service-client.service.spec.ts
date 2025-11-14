@@ -38,8 +38,8 @@ describe('AdminServiceClient', () => {
     }).compile();
 
     service = module.get<AdminServiceClient>(AdminServiceClient);
-    httpService = module.get(HttpService) as jest.Mocked<HttpService>;
-    configService = module.get(ConfigService) as jest.Mocked<ConfigService>;
+    httpService = module.get(HttpService);
+    configService = module.get(ConfigService);
   });
 
   afterEach(() => {
@@ -532,7 +532,12 @@ describe('AdminServiceClient', () => {
         const mockResponse = { data: mockSchedules, status: 200 };
         httpService.get.mockReturnValue(of(mockResponse) as any);
 
-        const result = await service.getAllSchedule(1, 10, 'tenant-1', mockToken);
+        const result = await service.getAllSchedule(
+          1,
+          10,
+          'tenant-1',
+          mockToken,
+        );
 
         expect(httpService.get).toHaveBeenCalledWith(
           `${mockAdminServiceUrl}/v1/admin/tcs/schedule/get/all`,
@@ -658,7 +663,11 @@ describe('AdminServiceClient', () => {
         };
         httpService.put.mockReturnValue(of(mockResponse) as any);
 
-        const result = await service.validateConfigUpdate(1, updates, mockToken);
+        const result = await service.validateConfigUpdate(
+          1,
+          updates,
+          mockToken,
+        );
 
         expect(httpService.put).toHaveBeenCalledWith(
           `${mockAdminServiceUrl}/v1/admin/tcs/config/1`,
@@ -749,12 +758,18 @@ describe('AdminServiceClient', () => {
           `${mockAdminServiceUrl}/v1/admin/tcs/config/0/10`,
           expect.any(Object),
         );
-        expect(result).toEqual({ configs: mockConfigs, pagination: mockPagination });
+        expect(result).toEqual({
+          configs: mockConfigs,
+          pagination: mockPagination,
+        });
       });
 
       it('should get all configs with custom pagination', async () => {
         const mockResponse = {
-          data: { configs: [], pagination: { total: 0, limit: 20, offset: 10, pages: 0 } },
+          data: {
+            configs: [],
+            pagination: { total: 0, limit: 20, offset: 10, pages: 0 },
+          },
           status: 200,
         };
         httpService.get.mockReturnValue(of(mockResponse) as any);
@@ -803,7 +818,11 @@ describe('AdminServiceClient', () => {
         const mockResponse = { data: { config: mockConfig }, status: 200 };
         httpService.put.mockReturnValue(of(mockResponse) as any);
 
-        const result = await service.writeConfigUpdate(1, updateData, mockToken);
+        const result = await service.writeConfigUpdate(
+          1,
+          updateData,
+          mockToken,
+        );
 
         expect(httpService.put).toHaveBeenCalledWith(
           `${mockAdminServiceUrl}/v1/admin/tcs/config/1/write`,
@@ -848,7 +867,10 @@ describe('AdminServiceClient', () => {
           `${mockAdminServiceUrl}/v1/admin/tcs/config/endpoint//api/payment/1.0/0/10`,
           expect.any(Object),
         );
-        expect(result).toEqual({ configs: mockConfigs, pagination: mockPagination });
+        expect(result).toEqual({
+          configs: mockConfigs,
+          pagination: mockPagination,
+        });
       });
     });
 
@@ -871,7 +893,10 @@ describe('AdminServiceClient', () => {
           `${mockAdminServiceUrl}/v1/admin/tcs/config/transaction/pacs.008/0/10`,
           expect.any(Object),
         );
-        expect(result).toEqual({ configs: mockConfigs, pagination: mockPagination });
+        expect(result).toEqual({
+          configs: mockConfigs,
+          pagination: mockPagination,
+        });
       });
     });
 

@@ -60,7 +60,10 @@ export class AuthController {
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
   ) {
-    const tenantId = user?.token?.tenantId || 'default';
+    const tenantId = user?.token?.tenantId || user?.tenantId;
+    if (!tenantId) {
+      throw new Error('Tenant ID not found in user token or claims');
+    }
     const parsedLimit = limit ? parseInt(limit, 10) : 100;
     const logs = await this.auditService.getAuditLogs(
       tenantId,

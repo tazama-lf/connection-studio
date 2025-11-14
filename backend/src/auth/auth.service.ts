@@ -40,6 +40,7 @@ export class AuthService {
           'Authentication service unavailable',
         );
       }
+      this.loggerService.log('Auth service responded');
       const token =
         typeof response.data === 'string'
           ? response.data
@@ -47,7 +48,7 @@ export class AuthService {
             response.data?.access_token ||
             response.data?.jwt ||
             response.data?.user?.token;
-
+      this.loggerService.log(`Token received: ${token}`);
       this.loggerService.log('Login successful');
       return {
         message: 'Login successful',

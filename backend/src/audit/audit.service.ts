@@ -16,7 +16,6 @@ export class AuditService {
   private readonly dbService: DatabaseService;
 
   constructor(private readonly configService: ConfigService) {
-    // Initialize DatabaseService with config from environment
     const dbConfig = {
       host: this.configService.get<string>('DB_HOST') || 'localhost',
       port: this.configService.get<number>('DB_PORT') || 5432,
@@ -25,12 +24,6 @@ export class AuditService {
       password: this.configService.get<string>('DB_PASS') || 'newpassword',
     };
     this.dbService = new DatabaseService(dbConfig);
-  }
-
-  // Simple log method for compatibility with external services
-  log(): void {
-    // This method is required for compatibility with external FileParsingService
-    // but can be a no-op since we use logAction for actual audit logging
   }
 
   async logAction(entry: AuditLogEntry): Promise<void> {
@@ -315,9 +308,6 @@ export class AuditService {
     });
   }
 
-  /**
-   * Get audit logs by endpoint or mapping name
-   */
   async getAuditLogsByName(
     name: string,
     tenantId: string,

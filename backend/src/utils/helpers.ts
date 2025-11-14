@@ -18,7 +18,7 @@ export function encrypt(text: string): string {
     encrypted += cipher.final('hex');
 
     return iv.toString('hex') + ':' + encrypted;
-  } catch (error) {
+  } catch {
     throw new Error('Failed to encrypt sensitive data');
   }
 }
@@ -39,7 +39,7 @@ export function decrypt(text: string): string {
     decrypted += decipher.final('utf8');
 
     return decrypted;
-  } catch (error) {
+  } catch {
     throw new Error('Failed to decrypt sensitive data');
   }
 }

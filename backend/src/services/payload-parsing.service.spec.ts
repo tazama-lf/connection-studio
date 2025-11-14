@@ -11,8 +11,11 @@ jest.mock('@tazama-lf/tcs-lib', () => ({
   validatePayloadStructure: jest.fn(),
 }));
 
-const { parsePayloadToSchema, applyFieldAdjustments, validatePayloadStructure } =
-  tcsLib;
+const {
+  parsePayloadToSchema,
+  applyFieldAdjustments,
+  validatePayloadStructure,
+} = tcsLib;
 
 describe('PayloadParsingService', () => {
   let service: PayloadParsingService;
@@ -145,7 +148,11 @@ describe('PayloadParsingService', () => {
         fields: [
           { path: 'transaction.id', type: 'STRING', required: true },
           { path: 'transaction.amount', type: 'NUMBER', required: true },
-          { path: 'transaction.details.currency', type: 'STRING', required: true },
+          {
+            path: 'transaction.details.currency',
+            type: 'STRING',
+            required: true,
+          },
           {
             path: 'transaction.details.description',
             type: 'STRING',

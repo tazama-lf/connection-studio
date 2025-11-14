@@ -1,7 +1,7 @@
 import { Controller, Post, Body, UseGuards, Logger } from '@nestjs/common';
 import { SimulationService } from './simulation.service';
 import type { SimulationResult } from './simulation.service';
-import { SimulatePayloadDto } from './dto/simulate-payload.dto';
+import { SimulatePayloadDto, PayloadType } from './dto/simulate-payload.dto';
 import { TazamaAuthGuard } from '../auth/tazama-auth.guard';
 import { RequireAnyClaims, TazamaClaims } from '../auth/auth.decorator';
 import { User } from '../auth/user.decorator';
@@ -25,7 +25,9 @@ export class SimulationController {
       endpointId: dto.configId,
       payload: dto.testPayload,
       payloadType:
-        dto.payloadType === 'json' ? 'application/json' : 'application/xml',
+        dto.payloadType === PayloadType.JSON
+          ? 'application/json'
+          : 'application/xml',
       tcsMapping: dto.tcsMapping,
     };
 
