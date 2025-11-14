@@ -8,7 +8,6 @@ import { RejectionDialog } from '../../../shared/components/RejectionDialog';
 import { ConfigReviewModal } from '../../../shared/components/ConfigReviewModal';
 import { ChangeRequestDialog } from '../../../shared/components/ChangeRequestDialog';
 import EditEndpointModal from '../../../shared/components/EditEndpointModal';
-import { AuthHeader } from '../../../shared/components/AuthHeader';
 import { useAuth } from '../../auth/contexts/AuthContext';
 
 const ApproverConfigsPage: React.FC = () => {
@@ -173,9 +172,7 @@ const userId = user?.email || user?.username || 'system';
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <AuthHeader title="Dynamic Endpoint Monitoring Service" showBackButton={true} />
-
+    <div className="min-h-screen bg-white">
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       
 

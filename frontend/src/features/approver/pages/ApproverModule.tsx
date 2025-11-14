@@ -1,7 +1,6 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Settings, Database, Clock } from 'lucide-react';
-import { AuthHeader } from '../../../shared/components/AuthHeader';
 import { useToast } from '../../../shared/providers/ToastProvider';
 import { useAuth } from '../../auth/contexts/AuthContext';
 import { isApprover } from '../../../utils/roleUtils';
@@ -51,8 +50,7 @@ export const ApproverModule: React.FC = () => {
 
   if (!isAuthenticated || !userIsApprover) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <AuthHeader title="Approver Dashboard" showBackButton={false} />
+      <div className="min-h-screen bg-white">
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center">
             <p className="text-gray-600">You do not have permission to access this page.</p>
@@ -63,9 +61,7 @@ export const ApproverModule: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <AuthHeader title="Tazama Connection Studio" showBackButton={false} />
-
+    <div className="min-h-screen bg-white">
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Module Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">

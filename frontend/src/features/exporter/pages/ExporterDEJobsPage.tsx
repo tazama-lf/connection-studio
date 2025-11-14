@@ -1,19 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { AuthHeader } from '../../../shared/components/AuthHeader';
 import { useToast } from '../../../shared/providers/ToastProvider';
 import { useAuth } from '../../auth/contexts/AuthContext';
 import { dataEnrichmentApi } from '../../data-enrichment/services';
 import { JobList } from '../../data-enrichment/components/JobList';
 import JobDetailsModal from '../../data-enrichment/components/JobDetailsModal';
 import type { DataEnrichmentJobResponse } from '../../data-enrichment/types';
-import { isExporter } from '../../../utils/roleUtils';
+import { getPrimaryRole, isExporter } from '../../../utils/roleUtils';
+import { UI_CONFIG } from '@shared/config/app.config';
 
 export const ExporterDEJobsPage: React.FC = () => {
   const { showSuccess, showError } = useToast();
   const { user, isAuthenticated } = useAuth();
-  
+
+  const [itemsPerPage] = useState(UI_CONFIG.pagination.defaultPageSize);
+
   // Role check
   const userIsExporter = user?.claims ? isExporter(user.claims) : false;
+  const userRole = getPrimaryRole(user?.claims as string[]);
 
   // State
   const [jobs, setJobs] = useState<DataEnrichmentJobResponse[]>([]);
@@ -22,8 +25,16 @@ export const ExporterDEJobsPage: React.FC = () => {
 
   // Job details modal state
   const [showJobDetails, setShowJobDetails] = useState(false);
-  const [selectedJob, setSelectedJob] = useState<DataEnrichmentJobResponse | null>(null);
+  const [selectedJob, setSelectedJob] =
+    useState<DataEnrichmentJobResponse | null>(null);
   const [jobDetailsLoading, setJobDetailsLoading] = useState(false);
+
+  const [page, setPage] = useState<number>(1);
+  const [totalPages, setTotalPages] = useState<number>(0);
+  const [totalRecords, setTotalRecords] = useState<number>(0);
+  const [searchingFilters, setSearchingFilters] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Role-based access check
   useEffect(() => {
@@ -32,53 +43,47 @@ export const ExporterDEJobsPage: React.FC = () => {
     }
   }, [isAuthenticated, user, userIsExporter, showError]);
 
-  // Load data on component mount
-  useEffect(() => {
-    if (userIsExporter) {
-      loadDEJobs();
-    }
-  }, [userIsExporter]);
-
-  const loadDEJobs = async () => {
-    console.log('ExporterDEJobsPage: loadDEJobs called');
-    setJobsLoading(true);
+  const fetchDeJobs = async (pageNumber: number = 1): Promise<void> => {
     try {
-      const response = await dataEnrichmentApi.getAllJobs();
-      console.log('ExporterDEJobsPage: Jobs loaded:', response?.jobs?.length || 0);
-      
-      // Filter for approved and exported jobs only
-      const filteredJobs = response?.jobs?.filter((job: DataEnrichmentJobResponse) => 
-        job.status === 'approved' || job.status === 'exported'
-      ) || [];
-      
-      // Sort by created_at descending (newest first)
-      const sortedJobs = filteredJobs.sort((a: any, b: any) => {
-        const dateA = new Date(a.created_at || 0).getTime();
-        const dateB = new Date(b.created_at || 0).getTime();
-        return dateB - dateA;
-      });
-      
-      console.log('ExporterDEJobsPage: Filtered jobs:', sortedJobs.length);
-      setJobs(sortedJobs);
-    } catch (error) {
-      console.error('Failed to load DE jobs:', error);
-      showError('Failed to load data enrichment jobs');
-      setJobs([]);
+      setLoading(true);
+      setError(null);
+
+      const limit: number = itemsPerPage;
+      const offset: number = pageNumber - 1;
+
+      const params = { limit, offset, userRole: userRole as string };
+
+      const response = await dataEnrichmentApi.getAllJobs(
+        params,
+        searchingFilters,
+      );
+
+      setJobs(response.jobs);
+      setTotalPages(response.pages);
+      setTotalRecords(response.total);
+    } catch (err: unknown) {
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to fetch configurations';
+      setError(errorMessage);
     } finally {
-      setJobsLoading(false);
+      setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchDeJobs(page);
+  }, [page, searchingFilters]);
 
   const handleViewJobDetails = async (jobId: string) => {
     console.log('Exporter viewing job details:', jobId);
     try {
       setJobDetailsLoading(true);
       setShowJobDetails(true);
-      
+
       // Find the job in the current list to determine its type
-      const job = jobs.find(j => j.id === jobId);
+      const job = jobs.find((j) => j.id === jobId);
       const jobType = job?.type?.toUpperCase() as 'PULL' | 'PUSH' | undefined;
-      
+
       // Fetch job details from the API
       const jobDetails = await dataEnrichmentApi.getJob(jobId, jobType);
       setSelectedJob(jobDetails);
@@ -98,12 +103,16 @@ export const ExporterDEJobsPage: React.FC = () => {
   const handleExportJob = async (jobId: string, jobType: 'PULL' | 'PUSH') => {
     console.log('Exporter exporting job:', jobId, jobType);
     try {
-      await dataEnrichmentApi.updateJobStatus(jobId, 'exported', jobType);
+      await dataEnrichmentApi.updateJobStatus(
+        jobId,
+        'STATUS_06_EXPORTED',
+        jobType,
+      );
       showSuccess('Job exported successfully!');
-      
+
       // Refresh the jobs list
-      await loadDEJobs();
-      
+      fetchDeJobs(page);
+
       // Close the modal
       handleCloseJobDetails();
     } catch (error) {
@@ -114,11 +123,12 @@ export const ExporterDEJobsPage: React.FC = () => {
 
   if (!isAuthenticated || !userIsExporter) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <AuthHeader title="Data Enrichment" showBackButton={true} />
+      <div className="min-h-screen bg-white">
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center">
-            <p className="text-gray-600">You do not have permission to access this page.</p>
+            <p className="text-gray-600">
+              You do not have permission to access this page.
+            </p>
           </div>
         </main>
       </div>
@@ -126,19 +136,25 @@ export const ExporterDEJobsPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <AuthHeader title="Data Enrichment" showBackButton={true} />
-      
+    <div className="min-h-screen bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="mb-6">
-          
-
           {/* Search Bar */}
           <div className="mt-4">
             <div className="relative max-w-lg">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                <svg
+                  className="h-5 w-5 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
                 </svg>
               </div>
               <input
@@ -156,9 +172,17 @@ export const ExporterDEJobsPage: React.FC = () => {
         <JobList
           jobs={jobs}
           isLoading={jobsLoading}
-          onRefresh={loadDEJobs}
+          onRefresh={() => fetchDeJobs(page)}
           onViewLogs={handleViewJobDetails}
-          searchQuery={searchTerm}
+          page={page}
+          setPage={setPage}
+          totalPages={totalPages}
+          totalRecords={totalRecords}
+          itemsPerPage={itemsPerPage}
+          searchingFilters={searchingFilters}
+          setSearchingFilters={setSearchingFilters}
+          error={error}
+          loading={loading}
         />
       </div>
 

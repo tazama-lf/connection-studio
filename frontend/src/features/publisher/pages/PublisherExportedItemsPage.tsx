@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { AuthHeader } from '../../../shared/components/AuthHeader';
 import { SearchIcon, Clock, Database, Settings } from 'lucide-react';
 import { sftpApi, SftpError } from '../../exporter/services/sftpApi';
 import { useToast } from '../../../shared/providers/ToastProvider';
@@ -220,9 +219,7 @@ const PublisherExportedItemsPage: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <AuthHeader title="Exported Items" showBackButton={true} />
-      
+    <div className="min-h-screen bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       
 

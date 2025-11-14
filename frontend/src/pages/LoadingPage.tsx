@@ -2,7 +2,7 @@ import React from 'react';
 
 const LoadingPage: React.FC = () => {
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center items-center">
+    <div className="min-h-screen bg-white flex flex-col justify-center items-center">
       <div className="text-center">
         <div className="flex justify-center mb-6">
           <img

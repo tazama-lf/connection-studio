@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { AuthHeader } from '../../../shared/components/AuthHeader';
 import { useToast } from '../../../shared/providers/ToastProvider';
 import { useAuth } from '../../auth/contexts/AuthContext';
 import { ConfigList } from '../../config/components/ConfigList';
@@ -24,8 +23,7 @@ export const PublisherConfigsPage: React.FC = () => {
 
   if (!isAuthenticated || !userIsPublisher) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <AuthHeader title="Dynamic Endpoint Monitoring Service" showBackButton={true} />
+      <div className="min-h-screen bg-white">
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center">
             <p className="text-gray-600">You do not have permission to access this page.</p>
@@ -36,9 +34,7 @@ export const PublisherConfigsPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <AuthHeader title="Dynamic Endpoint Monitoring Service" showBackButton={true} />
-
+    <div className="min-h-screen bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="mb-6">
           

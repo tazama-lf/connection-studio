@@ -1,65 +1,68 @@
 import React, { useState, useEffect } from 'react';
-import { AuthHeader } from '../../../shared/components/AuthHeader';
 import { SearchIcon } from 'lucide-react';
 import { dataEnrichmentApi } from '../../data-enrichment/services/dataEnrichmentApi';
 import { useToast } from '../../../shared/providers/ToastProvider';
 import type { DataEnrichmentJobResponse } from '../../data-enrichment/types';
 import PublisherDEJobList from '../components/PublisherDEJobList';
 import PublisherDEJobDetailsModal from '../components/PublisherDEJobDetailsModal';
+import { useAuth } from '@features/auth';
+import { getPrimaryRole } from '@utils/roleUtils';
+import { UI_CONFIG } from '@shared/config/app.config';
 
 const PublisherDEJobsPage: React.FC = () => {
+  const { user } = useAuth();
+  const userRole = getPrimaryRole(user?.claims as string[]);
+
+  const [itemsPerPage] = useState(UI_CONFIG.pagination.defaultPageSize);
   const [jobs, setJobs] = useState<DataEnrichmentJobResponse[]>([]);
   const [jobsLoading, setJobsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedJob, setSelectedJob] = useState<DataEnrichmentJobResponse | null>(null);
+  const [selectedJob, setSelectedJob] =
+    useState<DataEnrichmentJobResponse | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  
+
+  const [page, setPage] = useState<number>(1);
+  const [totalPages, setTotalPages] = useState<number>(0);
+  const [totalRecords, setTotalRecords] = useState<number>(0);
+  const [searchingFilters, setSearchingFilters] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   const { showError } = useToast();
 
-  useEffect(() => {
-    loadDEJobs();
-  }, []);
-
-  const loadDEJobs = async () => {
-    console.log('PublisherDEJobsPage: loadDEJobs called');
-    setJobsLoading(true);
+  const fetchDeJobs = async (pageNumber: number = 1): Promise<void> => {
     try {
-      const response = await dataEnrichmentApi.getAllJobs();
-      console.log('PublisherDEJobsPage: DE Jobs loaded:', response?.jobs?.length || 0);
-      
-      // Filter for exported and deployed DE jobs (publishers can see both)
-      const allJobs = response?.jobs || [];
-      const publisherJobs = allJobs.filter((job: DataEnrichmentJobResponse) => 
-        job.status === 'exported' || job.status === 'deployed'
+      setLoading(true);
+      setError(null);
+
+      const limit: number = itemsPerPage;
+      const offset: number = pageNumber - 1;
+
+      const params = { limit, offset, userRole: userRole as string };
+
+      const response = await dataEnrichmentApi.getAllJobs(
+        params,
+        searchingFilters,
       );
-      
-      console.log('PublisherDEJobsPage: Publisher jobs (exported + deployed):', publisherJobs.length);
-      
-      // Transform exported status to deployed for publishers (display purposes)
-      const transformedJobs = publisherJobs.map(job => ({
-        ...job,
-        status: job.status === 'exported' ? 'deployed' : job.status
-      }));
-      
-      // Sort by created_at descending (newest first)
-      const sortedJobs = transformedJobs.sort((a: any, b: any) => {
-        const dateA = new Date(a.created_at || 0).getTime();
-        const dateB = new Date(b.created_at || 0).getTime();
-        return dateB - dateA;
-      });
-      
-      setJobs(sortedJobs);
-    } catch (error) {
-      console.error('Failed to load DE jobs:', error);
-      showError('Failed to load data enrichment jobs');
-      setJobs([]);
+
+      setJobs(response.jobs);
+      setTotalPages(response.pages);
+      setTotalRecords(response.total);
+    } catch (err: unknown) {
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to fetch configurations';
+      setError(errorMessage);
     } finally {
-      setJobsLoading(false);
+      setLoading(false);
     }
   };
 
+  useEffect(() => {
+    fetchDeJobs(page);
+  }, [page, searchingFilters]);
+
   const handleViewDetails = (jobId: string) => {
-    const job = jobs.find(j => j.id === jobId);
+    const job = jobs.find((j) => j.id === jobId);
     if (job) {
       setSelectedJob(job);
       setIsModalOpen(true);
@@ -67,17 +70,13 @@ const PublisherDEJobsPage: React.FC = () => {
   };
 
   const handlePublishSuccess = () => {
-    loadDEJobs(); // Refresh the list after successful publish
+    fetchDeJobs(page); // Refresh the list after successful publish
   };
 
   return (
-    <div c8lassName="min-h-screen bg-gray-50">
-      <AuthHeader title="Data Enrichment" showBackButton={true} />
-      
+    <div className="min-h-screen bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-        
-          
           {/* Search Bar */}
           <div className="relative w-full md:w-96">
             <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -96,8 +95,16 @@ const PublisherDEJobsPage: React.FC = () => {
           jobs={jobs}
           isLoading={jobsLoading}
           onViewDetails={handleViewDetails}
-          onRefresh={loadDEJobs}
-          searchQuery={searchTerm}
+          onRefresh={() => fetchDeJobs(page)}
+          page={page}
+          setPage={setPage}
+          totalPages={totalPages}
+          totalRecords={totalRecords}
+          itemsPerPage={itemsPerPage}
+          searchingFilters={searchingFilters}
+          setSearchingFilters={setSearchingFilters}
+          error={error}
+          loading={loading}
         />
       </div>
 

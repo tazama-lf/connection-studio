@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { AuthHeader } from '../../../shared/components/AuthHeader';
 import { SearchIcon } from 'lucide-react';
 import { dataEnrichmentApi } from '../../data-enrichment/services/dataEnrichmentApi';
 import { useToast } from '../../../shared/providers/ToastProvider';
@@ -29,7 +28,7 @@ const PublisherCronJobsPage: React.FC = () => {
       
       // Filter for exported and deployed schedules (publishers can see both)
       const publisherSchedules = response?.filter((schedule: ScheduleResponse) => 
-        schedule.status === 'exported' || schedule.status === 'deployed'
+        schedule.status === 'STATUS_06_EXPORTED' || schedule.status === 'STATUS_08_DEPLOYED'
       ) || [];
       
       console.log('PublisherCronJobsPage: Publisher schedules (exported + deployed):', publisherSchedules.length);
@@ -37,7 +36,7 @@ const PublisherCronJobsPage: React.FC = () => {
       // Transform exported status to deployed for publishers (display purposes)
       const transformedSchedules = publisherSchedules.map(schedule => ({
         ...schedule,
-        status: schedule.status === 'exported' ? 'deployed' : schedule.status
+        status: schedule.status === 'STATUS_06_EXPORTED' ? 'STATUS_08_DEPLOYED' : schedule.status
       }));
       
       // Sort by created_at descending (newest first)
@@ -70,9 +69,7 @@ const PublisherCronJobsPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-            <AuthHeader title="Cron Job Management" showBackButton={true} />
-      
+    <div className="min-h-screen bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
          
