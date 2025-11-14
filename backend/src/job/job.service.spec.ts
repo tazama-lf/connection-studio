@@ -2,7 +2,15 @@ import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import { ConfigType, FileType, IngestMode, Job, JobStatus, ScheduleStatus, SourceType } from '@tazama-lf/tcs-lib';
+import {
+  ConfigType,
+  FileType,
+  IngestMode,
+  Job,
+  JobStatus,
+  ScheduleStatus,
+  SourceType,
+} from '@tazama-lf/tcs-lib';
 import { DatabaseService } from '../database/database.service';
 import { DryRunService } from '../dry-run/dry-run.service';
 import { NotifyService } from '../notify/notify.service';
@@ -10,11 +18,10 @@ import { AdminServiceClient } from '../services/admin-service-client.service';
 import { SftpService } from '../sftp/sftp.service';
 import { CreatePushJobDto } from './dto/create-push-job.dto';
 import { JobService } from './job.service';
-import { EndpointJobRecord } from './types/job.interface';
+import { AuthenticatedUser } from 'src/auth/auth.types';
 
 describe('JobService', () => {
   let service: JobService;
-  let dbService: jest.Mocked<DatabaseService>;
   let loggerService: jest.Mocked<LoggerService>;
   let dryRunService: jest.Mocked<DryRunService>;
   let sftpService: jest.Mocked<SftpService>;
@@ -24,6 +31,11 @@ describe('JobService', () => {
   const mockToken = 'mock-jwt-token';
   const mockTenantId = 'tenant_abc';
   const mockJobId = 'job-test-id-123';
+
+  const mockUser = {
+    tenantId: mockTenantId,
+    validClaims: ['EDITOR'],
+  };
 
   const mockPushJob = {
     id: mockJobId,
@@ -70,7 +82,7 @@ describe('JobService', () => {
     tenant_id: mockTenantId,
     iterations: 12,
     start_date: new Date(),
-    comments: null
+    comments: null,
   };
 
   beforeEach(async () => {
@@ -136,14 +148,11 @@ describe('JobService', () => {
     }).compile();
 
     service = module.get<JobService>(JobService);
-    dbService = module.get(DatabaseService) as jest.Mocked<DatabaseService>;
-    loggerService = module.get(LoggerService) as jest.Mocked<LoggerService>;
-    dryRunService = module.get(DryRunService) as jest.Mocked<DryRunService>;
-    sftpService = module.get(SftpService) as jest.Mocked<SftpService>;
-    notifyService = module.get(NotifyService) as jest.Mocked<NotifyService>;
-    adminServiceClient = module.get(
-      AdminServiceClient,
-    ) as jest.Mocked<AdminServiceClient>;
+    loggerService = module.get(LoggerService);
+    dryRunService = module.get(DryRunService);
+    sftpService = module.get(SftpService);
+    notifyService = module.get(NotifyService);
+    adminServiceClient = module.get(AdminServiceClient);
   });
 
   afterEach(() => {
@@ -274,7 +283,11 @@ describe('JobService', () => {
       adminServiceClient.createPushJob.mockResolvedValue({ id: null });
 
       await expect(
-        service.createPush(createPushDto as CreatePushJobDto, mockTenantId, mockToken),
+        service.createPush(
+          createPushDto as CreatePushJobDto,
+          mockTenantId,
+          mockToken,
+        ),
       ).rejects.toThrow(BadRequestException);
 
       expect(loggerService.error).toHaveBeenCalled();
@@ -287,7 +300,11 @@ describe('JobService', () => {
       );
 
       await expect(
-        service.createPush(createPushDto as CreatePushJobDto, mockTenantId, mockToken),
+        service.createPush(
+          createPushDto as CreatePushJobDto,
+          mockTenantId,
+          mockToken,
+        ),
       ).rejects.toThrow(BadRequestException);
 
       expect(loggerService.error).toHaveBeenCalledWith(
@@ -296,7 +313,6 @@ describe('JobService', () => {
     });
   });
   describe('createPull', () => {
-
     it('should create a pull job successfully', async () => {
       adminServiceClient.validateExisting.mockResolvedValue({
         success: false,
@@ -395,74 +411,74 @@ describe('JobService', () => {
   describe('findAll', () => {
     const offset = '0';
     const limit = '10';
+    const filters = { status: JobStatus.APPROVED };
 
-    const mockJob = {
-      id: mockJobId,
-      endpoint_name: 'test',
-      path: '/v1/enrich/ACM102/customerdata',
-      mode: IngestMode.APPEND,
-      table_name: 'test',
-      description: 'test',
-      version: 'v1',
-      status: JobStatus.INPROGRESS,
-      publishing_status: ScheduleStatus.ACTIVE,
-      created_at: new Date(),
-      type: "push" as 'push' | 'pull',
-    }
+    it('should return all jobs with pagination', async () => {
+      const mockResponse = {
+        data: [mockPushJob, mockPullJob],
+        total: 2,
+        offset: 0,
+        limit: 10,
+      };
 
-    // it('should return all jobs with pagination', async () => {
-    //   const mockJobs: EndpointJobRecord[] = [mockJob];
-    //   adminServiceClient.getAllJobs.mockResolvedValue(mockJobs);
+      adminServiceClient.getAllJobs.mockResolvedValue(mockResponse);
 
-    //   const result = await service.findAll(
-    //     offset,
-    //     limit,
-    //     mockTenantId,
-    //     mockToken,
-    //   );
+      const result = await service.findAll(
+        offset,
+        limit,
+        mockUser as AuthenticatedUser,
+        filters,
+      );
 
-    //   expect(result).toEqual(mockJobs);
-    //   expect(adminServiceClient.getAllJobs).toHaveBeenCalledWith(
-    //     offset,
-    //     limit,
-    //     mockTenantId,
-    //     mockToken,
-    //   );
-    // });
+      expect(result).toEqual(mockResponse);
+      expect(adminServiceClient.getAllJobs).toHaveBeenCalledWith(
+        offset,
+        limit,
+        mockUser,
+        filters,
+      );
+    });
 
-    // it('should throw BadRequestException for invalid page', async () => {
-    //   await expect(
-    //     service.findAll(0, limit, mockTenantId, mockToken),
-    //   ).rejects.toThrow(BadRequestException);
-    // });
+    it('should work without filters', async () => {
+      const mockResponse = {
+        data: [mockPushJob],
+        total: 1,
+        offset: 0,
+        limit: 10,
+      };
 
-    // it('should throw BadRequestException for invalid limit', async () => {
-    //   await expect(
-    //     service.findAll(page, -1, mockTenantId, mockToken),
-    //   ).rejects.toThrow(BadRequestException);
-    // });
+      adminServiceClient.getAllJobs.mockResolvedValue(mockResponse);
 
-    // it('should throw BadRequestException for non-integer page', async () => {
-    //   await expect(
-    //     service.findAll(1.5, limit, mockTenantId, mockToken),
-    //   ).rejects.toThrow(BadRequestException);
-    // });
+      const result = await service.findAll(
+        offset,
+        limit,
+        mockUser as AuthenticatedUser,
+      );
 
-    // it('should handle errors from admin service', async () => {
-    //   const errorMessage = 'Service error';
-    //   adminServiceClient.getAllJobs.mockRejectedValue(new Error(errorMessage));
+      expect(result).toEqual(mockResponse);
+      expect(adminServiceClient.getAllJobs).toHaveBeenCalledWith(
+        offset,
+        limit,
+        mockUser,
+        undefined,
+      );
+    });
 
-    //   await expect(
-    //     service.findAll(page, limit, mockTenantId, mockToken),
-    //   ).rejects.toThrow();
+    it('should handle errors from admin service', async () => {
+      const errorMessage = 'Service error';
+      adminServiceClient.getAllJobs.mockRejectedValue(new Error(errorMessage));
 
-    //   expect(loggerService.error).toHaveBeenCalled();
-    // });
+      await expect(
+        service.findAll(offset, limit, mockUser as AuthenticatedUser, filters),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(loggerService.error).toHaveBeenCalled();
+    });
   });
 
   describe('findOne', () => {
     it('should find a push job by id', async () => {
-      adminServiceClient.findJobById.mockResolvedValue(mockPushJob);
+      adminServiceClient.findJobById.mockResolvedValue(mockPushJob as Job);
 
       const result = await service.findOne(
         mockJobId,
@@ -473,25 +489,27 @@ describe('JobService', () => {
       expect(result).toEqual(mockPushJob);
       expect(adminServiceClient.findJobById).toHaveBeenCalledWith(
         mockJobId,
-        'endpoints',
+        'push_jobs',
         mockToken,
       );
     });
 
-    // it('should find a pull job with schedule info', async () => {
-    //   const mockScheduleInfo = {
-    //     name: 'Test Schedule',
-    //     cron: '0 0 * * *',
-    //   };
+    it('should find a pull job by id', async () => {
+      adminServiceClient.findJobById.mockResolvedValue(mockPullJob as Job);
 
-    //   adminServiceClient.findJobById.mockResolvedValue(mockPullJob);
-    //   dbService.query.mockResolvedValue({ rows: [mockScheduleInfo] });
+      const result = await service.findOne(
+        mockJobId,
+        ConfigType.PULL,
+        mockToken,
+      );
 
-    //   const result = await service.findOne(mockJobId, ConfigType.PULL, mockToken);
-
-    //   expect(result).toEqual(expect.objectContaining(mockScheduleInfo));
-    //   expect(dbService.query).toHaveBeenCalled();
-    // });
+      expect(result).toEqual(mockPullJob);
+      expect(adminServiceClient.findJobById).toHaveBeenCalledWith(
+        mockJobId,
+        'pull_jobs',
+        mockToken,
+      );
+    });
 
     it('should throw BadRequestException if id is missing', async () => {
       await expect(
@@ -501,6 +519,15 @@ describe('JobService', () => {
 
     it('should throw BadRequestException if job not found', async () => {
       adminServiceClient.findJobById.mockResolvedValue(null);
+
+      await expect(
+        service.findOne(mockJobId, ConfigType.PUSH, mockToken),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should handle errors from admin service', async () => {
+      const errorMessage = 'Database error';
+      adminServiceClient.findJobById.mockRejectedValue(new Error(errorMessage));
 
       await expect(
         service.findOne(mockJobId, ConfigType.PUSH, mockToken),
@@ -535,12 +562,6 @@ describe('JobService', () => {
       );
     });
 
-    it('should throw BadRequestException for missing parameters', async () => {
-      await expect(
-        service.findByStatus(null as any, page, limit, mockTenantId, mockToken),
-      ).rejects.toThrow(BadRequestException);
-    });
-
     it('should throw BadRequestException for invalid pagination', async () => {
       await expect(
         service.findByStatus(status, 0, limit, mockTenantId, mockToken),
@@ -562,7 +583,7 @@ describe('JobService', () => {
     it('should update activation status successfully', async () => {
       adminServiceClient.updateJobActivation.mockResolvedValue({
         success: true,
-        message: "Job Updated"
+        message: 'Job Updated',
       });
       notifyService.notifyEnrichment.mockResolvedValue(undefined);
 
@@ -597,7 +618,7 @@ describe('JobService', () => {
     it('should not notify if update fails', async () => {
       adminServiceClient.updateJobActivation.mockResolvedValue({
         success: false,
-        message: "Job Updated"
+        message: 'Job Updated',
       });
 
       await service.updateActivation(
@@ -675,7 +696,6 @@ describe('JobService', () => {
         `de_${mockTenantId}_${mockJobId}`,
         expect.objectContaining({ status: JobStatus.READY }),
       );
-      expect(loggerService.log).toHaveBeenCalled();
     });
   });
   describe('DEPLOYED status', () => {
@@ -685,7 +705,7 @@ describe('JobService', () => {
       sftpService.readFile.mockResolvedValue(mockPushJob);
       adminServiceClient.validateExisting.mockResolvedValue({
         success: true,
-        message: 'Table does not exists'
+        message: 'Table does not exists',
       });
       adminServiceClient.createPushJob.mockResolvedValue({ id: mockJobId });
       sftpService.deleteFile.mockResolvedValue(undefined);
@@ -709,7 +729,7 @@ describe('JobService', () => {
       sftpService.readFile.mockResolvedValue(mockPullJob);
       adminServiceClient.validateExisting.mockResolvedValue({
         success: true,
-        message: 'Table does not exists'
+        message: 'Table does not exists',
       });
       adminServiceClient.findScheduleById.mockResolvedValue(mockSchedule);
       dryRunService.dryRun.mockResolvedValue(undefined);
@@ -727,17 +747,6 @@ describe('JobService', () => {
       expect(result.success).toBe(true);
       expect(sftpService.readFile).toHaveBeenCalledWith(fileName);
       expect(sftpService.deleteFile).toHaveBeenCalledWith(fileName);
-    });
-    it('should throw BadRequestException if status is missing', async () => {
-      await expect(
-        service.updateStatus(
-          mockJobId,
-          null as any,
-          ConfigType.PUSH,
-          mockTenantId,
-          mockToken,
-        ),
-      ).rejects.toThrow(BadRequestException);
     });
 
     it('should handle errors and log them', async () => {

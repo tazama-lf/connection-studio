@@ -44,13 +44,15 @@ export class SFTPConnectionDto {
 
   @IsString()
   @IsNotEmpty()
-  @ValidateIf((o) => o.auth_type === AuthType.USERNAME_PASSWORD)
-  password: string;
+  @ValidateIf(
+    (o: SFTPConnectionDto) => o.auth_type === AuthType.USERNAME_PASSWORD,
+  )
+  password?: string;
 
   @IsString()
   @IsNotEmpty()
-  @ValidateIf((o) => o.auth_type === AuthType.PRIVATE_KEY)
-  private_key: string;
+  @ValidateIf((o: SFTPConnectionDto) => o.auth_type === AuthType.PRIVATE_KEY)
+  private_key?: string;
 }
 
 class FileSettingDto {
@@ -67,7 +69,7 @@ class FileSettingDto {
 export class CreatePullJobDto {
   @IsOptional()
   @IsString()
-  id: string;
+  id?: string;
 
   @IsString()
   @IsNotEmpty()
@@ -87,11 +89,14 @@ export class CreatePullJobDto {
 
   @ValidateNested()
   @Type((opts) => {
-    const obj = opts?.object as CreatePullJobDto;
-    if (obj?.source_type === SourceType.HTTP) {
+    if (!opts?.object) {
+      return Object;
+    }
+    const obj = opts.object as CreatePullJobDto;
+    if (obj.source_type === SourceType.HTTP) {
       return HTTPConnectionDto;
     }
-    if (obj?.source_type === SourceType.SFTP) {
+    if (obj.source_type === SourceType.SFTP) {
       return SFTPConnectionDto;
     }
     return Object;
@@ -114,13 +119,13 @@ export class CreatePullJobDto {
 
   @IsOptional()
   @IsEnum(IngestMode)
-  mode: IngestMode = IngestMode.APPEND;
+  mode?: IngestMode = IngestMode.APPEND;
 
   @IsString()
   @IsNotEmpty()
   version: string;
 
   @IsOptional()
-  @IsString()
-  publishing_status: ScheduleStatus = ScheduleStatus.INACTIVE;
+  @IsEnum(ScheduleStatus)
+  publishing_status?: ScheduleStatus = ScheduleStatus.INACTIVE;
 }
