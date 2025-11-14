@@ -66,7 +66,7 @@ export class SftpService implements OnModuleInit, OnModuleDestroy {
     }
 
     try {
-      await this.consumerSftp.connect({ host, port, username, password: utils.decrypt(password) });
+      await this.producerSftp.connect({ host, port, username, password: utils.decrypt(password) });
       this.loggerService.log(`Connected to PRODUCER SFTP at ${host}:${port}`);
     } catch (err) {
       this.loggerService.error('Failed to connect to PRODUCER SFTP', err);
