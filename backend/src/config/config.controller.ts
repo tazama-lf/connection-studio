@@ -173,21 +173,28 @@ export class ConfigController {
     event: 'editor_submit' | 'approver_approve' | 'exporter_export' | 'publisher_deploy',
     configId: number,
     user: AuthenticatedUser,
-    config: any,
+    config: Config,
+    authToken: string,
     comment?: string,
   ): Promise<void> {
+
+const decodedToken = decodeValidatedToken(user);
+const groupName = decodedToken.tenantDetails.length > 0 ? decodedToken.tenantDetails[0].replace(/\//g, '') :null
+
+if(!groupName){
+  throw new Error('Group name not found in tenant details');
+}
+
+
     await this.notificationService.sendGenericWorkflowNotification({
       event,
       configId,
       tenantId: getTenantId(user),
-      actorEmail: decodeValidatedToken(user).preferredUsername,
-      actorName: decodeValidatedToken(user).preferredUsername,
-      config: {
-        name: config.cfg_name,
-        version: config.cfg_version,
-        transactionType: config.transaction_type,
-        status: config.status,
-      },
+      actorEmail: decodedToken.preferredUsername,
+      actorName: decodedToken.preferredUsername,
+      config,
+      authToken: authToken,
+      groupName: groupName,
       comment,
     });
   }
@@ -494,7 +501,11 @@ export class ConfigController {
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: SubmitForApprovalDto,
     @User() user: AuthenticatedUser,
+    @Headers('authorization') authorization: string,
   ): Promise<ConfigResponseDto> {
+
+
+    const authToken = authorization?.split(' ')[1] as  string;
     const result = await this.adminServiceClient.forwardRequest(
       'POST',
       `/v1/admin/tcs/config/${id}/workflow/submit`,
@@ -502,6 +513,7 @@ export class ConfigController {
       buildForwardHeaders(user),
     );
 
+    console.log(" Result after submit for approval ", result);
     if (result?.success) {
       const config = result.config || result.data || {};
       await this.sendWorkflowNotification(
@@ -509,6 +521,7 @@ export class ConfigController {
         id,
         user,
         config,
+        authToken,
         dto.comment,
       );
     }
@@ -522,7 +535,10 @@ export class ConfigController {
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: ApprovalDto,
     @User() user: AuthenticatedUser,
+    @Headers('authorization') authorization: string,
   ): Promise<ConfigResponseDto> {
+    const authToken = authorization?.split(' ')[1]
+
     const result = await this.adminServiceClient.forwardRequest(
       'POST',
       `/v1/admin/tcs/config/${id}/workflow/approve`,
@@ -537,7 +553,8 @@ export class ConfigController {
         id,
         user,
         config,
-        dto.comment,
+        authToken,
+        dto.comment
       );
     }
 
@@ -602,9 +619,9 @@ decodeValidatedToken(user).preferredUsername,
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: StatusTransitionDto,
     @User() user: AuthenticatedUser,
-    @Headers('authorization') authorization?: string,
+    @Headers('authorization') authorization: string,
   ): Promise<ConfigResponseDto> {
-    const token = authorization?.replace('Bearer ', '') || getTokenString(user);
+    const token = authorization?.replace('Bearer ', '')  as string;
     
     await this.configService.exportConfig(
       id,
@@ -629,6 +646,7 @@ decodeValidatedToken(user).preferredUsername,
         id,
         user,
         config,
+        token,
         dto.comment,
       );
     }
@@ -642,9 +660,9 @@ decodeValidatedToken(user).preferredUsername,
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: DeploymentDto,
     @User() user: AuthenticatedUser,
-    @Headers('authorization') authorization?: string,
+    @Headers('authorization') authorization: string,
   ): Promise<ConfigResponseDto> {
-    const token = authorization?.replace('Bearer ', '') || getTokenString(user);
+    const token = authorization?.replace('Bearer ', '') as string;
 
     await this.configService.deployConfig(
       id,
@@ -669,6 +687,7 @@ decodeValidatedToken(user).preferredUsername,
         id,
         user,
         config,
+        token,
         dto.comment,
       );
     }

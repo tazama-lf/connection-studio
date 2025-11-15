@@ -29,7 +29,7 @@ export class AuthService {
     }
     try {
       const response = await firstValueFrom(
-        this.httpService.post(authUrl, { username, password }),
+        this.httpService.post(`${authUrl}/login`, { username, password }),
       );
       if (!response?.data) {
         this.loggerService.error(

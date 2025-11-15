@@ -117,9 +117,10 @@ export class NotificationController {
       tenantId: string;
       actorEmail: string;
       actorName: string;
+      authToken: string;
+      groupName: string;
       comment?: string;
-      2;
-      recipientEmails: string[];
+      recipientEmails?: string[];
     },
   ) {
     try {
