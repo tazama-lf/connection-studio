@@ -21,11 +21,9 @@ export class CreateConfigDto {
   @IsOptional()
   msgFam?: string;
 
-  @IsEnum(TransactionType, {
-    message: 'transactionType must be a valid ISO 20022 message type',
-  })
+  @IsString()
   @IsNotEmpty()
-  transactionType: TransactionType;
+  transactionType: string;
 
   @IsString()
   @IsOptional()
