@@ -108,4 +108,7 @@ export class PullJobResponseDto {
 
   @Expose()
   updated_at: Date;
+
+  @Expose()
+  comments: string
 }

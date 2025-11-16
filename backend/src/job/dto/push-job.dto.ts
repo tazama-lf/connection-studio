@@ -25,4 +25,7 @@ export class PushJob {
 
   @Expose()
   status: JobStatus
+
+  @Expose()
+  comments: string
 }
