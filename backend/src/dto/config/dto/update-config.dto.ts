@@ -29,4 +29,8 @@ export class UpdateConfigDto {
   @IsObject()
   @IsOptional()
   schema?: Record<string, any>;
+
+  @IsString()
+  @IsOptional()
+  payload?: string;
 }
