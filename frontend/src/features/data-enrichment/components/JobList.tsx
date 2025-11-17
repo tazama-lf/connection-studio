@@ -328,12 +328,14 @@ export const JobList: React.FC<JobListProps> = (props) => {
       flex: 1,
       minWidth: 400,
       sortable: false,
+      align: 'center',
       disableColumnMenu: true,
       renderHeader: () => (
         <Box
           sx={{
             display: 'flex',
             flexDirection: 'column',
+            alignItems: 'center',
             gap: '8px',
             width: '100%',
             py: '12px',
@@ -346,7 +348,10 @@ export const JobList: React.FC<JobListProps> = (props) => {
             setSearchingFilters,
           })}
         </Box>
-      ),
+      ), 
+      renderCell: (params: any) => (
+              <Box sx={{ fontSize: '13px' }}>{params.row.endpoint_name}</Box>
+            ),
     },
     {
       field: 'status',
@@ -354,12 +359,14 @@ export const JobList: React.FC<JobListProps> = (props) => {
       minWidth: 260,
       flex: 1,
       sortable: false,
+      align: 'center',
       disableColumnMenu: true,
       renderHeader: () => (
         <Box
           sx={{
             display: 'flex',
             flexDirection: 'column',
+      align: 'center',
             gap: '8px',
             width: '100%',
             py: '12px',
@@ -391,6 +398,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
       flex: 1,
       sortable: false,
       disableColumnMenu: true,
+      align: 'center',
       renderHeader: () => (
         <Box
           sx={{
@@ -407,7 +415,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
         </Box>
       ),
       renderCell: (_params: any) => (
-        <div className="flex items-center">
+        <div className="flex items-center justify-center w-full text-[13px]">
           <svg
             className="w-4 h-4 mr-1 text-gray-400"
             fill="currentColor"
@@ -430,12 +438,13 @@ export const JobList: React.FC<JobListProps> = (props) => {
       flex: 1,
       sortable: false,
       disableColumnMenu: true,
+      align: 'center',
       renderHeader: () => (
         <Box
           sx={{
             display: 'flex',
             flexDirection: 'column',
-            alignItems: 'flex-start',
+            alignItems: 'center',
             gap: '8px',
             width: '100%',
             height: '100%',
@@ -474,9 +483,9 @@ export const JobList: React.FC<JobListProps> = (props) => {
                   }
                   setDropdownOpen(null);
                 }}
-                className="inline-flex items-center rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none transition-colors cursor-pointer"
+                className="w-[75px] inline-flex justify-center items-center rounded-md bg-[#2b7fff] px-3 py-1.5 text-xs font-medium text-white shadow-sm focus:outline-none transition-colors cursor-pointer"
               >
-                <Eye className="w-4 h-4 mr-2" />
+                <Eye className="w-3 h-3 mr-2" />
                 View
               </button>
             )}
@@ -488,9 +497,9 @@ export const JobList: React.FC<JobListProps> = (props) => {
                   onEdit(job);
                   setDropdownOpen(null);
                 }}
-                className="inline-flex items-center rounded-md px-3 py-1.5 text-xs font-medium shadow-sm focus:outline-none transition-colors cursor-pointer bg-yellow-500 text-white border border-yellow-500 hover:bg-yellow-600 focus:ring-yellow-500"
+                className="w-[75px] inline-flex justify-center items-center rounded-md bg-[#2b7fff] px-3 py-1.5 text-xs font-medium text-white shadow-sm focus:outline-none transition-colors cursor-pointer"
               >
-                <Edit className="w-4 h-4 mr-2" />
+                <Edit className="w-3 h-3 mr-2" />
                 Edit
               </button>
             )}
@@ -500,11 +509,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
               <button
                 onClick={() => handleResumeJob(job)}
                 disabled={updatingStatus === job.id}
-                className={`inline-flex items-center rounded-md  px-3 py-1.5 text-xs font-medium text-white shadow-sm focus:outline-none transition-colors cursor-pointer ${
-                  updatingStatus === job.id
-                    ? ' bg-gray-400 cursor-not-allowed'
-                    : 'bg-cyan-600 hover:bg-cyan-700'
-                }`}
+                className={`w-[75px] inline-flex justify-center items-center rounded-md bg-[#2b7fff] px-3 py-1.5 text-xs font-medium text-white shadow-sm focus:outline-none transition-colors cursor-pointer`}
               >
                 <Play className="w-4 h-4 mr-2" />
                 {updatingStatus === job.id ? 'Resuming...' : 'Resume Job'}
@@ -531,7 +536,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
         </div>
       ) : (
         <CustomTable
-          columns={columns}
+          columns={columns as any}
           rows={jobs}
           search={true}
           pageSize={itemsPerPage}

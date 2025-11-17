@@ -106,7 +106,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
   const userIsPublisher = user?.claims ? isPublisher(user.claims) : false;
   const { showSuccess, showError } = useToast();
 
-  const userRole =  getPrimaryRole(user?.claims as string[]);
+  const userRole = getPrimaryRole(user?.claims as string[]);
 
   // Fetch configs based on flags
   const fetchConfigs = async () => {
@@ -358,12 +358,14 @@ export const ConfigList: React.FC<ConfigListProps> = ({
       flex: 1,
       minWidth: 400,
       sortable: false,
+      align: 'center',
       disableColumnMenu: true,
       renderHeader: () => (
         <Box
           sx={{
             display: 'flex',
             flexDirection: 'column',
+            alignItems: 'center',
             gap: '8px',
             width: '100%',
             py: '12px',
@@ -377,6 +379,9 @@ export const ConfigList: React.FC<ConfigListProps> = ({
           })}
         </Box>
       ),
+      renderCell: (params: any) => (
+        <Box sx={{ fontSize: '13px' }}>{params.row.endpointPath}</Box>
+      ),
     },
     {
       field: 'status',
@@ -384,12 +389,14 @@ export const ConfigList: React.FC<ConfigListProps> = ({
       minWidth: 260,
       flex: 1,
       sortable: false,
+      align: 'center',
       disableColumnMenu: true,
       renderHeader: () => (
         <Box
           sx={{
             display: 'flex',
             flexDirection: 'column',
+            alignItems: 'center',
             gap: '8px',
             width: '100%',
             py: '12px',
@@ -421,12 +428,13 @@ export const ConfigList: React.FC<ConfigListProps> = ({
       flex: 1,
       sortable: false,
       disableColumnMenu: true,
+      align: 'center',
       renderHeader: () => (
         <Box
           sx={{
             display: 'flex',
             flexDirection: 'column',
-            alignItems: 'flex-start',
+            alignItems: 'center',
             gap: '8px',
             width: '100%',
             height: '100%',
@@ -437,7 +445,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
         </Box>
       ),
       renderCell: (params: any) => (
-        <div className="flex items-center">
+        <div className="flex items-center justify-center w-full text-[13px]">
           <svg
             className="w-4 h-4 mr-1 text-gray-400"
             fill="currentColor"
@@ -460,12 +468,13 @@ export const ConfigList: React.FC<ConfigListProps> = ({
       flex: 1,
       sortable: false,
       disableColumnMenu: true,
+      align: 'center',
       renderHeader: () => (
         <Box
           sx={{
             display: 'flex',
             flexDirection: 'column',
-            alignItems: 'flex-start',
+            alignItems: 'center',
             gap: '8px',
             width: '100%',
             height: '100%',
@@ -499,60 +508,46 @@ export const ConfigList: React.FC<ConfigListProps> = ({
                 setOpenDropdown(null);
               }}
               // className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-              className="inline-flex items-center rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none transition-colors cursor-pointer"
+              className=" w-[75px] inline-flex justify-center items-center rounded-md bg-[#2b7fff] px-3 py-1.5 text-xs font-medium text-white shadow-sm focus:outline-none transition-colors cursor-pointer"
             >
-              <EyeIcon className="w-4 h-4 mr-2" />
+              <EyeIcon className="w-3 h-3 mr-2" />
               View
             </button>
-            {onConfigEdit && (
-              <button
-                onClick={() => {
-                  onConfigEdit(config);
-                  setOpenDropdown(null);
-                }}
-                disabled={(() => {
-                  const normalizedStatus = normalizeStatus(config.status);
-                  return (
-                    normalizedStatus === 'STATUS_03_UNDER_REVIEW' ||
-                    normalizedStatus === 'STATUS_04_APPROVED'
-                  );
-                })()}
-                className={`inline-flex items-center rounded-md px-3 py-1.5 text-xs font-medium shadow-sm focus:outline-none transition-colors cursor-pointer ${
-                  (() => {
-                    const normalizedStatus = normalizeStatus(config.status);
-                    return (
-                      normalizedStatus === 'STATUS_03_UNDER_REVIEW' ||
-                      normalizedStatus === 'STATUS_04_APPROVED'
-                    );
-                  })()
-                    ? 'bg-yellow-50 text-yellow-700 cursor-not-allowed border border-yellow-300 hover:bg-yellow-50'
-                    : 'bg-yellow-500 text-white border border-yellow-500 hover:bg-yellow-600 focus:ring-yellow-500'
-                }`}
-              >
-                <EditIcon className="w-4 h-4 mr-2" />
-                Edit
-              </button>
-            )}
+            {onConfigEdit &&
+              (config.status === 'STATUS_01_IN_PROGRESS' ||
+                config.status === 'STATUS_05_REJECTED') && (
+                <button
+                  onClick={() => {
+                    onConfigEdit(config);
+                    setOpenDropdown(null);
+                  }}
+                  className={`w-[75px] inline-flex justify-center items-center rounded-md px-3 py-1.5 text-xs font-medium shadow-sm focus:outline-none transition-colors cursor-pointer bg-[#2b7fff] text-white`}
+                >
+                  <EditIcon className="w-3 h-3 mr-2" />
+                  <span>Edit</span>
+                </button>
+              )}
             {onConfigClone && !showPendingApprovals && (
               <button
                 onClick={() => {
                   onConfigClone(config);
                   setOpenDropdown(null);
                 }}
-                className="inline-flex items-center rounded-md bg-green-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none transition-colors cursor-pointer"
+                className="w-[75px] inline-flex justify-center items-center rounded-md bg-[#2b7fff] px-3 py-1.5 text-xs font-medium text-white shadow-sm focus:outline-none transition-colors cursor-pointer"
               >
                 <CopyIcon className="w-4 h-4 mr-2" />
                 Clone
               </button>
             )}
             {userIsExporter &&
-              (config.status === 'STATUS_04_APPROVED' || config.status === 'STATUS_08_DEPLOYED') && (
+              (config.status === 'STATUS_04_APPROVED' ||
+                config.status === 'STATUS_08_DEPLOYED') && (
                 <button
                   onClick={() => {
                     handleExportConfig(config);
                     setOpenDropdown(null);
                   }}
-                  className="inline-flex items-center rounded-md bg-cyan-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-cyan-700 focus:outline-none transition-colors cursor-pointer"
+                  className="w-[75px] inline-flex justify-center items-center rounded-md bg-[#2b7fff]px-3 py-1.5 text-xs font-medium text-white shadow-sm focus:outline-none transition-colors cursor-pointer"
                 >
                   <Upload className="w-4 h-4 mr-2" />
                   Export
@@ -589,7 +584,11 @@ export const ConfigList: React.FC<ConfigListProps> = ({
       const limit: number = itemsPerPage;
       const offset: number = pageNumber - 1;
 
-      const params: PaginationParams = { limit, offset, userRole: userRole as string };
+      const params: PaginationParams = {
+        limit,
+        offset,
+        userRole: userRole as string,
+      };
 
       const response: PaginatedConfigResponse =
         await configApi.getConfigsPaginated(params, searchingFilters);
@@ -634,7 +633,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
         </div>
       ) : (
         <CustomTable
-          columns={columns}
+          columns={columns as any}
           rows={configs}
           search={true}
           pageSize={itemsPerPage}
