@@ -350,6 +350,8 @@ console.log('Cur map:', currentMappings);
             console.log('  - typeof mapping:', typeof config.mapping);
             console.log('  - isArray:', Array.isArray(config.mapping));
             console.log('  - mapping length:', config.mapping?.length);
+            console.log('  - config.status:', config.status);
+            console.log('  - config.comment:', config.comment);
 
             setExistingConfig(config);
 
@@ -1448,6 +1450,38 @@ console.log('Cur map:', currentMappings);
             </div>
           )}
 
+        {/* Show rejection comment only when status is STATUS_05_REJECTED */}
+        {(isStatus(createdEndpoint?.status, 'STATUS_05_REJECTED') || isStatus(existingConfig?.status, 'STATUS_05_REJECTED')) && 
+           (createdEndpoint?.comments || existingConfig?.comments) && (
+          <div className="my-2 mb-10 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0 mt-0.5">
+                <svg
+                  className="w-5 h-5 text-red-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                  />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h4 className="text-sm font-medium text-red-800 mb-1">
+                  Rejection Comment
+                </h4>
+                <p className="text-sm text-red-700">
+                  {createdEndpoint?.comments || existingConfig?.comments || 'No comment provided.'}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
           {/* MUI Stepper */}
           <Box sx={{ width: '100%', mb: 4 }}>
             <Stepper activeStep={steps.findIndex(s => s.id === currentStep)} alternativeLabel>
@@ -1828,7 +1862,7 @@ console.log('Cur map:', currentMappings);
                     currentStep === 'deploy' ? (
                       isApprover(user?.claims || []) && (!isStatus(createdEndpoint?.status, 'STATUS_04_APPROVED') && !isStatus(existingConfig?.status, 'STATUS_04_APPROVED')) ? 'Send for Deployment' :
                         isExporter(user?.claims || []) && (isStatus(createdEndpoint?.status, 'STATUS_04_APPROVED') || isStatus(existingConfig?.status, 'STATUS_04_APPROVED')) ? 'Export' :
-                          !isApprover(user?.claims || []) && !isExporter(user?.claims || []) ? 'Submit for Approval' :
+                          !isApprover(user?.claims || []) && !isExporter(user?.claims || []) ? 'Send for Approval' :
                             'Configuration Approved'
                     ) :
                       'Save and Next'

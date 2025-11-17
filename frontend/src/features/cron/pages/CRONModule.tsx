@@ -2,9 +2,11 @@ import React, { useState } from 'react';
 import { CronJobList } from '../components/CronJobList';
 import { CronJobModal } from '../components/CronJobModal';
 import { Button } from '../../../shared/components/Button';
-import { PlusIcon, SearchIcon } from 'lucide-react';
+import { ChevronLeft, PlusIcon, SearchIcon } from 'lucide-react';
+import { useNavigate } from 'react-router';
 
 const CRONModule: React.FC = () => {
+  const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
@@ -24,20 +26,14 @@ const CRONModule: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+      <div className="mx-auto px-4 sm:px-6 lg:px-[48px] py-[52px]">
+        <Button variant='primary' className='py-1 pl-2' onClick={()=>navigate(-1)}><ChevronLeft size={20} /> <span>Go Back</span></Button>
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center my-8 gap-4">
           <div className="flex items-center space-x-4">
             {/* Search Bar */}
-            <div className="relative">
-              <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search cron jobs..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-4 py-2 w-80 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
+            <h1 className="text-2xl font-bold text-gray-800">
+              CRONS Module
+            </h1>
           </div>
           
           {/* Create New Job Button */}

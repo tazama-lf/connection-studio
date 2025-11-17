@@ -7,8 +7,12 @@ import JobDetailsModal from '../../data-enrichment/components/JobDetailsModal';
 import type { DataEnrichmentJobResponse } from '../../data-enrichment/types';
 import { getPrimaryRole, isExporter } from '../../../utils/roleUtils';
 import { UI_CONFIG } from '@shared/config/app.config';
+import { Button } from '@shared';
+import { ChevronLeft } from 'lucide-react';
+import { useNavigate } from 'react-router';
 
 export const ExporterDEJobsPage: React.FC = () => {
+  const navigate = useNavigate();
   const { showSuccess, showError } = useToast();
   const { user, isAuthenticated } = useAuth();
 
@@ -137,34 +141,15 @@ export const ExporterDEJobsPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="mb-6">
-          {/* Search Bar */}
-          <div className="mt-4">
-            <div className="relative max-w-lg">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <svg
-                  className="h-5 w-5 text-gray-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                  />
-                </svg>
-              </div>
-              <input
-                type="text"
-                placeholder="Search DE jobs..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-              />
-            </div>
+      <div className="mx-auto px-4 sm:px-6 lg:px-[48px] py-[52px]">
+        <Button variant='primary' className='py-1 pl-2' onClick={()=>navigate(-1)}><ChevronLeft size={20} /> <span>Go Back</span></Button>
+        {/* Search Bar */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center my-8 gap-4">
+          <div className="flex items-center space-x-4">
+            {/* Search Bar */}
+            <h1 className="text-2xl font-bold text-gray-800">
+              Data Enrichment
+            </h1>
           </div>
         </div>
 

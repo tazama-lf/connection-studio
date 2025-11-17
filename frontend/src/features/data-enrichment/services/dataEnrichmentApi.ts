@@ -25,6 +25,15 @@ interface PaginatedJobResponse {
   pages: number;
 }
 
+interface PaginatedScheduleResponse {
+  success: boolean;
+  data: ScheduleResponse[];
+  total: number;
+  limit: number;
+  offset: number;
+  pages: number;
+}
+
 interface PaginationParams {
   limit: number;
   offset: number;
@@ -372,22 +381,35 @@ export const dataEnrichmentApi = {
     }
   },
 
-  getAllSchedules: async (
-    page = 1,
-    limit = 50,
-  ): Promise<ScheduleResponse[]> => {
-    const queryParams = new URLSearchParams();
-    queryParams.append('page', page.toString());
-    queryParams.append('limit', limit.toString());
+  getAllSchedules:  async (
+    params: PaginationParams,
+    searchingFilters?: Record<any, any>,
+  ): Promise<PaginatedScheduleResponse> => {
+    const url = `${API_BASE_URL}/scheduler/all?${params?.offset !== undefined ? `offset=${params.offset}&` : ''}${params?.limit !== undefined ? `limit=${params.limit}` : ''}`;
 
-    try {
-      return await apiRequest<ScheduleResponse[]>(
-        `${API_BASE_URL}/scheduler/all?${queryParams.toString()}`,
-      );
-    } catch (error) {
-      console.error('Get all schedules error:', error);
-      throw error;
+    const { status, ...otherFilters } = searchingFilters || {};
+    let statusFilter;
+
+    if (!status) {
+      const userRole = params.userRole as keyof typeof getDemsStatusLov;
+      statusFilter =
+        getDemsStatusLov[userRole]?.map((item) => item.value)?.join(',') || '';
     }
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({
+        ...otherFilters,
+        status: status || statusFilter,
+      }),
+    });
+
+    if (!res.ok) {
+      throw new Error('Failed to fetch paginated configs');
+    }
+
+    return (await res.json()) as PaginatedScheduleResponse;
   },
 
   getSchedule: async (id: string): Promise<ScheduleResponse> => {
