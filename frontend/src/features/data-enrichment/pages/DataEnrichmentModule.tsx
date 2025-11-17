@@ -35,8 +35,8 @@ const DataEnrichmentModule: React.FC = () => {
   const userIsApprover = user?.claims ? isApprover(user.claims) : false;
   const userIsExporter = user?.claims ? isExporter(user.claims) : false;
   const userIsPublisher = user?.claims ? isPublisher(user.claims) : false;
-  
-  const userRole =  getPrimaryRole(user?.claims as string[]);
+
+  const userRole = getPrimaryRole(user?.claims as string[]);
 
   // Job management state
   const [jobs, setJobs] = useState<DataEnrichmentJobResponse[]>([]);
@@ -65,14 +65,14 @@ const DataEnrichmentModule: React.FC = () => {
   const [jobToClone, setJobToClone] =
     useState<DataEnrichmentJobResponse | null>(null);
 
-       const [page, setPage] = useState<number>(1);
-      const [totalPages, setTotalPages] = useState<number>(0);
-      const [totalRecords, setTotalRecords] = useState<number>(0);
-      const [searchingFilters, setSearchingFilters] = useState({});
-        const [loading, setLoading] = useState(true);
-        const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState<number>(1);
+  const [totalPages, setTotalPages] = useState<number>(0);
+  const [totalRecords, setTotalRecords] = useState<number>(0);
+  const [searchingFilters, setSearchingFilters] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-      const fetchDeJobs = async (pageNumber: number = 1): Promise<void> => {
+  const fetchDeJobs = async (pageNumber: number = 1): Promise<void> => {
     try {
       setLoading(true);
       setError(null);
@@ -81,9 +81,11 @@ const DataEnrichmentModule: React.FC = () => {
       const offset: number = pageNumber - 1;
 
       const params = { limit, offset, userRole: userRole as string };
-      
-      const response =
-        await dataEnrichmentApi.getAllJobs(params, searchingFilters);
+
+      const response = await dataEnrichmentApi.getAllJobs(
+        params,
+        searchingFilters,
+      );
 
       setJobs(response.jobs);
       setTotalPages(response.pages);
@@ -121,43 +123,24 @@ const DataEnrichmentModule: React.FC = () => {
 
   const handleViewJobDetails = useCallback(
     async (jobId: string) => {
-      console.log('=== VIEW JOB DETAILS DEBUG ===');
-      console.log('handleViewJobDetails called with jobId:', jobId);
-      console.log('User is approver:', userIsApprover);
-      console.log('User is editor:', userIsEditor);
-
       try {
         setJobDetailsLoading(true);
         setShowJobDetails(true);
-        console.log(
-          'Modal state set - showJobDetails:',
-          true,
-          'loading:',
-          true,
-        );
 
         // Find the job in the current list to determine its type
         const job = jobs.find((j) => j.id === jobId);
         // Backend expects lowercase 'push' or 'pull' matching ConfigType enum
         const jobType = job?.type?.toUpperCase() as 'PULL' | 'PUSH' | undefined;
 
-        console.log('Job found in list:', job);
-        console.log('Job type from list:', job?.type);
-        console.log('Job type uppercase for API:', jobType);
-
         // Fetch job details from the API
-        console.log('Calling dataEnrichmentApi.getJob...');
         const jobDetails = await dataEnrichmentApi.getJob(jobId, jobType);
-        console.log('Job details received:', jobDetails);
+        console.log('jobDetails', jobDetails);
         setSelectedJob(jobDetails);
-        console.log('Selected job set in state');
       } catch (error) {
         console.error('Failed to load job details:', error);
         showError('Failed to load job details');
       } finally {
         setJobDetailsLoading(false);
-        console.log('Loading state set to false');
-        console.log('=== VIEW JOB DETAILS DEBUG END ===');
       }
     },
     [jobs, showError],
@@ -326,7 +309,7 @@ const DataEnrichmentModule: React.FC = () => {
       showSuccess('New job version created successfully!');
 
       // Refresh the jobs list
-       fetchDeJobs();
+      fetchDeJobs();
     } catch (error) {
       console.error('=== SAVE JOB ERROR ===');
       console.error('Error type:', error?.constructor?.name);
@@ -360,11 +343,15 @@ const DataEnrichmentModule: React.FC = () => {
   ) => {
     try {
       console.log('Sending job for approval:', jobId, jobType);
-      await dataEnrichmentApi.updateJobStatus(jobId, 'STATUS_03_UNDER_REVIEW', jobType);
+      await dataEnrichmentApi.updateJobStatus(
+        jobId,
+        'STATUS_03_UNDER_REVIEW',
+        jobType,
+      );
       showSuccess('Job sent for approval successfully!');
 
       // Refresh the jobs list
-       fetchDeJobs();
+      fetchDeJobs();
 
       // Close the modal
       handleCloseJobDetails();
@@ -382,11 +369,6 @@ const DataEnrichmentModule: React.FC = () => {
 
   const handleEditJob = useCallback(
     async (job: DataEnrichmentJobResponse) => {
-      console.log('handleEditJob called with:', job);
-      console.log('Job type:', job.type);
-      console.log('Job ID:', job.id);
-      console.log('Job status:', job.status);
-
       // Prevent editing approved jobs
       const jobStatus = job.status || 'STATUS_01_IN_PROGRESS';
       if (jobStatus === 'STATUS_04_APPROVED') {
@@ -398,7 +380,10 @@ const DataEnrichmentModule: React.FC = () => {
       }
 
       // Only allow editing pending or rejected jobs
-      if (jobStatus !== 'STATUS_01_IN_PROGRESS' && jobStatus !== 'STATUS_05_REJECTED') {
+      if (
+        jobStatus !== 'STATUS_01_IN_PROGRESS' &&
+        jobStatus !== 'STATUS_05_REJECTED'
+      ) {
         console.warn(
           `Attempted to edit job with status: ${jobStatus} - blocking action`,
         );

@@ -54,6 +54,7 @@ const ApproverDEJobsPage: React.FC = () => {
       );
 
       setJobs(response.jobs);
+      console.log('Fetched DE jobs:', response.jobs);
       setTotalPages(response.pages);
       setTotalRecords(response.total);
     } catch (err: unknown) {
@@ -78,7 +79,11 @@ const ApproverDEJobsPage: React.FC = () => {
 
   const handleApproveJob = async (jobId: string, jobType: 'PULL' | 'PUSH') => {
     try {
-      await dataEnrichmentApi.updateJobStatus(jobId, 'STATUS_04_APPROVED', jobType);
+      await dataEnrichmentApi.updateJobStatus(
+        jobId,
+        'STATUS_04_APPROVED',
+        jobType,
+      );
       showSuccess('Job approved successfully');
       handleJobRefresh();
     } catch (error) {
@@ -87,10 +92,19 @@ const ApproverDEJobsPage: React.FC = () => {
     }
   };
 
-  const handleRejectJob = async (jobId: string, jobType: 'PULL' | 'PUSH') => {
+  const handleRejectJob = async (
+    jobId: string,
+    jobType: 'PULL' | 'PUSH',
+    reason: string,
+  ) => {
     try {
-      await dataEnrichmentApi.updateJobStatus(jobId, 'STATUS_05_REJECTED', jobType);
-      showSuccess('Job rejected successfully');
+      await dataEnrichmentApi.updateJobStatus(
+        jobId,
+        'STATUS_05_REJECTED',
+        jobType,
+        reason,
+      );
+      showSuccess(`Job rejected successfully. Reason: ${reason}`);
       handleJobRefresh();
     } catch (error) {
       console.error('Failed to reject job:', error);
