@@ -8,7 +8,7 @@ export interface CreateConfigRequest {
   transactionType: string;
   version?: string;
   contentType?: 'application/json' | 'application/xml';
-  payload: string;
+  payload?: string;
   schema?: any; // Complete JSON Schema object
   mapping?: FieldMapping[];
   fieldAdjustments?: FieldAdjustment[];

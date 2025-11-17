@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CheckCircleIcon, LoaderIcon } from 'lucide-react';
 import { configApi } from '../../features/config/services/configApi';
+import ReactJson from 'react-json-view';
 
 interface DeploymentConfirmationProps {
   configId?: number;
@@ -163,21 +164,18 @@ export const DeploymentConfirmation: React.FC<DeploymentConfirmationProps> = ({
           <h4 className="text-sm font-medium text-gray-700 mb-3"> Payload & Schema</h4>
           <div className="bg-white p-4 rounded border border-gray-200">
             <div className="space-y-4">
-              {configData.payload && (
-                <div>
-                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wide block mb-2">Original Payload</span>
-                  <pre className="text-xs text-gray-800 bg-gray-50 p-3 rounded border overflow-x-auto max-h-40">
-                    {typeof configData.payload === 'string' ? configData.payload : JSON.stringify(configData.payload, null, 2)}
-                  </pre>
-                </div>
-              )}
-
-              {configData.schema && (
-                <div>
-                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wide block mb-2">Generated Schema</span>
-                  <pre className="text-xs text-gray-800 bg-gray-50 p-3 rounded border overflow-x-auto max-h-40">
-                    {typeof configData.schema === 'string' ? configData.schema : JSON.stringify(configData.schema, null, 2)}
-                  </pre>
+              {(configData.schema || configData.payload) && (
+                <div className="bg-white h-[400px] overflow-auto">
+                  <ReactJson
+                    src={configData?.schema || configData?.payload || {}}
+                    theme="rjv-default"
+                    name={false}
+                    displayDataTypes={false}
+                    displayObjectSize={true}
+                    enableClipboard={true}
+                    collapsed={false}
+                    style={{ fontSize: '13px' }}
+                  />
                 </div>
               )}
             </div>

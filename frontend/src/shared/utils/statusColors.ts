@@ -165,9 +165,9 @@ export const normalizeStatus = (status: string | undefined): string => {
  * Check if a status matches a specific value (handles both formats)
  */
 export const isStatus = (actualStatus: string | undefined, expectedStatus: string): boolean => {
-  const normalized = normalizeStatus(actualStatus);
-  const expected = expectedStatus.toLowerCase().replace(/[\s-]/g, '_');
-  return normalized === expected;
+  // const normalized = normalizeStatus(actualStatus);
+  // const expected = expectedStatus.toLowerCase().replace(/[\s-]/g, '_');
+  return actualStatus === expectedStatus;
 };
 
 /**

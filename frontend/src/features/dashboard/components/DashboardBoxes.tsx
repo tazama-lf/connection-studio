@@ -137,7 +137,7 @@ const DashboardBoxes: React.FC = () => {
   }, []);
 
   return (
-    <Box sx={(theme: any) => ({ px: { xs: 2, sm: 4, md: 8 }, pt: { xs: 2, sm: 3 }, mb: 2, backgroundColor: theme.palette.background.default, borderRadius: 2, py: 2 })}>
+    <Box sx={(theme: any) => ({ px: "48px" , mb: 2, backgroundColor: theme.palette.background.default, borderRadius: 2, py: 2, pt: "52px !important" })}>
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr', lg: 'repeat(3, 1fr)' }, gap: 3 }}>
         {items.map((it, idx) => (
           <Box

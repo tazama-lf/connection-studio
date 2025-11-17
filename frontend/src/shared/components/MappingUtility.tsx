@@ -477,7 +477,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
     const getFieldType = (fieldPath: string): string | undefined => {
       if (Array.isArray(sourceSchema)) {
         const field = sourceSchema.find(f => {
-          const cleanPath = (f.path || f.name || '').replace(/\[0\]/g, '');
+          const cleanPath = (f.path || f.name || '').replace(/\[(\d+)\]/g, '.$1');
           return cleanPath === fieldPath || f.path === fieldPath;
         });
         return field?.type?.toLowerCase();
@@ -657,6 +657,35 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
     }
   };
   const handleSaveMapping = async () => {
+    // Check if any selected destination is already used in existing mappings
+    const usedDestinations = new Set<string>();
+    currentMappings.forEach(mapping => {
+      // Collect all destinations from existing mappings
+      if (mapping.destination) {
+        if (Array.isArray(mapping.destination)) {
+          mapping.destination.forEach(dest => {
+            if (dest) usedDestinations.add(dest);
+          });
+        } else {
+          usedDestinations.add(mapping.destination);
+        }
+      }
+      if (mapping.destinations && Array.isArray(mapping.destinations)) {
+        mapping.destinations.forEach(dest => {
+          if (dest) usedDestinations.add(dest);
+        });
+      }
+    });
+
+    // Check if any of the selected destinations are already used
+    const alreadyUsedDestinations = selectedDestinations.filter(dest => usedDestinations.has(dest));
+    if (alreadyUsedDestinations.length > 0) {
+      setMappingError(
+        `The following destination are already mapped: (${alreadyUsedDestinations.join(', ')})`
+      );
+      return;
+    }
+
     // Check for duplicate mappings first
     const isDuplicate = currentMappings.some(existingMapping => {
       // For constant mappings, check constant value and destination

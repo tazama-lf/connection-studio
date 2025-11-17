@@ -546,7 +546,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
               </button>
             )}
             {userIsExporter &&
-              normalizeStatus(config.status) === 'STATUS_04_APPROVED' && (
+              (config.status === 'STATUS_04_APPROVED' || config.status === 'STATUS_08_DEPLOYED') && (
                 <button
                   onClick={() => {
                     handleExportConfig(config);
@@ -558,8 +558,8 @@ export const ConfigList: React.FC<ConfigListProps> = ({
                   Export
                 </button>
               )}
-            {userIsPublisher &&
-              normalizeStatus(config.status) === 'STATUS_06_EXPORTED' && (
+            {/* {userIsPublisher &&
+              config.status === 'STATUS_06_EXPORTED' && (
                 <button
                   onClick={() => {
                     handlePublishConfig(config);
@@ -570,7 +570,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
                   <Rocket className="w-4 h-4 mr-2" />
                   Publish
                 </button>
-              )}
+              )} */}
 
             {/* </DropdownMenuWithAutoDirection> */}
             {/* )}
@@ -635,7 +635,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
       ) : (
         <CustomTable
           columns={columns}
-          rows={filteredConfigs}
+          rows={configs}
           search={true}
           pageSize={itemsPerPage}
           pageSizeOptions={[10, 20, 50]}
