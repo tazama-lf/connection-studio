@@ -2413,16 +2413,16 @@ export class ConfigService {
       // }
     }
 
-    const action: WorkflowAction = 'deploy';
-    const validation = this.workflowService.canPerformAction(
-      userClaims,
-      currentStatus,
-      action,
-    );
+    // const action: WorkflowAction = 'deploy';
+    // const validation = this.workflowService.canPerformAction(
+    //   userClaims,
+    //   currentStatus,
+    //   action,
+    // );
 
-    if (!validation.canPerform) {
-      throw new ForbiddenException(validation.message);
-    }
+    // if (!validation.canPerform) {
+    //   throw new ForbiddenException(validation.message);
+    // }
 
     const newStatus = ConfigStatus.DEPLOYED;
 
