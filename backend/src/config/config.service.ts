@@ -2342,6 +2342,9 @@ export class ConfigService {
         `Successfully uploaded config file (${fileName}) with status '${ConfigStatus.DEPLOYED}' to SFTP servers.`,
       );
 
+
+      console.log("export config kai andar ho" );
+
       const result = await this.configRepository.getupdateConfigByStatus(
         id,
         ConfigStatus.EXPORTED,
