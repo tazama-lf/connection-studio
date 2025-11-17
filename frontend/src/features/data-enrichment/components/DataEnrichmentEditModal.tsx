@@ -390,7 +390,7 @@ export const DataEnrichmentEditModal: React.FC<
                 : 'password';
             initialValues.username = selectedJob.connection.user_name || '';
             // Note: We don't set password/private key for security reasons
-          } else if (selectedJob.source_type === 'HTTPS') {
+          } else if (selectedJob.source_type === 'HTTP') {
             // HTTPS connection settings
             initialValues.url = selectedJob.connection.url || '';
             initialValues.headers = selectedJob.connection.headers

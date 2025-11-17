@@ -1303,7 +1303,7 @@ export const DataEnrichmentFormModal: React.FC<
       // Close modal after showing success message
       setTimeout(() => {
         onClose();
-      }, 1500);
+      }, 200);
     } catch (error) {
       console.error('=== CREATE ENDPOINT ERROR ===', error);
 
