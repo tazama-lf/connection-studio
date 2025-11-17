@@ -22,8 +22,8 @@ const DrawerHeader = styled('div')(({ theme }) => ({
   backgroundColor: '#FBF9FA',
   borderBottom: '1px solid rgba(0,0,0,0.04)',
 }));
-const AppBar = styled(MuiAppBar)(({ theme }) => ({
-  zIndex: theme.zIndex.drawer + 1,
+const AppBar = styled(MuiAppBar)(() => ({
+  zIndex: 50, // Fixed z-index for header
   backgroundColor: '#FBF9FA',
   color: '#000',
   boxShadow: 'none',

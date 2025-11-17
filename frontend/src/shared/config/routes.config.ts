@@ -8,7 +8,7 @@ export const ROUTES = {
   DEMS: '/dems',
   DATA_ENRICHMENT: '/de',
   CRON: '/cron',
-  APPROVER: '/approver',
+  // APPROVER: '/approver',
   PUBLISHER: '/publisher',
 
   // Nested routes
@@ -49,14 +49,14 @@ export const NAVIGATION = {
       icon: 'ClockIcon',
       color: 'bg-purple-100 text-purple-600',
     },
-    {
-      id: 'approver',
-      name: 'Approver Dashboard',
-      description: 'Review and approve submitted configuration changes',
-      path: ROUTES.APPROVER,
-      icon: 'CheckCircleIcon',
-      color: 'bg-yellow-100 text-yellow-600',
-    },
+    // {
+    //   id: 'approver',
+    //   name: 'Approver Dashboard',
+    //   description: 'Review and approve submitted configuration changes',
+    //   path: ROUTES.APPROVER,
+    //   icon: 'CheckCircleIcon',
+    //   color: 'bg-yellow-100 text-yellow-600',
+    // },
     {
       id: 'publisher',
       name: 'Publisher Dashboard',

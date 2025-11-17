@@ -25,7 +25,7 @@ export const Login: React.FC = () => {
         if (token) {
           const userData = authApi.decodeToken(token);
           const isUserApprover = userData?.claims ? isApprover(userData.claims) : false;
-          navigate(isUserApprover ? '/approver' : '/dashboard');
+          navigate( '/dashboard');
         } else {
           // Fallback to dashboard if token not found
           navigate('/dashboard');

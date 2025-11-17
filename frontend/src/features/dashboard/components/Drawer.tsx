@@ -17,6 +17,7 @@ const openedMixin = (theme: Theme): CSSObject => ({
   height: `calc(100% - ${HEADER_HEIGHT}px)`,
   position: 'fixed',
   backgroundColor: '#fbf9fa',
+  zIndex: 20,
 });
 
 
@@ -35,6 +36,7 @@ const closedMixin = (theme: Theme): CSSObject => ({
   height: `calc(100% - ${HEADER_HEIGHT}px)`,
   position: 'fixed',
   backgroundColor: '#fbf9fa',
+  zIndex: 20,
 });
 
 const Drawer = styled(MuiDrawer, { shouldForwardProp: (prop) => prop !== 'open' })(

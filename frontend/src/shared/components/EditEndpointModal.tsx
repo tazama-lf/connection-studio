@@ -15,7 +15,7 @@ import type {
   AllowedFunctionName
 } from '../types/functions.types';
 import { FUNCTION_CONFIGS } from '../types/functions.types';
-import { isApprover, isEditor, isExporter } from '../../utils/roleUtils';
+import { isApprover, isEditor, isExporter, isPublisher } from '../../utils/roleUtils';
 import { isStatus } from '../utils/statusColors';
 import { convertInferredFieldsToJsonSchema } from '../utils/schemaUtils';
 import type { InferredField } from '../utils/schemaUtils';
@@ -270,6 +270,9 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
   const [createdEndpoint, setCreatedEndpoint] = useState<any | null>(null);
   const [existingConfig, setExistingConfig] = useState<any | null>(null);
   const [inferredSchema, setInferredSchema] = useState<any | null>(null);
+
+  console.log('createdEndpoint?.status', isStatus(createdEndpoint?.status, 'STATUS_06_EXPORTED'));
+  
 
   const [currentMappings, setCurrentMappings] = useState<any[]>([]); // Current mappings from MappingUtility
 console.log('Cur map:', currentMappings);
@@ -1050,10 +1053,8 @@ console.log('Cur map:', currentMappings);
         transactionType: endpointData.transactionType,
         version: endpointData.version,
         contentType: endpointData.contentType as 'application/json' | 'application/xml',
-        payload: payload,
+        payload: existingConfig ? undefined : payload,
       };
-
-      console.log('testingghdjs', createRequest);
 
       // CRITICAL: Use the current schema from PayloadEditor (includes user edits)
       // If currentSchema is an InferredField[] array, convert it to JSON Schema format
@@ -1090,7 +1091,7 @@ console.log('Cur map:', currentMappings);
       }
 
       // If no currentSchema but we have a payload, regenerate schema from payload
-      if (!finalSchema && payload.trim()) {
+      if (!existingConfig?.schema && payload.trim()) {
         console.log('🔄 No current schema from PayloadEditor, regenerating from payload...');
         try {
           // Import the schema generation logic (simplified version)
@@ -1791,7 +1792,7 @@ console.log('Cur map:', currentMappings);
             Cancel
           </Button>
           {/* Hide action buttons on deploy step when in read-only mode for non-approvers */}
-          {!(readOnly && currentStep === 'deploy' && !isApprover(user?.claims || [])) && (
+          {!(readOnly && currentStep === 'deploy' && !isApprover(user?.claims || []) && !isExporter(user?.claims || []) && !isPublisher(user?.claims || [])) && (
             <div className="flex items-center space-x-4" data-id="element-746">
               {currentStep !== 'payload' && (
                 <Button variant="secondary" className=' !pb-[6px] !pt-[4px]' onClick={() => {
@@ -1831,7 +1832,7 @@ console.log('Cur map:', currentMappings);
                 </Button>
               )}
               {/* Show Next button for approvers, editors, and exporters in read-only mode on all steps */}
-              {readOnly && (isApprover(user?.claims || []) || isEditor(user?.claims || []) || isExporter(user?.claims || [])) && (
+              {readOnly && (isApprover(user?.claims || []) || isEditor(user?.claims || []) || isExporter(user?.claims || []) || isPublisher(user?.claims || [])) && (
                 <>
                   {(() => {
                     const currentIndex = steps.findIndex(s => s.id === currentStep);
@@ -1845,7 +1846,7 @@ console.log('Cur map:', currentMappings);
                         {/* Show approver action buttons on the last step (deployment) */}
                         {isApprover(user?.claims || []) && currentStep === 'deploy' && (
                           <>
-                            {onRevertToEditor && (!isStatus(createdEndpoint?.status, 'STATUS_04_APPROVED') && !isStatus(existingConfig?.status, 'STATUS_04_APPROVED')) && (
+                            {onRevertToEditor && (!isStatus(createdEndpoint?.status, 'STATUS_04_APPROVED') && !isStatus(existingConfig?.status, 'STATUS_06_EXPORTED')) && (
                               <Button
                                 variant="primary"
                                 onClick={onRevertToEditor}
@@ -1854,7 +1855,7 @@ console.log('Cur map:', currentMappings);
                                 Reject
                               </Button>
                             )}
-                            {onSendForDeployment && (!isStatus(createdEndpoint?.status, 'STATUS_04_APPROVED') && !isStatus(existingConfig?.status, 'STATUS_04_APPROVED')) && (
+                            {onSendForDeployment && (!isStatus(createdEndpoint?.status, 'STATUS_04_APPROVED') && !isStatus(existingConfig?.status, 'STATUS_06_EXPORTED')) && (
                               <Button
                                 variant="primary"
                                 onClick={onSendForDeployment}
@@ -1868,7 +1869,7 @@ console.log('Cur map:', currentMappings);
                         {/* Show export button for exporters on the last step */}
                         {isExporter(user?.claims || []) && currentStep === 'deploy' && (
                           <>
-                            {onSendForDeployment && (isStatus(createdEndpoint?.status, 'STATUS_04_APPROVED') || isStatus(existingConfig?.status, 'STATUS_04_APPROVED')) && (
+                            {onSendForDeployment && (isStatus(createdEndpoint?.status, 'STATUS_04_APPROVED') || isStatus(existingConfig?.status, 'STATUS_08_DEPLOYED')) && (
                               <Button
                                 variant="primary"
                                 onClick={onSendForDeployment}

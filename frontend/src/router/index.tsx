@@ -1,7 +1,7 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from '../features/auth/contexts/AuthContext';
-import { isApprover, isPublisher, isExporter } from '../utils/roleUtils';
+import { isApprover, isPublisher, isExporter, isEditor } from '../utils/roleUtils';
 import Login from '../features/auth/pages/Login';
 import Dashboard from '../features/dashboard/pages/Dashboard';
 import DEMSModule from '@pages/dems';
@@ -83,8 +83,8 @@ const EditorRoute = ({
   if (!isAuthenticated) {
     return <Navigate to={ROUTES.LOGIN} />;
   }
-  if (!user?.claims || isApprover(user.claims)) {
-    return <Navigate to={ROUTES.APPROVER} />;
+  if (!user?.claims || !isEditor(user.claims)) {
+    return <Navigate to={ROUTES.DASHBOARD} />;
   }
   return <>{children}</>;
 };
@@ -108,11 +108,11 @@ export const AppRoutes: React.FC = () => {
             <DEMSModule />
           </EditorRoute>
         } />
-        <Route path={ROUTES.APPROVER} element={
+        {/* <Route path={ROUTES.APPROVER} element={
           <ApproverRoute>
             <ApproverModule />
           </ApproverRoute>
-        } />
+        } /> */}
         <Route path="/approver/configs" element={
           <ApproverRoute>
             <ApproverConfigsPage />
