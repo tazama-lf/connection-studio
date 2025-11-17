@@ -3,7 +3,7 @@ import { IngestMode, JobStatus } from '@tazama-lf/tcs-lib';
 
 export class PushJob {
   @Expose()
-  id: string
+  id: string;
 
   @Expose()
   endpoint_name: string;
@@ -24,8 +24,8 @@ export class PushJob {
   version: string;
 
   @Expose()
-  status: JobStatus
+  status: JobStatus;
 
   @Expose()
-  comments: string
+  comments: string;
 }

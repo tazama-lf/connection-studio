@@ -21,7 +21,7 @@ export class DryRunService {
   constructor(
     private readonly loggerService: LoggerService,
     private readonly httpService: HttpService,
-  ) { }
+  ) {}
 
   async transformFileToJSON(
     sftp: SFTPClient,
@@ -38,7 +38,7 @@ export class DryRunService {
         }
       } catch (decodeError) {
         this.loggerService.warn(`Decoding failed : ${decodeError}`);
-        throw new Error(decodeError.message)
+        throw new Error(decodeError.message);
       }
 
       if (file.file_type === FileType.JSON) {

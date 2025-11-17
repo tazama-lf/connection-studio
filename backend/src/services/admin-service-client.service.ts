@@ -14,7 +14,6 @@ import { firstValueFrom } from 'rxjs';
 import { AuthenticatedUser } from 'src/auth/auth.types';
 import { UpdatePullJobDto } from 'src/job/dto/update-pull-job.dto';
 import { UpdatePushJobDto } from 'src/job/dto/update-push-job.dto';
-import { EndpointJobRecord } from 'src/job/types/job.interface';
 import { UpdateScheduleJobDto } from 'src/scheduler/dto/update-schedule-dto';
 
 @Injectable()

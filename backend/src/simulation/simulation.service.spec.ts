@@ -46,7 +46,6 @@ describe('SimulationService', () => {
     expect(result.errors[0].field).toBe('endpointId');
   });
 });
-*/
 
 /*
                         },        FIToFICstmrCdtTrf: {    mapping: [],
@@ -2137,3 +2136,4 @@ describe('SimulationService', () => {
     });
   });
 });
+*/

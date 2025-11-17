@@ -100,14 +100,15 @@ export class NotifyService implements OnModuleInit {
 
   async notifyEnrichment(id: string, type: ConfigType): Promise<void> {
     try {
-
       const payload = {
         dataPayload: JSON.stringify({ endpoint_id: id, config_type: type }),
       };
 
       await this.natsService.handleResponse(payload);
 
-      this.logger.log(`Configuration with endpoint_id : ${id} and config_type : ${type} sent to DATA-ENRICHMENT`);
+      this.logger.log(
+        `Configuration with endpoint_id : ${id} and config_type : ${type} sent to DATA-ENRICHMENT`,
+      );
     } catch (error) {
       this.logger.error(
         new Error(
@@ -118,7 +119,7 @@ export class NotifyService implements OnModuleInit {
     }
   }
 
-  async notifyDems(configId: string, tenantId: string): Promise<void> {
+  async notifyDems(configId: string, _tenantId: string): Promise<void> {
     try {
       this.logger.log(
         `Sending notification to DEMS stream: ${this.demsStream}`,
