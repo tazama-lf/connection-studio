@@ -81,7 +81,7 @@ export class DryRunService {
     const { data } = await firstValueFrom(
       this.httpService.get(httpCon.url, {
         headers: httpCon.headers,
-        timeout: 3000,
+        timeout: 15000,
       }),
     );
 
