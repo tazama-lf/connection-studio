@@ -9,7 +9,8 @@ import {
   ChevronDownIcon,
   FilterIcon,
   Upload,
-  Rocket,
+  ShieldCheck,
+  ShieldX
 } from 'lucide-react';
 import { configApi } from '../services/configApi';
 import { sftpApi } from '../../../features/exporter/services/sftpApi';
@@ -41,6 +42,7 @@ interface Config {
   updatedAt: string;
   mapping?: any[];
   schema?: any;
+  publishing_status?: 'active' | 'inactive' | null;
 }
 
 interface ConfigListProps {
@@ -345,6 +347,35 @@ export const ConfigList: React.FC<ConfigListProps> = ({
     }
   };
 
+  const handleTogglePublishingStatus = async (
+    config: Config,
+    newStatus: 'active' | 'inactive',
+  ) => {
+    try {
+      await configApi.updatePublishingStatus(config.id, newStatus);
+
+      const statusLabel = newStatus === 'active' ? 'activated' : 'deactivated';
+      showSuccess(
+        'Success',
+        `Config "${config.msgFam}" has been ${statusLabel} successfully.`,
+      );
+
+      // Refresh the configs list
+      fetchConfigsTemp(page);
+
+      // Trigger parent refresh if available
+      if (onRefresh) {
+        onRefresh();
+      }
+    } catch (error) {
+      console.error('Error toggling publishing status:', error);
+      showError(
+        'Error',
+        'Failed to update publishing status. Please try again.',
+      );
+    }
+  };
+
   const [page, setPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(0);
   const [totalRecords, setTotalRecords] = useState<number>(0);
@@ -553,19 +584,33 @@ export const ConfigList: React.FC<ConfigListProps> = ({
                   Export
                 </button>
               )}
-            {/* {userIsPublisher &&
-              config.status === 'STATUS_06_EXPORTED' && (
-                <button
-                  onClick={() => {
-                    handlePublishConfig(config);
-                    setOpenDropdown(null);
-                  }}
-                  className="inline-flex items-center rounded-md bg-purple-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-purple-700 focus:outline-none transition-colors cursor-pointer"
-                >
-                  <Rocket className="w-4 h-4 mr-2" />
-                  Publish
-                </button>
-              )} */}
+            {userIsPublisher && (
+              <>
+                {config.publishing_status === 'active' ? (
+                  <button
+                    onClick={() => {
+                      handleTogglePublishingStatus(config, 'inactive');
+                      setOpenDropdown(null);
+                    }}
+                    className=" w-[85px] inline-flex justify-center items-center rounded-md bg-[#2b7fff] px-3 py-1.5 text-xs font-medium text-white shadow-sm focus:outline-none transition-colors cursor-pointer"
+                  >
+                    <ShieldX className="w-3 h-3 mr-1" />
+                    Inactive
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      handleTogglePublishingStatus(config, 'active');
+                      setOpenDropdown(null);
+                    }}
+                    className=" w-[85px] inline-flex justify-center items-center rounded-md bg-[#2b7fff] px-3 py-1.5 text-xs font-medium text-white shadow-sm focus:outline-none transition-colors cursor-pointer"
+                  >
+                    <ShieldCheck className="w-3 h-3 mr-1" />
+                    Active
+                  </button>
+                )}
+              </>
+            )}
 
             {/* </DropdownMenuWithAutoDirection> */}
             {/* )}

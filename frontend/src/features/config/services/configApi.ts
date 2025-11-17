@@ -541,6 +541,37 @@ async getConfigsPaginated(
     }
   }
 
+  async updatePublishingStatus(
+    id: number,
+    publishingStatus: 'active' | 'inactive',
+  ): Promise<ConfigResponse> {
+    try {
+      const url = `${this.baseURL}/config/${id}/publishing-status`;
+      const headers = this.getAuthHeaders();
+      const method = 'PATCH';
+
+      const response = await fetch(url, {
+        method: method,
+        headers: headers,
+        body: JSON.stringify({
+          publishing_status: publishingStatus,
+        }),
+      });
+
+      console.log('📥 Response received:');
+      console.log('  - Status:', response.status);
+      console.log('  - Status Text:', response.statusText);
+
+      const result = await this.handleResponse<ConfigResponse>(response);
+      console.log('✅ Config publishing status updated:', result);
+
+      return result;
+    } catch (error) {
+      console.error('💥 Config publishing status update failed:', error);
+      throw error;
+    }
+  }
+
   async deleteConfig(id: number): Promise<void> {
     try {
       const response = await fetch(`${this.baseURL}/config/${id}`, {

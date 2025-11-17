@@ -363,6 +363,29 @@ export const dataEnrichmentApi = {
     }
   },
 
+  updatePublishingStatus: async (
+    id: string,
+    publishingStatus: 'active' | 'in-active',
+    type: 'PULL' | 'PUSH',
+  ): Promise<{ success: boolean; message: string }> => {
+    try {
+      const url = `${API_BASE_URL}/job/update/activation/${id}?status=${publishingStatus.toLowerCase()}&type=${type.toLowerCase()}`;
+
+      const response = await apiRequest<{ success: boolean; message: string }>(
+        url,
+        {
+          method: 'PATCH',
+        },
+      );
+
+      console.log('✅ Job publishing status updated:', response);
+      return response;
+    } catch (error) {
+      console.error('💥 Job publishing status update failed:', error);
+      throw error;
+    }
+  },
+
   // Schedule endpoints
   createSchedule: async (
     data: ScheduleRequest,

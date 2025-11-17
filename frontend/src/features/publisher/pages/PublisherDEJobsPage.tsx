@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { SearchIcon } from 'lucide-react';
+import { ChevronLeft, SearchIcon } from 'lucide-react';
 import { dataEnrichmentApi } from '../../data-enrichment/services/dataEnrichmentApi';
 import { useToast } from '../../../shared/providers/ToastProvider';
 import type { DataEnrichmentJobResponse } from '../../data-enrichment/types';
@@ -8,8 +8,13 @@ import PublisherDEJobDetailsModal from '../components/PublisherDEJobDetailsModal
 import { useAuth } from '@features/auth';
 import { getPrimaryRole } from '@utils/roleUtils';
 import { UI_CONFIG } from '@shared/config/app.config';
+import { JobList } from '@features/data-enrichment';
+import { Button } from '@shared';
+import { useNavigate } from 'react-router';
+import JobDetailsModal from '@features/data-enrichment/components/JobDetailsModal';
 
 const PublisherDEJobsPage: React.FC = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const userRole = getPrimaryRole(user?.claims as string[]);
 
@@ -17,9 +22,13 @@ const PublisherDEJobsPage: React.FC = () => {
   const [jobs, setJobs] = useState<DataEnrichmentJobResponse[]>([]);
   const [jobsLoading, setJobsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Job details modal state
+  const [showJobDetails, setShowJobDetails] = useState(false);
   const [selectedJob, setSelectedJob] =
     useState<DataEnrichmentJobResponse | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [jobDetailsLoading, setJobDetailsLoading] = useState(false);
 
   const [page, setPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(0);
@@ -61,12 +70,30 @@ const PublisherDEJobsPage: React.FC = () => {
     fetchDeJobs(page);
   }, [page, searchingFilters]);
 
-  const handleViewDetails = (jobId: string) => {
-    const job = jobs.find((j) => j.id === jobId);
-    if (job) {
-      setSelectedJob(job);
-      setIsModalOpen(true);
+  const handleViewJobDetails = async (jobId: string) => {
+    console.log('Exporter viewing job details:', jobId);
+    try {
+      setJobDetailsLoading(true);
+      setShowJobDetails(true);
+
+      // Find the job in the current list to determine its type
+      const job = jobs.find((j) => j.id === jobId);
+      const jobType = job?.type?.toUpperCase() as 'PULL' | 'PUSH' | undefined;
+
+      // Fetch job details from the API
+      const jobDetails = await dataEnrichmentApi.getJob(jobId, jobType);
+      setSelectedJob(jobDetails);
+    } catch (error) {
+      console.error('Failed to load job details:', error);
+      showError('Failed to load job details');
+    } finally {
+      setJobDetailsLoading(false);
     }
+  };
+
+  const handleCloseJobDetails = () => {
+    setShowJobDetails(false);
+    setSelectedJob(null);
   };
 
   const handlePublishSuccess = () => {
@@ -75,23 +102,26 @@ const PublisherDEJobsPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-          {/* Search Bar */}
-          <div className="relative w-full md:w-96">
-            <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search DE jobs..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
+      <div className="mx-auto px-4 sm:px-6 lg:px-[48px] py-[52px]">
+        <Button
+          variant="primary"
+          className="py-1 pl-2"
+          onClick={() => navigate(-1)}
+        >
+          <ChevronLeft size={20} /> <span>Go Back</span>
+        </Button>
+        {/* Search Bar */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center my-8 gap-4">
+          <div className="flex items-center space-x-4">
+            {/* Search Bar */}
+            <h1 className="text-2xl font-bold text-gray-800">
+              Data Enrichment
+            </h1>
           </div>
         </div>
 
         {/* DE Jobs Table */}
-        <PublisherDEJobList
+        {/* <PublisherDEJobList
           jobs={jobs}
           isLoading={jobsLoading}
           onViewDetails={handleViewDetails}
@@ -105,15 +135,41 @@ const PublisherDEJobsPage: React.FC = () => {
           setSearchingFilters={setSearchingFilters}
           error={error}
           loading={loading}
+        /> */}
+
+        {/* DE Jobs Table */}
+        <JobList
+          jobs={jobs}
+          isLoading={jobsLoading}
+          onRefresh={() => fetchDeJobs(page)}
+          onViewLogs={handleViewJobDetails}
+          page={page}
+          setPage={setPage}
+          totalPages={totalPages}
+          totalRecords={totalRecords}
+          itemsPerPage={itemsPerPage}
+          searchingFilters={searchingFilters}
+          setSearchingFilters={setSearchingFilters}
+          error={error}
+          loading={loading}
         />
       </div>
 
       {/* DE Job Details Modal */}
-      <PublisherDEJobDetailsModal
+      {/* <PublisherDEJobDetailsModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         job={selectedJob}
         onPublishSuccess={handlePublishSuccess}
+      /> */}
+
+      {/* Modal for viewing job details */}
+      <JobDetailsModal
+        isOpen={showJobDetails}
+        onClose={handleCloseJobDetails}
+        job={selectedJob}
+        isLoading={jobDetailsLoading}
+        // onExport={handleExportJob}
       />
     </div>
   );
