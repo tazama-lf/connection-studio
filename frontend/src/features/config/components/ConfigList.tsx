@@ -643,16 +643,16 @@ export const ConfigList: React.FC<ConfigListProps> = ({
           pagination={
             configs.length > 0 && (
               <div className="px-6 py-4 border-t border-gray-200 bg-white rounded-b-lg flex items-center justify-between">
-                <div className="text-sm text-gray-700">
+                <div className="text-sm text-gray-700 font-medium">
                   Showing{' '}
-                  <span className="font-medium">
+                  <span className="font-bold">
                     {(page - 1) * itemsPerPage + 1}
                   </span>{' '}
                   to{' '}
-                  <span className="font-medium">
+                  <span className="font-bold">
                     {Math.min(page * itemsPerPage, totalRecords)}
                   </span>{' '}
-                  of <span className="font-medium">{totalRecords}</span> results
+                  of <span className="font-bold">{totalRecords}</span> results
                 </div>
                 <div className="flex items-center space-x-3">
                   <Box>

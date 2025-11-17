@@ -19,17 +19,17 @@ interface ButtonProps {
   type = 'button',
   disabled = false
 }) => {
-  const baseStyles = 'cursor-pointer inline-flex items-center justify-center font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2';
+  const baseStyles = 'cursor-pointer inline-flex items-center justify-center font-medium rounded-md focus:outline-none transition-colors duration-150';
   const variantStyles = {
     primary: disabled 
       ? 'text-gray-400 bg-gray-100 cursor-not-allowed border border-gray-300'
-      : 'text-white bg-[#2b7fff] hover:bg-[#2b7fff] focus:ring-blue-500 border border-transparent',
+      : 'text-white bg-[#2b7fff] hover:bg-[#2b7fff] focus:outline-none border border-transparent',
     secondary: disabled
       ? 'text-gray-400 bg-gray-100 cursor-not-allowed border border-gray-300'
-      : 'text-gray-700 bg-white hover:bg-gray-50 focus:ring-blue-500 border border-gray-300',
+      : 'text-gray-700 bg-white hover:bg-gray-50 focus:outline-none border border-gray-300',
     danger: disabled
       ? 'text-gray-400 bg-gray-100 cursor-not-allowed border border-gray-300'
-      : 'text-white bg-red-600 hover:bg-red-700 focus:ring-red-500 border border-transparent'
+      : 'text-white bg-red-600 hover:bg-red-700 focus:outline-none border border-transparent'
   };
   const sizeStyles = {
     sm: 'px-2.5 py-1.5 text-xs',

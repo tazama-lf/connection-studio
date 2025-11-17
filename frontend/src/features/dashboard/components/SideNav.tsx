@@ -4,6 +4,7 @@ import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
+import Tooltip from '@mui/material/Tooltip';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ROUTES } from '../../../shared/config/routes.config';
 import NavListItemButton from './NavListItemButton';
@@ -101,45 +102,64 @@ export default function SideNav({ open, onClose }: SideNavProps) {
             const isActive = path && (location.pathname === path || location.pathname.startsWith(path + '/'));
             return (
               <ListItem key={item.id} disablePadding sx={{ display: 'block' }}>
-                <NavListItemButton
-                  open={open}
-                  onClick={() => {
-                    navigate(item.path);
-                    // close the drawer on navigation if a closer was provided
-                    if (onClose) onClose();
-                  }}
-                  aria-label={`Navigate to ${item.text}`}
-                  sx={{
-                    py: 1,
-                    transition: 'background-color 150ms, color 150ms',
-                    backgroundColor: isActive ? `${item.color}18` : 'transparent',
-                    '&:hover': {
-                      backgroundColor: `${item.color}14`,
-                      '& .MuiListItemText-primary': { color: item.color },
-                      '& .icon-box': {
-                        borderColor: `${item.color}55`,
-                        bgcolor: `${item.color}10`
-                      }
+                <Tooltip 
+                  title={item.text} 
+                  placement="right" 
+                  arrow
+                  disableHoverListener={open}
+                  slotProps={{
+                    popper: {
+                      modifiers: [
+                        {
+                          name: 'offset',
+                          options: {
+                            offset: [0, -8],
+                          },
+                        },
+                      ],
                     },
-                    '& .MuiListItemText-primary': isActive ? { color: item.color, fontWeight: 700 } : {}
                   }}
                 >
-                  <ListItemIcon sx={{ minWidth: 0, justifyContent: 'center', mr: open ? 2.5 : 'auto' }}>
-                    <Box className="icon-box" sx={{
-                      width: 34,
-                      height: 34,
-                      borderRadius: '50%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      border: `1px solid ${isActive ? item.color + '66' : item.color + '33'}`,
-                      bgcolor: isActive ? `${item.color}14` : '#fbf9fa'
-                    }}>
-                      {React.cloneElement(item.icon as any, { color: item.color })}
-                    </Box>
-                  </ListItemIcon>
-                  <ListItemText primary={item.text} sx={{ opacity: open ? 1 : 0, '& .MuiListItemText-primary': { fontSize: 13 } }} />
-                </NavListItemButton>
+                  <NavListItemButton
+                    open={open}
+                    onClick={() => {
+                      navigate(item.path);
+                      // close the drawer on navigation if a closer was provided
+                      if (onClose) onClose();
+                    }}
+                    aria-label={`Navigate to ${item.text}`}
+                    sx={{
+                      py: 1,
+                      transition: 'background-color 150ms, color 150ms',
+                      backgroundColor: isActive ? `${item.color}18` : 'transparent',
+                      '&:hover': {
+                        backgroundColor: `${item.color}14`,
+                        '& .MuiListItemText-primary': { color: item.color },
+                        '& .icon-box': {
+                          borderColor: `${item.color}55`,
+                          bgcolor: `${item.color}10`
+                        }
+                      },
+                      '& .MuiListItemText-primary': isActive ? { color: item.color, fontWeight: 700 } : {}
+                    }}
+                  >
+                    <ListItemIcon sx={{ minWidth: 0, justifyContent: 'center', mr: open ? 2.5 : 'auto' }}>
+                      <Box className="icon-box" sx={{
+                        width: 34,
+                        height: 34,
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        border: `1px solid ${isActive ? item.color + '66' : item.color + '33'}`,
+                        bgcolor: isActive ? `${item.color}14` : '#fbf9fa'
+                      }}>
+                        {React.cloneElement(item.icon as any, { color: item.color })}
+                      </Box>
+                    </ListItemIcon>
+                    <ListItemText primary={item.text} sx={{ opacity: open ? 1 : 0, '& .MuiListItemText-primary': { fontSize: 13 } }} />
+                  </NavListItemButton>
+                </Tooltip>
               </ListItem>
             );
           })}
@@ -149,32 +169,32 @@ export default function SideNav({ open, onClose }: SideNavProps) {
       <Box sx={{ borderTop: '1px solid', borderColor: 'divider' }}>
         <List>
           <ListItem disablePadding sx={{ display: 'block' }}>
-            <NavListItemButton
-              open={open}
-              onClick={() => {
-                logout();
-                navigate(ROUTES.LOGIN);
-                if (onClose) onClose();
-              }}
-              aria-label="Logout"
-              sx={{ py: 1 }}
-            >
-              <ListItemIcon sx={{ minWidth: 0, justifyContent: 'center', mr: open ? 2.5 : 'auto' }}>
-                <Box sx={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: '50%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  border: `1px solid #ef444433`,
-                  bgcolor: '#fbf9fa'
-                }}>
-                  <LogOutIcon size={18} color="#ef4444" />
-                </Box>
-              </ListItemIcon>
-              <ListItemText primary="Logout" sx={{ opacity: open ? 1 : 0, '& .MuiListItemText-primary': { fontSize: 13 } }} />
-            </NavListItemButton>
+              <NavListItemButton
+                open={open}
+                onClick={() => {
+                  logout();
+                  navigate(ROUTES.LOGIN);
+                  if (onClose) onClose();
+                }}
+                aria-label="Logout"
+                sx={{ py: 1 }}
+              >
+                <ListItemIcon sx={{ minWidth: 0, justifyContent: 'center', mr: open ? 2.5 : 'auto' }}>
+                  <Box sx={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: `1px solid #ef444433`,
+                    bgcolor: '#fbf9fa'
+                  }}>
+                    <LogOutIcon size={18} color="#ef4444" />
+                  </Box>
+                </ListItemIcon>
+                <ListItemText primary="Logout" sx={{ opacity: open ? 1 : 0, '& .MuiListItemText-primary': { fontSize: 13 } }} />
+              </NavListItemButton>
           </ListItem>
         </List>
       </Box>

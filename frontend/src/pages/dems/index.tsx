@@ -2,14 +2,16 @@ import React, { useState } from 'react';
 import { ConfigList } from '@features/config/components/ConfigList';
 import VersionHistoryModal from '@features/config/components/VersionHistoryModal';
 import { Button } from '@shared/components/Button';
-import { PlusIcon, SearchIcon, AlertTriangleIcon } from 'lucide-react';
+import { PlusIcon, SearchIcon, AlertTriangleIcon, ChevronLeft } from 'lucide-react';
 import EditEndpointModal from '@shared/components/EditEndpointModal';
 import ValidationLogsTable from '@shared/components/ValidationLogsTable';
 import type { Config } from '@features/config/index';
 import CustomTable from '@common/Tables/CustomTable';
+import { useNavigate } from 'react-router';
 
 // DEMS Module now uses real backend configurations instead of mock data
 const DEMSModule: React.FC = () => {
+  const navigate = useNavigate();
   const [editingEndpointId, setEditingEndpointId] = useState<number | null>(
     null,
   );
@@ -77,7 +79,8 @@ const DEMSModule: React.FC = () => {
         showBackButton={true}
       /> */}
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className=" mx-auto px-4 sm:px-6 lg:px-[48px] py-[52px]">
+      <Button variant='primary' className='py-1 pl-2' onClick={()=>navigate(-1)}><ChevronLeft size={20} /> <span>Go Back</span></Button>
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center my-8 gap-4">
           <div className="flex items-center space-x-4">
             {/* Search Bar */}

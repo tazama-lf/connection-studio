@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Button } from '../../../shared/components/Button';
-import { Plus } from 'lucide-react';
+import { ChevronLeft, Plus } from 'lucide-react';
 
 // New job management components
 import JobList from '../components/JobList';
@@ -26,8 +26,10 @@ import {
 import { UI_CONFIG } from '../../../shared/config/app.config';
 import { getUserFriendlyErrorMessage } from '../../../shared/utils/errorUtils';
 import { DataEnrichmentEditModal } from '../components/DataEnrichmentEditModal';
+import { useNavigate } from 'react-router';
 
 const DataEnrichmentModule: React.FC = () => {
+  const navigate = useNavigate();
   const { showSuccess, showError } = useToast();
   const { user } = useAuth();
 
@@ -426,33 +428,21 @@ const DataEnrichmentModule: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="mx-auto px-4 sm:px-6 lg:px-[48px] py-[52px]">
+        <Button
+          variant="primary"
+          className="py-1 pl-2"
+          onClick={() => navigate(-1)}
+        >
+          <ChevronLeft size={20} /> <span>Go Back</span>
+        </Button>
         {/* Search and Create Button */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center my-8 gap-4">
           <div className="flex items-center space-x-4">
             {/* Search Bar */}
-            <div className="relative">
-              <svg
-                className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
-              <input
-                type="text"
-                placeholder="Search endpoints..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-4 py-2 w-80 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
+            <h1 className="text-2xl font-bold text-gray-800">
+              Data Enrichment
+            </h1>
           </div>
           {userIsEditor && (
             <Button

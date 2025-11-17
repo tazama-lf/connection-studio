@@ -25,6 +25,7 @@ import Stepper from '@mui/material/Stepper';
 import Step from '@mui/material/Step';
 import StepLabel from '@mui/material/StepLabel';
 import type { StepIconProps } from '@mui/material/StepIcon';
+import { Backdrop } from '@mui/material';
 
 // Custom Step Icon Component
 const CustomStepIcon = (props: StepIconProps) => {
@@ -1402,10 +1403,13 @@ console.log('Cur map:', currentMappings);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Enhanced blurred backdrop */}
-      <div
-        className="fixed inset-0 backdrop-blur-sm backdrop-saturate-150 z-40"
-      // onClick={onClose}
-      />
+     <Backdrop
+        sx={(theme) => ({
+          zIndex: theme.zIndex.drawer + 1,
+          overflow: 'hidden',
+        })}
+        open={true}
+      >
 
       {/* Modal Content - Higher z-index to appear above backdrop */}
       <div className="bg-white rounded-lg w-full max-w-6xl max-h-[90vh] overflow-hidden relative z-50 shadow-2xl" data-id="element-727">
@@ -1795,7 +1799,7 @@ console.log('Cur map:', currentMappings);
           {!(readOnly && currentStep === 'deploy' && !isApprover(user?.claims || []) && !isExporter(user?.claims || []) && !isPublisher(user?.claims || [])) && (
             <div className="flex items-center space-x-4" data-id="element-746">
               {currentStep !== 'payload' && (
-                <Button variant="secondary" className=' !pb-[6px] !pt-[4px]' onClick={() => {
+                <Button variant="secondary" className=' !pb-[6px] !pt-[5px]' onClick={() => {
                   const currentIndex = steps.findIndex(s => s.id === currentStep);
                   if (currentIndex > 0) {
                     // Clear any previous step-specific errors when navigating backward
@@ -1807,7 +1811,7 @@ console.log('Cur map:', currentMappings);
                 </Button>
               )}
               {!readOnly && (
-                <Button variant="primary" className=' !pb-[6px] !pt-[4px]' onClick={async () => {
+                <Button variant="primary" className=' !pb-[6px] !pt-[5px] bg-[#2b7fff]' onClick={async () => {
                   console.log('🎯 Save and Next button clicked, currentStep:', currentStep);
                   console.log('createdEndpoint:', createdEndpoint);
                   console.log('existingConfig:', existingConfig);
@@ -1839,7 +1843,7 @@ console.log('Cur map:', currentMappings);
                     return (
                       <>
                         {currentIndex < steps.length - 1 && (
-                          <Button variant="primary" onClick={handleNext}>
+                          <Button variant="primary"  className=' !pb-[6px] !pt-[5px] bg-[#2b7fff]' onClick={handleNext}>
                             Next
                           </Button>
                         )}
@@ -1850,7 +1854,7 @@ console.log('Cur map:', currentMappings);
                               <Button
                                 variant="primary"
                                 onClick={onRevertToEditor}
-                                className="bg-red-600 hover:bg-red-700 text-white"
+                                className=' !pb-[6px] !pt-[5px] bg-red-600 hover:bg-red-700 text-white'
                               >
                                 Reject
                               </Button>
@@ -1859,7 +1863,7 @@ console.log('Cur map:', currentMappings);
                               <Button
                                 variant="primary"
                                 onClick={onSendForDeployment}
-                                className="bg-green-600 hover:bg-green-700 text-white"
+                                className="!pb-[6px] !pt-[5px] bg-green-600 hover:bg-green-700 text-white"
                               >
                                 Approve
                               </Button>
@@ -1873,7 +1877,7 @@ console.log('Cur map:', currentMappings);
                               <Button
                                 variant="primary"
                                 onClick={onSendForDeployment}
-                                className="bg-blue-600 hover:bg-blue-700 text-white"
+                                className="!pb-[6px] !pt-[5px] bg-[#2b7fff] text-white"
                               >
                                 Export
                               </Button>
@@ -1891,7 +1895,7 @@ console.log('Cur map:', currentMappings);
                                   variant="primary"
                                   onClick={async () => await handleSaveAndNext()}
                                   disabled={loading}
-                                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                                  className="!pb-[6px] !pt-[5px] bg-[#2b7fff] text-white"
                                 >
                                   {loading ? 'Processing...' : 'Submit for Approval'}
                                 </Button>
@@ -1907,6 +1911,7 @@ console.log('Cur map:', currentMappings);
           )}
         </div>
       </div>
+      </Backdrop>
     </div>
   );
 };
