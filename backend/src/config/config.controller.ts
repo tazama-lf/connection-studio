@@ -621,7 +621,7 @@ export class ConfigController {
   ): Promise<ConfigResponseDto> {
     const token = authorization?.replace('Bearer ', '') as string;
 
-    await this.configService.exportConfig(
+   const result =  await this.configService.exportConfig(
       id,
       dto,
       getTenantId(user),
@@ -630,15 +630,15 @@ export class ConfigController {
       token,
     );
 
-    const result = await this.adminServiceClient.forwardRequest(
-      'POST',
-      `/v1/admin/tcs/config/${id}/workflow/export`,
-      dto,
-      buildForwardHeaders(user),
-    );
+    // const result = await this.adminServiceClient.forwardRequest(
+    //   'POST',
+    //   `/v1/admin/tcs/config/${id}/workflow/export`,
+    //   dto,
+    //   buildForwardHeaders(user),
+    // );
 
-    if (result?.success) {
-      const config = result.config || result.data || {};
+    if (result.success) {
+      const config = result.config as Config;
       await this.sendWorkflowNotification(
         'exporter_export',
         id,
@@ -662,7 +662,7 @@ export class ConfigController {
   ): Promise<ConfigResponseDto> {
     const token = authorization?.replace('Bearer ', '') as string;
 
-    await this.configService.deployConfig(
+    const result =  await this.configService.deployConfig(
       id,
       dto,
       getTenantId(user),
@@ -671,15 +671,15 @@ export class ConfigController {
       token,
     );
 
-    const result = await this.adminServiceClient.forwardRequest(
-      'POST',
-      `/v1/admin/tcs/config/${id}/workflow/deploy`,
-      dto,
-      buildForwardHeaders(user),
-    );
+    // const result = await this.adminServiceClient.forwardRequest(
+    //   'POST',
+    //   `/v1/admin/tcs/config/${id}/workflow/deploy`,
+    //   dto,
+    //   buildForwardHeaders(user),
+    // );
 
     if (result?.success) {
-      const config = result.config || result.data || {};
+      const config = result.config as Config; ;
       await this.sendWorkflowNotification(
         'publisher_deploy',
         id,

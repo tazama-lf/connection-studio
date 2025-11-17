@@ -2,6 +2,7 @@ import { HttpService } from '@nestjs/axios';
 import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
+  Config,
   ConfigType,
   ISuccess,
   Job,
@@ -767,7 +768,7 @@ export class AdminServiceClient {
   }
 
   async writeConfig(configData: any, token: string): Promise<any> {
-    this.logger.log('Writing config to database');
+    this.logger.log('Writing config to database'),{configData};
     this.logger.log(
       `Token type: ${typeof token}, length: ${token?.length}, first 50 chars: ${token?.substring(0, 50)}`,
     );
@@ -964,7 +965,7 @@ export class AdminServiceClient {
     id: number,
     status: string,
     token: string,
-  ): Promise<any> {
+  ): Promise<Config | null> {
     this.logger.log(`Updating config status to ${status} for config ${id}`);
     try {
       const response = await firstValueFrom(

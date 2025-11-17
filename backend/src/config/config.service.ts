@@ -2318,7 +2318,7 @@ export class ConfigService {
     userId: string,
     userClaims: string[],
     token: string,
-  ): Promise<void> {
+  ): Promise<ConfigResponseDto> {
     const config = await this.configRepository.findConfigById(
       id,
       tenantId,
@@ -2335,18 +2335,25 @@ export class ConfigService {
       const configToExport = { ...config, status: currentStatus };
       await this.sftpService.createFile(fileName, {
         ...configToExport,
-        status: ConfigStatus.READY_FOR_DEPLOYMENT,
+        status: ConfigStatus.DEPLOYED,
       });
 
       this.logger.log(
-        `Successfully uploaded config file (${fileName}) with status '${ConfigStatus.READY_FOR_DEPLOYMENT}' to SFTP servers.`,
+        `Successfully uploaded config file (${fileName}) with status '${ConfigStatus.DEPLOYED}' to SFTP servers.`,
       );
 
-      await this.configRepository.getupdateConfigByStatus(
+      const result = await this.configRepository.getupdateConfigByStatus(
         id,
-        ConfigStatus.READY_FOR_DEPLOYMENT,
+        ConfigStatus.EXPORTED,
         token,
       );
+
+      console.log("export config kai andar ho" , result);
+      return {
+        success:true,
+        message: `Configuration ${id} exported successfully`,
+        config: result as Config | undefined,
+      };
     } catch (error) {
       this.logger.error(`Failed to export config: ${error.message}`);
       throw new BadRequestException(
@@ -2363,39 +2370,44 @@ export class ConfigService {
     userClaims: string[],
     token: string,
   ): Promise<ConfigResponseDto> {
-    const config = await this.configRepository.findConfigById(
-      id,
-      tenantId,
-      token,
-    );
-    if (!config) {
-      throw new NotFoundException(`Config with ID ${id} not found`);
-    }
+    // const config = await this.configRepository.findConfigById(
+    //   id,
+    //   tenantId,
+    //   token,
+    // );
+    // if (!config) {
+    //   throw new NotFoundException(`Config with ID ${id} not found`);
+    // }
 
     const fileName = `dems_${tenantId}_${id}`;
     let currentStatus: ConfigStatus;
     let configData: any;
     try {
       this.logger.log(`Reading config file from SFTP: ${fileName}`);
-      configData = await this.sftpService.readFile(fileName);
+      configData = await this.sftpService.readFile(fileName) as Config;
+      currentStatus = configData.status as ConfigStatus;
+      // this.logger.log(
+      //   `Successfully read config file from SFTP with status: ${currentStatus}`
+      // );
+    }
 
-      if (configData?.status) {
-        currentStatus = configData.status as ConfigStatus;
-      } else if (config.status) {
-        currentStatus = config.status;
-      } else {
-        throw new BadRequestException(
-          `Cannot deploy config ${id}: status not found in SFTP or database. Please ensure the config has been exported first.`,
-        );
-      }
-    } catch (error) {
-      if (config.status) {
-        currentStatus = config.status;
-      } else {
+    //   if (configData?.status) {
+    //     currentStatus = configData.status as ConfigStatus;
+    //   } else if (config.status) {
+    //     currentStatus = ConfigStatus.READY_FOR_DEPLOYMENT;
+    //   } else {
+    //     throw new BadRequestException(
+    //       `Cannot deploy config ${id}: status not found in SFTP or database. Please ensure the config has been exported first.`,
+    //     );
+    //   }
+    catch (error) {
+      // if (config.status) {
+      //   currentStatus = config.status;
+      // } else {
         throw new BadRequestException(
           `Cannot deploy config ${id}: status is undefined and SFTP read failed. Error: ${error.message}`,
         );
-      }
+      // }
     }
 
     const action: WorkflowAction = 'deploy';
@@ -2414,12 +2426,12 @@ export class ConfigService {
     try {
       try {
         const deployedConfigData = {
-          msg_fam: configData.msgFam || null,
-          transaction_type: configData.transactionType || null,
-          content_type: configData.contentType || 'application/json',
-          endpoint_path: configData.endpointPath || null,
+          msgFam: configData.msgFam || null,
+          transactionType: configData.transactionType || null,
+          contentType: configData.contentType || 'application/json',
+          endpointPath: configData.endpointPath || null,
           status: currentStatus,
-          publishing_status: configData.publishing_status || 'active',
+          publishingStatus: configData.publishingStatus || 'active',
           version: configData.version,
           schema:
             typeof configData.schema === 'string'
@@ -2434,10 +2446,10 @@ export class ConfigService {
               ? configData.functions
               : JSON.stringify(configData.functions || null),
           credentials: configData.credentials,
-          tenant_id: tenantId,
-          created_by: configData.createdBy || userId,
-          created_at: configData.createdAt || new Date(),
-          updated_at: new Date(),
+          tenantId: tenantId,
+          createdBy: configData.createdBy || userId,
+          createdAt: configData.createdAt || new Date(),
+          updatedAt: new Date(),
         };
 
         this.logger.log(
@@ -2463,8 +2475,7 @@ export class ConfigService {
         this.logger.log('Credentials present in config');
       }
 
-      const transactionType =
-        configData.transactionType || config.transactionType;
+      const transactionType = configData.transactionType ;
       if (transactionType) {
         this.logger.log(
           `Creating table for transaction type: ${transactionType}`,
@@ -2479,15 +2490,15 @@ export class ConfigService {
       } else {
         this.logger.warn(`No transactionType found in config file ${fileName}`);
       }
-      await this.sftpService.deleteFile(fileName);
-      this.logger.log(`Deleted config file from SFTP: ${fileName}`);
+      // await this.sftpService.deleteFile(fileName);
+      this.logger.log(`Deleted config file from SFTP: ${fileName}`);      
 
-      await this.configRepository.updateConfigStatus(
-        id,
-        tenantId,
-        newStatus,
-        token,
-      );
+      // await this.configRepository.updateConfigStatus(
+      //   id,
+      //   tenantId,
+      //   newStatus,
+      //   token,
+      // );
 
       this.logger.log(
         `Successfully updated original config ${id} status to ${newStatus}`,
@@ -2496,6 +2507,7 @@ export class ConfigService {
       return {
         success: true,
         message: `Configuration ${id} deployed successfully`,
+        config: configData as Config | undefined,
       };
     } catch (error) {
       this.logger.error(`Failed to deploy config: ${error.message}`);

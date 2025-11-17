@@ -73,7 +73,7 @@ export class ConfigRepository {
         status,
         token,
       );
-      return result || null;
+      return result;
     } catch {
       return null;
     }
