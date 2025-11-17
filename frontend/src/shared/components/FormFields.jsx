@@ -259,6 +259,14 @@ export const EndpointNameInputField = ({
                             backgroundColor: "white",
                             "&:hover": { backgroundColor: "white" },
                             "&.Mui-focused": { backgroundColor: "white" },
+                            "&.Mui-disabled": {
+                                backgroundColor: "#f5f5f5",
+                                color: "#9e9e9e",
+                                "& input": {
+                                    color: "#9e9e9e",
+                                    WebkitTextFillColor: "#9e9e9e",
+                                },
+                            },
                         },
                     }}
                 />
@@ -361,6 +369,14 @@ export const VersionInputField = ({
                             backgroundColor: "white",
                             "&:hover": { backgroundColor: "white" },
                             "&.Mui-focused": { backgroundColor: "white" },
+                            "&.Mui-disabled": {
+                                backgroundColor: "#f5f5f5",
+                                color: "#9e9e9e",
+                                "& input": {
+                                    color: "#9e9e9e",
+                                    WebkitTextFillColor: "#9e9e9e",
+                                },
+                            },
                         },
                     }}
                 />
@@ -783,6 +799,14 @@ export const DatabaseTableInputField = ({
                             backgroundColor: "white",
                             "&:hover": { backgroundColor: "white" },
                             "&.Mui-focused": { backgroundColor: "white" },
+                            "&.Mui-disabled": {
+                                backgroundColor: "#f5f5f5",
+                                color: "#9e9e9e",
+                                "& input": {
+                                    color: "#9e9e9e",
+                                    WebkitTextFillColor: "#9e9e9e",
+                                },
+                            },
                         },
                     }}
                 />
@@ -1232,6 +1256,14 @@ export const ApiPathInputField = ({
                             backgroundColor: "white",
                             "&:hover": { backgroundColor: "white" },
                             "&.Mui-focused": { backgroundColor: "white" },
+                            "&.Mui-disabled": {
+                                backgroundColor: "#f5f5f5",
+                                color: "#9e9e9e",
+                                "& input": {
+                                    color: "#9e9e9e",
+                                    WebkitTextFillColor: "#9e9e9e",
+                                },
+                            },
                         },
                     }}
                 />

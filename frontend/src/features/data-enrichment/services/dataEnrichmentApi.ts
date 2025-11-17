@@ -213,7 +213,7 @@ export const dataEnrichmentApi = {
     );
     try {
       return await apiRequest<DataEnrichmentJobResponse>(
-        `${API_BASE_URL}/job/update/pull/${id}`,
+        `${API_BASE_URL}/job/update/${id}?type=pull`,
         {
           method: 'PATCH',
           body: JSON.stringify(updates),
@@ -236,7 +236,7 @@ export const dataEnrichmentApi = {
     );
     try {
       return await apiRequest<DataEnrichmentJobResponse>(
-        `${API_BASE_URL}/job/update/push/${id}`,
+        `${API_BASE_URL}/job/update/${id}?type=push`,
         {
           method: 'PATCH',
           body: JSON.stringify(updates),
@@ -404,35 +404,30 @@ export const dataEnrichmentApi = {
     }
   },
 
-  getAllSchedules:  async (
-    params: PaginationParams,
-    searchingFilters?: Record<any, any>,
-  ): Promise<PaginatedScheduleResponse> => {
-    const url = `${API_BASE_URL}/scheduler/all?${params?.offset !== undefined ? `offset=${params.offset}&` : ''}${params?.limit !== undefined ? `limit=${params.limit}` : ''}`;
+  getAllSchedules: async (
+    offset = 1,
+    limit = 50,
+  ): Promise<ScheduleResponse[]> => {
+    const queryParams = new URLSearchParams();
+    queryParams.append('offset', offset.toString());
+    queryParams.append('limit', limit.toString());
 
-    const { status, ...otherFilters } = searchingFilters || {};
-    let statusFilter;
+    const scheduler_body = {
+      status: 'STATUS_04_APPROVED,STATUS_06_EXPORTED',
+    };
 
-    if (!status) {
-      const userRole = params.userRole as keyof typeof getDemsStatusLov;
-      statusFilter =
-        getDemsStatusLov[userRole]?.map((item) => item.value)?.join(',') || '';
+    try {
+      return await apiRequest<ScheduleResponse[]>(
+        `${API_BASE_URL}/scheduler/all?${queryParams.toString()}`,
+        {
+          method: 'POST',
+          body: JSON.stringify(scheduler_body),
+        },
+      );
+    } catch (error) {
+      console.error('Get all schedules error:', error);
+      throw error;
     }
-
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify({
-        ...otherFilters,
-        status: status || statusFilter,
-      }),
-    });
-
-    if (!res.ok) {
-      throw new Error('Failed to fetch paginated configs');
-    }
-
-    return (await res.json()) as PaginatedScheduleResponse;
   },
 
   getSchedule: async (id: string): Promise<ScheduleResponse> => {

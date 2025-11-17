@@ -92,19 +92,22 @@ export const pullValidationSchema = yup.object({
 
     fileFormat: yup
         .string()
-        .required('File format is required')
-        .oneOf(['csv', 'tsv', 'json'], 'Invalid file format'),
+        .when('sourceType', {
+            is: 'sftp',
+            then: (schema) => schema
+                .required('File format is required')
+                .oneOf(['csv', 'tsv', 'json'], 'Invalid file format'),
+            otherwise: (schema) => schema.nullable()
+        }),
 
     delimiter: yup
         .string()
-        .when('fileFormat', {
-            is: 'csv',
+        .when(['sourceType', 'fileFormat'], {
+            is: (sourceType, fileFormat) => sourceType === 'sftp' && fileFormat === 'csv',
             then: (schema) => schema
                 .required('Delimiter is required for CSV files')
                 .length(1, 'Delimiter must be exactly 1 character'),
-            otherwise: (schema) => schema
-                .length(1, 'Delimiter must be exactly 1 character')
-                .nullable()
+            otherwise: (schema) => schema.nullable()
         }),
 
     sourceType: yup
@@ -122,20 +125,25 @@ export const pullValidationSchema = yup.object({
         .when('sourceType', {
             is: 'http',
             then: (schema) => schema
-                .required('Headers are required for HTTP connections')
                 .test('valid-json', 'Headers must be valid JSON format', function (value) {
-                    if (!value || value.trim() === '') return false;
+                    if (!value || value.trim() === '') return true; // Allow empty headers
 
                     let trimmedValue = value.trim();
 
-                    // Helper function to convert single quotes to double quotes for JSON parsing
-                    const normalizeQuotes = (str) => {
+                    // Helper function to normalize JSON input for flexible parsing
+                    const normalizeJSON = (str) => {
+                        let normalized = str.trim();
+
                         // First, protect already escaped quotes
-                        const temp = str.replace(/\\'/g, '___ESCAPED_SINGLE___').replace(/\\"/g, '___ESCAPED_DOUBLE___');
+                        normalized = normalized.replace(/\\'/g, '___ESCAPED_SINGLE___').replace(/\\"/g, '___ESCAPED_DOUBLE___');
+
+                        // Handle unquoted keys and values - add quotes around them
+                        // This regex finds unquoted words (keys and values) and wraps them in quotes
+                        normalized = normalized.replace(/(\w+)\s*:/g, '"$1":'); // Quote unquoted keys
+                        normalized = normalized.replace(/:\s*([^",\{\}\[\]\s][^",\{\}\[\]]*?)(\s*[,\}])/g, ': "$1"$2'); // Quote unquoted values
 
                         // Convert single quotes to double quotes for JSON compatibility
-                        // This handles both keys and values with single quotes
-                        let normalized = temp.replace(/'/g, '"');
+                        normalized = normalized.replace(/'/g, '"');
 
                         // Restore escaped quotes
                         normalized = normalized.replace(/___ESCAPED_SINGLE___/g, "\\'").replace(/___ESCAPED_DOUBLE___/g, '\\"');
@@ -149,8 +157,8 @@ export const pullValidationSchema = yup.object({
                         try {
                             parsed = JSON.parse(trimmedValue);
                         } catch (initialError) {
-                            // If it fails, try normalizing single quotes to double quotes
-                            const normalizedValue = normalizeQuotes(trimmedValue);
+                            // If it fails, try normalizing the JSON (handle unquoted keys/values and single quotes)
+                            const normalizedValue = normalizeJSON(trimmedValue);
                             parsed = JSON.parse(normalizedValue);
                         }
 
@@ -172,9 +180,9 @@ export const pullValidationSchema = yup.object({
                         if (error.message.includes('Unexpected end of JSON input')) {
                             return this.createError({ message: 'Incomplete JSON - missing closing brackets or quotes' });
                         } else if (error.message.includes('Unexpected token')) {
-                            return this.createError({ message: 'Invalid JSON syntax - check quotes, commas, and brackets. Both single \' and double " quotes are supported' });
+                            return this.createError({ message: 'Invalid JSON syntax. Examples: {"key": "value"} or {key: value} or {\'key\': \'value\'}' });
                         } else {
-                            return this.createError({ message: `Invalid JSON format: ${error.message}` });
+                            return this.createError({ message: `Invalid JSON format. Try: {"content-type": "application/json"} or {key: value}` });
                         }
                     }
                 }),
@@ -236,80 +244,85 @@ export const pullValidationSchema = yup.object({
 
     pathPattern: yup
         .string()
-        .required('File path is required')
-        .test('valid-path-format', 'Please enter a valid file path', function (value) {
-            if (!value || value.trim() === '') return false;
+        .when('sourceType', {
+            is: 'sftp',
+            then: (schema) => schema
+                .required('File path is required')
+                .test('valid-path-format', 'Please enter a valid file path', function (value) {
+                    if (!value || value.trim() === '') return false;
 
-            const trimmedValue = value.trim();
+                    const trimmedValue = value.trim();
 
-            // Check if path starts with /
-            if (!trimmedValue.startsWith('/')) {
-                return this.createError({ message: 'File path must start with "/" (e.g: /inbound/data_*.csv)' });
-            }
+                    // Check if path starts with /
+                    if (!trimmedValue.startsWith('/')) {
+                        return this.createError({ message: 'File path must start with "/" (e.g: /inbound/data_*.csv)' });
+                    }
 
-            // Check for valid path characters (allow alphanumeric, /, _, -, ., *)
-            const validPathPattern = /^[\/a-zA-Z0-9_\-\.\*]+$/;
-            if (!validPathPattern.test(trimmedValue)) {
-                return this.createError({ message: 'File path contains invalid characters. Only letters, numbers, /, _, -, ., * are allowed' });
-            }
+                    // Check for valid path characters (allow alphanumeric, /, _, -, ., *)
+                    const validPathPattern = /^[\/a-zA-Z0-9_\-\.\*]+$/;
+                    if (!validPathPattern.test(trimmedValue)) {
+                        return this.createError({ message: 'File path contains invalid characters. Only letters, numbers, /, _, -, ., * are allowed' });
+                    }
 
-            // Extract filename (part after last /)
-            const pathParts = trimmedValue.split('/');
-            const fileName = pathParts[pathParts.length - 1];
+                    // Extract filename (part after last /)
+                    const pathParts = trimmedValue.split('/');
+                    const fileName = pathParts[pathParts.length - 1];
 
-            if (!fileName || fileName === '') {
-                return this.createError({ message: 'File path must include a filename (e.g: /inbound/data_*.csv)' });
-            }
+                    if (!fileName || fileName === '') {
+                        return this.createError({ message: 'File path must include a filename (e.g: /inbound/data_*.csv)' });
+                    }
 
-            // Check file extension (case-insensitive and more robust)
-            const lowerFileName = fileName.toLowerCase();
-            const validExtensions = ['.csv', '.tsv', '.json'];
-            const hasValidExtension = validExtensions.some(ext => lowerFileName.endsWith(ext));
+                    // Check file extension (case-insensitive and more robust)
+                    const lowerFileName = fileName.toLowerCase();
+                    const validExtensions = ['.csv', '.tsv', '.json'];
+                    const hasValidExtension = validExtensions.some(ext => lowerFileName.endsWith(ext));
 
-            if (!hasValidExtension) {
-                return this.createError({ message: 'Filename must end with .csv, .tsv, or .json extension' });
-            }
+                    if (!hasValidExtension) {
+                        return this.createError({ message: 'Filename must end with .csv, .tsv, or .json extension' });
+                    }
 
-            return true;
-        })
-        .when('fileFormat', (fileFormat, schema) =>
-            schema.test('extension-format-match', 'File extension must match selected format', function (value) {
-                if (!value) return true; // Skip if no value (required validation will catch this)
+                    return true;
+                })
+                .when('fileFormat', (fileFormat, schema) =>
+                    schema.test('extension-format-match', 'File extension must match selected format', function (value) {
+                        if (!value) return true; // Skip if no value (required validation will catch this)
 
-                if (!fileFormat) return true; // Skip if no format selected yet
+                        if (!fileFormat) return true; // Skip if no format selected yet
 
-                const trimmedValue = value.trim();
-                const pathParts = trimmedValue.split('/');
-                const fileName = pathParts[pathParts.length - 1];
+                        const trimmedValue = value.trim();
+                        const pathParts = trimmedValue.split('/');
+                        const fileName = pathParts[pathParts.length - 1];
 
-                if (!fileName || !fileName.includes('.')) return true; // Will be caught by other validation
+                        if (!fileName || !fileName.includes('.')) return true; // Will be caught by other validation
 
-                const fileExtension = fileName.split('.').pop()?.toLowerCase();
+                        const fileExtension = fileName.split('.').pop()?.toLowerCase();
 
-                // Define extension-to-format mapping
-                const extensionFormatMap = {
-                    'csv': ['csv'],
-                    'tsv': ['tsv'],
-                    'json': ['json'],
-                };
+                        // Define extension-to-format mapping
+                        const extensionFormatMap = {
+                            'csv': ['csv'],
+                            'tsv': ['tsv'],
+                            'json': ['json'],
+                        };
 
-                const allowedFormatsForExtension = extensionFormatMap[fileExtension];
+                        const allowedFormatsForExtension = extensionFormatMap[fileExtension];
 
-                // Handle both string and array formats
-                const formatValue = Array.isArray(fileFormat) ? fileFormat[0] : fileFormat;
+                        // Handle both string and array formats
+                        const formatValue = Array.isArray(fileFormat) ? fileFormat[0] : fileFormat;
 
-                if (allowedFormatsForExtension && !allowedFormatsForExtension.includes(formatValue?.toLowerCase())) {
-                    const formatName = formatValue?.toUpperCase();
-                    const extensionName = fileExtension.toUpperCase();
-                    return this.createError({
-                        message: `File extension .${extensionName} does not match selected format ${formatName}. Please select ${allowedFormatsForExtension.map(f => f.toUpperCase()).join(' or ')} format or change the file extension.`
-                    });
-                }
+                        if (allowedFormatsForExtension && !allowedFormatsForExtension.includes(formatValue?.toLowerCase())) {
+                            const formatName = formatValue?.toUpperCase();
+                            const extensionName = fileExtension.toUpperCase();
+                            return this.createError({
+                                message: `File extension .${extensionName} does not match selected format ${formatName}. Please select ${allowedFormatsForExtension.map(f => f.toUpperCase()).join(' or ')} format or change the file extension.`
+                            });
+                        }
 
-                return true;
-            })
-        )
-        .max(100, 'File path cannot exceed 100 characters'),
+                        return true;
+                    })
+                )
+                .max(100, 'File path cannot exceed 100 characters'),
+            otherwise: (schema) => schema.nullable()
+        }),
 
     host: yup
         .string()

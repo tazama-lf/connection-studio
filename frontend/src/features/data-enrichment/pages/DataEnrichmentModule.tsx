@@ -25,6 +25,7 @@ import {
 } from '../../../utils/roleUtils';
 import { UI_CONFIG } from '../../../shared/config/app.config';
 import { getUserFriendlyErrorMessage } from '../../../shared/utils/errorUtils';
+import { DataEnrichmentEditModal } from '../components/DataEnrichmentEditModal';
 import { useNavigate } from 'react-router';
 
 const DataEnrichmentModule: React.FC = () => {
@@ -428,7 +429,13 @@ const DataEnrichmentModule: React.FC = () => {
   return (
     <div className="min-h-screen bg-white">
       <div className="mx-auto px-4 sm:px-6 lg:px-[48px] py-[52px]">
-        <Button variant='primary' className='py-1 pl-2' onClick={()=>navigate(-1)}><ChevronLeft size={20} /> <span>Go Back</span></Button>
+        <Button
+          variant="primary"
+          className="py-1 pl-2"
+          onClick={() => navigate(-1)}
+        >
+          <ChevronLeft size={20} /> <span>Go Back</span>
+        </Button>
         {/* Search and Create Button */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center my-8 gap-4">
           <div className="flex items-center space-x-4">
@@ -534,15 +541,28 @@ const DataEnrichmentModule: React.FC = () => {
         )}
 
         {/* Modal for viewing job details */}
-        <JobDetailsModal
-          isOpen={showJobDetails}
-          onClose={handleCloseJobDetails}
-          job={selectedJob}
-          isLoading={jobDetailsLoading}
-          editMode={jobDetailsEditMode}
-          onSave={handleSaveJobChanges}
-          onSendForApproval={handleSendForApproval}
-        />
+        {showJobDetails && !jobDetailsEditMode && (
+          <JobDetailsModal
+            isOpen={showJobDetails && !jobDetailsEditMode}
+            onClose={handleCloseJobDetails}
+            job={selectedJob}
+            isLoading={jobDetailsLoading}
+            editMode={false}
+            onSave={handleSaveJobChanges}
+            onSendForApproval={handleSendForApproval}
+          />
+        )}
+
+        {/* MODAL FOR EDITING JOB DETAILS */}
+        {jobDetailsEditMode && (
+          <DataEnrichmentEditModal
+            isOpen={jobDetailsEditMode}
+            onClose={handleCloseJobDetails}
+            // onSave={handleCreateJob}
+            editMode={true}
+            selectedJob={selectedJob}
+          />
+        )}
       </div>
     </div>
   );

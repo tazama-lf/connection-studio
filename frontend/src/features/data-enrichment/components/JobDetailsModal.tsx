@@ -519,7 +519,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                     sx={{
                       fontSize: '18px',
                       fontWeight: 'bold',
-                      color: '#3b3b3b',
+                      color: '#2b7fff',
                       marginBottom: '16px',
                     }}
                   >
@@ -613,7 +613,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                     sx={{
                       fontSize: '18px',
                       fontWeight: 'bold',
-                      color: '#3b3b3b',
+                      color: '#2b7fff',
                       marginBottom: '16px',
                     }}
                   >
@@ -633,7 +633,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                           />
                           <div className="flex-1 min-w-0">
                             <span className="text-sm font-bold text-gray-800 block bg-blue-50 px-0 py-0 rounded-sm">
-                              Source Type:
+                              Source Type
                             </span>
                             <span className="text-sm text-gray-900 block">
                               {(() => {
@@ -652,7 +652,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                         />
                         <div className="flex-1 min-w-0">
                           <span className="text-sm font-bold text-gray-800 block bg-blue-50 px-0 py-0 rounded-sm">
-                            Configuration:
+                            Configuration
                           </span>
                           <span
                             className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${getConfigTypeColor(getJobType(job))}`}
@@ -669,7 +669,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                         />
                         <div className="flex-1 min-w-0">
                           <span className="text-sm font-bold text-gray-800 block bg-blue-50 px-0 py-0 rounded-sm">
-                            Status:
+                            Status
                           </span>
                           <span
                             className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${getCentralizedStatusColor(job.status || 'in-progress')}`}
@@ -687,7 +687,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                         />
                         <div className="flex-1 min-w-0">
                           <span className="text-sm font-bold text-gray-800 block bg-blue-50 px-0 py-0 rounded-sm">
-                            Comments:
+                            Comments
                           </span>
                           <span className="text-sm text-gray-900 block break-words">
                             {job?.comments || 'No comments available'}
@@ -704,7 +704,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                         />
                         <div className="flex-1 min-w-0">
                           <span className="text-sm font-bold text-gray-800 block bg-blue-50 px-0 py-0 rounded-sm">
-                            Created:
+                            Created
                           </span>
                           <span className="text-sm text-gray-900 block break-words">
                             {formatDate(job.created_at)}
@@ -719,7 +719,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                         />
                         <div className="flex-1 min-w-0">
                           <span className="text-sm font-bold text-gray-800 block bg-blue-50 px-0 py-0 rounded-sm">
-                            Updated:
+                            Updated
                           </span>
                           <span className="text-sm text-gray-900 block break-words">
                             {formatDate(job.updated_at)}
@@ -734,7 +734,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                         />
                         <div className="flex-1 min-w-0">
                           <span className="text-sm font-bold text-gray-800 block bg-blue-50 px-0 py-0 rounded-sm">
-                            Job ID:
+                            Job ID
                           </span>
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-mono bg-gray-100 text-gray-800 border border-gray-200 break-all">
                             {job.id}
@@ -752,11 +752,17 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                   const shouldShow = jobType === 'pull' && hasConnection;
                   return shouldShow;
                 })() && (
-                  <div className="bg-blue-50 p-4 rounded-lg">
-                    <h4 className="text-sm font-medium text-gray-900 mb-3 flex items-center">
-                      <Globe size={16} className="mr-2" />
+                  <div className="border border-gray-200 rounded-lg p-4">
+                    <Box
+                      sx={{
+                        fontSize: '18px',
+                        fontWeight: 'bold',
+                        color: '#2b7fff',
+                        marginBottom: '16px',
+                      }}
+                    >
                       Connection Details ({getConnectionType(job) || 'Unknown'})
-                    </h4>
+                    </Box>
 
                     {(() => {
                       const connectionType = getConnectionType(job);
@@ -989,9 +995,16 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                     {/* File Settings for SFTP */}
                     {getConnectionType(job) === 'SFTP' && job.file && (
                       <div className="mt-4 pt-4 border-t border-blue-200">
-                        <h5 className="text-sm font-medium text-gray-900 mb-3">
+                        <Box
+                          sx={{
+                            fontSize: '18px',
+                            fontWeight: 'bold',
+                            color: '#2b7fff',
+                            marginBottom: '16px',
+                          }}
+                        >
                           File Settings
-                        </h5>
+                        </Box>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <div>
                             <label className="block text-sm font-bold text-gray-800 mb-2 bg-gray-50 px-0 py-0 rounded">
@@ -1184,7 +1197,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                   <MuiButton
                     type="button"
                     variant="contained"
-                    sx={{ marginRight: '10px', backgroundColor: '#dc2626' }}
+                    sx={{ marginRight: '10px', backgroundColor: '#ff474d' }}
                     onClick={() => setShowRejectionDialog(true)}
                     startIcon={<XCircle size={16} />}
                   >
@@ -1195,7 +1208,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                   <MuiButton
                     type="button"
                     variant="contained"
-                    sx={{ backgroundColor: '#16a34a' }}
+                    sx={{ backgroundColor: '#33ad74' }}
                     onClick={() => {
                       const jobType =
                         getJobType(job) === 'push' ? 'PUSH' : 'PULL';

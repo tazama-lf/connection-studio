@@ -11,6 +11,7 @@ import {
   DownloadIcon,
   FileText,
   LassoSelect,
+  Loader2,
   Plus,
   Save,
   UploadIcon,
@@ -73,7 +74,7 @@ export const DataEnrichmentFormModal: React.FC<
   >('config');
   const [showConfigForm, setShowConfigForm] = useState(false);
   const [configurationType, setConfigurationType] = useState<'pull' | 'push'>(
-    jobType || null,
+    jobType || 'pull',
   );
   const [isLoadingJob, setIsLoadingJob] = useState(false);
   const [availableSchedules, setAvailableSchedules] = useState<
@@ -124,8 +125,11 @@ export const DataEnrichmentFormModal: React.FC<
     mode: 'onChange',
   });
 
+  console.log('errors', errors);
   // Ref to track if we should scroll to error on next render
   const shouldScrollToErrorRef = useRef(false);
+  // Ref for error message container to scroll to
+  const errorMessageRef = useRef<HTMLDivElement>(null);
 
   // Function called when form submission fails validation
   const onError = () => {
@@ -160,6 +164,17 @@ export const DataEnrichmentFormModal: React.FC<
       scrollToFirstError(Object.keys(errors)[0]);
     }
   }, [errors]);
+
+  // Auto-scroll to error messages when they appear
+  useEffect(() => {
+    if (createError && errorMessageRef.current) {
+      errorMessageRef.current.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+        inline: 'nearest',
+      });
+    }
+  }, [createError]);
 
   // Watch for fileFormat changes and re-validate pathPattern
   const fileFormat = watch('fileFormat');
@@ -248,8 +263,9 @@ export const DataEnrichmentFormModal: React.FC<
   // Prevent body scroll and scrollbar jitter when modal is open
   useEffect(() => {
     if (isOpen) {
-      // Store original body styles
-      const originalStyle = window.getComputedStyle(document.body);
+      // Store original body styles before modifying
+      const originalOverflow = document.body.style.overflow;
+      const originalPaddingRight = document.body.style.paddingRight;
       const scrollbarWidth =
         window.innerWidth - document.documentElement.clientWidth;
 
@@ -259,9 +275,13 @@ export const DataEnrichmentFormModal: React.FC<
 
       // Cleanup function to restore original styles
       return () => {
-        document.body.style.overflow = originalStyle.overflow || '';
-        document.body.style.paddingRight = originalStyle.paddingRight || '';
+        document.body.style.overflow = originalOverflow;
+        document.body.style.paddingRight = originalPaddingRight;
       };
+    } else {
+      // Ensure body scroll is restored when modal closes
+      document.body.style.overflow = '';
+      document.body.style.paddingRight = '';
     }
   }, [isOpen]);
 
@@ -273,13 +293,16 @@ export const DataEnrichmentFormModal: React.FC<
       try {
         setSchedulesLoading(true);
         const schedules = await dataEnrichmentApi.getAllSchedules();
+        const schedule_data = schedules?.data;
+
         // Filter schedules to only show approved, exported, and deployed schedules
-        const filteredSchedules = schedules.filter(
+        const filteredSchedules = schedule_data?.filter(
           (schedule: any) =>
-            schedule.status === 'approved' ||
-            schedule.status === 'exported' ||
-            schedule.status === 'deployed',
+            schedule.status === 'STATUS_04_APPROVED' ||
+            schedule.status === 'STATUS_06_EXPORTED',
         );
+
+        console.log('filteredSchedules', schedules);
         setAvailableSchedules(filteredSchedules);
       } catch (error) {
         console.error('Failed to load schedules:', error);
@@ -542,11 +565,7 @@ export const DataEnrichmentFormModal: React.FC<
             <MultiLineTextInputField
               name={'headers'}
               control={control}
-              label={
-                <>
-                  Headers <span className="text-red-500">*</span>
-                </>
-              }
+              label={<>Headers (Optional)</>}
               placeholder='e.g: {accept: "application/json", agent: "DataEnrichment/1.0"}'
               rows={2}
             />
@@ -557,60 +576,64 @@ export const DataEnrichmentFormModal: React.FC<
         </Grid>
       )}
 
-      <Box sx={{ fontSize: '18px', fontWeight: 'bold', color: '#3b3b3b' }}>
-        File Settings
-      </Box>
-      <Grid container spacing={2}>
-        <Grid size={{ xs: 12, md: 6 }}>
-          <FilePathInputField
-            name="pathPattern"
-            control={control}
-            label={
-              <>
-                File Path <span className="text-red-500">*</span>
-              </>
-            }
-            placeholder="/inbound/data_*.csv"
-          />
-          {errors?.pathPattern && (
-            <ValidationError message={errors?.pathPattern?.message} />
-          )}
-        </Grid>
-        <Grid size={{ xs: 12, md: 6 }}>
-          <SelectField
-            name={'fileFormat'}
-            control={control}
-            label={
-              <>
-                File Format <span className="text-red-500">*</span>
-              </>
-            }
-            options={fileFormatOptions || []}
-          />
-          {errors?.fileFormat && (
-            <ValidationError message={errors?.fileFormat?.message} />
-          )}
-        </Grid>
-        {watch('fileFormat') === 'csv' ? (
-          <Grid size={{ xs: 12, md: 6 }}>
-            <DelimiterInputField
-              name="delimiter"
-              control={control}
-              label={
-                <>
-                  Delimiter <span className="text-red-500">*</span>
-                </>
-              }
-              type="text"
-              placeholder=","
-              maxLength={1}
-            />
-            {errors?.delimiter && (
-              <ValidationError message={errors?.delimiter?.message} />
-            )}
+      {watch('sourceType') === 'sftp' ? (
+        <>
+          <Box sx={{ fontSize: '18px', fontWeight: 'bold', color: '#3b3b3b' }}>
+            File Settings
+          </Box>
+          <Grid container spacing={2}>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <FilePathInputField
+                name="pathPattern"
+                control={control}
+                label={
+                  <>
+                    File Path <span className="text-red-500">*</span>
+                  </>
+                }
+                placeholder="/inbound/data_*.csv"
+              />
+              {errors?.pathPattern && (
+                <ValidationError message={errors?.pathPattern?.message} />
+              )}
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <SelectField
+                name={'fileFormat'}
+                control={control}
+                label={
+                  <>
+                    File Format <span className="text-red-500">*</span>
+                  </>
+                }
+                options={fileFormatOptions || []}
+              />
+              {errors?.fileFormat && (
+                <ValidationError message={errors?.fileFormat?.message} />
+              )}
+            </Grid>
+            {watch('fileFormat') === 'csv' ? (
+              <Grid size={{ xs: 12, md: 6 }}>
+                <DelimiterInputField
+                  name="delimiter"
+                  control={control}
+                  label={
+                    <>
+                      Delimiter <span className="text-red-500">*</span>
+                    </>
+                  }
+                  type="text"
+                  placeholder=","
+                  maxLength={1}
+                />
+                {errors?.delimiter && (
+                  <ValidationError message={errors?.delimiter?.message} />
+                )}
+              </Grid>
+            ) : null}
           </Grid>
-        ) : null}
-      </Grid>
+        </>
+      ) : null}
 
       <Box sx={{ fontSize: '18px', fontWeight: 'bold', color: '#3b3b3b' }}>
         Target PostgreSQL Settings
@@ -1117,12 +1140,22 @@ export const DataEnrichmentFormModal: React.FC<
         </div>
 
         {createSuccess && (
-          <div
-            className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded"
-            data-id="success-message"
+          <Alert
+            severity="success"
+            sx={{ width: '100%', borderRadius: '5px', margin: '16px 0' }}
           >
             {createSuccess}
-          </div>
+          </Alert>
+        )}
+
+        {createError && (
+          <Alert
+            ref={errorMessageRef}
+            severity="error"
+            sx={{ width: '100%', borderRadius: '5px', margin: '16px 0' }}
+          >
+            {createError}
+          </Alert>
         )}
       </div>
     );
@@ -1205,30 +1238,23 @@ export const DataEnrichmentFormModal: React.FC<
           schedule_id: formValues.schedule || null,
         };
 
-        if (formValues.sourceType === 'https') {
+        if (formValues.sourceType === 'http') {
           // HTTPS Pull configuration
-          let headers;
-          try {
-            headers = formValues.headers
-              ? JSON.parse(formValues.headers)
-              : { 'content-type': 'application/json' };
-          } catch {
-            headers = { 'content-type': 'application/json' };
-          }
-
           payload = {
             ...basePayload,
-            source_type: 'HTTPS' as const,
+            source_type: 'HTTP',
             connection: {
-              url: formValues.url,
-              headers,
+              url: formValues?.url,
+              headers: formValues?.headers
+                ? JSON.parse(formValues?.headers || {})
+                : {},
             },
           };
         } else {
           // SFTP Pull configuration
           payload = {
             ...basePayload,
-            source_type: 'SFTP' as const,
+            source_type: 'SFTP',
             connection: {
               host: formValues.host,
               port: parseInt(formValues.port) || null,
@@ -1242,7 +1268,7 @@ export const DataEnrichmentFormModal: React.FC<
                 : { private_key: formValues.password.replace(/\\n/g, '\n') }), // Using password field for private key
             },
             file: {
-              path: formValues.pathPattern || '/data.csv',
+              path: (formValues.pathPattern || '/data.csv').replace(/^\/+/, ''),
               file_type: formValues.fileFormat.toUpperCase() as
                 | 'CSV'
                 | 'JSON'
@@ -1277,7 +1303,7 @@ export const DataEnrichmentFormModal: React.FC<
       // Close modal after showing success message
       setTimeout(() => {
         onClose();
-      }, 1500);
+      }, 200);
     } catch (error) {
       console.error('=== CREATE ENDPOINT ERROR ===', error);
 
@@ -1599,7 +1625,7 @@ export const DataEnrichmentFormModal: React.FC<
                             size={20}
                             className="mr-2 text-blue-500"
                           />
-                          Pull Configuration (SFTP/HTTP)
+                          Pull Configuration (SFTP/HTTPS)
                         </>
                       ) : (
                         <>
@@ -1649,6 +1675,8 @@ export const DataEnrichmentFormModal: React.FC<
                           onClick={() => {
                             setShowConfigForm(false);
                             reset(defaultValues);
+                            setCreateError(null);
+                            setCreateSuccess(null);
                           }}
                           startIcon={<ArrowLeft size={16} />}
                         >
@@ -1689,7 +1717,11 @@ export const DataEnrichmentFormModal: React.FC<
                         type="button"
                         variant="contained"
                         sx={{ marginRight: '10px', backgroundColor: '#2b7fff' }}
-                        onClick={() => setCurrentStep('config')}
+                        onClick={() => {
+                          setCurrentStep('config');
+                          setCreateError(null);
+                          setCreateSuccess(null);
+                        }}
                         startIcon={<ArrowLeft size={16} />}
                       >
                         Back to Config
@@ -1825,6 +1857,28 @@ export const DataEnrichmentFormModal: React.FC<
             </div>
           </div> */}
         </div>
+
+        {/* Loading Backdrop */}
+        {(isCreating || isLoadingJob || schedulesLoading) && (
+          <Backdrop
+            sx={(theme) => ({
+              color: '#fff',
+              zIndex: theme.zIndex.drawer + 2,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 2,
+            })}
+            open={isCreating || isLoadingJob || schedulesLoading}
+          >
+            <Loader2 size={48} className="animate-spin" />
+            <Box sx={{ fontSize: '16px', fontWeight: 500 }}>
+              {isCreating &&
+                (editMode ? 'Updating endpoint...' : 'Creating endpoint...')}
+              {isLoadingJob && 'Loading job data...'}
+              {schedulesLoading && 'Loading schedules...'}
+            </Box>
+          </Backdrop>
+        )}
       </Backdrop>
     </div>
   );
