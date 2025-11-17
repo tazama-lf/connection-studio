@@ -4,9 +4,10 @@ import { Button, Grid, CircularProgress } from '@mui/material';
 import Alert from '@mui/material/Alert';
 import Backdrop from '@mui/material/Backdrop';
 import Box from '@mui/material/Box';
-import { DownloadIcon, Save, UploadIcon, XIcon } from 'lucide-react';
+import { DownloadIcon, Loader2, Save, UploadIcon, XIcon } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { useToast } from '../../../shared/providers/ToastProvider';
 import {
   ApiPathInputField,
   DatabaseTableInputField,
@@ -66,10 +67,9 @@ export const DataEnrichmentEditModal: React.FC<
   >([]);
 
   const [isCreating, setIsCreating] = useState(false);
-  const [createError, setCreateError] = useState<string | null>(null);
-  const [createSuccess, setCreateSuccess] = useState<string | null>(null);
 
   const tenantId = useAuth()?.user?.tenantId || 'tenantId';
+  const { showSuccess, showError } = useToast();
 
   const currentJobType = getJobType(selectedJob);
   const configurationType = currentJobType as 'pull' | 'push';
@@ -83,7 +83,6 @@ export const DataEnrichmentEditModal: React.FC<
     watch,
     setValue,
     getValues,
-    reset,
     trigger,
     formState: { errors },
   } = useForm({
@@ -174,10 +173,8 @@ export const DataEnrichmentEditModal: React.FC<
   };
 
   const handleSave = async () => {
-    console.log('handleSave called, preparing payload');
+    setIsCreating(true);
     try {
-      setCreateError(null);
-      setCreateSuccess(null);
       const formValues = getValues();
       let payload: any;
 
@@ -206,21 +203,14 @@ export const DataEnrichmentEditModal: React.FC<
 
         if (formValues.sourceType === 'http') {
           // HTTPS Pull configuration
-          let headers;
-          try {
-            headers = formValues.headers
-              ? JSON.parse(formValues.headers)
-              : { 'content-type': 'application/json' };
-          } catch {
-            headers = { 'content-type': 'application/json' };
-          }
-
           payload = {
             ...basePayload,
             source_type: 'HTTP',
             connection: {
               url: formValues?.url,
-              headers: JSON.parse(formValues?.headers || {}),
+              headers: formValues?.headers
+                ? JSON.parse(formValues?.headers || {})
+                : {},
             },
           };
         } else {
@@ -252,11 +242,6 @@ export const DataEnrichmentEditModal: React.FC<
         }
       }
 
-      // Show loader right before API call
-      console.log('Starting API call, showing loader...');
-      setIsCreating(true);
-
-      // Call appropriate API based on mode and configuration type
       let response;
       if (editMode && selectedJob?.id) {
         response =
@@ -274,7 +259,7 @@ export const DataEnrichmentEditModal: React.FC<
         ? `Data enrichment endpoint "${formValues.name}" updated successfully!`
         : `Data enrichment endpoint "${formValues.name}" created successfully! You can now send it for approval.`;
 
-      setCreateSuccess(successMessage);
+      showSuccess('Success', successMessage);
       if (onSave) {
         onSave(response);
       }
@@ -282,7 +267,7 @@ export const DataEnrichmentEditModal: React.FC<
       // Close modal after showing success message
       setTimeout(() => {
         onClose();
-      }, 1500);
+      }, 200);
     } catch (error) {
       console.error('=== CREATE ENDPOINT ERROR ===', error);
 
@@ -313,14 +298,14 @@ export const DataEnrichmentEditModal: React.FC<
           error instanceof Error ? error.message : 'Unknown error occurred';
       }
 
-      setCreateError(errorMessage);
+      showError('Error', errorMessage);
     } finally {
       setIsCreating(false);
     }
   };
 
   // Form submission handler for React Hook Form
-  const onSubmit = (data: any) => {
+  const onSubmit = () => {
     console.log('Form submitted, calling handleSave...');
     handleSave();
   };
@@ -362,6 +347,8 @@ export const DataEnrichmentEditModal: React.FC<
     loadSchedules();
   }, [isOpen]);
 
+  console.log('selectedJobselectedJob', selectedJob);
+
   // Set initial form values from selectedJob
   useEffect(() => {
     if (isOpen && selectedJob && editMode) {
@@ -378,9 +365,7 @@ export const DataEnrichmentEditModal: React.FC<
 
       if (jobType === 'push') {
         // Push job specific fields
-        let endpointPath = selectedJob.path
-          ? selectedJob.path.split('/').slice(4).join('/') // Remove tenant/enrichment/version parts
-          : '';
+        let endpointPath = selectedJob.path;
 
         // Ensure API path starts with a slash
         if (endpointPath && !endpointPath.startsWith('/')) {
@@ -465,7 +450,6 @@ export const DataEnrichmentEditModal: React.FC<
           <EndpointNameInputField
             name="name"
             control={control}
-            disabled={true}
             label={
               <>
                 Endpoint Name <span className="text-red-500">*</span>
@@ -480,7 +464,6 @@ export const DataEnrichmentEditModal: React.FC<
           <VersionInputField
             name={'version'}
             control={control}
-            disabled={true}
             label={
               <>
                 Version <span className="text-red-500">*</span>
@@ -649,11 +632,7 @@ export const DataEnrichmentEditModal: React.FC<
             <MultiLineTextInputField
               name={'headers'}
               control={control}
-              label={
-                <>
-                  Headers <span className="text-red-500">*</span>
-                </>
-              }
+              label={<>Headers (Optional)</>}
               placeholder='e.g: {accept: "application/json", agent: "DataEnrichment/1.0"}'
               rows={2}
             />
@@ -664,60 +643,64 @@ export const DataEnrichmentEditModal: React.FC<
         </Grid>
       )}
 
-      <Box sx={{ fontSize: '18px', fontWeight: 'bold', color: '#3b3b3b' }}>
-        File Settings
-      </Box>
-      <Grid container spacing={2}>
-        <Grid size={{ xs: 12, md: 6 }}>
-          <FilePathInputField
-            name="pathPattern"
-            control={control}
-            label={
-              <>
-                File Path <span className="text-red-500">*</span>
-              </>
-            }
-            placeholder="/inbound/data_*.csv"
-          />
-          {errors?.pathPattern && (
-            <ValidationError message={errors?.pathPattern?.message} />
-          )}
-        </Grid>
-        <Grid size={{ xs: 12, md: 6 }}>
-          <SelectField
-            name={'fileFormat'}
-            control={control}
-            label={
-              <>
-                File Format <span className="text-red-500">*</span>
-              </>
-            }
-            options={fileFormatOptions || []}
-          />
-          {errors?.fileFormat && (
-            <ValidationError message={errors?.fileFormat?.message} />
-          )}
-        </Grid>
-        {watch('fileFormat') === 'csv' ? (
-          <Grid size={{ xs: 12, md: 6 }}>
-            <DelimiterInputField
-              name="delimiter"
-              control={control}
-              label={
-                <>
-                  Delimiter <span className="text-red-500">*</span>
-                </>
-              }
-              type="text"
-              placeholder=","
-              maxLength={1}
-            />
-            {errors?.delimiter && (
-              <ValidationError message={errors?.delimiter?.message} />
-            )}
+      {watch('sourceType') === 'sftp' ? (
+        <>
+          <Box sx={{ fontSize: '18px', fontWeight: 'bold', color: '#3b3b3b' }}>
+            File Settings
+          </Box>
+          <Grid container spacing={2}>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <FilePathInputField
+                name="pathPattern"
+                control={control}
+                label={
+                  <>
+                    File Path <span className="text-red-500">*</span>
+                  </>
+                }
+                placeholder="/inbound/data_*.csv"
+              />
+              {errors?.pathPattern && (
+                <ValidationError message={errors?.pathPattern?.message} />
+              )}
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <SelectField
+                name={'fileFormat'}
+                control={control}
+                label={
+                  <>
+                    File Format <span className="text-red-500">*</span>
+                  </>
+                }
+                options={fileFormatOptions || []}
+              />
+              {errors?.fileFormat && (
+                <ValidationError message={errors?.fileFormat?.message} />
+              )}
+            </Grid>
+            {watch('fileFormat') === 'csv' ? (
+              <Grid size={{ xs: 12, md: 6 }}>
+                <DelimiterInputField
+                  name="delimiter"
+                  control={control}
+                  label={
+                    <>
+                      Delimiter <span className="text-red-500">*</span>
+                    </>
+                  }
+                  type="text"
+                  placeholder=","
+                  maxLength={1}
+                />
+                {errors?.delimiter && (
+                  <ValidationError message={errors?.delimiter?.message} />
+                )}
+              </Grid>
+            ) : null}
           </Grid>
-        ) : null}
-      </Grid>
+        </>
+      ) : null}
 
       <Box sx={{ fontSize: '18px', fontWeight: 'bold', color: '#3b3b3b' }}>
         Target PostgreSQL Settings
@@ -727,7 +710,6 @@ export const DataEnrichmentEditModal: React.FC<
           <DatabaseTableInputField
             name="targetTable"
             control={control}
-            disabled={true}
             fullWidth={true}
             maxWidth={65}
             label={
@@ -794,7 +776,6 @@ export const DataEnrichmentEditModal: React.FC<
           <VersionInputField
             name={'version'}
             control={control}
-            disabled={true}
             label={
               <>
                 Version <span className="text-red-500">*</span>
@@ -811,7 +792,6 @@ export const DataEnrichmentEditModal: React.FC<
           <ApiPathInputField
             name={'endpointPath'}
             control={control}
-            disabled={true}
             label={
               <>
                 API Path <span className="text-red-500">*</span>
@@ -884,7 +864,6 @@ export const DataEnrichmentEditModal: React.FC<
           <DatabaseTableInputField
             name="targetTable"
             control={control}
-            disabled={true}
             fullWidth={true}
             maxWidth={65}
             label={
@@ -998,22 +977,7 @@ export const DataEnrichmentEditModal: React.FC<
               </p>
             </Box>
 
-            {/* Success and Error Messages */}
-            {createSuccess && (
-              <div className="px-6 pt-4">
-                <Alert severity="success" sx={{ borderRadius: '5px' }}>
-                  {createSuccess}
-                </Alert>
-              </div>
-            )}
-
-            {createError && (
-              <div className="px-6 pt-4">
-                <Alert severity="error" sx={{ borderRadius: '5px' }}>
-                  {createError}
-                </Alert>
-              </div>
-            )}
+            {/* Success and Error Messages are now handled by Toast notifications */}
 
             <form
               onSubmit={handleSubmit(onSubmit, onError)}
@@ -1064,22 +1028,19 @@ export const DataEnrichmentEditModal: React.FC<
       {/* Loading Backdrop */}
       {isCreating && (
         <Backdrop
-          sx={{
-            zIndex: 9999,
+          sx={(theme) => ({
             color: '#fff',
-            backgroundColor: 'rgba(0, 0, 0, 0.7)',
-          }}
+            zIndex: theme.zIndex.drawer + 2,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 2,
+          })}
           open={isCreating}
         >
-          <div className="flex flex-col items-center space-y-4">
-            <CircularProgress color="inherit" size={50} />
-            <div className="text-white text-lg font-medium">
-              {editMode ? 'Updating Endpoint...' : 'Creating Endpoint...'}
-            </div>
-            <div className="text-gray-300 text-sm">
-              Please wait while we process your request
-            </div>
-          </div>
+          <Loader2 size={48} className="animate-spin" />
+          <Box sx={{ fontSize: '16px', fontWeight: 500 }}>
+            {editMode ? 'Updating endpoint...' : 'Creating endpoint...'}
+          </Box>
         </Backdrop>
       )}
     </div>

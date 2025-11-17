@@ -458,28 +458,38 @@ export const JobList: React.FC<JobListProps> = (props) => {
         const jobType = params.row.type || (params.row.path ? 'PUSH' : 'PULL');
         const isPull = jobType?.toUpperCase() === 'PULL';
         return (
-          <Box 
-            sx={{ 
-              display: 'flex', 
-              alignItems: 'center', 
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
               justifyContent: 'center',
               gap: '6px',
               fontSize: '12px',
               fontWeight: '600',
-              color: isPull ? '#2563eb' : '#7c3aed'
+              color: isPull ? '#2563eb' : '#7c3aed',
             }}
           >
             {isPull ? (
               <>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                >
+                  <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
                 </svg>
                 PULL
               </>
             ) : (
               <>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z"/>
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                >
+                  <path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z" />
                 </svg>
                 PUSH
               </>
