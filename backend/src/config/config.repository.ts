@@ -73,9 +73,11 @@ export class ConfigRepository {
         status,
         token,
       );
-      return result || null;
-    } catch {
-      return null;
+      return result;
+    } catch(error) {
+      const err = error as Error;
+      this.logger.error(`Error updating config status: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      throw new Error('Failed to update config status message: ' + err.message);
     }
   }
 
