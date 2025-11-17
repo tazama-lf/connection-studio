@@ -125,6 +125,7 @@ export const DataEnrichmentFormModal: React.FC<
     mode: 'onChange',
   });
 
+  console.log('errors', errors);
   // Ref to track if we should scroll to error on next render
   const shouldScrollToErrorRef = useRef(false);
   // Ref for error message container to scroll to
@@ -564,11 +565,7 @@ export const DataEnrichmentFormModal: React.FC<
             <MultiLineTextInputField
               name={'headers'}
               control={control}
-              label={
-                <>
-                  Headers <span className="text-red-500">*</span>
-                </>
-              }
+              label={<>Headers (Optional)</>}
               placeholder='e.g: {accept: "application/json", agent: "DataEnrichment/1.0"}'
               rows={2}
             />
@@ -579,60 +576,64 @@ export const DataEnrichmentFormModal: React.FC<
         </Grid>
       )}
 
-      <Box sx={{ fontSize: '18px', fontWeight: 'bold', color: '#3b3b3b' }}>
-        File Settings
-      </Box>
-      <Grid container spacing={2}>
-        <Grid size={{ xs: 12, md: 6 }}>
-          <FilePathInputField
-            name="pathPattern"
-            control={control}
-            label={
-              <>
-                File Path <span className="text-red-500">*</span>
-              </>
-            }
-            placeholder="/inbound/data_*.csv"
-          />
-          {errors?.pathPattern && (
-            <ValidationError message={errors?.pathPattern?.message} />
-          )}
-        </Grid>
-        <Grid size={{ xs: 12, md: 6 }}>
-          <SelectField
-            name={'fileFormat'}
-            control={control}
-            label={
-              <>
-                File Format <span className="text-red-500">*</span>
-              </>
-            }
-            options={fileFormatOptions || []}
-          />
-          {errors?.fileFormat && (
-            <ValidationError message={errors?.fileFormat?.message} />
-          )}
-        </Grid>
-        {watch('fileFormat') === 'csv' ? (
-          <Grid size={{ xs: 12, md: 6 }}>
-            <DelimiterInputField
-              name="delimiter"
-              control={control}
-              label={
-                <>
-                  Delimiter <span className="text-red-500">*</span>
-                </>
-              }
-              type="text"
-              placeholder=","
-              maxLength={1}
-            />
-            {errors?.delimiter && (
-              <ValidationError message={errors?.delimiter?.message} />
-            )}
+      {watch('sourceType') === 'sftp' ? (
+        <>
+          <Box sx={{ fontSize: '18px', fontWeight: 'bold', color: '#3b3b3b' }}>
+            File Settings
+          </Box>
+          <Grid container spacing={2}>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <FilePathInputField
+                name="pathPattern"
+                control={control}
+                label={
+                  <>
+                    File Path <span className="text-red-500">*</span>
+                  </>
+                }
+                placeholder="/inbound/data_*.csv"
+              />
+              {errors?.pathPattern && (
+                <ValidationError message={errors?.pathPattern?.message} />
+              )}
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <SelectField
+                name={'fileFormat'}
+                control={control}
+                label={
+                  <>
+                    File Format <span className="text-red-500">*</span>
+                  </>
+                }
+                options={fileFormatOptions || []}
+              />
+              {errors?.fileFormat && (
+                <ValidationError message={errors?.fileFormat?.message} />
+              )}
+            </Grid>
+            {watch('fileFormat') === 'csv' ? (
+              <Grid size={{ xs: 12, md: 6 }}>
+                <DelimiterInputField
+                  name="delimiter"
+                  control={control}
+                  label={
+                    <>
+                      Delimiter <span className="text-red-500">*</span>
+                    </>
+                  }
+                  type="text"
+                  placeholder=","
+                  maxLength={1}
+                />
+                {errors?.delimiter && (
+                  <ValidationError message={errors?.delimiter?.message} />
+                )}
+              </Grid>
+            ) : null}
           </Grid>
-        ) : null}
-      </Grid>
+        </>
+      ) : null}
 
       <Box sx={{ fontSize: '18px', fontWeight: 'bold', color: '#3b3b3b' }}>
         Target PostgreSQL Settings
@@ -896,7 +897,7 @@ export const DataEnrichmentFormModal: React.FC<
                       className="mr-1 text-blue-500"
                       data-id="element-1002"
                     />
-                    Pull Configuration (SFTP/HTTP)
+                    Pull Configuration (SFTP/HTTPS)
                   </>
                 ) : (
                   <>
@@ -1239,21 +1240,14 @@ export const DataEnrichmentFormModal: React.FC<
 
         if (formValues.sourceType === 'http') {
           // HTTPS Pull configuration
-          let headers;
-          try {
-            headers = formValues.headers
-              ? JSON.parse(formValues.headers)
-              : { 'content-type': 'application/json' };
-          } catch {
-            headers = { 'content-type': 'application/json' };
-          }
-
           payload = {
             ...basePayload,
             source_type: 'HTTP',
             connection: {
               url: formValues?.url,
-              headers: JSON.parse(formValues?.headers || {}),
+              headers: formValues?.headers
+                ? JSON.parse(formValues?.headers || {})
+                : {},
             },
           };
         } else {
@@ -1631,7 +1625,7 @@ export const DataEnrichmentFormModal: React.FC<
                             size={20}
                             className="mr-2 text-blue-500"
                           />
-                          Pull Configuration (SFTP/HTTP)
+                          Pull Configuration (SFTP/HTTPS)
                         </>
                       ) : (
                         <>

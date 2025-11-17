@@ -204,7 +204,7 @@ export const dataEnrichmentApi = {
     );
     try {
       return await apiRequest<DataEnrichmentJobResponse>(
-        `${API_BASE_URL}/job/update/pull/${id}`,
+        `${API_BASE_URL}/job/update/${id}?type=pull`,
         {
           method: 'PATCH',
           body: JSON.stringify(updates),
@@ -227,7 +227,7 @@ export const dataEnrichmentApi = {
     );
     try {
       return await apiRequest<DataEnrichmentJobResponse>(
-        `${API_BASE_URL}/job/update/push/${id}`,
+        `${API_BASE_URL}/job/update/${id}?type=push`,
         {
           method: 'PATCH',
           body: JSON.stringify(updates),

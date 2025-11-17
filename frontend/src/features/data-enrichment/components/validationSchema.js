@@ -92,19 +92,22 @@ export const pullValidationSchema = yup.object({
 
     fileFormat: yup
         .string()
-        .required('File format is required')
-        .oneOf(['csv', 'tsv', 'json'], 'Invalid file format'),
+        .when('sourceType', {
+            is: 'sftp',
+            then: (schema) => schema
+                .required('File format is required')
+                .oneOf(['csv', 'tsv', 'json'], 'Invalid file format'),
+            otherwise: (schema) => schema.nullable()
+        }),
 
     delimiter: yup
         .string()
-        .when('fileFormat', {
-            is: 'csv',
+        .when(['sourceType', 'fileFormat'], {
+            is: (sourceType, fileFormat) => sourceType === 'sftp' && fileFormat === 'csv',
             then: (schema) => schema
                 .required('Delimiter is required for CSV files')
                 .length(1, 'Delimiter must be exactly 1 character'),
-            otherwise: (schema) => schema
-                .length(1, 'Delimiter must be exactly 1 character')
-                .nullable()
+            otherwise: (schema) => schema.nullable()
         }),
 
     sourceType: yup
@@ -122,9 +125,8 @@ export const pullValidationSchema = yup.object({
         .when('sourceType', {
             is: 'http',
             then: (schema) => schema
-                .required('Headers are required for HTTP connections')
                 .test('valid-json', 'Headers must be valid JSON format', function (value) {
-                    if (!value || value.trim() === '') return false;
+                    if (!value || value.trim() === '') return true; // Allow empty headers
 
                     let trimmedValue = value.trim();
 
@@ -242,80 +244,85 @@ export const pullValidationSchema = yup.object({
 
     pathPattern: yup
         .string()
-        .required('File path is required')
-        .test('valid-path-format', 'Please enter a valid file path', function (value) {
-            if (!value || value.trim() === '') return false;
+        .when('sourceType', {
+            is: 'sftp',
+            then: (schema) => schema
+                .required('File path is required')
+                .test('valid-path-format', 'Please enter a valid file path', function (value) {
+                    if (!value || value.trim() === '') return false;
 
-            const trimmedValue = value.trim();
+                    const trimmedValue = value.trim();
 
-            // Check if path starts with /
-            if (!trimmedValue.startsWith('/')) {
-                return this.createError({ message: 'File path must start with "/" (e.g: /inbound/data_*.csv)' });
-            }
+                    // Check if path starts with /
+                    if (!trimmedValue.startsWith('/')) {
+                        return this.createError({ message: 'File path must start with "/" (e.g: /inbound/data_*.csv)' });
+                    }
 
-            // Check for valid path characters (allow alphanumeric, /, _, -, ., *)
-            const validPathPattern = /^[\/a-zA-Z0-9_\-\.\*]+$/;
-            if (!validPathPattern.test(trimmedValue)) {
-                return this.createError({ message: 'File path contains invalid characters. Only letters, numbers, /, _, -, ., * are allowed' });
-            }
+                    // Check for valid path characters (allow alphanumeric, /, _, -, ., *)
+                    const validPathPattern = /^[\/a-zA-Z0-9_\-\.\*]+$/;
+                    if (!validPathPattern.test(trimmedValue)) {
+                        return this.createError({ message: 'File path contains invalid characters. Only letters, numbers, /, _, -, ., * are allowed' });
+                    }
 
-            // Extract filename (part after last /)
-            const pathParts = trimmedValue.split('/');
-            const fileName = pathParts[pathParts.length - 1];
+                    // Extract filename (part after last /)
+                    const pathParts = trimmedValue.split('/');
+                    const fileName = pathParts[pathParts.length - 1];
 
-            if (!fileName || fileName === '') {
-                return this.createError({ message: 'File path must include a filename (e.g: /inbound/data_*.csv)' });
-            }
+                    if (!fileName || fileName === '') {
+                        return this.createError({ message: 'File path must include a filename (e.g: /inbound/data_*.csv)' });
+                    }
 
-            // Check file extension (case-insensitive and more robust)
-            const lowerFileName = fileName.toLowerCase();
-            const validExtensions = ['.csv', '.tsv', '.json'];
-            const hasValidExtension = validExtensions.some(ext => lowerFileName.endsWith(ext));
+                    // Check file extension (case-insensitive and more robust)
+                    const lowerFileName = fileName.toLowerCase();
+                    const validExtensions = ['.csv', '.tsv', '.json'];
+                    const hasValidExtension = validExtensions.some(ext => lowerFileName.endsWith(ext));
 
-            if (!hasValidExtension) {
-                return this.createError({ message: 'Filename must end with .csv, .tsv, or .json extension' });
-            }
+                    if (!hasValidExtension) {
+                        return this.createError({ message: 'Filename must end with .csv, .tsv, or .json extension' });
+                    }
 
-            return true;
-        })
-        .when('fileFormat', (fileFormat, schema) =>
-            schema.test('extension-format-match', 'File extension must match selected format', function (value) {
-                if (!value) return true; // Skip if no value (required validation will catch this)
+                    return true;
+                })
+                .when('fileFormat', (fileFormat, schema) =>
+                    schema.test('extension-format-match', 'File extension must match selected format', function (value) {
+                        if (!value) return true; // Skip if no value (required validation will catch this)
 
-                if (!fileFormat) return true; // Skip if no format selected yet
+                        if (!fileFormat) return true; // Skip if no format selected yet
 
-                const trimmedValue = value.trim();
-                const pathParts = trimmedValue.split('/');
-                const fileName = pathParts[pathParts.length - 1];
+                        const trimmedValue = value.trim();
+                        const pathParts = trimmedValue.split('/');
+                        const fileName = pathParts[pathParts.length - 1];
 
-                if (!fileName || !fileName.includes('.')) return true; // Will be caught by other validation
+                        if (!fileName || !fileName.includes('.')) return true; // Will be caught by other validation
 
-                const fileExtension = fileName.split('.').pop()?.toLowerCase();
+                        const fileExtension = fileName.split('.').pop()?.toLowerCase();
 
-                // Define extension-to-format mapping
-                const extensionFormatMap = {
-                    'csv': ['csv'],
-                    'tsv': ['tsv'],
-                    'json': ['json'],
-                };
+                        // Define extension-to-format mapping
+                        const extensionFormatMap = {
+                            'csv': ['csv'],
+                            'tsv': ['tsv'],
+                            'json': ['json'],
+                        };
 
-                const allowedFormatsForExtension = extensionFormatMap[fileExtension];
+                        const allowedFormatsForExtension = extensionFormatMap[fileExtension];
 
-                // Handle both string and array formats
-                const formatValue = Array.isArray(fileFormat) ? fileFormat[0] : fileFormat;
+                        // Handle both string and array formats
+                        const formatValue = Array.isArray(fileFormat) ? fileFormat[0] : fileFormat;
 
-                if (allowedFormatsForExtension && !allowedFormatsForExtension.includes(formatValue?.toLowerCase())) {
-                    const formatName = formatValue?.toUpperCase();
-                    const extensionName = fileExtension.toUpperCase();
-                    return this.createError({
-                        message: `File extension .${extensionName} does not match selected format ${formatName}. Please select ${allowedFormatsForExtension.map(f => f.toUpperCase()).join(' or ')} format or change the file extension.`
-                    });
-                }
+                        if (allowedFormatsForExtension && !allowedFormatsForExtension.includes(formatValue?.toLowerCase())) {
+                            const formatName = formatValue?.toUpperCase();
+                            const extensionName = fileExtension.toUpperCase();
+                            return this.createError({
+                                message: `File extension .${extensionName} does not match selected format ${formatName}. Please select ${allowedFormatsForExtension.map(f => f.toUpperCase()).join(' or ')} format or change the file extension.`
+                            });
+                        }
 
-                return true;
-            })
-        )
-        .max(100, 'File path cannot exceed 100 characters'),
+                        return true;
+                    })
+                )
+                .max(100, 'File path cannot exceed 100 characters'),
+            otherwise: (schema) => schema.nullable()
+        }),
 
     host: yup
         .string()

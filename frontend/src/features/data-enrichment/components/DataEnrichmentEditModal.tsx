@@ -1,6 +1,6 @@
 import { useAuth } from '@features/auth';
 import { yupResolver } from '@hookform/resolvers/yup';
-import { Button, Grid } from '@mui/material';
+import { Button, Grid, CircularProgress } from '@mui/material';
 import Alert from '@mui/material/Alert';
 import Backdrop from '@mui/material/Backdrop';
 import Box from '@mui/material/Box';
@@ -73,8 +73,6 @@ export const DataEnrichmentEditModal: React.FC<
 
   const currentJobType = getJobType(selectedJob);
   const configurationType = currentJobType as 'pull' | 'push';
-
-  console.log('selectedJob', selectedJob);
 
   // --------------------REACT HOOKS FORM SETUP
   const loadSchema =
@@ -175,10 +173,163 @@ export const DataEnrichmentEditModal: React.FC<
     }
   };
 
+  const handleSave = async () => {
+    console.log('handleSave called, preparing payload');
+    try {
+      setCreateError(null);
+      setCreateSuccess(null);
+      const formValues = getValues();
+      let payload: any;
+
+      if (configurationType === 'push') {
+        payload = {
+          endpoint_name: formValues.name || null,
+          path: formValues.endpointPath || null,
+          description: formValues.description || null,
+          table_name: formValues.targetTable || null,
+          mode: formValues.ingestMode as 'append' | 'replace',
+          version:
+            formValues.version?.replace(/^v?\/*/g, '').replace(/\/+$/g, '') ||
+            null,
+        };
+      } else {
+        // Pull configuration payload
+        const basePayload = {
+          endpoint_name: formValues.name || null,
+          source_type: formValues.sourceType.toUpperCase() as 'HTTPS' | 'SFTP',
+          description: formValues.description || null,
+          table_name: formValues.targetTable || null,
+          mode: formValues.ingestMode as 'append' | 'replace',
+          version: formValues.version || null,
+          schedule_id: formValues.schedule || null,
+        };
+
+        if (formValues.sourceType === 'http') {
+          // HTTPS Pull configuration
+          let headers;
+          try {
+            headers = formValues.headers
+              ? JSON.parse(formValues.headers)
+              : { 'content-type': 'application/json' };
+          } catch {
+            headers = { 'content-type': 'application/json' };
+          }
+
+          payload = {
+            ...basePayload,
+            source_type: 'HTTP',
+            connection: {
+              url: formValues?.url,
+              headers: JSON.parse(formValues?.headers || {}),
+            },
+          };
+        } else {
+          // SFTP Pull configuration
+          payload = {
+            ...basePayload,
+            source_type: 'SFTP',
+            connection: {
+              host: formValues.host,
+              port: parseInt(formValues.port) || null,
+              auth_type:
+                formValues.authType === 'key'
+                  ? ('PRIVATE_KEY' as const)
+                  : ('USERNAME_PASSWORD' as const),
+              user_name: formValues.username,
+              ...(formValues.authType === 'password'
+                ? { password: formValues.password }
+                : { private_key: formValues.password.replace(/\\n/g, '\n') }), // Using password field for private key
+            },
+            file: {
+              path: (formValues.pathPattern || '/data.csv').replace(/^\/+/, ''),
+              file_type: formValues.fileFormat.toUpperCase() as
+                | 'CSV'
+                | 'JSON'
+                | 'TSV',
+              delimiter: formValues.delimiter || ',',
+            },
+          };
+        }
+      }
+
+      // Show loader right before API call
+      console.log('Starting API call, showing loader...');
+      setIsCreating(true);
+
+      // Call appropriate API based on mode and configuration type
+      let response;
+      if (editMode && selectedJob?.id) {
+        response =
+          configurationType === 'pull'
+            ? await dataEnrichmentApi.updatePullJob(selectedJob.id, payload)
+            : await dataEnrichmentApi.updatePushJob(selectedJob.id, payload);
+      } else {
+        response =
+          configurationType === 'pull'
+            ? await dataEnrichmentApi.createPullJob(payload)
+            : await dataEnrichmentApi.createPushJob(payload);
+      }
+
+      const successMessage = editMode
+        ? `Data enrichment endpoint "${formValues.name}" updated successfully!`
+        : `Data enrichment endpoint "${formValues.name}" created successfully! You can now send it for approval.`;
+
+      setCreateSuccess(successMessage);
+      if (onSave) {
+        onSave(response);
+      }
+
+      // Close modal after showing success message
+      setTimeout(() => {
+        onClose();
+      }, 1500);
+    } catch (error) {
+      console.error('=== CREATE ENDPOINT ERROR ===', error);
+
+      let errorMessage = 'Failed to create endpoint';
+
+      if (error && typeof error === 'object' && 'response' in error) {
+        const apiError = error as any;
+        const backendMessage =
+          apiError.response?.data?.message ||
+          apiError.response?.data?.error ||
+          apiError.response?.data?.details;
+
+        if (backendMessage) {
+          errorMessage = `Backend error: ${backendMessage}`;
+        } else if (apiError.response?.status === 400) {
+          errorMessage = 'Bad Request: Invalid data sent to backend';
+        } else {
+          errorMessage = `HTTP ${apiError.response?.status}: ${apiError.message || 'Unknown error'}`;
+        }
+      } else if (
+        error instanceof TypeError &&
+        error.message.includes('fetch')
+      ) {
+        errorMessage =
+          'Cannot connect to data enrichment service. Please ensure the service is running';
+      } else {
+        errorMessage =
+          error instanceof Error ? error.message : 'Unknown error occurred';
+      }
+
+      setCreateError(errorMessage);
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
   // Form submission handler for React Hook Form
   const onSubmit = (data: any) => {
-    console.log('Form Data:', data);
+    console.log('Form submitted, calling handleSave...');
+    handleSave();
   };
+
+  // Debug useEffect to monitor isCreating state
+  useEffect(() => {
+    console.log('isCreating state changed:', isCreating);
+  }, [isCreating]);
+
   // --------------------REACT HOOKS FORM SETUP
 
   // Load available schedules when modal opens
@@ -778,148 +929,6 @@ export const DataEnrichmentEditModal: React.FC<
     </div>
   );
 
-  //   const handleSave = async () => {
-  //     try {
-  //       setIsCreating(true);
-  //       setCreateError(null);
-  //       setCreateSuccess(null);
-  //       const formValues = getValues();
-  //       let payload: any;
-
-  //       if (configurationType === 'push') {
-  //         payload = {
-  //           endpoint_name: formValues.name || null,
-  //           path: formValues.endpointPath || null,
-  //           description: formValues.description || null,
-  //           table_name: formValues.targetTable || null,
-  //           mode: formValues.ingestMode as 'append' | 'replace',
-  //           version:
-  //             formValues.version?.replace(/^v?\/*/g, '').replace(/\/+$/g, '') ||
-  //             null,
-  //         };
-  //       } else {
-  //         // Pull configuration payload
-  //         const basePayload = {
-  //           endpoint_name: formValues.name || null,
-  //           source_type: formValues.sourceType.toUpperCase() as 'HTTPS' | 'SFTP',
-  //           description: formValues.description || null,
-  //           table_name: formValues.targetTable || null,
-  //           mode: formValues.ingestMode as 'append' | 'replace',
-  //           version: formValues.version || null,
-  //           schedule_id: formValues.schedule || null,
-  //         };
-
-  //         if (formValues.sourceType === 'https') {
-  //           // HTTPS Pull configuration
-  //           let headers;
-  //           try {
-  //             headers = formValues.headers
-  //               ? JSON.parse(formValues.headers)
-  //               : { 'content-type': 'application/json' };
-  //           } catch {
-  //             headers = { 'content-type': 'application/json' };
-  //           }
-
-  //           payload = {
-  //             ...basePayload,
-  //             source_type: 'HTTPS' as const,
-  //             connection: {
-  //               url: formValues.url,
-  //               headers,
-  //             },
-  //           };
-  //         } else {
-  //           // SFTP Pull configuration
-  //           payload = {
-  //             ...basePayload,
-  //             source_type: 'SFTP' as const,
-  //             connection: {
-  //               host: formValues.host,
-  //               port: parseInt(formValues.port) || null,
-  //               auth_type:
-  //                 formValues.authType === 'key'
-  //                   ? ('PRIVATE_KEY' as const)
-  //                   : ('USERNAME_PASSWORD' as const),
-  //               user_name: formValues.username,
-  //               ...(formValues.authType === 'password'
-  //                 ? { password: formValues.password }
-  //                 : { private_key: formValues.password.replace(/\\n/g, '\n') }), // Using password field for private key
-  //             },
-  //             file: {
-  //               path: formValues.pathPattern || '/data.csv',
-  //               file_type: formValues.fileFormat.toUpperCase() as
-  //                 | 'CSV'
-  //                 | 'JSON'
-  //                 | 'TSV',
-  //               delimiter: formValues.delimiter || ',',
-  //             },
-  //           };
-  //         }
-  //       }
-
-  //       // Call appropriate API based on mode and configuration type
-  //       let response;
-  //       if (editMode && selectedJob?.id) {
-  //         response =
-  //           configurationType === 'pull'
-  //             ? await dataEnrichmentApi.updatePullJob(selectedJob.id, payload)
-  //             : await dataEnrichmentApi.updatePushJob(selectedJob.id, payload);
-  //       } else {
-  //         response =
-  //           configurationType === 'pull'
-  //             ? await dataEnrichmentApi.createPullJob(payload)
-  //             : await dataEnrichmentApi.createPushJob(payload);
-  //       }
-
-  //       const successMessage = editMode
-  //         ? `Data enrichment endpoint "${formValues.name}" updated successfully!`
-  //         : `Data enrichment endpoint "${formValues.name}" created successfully! You can now send it for approval.`;
-
-  //       setCreateSuccess(successMessage);
-  //       if (onSave) {
-  //         onSave(response);
-  //       }
-
-  //       // Close modal after showing success message
-  //       setTimeout(() => {
-  //         onClose();
-  //       }, 1500);
-  //     } catch (error) {
-  //       console.error('=== CREATE ENDPOINT ERROR ===', error);
-
-  //       let errorMessage = 'Failed to create endpoint';
-
-  //       if (error && typeof error === 'object' && 'response' in error) {
-  //         const apiError = error as any;
-  //         const backendMessage =
-  //           apiError.response?.data?.message ||
-  //           apiError.response?.data?.error ||
-  //           apiError.response?.data?.details;
-
-  //         if (backendMessage) {
-  //           errorMessage = `Backend error: ${backendMessage}`;
-  //         } else if (apiError.response?.status === 400) {
-  //           errorMessage = 'Bad Request: Invalid data sent to backend';
-  //         } else {
-  //           errorMessage = `HTTP ${apiError.response?.status}: ${apiError.message || 'Unknown error'}`;
-  //         }
-  //       } else if (
-  //         error instanceof TypeError &&
-  //         error.message.includes('fetch')
-  //       ) {
-  //         errorMessage =
-  //           'Cannot connect to data enrichment service. Please ensure the service is running';
-  //       } else {
-  //         errorMessage =
-  //           error instanceof Error ? error.message : 'Unknown error occurred';
-  //       }
-
-  //       setCreateError(errorMessage);
-  //     } finally {
-  //       setIsCreating(false);
-  //     }
-  //   };
-
   if (!isOpen) return null;
 
   return (
@@ -973,7 +982,7 @@ export const DataEnrichmentEditModal: React.FC<
                 {currentJobType === 'pull' ? (
                   <>
                     <DownloadIcon size={20} className="mr-2 text-blue-500" />
-                    Pull Configuration (SFTP/HTTP)
+                    Pull Configuration (SFTP/HTTPS)
                   </>
                 ) : (
                   <>
@@ -988,6 +997,24 @@ export const DataEnrichmentEditModal: React.FC<
                   : 'Configure REST API endpoint for data ingestion'}
               </p>
             </Box>
+
+            {/* Success and Error Messages */}
+            {createSuccess && (
+              <div className="px-6 pt-4">
+                <Alert severity="success" sx={{ borderRadius: '5px' }}>
+                  {createSuccess}
+                </Alert>
+              </div>
+            )}
+
+            {createError && (
+              <div className="px-6 pt-4">
+                <Alert severity="error" sx={{ borderRadius: '5px' }}>
+                  {createError}
+                </Alert>
+              </div>
+            )}
+
             <form
               onSubmit={handleSubmit(onSubmit, onError)}
               className="space-y-2"
@@ -1013,10 +1040,18 @@ export const DataEnrichmentEditModal: React.FC<
                   <Button
                     variant="contained"
                     sx={{ backgroundColor: '#2b7fff' }}
-                    type="submit"
-                    startIcon={<Save size={16} />}
+                    type="button"
+                    onClick={handleSave}
+                    disabled={isCreating}
+                    startIcon={
+                      isCreating ? (
+                        <CircularProgress size={16} color="inherit" />
+                      ) : (
+                        <Save size={16} />
+                      )
+                    }
                   >
-                    Update
+                    {isCreating ? 'Updating...' : 'Update'}
                   </Button>
                   {/* )} */}
                 </div>
@@ -1025,6 +1060,28 @@ export const DataEnrichmentEditModal: React.FC<
           </>
         </div>
       </Backdrop>
+
+      {/* Loading Backdrop */}
+      {isCreating && (
+        <Backdrop
+          sx={{
+            zIndex: 9999,
+            color: '#fff',
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+          }}
+          open={isCreating}
+        >
+          <div className="flex flex-col items-center space-y-4">
+            <CircularProgress color="inherit" size={50} />
+            <div className="text-white text-lg font-medium">
+              {editMode ? 'Updating Endpoint...' : 'Creating Endpoint...'}
+            </div>
+            <div className="text-gray-300 text-sm">
+              Please wait while we process your request
+            </div>
+          </div>
+        </Backdrop>
+      )}
     </div>
   );
 };
