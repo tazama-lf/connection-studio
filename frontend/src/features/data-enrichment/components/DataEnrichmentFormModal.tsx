@@ -273,13 +273,16 @@ export const DataEnrichmentFormModal: React.FC<
       try {
         setSchedulesLoading(true);
         const schedules = await dataEnrichmentApi.getAllSchedules();
+        const schedule_data = schedules?.data;
+
         // Filter schedules to only show approved, exported, and deployed schedules
-        const filteredSchedules = schedules.filter(
+        const filteredSchedules = schedule_data?.filter(
           (schedule: any) =>
-            schedule.status === 'approved' ||
-            schedule.status === 'exported' ||
-            schedule.status === 'deployed',
+            schedule.status === 'STATUS_04_APPROVED' ||
+            schedule.status === 'STATUS_06_EXPORTED',
         );
+
+        console.log('filteredSchedules', schedules);
         setAvailableSchedules(filteredSchedules);
       } catch (error) {
         console.error('Failed to load schedules:', error);

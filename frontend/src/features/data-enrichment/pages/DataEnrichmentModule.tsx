@@ -567,11 +567,10 @@ const DataEnrichmentModule: React.FC = () => {
         {jobDetailsEditMode && (
           <DataEnrichmentEditModal
             isOpen={jobDetailsEditMode}
-            onClose={handleCloseJobDetails}
-            onSave={handleSaveJobChanges}
+            onClose={() => setShowJobForm(false)}
+            // onSave={handleCreateJob}
             editMode={true}
-            jobId={selectedJob?.id}
-            jobType={selectedJob?.type?.toLowerCase() as 'pull' | 'push'}
+            selectedJob={selectedJob}
           />
         )}
       </div>

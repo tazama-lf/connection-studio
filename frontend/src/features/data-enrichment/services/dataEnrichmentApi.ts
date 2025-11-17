@@ -373,16 +373,24 @@ export const dataEnrichmentApi = {
   },
 
   getAllSchedules: async (
-    page = 1,
+    offset = 1,
     limit = 50,
   ): Promise<ScheduleResponse[]> => {
     const queryParams = new URLSearchParams();
-    queryParams.append('page', page.toString());
+    queryParams.append('offset', offset.toString());
     queryParams.append('limit', limit.toString());
+
+    const scheduler_body = {
+      status: 'STATUS_04_APPROVED,STATUS_06_EXPORTED',
+    };
 
     try {
       return await apiRequest<ScheduleResponse[]>(
         `${API_BASE_URL}/scheduler/all?${queryParams.toString()}`,
+        {
+          method: 'POST',
+          body: JSON.stringify(scheduler_body),
+        },
       );
     } catch (error) {
       console.error('Get all schedules error:', error);

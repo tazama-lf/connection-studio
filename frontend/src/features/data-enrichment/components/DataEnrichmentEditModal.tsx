@@ -48,6 +48,7 @@ export const DataEnrichmentEditModal: React.FC<
   DataEnrichmentEditModalProps
   // ----------PROPS
 > = ({ isOpen, onClose, onSave, editMode = false, selectedJob }) => {
+  console.log('selectedJob', selectedJob);
   // ----------STATES
   const [currentStep, setCurrentStep] = useState<
     'config' | 'preview' | 'summary'
