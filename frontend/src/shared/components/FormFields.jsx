@@ -1061,6 +1061,90 @@ export const URLInputField = ({
     );
 };
 
+// TRANSACTION TYPE INPUT FIELD - Specialized for transaction types (alphanumeric with - _ /)
+export const TransactionTypeInputField = ({
+    name,
+    label,
+    control,
+    placeholder = "pacs.008",
+    maxLength = 50,
+    disabled,
+}) => {
+    // Valid characters: alphanumeric and special characters: - _ /
+    const isValidChar = (char) => {
+        return /^[a-zA-Z0-9\-_\/]$/.test(char);
+    };
+
+    return (
+        <Controller
+            name={name}
+            control={control}
+            render={({ field: { onChange, value, ...restField } }) => (
+                <TextField
+                    {...restField}
+                    id={name}
+                    name={name}
+                    label={label}
+                    type="text"
+                    disabled={disabled}
+                    variant="filled"
+                    value={value}
+                    onKeyDown={(event) => {
+                        const key = event.key;
+                        // Allow control keys
+                        if (["Backspace", "Delete", "Tab", "Enter", "ArrowLeft", "ArrowRight", "Home", "End"].includes(key)) return;
+
+                        // Allow only valid characters
+                        if (!isValidChar(key)) {
+                            event.preventDefault();
+                        }
+                    }}
+                    onChange={(event) => {
+                        let newValue = event.target.value;
+
+                        // Remove invalid characters (keep only alphanumeric and - _ /)
+                        newValue = newValue.replace(/[^a-zA-Z0-9\-_\/]/g, "");
+
+                        onChange(newValue);
+                    }}
+                    fullWidth
+                    placeholder={placeholder}
+                    InputProps={{
+                        disableUnderline: true,
+                        sx: {
+                            border: "1px solid silver",
+                            borderRadius: "7px",
+                            fontSize: "1.1rem",
+                            height: "60px",
+                            backgroundColor: "white",
+                            fontWeight: 500,
+                            "&:hover": { backgroundColor: "white" },
+                            "&.Mui-focused": { backgroundColor: "white" },
+                            "& input::placeholder": {
+                                fontSize: "0.9rem",
+                            },
+                        },
+                        autoComplete: "off",
+                        autoCorrect: "off",
+                        inputProps: { maxLength: maxLength },
+                    }}
+                    InputLabelProps={{
+                        sx: { fontSize: "0.95rem", color: "#666666", marginTop: "5px" },
+                    }}
+                    sx={{
+                        width: "100%",
+                        "& .MuiFilledInput-root": {
+                            backgroundColor: "white",
+                            "&:hover": { backgroundColor: "white" },
+                            "&.Mui-focused": { backgroundColor: "white" },
+                        },
+                    }}
+                />
+            )}
+        />
+    );
+};
+
 // API PATH INPUT FIELD - Specialized for API endpoint paths
 export const ApiPathInputField = ({
     name,

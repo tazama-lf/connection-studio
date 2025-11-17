@@ -315,7 +315,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
       );
 
       // Refetch configs to update the UI
-      await fetchConfigs();
+      await fetchConfigsTemp();
 
       // Trigger parent refresh if available
       if (onRefresh) {
@@ -527,7 +527,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
                   <span>Edit</span>
                 </button>
               )}
-            {onConfigClone && !showPendingApprovals && (
+            {/* {onConfigClone && !showPendingApprovals && (
               <button
                 onClick={() => {
                   onConfigClone(config);
@@ -538,7 +538,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
                 <CopyIcon className="w-4 h-4 mr-2" />
                 Clone
               </button>
-            )}
+            )} */}
             {userIsExporter &&
               (config.status === 'STATUS_04_APPROVED' ||
                 config.status === 'STATUS_08_DEPLOYED') && (
@@ -547,7 +547,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
                     handleExportConfig(config);
                     setOpenDropdown(null);
                   }}
-                  className="w-[75px] inline-flex justify-center items-center rounded-md bg-[#2b7fff]px-3 py-1.5 text-xs font-medium text-white shadow-sm focus:outline-none transition-colors cursor-pointer"
+                  className="w-[75px] inline-flex justify-center items-center rounded-md bg-[#2b7fff] px-3 py-1.5 text-xs font-medium text-white shadow-sm focus:outline-none transition-colors cursor-pointer"
                 >
                   <Upload className="w-4 h-4 mr-2" />
                   Export
