@@ -11,10 +11,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JobStatus } from '@tazama-lf/tcs-lib';
-import {
-  RequireAnyClaims,
-  TazamaClaims
-} from 'src/auth/auth.decorator';
+import { RequireAnyClaims, TazamaClaims } from 'src/auth/auth.decorator';
 import { type AuthenticatedUser } from 'src/auth/auth.types';
 import { TazamaAuthGuard } from 'src/auth/tazama-auth.guard';
 import { User } from 'src/auth/user.decorator';
@@ -25,7 +22,7 @@ import { SchedulerService } from './scheduler.service';
 @Controller('scheduler')
 @UseGuards(TazamaAuthGuard)
 export class SchedulerController {
-  constructor(private readonly schedulerService: SchedulerService) { }
+  constructor(private readonly schedulerService: SchedulerService) {}
 
   @Post('/create')
   @RequireAnyClaims(TazamaClaims.EDITOR)
@@ -33,7 +30,11 @@ export class SchedulerController {
     @Body() schedule: CreateScheduleJobDto,
     @User() user: AuthenticatedUser,
   ) {
-    return this.schedulerService.create(schedule, user.tenantId, user.token.tokenString);
+    return this.schedulerService.create(
+      schedule,
+      user.tenantId,
+      user.token.tokenString,
+    );
   }
 
   @Post('/all')
@@ -84,9 +85,15 @@ export class SchedulerController {
     @Query('status') status: JobStatus,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
-    @User() user: AuthenticatedUser
+    @User() user: AuthenticatedUser,
   ) {
-    return await this.schedulerService.findByStatus(status, page, limit, user.tenantId, user.token.tokenString);
+    return await this.schedulerService.findByStatus(
+      status,
+      page,
+      limit,
+      user.tenantId,
+      user.token.tokenString,
+    );
   }
 
   @Patch('/update/status/:id')
@@ -102,6 +109,12 @@ export class SchedulerController {
     @User() user: AuthenticatedUser,
     @Body('reason') reason?: string,
   ) {
-    return await this.schedulerService.updateStatus(id, user.tenantId, status, user.token.tokenString, reason);
+    return await this.schedulerService.updateStatus(
+      id,
+      user.tenantId,
+      status,
+      user.token.tokenString,
+      reason,
+    );
   }
 }

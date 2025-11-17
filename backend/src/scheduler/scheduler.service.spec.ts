@@ -35,7 +35,6 @@ describe('SchedulerService', () => {
     validClaims: ['EDITOR'],
   };
 
-
   const mockToken = 'mock-jwt-token';
 
   beforeEach(async () => {
@@ -81,7 +80,9 @@ describe('SchedulerService', () => {
     service = module.get<SchedulerService>(SchedulerService);
     loggerService = module.get(LoggerService) as jest.Mocked<LoggerService>;
     sftpService = module.get(SftpService) as jest.Mocked<SftpService>;
-    adminServiceClient = module.get(AdminServiceClient) as jest.Mocked<AdminServiceClient>;
+    adminServiceClient = module.get(
+      AdminServiceClient,
+    ) as jest.Mocked<AdminServiceClient>;
   });
 
   afterEach(() => {
@@ -157,7 +158,11 @@ describe('SchedulerService', () => {
       };
 
       await expect(
-        service.create(invalidScheduleDto as CreateScheduleJobDto, mockTenantId, mockToken),
+        service.create(
+          invalidScheduleDto as CreateScheduleJobDto,
+          mockTenantId,
+          mockToken,
+        ),
       ).rejects.toThrow(BadRequestException);
 
       expect(loggerService.error).toHaveBeenCalled();
@@ -170,7 +175,11 @@ describe('SchedulerService', () => {
       );
 
       await expect(
-        service.create(createScheduleDto as CreateScheduleJobDto, mockTenantId, mockToken),
+        service.create(
+          createScheduleDto as CreateScheduleJobDto,
+          mockTenantId,
+          mockToken,
+        ),
       ).rejects.toThrow(BadRequestException);
 
       expect(loggerService.error).toHaveBeenCalledWith(
@@ -209,7 +218,11 @@ describe('SchedulerService', () => {
       const mockSchedules = [mockSchedule];
       adminServiceClient.getAllSchedule.mockResolvedValue(mockSchedules);
 
-      const result = await service.findAll(offset, limit, mockUser as AuthenticatedUser);
+      const result = await service.findAll(
+        offset,
+        limit,
+        mockUser as AuthenticatedUser,
+      );
 
       expect(result).toEqual(mockSchedules);
       expect(adminServiceClient.getAllSchedule).toHaveBeenCalledWith(
@@ -225,7 +238,12 @@ describe('SchedulerService', () => {
       const filters = { status: JobStatus.APPROVED };
       adminServiceClient.getAllSchedule.mockResolvedValue(mockSchedules);
 
-      const result = await service.findAll(offset, limit, mockUser as AuthenticatedUser, filters);
+      const result = await service.findAll(
+        offset,
+        limit,
+        mockUser as AuthenticatedUser,
+        filters,
+      );
 
       expect(result).toEqual(mockSchedules);
       expect(adminServiceClient.getAllSchedule).toHaveBeenCalledWith(
@@ -242,7 +260,9 @@ describe('SchedulerService', () => {
         new Error(errorMessage),
       );
 
-      await expect(service.findAll(offset, limit, mockUser as AuthenticatedUser)).rejects.toThrow();
+      await expect(
+        service.findAll(offset, limit, mockUser as AuthenticatedUser),
+      ).rejects.toThrow();
     });
   });
 
@@ -339,13 +359,25 @@ describe('SchedulerService', () => {
 
     it('should throw BadRequestException if page is missing', async () => {
       await expect(
-        service.findByStatus(status, null as any, limit, mockTenantId, mockToken),
+        service.findByStatus(
+          status,
+          null as any,
+          limit,
+          mockTenantId,
+          mockToken,
+        ),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('should throw BadRequestException if limit is missing', async () => {
       await expect(
-        service.findByStatus(status, page, null as any, mockTenantId, mockToken),
+        service.findByStatus(
+          status,
+          page,
+          null as any,
+          mockTenantId,
+          mockToken,
+        ),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -482,7 +514,7 @@ describe('SchedulerService', () => {
         expect(result).toEqual(expectedResult);
         expect(sftpService.readFile).toHaveBeenCalledWith(fileName);
         expect(adminServiceClient.createSchedule).toHaveBeenCalledWith(
-          { ...mockSchedule, status: JobStatus.DEPLOYED, },
+          { ...mockSchedule, status: JobStatus.DEPLOYED },
           mockToken,
         );
         expect(sftpService.deleteFile).toHaveBeenCalledWith(fileName);
@@ -536,12 +568,7 @@ describe('SchedulerService', () => {
 
     it('should throw BadRequestException if status is missing', async () => {
       await expect(
-        service.updateStatus(
-          scheduleId,
-          mockTenantId,
-          null as any,
-          mockToken,
-        ),
+        service.updateStatus(scheduleId, mockTenantId, null as any, mockToken),
       ).rejects.toThrow(BadRequestException);
     });
 

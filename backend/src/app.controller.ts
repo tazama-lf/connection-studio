@@ -1,9 +1,6 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get } from '@nestjs/common';
 import { AppService } from './app.service';
-import { RequireClaim, TazamaClaims, Public } from './auth/auth.decorator';
-import { TazamaAuthGuard } from './auth/tazama-auth.guard';
-import { User } from './auth/user.decorator';
-import type { AuthenticatedUser } from './auth/auth.types';
+import { Public } from './auth/auth.decorator';
 
 @Controller()
 export class AppController {

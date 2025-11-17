@@ -23,7 +23,8 @@ export class ConfigWorkflowService {
       [ConfigStatus.UNDER_REVIEW]: [
         ConfigStatus.APPROVED,
         ConfigStatus.REJECTED,
-        ConfigStatus.IN_PROGRESS,],
+        ConfigStatus.IN_PROGRESS,
+      ],
       [ConfigStatus.APPROVED]: [ConfigStatus.EXPORTED, ConfigStatus.DEPLOYED],
       [ConfigStatus.EXPORTED]: [ConfigStatus.DEPLOYED],
       [ConfigStatus.READY_FOR_DEPLOYMENT]: [ConfigStatus.DEPLOYED],

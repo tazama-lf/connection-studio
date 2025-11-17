@@ -26,16 +26,7 @@ import { NotificationService } from '../notification/notification.service';
 import { TazamaAuthGuard } from '../auth/tazama-auth.guard';
 import { User } from '../auth/user.decorator';
 import type { AuthenticatedUser } from '../auth/auth.types';
-import {
-  CreateConfigDto,
-  UpdateConfigDto,
-  CreateMappingDto,
-  UpdateMappingDto,
-  CreateFunctionDto,
-  UpdateFunctionDto,
-  UpdatePublishingStatusDto,
-  TransactionType,
-} from '../dto/config/dto';
+import { CreateConfigDto, UpdateConfigDto } from '../dto/config/dto';
 import {
   type CloneConfigDto,
   type AddMappingDto,
@@ -93,7 +84,9 @@ export function decodeValidatedToken(user: AuthenticatedUser): DecodedUserInfo {
   }
 
   if (!decoded.preferred_username) {
-    throw new Error(`Invalid token: preferred_username missing. Available keys: ${Object.keys(decoded).join(', ')}`);
+    throw new Error(
+      `Invalid token: preferred_username missing. Available keys: ${Object.keys(decoded).join(', ')}`,
+    );
   }
 
   if (!decoded.realm_access || !Array.isArray(decoded.realm_access.roles)) {
@@ -170,21 +163,28 @@ export class ConfigController {
   }
 
   private async sendWorkflowNotification(
-    event: 'editor_submit' | 'approver_approve' | 'exporter_export' | 'publisher_deploy',
+    event:
+      | 'editor_submit'
+      | 'approver_approve'
+      | 'exporter_export'
+      | 'publisher_deploy'
+      | 'publisher_activate'
+      | 'publisher_deactivate',
     configId: number,
     user: AuthenticatedUser,
     config: Config,
     authToken: string,
     comment?: string,
   ): Promise<void> {
+    const decodedToken = decodeValidatedToken(user);
+    const groupName =
+      decodedToken.tenantDetails.length > 0
+        ? decodedToken.tenantDetails[0].replace(/\//g, '')
+        : null;
 
-const decodedToken = decodeValidatedToken(user);
-const groupName = decodedToken.tenantDetails.length > 0 ? decodedToken.tenantDetails[0].replace(/\//g, '') :null
-
-if(!groupName){
-  throw new Error('Group name not found in tenant details');
-}
-
+    if (!groupName) {
+      throw new Error('Group name not found in tenant details');
+    }
 
     await this.notificationService.sendGenericWorkflowNotification({
       event,
@@ -234,12 +234,12 @@ if(!groupName){
       throw new BadRequestException('No file uploaded');
     }
 
-    const validTransactionTypes = Object.values(TransactionType);
-    if (!validTransactionTypes.includes(transactionType as TransactionType)) {
-      throw new BadRequestException(
-        `Invalid transactionType. Must be one of: ${validTransactionTypes.join(', ')}`,
-      );
-    }
+    // const validTransactionTypes = Object.values(TransactionType);
+    // if (!validTransactionTypes.includes(transactionType as TransactionType)) {
+    //   throw new BadRequestException(
+    //     `Invalid transactionType. Must be one of: ${validTransactionTypes.join(', ')}`,
+    //   );
+    // }
 
     const content = file.buffer.toString('utf8');
     const autoDetectedContentType = this.autoDetectContentType(
@@ -249,7 +249,7 @@ if(!groupName){
 
     const dto: CreateConfigDto = {
       msgFam,
-      transactionType: transactionType as TransactionType,
+      transactionType,
       version,
       payload: content,
       contentType: autoDetectedContentType,
@@ -325,7 +325,7 @@ if(!groupName){
   @Get('transaction/:type/:offset/:limit')
   @RequireClaims(TazamaClaims.EDITOR)
   async getConfigsByTransactionType(
-    @Param('type') type: TransactionType,
+    @Param('type') type: string,
     @Param('offset') offset: string,
     @Param('limit') limit: string,
     @User() user: AuthenticatedUser,
@@ -503,9 +503,7 @@ if(!groupName){
     @User() user: AuthenticatedUser,
     @Headers('authorization') authorization: string,
   ): Promise<ConfigResponseDto> {
-
-
-    const authToken = authorization?.split(' ')[1] as  string;
+    const authToken = authorization?.split(' ')[1] as string;
     const result = await this.adminServiceClient.forwardRequest(
       'POST',
       `/v1/admin/tcs/config/${id}/workflow/submit`,
@@ -513,7 +511,7 @@ if(!groupName){
       buildForwardHeaders(user),
     );
 
-    console.log(" Result after submit for approval ", result);
+    console.log(' Result after submit for approval ', result);
     if (result?.success) {
       const config = result.config || result.data || {};
       await this.sendWorkflowNotification(
@@ -537,7 +535,7 @@ if(!groupName){
     @User() user: AuthenticatedUser,
     @Headers('authorization') authorization: string,
   ): Promise<ConfigResponseDto> {
-    const authToken = authorization?.split(' ')[1]
+    const authToken = authorization?.split(' ')[1];
 
     const result = await this.adminServiceClient.forwardRequest(
       'POST',
@@ -554,7 +552,7 @@ if(!groupName){
         user,
         config,
         authToken,
-        dto.comment
+        dto.comment,
       );
     }
 
@@ -607,7 +605,7 @@ if(!groupName){
       id,
       dto,
       getTenantId(user),
-decodeValidatedToken(user).preferredUsername,
+      decodeValidatedToken(user).preferredUsername,
       getUserClaims(user),
       token,
     );
@@ -621,8 +619,8 @@ decodeValidatedToken(user).preferredUsername,
     @User() user: AuthenticatedUser,
     @Headers('authorization') authorization: string,
   ): Promise<ConfigResponseDto> {
-    const token = authorization?.replace('Bearer ', '')  as string;
-    
+    const token = authorization?.replace('Bearer ', '') as string;
+
     await this.configService.exportConfig(
       id,
       dto,
@@ -631,7 +629,7 @@ decodeValidatedToken(user).preferredUsername,
       getUserClaims(user),
       token,
     );
-    
+
     const result = await this.adminServiceClient.forwardRequest(
       'POST',
       `/v1/admin/tcs/config/${id}/workflow/export`,
@@ -650,7 +648,7 @@ decodeValidatedToken(user).preferredUsername,
         dto.comment,
       );
     }
-    
+
     return result;
   }
 
@@ -768,13 +766,31 @@ decodeValidatedToken(user).preferredUsername,
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: { publishing_status: 'active' | 'inactive' },
     @User() user: AuthenticatedUser,
+    @Headers('authorization') authorization: string,
   ): Promise<ConfigResponseDto> {
-    return this.configService.updatePublishingStatus(
+    const token = authorization?.replace('Bearer ', '') as string;
+    const result = await this.configService.updatePublishingStatus(
       id,
       dto.publishing_status,
       getTenantId(user),
       decodeValidatedToken(user).preferredUsername,
-      getTokenString(user)
+      getTokenString(user),
     );
+
+    if (result?.success) {
+      const config = result.config as Config;
+      await this.sendWorkflowNotification(
+        dto.publishing_status === 'active'
+          ? 'publisher_activate'
+          : 'publisher_deactivate',
+        id,
+        user,
+        config,
+        token,
+        `Publishing status changed to ${dto.publishing_status}`,
+      );
+    }
+
+    return result;
   }
 }

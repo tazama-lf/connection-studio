@@ -114,7 +114,10 @@ describe('AuthController', () => {
       const result = await controller.login(loginDto);
 
       expect(authService.login).toHaveBeenCalledWith('testuser', 'password123');
-      expect(loggerService.log).toHaveBeenCalledWith('Login successful', 'AuthController');
+      expect(loggerService.log).toHaveBeenCalledWith(
+        'Login successful',
+        'AuthController',
+      );
       expect(result).toEqual({
         message: 'Login successful',
         token: 'mock-jwt-token',
@@ -144,8 +147,12 @@ describe('AuthController', () => {
 
       authService.login.mockRejectedValue(new Error('Invalid credentials'));
 
-      await expect(controller.login(loginDto)).rejects.toThrow(UnauthorizedException);
-      await expect(controller.login(loginDto)).rejects.toThrow('Invalid credentials');
+      await expect(controller.login(loginDto)).rejects.toThrow(
+        UnauthorizedException,
+      );
+      await expect(controller.login(loginDto)).rejects.toThrow(
+        'Invalid credentials',
+      );
       expect(loggerService.warn).toHaveBeenCalledWith(
         expect.stringContaining('Login failed'),
         'AuthController',
@@ -240,10 +247,16 @@ describe('AuthController', () => {
     });
 
     it('should filter audit logs by entityType', async () => {
-      const filteredLogs = mockAuditLogs.filter((log) => log.entityType === 'config');
+      const filteredLogs = mockAuditLogs.filter(
+        (log) => log.entityType === 'config',
+      );
       auditService.getAuditLogs.mockResolvedValue(filteredLogs);
 
-      const result = await controller.getAuditLogs(mockUser, undefined, 'config');
+      const result = await controller.getAuditLogs(
+        mockUser,
+        undefined,
+        'config',
+      );
 
       expect(auditService.getAuditLogs).toHaveBeenCalledWith(
         'tenant1',
@@ -259,7 +272,12 @@ describe('AuthController', () => {
     it('should filter audit logs by actor', async () => {
       auditService.getAuditLogs.mockResolvedValue(mockAuditLogs);
 
-      const result = await controller.getAuditLogs(mockUser, undefined, undefined, 'user@example.com');
+      const result = await controller.getAuditLogs(
+        mockUser,
+        undefined,
+        undefined,
+        'user@example.com',
+      );
 
       expect(auditService.getAuditLogs).toHaveBeenCalledWith(
         'tenant1',
@@ -277,7 +295,14 @@ describe('AuthController', () => {
       const endDate = '2025-12-31';
       auditService.getAuditLogs.mockResolvedValue(mockAuditLogs);
 
-      const result = await controller.getAuditLogs(mockUser, undefined, undefined, undefined, startDate, endDate);
+      const result = await controller.getAuditLogs(
+        mockUser,
+        undefined,
+        undefined,
+        undefined,
+        startDate,
+        endDate,
+      );
 
       expect(auditService.getAuditLogs).toHaveBeenCalledWith(
         'tenant1',
@@ -318,9 +343,9 @@ describe('AuthController', () => {
         validClaims: ['view-profile'],
       };
 
-      await expect(controller.getAuditLogs(userWithoutTenantId)).rejects.toThrow(
-        'Tenant ID not found in user token or claims',
-      );
+      await expect(
+        controller.getAuditLogs(userWithoutTenantId),
+      ).rejects.toThrow('Tenant ID not found in user token or claims');
     });
 
     it('should return empty array when no logs found', async () => {
@@ -374,4 +399,3 @@ describe('AuthController', () => {
     });
   });
 });
-

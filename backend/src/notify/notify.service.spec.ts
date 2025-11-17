@@ -30,13 +30,13 @@ describe('NotifyService', () => {
       init: jest.fn().mockResolvedValue(undefined),
     };
 
-    (StartupFactory as jest.MockedClass<typeof StartupFactory>).mockImplementation(
-      () => {
-        const instances = [mockNatsService, mockDemsNatsService, mockAckService];
-        const instance = instances.shift();
-        return instance as any;
-      },
-    );
+    (
+      StartupFactory as jest.MockedClass<typeof StartupFactory>
+    ).mockImplementation(() => {
+      const instances = [mockNatsService, mockDemsNatsService, mockAckService];
+      const instance = instances.shift();
+      return instance as any;
+    });
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -77,14 +77,16 @@ describe('NotifyService', () => {
 
   describe('onModuleInit', () => {
     beforeEach(() => {
-      configService.get.mockImplementation((key: string, defaultValue?: string) => {
-        const config: Record<string, string> = {
-          CONSUMER_STREAM: 'config.notification.response',
-          PRODUCER_STREAM: 'config.notification',
-          DEMS_STREAM: 'dems.notify',
-        };
-        return config[key] || defaultValue;
-      });
+      configService.get.mockImplementation(
+        (key: string, defaultValue?: string) => {
+          const config: Record<string, string> = {
+            CONSUMER_STREAM: 'config.notification.response',
+            PRODUCER_STREAM: 'config.notification',
+            DEMS_STREAM: 'dems.notify',
+          };
+          return config[key] || defaultValue;
+        },
+      );
     });
 
     it('should initialize all services successfully', async () => {
@@ -98,7 +100,10 @@ describe('NotifyService', () => {
         'PRODUCER_STREAM',
         'config.notification',
       );
-      expect(configService.get).toHaveBeenCalledWith('DEMS_STREAM', 'dems.notify');
+      expect(configService.get).toHaveBeenCalledWith(
+        'DEMS_STREAM',
+        'dems.notify',
+      );
     });
 
     it('should use default values if config is not provided', async () => {
@@ -112,7 +117,6 @@ describe('NotifyService', () => {
       mockNatsService.initProducer.mockRejectedValue(error);
 
       await expect(service.onModuleInit()).rejects.toThrow(error);
-
     });
 
     it('should handle DEMS NATS producer initialization errors', async () => {
@@ -120,7 +124,6 @@ describe('NotifyService', () => {
       mockDemsNatsService.initProducer.mockRejectedValue(error);
 
       await expect(service.onModuleInit()).rejects.toThrow(error);
-
     });
 
     it('should handle ACK service initialization errors', async () => {
@@ -129,7 +132,6 @@ describe('NotifyService', () => {
 
       await expect(service.onModuleInit()).rejects.toThrow(error);
     });
-
   });
 
   describe('handleAckMessage', () => {
@@ -195,7 +197,6 @@ describe('NotifyService', () => {
       mockNatsService.handleResponse.mockRejectedValue(error);
 
       await service.notifyEnrichment(mockId, mockType);
-
     });
 
     it('should stringify payload correctly', async () => {
@@ -267,9 +268,13 @@ describe('NotifyService', () => {
         DEMS_STREAM: 'custom.dems.stream',
       };
 
-      configService.get.mockImplementation((key: string, defaultValue?: string) => {
-        return customStreams[key as keyof typeof customStreams] || defaultValue;
-      });
+      configService.get.mockImplementation(
+        (key: string, defaultValue?: string) => {
+          return (
+            customStreams[key as keyof typeof customStreams] || defaultValue
+          );
+        },
+      );
 
       await service.onModuleInit();
       expect(mockAckService.init).toHaveBeenCalledWith(
@@ -290,7 +295,6 @@ describe('NotifyService', () => {
       await expect(
         service.notifyEnrichment('test-id', ConfigType.PUSH),
       ).resolves.not.toThrow();
-
     });
 
     it('should not throw errors in notifyDems even if NATS fails', async () => {
@@ -301,7 +305,6 @@ describe('NotifyService', () => {
       await expect(
         service.notifyDems('config-id', 'tenant-id'),
       ).resolves.not.toThrow();
-
     });
   });
 });

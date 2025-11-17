@@ -120,7 +120,6 @@ export class NotificationController {
       authToken: string;
       groupName: string;
       comment?: string;
-      recipientEmails?: string[];
     },
   ) {
     try {

@@ -1,4 +1,9 @@
-import { Injectable, Logger, OnModuleInit, ServiceUnavailableException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleInit,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 import { ConfigService } from '@nestjs/config';
 import { KeycloakService } from '../Keycloak/keycloak.service';
@@ -49,8 +54,7 @@ export class NotificationService implements OnModuleInit {
     private readonly configService: ConfigService,
     private readonly keycloakService: KeycloakService,
     private readonly emailCacheService: EmailCacheService,
-        private readonly httpService: HttpService,
-
+    private readonly httpService: HttpService,
   ) {}
 
   onModuleInit() {
@@ -137,13 +141,7 @@ export class NotificationService implements OnModuleInit {
         this.logger.log('Reply-To header set');
       }
 
-      const info = await this.transporter.sendMail(mailOptions);
-      const recipientCount = Array.isArray(mailOptions.to)
-        ? mailOptions.to.length
-        : 1;
-      this.logger.log(
-        `Email sent successfully to ${recipientCount} recipient(s): ${info.messageId}`,
-      );
+      await this.transporter.sendMail(mailOptions);
       return true;
     } catch (error) {
       this.logger.error(
@@ -312,22 +310,16 @@ export class NotificationService implements OnModuleInit {
         this.logger.log(
           `Fetching all user emails from Keycloak for tenant '${tenantId}'`,
         );
-        const emails = await this.keycloakService.getAllEmails(tenantId);
-
+        const emails = await this.getUserGroupMembers(
+          authToken,
+          groupName,
+          undefined,
+        );
         this.emailCacheService.setEmailsByRole(tenantId, 'all', emails);
-
         this.logger.log(
-          `✓ Fetched ${emails.length} total emails from Keycloak`,
+          `✓ Fetched ${emails.length} total emails from Auth Service`,
         );
         return emails;
-
-
-        const email = await this.getUserGroupMembers(authToken, groupName, undefined);
-
-        this.logger.log(
-          `✓ Fetched ${email} total emails from Auth Service`,
-        );
-        return email;
       }
 
       if (role) {
@@ -340,7 +332,11 @@ export class NotificationService implements OnModuleInit {
         }
 
         this.logger.log(`Fetching emails for role '${role}' from Keycloak`);
-                const emails = await this.getUserGroupMembers(authToken, groupName, role);
+        const emails = await this.getUserGroupMembers(
+          authToken,
+          groupName,
+          role,
+        );
         this.emailCacheService.setEmailsByRole(tenantId, role, emails);
 
         this.logger.log(`✓ Fetched ${emails} emails for role '${role}'`);
@@ -355,7 +351,13 @@ export class NotificationService implements OnModuleInit {
   }
 
   async sendGenericWorkflowNotification(data: {
-    event: 'editor_submit' | 'approver_approve' | 'exporter_export' | 'publisher_deploy' | 'publisher_activate' | 'publisher_deactivate',
+    event:
+      | 'editor_submit'
+      | 'approver_approve'
+      | 'exporter_export'
+      | 'publisher_deploy'
+      | 'publisher_activate'
+      | 'publisher_deactivate';
     configId: number;
     tenantId: string;
     actorEmail: string;
@@ -364,10 +366,9 @@ export class NotificationService implements OnModuleInit {
     authToken: string;
     groupName: string;
     comment?: string;
-    recipientEmails?: string[];
   }): Promise<{ success: boolean; message: string; recipients: number }> {
     try {
-      let {
+      const {
         event,
         configId,
         tenantId,
@@ -377,29 +378,28 @@ export class NotificationService implements OnModuleInit {
         authToken,
         groupName,
         comment,
-        recipientEmails,    
       } = data;
 
       this.logger.log(
         `Processing notification for event '${event}', config ${configId}`,
       );
 
-      if (!recipientEmails || recipientEmails.length === 0) {
-        this.logger.log(
-          'No recipient emails provided, fetching from Keycloak...',
-        );
-        recipientEmails = await this.fetchRecipientEmails(event, tenantId, authToken, groupName) as string[];
+      const recipientEmails = (await this.fetchRecipientEmails(
+        event,
+        tenantId,
+        authToken,
+        groupName,
+      )) as string[];
 
-        if (recipientEmails.length === 0) {
-          this.logger.warn(
-            `No recipients found for event '${event}' in tenant '${tenantId}'`,
-          );
-          return {
-            success: false,
-            message: 'No recipients found',
-            recipients: 0,
-          };
-        }
+      if (recipientEmails.length === 0) {
+        this.logger.warn(
+          `No recipients found for event '${event}' in tenant '${tenantId}'`,
+        );
+        return {
+          success: false,
+          message: 'No recipients found',
+          recipients: 0,
+        };
       }
 
       this.logger.log(
@@ -564,33 +564,40 @@ export class NotificationService implements OnModuleInit {
     });
   }
 
-  async getUserGroupMembers(token: string, groupName: string, roleName?: string) : Promise<string[]> {
-       const authUrl = this.configService.get<string>('TAZAMA_AUTH_URL');
-       let url = `${authUrl}?groupName=${groupName}`;
-       if(roleName) {
-        url =  url.concat(`&subGroupRoleName=${roleName}`);
-       }
-  
-       this.logger.log("Fetching user group members from URL: ", url);
-      try {
-        const response = await firstValueFrom(
-          this.httpService.get(url, {
-            headers: { 'Content-Type': 'application/json' , Authorization: `Bearer ${token}` },
-          }),
-        );      
+  async getUserGroupMembers(
+    token: string,
+    groupName: string,
+    roleName?: string,
+  ): Promise<string[]> {
+    const authUrl = this.configService.get<string>('TAZAMA_AUTH_URL');
+    let url = `${authUrl}?groupName=${groupName}`;
+    if (roleName) {
+      url = url.concat(`&subGroupRoleName=${roleName}`);
+    }
 
-      const responseArr= response.data && Array.isArray(response.data) ? response.data : [];
-      const emailList = responseArr?.map(obj => obj?.username);
-      this.logger.log("Fetched user emails: ", emailList);
+    this.logger.log('Fetching user group members from URL: ', url);
+    try {
+      const response = await firstValueFrom(
+        this.httpService.get(url, {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+        }),
+      );
+
+      const responseArr =
+        response.data && Array.isArray(response.data) ? response.data : [];
+      const emailList = responseArr?.map((obj) => obj?.username);
+      this.logger.log('Fetched user emails: ', emailList);
       return emailList;
-    } catch(error) {
-        this.logger.error(
-          `Auth service error during fetching user group members: ${error.message}`,
-        );
-        throw new ServiceUnavailableException(
-          'Authentication service unavailable',
-        );
-      }
-        
+    } catch (error) {
+      this.logger.error(
+        `Auth service error during fetching user group members: ${error.message}`,
+      );
+      throw new ServiceUnavailableException(
+        'Authentication service unavailable',
+      );
+    }
   }
 }

@@ -124,7 +124,13 @@ describe('DryRunService', () => {
   describe('dryRun', () => {
     it('should execute HTTP dry run for HTTP source type', async () => {
       httpService.get.mockReturnValue(
-        of({ data: mockJsonData, status: 200, statusText: 'OK', headers: {}, config: {} as any }),
+        of({
+          data: mockJsonData,
+          status: 200,
+          statusText: 'OK',
+          headers: {},
+          config: {} as any,
+        }),
       );
 
       await service.dryRun(mockHttpJob);
@@ -156,7 +162,9 @@ describe('DryRunService', () => {
       const error = new Error('Connection failed');
       httpService.get.mockReturnValue(throwError(() => error));
 
-      await expect(service.dryRun(mockHttpJob)).rejects.toThrow('Dry run failed');
+      await expect(service.dryRun(mockHttpJob)).rejects.toThrow(
+        'Dry run failed',
+      );
       expect(loggerService.error).toHaveBeenCalledWith(
         expect.stringContaining('Dry run failed'),
       );
@@ -166,7 +174,13 @@ describe('DryRunService', () => {
   describe('dryRunHttpJob', () => {
     it('should successfully validate HTTP job with array response', async () => {
       httpService.get.mockReturnValue(
-        of({ data: mockJsonData, status: 200, statusText: 'OK', headers: {}, config: {} as any }),
+        of({
+          data: mockJsonData,
+          status: 200,
+          statusText: 'OK',
+          headers: {},
+          config: {} as any,
+        }),
       );
 
       await (service as any).dryRunHttpJob(mockHttpJob);
@@ -183,7 +197,13 @@ describe('DryRunService', () => {
     it('should successfully validate HTTP job with object response', async () => {
       const singleObject = { name: 'John', age: 30 };
       httpService.get.mockReturnValue(
-        of({ data: singleObject, status: 200, statusText: 'OK', headers: {}, config: {} as any }),
+        of({
+          data: singleObject,
+          status: 200,
+          statusText: 'OK',
+          headers: {},
+          config: {} as any,
+        }),
       );
 
       await expect(
@@ -193,7 +213,13 @@ describe('DryRunService', () => {
 
     it('should warn when receiving empty array', async () => {
       httpService.get.mockReturnValue(
-        of({ data: [], status: 200, statusText: 'OK', headers: {}, config: {} as any }),
+        of({
+          data: [],
+          status: 200,
+          statusText: 'OK',
+          headers: {},
+          config: {} as any,
+        }),
       );
 
       await (service as any).dryRunHttpJob(mockHttpJob);
@@ -205,7 +231,13 @@ describe('DryRunService', () => {
 
     it('should throw error for invalid data type', async () => {
       httpService.get.mockReturnValue(
-        of({ data: 'invalid string data', status: 200, statusText: 'OK', headers: {}, config: {} as any }),
+        of({
+          data: 'invalid string data',
+          status: 200,
+          statusText: 'OK',
+          headers: {},
+          config: {} as any,
+        }),
       );
 
       await expect((service as any).dryRunHttpJob(mockHttpJob)).rejects.toThrow(
@@ -286,7 +318,9 @@ describe('DryRunService', () => {
         auth_type: AuthType.USERNAME_PASSWORD,
       };
 
-      mockSftpClient.connect.mockRejectedValue(new Error('Authentication failed'));
+      mockSftpClient.connect.mockRejectedValue(
+        new Error('Authentication failed'),
+      );
 
       await expect(
         service.createSftpConnection(sftpConnection),
@@ -318,9 +352,9 @@ describe('DryRunService', () => {
         file: { ...mockSftpJob.file, path: '' },
       };
 
-      await expect((service as any).dryRunSftpJob(jobWithoutPath)).rejects.toThrow(
-        'File path not provided in job config',
-      );
+      await expect(
+        (service as any).dryRunSftpJob(jobWithoutPath),
+      ).rejects.toThrow('File path not provided in job config');
       expect(mockSftpClient.end).toHaveBeenCalled();
     });
 
@@ -495,7 +529,8 @@ describe('DryRunService', () => {
     });
 
     it('should normalize column headers', async () => {
-      const csvWithSpaces = 'First Name,Last Name,Email Address\nJohn,Doe,john@example.com';
+      const csvWithSpaces =
+        'First Name,Last Name,Email Address\nJohn,Doe,john@example.com';
       mockSftpClient.get.mockResolvedValue(Buffer.from(csvWithSpaces));
       (iconv.decode as jest.Mock).mockReturnValue(csvWithSpaces);
 

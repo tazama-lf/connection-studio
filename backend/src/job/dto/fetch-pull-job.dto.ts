@@ -110,5 +110,5 @@ export class PullJobResponseDto {
   updated_at: Date;
 
   @Expose()
-  comments: string
+  comments: string;
 }

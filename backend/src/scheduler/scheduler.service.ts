@@ -1,7 +1,7 @@
 import {
   BadRequestException,
   ForbiddenException,
-  Injectable
+  Injectable,
 } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { ISuccess, JobStatus, Schedule } from '@tazama-lf/tcs-lib';
@@ -18,8 +18,8 @@ export class SchedulerService {
   constructor(
     private readonly loggerService: LoggerService,
     private readonly sftpService: SftpService,
-    private readonly adminServiceClient: AdminServiceClient
-  ) { }
+    private readonly adminServiceClient: AdminServiceClient,
+  ) {}
 
   async create(
     schedule: CreateScheduleJobDto,
@@ -37,8 +37,10 @@ export class SchedulerService {
         status,
       };
 
-      return await this.adminServiceClient.createSchedule(scheduleWithId, token)
-
+      return await this.adminServiceClient.createSchedule(
+        scheduleWithId,
+        token,
+      );
     } catch (error) {
       this.loggerService.error(
         `Error While Creating Schedule : ${error.message}`,
@@ -48,7 +50,7 @@ export class SchedulerService {
   }
 
   async findOne(id: string, token: string): Promise<Schedule | null> {
-    return await this.adminServiceClient.findScheduleById(id, token)
+    return await this.adminServiceClient.findScheduleById(id, token);
   }
 
   async findAll(
@@ -57,13 +59,18 @@ export class SchedulerService {
     user: AuthenticatedUser,
     filters?: Record<string, unknown>,
   ): Promise<{}> {
-    return await this.adminServiceClient.getAllSchedule(offset, limit, user, filters)
+    return await this.adminServiceClient.getAllSchedule(
+      offset,
+      limit,
+      user,
+      filters,
+    );
   }
 
   async update(
     id: string,
     attr: UpdateScheduleJobDto,
-    token: string
+    token: string,
   ): Promise<ISuccess> {
     try {
       const existingSchedule = await this.findOne(id, token);
@@ -74,8 +81,7 @@ export class SchedulerService {
         );
       }
 
-      return await this.adminServiceClient.updateSchedule(id, attr, token)
-
+      return await this.adminServiceClient.updateSchedule(id, attr, token);
     } catch (err) {
       this.loggerService.error(`Error updating schedule: ${err.message}`);
       throw err;
@@ -87,7 +93,7 @@ export class SchedulerService {
     page: number,
     limit: number,
     tenant_id: string,
-    token: string
+    token: string,
   ): Promise<Schedule[]> {
     try {
       if (!status || !page || !limit) {
@@ -100,8 +106,13 @@ export class SchedulerService {
         );
       }
 
-      return await this.adminServiceClient.getScheduleByStatus(status, page, limit, tenant_id, token)
-
+      return await this.adminServiceClient.getScheduleByStatus(
+        status,
+        page,
+        limit,
+        tenant_id,
+        token,
+      );
     } catch (err) {
       this.loggerService.error(
         `Error fetching records by status: ${err.message}`,
@@ -115,7 +126,7 @@ export class SchedulerService {
     tenantId: string,
     status: JobStatus,
     token: string,
-    reason?: string
+    reason?: string,
   ): Promise<ISuccess> {
     try {
       if (!status) {
@@ -161,8 +172,13 @@ export class SchedulerService {
           break;
       }
 
-      return await this.adminServiceClient.updateScheduleByStatus(id, status, tenantId, token, reason)
-
+      return await this.adminServiceClient.updateScheduleByStatus(
+        id,
+        status,
+        tenantId,
+        token,
+        reason,
+      );
     } catch (err) {
       this.loggerService.error(err.message);
       throw new BadRequestException(err.message);

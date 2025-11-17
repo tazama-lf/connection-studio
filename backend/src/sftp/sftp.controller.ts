@@ -3,13 +3,10 @@ import {
   Controller,
   Get,
   Query,
-  UseGuards
+  UseGuards,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import {
-  RequireClaims,
-  TazamaClaims
-} from 'src/auth/auth.decorator';
+import { RequireClaims, TazamaClaims } from 'src/auth/auth.decorator';
 import { type AuthenticatedUser } from 'src/auth/auth.types';
 import { TazamaAuthGuard } from 'src/auth/tazama-auth.guard';
 import { User } from 'src/auth/user.decorator';
