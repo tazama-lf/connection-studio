@@ -10,6 +10,8 @@ import {
   Copy,
   Play,
   Pause,
+  ShieldCheck,
+  ShieldX,
 } from 'lucide-react';
 import type { DataEnrichmentJobResponse, JobStatus } from '../types';
 import { Button } from '../../../shared/components/Button';
@@ -143,6 +145,33 @@ export const JobList: React.FC<JobListProps> = (props) => {
       showError('Failed to resume job');
     } finally {
       setUpdatingStatus(null);
+      setDropdownOpen(null);
+    }
+  };
+
+  const handleTogglePublishingStatus = async (
+    job: DataEnrichmentJobResponse,
+    newStatus: 'active' | 'in-active',
+  ) => {
+    try {
+      console.log('Toggling job publishing status:', job.id, 'to:', newStatus);
+      await dataEnrichmentApi.updatePublishingStatus(
+        job.id,
+        newStatus,
+        job.type?.toUpperCase() as 'PULL' | 'PUSH',
+      );
+
+      const statusLabel = newStatus === 'active' ? 'activated' : 'deactivated';
+      showSuccess(`Job ${job.endpoint_name || job.id} has been ${statusLabel} successfully`);
+
+      // Refresh the job list
+      if (props.onRefresh) {
+        props.onRefresh();
+      }
+    } catch (error) {
+      console.error('Error toggling job publishing status:', error);
+      showError('Failed to update publishing status. Please try again.');
+    } finally {
       setDropdownOpen(null);
     }
   };
@@ -521,6 +550,35 @@ export const JobList: React.FC<JobListProps> = (props) => {
                   {updatingStatus === job.id ? 'Resuming...' : 'Resume Job'}
                 </button>
               )}
+
+            {/* Active/Inactive - Available to Publishers only for deployed jobs */}
+            {userIsPublisher && (
+              <>
+                {job.publishing_status === 'active' ? (
+                  <button
+                    onClick={() => {
+                      handleTogglePublishingStatus(job, 'in-active');
+                      setDropdownOpen(null);
+                    }}
+                    className="w-[85px] inline-flex justify-center items-center rounded-md bg-[#2b7fff] px-3 py-1.5 text-xs font-medium text-white shadow-sm focus:outline-none transition-colors cursor-pointer"
+                  >
+                    <ShieldX className="w-3 h-3 mr-1" />
+                    Inactive
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      handleTogglePublishingStatus(job, 'active');
+                      setDropdownOpen(null);
+                    }}
+                    className="w-[85px] inline-flex justify-center items-center rounded-md bg-[#2b7fff] px-3 py-1.5 text-xs font-medium text-white shadow-sm focus:outline-none transition-colors cursor-pointer"
+                  >
+                    <ShieldCheck className="w-3 h-3 mr-1" />
+                    Active
+                  </button>
+                )}
+              </>
+            )}
           </div>
         );
       },
