@@ -25,6 +25,7 @@ import {
 } from '../../../utils/roleUtils';
 import { UI_CONFIG } from '../../../shared/config/app.config';
 import { getUserFriendlyErrorMessage } from '../../../shared/utils/errorUtils';
+import { DataEnrichmentEditModal } from '../components/DataEnrichmentEditModal';
 
 const DataEnrichmentModule: React.FC = () => {
   const { showSuccess, showError } = useToast();
@@ -550,15 +551,29 @@ const DataEnrichmentModule: React.FC = () => {
         )}
 
         {/* Modal for viewing job details */}
-        <JobDetailsModal
-          isOpen={showJobDetails}
-          onClose={handleCloseJobDetails}
-          job={selectedJob}
-          isLoading={jobDetailsLoading}
-          editMode={jobDetailsEditMode}
-          onSave={handleSaveJobChanges}
-          onSendForApproval={handleSendForApproval}
-        />
+        {showJobDetails && !jobDetailsEditMode && (
+          <JobDetailsModal
+            isOpen={showJobDetails && !jobDetailsEditMode}
+            onClose={handleCloseJobDetails}
+            job={selectedJob}
+            isLoading={jobDetailsLoading}
+            editMode={false}
+            onSave={handleSaveJobChanges}
+            onSendForApproval={handleSendForApproval}
+          />
+        )}
+
+        {/* MODAL FOR EDITING JOB DETAILS */}
+        {jobDetailsEditMode && (
+          <DataEnrichmentEditModal
+            isOpen={jobDetailsEditMode}
+            onClose={handleCloseJobDetails}
+            onSave={handleSaveJobChanges}
+            editMode={true}
+            jobId={selectedJob?.id}
+            jobType={selectedJob?.type?.toLowerCase() as 'pull' | 'push'}
+          />
+        )}
       </div>
     </div>
   );
