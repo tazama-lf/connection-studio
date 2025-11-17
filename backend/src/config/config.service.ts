@@ -2332,7 +2332,7 @@ export class ConfigService {
 
     try {
       const currentStatus = ConfigStatus.READY_FOR_DEPLOYMENT;
-      const configToExport = { ...config, status: currentStatus };
+      const configToExport = { ...config, status: currentStatus , msg_fam: config.msgFam, tenant_id: config.tenantId };
       await this.sftpService.createFile(fileName, {
         ...configToExport,
         status: ConfigStatus.DEPLOYED,
@@ -2342,16 +2342,12 @@ export class ConfigService {
         `Successfully uploaded config file (${fileName}) with status '${ConfigStatus.DEPLOYED}' to SFTP servers.`,
       );
 
-
-      console.log("export config kai andar ho" );
-
       const result = await this.configRepository.getupdateConfigByStatus(
         id,
         ConfigStatus.EXPORTED,
         token,
       );
 
-      console.log("export config kai andar ho" , result);
       return {
         success:true,
         message: `Configuration ${id} exported successfully`,
@@ -2413,7 +2409,7 @@ export class ConfigService {
       // }
     }
 
-    // const action: WorkflowAction = 'deploy';
+    const action: WorkflowAction = 'deploy';
     // const validation = this.workflowService.canPerformAction(
     //   userClaims,
     //   currentStatus,
@@ -2436,15 +2432,12 @@ export class ConfigService {
           status: currentStatus,
           publishingStatus: configData.publishingStatus || 'active',
           version: configData.version,
-          schema:
-            typeof configData.schema === 'string'
-              ? configData.schema
-              : JSON.stringify(configData.schema || {}),
-          mapping:
+          schema: configData.schema == null ? null : typeof configData.schema === "string" ? configData.schema : JSON.stringify(configData.schema),
+          mapping: configData.mapping == null ? null :
             typeof configData.mapping === 'string'
               ? configData.mapping
               : JSON.stringify(configData.mapping || null),
-          functions:
+          functions: configData.functions == null ? null :
             typeof configData.functions === 'string'
               ? configData.functions
               : JSON.stringify(configData.functions || null),
@@ -2454,6 +2447,9 @@ export class ConfigService {
           createdAt: configData.createdAt || new Date(),
           updatedAt: new Date(),
         };
+
+
+        console.log("deployedConfigData", deployedConfigData);
 
         this.logger.log(
           `Deploying config data - schema length: ${deployedConfigData.schema?.length}, mapping length: ${deployedConfigData.mapping?.length}`,
