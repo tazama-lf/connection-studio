@@ -2489,7 +2489,7 @@ export class ConfigService {
       } else {
         this.logger.warn(`No transactionType found in config file ${fileName}`);
       }
-      // await this.sftpService.deleteFile(fileName);
+      await this.sftpService.deleteFile(fileName);
       this.logger.log(`Deleted config file from SFTP: ${fileName}`);      
 
       // await this.configRepository.updateConfigStatus(
