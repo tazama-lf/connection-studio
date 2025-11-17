@@ -4,7 +4,7 @@ FROM node:20-alpine
 WORKDIR /app
 # Install dependencies for better Docker layer caching
 COPY package.json package-lock.json* ./
-RUN npm ci
+RUN npm i
 # Copy source code
 COPY . .
 # Frontend Environment Variables
