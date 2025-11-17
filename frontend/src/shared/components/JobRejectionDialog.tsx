@@ -15,7 +15,7 @@ export const JobRejectionDialog: React.FC<JobRejectionDialogProps> = ({
   onClose,
   onConfirm,
   jobName,
-  jobType
+  jobType,
 }) => {
   const [reason, setReason] = useState('');
   const [error, setError] = useState('');
@@ -29,7 +29,9 @@ export const JobRejectionDialog: React.FC<JobRejectionDialogProps> = ({
     }
 
     if (reason.trim().length < 10) {
-      setError('Please provide a more detailed reason (at least 10 characters)');
+      setError(
+        'Please provide a more detailed reason (at least 10 characters)',
+      );
       return;
     }
 
@@ -50,15 +52,17 @@ export const JobRejectionDialog: React.FC<JobRejectionDialogProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Enhanced blurred backdrop */}
-      <div 
-        className="fixed inset-0 backdrop-blur-sm backdrop-saturate-150 z-40" 
+      <div
+        className="fixed inset-0 backdrop-blur-sm backdrop-saturate-150 z-40"
         onClick={handleClose}
       />
-      
+
       {/* Modal Content */}
       <div className="relative z-50 bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">Reject {jobType}</h3>
+          <h3 className="text-lg font-semibold text-gray-900">
+            Reject {jobType}
+          </h3>
           <button
             onClick={handleClose}
             className="text-gray-400 hover:text-gray-600"
@@ -70,15 +74,21 @@ export const JobRejectionDialog: React.FC<JobRejectionDialogProps> = ({
         <form onSubmit={handleSubmit} className="p-6">
           <div className="mb-4">
             <p className="text-sm text-gray-600 mb-3">
-              You are about to reject the {jobType.toLowerCase()}: <strong>{jobName}</strong>
+              You are about to reject the {jobType.toLowerCase()}:{' '}
+              <strong>{jobName}</strong>
             </p>
             <p className="text-sm text-gray-600 mb-4">
-              This will change the status to "Rejected" and send feedback to the creator for necessary changes.
+              This will change the status to "Rejected" and send feedback to the
+              creator for necessary changes.
             </p>
           </div>
 
+          {/* REASON */}
           <div className="mb-4">
-            <label htmlFor="reason" className="block text-sm font-medium text-gray-700 mb-2">
+            <label
+              htmlFor="reason"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
               Reason for Rejection <span className="text-red-500">*</span>
             </label>
             <textarea
@@ -95,24 +105,15 @@ export const JobRejectionDialog: React.FC<JobRejectionDialogProps> = ({
               rows={4}
               required
             />
-            {error && (
-              <p className="mt-1 text-sm text-red-600">{error}</p>
-            )}
+            {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
           </div>
 
+          {/* BUTTONS */}
           <div className="flex justify-end space-x-3">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={handleClose}
-            >
+            <Button type="button" variant="secondary" onClick={handleClose}>
               Cancel
             </Button>
-            <Button
-              type="submit"
-              variant="danger"
-              disabled={!reason.trim()}
-            >
+            <Button type="submit" variant="danger" disabled={!reason.trim()}>
               Reject {jobType}
             </Button>
           </div>

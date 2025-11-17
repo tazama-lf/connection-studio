@@ -467,7 +467,8 @@ export const JobList: React.FC<JobListProps> = (props) => {
                   job.status === 'STATUS_06_EXPORTED' ||
                   job.status === 'STATUS_08_DEPLOYED')) ||
               (userIsPublisher &&
-                (job.status === 'STATUS_06_EXPORTED' || job.status === 'STATUS_08_DEPLOYED'))) && (
+                (job.status === 'STATUS_06_EXPORTED' ||
+                  job.status === 'STATUS_08_DEPLOYED'))) && (
               <button
                 onClick={() => {
                   if (onViewLogs) {
@@ -490,31 +491,36 @@ export const JobList: React.FC<JobListProps> = (props) => {
               </button>
             )}
 
-            {/* Edit - Only for Editors and only for in-progress jobs (not suspended) */}
-            {userIsEditor && onEdit && job.status === 'STATUS_01_IN_PROGRESS' && (
-              <button
-                onClick={() => {
-                  onEdit(job);
-                  setDropdownOpen(null);
-                }}
-                className="w-[75px] inline-flex justify-center items-center rounded-md bg-[#2b7fff] px-3 py-1.5 text-xs font-medium text-white shadow-sm focus:outline-none transition-colors cursor-pointer"
-              >
-                <Edit className="w-3 h-3 mr-2" />
-                Edit
-              </button>
-            )}
+            {/* Edit - Only for Editors and only for in-progress or rejected jobs */}
+            {userIsEditor &&
+              onEdit &&
+              (job.status === 'STATUS_01_IN_PROGRESS' ||
+                job.status === 'STATUS_05_REJECTED') && (
+                <button
+                  onClick={() => {
+                    onEdit(job);
+                    setDropdownOpen(null);
+                  }}
+                  className="w-[75px] inline-flex justify-center items-center rounded-md bg-[#2b7fff] px-3 py-1.5 text-xs font-medium text-white shadow-sm focus:outline-none transition-colors cursor-pointer"
+                >
+                  <Edit className="w-3 h-3 mr-2" />
+                  Edit
+                </button>
+              )}
 
-            {/* Suspend/Resume - Available to Editors and Approvers */}
-            {(userIsEditor || userIsApprover) && job.status === 'STATUS_05_REJECTED' && (
-              <button
-                onClick={() => handleResumeJob(job)}
-                disabled={updatingStatus === job.id}
-                className={`w-[75px] inline-flex justify-center items-center rounded-md bg-[#2b7fff] px-3 py-1.5 text-xs font-medium text-white shadow-sm focus:outline-none transition-colors cursor-pointer`}
-              >
-                <Play className="w-4 h-4 mr-2" />
-                {updatingStatus === job.id ? 'Resuming...' : 'Resume Job'}
-              </button>
-            )}
+            {/* Suspend/Resume - Available to Approvers only (not Editors) */}
+            {userIsApprover &&
+              !userIsEditor &&
+              job.status === 'STATUS_05_REJECTED' && (
+                <button
+                  onClick={() => handleResumeJob(job)}
+                  disabled={updatingStatus === job.id}
+                  className={`w-[75px] inline-flex justify-center items-center rounded-md bg-[#2b7fff] px-3 py-1.5 text-xs font-medium text-white shadow-sm focus:outline-none transition-colors cursor-pointer`}
+                >
+                  <Play className="w-4 h-4 mr-2" />
+                  {updatingStatus === job.id ? 'Resuming...' : 'Resume Job'}
+                </button>
+              )}
           </div>
         );
       },
