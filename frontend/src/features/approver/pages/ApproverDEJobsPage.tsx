@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { SearchIcon } from 'lucide-react';
+import { ChevronLeft, SearchIcon } from 'lucide-react';
 import { JobList } from '../../data-enrichment/components/JobList';
 import JobDetailsModal from '../../data-enrichment/components/JobDetailsModal';
 import type {
@@ -11,9 +11,12 @@ import { useToast } from '../../../shared/providers/ToastProvider';
 import { UI_CONFIG } from '@shared/config/app.config';
 import { getPrimaryRole } from '@utils/roleUtils';
 import { useAuth } from '@features/auth';
+import { Button } from '@shared';
+import { useNavigate } from 'react-router';
 
 const ApproverDEJobsPage: React.FC = () => {
   // Data Enrichment Job state
+  const navigate = useNavigate();
   const [jobs, setJobs] = useState<DataEnrichmentJobResponse[]>([]);
   const [jobsLoading, setJobsLoading] = useState(false);
   const [jobSearchTerm, setJobSearchTerm] = useState('');
@@ -140,20 +143,15 @@ const ApproverDEJobsPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-white">
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="mx-auto px-4 sm:px-6 lg:px-[48px] py-[52px]">
+        <Button variant='primary' className='py-1 pl-2' onClick={()=>navigate(-1)}><ChevronLeft size={20} /> <span>Go Back</span></Button>
         {/* Search Bar */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center my-8 gap-4">
           <div className="flex items-center space-x-4">
-            <div className="relative">
-              <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search data enrichment jobs..."
-                value={jobSearchTerm}
-                onChange={(e) => setJobSearchTerm(e.target.value)}
-                className="pl-10 pr-4 py-2 w-80 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
+            {/* Search Bar */}
+            <h1 className="text-2xl font-bold text-gray-800">
+              Data Enrichment
+            </h1>
           </div>
         </div>
 

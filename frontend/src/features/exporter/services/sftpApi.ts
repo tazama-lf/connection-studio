@@ -210,7 +210,7 @@ export class SftpApiService {
       if (format === 'cron') {
         // Update schedule status using the scheduler API endpoint
         const queryParams = new URLSearchParams();
-        queryParams.append('status', 'deployed');
+        queryParams.append('status', 'STATUS_08_DEPLOYED');
         
         await this.apiRequest<{ success: boolean; message: string }>(
           `${this.baseURL}/scheduler/update/status/${id}?${queryParams.toString()}`,
@@ -248,7 +248,7 @@ export class SftpApiService {
         }
         
         const queryParams = new URLSearchParams();
-        queryParams.append('status', 'deployed');
+        queryParams.append('status', 'STATUS_08_DEPLOYED');
         queryParams.append('type', jobType.toLowerCase());
         
         await this.apiRequest<{ success: boolean; message: string }>(

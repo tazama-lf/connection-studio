@@ -25,6 +25,15 @@ interface PaginatedJobResponse {
   pages: number;
 }
 
+interface PaginatedScheduleResponse {
+  success: boolean;
+  data: ScheduleResponse[];
+  total: number;
+  limit: number;
+  offset: number;
+  pages: number;
+}
+
 interface PaginationParams {
   limit: number;
   offset: number;

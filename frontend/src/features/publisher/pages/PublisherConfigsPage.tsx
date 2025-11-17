@@ -4,9 +4,12 @@ import { useAuth } from '../../auth/contexts/AuthContext';
 import { ConfigList } from '../../config/components/ConfigList';
 import { isPublisher } from '../../../utils/roleUtils';
 import type { Config } from '@features/config';
-import { EditEndpointModal } from '@shared';
+import { Button, EditEndpointModal } from '@shared';
+import { ChevronLeft } from 'lucide-react';
+import { useNavigate } from 'react-router';
 
 export const PublisherConfigsPage: React.FC = () => {
+  const navigate = useNavigate();
   const { showError } = useToast();
   const { user, isAuthenticated } = useAuth();
 
@@ -58,7 +61,7 @@ export const PublisherConfigsPage: React.FC = () => {
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center">
             <p className="text-gray-600">You do not have permission to access this page.</p>
-          </div>
+        </div>
         </main>
       </div>
     );
@@ -66,16 +69,16 @@ export const PublisherConfigsPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="mb-6">
+        <div className="mx-auto px-4 sm:px-6 lg:px-[48px] py-[52px]">
           
+        <Button variant='primary' className='py-1 pl-2' onClick={()=>navigate(-1)}><ChevronLeft size={20} /> <span>Go Back</span></Button>
 
-           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-            <div className="flex items-center space-x-4">
-              <h1 className="text-2xl font-bold text-gray-800">
-                Dynamic Endpoint Monitoring Service
-              </h1>
-            </div>            
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center my-8 gap-4">
+          <div className="flex items-center space-x-4">
+            {/* Search Bar */}
+            <h1 className="text-2xl font-bold text-gray-800">
+              Dynamic Endpoint Monitoring Service
+            </h1>
           </div>
         </div>
 

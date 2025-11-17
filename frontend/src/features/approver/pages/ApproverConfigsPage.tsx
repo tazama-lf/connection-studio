@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { SearchIcon } from 'lucide-react';
+import { ChevronLeft, SearchIcon } from 'lucide-react';
 import { ConfigList } from '../../config/components/ConfigList';
 import type { Config } from '../../config/index';
 import { configApi } from '../../config/services/configApi';
@@ -9,8 +9,11 @@ import { ConfigReviewModal } from '../../../shared/components/ConfigReviewModal'
 import { ChangeRequestDialog } from '../../../shared/components/ChangeRequestDialog';
 import EditEndpointModal from '../../../shared/components/EditEndpointModal';
 import { useAuth } from '../../auth/contexts/AuthContext';
+import { Button } from '@shared';
+import { useNavigate } from 'react-router';
 
 const ApproverConfigsPage: React.FC = () => {
+  const navigate = useNavigate();
   // Config-related state
   const [editingEndpointId, setEditingEndpointId] = useState<number | null>(null);
   const [editingConfig, setEditingConfig] = useState<Config | null>(null);
@@ -173,12 +176,14 @@ const userId = user?.email || user?.username || 'system';
 
   return (
     <div className="min-h-screen bg-white">
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="mx-auto px-4 sm:px-6 lg:px-[48px] py-[52px]">
       
+      <Button variant='primary' className='py-1 pl-2' onClick={()=>navigate(-1)}><ChevronLeft size={20} /> <span>Go Back</span></Button>
 
         {/* Search Bar */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center my-8 gap-4">
           <div className="flex items-center space-x-4">
+            {/* Search Bar */}
             <h1 className="text-2xl font-bold text-gray-800">
               Dynamic Endpoint Monitoring Service
             </h1>

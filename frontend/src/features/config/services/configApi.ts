@@ -609,9 +609,9 @@ async getConfigsPaginated(
         method: 'PATCH',
         headers: this.getAuthHeaders(),
         body: JSON.stringify({
-         userId: userId,
+        //  userId: userId,
         
-          rejectionReason: reason || 'Configuration rejected by approver',
+          comment: reason || 'Configuration rejected by approver',
         }),
       });
 
