@@ -4,7 +4,7 @@ import { Button, Grid } from '@mui/material';
 import Alert from '@mui/material/Alert';
 import Backdrop from '@mui/material/Backdrop';
 import Box from '@mui/material/Box';
-import { ArrowLeft, DownloadIcon, Save, UploadIcon, XIcon } from 'lucide-react';
+import { DownloadIcon, Save, UploadIcon, XIcon } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import {
@@ -23,6 +23,7 @@ import {
   VersionInputField,
 } from '../../../shared/components/FormFields';
 import ValidationError from '../../../shared/components/ValidationError';
+import { dataEnrichmentApi } from '../services';
 import type { ScheduleResponse } from '../types';
 import {
   authenticationTypeOptions,
@@ -44,32 +45,36 @@ interface DataEnrichmentEditModalProps {
   selectedJob?: any;
 }
 
+const getJobType = (job) => {
+  if (
+    job?.type?.toLowerCase() === 'push' ||
+    job?.type?.toLowerCase() === 'pull'
+  ) {
+    return job.type.toLowerCase();
+  }
+  // Fallback: if job has path but no source_type, it's PUSH; otherwise it's PULL
+  return job?.path && !job?.source_type ? 'push' : 'pull';
+};
+
 export const DataEnrichmentEditModal: React.FC<
   DataEnrichmentEditModalProps
   // ----------PROPS
 > = ({ isOpen, onClose, onSave, editMode = false, selectedJob }) => {
-  console.log('selectedJob', selectedJob);
   // ----------STATES
-  const [currentStep, setCurrentStep] = useState<
-    'config' | 'preview' | 'summary'
-  >('config');
-  const [showConfigForm, setShowConfigForm] = useState(false);
-  const [configurationType, setConfigurationType] = useState<'pull' | 'push'>(
-    selectedJob?.type?.toLowerCase() || 'pull',
-  );
-  const [isLoadingJob, setIsLoadingJob] = useState(false); // Used in JSX rendering
   const [availableSchedules, setAvailableSchedules] = useState<
     ScheduleResponse[]
   >([]);
-  const [schedulesLoading, setSchedulesLoading] = useState(false);
-  const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(
-    null,
-  );
+
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [createSuccess, setCreateSuccess] = useState<string | null>(null);
 
   const tenantId = useAuth()?.user?.tenantId || 'tenantId';
+
+  const currentJobType = getJobType(selectedJob);
+  const configurationType = currentJobType as 'pull' | 'push';
+
+  console.log('selectedJob', selectedJob);
 
   // --------------------REACT HOOKS FORM SETUP
   const loadSchema =
@@ -173,18 +178,114 @@ export const DataEnrichmentEditModal: React.FC<
   // Form submission handler for React Hook Form
   const onSubmit = (data: any) => {
     console.log('Form Data:', data);
-    // Navigate to review/summary page after successful form validation
-    setCurrentStep('summary');
   };
-
   // --------------------REACT HOOKS FORM SETUP
 
-  // Reset form state when modal opens/closes
+  // Load available schedules when modal opens
   useEffect(() => {
-    if (!isOpen) {
-      setShowConfigForm(false);
-    }
+    const loadSchedules = async () => {
+      if (!isOpen) return;
+
+      try {
+        const schedules = await dataEnrichmentApi.getAllSchedules();
+        const schedule_data = schedules?.data;
+
+        // Filter schedules to only show approved, exported, and deployed schedules
+        const filteredSchedules = schedule_data?.filter(
+          (schedule: any) =>
+            schedule.status === 'STATUS_04_APPROVED' ||
+            schedule.status === 'STATUS_06_EXPORTED',
+        );
+
+        console.log('filteredSchedules', schedules);
+        setAvailableSchedules(filteredSchedules);
+      } catch (error) {
+        console.error('Failed to load schedules:', error);
+        // Keep empty array as fallback
+        setAvailableSchedules([]);
+      } finally {
+        console.log('Setting schedules loading to false');
+      }
+    };
+
+    loadSchedules();
   }, [isOpen]);
+
+  // Set initial form values from selectedJob
+  useEffect(() => {
+    if (isOpen && selectedJob && editMode) {
+      const jobType = getJobType(selectedJob);
+
+      // Base values common to both push and pull jobs
+      const initialValues: any = {
+        name: selectedJob.endpoint_name || '',
+        description: selectedJob.description || '',
+        version: selectedJob.version || '',
+        targetTable: selectedJob.table_name || '',
+        ingestMode: selectedJob.mode || 'append',
+      };
+
+      if (jobType === 'push') {
+        // Push job specific fields
+        let endpointPath = selectedJob.path
+          ? selectedJob.path.split('/').slice(4).join('/') // Remove tenant/enrichment/version parts
+          : '';
+
+        // Ensure API path starts with a slash
+        if (endpointPath && !endpointPath.startsWith('/')) {
+          endpointPath = '/' + endpointPath;
+        }
+        initialValues.endpointPath = endpointPath;
+      } else {
+        // Pull job specific fields
+        initialValues.sourceType =
+          selectedJob.source_type?.toLowerCase() || 'sftp'; // Convert SFTP -> sftp, HTTPS -> https
+        initialValues.schedule = selectedJob.schedule_id || '';
+
+        // Connection settings for pull jobs
+        if (selectedJob.connection) {
+          if (selectedJob.source_type === 'SFTP') {
+            // SFTP connection settings
+            initialValues.host = selectedJob.connection.host || '';
+            initialValues.port = selectedJob.connection.port?.toString() || '';
+            initialValues.authType =
+              selectedJob.connection.auth_type === 'PRIVATE_KEY'
+                ? 'key'
+                : 'password';
+            initialValues.username = selectedJob.connection.user_name || '';
+            // Note: We don't set password/private key for security reasons
+          } else if (selectedJob.source_type === 'HTTPS') {
+            // HTTPS connection settings
+            initialValues.url = selectedJob.connection.url || '';
+            initialValues.headers = selectedJob.connection.headers
+              ? JSON.stringify(selectedJob.connection.headers, null, 2)
+              : '';
+          }
+        }
+
+        // File settings for pull jobs
+        if (selectedJob.file) {
+          let pathPattern = selectedJob.file.path || '';
+
+          // Ensure file path starts with a slash
+          if (pathPattern && !pathPattern.startsWith('/')) {
+            pathPattern = '/' + pathPattern;
+          }
+          initialValues.pathPattern = pathPattern;
+          initialValues.fileFormat =
+            selectedJob.file.file_type?.toLowerCase() || 'csv'; // Convert CSV -> csv
+          initialValues.delimiter = selectedJob.file.delimiter || ',';
+        }
+      }
+
+      // Set the form values
+      Object.entries(initialValues).forEach(([key, value]) => {
+        setValue(key, value);
+      });
+
+      console.log('Set initial form values:', initialValues);
+    }
+  }, [isOpen, selectedJob, editMode, setValue]);
 
   // Prevent body scroll and scrollbar jitter when modal is open
   useEffect(() => {
@@ -213,6 +314,7 @@ export const DataEnrichmentEditModal: React.FC<
           <EndpointNameInputField
             name="name"
             control={control}
+            disabled={true}
             label={
               <>
                 Endpoint Name <span className="text-red-500">*</span>
@@ -227,6 +329,7 @@ export const DataEnrichmentEditModal: React.FC<
           <VersionInputField
             name={'version'}
             control={control}
+            disabled={true}
             label={
               <>
                 Version <span className="text-red-500">*</span>
@@ -473,6 +576,7 @@ export const DataEnrichmentEditModal: React.FC<
           <DatabaseTableInputField
             name="targetTable"
             control={control}
+            disabled={true}
             fullWidth={true}
             maxWidth={65}
             label={
@@ -539,6 +643,7 @@ export const DataEnrichmentEditModal: React.FC<
           <VersionInputField
             name={'version'}
             control={control}
+            disabled={true}
             label={
               <>
                 Version <span className="text-red-500">*</span>
@@ -555,6 +660,7 @@ export const DataEnrichmentEditModal: React.FC<
           <ApiPathInputField
             name={'endpointPath'}
             control={control}
+            disabled={true}
             label={
               <>
                 API Path <span className="text-red-500">*</span>
@@ -627,6 +733,7 @@ export const DataEnrichmentEditModal: React.FC<
           <DatabaseTableInputField
             name="targetTable"
             control={control}
+            disabled={true}
             fullWidth={true}
             maxWidth={65}
             label={
@@ -840,7 +947,7 @@ export const DataEnrichmentEditModal: React.FC<
             <Box
               sx={{ fontSize: '20px', fontWeight: 'bold', color: '#2b7fff' }}
             >
-              {showConfigForm ? 'New Data Enrichment Configuration' : null}
+              {'Edit Data Enrichment Endpoint'}
             </Box>
             <button
               onClick={onClose}
@@ -863,7 +970,7 @@ export const DataEnrichmentEditModal: React.FC<
                 style={{ color: '#2b7fff' }}
                 className=" font-semibold flex items-center"
               >
-                {configurationType === 'pull' ? (
+                {currentJobType === 'pull' ? (
                   <>
                     <DownloadIcon size={20} className="mr-2 text-blue-500" />
                     Pull Configuration (SFTP/HTTP)
@@ -876,7 +983,7 @@ export const DataEnrichmentEditModal: React.FC<
                 )}
               </h4>
               <p className="text-xs text-gray-600 mt-1 ml-7">
-                {configurationType === 'pull'
+                {currentJobType === 'pull'
                   ? 'Configure data fetching from external sources'
                   : 'Configure REST API endpoint for data ingestion'}
               </p>
@@ -886,7 +993,7 @@ export const DataEnrichmentEditModal: React.FC<
               className="space-y-2"
             >
               <div className="max-h-[calc(90vh-280px)] overflow-y-auto px-6 py-4">
-                {configurationType === 'pull'
+                {currentJobType === 'pull'
                   ? RenderPullConfigForm()
                   : renderPushConfigForm()}
               </div>
@@ -904,28 +1011,12 @@ export const DataEnrichmentEditModal: React.FC<
 
                 <div className="flex space-x-3">
                   <Button
-                    type="button"
-                    variant="contained"
-                    sx={{
-                      marginRight: '10px',
-                      backgroundColor: '#2b7fff',
-                    }}
-                    onClick={() => {
-                      setShowConfigForm(false);
-                      reset(defaultValues);
-                    }}
-                    startIcon={<ArrowLeft size={16} />}
-                  >
-                    Back
-                  </Button>
-
-                  <Button
                     variant="contained"
                     sx={{ backgroundColor: '#2b7fff' }}
                     type="submit"
                     startIcon={<Save size={16} />}
                   >
-                    Save and Next
+                    Update
                   </Button>
                   {/* )} */}
                 </div>

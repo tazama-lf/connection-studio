@@ -128,14 +128,20 @@ export const pullValidationSchema = yup.object({
 
                     let trimmedValue = value.trim();
 
-                    // Helper function to convert single quotes to double quotes for JSON parsing
-                    const normalizeQuotes = (str) => {
+                    // Helper function to normalize JSON input for flexible parsing
+                    const normalizeJSON = (str) => {
+                        let normalized = str.trim();
+
                         // First, protect already escaped quotes
-                        const temp = str.replace(/\\'/g, '___ESCAPED_SINGLE___').replace(/\\"/g, '___ESCAPED_DOUBLE___');
+                        normalized = normalized.replace(/\\'/g, '___ESCAPED_SINGLE___').replace(/\\"/g, '___ESCAPED_DOUBLE___');
+
+                        // Handle unquoted keys and values - add quotes around them
+                        // This regex finds unquoted words (keys and values) and wraps them in quotes
+                        normalized = normalized.replace(/(\w+)\s*:/g, '"$1":'); // Quote unquoted keys
+                        normalized = normalized.replace(/:\s*([^",\{\}\[\]\s][^",\{\}\[\]]*?)(\s*[,\}])/g, ': "$1"$2'); // Quote unquoted values
 
                         // Convert single quotes to double quotes for JSON compatibility
-                        // This handles both keys and values with single quotes
-                        let normalized = temp.replace(/'/g, '"');
+                        normalized = normalized.replace(/'/g, '"');
 
                         // Restore escaped quotes
                         normalized = normalized.replace(/___ESCAPED_SINGLE___/g, "\\'").replace(/___ESCAPED_DOUBLE___/g, '\\"');
@@ -149,8 +155,8 @@ export const pullValidationSchema = yup.object({
                         try {
                             parsed = JSON.parse(trimmedValue);
                         } catch (initialError) {
-                            // If it fails, try normalizing single quotes to double quotes
-                            const normalizedValue = normalizeQuotes(trimmedValue);
+                            // If it fails, try normalizing the JSON (handle unquoted keys/values and single quotes)
+                            const normalizedValue = normalizeJSON(trimmedValue);
                             parsed = JSON.parse(normalizedValue);
                         }
 
@@ -172,9 +178,9 @@ export const pullValidationSchema = yup.object({
                         if (error.message.includes('Unexpected end of JSON input')) {
                             return this.createError({ message: 'Incomplete JSON - missing closing brackets or quotes' });
                         } else if (error.message.includes('Unexpected token')) {
-                            return this.createError({ message: 'Invalid JSON syntax - check quotes, commas, and brackets. Both single \' and double " quotes are supported' });
+                            return this.createError({ message: 'Invalid JSON syntax. Examples: {"key": "value"} or {key: value} or {\'key\': \'value\'}' });
                         } else {
-                            return this.createError({ message: `Invalid JSON format: ${error.message}` });
+                            return this.createError({ message: `Invalid JSON format. Try: {"content-type": "application/json"} or {key: value}` });
                         }
                     }
                 }),
