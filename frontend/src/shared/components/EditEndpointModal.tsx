@@ -1054,7 +1054,7 @@ console.log('Cur map:', currentMappings);
         transactionType: endpointData.transactionType,
         version: endpointData.version,
         contentType: endpointData.contentType as 'application/json' | 'application/xml',
-        payload: existingConfig ? undefined : payload,
+        payload: payload,
       };
 
       // CRITICAL: Use the current schema from PayloadEditor (includes user edits)

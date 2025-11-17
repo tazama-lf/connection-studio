@@ -6,6 +6,8 @@ import {
   type SimulationResult,
 } from '../services/simulationApi';
 import ReactJson from 'react-json-view';
+import { useAuth } from '@features/auth';
+import { isApprover } from '@utils/roleUtils';
 interface SimulationPanelProps {
   endpointId?: number;
   contentType?: 'application/json' | 'application/xml';
@@ -18,6 +20,8 @@ export const SimulationPanel: React.FC<SimulationPanelProps> = ({
   onSimulationComplete,
   readOnly = false,
 }) => {
+  const { user } = useAuth();
+  const isApproverUser = isApprover(user?.claims || []);
   const [hasRun, setHasRun] = useState(false);
   const [testPayload, setTestPayload] = useState('');
   const [isRunning, setIsRunning] = useState(false);
@@ -122,7 +126,7 @@ export const SimulationPanel: React.FC<SimulationPanelProps> = ({
               onClick={() =>
                 document.getElementById('test-payload-upload')?.click()
               }
-              disabled={readOnly}
+              disabled={isApproverUser ? false : readOnly}
               data-id="element-708"
             >
               Import Test File
@@ -137,7 +141,7 @@ export const SimulationPanel: React.FC<SimulationPanelProps> = ({
             className="w-full h-[400px] p-4 font-mono text-sm bg-white focus:outline-none border rounded-md resize-none scrollbar-hide"
             spellCheck="false"
             placeholder="Enter or upload a test payload to simulate the transformation..."
-            readOnly={readOnly}
+            readOnly={isApproverUser ? false : readOnly}
             data-id="element-711"
           />
         </div>
@@ -154,7 +158,7 @@ export const SimulationPanel: React.FC<SimulationPanelProps> = ({
             size="sm"
             onClick={runSimulation}
             disabled={
-              !testPayload.trim() || isRunning || !endpointId || readOnly
+              !testPayload.trim() || isRunning || !endpointId || (isApproverUser ? false : readOnly)
             }
             data-id="element-713"
           >
