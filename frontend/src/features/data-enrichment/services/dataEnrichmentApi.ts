@@ -443,14 +443,19 @@ export const dataEnrichmentApi = {
 
   updateSchedule: async (
     id: string,
-    updates: Partial<ScheduleRequest>,
+    updates: Partial<any>,
   ): Promise<{ success: boolean; message: string }> => {
     try {
       return await apiRequest<{ success: boolean; message: string }>(
         `${API_BASE_URL}/scheduler/update/${id}`,
         {
           method: 'PATCH',
-          body: JSON.stringify(updates),
+          body: JSON.stringify({
+            name: updates?.name,
+            start_date: updates?.startDate,
+            iterations: Number(updates?.iterations),
+            cron: updates?.cronExpression || updates?.cron,
+          }),
         },
       );
     } catch (error) {
@@ -473,6 +478,9 @@ export const dataEnrichmentApi = {
         `${API_BASE_URL}/scheduler/update/status/${id}?${queryParams.toString()}`,
         {
           method: 'PATCH',
+          body: JSON.stringify({
+            reason:'Rejected by approver',
+          }),
         },
       );
     } catch (error) {

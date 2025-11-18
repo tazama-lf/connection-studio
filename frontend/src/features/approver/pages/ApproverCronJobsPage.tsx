@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router';
 import { getPrimaryRole } from '@utils/roleUtils';
 import { useAuth } from '@features/auth';
 import { UI_CONFIG } from '@shared/config/app.config';
+import CronJobViewModal from '@features/cron/components/CronJobViewModal';
 
 const ApproverCronJobsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -19,12 +20,13 @@ const ApproverCronJobsPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [schedulesLoading, setSchedulesLoading] = useState(false);
   const [cronJobSearchTerm, setCronJobSearchTerm] = useState('');
-
+  
   // Cron job details modal state
   const [showCronJobDetails, setShowCronJobDetails] = useState(false);
   const [selectedSchedule, setSelectedSchedule] =
-    useState<ScheduleResponse | null>(null);
+  useState<any>(null);
   const [cronJobDetailsLoading, setCronJobDetailsLoading] = useState(false);
+  console.log(selectedSchedule);
 
   const { user } = useAuth();
   const userRole = getPrimaryRole(user?.claims as string[]);
@@ -132,11 +134,11 @@ const ApproverCronJobsPage: React.FC = () => {
       // Find the schedule in the current list
       const schedule = schedules.find((s) => s.id === scheduleId);
       if (schedule) {
-        setSelectedSchedule(schedule);
+        setSelectedSchedule({ ...schedule, cronExpression: schedule.cron });
       } else {
         // If not found in current list, fetch from API
         const scheduleDetails = await dataEnrichmentApi.getSchedule(scheduleId);
-        setSelectedSchedule(scheduleDetails);
+        setSelectedSchedule({...scheduleDetails, cronExpression: scheduleDetails.cron});
       }
     } catch (error) {
       console.error('Failed to load cron job details:', error);
@@ -148,7 +150,7 @@ const ApproverCronJobsPage: React.FC = () => {
 
   const handleApproveCronJob = async (scheduleId: string) => {
     try {
-      await dataEnrichmentApi.updateScheduleStatus(scheduleId, 'approved');
+      await dataEnrichmentApi.updateScheduleStatus(scheduleId, 'STATUS_04_APPROVED');
       showSuccess('Cron job approved successfully');
       handleCronJobRefresh();
     } catch (error) {
@@ -159,7 +161,7 @@ const ApproverCronJobsPage: React.FC = () => {
 
   const handleRejectCronJob = async (scheduleId: string) => {
     try {
-      await dataEnrichmentApi.updateScheduleStatus(scheduleId, 'rejected');
+      await dataEnrichmentApi.updateScheduleStatus(scheduleId, 'STATUS_05_REJECTED');
       showSuccess('Cron job rejected successfully');
       handleCronJobRefresh();
     } catch (error) {
@@ -215,12 +217,21 @@ const ApproverCronJobsPage: React.FC = () => {
       </main>
 
       {/* Cron Job Details Modal */}
-      {showCronJobDetails && selectedSchedule && (
+      {/* {showCronJobDetails && selectedSchedule && (
         <CronJobDetailsModal
           isOpen={showCronJobDetails}
           onClose={handleCloseCronJobDetails}
           schedule={selectedSchedule}
           isLoading={cronJobDetailsLoading}
+          onApprove={handleApproveCronJob}
+          onReject={handleRejectCronJob}
+        />
+      )} */}
+      {showCronJobDetails && selectedSchedule && (
+        <CronJobViewModal
+          isOpen={showCronJobDetails}
+          onClose={handleCloseCronJobDetails}
+          viewFormData={selectedSchedule}
           onApprove={handleApproveCronJob}
           onReject={handleRejectCronJob}
         />

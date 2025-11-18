@@ -32,6 +32,8 @@ import { Box, Pagination } from '@mui/material';
 import { getDemsStatusLov } from '@shared/lovs';
 import CustomTable from '@common/Tables/CustomTable';
 import { handleInputFilter, handleSelectFilter } from '@shared/helpers';
+import CronJobEditModal from './CronJobEditModal';
+import CronJobViewModal from './CronJobViewModal';
 
 interface CronJobListProps {
   searchTerm?: string;
@@ -55,10 +57,11 @@ export const CronJobList: React.FC<CronJobListProps> = ({
   // Edit form state
   const [editForm, setEditForm] = useState({
     name: '',
-    cron: '',
+    cronExpression: '',
     iterations: 1,
-    start_date: '',
-    end_date: '',
+    startDate: '',
+    endDate: '',
+    status: '',
   });
   const [isEditJobSaved, setIsEditJobSaved] = useState(false);
 
@@ -144,20 +147,29 @@ export const CronJobList: React.FC<CronJobListProps> = ({
   };
 
   // Handle view schedule
-  const handleView = (schedule: ScheduleResponse) => {
+  const handleView = (schedule: any) => {
     setSelectedSchedule(schedule);
+    setEditForm({
+      name: schedule.name,
+      cronExpression: schedule.cron,
+      iterations: schedule.iterations,
+      startDate: schedule.startDate || '2025-11-18',
+      endDate: schedule.endDate || '2025-12-31',
+      status: schedule.status || '',
+    });
     setViewModalOpen(true);
   };
 
   // Handle edit schedule
-  const handleEdit = (schedule: ScheduleResponse) => {
+  const handleEdit = (schedule: any) => {
     setSelectedSchedule(schedule);
     setEditForm({
       name: schedule.name,
-      cron: schedule.cron,
+      cronExpression: schedule.cron,
       iterations: schedule.iterations,
-      start_date: schedule.start_date || '',
-      end_date: schedule.end_date || '',
+      startDate: schedule.startDate || '2025-11-18',
+      endDate: schedule.endDate || '2025-12-31',
+      status: schedule.status || '',
     });
     setIsEditJobSaved(false); // Reset the saved state when opening edit modal
     setEditModalOpen(true);
@@ -171,15 +183,17 @@ export const CronJobList: React.FC<CronJobListProps> = ({
       setIsActionInProgress(true);
 
       // Clean up the form data: remove empty strings for optional date fields
-      const cleanedForm = {
-        ...editForm,
-        end_date:
-          editForm.end_date && editForm.end_date.trim() !== ''
-            ? editForm.end_date
-            : undefined,
-      };
+      // const cleanedForm = {
+      //   ...editForm,
+      //   end_date:
+      //     editForm.end_date && editForm.end_date.trim() !== ''
+      //       ? editForm.end_date
+      //       : undefined,
+      // };
 
-      await dataEnrichmentApi.updateSchedule(selectedSchedule.id, cleanedForm);
+      console.log('ssss', editForm);
+
+      await dataEnrichmentApi.updateSchedule(selectedSchedule.id, editForm);
 
       showSuccess('Schedule updated successfully');
       setIsEditJobSaved(true);
@@ -200,7 +214,7 @@ export const CronJobList: React.FC<CronJobListProps> = ({
       setIsActionInProgress(true);
       await dataEnrichmentApi.updateScheduleStatus(
         selectedSchedule.id,
-        'under-review',
+        'STATUS_03_UNDER_REVIEW',
       );
       showSuccess('Cron job submitted for approval');
       setEditModalOpen(false);
@@ -438,15 +452,11 @@ export const CronJobList: React.FC<CronJobListProps> = ({
               View
             </button>
             {/* Edit - Only for Editors/Approvers and only for in-progress jobs (not suspended) */}
-            {(userIsEditor || userIsApprover) && (
+            {userIsEditor && (
               <button
                 onClick={() => {
                   handleEdit(schedule);
                 }}
-                disabled={
-                  schedule.status !== 'STATUS_01_IN_PROGRESS' ||
-                  isActionInProgress
-                }
                 className={`w-[75px] inline-flex justify-center items-center rounded-md bg-[#2b7fff] px-3 py-1.5 text-xs font-medium text-white shadow-sm focus:outline-none transition-colors cursor-pointer`}
                 title={
                   schedule.status !== 'STATUS_01_IN_PROGRESS'
@@ -461,7 +471,7 @@ export const CronJobList: React.FC<CronJobListProps> = ({
               </button>
             )}
             {/* Export - Only for approved and non-suspended items */}
-            {userIsExporter && schedule.status === 'STATUS_05_APPROVED' && (
+            {userIsExporter && schedule.status === 'STATUS_04_APPROVED' && (
               <button
                 onClick={async () => {
                   try {
@@ -567,407 +577,20 @@ export const CronJobList: React.FC<CronJobListProps> = ({
             }
           />
 
-          {/* View Modal */}
-          {viewModalOpen && selectedSchedule && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-              {/* Enhanced blurred backdrop */}
-              <div
-                className="fixed inset-0 backdrop-blur-sm backdrop-saturate-150 z-40"
-                onClick={() => setViewModalOpen(false)}
-              />
+          <CronJobViewModal
+            isOpen={viewModalOpen}
+            onClose={() => setViewModalOpen(false)}
+            viewFormData={editForm}
+            handleSendForApproval={handleSendForApproval}
+          />
 
-              {/* Modal Content */}
-              <div className="relative z-50 p-5 border w-full max-w-2xl shadow-2xl rounded-lg bg-white">
-                <div className="flex justify-between items-center mb-6">
-                  <h3 className="text-lg font-medium text-gray-900">
-                    View Cron Job
-                  </h3>
-                  <button
-                    onClick={() => setViewModalOpen(false)}
-                    className="text-gray-400 hover:text-gray-500"
-                  >
-                    <XIcon size={20} />
-                  </button>
-                </div>
-
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Job Name
-                      </label>
-                      <div className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50 text-gray-900">
-                        {selectedSchedule.name}
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        CRON Expression
-                      </label>
-                      <div className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50 text-gray-900 font-mono">
-                        {selectedSchedule.cron}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        No. of Iterations
-                      </label>
-                      <div className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50 text-gray-900">
-                        {selectedSchedule.iterations}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Start Date
-                      </label>
-                      <div className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50 text-gray-900">
-                        {formatDate(selectedSchedule.start_date)}
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        End Date
-                      </label>
-                      <div className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50 text-gray-900">
-                        {formatDate(selectedSchedule.end_date)}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Status
-                      </label>
-                      <div className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50">
-                        <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(selectedSchedule.status)}`}
-                        >
-                          <span className="w-2 h-2 rounded-full bg-current mr-2"></span>
-                          {getStatusLabel(selectedSchedule.status)}
-                        </span>
-                      </div>
-                    </div>
-                    {selectedSchedule.next_time && (
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Next Run
-                        </label>
-                        <div className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50 text-gray-900">
-                          {formatDate(selectedSchedule.next_time)}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {selectedSchedule.created_at && (
-                    <div className="grid grid-cols-1 gap-6">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Created At
-                        </label>
-                        <div className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50 text-gray-900">
-                          {formatDate(selectedSchedule.created_at)}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="mt-6 flex justify-between space-x-3">
-                  <button
-                    onClick={() => setViewModalOpen(false)}
-                    className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                  >
-                    Cancel
-                  </button>
-                  <div className="flex space-x-3">
-                    {userIsExporter &&
-                      selectedSchedule.status?.toLowerCase() === 'approved' && (
-                        <button
-                          onClick={async () => {
-                            try {
-                              setIsActionInProgress(true);
-                              await dataEnrichmentApi.updateScheduleStatus(
-                                selectedSchedule.id,
-                                'exported',
-                              );
-                              showSuccess('Cron job exported successfully');
-                              setViewModalOpen(false);
-                              await loadSchedules();
-                            } catch (error) {
-                              console.error(
-                                'Failed to export cron job:',
-                                error,
-                              );
-                              showError('Failed to export cron job');
-                            } finally {
-                              setIsActionInProgress(false);
-                            }
-                          }}
-                          disabled={isActionInProgress}
-                          className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {isActionInProgress ? 'Exporting...' : 'Export'}
-                        </button>
-                      )}
-                    {(userIsEditor || userIsApprover) &&
-                      selectedSchedule.status?.toLowerCase() ===
-                        'in-progress' && (
-                        <button
-                          onClick={async () => {
-                            try {
-                              setIsActionInProgress(true);
-                              await dataEnrichmentApi.updateScheduleStatus(
-                                selectedSchedule.id,
-                                'under-review',
-                              );
-                              showSuccess('Cron job submitted for approval');
-                              setViewModalOpen(false);
-                              await loadSchedules();
-                            } catch (error) {
-                              console.error(
-                                'Failed to submit for approval:',
-                                error,
-                              );
-                              showError(
-                                'Failed to submit cron job for approval',
-                              );
-                            } finally {
-                              setIsActionInProgress(false);
-                            }
-                          }}
-                          disabled={isActionInProgress}
-                          className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {isActionInProgress
-                            ? 'Submitting...'
-                            : 'Send for Approval'}
-                        </button>
-                      )}
-
-                    {/* Approve/Reject buttons for under-review status - Only for Approvers */}
-                    {userIsApprover &&
-                      selectedSchedule.status?.toLowerCase() ===
-                        'under-review' && (
-                        <>
-                          <button
-                            onClick={() => setShowRejectionDialog(true)}
-                            disabled={isActionInProgress}
-                            className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {isActionInProgress ? 'Rejecting...' : 'Reject'}
-                          </button>
-                          <button
-                            onClick={async () => {
-                              try {
-                                setIsActionInProgress(true);
-                                await dataEnrichmentApi.updateScheduleStatus(
-                                  selectedSchedule.id,
-                                  'approved',
-                                );
-                                showSuccess('Cron job approved successfully');
-                                setViewModalOpen(false);
-                                await loadSchedules();
-                              } catch (error) {
-                                console.error(
-                                  'Failed to approve cron job:',
-                                  error,
-                                );
-                                showError('Failed to approve cron job');
-                              } finally {
-                                setIsActionInProgress(false);
-                              }
-                            }}
-                            disabled={isActionInProgress}
-                            className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {isActionInProgress ? 'Approving...' : 'Approve'}
-                          </button>
-                        </>
-                      )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Edit Modal */}
-          {editModalOpen && selectedSchedule && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-              {/* Enhanced blurred backdrop */}
-              <div
-                className="fixed inset-0 backdrop-blur-sm backdrop-saturate-150 z-40"
-                onClick={() => setEditModalOpen(false)}
-              />
-
-              {/* Modal Content */}
-              <div className="relative z-50 p-5 border w-full max-w-2xl shadow-2xl rounded-lg bg-white">
-                <div className="flex justify-between items-center mb-6">
-                  <h3 className="text-lg font-medium text-gray-900">
-                    Edit Cron Job
-                  </h3>
-                  <button
-                    onClick={() => setEditModalOpen(false)}
-                    className="text-gray-400 hover:text-gray-500"
-                  >
-                    <XIcon size={20} />
-                  </button>
-                </div>
-
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Job Name <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={editForm.name}
-                        onChange={(e) =>
-                          setEditForm({ ...editForm, name: e.target.value })
-                        }
-                        required
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="Enter job name"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        CRON Expression <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={editForm.cron}
-                        onChange={(e) =>
-                          setEditForm({ ...editForm, cron: e.target.value })
-                        }
-                        required
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="e.g., 45 * * * * *"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        No. of Iterations{' '}
-                        <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="number"
-                        value={editForm.iterations}
-                        onChange={(e) =>
-                          setEditForm({
-                            ...editForm,
-                            iterations: parseInt(e.target.value) || 1,
-                          })
-                        }
-                        min="1"
-                        step="1"
-                        required
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="Enter number of iterations"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Start Date <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="date"
-                        value={
-                          editForm.start_date
-                            ? new Date(editForm.start_date)
-                                .toISOString()
-                                .split('T')[0]
-                            : ''
-                        }
-                        onChange={(e) =>
-                          setEditForm({
-                            ...editForm,
-                            start_date: e.target.value,
-                          })
-                        }
-                        required
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        End Date
-                      </label>
-                      <input
-                        type="date"
-                        value={
-                          editForm.end_date
-                            ? new Date(editForm.end_date)
-                                .toISOString()
-                                .split('T')[0]
-                            : ''
-                        }
-                        onChange={(e) =>
-                          setEditForm({ ...editForm, end_date: e.target.value })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-6 flex justify-between space-x-3">
-                  <button
-                    type="button"
-                    onClick={() => setEditModalOpen(false)}
-                    className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                  >
-                    Cancel
-                  </button>
-                  <div className="flex space-x-3">
-                    <button
-                      type="button"
-                      onClick={handleSaveEdit}
-                      disabled={isActionInProgress}
-                      className={`px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
-                        isActionInProgress
-                          ? 'bg-gray-400 cursor-not-allowed'
-                          : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
-                      }`}
-                    >
-                      {isActionInProgress ? 'Saving...' : 'Save'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleSendForApproval}
-                      disabled={!isEditJobSaved || isActionInProgress}
-                      className={`px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
-                        !isEditJobSaved || isActionInProgress
-                          ? 'bg-gray-400 cursor-not-allowed opacity-50'
-                          : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
-                      }`}
-                      title={
-                        !isEditJobSaved ? 'Please save the changes first' : ''
-                      }
-                    >
-                      {isActionInProgress
-                        ? 'Submitting...'
-                        : 'Send for Approval'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+          <CronJobEditModal
+            isOpen={editModalOpen}
+            onClose={() => setEditModalOpen(false)}
+            editFormData={editForm}
+            setEditFormData={setEditForm}
+            handleSaveEdit={handleSaveEdit}
+          />
 
           {/* Rejection Dialog */}
           <JobRejectionDialog

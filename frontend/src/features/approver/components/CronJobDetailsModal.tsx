@@ -188,7 +188,7 @@ const CronJobDetailsModal: React.FC<CronJobDetailsModalProps> = ({
             </Button>
             
             {/* Show Approve/Reject buttons for under-review schedules */}
-            {schedule.status === 'under-review' && userIsApprover && (onApprove || onReject) && (
+            {schedule.status === 'STATUS_03_UNDER_REVIEW' && userIsApprover && (onApprove || onReject) && (
               <div className="flex space-x-3">
                 {onReject && (
                   <Button

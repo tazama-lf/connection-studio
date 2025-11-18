@@ -648,6 +648,7 @@ export const NumberInputField = ({
     inputMode,
     autoFocus = false,
     maxLength = 50,
+    disabled = false,
 }) => {
     return (
         <Controller
@@ -684,6 +685,7 @@ export const NumberInputField = ({
                         type={"text"}
                         variant="filled"
                         inputMode="numeric"
+                        disabled={disabled}
                         inputProps={{
                             inputMode: "numeric",
                             autoComplete: "off",

@@ -1,63 +1,74 @@
 import React, { useState, useEffect } from 'react';
-import { SearchIcon } from 'lucide-react';
+import { ChevronLeft, SearchIcon } from 'lucide-react';
 import { dataEnrichmentApi } from '../../data-enrichment/services/dataEnrichmentApi';
 import { useToast } from '../../../shared/providers/ToastProvider';
 import type { ScheduleResponse } from '../../data-enrichment/types';
 import PublisherCronJobList from '../components/PublisherCronJobList';
 import PublisherCronJobDetailsModal from '../components/PublisherCronJobDetailsModal';
+import { Button } from '@shared';
+import { useNavigate } from 'react-router';
+import { useAuth } from '@features/auth';
+import { getPrimaryRole } from '@utils/roleUtils';
+import { UI_CONFIG } from '@shared/config/app.config';
+import CronJobApproverList from '@features/approver/components/CronJobApproverList';
+import CronJobViewModal from '@features/cron/components/CronJobViewModal';
 
 const PublisherCronJobsPage: React.FC = () => {
+  const navigate = useNavigate();
   const [schedules, setSchedules] = useState<ScheduleResponse[]>([]);
   const [schedulesLoading, setSchedulesLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedSchedule, setSelectedSchedule] = useState<ScheduleResponse | null>(null);
+  const [selectedSchedule, setSelectedSchedule] =
+    useState<ScheduleResponse | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   const { showError } = useToast();
 
-  useEffect(() => {
-    loadCronJobs();
-  }, []);
+  const [page, setPage] = useState<number>(1);
+  const [totalPages, setTotalPages] = useState<number>(0);
+  const [totalRecords, setTotalRecords] = useState<number>(0);
+  const [searchingFilters, setSearchingFilters] = useState({});
 
-  const loadCronJobs = async () => {
-    console.log('PublisherCronJobsPage: loadCronJobs called');
-    setSchedulesLoading(true);
+  const { user } = useAuth();
+  const userRole = getPrimaryRole(user?.claims as string[]);
+
+  const [itemsPerPage] = useState(UI_CONFIG.pagination.defaultPageSize);
+
+  const loadCronJobs = async (pageNumber: number = 1): Promise<void> => {
     try {
-      const response = await dataEnrichmentApi.getAllSchedules();
-      console.log('PublisherCronJobsPage: Schedules loaded:', response?.length || 0);
-      
-      // Filter for exported and deployed schedules (publishers can see both)
-      const publisherSchedules = response?.filter((schedule: ScheduleResponse) => 
-        schedule.status === 'STATUS_06_EXPORTED' || schedule.status === 'STATUS_08_DEPLOYED'
-      ) || [];
-      
-      console.log('PublisherCronJobsPage: Publisher schedules (exported + deployed):', publisherSchedules.length);
-      
-      // Transform exported status to deployed for publishers (display purposes)
-      const transformedSchedules = publisherSchedules.map(schedule => ({
-        ...schedule,
-        status: schedule.status === 'STATUS_06_EXPORTED' ? 'STATUS_08_DEPLOYED' : schedule.status
-      }));
-      
-      // Sort by created_at descending (newest first)
-      const sortedSchedules = transformedSchedules.sort((a: any, b: any) => {
-        const dateA = new Date(a.created_at || 0).getTime();
-        const dateB = new Date(b.created_at || 0).getTime();
-        return dateB - dateA;
-      });
-      
-      setSchedules(sortedSchedules);
-    } catch (error) {
-      console.error('Failed to load cron jobs:', error);
-      showError('Failed to load cron jobs');
-      setSchedules([]);
+      setLoading(true);
+      setError(null);
+
+      const limit: number = itemsPerPage;
+      const offset: number = pageNumber - 1;
+
+      const params = { limit, offset, userRole: userRole as string };
+
+      const response = await dataEnrichmentApi.getCronJobList(
+        params,
+        searchingFilters,
+      );
+
+      setSchedules(response?.data || []);
+      setTotalPages(response.pages);
+      setTotalRecords(response.total);
+    } catch (err: unknown) {
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to fetch schedules';
+      setError(errorMessage);
     } finally {
-      setSchedulesLoading(false);
+      setLoading(false);
     }
   };
 
+  useEffect(() => {
+    loadCronJobs(page);
+  }, [page, searchingFilters]);
+
   const handleViewDetails = (scheduleId: string) => {
-    const schedule = schedules.find(s => s.id === scheduleId);
+    const schedule = schedules.find((s) => s.id === scheduleId);
     if (schedule) {
       setSelectedSchedule(schedule);
       setIsModalOpen(true);
@@ -70,38 +81,54 @@ const PublisherCronJobsPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-         
-          
-          {/* Search Bar */}
-          <div className="relative w-full md:w-96">
-            <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search cron jobs..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
+      <div className="mx-auto px-4 sm:px-6 lg:px-[48px] py-[52px]">
+        <Button
+          variant="primary"
+          className="py-1 pl-2"
+          onClick={() => navigate(-1)}
+        >
+          <ChevronLeft size={20} /> <span>Go Back</span>
+        </Button>
+        {/* Search Bar */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center my-8 gap-4">
+          <div className="flex items-center space-x-4">
+            {/* Search Bar */}
+            <h1 className="text-2xl font-bold text-gray-800">
+              CRON Job Module
+            </h1>
           </div>
         </div>
 
         {/* Cron Jobs Table */}
-        <PublisherCronJobList
+        <CronJobApproverList
           schedules={schedules}
           isLoading={schedulesLoading}
           onViewDetails={handleViewDetails}
           searchQuery={searchTerm}
+          page={page}
+          setPage={setPage}
+          totalPages={totalPages}
+          totalRecords={totalRecords}
+          itemsPerPage={itemsPerPage}
+          searchingFilters={searchingFilters}
+          setSearchingFilters={setSearchingFilters}
+          error={error}
+          loading={loading}
         />
       </div>
 
       {/* Cron Job Details Modal */}
-      <PublisherCronJobDetailsModal
+      {/* <PublisherCronJobDetailsModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         schedule={selectedSchedule}
         onPublishSuccess={handlePublishSuccess}
+      /> */}
+
+      <CronJobViewModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        viewFormData={selectedSchedule}
       />
     </div>
   );

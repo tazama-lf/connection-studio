@@ -1,6 +1,6 @@
 import { yupResolver } from '@hookform/resolvers/yup';
 import { Box, Grid, Button } from '@mui/material';
-import React, { useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { Cron } from 'react-js-cron';
 import 'react-js-cron/dist/styles.css';
@@ -8,10 +8,13 @@ import * as yup from 'yup';
 import {
   NumberInputField,
   TextInputField,
+// @ts-ignore - FormFields is a .jsx file without TypeScript declarations
 } from '../../../shared/components/FormFields';
 import ValidationError from '../../../shared/components/ValidationError';
 import { useToast } from '../../../shared/providers/ToastProvider';
 import { dataEnrichmentApi } from '@features/data-enrichment/services';
+import { isApprover } from '@utils/roleUtils';
+import { useAuth } from '@features/auth';
 
 // Validation schema
 const validationSchema = yup.object().shape({
@@ -43,7 +46,6 @@ const validationSchema = yup.object().shape({
 // Default values
 const defaultValues = {
   name: '',
-  firstName: '',
   cronExpression: '',
   iterations: 1,
   startDate: '2025-11-18',
@@ -53,22 +55,39 @@ const defaultValues = {
 interface CronJobFormProps {
   onJobCreated?: () => void;
   onCancel?: () => void;
+  viewFormData?: any;
+  editFormData?: any;
+  setEditFormData?: any;
+  handleSendForApproval?: () => void;
+  handleSaveEdit?: () => void;
+  onApprove?: (scheduleId: string) => void;
+  onReject?: (scheduleId: string) => void;
 }
 
 export const CronJobForm: React.FC<CronJobFormProps> = ({
   onJobCreated,
   onCancel,
+  viewFormData,
+  editFormData,
+  setEditFormData,
+  handleSendForApproval,
+  handleSaveEdit,
+  onApprove,
+  onReject,
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { showSuccess, showError } = useToast();
 
+  const { user } = useAuth();
+  const userIsApprover = user?.claims ? isApprover(user.claims) : false;
+
   // React Hook Form setup
   const {
     control,
-    register,
     handleSubmit,
     watch,
     setValue,
+    reset,
     formState: { errors, isValid },
   } = useForm({
     resolver: yupResolver(validationSchema),
@@ -77,6 +96,35 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({
   });
 
   const cronExpression = watch('cronExpression');
+
+  // Ref to track if we're in edit mode initialization
+  const isInitializing = useRef(false);
+
+  useEffect(() => {
+    if (editFormData) {
+      reset(editFormData);
+    }
+
+    if(viewFormData){
+      reset({...viewFormData, cronExpression: viewFormData.cron || viewFormData.cronExpression});
+    }
+  }, [editFormData, viewFormData]);
+
+  // Update editFormData when form values change (only in edit mode)
+  // Using individual field watches to avoid infinite loop
+  useEffect(() => {
+    if (editFormData && setEditFormData && !isInitializing.current) {
+      const subscription = watch((values) => {
+        // Deep comparison to avoid unnecessary updates
+        const isDifferent = JSON.stringify(values) !== JSON.stringify(editFormData);
+        if (isDifferent) {
+          setEditFormData(values);
+        }
+      });
+      
+      return () => subscription.unsubscribe();
+    }
+  }, [editFormData, setEditFormData, watch]);
 
   // Form submission handler
   const onSubmit = async (data: any) => {
@@ -140,6 +188,7 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({
               control={control}
               placeholder="Enter job name"
               maxLength={50}
+              disabled={Boolean(viewFormData)}
             />
             {errors?.name && (
               <ValidationError
@@ -164,26 +213,27 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({
                   bgcolor: '#f9fafb',
                 }}
               >
-                <Cron
-                  value={cronExpression}
-                  setValue={(value: string) =>
-                    setValue('cronExpression', value)
-                  }
-                  allowedDropdowns={[
-                    'period',
-                    'months',
-                    'month-days',
-                    'week-days',
-                    'hours',
-                    'minutes',
-                  ]}
-                  allowedPeriods={['month', 'week', 'day', 'hour', 'minute']}
-                  humanizeLabels={true}
-                  humanizeValue={true}
-                  displayError={true}
-                  defaultPeriod="month"
-                />
-
+                {!viewFormData && (
+                  <Cron
+                    value={cronExpression}
+                    setValue={(value: string) =>
+                      setValue('cronExpression', value)
+                    }
+                    allowedDropdowns={[
+                      'period',
+                      'months',
+                      'month-days',
+                      'week-days',
+                      'hours',
+                      'minutes',
+                    ]}
+                    allowedPeriods={['month', 'week', 'day', 'hour', 'minute']}
+                    humanizeLabels={true}
+                    humanizeValue={true}
+                    displayError={true}
+                    defaultPeriod="month"
+                  />
+                )}
                 {/* Display Generated Expression and Description */}
                 {cronExpression && (
                   <Box sx={{ mb: 1 }}>
@@ -220,6 +270,7 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({
               }
               placeholder="Enter Retry Count"
               maxLength={2}
+              disabled={Boolean(viewFormData)}
             />
             {errors?.iterations && (
               <ValidationError
@@ -255,21 +306,105 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({
               >
                 Cancel
               </Button>
-              <Button
-                type="submit"
-                variant="contained"
-                color="primary"
-                sx={{
-                  px: 2,
-                  py: 1,
-                  fontSize: '0.875rem',
-                  fontWeight: 500,
-                  textTransform: 'none',
-                }}
-                title={!isValid ? 'Please fill all required fields' : ''}
-              >
-                {isSubmitting ? 'Creating...' : 'Create Cron Job'}
-              </Button>
+              {viewFormData?.status === 'STATUS_03_UNDER_REVIEW' &&
+                userIsApprover &&
+                (onApprove || onReject) && (
+                  <div className="flex gap-3">
+                    {onReject && (
+                      <Button
+                        type="button"
+                        variant="contained"
+                        color="primary"
+                        sx={{
+                          px: 2,
+                          py: 1,
+                          fontSize: '0.875rem',
+                          fontWeight: 500,
+                          textTransform: 'none',
+                        }}
+                        onClick={() => {
+                          onReject(viewFormData?.id);
+                          onCancel?.();
+                        }}
+                      >
+                        Reject
+                      </Button>
+                    )}
+                    {onApprove && (
+                      <Button
+                        type="button"
+                        variant="contained"
+                        color="primary"
+                        sx={{
+                          px: 2,
+                          py: 1,
+                          fontSize: '0.875rem',
+                          fontWeight: 500,
+                          textTransform: 'none',
+                        }}
+                        onClick={() => {
+                          onApprove(viewFormData?.id);
+                          onCancel?.();
+                        }}
+                        className="bg-green-600 hover:bg-green-700 text-white"
+                      >
+                        Approve
+                      </Button>
+                    )}
+                  </div>
+                )}
+              {viewFormData && viewFormData?.status === 'STATUS_01_IN_PROGRESS' && (
+                <Button
+                  type="button"
+                  variant="contained"
+                  color="primary"
+                  sx={{
+                    px: 2,
+                    py: 1,
+                    fontSize: '0.875rem',
+                    fontWeight: 500,
+                    textTransform: 'none',
+                  }}
+                  onClick={handleSendForApproval}
+                >
+                  Send for Approval
+                </Button>
+              )}
+              {editFormData && (
+                <Button
+                  type="button"
+                  variant="contained"
+                  color="primary"
+                  sx={{
+                    px: 2,
+                    py: 1,
+                    fontSize: '0.875rem',
+                    fontWeight: 500,
+                    textTransform: 'none',
+                  }}
+                  onClick={handleSaveEdit}
+                  title={!isValid ? 'Please fill all required fields' : ''}
+                >
+                  Update
+                </Button>
+              )}
+              {!editFormData && !viewFormData && (
+                <Button
+                  type="submit"
+                  variant="contained"
+                  color="primary"
+                  sx={{
+                    px: 2,
+                    py: 1,
+                    fontSize: '0.875rem',
+                    fontWeight: 500,
+                    textTransform: 'none',
+                  }}
+                  title={!isValid ? 'Please fill all required fields' : ''}
+                >
+                  {isSubmitting ? 'Creating...' : 'Create Cron Job'}
+                </Button>
+              )}
             </Box>
           </Grid>
         </Grid>
