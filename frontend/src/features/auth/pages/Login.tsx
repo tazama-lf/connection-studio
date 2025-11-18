@@ -18,6 +18,7 @@ import {
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { AiOutlineEye, AiOutlineEyeInvisible } from 'react-icons/ai';
+import { MdEmail, MdLock } from 'react-icons/md';
 import { useNavigate } from 'react-router-dom'; // For commented-out API logic
 import * as yup from 'yup';
 import { isApprover } from '../../../utils/roleUtils';
@@ -37,12 +38,14 @@ const schema = yup
     username: yup
       .string()
       .required('This Field is Required')
+      .max(100, 'Email must not exceed 100 characters')
       // .matches(/^([a-zA-Z0-9_\-\.]+)@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.)|(([a-zA-Z0-9\-]+\.)+))([a-zA-Z]{2,4}|[0-9]{1,3})(\]?)$/, 'A valid email address is required.')
       .email('A valid email address is required.'),
     password: yup
       .string()
       .required('This Field is Required')
-      .min(6, 'Must be at least 6 characters'),
+      .min(6, 'Must be at least 6 characters')
+      .max(50, 'Password must not exceed 50 characters'),
   })
   .required();
 
@@ -228,14 +231,23 @@ export const Login: React.FC = () => {
                 margin="normal"
                 required
                 fullWidth
+                variant="outlined"
                 id="username"
                 label="Email Address"
                 autoComplete="email"
                 autoFocus
+                inputProps={{ maxLength: 50 }}
                 // disabled={isLoading}
                 {...register('username')}
                 error={!!errors.username}
                 helperText={errors.username?.message}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <MdEmail color="#666" />
+                    </InputAdornment>
+                  ),
+                }}
                 FormHelperTextProps={{
                   sx: {
                     backgroundColor: 'transparent',
@@ -252,6 +264,7 @@ export const Login: React.FC = () => {
                 type={showPassword ? 'text' : 'password'}
                 id="password"
                 autoComplete="current-password"
+                inputProps={{ maxLength: 50 }}
                 // disabled={isLoading}
                 {...register('password')}
                 error={!!errors.password}
@@ -264,6 +277,11 @@ export const Login: React.FC = () => {
                   },
                 }}
                 InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <MdLock color="#666" />
+                    </InputAdornment>
+                  ),
                   endAdornment: (
                     <InputAdornment position="end">
                       <IconButton
