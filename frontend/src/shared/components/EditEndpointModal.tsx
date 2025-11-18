@@ -983,16 +983,16 @@ console.log('Cur map:', currentMappings);
       return;
     }
 
-    // Validate all required fields before saving
+    // Trigger validation in PayloadEditor component (this will show field-level errors)
+    const isValid = (window as any).__validatePayloadEditorFields?.();
+    
+    // If field validation failed, don't proceed (errors are shown below fields)
+    if (isValid === false) {
+      return;
+    }
+    
+    // Validate all required fields before saving (only for payload errors shown at top)
     const validationErrors: string[] = [];
-    if (!endpointData.version.trim()) {
-      validationErrors.push('Version is required');
-    }
-    if (!endpointData.transactionType.trim()) {
-      validationErrors.push('Transaction Type is required');
-    }
-
-
 
     if (!payload.trim()) {
       validationErrors.push('Payload is required');
@@ -1424,32 +1424,6 @@ console.log('Cur map:', currentMappings);
           </button>
         </div>
         <div className="overflow-y-auto p-6 max-h-[calc(90vh-120px)]" data-id="element-732">
-          {/* Error Display - Show prominently when there's an error */}
-          {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <div className="flex items-start gap-3">
-                <div className="flex-shrink-0 mt-0.5">
-                  <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                  </svg>
-                </div>
-                <div className="flex-1">
-                  <h4 className="text-sm font-medium text-red-900 mb-1">Error</h4>
-                  <p className="text-sm text-red-700">{error}</p>
-                </div>
-                <button
-                  onClick={() => setError(null)}
-                  className="flex-shrink-0 text-red-500 hover:text-red-700"
-                  title="Dismiss error"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          )}
-
         {/* Show rejection comment only when status is STATUS_05_REJECTED */}
         {(isStatus(createdEndpoint?.status, 'STATUS_05_REJECTED') || isStatus(existingConfig?.status, 'STATUS_05_REJECTED')) && 
            (createdEndpoint?.comments || existingConfig?.comments) && (
@@ -1507,6 +1481,8 @@ console.log('Cur map:', currentMappings);
                   tenantId={tenantId}
                   readOnly={readOnly}
                   isCloning={isCloning}
+                  payloadError={error}
+                  setPayloadError={setError}
                   existingSchemaFields={(() => {
                     console.log('🔍🔍🔍 COMPUTING existingSchemaFields FOR PayloadEditor 🔍🔍🔍');
                     console.log('🔍 currentSchema:', currentSchema);
