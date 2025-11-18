@@ -188,6 +188,109 @@ export const PasswordInputField = ({
     );
 };
 
+// DATE FIELD - Specialized for date inputs
+export const DateInputField = ({
+    name,
+    label,
+    control,
+    placeholder = "",
+    disabled = false,
+    maxLength = 50,
+}) => {
+    return (
+        <Controller
+            name={name}
+            control={control}
+            render={({ field: { onChange, value, ...restField } }) => (
+                <TextField
+                    {...restField}
+                    id={name}
+                    name={name}
+                    label={label}
+                    type="date"
+                    disabled={disabled}
+                    variant="filled"
+                    value={value || ""}
+                    onKeyDown={(event) => {
+                        // Prevent all keyboard input except Tab for accessibility
+                        if (event.key === "Tab") return;
+                        event.preventDefault();
+                    }}
+                    onChange={(event) => {
+                        const newValue = event.target.value;
+
+                        // Only allow date selection from picker, validate year range
+                        if (newValue) {
+                            const dateObj = new Date(newValue);
+                            const isValidDate = !isNaN(dateObj.getTime());
+
+                            if (isValidDate) {
+                                const year = dateObj.getFullYear();
+                                // Validate year to be between 1900-2100
+                                if (year >= 1900 && year <= 2100) {
+                                    onChange(newValue);
+                                }
+                                // Don't update if year is out of range
+                            }
+                        } else {
+                            // Allow clearing the field
+                            onChange(newValue);
+                        }
+                    }}
+                    fullWidth
+                    placeholder=""
+                    InputProps={{
+                        disableUnderline: true,
+                        sx: {
+                            border: "1px solid silver",
+                            borderRadius: "7px",
+                            fontSize: "1.1rem",
+                            height: "60px",
+                            backgroundColor: "white",
+                            fontWeight: 500,
+                            "&:hover": { backgroundColor: "white" },
+                            "&.Mui-focused": { backgroundColor: "white" },
+                            "& input::placeholder": {
+                                fontSize: "0.9rem",
+                            },
+                        },
+                        autoComplete: "off",
+                        autoCorrect: "off",
+                        inputProps: { maxLength: maxLength },
+                    }}
+                    InputLabelProps={{
+                        sx: { fontSize: "0.95rem", color: "#666666", marginTop: "5px" },
+                        shrink: true,
+                    }}
+                    sx={{
+                        width: "100%",
+                        "& .MuiFilledInput-root": {
+                            backgroundColor: "white",
+                            "&:hover": { backgroundColor: "white" },
+                            "&.Mui-focused": { backgroundColor: "white" },
+                            cursor: "pointer",
+                        },
+                        "& input[type='date']": {
+                            cursor: "pointer",
+                            "&::-webkit-calendar-picker-indicator": {
+                                position: "absolute",
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
+                                width: "100%",
+                                height: "100%",
+                                opacity: 0,
+                                cursor: "pointer",
+                            },
+                        },
+                    }}
+                />
+            )}
+        />
+    );
+};
+
 // ENDPOINT NAME FIELD - Specialized for API endpoint names
 export const EndpointNameInputField = ({
     name,
