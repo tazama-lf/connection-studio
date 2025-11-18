@@ -354,7 +354,7 @@ export class AdminServiceClient {
 
   async updateJob(
     id: string,
-    job: UpdatePushJobDto | UpdatePullJobDto,
+    job: Record<string, unknown>,
     type: ConfigType,
     token: string,
   ): Promise<{ success: boolean; message: string }> {
@@ -768,7 +768,7 @@ export class AdminServiceClient {
   }
 
   async writeConfig(configData: any, token: string): Promise<any> {
-    this.logger.log('Writing config to database'),{configData};
+    this.logger.log('Writing config to database'), { configData };
     this.logger.log(
       `Token type: ${typeof token}, length: ${token?.length}, first 50 chars: ${token?.substring(0, 50)}`,
     );

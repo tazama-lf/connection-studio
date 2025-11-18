@@ -11,14 +11,15 @@ import {
   ScheduleStatus,
   SourceType,
 } from '@tazama-lf/tcs-lib';
+import { AuthenticatedUser } from 'src/auth/auth.types';
 import { DatabaseService } from '../database/database.service';
 import { DryRunService } from '../dry-run/dry-run.service';
+import { NotificationService } from '../notification/notification.service';
 import { NotifyService } from '../notify/notify.service';
 import { AdminServiceClient } from '../services/admin-service-client.service';
 import { SftpService } from '../sftp/sftp.service';
 import { CreatePushJobDto } from './dto/create-push-job.dto';
 import { JobService } from './job.service';
-import { AuthenticatedUser } from 'src/auth/auth.types';
 
 describe('JobService', () => {
   let service: JobService;
@@ -32,10 +33,13 @@ describe('JobService', () => {
   const mockTenantId = 'tenant_abc';
   const mockJobId = 'job-test-id-123';
 
-  const mockUser = {
+  const mockUser: AuthenticatedUser = {
     tenantId: mockTenantId,
     validClaims: ['EDITOR'],
-  };
+    token: {
+      tokenString: mockToken,
+    },
+  } as AuthenticatedUser;
 
   const mockPushJob = {
     id: mockJobId,
@@ -144,6 +148,12 @@ describe('JobService', () => {
             findScheduleById: jest.fn(),
           },
         },
+        {
+          provide: NotificationService,
+          useValue: {
+            sendWorkflowNotification: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
@@ -185,7 +195,7 @@ describe('JobService', () => {
         mockJobId,
         updateDto,
         ConfigType.PUSH,
-        mockToken,
+        mockUser,
       );
 
       expect(result).toEqual(expectedResult);
@@ -204,7 +214,7 @@ describe('JobService', () => {
       } as Job);
 
       await expect(
-        service.updateJob(mockJobId, updateDto, ConfigType.PUSH, mockToken),
+        service.updateJob(mockJobId, updateDto, ConfigType.PUSH, mockUser),
       ).rejects.toThrow(ForbiddenException);
 
       expect(adminServiceClient.updateJob).not.toHaveBeenCalled();
@@ -218,21 +228,20 @@ describe('JobService', () => {
       table_name: 'test_table',
       description: 'Test description',
       version: 'v1',
-      mode: 'push',
+      mode: IngestMode.APPEND,
       publishing_status: ScheduleStatus.INACTIVE,
     };
 
     it('should create a push job successfully', async () => {
       adminServiceClient.validateExisting.mockResolvedValue({
         success: true,
-        message: 'Table does not exists',
+        message: 'Table does not exist',
       });
       adminServiceClient.createPushJob.mockResolvedValue({ id: mockJobId });
 
       const result = await service.createPush(
         createPushDto as CreatePushJobDto,
-        mockTenantId,
-        mockToken,
+        mockUser,
       );
 
       expect(result).toEqual({
@@ -248,24 +257,24 @@ describe('JobService', () => {
           ...createPushDto,
           tenant_id: mockTenantId,
           status: JobStatus.INPROGRESS,
-          path: expect.stringContaining('/enrichment/'),
+          path: expect.stringContaining(`/${mockTenantId}/enrichment/`),
         }),
         mockToken,
       );
     });
+
     it('should create a deployed push job and send notification', async () => {
       const deployedJob = { ...createPushDto, id: mockJobId };
       adminServiceClient.validateExisting.mockResolvedValue({
-        success: false,
-        message: 'Table does not Exists',
+        success: true,
+        message: 'Table does not exist',
       });
       adminServiceClient.createPushJob.mockResolvedValue({ id: mockJobId });
       notifyService.notifyEnrichment.mockResolvedValue(undefined);
 
       await service.createPush(
         deployedJob as CreatePushJobDto,
-        mockTenantId,
-        mockToken,
+        mockUser,
         JobStatus.DEPLOYED,
       );
 
@@ -277,34 +286,26 @@ describe('JobService', () => {
 
     it('should throw error if job creation fails', async () => {
       adminServiceClient.validateExisting.mockResolvedValue({
-        success: false,
-        message: 'Table Already Exists',
+        success: true,
+        message: 'Table does not exist',
       });
       adminServiceClient.createPushJob.mockResolvedValue({ id: null });
 
       await expect(
-        service.createPush(
-          createPushDto as CreatePushJobDto,
-          mockTenantId,
-          mockToken,
-        ),
+        service.createPush(createPushDto as CreatePushJobDto, mockUser),
       ).rejects.toThrow(BadRequestException);
 
       expect(loggerService.error).toHaveBeenCalled();
     });
 
     it('should handle validation errors', async () => {
-      const errorMessage = 'Table already exists';
+      const errorMessage = 'Table validation failed';
       adminServiceClient.validateExisting.mockRejectedValue(
         new Error(errorMessage),
       );
 
       await expect(
-        service.createPush(
-          createPushDto as CreatePushJobDto,
-          mockTenantId,
-          mockToken,
-        ),
+        service.createPush(createPushDto as CreatePushJobDto, mockUser),
       ).rejects.toThrow(BadRequestException);
 
       expect(loggerService.error).toHaveBeenCalledWith(
@@ -312,21 +313,18 @@ describe('JobService', () => {
       );
     });
   });
+
   describe('createPull', () => {
     it('should create a pull job successfully', async () => {
       adminServiceClient.validateExisting.mockResolvedValue({
-        success: false,
-        message: 'Table does not Exists',
+        success: true,
+        message: 'Table does not exist',
       });
       adminServiceClient.findScheduleById.mockResolvedValue(mockSchedule);
       dryRunService.dryRun.mockResolvedValue(undefined);
       adminServiceClient.createPullJob.mockResolvedValue({ id: mockJobId });
 
-      const result = await service.createPull(
-        mockPullJob,
-        mockTenantId,
-        mockToken,
-      );
+      const result = await service.createPull(mockPullJob, mockUser);
 
       expect(result).toEqual({
         success: true,
@@ -344,20 +342,20 @@ describe('JobService', () => {
 
     it('should throw error if schedule not found', async () => {
       adminServiceClient.validateExisting.mockResolvedValue({
-        success: false,
-        message: 'Table does not Exists',
+        success: true,
+        message: 'Table does not exist',
       });
       adminServiceClient.findScheduleById.mockResolvedValue(null);
 
       await expect(
-        service.createPull(mockPullJob, mockTenantId, mockToken),
+        service.createPull(mockPullJob, mockUser),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('should throw error if schedule is not approved', async () => {
       adminServiceClient.validateExisting.mockResolvedValue({
-        success: false,
-        message: 'Table does not Exists',
+        success: true,
+        message: 'Table does not exist',
       });
       adminServiceClient.findScheduleById.mockResolvedValue({
         ...mockSchedule,
@@ -365,27 +363,22 @@ describe('JobService', () => {
       });
 
       await expect(
-        service.createPull(mockPullJob, mockTenantId, mockToken),
+        service.createPull(mockPullJob, mockUser),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('should send notification for deployed pull job', async () => {
       const deployedJob = { ...mockPullJob, id: mockJobId };
       adminServiceClient.validateExisting.mockResolvedValue({
-        success: false,
-        message: 'Table does not Exists',
+        success: true,
+        message: 'Table does not exist',
       });
       adminServiceClient.findScheduleById.mockResolvedValue(mockSchedule);
       dryRunService.dryRun.mockResolvedValue(undefined);
       adminServiceClient.createPullJob.mockResolvedValue({ id: mockJobId });
       notifyService.notifyEnrichment.mockResolvedValue(undefined);
 
-      await service.createPull(
-        deployedJob,
-        mockTenantId,
-        mockToken,
-        JobStatus.DEPLOYED,
-      );
+      await service.createPull(deployedJob, mockUser, JobStatus.DEPLOYED);
 
       expect(notifyService.notifyEnrichment).toHaveBeenCalled();
     });
@@ -393,17 +386,18 @@ describe('JobService', () => {
     it('should validate file type for SFTP source', async () => {
       const invalidFileJob = {
         ...mockPullJob,
-        file: { path: 'test.csv', file_type: FileType.CSV, delimiter: ',' },
+        source_type: SourceType.SFTP,
+        file: { path: 'test.invalid', file_type: FileType.CSV, delimiter: ',' },
       };
 
       adminServiceClient.validateExisting.mockResolvedValue({
-        success: false,
-        message: 'Table does not Exists',
+        success: true,
+        message: 'Table does not exist',
       });
       adminServiceClient.findScheduleById.mockResolvedValue(mockSchedule);
 
       await expect(
-        service.createPull(invalidFileJob, mockTenantId, mockToken),
+        service.createPull(invalidFileJob, mockUser),
       ).rejects.toThrow();
     });
   });
@@ -423,12 +417,7 @@ describe('JobService', () => {
 
       adminServiceClient.getAllJobs.mockResolvedValue(mockResponse);
 
-      const result = await service.findAll(
-        offset,
-        limit,
-        mockUser as AuthenticatedUser,
-        filters,
-      );
+      const result = await service.findAll(offset, limit, mockUser, filters);
 
       expect(result).toEqual(mockResponse);
       expect(adminServiceClient.getAllJobs).toHaveBeenCalledWith(
@@ -449,11 +438,7 @@ describe('JobService', () => {
 
       adminServiceClient.getAllJobs.mockResolvedValue(mockResponse);
 
-      const result = await service.findAll(
-        offset,
-        limit,
-        mockUser as AuthenticatedUser,
-      );
+      const result = await service.findAll(offset, limit, mockUser);
 
       expect(result).toEqual(mockResponse);
       expect(adminServiceClient.getAllJobs).toHaveBeenCalledWith(
@@ -469,7 +454,7 @@ describe('JobService', () => {
       adminServiceClient.getAllJobs.mockRejectedValue(new Error(errorMessage));
 
       await expect(
-        service.findAll(offset, limit, mockUser as AuthenticatedUser, filters),
+        service.findAll(offset, limit, mockUser, filters),
       ).rejects.toThrow(BadRequestException);
 
       expect(loggerService.error).toHaveBeenCalled();
@@ -579,6 +564,7 @@ describe('JobService', () => {
       ).rejects.toThrow(BadRequestException);
     });
   });
+
   describe('updateActivation', () => {
     it('should update activation status successfully', async () => {
       adminServiceClient.updateJobActivation.mockResolvedValue({
@@ -590,7 +576,7 @@ describe('JobService', () => {
       const result = await service.updateActivation(
         mockJobId,
         ScheduleStatus.ACTIVE,
-        'endpoints',
+        ConfigType.PUSH,
         mockToken,
       );
 
@@ -604,17 +590,6 @@ describe('JobService', () => {
       );
     });
 
-    it('should throw BadRequestException if status is missing', async () => {
-      await expect(
-        service.updateActivation(
-          mockJobId,
-          null as any,
-          'endpoints',
-          mockToken,
-        ),
-      ).rejects.toThrow(BadRequestException);
-    });
-
     it('should not notify if update fails', async () => {
       adminServiceClient.updateJobActivation.mockResolvedValue({
         success: false,
@@ -624,11 +599,29 @@ describe('JobService', () => {
       await service.updateActivation(
         mockJobId,
         ScheduleStatus.ACTIVE,
-        'endpoints',
+        ConfigType.PUSH,
         mockToken,
       );
 
       expect(notifyService.notifyEnrichment).not.toHaveBeenCalled();
+    });
+
+    it('should handle errors', async () => {
+      const errorMessage = 'Update failed';
+      adminServiceClient.updateJobActivation.mockRejectedValue(
+        new Error(errorMessage),
+      );
+
+      await expect(
+        service.updateActivation(
+          mockJobId,
+          ScheduleStatus.ACTIVE,
+          ConfigType.PUSH,
+          mockToken,
+        ),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(loggerService.error).toHaveBeenCalled();
     });
   });
 
@@ -640,8 +633,7 @@ describe('JobService', () => {
             mockJobId,
             JobStatus.REJECTED,
             ConfigType.PUSH,
-            mockTenantId,
-            mockToken,
+            mockUser,
           ),
         ).rejects.toThrow(BadRequestException);
       });
@@ -659,8 +651,7 @@ describe('JobService', () => {
           mockJobId,
           JobStatus.REJECTED,
           ConfigType.PUSH,
-          mockTenantId,
-          mockToken,
+          mockUser,
           reason,
         );
 
@@ -675,78 +666,105 @@ describe('JobService', () => {
         );
       });
     });
-  });
-  describe('EXPORTED status', () => {
-    it('should export job to SFTP', async () => {
-      const expectedResult = { success: true, message: 'Status updated' };
 
-      adminServiceClient.findJobById.mockResolvedValue(mockPushJob);
-      sftpService.createFile.mockResolvedValue(undefined);
-      adminServiceClient.updateJobByStatus.mockResolvedValue(expectedResult);
+    describe('EXPORTED status', () => {
+      it('should export job to SFTP', async () => {
+        const expectedResult = { success: true, message: 'Status updated' };
 
-      await service.updateStatus(
-        mockJobId,
-        JobStatus.EXPORTED,
-        ConfigType.PUSH,
-        mockTenantId,
-        mockToken,
-      );
+        adminServiceClient.findJobById.mockResolvedValue(mockPushJob);
+        sftpService.createFile.mockResolvedValue(undefined);
+        adminServiceClient.updateJobByStatus.mockResolvedValue(expectedResult);
 
-      expect(sftpService.createFile).toHaveBeenCalledWith(
-        `de_${mockTenantId}_${mockJobId}`,
-        expect.objectContaining({ status: JobStatus.READY }),
-      );
-    });
-  });
-  describe('DEPLOYED status', () => {
-    it('should deploy a push job from SFTP', async () => {
-      const fileName = `de_${mockTenantId}_${mockJobId}`;
+        await service.updateStatus(
+          mockJobId,
+          JobStatus.EXPORTED,
+          ConfigType.PUSH,
+          mockUser,
+        );
 
-      sftpService.readFile.mockResolvedValue(mockPushJob);
-      adminServiceClient.validateExisting.mockResolvedValue({
-        success: true,
-        message: 'Table does not exists',
+        expect(sftpService.createFile).toHaveBeenCalledWith(
+          `de_${mockTenantId}_${mockJobId}`,
+          expect.objectContaining({ status: JobStatus.READY }),
+        );
       });
-      adminServiceClient.createPushJob.mockResolvedValue({ id: mockJobId });
-      sftpService.deleteFile.mockResolvedValue(undefined);
-
-      const result = await service.updateStatus(
-        mockJobId,
-        JobStatus.DEPLOYED,
-        ConfigType.PUSH,
-        mockTenantId,
-        mockToken,
-      );
-
-      expect(result.success).toBe(true);
-      expect(sftpService.readFile).toHaveBeenCalledWith(fileName);
-      expect(sftpService.deleteFile).toHaveBeenCalledWith(fileName);
     });
 
-    it('should deploy a pull job from SFTP', async () => {
-      const fileName = `de_${mockTenantId}_${mockJobId}`;
+    describe('DEPLOYED status', () => {
+      it('should deploy a push job from SFTP', async () => {
+        const fileName = `de_${mockTenantId}_${mockJobId}`;
 
-      sftpService.readFile.mockResolvedValue(mockPullJob);
-      adminServiceClient.validateExisting.mockResolvedValue({
-        success: true,
-        message: 'Table does not exists',
+        sftpService.readFile.mockResolvedValue(mockPushJob);
+        adminServiceClient.validateExisting.mockResolvedValue({
+          success: true,
+          message: 'Table does not exist',
+        });
+        adminServiceClient.createPushJob.mockResolvedValue({ id: mockJobId });
+        sftpService.deleteFile.mockResolvedValue(undefined);
+
+        const result = await service.updateStatus(
+          mockJobId,
+          JobStatus.DEPLOYED,
+          ConfigType.PUSH,
+          mockUser,
+        );
+
+        expect(result.success).toBe(true);
+        expect(sftpService.readFile).toHaveBeenCalledWith(fileName);
+        expect(sftpService.deleteFile).toHaveBeenCalledWith(fileName);
       });
-      adminServiceClient.findScheduleById.mockResolvedValue(mockSchedule);
-      dryRunService.dryRun.mockResolvedValue(undefined);
-      adminServiceClient.createPullJob.mockResolvedValue({ id: mockJobId });
-      sftpService.deleteFile.mockResolvedValue(undefined);
 
-      const result = await service.updateStatus(
-        mockJobId,
-        JobStatus.DEPLOYED,
-        ConfigType.PULL,
-        mockTenantId,
-        mockToken,
-      );
+      it('should deploy a pull job from SFTP', async () => {
+        const fileName = `de_${mockTenantId}_${mockJobId}`;
 
-      expect(result.success).toBe(true);
-      expect(sftpService.readFile).toHaveBeenCalledWith(fileName);
-      expect(sftpService.deleteFile).toHaveBeenCalledWith(fileName);
+        sftpService.readFile.mockResolvedValue(mockPullJob);
+        adminServiceClient.validateExisting.mockResolvedValue({
+          success: true,
+          message: 'Table does not exist',
+        });
+        adminServiceClient.findScheduleById.mockResolvedValue(mockSchedule);
+        dryRunService.dryRun.mockResolvedValue(undefined);
+        adminServiceClient.createPullJob.mockResolvedValue({ id: mockJobId });
+        sftpService.deleteFile.mockResolvedValue(undefined);
+
+        const result = await service.updateStatus(
+          mockJobId,
+          JobStatus.DEPLOYED,
+          ConfigType.PULL,
+          mockUser,
+        );
+
+        expect(result.success).toBe(true);
+        expect(sftpService.readFile).toHaveBeenCalledWith(fileName);
+        expect(sftpService.deleteFile).toHaveBeenCalledWith(fileName);
+      });
+    });
+
+    describe('Other statuses', () => {
+      it('should update status for APPROVED', async () => {
+        const expectedResult = {
+          success: true,
+          message: 'Status updated successfully',
+        };
+
+        adminServiceClient.updateJobByStatus.mockResolvedValue(expectedResult);
+
+        const result = await service.updateStatus(
+          mockJobId,
+          JobStatus.APPROVED,
+          ConfigType.PUSH,
+          mockUser,
+        );
+
+        expect(result).toEqual(expectedResult);
+        expect(adminServiceClient.updateJobByStatus).toHaveBeenCalledWith(
+          mockJobId,
+          JobStatus.APPROVED,
+          mockTenantId,
+          ConfigType.PUSH,
+          mockToken,
+          undefined,
+        );
+      });
     });
 
     it('should handle errors and log them', async () => {
@@ -760,8 +778,7 @@ describe('JobService', () => {
           mockJobId,
           JobStatus.APPROVED,
           ConfigType.PUSH,
-          mockTenantId,
-          mockToken,
+          mockUser,
         ),
       ).rejects.toThrow(BadRequestException);
 

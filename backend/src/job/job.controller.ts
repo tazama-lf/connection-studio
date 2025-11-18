@@ -69,7 +69,7 @@ export class JobController {
       id,
       job,
       type,
-      user.token.tokenString,
+      user,
     );
   }
 

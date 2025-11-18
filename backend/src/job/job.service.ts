@@ -47,15 +47,15 @@ export class JobService {
     id: string,
     job: UpdatePushJobDto | UpdatePullJobDto,
     type: ConfigType,
-    token: string,
+    user: AuthenticatedUser
   ): Promise<ISuccess> {
-    const existingJob = await this.findOne(id, type, token);
+    const existingJob = await this.findOne(id, type, user.token.tokenString);
 
-    if (existingJob.status !== JobStatus.INPROGRESS) {
-      throw new ForbiddenException('Only In-Progress jobs can be edited');
+    if (existingJob.status !== JobStatus.INPROGRESS && existingJob.status !== JobStatus.REJECTED) {
+      throw new ForbiddenException('Only In-Progress/Rejected jobs can be edited');
     }
 
-    return this.adminServiceClient.updateJob(id, job, type, token);
+    return await this.adminServiceClient.updateJob(id, { ...job, status: existingJob.status }, type, user.token.tokenString);
   }
 
   async createPush(
