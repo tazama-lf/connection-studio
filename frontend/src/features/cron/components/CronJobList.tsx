@@ -427,7 +427,7 @@ export const CronJobList: React.FC<CronJobListProps> = ({
         const schedule = params.row;
 
         return (
-          <div className=" flex items-center gap-2 h-full">
+          <div className=" flex items-center justify-center gap-2 h-full">
             <button
               onClick={() => {
                 handleView(schedule);
