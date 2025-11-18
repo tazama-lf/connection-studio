@@ -15,8 +15,8 @@ import {
   SFTPConnection,
   SourceType,
 } from '@tazama-lf/tcs-lib';
-import { AuthenticatedUser } from 'src/auth/auth.types';
 import { v4 } from 'uuid';
+import { AuthenticatedUser } from '../auth/auth.types';
 import { DryRunService } from '../dry-run/dry-run.service';
 import { NotifyService } from '../notify/notify.service';
 import { AdminServiceClient } from '../services/admin-service-client.service';
@@ -35,7 +35,7 @@ export class JobService {
     private readonly sftpService: SftpService,
     private readonly notifyService: NotifyService,
     private readonly adminServiceClient: AdminServiceClient,
-  ) {}
+  ) { }
 
   private handleError(err: unknown): never {
     const message = err instanceof Error ? err.message : String(err);
@@ -60,25 +60,24 @@ export class JobService {
 
   async createPush(
     job: CreatePushJobDto,
-    tenantId: string,
-    token: string,
+    user: AuthenticatedUser,
     status: JobStatus = JobStatus.INPROGRESS,
   ): Promise<ISuccess> {
     try {
-      await this.adminServiceClient.validateExisting(job.table_name, token);
+      await this.adminServiceClient.validateExisting(job.table_name, user.token.tokenString);
 
       const id = job.id ? job.id : v4();
 
       const path =
         status === JobStatus.DEPLOYED
           ? job.path
-          : `/${tenantId}/enrichment/${job.version}${job.path}`;
+          : `/${user.tenantId}/enrichment/${job.version}${job.path}`;
 
-      const jobWithId = { ...job, id, path, tenant_id: tenantId, status };
+      const jobWithId = { ...job, id, path, tenant_id: user.tenantId, status };
 
       const created = await this.adminServiceClient.createPushJob(
         jobWithId,
-        token,
+        user.token.tokenString,
       );
 
       if (!created.id) {
@@ -100,16 +99,15 @@ export class JobService {
 
   async createPull(
     job: CreatePullJobDto,
-    tenantId: string,
-    token: string,
+    user: AuthenticatedUser,
     status: JobStatus = JobStatus.INPROGRESS,
   ): Promise<ISuccess> {
     try {
-      await this.adminServiceClient.validateExisting(job.table_name, token);
+      await this.adminServiceClient.validateExisting(job.table_name, user.token.tokenString);
 
       const exist = await this.adminServiceClient.findScheduleById(
         job.schedule_id,
-        token,
+        user.token.tokenString,
       );
 
       if (
@@ -151,13 +149,13 @@ export class JobService {
         ...job,
         id: newId,
         connection,
-        tenant_id: tenantId,
+        tenant_id: user.tenantId,
         status,
       };
 
       const created = await this.adminServiceClient.createPullJob(
         jobWithId,
-        token,
+        user.token.tokenString,
       );
 
       if (status === JobStatus.DEPLOYED) {
@@ -251,19 +249,19 @@ export class JobService {
   async updateActivation(
     id: string,
     status: ScheduleStatus,
-    table_name: string,
+    type: ConfigType,
     token: string,
   ): Promise<ISuccess> {
     try {
       const { success } = await this.adminServiceClient.updateJobActivation(
         id,
         status,
-        table_name,
+        ConfigType.PUSH ? 'push_jobs' : 'pull_jobs',
         token,
       );
 
       if (success) {
-        await this.notifyService.notifyEnrichment(id, ConfigType.PUSH);
+        await this.notifyService.notifyEnrichment(id, type);
       }
 
       return {
@@ -279,26 +277,35 @@ export class JobService {
     id: string,
     status: JobStatus,
     type: ConfigType,
-    tenantId: string,
-    token: string,
+    user: AuthenticatedUser,
     reason?: string,
   ): Promise<ISuccess> {
     try {
-      if (status === JobStatus.REJECTED && !reason) {
-        throw new BadRequestException(
-          'Rejection reason is required when rejecting a job.',
-        );
-      }
-
-      const fileName = `de_${tenantId}_${id}`;
+      const fileName = `de_${user.tenantId}_${id}`;
 
       switch (status) {
+        case JobStatus.REJECTED: {
+          if (!reason) {
+            throw new BadRequestException(
+              'Rejection reason is required when rejecting a job.',
+            );
+          }
+
+          break;
+        }
+
         case JobStatus.EXPORTED: {
-          const existingJob = await this.findOne(id, type, token);
+          const existingJob = await this.findOne(
+            id,
+            type,
+            user.token.tokenString,
+          );
+
           await this.sftpService.createFile(fileName, {
             ...existingJob,
             status: JobStatus.READY,
           });
+
           break;
         }
 
@@ -306,9 +313,7 @@ export class JobService {
           const existingJob = await this.sftpService.readFile(fileName);
 
           if (type === ConfigType.PULL) {
-            const connection = {
-              ...existingJob.connection,
-            } as unknown as SFTPConnection;
+            const connection = { ...existingJob.connection } as SFTPConnection;
 
             if (
               connection.auth_type === AuthType.USERNAME_PASSWORD &&
@@ -325,8 +330,7 @@ export class JobService {
                 connection,
                 publishing_status: ScheduleStatus.ACTIVE,
               } as CreatePullJobDto,
-              tenantId,
-              token,
+              user,
               JobStatus.DEPLOYED,
             );
           } else {
@@ -335,8 +339,7 @@ export class JobService {
                 ...existingJob,
                 publishing_status: ScheduleStatus.ACTIVE,
               } as CreatePushJobDto,
-              tenantId,
-              token,
+              user,
               JobStatus.DEPLOYED,
             );
           }
@@ -353,13 +356,14 @@ export class JobService {
       return await this.adminServiceClient.updateJobByStatus(
         id,
         status,
-        tenantId,
+        user.tenantId,
         type,
-        token,
+        user.token.tokenString,
         reason,
       );
     } catch (error: unknown) {
       return this.handleError(error);
     }
   }
+
 }

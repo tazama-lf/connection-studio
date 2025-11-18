@@ -141,7 +141,7 @@ export class SchedulerService {
         case JobStatus.REJECTED: {
           if (!reason) {
             throw new BadRequestException(
-              'Rejection reason is required when rejecting a job.',
+              'Rejection reason is required when rejecting a cron job.',
             );
           }
           break;

@@ -31,7 +31,7 @@ import { JobService } from './job.service';
 @Controller('job')
 @UseGuards(TazamaAuthGuard)
 export class JobController {
-  constructor(private readonly jobService: JobService) {}
+  constructor(private readonly jobService: JobService) { }
 
   @Post('/create/push')
   @RequireAnyClaims(TazamaClaims.EDITOR)
@@ -41,8 +41,7 @@ export class JobController {
   ) {
     return await this.jobService.createPush(
       job,
-      user.tenantId,
-      user.token.tokenString,
+      user
     );
   }
 
@@ -54,8 +53,7 @@ export class JobController {
   ) {
     return await this.jobService.createPull(
       job,
-      user.tenantId,
-      user.token.tokenString,
+      user,
     );
   }
 
@@ -83,8 +81,8 @@ export class JobController {
     TazamaClaims.PUBLISHER,
   )
   async getAll(
-    @Param('offset') offset: string,
-    @Param('limit') limit: string,
+    @Query('offset') offset: string,
+    @Query('limit') limit: string,
     @User() user: AuthenticatedUser,
     @Body() filters?: Record<string, unknown>,
   ) {
@@ -157,8 +155,7 @@ export class JobController {
       id,
       status,
       type,
-      user.tenantId,
-      user.token.tokenString,
+      user,
       reason,
     );
   }
@@ -174,7 +171,7 @@ export class JobController {
     return await this.jobService.updateActivation(
       id,
       status,
-      type === ConfigType.PUSH ? 'push_jobs' : 'pull_jobs',
+      type,
       user.token.tokenString,
     );
   }
