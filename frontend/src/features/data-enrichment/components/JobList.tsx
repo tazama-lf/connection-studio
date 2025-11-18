@@ -354,8 +354,8 @@ export const JobList: React.FC<JobListProps> = (props) => {
     {
       field: 'endpoint_name',
       headerName: 'Endpoint Path',
-      flex: 1,
-      minWidth: 400,
+      flex: 1.5,
+      minWidth: 280,
       sortable: false,
       align: 'center',
       disableColumnMenu: true,
@@ -385,7 +385,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
     {
       field: 'status',
       headerName: 'Status',
-      minWidth: 260,
+      minWidth: 200,
       flex: 1,
       sortable: false,
       align: 'center',
@@ -423,7 +423,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
     {
       field: 'created_at',
       headerName: 'Created Time',
-      minWidth: 260,
+      minWidth: 220,
       flex: 1,
       sortable: false,
       disableColumnMenu: true,
@@ -463,7 +463,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
     {
       field: 'type',
       headerName: 'Type',
-      minWidth: 120,
+      minWidth: 100,
       flex: 0.5,
       sortable: false,
       disableColumnMenu: true,
@@ -530,8 +530,8 @@ export const JobList: React.FC<JobListProps> = (props) => {
     {
       field: 'actions',
       headerName: 'Actions',
-      minWidth: 280,
-      flex: 1,
+      minWidth: 240,
+      flex: 1.2,
       sortable: false,
       disableColumnMenu: true,
       align: 'center',
@@ -554,7 +554,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
         const job = _params.row;
 
         return (
-          <div className=" flex items-center gap-2 h-full">
+          <div className="flex items-center justify-center gap-2 h-full">
             {/* View Details - Available to all roles that have view permissions */}
             {((userIsEditor && onViewLogs) ||
               userIsApprover ||

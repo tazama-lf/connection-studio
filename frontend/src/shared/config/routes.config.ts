@@ -6,7 +6,7 @@ export const ROUTES = {
   // Protected routes
   DASHBOARD: '/dashboard',
   DEMS: '/dems',
-  DATA_ENRICHMENT: '/de',
+  DATA_ENRICHMENT: 'data-enrichment',
   CRON: '/cron',
   // APPROVER: '/approver',
   PUBLISHER: '/publisher',
