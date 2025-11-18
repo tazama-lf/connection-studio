@@ -125,13 +125,13 @@ const PublisherExportedItemsPage: React.FC = () => {
 
   const handlePublishExportedItem = async (id: string, format: SftpFormat, type?: 'PULL' | 'PUSH' | string) => {
     // Check if user has permission to publish based on their role
-    if (userIsExporter && selectedExportedItem) {
-      const status = selectedExportedItem.status || '';
-      if (!isStatus(status, 'exported') && !isStatus(status, 'approved')) {
-        showError('Exporters can only publish items with "exported" or "approved" status');
-        return;
-      }
-    }
+    // if (userIsExporter && selectedExportedItem) {
+    //   const status = selectedExportedItem.status || '';
+    //   if (!isStatus(status, 'exported') && !isStatus(status, 'approved')) {
+    //     showError('Exporters can only publish items with "exported" or "approved" status');
+    //     return;
+    //   }
+    // }
     
     // if (userIsPublisher && selectedExportedItem) {
     //   const status = selectedExportedItem.status || '';
@@ -144,13 +144,13 @@ const PublisherExportedItemsPage: React.FC = () => {
     try {
       console.log('Publishing exported item:', { id, format, type });
       await sftpApi.publishItem(id, format, type);
-      showSuccess(`${format === 'cron' ? 'Cron job' : 'Data enrichment job'} published successfully`);
+      showSuccess(`${format === 'cron' ? 'Cron job' : format === 'de' ? 'Data enrichment job' : 'DEMS Configuration'} published successfully`);
       loadExportedItems();
       setShowExportedItemDetails(false);
     } catch (error) {
       console.error('Failed to publish exported item:', error);
       
-      let errorMessage = `Failed to publish ${format === 'cron' ? 'cron job' : 'data enrichment job'}`;
+      let errorMessage = `Failed to publish ${format === 'cron' ? 'Cron job' : format === 'de' ? 'Data enrichment job' : 'DEMS Configuration'}`;
       
       // Handle different types of errors
       if (error instanceof SftpError) {

@@ -519,7 +519,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
         const config = params.row;
 
         return (
-          <div className=" flex items-center gap-2 h-full">
+          <div className=" flex items-center justify-center gap-2 h-full">
             {/* <div className="relative dropdown-container"> */}
             {/* <button
                 onClick={() =>

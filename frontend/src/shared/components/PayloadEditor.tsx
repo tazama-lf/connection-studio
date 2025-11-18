@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import * as yup from 'yup';
 import { Button } from './Button';
 import {
   UploadIcon,
@@ -25,6 +26,12 @@ interface PayloadEditorProps {
   tenantId?: string; // Tenant ID for endpoint preview
   readOnly?: boolean; // When true, disable all editing functionality
   isCloning?: boolean; // When true, allow editing even for existing configs
+  onValidationErrorsChange?: (errors: {
+    version: string;
+    transactionType: string;
+  }) => void; // Callback for validation errors
+  payloadError?: any; // External payload error from parent component
+  setPayloadError?: any; // Callback to set external payload error
 }
 
 interface EndpointFormData {
@@ -56,6 +63,9 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
   tenantId = 'tenant-id', // Default placeholder if not provided
   readOnly = false,
   isCloning = false,
+  onValidationErrorsChange,
+  payloadError,
+  setPayloadError,
 }) => {
   // New state for endpoint form data
   const [endpointData, setEndpointData] = useState<EndpointFormData>(
@@ -92,12 +102,17 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
   const [fieldErrors, setFieldErrors] = useState<{
     version: string;
     transactionType: string;
+    eventType: string;
     payload: string;
   }>({
     version: '',
     transactionType: '',
+    eventType: '',
     payload: '',
   });
+
+  // State to track if validation should be shown (only after save attempt)
+  const [showValidationErrors, setShowValidationErrors] = useState(false);
 
   // Helper function for capitalizing strings
   const capitalizeFirstLetter = (string: string): string => {
@@ -116,20 +131,116 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
     }
   };
 
+  // Yup validation schemas
+  const versionSchema = yup
+    .string()
+    .required('Version is required')
+    .matches(
+      /^v?\d+\.\d+\.\d+$/,
+      'Version must follow semantic versioning format (e.g: 1.0.0 or v1.0.0)',
+    );
+  // Note: Auto 'v' prefix transform removed - accepts both formats as-is
+
+  const transactionTypeSchema = yup
+    .string()
+    .required('Transaction Type is required')
+    .matches(
+      /^[a-zA-Z0-9]+([_\-\/][a-zA-Z0-9]+)*$/,
+      'Transaction Type must be alphanumeric and can only contain _, -, / in the middle (not at start or end)',
+    );
+
+  // Event Type (msgFam) validation - Optional but with same format rules as Transaction Type
+  const eventTypeSchema = yup
+    .string()
+    .notRequired() // Optional field
+    .test(
+      'format',
+      'Event Type must be alphanumeric and can only contain _, -, / in the middle (not at start or end)',
+      function (value) {
+        // If empty, it's valid (optional field)
+        if (!value || value.trim() === '') {
+          return true;
+        }
+        // If has value, validate format
+        return /^[a-zA-Z0-9]+([_\-\/][a-zA-Z0-9]+)*$/.test(value);
+      },
+    );
+
   // Validation functions
   const validateVersion = (version: string): string => {
-    if (!version || !version.trim()) {
-      return 'Version is required';
+    try {
+      versionSchema.validateSync(version);
+      return '';
+    } catch (err) {
+      if (err instanceof yup.ValidationError) {
+        return err.message;
+      }
+      return 'Invalid version format';
     }
-    return '';
   };
 
   const validateTransactionType = (transactionType: string): string => {
-    if (!transactionType || !transactionType.trim()) {
-      return 'Transaction type is required';
+    try {
+      transactionTypeSchema.validateSync(transactionType);
+      return '';
+    } catch (err) {
+      if (err instanceof yup.ValidationError) {
+        return err.message;
+      }
+      return 'Invalid transaction type format';
     }
-    return '';
   };
+
+  const validateEventType = (eventType: string): string => {
+    try {
+      eventTypeSchema.validateSync(eventType);
+      return '';
+    } catch (err) {
+      if (err instanceof yup.ValidationError) {
+        return err.message;
+      }
+      return 'Invalid event type format';
+    }
+  };
+
+  // Function to validate all fields and update error state
+  const validateAllFields = () => {
+    const versionError = validateVersion(endpointData.version);
+    const transactionTypeError = validateTransactionType(
+      endpointData.transactionType,
+    );
+    const eventTypeError = validateEventType(endpointData.msgFam || '');
+
+    const errors = {
+      version: versionError,
+      transactionType: transactionTypeError,
+      eventType: eventTypeError,
+      payload: '',
+    };
+
+    setFieldErrors(errors);
+    setShowValidationErrors(true);
+
+    // Notify parent component about validation errors
+    if (onValidationErrorsChange) {
+      onValidationErrorsChange({
+        version: versionError,
+        transactionType: transactionTypeError,
+      });
+    }
+
+    return !versionError && !transactionTypeError && !eventTypeError;
+  };
+
+  // Expose validation function to parent through useEffect
+  useEffect(() => {
+    // Store validation function in a way parent can trigger it
+    (window as any).__validatePayloadEditorFields = validateAllFields;
+
+    return () => {
+      delete (window as any).__validatePayloadEditorFields;
+    };
+  }, [endpointData.version, endpointData.transactionType, endpointData.msgFam]);
 
   const validatePayloadContent = (
     payloadValue: string,
@@ -535,15 +646,22 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
       onEndpointDataChange(updatedData);
     }
 
-    // Validate the changed field
-    let newFieldErrors = { ...fieldErrors };
-    if (field === 'version') {
-      newFieldErrors.version = validateVersion(sanitizedValue);
-    } else if (field === 'transactionType') {
-      newFieldErrors.transactionType = validateTransactionType(sanitizedValue);
-    }
+    // Clear validation errors when user starts typing
+    if (showValidationErrors) {
+      // Map field names to error field names
+      const errorFieldMap: Record<string, string> = {
+        version: 'version',
+        transactionType: 'transactionType',
+        msgFam: 'eventType',
+      };
 
-    setFieldErrors(newFieldErrors);
+      const errorField = errorFieldMap[field] || field;
+
+      setFieldErrors((prev) => ({
+        ...prev,
+        [errorField]: '',
+      }));
+    }
 
     // If content type changed, re-validate the payload
     if (field === 'contentType') {
@@ -574,9 +692,10 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
     setFieldErrors({
       version: '',
       transactionType: '',
+      eventType: '',
       payload: '',
     });
-  }, [endpointData.version, endpointData.transactionType]);
+  }, [endpointData.version, endpointData.transactionType, endpointData.msgFam]);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -1064,7 +1183,20 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
                   onChange={(e) =>
                     handleEndpointDataChange('version', e.target.value)
                   }
-                  placeholder="1.0"
+                  onKeyPress={(e) => {
+                    // Only allow numbers, dots, and 'v' character
+                    const char = e.key;
+                    const currentValue = (e.target as HTMLInputElement).value;
+
+                    // Allow only: digits (0-9), dot (.), and 'v' only at the start
+                    if (
+                      !/[0-9.]/.test(char) &&
+                      !(char === 'v' && currentValue.length === 0)
+                    ) {
+                      e.preventDefault();
+                    }
+                  }}
+                  placeholder="1.0.0"
                   className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white  ${
                     isReadOnly
                       ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
@@ -1076,7 +1208,7 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
                 />
               );
             })()}
-            {fieldErrors.version && (
+            {showValidationErrors && fieldErrors.version && (
               <p className="mt-1 text-sm text-red-600">{fieldErrors.version}</p>
             )}
           </div>
@@ -1099,16 +1231,30 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
                   onChange={(e) =>
                     handleEndpointDataChange('msgFam', e.target.value)
                   }
+                  onKeyPress={(e) => {
+                    // Only allow alphanumeric and special chars: _, -, /
+                    const char = e.key;
+                    if (!/[a-zA-Z0-9_\-/]/.test(char)) {
+                      e.preventDefault();
+                    }
+                  }}
                   placeholder="iso-20022"
                   className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white ${
                     isReadOnly
                       ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
-                      : 'bg-white border-gray-300'
+                      : fieldErrors.eventType
+                        ? 'bg-white border-red-300 text-red-900 placeholder-red-300 focus:ring-red-500 focus:border-red-500'
+                        : 'bg-white border-gray-300'
                   }`}
                   readOnly={isReadOnly}
                 />
               );
             })()}
+            {showValidationErrors && fieldErrors.eventType && (
+              <p className="mt-1 text-sm text-red-600">
+                {fieldErrors.eventType}
+              </p>
+            )}
           </div>
 
           {/* Transaction Type */}
@@ -1129,6 +1275,13 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
                   onChange={(e) =>
                     handleEndpointDataChange('transactionType', e.target.value)
                   }
+                  onKeyPress={(e) => {
+                    // Only allow alphanumeric and special chars: _, -, /
+                    const char = e.key;
+                    if (!/[a-zA-Z0-9_\-/]/.test(char)) {
+                      e.preventDefault();
+                    }
+                  }}
                   placeholder="e.g., pacs.008, pain.001"
                   className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white ${
                     isReadOnly
@@ -1141,7 +1294,7 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
                 />
               );
             })()}
-            {fieldErrors.transactionType && (
+            {showValidationErrors && fieldErrors.transactionType && (
               <p className="mt-1 text-sm text-red-600">
                 {fieldErrors.transactionType}
               </p>
@@ -1237,6 +1390,7 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
             <h3 className="text-lg font-medium text-gray-900">
               {configId ? 'Configuration Schema' : 'Configuration Payload'}
             </h3>
+
             <div className="flex items-center space-x-2">
               {!isEditMode && !value && !readOnly && (
                 <div className="flex space-x-2">
@@ -1298,6 +1452,54 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
               </div>
             </div>
           </div>
+
+          {payloadError &&
+            !(payloadValidationMessage || fieldErrors.payload) && (
+              <div className="my-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 mt-0.5">
+                    <svg
+                      className="w-5 h-5 text-red-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+                      />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="text-sm font-medium text-red-900 mb-1">
+                      Error
+                    </h4>
+                    <p className="text-sm text-red-700">{payloadError}</p>
+                  </div>
+                  <button
+                    onClick={() => setPayloadError(null)}
+                    className="flex-shrink-0 text-red-500 hover:text-red-700"
+                    title="Dismiss error"
+                  >
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            )}
 
           {/* Format Validation Status - Full Width Below Heading */}
           {!readOnly &&
