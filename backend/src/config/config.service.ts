@@ -2385,6 +2385,7 @@ export class ConfigService {
       this.logger.log(`Reading config file from SFTP: ${fileName}`);
       configData = await this.sftpService.readFile(fileName) as Config;
       currentStatus = configData.status as ConfigStatus;
+      this.logger.log(`Config data retrieved: ${configData}`);
       // this.logger.log(
       //   `Successfully read config file from SFTP with status: ${currentStatus}`
       // );
@@ -2409,7 +2410,7 @@ export class ConfigService {
       // }
     }
 
-    const action: WorkflowAction = 'deploy';
+    // const action: WorkflowAction = 'deploy';
     // const validation = this.workflowService.canPerformAction(
     //   userClaims,
     //   currentStatus,
@@ -2432,15 +2433,9 @@ export class ConfigService {
           status: currentStatus,
           publishingStatus: configData.publishingStatus || 'active',
           version: configData.version,
-          schema: configData.schema == null ? null : typeof configData.schema === "string" ? configData.schema : JSON.stringify(configData.schema),
-          mapping: configData.mapping == null ? null :
-            typeof configData.mapping === 'string'
-              ? configData.mapping
-              : JSON.stringify(configData.mapping || null),
-          functions: configData.functions == null ? null :
-            typeof configData.functions === 'string'
-              ? configData.functions
-              : JSON.stringify(configData.functions || null),
+          schema: configData.schema == null ? null : configData.schema,
+          mapping: configData.mapping == null ? null : configData.mapping,
+          functions: configData.functions == null ? null : configData.functions,
           credentials: configData.credentials,
           tenantId: tenantId,
           createdBy: configData.createdBy || userId,

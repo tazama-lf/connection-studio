@@ -586,12 +586,16 @@ export class NotificationService implements OnModuleInit {
         }),
       );
 
+
+      this.logger.log('Response from Auth Service: ', response.data);
+
       const responseArr =
         response.data && Array.isArray(response.data) ? response.data : [];
       const emailList = responseArr?.map((obj) => obj?.username);
       this.logger.log('Fetched user emails: ', emailList);
       return emailList;
     } catch (error) {
+      this.logger.error('Error fetching user group members: ', error);
       this.logger.error(
         `Auth service error during fetching user group members: ${error.message}`,
       );
