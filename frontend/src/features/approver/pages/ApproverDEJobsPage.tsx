@@ -1,18 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { ChevronLeft, SearchIcon } from 'lucide-react';
-import { JobList } from '../../data-enrichment/components/JobList';
-import JobDetailsModal from '../../data-enrichment/components/JobDetailsModal';
-import type {
-  DataEnrichmentJobResponse,
-  JobStatus,
-} from '../../data-enrichment/types';
-import { dataEnrichmentApi } from '../../data-enrichment/services/dataEnrichmentApi';
-import { useToast } from '../../../shared/providers/ToastProvider';
-import { UI_CONFIG } from '@shared/config/app.config';
-import { getPrimaryRole } from '@utils/roleUtils';
 import { useAuth } from '@features/auth';
 import { Button } from '@shared';
+import { UI_CONFIG } from '@shared/config/app.config';
+import { getPrimaryRole } from '@utils/roleUtils';
+import { ChevronLeft } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
+import { useToast } from '../../../shared/providers/ToastProvider';
+import JobDetailsModal from '../../data-enrichment/components/JobDetailsModal';
+import { JobList } from '../../data-enrichment/components/JobList';
+import { dataEnrichmentApi } from '../../data-enrichment/services/dataEnrichmentApi';
+import type { DataEnrichmentJobResponse } from '../../data-enrichment/types';
 
 const ApproverDEJobsPage: React.FC = () => {
   // Data Enrichment Job state
@@ -144,7 +141,13 @@ const ApproverDEJobsPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-white">
       <main className="mx-auto px-4 sm:px-6 lg:px-[48px] py-[52px]">
-        <Button variant='primary' className='py-1 pl-2' onClick={()=>navigate(-1)}><ChevronLeft size={20} /> <span>Go Back</span></Button>
+        <Button
+          variant="primary"
+          className="py-1 pl-2"
+          onClick={() => navigate(-1)}
+        >
+          <ChevronLeft size={20} /> <span>Go Back</span>
+        </Button>
         {/* Search Bar */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center my-8 gap-4">
           <div className="flex items-center space-x-4">
