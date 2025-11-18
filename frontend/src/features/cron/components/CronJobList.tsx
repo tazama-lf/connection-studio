@@ -99,7 +99,7 @@ export const CronJobList: React.FC<CronJobListProps> = ({
 
       const params = { limit, offset, userRole: userRole as string };
 
-      const response = await dataEnrichmentApi.getAllSchedules(
+      const response = await dataEnrichmentApi.getCronJobList(
         params,
         searchingFilters,
       );
@@ -310,7 +310,7 @@ export const CronJobList: React.FC<CronJobListProps> = ({
             py: '12px',
           }}
         >
-          <Box sx={{ fontSize: '14px', fontWeight: '600' }}>Endpoint Path</Box>
+          <Box sx={{ fontSize: '14px', fontWeight: '600' }}>Name</Box>
           {handleInputFilter({
             fieldName: 'name',
             searchingFilters,

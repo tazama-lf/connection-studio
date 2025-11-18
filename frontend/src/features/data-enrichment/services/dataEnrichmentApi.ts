@@ -140,7 +140,7 @@ export const dataEnrichmentApi = {
     });
 
     if (!res.ok) {
-      throw new Error('Failed to fetch paginated configs');
+      throw new Error('Failed to fetch data enrichment jobs');
     }
 
     return (await res.json()) as PaginatedJobResponse;
@@ -523,5 +523,35 @@ export const dataEnrichmentApi = {
       console.error('Data preview failed:', error);
       throw error;
     }
+  },
+
+  getCronJobList: async (
+    params: PaginationParams,
+    searchingFilters?: Record<any, any>,
+  ): Promise<PaginatedScheduleResponse> => {
+    const url = `${API_BASE_URL}/scheduler/all?${params?.offset !== undefined ? `offset=${params.offset}&` : ''}${params?.limit !== undefined ? `limit=${params.limit}` : ''}`;
+
+    const { status, ...otherFilters } = searchingFilters || {};
+    let statusFilter;
+
+    if (!status) {
+      const userRole = params.userRole as keyof typeof getDemsStatusLov;
+      statusFilter =
+        getDemsStatusLov[userRole]?.map((item) => item.value)?.join(',') || '';
+    }
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({
+        ...otherFilters,
+        status: status || statusFilter,
+      }),
+    });
+
+    if (!res.ok) {
+      throw new Error('Failed to fetch paginated schedules');
+    }
+    return (await res.json()) as PaginatedScheduleResponse;
   },
 };

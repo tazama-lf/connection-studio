@@ -191,7 +191,7 @@ export const ExportedItemDetailsModal: React.FC<
             overflow: 'hidden',
           })}
           open={true}
-          onClick={onClose}
+          // onClick={onClose}
         >
           {/* Modal */}
           <div className="relative w-full max-w-3xl bg-white rounded-lg shadow-xl">

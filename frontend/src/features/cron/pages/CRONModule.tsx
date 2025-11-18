@@ -32,7 +32,7 @@ const CRONModule: React.FC = () => {
           <div className="flex items-center space-x-4">
             {/* Search Bar */}
             <h1 className="text-2xl font-bold text-gray-800">
-              CRONS Module
+              CRON Job Module
             </h1>
           </div>
           
