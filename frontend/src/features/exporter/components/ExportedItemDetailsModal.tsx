@@ -265,10 +265,10 @@ export const ExportedItemDetailsModal: React.FC<
 
                     <div>
                       <label className="block text-sm font-bold text-gray-700 mb-2">
-                        Name
+                        Message Family
                       </label>
                       <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded border border-gray-200">
-                        {content.name || 'N/A'}
+                        {content.msgFam || 'N/A'}
                       </p>
                     </div>
 

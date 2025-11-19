@@ -149,6 +149,32 @@ export const JobList: React.FC<JobListProps> = (props) => {
     }
   };
 
+  const handleUpdateJobStatus = async (
+    job: DataEnrichmentJobResponse,
+    status: string,
+  ) => {
+    try {
+      setUpdatingStatus(job.id);
+      await dataEnrichmentApi.updateStatus(
+        job.id,
+        status,
+        job.type?.toUpperCase() as 'PULL' | 'PUSH',
+      );
+      showSuccess(
+        `Job status updated to ${getStatusLabel(status)} successfully`,
+      );
+      if (props.onRefresh) {
+        props.onRefresh();
+      }
+    } catch (error) {
+      console.error('Failed to update job status:', error);
+      showError('Failed to update job status');
+    } finally {
+      setUpdatingStatus(null);
+      setDropdownOpen(null);
+    }
+  };
+
   const handleTogglePublishingStatus = async (
     job: DataEnrichmentJobResponse,
     newStatus: 'active' | 'in-active',
@@ -605,6 +631,28 @@ export const JobList: React.FC<JobListProps> = (props) => {
                   Edit
                 </button>
               )}
+            {userIsEditor && job.status === 'STATUS_01_IN_PROGRESS' && (
+              <button
+                onClick={() => {
+                  handleUpdateJobStatus(job, 'STATUS_02_ON_HOLD');
+                }}
+                className="w-[75px] inline-flex justify-center items-center rounded-md bg-[#2b7fff] px-3 py-1.5 text-xs font-medium text-white shadow-sm focus:outline-none transition-colors cursor-pointer"
+              >
+                <Pause className="w-3 h-3 mr-2" />
+                Pause
+              </button>
+            )}
+            {userIsEditor && job.status === 'STATUS_02_ON_HOLD' && (
+              <button
+                onClick={() => {
+                  handleUpdateJobStatus(job, 'STATUS_01_IN_PROGRESS');
+                }}
+                className="w-[75px] inline-flex justify-center items-center rounded-md bg-[#2b7fff] px-3 py-1.5 text-xs font-medium text-white shadow-sm focus:outline-none transition-colors cursor-pointer"
+              >
+                <Play className="w-4 h-4 mr-2" />
+                Resume
+              </button>
+            )}
 
             {/* Suspend/Resume - Available to Approvers only (not Editors) */}
             {userIsApprover &&

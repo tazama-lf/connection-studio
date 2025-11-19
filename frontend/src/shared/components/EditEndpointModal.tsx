@@ -85,6 +85,9 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({ onAddFunc
       const trimmed = param.trim();
       const lowerParam = trimmed.toLowerCase();
       // Check if it's tenantId (case-insensitive)
+      if (selectedFunction === 'saveTransactionDetails') {
+        return `transactionDetails.${trimmed}`;
+      }
       if (lowerParam === 'tenantid' || lowerParam === 'tenant_id') {
         console.log(`:wrench: Adding 'transactionDetails.' prefix to: ${trimmed}`);
         return `transactionDetails.${trimmed}`;
