@@ -18,6 +18,7 @@ import {
   Headers,
   BadRequestException,
   NotFoundException,
+  ParseEnumPipe,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AdminServiceClient } from '../services/admin-service-client.service';
@@ -169,7 +170,8 @@ export class ConfigController {
       | 'exporter_export'
       | 'publisher_deploy'
       | 'publisher_activate'
-      | 'publisher_deactivate',
+      | 'publisher_deactivate'
+      | 'approver_reject',
     configId: number,
     user: AuthenticatedUser,
     config: Config,
@@ -544,17 +546,17 @@ export class ConfigController {
       buildForwardHeaders(user),
     );
 
-    if (result?.success) {
-      const config = result.config || result.data || {};
-      await this.sendWorkflowNotification(
-        'approver_approve',
-        id,
-        user,
-        config,
-        authToken,
-        dto.comment,
-      );
-    }
+      if (result?.success) {
+        const config = result.config || result.data || {};
+        await this.sendWorkflowNotification(
+          'approver_approve',
+          id,
+          user,
+          config,
+          authToken,
+          dto.comment,
+        );
+      }
 
     return result;
   }
@@ -583,13 +585,29 @@ export class ConfigController {
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: RejectionDto,
     @User() user: AuthenticatedUser,
+    @Headers('authorization') authorization: string,
   ): Promise<ConfigResponseDto> {
-    return this.adminServiceClient.forwardRequest(
+    const authToken = authorization?.split(' ')[1];
+    const result = await this.adminServiceClient.forwardRequest(
       'POST',
       `/v1/admin/tcs/config/${id}/workflow/reject`,
       dto,
       buildForwardHeaders(user),
     );
+
+      if (result?.success) {
+      const config = result.config || result.data || {};
+      await this.sendWorkflowNotification(
+        'approver_reject',
+        id,
+        user,
+        config,
+        authToken,
+        dto.comment,
+      );
+    }
+
+    return result;
   }
 
   @Post(':id/update-status-to-exported')
@@ -746,10 +764,10 @@ export class ConfigController {
   }
 
   @Patch('/update/status/:id')
-  @RequireAnyClaims(TazamaClaims.EXPORTER, TazamaClaims.PUBLISHER)
+  @RequireAnyClaims(TazamaClaims.EXPORTER, TazamaClaims.PUBLISHER, TazamaClaims.EDITOR)
   async updateStatus(
     @Param('id', ParseIntPipe) id: number,
-    @Query('status') status: ConfigStatus,
+    @Query('status', new ParseEnumPipe(ConfigStatus)) status: ConfigStatus,
     @User() user: AuthenticatedUser,
   ): Promise<any> {
     return this.adminServiceClient.forwardRequest(
@@ -793,4 +811,7 @@ export class ConfigController {
 
     return result;
   }
+
+
+  
 }

@@ -227,108 +227,108 @@ export class ConfigService {
           message: 'Invalid payload format. Expected string or object.',
         };
       }
-      const parsingResult =
-        await this.payloadParsingService.parsePayloadToSchema(
-          payloadString,
-          dto.contentType || ContentType.JSON,
-        );
-      if (!parsingResult?.success) {
-        this.logger.error(
-          'Failed to parse payload:',
-          parsingResult?.validation || 'Unknown error',
-        );
-        const errorDetails = parsingResult?.validation
-          ? ` Details: ${JSON.stringify(parsingResult.validation)}`
-          : '';
+      // const parsingResult =
+      //   await this.payloadParsingService.parsePayloadToSchema(
+      //     payloadString,
+      //     dto.contentType || ContentType.JSON,
+      //   );
+      // if (!parsingResult?.success) {
+      //   this.logger.error(
+      //     'Failed to parse payload:',
+      //     parsingResult?.validation || 'Unknown error',
+      //   );
+      //   const errorDetails = parsingResult?.validation
+      //     ? ` Details: ${JSON.stringify(parsingResult.validation)}`
+      //     : '';
 
-        return {
-          success: false,
-          message: `Unable to parse your ${dto.contentType === ContentType.JSON ? 'JSON' : 'XML'} payload. Please check the format and try again.${errorDetails}`,
-          validation: {
-            success: false,
-            errors: parsingResult?.validation?.errors || [
-              'Invalid payload format',
-            ],
-            warnings: [],
-          },
-        };
-      }
+      //   return {
+      //     success: false,
+      //     message: `Unable to parse your ${dto.contentType === ContentType.JSON ? 'JSON' : 'XML'} payload. Please check the format and try again.${errorDetails}`,
+      //     validation: {
+      //       success: false,
+      //       errors: parsingResult?.validation?.errors || [
+      //         'Invalid payload format',
+      //       ],
+      //       warnings: [],
+      //     },
+      //   };
+      // }
 
-      let sourceFields = parsingResult.sourceFields;
+      // let sourceFields = parsingResult.sourceFields;
 
-      if (!sourceFields || sourceFields.length === 0) {
-        this.logger.error('Parsing result contains no source fields');
-        return {
-          success: false,
-          message: `No fields could be extracted from your ${dto.contentType === ContentType.JSON ? 'JSON' : 'XML'} payload. Please ensure it contains valid data with field names and values.`,
-          validation: {
-            success: false,
-            errors: [
-              'No fields found in payload - payload may be empty or malformed',
-            ],
-            warnings: [],
-          },
-        };
-      }
+      // if (!sourceFields || sourceFields.length === 0) {
+      //   this.logger.error('Parsing result contains no source fields');
+      //   return {
+      //     success: false,
+      //     message: `No fields could be extracted from your ${dto.contentType === ContentType.JSON ? 'JSON' : 'XML'} payload. Please ensure it contains valid data with field names and values.`,
+      //     validation: {
+      //       success: false,
+      //       errors: [
+      //         'No fields found in payload - payload may be empty or malformed',
+      //       ],
+      //       warnings: [],
+      //     },
+      //   };
+      // }
 
-      const duplicateErrors =
-        this.validateNoDuplicateSchemaFields(sourceFields);
-      if (duplicateErrors.length > 0) {
-        this.logger.error(
-          'Duplicate fields detected in schema during config creation',
-          {
-            errors: duplicateErrors,
-            tenantId,
-            userId,
-            msgFam: dto.msgFam,
-            transactionType: dto.transactionType,
-            version: dto.version,
-            contentType: dto.contentType,
-            totalSourceFields: sourceFields.length,
-            context: 'createConfig',
-          },
-        );
-        return {
-          success: false,
-          message:
-            'Your payload contains duplicate field names. Each field must have a unique name within the schema.',
-          validation: {
-            success: false,
-            errors: duplicateErrors,
-            warnings: [],
-          },
-        };
-      }
+      // const duplicateErrors =
+      //   this.validateNoDuplicateSchemaFields(sourceFields);
+      // if (duplicateErrors.length > 0) {
+      //   this.logger.error(
+      //     'Duplicate fields detected in schema during config creation',
+      //     {
+      //       errors: duplicateErrors,
+      //       tenantId,
+      //       userId,
+      //       msgFam: dto.msgFam,
+      //       transactionType: dto.transactionType,
+      //       version: dto.version,
+      //       contentType: dto.contentType,
+      //       totalSourceFields: sourceFields.length,
+      //       context: 'createConfig',
+      //     },
+      //   );
+      //   return {
+      //     success: false,
+      //     message:
+      //       'Your payload contains duplicate field names. Each field must have a unique name within the schema.',
+      //     validation: {
+      //       success: false,
+      //       errors: duplicateErrors,
+      //       warnings: [],
+      //     },
+      //   };
+      // }
 
-      if (dto.fieldAdjustments && dto.fieldAdjustments.length > 0) {
-        this.logger.log(
-          `Applying ${dto.fieldAdjustments.length} field adjustments`,
-        );
+      // if (dto.fieldAdjustments && dto.fieldAdjustments.length > 0) {
+      //   this.logger.log(
+      //     `Applying ${dto.fieldAdjustments.length} field adjustments`,
+      //   );
 
-        sourceFields = applyFieldAdjustments(
-          sourceFields,
-          dto.fieldAdjustments,
-        );
+      //   sourceFields = applyFieldAdjustments(
+      //     sourceFields,
+      //     dto.fieldAdjustments,
+      //   );
 
-        this.logger.log('Successfully applied field adjustments');
-      } else {
-        this.logger.log('No field adjustments to apply');
-      }
-      const finalSchema =
-        this.jsonSchemaConverter.convertToJSONSchema(sourceFields);
+      //   this.logger.log('Successfully applied field adjustments');
+      // } else {
+      //   this.logger.log('No field adjustments to apply');
+      // }
+      // const finalSchema =
+      //   this.jsonSchemaConverter.convertToJSONSchema(sourceFields);
 
-      this.logger.log(
-        `Generated schema with ${Object.keys(finalSchema.properties || {}).length} properties`,
-      );
+      // this.logger.log(
+      //   `Generated schema with ${Object.keys(finalSchema.properties || {}).length} properties`,
+      // );
 
-      const validation = this.validateSchema(finalSchema);
-      if (!validation.success) {
-        return {
-          success: false,
-          message: 'Schema validation failed',
-          validation,
-        };
-      }
+      // const validation = this.validateSchema(finalSchema);
+      // if (!validation.success) {
+      //   return {
+      //     success: false,
+      //     message: 'Schema validation failed',
+      //     validation,
+      //   };
+      // }
       const endpointPath = this.generateEndpointPath(
         tenantId,
         version,
@@ -336,18 +336,18 @@ export class ConfigService {
         dto.msgFam,
       );
 
-      if (dto.mapping && dto.mapping.length > 0) {
-        for (let i = 0; i < dto.mapping.length; i++) {
-          const mapping = dto.mapping[i];
-          this.validateMapping(mapping, finalSchema, tenantId);
+      // if (dto.mapping && dto.mapping.length > 0) {
+      //   for (let i = 0; i < dto.mapping.length; i++) {
+      //     const mapping = dto.mapping[i];
+      //     this.validateMapping(mapping, finalSchema, tenantId);
 
-          this.validateNoDuplicateDestination(
-            mapping,
-            dto.mapping.slice(0, i),
-            false,
-          );
-        }
-      }
+      //     this.validateNoDuplicateDestination(
+      //       mapping,
+      //       dto.mapping.slice(0, i),
+      //       false,
+      //     );
+      //   }
+      // }
 
       const configData: Omit<Config, 'id' | 'createdAt' | 'updatedAt'> = {
         msgFam: dto.msgFam || '',
@@ -355,7 +355,7 @@ export class ConfigService {
         endpointPath,
         version,
         contentType: dto.contentType || ContentType.JSON,
-        schema: finalSchema,
+        schema: dto.schema as JSONSchema,
         mapping: dto.mapping,
         status: ConfigStatus.IN_PROGRESS,
         tenantId,
@@ -371,14 +371,14 @@ export class ConfigService {
         token,
       );
 
-      await this.auditService.logAction({
-        entityType: 'CONFIG',
-        action: 'CREATE_CONFIG',
-        actor: userId,
-        tenantId,
-        endpointName: `${dto.msgFam || ''} - ${endpointPath}`,
-        details: `Created config with ${sourceFields.length} fields. Payload size: ${payloadString.length} chars`,
-      });
+      // await this.auditService.logAction({
+      //   entityType: 'CONFIG',
+      //   action: 'CREATE_CONFIG',
+      //   actor: userId,
+      //   tenantId,
+      //   endpointName: `${dto.msgFam || ''} - ${endpointPath}`,
+      //   details: `Created config with ${sourceFields.length} fields. Payload size: ${payloadString.length} chars`,
+      // });
 
       const config = await this.configRepository.findConfigById(
         configId,
@@ -406,7 +406,7 @@ export class ConfigService {
         success: true,
         message: 'Config created successfully',
         config: enrichedConfig,
-        validation,
+        // validation,
       };
     } catch (error) {
       this.logger.error(
