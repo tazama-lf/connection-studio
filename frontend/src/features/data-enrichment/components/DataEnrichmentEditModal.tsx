@@ -1,6 +1,15 @@
 import { useAuth } from '@features/auth';
 import { yupResolver } from '@hookform/resolvers/yup';
-import { Button, Grid, CircularProgress } from '@mui/material';
+import {
+  Button,
+  Grid,
+  CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+} from '@mui/material';
 import Alert from '@mui/material/Alert';
 import Backdrop from '@mui/material/Backdrop';
 import Box from '@mui/material/Box';
@@ -67,6 +76,7 @@ export const DataEnrichmentEditModal: React.FC<
   >([]);
 
   const [isCreating, setIsCreating] = useState(false);
+  const [showUpdateConfirmDialog, setShowUpdateConfirmDialog] = useState(false);
 
   const tenantId = useAuth()?.user?.tenantId || 'tenantId';
   const { showSuccess, showError } = useToast();
@@ -304,6 +314,12 @@ export const DataEnrichmentEditModal: React.FC<
     }
   };
 
+  // Handle update confirmation
+  const handleUpdateConfirm = () => {
+    setShowUpdateConfirmDialog(false);
+    handleSave();
+  };
+
   // Form submission handler for React Hook Form
   const onSubmit = () => {
     console.log('Form submitted, calling handleSave...');
@@ -424,24 +440,40 @@ export const DataEnrichmentEditModal: React.FC<
   }, [isOpen, selectedJob, editMode, setValue]);
 
   // Prevent body scroll and scrollbar jitter when modal is open
-  useEffect(() => {
-    if (isOpen) {
-      // Store original body styles
-      const originalStyle = window.getComputedStyle(document.body);
-      const scrollbarWidth =
-        window.innerWidth - document.documentElement.clientWidth;
+  // useEffect(() => {
+  //   if (isOpen) {
+  //     // Store original body styles AND current scroll position
+  //     const originalStyle = window.getComputedStyle(document.body);
+  //     const currentScrollY = window.scrollY;
+  //     const scrollbarWidth =
+  //       window.innerWidth - document.documentElement.clientWidth;
 
-      // Prevent body scroll and reserve scrollbar space
-      document.body.style.overflow = 'hidden';
-      document.body.style.paddingRight = `${scrollbarWidth}px`;
+  //     // Prevent body scroll and reserve scrollbar space
+  //     document.body.style.overflow = 'hidden';
+  //     document.body.style.paddingRight = `${scrollbarWidth}px`;
 
-      // Cleanup function to restore original styles
-      return () => {
-        document.body.style.overflow = originalStyle.overflow || '';
-        document.body.style.paddingRight = originalStyle.paddingRight || '';
-      };
-    }
-  }, [isOpen]);
+  //     // Keep the scroll position by setting top position
+  //     document.body.style.position = 'fixed';
+  //     document.body.style.top = `-${currentScrollY}px`;
+  //     document.body.style.width = '100%';
+
+  //     // Cleanup function to restore original styles AND scroll position
+  //     return () => {
+  //       // Get the scroll position from the body top
+  //       const scrollY = parseInt(document.body.style.top || '0') * -1;
+
+  //       // Restore original styles
+  //       document.body.style.overflow = originalStyle.overflow || '';
+  //       document.body.style.paddingRight = originalStyle.paddingRight || '';
+  //       document.body.style.position = originalStyle.position || '';
+  //       document.body.style.top = originalStyle.top || '';
+  //       document.body.style.width = originalStyle.width || '';
+
+  //       // Restore scroll position
+  //       window.scrollTo(0, scrollY);
+  //     };
+  //   }
+  // }, [isOpen]);
 
   const RenderPullConfigForm = () => (
     <div className="space-y-6" data-id="element-818">
@@ -1005,7 +1037,7 @@ export const DataEnrichmentEditModal: React.FC<
                     variant="contained"
                     sx={{ backgroundColor: '#2b7fff' }}
                     type="button"
-                    onClick={handleSave}
+                    onClick={() => setShowUpdateConfirmDialog(true)}
                     disabled={isCreating}
                     startIcon={
                       isCreating ? (
@@ -1043,6 +1075,91 @@ export const DataEnrichmentEditModal: React.FC<
           </Box>
         </Backdrop>
       )}
+
+      {/* Update Confirmation Dialog */}
+      <Dialog
+        open={showUpdateConfirmDialog}
+        onClose={() => setShowUpdateConfirmDialog(false)}
+        aria-labelledby="update-confirmation-dialog-title"
+        aria-describedby="update-confirmation-dialog-description"
+      >
+        <DialogTitle
+          id="update-confirmation-dialog-title"
+          sx={{
+            color: '#3b3b3b',
+            fontSize: '20px',
+            fontWeight: 'bold',
+          }}
+        >
+          Your confirmation is Required!
+        </DialogTitle>
+        <DialogContent sx={{ padding: '20px 24px' }}>
+          <DialogContentText
+            id="update-confirmation-dialog-description"
+            sx={{
+              fontSize: '16px',
+              lineHeight: '1.6',
+              color: '#374151',
+              marginBottom: '16px',
+            }}
+          >
+            Are you sure you want to update{' '}
+            <Box
+              component="span"
+              sx={{
+                fontWeight: 'bold',
+                color: '#2b7fff',
+                backgroundColor: '#f0f7ff',
+                padding: '2px 8px',
+                borderRadius: '4px',
+                fontSize: '15px',
+              }}
+            >
+              "{watch('name') || selectedJob?.endpoint_name || 'this endpoint'}"
+            </Box>{' '}
+            configuration?
+          </DialogContentText>
+          <Box
+            sx={{
+              backgroundColor: '#dceeff',
+              border: '1px solid #dceeff',
+              borderRadius: '8px',
+              padding: '12px 16px',
+              marginTop: '16px',
+            }}
+          >
+            <DialogContentText
+              sx={{
+                fontSize: '16px',
+                color: '#2b7fff',
+                margin: 0,
+                fontWeight: '500',
+              }}
+            >
+              ⚠️ Important: This will modify the existing data enrichment
+              endpoint configuration. Make sure all changes are correct before
+              proceeding.
+            </DialogContentText>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setShowUpdateConfirmDialog(false)}
+            color="inherit"
+            variant="outlined"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleUpdateConfirm}
+            variant="contained"
+            sx={{ backgroundColor: '#2b7fff' }}
+            autoFocus
+          >
+            Yes, Update Configuration
+          </Button>
+        </DialogActions>
+      </Dialog>
     </div>
   );
 };

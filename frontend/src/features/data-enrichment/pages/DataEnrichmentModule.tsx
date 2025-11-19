@@ -75,6 +75,35 @@ const DataEnrichmentModule: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Helper function to preserve scroll position during refresh
+  const fetchDeJobsWithScrollPreservation = (pageNumber: number = 1) => {
+    const scrollPosition = window.scrollY;
+    fetchDeJobs(pageNumber)
+      .then(() => {
+        setTimeout(() => {
+          // Only restore scroll if it's a reasonable position
+          if (
+            scrollPosition > 0 &&
+            scrollPosition < document.body.scrollHeight
+          ) {
+            window.scrollTo(0, scrollPosition);
+          }
+        }, 100);
+      })
+      .catch((error) => {
+        // If there's an error, still try to restore scroll position
+        console.warn('Error during fetchDeJobs, but preserving scroll:', error);
+        setTimeout(() => {
+          if (
+            scrollPosition > 0 &&
+            scrollPosition < document.body.scrollHeight
+          ) {
+            window.scrollTo(0, scrollPosition);
+          }
+        }, 100);
+      });
+  };
+
   const fetchDeJobs = async (pageNumber: number = 1): Promise<void> => {
     try {
       setLoading(true);
@@ -110,8 +139,8 @@ const DataEnrichmentModule: React.FC = () => {
     try {
       console.log('Job created successfully:', jobResponse);
       // The DataEnrichmentFormModal already shows its own success message
-      // We just need to refresh the jobs list
-      fetchDeJobs();
+      // We just need to refresh the jobs list with scroll preservation
+      fetchDeJobsWithScrollPreservation();
 
       // Show success message
       const jobName = jobResponse?.endpoint_name || 'New endpoint';
@@ -311,8 +340,8 @@ const DataEnrichmentModule: React.FC = () => {
       console.log('Job creation response:', response);
       showSuccess('New job version created successfully!');
 
-      // Refresh the jobs list
-      fetchDeJobs();
+      // Refresh the jobs list with scroll preservation
+      fetchDeJobsWithScrollPreservation();
     } catch (error) {
       console.error('=== SAVE JOB ERROR ===');
       console.error('Error type:', error?.constructor?.name);
@@ -353,8 +382,8 @@ const DataEnrichmentModule: React.FC = () => {
       );
       showSuccess('Job sent for approval successfully!');
 
-      // Refresh the jobs list
-      fetchDeJobs();
+      // Refresh the jobs list with scroll preservation
+      fetchDeJobsWithScrollPreservation();
 
       // Close the modal
       handleCloseJobDetails();
@@ -514,7 +543,7 @@ const DataEnrichmentModule: React.FC = () => {
           isLoading={jobsLoading}
           onViewLogs={handleViewJobDetails}
           onEdit={handleEditJob}
-          onRefresh={fetchDeJobs}
+          onRefresh={() => fetchDeJobsWithScrollPreservation(page)}
           page={page}
           setPage={setPage}
           itemsPerPage={itemsPerPage}
