@@ -438,7 +438,7 @@ export const dataEnrichmentApi = {
   },
 
   getAllSchedules: async (
-    offset = 1,
+    offset = 0,
     limit = 50,
   ): Promise<ScheduleResponse[]> => {
     const queryParams = new URLSearchParams();
