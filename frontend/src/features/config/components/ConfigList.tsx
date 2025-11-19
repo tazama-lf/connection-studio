@@ -10,7 +10,9 @@ import {
   FilterIcon,
   Upload,
   ShieldCheck,
-  ShieldX
+  ShieldX,
+  Pause,
+  Play
 } from 'lucide-react';
 import { configApi } from '../services/configApi';
 import { sftpApi } from '../../../features/exporter/services/sftpApi';
@@ -19,6 +21,7 @@ import { DropdownMenuWithAutoDirection } from '../../../shared/components/Dropdo
 import { useAuth } from '../../../features/auth/contexts/AuthContext';
 import {
   getPrimaryRole,
+  isEditor,
   isExporter,
   isPublisher,
 } from '../../../utils/roleUtils';
@@ -104,6 +107,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
 
   // Auth context for role-based filtering
   const { user } = useAuth();
+  const userIsEditor = user?.claims ? isEditor(user.claims) : false;
   const userIsExporter = user?.claims ? isExporter(user.claims) : false;
   const userIsPublisher = user?.claims ? isPublisher(user.claims) : false;
   const { showSuccess, showError } = useToast();
@@ -347,6 +351,23 @@ export const ConfigList: React.FC<ConfigListProps> = ({
     }
   };
 
+  const handleUpdateConfigStatus = async (config: Config, status:string) => {
+    try {
+      await configApi.updateConfigStatus(config.id, status);
+      showSuccess(
+        'Success',
+        `Config status has been updated to ${status} successfully.`,
+      );
+      // Trigger refresh if available
+      if (onRefresh) {
+        onRefresh();
+      }
+    } catch (error) {
+      console.error('Error publishing config:', error);
+      showError('Error', 'Failed to publish config. Please try again.');
+    }
+  };
+
   const handleTogglePublishingStatus = async (
     config: Config,
     newStatus: 'active' | 'inactive',
@@ -570,6 +591,34 @@ export const ConfigList: React.FC<ConfigListProps> = ({
                 Clone
               </button>
             )} */}
+            {
+              userIsEditor && (config.status === 'STATUS_01_IN_PROGRESS') && (
+                <button
+                  onClick={() => {
+                    handleUpdateConfigStatus(config, 'STATUS_02_ON_HOLD');
+                    setOpenDropdown(null);
+                  }}
+                  className="w-[75px] inline-flex justify-center items-center rounded-md bg-[#2b7fff] px-3 py-1.5 text-xs font-medium text-white shadow-sm focus:outline-none transition-colors cursor-pointer"
+                >
+                  <Pause className="w-3 h-3 mr-2" />
+                  Pause
+                </button>
+              )
+            }
+            {
+              userIsEditor && (config.status === 'STATUS_02_ON_HOLD') && (
+                <button
+                  onClick={() => {
+                    handleUpdateConfigStatus(config, 'STATUS_01_IN_PROGRESS');
+                    setOpenDropdown(null);
+                  }}
+                  className="w-[75px] inline-flex justify-center items-center rounded-md bg-[#2b7fff] px-3 py-1.5 text-xs font-medium text-white shadow-sm focus:outline-none transition-colors cursor-pointer"
+                >
+                  <Play className="w-4 h-4 mr-2" />
+                  Resume
+                </button>
+              )
+            }
             {userIsExporter &&
               (config.status === 'STATUS_04_APPROVED' ||
                 config.status === 'STATUS_08_DEPLOYED') && (
