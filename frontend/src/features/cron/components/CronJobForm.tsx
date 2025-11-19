@@ -8,13 +8,14 @@ import * as yup from 'yup';
 import {
   NumberInputField,
   TextInputField,
-// @ts-ignore - FormFields is a .jsx file without TypeScript declarations
+  // @ts-ignore - FormFields is a .jsx file without TypeScript declarations
 } from '../../../shared/components/FormFields';
 import ValidationError from '../../../shared/components/ValidationError';
 import { useToast } from '../../../shared/providers/ToastProvider';
 import { dataEnrichmentApi } from '@features/data-enrichment/services';
 import { isApprover } from '@utils/roleUtils';
 import { useAuth } from '@features/auth';
+import cronstrue from 'cronstrue';
 
 // Validation schema
 const validationSchema = yup.object().shape({
@@ -105,8 +106,11 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({
       reset(editFormData);
     }
 
-    if(viewFormData){
-      reset({...viewFormData, cronExpression: viewFormData.cron || viewFormData.cronExpression});
+    if (viewFormData) {
+      reset({
+        ...viewFormData,
+        cronExpression: viewFormData.cron || viewFormData.cronExpression,
+      });
     }
   }, [editFormData, viewFormData]);
 
@@ -116,12 +120,13 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({
     if (editFormData && setEditFormData && !isInitializing.current) {
       const subscription = watch((values) => {
         // Deep comparison to avoid unnecessary updates
-        const isDifferent = JSON.stringify(values) !== JSON.stringify(editFormData);
+        const isDifferent =
+          JSON.stringify(values) !== JSON.stringify(editFormData);
         if (isDifferent) {
           setEditFormData(values);
         }
       });
-      
+
       return () => subscription.unsubscribe();
     }
   }, [editFormData, setEditFormData, watch]);
@@ -245,6 +250,10 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({
                     </Box>
                   </Box>
                 )}
+
+                <Box sx={{ fontSize: '18px', color: '#3b3b3b' }}>
+                  {cronExpression && cronstrue.toString(cronExpression)}
+                </Box>
               </Box>
 
               {errors.cronExpression && (
@@ -353,23 +362,24 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({
                     )}
                   </div>
                 )}
-              {viewFormData && viewFormData?.status === 'STATUS_01_IN_PROGRESS' && (
-                <Button
-                  type="button"
-                  variant="contained"
-                  color="primary"
-                  sx={{
-                    px: 2,
-                    py: 1,
-                    fontSize: '0.875rem',
-                    fontWeight: 500,
-                    textTransform: 'none',
-                  }}
-                  onClick={handleSendForApproval}
-                >
-                  Send for Approval
-                </Button>
-              )}
+              {viewFormData &&
+                viewFormData?.status === 'STATUS_01_IN_PROGRESS' && (
+                  <Button
+                    type="button"
+                    variant="contained"
+                    color="primary"
+                    sx={{
+                      px: 2,
+                      py: 1,
+                      fontSize: '0.875rem',
+                      fontWeight: 500,
+                      textTransform: 'none',
+                    }}
+                    onClick={handleSendForApproval}
+                  >
+                    Send for Approval
+                  </Button>
+                )}
               {editFormData && (
                 <Button
                   type="button"

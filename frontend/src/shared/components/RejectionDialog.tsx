@@ -13,7 +13,7 @@ export const RejectionDialog: React.FC<RejectionDialogProps> = ({
   isOpen,
   onClose,
   onConfirm,
-  configName
+  configName,
 }) => {
   const [reason, setReason] = useState('');
   const [error, setError] = useState('');
@@ -27,7 +27,9 @@ export const RejectionDialog: React.FC<RejectionDialogProps> = ({
     }
 
     if (reason.trim().length < 10) {
-      setError('Please provide a more detailed reason (at least 10 characters)');
+      setError(
+        'Please provide a more detailed reason (at least 10 characters)',
+      );
       return;
     }
 
@@ -49,7 +51,9 @@ export const RejectionDialog: React.FC<RejectionDialogProps> = ({
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">Reject Configuration</h3>
+          <h3 className="text-lg font-semibold text-gray-900">
+            Reject Configuration
+          </h3>
           <button
             onClick={handleClose}
             className="text-gray-400 hover:text-gray-600"
@@ -61,15 +65,20 @@ export const RejectionDialog: React.FC<RejectionDialogProps> = ({
         <form onSubmit={handleSubmit} className="p-6">
           <div className="mb-4">
             <p className="text-sm text-gray-600 mb-3">
-              You are about to reject the configuration: <strong>{configName}</strong>
+              You are about to reject the configuration:{' '}
+              <strong>{configName}</strong>
             </p>
             <p className="text-sm text-gray-600 mb-4">
-              This will change the status to "Request for Update" and allow the editor to make changes.
+              This will change the status to "Request for Update" and allow the
+              editor to make changes.
             </p>
           </div>
 
           <div className="mb-4">
-            <label htmlFor="reason" className="block text-sm font-medium text-gray-700 mb-2">
+            <label
+              htmlFor="reason"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
               Reason for Rejection <span className="text-red-500">*</span>
             </label>
             <textarea
@@ -86,24 +95,14 @@ export const RejectionDialog: React.FC<RejectionDialogProps> = ({
               rows={4}
               required
             />
-            {error && (
-              <p className="mt-1 text-sm text-red-600">{error}</p>
-            )}
+            {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
           </div>
 
           <div className="flex justify-end space-x-3">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={handleClose}
-            >
+            <Button type="button" variant="secondary" onClick={handleClose}>
               Cancel
             </Button>
-            <Button
-              type="submit"
-              variant="danger"
-              disabled={!reason.trim()}
-            >
+            <Button type="submit" variant="danger" disabled={!reason.trim()}>
               Reject Configuration
             </Button>
           </div>

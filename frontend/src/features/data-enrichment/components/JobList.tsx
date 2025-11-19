@@ -162,7 +162,9 @@ export const JobList: React.FC<JobListProps> = (props) => {
       );
 
       const statusLabel = newStatus === 'active' ? 'activated' : 'deactivated';
-      showSuccess(`Job ${job.endpoint_name || job.id} has been ${statusLabel} successfully`);
+      showSuccess(
+        `Job ${job.endpoint_name || job.id} has been ${statusLabel} successfully`,
+      );
 
       // Refresh the job list
       if (props.onRefresh) {

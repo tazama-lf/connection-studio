@@ -1,4 +1,13 @@
-import { Backdrop, Box, Button as MuiButton } from '@mui/material';
+import {
+  Backdrop,
+  Box,
+  Button as MuiButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+} from '@mui/material';
 import {
   Calendar,
   Check,
@@ -110,6 +119,14 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
   // State for rejection dialog
   const [showRejectionDialog, setShowRejectionDialog] = useState(false);
 
+  // State for send for approval confirmation dialog
+  const [showApprovalConfirmDialog, setShowApprovalConfirmDialog] =
+    useState(false);
+
+  // State for approve confirmation dialog
+  const [showApproveConfirmDialog, setShowApproveConfirmDialog] =
+    useState(false);
+
   // Handle rejection with reason
   const handleRejectionConfirm = (reason: string) => {
     if (onReject && job) {
@@ -117,6 +134,26 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
       onReject(job.id, jobType, reason);
       onClose();
     }
+  };
+
+  // Handle send for approval confirmation
+  const handleSendForApprovalConfirm = () => {
+    if (onSendForApproval && job) {
+      const jobType = getJobType(job) === 'push' ? 'PUSH' : 'PULL';
+      onSendForApproval(job.id, jobType);
+      onClose();
+    }
+    setShowApprovalConfirmDialog(false);
+  };
+
+  // Handle approve confirmation
+  const handleApproveConfirm = () => {
+    if (onApprove && job) {
+      const jobType = getJobType(job) === 'push' ? 'PUSH' : 'PULL';
+      onApprove(job.id, jobType);
+      onClose();
+    }
+    setShowApproveConfirmDialog(false);
   };
 
   // State for edit mode
@@ -283,7 +320,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                           size={20}
                           className="mr-2 text-blue-500"
                         />
-                        Pull Configuration (SFTP/HTTP)
+                        Pull Configuration (SFTP/HTTPS)
                       </div>
                     ) : (
                       <div className="flex items-center">
@@ -695,7 +732,6 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                         </div>
                       </div>
                     </div>
-
                     <div className="space-y-3">
                       <div className="flex items-start space-x-3">
                         <Calendar
@@ -1163,12 +1199,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                   type="button"
                   variant="contained"
                   sx={{ backgroundColor: '#2b7fff' }}
-                  onClick={() => {
-                    const jobType =
-                      getJobType(job) === 'push' ? 'PUSH' : 'PULL';
-                    onSendForApproval(job.id, jobType);
-                    onClose();
-                  }}
+                  onClick={() => setShowApprovalConfirmDialog(true)}
                   startIcon={<Send size={16} />}
                 >
                   Send for Approval
@@ -1209,12 +1240,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                     type="button"
                     variant="contained"
                     sx={{ backgroundColor: '#33ad74' }}
-                    onClick={() => {
-                      const jobType =
-                        getJobType(job) === 'push' ? 'PUSH' : 'PULL';
-                      onApprove(job.id, jobType);
-                      onClose();
-                    }}
+                    onClick={() => setShowApproveConfirmDialog(true)}
                     startIcon={<Check size={16} />}
                   >
                     Approve
@@ -1298,6 +1324,175 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
         jobName={job?.endpoint_name || job?.id || 'Unknown Job'}
         jobType="Data Enrichment Job"
       />
+
+      {/* Send for Approval Confirmation Dialog */}
+      <Dialog
+        open={showApprovalConfirmDialog}
+        onClose={() => setShowApprovalConfirmDialog(false)}
+        aria-labelledby="approval-confirmation-dialog-title"
+        aria-describedby="approval-confirmation-dialog-description"
+      >
+        <Box
+          sx={{
+            color: '#3b3b3b',
+            fontSize: '20px',
+            fontWeight: 'bold',
+            padding: '16px',
+          }}
+        >
+          Your confirmation is Required!
+        </Box>
+        <DialogContent sx={{ padding: '20px 24px' }}>
+          <DialogContentText
+            id="approval-confirmation-dialog-description"
+            sx={{
+              fontSize: '16px',
+              lineHeight: '1.6',
+              color: '#374151',
+              marginBottom: '16px',
+            }}
+          >
+            Are you sure you want to send{' '}
+            <Box
+              component="span"
+              sx={{
+                fontWeight: 'bold',
+                color: '#2b7fff',
+                backgroundColor: '#f0f7ff',
+                padding: '2px 8px',
+                borderRadius: '4px',
+                fontSize: '15px',
+              }}
+            >
+              "{job?.endpoint_name || 'this job'}"
+            </Box>{' '}
+            for approval?
+          </DialogContentText>
+          <Box
+            sx={{
+              backgroundColor: '#dceeff',
+              border: '1px solid #dceeff',
+              borderRadius: '8px',
+              padding: '12px 16px',
+              marginTop: '16px',
+            }}
+          >
+            <DialogContentText
+              sx={{
+                fontSize: '16px',
+                color: '#2b7fff',
+                margin: 0,
+                fontWeight: '500',
+              }}
+            >
+              ⚠️ Important: Once sent, the job will be reviewed by an approver
+              and you won't be able to make changes until it's either approved
+              or rejected.
+            </DialogContentText>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <MuiButton
+            onClick={() => setShowApprovalConfirmDialog(false)}
+            color="inherit"
+            variant="outlined"
+          >
+            Cancel
+          </MuiButton>
+          <MuiButton
+            onClick={handleSendForApprovalConfirm}
+            variant="contained"
+            sx={{ backgroundColor: '#2b7fff' }}
+            autoFocus
+          >
+            Yes, Send for Approval
+          </MuiButton>
+        </DialogActions>
+      </Dialog>
+
+      {/* Approve Confirmation Dialog */}
+      <Dialog
+        open={showApproveConfirmDialog}
+        onClose={() => setShowApproveConfirmDialog(false)}
+        aria-labelledby="approve-confirmation-dialog-title"
+        aria-describedby="approve-confirmation-dialog-description"
+      >
+        <Box
+          sx={{
+            color: '#3b3b3b',
+            fontSize: '20px',
+            fontWeight: 'bold',
+            padding: '16px',
+          }}
+        >
+          Approval Confirmation Required!
+        </Box>
+        <DialogContent sx={{ padding: '20px 24px' }}>
+          <DialogContentText
+            id="approve-confirmation-dialog-description"
+            sx={{
+              fontSize: '16px',
+              lineHeight: '1.6',
+              color: '#374151',
+              marginBottom: '16px',
+            }}
+          >
+            Are you sure you want to approve{' '}
+            <Box
+              component="span"
+              sx={{
+                fontWeight: 'bold',
+                color: '#33ad74',
+                backgroundColor: '#f0fdf4',
+                padding: '2px 8px',
+                borderRadius: '4px',
+                fontSize: '15px',
+              }}
+            >
+              "{job?.endpoint_name || 'this job'}"
+            </Box>
+            ?
+          </DialogContentText>
+          <Box
+            sx={{
+              backgroundColor: '#f0fdf4',
+              border: '1px solid #bbf7d0',
+              borderRadius: '8px',
+              padding: '12px 16px',
+              marginTop: '16px',
+            }}
+          >
+            <DialogContentText
+              sx={{
+                fontSize: '16px',
+                color: '#15803d',
+                margin: 0,
+                fontWeight: '500',
+              }}
+            >
+              ✅ Once approved, this job will be sent to the exporter for
+              further processing.
+            </DialogContentText>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <MuiButton
+            onClick={() => setShowApproveConfirmDialog(false)}
+            color="inherit"
+            variant="outlined"
+          >
+            Cancel
+          </MuiButton>
+          <MuiButton
+            onClick={handleApproveConfirm}
+            variant="contained"
+            sx={{ backgroundColor: '#33ad74' }}
+            autoFocus
+          >
+            Yes, Approve Job
+          </MuiButton>
+        </DialogActions>
+      </Dialog>
     </div>
   );
 };
