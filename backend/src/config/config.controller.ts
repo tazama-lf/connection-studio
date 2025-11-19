@@ -288,7 +288,7 @@ export class ConfigController {
   ): Promise<ConfigResponseDto> {
     const authHeader = request.headers.authorization || '';
     const token = authHeader.replace('Bearer ', '');
-
+    
     const result = await this.configService.createConfig(
       dto,
       getTenantId(user),

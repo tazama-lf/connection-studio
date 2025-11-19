@@ -184,6 +184,7 @@ export class ConfigService {
     token: string,
   ): Promise<ConfigResponseDto> {
     try {
+      this.logger.log("Creating new config...", dto.schema);
       const version = dto.version || 'v1';
       const msgFam = dto.msgFam || 'unknown';
       const existingConfig =
