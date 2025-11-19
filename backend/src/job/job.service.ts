@@ -256,7 +256,7 @@ export class JobService {
       const { success } = await this.adminServiceClient.updateJobActivation(
         id,
         status,
-        ConfigType.PUSH ? 'push_jobs' : 'pull_jobs',
+        type === ConfigType.PUSH ? 'push_jobs' : 'pull_jobs',
         token,
       );
 
