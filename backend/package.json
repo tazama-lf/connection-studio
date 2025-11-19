@@ -41,7 +41,7 @@
     "@tazama-lf/auth-lib": "^2.1.0",
     "@tazama-lf/frms-coe-lib": "6.0.0-proto.0",
     "@tazama-lf/frms-coe-startup-lib": "3.0.0-proto.0",
-    "@tazama-lf/tcs-lib": "1.0.31",
+    "@tazama-lf/tcs-lib": "1.0.32",
     "@types/cache-manager-redis-store": "^2.0.4",
     "@types/multer": "^2.0.0",
     "@types/nodemailer": "^7.0.3",
