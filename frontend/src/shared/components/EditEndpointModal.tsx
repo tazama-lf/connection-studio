@@ -85,6 +85,9 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({ onAddFunc
       const trimmed = param.trim();
       const lowerParam = trimmed.toLowerCase();
       // Check if it's tenantId (case-insensitive)
+      if (selectedFunction === 'saveTransactionDetails') {
+        return `transactionDetails.${trimmed}`;
+      }
       if (lowerParam === 'tenantid' || lowerParam === 'tenant_id') {
         console.log(`:wrench: Adding 'transactionDetails.' prefix to: ${trimmed}`);
         return `transactionDetails.${trimmed}`;
@@ -1098,134 +1101,136 @@ console.log('Cur map:', currentMappings);
         console.log('🔄 No current schema from PayloadEditor, regenerating from payload...');
         try {
           // Import the schema generation logic (simplified version)
-          const generateSchemaFromPayload = (payloadText: string, contentType: string) => {
-            if (contentType === 'application/json') {
-              try {
-                const parsed = JSON.parse(payloadText);
-                const generateJSONSchema = (obj: any, path = ''): any[] => {
-                  const schema: any[] = [];
-                  if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
-                    Object.entries(obj).forEach(([key, value]) => {
-                      const fieldPath = path ? `${path}.${key}` : key;
-                      let fieldType: string;
-                      if (Array.isArray(value)) {
-                        fieldType = 'array';
-                      } else if (value && typeof value === 'object') {
-                        fieldType = 'object';
-                      } else {
-                        fieldType = typeof value;
-                      }
-                      const field: any = {
-                        name: key,
-                        path: fieldPath,
-                        type: fieldType,
-                        isRequired: true
-                      };
+          // const generateSchemaFromPayload = (payloadText: string, contentType: string) => {
+          //   if (contentType === 'application/json') {
+          //     try {
+          //       const parsed = JSON.parse(payloadText);
+          //       const generateJSONSchema = (obj: any, path = ''): any[] => {
+          //         const schema: any[] = [];
+          //         if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
+          //           Object.entries(obj).forEach(([key, value]) => {
+          //             const fieldPath = path ? `${path}.${key}` : key;
+          //             console.log('objjjj', obj);
+                      
+          //             let fieldType: string;
+          //             if (Array.isArray(value)) {
+          //               fieldType = 'array';
+          //             } else if (value && typeof value === 'object') {
+          //               fieldType = 'object';
+          //             } else {
+          //               fieldType = typeof value;
+          //             }
+          //             const field: any = {
+          //               name: key,
+          //               path: fieldPath,
+          //               type: fieldType,
+          //               isRequired: true
+          //             };
 
-                      // Handle nested objects
-                      if (fieldType === 'object' && value !== null) {
-                        field.children = generateJSONSchema(value, fieldPath);
-                      }
+          //             // Handle nested objects
+          //             if (fieldType === 'object' && value !== null) {
+          //               field.children = generateJSONSchema(value, fieldPath);
+          //             }
 
-                      // Handle arrays - check first element for structure
-                      if (fieldType === 'array' && Array.isArray(value) && value.length > 0) {
-                        const firstElement = value[0];
-                        if (firstElement && typeof firstElement === 'object' && !Array.isArray(firstElement)) {
-                          // Array of objects - generate schema for array items
-                          field.children = generateJSONSchema(firstElement, `${fieldPath}[0]`);
-                        }
-                      }
+          //             // Handle arrays - check first element for structure
+          //             if (fieldType === 'array' && Array.isArray(value) && value.length > 0) {
+          //               const firstElement = value[0];
+          //               if (firstElement && typeof firstElement === 'object' && !Array.isArray(firstElement)) {
+          //                 // Array of objects - generate schema for array items
+          //                 field.children = generateJSONSchema(firstElement, `${fieldPath}[0]`);
+          //               }
+          //             }
 
-                      schema.push(field);
-                    });
-                  }
-                  return schema;
-                };
-                return generateJSONSchema(parsed);
-              } catch (e) {
-                throw new Error('Invalid JSON format');
-              }
-            }
-            return null;
-          };
+          //             schema.push(field);
+          //           });
+          //         }
+          //         return schema;
+          //       };
+          //       return generateJSONSchema(parsed);
+          //     } catch (e) {
+          //       throw new Error('Invalid JSON format');
+          //     }
+          //   }
+          //   return null;
+          // };
 
-          const schemaFields = generateSchemaFromPayload(payload, endpointData.contentType);
-          console.log('🔍 Generated schema fields from payload:', schemaFields);
+          // const schemaFields = generateSchemaFromPayload(payload, endpointData.contentType);
+          // console.log('🔍 Generated schema fields from payload:', schemaFields);
 
-          if (schemaFields) {
-            // Convert to JSON schema format - FIXED: proper recursive handling
-            const convertToJSONSchema = (fields: any[]): any => {
-              const schema: any = {
-                type: 'object',
-                properties: {},
-                required: [],
-                additionalProperties: false
-              };
+          // if (schemaFields) {
+          //   // Convert to JSON schema format - FIXED: proper recursive handling
+          //   const convertToJSONSchema = (fields: any[]): any => {
+          //     const schema: any = {
+          //       type: 'object',
+          //       properties: {},
+          //       required: [],
+          //       additionalProperties: false
+          //     };
 
-              fields.forEach(field => {
-                const fieldName = field.name;
+          //     fields.forEach(field => {
+          //       const fieldName = field.name;
 
-                if (field.type === 'object' && field.children && field.children.length > 0) {
-                  // Recursively convert children for nested objects
-                  const nestedSchema = convertToJSONSchema(field.children);
-                  schema.properties[fieldName] = nestedSchema;
+          //       if (field.type === 'object' && field.children && field.children.length > 0) {
+          //         // Recursively convert children for nested objects
+          //         const nestedSchema = convertToJSONSchema(field.children);
+          //         schema.properties[fieldName] = nestedSchema;
 
-                  if (field.isRequired) {
-                    schema.required.push(fieldName);
-                  }
-                } else if (field.type === 'object') {
-                  // Empty object without children
-                  schema.properties[fieldName] = {
-                    type: 'object',
-                    additionalProperties: false
-                  };
+          //         if (field.isRequired) {
+          //           schema.required.push(fieldName);
+          //         }
+          //       } else if (field.type === 'object') {
+          //         // Empty object without children
+          //         schema.properties[fieldName] = {
+          //           type: 'object',
+          //           additionalProperties: false
+          //         };
 
-                  if (field.isRequired) {
-                    schema.required.push(fieldName);
-                  }
-                } else if (field.type === 'array' && field.children && field.children.length > 0) {
-                  // Handle array with object items
-                  const itemsSchema = convertToJSONSchema(field.children);
-                  schema.properties[fieldName] = {
-                    type: 'array',
-                    items: itemsSchema
-                  };
+          //         if (field.isRequired) {
+          //           schema.required.push(fieldName);
+          //         }
+          //       } else if (field.type === 'array' && field.children && field.children.length > 0) {
+          //         // Handle array with object items
+          //         const itemsSchema = convertToJSONSchema(field.children);
+          //         schema.properties[fieldName] = {
+          //           type: 'array',
+          //           items: itemsSchema
+          //         };
 
-                  if (field.isRequired) {
-                    schema.required.push(fieldName);
-                  }
-                } else if (field.type === 'array') {
-                  // Array without specific item type (primitive array)
-                  schema.properties[fieldName] = {
-                    type: 'array',
-                    items: { type: 'string' }
-                  };
+          //         if (field.isRequired) {
+          //           schema.required.push(fieldName);
+          //         }
+          //       } else if (field.type === 'array') {
+          //         // Array without specific item type (primitive array)
+          //         schema.properties[fieldName] = {
+          //           type: 'array',
+          //           items: { type: 'string' }
+          //         };
 
-                  if (field.isRequired) {
-                    schema.required.push(fieldName);
-                  }
-                } else {
-                  // Simple field types (string, number, boolean)
-                  let jsonType = 'string';
-                  if (field.type === 'number') jsonType = 'number';
-                  else if (field.type === 'boolean') jsonType = 'boolean';
+          //         if (field.isRequired) {
+          //           schema.required.push(fieldName);
+          //         }
+          //       } else {
+          //         // Simple field types (string, number, boolean)
+          //         let jsonType = 'string';
+          //         if (field.type === 'number') jsonType = 'number';
+          //         else if (field.type === 'boolean') jsonType = 'boolean';
 
-                  schema.properties[fieldName] = {
-                    type: jsonType
-                  };
+          //         schema.properties[fieldName] = {
+          //           type: jsonType
+          //         };
 
-                  if (field.isRequired) {
-                    schema.required.push(fieldName);
-                  }
-                }
-              });
+          //         if (field.isRequired) {
+          //           schema.required.push(fieldName);
+          //         }
+          //       }
+          //     });
 
-              return schema;
-            };
+          //     return schema;
+          //   };
 
-            finalSchema = convertToJSONSchema(schemaFields);
-            console.log('✅ Regenerated schema from payload:', JSON.stringify(finalSchema, null, 2));
-          }
+          //   finalSchema = convertToJSONSchema(schemaFields);
+          //   console.log('✅ Regenerated schema from payload:', JSON.stringify(finalSchema, null, 2));
+          // }
         } catch (error) {
           console.warn('⚠️ Failed to regenerate schema from payload:', error);
           // Fall back to existing schema
@@ -1284,6 +1289,8 @@ console.log('Cur map:', currentMappings);
 
       if (shouldCreate || isCloningOperation) {
         console.log(isCloningOperation ? 'Cloning config - creating new config...' : 'Creating NEW config...');
+        console.log('sssss', createRequest);
+        
         saveResponse = await configApi.createConfig(createRequest);
       } else {
         console.log('Updating EXISTING config with ID:', actualConfigId);

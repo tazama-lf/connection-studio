@@ -337,6 +337,39 @@ export const dataEnrichmentApi = {
     }
   },
 
+  updateStatus: async (
+    id: string,
+    status: string,
+    type: 'PULL' | 'PUSH',
+    reason?: string,
+  ): Promise<{ success: boolean; message: string }> => {
+    try {
+      const queryParams = new URLSearchParams();
+      queryParams.append('status', status);
+      queryParams.append('type', type.toLowerCase()); // Convert to lowercase to match backend ConfigType enum
+
+      const requestBody: { reason?: string } = {};
+      if (reason) {
+        requestBody.reason = reason;
+      }
+
+      console.log(
+        `Updating job ${id} status to ${status} for type ${type} (sent as ${type.toLowerCase()})${reason ? ` with reason: ${reason}` : ''}`,
+      );
+
+      return await apiRequest<{ success: boolean; message: string }>(
+        `${API_BASE_URL}/job/update/status/${id}?${queryParams.toString()}`,
+        {
+          method: 'PATCH',
+          body: reason ? JSON.stringify(requestBody) : undefined,
+        },
+      );
+    } catch (error) {
+      console.error(`Failed to update job status ${id}:`, error);
+      throw error;
+    }
+  },
+
   updateJobActivation: async (
     id: string,
     isActive: boolean,
