@@ -28,4 +28,11 @@ export class PushJob {
 
   @Expose()
   comments: string;
+
+  @Expose()
+  created_at: Date;
+
+  @Expose()
+  updated_at: Date;
+
 }
