@@ -45,8 +45,8 @@ export class SchedulerController {
     TazamaClaims.PUBLISHER,
   )
   async getAll(
-    @Param('offset') offset: string,
-    @Param('limit') limit: string,
+    @Query('offset') offset: string,
+    @Query('limit') limit: string,
     @User() user: AuthenticatedUser,
     @Body() filters?: Record<string, unknown>,
   ) {
