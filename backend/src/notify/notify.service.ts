@@ -65,7 +65,7 @@ export class NotifyService implements OnModuleInit {
       await this.ackService.init(
         this.handleAckMessage.bind(this),
         this.logger,
-        [this.consumerStream, this.demsStream],
+        [this.consumerStream],
         'tcs.ack.response',
       );
       this.logger.log(
