@@ -345,6 +345,8 @@ export class JobService {
               connection.private_key = decrypt(connection.private_key);
             }
 
+            delete existingJob.schedule_name
+
             await this.createPull(
               {
                 ...existingJob,
