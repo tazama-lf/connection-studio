@@ -112,9 +112,13 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
   onExport,
 }) => {
   const { user } = useAuth();
+
+  // User role helpers
   const userIsApprover = user?.claims ? isApprover(user.claims) : false;
   const userIsExporter = user?.claims ? isExporter(user.claims) : false;
   const userIsEditor = user?.claims ? isEditor(user.claims) : false;
+
+  const [showExportConfirmDialog, setShowExportConfirmDialog] = useState(false);
 
   // State for rejection dialog
   const [showRejectionDialog, setShowRejectionDialog] = useState(false);
@@ -251,6 +255,17 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
     return getJobTypeColor(type);
   };
 
+  // State for export confirmation dialog
+
+  // Handle export confirmation
+  const handleExportConfirm = async () => {
+    if (onExport && job) {
+      const jobType = getJobType(job) === 'push' ? 'PUSH' : 'PULL';
+      await onExport(job.id, jobType);
+      setShowExportConfirmDialog(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <Backdrop
@@ -285,7 +300,6 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
               <XIcon size={24} data-id="element-1051" />
             </button>
           </div>
-
           {/* Scrollable Content */}
           <div className="flex-1 overflow-y-auto px-6 py-4">
             {isLoading ? (
@@ -1114,7 +1128,6 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
               </div>
             )}
           </div>
-
           {editMode && (
             <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4">
               <div className="flex justify-between items-center">
@@ -1140,7 +1153,6 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
               </div>
             </div>
           )}
-
           {cloneMode && onClone && job && (
             <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4">
               <div className="flex justify-between items-center">
@@ -1176,7 +1188,6 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
               </div>
             </div>
           )}
-
           {job &&
             !isLoading &&
             !editMode &&
@@ -1206,7 +1217,6 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                 </MuiButton>
               </div>
             )}
-
           {job &&
             !isLoading &&
             !editMode &&
@@ -1248,7 +1258,6 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                 )}
               </div>
             )}
-
           {job &&
             !isLoading &&
             !editMode &&
@@ -1270,11 +1279,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                   type="button"
                   variant="contained"
                   sx={{ backgroundColor: '#2b7fff' }}
-                  onClick={async () => {
-                    const jobType =
-                      getJobType(job) === 'push' ? 'PUSH' : 'PULL';
-                    await onExport(job.id, jobType);
-                  }}
+                  onClick={() => setShowExportConfirmDialog(true)}
                   startIcon={<Download size={16} />}
                 >
                   Export
@@ -1316,6 +1321,101 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
         </div>
       </Backdrop>
 
+      {/* Export Confirmation Dialog */}
+      <Dialog
+        open={showExportConfirmDialog}
+        onClose={() => setShowExportConfirmDialog(false)}
+        aria-labelledby="export-confirmation-dialog-title"
+        aria-describedby="export-confirmation-dialog-description"
+        sx={{
+          '& .MuiPaper-root': {
+            borderRadius: '12px',
+            minWidth: 400,
+          },
+        }}
+      >
+        <Box
+          sx={{
+            color: '#3B3B3B',
+            fontSize: '20px',
+            fontWeight: 'bold',
+            padding: '16px 20px',
+            borderBottom: '1px solid #CECECE',
+          }}
+        >
+          Export Confirmation Required!
+        </Box>
+        <DialogContent sx={{ padding: '20px 20px' }}>
+          <DialogContentText
+            id="export-confirmation-dialog-description"
+            sx={{
+              fontSize: '16px',
+              lineHeight: '1.6',
+              color: '#374151',
+              marginBottom: '16px',
+            }}
+          >
+            Are you sure you want to export{' '}
+            <Box
+              component="span"
+              sx={{
+                fontWeight: 'bold',
+                color: '#2B7FFF',
+                backgroundColor: '#F0F7FF',
+                padding: '2px 8px',
+                borderRadius: '4px',
+                fontSize: '15px',
+              }}
+            >
+              "{job?.endpoint_name || 'this job'}"
+            </Box>
+            ?
+          </DialogContentText>
+          <Box
+            sx={{
+              backgroundColor: '#DCEEFF',
+              border: '1px solid #DCEEFF',
+              borderRadius: '8px',
+              padding: '12px 16px',
+              marginTop: '16px',
+            }}
+          >
+            <DialogContentText
+              sx={{
+                fontSize: '16px',
+                color: '#2B7FFF',
+                margin: 0,
+                fontWeight: '500',
+              }}
+            >
+              ⚠️ Important: This will update the job status to EXPORTED.
+            </DialogContentText>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ padding: '12px 20px 16px 20px' }}>
+          <MuiButton
+            onClick={() => setShowExportConfirmDialog(false)}
+            variant="outlined"
+            color="inherit"
+            size="small"
+            className="!pb-[6px] !pt-[5px]"
+          >
+            Cancel
+          </MuiButton>
+          <MuiButton
+            onClick={handleExportConfirm}
+            variant="contained"
+            color="primary"
+            size="small"
+            sx={{ backgroundColor: '#2B7FFF' }}
+            className="!pb-[6px] !pt-[5px]"
+            autoFocus
+          >
+            Yes, Export Job
+          </MuiButton>
+        </DialogActions>
+      </Dialog>
+
       {/* Rejection Dialog */}
       <JobRejectionDialog
         isOpen={showRejectionDialog}
@@ -1331,18 +1431,25 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
         onClose={() => setShowApprovalConfirmDialog(false)}
         aria-labelledby="approval-confirmation-dialog-title"
         aria-describedby="approval-confirmation-dialog-description"
+        sx={{
+          '& .MuiPaper-root': {
+            borderRadius: '12px',
+            minWidth: 400,
+          },
+        }}
       >
         <Box
           sx={{
-            color: '#3b3b3b',
+            color: '#3B3B3B',
             fontSize: '20px',
             fontWeight: 'bold',
-            padding: '16px',
+            padding: '16px 20px',
+            borderBottom: '1px solid #CECECE',
           }}
         >
-          Your confirmation is Required!
+          Export Confirmation Required!
         </Box>
-        <DialogContent sx={{ padding: '20px 24px' }}>
+        <DialogContent sx={{ padding: '20px 20px' }}>
           <DialogContentText
             id="approval-confirmation-dialog-description"
             sx={{
@@ -1357,8 +1464,8 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
               component="span"
               sx={{
                 fontWeight: 'bold',
-                color: '#2b7fff',
-                backgroundColor: '#f0f7ff',
+                color: '#2B7FFF',
+                backgroundColor: '#F0F7FF',
                 padding: '2px 8px',
                 borderRadius: '4px',
                 fontSize: '15px',
@@ -1370,8 +1477,8 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
           </DialogContentText>
           <Box
             sx={{
-              backgroundColor: '#dceeff',
-              border: '1px solid #dceeff',
+              backgroundColor: '#DCEEFF',
+              border: '1px solid #DCEEFF',
               borderRadius: '8px',
               padding: '12px 16px',
               marginTop: '16px',
@@ -1380,7 +1487,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
             <DialogContentText
               sx={{
                 fontSize: '16px',
-                color: '#2b7fff',
+                color: '#2B7FFF',
                 margin: 0,
                 fontWeight: '500',
               }}
@@ -1391,18 +1498,23 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
             </DialogContentText>
           </Box>
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ padding: '12px 20px 16px 20px' }}>
           <MuiButton
             onClick={() => setShowApprovalConfirmDialog(false)}
-            color="inherit"
             variant="outlined"
+            color="inherit"
+            size="small"
+            className="!pb-[6px] !pt-[5px]"
           >
             Cancel
           </MuiButton>
           <MuiButton
             onClick={handleSendForApprovalConfirm}
             variant="contained"
-            sx={{ backgroundColor: '#2b7fff' }}
+            color="primary"
+            size="small"
+            sx={{ backgroundColor: '#2B7FFF' }}
+            className="!pb-[6px] !pt-[5px]"
             autoFocus
           >
             Yes, Send for Approval
@@ -1416,18 +1528,25 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
         onClose={() => setShowApproveConfirmDialog(false)}
         aria-labelledby="approve-confirmation-dialog-title"
         aria-describedby="approve-confirmation-dialog-description"
+        sx={{
+          '& .MuiPaper-root': {
+            borderRadius: '12px',
+            minWidth: 400,
+          },
+        }}
       >
         <Box
           sx={{
-            color: '#3b3b3b',
+            color: '#3B3B3B',
             fontSize: '20px',
             fontWeight: 'bold',
-            padding: '16px',
+            padding: '16px 20px',
+            borderBottom: '1px solid #CECECE',
           }}
         >
           Approval Confirmation Required!
         </Box>
-        <DialogContent sx={{ padding: '20px 24px' }}>
+        <DialogContent sx={{ padding: '20px 20px' }}>
           <DialogContentText
             id="approve-confirmation-dialog-description"
             sx={{
@@ -1442,8 +1561,8 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
               component="span"
               sx={{
                 fontWeight: 'bold',
-                color: '#33ad74',
-                backgroundColor: '#f0fdf4',
+                color: '#33AD74',
+                backgroundColor: '#F0FDF4',
                 padding: '2px 8px',
                 borderRadius: '4px',
                 fontSize: '15px',
@@ -1455,8 +1574,8 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
           </DialogContentText>
           <Box
             sx={{
-              backgroundColor: '#f0fdf4',
-              border: '1px solid #bbf7d0',
+              backgroundColor: '#F0FDF4',
+              border: '1px solid #BBF7D0',
               borderRadius: '8px',
               padding: '12px 16px',
               marginTop: '16px',
@@ -1465,7 +1584,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
             <DialogContentText
               sx={{
                 fontSize: '16px',
-                color: '#15803d',
+                color: '#15803D',
                 margin: 0,
                 fontWeight: '500',
               }}
@@ -1475,18 +1594,23 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
             </DialogContentText>
           </Box>
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ padding: '12px 20px 16px 20px' }}>
           <MuiButton
             onClick={() => setShowApproveConfirmDialog(false)}
-            color="inherit"
             variant="outlined"
+            color="inherit"
+            size="small"
+            className="!pb-[6px] !pt-[5px]"
           >
             Cancel
           </MuiButton>
           <MuiButton
             onClick={handleApproveConfirm}
             variant="contained"
-            sx={{ backgroundColor: '#33ad74' }}
+            color="success"
+            size="small"
+            sx={{ backgroundColor: '#33AD74' }}
+            className="!pb-[6px] !pt-[5px]"
             autoFocus
           >
             Yes, Approve Job

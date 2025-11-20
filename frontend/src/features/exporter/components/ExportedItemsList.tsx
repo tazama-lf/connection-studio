@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Eye, MoreVertical, Clock, Database } from 'lucide-react';
+import { Eye, Clock, Database, EyeIcon } from 'lucide-react';
 import type { SftpFileInfo, SftpFormat } from '../services/sftpApi';
 import { sftpApi } from '../services/sftpApi';
 import { Button } from '../../../shared/components/Button';
-import { DropdownMenuWithAutoDirection } from '../../data-enrichment/components/DropdownMenuWithAutoDirection';
+import { Tooltip } from '@mui/material';
 
 interface ExportedItemsListProps {
   files: SftpFileInfo[];
@@ -252,14 +252,6 @@ export const ExportedItemsList: React.FC<ExportedItemsListProps> = (props) => {
           </thead>
           <tbody className="bg-white divide-y divide-gray-100">
             {filteredFiles.map((file, index) => {
-              const isFirstRow = index === 0;
-              const isLastRow = index === filteredFiles.length - 1;
-              const forceDirection = isFirstRow
-                ? 'top'
-                : isLastRow
-                  ? 'top'
-                  : 'auto';
-
               const fileData =
                 format === 'dems' ? demsFileData[file.name] : null;
 
@@ -293,40 +285,18 @@ export const ExportedItemsList: React.FC<ExportedItemsListProps> = (props) => {
                         : formatDate(file.modifyTime)}
                     </div>
                   </td>
-                  <td className="px-6 py-4 relative overflow-visible text-center">
-                    <div className="flex items-center justify-center space-x-2">
-                      <div className="relative actions-dropdown">
-                        <button
-                          onClick={() => {
-                            setDropdownOpen(
-                              dropdownOpen === file.name ? null : file.name,
-                            );
-                          }}
-                          className={`p-1 rounded-md hover:bg-gray-100 ${dropdownOpen === file.name ? 'bg-blue-100 text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
-                        >
-                          <MoreVertical className="w-4 h-4" />
-                        </button>
-
-                        {dropdownOpen === file.name && (
-                          <DropdownMenuWithAutoDirection
-                            forceDirection={forceDirection}
-                          >
-                            <div className="py-1">
-                              <button
-                                onClick={() => {
-                                  onViewDetails?.(file.name);
-                                  setDropdownOpen(null);
-                                }}
-                                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                              >
-                                <Eye className="w-4 h-4 mr-2" />
-                                View
-                              </button>
-                            </div>
-                          </DropdownMenuWithAutoDirection>
-                        )}
-                      </div>
-                    </div>
+                  <td className="px-6 py-4 text-center">
+                    <button
+                      onClick={() => onViewDetails?.(file.name)}
+                      className="p-1 rounded-md hover:bg-gray-100 text-gray-400 hover:text-blue-600 focus:outline-none"
+                    >
+                      <Tooltip title="View Details" arrow placement="top">
+                        <EyeIcon
+                          size={28}
+                          className="w-7 h-7 text-blue-600 hover:text-blue-700 cursor-pointer"
+                        />
+                      </Tooltip>
+                    </button>
                   </td>
                 </tr>
               );
