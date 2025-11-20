@@ -1080,7 +1080,8 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
         }
       ]
     }
-  }
+  },
+  "TenantId":"123"
 }`;
 
   const sampleXmlPayload = `<?xml version="1.0" encoding="UTF-8"?>

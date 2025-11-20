@@ -500,6 +500,7 @@ export const dataEnrichmentApi = {
   updateScheduleStatus: async (
     id: string,
     status: string,
+    reason?: string,
   ): Promise<{ success: boolean; message: string }> => {
     try {
       const queryParams = new URLSearchParams();
@@ -512,7 +513,7 @@ export const dataEnrichmentApi = {
         {
           method: 'PATCH',
           body: JSON.stringify({
-            reason:'Rejected by approver',
+            reason: reason || 'Rejected by approver',
           }),
         },
       );

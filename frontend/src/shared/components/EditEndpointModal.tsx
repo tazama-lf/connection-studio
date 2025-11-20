@@ -42,7 +42,7 @@ const CustomStepIcon = (props: StepIconProps) => {
   return (
     <div
       style={{
-        color: completed ? '#10b981' : active ? '#3b82f6' : '#9ca3af',
+        color: completed ? '#10b981' : active ? '#2b7fff' : '#9ca3af',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -362,7 +362,7 @@ console.log('Cur map:', currentMappings);
             // For clone mode, adjust version and transaction type to indicate it's a clone
             const isCloning = isCloneMode && endpointId !== -1;
             setEndpointData({
-              version: isCloning ? '1.0' : (config.version || '1.0'), // Reset version for clones
+              version: config.version, // Reset version for clones
               transactionType: isCloning ? `${config.transactionType}` : (config.transactionType || ''),
               description: config.msgFam || '', // Using msgFam as description since there's no separate description field in backend
               contentType: config.contentType || 'application/json',
@@ -1423,7 +1423,7 @@ console.log('Cur map:', currentMappings);
       {/* Modal Content - Higher z-index to appear above backdrop */}
       <div className="bg-white rounded-lg w-full max-w-6xl max-h-[90vh] overflow-hidden relative z-50 shadow-2xl" data-id="element-727">
         <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200" data-id="element-728">
-          <h2 className="text-xl font-semibold text-gray-800" data-id="element-729">
+          <h2 className="text-xl font-semibold text-[#2b7fff]" data-id="element-729">
             {isNewEndpoint ? 'Create New Connection' : isCloning ? 'Clone Configuration' : readOnly ? 'View Configuration' : 'Edit Configuration'}
           </h2>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700" data-id="element-730">
@@ -1466,11 +1466,29 @@ console.log('Cur map:', currentMappings);
           {/* MUI Stepper */}
           <Box sx={{ width: '100%', mb: 4 }}>
             <Stepper activeStep={steps.findIndex(s => s.id === currentStep)} alternativeLabel>
-              {steps.map((step) => (
-                <Step key={step.id}>
-                  <StepLabel StepIconComponent={CustomStepIcon}>{step.label}</StepLabel>
-                </Step>
-              ))}
+              {steps.map((step, index) => {
+                const currentStepIndex = steps.findIndex(s => s.id === currentStep);
+                const isCurrentStep = index === currentStepIndex;
+                const isCompletedStep = index < currentStepIndex;
+                const isFutureStep = index > currentStepIndex;
+                
+                return (
+                  <Step key={step.id}>
+                    <StepLabel 
+                      StepIconComponent={CustomStepIcon} 
+                      sx={{
+                        '& .MuiStepLabel-label': {
+                          color: isCurrentStep ? '#2b7fff' : 
+                                 isCompletedStep ? '#10b981' : 
+                                 '#999999',
+                        }
+                      }}
+                    >
+                      {step.label}
+                    </StepLabel>
+                  </Step>
+                );
+              })}
             </Stepper>
           </Box>
 

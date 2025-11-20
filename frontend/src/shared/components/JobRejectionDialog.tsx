@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Backdrop } from '@mui/material';
 import { XIcon } from 'lucide-react';
 import { Button } from './Button';
+import { Backdrop } from '@mui/material';
 
 interface JobRejectionDialogProps {
   isOpen: boolean;
@@ -51,16 +51,21 @@ export const JobRejectionDialog: React.FC<JobRejectionDialogProps> = ({
   if (!isOpen) return null;
 
   return (
-    <Backdrop
-      sx={(theme) => ({
-        zIndex: theme.zIndex.drawer + 100,
-        overflow: 'hidden',
-      })}
-      open={true}
-    >
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+      {/* Enhanced blurred backdrop */}
+      {/* <div
+        className="absolute inset-0 backdrop-blur-sm backdrop-saturate-150"
+        onClick={handleClose}
+      /> */}
+      <Backdrop
+        sx={(theme) => ({
+          zIndex: theme.zIndex.drawer + 1,
+          overflow: 'hidden',
+        })}
+        open={true}
+      >
         {/* Modal Content */}
-        <div className="relative z-10 bg-white rounded-lg shadow-2xl max-w-md w-full mx-4">
+        <div className="relative z-10 bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
             <h3 className="text-lg font-semibold text-gray-900">
               Reject {jobType}
@@ -121,7 +126,7 @@ export const JobRejectionDialog: React.FC<JobRejectionDialogProps> = ({
             </div>
           </form>
         </div>
-      </div>
-    </Backdrop>
+      </Backdrop>
+    </div>
   );
 };

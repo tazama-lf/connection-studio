@@ -29,7 +29,17 @@ import {
   getStatusLabel,
 } from '../../../shared/utils/statusColors';
 import { JobRejectionDialog } from '../../../shared/components/JobRejectionDialog';
-import { Box, Pagination, Tooltip } from '@mui/material';
+import { Button } from '../../../shared/components/Button';
+import {
+  Box,
+  Pagination,
+  Tooltip,
+  Dialog,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  Button as MuiButton,
+} from '@mui/material';
 import { getDemsStatusLov } from '@shared/lovs';
 import CustomTable from '@common/Tables/CustomTable';
 import { handleInputFilter, handleSelectFilter } from '@shared/helpers';
@@ -93,6 +103,13 @@ export const CronJobList: React.FC<CronJobListProps> = ({
   const [totalRecords, setTotalRecords] = useState<number>(0);
   const [searchingFilters, setSearchingFilters] = useState({});
 
+  // Confirmation dialog state
+  const [confirmDialog, setConfirmDialog] = useState({
+    open: false,
+    type: '' as 'export' | 'approval' | '',
+    schedule: null as any | null,
+  });
+
   const loadSchedules = async (pageNumber: number = 1): Promise<void> => {
     try {
       setLoading(true);
@@ -141,6 +158,28 @@ export const CronJobList: React.FC<CronJobListProps> = ({
       } catch (error) {
         console.error('Failed to reject cron job:', error);
         showError('Failed to reject cron job');
+      } finally {
+        setIsActionInProgress(false);
+      }
+    }
+  };
+
+  // Handle export with confirmation
+  const handleExportConfirm = async () => {
+    if (confirmDialog.schedule) {
+      try {
+        setIsActionInProgress(true);
+        await dataEnrichmentApi.updateScheduleStatus(
+          confirmDialog.schedule.id,
+          'STATUS_06_EXPORTED',
+        );
+        showSuccess('Cron job exported successfully');
+        loadSchedules();
+        setConfirmDialog({ open: false, type: '', schedule: null });
+      } catch (error) {
+        console.error('Failed to export cron job:', error);
+        showError('Failed to export cron job');
+        setConfirmDialog({ open: false, type: '', schedule: null });
       } finally {
         setIsActionInProgress(false);
       }
@@ -211,18 +250,33 @@ export const CronJobList: React.FC<CronJobListProps> = ({
   const handleSendForApproval = async () => {
     if (!selectedSchedule) return;
 
+    // Show confirmation dialog first
+    setConfirmDialog({
+      open: true,
+      type: 'approval',
+      schedule: selectedSchedule,
+    });
+  };
+
+  // Handle approval confirmation
+  const handleApprovalConfirm = async () => {
+    if (!confirmDialog.schedule) return;
+
     try {
       setIsActionInProgress(true);
       await dataEnrichmentApi.updateScheduleStatus(
-        selectedSchedule.id,
+        confirmDialog.schedule.id,
         'STATUS_03_UNDER_REVIEW',
       );
       showSuccess('Cron job submitted for approval');
       setEditModalOpen(false);
+      setViewModalOpen(false);
       loadSchedules();
+      setConfirmDialog({ open: false, type: '', schedule: null });
     } catch (error) {
       console.error('Failed to submit for approval:', error);
       showError('Failed to submit cron job for approval');
+      setConfirmDialog({ open: false, type: '', schedule: null });
     } finally {
       setIsActionInProgress(false);
     }
@@ -469,21 +523,12 @@ export const CronJobList: React.FC<CronJobListProps> = ({
               <Tooltip title="Export Configuration" arrow placement="top">
                 <Upload
                   className="w-4 h-4 mr-2 text-cyan-600 hover:text-cyan-700 cursor-pointer"
-                  onClick={async () => {
-                    try {
-                      setIsActionInProgress(true);
-                      await dataEnrichmentApi.updateScheduleStatus(
-                        schedule.id,
-                        'STATUS_06_EXPORTED',
-                      );
-                      showSuccess('Cron job exported successfully');
-                      loadSchedules();
-                    } catch (error) {
-                      console.error('Failed to export cron job:', error);
-                      showError('Failed to export cron job');
-                    } finally {
-                      setIsActionInProgress(false);
-                    }
+                  onClick={() => {
+                    setConfirmDialog({
+                      open: true,
+                      type: 'export',
+                      schedule: schedule,
+                    });
                   }}
                 />
               </Tooltip>
@@ -580,6 +625,100 @@ export const CronJobList: React.FC<CronJobListProps> = ({
             jobName={selectedSchedule?.name || 'Unknown Schedule'}
             jobType="Cron Job"
           />
+
+          {/* Export Confirmation Dialog */}
+          <Dialog
+            open={confirmDialog.open}
+            onClose={() => setConfirmDialog({ open: false, type: '', schedule: null })}
+            aria-labelledby="confirmation-dialog-title"
+            aria-describedby="confirmation-dialog-description"
+            sx={{ borderRadius: '6px' }}
+          >
+            <Box
+              sx={{
+                color: '#3b3b3b',
+                fontSize: '20px',
+                fontWeight: 'bold',
+                padding: '16px 20px',
+                borderBottom: '1px solid #cecece',
+              }}
+            >
+              {confirmDialog.type === 'export' && 'Export Confirmation Required!'}
+              {confirmDialog.type === 'approval' && 'Approval Confirmation Required!'}
+            </Box>
+            <DialogContent sx={{ padding: '20px 20px' }}>
+              <DialogContentText
+                id="confirmation-dialog-description"
+                sx={{
+                  fontSize: '16px',
+                  lineHeight: '1.6',
+                  color: '#374151',
+                  marginBottom: '16px',
+                }}
+              >
+                Are you sure you want to {confirmDialog.type === 'export' ? 'export' : 'submit for approval'}{' '}
+                <Box
+                  component="span"
+                  sx={{
+                    fontWeight: 'bold',
+                    color: '#2b7fff',
+                    backgroundColor: '#f0f7ff',
+                    padding: '2px 8px',
+                    borderRadius: '4px',
+                    fontSize: '15px',
+                  }}
+                >
+                  "{confirmDialog.schedule?.name || 'this cron job'}"
+                </Box>
+                ?
+              </DialogContentText>
+              <Box
+                sx={{
+                  backgroundColor: '#dceeff',
+                  border: '1px solid #dceeff',
+                  borderRadius: '8px',
+                  padding: '12px 16px',
+                  marginTop: '16px',
+                }}
+              >
+                <DialogContentText
+                  sx={{
+                    fontSize: '16px',
+                    color: '#2b7fff',
+                    margin: 0,
+                    fontWeight: '500',
+                  }}
+                >
+                  {confirmDialog.type === 'export' && 
+                    '⚠️ Important: This will update the cron job status to EXPORTED.'}
+                  {confirmDialog.type === 'approval' && 
+                    '⚠️ Important: This will submit the cron job for approval and update its status to UNDER REVIEW.'}
+                </DialogContentText>
+              </Box>
+            </DialogContent>
+            <DialogActions sx={{ padding: '12px 20px 16px 20px' }}>
+              <Button
+                onClick={() =>
+                  setConfirmDialog({ open: false, type: '', schedule: null })
+                }
+                variant="secondary"
+                className="!pb-[6px] !pt-[5px]"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  if (confirmDialog.type === 'export') handleExportConfirm();
+                  else if (confirmDialog.type === 'approval') handleApprovalConfirm();
+                }}
+                variant="primary"
+                className="!pb-[6px] !pt-[5px] bg-[#2b7fff]"
+              >
+                {confirmDialog.type === 'export' && 'Yes, Export Cron Job'}
+                {confirmDialog.type === 'approval' && 'Yes, Submit for Approval'}
+              </Button>
+            </DialogActions>
+          </Dialog>
         </>
       )}
     </>

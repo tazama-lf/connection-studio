@@ -9,7 +9,7 @@ import {
   getStatusColor,
   getStatusLabel,
 } from '../../../shared/utils/statusColors';
-import { Box, Pagination } from '@mui/material';
+import { Box, Pagination, Tooltip } from '@mui/material';
 import { handleInputFilter, handleSelectFilter } from '@shared/helpers';
 import { getDemsStatusLov } from '@shared/lovs';
 import CustomTable from '@common/Tables/CustomTable';
@@ -270,15 +270,14 @@ export const CronJobApproverList: React.FC<CronJobApproverListProps> = (
 
         return (
           <div className=" flex items-center justify-center gap-2 h-full">
-            <button
-              onClick={() => {
-                onViewDetails?.(schedule.id);
-              }}
-              className="w-[75px] inline-flex justify-center items-center rounded-md bg-[#2b7fff] px-3 py-1.5 text-xs font-medium text-white shadow-sm focus:outline-none transition-colors cursor-pointer"
-            >
-              <EyeIcon className="w-4 h-4 mr-2" />
-              View
-            </button>
+            <Tooltip title="View Details" arrow placement="top">
+              <EyeIcon
+                className="w-4 h-4 mr-2 text-blue-600 hover:text-blue-700 cursor-pointer"
+                onClick={() => {
+                  onViewDetails?.(schedule.id);
+                }}
+              />
+            </Tooltip>
           </div>
         );
       },
