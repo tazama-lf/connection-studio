@@ -57,6 +57,7 @@ export interface ConfigResponse {
     errors: string[];
     warnings: string[];
   };
+  statusCode?: number;
 }
 
 export interface AddMappingRequest {

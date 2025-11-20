@@ -1301,6 +1301,10 @@ console.log('Cur map:', currentMappings);
       console.log('🔍 Response success status:', saveResponse.success);
       console.log('🔍 Response message:', saveResponse.message);
 
+      if(saveResponse?.statusCode === 400) {
+        showError(saveResponse.message)
+      }
+
       if (!saveResponse.success) {
         console.log('❌ Save failed - response.success is false');
 
