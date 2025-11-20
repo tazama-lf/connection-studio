@@ -1481,3 +1481,90 @@ export const SelectField = ({
         />
     );
 };
+
+
+// ALPHA NUMERIC FIELD WITH SPACES
+export const AlphaNumericInputFieldWithSpaces = ({
+    name,
+    label,
+    control,
+    placeholder = "",
+    maxLength = 50,
+    input_type,
+    type = "text",
+    hyphonAllowed,
+}) => {
+    return (
+        <Controller
+            name={name}
+            control={control}
+            render={({ field: { onChange, value, ...restField } }) => {
+                return (
+                    <TextField
+                        {...restField}
+                        id={name}
+                        name={name}
+                        label={label}
+                        type={type}
+                        variant="filled"
+                        value={value}
+                        onKeyDown={(event) => {
+                            if (type === "text") {
+                                const keyValue = event.key;
+                                const Validation = hyphonAllowed
+                                    ? /^[a-zA-Z0-9- ]*$/
+                                    : /^[a-zA-Z0-9 ]*$/;
+                                // Allow backspace key, enter key, and tab key
+                                if (["Backspace", "Enter", "Tab"].includes(event.key)) return;
+                                if (!Validation.test(keyValue)) event.preventDefault();
+                            }
+                        }}
+                        onChange={(event) => {
+                            let newValue = event.target.value;
+                            if (type === "text") {
+                                const validationRegex = hyphonAllowed
+                                    ? /[^a-zA-Z0-9- ]/g
+                                    : /[^a-zA-Z0-9 ]/g;
+                                newValue = newValue.replace(validationRegex, ""); // Remove invalid characters dynamically
+                            }
+                            onChange(newValue); // Update the field value in the form state
+                        }}
+                        fullWidth
+                        placeholder={input_type === "date" ? "" : placeholder}
+                        InputProps={{
+                            disableUnderline: true,
+                            sx: {
+                                border: "1px solid silver",
+                                borderRadius: "7px",
+                                fontSize: "1.1rem",
+                                height: "60px",
+                                backgroundColor: "white",
+                                fontWeight: 500,
+                                "&:hover": { backgroundColor: "white" },
+                                "&.Mui-focused": { backgroundColor: "white" },
+                                "& input::placeholder": {
+                                    fontSize: "0.9rem",
+                                },
+                            },
+                            autoComplete: "off",
+                            autoCorrect: "off",
+                            inputProps: { maxLength: maxLength },
+                        }}
+                        InputLabelProps={{
+                            sx: { fontSize: "0.95rem", color: "#666666", marginTop: "5px" },
+                        }}
+                        sx={{
+                            // maxWidth: "500px",
+                            width: "100%",
+                            "& .MuiFilledInput-root": {
+                                backgroundColor: "white",
+                                "&:hover": { backgroundColor: "white" },
+                                "&.Mui-focused": { backgroundColor: "white" },
+                            },
+                        }}
+                    />
+                );
+            }}
+        />
+    )
+};

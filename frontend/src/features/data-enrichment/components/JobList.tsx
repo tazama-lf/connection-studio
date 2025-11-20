@@ -31,7 +31,20 @@ import {
 } from '../../../shared/utils/statusColors';
 import { useToast } from '../../../shared/providers/ToastProvider';
 import { dataEnrichmentApi } from '../services';
-import { Box, Pagination, Tooltip } from '@mui/material';
+import {
+  Box,
+  Pagination,
+  Tooltip,
+  Dialog,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+} from '@mui/material';
+// MUI Button import for dialog actions
+// Use shared Button for dialog actions
+// For styled dialog headers
+import { XCircle } from 'lucide-react';
+
 import { handleInputFilter, handleSelectFilter } from '@shared/helpers';
 import { getDemsStatusLov } from '@shared/lovs';
 import CustomTable from '@common/Tables/CustomTable';
@@ -65,6 +78,25 @@ interface JobListProps {
 }
 
 export const JobList: React.FC<JobListProps> = (props) => {
+  // State for Pause/Resume confirmation dialogs (must be inside component)
+  const [showPauseConfirmDialog, setShowPauseConfirmDialog] = useState<{
+    open: boolean;
+    job: DataEnrichmentJobResponse | null;
+  }>({ open: false, job: null });
+  const [showResumeConfirmDialog, setShowResumeConfirmDialog] = useState<{
+    open: boolean;
+    job: DataEnrichmentJobResponse | null;
+  }>({ open: false, job: null });
+  // State for Activate/Deactivate confirmation dialogs (must be inside component)
+  const [showActivateConfirmDialog, setShowActivateConfirmDialog] = useState<{
+    open: boolean;
+    job: DataEnrichmentJobResponse | null;
+  }>({ open: false, job: null });
+  const [showDeactivateConfirmDialog, setShowDeactivateConfirmDialog] =
+    useState<{ open: boolean; job: DataEnrichmentJobResponse | null }>({
+      open: false,
+      job: null,
+    });
   // Destructure after logging
   const {
     jobs,
@@ -636,7 +668,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
                 <Pause
                   className="w-4 h-4 mr-2 text-orange-600 hover:text-orange-700 cursor-pointer"
                   onClick={() => {
-                    handleUpdateJobStatus(job, 'STATUS_02_ON_HOLD');
+                    setShowPauseConfirmDialog({ open: true, job });
                   }}
                 />
               </Tooltip>
@@ -646,11 +678,226 @@ export const JobList: React.FC<JobListProps> = (props) => {
                 <Play
                   className="w-4 h-4 mr-2 text-green-600 hover:text-green-700 cursor-pointer"
                   onClick={() => {
-                    handleUpdateJobStatus(job, 'STATUS_01_IN_PROGRESS');
+                    setShowResumeConfirmDialog({ open: true, job });
                   }}
                 />
               </Tooltip>
             )}
+            {/* Pause Confirmation Dialog */}
+            <Dialog
+              open={showPauseConfirmDialog.open}
+              onClose={() =>
+                setShowPauseConfirmDialog({ open: false, job: null })
+              }
+              aria-labelledby="pause-confirmation-dialog-title"
+              aria-describedby="pause-confirmation-dialog-description"
+              sx={{
+                '& .MuiPaper-root': {
+                  borderRadius: '6px',
+                  minWidth: 400,
+                },
+              }}
+              PaperProps={{ sx: { boxShadow: 'none' } }}
+              slotProps={{
+                backdrop: {
+                  sx: { backgroundColor: 'rgba(0,0,0,0.15)' },
+                },
+              }}
+            >
+              <Box
+                sx={{
+                  color: '#3B3B3B',
+                  fontSize: '20px',
+                  fontWeight: 'bold',
+                  padding: '16px 20px',
+                  borderBottom: '1px solid #CECECE',
+                }}
+              >
+                Pause Confirmation Required!
+              </Box>
+              <DialogContent sx={{ padding: '20px 20px' }}>
+                <DialogContentText
+                  id="pause-confirmation-dialog-description"
+                  sx={{
+                    fontSize: '16px',
+                    lineHeight: '1.6',
+                    color: '#374151',
+                    marginBottom: '16px',
+                  }}
+                >
+                  Are you sure you want to pause{' '}
+                  <Box
+                    component="span"
+                    sx={{
+                      fontWeight: 'bold',
+                      color: '#FF9800',
+                      backgroundColor: '#FFF7ED',
+                      padding: '2px 8px',
+                      borderRadius: '4px',
+                      fontSize: '15px',
+                    }}
+                  >
+                    "{showPauseConfirmDialog.job?.endpoint_name || 'this job'}"
+                  </Box>
+                  ?
+                </DialogContentText>
+                <Box
+                  sx={{
+                    backgroundColor: '#FFF7ED',
+                    border: '1px solid #FFE0B2',
+                    borderRadius: '8px',
+                    padding: '12px 16px',
+                    marginTop: '16px',
+                  }}
+                >
+                  <DialogContentText
+                    sx={{
+                      fontSize: '16px',
+                      color: '#FF9800',
+                      margin: 0,
+                      fontWeight: '500',
+                    }}
+                  >
+                    ⚠️ This will put the job on hold.
+                  </DialogContentText>
+                </Box>
+              </DialogContent>
+              <DialogActions sx={{ padding: '12px 20px 16px 20px' }}>
+                <Button
+                  onClick={() =>
+                    setShowPauseConfirmDialog({ open: false, job: null })
+                  }
+                  variant="secondary"
+                  className="!pb-[6px] !pt-[5px]"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={async () => {
+                    if (showPauseConfirmDialog.job) {
+                      await handleUpdateJobStatus(
+                        showPauseConfirmDialog.job,
+                        'STATUS_02_ON_HOLD',
+                      );
+                    }
+                    setShowPauseConfirmDialog({ open: false, job: null });
+                  }}
+                  variant="primary"
+                  className="!pb-[6px] !pt-[5px]"
+                  autoFocus
+                >
+                  Yes, Pause Job
+                </Button>
+              </DialogActions>
+            </Dialog>
+
+            {/* Resume Confirmation Dialog */}
+            <Dialog
+              open={showResumeConfirmDialog.open}
+              onClose={() =>
+                setShowResumeConfirmDialog({ open: false, job: null })
+              }
+              aria-labelledby="resume-confirmation-dialog-title"
+              aria-describedby="resume-confirmation-dialog-description"
+              sx={{
+                '& .MuiPaper-root': {
+                  borderRadius: '6px',
+                  minWidth: 400,
+                },
+              }}
+              PaperProps={{ sx: { boxShadow: 'none' } }}
+              slotProps={{
+                backdrop: {
+                  sx: { backgroundColor: 'rgba(0,0,0,0.15)' },
+                },
+              }}
+            >
+              <Box
+                sx={{
+                  color: '#3B3B3B',
+                  fontSize: '20px',
+                  fontWeight: 'bold',
+                  padding: '16px 20px',
+                  borderBottom: '1px solid #CECECE',
+                }}
+              >
+                Resume Confirmation Required!
+              </Box>
+              <DialogContent sx={{ padding: '20px 20px' }}>
+                <DialogContentText
+                  id="resume-confirmation-dialog-description"
+                  sx={{
+                    fontSize: '16px',
+                    lineHeight: '1.6',
+                    color: '#374151',
+                    marginBottom: '16px',
+                  }}
+                >
+                  Are you sure you want to resume{' '}
+                  <Box
+                    component="span"
+                    sx={{
+                      fontWeight: 'bold',
+                      color: '#33AD74',
+                      backgroundColor: '#F0FDF4',
+                      padding: '2px 8px',
+                      borderRadius: '4px',
+                      fontSize: '15px',
+                    }}
+                  >
+                    "{showResumeConfirmDialog.job?.endpoint_name || 'this job'}"
+                  </Box>
+                  ?
+                </DialogContentText>
+                <Box
+                  sx={{
+                    backgroundColor: '#F0FDF4',
+                    border: '1px solid #BBF7D0',
+                    borderRadius: '8px',
+                    padding: '12px 16px',
+                    marginTop: '16px',
+                  }}
+                >
+                  <DialogContentText
+                    sx={{
+                      fontSize: '16px',
+                      color: '#33AD74',
+                      margin: 0,
+                      fontWeight: '500',
+                    }}
+                  >
+                    ✅ This will resume the job and set it to in-progress.
+                  </DialogContentText>
+                </Box>
+              </DialogContent>
+              <DialogActions sx={{ padding: '12px 20px 16px 20px' }}>
+                <Button
+                  onClick={() =>
+                    setShowResumeConfirmDialog({ open: false, job: null })
+                  }
+                  variant="secondary"
+                  className="!pb-[6px] !pt-[5px]"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={async () => {
+                    if (showResumeConfirmDialog.job) {
+                      await handleUpdateJobStatus(
+                        showResumeConfirmDialog.job,
+                        'STATUS_01_IN_PROGRESS',
+                      );
+                    }
+                    setShowResumeConfirmDialog({ open: false, job: null });
+                  }}
+                  variant="primary"
+                  className="!pb-[6px] !pt-[5px]"
+                  autoFocus
+                >
+                  Yes, Resume Job
+                </Button>
+              </DialogActions>
+            </Dialog>
 
             {/* Active/Inactive - Available to Publishers only for deployed jobs */}
             {userIsPublisher && (
@@ -660,7 +907,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
                     <ShieldX
                       className="w-4 h-4 mr-1 text-red-600 hover:text-red-700 cursor-pointer"
                       onClick={() => {
-                        handleTogglePublishingStatus(job, 'in-active');
+                        setShowDeactivateConfirmDialog({ open: true, job });
                         setDropdownOpen(null);
                       }}
                     />
@@ -670,7 +917,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
                     <ShieldCheck
                       className="w-4 h-4 mr-1 text-green-600 hover:text-green-700 cursor-pointer"
                       onClick={() => {
-                        handleTogglePublishingStatus(job, 'active');
+                        setShowActivateConfirmDialog({ open: true, job });
                         setDropdownOpen(null);
                       }}
                     />
@@ -678,6 +925,228 @@ export const JobList: React.FC<JobListProps> = (props) => {
                 )}
               </>
             )}
+            {/* Activate Confirmation Dialog */}
+            <Dialog
+              open={showActivateConfirmDialog.open}
+              onClose={() =>
+                setShowActivateConfirmDialog({ open: false, job: null })
+              }
+              aria-labelledby="activate-confirmation-dialog-title"
+              aria-describedby="activate-confirmation-dialog-description"
+              sx={{
+                '& .MuiPaper-root': {
+                  borderRadius: '12px',
+                  minWidth: 400,
+                },
+              }}
+              PaperProps={{ sx: { boxShadow: 'none' } }}
+              slotProps={{
+                backdrop: {
+                  sx: { backgroundColor: 'rgba(0,0,0,0.15)' },
+                },
+              }}
+            >
+              <Box
+                sx={{
+                  color: '#3B3B3B',
+                  fontSize: '20px',
+                  fontWeight: 'bold',
+                  padding: '16px 20px',
+                  borderBottom: '1px solid #CECECE',
+                }}
+              >
+                Activate Confirmation Required!
+              </Box>
+              <DialogContent sx={{ padding: '20px 20px' }}>
+                <DialogContentText
+                  id="activate-confirmation-dialog-description"
+                  sx={{
+                    fontSize: '16px',
+                    lineHeight: '1.6',
+                    color: '#374151',
+                    marginBottom: '16px',
+                  }}
+                >
+                  Are you sure you want to activate{' '}
+                  <Box
+                    component="span"
+                    sx={{
+                      fontWeight: 'bold',
+                      color: '#33AD74',
+                      backgroundColor: '#F0FDF4',
+                      padding: '2px 8px',
+                      borderRadius: '4px',
+                      fontSize: '15px',
+                    }}
+                  >
+                    "
+                    {showActivateConfirmDialog.job?.endpoint_name || 'this job'}
+                    "
+                  </Box>
+                  ?
+                </DialogContentText>
+                <Box
+                  sx={{
+                    backgroundColor: '#F0FDF4',
+                    border: '1px solid #BBF7D0',
+                    borderRadius: '8px',
+                    padding: '12px 16px',
+                    marginTop: '16px',
+                  }}
+                >
+                  <DialogContentText
+                    sx={{
+                      fontSize: '16px',
+                      color: '#15803D',
+                      margin: 0,
+                      fontWeight: '500',
+                    }}
+                  >
+                    ✅ Once activated, this job will be available for
+                    deployment.
+                  </DialogContentText>
+                </Box>
+              </DialogContent>
+              <DialogActions sx={{ padding: '12px 20px 16px 20px' }}>
+                <Button
+                  onClick={() =>
+                    setShowActivateConfirmDialog({ open: false, job: null })
+                  }
+                  variant="secondary"
+                  className="!pb-[6px] !pt-[5px]"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={async () => {
+                    if (showActivateConfirmDialog.job) {
+                      await handleTogglePublishingStatus(
+                        showActivateConfirmDialog.job,
+                        'active',
+                      );
+                    }
+                    setShowActivateConfirmDialog({ open: false, job: null });
+                  }}
+                  variant="primary"
+                  className="!pb-[6px] !pt-[5px]"
+                  autoFocus
+                >
+                  Yes, Activate Job
+                </Button>
+              </DialogActions>
+            </Dialog>
+
+            {/* Deactivate Confirmation Dialog */}
+            <Dialog
+              open={showDeactivateConfirmDialog.open}
+              onClose={() =>
+                setShowDeactivateConfirmDialog({ open: false, job: null })
+              }
+              aria-labelledby="deactivate-confirmation-dialog-title"
+              aria-describedby="deactivate-confirmation-dialog-description"
+              sx={{
+                '& .MuiPaper-root': {
+                  borderRadius: '12px',
+                  minWidth: 400,
+                },
+              }}
+              PaperProps={{ sx: { boxShadow: 'none' } }}
+              slotProps={{
+                backdrop: {
+                  sx: { backgroundColor: 'rgba(0,0,0,0.15)' },
+                },
+              }}
+            >
+              <Box
+                sx={{
+                  color: '#3B3B3B',
+                  fontSize: '20px',
+                  fontWeight: 'bold',
+                  padding: '16px 20px',
+                  borderBottom: '1px solid #CECECE',
+                }}
+              >
+                Deactivate Confirmation Required!
+              </Box>
+              <DialogContent sx={{ padding: '20px 20px' }}>
+                <DialogContentText
+                  id="deactivate-confirmation-dialog-description"
+                  sx={{
+                    fontSize: '16px',
+                    lineHeight: '1.6',
+                    color: '#374151',
+                    marginBottom: '16px',
+                  }}
+                >
+                  Are you sure you want to deactivate{' '}
+                  <Box
+                    component="span"
+                    sx={{
+                      fontWeight: 'bold',
+                      color: '#FF474D',
+                      backgroundColor: '#FFF1F2',
+                      padding: '2px 8px',
+                      borderRadius: '4px',
+                      fontSize: '15px',
+                    }}
+                  >
+                    "
+                    {showDeactivateConfirmDialog.job?.endpoint_name ||
+                      'this job'}
+                    "
+                  </Box>
+                  ?
+                </DialogContentText>
+                <Box
+                  sx={{
+                    backgroundColor: '#FFF1F2',
+                    border: '1px solid #FFCDD2',
+                    borderRadius: '8px',
+                    padding: '12px 16px',
+                    marginTop: '16px',
+                  }}
+                >
+                  <DialogContentText
+                    sx={{
+                      fontSize: '16px',
+                      color: '#FF474D',
+                      margin: 0,
+                      fontWeight: '500',
+                    }}
+                  >
+                    ⚠️ Once deactivated, this job will not be available for
+                    deployment.
+                  </DialogContentText>
+                </Box>
+              </DialogContent>
+              <DialogActions sx={{ padding: '12px 20px 16px 20px' }}>
+                <Button
+                  onClick={() =>
+                    setShowDeactivateConfirmDialog({ open: false, job: null })
+                  }
+                  variant="secondary"
+                  className="!pb-[6px] !pt-[5px]"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={async () => {
+                    if (showDeactivateConfirmDialog.job) {
+                      await handleTogglePublishingStatus(
+                        showDeactivateConfirmDialog.job,
+                        'in-active',
+                      );
+                    }
+                    setShowDeactivateConfirmDialog({ open: false, job: null });
+                  }}
+                  variant="primary"
+                  className="!pb-[6px] !pt-[5px]"
+                  autoFocus
+                >
+                  Yes, Deactivate Job
+                </Button>
+              </DialogActions>
+            </Dialog>
           </div>
         );
       },

@@ -1,5 +1,22 @@
 import React, { useState } from 'react';
-import { X, Upload } from 'lucide-react';
+import {
+  X,
+  Upload,
+  Calendar,
+  Clock,
+  Hash,
+  MessageSquare,
+  User,
+  Tag,
+  Repeat,
+  Code,
+  Folder,
+  Shuffle,
+  Layers,
+  FileText,
+  Info,
+  Rocket,
+} from 'lucide-react';
 import type { SftpFileContent, SftpFormat } from '../services/sftpApi';
 import { Button } from '../../../shared/components/Button';
 import {
@@ -10,7 +27,16 @@ import {
 import { dataEnrichmentApi } from '../../data-enrichment/services/dataEnrichmentApi';
 import { useAuth } from '../../../features/auth/contexts/AuthContext';
 import { isExporter, isPublisher } from '../../../utils/roleUtils';
-import { Backdrop, Box } from '@mui/material';
+import {
+  Backdrop,
+  Box,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  DialogContentText,
+  CircularProgress,
+} from '@mui/material';
 
 interface ExportedItemDetailsModalProps {
   content: SftpFileContent | null;
@@ -27,8 +53,17 @@ interface ExportedItemDetailsModalProps {
 
 export const ExportedItemDetailsModal: React.FC<
   ExportedItemDetailsModalProps
-> = ({ content, isOpen, onClose, onPublish, format, isLoading = false }) => {
+> = ({
+  content,
+  isOpen,
+  onClose,
+  onPublish,
+  format,
+  isLoading = false,
+  onRefresh,
+}) => {
   const [isPublishing, setIsPublishing] = useState(false);
+  const [showDeployConfirmDialog, setShowDeployConfirmDialog] = useState(false);
   const { user } = useAuth();
 
   const userIsExporter = user?.claims ? isExporter(user.claims) : false;
@@ -159,7 +194,8 @@ export const ExportedItemDetailsModal: React.FC<
 
       // For DE jobs, we need to pass the type (PULL/PUSH). For DEMS and CRON, type is not required.
       await onPublish(content.id, format, jobType);
-      onClose();
+      if (onClose) onClose();
+      if (typeof onRefresh === 'function') onRefresh();
     } catch (error) {
       console.error('Publish error:', error);
       // Error handling is done in parent component
@@ -180,6 +216,8 @@ export const ExportedItemDetailsModal: React.FC<
         isStatus(content.status, 'ready') ||
         isStatus(content.status, 'ready-for-deployment')
       : false;
+
+  console.log('content', content);
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -225,65 +263,84 @@ export const ExportedItemDetailsModal: React.FC<
               ) : (
                 <>
                   {/* Status Badge */}
-                  <div className="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                    <div className="flex items-center space-x-2">
-                      <svg
-                        className="w-4 h-4 text-gray-500"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                        />
-                      </svg>
-                      <span className="text-sm font-bold text-gray-700">
-                        Status:
-                      </span>
+                  <div className="w-full mb-6">
+                    <div className="w-full flex items-center gap-4 px-8 py-5 bg-gradient-to-r from-blue-50 via-blue-100 to-blue-50 border border-blue-200 rounded-xl shadow-sm">
+                      <Rocket className="w-8 h-8 text-blue-500 drop-shadow-md animate-bounce-slow" />
+                      <div className="flex-1">
+                        <div className="text-base font-bold text-blue-700 tracking-wide mb-1">
+                          Status
+                        </div>
+                        <div
+                          className={`inline-flex items-center px-4 py-2 rounded-lg text-sm font-semibold shadow bg-blue-100 text-blue-800`}
+                          style={{ minWidth: 180 }}
+                        >
+                          <span className="w-2 h-2 rounded-full bg-current mr-2 animate-pulse"></span>
+                          <span className="tracking-widest uppercase text-blue-800 font-extrabold drop-shadow-sm">
+                            {'Ready For Deployment'}
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                    <span
-                      className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold shadow-sm ${getStatusColor(content.status || 'ready-for-deployment')}`}
-                    >
-                      <span className="w-2 h-2 rounded-full bg-current mr-2 animate-pulse"></span>
-                      {getStatusLabel(content.status || 'ready-for-deployment')}
-                    </span>
                   </div>
 
                   {/* Basic Information */}
                   <div className="grid grid-cols-2 gap-6">
                     <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-2">
+                      <label className="flex items-center gap-1 text-sm font-bold text-gray-700 mb-2">
+                        <Hash className="w-4 h-4 text-blue-500" />
                         ID
                       </label>
                       <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded border border-gray-200 font-mono break-all">
                         {content.id}
                       </p>
                     </div>
+                    {content?.msgFam && (
+                      <div>
+                        <label className="flex items-center gap-1 text-sm font-bold text-gray-700 mb-2">
+                          <MessageSquare className="w-4 h-4 text-blue-500" />
+                          Event Type
+                        </label>
+                        <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded border border-gray-200">
+                          {content?.msgFam || 'N/A'}
+                        </p>
+                      </div>
+                    )}
 
+                    {content?.endpoint_name && (
+                      <div>
+                        <label className="flex items-center gap-1 text-sm font-bold text-gray-700 mb-2">
+                          <MessageSquare className="w-4 h-4 text-blue-500" />
+                          Endpoint Name
+                        </label>
+                        <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded border border-gray-200">
+                          {content?.endpoint_name || 'N/A'}
+                        </p>
+                      </div>
+                    )}
+                    {content?.name && (
+                      <div>
+                        <label className="flex items-center gap-1 text-sm font-bold text-gray-700 mb-2">
+                          <MessageSquare className="w-4 h-4 text-blue-500" />
+                          Name
+                        </label>
+                        <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded border border-gray-200">
+                          {content?.name || 'N/A'}
+                        </p>
+                      </div>
+                    )}
                     <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-2">
-                        Message Family
-                      </label>
-                      <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded border border-gray-200">
-                        {content.msgFam || 'N/A'}
-                      </p>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-2">
+                      <label className="flex items-center gap-1 text-sm font-bold text-gray-700 mb-2">
+                        <User className="w-4 h-4 text-blue-500" />
                         Tenant ID
                       </label>
                       <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded border border-gray-200">
                         {content.tenant_id || 'N/A'}
                       </p>
                     </div>
-
                     {format === 'de' && (
                       <div>
-                        <label className="block text-sm font-bold text-gray-700 mb-2">
+                        <label className="flex items-center gap-1 text-sm font-bold text-gray-700 mb-2">
+                          <Tag className="w-4 h-4 text-blue-500" />
                           Job Type
                         </label>
                         <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded border border-gray-200">
@@ -296,10 +353,10 @@ export const ExportedItemDetailsModal: React.FC<
                         </p>
                       </div>
                     )}
-
                     {format === 'cron' && content.cron && (
                       <div>
-                        <label className="block text-sm font-bold text-gray-700 mb-2">
+                        <label className="flex items-center gap-1 text-sm font-bold text-gray-700 mb-2">
+                          <Code className="w-4 h-4 text-blue-500" />
                           Cron Expression
                         </label>
                         <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded border border-gray-200 font-mono">
@@ -307,11 +364,11 @@ export const ExportedItemDetailsModal: React.FC<
                         </p>
                       </div>
                     )}
-
                     {format === 'dems' && (
                       <>
                         <div>
-                          <label className="block text-sm font-bold text-gray-700 mb-2">
+                          <label className="flex items-center gap-1 text-sm font-bold text-gray-700 mb-2">
+                            <Folder className="w-4 h-4 text-blue-500" />
                             Endpoint Path
                           </label>
                           <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded border border-gray-200 font-mono">
@@ -319,7 +376,8 @@ export const ExportedItemDetailsModal: React.FC<
                           </p>
                         </div>
                         <div>
-                          <label className="block text-sm font-bold text-gray-700 mb-2">
+                          <label className="flex items-center gap-1 text-sm font-bold text-gray-700 mb-2">
+                            <Shuffle className="w-4 h-4 text-blue-500" />
                             Transaction Type
                           </label>
                           <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded border border-gray-200">
@@ -327,7 +385,8 @@ export const ExportedItemDetailsModal: React.FC<
                           </p>
                         </div>
                         <div>
-                          <label className="block text-sm font-bold text-gray-700 mb-2">
+                          <label className="flex items-center gap-1 text-sm font-bold text-gray-700 mb-2">
+                            <Layers className="w-4 h-4 text-blue-500" />
                             Version
                           </label>
                           <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded border border-gray-200">
@@ -335,7 +394,8 @@ export const ExportedItemDetailsModal: React.FC<
                           </p>
                         </div>
                         <div>
-                          <label className="block text-sm font-bold text-gray-700 mb-2">
+                          <label className="flex items-center gap-1 text-sm font-bold text-gray-700 mb-2">
+                            <FileText className="w-4 h-4 text-blue-500" />
                             Content Type
                           </label>
                           <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded border border-gray-200">
@@ -344,11 +404,11 @@ export const ExportedItemDetailsModal: React.FC<
                         </div>
                       </>
                     )}
-
                     {format === 'cron' && content.iterations !== undefined && (
                       <div>
-                        <label className="block text-sm font-bold text-gray-700 mb-2">
-                          Iterations
+                        <label className="flex items-center gap-1 text-sm font-bold text-gray-700 mb-2">
+                          <Repeat className="w-4 h-4 text-blue-500" />
+                          Retry Count
                         </label>
                         <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded border border-gray-200">
                           {content.iterations}
@@ -362,42 +422,64 @@ export const ExportedItemDetailsModal: React.FC<
                     <div className="grid grid-cols-2 gap-6">
                       {content.start_date && (
                         <div>
-                          <label className="block text-sm font-bold text-gray-700 mb-2">
+                          <label className="flex items-center gap-1 text-sm font-bold text-gray-700 mb-2">
+                            <Calendar className="w-4 h-4 text-blue-500" />
                             Start Date
                           </label>
-                          <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded border border-gray-200">
-                            {new Date(content.start_date).toLocaleString(
-                              'en-US',
-                              {
-                                month: 'short',
-                                day: 'numeric',
-                                year: 'numeric',
-                                hour: 'numeric',
-                                minute: '2-digit',
-                                hour12: true,
-                              },
-                            )}
+                          <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded border border-gray-200 flex items-center gap-2">
+                            <span>
+                              {new Date(content.start_date).toLocaleDateString(
+                                'en-US',
+                                {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  year: 'numeric',
+                                },
+                              )}
+                            </span>
+                            <Clock className="w-4 h-4 text-gray-500" />
+                            <span>
+                              {new Date(content.start_date).toLocaleTimeString(
+                                'en-US',
+                                {
+                                  hour: 'numeric',
+                                  minute: '2-digit',
+                                  hour12: true,
+                                },
+                              )}
+                            </span>
                           </p>
                         </div>
                       )}
 
                       {content.end_date && (
                         <div>
-                          <label className="block text-sm font-bold text-gray-700 mb-2">
+                          <label className="flex items-center gap-1 text-sm font-bold text-gray-700 mb-2">
+                            <Calendar className="w-4 h-4 text-blue-500" />
                             End Date
                           </label>
-                          <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded border border-gray-200">
-                            {new Date(content.end_date).toLocaleString(
-                              'en-US',
-                              {
-                                month: 'short',
-                                day: 'numeric',
-                                year: 'numeric',
-                                hour: 'numeric',
-                                minute: '2-digit',
-                                hour12: true,
-                              },
-                            )}
+                          <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded border border-gray-200 flex items-center gap-2">
+                            <span>
+                              {new Date(content.end_date).toLocaleDateString(
+                                'en-US',
+                                {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  year: 'numeric',
+                                },
+                              )}
+                            </span>
+                            <Clock className="w-4 h-4 text-gray-500" />
+                            <span>
+                              {new Date(content.end_date).toLocaleTimeString(
+                                'en-US',
+                                {
+                                  hour: 'numeric',
+                                  minute: '2-digit',
+                                  hour12: true,
+                                },
+                              )}
+                            </span>
                           </p>
                         </div>
                       )}
@@ -406,7 +488,8 @@ export const ExportedItemDetailsModal: React.FC<
 
                   {/* Additional Data */}
                   <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                    <label className="flex items-center gap-1 text-sm font-bold text-gray-700 mb-2">
+                      <Info className="w-4 h-4 text-blue-500" />
                       Additional Details
                     </label>
                     <div className="bg-gray-50 p-4 rounded border border-gray-200 h-96 overflow-y-auto">
@@ -419,43 +502,72 @@ export const ExportedItemDetailsModal: React.FC<
                   {/* Metadata */}
                   <div className="grid grid-cols-2 gap-6 pt-4 border-t border-gray-200">
                     <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-2">
+                      <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-1">
+                        <Calendar className="w-4 h-4 mr-1 text-blue-500" />
                         Created At
                       </label>
-                      <p className="text-sm text-gray-900">
-                        {content.created_at || content.createdAt
-                          ? new Date(
-                              content.created_at || content.createdAt,
-                            ).toLocaleString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                              year: 'numeric',
-                              hour: 'numeric',
-                              minute: '2-digit',
-                              hour12: true,
-                            })
-                          : 'N/A'}
+                      <p className="text-sm text-gray-900 flex items-center gap-2">
+                        {content.created_at || content.createdAt ? (
+                          <>
+                            <span>
+                              {new Date(
+                                content.created_at || content.createdAt,
+                              ).toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                              })}
+                            </span>
+                            <Clock className="w-4 h-4 text-gray-500" />
+                            <span>
+                              {new Date(
+                                content.created_at || content.createdAt,
+                              ).toLocaleTimeString('en-US', {
+                                hour: 'numeric',
+                                minute: '2-digit',
+                                hour12: true,
+                              })}
+                            </span>
+                          </>
+                        ) : (
+                          'N/A'
+                        )}
                       </p>
                     </div>
 
                     <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-2">
+                      <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-1">
+                        <Calendar className="w-4 h-4 mr-1 text-blue-500" />
                         Updated At
                       </label>
-                      <p className="text-sm text-gray-900">
-                        {content.updated_at
-                          ? new Date(content.updated_at).toLocaleString(
-                              'en-US',
-                              {
-                                month: 'short',
-                                day: 'numeric',
-                                year: 'numeric',
-                                hour: 'numeric',
-                                minute: '2-digit',
-                                hour12: true,
-                              },
-                            )
-                          : 'N/A'}
+                      <p className="text-sm text-gray-900 flex items-center gap-2">
+                        {content.updated_at ? (
+                          <>
+                            <span>
+                              {new Date(content.updated_at).toLocaleDateString(
+                                'en-US',
+                                {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  year: 'numeric',
+                                },
+                              )}
+                            </span>
+                            <Clock className="w-4 h-4 text-gray-500" />
+                            <span>
+                              {new Date(content.updated_at).toLocaleTimeString(
+                                'en-US',
+                                {
+                                  hour: 'numeric',
+                                  minute: '2-digit',
+                                  hour12: true,
+                                },
+                              )}
+                            </span>
+                          </>
+                        ) : (
+                          'N/A'
+                        )}
                       </p>
                     </div>
                   </div>
@@ -476,31 +588,115 @@ export const ExportedItemDetailsModal: React.FC<
                 Cancel
               </Button>
               <Button
-                onClick={() => {
-                  console.log('Publish button clicked');
-                  handlePublish();
-                }}
+                onClick={() => setShowDeployConfirmDialog(true)}
                 variant="primary"
                 // disabled={isPublishing || isDeployed || isLoading || !canPublish}
                 className="flex items-center space-x-2"
               >
                 <Upload className="w-4 h-4" />
-                <span>
-                  {/* {isPublishing 
-                  ? 'Publishing...' 
-                  : isDeployed 
-                  ? 'Already Deployed' 
-                  : !canPublish
-                  ? 'Cannot Publish'
-                  : 'Publish'
-                } */}
-                  Deploy
-                </span>
+                <span>Deploy</span>
               </Button>
             </div>
           </div>
         </Backdrop>
       </div>
+
+      {/* Deploy Confirmation Dialog */}
+      <Dialog
+        open={showDeployConfirmDialog}
+        onClose={() => setShowDeployConfirmDialog(false)}
+        aria-labelledby="deploy-confirmation-dialog-title"
+        aria-describedby="deploy-confirmation-dialog-description"
+      >
+        <DialogTitle
+          id="deploy-confirmation-dialog-title"
+          sx={{ color: '#3b3b3b', fontSize: '20px', fontWeight: 'bold' }}
+        >
+          Deployment Confirmation Required!
+        </DialogTitle>
+        <DialogContent sx={{ padding: '20px 24px' }}>
+          <DialogContentText
+            id="deploy-confirmation-dialog-description"
+            sx={{
+              fontSize: '16px',
+              lineHeight: '1.6',
+              color: '#374151',
+              marginBottom: '16px',
+            }}
+          >
+            Are you sure you want to deploy
+            <Box
+              component="span"
+              sx={{
+                fontWeight: 'bold',
+                color: '#2b7fff',
+                backgroundColor: '#f0f7ff',
+                padding: '2px 8px',
+                borderRadius: '4px',
+                fontSize: '15px',
+                marginLeft: '6px',
+                marginRight: '6px',
+              }}
+            >
+              {content?.id || 'this item'}
+            </Box>
+            ?
+          </DialogContentText>
+          <Box
+            sx={{
+              backgroundColor: '#dceeff',
+              border: '1px solid #dceeff',
+              borderRadius: '8px',
+              padding: '12px 16px',
+              marginTop: '16px',
+            }}
+          >
+            <DialogContentText
+              sx={{
+                fontSize: '16px',
+                color: '#2b7fff',
+                margin: 0,
+                fontWeight: '500',
+              }}
+            >
+              ⚠️ Important: Once deployed, this item will be published and this
+              action cannot be undone.
+            </DialogContentText>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            variant="secondary"
+            onClick={() => setShowDeployConfirmDialog(false)}
+            disabled={isPublishing}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            onClick={async () => {
+              setShowDeployConfirmDialog(false);
+              setIsPublishing(true);
+              await handlePublish();
+              setIsPublishing(false);
+            }}
+            disabled={isPublishing}
+          >
+            Yes, Deploy
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Loader Backdrop for Deploy */}
+      <Backdrop
+        sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 2 }}
+        open={isPublishing}
+      >
+        <CircularProgress color="inherit" />
+        <Box sx={{ ml: 2, fontSize: '18px', fontWeight: 500 }}>
+          Deploying...
+        </Box>
+      </Backdrop>
     </div>
   );
 };

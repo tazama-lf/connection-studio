@@ -587,6 +587,10 @@ const DataEnrichmentModule: React.FC = () => {
           <DataEnrichmentEditModal
             isOpen={jobDetailsEditMode}
             onClose={handleCloseJobDetails}
+            onCloseWithRefresh={() => {
+              handleCloseJobDetails();
+              fetchDeJobsWithScrollPreservation(page);
+            }}
             // onSave={handleCreateJob}
             editMode={true}
             selectedJob={selectedJob}

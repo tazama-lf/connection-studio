@@ -1,30 +1,32 @@
-import React, { useState, useEffect } from 'react';
-import { SearchIcon, Clock, Database, Settings } from 'lucide-react';
-import { sftpApi, SftpError } from '../../exporter/services/sftpApi';
-import { useToast } from '../../../shared/providers/ToastProvider';
-import type { SftpFileInfo, SftpFileContent, SftpFormat } from '../../exporter/services/sftpApi';
-import { ExportedItemsList } from '../../exporter/components/ExportedItemsList';
-import { ExportedItemDetailsModal } from '../../exporter/components/ExportedItemDetailsModal';
-import { isStatus } from '../../../shared/utils/statusColors';
+import { Clock, Database, SearchIcon, Settings } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../../features/auth/contexts/AuthContext';
+import { useToast } from '../../../shared/providers/ToastProvider';
 import { isExporter, isPublisher } from '../../../utils/roleUtils';
-
+import { ExportedItemDetailsModal } from '../../exporter/components/ExportedItemDetailsModal';
+import { ExportedItemsList } from '../../exporter/components/ExportedItemsList';
+import type {
+  SftpFileContent,
+  SftpFileInfo,
+  SftpFormat,
+} from '../../exporter/services/sftpApi';
+import { sftpApi, SftpError } from '../../exporter/services/sftpApi';
 
 type TabType = 'cron' | 'de' | 'dems';
 
 const PublisherExportedItemsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('dems');
   const [searchTerm, setSearchTerm] = useState('');
-  
+
   // SFTP Exported Items state
   const [exportedItems, setExportedItems] = useState<SftpFileInfo[]>([]);
   const [exportedItemsLoading, setExportedItemsLoading] = useState(false);
-  const [selectedExportedItem, setSelectedExportedItem] = useState<SftpFileContent | null>(null);
+  const [selectedExportedItem, setSelectedExportedItem] =
+    useState<SftpFileContent | null>(null);
   const [showExportedItemDetails, setShowExportedItemDetails] = useState(false);
-  const [exportedItemDetailsLoading, setExportedItemDetailsLoading] = useState(false);
-  
+  const [exportedItemDetailsLoading, setExportedItemDetailsLoading] =
+    useState(false);
 
-  
   const { showError, showSuccess } = useToast();
   const { user } = useAuth();
 
@@ -36,20 +38,27 @@ const PublisherExportedItemsPage: React.FC = () => {
   }, [activeTab]);
 
   const loadExportedItems = async () => {
-    console.log('PublisherExportedItemsPage: loadExportedItems called with format:', activeTab);
+    console.log(
+      'PublisherExportedItemsPage: loadExportedItems called with format:',
+      activeTab,
+    );
     setExportedItemsLoading(true);
     try {
       const files = await sftpApi.getAllFiles(activeTab as SftpFormat);
-      console.log('PublisherExportedItemsPage: Exported items loaded:', files.length);
+      console.log(
+        'PublisherExportedItemsPage: Exported items loaded:',
+        files.length,
+      );
       setExportedItems(files);
     } catch (error) {
       console.error('Failed to load exported items:', error);
-      
+
       let errorMessage = 'Failed to load exported items';
       if (error instanceof SftpError) {
         switch (error.errorType) {
           case 'CORRUPTED_FILE':
-            errorMessage = 'Some files appear to be corrupted or missing integrity verification';
+            errorMessage =
+              'Some files appear to be corrupted or missing integrity verification';
             break;
           case 'NOT_FOUND':
             errorMessage = 'SFTP directory not found or inaccessible';
@@ -61,7 +70,7 @@ const PublisherExportedItemsPage: React.FC = () => {
             errorMessage = error.message;
         }
       }
-      
+
       showError(errorMessage);
       setExportedItems([]);
     } finally {
@@ -69,36 +78,37 @@ const PublisherExportedItemsPage: React.FC = () => {
     }
   };
 
-
-
   const handleViewExportedItemDetails = async (filename: string) => {
-    console.log('PublisherExportedItemsPage: View exported item details clicked for:', filename);
+    console.log(
+      'PublisherExportedItemsPage: View exported item details clicked for:',
+      filename,
+    );
     try {
       setExportedItemDetailsLoading(true);
       setShowExportedItemDetails(true);
-      
+
       const content = await sftpApi.readFile(filename);
-      
+
       // Check user role and item status permissions
       // Publishers can view exported, approved, ready, ready-for-deployment, and deployed configs
       // Exporters can view exported and approved configs
       // const statusValue = content.status || '';
-      // const canView = userIsExporter 
+      // const canView = userIsExporter
       //   ? (isStatus(statusValue, 'exported') || isStatus(statusValue, 'approved'))
-      //   : (isStatus(statusValue, 'exported') || isStatus(statusValue, 'approved') || 
-      //      isStatus(statusValue, 'ready') || isStatus(statusValue, 'ready-for-deployment') || 
+      //   : (isStatus(statusValue, 'exported') || isStatus(statusValue, 'approved') ||
+      //      isStatus(statusValue, 'ready') || isStatus(statusValue, 'ready-for-deployment') ||
       //      isStatus(statusValue, 'deployed'));
-      
+
       // if (!canView) {
       //   showError(`You don't have permission to view items with status "${statusValue}"`);
       //   setShowExportedItemDetails(false);
       //   return;
       // }
-      
+
       setSelectedExportedItem(content);
     } catch (error) {
       console.error('Failed to load exported item details:', error);
-      
+
       let errorMessage = 'Failed to load exported item details';
       if (error instanceof SftpError) {
         switch (error.errorType) {
@@ -115,7 +125,7 @@ const PublisherExportedItemsPage: React.FC = () => {
             errorMessage = `Failed to read file "${filename}": ${error.message}`;
         }
       }
-      
+
       showError(errorMessage);
       setShowExportedItemDetails(false);
     } finally {
@@ -123,7 +133,11 @@ const PublisherExportedItemsPage: React.FC = () => {
     }
   };
 
-  const handlePublishExportedItem = async (id: string, format: SftpFormat, type?: 'PULL' | 'PUSH' | string) => {
+  const handlePublishExportedItem = async (
+    id: string,
+    format: SftpFormat,
+    type?: 'PULL' | 'PUSH' | string,
+  ) => {
     // Check if user has permission to publish based on their role
     // if (userIsExporter && selectedExportedItem) {
     //   const status = selectedExportedItem.status || '';
@@ -132,7 +146,7 @@ const PublisherExportedItemsPage: React.FC = () => {
     //     return;
     //   }
     // }
-    
+
     // if (userIsPublisher && selectedExportedItem) {
     //   const status = selectedExportedItem.status || '';
     //   if (!isStatus(status, 'exported') && !isStatus(status, 'ready') && !isStatus(status, 'ready-for-deployment')) {
@@ -144,19 +158,22 @@ const PublisherExportedItemsPage: React.FC = () => {
     try {
       console.log('Publishing exported item:', { id, format, type });
       await sftpApi.publishItem(id, format, type);
-      showSuccess(`${format === 'cron' ? 'Cron job' : format === 'de' ? 'Data enrichment job' : 'DEMS Configuration'} published successfully`);
+      showSuccess(
+        `${format === 'cron' ? 'Cron job' : format === 'de' ? 'Data enrichment job' : 'DEMS Configuration'} published successfully`,
+      );
       loadExportedItems();
       setShowExportedItemDetails(false);
     } catch (error) {
       console.error('Failed to publish exported item:', error);
-      
+
       let errorMessage = `Failed to publish ${format === 'cron' ? 'Cron job' : format === 'de' ? 'Data enrichment job' : 'DEMS Configuration'}`;
-      
+
       // Handle different types of errors
       if (error instanceof SftpError) {
         switch (error.errorType) {
           case 'CORRUPTED_FILE':
-            errorMessage = 'Cannot publish: File is corrupted or has failed integrity verification';
+            errorMessage =
+              'Cannot publish: File is corrupted or has failed integrity verification';
             break;
           case 'NOT_FOUND':
             errorMessage = 'Cannot publish: Item not found or has been removed';
@@ -170,37 +187,45 @@ const PublisherExportedItemsPage: React.FC = () => {
       } else if (error instanceof Error) {
         // Handle backend validation errors
         const errorMsg = error.message.toLowerCase();
-        
+
         if (errorMsg.includes('dry run failed') && errorMsg.includes('sftp')) {
-          errorMessage = 'Cannot publish: SFTP connection validation failed. Please check SFTP credentials and connectivity.';
+          errorMessage =
+            'Cannot publish: SFTP connection validation failed. Please check SFTP credentials and connectivity.';
         } else if (errorMsg.includes('sftp connection failed')) {
-          errorMessage = 'Cannot publish: SFTP server connection failed. Please verify SFTP server settings.';
+          errorMessage =
+            'Cannot publish: SFTP server connection failed. Please verify SFTP server settings.';
         } else if (errorMsg.includes('authentication methods failed')) {
-          errorMessage = 'Cannot publish: SFTP authentication failed. Please check username, password, and key settings.';
-        } else if (errorMsg.includes('job type') && errorMsg.includes('required')) {
-          errorMessage = 'Cannot publish: Job type information is missing. Please ensure the job configuration is complete.';
+          errorMessage =
+            'Cannot publish: SFTP authentication failed. Please check username, password, and key settings.';
+        } else if (
+          errorMsg.includes('job type') &&
+          errorMsg.includes('required')
+        ) {
+          errorMessage =
+            'Cannot publish: Job type information is missing. Please ensure the job configuration is complete.';
         } else {
           // Generic error message for other backend errors
           errorMessage = `Publish failed: ${error.message}`;
         }
       } else {
         // Fallback for unknown error types
-        errorMessage = 'An unexpected error occurred during publishing. Please try again.';
+        errorMessage =
+          'An unexpected error occurred during publishing. Please try again.';
       }
-      
+
       showError(errorMessage);
     }
   };
 
   const handleExportedItemsRefresh = () => {
-    console.log('PublisherExportedItemsPage: handleExportedItemsRefresh called');
+    console.log(
+      'PublisherExportedItemsPage: handleExportedItemsRefresh called',
+    );
     loadExportedItems();
   };
 
-
-
   const tabs = [
-     {
+    {
       id: 'dems' as TabType,
       name: 'DEMS',
       icon: <Settings size={18} />,
@@ -214,15 +239,12 @@ const PublisherExportedItemsPage: React.FC = () => {
       id: 'de' as TabType,
       name: 'DE Jobs',
       icon: <Database size={18} />,
-    }
-   
+    },
   ];
 
   return (
     <div className="min-h-screen bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      
-
         {/* Tabs */}
         <div className="border-b border-gray-200 mb-6">
           <nav className="-mb-px flex space-x-8">
@@ -232,9 +254,10 @@ const PublisherExportedItemsPage: React.FC = () => {
                 onClick={() => setActiveTab(tab.id)}
                 className={`
                   flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors
-                  ${activeTab === tab.id
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ${
+                    activeTab === tab.id
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }
                 `}
               >
@@ -251,7 +274,7 @@ const PublisherExportedItemsPage: React.FC = () => {
             <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
               type="text"
-              placeholder={`Search ${tabs.find(t => t.id === activeTab)?.name.toLowerCase()}...`}
+              placeholder={`Search ${tabs.find((t) => t.id === activeTab)?.name.toLowerCase()}...`}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"

@@ -8,6 +8,7 @@ import * as yup from 'yup';
 import {
   NumberInputField,
   TextInputField,
+  AlphaNumericInputFieldWithSpaces,
   // @ts-ignore - FormFields is a .jsx file without TypeScript declarations
 } from '../../../shared/components/FormFields';
 import ValidationError from '../../../shared/components/ValidationError';
@@ -187,7 +188,7 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({
         <Grid container spacing={3} sx={{ mb: 3 }}>
           {/* Job Name Input */}
           <Grid size={{ xs: 12 }}>
-            <TextInputField
+            <AlphaNumericInputFieldWithSpaces
               label="Job Name *"
               name="name"
               control={control}

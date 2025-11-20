@@ -524,22 +524,32 @@ export const DataEnrichmentFormModal: React.FC<
             )}
           </Grid>
           <Grid size={{ xs: 12, md: 6 }}>
-            <PasswordInputField
-              name="password"
-              control={control}
-              label={
-                <>
-                  {watch('authType') === 'key' ? 'Private Key' : 'Password'}{' '}
-                  <span className="text-red-500">*</span>
-                </>
-              }
-              type="text"
-              placeholder={
-                watch('authType') === 'key'
-                  ? 'Enter Private Key'
-                  : 'Enter Password'
-              }
-            />
+            {watch('authType') === 'key' ? (
+              <MultiLineTextInputField
+                name="password"
+                control={control}
+                maxLength={500}
+                label={
+                  <>
+                    Private Key <span className="text-red-500">*</span>
+                  </>
+                }
+                placeholder="Enter Private Key"
+                rows={4}
+              />
+            ) : (
+              <PasswordInputField
+                name="password"
+                control={control}
+                label={
+                  <>
+                    Password <span className="text-red-500">*</span>
+                  </>
+                }
+                type="text"
+                placeholder="Enter Password"
+              />
+            )}
             {errors?.password && (
               <ValidationError message={errors?.password?.message} />
             )}

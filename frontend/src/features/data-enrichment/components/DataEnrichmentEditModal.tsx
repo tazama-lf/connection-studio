@@ -45,11 +45,13 @@ import {
   pushValidationSchema,
   sourceTypeOptions,
 } from './validationSchema';
+import { isEditor } from '../../../utils/roleUtils';
 
 // TYPES
 interface DataEnrichmentEditModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onCloseWithRefresh?: () => void;
   onSave?: (formData: any) => void;
   editMode?: boolean;
   selectedJob?: any;
@@ -69,7 +71,14 @@ const getJobType = (job) => {
 export const DataEnrichmentEditModal: React.FC<
   DataEnrichmentEditModalProps
   // ----------PROPS
-> = ({ isOpen, onClose, onSave, editMode = false, selectedJob }) => {
+> = ({
+  isOpen,
+  onClose,
+  onCloseWithRefresh,
+  onSave,
+  editMode = false,
+  selectedJob,
+}) => {
   // ----------STATES
   const [availableSchedules, setAvailableSchedules] = useState<
     ScheduleResponse[]
@@ -77,6 +86,10 @@ export const DataEnrichmentEditModal: React.FC<
 
   const [isCreating, setIsCreating] = useState(false);
   const [showUpdateConfirmDialog, setShowUpdateConfirmDialog] = useState(false);
+  const [showApprovalConfirmDialog, setShowApprovalConfirmDialog] =
+    useState(false);
+  // Button state: show Update or Send for Approval
+  const [showSendForApproval, setShowSendForApproval] = useState(false);
 
   const tenantId = useAuth()?.user?.tenantId || 'tenantId';
   const { showSuccess, showError } = useToast();
@@ -258,6 +271,15 @@ export const DataEnrichmentEditModal: React.FC<
           configurationType === 'pull'
             ? await dataEnrichmentApi.updatePullJob(selectedJob.id, payload)
             : await dataEnrichmentApi.updatePushJob(selectedJob.id, payload);
+        // If selectedJob.status is rejected, show Send for Approval button, else close modal and fetch data
+        if (selectedJob?.status === 'STATUS_05_REJECTED') {
+          setShowSendForApproval(true);
+        } else {
+          if (onSave) onSave(response);
+          if (onCloseWithRefresh) onCloseWithRefresh();
+          else if (onClose) onClose();
+          return;
+        }
       } else {
         response =
           configurationType === 'pull'
@@ -270,14 +292,15 @@ export const DataEnrichmentEditModal: React.FC<
         : `Data enrichment endpoint "${formValues.name}" created successfully! You can now send it for approval.`;
 
       showSuccess('Success', successMessage);
-      if (onSave) {
-        onSave(response);
+      // Only call onSave if not already called above
+      if (!response?.status || selectedJob?.status === 'STATUS_05_REJECTED') {
+        if (onSave) onSave(response);
       }
 
-      // Close modal after showing success message
-      setTimeout(() => {
-        onClose();
-      }, 200);
+      // Do not close modal after update
+      // setTimeout(() => {
+      //   onClose();
+      // }, 200);
     } catch (error) {
       console.error('=== CREATE ENDPOINT ERROR ===', error);
 
@@ -320,16 +343,38 @@ export const DataEnrichmentEditModal: React.FC<
     handleSave();
   };
 
-  // Form submission handler for React Hook Form
-  const onSubmit = () => {
-    console.log('Form submitted, calling handleSave...');
-    handleSave();
+  const auth = useAuth();
+  const user = auth?.user;
+
+  // Handler for send for approval (calls API)
+  const handleSendForApprovalConfirm = async () => {
+    if (selectedJob && selectedJob.id) {
+      const jobType = getJobType(selectedJob) === 'push' ? 'PUSH' : 'PULL';
+      setIsCreating(true);
+      try {
+        await dataEnrichmentApi.updateJobStatus(
+          selectedJob.id,
+          'STATUS_03_UNDER_REVIEW',
+          jobType,
+        );
+        showSuccess('Success', 'Job sent for approval successfully!');
+        setShowApprovalConfirmDialog(false);
+        if (onCloseWithRefresh) onCloseWithRefresh();
+        else if (onClose) onClose();
+      } catch (error) {
+        let msg = 'Failed to send for approval';
+        if (error instanceof Error) msg = error.message;
+        showError('Error', msg);
+      } finally {
+        setIsCreating(false);
+      }
+    }
   };
 
-  // Debug useEffect to monitor isCreating state
-  useEffect(() => {
-    console.log('isCreating state changed:', isCreating);
-  }, [isCreating]);
+  // Form submission handler for React Hook Form
+  const onSubmit = () => {
+    handleSave();
+  };
 
   // --------------------REACT HOOKS FORM SETUP
 
@@ -362,8 +407,6 @@ export const DataEnrichmentEditModal: React.FC<
 
     loadSchedules();
   }, [isOpen]);
-
-  console.log('selectedJobselectedJob', selectedJob);
 
   // Set initial form values from selectedJob
   useEffect(() => {
@@ -439,42 +482,6 @@ export const DataEnrichmentEditModal: React.FC<
     }
   }, [isOpen, selectedJob, editMode, setValue]);
 
-  // Prevent body scroll and scrollbar jitter when modal is open
-  // useEffect(() => {
-  //   if (isOpen) {
-  //     // Store original body styles AND current scroll position
-  //     const originalStyle = window.getComputedStyle(document.body);
-  //     const currentScrollY = window.scrollY;
-  //     const scrollbarWidth =
-  //       window.innerWidth - document.documentElement.clientWidth;
-
-  //     // Prevent body scroll and reserve scrollbar space
-  //     document.body.style.overflow = 'hidden';
-  //     document.body.style.paddingRight = `${scrollbarWidth}px`;
-
-  //     // Keep the scroll position by setting top position
-  //     document.body.style.position = 'fixed';
-  //     document.body.style.top = `-${currentScrollY}px`;
-  //     document.body.style.width = '100%';
-
-  //     // Cleanup function to restore original styles AND scroll position
-  //     return () => {
-  //       // Get the scroll position from the body top
-  //       const scrollY = parseInt(document.body.style.top || '0') * -1;
-
-  //       // Restore original styles
-  //       document.body.style.overflow = originalStyle.overflow || '';
-  //       document.body.style.paddingRight = originalStyle.paddingRight || '';
-  //       document.body.style.position = originalStyle.position || '';
-  //       document.body.style.top = originalStyle.top || '';
-  //       document.body.style.width = originalStyle.width || '';
-
-  //       // Restore scroll position
-  //       window.scrollTo(0, scrollY);
-  //     };
-  //   }
-  // }, [isOpen]);
-
   const RenderPullConfigForm = () => (
     <div className="space-y-6" data-id="element-818">
       <Grid container spacing={2}>
@@ -482,6 +489,7 @@ export const DataEnrichmentEditModal: React.FC<
           <EndpointNameInputField
             name="name"
             control={control}
+            disabled={true}
             label={
               <>
                 Endpoint Name <span className="text-red-500">*</span>
@@ -496,6 +504,7 @@ export const DataEnrichmentEditModal: React.FC<
           <VersionInputField
             name={'version'}
             control={control}
+            disabled={true}
             label={
               <>
                 Version <span className="text-red-500">*</span>
@@ -623,22 +632,31 @@ export const DataEnrichmentEditModal: React.FC<
             )}
           </Grid>
           <Grid size={{ xs: 12, md: 6 }}>
-            <PasswordInputField
-              name="password"
-              control={control}
-              label={
-                <>
-                  {watch('authType') === 'key' ? 'Private Key' : 'Password'}{' '}
-                  <span className="text-red-500">*</span>
-                </>
-              }
-              type="text"
-              placeholder={
-                watch('authType') === 'key'
-                  ? 'Enter Private Key'
-                  : 'Enter Password'
-              }
-            />
+            {watch('authType') === 'key' ? (
+              <MultiLineTextInputField
+                name="password"
+                control={control}
+                label={
+                  <>
+                    Private Key <span className="text-red-500">*</span>
+                  </>
+                }
+                placeholder="Enter Private Key"
+                rows={4}
+              />
+            ) : (
+              <PasswordInputField
+                name="password"
+                control={control}
+                label={
+                  <>
+                    Password <span className="text-red-500">*</span>
+                  </>
+                }
+                type="text"
+                placeholder="Enter Password"
+              />
+            )}
             {errors?.password && (
               <ValidationError message={errors?.password?.message} />
             )}
@@ -744,6 +762,7 @@ export const DataEnrichmentEditModal: React.FC<
             control={control}
             fullWidth={true}
             maxWidth={65}
+            disabled={true}
             label={
               <>
                 Table Name <span className="text-red-500">*</span>
@@ -808,6 +827,7 @@ export const DataEnrichmentEditModal: React.FC<
           <VersionInputField
             name={'version'}
             control={control}
+            disabled={true}
             label={
               <>
                 Version <span className="text-red-500">*</span>
@@ -824,6 +844,7 @@ export const DataEnrichmentEditModal: React.FC<
           <ApiPathInputField
             name={'endpointPath'}
             control={control}
+            disabled={true}
             label={
               <>
                 API Path <span className="text-red-500">*</span>
@@ -898,6 +919,7 @@ export const DataEnrichmentEditModal: React.FC<
             control={control}
             fullWidth={true}
             maxWidth={65}
+            disabled={true}
             label={
               <>
                 Table Name <span className="text-red-500">*</span>
@@ -941,6 +963,11 @@ export const DataEnrichmentEditModal: React.FC<
   );
 
   if (!isOpen) return null;
+
+  // When modal opens, reset canSendForApproval to false
+  // useEffect(() => {
+  //   if (isOpen) setCanSendForApproval(false);
+  // }, [isOpen]);
 
   return (
     <div
@@ -1033,23 +1060,44 @@ export const DataEnrichmentEditModal: React.FC<
                 </Button>
 
                 <div className="flex space-x-3">
-                  <Button
-                    variant="contained"
-                    sx={{ backgroundColor: '#2b7fff' }}
-                    type="button"
-                    onClick={() => setShowUpdateConfirmDialog(true)}
-                    disabled={isCreating}
-                    startIcon={
-                      isCreating ? (
-                        <CircularProgress size={16} color="inherit" />
-                      ) : (
-                        <Save size={16} />
-                      )
-                    }
-                  >
-                    {isCreating ? 'Updating...' : 'Update'}
-                  </Button>
-                  {/* )} */}
+                  {!showSendForApproval && (
+                    <Button
+                      variant="contained"
+                      sx={{ backgroundColor: '#2b7fff' }}
+                      type="button"
+                      disabled={isCreating}
+                      startIcon={
+                        isCreating ? (
+                          <CircularProgress size={16} color="inherit" />
+                        ) : (
+                          <Save size={16} />
+                        )
+                      }
+                      onClick={async () => {
+                        const valid = await trigger();
+                        if (valid) {
+                          setShowUpdateConfirmDialog(true);
+                        } else {
+                          const firstError = Object.keys(errors)[0];
+                          if (firstError) scrollToFirstError(firstError);
+                        }
+                      }}
+                    >
+                      {isCreating ? 'Updating...' : 'Update'}
+                    </Button>
+                  )}
+                  {showSendForApproval && !isCreating && (
+                    <Button
+                      type="button"
+                      variant="contained"
+                      sx={{ backgroundColor: '#2b7fff', ml: 2 }}
+                      onClick={() => setShowApprovalConfirmDialog(true)}
+                      startIcon={<UploadIcon size={16} />}
+                      disabled={false}
+                    >
+                      Send for Approval
+                    </Button>
+                  )}
                 </div>
               </div>
             </form>
@@ -1082,18 +1130,20 @@ export const DataEnrichmentEditModal: React.FC<
         onClose={() => setShowUpdateConfirmDialog(false)}
         aria-labelledby="update-confirmation-dialog-title"
         aria-describedby="update-confirmation-dialog-description"
+        sx={{ borderRadius: '6px' }}
       >
-        <DialogTitle
-          id="update-confirmation-dialog-title"
+        <Box
           sx={{
-            color: '#3b3b3b',
+            color: '#3B3B3B',
             fontSize: '20px',
             fontWeight: 'bold',
+            padding: '16px 20px',
+            borderBottom: '1px solid #CECECE',
           }}
         >
-          Your confirmation is Required!
-        </DialogTitle>
-        <DialogContent sx={{ padding: '20px 24px' }}>
+          Update Confirmation Required!
+        </Box>
+        <DialogContent sx={{ padding: '20px 20px' }}>
           <DialogContentText
             id="update-confirmation-dialog-description"
             sx={{
@@ -1108,21 +1158,21 @@ export const DataEnrichmentEditModal: React.FC<
               component="span"
               sx={{
                 fontWeight: 'bold',
-                color: '#2b7fff',
-                backgroundColor: '#f0f7ff',
+                color: '#2B7FFF',
+                backgroundColor: '#F0F7FF',
                 padding: '2px 8px',
                 borderRadius: '4px',
                 fontSize: '15px',
               }}
             >
               "{watch('name') || selectedJob?.endpoint_name || 'this endpoint'}"
-            </Box>{' '}
-            configuration?
+            </Box>
+            ?
           </DialogContentText>
           <Box
             sx={{
-              backgroundColor: '#dceeff',
-              border: '1px solid #dceeff',
+              backgroundColor: '#DCEEFF',
+              border: '1px solid #DCEEFF',
               borderRadius: '8px',
               padding: '12px 16px',
               marginTop: '16px',
@@ -1131,7 +1181,7 @@ export const DataEnrichmentEditModal: React.FC<
             <DialogContentText
               sx={{
                 fontSize: '16px',
-                color: '#2b7fff',
+                color: '#2B7FFF',
                 margin: 0,
                 fontWeight: '500',
               }}
@@ -1142,21 +1192,116 @@ export const DataEnrichmentEditModal: React.FC<
             </DialogContentText>
           </Box>
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ padding: '12px 20px 16px 20px' }}>
           <Button
             onClick={() => setShowUpdateConfirmDialog(false)}
-            color="inherit"
             variant="outlined"
+            className="pb-1.5! pt-[5px]!"
+            size="small"
           >
             Cancel
           </Button>
           <Button
             onClick={handleUpdateConfirm}
             variant="contained"
-            sx={{ backgroundColor: '#2b7fff' }}
+            color="primary"
+            className="pb-1.5! pt-[5px]!"
             autoFocus
+            size="small"
           >
             Yes, Update Configuration
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Send for Approval Confirmation Dialog */}
+      <Dialog
+        open={showApprovalConfirmDialog}
+        onClose={() => setShowApprovalConfirmDialog(false)}
+        aria-labelledby="approval-confirmation-dialog-title"
+        aria-describedby="approval-confirmation-dialog-description"
+        sx={{ borderRadius: '6px' }}
+      >
+        <Box
+          sx={{
+            color: '#3B3B3B',
+            fontSize: '20px',
+            fontWeight: 'bold',
+            padding: '16px 20px',
+            borderBottom: '1px solid #CECECE',
+          }}
+        >
+          Approval Confirmation Required!
+        </Box>
+        <DialogContent sx={{ padding: '20px 20px' }}>
+          <DialogContentText
+            id="approval-confirmation-dialog-description"
+            sx={{
+              fontSize: '16px',
+              lineHeight: '1.6',
+              color: '#374151',
+              marginBottom: '16px',
+            }}
+          >
+            Are you sure you want to send{' '}
+            <Box
+              component="span"
+              sx={{
+                fontWeight: 'bold',
+                color: '#2B7FFF',
+                backgroundColor: '#F0F7FF',
+                padding: '2px 8px',
+                borderRadius: '4px',
+                fontSize: '15px',
+              }}
+            >
+              "{selectedJob?.endpoint_name || 'this job'}"
+            </Box>
+            for approval?
+          </DialogContentText>
+          <Box
+            sx={{
+              backgroundColor: '#DCEEFF',
+              border: '1px solid #DCEEFF',
+              borderRadius: '8px',
+              padding: '12px 16px',
+              marginTop: '16px',
+            }}
+          >
+            <DialogContentText
+              sx={{
+                fontSize: '16px',
+                color: '#2B7FFF',
+                margin: 0,
+                fontWeight: '500',
+              }}
+            >
+              ⚠️ Important: Once sent, the job will be reviewed by an approver
+              and you won't be able to make changes until it's either approved
+              or rejected.
+            </DialogContentText>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ padding: '12px 20px 16px 20px' }}>
+          <Button
+            onClick={() => setShowApprovalConfirmDialog(false)}
+            variant="outlined"
+            className="pb-1.5! pt-[5px]!"
+            disabled={isCreating}
+            size="small"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSendForApprovalConfirm}
+            variant="contained"
+            color="primary"
+            className="pb-1.5! pt-[5px]!"
+            autoFocus
+            disabled={isCreating}
+            size="small"
+          >
+            {isCreating ? 'Sending...' : 'Yes, Send for Approval'}
           </Button>
         </DialogActions>
       </Dialog>
