@@ -47,63 +47,8 @@ import {
   TazamaClaims,
   RequireAnyClaims,
 } from '../auth/auth.decorator';
-import * as jwt from 'jsonwebtoken';
-interface DecodedUserInfo {
-  preferredUsername: string;
-  realmRoles: string[];
-  tenantDetails: string[];
-}
-
-function getTenantId(user: AuthenticatedUser): string {
-  const tenantId = user.token.tenantId || user.tenantId;
-  if (!tenantId) {
-    throw new Error('Tenant ID not found in user token or claims');
-  }
-  return tenantId;
-}
-
-function decodeTokenString(tokenString: string): jwt.JwtPayload | null {
-  try {
-    return jwt.decode(tokenString) as jwt.JwtPayload;
-  } catch {
-    return null;
-  }
-}
-
-export function decodeValidatedToken(user: AuthenticatedUser): DecodedUserInfo {
-  let decoded = decodeTokenString(user.token.tokenString);
-
-  if (!decoded) {
-    throw new Error('Invalid token: unable to decode');
-  }
-
-  if (decoded.tokenString && typeof decoded.tokenString === 'string') {
-    const innerDecoded = decodeTokenString(decoded.tokenString);
-    if (innerDecoded) {
-      decoded = innerDecoded;
-    }
-  }
-
-  if (!decoded.preferred_username) {
-    throw new Error(
-      `Invalid token: preferred_username missing. Available keys: ${Object.keys(decoded).join(', ')}`,
-    );
-  }
-
-  if (!decoded.realm_access || !Array.isArray(decoded.realm_access.roles)) {
-    throw new Error('Invalid token: realm_access.roles missing or invalid');
-  }
-
-  if (!Array.isArray(decoded.tenant_details)) {
-    throw new Error('Invalid token: tenant_details missing or invalid');
-  }
-
-  return {
-    preferredUsername: decoded.preferred_username,
-    realmRoles: decoded.realm_access.roles,
-    tenantDetails: decoded.tenant_details,
-  };
-}
+import { decodeValidatedToken, getTenantId } from 'src/utils/helpers';
+import { EventType } from 'src/enums/events.enum';
 
 function getUserClaims(user: AuthenticatedUser): string[] {
   return user.validClaims || [];
@@ -163,43 +108,43 @@ export class ConfigController {
     return `${basePath}/${transactionType}`;
   }
 
-  private async sendWorkflowNotification(
-    event:
-      | 'editor_submit'
-      | 'approver_approve'
-      | 'exporter_export'
-      | 'publisher_deploy'
-      | 'publisher_activate'
-      | 'publisher_deactivate'
-      | 'approver_reject',
-    configId: number,
-    user: AuthenticatedUser,
-    config: Config,
-    authToken: string,
-    comment?: string,
-  ): Promise<void> {
-    const decodedToken = decodeValidatedToken(user);
-    const groupName =
-      decodedToken.tenantDetails.length > 0
-        ? decodedToken.tenantDetails[0].replace(/\//g, '')
-        : null;
+  // private async sendWorkflowNotification(
+  //   event:
+  //     | 'editor_submit'
+  //     | 'approver_approve'
+  //     | 'exporter_export'
+  //     | 'publisher_deploy'
+  //     | 'publisher_activate'
+  //     | 'publisher_deactivate'
+  //     | 'approver_reject',
+  //   configId: number,
+  //   user: AuthenticatedUser,
+  //   config: Config,
+  //   authToken: string,
+  //   comment?: string,
+  // ): Promise<void> {
+  //   const decodedToken = decodeValidatedToken(user);
+  //   const groupName =
+  //     decodedToken.tenantDetails.length > 0
+  //       ? decodedToken.tenantDetails[0].replace(/\//g, '')
+  //       : null;
 
-    if (!groupName) {
-      throw new Error('Group name not found in tenant details');
-    }
+  //   if (!groupName) {
+  //     throw new Error('Group name not found in tenant details');
+  //   }
 
-    await this.notificationService.sendGenericWorkflowNotification({
-      event,
-      configId,
-      tenantId: getTenantId(user),
-      actorEmail: decodedToken.preferredUsername,
-      actorName: decodedToken.preferredUsername,
-      config,
-      authToken: authToken,
-      groupName: groupName,
-      comment,
-    });
-  }
+  //   await this.notificationService.sendGenericWorkflowNotification({
+  //     event,
+  //     configId,
+  //     tenantId: getTenantId(user),
+  //     actorEmail: decodedToken.preferredUsername,
+  //     actorName: decodedToken.preferredUsername,
+  //     config,
+  //     authToken: authToken,
+  //     groupName: groupName,
+  //     comment,
+  //   });
+  // }
 
   @Post('/:offset/:limit')
   @RequireAnyClaims(
@@ -515,9 +460,9 @@ export class ConfigController {
 
     console.log(' Result after submit for approval ', result);
     if (result?.success) {
-      const config = result.config || result.data || {};
-      await this.sendWorkflowNotification(
-        'editor_submit',
+      const config = result.config as Config;
+      await this.notificationService.sendWorkflowNotification(
+        EventType.EditorSubmit,
         id,
         user,
         config,
@@ -547,9 +492,9 @@ export class ConfigController {
     );
 
       if (result?.success) {
-        const config = result.config || result.data || {};
-        await this.sendWorkflowNotification(
-          'approver_approve',
+        const config = result.config as Config;
+        await this.notificationService.sendWorkflowNotification(
+          EventType.ApproverApprove,
           id,
           user,
           config,
@@ -596,9 +541,9 @@ export class ConfigController {
     );
 
       if (result?.success) {
-      const config = result.config || result.data || {};
-      await this.sendWorkflowNotification(
-        'approver_reject',
+      const config = result.config as Config;
+      await this.notificationService.sendWorkflowNotification(
+        EventType.ApproverReject,
         id,
         user,
         config,
@@ -657,11 +602,11 @@ export class ConfigController {
 
     if (result.success) {
       const config = result.config as Config;
-      await this.sendWorkflowNotification(
-        'exporter_export',
+      await this.notificationService.sendWorkflowNotification(
+        EventType.ExporterExport,
         id,
         user,
-        config,
+        config as Config,
         token,
         dto.comment,
       );
@@ -698,8 +643,8 @@ export class ConfigController {
 
     if (result?.success) {
       const config = result.config as Config; ;
-      await this.sendWorkflowNotification(
-        'publisher_deploy',
+      await this.notificationService.sendWorkflowNotification(
+        EventType.PublisherDeploy,
         id,
         user,
         config,
@@ -797,10 +742,10 @@ export class ConfigController {
 
     if (result?.success) {
       const config = result.config as Config;
-      await this.sendWorkflowNotification(
+      await this.notificationService.sendWorkflowNotification(
         dto.publishing_status === 'active'
-          ? 'publisher_activate'
-          : 'publisher_deactivate',
+          ? EventType.PublisherActivate
+          : EventType.PublisherDeactivate,
         id,
         user,
         config,
