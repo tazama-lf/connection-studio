@@ -555,14 +555,13 @@ export const ExportedItemDetailsModal: React.FC<
                             </span>
                             <Clock className="w-4 h-4 text-gray-500" />
                             <span>
-                              {new Date(content.updated_at).toLocaleTimeString(
-                                'en-US',
-                                {
-                                  hour: 'numeric',
-                                  minute: '2-digit',
-                                  hour12: true,
-                                },
-                              )}
+                              {new Date(
+                                content?.updated_at || content?.updatedAt,
+                              ).toLocaleTimeString('en-US', {
+                                hour: 'numeric',
+                                minute: '2-digit',
+                                hour12: true,
+                              })}
                             </span>
                           </>
                         ) : (
