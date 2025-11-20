@@ -99,6 +99,10 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({
 
   const cronExpression = watch('cronExpression');
 
+  {
+    console.log('viewFormData', viewFormData);
+  }
+
   // Ref to track if we're in edit mode initialization
   const isInitializing = useRef(false);
 
@@ -292,6 +296,36 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({
           </Grid>
         </Grid>
 
+        {/* Show comments just below Retry Count field */}
+        {viewFormData?.comments && (
+          <div
+            style={{
+              margin: '16px 0 16px 0',
+              color: '#374151',
+              fontSize: 15,
+              background: '#f9fafb',
+              border: '1px solid #e5e7eb',
+              borderRadius: 6,
+              padding: '12px 16px',
+            }}
+          >
+            <div
+              style={{
+                fontWeight: 700,
+                marginBottom: 4,
+                color: '#3b3b3b',
+                fontSize: 15,
+              }}
+            >
+              Comments
+            </div>
+            <div
+              style={{ whiteSpace: 'pre-line', fontSize: 15, color: '#374151' }}
+            >
+              {viewFormData.comments}
+            </div>
+          </div>
+        )}
         <Grid container spacing={3}>
           <Grid size={{ xs: 12 }}>
             <Box
@@ -362,7 +396,8 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({
                   </div>
                 )}
               {viewFormData &&
-                (viewFormData?.status === 'STATUS_01_IN_PROGRESS' || viewFormData?.status === 'STATUS_05_REJECTED') && (
+                (viewFormData?.status === 'STATUS_01_IN_PROGRESS' ||
+                  viewFormData?.status === 'STATUS_05_REJECTED') && (
                   <Button
                     type="button"
                     variant="contained"
@@ -418,6 +453,12 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({
           </Grid>
         </Grid>
       </Box>
+      {/* Show comments at the end, as plain text */}
+      {viewFormData?.comments && (
+        <div style={{ marginTop: 24, color: '#374151', fontSize: 15 }}>
+          <strong>Comments:</strong> {viewFormData.comments}
+        </div>
+      )}
     </Box>
   );
 };

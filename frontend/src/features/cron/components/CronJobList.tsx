@@ -188,6 +188,7 @@ export const CronJobList: React.FC<CronJobListProps> = ({
 
   // Handle view schedule
   const handleView = (schedule: any) => {
+    console.log('schedule', schedule);
     setSelectedSchedule(schedule);
     setEditForm({
       name: schedule.name,
@@ -196,6 +197,7 @@ export const CronJobList: React.FC<CronJobListProps> = ({
       startDate: schedule.startDate || '2025-11-18',
       endDate: schedule.endDate || '2025-12-31',
       status: schedule.status || '',
+      comments: schedule.comments || '',
     });
     setViewModalOpen(true);
   };
@@ -629,7 +631,9 @@ export const CronJobList: React.FC<CronJobListProps> = ({
           {/* Export Confirmation Dialog */}
           <Dialog
             open={confirmDialog.open}
-            onClose={() => setConfirmDialog({ open: false, type: '', schedule: null })}
+            onClose={() =>
+              setConfirmDialog({ open: false, type: '', schedule: null })
+            }
             aria-labelledby="confirmation-dialog-title"
             aria-describedby="confirmation-dialog-description"
             sx={{ borderRadius: '6px' }}
@@ -643,8 +647,10 @@ export const CronJobList: React.FC<CronJobListProps> = ({
                 borderBottom: '1px solid #cecece',
               }}
             >
-              {confirmDialog.type === 'export' && 'Export Confirmation Required!'}
-              {confirmDialog.type === 'approval' && 'Approval Confirmation Required!'}
+              {confirmDialog.type === 'export' &&
+                'Export Confirmation Required!'}
+              {confirmDialog.type === 'approval' &&
+                'Approval Confirmation Required!'}
             </Box>
             <DialogContent sx={{ padding: '20px 20px' }}>
               <DialogContentText
@@ -656,7 +662,10 @@ export const CronJobList: React.FC<CronJobListProps> = ({
                   marginBottom: '16px',
                 }}
               >
-                Are you sure you want to {confirmDialog.type === 'export' ? 'export' : 'submit for approval'}{' '}
+                Are you sure you want to{' '}
+                {confirmDialog.type === 'export'
+                  ? 'export'
+                  : 'submit for approval'}{' '}
                 <Box
                   component="span"
                   sx={{
@@ -689,9 +698,9 @@ export const CronJobList: React.FC<CronJobListProps> = ({
                     fontWeight: '500',
                   }}
                 >
-                  {confirmDialog.type === 'export' && 
+                  {confirmDialog.type === 'export' &&
                     '⚠️ Important: This will update the cron job status to EXPORTED.'}
-                  {confirmDialog.type === 'approval' && 
+                  {confirmDialog.type === 'approval' &&
                     '⚠️ Important: This will submit the cron job for approval and update its status to UNDER REVIEW.'}
                 </DialogContentText>
               </Box>
@@ -709,13 +718,15 @@ export const CronJobList: React.FC<CronJobListProps> = ({
               <Button
                 onClick={() => {
                   if (confirmDialog.type === 'export') handleExportConfirm();
-                  else if (confirmDialog.type === 'approval') handleApprovalConfirm();
+                  else if (confirmDialog.type === 'approval')
+                    handleApprovalConfirm();
                 }}
                 variant="primary"
                 className="!pb-[6px] !pt-[5px] bg-[#2b7fff]"
               >
                 {confirmDialog.type === 'export' && 'Yes, Export Cron Job'}
-                {confirmDialog.type === 'approval' && 'Yes, Submit for Approval'}
+                {confirmDialog.type === 'approval' &&
+                  'Yes, Submit for Approval'}
               </Button>
             </DialogActions>
           </Dialog>
