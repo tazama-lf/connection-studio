@@ -453,12 +453,6 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({
           </Grid>
         </Grid>
       </Box>
-      {/* Show comments at the end, as plain text */}
-      {viewFormData?.comments && (
-        <div style={{ marginTop: 24, color: '#374151', fontSize: 15 }}>
-          <strong>Comments:</strong> {viewFormData.comments}
-        </div>
-      )}
     </Box>
   );
 };

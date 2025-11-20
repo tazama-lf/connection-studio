@@ -1490,6 +1490,7 @@ export const AlphaNumericInputFieldWithSpaces = ({
     control,
     placeholder = "",
     maxLength = 50,
+    disabled,
     input_type,
     type = "text",
     hyphonAllowed,
@@ -1508,6 +1509,7 @@ export const AlphaNumericInputFieldWithSpaces = ({
                         type={type}
                         variant="filled"
                         value={value}
+                        disabled={disabled}
                         onKeyDown={(event) => {
                             if (type === "text") {
                                 const keyValue = event.key;
