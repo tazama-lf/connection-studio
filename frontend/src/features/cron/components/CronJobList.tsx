@@ -9,6 +9,7 @@ import {
   ChevronDownIcon as ChevronDownIconAlias,
   PlayIcon,
   PauseIcon,
+  Upload,
 } from 'lucide-react';
 import { dataEnrichmentApi } from '../../data-enrichment/services';
 import type { ScheduleResponse } from '../../data-enrichment/types';
@@ -28,7 +29,7 @@ import {
   getStatusLabel,
 } from '../../../shared/utils/statusColors';
 import { JobRejectionDialog } from '../../../shared/components/JobRejectionDialog';
-import { Box, Pagination } from '@mui/material';
+import { Box, Pagination, Tooltip } from '@mui/material';
 import { getDemsStatusLov } from '@shared/lovs';
 import CustomTable from '@common/Tables/CustomTable';
 import { handleInputFilter, handleSelectFilter } from '@shared/helpers';
@@ -442,71 +443,50 @@ export const CronJobList: React.FC<CronJobListProps> = ({
 
         return (
           <div className=" flex items-center justify-center gap-2 h-full">
-            <button
-              onClick={() => {
-                handleView(schedule);
-              }}
-              className="w-[75px] inline-flex justify-center items-center rounded-md bg-[#2b7fff] px-3 py-1.5 text-xs font-medium text-white shadow-sm focus:outline-none transition-colors cursor-pointer"
-            >
-              <EyeIcon className="w-4 h-4 mr-2" />
-              View
-            </button>
-            {/* Edit - Only for Editors/Approvers and only for in-progress jobs (not suspended) */}
-            {userIsEditor && (
-              <button
+            <Tooltip title="View Details" arrow placement="top">
+              <EyeIcon
+                className="w-4 h-4 mr-2 text-blue-600 hover:text-blue-700 cursor-pointer"
                 onClick={() => {
-                  handleEdit(schedule);
+                  handleView(schedule);
                 }}
-                className={`w-[75px] inline-flex justify-center items-center rounded-md bg-[#2b7fff] px-3 py-1.5 text-xs font-medium text-white shadow-sm focus:outline-none transition-colors cursor-pointer`}
-                title={
-                  schedule.status !== 'STATUS_01_IN_PROGRESS'
-                    ? 'Can only edit jobs with in-progress status'
-                    : isActionInProgress
-                      ? 'Action in progress...'
-                      : ''
-                }
-              >
-                <EditIcon className="w-4 h-4 mr-2" />
-                Edit
-              </button>
-            )}
+              />
+            </Tooltip>
+            {/* Edit - Only for Editors/Approvers and only for in-progress jobs (not suspended) */}
+            {userIsEditor &&
+              (schedule.status === 'STATUS_01_IN_PROGRESS' ||
+                schedule.status === 'STATUS_05_REJECTED') && (
+                <Tooltip title="Edit Cron Job" arrow placement="top">
+                  <EditIcon
+                    className="w-4 h-4 mr-2 text-yellow-600 hover:text-yellow-700 cursor-pointer"
+                    onClick={() => {
+                      handleEdit(schedule);
+                    }}
+                  />
+                </Tooltip>
+              )}
             {/* Export - Only for approved and non-suspended items */}
             {userIsExporter && schedule.status === 'STATUS_04_APPROVED' && (
-              <button
-                onClick={async () => {
-                  try {
-                    setIsActionInProgress(true);
-                    await dataEnrichmentApi.updateScheduleStatus(
-                      schedule.id,
-                      'STATUS_06_EXPORTED',
-                    );
-                    showSuccess('Cron job exported successfully');
-                    loadSchedules();
-                  } catch (error) {
-                    console.error('Failed to export cron job:', error);
-                    showError('Failed to export cron job');
-                  } finally {
-                    setIsActionInProgress(false);
-                  }
-                }}
-                disabled={isActionInProgress}
-                className={`w-[75px] inline-flex justify-center items-center rounded-md bg-[#2b7fff] px-3 py-1.5 text-xs font-medium text-white shadow-sm focus:outline-none transition-colors cursor-pointer`}
-              >
-                <svg
-                  className="w-4 h-4 mr-2"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                  />
-                </svg>
-                Export
-              </button>
+              <Tooltip title="Export Configuration" arrow placement="top">
+                <Upload
+                  className="w-4 h-4 mr-2 text-cyan-600 hover:text-cyan-700 cursor-pointer"
+                  onClick={async () => {
+                    try {
+                      setIsActionInProgress(true);
+                      await dataEnrichmentApi.updateScheduleStatus(
+                        schedule.id,
+                        'STATUS_06_EXPORTED',
+                      );
+                      showSuccess('Cron job exported successfully');
+                      loadSchedules();
+                    } catch (error) {
+                      console.error('Failed to export cron job:', error);
+                      showError('Failed to export cron job');
+                    } finally {
+                      setIsActionInProgress(false);
+                    }
+                  }}
+                />
+              </Tooltip>
             )}
 
             {userIsPublisher && (

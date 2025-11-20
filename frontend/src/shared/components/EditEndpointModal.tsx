@@ -1284,7 +1284,7 @@ console.log('Cur map:', currentMappings);
       // Determine actual config ID to use
       const actualConfigId = createdEndpoint?.id || existingConfig?.id || endpointId;
       const shouldCreate = !createdEndpoint && !existingConfig && isNewEndpoint;
-      const isCloningOperation = isCloning && existingConfig; // True when we're cloning an existing config
+      const isCloningOperation = isCloning && !!existingConfig && !createdEndpoint;
       const action = (shouldCreate || isCloningOperation) ? 'create' : 'update';
 
       if (shouldCreate || isCloningOperation) {
@@ -1764,10 +1764,17 @@ console.log('Cur map:', currentMappings);
                 {showAddFunctionModal && (
                   <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                     {/* Enhanced blurred backdrop - matching other modals */}
-                    <div
+                    {/* <div
                       className="fixed inset-0 backdrop-blur-sm backdrop-saturate-150 z-40"
                       onClick={() => setShowAddFunctionModal(false)}
-                    />
+                    /> */}
+                <Backdrop
+                  sx={(theme) => ({
+                    zIndex: theme.zIndex.drawer + 1,
+                    overflow: 'hidden',
+                  })}
+                  open={true}
+                >
 
                     {/* Modal Content - Higher z-index to appear above backdrop */}
                     <div className="bg-white rounded-lg p-6 w-full max-w-2xl relative z-50 shadow-2xl">
@@ -1786,6 +1793,7 @@ console.log('Cur map:', currentMappings);
                         onClose={() => setShowAddFunctionModal(false)}
                       />
                     </div>
+                </Backdrop>
                   </div>
                 )}
               </>
@@ -1888,7 +1896,7 @@ console.log('Cur map:', currentMappings);
                           </>
                         )}
                         {/* Show export button for exporters on the last step */}
-                        {isExporter(user?.claims || []) && currentStep === 'deploy' && (
+                        {/* {isExporter(user?.claims || []) && currentStep === 'deploy' && (
                           <>
                             {onSendForDeployment && (isStatus(createdEndpoint?.status, 'STATUS_04_APPROVED') || isStatus(existingConfig?.status, 'STATUS_08_DEPLOYED')) && (
                               <Button
@@ -1900,7 +1908,7 @@ console.log('Cur map:', currentMappings);
                               </Button>
                             )}
                           </>
-                        )}
+                        )} */}
                         {/* Show submit for approval button for editors on the last step */}
                         {isEditor(user?.claims || []) && currentStep === 'deploy' && (
                           <>
