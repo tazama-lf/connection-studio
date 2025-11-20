@@ -3,6 +3,7 @@ import { ArrowRightIcon, PlusIcon, XIcon, ChevronRightIcon, FolderIcon, Database
 import { Button } from './Button';
 import { configApi, type FieldMapping } from '../../features/config/services/configApi';
 import { dataModelApi, type DestinationOption } from '../../features/data-model';
+import { Backdrop } from '@mui/material';
 
 interface MappingUtilityProps {
   onMappingChange: (isValid: boolean) => void;
@@ -270,19 +271,19 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       });
     });
 
-    // Add hardcoded tenantId field at root level if not already present
-    if (!nodeMap.has('tenantId')) {
+    // Add hardcoded TenantId field at root level if not already present
+    if (!nodeMap.has('TenantId')) {
       const tenantIdNode: TreeNode = {
-        id: 'tenantId',
-        name: 'tenantId',
-        path: ['tenantId'],
+        id: 'TenantId',
+        name: 'TenantId',
+        path: ['TenantId'],
         type: 'string',
         children: []
       };
-      nodeMap.set('tenantId', tenantIdNode);
-      console.log('📌 Added hardcoded tenantId field to source tree');
+      nodeMap.set('TenantId', tenantIdNode);
+      console.log('📌 Added hardcoded TenantId field to source tree');
     } else {
-      console.log('📌 tenantId already exists at root level, skipping hardcoded addition');
+      console.log('📌 TenantId already exists at root level, skipping hardcoded addition');
     }
 
     // Second pass: build parent-child relationships
@@ -893,179 +894,187 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
     if (!showAddMapping) return null;
     return <div className="fixed inset-0 z-50 flex items-center justify-center" data-id="element-188">
       {/* Enhanced blurred backdrop */}
-      <div className="absolute inset-0 backdrop-blur-sm backdrop-saturate-150" onClick={() => setShowAddMapping(false)}></div>
-      <div className="bg-white rounded-lg w-full max-w-6xl p-6 max-h-[90vh] overflow-auto relative z-10 shadow-2xl" data-id="element-189">
-        <div className="flex justify-between items-center mb-6" data-id="element-190">
-          <h3 className="text-lg font-medium text-gray-900" data-id="element-191">
-            Add New Mapping
-          </h3>
-          <button onClick={() => setShowAddMapping(false)} className="text-gray-500 hover:text-gray-700" data-id="element-192">
-            <XIcon size={20} data-id="element-193" />
-          </button>
-        </div>
-        <div className="grid grid-cols-3 gap-6" data-id="element-194">
-          {/* Source Selection */}
-          {selectedTransformation !== 'constant' && (
-            <div className="space-y-4" data-id="element-195">
-              <h4 className="font-medium text-gray-700" data-id="element-196">Source Fields</h4>
-              <div className="border border-gray-200 rounded-md p-3 h-96 overflow-auto" data-id="element-197">
-                <div className="mb-2 text-sm text-gray-500" data-id="element-198">
-                  Message Structure
+      {/* <div className="absolute inset-0 backdrop-blur-sm backdrop-saturate-150" onClick={() => setShowAddMapping(false)}></div> */}
+       <Backdrop
+          sx={(theme) => ({
+            zIndex: theme.zIndex.drawer + 1,
+            overflow: 'hidden',
+          })}
+          open={true}
+        >
+        <div className="bg-white rounded-lg w-full max-w-6xl p-6 max-h-[90vh] overflow-auto relative z-10 " data-id="element-189">
+          <div className="flex justify-between items-center mb-6" data-id="element-190">
+            <h3 className="text-lg font-medium text-gray-900" data-id="element-191">
+              Add New Mapping
+            </h3>
+            <button onClick={() => setShowAddMapping(false)} className="text-gray-500 hover:text-gray-700" data-id="element-192">
+              <XIcon size={20} data-id="element-193" />
+            </button>
+          </div>
+          <div className="grid grid-cols-3 gap-6" data-id="element-194">
+            {/* Source Selection */}
+            {selectedTransformation !== 'constant' && (
+              <div className="space-y-4" data-id="element-195">
+                <h4 className="font-medium text-gray-700" data-id="element-196">Source Fields</h4>
+                <div className="border border-gray-200 rounded-md p-3 h-96 overflow-auto" data-id="element-197">
+                  <div className="mb-2 text-sm text-gray-500" data-id="element-198">
+                    Message Structure
+                  </div>
+                  {renderTree(sourceTree, expandedSourceNodes, toggleSourceNode, handleSourceSelect, selectedSources, 'source')}
                 </div>
-                {renderTree(sourceTree, expandedSourceNodes, toggleSourceNode, handleSourceSelect, selectedSources, 'source')}
-              </div>
-              <div className="text-sm text-gray-600" data-id="element-199">
-                <span className='font-bold'>Selected:</span> {selectedSources.join(', ') || 'None'}
-              </div>
-            </div>
-          )}
-
-          {/* Constant Value Input */}
-          {selectedTransformation === 'constant' && (
-            <div className="space-y-4" data-id="element-constant-1">
-              <h4 className="font-medium text-gray-700" data-id="element-constant-2">Constant Value</h4>
-              <div className="border border-gray-200 rounded-md p-3" data-id="element-constant-3">
-                <label className="block text-sm font-medium text-gray-700 mb-2" data-id="element-constant-4">
-                  Enter Constant Value:
-                </label>
-                <input
-                  type="text"
-                  value={selectedSources[0] || ''}
-                  onChange={(e) => setSelectedSources([e.target.value])}
-                  placeholder="Enter a constant value (string, number, etc.)"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <div className="mt-2 text-sm text-gray-500" data-id="element-constant-5">
-                  This value will be mapped directly to the destination field
+                <div className="text-sm text-gray-600" data-id="element-199">
+                  <span className='font-bold'>Selected:</span> {selectedSources.join(', ') || 'None'}
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Transformation */}
-          <div className="space-y-4" data-id="element-200">
-            <h4 className="font-medium text-gray-700" data-id="element-201">Transformation</h4>
-            <div className="border border-gray-200 rounded-md p-3 h-96 overflow-auto flex flex-col" data-id="element-202">
-              <div className="mb-4" data-id="element-203">
-                <label className="block text-sm font-medium text-gray-700 mb-2" data-id="element-204">
-                  Select Transformation Function
-                </label>
-                <select value={selectedTransformation} onChange={e => setSelectedTransformation(e.target.value as 'concatenate' | 'sum' | 'split' | 'none' | 'constant')} className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" data-id="element-205">
-                  <option value="none" data-id="element-206">None (Direct Mapping)</option>
-                  <option value="concatenate" data-id="element-207">Concatenate</option>
-                  <option value="split" data-id="element-209">Split</option>
-                  <option value="constant" data-id="element-constant-option">Constant Value</option>
-                </select>
-              </div>
-              {(selectedTransformation === 'split' || selectedTransformation === 'concatenate') && (
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    {selectedTransformation === 'split' ? 'Split Delimiter' : 'Separator'}
+            {/* Constant Value Input */}
+            {selectedTransformation === 'constant' && (
+              <div className="space-y-4" data-id="element-constant-1">
+                <h4 className="font-medium text-gray-700" data-id="element-constant-2">Constant Value</h4>
+                <div className="border border-gray-200 rounded-md p-3" data-id="element-constant-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-2" data-id="element-constant-4">
+                    Enter Constant Value:
                   </label>
                   <input
                     type="text"
-                    value={delimiter}
-                    onChange={e => setDelimiter(e.target.value.slice(0, 1))}
-                    placeholder=""
-                    className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    value={selectedSources[0] || ''}
+                    onChange={(e) => setSelectedSources([e.target.value])}
+                    placeholder="Enter a constant value (string, number, etc.)"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
-                  <p className="text-xs text-gray-500 mt-1">
-                     {selectedTransformation === 'split'
-                        ? 'Split using character (default: space)'
-                        : 'Join using character (default: space)'
-                    }
-                  </p>
+                  <div className="mt-2 text-sm text-gray-500" data-id="element-constant-5">
+                    This value will be mapped directly to the destination field
+                  </div>
                 </div>
-              )}
-              <div className="flex-1 flex items-end justify-center" data-id="element-210">
-                {selectedTransformation === 'concatenate' && <div className="text-center p-4 bg-gray-50 rounded-md" data-id="element-211">
-                  <h5 className="font-medium text-gray-700 mb-2" data-id="element-212">
-                    Concatenate
-                  </h5>
-                  <p className="text-sm text-gray-600" data-id="element-213">
-                    Combines multiple source fields into a single string.
-                    <br data-id="element-214" />
-                    <br data-id="element-215" />
-                    Example: "John" + " " + "Doe" → "John Doe"
-                  </p>
-                </div>}
-                {selectedTransformation === 'split' && <div className="text-center p-4 bg-gray-50 rounded-md" data-id="element-221">
-                  <h5 className="font-medium text-gray-700 mb-2" data-id="element-222">Split</h5>
-                  <p className="text-sm text-gray-600" data-id="element-223">
-                    Divides a single source field into multiple destination
-                    fields.
-                    <br data-id="element-224" />
-                    <br data-id="element-225" />
-                    Example: "John Doe" → "John" and "Doe"
-                  </p>
-                </div>}
-                {selectedTransformation === 'none' && <div className="text-center p-4 bg-gray-50 rounded-md" data-id="element-226">
-                  <h5 className="font-medium text-gray-700 mb-2" data-id="element-227">
-                    Direct Mapping
-                  </h5>
-                  <p className="text-sm text-gray-600" data-id="element-228">
-                    Maps source fields directly to destination fields
-                    without transformation.
-                  </p>
-                </div>}
-                {selectedTransformation === 'constant' && <div className="text-center p-4 bg-gray-50 rounded-md" data-id="element-229">
-                  <h5 className="font-medium text-gray-700 mb-2" data-id="element-230">
-                    Constant Value
-                  </h5>
-                  <p className="text-sm text-gray-600" data-id="element-231">
-                    Maps a fixed constant value to the destination field,
-                    ignoring any source data.
-                  </p>
-                </div>}
+              </div>
+            )}
+
+            {/* Transformation */}
+            <div className="space-y-4" data-id="element-200">
+              <h4 className="font-medium text-gray-700" data-id="element-201">Transformation</h4>
+              <div className="border border-gray-200 rounded-md p-3 h-96 overflow-auto flex flex-col" data-id="element-202">
+                <div className="mb-4" data-id="element-203">
+                  <label className="block text-sm font-medium text-gray-700 mb-2" data-id="element-204">
+                    Select Transformation Function
+                  </label>
+                  <select value={selectedTransformation} onChange={e => setSelectedTransformation(e.target.value as 'concatenate' | 'sum' | 'split' | 'none' | 'constant')} className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" data-id="element-205">
+                    <option value="none" data-id="element-206">None (Direct Mapping)</option>
+                    <option value="concatenate" data-id="element-207">Concatenate</option>
+                    <option value="split" data-id="element-209">Split</option>
+                    <option value="constant" data-id="element-constant-option">Constant Value</option>
+                  </select>
+                </div>
+                {(selectedTransformation === 'split' || selectedTransformation === 'concatenate') && (
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      {selectedTransformation === 'split' ? 'Split Delimiter' : 'Separator'}
+                    </label>
+                    <input
+                      type="text"
+                      value={delimiter}
+                      onChange={e => setDelimiter(e.target.value.slice(0, 1))}
+                      placeholder=""
+                      className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      {selectedTransformation === 'split'
+                          ? 'Split using character (default: space)'
+                          : 'Join using character (default: space)'
+                      }
+                    </p>
+                  </div>
+                )}
+                <div className="flex-1 flex items-end justify-center" data-id="element-210">
+                  {selectedTransformation === 'concatenate' && <div className="text-center p-4 bg-gray-50 rounded-md" data-id="element-211">
+                    <h5 className="font-medium text-gray-700 mb-2" data-id="element-212">
+                      Concatenate
+                    </h5>
+                    <p className="text-sm text-gray-600" data-id="element-213">
+                      Combines multiple source fields into a single string.
+                      <br data-id="element-214" />
+                      <br data-id="element-215" />
+                      Example: "John" + " " + "Doe" → "John Doe"
+                    </p>
+                  </div>}
+                  {selectedTransformation === 'split' && <div className="text-center p-4 bg-gray-50 rounded-md" data-id="element-221">
+                    <h5 className="font-medium text-gray-700 mb-2" data-id="element-222">Split</h5>
+                    <p className="text-sm text-gray-600" data-id="element-223">
+                      Divides a single source field into multiple destination
+                      fields.
+                      <br data-id="element-224" />
+                      <br data-id="element-225" />
+                      Example: "John Doe" → "John" and "Doe"
+                    </p>
+                  </div>}
+                  {selectedTransformation === 'none' && <div className="text-center p-4 bg-gray-50 rounded-md" data-id="element-226">
+                    <h5 className="font-medium text-gray-700 mb-2" data-id="element-227">
+                      Direct Mapping
+                    </h5>
+                    <p className="text-sm text-gray-600" data-id="element-228">
+                      Maps source fields directly to destination fields
+                      without transformation.
+                    </p>
+                  </div>}
+                  {selectedTransformation === 'constant' && <div className="text-center p-4 bg-gray-50 rounded-md" data-id="element-229">
+                    <h5 className="font-medium text-gray-700 mb-2" data-id="element-230">
+                      Constant Value
+                    </h5>
+                    <p className="text-sm text-gray-600" data-id="element-231">
+                      Maps a fixed constant value to the destination field,
+                      ignoring any source data.
+                    </p>
+                  </div>}
+                </div>
+              </div>
+            </div>
+            {/* Destination Selection */}
+            <div className="space-y-4" data-id="element-229">
+              <h4 className="font-medium text-gray-700" data-id="element-230">Destination</h4>
+              <div className="border border-gray-200 rounded-md p-3 h-96 overflow-auto" data-id="element-231">
+                <div className="mb-2 text-sm text-gray-500" data-id="element-232">Data Model</div>
+                {loadingDestinations ? (
+                  <div className="text-sm text-gray-500 py-4">Loading destination fields...</div>
+                ) : destinationError ? (
+                  <div className="text-sm text-red-500 py-4">{destinationError}</div>
+                ) : (
+                  renderTree(destinationTree, expandedDestNodes, toggleDestNode, (path, type) => handleDestinationSelect(path, type as 'database' | 'redis' | 'model'), selectedDestinations, 'destination')
+                )}
+              </div>
+              <div className="text-sm text-gray-600" data-id="element-234">
+                <span className='font-bold'>Selected:</span> {selectedDestinations.join(', ') || 'None'}
               </div>
             </div>
           </div>
-          {/* Destination Selection */}
-          <div className="space-y-4" data-id="element-229">
-            <h4 className="font-medium text-gray-700" data-id="element-230">Destination</h4>
-            <div className="border border-gray-200 rounded-md p-3 h-96 overflow-auto" data-id="element-231">
-              <div className="mb-2 text-sm text-gray-500" data-id="element-232">Data Model</div>
-              {loadingDestinations ? (
-                <div className="text-sm text-gray-500 py-4">Loading destination fields...</div>
-              ) : destinationError ? (
-                <div className="text-sm text-red-500 py-4">{destinationError}</div>
-              ) : (
-                renderTree(destinationTree, expandedDestNodes, toggleDestNode, (path, type) => handleDestinationSelect(path, type as 'database' | 'redis' | 'model'), selectedDestinations, 'destination')
-              )}
+          {/* Error Display */}
+          {mappingError && (
+            <div className="bg-red-50 border border-red-200 rounded-md p-3 mt-4 relative">
+              <button
+                onClick={() => setMappingError(null)}
+                className="cursor-pointer absolute top-1/2 -translate-y-1/2 right-2 text-red-600 hover:text-red-800"
+              >
+                <XIcon size={16} />
+              </button>
+              <div className="text-red-800 text-sm pr-6">{mappingError}</div>
             </div>
-            <div className="text-sm text-gray-600" data-id="element-234">
-              <span className='font-bold'>Selected:</span> {selectedDestinations.join(', ') || 'None'}
-            </div>
-          </div>
-        </div>
-        {/* Error Display */}
-        {mappingError && (
-          <div className="bg-red-50 border border-red-200 rounded-md p-3 mt-4 relative">
-            <button
-              onClick={() => setMappingError(null)}
-              className="cursor-pointer absolute top-1/2 -translate-y-1/2 right-2 text-red-600 hover:text-red-800"
-            >
-              <XIcon size={16} />
-            </button>
-            <div className="text-red-800 text-sm pr-6">{mappingError}</div>
-          </div>
-        )}
+          )}
 
-        <div className="flex justify-end space-x-3 mt-6" data-id="element-235">
-          <Button variant="secondary" className='!pb-[6px] !pt-[4px]' onClick={() => setShowAddMapping(false)} data-id="element-236">
-            Cancel
-          </Button>
-          <Button
-            variant="primary"
-            className='!pb-[6px] !pt-[4px]'
-            onClick={handleSaveMapping}
-            disabled={!isCurrentMappingValid()}
-            data-id="element-237"
-          >
-            Add Mapping
-          </Button>
+          <div className="flex justify-end space-x-3 mt-6" data-id="element-235">
+            <Button variant="secondary" className='!pb-[6px] !pt-[4px]' onClick={() => setShowAddMapping(false)} data-id="element-236">
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              className='!pb-[6px] !pt-[4px]'
+              onClick={handleSaveMapping}
+              disabled={!isCurrentMappingValid()}
+              data-id="element-237"
+            >
+              Add Mapping
+            </Button>
+          </div>
         </div>
-      </div>
+      </Backdrop>
     </div>;
   };
 

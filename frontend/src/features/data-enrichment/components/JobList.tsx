@@ -12,6 +12,8 @@ import {
   Pause,
   ShieldCheck,
   ShieldX,
+  EyeIcon,
+  EditIcon,
 } from 'lucide-react';
 import type { DataEnrichmentJobResponse, JobStatus } from '../types';
 import { Button } from '../../../shared/components/Button';
@@ -29,7 +31,7 @@ import {
 } from '../../../shared/utils/statusColors';
 import { useToast } from '../../../shared/providers/ToastProvider';
 import { dataEnrichmentApi } from '../services';
-import { Box, Pagination } from '@mui/material';
+import { Box, Pagination, Tooltip } from '@mui/material';
 import { handleInputFilter, handleSelectFilter } from '@shared/helpers';
 import { getDemsStatusLov } from '@shared/lovs';
 import CustomTable from '@common/Tables/CustomTable';
@@ -593,26 +595,25 @@ export const JobList: React.FC<JobListProps> = (props) => {
               (userIsPublisher &&
                 (job.status === 'STATUS_06_EXPORTED' ||
                   job.status === 'STATUS_08_DEPLOYED'))) && (
-              <button
-                onClick={() => {
-                  if (onViewLogs) {
-                    onViewLogs(job.id);
-                  } else {
-                    // Fallback for approvers/exporters without handler
-                    console.log('Opening job details for user with roles:', {
-                      userIsEditor,
-                      userIsApprover,
-                      userIsExporter,
-                    });
-                    alert('Opening job details...');
-                  }
-                  setDropdownOpen(null);
-                }}
-                className="w-[75px] inline-flex justify-center items-center rounded-md bg-[#2b7fff] px-3 py-1.5 text-xs font-medium text-white shadow-sm focus:outline-none transition-colors cursor-pointer"
-              >
-                <Eye className="w-3 h-3 mr-2" />
-                View
-              </button>
+              <Tooltip title="View Details" arrow placement="top">
+                <EyeIcon
+                  className="w-4 h-4 mr-2 text-blue-600 hover:text-blue-700 cursor-pointer"
+                  onClick={() => {
+                    if (onViewLogs) {
+                      onViewLogs(job.id);
+                    } else {
+                      // Fallback for approvers/exporters without handler
+                      console.log('Opening job details for user with roles:', {
+                        userIsEditor,
+                        userIsApprover,
+                        userIsExporter,
+                      });
+                      alert('Opening job details...');
+                    }
+                    setDropdownOpen(null);
+                  }}
+                />
+              </Tooltip>
             )}
 
             {/* Edit - Only for Editors and only for in-progress or rejected jobs */}
@@ -620,79 +621,60 @@ export const JobList: React.FC<JobListProps> = (props) => {
               onEdit &&
               (job.status === 'STATUS_01_IN_PROGRESS' ||
                 job.status === 'STATUS_05_REJECTED') && (
-                <button
-                  onClick={() => {
-                    onEdit(job);
-                    setDropdownOpen(null);
-                  }}
-                  className="w-[75px] inline-flex justify-center items-center rounded-md bg-[#2b7fff] px-3 py-1.5 text-xs font-medium text-white shadow-sm focus:outline-none transition-colors cursor-pointer"
-                >
-                  <Edit className="w-3 h-3 mr-2" />
-                  Edit
-                </button>
+                <Tooltip title="Edit Job" arrow placement="top">
+                  <EditIcon
+                    className="w-4 h-4 mr-2 text-yellow-600 hover:text-yellow-700 cursor-pointer"
+                    onClick={() => {
+                      onEdit(job);
+                      setDropdownOpen(null);
+                    }}
+                  />
+                </Tooltip>
               )}
             {userIsEditor && job.status === 'STATUS_01_IN_PROGRESS' && (
-              <button
-                onClick={() => {
-                  handleUpdateJobStatus(job, 'STATUS_02_ON_HOLD');
-                }}
-                className="w-[75px] inline-flex justify-center items-center rounded-md bg-[#2b7fff] px-3 py-1.5 text-xs font-medium text-white shadow-sm focus:outline-none transition-colors cursor-pointer"
-              >
-                <Pause className="w-3 h-3 mr-2" />
-                Pause
-              </button>
+              <Tooltip title="Pause" arrow placement="top">
+                <Pause
+                  className="w-4 h-4 mr-2 text-orange-600 hover:text-orange-700 cursor-pointer"
+                  onClick={() => {
+                    handleUpdateJobStatus(job, 'STATUS_02_ON_HOLD');
+                  }}
+                />
+              </Tooltip>
             )}
             {userIsEditor && job.status === 'STATUS_02_ON_HOLD' && (
-              <button
-                onClick={() => {
-                  handleUpdateJobStatus(job, 'STATUS_01_IN_PROGRESS');
-                }}
-                className="w-[75px] inline-flex justify-center items-center rounded-md bg-[#2b7fff] px-3 py-1.5 text-xs font-medium text-white shadow-sm focus:outline-none transition-colors cursor-pointer"
-              >
-                <Play className="w-4 h-4 mr-2" />
-                Resume
-              </button>
+              <Tooltip title="Resume" arrow placement="top">
+                <Play
+                  className="w-4 h-4 mr-2 text-green-600 hover:text-green-700 cursor-pointer"
+                  onClick={() => {
+                    handleUpdateJobStatus(job, 'STATUS_01_IN_PROGRESS');
+                  }}
+                />
+              </Tooltip>
             )}
-
-            {/* Suspend/Resume - Available to Approvers only (not Editors) */}
-            {userIsApprover &&
-              !userIsEditor &&
-              job.status === 'STATUS_05_REJECTED' && (
-                <button
-                  onClick={() => handleResumeJob(job)}
-                  disabled={updatingStatus === job.id}
-                  className={`w-[75px] inline-flex justify-center items-center rounded-md bg-[#2b7fff] px-3 py-1.5 text-xs font-medium text-white shadow-sm focus:outline-none transition-colors cursor-pointer`}
-                >
-                  <Play className="w-4 h-4 mr-2" />
-                  {updatingStatus === job.id ? 'Resuming...' : 'Resume Job'}
-                </button>
-              )}
 
             {/* Active/Inactive - Available to Publishers only for deployed jobs */}
             {userIsPublisher && (
               <>
                 {job.publishing_status === 'active' ? (
-                  <button
-                    onClick={() => {
-                      handleTogglePublishingStatus(job, 'in-active');
-                      setDropdownOpen(null);
-                    }}
-                    className="w-[85px] inline-flex justify-center items-center rounded-md bg-[#2b7fff] px-3 py-1.5 text-xs font-medium text-white shadow-sm focus:outline-none transition-colors cursor-pointer"
-                  >
-                    <ShieldX className="w-3 h-3 mr-1" />
-                    Inactive
-                  </button>
+                  <Tooltip title="Deactivate" arrow placement="top">
+                    <ShieldX
+                      className="w-4 h-4 mr-1 text-red-600 hover:text-red-700 cursor-pointer"
+                      onClick={() => {
+                        handleTogglePublishingStatus(job, 'in-active');
+                        setDropdownOpen(null);
+                      }}
+                    />
+                  </Tooltip>
                 ) : (
-                  <button
-                    onClick={() => {
-                      handleTogglePublishingStatus(job, 'active');
-                      setDropdownOpen(null);
-                    }}
-                    className="w-[85px] inline-flex justify-center items-center rounded-md bg-[#2b7fff] px-3 py-1.5 text-xs font-medium text-white shadow-sm focus:outline-none transition-colors cursor-pointer"
-                  >
-                    <ShieldCheck className="w-3 h-3 mr-1" />
-                    Active
-                  </button>
+                  <Tooltip title="Activate" arrow placement="top">
+                    <ShieldCheck
+                      className="w-4 h-4 mr-1 text-green-600 hover:text-green-700 cursor-pointer"
+                      onClick={() => {
+                        handleTogglePublishingStatus(job, 'active');
+                        setDropdownOpen(null);
+                      }}
+                    />
+                  </Tooltip>
                 )}
               </>
             )}

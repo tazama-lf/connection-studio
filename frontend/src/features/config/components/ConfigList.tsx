@@ -27,9 +27,19 @@ import {
 } from '../../../utils/roleUtils';
 import { useToast } from '../../../shared/providers/ToastProvider';
 import CustomTable from '@common/Tables/CustomTable';
-import { Box, Pagination } from '@mui/material';
+import {
+  Box,
+  Pagination,
+  Tooltip,
+  Dialog,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  Button as MuiButton,
+} from '@mui/material';
 import { handleInputFilter, handleSelectFilter } from '@shared/helpers';
 import { getDemsStatusLov } from '@shared/lovs';
+import { Button } from '@shared';
 
 interface Config {
   id: number;
@@ -333,6 +343,45 @@ export const ConfigList: React.FC<ConfigListProps> = ({
     }
   };
 
+  // Confirmation handlers
+  const handleExportConfirm = async () => {
+    if (confirmDialog.config) {
+      await handleExportConfig(confirmDialog.config);
+      setConfirmDialog({ open: false, type: '', config: null });
+    }
+  };
+
+  const handlePauseConfirm = async () => {
+    if (confirmDialog.config) {
+      await handleUpdateConfigStatus(confirmDialog.config, 'STATUS_02_ON_HOLD');
+      setConfirmDialog({ open: false, type: '', config: null });
+    }
+  };
+
+  const handleResumeConfirm = async () => {
+    if (confirmDialog.config) {
+      await handleUpdateConfigStatus(
+        confirmDialog.config,
+        'STATUS_01_IN_PROGRESS',
+      );
+      setConfirmDialog({ open: false, type: '', config: null });
+    }
+  };
+
+  const handleActivateConfirm = async () => {
+    if (confirmDialog.config) {
+      await handleTogglePublishingStatus(confirmDialog.config, 'active');
+      setConfirmDialog({ open: false, type: '', config: null });
+    }
+  };
+
+  const handleDeactivateConfirm = async () => {
+    if (confirmDialog.config) {
+      await handleTogglePublishingStatus(confirmDialog.config, 'inactive');
+      setConfirmDialog({ open: false, type: '', config: null });
+    }
+  };
+
   const handlePublishConfig = async (config: Config) => {
     try {
       await sftpApi.publishItem(config.msgFam, 'dems');
@@ -351,7 +400,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
     }
   };
 
-  const handleUpdateConfigStatus = async (config: Config, status:string) => {
+  const handleUpdateConfigStatus = async (config: Config, status: string) => {
     try {
       await configApi.updateConfigStatus(config.id, status);
       showSuccess(
@@ -402,13 +451,20 @@ export const ConfigList: React.FC<ConfigListProps> = ({
   const [totalRecords, setTotalRecords] = useState<number>(0);
   const [searchingFilters, setSearchingFilters] = useState({});
 
+  // Confirmation dialog states
+  const [confirmDialog, setConfirmDialog] = useState({
+    open: false,
+    type: '' as 'export' | 'pause' | 'resume' | 'activate' | 'deactivate' | '',
+    config: null as Config | null,
+  });
+
   // CustomTable columns configuration
   const columns = [
     {
       field: 'endpointPath',
       headerName: 'Endpoint Path',
-      flex: 1,
       minWidth: 400,
+      flex: 1,
       sortable: false,
       align: 'center',
       disableColumnMenu: true,
@@ -438,7 +494,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
     {
       field: 'status',
       headerName: 'Status',
-      minWidth: 260,
+      minWidth: 200,
       flex: 1,
       sortable: false,
       align: 'center',
@@ -476,7 +532,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
     {
       field: 'createdAt',
       headerName: 'Created Time',
-      minWidth: 260,
+      minWidth: 200,
       flex: 1,
       sortable: false,
       disableColumnMenu: true,
@@ -516,7 +572,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
     {
       field: 'actions',
       headerName: 'Actions',
-      minWidth: 280,
+      minWidth: 200,
       flex: 1,
       sortable: false,
       disableColumnMenu: true,
@@ -541,129 +597,111 @@ export const ConfigList: React.FC<ConfigListProps> = ({
 
         return (
           <div className=" flex items-center justify-center gap-2 h-full">
-            {/* <div className="relative dropdown-container"> */}
-            {/* <button
-                onClick={() =>
-                  setOpenDropdown(openDropdown === config.id ? null : config.id)
-                }
-                className="p-1 text-gray-400 hover:text-gray-600 rounded-md hover:bg-gray-100"
-              >
-                <MoreVerticalIcon className="w-4 h-4" />
-              </button> */}
-            {/* {openDropdown === config.id && (
-                <DropdownMenuWithAutoDirection
-                  onClose={() => setOpenDropdown(null)}
-                > */}
-            <button
-              onClick={() => {
-                handleViewConfig(config);
-                setOpenDropdown(null);
-              }}
-              // className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-              className=" w-[75px] inline-flex justify-center items-center rounded-md bg-[#2b7fff] px-3 py-1.5 text-xs font-medium text-white shadow-sm focus:outline-none transition-colors cursor-pointer"
-            >
-              <EyeIcon className="w-3 h-3 mr-2" />
-              View
-            </button>
+            <Tooltip title="View Details" arrow placement="top">
+              <EyeIcon
+                className="w-4 h-4 mr-2 text-blue-600 hover:text-blue-700 cursor-pointer"
+                onClick={() => {
+                  handleViewConfig(config);
+                }}
+              />
+            </Tooltip>
             {onConfigEdit &&
               (config.status === 'STATUS_01_IN_PROGRESS' ||
                 config.status === 'STATUS_05_REJECTED') && (
-                <button
-                  onClick={() => {
-                    onConfigEdit(config);
-                    setOpenDropdown(null);
-                  }}
-                  className={`w-[75px] inline-flex justify-center items-center rounded-md px-3 py-1.5 text-xs font-medium shadow-sm focus:outline-none transition-colors cursor-pointer bg-[#2b7fff] text-white`}
-                >
-                  <EditIcon className="w-3 h-3 mr-2" />
-                  <span>Edit</span>
-                </button>
+                <Tooltip title="Edit Configuration" arrow placement="top">
+                  <EditIcon
+                    className="w-4 h-4 mr-2 text-yellow-600 hover:text-yellow-700 cursor-pointer"
+                    onClick={() => {
+                      onConfigEdit(config);
+                    }}
+                  />
+                </Tooltip>
               )}
-            {/* {onConfigClone && !showPendingApprovals && (
-              <button
-                onClick={() => {
-                  onConfigClone(config);
-                  setOpenDropdown(null);
-                }}
-                className="w-[75px] inline-flex justify-center items-center rounded-md bg-[#2b7fff] px-3 py-1.5 text-xs font-medium text-white shadow-sm focus:outline-none transition-colors cursor-pointer"
-              >
-                <CopyIcon className="w-4 h-4 mr-2" />
-                Clone
-              </button>
-            )} */}
-            {
-              userIsEditor && (config.status === 'STATUS_01_IN_PROGRESS') && (
-                <button
+            {onConfigClone && !showPendingApprovals && (
+              <Tooltip title="Clone Configuration" arrow placement="top">
+                <CopyIcon
+                  className="w-4 h-4 mr-2 text-cyan-600 hover:text-cyan-700 cursor-pointer"
                   onClick={() => {
-                    handleUpdateConfigStatus(config, 'STATUS_02_ON_HOLD');
-                    setOpenDropdown(null);
+                    onConfigClone(config);
                   }}
-                  className="w-[75px] inline-flex justify-center items-center rounded-md bg-[#2b7fff] px-3 py-1.5 text-xs font-medium text-white shadow-sm focus:outline-none transition-colors cursor-pointer"
-                >
-                  <Pause className="w-3 h-3 mr-2" />
-                  Pause
-                </button>
-              )
-            }
-            {
-              userIsEditor && (config.status === 'STATUS_02_ON_HOLD') && (
-                <button
+                />
+              </Tooltip>
+            )}
+            {userIsEditor && config.status === 'STATUS_01_IN_PROGRESS' && (
+              <Tooltip title="Pause" arrow placement="top">
+                <Pause
+                  className="w-4 h-4 mr-2 text-orange-600 hover:text-orange-700 cursor-pointer"
                   onClick={() => {
-                    handleUpdateConfigStatus(config, 'STATUS_01_IN_PROGRESS');
-                    setOpenDropdown(null);
+                    setConfirmDialog({
+                      open: true,
+                      type: 'pause',
+                      config: config,
+                    });
                   }}
-                  className="w-[75px] inline-flex justify-center items-center rounded-md bg-[#2b7fff] px-3 py-1.5 text-xs font-medium text-white shadow-sm focus:outline-none transition-colors cursor-pointer"
-                >
-                  <Play className="w-4 h-4 mr-2" />
-                  Resume
-                </button>
-              )
-            }
+                />
+              </Tooltip>
+            )}
+            {userIsEditor && config.status === 'STATUS_02_ON_HOLD' && (
+              <Tooltip title="Resume" arrow placement="top">
+                <Play
+                  className="w-4 h-4 mr-2 text-green-600 hover:text-green-700 cursor-pointer"
+                  onClick={() => {
+                    setConfirmDialog({
+                      open: true,
+                      type: 'resume',
+                      config: config,
+                    });
+                  }}
+                />
+              </Tooltip>
+            )}
             {userIsExporter &&
               (config.status === 'STATUS_04_APPROVED' ||
                 config.status === 'STATUS_08_DEPLOYED') && (
-                <button
-                  onClick={() => {
-                    handleExportConfig(config);
-                    setOpenDropdown(null);
-                  }}
-                  className="w-[75px] inline-flex justify-center items-center rounded-md bg-[#2b7fff] px-3 py-1.5 text-xs font-medium text-white shadow-sm focus:outline-none transition-colors cursor-pointer"
-                >
-                  <Upload className="w-4 h-4 mr-2" />
-                  Export
-                </button>
+                <Tooltip title="Export Configuration" arrow placement="top">
+                  <Upload
+                    className="w-4 h-4 mr-2 text-cyan-600 hover:text-cyan-700 cursor-pointer"
+                    onClick={() => {
+                      setConfirmDialog({
+                        open: true,
+                        type: 'export',
+                        config: config,
+                      });
+                    }}
+                  />
+                </Tooltip>
               )}
             {userIsPublisher && (
               <>
                 {config.publishing_status === 'active' ? (
-                  <button
-                    onClick={() => {
-                      handleTogglePublishingStatus(config, 'inactive');
-                      setOpenDropdown(null);
-                    }}
-                    className=" w-[85px] inline-flex justify-center items-center rounded-md bg-[#2b7fff] px-3 py-1.5 text-xs font-medium text-white shadow-sm focus:outline-none transition-colors cursor-pointer"
-                  >
-                    <ShieldX className="w-3 h-3 mr-1" />
-                    Inactive
-                  </button>
+                  <Tooltip title="Deactivate" arrow placement="top">
+                    <ShieldX
+                      className="w-4 h-4 mr-1 text-red-600 hover:text-red-700 cursor-pointer"
+                      onClick={() => {
+                        setConfirmDialog({
+                          open: true,
+                          type: 'deactivate',
+                          config: config,
+                        });
+                      }}
+                    />
+                  </Tooltip>
                 ) : (
-                  <button
-                    onClick={() => {
-                      handleTogglePublishingStatus(config, 'active');
-                      setOpenDropdown(null);
-                    }}
-                    className=" w-[85px] inline-flex justify-center items-center rounded-md bg-[#2b7fff] px-3 py-1.5 text-xs font-medium text-white shadow-sm focus:outline-none transition-colors cursor-pointer"
-                  >
-                    <ShieldCheck className="w-3 h-3 mr-1" />
-                    Active
-                  </button>
+                  <Tooltip title="Activate" arrow placement="top">
+                    <ShieldCheck
+                      className="w-4 h-4 mr-1 text-green-600 hover:text-green-700 cursor-pointer"
+                      onClick={() => {
+                        setConfirmDialog({
+                          open: true,
+                          type: 'activate',
+                          config: config,
+                        });
+                      }}
+                    />
+                  </Tooltip>
                 )}
               </>
             )}
-
-            {/* </DropdownMenuWithAutoDirection> */}
-            {/* )}
-            </div> */}
           </div>
         );
       },
@@ -768,6 +806,127 @@ export const ConfigList: React.FC<ConfigListProps> = ({
           }
         />
       )}
+
+      {/* Reusable Confirmation Dialog */}
+      <Dialog
+        open={confirmDialog.open}
+        onClose={() =>
+          setConfirmDialog({ open: false, type: '', config: null })
+        }
+        aria-labelledby="confirmation-dialog-title"
+        aria-describedby="confirmation-dialog-description"
+        sx={{ borderRadius: '6px' }}
+      >
+        <Box
+          sx={{
+            color: '#3b3b3b',
+            fontSize: '20px',
+            fontWeight: 'bold',
+            padding: '16px 20px',
+            borderBottom: '1px solid #cecece',
+          }}
+        >
+          {confirmDialog.type === 'export' && 'Export Confirmation Required!'}
+          {confirmDialog.type === 'pause' && 'Pause Confirmation Required!'}
+          {confirmDialog.type === 'resume' && 'Resume Confirmation Required!'}
+          {confirmDialog.type === 'activate' &&
+            'Activate Confirmation Required!'}
+          {confirmDialog.type === 'deactivate' &&
+            'Deactivate Confirmation Required!'}
+        </Box>
+        <DialogContent sx={{ padding: '20px 20px' }}>
+          <DialogContentText
+            id="confirmation-dialog-description"
+            sx={{
+              fontSize: '16px',
+              lineHeight: '1.6',
+              color: '#374151',
+              marginBottom: '16px',
+            }}
+          >
+            Are you sure you want to{' '}
+            {confirmDialog.type === 'export' && 'export'}
+            {confirmDialog.type === 'pause' && 'pause'}
+            {confirmDialog.type === 'resume' && 'resume'}
+            {confirmDialog.type === 'activate' && 'activate'}
+            {confirmDialog.type === 'deactivate' && 'deactivate'}{' '}
+            <Box
+              component="span"
+              sx={{
+                fontWeight: 'bold',
+                color: '#2b7fff',
+                backgroundColor: '#f0f7ff',
+                padding: '2px 8px',
+                borderRadius: '4px',
+                fontSize: '15px',
+              }}
+            >
+              "{confirmDialog.config?.msgFam || 'this configuration'}"
+            </Box>
+            {confirmDialog.type === 'export' && ' to SFTP'}?
+          </DialogContentText>
+          <Box
+            sx={{
+              backgroundColor: '#dceeff',
+              border: '1px solid #dceeff',
+              borderRadius: '8px',
+              padding: '12px 16px',
+              marginTop: '16px',
+            }}
+          >
+            <DialogContentText
+              sx={{
+                fontSize: '16px',
+                color: '#2b7fff',
+                margin: 0,
+                fontWeight: '500',
+              }}
+            >
+              {confirmDialog.type === 'export' &&
+                '⚠️ Important: This will export the configuration to SFTP and update its status to EXPORTED.'}
+              {confirmDialog.type === 'pause' &&
+                '⚠️ This will put the configuration on hold. You can resume it later.'}
+              {confirmDialog.type === 'resume' &&
+                '⚠️ This will change the configuration status back to IN PROGRESS.'}
+              {confirmDialog.type === 'activate' &&
+                '⚠️ This will activate the configuration for publishing.'}
+              {confirmDialog.type === 'deactivate' &&
+                '⚠️ This will deactivate the configuration and stop publishing.'}
+            </DialogContentText>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ padding: '12px 20px 16px 20px' }}>
+          <Button
+            onClick={() =>
+              setConfirmDialog({ open: false, type: '', config: null })
+            }
+            variant="secondary"
+            className="!pb-[6px] !pt-[5px]"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={() => {
+              if (confirmDialog.type === 'export') handleExportConfirm();
+              else if (confirmDialog.type === 'pause') handlePauseConfirm();
+              else if (confirmDialog.type === 'resume') handleResumeConfirm();
+              else if (confirmDialog.type === 'activate')
+                handleActivateConfirm();
+              else if (confirmDialog.type === 'deactivate')
+                handleDeactivateConfirm();
+            }}
+            variant="primary"
+            className="!pb-[6px] !pt-[5px]"
+          >
+            {confirmDialog.type === 'export' && 'Yes, Export Configuration'}
+            {confirmDialog.type === 'pause' && 'Yes, Pause Configuration'}
+            {confirmDialog.type === 'resume' && 'Yes, Resume Configuration'}
+            {confirmDialog.type === 'activate' && 'Yes, Activate Configuration'}
+            {confirmDialog.type === 'deactivate' &&
+              'Yes, Deactivate Configuration'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 };
