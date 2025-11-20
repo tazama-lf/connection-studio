@@ -542,17 +542,16 @@ export const ExportedItemDetailsModal: React.FC<
                         Updated At
                       </label>
                       <p className="text-sm text-gray-900 flex items-center gap-2">
-                        {content.updated_at ? (
+                        {content?.updated_at || content?.updatedAt ? (
                           <>
                             <span>
-                              {new Date(content.updated_at).toLocaleDateString(
-                                'en-US',
-                                {
-                                  month: 'short',
-                                  day: 'numeric',
-                                  year: 'numeric',
-                                },
-                              )}
+                              {new Date(
+                                content?.updated_at || content?.updatedAt,
+                              ).toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                              })}
                             </span>
                             <Clock className="w-4 h-4 text-gray-500" />
                             <span>
