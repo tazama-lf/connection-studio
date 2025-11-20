@@ -442,7 +442,10 @@ export class SimulationService {
         `${config.msgFam || 'unknown'}-${config.transactionType}`;
       let tcsResult;
       try {
-        tcsResult = await processMappings(payload, tcsMapping, endpoint);
+        const enhancedPayload = {...payload, TenantId: config.tenantId, TxTp: this.extractTransactionType(config.endpointPath)}
+        // tcsResult = await processMappings(payload, tcsMapping, endpoint);
+        tcsResult = await processMappings(enhancedPayload, tcsMapping, endpoint);
+
       } catch (mappingError: any) {
         if (mappingError.message?.includes('loggerService')) {
           this.logger.error(
@@ -1388,4 +1391,10 @@ export class SimulationService {
 
     return strictSchema;
   }
+
+   extractTransactionType = (url: string): string => {
+  const parts = url.split('/');
+  const transactionType = parts[parts.length - 1]; // Get the last part
+  return transactionType || 'unknown';
+};
 }
