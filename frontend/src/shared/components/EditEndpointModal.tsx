@@ -228,6 +228,7 @@ interface EditEndpointModalProps {
   endpointId: number; // -1 indicates new endpoint creation
   onSuccess?: () => void; // Callback when config is successfully created/updated
   isCloneMode?: boolean; // When true, load config data but treat as new config creation
+  setIsInCloneMode?: any;
   readOnly?: boolean; // When true, modal is in read-only mode for approvers
   onRevertToEditor?: () => void; // For approvers to send back to editor
   onSendForDeployment?: () => void; // For approvers to send for deployment
@@ -239,6 +240,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
   endpointId,
   onSuccess,
   isCloneMode = false,
+  setIsInCloneMode,
   readOnly = false,
   onRevertToEditor,
   onSendForDeployment,
@@ -1284,13 +1286,11 @@ console.log('Cur map:', currentMappings);
       // Determine actual config ID to use
       const actualConfigId = createdEndpoint?.id || existingConfig?.id || endpointId;
       const shouldCreate = !createdEndpoint && !existingConfig && isNewEndpoint;
-      const isCloningOperation = isCloning && !!existingConfig && !createdEndpoint;
+      const isCloningOperation = isCloning && existingConfig;
       const action = (shouldCreate || isCloningOperation) ? 'create' : 'update';
 
-      if (shouldCreate || isCloningOperation) {
+      if (shouldCreate || isCloningOperation || isCloneMode) {
         console.log(isCloningOperation ? 'Cloning config - creating new config...' : 'Creating NEW config...');
-        console.log('sssss', createRequest);
-        
         saveResponse = await configApi.createConfig(createRequest);
       } else {
         console.log('Updating EXISTING config with ID:', actualConfigId);
@@ -1317,6 +1317,7 @@ console.log('Cur map:', currentMappings);
       console.log('✅ Save successful');
 
       if (saveResponse.config) {
+        setIsInCloneMode(false);
         console.log('🎯 Setting createdEndpoint with config:', saveResponse.config);
         setCreatedEndpoint(saveResponse.config);
         setInferredSchema(saveResponse.config.schema);

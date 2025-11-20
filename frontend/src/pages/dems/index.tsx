@@ -117,6 +117,7 @@ const DEMSModule: React.FC = () => {
           endpointId={editingEndpointId}
           onSuccess={handleConfigSuccess}
           isCloneMode={isInCloneMode}
+          setIsInCloneMode={setIsInCloneMode}
           readOnly={isReadOnly}
         />
       )}
