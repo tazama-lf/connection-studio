@@ -14,12 +14,12 @@ import {
 import { AuthenticatedUser } from 'src/auth/auth.types';
 import { DatabaseService } from '../database/database.service';
 import { DryRunService } from '../dry-run/dry-run.service';
-import { NotificationService } from '../notification/notification.service';
 import { NotifyService } from '../notify/notify.service';
 import { AdminServiceClient } from '../services/admin-service-client.service';
 import { SftpService } from '../sftp/sftp.service';
 import { CreatePushJobDto } from './dto/create-push-job.dto';
 import { JobService } from './job.service';
+import { SchedulerService } from '../scheduler/scheduler.service';
 
 describe('JobService', () => {
   let service: JobService;
@@ -28,6 +28,7 @@ describe('JobService', () => {
   let sftpService: jest.Mocked<SftpService>;
   let notifyService: jest.Mocked<NotifyService>;
   let adminServiceClient: jest.Mocked<AdminServiceClient>;
+  let schedulerService: jest.Mocked<SchedulerService>;
 
   const mockToken = 'mock-jwt-token';
   const mockTenantId = 'tenant_abc';
@@ -44,6 +45,7 @@ describe('JobService', () => {
   const mockPushJob = {
     id: mockJobId,
     endpoint_name: 'Test Endpoint',
+    schedule_id: 'schedule-123',
     path: '/test/path',
     table_name: 'test_table',
     description: 'Test description',
@@ -100,6 +102,12 @@ describe('JobService', () => {
           },
         },
         {
+          provide: SchedulerService,
+          useValue: {
+            findOne: jest.fn(),
+          },
+        },
+        {
           provide: DryRunService,
           useValue: {
             dryRun: jest.fn(),
@@ -148,12 +156,6 @@ describe('JobService', () => {
             findScheduleById: jest.fn(),
           },
         },
-        {
-          provide: NotificationService,
-          useValue: {
-            sendWorkflowNotification: jest.fn(),
-          },
-        },
       ],
     }).compile();
 
@@ -163,6 +165,7 @@ describe('JobService', () => {
     sftpService = module.get(SftpService);
     notifyService = module.get(NotifyService);
     adminServiceClient = module.get(AdminServiceClient);
+    schedulerService = module.get(SchedulerService);
   });
 
   afterEach(() => {
@@ -201,16 +204,63 @@ describe('JobService', () => {
       expect(result).toEqual(expectedResult);
       expect(adminServiceClient.updateJob).toHaveBeenCalledWith(
         mockJobId,
-        updateDto,
+        expect.objectContaining({
+          ...updateDto,
+          status: JobStatus.INPROGRESS,
+        }),
         ConfigType.PUSH,
         mockToken,
       );
     });
 
-    it('should throw ForbiddenException if job is not INPROGRESS', async () => {
+    it('should update a rejected job successfully', async () => {
+      const expectedResult = {
+        success: true,
+        message: 'Job updated successfully',
+      };
+
+      adminServiceClient.findJobById.mockResolvedValue({
+        ...mockPushJob,
+        status: JobStatus.REJECTED,
+      } as Job);
+      adminServiceClient.updateJob.mockResolvedValue(expectedResult);
+
+      const result = await service.updateJob(
+        mockJobId,
+        updateDto,
+        ConfigType.PUSH,
+        mockUser,
+      );
+
+      expect(result).toEqual(expectedResult);
+      expect(adminServiceClient.updateJob).toHaveBeenCalledWith(
+        mockJobId,
+        expect.objectContaining({
+          ...updateDto,
+          status: JobStatus.REJECTED,
+        }),
+        ConfigType.PUSH,
+        mockToken,
+      );
+    });
+
+    it('should throw ForbiddenException if job is APPROVED', async () => {
       adminServiceClient.findJobById.mockResolvedValue({
         ...mockPushJob,
         status: JobStatus.APPROVED,
+      } as Job);
+
+      await expect(
+        service.updateJob(mockJobId, updateDto, ConfigType.PUSH, mockUser),
+      ).rejects.toThrow(ForbiddenException);
+
+      expect(adminServiceClient.updateJob).not.toHaveBeenCalled();
+    });
+
+    it('should throw ForbiddenException if job is DEPLOYED', async () => {
+      adminServiceClient.findJobById.mockResolvedValue({
+        ...mockPushJob,
+        status: JobStatus.DEPLOYED,
       } as Job);
 
       await expect(
@@ -462,8 +512,34 @@ describe('JobService', () => {
   });
 
   describe('findOne', () => {
-    it('should find a push job by id', async () => {
+    it('should find a push job by id with schedule name', async () => {
       adminServiceClient.findJobById.mockResolvedValue(mockPushJob as Job);
+      schedulerService.findOne.mockResolvedValue(mockSchedule);
+
+      const result = await service.findOne(
+        mockJobId,
+        ConfigType.PUSH,
+        mockToken,
+      );
+
+      expect(result).toEqual({
+        ...mockPushJob,
+        schedule_name: mockSchedule.name,
+      });
+      expect(adminServiceClient.findJobById).toHaveBeenCalledWith(
+        mockJobId,
+        'push_jobs',
+        mockToken,
+      );
+      expect(schedulerService.findOne).toHaveBeenCalledWith(
+        'schedule-123',
+        mockToken,
+      );
+    });
+
+    it('should return job without schedule name if schedule not found', async () => {
+      adminServiceClient.findJobById.mockResolvedValue(mockPushJob as Job);
+      schedulerService.findOne.mockResolvedValue(null);
 
       const result = await service.findOne(
         mockJobId,
@@ -472,15 +548,11 @@ describe('JobService', () => {
       );
 
       expect(result).toEqual(mockPushJob);
-      expect(adminServiceClient.findJobById).toHaveBeenCalledWith(
-        mockJobId,
-        'push_jobs',
-        mockToken,
-      );
     });
 
     it('should find a pull job by id', async () => {
       adminServiceClient.findJobById.mockResolvedValue(mockPullJob as Job);
+      schedulerService.findOne.mockResolvedValue(mockSchedule);
 
       const result = await service.findOne(
         mockJobId,
@@ -488,7 +560,10 @@ describe('JobService', () => {
         mockToken,
       );
 
-      expect(result).toEqual(mockPullJob);
+      expect(result).toEqual({
+        ...mockPullJob,
+        schedule_name: mockSchedule.name,
+      });
       expect(adminServiceClient.findJobById).toHaveBeenCalledWith(
         mockJobId,
         'pull_jobs',
@@ -566,7 +641,7 @@ describe('JobService', () => {
   });
 
   describe('updateActivation', () => {
-    it('should update activation status successfully', async () => {
+    it('should update activation status successfully for push job', async () => {
       adminServiceClient.updateJobActivation.mockResolvedValue({
         success: true,
         message: 'Job Updated',
@@ -584,9 +659,45 @@ describe('JobService', () => {
         success: true,
         message: expect.stringContaining('successfully updated'),
       });
+      expect(adminServiceClient.updateJobActivation).toHaveBeenCalledWith(
+        mockJobId,
+        ScheduleStatus.ACTIVE,
+        'push_jobs',
+        mockToken,
+      );
       expect(notifyService.notifyEnrichment).toHaveBeenCalledWith(
         mockJobId,
         ConfigType.PUSH,
+      );
+    });
+
+    it('should update activation status successfully for pull job', async () => {
+      adminServiceClient.updateJobActivation.mockResolvedValue({
+        success: true,
+        message: 'Job Updated',
+      });
+      notifyService.notifyEnrichment.mockResolvedValue(undefined);
+
+      const result = await service.updateActivation(
+        mockJobId,
+        ScheduleStatus.ACTIVE,
+        ConfigType.PULL,
+        mockToken,
+      );
+
+      expect(result).toEqual({
+        success: true,
+        message: expect.stringContaining('successfully updated'),
+      });
+      expect(adminServiceClient.updateJobActivation).toHaveBeenCalledWith(
+        mockJobId,
+        ScheduleStatus.ACTIVE,
+        'pull_jobs',
+        mockToken,
+      );
+      expect(notifyService.notifyEnrichment).toHaveBeenCalledWith(
+        mockJobId,
+        ConfigType.PULL,
       );
     });
 
@@ -672,6 +783,7 @@ describe('JobService', () => {
         const expectedResult = { success: true, message: 'Status updated' };
 
         adminServiceClient.findJobById.mockResolvedValue(mockPushJob);
+        schedulerService.findOne.mockResolvedValue(mockSchedule);
         sftpService.createFile.mockResolvedValue(undefined);
         adminServiceClient.updateJobByStatus.mockResolvedValue(expectedResult);
 

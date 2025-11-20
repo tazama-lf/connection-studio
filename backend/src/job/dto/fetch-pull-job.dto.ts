@@ -54,6 +54,9 @@ export class PullJobResponseDto {
   schedule_id: string;
 
   @Expose()
+  schedule_name: string
+
+  @Expose()
   endpoint_name: string;
 
   @Expose()
@@ -99,9 +102,6 @@ export class PullJobResponseDto {
 
   @Expose()
   publishing_status: ScheduleStatus;
-
-  @Expose()
-  schedule: Schedule;
 
   @Expose()
   created_at: Date;

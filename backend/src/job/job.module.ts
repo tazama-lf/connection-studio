@@ -10,6 +10,7 @@ import { SftpModule } from 'src/sftp/sftp.module';
 import { NotifyModule } from 'src/notify/notify.module';
 import { AdminServiceClient } from 'src/services/admin-service-client.service';
 import { HttpModule } from '@nestjs/axios';
+import { SchedulerModule } from 'src/scheduler/scheduler.module';
 
 @Module({
   providers: [JobService, AdminServiceClient],
@@ -23,7 +24,8 @@ import { HttpModule } from '@nestjs/axios';
     SftpModule,
     NotifyModule,
     HttpModule,
+    SchedulerModule
   ],
   exports: [AdminServiceClient],
 })
-export class JobModule {}
+export class JobModule { }

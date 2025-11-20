@@ -26,6 +26,7 @@ import { CreatePullJobDto, SFTPConnectionDto } from './dto/create-pull-job.dto';
 import { CreatePushJobDto } from './dto/create-push-job.dto';
 import { UpdatePullJobDto } from './dto/update-pull-job.dto';
 import { UpdatePushJobDto } from './dto/update-push-job.dto';
+import { SchedulerService } from '../scheduler/scheduler.service';
 
 @Injectable()
 export class JobService {
@@ -35,6 +36,7 @@ export class JobService {
     private readonly sftpService: SftpService,
     private readonly notifyService: NotifyService,
     private readonly adminServiceClient: AdminServiceClient,
+    private readonly schedulerService: SchedulerService
   ) { }
 
   private handleError(err: unknown): never {
@@ -194,31 +196,50 @@ export class JobService {
     }
   }
 
-  async findOne(id: string, type: ConfigType, token: string): Promise<Job> {
+  async findOne(
+    id: string,
+    type: ConfigType,
+    token: string
+  ): Promise<Job & { schedule_name?: string }> {
     try {
       if (!id) {
-        throw new BadRequestException('id is required.');
+        throw new BadRequestException("id is required.");
       }
 
-      const tableName = type === ConfigType.PUSH ? 'push_jobs' : 'pull_jobs';
+      const tableName =
+        type === ConfigType.PUSH ? "push_jobs" : "pull_jobs";
 
       const record = await this.adminServiceClient.findJobById(
         id,
         tableName,
-        token,
+        token
       );
 
       if (!record) {
         throw new BadRequestException(
-          `${type === ConfigType.PUSH ? 'Push Job' : 'Pull Job'} with id ${id} not found.`,
+          `${type === ConfigType.PUSH ? "Push Job" : "Pull Job"} with id ${id} not found.`
         );
       }
 
-      return record;
-    } catch (err: unknown) {
+      if (!record.schedule_id) {
+        this.loggerService.log("Schedule ID not found")
+        return record;
+      }
+
+      const schedule = await this.schedulerService.findOne(
+        record.schedule_id,
+        token
+      );
+
+      return schedule
+        ? { ...record, schedule_name: schedule.name }
+        : record;
+
+    } catch (err) {
       return this.handleError(err);
     }
   }
+
 
   async findByStatus(
     status: JobStatus,

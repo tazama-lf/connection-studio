@@ -12,6 +12,6 @@ import { ConfigService } from '@nestjs/config';
   imports: [LoggerModule, DatabaseModule, SftpModule, HttpModule],
   providers: [SchedulerService, AdminServiceClient, ConfigService],
   controllers: [SchedulerController],
-  exports: [AdminServiceClient],
+  exports: [AdminServiceClient, SchedulerService],
 })
-export class SchedulerModule {}
+export class SchedulerModule { }
