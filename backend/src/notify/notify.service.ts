@@ -126,8 +126,10 @@ export class NotifyService implements OnModuleInit {
       );
 
       await this.demsNatsService.handleResponse({
-        transactionID: configId,
-      });
+        transactionID: configId
+      },
+      ["dems.notify"]
+    );
 
       this.logger.log(
         `Config activation notification (ID: ${configId}) sent to DEMS stream ${this.demsStream}`,
