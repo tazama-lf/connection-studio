@@ -288,6 +288,9 @@ export class NotificationService implements OnModuleInit {
         case 'exporter_export':
           role = 'publisher';
           break;
+        case 'approver_reject':
+          role = 'editor';
+          break;
         case 'publisher_deploy':
         case 'publisher_activate':
         case 'publisher_deactivate':
@@ -357,7 +360,8 @@ export class NotificationService implements OnModuleInit {
       | 'exporter_export'
       | 'publisher_deploy'
       | 'publisher_activate'
-      | 'publisher_deactivate';
+      | 'publisher_deactivate'
+      | 'approver_reject',
     configId: number;
     tenantId: string;
     actorEmail: string;

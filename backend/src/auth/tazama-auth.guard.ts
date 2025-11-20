@@ -23,6 +23,8 @@ export class TazamaAuthGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const logContext = 'TazamaAuthGuard.canActivate()';
 
+    this.logger.log('Authenticating request... beffore', logContext);
+
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
       context.getClass(),
@@ -35,6 +37,7 @@ export class TazamaAuthGuard implements CanActivate {
       return true;
     }
 
+    this.logger.log('Authenticating request...', logContext);
     const requiredClaims = this.reflector.getAllAndOverride<string[]>(
       CLAIMS_KEY,
       [context.getHandler(), context.getClass()],
@@ -133,6 +136,7 @@ export class TazamaAuthGuard implements CanActivate {
       return true;
     } catch (error) {
       const err = error as Error;
+      this.logger.log('error', err);
 
       this.logger.error(
         `Authentication failed: ${err.name}: ${err.message}`,
