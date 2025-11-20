@@ -400,7 +400,7 @@ export const pullValidationSchema = yup.object({
             then: (schema) => schema
                 .required('This is a required field')
                 .min(5, 'there must be at least 5 characters')
-                .max(100, 'this field cannot exceed 100 characters'),
+                .max(500, 'this field cannot exceed 500 characters'),
             otherwise: (schema) => schema.nullable()
         }),
 });

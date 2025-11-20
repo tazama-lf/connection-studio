@@ -39,14 +39,16 @@ export const ExportedItemsList: React.FC<ExportedItemsListProps> = (props) => {
   } = props;
 
   const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
-  const [demsFileData, setDemsFileData] = useState<Record<string, DemsFileData>>({});
+  const [demsFileData, setDemsFileData] = useState<
+    Record<string, DemsFileData>
+  >({});
 
   // Load DEMS file content when format is 'dems'
   useEffect(() => {
     if (format === 'dems' && files.length > 0) {
       const loadDemsData = async () => {
         const newDemsData: Record<string, DemsFileData> = {};
-        
+
         for (const file of files) {
           try {
             const content = await sftpApi.readFile(file.name);
@@ -54,7 +56,7 @@ export const ExportedItemsList: React.FC<ExportedItemsListProps> = (props) => {
               endpointPath: content.endpointPath,
               status: content.status,
               createdAt: content.createdAt || content.created_at,
-              transactionType: content.transactionType
+              transactionType: content.transactionType,
             };
           } catch (error) {
             console.error(`Failed to load DEMS data for ${file.name}:`, error);
@@ -63,29 +65,29 @@ export const ExportedItemsList: React.FC<ExportedItemsListProps> = (props) => {
               endpointPath: file.name.replace('.json', ''),
               status: 'ready',
               createdAt: new Date(file.modifyTime).toISOString(),
-              transactionType: 'Unknown'
+              transactionType: 'Unknown',
             };
           }
         }
-        
+
         setDemsFileData(newDemsData);
       };
-      
+
       loadDemsData();
     }
   }, [format, files]);
 
   // Filter files based on search query
   const filteredFiles = files
-    .filter(file => {
+    .filter((file) => {
       const query = searchQuery.toLowerCase();
       if (format === 'dems') {
         const fileData = demsFileData[file.name];
         return (
           file.name.toLowerCase().includes(query) ||
-          (fileData?.endpointPath?.toLowerCase().includes(query)) ||
-          (fileData?.transactionType?.toLowerCase().includes(query)) ||
-          (fileData?.status?.toLowerCase().includes(query))
+          fileData?.endpointPath?.toLowerCase().includes(query) ||
+          fileData?.transactionType?.toLowerCase().includes(query) ||
+          fileData?.status?.toLowerCase().includes(query)
         );
       }
       return file.name.toLowerCase().includes(query);
@@ -108,7 +110,7 @@ export const ExportedItemsList: React.FC<ExportedItemsListProps> = (props) => {
     if (format === 'dems' && files.length > 0) {
       const loadDemsData = async () => {
         const dataMap: Record<string, DemsFileData> = {};
-        
+
         // Load file content for each DEMS file
         await Promise.all(
           files.map(async (file) => {
@@ -129,12 +131,12 @@ export const ExportedItemsList: React.FC<ExportedItemsListProps> = (props) => {
                 createdAt: new Date(file.modifyTime).toISOString(),
               };
             }
-          })
+          }),
         );
-        
+
         setDemsFileData(dataMap);
       };
-      
+
       loadDemsData();
     }
   }, [format, files]);
@@ -143,11 +145,11 @@ export const ExportedItemsList: React.FC<ExportedItemsListProps> = (props) => {
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
-      
+
       if (target.closest('.actions-dropdown')) {
         return;
       }
-      
+
       setDropdownOpen(null);
     };
 
@@ -172,7 +174,7 @@ export const ExportedItemsList: React.FC<ExportedItemsListProps> = (props) => {
       year: 'numeric',
       hour: 'numeric',
       minute: '2-digit',
-      hour12: true
+      hour12: true,
     });
   };
 
@@ -187,7 +189,12 @@ export const ExportedItemsList: React.FC<ExportedItemsListProps> = (props) => {
 
   if (filteredFiles.length === 0) {
     const hasSearchQuery = searchQuery && searchQuery.trim() !== '';
-    const formatLabel = format === 'cron' ? 'Cron Jobs' : format === 'de' ? 'Data Enrichment Jobs' : 'DEMS Configurations';
+    const formatLabel =
+      format === 'cron'
+        ? 'Cron Jobs'
+        : format === 'de'
+          ? 'Data Enrichment Jobs'
+          : 'DEMS Configurations';
 
     return (
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12">
@@ -202,13 +209,14 @@ export const ExportedItemsList: React.FC<ExportedItemsListProps> = (props) => {
             )}
           </div>
           <h3 className="text-lg font-medium text-gray-900 mb-2">
-            {hasSearchQuery ? 'No files match your search' : `No exported ${formatLabel.toLowerCase()} yet`}
+            {hasSearchQuery
+              ? 'No files match your search'
+              : `No exported ${formatLabel.toLowerCase()} yet`}
           </h3>
           <p className="text-gray-500 mb-6">
             {hasSearchQuery
               ? 'Try adjusting your search terms'
-              : `Exported ${formatLabel.toLowerCase()} will appear here when they are ready for deployment`
-            }
+              : `Exported ${formatLabel.toLowerCase()} will appear here when they are ready for deployment`}
           </p>
           {onRefresh && (
             <Button onClick={onRefresh} variant="secondary">
@@ -226,18 +234,18 @@ export const ExportedItemsList: React.FC<ExportedItemsListProps> = (props) => {
         <table className="min-w-full">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+              <th className="px-6 py-4 text-left text-base font-bold text-gray-700 uppercase tracking-wider">
                 {format === 'dems' ? 'ENDPOINT PATH' : 'FILENAME'}
               </th>
               {format !== 'dems' && (
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-base font-bold text-gray-700 uppercase tracking-wider">
                   SIZE
                 </th>
               )}
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-              CREATED AT
+              <th className="px-6 py-4 text-left text-base font-bold text-gray-700 uppercase tracking-wider">
+                CREATED AT
               </th>
-              <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+              <th className="px-6 py-4 text-center text-base font-bold text-gray-700 uppercase tracking-wider">
                 ACTIONS
               </th>
             </tr>
@@ -246,13 +254,20 @@ export const ExportedItemsList: React.FC<ExportedItemsListProps> = (props) => {
             {filteredFiles.map((file, index) => {
               const isFirstRow = index === 0;
               const isLastRow = index === filteredFiles.length - 1;
-              const forceDirection = isFirstRow ? 'top' : isLastRow ? 'top' : 'auto';
+              const forceDirection = isFirstRow
+                ? 'top'
+                : isLastRow
+                  ? 'top'
+                  : 'auto';
 
-              
-              const fileData = format === 'dems' ? demsFileData[file.name] : null;
-              
+              const fileData =
+                format === 'dems' ? demsFileData[file.name] : null;
+
               return (
-                <tr key={file.name} className={`hover:bg-gray-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
+                <tr
+                  key={file.name}
+                  className={`hover:bg-gray-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}
+                >
                   <td className="px-6 py-4">
                     {format === 'dems' ? (
                       <div className="text-sm font-medium text-gray-900">
@@ -273,10 +288,9 @@ export const ExportedItemsList: React.FC<ExportedItemsListProps> = (props) => {
                   )}
                   <td className="px-6 py-4">
                     <div className="text-sm text-gray-600">
-                      {format === 'dems' && fileData?.createdAt 
+                      {format === 'dems' && fileData?.createdAt
                         ? formatDate(new Date(fileData.createdAt).getTime())
-                        : formatDate(file.modifyTime)
-                      }
+                        : formatDate(file.modifyTime)}
                     </div>
                   </td>
                   <td className="px-6 py-4 relative overflow-visible text-center">
@@ -284,7 +298,9 @@ export const ExportedItemsList: React.FC<ExportedItemsListProps> = (props) => {
                       <div className="relative actions-dropdown">
                         <button
                           onClick={() => {
-                            setDropdownOpen(dropdownOpen === file.name ? null : file.name);
+                            setDropdownOpen(
+                              dropdownOpen === file.name ? null : file.name,
+                            );
                           }}
                           className={`p-1 rounded-md hover:bg-gray-100 ${dropdownOpen === file.name ? 'bg-blue-100 text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
                         >
@@ -292,7 +308,9 @@ export const ExportedItemsList: React.FC<ExportedItemsListProps> = (props) => {
                         </button>
 
                         {dropdownOpen === file.name && (
-                          <DropdownMenuWithAutoDirection forceDirection={forceDirection}>
+                          <DropdownMenuWithAutoDirection
+                            forceDirection={forceDirection}
+                          >
                             <div className="py-1">
                               <button
                                 onClick={() => {

@@ -349,7 +349,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                 {/* Basic Information */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-bold text-gray-800 mb-2 bg-gray-50 px-0 py-0 rounded">
+                    <label className="block text-sm font-bold text-gray-800 mb-2  px-0 py-0 rounded">
                       Endpoint Name <span className="text-red-500">*</span>
                     </label>
                     <input
@@ -374,7 +374,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                         editMode ||
                         (cloneMode && job && getJobType(job) === 'pull')
                           ? 'bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:bg-white'
-                          : 'bg-gray-50 text-gray-900'
+                          : ' text-gray-900'
                       }`}
                       style={{
                         border: '1px solid silver',
@@ -388,7 +388,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                   {/* Determine job type using helper function */}
                   {getJobType(job) === 'push' ? (
                     <div>
-                      <label className="block text-sm font-bold text-gray-800 mb-2 bg-gray-50 px-0 py-0 rounded">
+                      <label className="block text-sm font-bold text-gray-800 mb-2  px-0 py-0 rounded">
                         API Path
                       </label>
                       <input
@@ -409,7 +409,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                         className={`w-full px-3 py-2 border border-gray-300 rounded-lg text-lg font-medium h-[60px] ${
                           editMode && !cloneMode
                             ? 'bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:bg-white'
-                            : 'bg-gray-50 text-gray-900'
+                            : ' text-gray-900'
                         }`}
                         style={{
                           border: '1px solid silver',
@@ -421,7 +421,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                     </div>
                   ) : (
                     <div>
-                      <label className="block text-sm font-bold text-gray-800 mb-2 bg-gray-50 px-0 py-0 rounded">
+                      <label className="block text-sm font-bold text-gray-800 mb-2  px-0 py-0 rounded">
                         Source Type
                       </label>
                       <select
@@ -438,7 +438,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                           handleInputChange('source_type', e.target.value)
                         }
                         disabled={true} // Source type cannot be changed during editing or cloning
-                        className={`w-full px-3 py-2 border border-gray-300 rounded-lg text-lg font-medium h-[60px] bg-gray-50 text-gray-900`}
+                        className={`w-full px-3 py-2 border border-gray-300 rounded-lg text-lg font-medium h-[60px]  text-gray-900`}
                         style={{
                           border: '1px solid silver',
                           borderRadius: '7px',
@@ -459,7 +459,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                   )}
 
                   <div>
-                    <label className="block text-sm font-bold text-gray-800 mb-2 bg-gray-50 px-0 py-0 rounded">
+                    <label className="block text-sm font-bold text-gray-800 mb-2  px-0 py-0 rounded">
                       Version
                     </label>
                     <input
@@ -484,7 +484,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                         editMode ||
                         (cloneMode && job && getJobType(job) === 'pull')
                           ? 'bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:bg-white'
-                          : 'bg-gray-50 text-gray-900'
+                          : ' text-gray-900'
                       }`}
                       style={{
                         border: '1px solid silver',
@@ -495,16 +495,16 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                     />
                   </div>
 
-                  {getJobType(job) === 'pull' && job.schedule_id && (
+                  {getJobType(job) === 'pull' && job?.schedule_name && (
                     <div>
-                      <label className="block text-sm font-bold text-gray-800 mb-2 bg-gray-50 px-0 py-0 rounded">
-                        Schedule ID
+                      <label className="block text-sm font-bold text-gray-800 mb-2  px-0 py-0 rounded">
+                        Schedule Name
                       </label>
                       <input
                         type="text"
-                        value={job.schedule_id}
+                        value={job?.schedule_name || 'N/A'}
                         readOnly
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-lg font-medium h-[60px] bg-gray-50 text-gray-900"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-lg font-medium h-[60px]  text-gray-900"
                         style={{
                           border: '1px solid silver',
                           borderRadius: '7px',
@@ -518,7 +518,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
 
                 {/* Description */}
                 <div>
-                  <label className="block text-sm font-bold text-gray-800 mb-2 bg-gray-50 px-0 py-0 rounded">
+                  <label className="block text-sm font-bold text-gray-800 mb-2  px-0 py-0 rounded">
                     Description
                   </label>
                   <textarea
@@ -539,7 +539,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                     className={`w-full px-3 py-2 border border-gray-300 rounded-lg resize-none text-lg font-medium ${
                       editMode && !cloneMode
                         ? 'bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:bg-white'
-                        : 'bg-gray-50 text-gray-900'
+                        : ' text-gray-900'
                     }`}
                     style={{
                       border: '1px solid silver',
@@ -565,7 +565,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-bold text-gray-800 mb-2 bg-gray-50 px-0 py-0 rounded">
+                      <label className="block text-sm font-bold text-gray-800 mb-2  px-0 py-0 rounded">
                         Ingest Mode
                       </label>
                       <select
@@ -585,7 +585,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                         className={`w-full px-3 py-2 border border-gray-300 rounded-lg text-lg font-medium h-[60px] ${
                           editMode && !cloneMode
                             ? 'bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:bg-white'
-                            : 'bg-gray-50 text-gray-900'
+                            : ' text-gray-900'
                         }`}
                         style={{
                           border: '1px solid silver',
@@ -610,7 +610,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                     </div>
 
                     <div>
-                      <label className="block text-sm font-bold text-gray-800 mb-2 bg-gray-50 px-0 py-0 rounded">
+                      <label className="block text-sm font-bold text-gray-800 mb-2  px-0 py-0 rounded">
                         Target Collection
                       </label>
                       <input
@@ -631,7 +631,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                         className={`w-full px-3 py-2 border border-gray-300 rounded-lg text-lg font-medium h-[60px] ${
                           editMode && !cloneMode
                             ? 'bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:bg-white'
-                            : 'bg-gray-50 text-gray-900'
+                            : ' text-gray-900'
                         }`}
                         style={{
                           border: '1px solid silver',
@@ -669,7 +669,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                             className="text-gray-400 mt-0.5 flex-shrink-0"
                           />
                           <div className="flex-1 min-w-0">
-                            <span className="text-sm font-bold text-gray-800 block bg-blue-50 px-0 py-0 rounded-sm">
+                            <span className="text-sm font-bold text-gray-800 block  px-0 py-0 rounded-sm">
                               Source Type
                             </span>
                             <span className="text-sm text-gray-900 block">
@@ -688,7 +688,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                           className="text-gray-400 mt-0.5 flex-shrink-0"
                         />
                         <div className="flex-1 min-w-0">
-                          <span className="text-sm font-bold text-gray-800 block bg-blue-50 px-0 py-0 rounded-sm">
+                          <span className="text-sm font-bold text-gray-800 block  px-0 py-0 rounded-sm">
                             Configuration
                           </span>
                           <span
@@ -705,14 +705,14 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                           className="text-gray-400 mt-0.5 flex-shrink-0"
                         />
                         <div className="flex-1 min-w-0">
-                          <span className="text-sm font-bold text-gray-800 block bg-blue-50 px-0 py-0 rounded-sm">
+                          <span className="text-sm font-bold text-gray-800 block  px-0 py-0 rounded-sm">
                             Status
                           </span>
                           <span
                             className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${getCentralizedStatusColor(job.status || 'in-progress')}`}
                           >
                             <span className="w-2 h-2 rounded-full bg-current mr-2"></span>
-                            {getStatusLabel(job.status || 'in-progress')}
+                            {job?.status || 'N/A'}
                           </span>
                         </div>
                       </div>
@@ -723,7 +723,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                           className="text-gray-400 mt-0.5 flex-shrink-0"
                         />
                         <div className="flex-1 min-w-0">
-                          <span className="text-sm font-bold text-gray-800 block bg-blue-50 px-0 py-0 rounded-sm">
+                          <span className="text-sm font-bold text-gray-800 block  px-0 py-0 rounded-sm">
                             Comments
                           </span>
                           <span className="text-sm text-gray-900 block break-words">
@@ -739,7 +739,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                           className="text-gray-400 mt-0.5 flex-shrink-0"
                         />
                         <div className="flex-1 min-w-0">
-                          <span className="text-sm font-bold text-gray-800 block bg-blue-50 px-0 py-0 rounded-sm">
+                          <span className="text-sm font-bold text-gray-800 block  px-0 py-0 rounded-sm">
                             Created
                           </span>
                           <span className="text-sm text-gray-900 block break-words">
@@ -754,7 +754,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                           className="text-gray-400 mt-0.5 flex-shrink-0"
                         />
                         <div className="flex-1 min-w-0">
-                          <span className="text-sm font-bold text-gray-800 block bg-blue-50 px-0 py-0 rounded-sm">
+                          <span className="text-sm font-bold text-gray-800 block  px-0 py-0 rounded-sm">
                             Updated
                           </span>
                           <span className="text-sm text-gray-900 block break-words">
@@ -769,7 +769,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                           className="text-gray-400 mt-0.5 flex-shrink-0"
                         />
                         <div className="flex-1 min-w-0">
-                          <span className="text-sm font-bold text-gray-800 block bg-blue-50 px-0 py-0 rounded-sm">
+                          <span className="text-sm font-bold text-gray-800 block  px-0 py-0 rounded-sm">
                             Job ID
                           </span>
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-mono bg-gray-100 text-gray-800 border border-gray-200 break-all">
@@ -822,7 +822,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                     })() && (
                       <>
                         <div>
-                          <label className="block text-sm font-bold text-gray-800 mb-2 bg-gray-50 px-0 py-0 rounded">
+                          <label className="block text-sm font-bold text-gray-800 mb-2  px-0 py-0 rounded">
                             HTTP URL
                           </label>
                           <input
@@ -864,7 +864,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                           );
                         })() && (
                           <div className="mt-3">
-                            <label className="block text-sm font-bold text-gray-800 mb-2 bg-gray-50 px-0 py-0 rounded">
+                            <label className="block text-sm font-bold text-gray-800 mb-2  px-0 py-0 rounded">
                               Headers
                             </label>
                             <div className="bg-white border border-gray-300 rounded-md p-3">
@@ -915,7 +915,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                     })() && (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-bold text-gray-800 mb-2 bg-gray-50 px-0 py-0 rounded">
+                          <label className="block text-sm font-bold text-gray-800 mb-2  px-0 py-0 rounded">
                             Host
                           </label>
                           <input
@@ -942,7 +942,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-bold text-gray-800 mb-2 bg-gray-50 px-0 py-0 rounded">
+                          <label className="block text-sm font-bold text-gray-800 mb-2  px-0 py-0 rounded">
                             Port
                           </label>
                           <input
@@ -972,7 +972,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-bold text-gray-800 mb-2 bg-gray-50 px-0 py-0 rounded">
+                          <label className="block text-sm font-bold text-gray-800 mb-2  px-0 py-0 rounded">
                             Username
                           </label>
                           <input
@@ -999,7 +999,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-bold text-gray-800 mb-2 bg-gray-50 px-0 py-0 rounded">
+                          <label className="block text-sm font-bold text-gray-800 mb-2  px-0 py-0 rounded">
                             Auth Type
                           </label>
                           <input
@@ -1043,7 +1043,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                         </Box>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <div>
-                            <label className="block text-sm font-bold text-gray-800 mb-2 bg-gray-50 px-0 py-0 rounded">
+                            <label className="block text-sm font-bold text-gray-800 mb-2  px-0 py-0 rounded">
                               File Path
                             </label>
                             <input
@@ -1060,7 +1060,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-bold text-gray-800 mb-2 bg-gray-50 px-0 py-0 rounded">
+                            <label className="block text-sm font-bold text-gray-800 mb-2  px-0 py-0 rounded">
                               File Type
                             </label>
                             <input
@@ -1077,7 +1077,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-bold text-gray-800 mb-2 bg-gray-50 px-0 py-0 rounded">
+                            <label className="block text-sm font-bold text-gray-800 mb-2  px-0 py-0 rounded">
                               Delimiter
                             </label>
                             <input
@@ -1256,7 +1256,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
             onExport &&
             userIsExporter &&
             job.status === 'STATUS_04_APPROVED' && (
-              <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3 bg-gray-50">
+              <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3 ">
                 <MuiButton
                   type="button"
                   variant="contained"
@@ -1302,7 +1302,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
               userIsExporter &&
               job.status === 'STATUS_04_APPROVED'
             ) && (
-              <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3 bg-gray-50">
+              <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3 ">
                 <MuiButton
                   type="button"
                   variant="contained"
