@@ -19,7 +19,7 @@ export class SchedulerService {
     private readonly loggerService: LoggerService,
     private readonly sftpService: SftpService,
     private readonly adminServiceClient: AdminServiceClient,
-  ) {}
+  ) { }
 
   async create(
     schedule: CreateScheduleJobDto,
@@ -75,7 +75,7 @@ export class SchedulerService {
     try {
       const existingSchedule = await this.findOne(id, token);
 
-      if (existingSchedule?.status !== JobStatus.INPROGRESS) {
+      if (existingSchedule?.status !== JobStatus.INPROGRESS && existingSchedule?.status !== JobStatus.REJECTED) {
         throw new ForbiddenException(
           'Only In-Progress Cron jobs can be edited',
         );
