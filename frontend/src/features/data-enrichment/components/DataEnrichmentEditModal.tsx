@@ -489,6 +489,7 @@ export const DataEnrichmentEditModal: React.FC<
           <EndpointNameInputField
             name="name"
             control={control}
+            disabled={true}
             label={
               <>
                 Endpoint Name <span className="text-red-500">*</span>
@@ -503,6 +504,7 @@ export const DataEnrichmentEditModal: React.FC<
           <VersionInputField
             name={'version'}
             control={control}
+            disabled={true}
             label={
               <>
                 Version <span className="text-red-500">*</span>
@@ -760,6 +762,7 @@ export const DataEnrichmentEditModal: React.FC<
             control={control}
             fullWidth={true}
             maxWidth={65}
+            disabled={true}
             label={
               <>
                 Table Name <span className="text-red-500">*</span>
@@ -824,6 +827,7 @@ export const DataEnrichmentEditModal: React.FC<
           <VersionInputField
             name={'version'}
             control={control}
+            disabled={true}
             label={
               <>
                 Version <span className="text-red-500">*</span>
@@ -840,6 +844,7 @@ export const DataEnrichmentEditModal: React.FC<
           <ApiPathInputField
             name={'endpointPath'}
             control={control}
+            disabled={true}
             label={
               <>
                 API Path <span className="text-red-500">*</span>
@@ -914,6 +919,7 @@ export const DataEnrichmentEditModal: React.FC<
             control={control}
             fullWidth={true}
             maxWidth={65}
+            disabled={true}
             label={
               <>
                 Table Name <span className="text-red-500">*</span>
