@@ -217,6 +217,7 @@ export class AdminServiceClient {
         ),
       );
 
+      console.log(`LENGTH of All Jobs data : ${response.data.length}`)
       return response.data;
     } catch (error) {
       return this.handleError(error, 'getScheduleByStatus');
