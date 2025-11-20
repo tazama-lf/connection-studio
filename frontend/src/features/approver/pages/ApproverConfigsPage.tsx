@@ -11,6 +11,13 @@ import EditEndpointModal from '../../../shared/components/EditEndpointModal';
 import { useAuth } from '../../auth/contexts/AuthContext';
 import { Button } from '@shared';
 import { useNavigate } from 'react-router';
+import {
+  Dialog,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  Box,
+} from '@mui/material';
 
 const ApproverConfigsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -25,6 +32,11 @@ const ApproverConfigsPage: React.FC = () => {
   const [showChangeRequestDialog, setShowChangeRequestDialog] = useState(false);
   const [configToReject, setConfigToReject] = useState<Config | null>(null);
   const [configToRequestChanges, setConfigToRequestChanges] = useState<Config | null>(null);
+  
+  // Approval confirmation dialog state
+  const [showApprovalDialog, setShowApprovalDialog] = useState(false);
+  const [configToApprove, setConfigToApprove] = useState<{id: number, name: string} | null>(null);
+
 const { user } = useAuth();
   const { showSuccess, showError } = useToast();
 
@@ -138,39 +150,45 @@ const userId = user?.email || user?.username || 'system';
     setShowChangeRequestDialog(true);
   };
 
-  const handleSendForApproval = async (configId: number) => {
-    try {
-      console.log('🚀 handleSendForApproval - Starting approval for config:', configId);
-      const response = await configApi.approveConfig(configId);
-      console.log('📨 handleSendForApproval - Raw API response:', response);
-      console.log('📨 handleSendForApproval - Response success:', response.success);
-      console.log('📨 handleSendForApproval - Response message:', response.message);
+  const handleSendForApproval = async (configId: number, configName?: string) => {
+    // Show confirmation dialog first
+    setConfigToApprove({ 
+      id: configId, 
+      name: configName || `Config #${configId}` 
+    });
+    setShowApprovalDialog(true);
+  };
 
+  // Handle actual approval after confirmation
+  const handleApprovalConfirm = async () => {
+    if (!configToApprove) return;
+
+    try {
+      const response = await configApi.approveConfig(configToApprove.id);
       if (response.success) {
-        console.log('✅ handleSendForApproval - Approval successful');
         showSuccess('Configuration approved successfully');
         setRefreshKey(prev => prev + 1);
         // Close the modal after successful approval
         handleCloseModal();
+        setShowApprovalDialog(false);
+        setConfigToApprove(null);
       } else {
-        console.log('❌ handleSendForApproval - Response success is false, but checking if operation actually succeeded...');
-        console.log('❌ handleSendForApproval - Error message:', response.message);
-        console.log('❌ handleSendForApproval - Config in response:', response.config);
-
-        // Even if success is false, if we have a config object, the operation likely succeeded
-        // This handles cases where the backend returns success: false but still performs the action
         if (response.config) {
-          console.log('✅ handleSendForApproval - Config object found, treating as successful despite success: false');
           showSuccess('Configuration approved successfully');
           setRefreshKey(prev => prev + 1);
           handleCloseModal();
+          setShowApprovalDialog(false);
+          setConfigToApprove(null);
         } else {
           showError(response.message || 'Failed to approve configuration');
+          setShowApprovalDialog(false);
+          setConfigToApprove(null);
         }
       }
     } catch (error) {
-      console.error('💥 handleSendForApproval - Exception occurred:', error);
       showError('Failed to approve configuration');
+      setShowApprovalDialog(false);
+      setConfigToApprove(null);
     }
   };
 
@@ -214,7 +232,15 @@ const userId = user?.email || user?.username || 'system';
           onSuccess={handleConfigSuccess}
           readOnly={true}
           onRevertToEditor={() => editingConfig && handleRevertToEditor(editingConfig)}
-          onSendForDeployment={() => handleSendForApproval(editingEndpointId)}
+          onSendForDeployment={() => {
+            if (editingConfig) {
+              setConfigToApprove({ 
+                id: editingEndpointId, 
+                name: editingConfig.endpointPath || editingConfig.msgFam || `Config #${editingEndpointId}` 
+              });
+              setShowApprovalDialog(true);
+            }
+          }}
         />
       )}
 
@@ -257,6 +283,96 @@ const userId = user?.email || user?.username || 'system';
           configName={configToRequestChanges.endpointPath}
         />
       )}
+
+      {/* Approval Confirmation Dialog */}
+      <Dialog
+        open={showApprovalDialog}
+        onClose={() => {
+          setShowApprovalDialog(false);
+          setConfigToApprove(null);
+        }}
+        aria-labelledby="approval-confirmation-dialog-title"
+        aria-describedby="approval-confirmation-dialog-description"
+        sx={{ borderRadius: '6px' }}
+      >
+        <Box
+          sx={{
+            color: '#3b3b3b',
+            fontSize: '20px',
+            fontWeight: 'bold',
+            padding: '16px 20px',
+            borderBottom: '1px solid #cecece',
+          }}
+        >
+          Approval Confirmation Required!
+        </Box>
+        <DialogContent sx={{ padding: '20px 20px' }}>
+          <DialogContentText
+            id="approval-confirmation-dialog-description"
+            sx={{
+              fontSize: '16px',
+              lineHeight: '1.6',
+              color: '#374151',
+              marginBottom: '16px',
+            }}
+          >
+            Are you sure you want to approve{' '}
+            <Box
+              component="span"
+              sx={{
+                fontWeight: 'bold',
+                color: '#2b7fff',
+                backgroundColor: '#f0f7ff',
+                padding: '2px 8px',
+                borderRadius: '4px',
+                fontSize: '15px',
+              }}
+            >
+              "{configToApprove?.name || 'this configuration'}"
+            </Box>
+            ?
+          </DialogContentText>
+          <Box
+            sx={{
+              backgroundColor: '#dceeff',
+              border: '1px solid #dceeff',
+              borderRadius: '8px',
+              padding: '12px 16px',
+              marginTop: '16px',
+            }}
+          >
+            <DialogContentText
+              sx={{
+                fontSize: '16px',
+                color: '#2b7fff',
+                margin: 0,
+                fontWeight: '500',
+              }}
+            >
+              ⚠️ Important: This will approve the configuration and move it to the next stage in the workflow.
+            </DialogContentText>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ padding: '12px 20px 16px 20px' }}>
+          <Button
+            onClick={() => {
+              setShowApprovalDialog(false);
+              setConfigToApprove(null);
+            }}
+            variant="secondary"
+            className="!pb-[6px] !pt-[5px]"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleApprovalConfirm}
+            variant="primary"
+            className="!pb-[6px] !pt-[5px] bg-[#2b7fff]"
+          >
+            Yes, Approve Configuration
+          </Button>
+        </DialogActions>
+      </Dialog>
     </div>
   );
 };

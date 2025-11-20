@@ -1,5 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, SearchIcon } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  Box,
+} from '@mui/material';
 import { CronJobApproverList } from '../components/CronJobApproverList';
 import CronJobDetailsModal from '../components/CronJobDetailsModal';
 import type { ScheduleResponse } from '../../data-enrichment/types';
@@ -11,6 +18,7 @@ import { getPrimaryRole } from '@utils/roleUtils';
 import { useAuth } from '@features/auth';
 import { UI_CONFIG } from '@shared/config/app.config';
 import CronJobViewModal from '@features/cron/components/CronJobViewModal';
+import { JobRejectionDialog } from '../../../shared/components/JobRejectionDialog';
 
 const ApproverCronJobsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -20,12 +28,22 @@ const ApproverCronJobsPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [schedulesLoading, setSchedulesLoading] = useState(false);
   const [cronJobSearchTerm, setCronJobSearchTerm] = useState('');
-  
+
   // Cron job details modal state
   const [showCronJobDetails, setShowCronJobDetails] = useState(false);
-  const [selectedSchedule, setSelectedSchedule] =
-  useState<any>(null);
+  const [selectedSchedule, setSelectedSchedule] = useState<any>(null);
   const [cronJobDetailsLoading, setCronJobDetailsLoading] = useState(false);
+
+  // Rejection dialog state
+  const [showRejectionDialog, setShowRejectionDialog] = useState(false);
+  const [scheduleToReject, setScheduleToReject] = useState<string | null>(null);
+
+  // Approval dialog state
+  const [showApprovalDialog, setShowApprovalDialog] = useState(false);
+  const [scheduleToApprove, setScheduleToApprove] = useState<string | null>(
+    null,
+  );
+
   console.log(selectedSchedule);
 
   const { user } = useAuth();
@@ -138,7 +156,10 @@ const ApproverCronJobsPage: React.FC = () => {
       } else {
         // If not found in current list, fetch from API
         const scheduleDetails = await dataEnrichmentApi.getSchedule(scheduleId);
-        setSelectedSchedule({...scheduleDetails, cronExpression: scheduleDetails.cron});
+        setSelectedSchedule({
+          ...scheduleDetails,
+          cronExpression: scheduleDetails.cron,
+        });
       }
     } catch (error) {
       console.error('Failed to load cron job details:', error);
@@ -149,10 +170,25 @@ const ApproverCronJobsPage: React.FC = () => {
   };
 
   const handleApproveCronJob = async (scheduleId: string) => {
+    // Open approval dialog instead of directly approving
+    setScheduleToApprove(scheduleId);
+    setShowApprovalDialog(true);
+  };
+
+  const handleApprovalConfirm = async () => {
+    if (!scheduleToApprove) return;
+
     try {
-      await dataEnrichmentApi.updateScheduleStatus(scheduleId, 'STATUS_04_APPROVED');
+      await dataEnrichmentApi.updateScheduleStatus(
+        scheduleToApprove,
+        'STATUS_04_APPROVED',
+      );
       showSuccess('Cron job approved successfully');
       handleCronJobRefresh();
+      setShowApprovalDialog(false);
+      setScheduleToApprove(null);
+      setShowCronJobDetails(false);
+      setSelectedSchedule(null);
     } catch (error) {
       console.error('Failed to approve cron job:', error);
       showError('Failed to approve cron job');
@@ -160,10 +196,26 @@ const ApproverCronJobsPage: React.FC = () => {
   };
 
   const handleRejectCronJob = async (scheduleId: string) => {
+    // Open rejection dialog instead of directly rejecting
+    setScheduleToReject(scheduleId);
+    setShowRejectionDialog(true);
+  };
+
+  const handleRejectionConfirm = async (reason: string) => {
+    if (!scheduleToReject) return;
+
     try {
-      await dataEnrichmentApi.updateScheduleStatus(scheduleId, 'STATUS_05_REJECTED');
+      await dataEnrichmentApi.updateScheduleStatus(
+        scheduleToReject,
+        'STATUS_05_REJECTED',
+        reason,
+      );
       showSuccess('Cron job rejected successfully');
       handleCronJobRefresh();
+      setShowRejectionDialog(false);
+      setScheduleToReject(null);
+      setShowCronJobDetails(false);
+      setSelectedSchedule(null);
     } catch (error) {
       console.error('Failed to reject cron job:', error);
       showError('Failed to reject cron job');
@@ -236,6 +288,87 @@ const ApproverCronJobsPage: React.FC = () => {
           onReject={handleRejectCronJob}
         />
       )}
+
+      <JobRejectionDialog
+        isOpen={showRejectionDialog}
+        onClose={() => {
+          setShowRejectionDialog(false);
+          setScheduleToReject(null);
+        }}
+        onConfirm={handleRejectionConfirm}
+        jobName={
+          schedules.find((s) => s.id === scheduleToReject)?.name ||
+          'Unknown Schedule'
+        }
+        jobType="Cron Job"
+      />
+
+      {/* Approval Confirmation Dialog */}
+      <Dialog
+        open={showApprovalDialog}
+        onClose={() => {
+          setShowApprovalDialog(false);
+          setScheduleToApprove(null);
+        }}
+        aria-labelledby="approval-confirmation-dialog-title"
+        aria-describedby="approval-confirmation-dialog-description"
+        sx={{ borderRadius: '6px' }}
+      >
+        <Box
+          sx={{
+            color: '#3b3b3b',
+            fontSize: '20px',
+            fontWeight: 'bold',
+            padding: '16px 20px',
+            borderBottom: '1px solid #cecece',
+          }}
+        >
+          Approval Confirmation Required!
+        </Box>
+        <DialogContent sx={{ padding: '20px 20px' }}>
+          <DialogContentText
+            id="approval-confirmation-dialog-description"
+            sx={{
+              fontSize: '16px',
+              lineHeight: '1.6',
+              color: '#374151',
+              marginBottom: '16px',
+            }}
+          >
+            Are you sure you want to approve this job ?
+          </DialogContentText>
+          <DialogContentText
+            sx={{
+              fontSize: '16px',
+              color: '#2b7fff',
+              margin: 0,
+              fontWeight: '500',
+            }}
+          >
+            ⚠️ Important: This will approve the cron job and move it to the next
+            stage in the workflow.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ padding: '12px 20px 16px 20px' }}>
+          <Button
+            variant="secondary"
+            className="!pb-[6px] !pt-[5px]"
+            onClick={() => {
+              setShowApprovalDialog(false);
+              setScheduleToApprove(null);
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleApprovalConfirm}
+            variant="primary"
+            className="!pb-[6px] !pt-[5px]"
+          >
+            Yes, Approve Cron Job
+          </Button>
+        </DialogActions>
+      </Dialog>
     </div>
   );
 };

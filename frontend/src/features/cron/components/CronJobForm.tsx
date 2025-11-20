@@ -333,7 +333,6 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({
                         }}
                         onClick={() => {
                           onReject(viewFormData?.id);
-                          onCancel?.();
                         }}
                       >
                         Reject
@@ -353,7 +352,6 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({
                         }}
                         onClick={() => {
                           onApprove(viewFormData?.id);
-                          onCancel?.();
                         }}
                         className="bg-green-600 hover:bg-green-700 text-white"
                       >
