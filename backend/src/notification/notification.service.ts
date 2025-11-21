@@ -123,8 +123,6 @@ export class NotificationService implements OnModuleInit {
       this.logger.warn(
         ` [DRY RUN] Would send email to: ${Array.isArray(options.to) ? options.to.join(', ') : options.to}`,
       );
-      this.logger.warn(`   Subject: ${options.subject}`);
-      this.logger.warn(`   Body: ${options.text}`);
       return false;
     }
 
@@ -569,8 +567,6 @@ export class NotificationService implements OnModuleInit {
     this.logger.log(
       `[Publishing Status] Sending ${publishingStatus} notification for config ${configId}`,
     );
-    this.logger.log(`  Status: ${publishingStatus}`);
-    this.logger.log(`  Actor: ${actorEmail}`);
     this.logger.log(
       `  Recipients: ${recipientEmails.length} (${recipientEmails.join(', ')})`,
     );
