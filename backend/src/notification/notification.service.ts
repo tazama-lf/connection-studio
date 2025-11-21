@@ -21,9 +21,17 @@ import {
   generateSubmitForApprovalEmailText,
   generateRejectionEmailHTML,
   generateRejectionEmailText,
+  Config,
+  Job,
+  Schedule,
+  EmailTheme,
 } from '@tazama-lf/tcs-lib';
 import { firstValueFrom } from 'rxjs/internal/firstValueFrom';
 import { HttpService } from '@nestjs/axios';
+import { AuthenticatedUser } from 'src/auth/auth.types';
+
+import { decodeValidatedToken, getGroupNameFromToken, getTenantId } from 'src/utils/helpers';
+import { EventType } from 'src/enums/events.enum';
 
 export interface EmailOptions {
   to: string | string[];
@@ -268,8 +276,8 @@ export class NotificationService implements OnModuleInit {
     });
   }
 
-  private async fetchRecipientEmails(
-    event: string,
+   async fetchRecipientEmails(
+    event: EventType,
     tenantId: string,
     authToken: string,
     groupName: string,
@@ -279,21 +287,22 @@ export class NotificationService implements OnModuleInit {
       let fetchAll = false;
 
       switch (event) {
+        case EventType.EditorSubmit:
         case 'editor_submit':
           role = 'approver';
           break;
-        case 'approver_approve':
+        case EventType.ApproverApprove:
           role = 'exporter';
           break;
-        case 'exporter_export':
+        case EventType.ExporterExport:
           role = 'publisher';
           break;
-        case 'approver_reject':
+        case EventType.ApproverReject:
           role = 'editor';
           break;
-        case 'publisher_deploy':
-        case 'publisher_activate':
-        case 'publisher_deactivate':
+        case EventType.PublisherDeploy:
+        case EventType.PublisherActivate:
+        case EventType.PublisherDeactivate:
           fetchAll = true;
           break;
         default:
@@ -311,7 +320,7 @@ export class NotificationService implements OnModuleInit {
         }
 
         this.logger.log(
-          `Fetching all user emails from Keycloak for tenant '${tenantId}'`,
+          `Fetching all user emails from AuthService for tenant '${tenantId}'`,
         );
         const emails = await this.getUserGroupMembers(
           authToken,
@@ -334,7 +343,7 @@ export class NotificationService implements OnModuleInit {
           return cachedEmails;
         }
 
-        this.logger.log(`Fetching emails for role '${role}' from Keycloak`);
+        this.logger.log(`Fetching emails for role '${role}' from AuthService`);
         const emails = await this.getUserGroupMembers(
           authToken,
           groupName,
@@ -354,19 +363,12 @@ export class NotificationService implements OnModuleInit {
   }
 
   async sendGenericWorkflowNotification(data: {
-    event:
-      | 'editor_submit'
-      | 'approver_approve'
-      | 'exporter_export'
-      | 'publisher_deploy'
-      | 'publisher_activate'
-      | 'publisher_deactivate'
-      | 'approver_reject',
+    event: EventType;
     configId: number;
     tenantId: string;
     actorEmail: string;
     actorName: string;
-    config: any;
+    actionEntity: Config | Job | Schedule,
     authToken: string;
     groupName: string;
     comment?: string;
@@ -378,7 +380,7 @@ export class NotificationService implements OnModuleInit {
         tenantId,
         actorEmail,
         actorName,
-        config,
+        actionEntity,
         authToken,
         groupName,
         comment,
@@ -410,11 +412,16 @@ export class NotificationService implements OnModuleInit {
         `Sending emails to ${recipientEmails.length} recipient(s)`,
       );
 
-      const configName =
-        config.transactionType || config.cfg_name || 'Configuration';
-      const version = config.version || config.cfg_version || '1.0';
-      const theme = getEmailTheme(event, configName, version);
+      let htmlContent = '';
+      let textContent = '';
+      let theme: EmailTheme | null = null;
 
+      if ('transactionType' in actionEntity) {
+      const config = actionEntity as Config;
+      const configName =
+        config.transactionType || 'Configuration';
+      const version = config.version  || '1.0';
+      theme  = getEmailTheme(event, configName, version);
       const templateContext: EmailTemplateContext = {
         event,
         config,
@@ -423,9 +430,37 @@ export class NotificationService implements OnModuleInit {
         comment,
         tenantId,
       };
+      htmlContent = generateWorkflowEmailHTML(templateContext);
+      textContent = generateWorkflowEmailText(templateContext);
+      } else if ('type' in actionEntity) {
+        const job = actionEntity as Job;
+      const configName = job.endpoint_name || 'Job';
+      const version = job.version || '1.0';
+      theme = getEmailTheme(event, configName, version);
+      // iskai apnai template functions for Job if needed
+     
+      } else if ('schedule_name' in actionEntity) {
+      const schedule = actionEntity as Schedule;
+      const configName = schedule.name || 'Schedule';
+      const version =  '1.0';
+      theme = getEmailTheme(event, configName, version);
+      } else {
+        this.logger.warn('Invalid actionEntity type');
+         return {
+        success: false,
+        message: 'Invalid actionEntity type',
+        recipients: 0,
+      };
+      }
 
-      const htmlContent = generateWorkflowEmailHTML(templateContext);
-      const textContent = generateWorkflowEmailText(templateContext);
+      if(!theme) {
+        this.logger.warn(`No email theme found for event '${event}'`);
+        return {
+          success: false,
+          message: 'No email theme found',
+          recipients: 0,
+        };
+      }
 
       const emailSent = await this.sendEmail({
         to: recipientEmails.join(', '),
@@ -608,4 +643,34 @@ export class NotificationService implements OnModuleInit {
       );
     }
   }
+
+
+     async sendWorkflowNotification(
+      event:EventType,
+      configId: number,
+      user: AuthenticatedUser,
+      actionEntity: Config | Job | Schedule,
+      authToken: string,
+      comment?: string,
+    ): Promise<void> {
+      const decodedToken = decodeValidatedToken(user);
+      const groupName = getGroupNameFromToken(decodedToken);
+      if(!groupName) {
+        this.logger.error('Group name not found in token. Cannot send notification.');
+        return;
+      }
+
+      await this.sendGenericWorkflowNotification({
+        event,
+        configId,
+        tenantId: getTenantId(user),
+        actorEmail: decodedToken.preferredUsername,
+        actorName: decodedToken.preferredUsername,
+        actionEntity,
+        authToken: authToken,
+        groupName: groupName,
+        comment,
+      });
+    }
+  
 }

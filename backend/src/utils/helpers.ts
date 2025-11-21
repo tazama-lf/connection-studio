@@ -3,7 +3,15 @@ import { CronTime } from 'cron';
 import * as crypto from 'crypto';
 import dotenv from 'dotenv';
 import * as path from 'path';
+import { AuthenticatedUser } from 'src/auth/auth.types';
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+import * as jwt from 'jsonwebtoken';
+
+interface DecodedUserInfo {
+  preferredUsername: string;
+  realmRoles: string[];
+  tenantDetails: string[];
+}
 
 const IV_LENGTH = parseInt(process.env.IV_LENGTH!);
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY!;
@@ -71,4 +79,65 @@ export function validateFileType(filePath: string): 'CSV' | 'TSV' | 'JSON' {
 
 export function isValidText(text: string): boolean {
   return !/�{3,}/.test(text);
+}
+
+export function getTenantId(user: AuthenticatedUser): string {
+  const tenantId = user.token.tenantId || user.tenantId;
+  if (!tenantId) {
+    throw new Error('Tenant ID not found in user token or claims');
+  }
+  return tenantId;
+}
+
+
+function decodeTokenString(tokenString: string): jwt.JwtPayload | null {
+  try {
+    return jwt.decode(tokenString) as jwt.JwtPayload;
+  } catch {
+    return null;
+  }
+}
+
+export function decodeValidatedToken(user: AuthenticatedUser): DecodedUserInfo {
+  let decoded = decodeTokenString(user.token.tokenString);
+
+  if (!decoded) {
+    throw new Error('Invalid token: unable to decode');
+  }
+
+  if (decoded.tokenString && typeof decoded.tokenString === 'string') {
+    const innerDecoded = decodeTokenString(decoded.tokenString);
+    if (innerDecoded) {
+      decoded = innerDecoded;
+    }
+  }
+
+  if (!decoded.preferred_username) {
+    throw new Error(
+      `Invalid token: preferred_username missing. Available keys: ${Object.keys(decoded).join(', ')}`,
+    );
+  }
+
+  if (!decoded.realm_access || !Array.isArray(decoded.realm_access.roles)) {
+    throw new Error('Invalid token: realm_access.roles missing or invalid');
+  }
+
+  if (!Array.isArray(decoded.tenant_details)) {
+    throw new Error('Invalid token: tenant_details missing or invalid');
+  }
+
+  return {
+    preferredUsername: decoded.preferred_username,
+    realmRoles: decoded.realm_access.roles,
+    tenantDetails: decoded.tenant_details,
+  };
+}
+
+
+export const getGroupNameFromToken = (decodedToken: DecodedUserInfo): string  | null => {
+  const groupName = decodedToken.tenantDetails.length > 0
+            ? decodedToken.tenantDetails[0].replace(/\//g, '')
+            : null;
+  return groupName;
+
 }
