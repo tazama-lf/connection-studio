@@ -426,14 +426,14 @@ export class NotificationService implements OnModuleInit {
         };
         htmlContent = generateWorkflowEmailHTML(templateContext);
         textContent = generateWorkflowEmailText(templateContext);
-      } else if ('type' in actionEntity) {
+      } else if ('source_type' in actionEntity) {
         const job = actionEntity as Job;
         const configName = job.endpoint_name || 'Job';
         const version = job.version || '1.0';
         theme = getEmailTheme(event, configName, version);
         // iskai apnai template functions for Job if needed
 
-      } else if ('schedule_name' in actionEntity) {
+      } else if ('nacronme' in actionEntity) {
         const schedule = actionEntity as Schedule;
         const configName = schedule.name || 'Schedule';
         const version = '1.0';
