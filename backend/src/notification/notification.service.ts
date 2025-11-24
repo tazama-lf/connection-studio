@@ -432,7 +432,7 @@ export class NotificationService implements OnModuleInit {
         theme = getEmailTheme(event, configName, version);
         // iskai apnai template functions for Job if needed
 
-      } else if ('nacronme' in actionEntity) {
+      } else if ('cron' in actionEntity) {
         const schedule = actionEntity as Schedule;
         const configName = schedule.name || 'Schedule';
         const version = '1.0';
