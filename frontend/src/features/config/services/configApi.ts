@@ -1,6 +1,7 @@
 import { getDemsStatusLov } from '@shared/lovs';
 import { API_CONFIG } from '../../../shared/config/api.config';
 import type { Config, JsonSchema } from '../index';
+import type { FunctionDefinition } from '@shared/types/functions.types';
 
 // Types for configuration API
 export interface CreateConfigRequest {
@@ -11,6 +12,7 @@ export interface CreateConfigRequest {
   payload?: string;
   schema?: any; // Complete JSON Schema object
   mapping?: FieldMapping[];
+  functions?: FunctionDefinition[];
   fieldAdjustments?: FieldAdjustment[];
 }
 
@@ -622,7 +624,7 @@ async getConfigsPaginated(
 
   async approveConfig(id: number): Promise<ConfigResponse> {
     try {
-      const response = await fetch(`${this.baseURL}/config/${id}/approve`, {
+      const response = await fetch(`${this.baseURL}/config/${id}/workflow/approve`, {
         method: 'PATCH',
         headers: this.getAuthHeaders(),
         body: JSON.stringify({ comment: '' }), // Send empty comment to satisfy backend expectations
@@ -637,7 +639,7 @@ async getConfigsPaginated(
 
   async rejectConfig(id: number, userId: string, reason?: string): Promise<ConfigResponse> {
     try {
-      const response = await fetch(`${this.baseURL}/config/${id}/reject`, {
+      const response = await fetch(`${this.baseURL}/config/${id}/workflow/reject`, {
         method: 'PATCH',
         headers: this.getAuthHeaders(),
         body: JSON.stringify({

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { XMLParser } from "fast-xml-parser";
 import * as yup from 'yup';
 import { Button } from './Button';
 import {
@@ -26,6 +27,7 @@ interface PayloadEditorProps {
   tenantId?: string; // Tenant ID for endpoint preview
   readOnly?: boolean; // When true, disable all editing functionality
   isCloning?: boolean; // When true, allow editing even for existing configs
+  shouldCreateNew?: boolean; // When true, treat as creating a new config even if editing existing one
   onValidationErrorsChange?: (errors: {
     version: string;
     transactionType: string;
@@ -63,10 +65,14 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
   tenantId = 'tenant-id', // Default placeholder if not provided
   readOnly = false,
   isCloning = false,
+  shouldCreateNew = true,
   onValidationErrorsChange,
   payloadError,
   setPayloadError,
 }) => {
+  
+  console.log("shouldCreateNew", shouldCreateNew, isCloning);
+  
   // New state for endpoint form data
   const [endpointData, setEndpointData] = useState<EndpointFormData>(
     initialEndpointData || {
@@ -785,6 +791,7 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
       }
     } else if (contentType === 'application/xml') {
       try {
+        // First, validate XML format
         const parser = new DOMParser();
         const xmlDoc = parser.parseFromString(payload, 'text/xml');
         const parseError = xmlDoc.getElementsByTagName('parsererror');
@@ -792,11 +799,15 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
           throw new Error('XML parsing error');
         }
 
-        // Generate comprehensive XML schema starting from root
-        // Keep the root element (e.g., university, transaction) in the schema
-        const rootSchema = generateXMLSchema(xmlDoc.documentElement);
+        // Convert XML to JSON using fast-xml-parser
+        const xmlparser = new XMLParser({
+          ignoreAttributes: false,
+          attributeNamePrefix: '',
+        });
+        const jsonResult = xmlparser.parse(payload);
 
-        return rootSchema;
+        // Generate schema from the converted JSON
+        return generateJSONSchema(jsonResult);
       } catch (e) {
         throw new Error('Invalid XML format');
       }
@@ -1385,7 +1396,7 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
         )}
       </div>
 
-      {!readOnly && (
+      {!readOnly && (shouldCreateNew || isCloning) && (
         <div>
           <div className="flex justify-between items-center mb-3 mt-10">
             <h3 className="text-lg font-medium text-gray-900">
@@ -1532,7 +1543,7 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
       )}
 
       {/* Code Editor - Hide completely in edit mode */}
-      {!isEditMode && (
+      {!isEditMode && (shouldCreateNew || isCloning) && (
         <>
           <div className="flex gap-5 w-full">
             {/* Left Side - Raw Input */}

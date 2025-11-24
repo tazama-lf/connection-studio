@@ -248,7 +248,6 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
 }) => {
   const isNewEndpoint = endpointId === -1;
   const isCloning = isCloneMode && endpointId !== -1;
-  const shouldCreateNew = isNewEndpoint || isCloning; // Either truly new or cloning
   const { showSuccess, showError } = useToast();
   const { user } = useAuth();
   const tenantId = user?.tenantId || 'tenant-id';
@@ -277,7 +276,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
   const [existingConfig, setExistingConfig] = useState<any | null>(null);
   const [inferredSchema, setInferredSchema] = useState<any | null>(null);
 
-  console.log('createdEndpoint?.status', isStatus(createdEndpoint?.status, 'STATUS_06_EXPORTED'));
+  const shouldCreateNew = !createdEndpoint && !existingConfig && isNewEndpoint;
   
 
   const [currentMappings, setCurrentMappings] = useState<any[]>([]); // Current mappings from MappingUtility
@@ -1291,7 +1290,7 @@ console.log('Cur map:', currentMappings);
 
       if (shouldCreate || isCloningOperation || isCloneMode) {
         console.log(isCloningOperation ? 'Cloning config - creating new config...' : 'Creating NEW config...');
-        saveResponse = await configApi.createConfig(createRequest);
+        saveResponse = await configApi.createConfig({...createRequest, mapping: existingConfig?.mapping, functions: existingConfig?.functions});
       } else {
         console.log('Updating EXISTING config with ID:', actualConfigId);
         saveResponse = await configApi.updateConfig(actualConfigId, createRequest);
@@ -1511,6 +1510,7 @@ console.log('Cur map:', currentMappings);
                   tenantId={tenantId}
                   readOnly={readOnly}
                   isCloning={isCloning}
+                  shouldCreateNew={shouldCreateNew}
                   payloadError={error}
                   setPayloadError={setError}
                   existingSchemaFields={(() => {
