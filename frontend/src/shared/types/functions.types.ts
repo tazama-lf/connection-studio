@@ -113,7 +113,7 @@ export const FUNCTION_CONFIGS: Record<AllowedFunctionName, FunctionConfig> = {
         description: 'Tenant identifier',
       },
       {
-        name: 'CreDtTm',
+        name: 'creDtTm',
         displayName: 'Creation Date Time',
         type: 'string',
         description: 'Creation timestamp',
@@ -124,14 +124,14 @@ export const FUNCTION_CONFIGS: Record<AllowedFunctionName, FunctionConfig> = {
       {
         name: 'creditor-entity',
         displayName: 'Creditor Entity',
-        parameters: 'cdtrId, TenantId, CreDtTm',
-        description: 'Parameters: cdtrId, TenantId, CreDtTm',
+        parameters: 'cdtrId, TenantId, creDtTm',
+        description: 'Parameters: cdtrId, TenantId, creDtTm',
       },
       {
         name: 'debtor-entity',
         displayName: 'Debtor Entity',
-        parameters: 'dbtrId, TenantId, CreDtTm',
-        description: 'Parameters: dbtrId, TenantId, CreDtTm',
+        parameters: 'dbtrId, TenantId, creDtTm',
+        description: 'Parameters: dbtrId, TenantId, creDtTm',
       },
     ],
   },
@@ -164,7 +164,7 @@ export const FUNCTION_CONFIGS: Record<AllowedFunctionName, FunctionConfig> = {
         description: 'Debtor account identifier',
       },
       {
-        name: 'CreDtTm',
+        name: 'creDtTm',
         displayName: 'Creation Date Time',
         type: 'string',
         description: 'Creation timestamp',
@@ -181,19 +181,19 @@ export const FUNCTION_CONFIGS: Record<AllowedFunctionName, FunctionConfig> = {
       {
         name: 'debtor-account-holder',
         displayName: 'Debtor Account Holder',
-        parameters: 'dbtrId, dbtrAcctId, CreDtTm, TenantId',
-        description: 'Parameters: dbtrId, dbtrAcctId, CreDtTm, TenantId',
+        parameters: 'dbtrId, dbtrAcctId, creDtTm, TenantId',
+        description: 'Parameters: dbtrId, dbtrAcctId, creDtTm, TenantId',
       },
       {
         name: 'creditor-account-holder',
         displayName: 'Creditor Account Holder',
-        parameters: 'cdtrId, cdtrAcctId, CreDtTm, TenantId',
-        description: 'Parameters: cdtrId, cdtrAcctId, CreDtTm, TenantId',
+        parameters: 'cdtrId, cdtrAcctId, creDtTm, TenantId',
+        description: 'Parameters: cdtrId, cdtrAcctId, creDtTm, TenantId',
       },
     ],
   },
   saveTransactionDetails: {
-    name: 'saveTransactionDetails',  
+    name: 'saveTransactionDetails',
     // saveTransactionDetails
     displayName: 'Save Transaction Details',
     requiredParameters: [
@@ -276,9 +276,11 @@ export const FUNCTION_CONFIGS: Record<AllowedFunctionName, FunctionConfig> = {
       {
         name: 'create-transaction-relationship',
         displayName: 'Create Transaction Relationship',
-        parameters: 'source, destination, TxTp, MsgId, CreDtTm, EndToEndId, TenantId',
-        description: 'Parameters: source, destination, TxTp, MsgId, CreDtTm, EndToEndId, TenantId',
+        parameters:
+          'source, destination, TxTp, MsgId, CreDtTm, EndToEndId, TenantId',
+        description:
+          'Parameters: source, destination, TxTp, MsgId, CreDtTm, EndToEndId, TenantId',
       },
     ],
-  }
+  },
 };

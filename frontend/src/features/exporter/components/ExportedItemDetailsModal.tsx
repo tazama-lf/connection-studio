@@ -418,9 +418,11 @@ export const ExportedItemDetailsModal: React.FC<
                   </div>
 
                   {/* Date Information */}
-                  {(content.start_date || content.end_date) && (
+                  {(content.end_date ||
+                    (content.start_date && !content.cron)) && (
                     <div className="grid grid-cols-2 gap-6">
-                      {content.start_date && (
+                      {/* Only show start date if content.cron is not present */}
+                      {content.start_date && !content.cron && (
                         <div>
                           <label className="flex items-center gap-1 text-sm font-bold text-gray-700 mb-2">
                             <Calendar className="w-4 h-4 text-blue-500" />
@@ -451,7 +453,6 @@ export const ExportedItemDetailsModal: React.FC<
                           </p>
                         </div>
                       )}
-
                       {content.end_date && (
                         <div>
                           <label className="flex items-center gap-1 text-sm font-bold text-gray-700 mb-2">
@@ -541,28 +542,26 @@ export const ExportedItemDetailsModal: React.FC<
                         Updated At
                       </label>
                       <p className="text-sm text-gray-900 flex items-center gap-2">
-                        {content.updated_at ? (
+                        {content?.updated_at || content?.updatedAt ? (
                           <>
                             <span>
-                              {new Date(content.updated_at).toLocaleDateString(
-                                'en-US',
-                                {
-                                  month: 'short',
-                                  day: 'numeric',
-                                  year: 'numeric',
-                                },
-                              )}
+                              {new Date(
+                                content?.updated_at || content?.updatedAt,
+                              ).toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                              })}
                             </span>
                             <Clock className="w-4 h-4 text-gray-500" />
                             <span>
-                              {new Date(content.updated_at).toLocaleTimeString(
-                                'en-US',
-                                {
-                                  hour: 'numeric',
-                                  minute: '2-digit',
-                                  hour12: true,
-                                },
-                              )}
+                              {new Date(
+                                content?.updated_at || content?.updatedAt,
+                              ).toLocaleTimeString('en-US', {
+                                hour: 'numeric',
+                                minute: '2-digit',
+                                hour12: true,
+                              })}
                             </span>
                           </>
                         ) : (
