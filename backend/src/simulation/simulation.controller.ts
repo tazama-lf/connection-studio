@@ -20,7 +20,6 @@ export class SimulationController {
     @Body() dto: SimulatePayloadDto,
     @User() user?: AuthenticatedUser,
   ): Promise<SimulationResult> {
-    // WHY: Map frontend field names to internal service interface
     const serviceDto: any = {
       endpointId: dto.configId,
       payload: dto.testPayload,

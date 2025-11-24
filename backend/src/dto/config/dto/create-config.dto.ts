@@ -4,6 +4,7 @@ import {
   IsEnum,
   IsNotEmpty,
   IsObject,
+  IsArray,
 } from 'class-validator';
 import { ContentType } from '@tazama-lf/tcs-lib';
 
@@ -52,4 +53,8 @@ export class CreateConfigDto {
   @IsString()
   @IsOptional()
   createdBy?: string;
+
+  @IsArray()
+  @IsOptional()
+  mapping?: any[];
 }
