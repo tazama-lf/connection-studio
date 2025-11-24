@@ -81,7 +81,7 @@ export const SimulationPanel: React.FC<SimulationPanelProps> = ({
       const result = await simulationApi.runSimulation({
         configId: endpointId,
         payloadType:  'json',
-        testPayload: JSON.stringify(jsonResult),
+        testPayload: payloadType === 'json' ? testPayload : JSON.stringify(jsonResult),
       });
 
       setSimulationResult(result);
