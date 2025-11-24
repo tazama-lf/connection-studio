@@ -195,13 +195,6 @@ export class JobService {
         await this.notifyService.notifyEnrichment(newId, ConfigType.PULL);
       }
 
-      this.notificationService.sendWorkflowNotification(
-        EventType.EditorSubmit,
-        user,
-        jobWithId as Job,
-        user.token.tokenString,
-      )
-
       return {
         success: true,
         message: `Job with id ${created.id} successfully created`,
@@ -361,6 +354,15 @@ export class JobService {
       }
 
       switch (status) {
+        case JobStatus.REVIEW: {
+          await this.notificationService.sendWorkflowNotification(
+            EventType.EditorSubmit,
+            user,
+            existingJob,
+            user.token.tokenString,
+          )
+          break;
+        }
         case JobStatus.APPROVED: {
           await this.notificationService.sendWorkflowNotification(
             EventType.ApproverApprove,
