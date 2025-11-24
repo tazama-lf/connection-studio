@@ -1088,10 +1088,10 @@ export class SimulationService {
     schema: any,
     config?: Config,
   ): SimulationError[] {
-    this.logger.debug('Validating payload against schema');
-    this.logger.debug(`Schema: ${JSON.stringify(schema).substring(0, 500)}...`);
-    this.logger.debug(
-      `Payload: ${JSON.stringify(payload).substring(0, 500)}...`,
+    this.logger.log('Validating payload against schema');
+    this.logger.log(`Schema: ${JSON.stringify(schema)}...`);
+    this.logger.log(
+      `Payload: ${JSON.stringify(payload)}...`,
     );
 
     const errors: SimulationError[] = [];
@@ -1131,7 +1131,7 @@ export class SimulationService {
 
       const validate = ajv.compile(schemaWithStrict);
 
-      const valid = validate(normalizedPayload);
+      const valid = validate(payload);
 
       this.logger.debug(`Schema validation result: ${valid}`);
       this.logger.debug(
