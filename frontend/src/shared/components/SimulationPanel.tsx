@@ -8,6 +8,7 @@ import {
 import ReactJson from 'react-json-view';
 import { useAuth } from '@features/auth';
 import { isApprover } from '@utils/roleUtils';
+import { XMLParser } from 'fast-xml-parser';
 interface SimulationPanelProps {
   endpointId?: number;
   contentType?: 'application/json' | 'application/xml';
@@ -70,11 +71,17 @@ export const SimulationPanel: React.FC<SimulationPanelProps> = ({
       // Convert content type to backend enum format
       const payloadType = contentType === 'application/json' ? 'json' : 'xml';
 
+      const xmlparser = new XMLParser({
+                ignoreAttributes: false,
+                attributeNamePrefix: '',
+              });
+      const jsonResult = xmlparser.parse(testPayload);
+
       // Run simulation via API
       const result = await simulationApi.runSimulation({
         configId: endpointId,
-        payloadType: payloadType as 'json' | 'xml',
-        testPayload: testPayload,
+        payloadType:  'json',
+        testPayload: JSON.stringify(jsonResult),
       });
 
       setSimulationResult(result);
