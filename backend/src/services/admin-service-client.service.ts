@@ -291,7 +291,7 @@ export class AdminServiceClient {
     status: ScheduleStatus,
     tableName: string,
     token: string,
-  ): Promise<{ success: boolean; message: string }> {
+  ): Promise<{ success: boolean; message: string, data: Job }> {
     this.logger.log(`Validating job update with id : ${id}`);
 
     try {
@@ -355,7 +355,7 @@ export class AdminServiceClient {
 
   async updateJob(
     id: string,
-    job: Record<string, unknown>,
+    job: UpdatePushJobDto | UpdatePullJobDto,
     type: ConfigType,
     token: string,
   ): Promise<{ success: boolean; message: string }> {

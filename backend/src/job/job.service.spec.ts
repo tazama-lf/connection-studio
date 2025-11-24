@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import {
+  AuthType,
   ConfigType,
   FileType,
   IngestMode,
@@ -20,6 +21,11 @@ import { SftpService } from '../sftp/sftp.service';
 import { CreatePushJobDto } from './dto/create-push-job.dto';
 import { JobService } from './job.service';
 import { SchedulerService } from '../scheduler/scheduler.service';
+import { NotificationService } from '../notification/notification.service';
+import * as helpers from '../../src/utils/helpers';
+
+
+jest.spyOn(helpers, 'encrypt').mockReturnValue('encrypted-password');
 
 describe('JobService', () => {
   let service: JobService;
@@ -29,6 +35,7 @@ describe('JobService', () => {
   let notifyService: jest.Mocked<NotifyService>;
   let adminServiceClient: jest.Mocked<AdminServiceClient>;
   let schedulerService: jest.Mocked<SchedulerService>;
+  let notificationService: jest.Mocked<NotificationService>;
 
   const mockToken = 'mock-jwt-token';
   const mockTenantId = 'tenant_abc';
@@ -156,6 +163,12 @@ describe('JobService', () => {
             findScheduleById: jest.fn(),
           },
         },
+        {
+          provide: NotificationService,
+          useValue: {
+            sendWorkflowNotification: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
@@ -166,6 +179,7 @@ describe('JobService', () => {
     notifyService = module.get(NotifyService);
     adminServiceClient = module.get(AdminServiceClient);
     schedulerService = module.get(SchedulerService);
+    notificationService = module.get(NotificationService);
   });
 
   afterEach(() => {
@@ -182,7 +196,7 @@ describe('JobService', () => {
       description: 'Updated description',
     };
 
-    it('should update a job successfully', async () => {
+    it('should update a push job successfully', async () => {
       const expectedResult = {
         success: true,
         message: 'Job updated successfully',
@@ -192,6 +206,7 @@ describe('JobService', () => {
         ...mockPushJob,
         status: JobStatus.INPROGRESS,
       } as Job);
+      schedulerService.findOne.mockResolvedValue(mockSchedule);
       adminServiceClient.updateJob.mockResolvedValue(expectedResult);
 
       const result = await service.updateJob(
@@ -206,7 +221,6 @@ describe('JobService', () => {
         mockJobId,
         expect.objectContaining({
           ...updateDto,
-          status: JobStatus.INPROGRESS,
         }),
         ConfigType.PUSH,
         mockToken,
@@ -223,6 +237,7 @@ describe('JobService', () => {
         ...mockPushJob,
         status: JobStatus.REJECTED,
       } as Job);
+      schedulerService.findOne.mockResolvedValue(mockSchedule);
       adminServiceClient.updateJob.mockResolvedValue(expectedResult);
 
       const result = await service.updateJob(
@@ -237,9 +252,96 @@ describe('JobService', () => {
         mockJobId,
         expect.objectContaining({
           ...updateDto,
-          status: JobStatus.REJECTED,
         }),
         ConfigType.PUSH,
+        mockToken,
+      );
+    });
+
+    it('should update a pull job with HTTP connection', async () => {
+      const pullUpdateDto = {
+        endpoint_name: 'Updated Pull Job',
+        source_type: SourceType.HTTP,
+        connection: {
+          url: '/v1/updated',
+          headers: { 'content-type': 'application/json' },
+        },
+      };
+
+      const expectedResult = {
+        success: true,
+        message: 'Job updated successfully',
+      };
+
+      adminServiceClient.findJobById.mockResolvedValue({
+        ...mockPullJob,
+        status: JobStatus.INPROGRESS,
+      } as Job);
+      schedulerService.findOne.mockResolvedValue(mockSchedule);
+      adminServiceClient.updateJob.mockResolvedValue(expectedResult);
+
+      const result = await service.updateJob(
+        mockJobId,
+        pullUpdateDto,
+        ConfigType.PULL,
+        mockUser,
+      );
+
+      expect(result).toEqual(expectedResult);
+      expect(adminServiceClient.updateJob).toHaveBeenCalledWith(
+        mockJobId,
+        expect.objectContaining({
+          ...pullUpdateDto,
+        }),
+        ConfigType.PULL,
+        mockToken,
+      );
+    });
+
+    it('should update a pull job with SFTP connection and encrypt credentials', async () => {
+      const pullUpdateDto = {
+        endpoint_name: 'Updated SFTP Job',
+        source_type: SourceType.SFTP,
+        file: { path: 'test.csv', file_type: FileType.CSV, delimiter: ',' },
+        connection: {
+          host: 'sftp.example.com',
+          port: 22,
+          auth_type: AuthType.USERNAME_PASSWORD,
+          user_name: 'testuser',
+          password: 'plaintext-password',
+        },
+      };
+
+      const expectedResult = {
+        success: true,
+        message: 'Job updated successfully',
+      };
+
+      adminServiceClient.findJobById.mockResolvedValue({
+        ...mockPullJob,
+        source_type: SourceType.SFTP,
+        status: JobStatus.INPROGRESS,
+      } as Job);
+      schedulerService.findOne.mockResolvedValue(mockSchedule);
+      adminServiceClient.updateJob.mockResolvedValue(expectedResult);
+
+      const result = await service.updateJob(
+        mockJobId,
+        pullUpdateDto,
+        ConfigType.PULL,
+        mockUser,
+      );
+
+      expect(result).toEqual(expectedResult);
+      expect(adminServiceClient.updateJob).toHaveBeenCalledWith(
+        mockJobId,
+        expect.objectContaining({
+          connection: expect.objectContaining({
+            host: 'sftp.example.com',
+            password: expect.not.stringMatching('plaintext-password'),
+          }),
+        }),
+        ConfigType.PULL,
         mockToken,
       );
     });
@@ -249,6 +351,7 @@ describe('JobService', () => {
         ...mockPushJob,
         status: JobStatus.APPROVED,
       } as Job);
+      schedulerService.findOne.mockResolvedValue(mockSchedule);
 
       await expect(
         service.updateJob(mockJobId, updateDto, ConfigType.PUSH, mockUser),
@@ -262,12 +365,26 @@ describe('JobService', () => {
         ...mockPushJob,
         status: JobStatus.DEPLOYED,
       } as Job);
+      schedulerService.findOne.mockResolvedValue(mockSchedule);
 
       await expect(
         service.updateJob(mockJobId, updateDto, ConfigType.PUSH, mockUser),
       ).rejects.toThrow(ForbiddenException);
 
       expect(adminServiceClient.updateJob).not.toHaveBeenCalled();
+    });
+
+    it('should handle errors from admin service', async () => {
+      const errorMessage = 'Update failed';
+      adminServiceClient.findJobById.mockRejectedValue(new Error(errorMessage));
+
+      await expect(
+        service.updateJob(mockJobId, updateDto, ConfigType.PUSH, mockUser),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(loggerService.error).toHaveBeenCalledWith(
+        expect.stringContaining(errorMessage),
+      );
     });
   });
 
@@ -373,6 +490,7 @@ describe('JobService', () => {
       adminServiceClient.findScheduleById.mockResolvedValue(mockSchedule);
       dryRunService.dryRun.mockResolvedValue(undefined);
       adminServiceClient.createPullJob.mockResolvedValue({ id: mockJobId });
+      notificationService.sendWorkflowNotification.mockResolvedValue(undefined);
 
       const result = await service.createPull(mockPullJob, mockUser);
 
@@ -388,6 +506,43 @@ describe('JobService', () => {
         }),
         mockToken,
       );
+      expect(notificationService.sendWorkflowNotification).toHaveBeenCalled();
+    });
+
+    it('should create a pull job with SFTP and encrypt credentials', async () => {
+      const sftpPullJob = {
+        ...mockPullJob,
+        source_type: SourceType.SFTP,
+        connection: {
+          host: 'sftp.example.com',
+          port: 22,
+          auth_type: AuthType.USERNAME_PASSWORD,
+          user_name: 'testuser',
+          password: 'plaintext',
+        },
+        file: { path: 'test.csv', file_type: FileType.CSV, delimiter: ',' },
+      };
+
+      adminServiceClient.validateExisting.mockResolvedValue({
+        success: true,
+        message: 'Table does not exist',
+      });
+      adminServiceClient.findScheduleById.mockResolvedValue(mockSchedule);
+      dryRunService.dryRun.mockResolvedValue(undefined);
+      adminServiceClient.createPullJob.mockResolvedValue({ id: mockJobId });
+      notificationService.sendWorkflowNotification.mockResolvedValue(undefined);
+
+      await service.createPull(sftpPullJob, mockUser);
+
+      expect(adminServiceClient.createPullJob).toHaveBeenCalledWith(
+        expect.objectContaining({
+          connection: expect.objectContaining({
+            host: 'sftp.example.com',
+            password: expect.not.stringMatching('plaintext'),
+          }),
+        }),
+        mockToken,
+      );
     });
 
     it('should throw error if schedule not found', async () => {
@@ -397,9 +552,9 @@ describe('JobService', () => {
       });
       adminServiceClient.findScheduleById.mockResolvedValue(null);
 
-      await expect(
-        service.createPull(mockPullJob, mockUser),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.createPull(mockPullJob, mockUser)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should throw error if schedule is not approved', async () => {
@@ -412,9 +567,9 @@ describe('JobService', () => {
         status: JobStatus.INPROGRESS,
       });
 
-      await expect(
-        service.createPull(mockPullJob, mockUser),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.createPull(mockPullJob, mockUser)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should send notification for deployed pull job', async () => {
@@ -427,10 +582,12 @@ describe('JobService', () => {
       dryRunService.dryRun.mockResolvedValue(undefined);
       adminServiceClient.createPullJob.mockResolvedValue({ id: mockJobId });
       notifyService.notifyEnrichment.mockResolvedValue(undefined);
+      notificationService.sendWorkflowNotification.mockResolvedValue(undefined);
 
       await service.createPull(deployedJob, mockUser, JobStatus.DEPLOYED);
 
       expect(notifyService.notifyEnrichment).toHaveBeenCalled();
+      expect(notificationService.sendWorkflowNotification).toHaveBeenCalled();
     });
 
     it('should validate file type for SFTP source', async () => {
@@ -535,6 +692,22 @@ describe('JobService', () => {
         'schedule-123',
         mockToken,
       );
+    });
+
+    it('should find a job without schedule_id', async () => {
+      const jobWithoutSchedule = { ...mockPushJob, schedule_id: 'schedule-1234' };
+      adminServiceClient.findJobById.mockResolvedValue(
+        jobWithoutSchedule,
+      );
+
+      const result = await service.findOne(
+        mockJobId,
+        ConfigType.PUSH,
+        mockToken,
+      );
+
+      expect(result).toEqual(jobWithoutSchedule);
+      expect(schedulerService.findOne).toHaveBeenCalled();
     });
 
     it('should return job without schedule name if schedule not found', async () => {
@@ -645,14 +818,16 @@ describe('JobService', () => {
       adminServiceClient.updateJobActivation.mockResolvedValue({
         success: true,
         message: 'Job Updated',
+        data: mockPushJob,
       });
       notifyService.notifyEnrichment.mockResolvedValue(undefined);
+      notificationService.sendWorkflowNotification.mockResolvedValue(undefined);
 
       const result = await service.updateActivation(
         mockJobId,
         ScheduleStatus.ACTIVE,
         ConfigType.PUSH,
-        mockToken,
+        mockUser,
       );
 
       expect(result).toEqual({
@@ -669,20 +844,23 @@ describe('JobService', () => {
         mockJobId,
         ConfigType.PUSH,
       );
+      expect(notificationService.sendWorkflowNotification).toHaveBeenCalled();
     });
 
     it('should update activation status successfully for pull job', async () => {
       adminServiceClient.updateJobActivation.mockResolvedValue({
         success: true,
         message: 'Job Updated',
+        data: mockPullJob,
       });
       notifyService.notifyEnrichment.mockResolvedValue(undefined);
+      notificationService.sendWorkflowNotification.mockResolvedValue(undefined);
 
       const result = await service.updateActivation(
         mockJobId,
         ScheduleStatus.ACTIVE,
         ConfigType.PULL,
-        mockToken,
+        mockUser,
       );
 
       expect(result).toEqual({
@@ -705,16 +883,18 @@ describe('JobService', () => {
       adminServiceClient.updateJobActivation.mockResolvedValue({
         success: false,
         message: 'Job Updated',
+        data: mockPullJob,
       });
 
       await service.updateActivation(
         mockJobId,
         ScheduleStatus.ACTIVE,
         ConfigType.PUSH,
-        mockToken,
+        mockUser,
       );
 
       expect(notifyService.notifyEnrichment).not.toHaveBeenCalled();
+      expect(notificationService.sendWorkflowNotification).not.toHaveBeenCalled();
     });
 
     it('should handle errors', async () => {
@@ -728,7 +908,7 @@ describe('JobService', () => {
           mockJobId,
           ScheduleStatus.ACTIVE,
           ConfigType.PUSH,
-          mockToken,
+          mockUser,
         ),
       ).rejects.toThrow(BadRequestException);
 
@@ -737,8 +917,45 @@ describe('JobService', () => {
   });
 
   describe('updateStatus', () => {
+    describe('APPROVED status', () => {
+      it('should update status to APPROVED and send notification', async () => {
+        const expectedResult = {
+          success: true,
+          message: 'Status updated successfully',
+        };
+
+        adminServiceClient.findJobById.mockResolvedValue(mockPushJob as Job);
+        schedulerService.findOne.mockResolvedValue(mockSchedule);
+        adminServiceClient.updateJobByStatus.mockResolvedValue(expectedResult);
+        notificationService.sendWorkflowNotification.mockResolvedValue(
+          undefined,
+        );
+
+        const result = await service.updateStatus(
+          mockJobId,
+          JobStatus.APPROVED,
+          ConfigType.PUSH,
+          mockUser,
+        );
+
+        expect(result).toEqual(expectedResult);
+        expect(notificationService.sendWorkflowNotification).toHaveBeenCalled();
+        expect(adminServiceClient.updateJobByStatus).toHaveBeenCalledWith(
+          mockJobId,
+          JobStatus.APPROVED,
+          mockTenantId,
+          ConfigType.PUSH,
+          mockToken,
+          undefined,
+        );
+      });
+    });
+
     describe('REJECTED status', () => {
       it('should throw error if reason is not provided', async () => {
+        adminServiceClient.findJobById.mockResolvedValue(mockPushJob as Job);
+        schedulerService.findOne.mockResolvedValue(mockSchedule);
+
         await expect(
           service.updateStatus(
             mockJobId,
@@ -749,14 +966,19 @@ describe('JobService', () => {
         ).rejects.toThrow(BadRequestException);
       });
 
-      it('should update status with reason', async () => {
+      it('should update status with reason and send notification', async () => {
         const reason = 'Invalid configuration';
         const expectedResult = {
           success: true,
           message: 'Status updated',
         };
 
+        adminServiceClient.findJobById.mockResolvedValue(mockPushJob as Job);
+        schedulerService.findOne.mockResolvedValue(mockSchedule);
         adminServiceClient.updateJobByStatus.mockResolvedValue(expectedResult);
+        notificationService.sendWorkflowNotification.mockResolvedValue(
+          undefined,
+        );
 
         const result = await service.updateStatus(
           mockJobId,
@@ -767,6 +989,7 @@ describe('JobService', () => {
         );
 
         expect(result).toEqual(expectedResult);
+        expect(notificationService.sendWorkflowNotification).toHaveBeenCalled();
         expect(adminServiceClient.updateJobByStatus).toHaveBeenCalledWith(
           mockJobId,
           JobStatus.REJECTED,
@@ -779,13 +1002,16 @@ describe('JobService', () => {
     });
 
     describe('EXPORTED status', () => {
-      it('should export job to SFTP', async () => {
+      it('should export job to SFTP and send notification', async () => {
         const expectedResult = { success: true, message: 'Status updated' };
 
-        adminServiceClient.findJobById.mockResolvedValue(mockPushJob);
+        adminServiceClient.findJobById.mockResolvedValue(mockPushJob as Job);
         schedulerService.findOne.mockResolvedValue(mockSchedule);
         sftpService.createFile.mockResolvedValue(undefined);
         adminServiceClient.updateJobByStatus.mockResolvedValue(expectedResult);
+        notificationService.sendWorkflowNotification.mockResolvedValue(
+          undefined,
+        );
 
         await service.updateStatus(
           mockJobId,
@@ -798,11 +1024,12 @@ describe('JobService', () => {
           `de_${mockTenantId}_${mockJobId}`,
           expect.objectContaining({ status: JobStatus.READY }),
         );
+        expect(notificationService.sendWorkflowNotification).toHaveBeenCalled();
       });
     });
 
     describe('DEPLOYED status', () => {
-      it('should deploy a push job from SFTP', async () => {
+      it('should deploy a push job from SFTP and send notification', async () => {
         const fileName = `de_${mockTenantId}_${mockJobId}`;
 
         sftpService.readFile.mockResolvedValue(mockPushJob);
@@ -812,6 +1039,9 @@ describe('JobService', () => {
         });
         adminServiceClient.createPushJob.mockResolvedValue({ id: mockJobId });
         sftpService.deleteFile.mockResolvedValue(undefined);
+        notificationService.sendWorkflowNotification.mockResolvedValue(
+          undefined,
+        );
 
         const result = await service.updateStatus(
           mockJobId,
@@ -823,9 +1053,10 @@ describe('JobService', () => {
         expect(result.success).toBe(true);
         expect(sftpService.readFile).toHaveBeenCalledWith(fileName);
         expect(sftpService.deleteFile).toHaveBeenCalledWith(fileName);
+        expect(notificationService.sendWorkflowNotification).toHaveBeenCalled();
       });
 
-      it('should deploy a pull job from SFTP', async () => {
+      it('should deploy a pull job from SFTP and send notification', async () => {
         const fileName = `de_${mockTenantId}_${mockJobId}`;
 
         sftpService.readFile.mockResolvedValue(mockPullJob);
@@ -837,6 +1068,9 @@ describe('JobService', () => {
         dryRunService.dryRun.mockResolvedValue(undefined);
         adminServiceClient.createPullJob.mockResolvedValue({ id: mockJobId });
         sftpService.deleteFile.mockResolvedValue(undefined);
+        notificationService.sendWorkflowNotification.mockResolvedValue(
+          undefined,
+        );
 
         const result = await service.updateStatus(
           mockJobId,
@@ -848,42 +1082,13 @@ describe('JobService', () => {
         expect(result.success).toBe(true);
         expect(sftpService.readFile).toHaveBeenCalledWith(fileName);
         expect(sftpService.deleteFile).toHaveBeenCalledWith(fileName);
-      });
-    });
-
-    describe('Other statuses', () => {
-      it('should update status for APPROVED', async () => {
-        const expectedResult = {
-          success: true,
-          message: 'Status updated successfully',
-        };
-
-        adminServiceClient.updateJobByStatus.mockResolvedValue(expectedResult);
-
-        const result = await service.updateStatus(
-          mockJobId,
-          JobStatus.APPROVED,
-          ConfigType.PUSH,
-          mockUser,
-        );
-
-        expect(result).toEqual(expectedResult);
-        expect(adminServiceClient.updateJobByStatus).toHaveBeenCalledWith(
-          mockJobId,
-          JobStatus.APPROVED,
-          mockTenantId,
-          ConfigType.PUSH,
-          mockToken,
-          undefined,
-        );
+        expect(notificationService.sendWorkflowNotification).toHaveBeenCalled();
       });
     });
 
     it('should handle errors and log them', async () => {
       const errorMessage = 'Update failed';
-      adminServiceClient.updateJobByStatus.mockRejectedValue(
-        new Error(errorMessage),
-      );
+      adminServiceClient.findJobById.mockRejectedValue(new Error(errorMessage));
 
       await expect(
         service.updateStatus(
