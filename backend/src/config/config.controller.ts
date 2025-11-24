@@ -74,7 +74,7 @@ export class ConfigController {
     private readonly adminServiceClient: AdminServiceClient,
     private readonly configService: ConfigService,
     private readonly notificationService: NotificationService,
-  ) {}
+  ) { }
 
   private autoDetectContentType(
     filename: string,
@@ -233,7 +233,7 @@ export class ConfigController {
   ): Promise<ConfigResponseDto> {
     const authHeader = request.headers.authorization || '';
     const token = authHeader.replace('Bearer ', '');
-    
+
     const result = await this.configService.createConfig(
       dto,
       getTenantId(user),
@@ -463,7 +463,6 @@ export class ConfigController {
       const config = result.config as Config;
       await this.notificationService.sendWorkflowNotification(
         EventType.EditorSubmit,
-        id,
         user,
         config,
         authToken,
@@ -491,17 +490,16 @@ export class ConfigController {
       buildForwardHeaders(user),
     );
 
-      if (result?.success) {
-        const config = result.config as Config;
-        await this.notificationService.sendWorkflowNotification(
-          EventType.ApproverApprove,
-          id,
-          user,
-          config,
-          authToken,
-          dto.comment,
-        );
-      }
+    if (result?.success) {
+      const config = result.config as Config;
+      await this.notificationService.sendWorkflowNotification(
+        EventType.ApproverApprove,
+        user,
+        config,
+        authToken,
+        dto.comment,
+      );
+    }
 
     return result;
   }
@@ -540,11 +538,10 @@ export class ConfigController {
       buildForwardHeaders(user),
     );
 
-      if (result?.success) {
+    if (result?.success) {
       const config = result.config as Config;
       await this.notificationService.sendWorkflowNotification(
         EventType.ApproverReject,
-        id,
         user,
         config,
         authToken,
@@ -584,7 +581,7 @@ export class ConfigController {
   ): Promise<ConfigResponseDto> {
     const token = authorization?.replace('Bearer ', '') as string;
 
-   const result =  await this.configService.exportConfig(
+    const result = await this.configService.exportConfig(
       id,
       dto,
       getTenantId(user),
@@ -604,7 +601,6 @@ export class ConfigController {
       const config = result.config as Config;
       await this.notificationService.sendWorkflowNotification(
         EventType.ExporterExport,
-        id,
         user,
         config as Config,
         token,
@@ -625,7 +621,7 @@ export class ConfigController {
   ): Promise<ConfigResponseDto> {
     const token = authorization?.replace('Bearer ', '') as string;
 
-    const result =  await this.configService.deployConfig(
+    const result = await this.configService.deployConfig(
       id,
       dto,
       getTenantId(user),
@@ -642,10 +638,9 @@ export class ConfigController {
     // );
 
     if (result?.success) {
-      const config = result.config as Config; ;
+      const config = result.config as Config;;
       await this.notificationService.sendWorkflowNotification(
         EventType.PublisherDeploy,
-        id,
         user,
         config,
         token,
@@ -746,7 +741,6 @@ export class ConfigController {
         dto.publishing_status === 'active'
           ? EventType.PublisherActivate
           : EventType.PublisherDeactivate,
-        id,
         user,
         config,
         token,
@@ -758,5 +752,5 @@ export class ConfigController {
   }
 
 
-  
+
 }

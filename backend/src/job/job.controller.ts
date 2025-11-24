@@ -172,7 +172,7 @@ export class JobController {
       id,
       status,
       type,
-      user.token.tokenString,
+      user
     );
   }
 }

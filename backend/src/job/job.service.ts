@@ -27,6 +27,8 @@ import { CreatePushJobDto } from './dto/create-push-job.dto';
 import { UpdatePullJobDto } from './dto/update-pull-job.dto';
 import { UpdatePushJobDto } from './dto/update-push-job.dto';
 import { SchedulerService } from '../scheduler/scheduler.service';
+import { NotificationService } from '../notification/notification.service';
+import { EventType } from '../enums/events.enum';
 
 @Injectable()
 export class JobService {
@@ -36,13 +38,31 @@ export class JobService {
     private readonly sftpService: SftpService,
     private readonly notifyService: NotifyService,
     private readonly adminServiceClient: AdminServiceClient,
-    private readonly schedulerService: SchedulerService
+    private readonly schedulerService: SchedulerService,
+    private readonly notificationService: NotificationService
   ) { }
 
   private handleError(err: unknown): never {
     const message = err instanceof Error ? err.message : String(err);
     this.loggerService.error(message);
     throw new BadRequestException(message);
+  }
+
+  private encryptSftpCredentials(
+    connection: SFTPConnectionDto
+  ): SFTPConnectionDto {
+    const encryptedConnection = { ...connection };
+
+    if (
+      connection.auth_type === AuthType.USERNAME_PASSWORD &&
+      connection.password
+    ) {
+      encryptedConnection.password = encrypt(connection.password);
+    } else if (connection.private_key) {
+      encryptedConnection.private_key = encrypt(connection.private_key);
+    }
+
+    return encryptedConnection;
   }
 
   async updateJob(
@@ -57,7 +77,30 @@ export class JobService {
       throw new ForbiddenException('Only In-Progress/Rejected jobs can be edited');
     }
 
-    return await this.adminServiceClient.updateJob(id, { ...job, status: existingJob.status }, type, user.token.tokenString);
+    let updatedJob: UpdatePushJobDto | UpdatePullJobDto = {
+      ...job,
+    };
+
+    if (type === ConfigType.PULL) {
+      const pullJob = job as UpdatePullJobDto;
+
+      if (pullJob.source_type === SourceType.SFTP && pullJob.file?.path) {
+        validateFileType(pullJob.file.path);
+      }
+
+      if (
+        pullJob.source_type === SourceType.SFTP &&
+        pullJob.connection
+      ) {
+        const sftpConn = pullJob.connection as SFTPConnectionDto;
+        updatedJob = {
+          ...updatedJob,
+          connection: this.encryptSftpCredentials(sftpConn),
+        };
+      }
+    }
+
+    return await this.adminServiceClient.updateJob(id, updatedJob, type, user.token.tokenString);
   }
 
   async createPush(
@@ -127,20 +170,8 @@ export class JobService {
 
       if (job.source_type === SourceType.SFTP) {
         validateFileType(job.file.path);
-
         const sftpConn = job.connection as SFTPConnectionDto;
-
-        if (
-          sftpConn.auth_type === AuthType.USERNAME_PASSWORD &&
-          sftpConn.password
-        ) {
-          connection = { ...sftpConn, password: encrypt(sftpConn.password) };
-        } else if (sftpConn.private_key) {
-          connection = {
-            ...sftpConn,
-            private_key: encrypt(sftpConn.private_key),
-          };
-        }
+        connection = this.encryptSftpCredentials(sftpConn);
       }
 
       await this.dryRunService.dryRun(job);
@@ -271,19 +302,26 @@ export class JobService {
     id: string,
     status: ScheduleStatus,
     type: ConfigType,
-    token: string,
+    user: AuthenticatedUser,
   ): Promise<ISuccess> {
     try {
-      const { success } = await this.adminServiceClient.updateJobActivation(
+      const { success, data } = await this.adminServiceClient.updateJobActivation(
         id,
         status,
         type === ConfigType.PUSH ? 'push_jobs' : 'pull_jobs',
-        token,
+        user.token.tokenString,
       );
 
       if (success) {
         await this.notifyService.notifyEnrichment(id, type);
+        await this.notificationService.sendWorkflowNotification(
+          status === ScheduleStatus.ACTIVE ? EventType.PublisherActivate : EventType.PublisherDeactivate,
+          user,
+          data,
+          user.token.tokenString,
+        )
       }
+
 
       return {
         success: true,
@@ -304,7 +342,36 @@ export class JobService {
     try {
       const fileName = `de_${user.tenantId}_${id}`;
 
+      const requiresExistingJob =
+        status === JobStatus.APPROVED ||
+        status === JobStatus.REJECTED ||
+        status === JobStatus.EXPORTED;
+
+      let existingJob: any = null;
+
+      if (requiresExistingJob) {
+        existingJob = await this.findOne(id, type, user.token.tokenString);
+      }
+
       switch (status) {
+        case JobStatus.REVIEW: {
+          await this.notificationService.sendWorkflowNotification(
+            EventType.EditorSubmit,
+            user,
+            existingJob,
+            user.token.tokenString,
+          )
+          break;
+        }
+        case JobStatus.APPROVED: {
+          await this.notificationService.sendWorkflowNotification(
+            EventType.ApproverApprove,
+            user,
+            existingJob,
+            user.token.tokenString,
+          )
+          break;
+        }
         case JobStatus.REJECTED: {
           if (!reason) {
             throw new BadRequestException(
@@ -312,62 +379,70 @@ export class JobService {
             );
           }
 
+          await this.notificationService.sendWorkflowNotification(
+            EventType.ApproverReject,
+            user,
+            existingJob,
+            user.token.tokenString,
+          )
           break;
         }
 
         case JobStatus.EXPORTED: {
-          const existingJob = await this.findOne(
-            id,
-            type,
-            user.token.tokenString,
-          );
 
           await this.sftpService.createFile(fileName, {
             ...existingJob,
             status: JobStatus.READY,
           });
+          await this.notificationService.sendWorkflowNotification(
+            EventType.ExporterExport,
+            user,
+            existingJob,
+            user.token.tokenString,
+          )
 
           break;
         }
 
         case JobStatus.DEPLOYED: {
-          const existingJob = await this.sftpService.readFile(fileName);
+          const fileData = await this.sftpService.readFile(fileName);
+
+          let deployPayload: any = { ...fileData, publishing_status: ScheduleStatus.ACTIVE };
 
           if (type === ConfigType.PULL) {
-            const connection = { ...existingJob.connection } as SFTPConnection;
+            const connection = { ...fileData.connection } as SFTPConnection;
 
-            if (
-              connection.auth_type === AuthType.USERNAME_PASSWORD &&
-              connection.password
-            ) {
+            if (connection.auth_type === AuthType.USERNAME_PASSWORD && connection.password) {
               connection.password = decrypt(connection.password);
             } else if (connection.private_key) {
               connection.private_key = decrypt(connection.private_key);
             }
 
-            delete existingJob.schedule_name
+            delete deployPayload.schedule_name;
+
+            deployPayload = { ...deployPayload, connection };
 
             await this.createPull(
-              {
-                ...existingJob,
-                connection,
-                publishing_status: ScheduleStatus.ACTIVE,
-              } as CreatePullJobDto,
+              deployPayload as CreatePullJobDto,
               user,
               JobStatus.DEPLOYED,
             );
           } else {
             await this.createPush(
-              {
-                ...existingJob,
-                publishing_status: ScheduleStatus.ACTIVE,
-              } as CreatePushJobDto,
+              deployPayload as CreatePushJobDto,
               user,
               JobStatus.DEPLOYED,
             );
           }
 
           await this.sftpService.deleteFile(fileName);
+
+          await this.notificationService.sendWorkflowNotification(
+            EventType.PublisherDeploy,
+            user,
+            fileData,
+            user.token.tokenString,
+          )
 
           return {
             success: true,

@@ -11,6 +11,7 @@ import { NotifyModule } from 'src/notify/notify.module';
 import { AdminServiceClient } from 'src/services/admin-service-client.service';
 import { HttpModule } from '@nestjs/axios';
 import { SchedulerModule } from 'src/scheduler/scheduler.module';
+import { NotificationModule } from 'src/notification/notification.module';
 
 @Module({
   providers: [JobService, AdminServiceClient],
@@ -24,7 +25,8 @@ import { SchedulerModule } from 'src/scheduler/scheduler.module';
     SftpModule,
     NotifyModule,
     HttpModule,
-    SchedulerModule
+    SchedulerModule,
+    NotificationModule
   ],
   exports: [AdminServiceClient],
 })
