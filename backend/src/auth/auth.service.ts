@@ -19,6 +19,7 @@ export class AuthService {
 
   async login(username: string, password: string) {
     const authUrl = this.configService.get<string>('TAZAMA_AUTH_URL');
+    console.log('Auth URL:', authUrl);
     if (!authUrl) {
       this.loggerService.error(
         'TAZAMA_AUTH_URL is not set in environment variables',
@@ -40,7 +41,8 @@ export class AuthService {
           'Authentication service unavailable',
         );
       }
-      this.loggerService.log('Auth service responded');
+      this.loggerService.log('Auth service responded', AuthService.name);
+
       const token =
         typeof response.data === 'string'
           ? response.data
@@ -48,8 +50,6 @@ export class AuthService {
             response.data?.access_token ||
             response.data?.jwt ||
             response.data?.user?.token;
-      this.loggerService.log(`Token received: ${token}`);
-      this.loggerService.log('Login successful');
       return {
         message: 'Login successful',
         token,
