@@ -57,4 +57,8 @@ export class CreateConfigDto {
   @IsArray()
   @IsOptional()
   mapping?: any[];
+
+  @IsArray()
+  @IsOptional()
+  functions?: any[];
 }
