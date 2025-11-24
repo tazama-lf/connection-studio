@@ -74,7 +74,7 @@ export class ConfigController {
     private readonly adminServiceClient: AdminServiceClient,
     private readonly configService: ConfigService,
     private readonly notificationService: NotificationService,
-  ) { }
+  ) {}
 
   private autoDetectContentType(
     filename: string,
@@ -374,6 +374,7 @@ export class ConfigController {
     @Body() dto: AddMappingDto,
     @User() user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
+    console.log('The dto in add mapping ', dto);
     return this.adminServiceClient.forwardRequest(
       'POST',
       `/v1/admin/tcs/config/${id}/mapping`,
@@ -638,7 +639,7 @@ export class ConfigController {
     // );
 
     if (result?.success) {
-      const config = result.config as Config;;
+      const config = result.config as Config;
       await this.notificationService.sendWorkflowNotification(
         EventType.PublisherDeploy,
         user,
@@ -704,7 +705,11 @@ export class ConfigController {
   }
 
   @Patch('/update/status/:id')
-  @RequireAnyClaims(TazamaClaims.EXPORTER, TazamaClaims.PUBLISHER, TazamaClaims.EDITOR)
+  @RequireAnyClaims(
+    TazamaClaims.EXPORTER,
+    TazamaClaims.PUBLISHER,
+    TazamaClaims.EDITOR,
+  )
   async updateStatus(
     @Param('id', ParseIntPipe) id: number,
     @Query('status', new ParseEnumPipe(ConfigStatus)) status: ConfigStatus,
@@ -750,7 +755,4 @@ export class ConfigController {
 
     return result;
   }
-
-
-
 }

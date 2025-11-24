@@ -73,6 +73,9 @@ export class SimulationService {
     let tcsResult: iMappingResult | null = null;
     let mappingsApplied = 0;
 
+    console.log('1--- Starting simulation for endpoint ID:', dto.endpointId);
+    console.log('2--- Payload type:', dto.payloadType);
+
     try {
       if (!dto.endpointId || isNaN(Number(dto.endpointId))) {
         return {
@@ -115,6 +118,10 @@ export class SimulationService {
         tenantId,
         token,
       );
+      console.log(
+        '3--- Configuration load stage completed:',
+        configStage.details.config,
+      );
       stages.push(configStage);
 
       if (configStage.status === 'FAILED') {
@@ -131,6 +138,7 @@ export class SimulationService {
         );
       }
 
+      //config is gotten from configStage.details
       const config = configStage.details.config as Config;
 
       const parseStage = await this.stageParsePayload(
@@ -436,17 +444,35 @@ export class SimulationService {
     try {
       const tcsMapping =
         providedMapping || this.convertConfigToTCSMapping(config);
+      // const tcsMapping = providedMapping;
       const mappingsApplied = tcsMapping.mappings?.length || 0;
       const endpoint =
         config.endpointPath ||
         `${config.msgFam || 'unknown'}-${config.transactionType}`;
       let tcsResult;
-      try {
-        const enhancedPayload = {...payload, TenantId: config.tenantId, TxTp: this.extractTransactionType(config.endpointPath)}
-        // tcsResult = await processMappings(payload, tcsMapping, endpoint);
-        tcsResult = await processMappings(enhancedPayload, tcsMapping, endpoint);
 
+      try {
+        console.log('payload before TCS processing:', payload);
+        const enhancedPayload = {
+          ...payload,
+          TenantId: config.tenantId,
+          TxTp: this.extractTransactionType(config.endpointPath),
+        };
+        console.log('Enhanced payload for TCS processing:', enhancedPayload);
+        console.log('TCS Mapping Configuration:', tcsMapping);
+        console.log('Endpoint for TCS processing:', endpoint);
+        // tcsResult = await processMappings(payload, tcsMapping, endpoint);
+
+        // are we sedning the right stuff?
+        tcsResult = await processMappings(
+          enhancedPayload,
+          tcsMapping,
+          endpoint,
+        );
+
+        console.log('FINAL--> TCS mapping result: ', tcsResult);
       } catch (mappingError: any) {
+        console.log('--> Mapping error: ', mappingError);
         if (mappingError.message?.includes('loggerService')) {
           this.logger.error(
             'TCS lib processMappings has logger issue - this should be fixed in tcs-lib',
@@ -489,20 +515,28 @@ export class SimulationService {
       };
     }
   }
-  private convertConfigToTCSMapping(config: Config): iMappingConfiguration {
+  private convertConfigToTCSMapping(config: Config): {
+    mappings?: Array<{
+      destination: string;
+      source: string[];
+      separator?: string;
+      prefix?: string;
+      suffix?: string;
+    }>;
+  } {
     const mappings: Array<{
       destination: string;
-      sources: string[];
+      source: string[];
       separator?: string;
       prefix?: string;
     }> = [];
 
     if (config.mapping && Array.isArray(config.mapping)) {
       for (const mapping of config.mapping) {
-        const sources = mapping.source || [];
+        const source = mapping.source || [];
 
         const normalizedSources = (
-          Array.isArray(sources) ? sources : [sources]
+          Array.isArray(source) ? source : [source]
         ).map((source) => source.replace(/\[(\d+)\]/g, '.$1'));
         if (
           mapping.transformation === 'SPLIT' &&
@@ -512,7 +546,7 @@ export class SimulationService {
             const destination = mapping.destination[i];
             mappings.push({
               destination: destination || '',
-              sources: normalizedSources,
+              source: normalizedSources,
               separator: mapping.delimiter || ' ',
               prefix: mapping.prefix,
             });
@@ -527,7 +561,7 @@ export class SimulationService {
 
           mappings.push({
             destination: destination || '',
-            sources: normalizedSources,
+            source: normalizedSources,
             separator,
             prefix: mapping.prefix,
           });
@@ -1123,11 +1157,11 @@ export class SimulationService {
 
       const schemaWithStrict = this.enforceStrictSchema(schema, config);
 
-      this.logger.log(`Original schema: ${JSON.stringify(schema)}`);
-      this.logger.log(`Strict schema: ${JSON.stringify(schemaWithStrict)}`);
-      this.logger.log(
-        `Normalized payload: ${JSON.stringify(normalizedPayload).substring(0, 500)}...`,
-      );
+      // this.logger.log(`Original schema: ${JSON.stringify(schema)}`);
+      // this.logger.log(`Strict schema: ${JSON.stringify(schemaWithStrict)}`);
+      // this.logger.log(
+      //   `Normalized payload: ${JSON.stringify(normalizedPayload).substring(0, 500)}...`,
+      // );
 
       const validate = ajv.compile(schemaWithStrict);
 
@@ -1392,9 +1426,9 @@ export class SimulationService {
     return strictSchema;
   }
 
-   extractTransactionType = (url: string): string => {
-  const parts = url.split('/');
-  const transactionType = parts[parts.length - 1]; // Get the last part
-  return transactionType || 'unknown';
-};
+  extractTransactionType = (url: string): string => {
+    const parts = url.split('/');
+    const transactionType = parts[parts.length - 1]; // Get the last part
+    return transactionType || 'unknown';
+  };
 }

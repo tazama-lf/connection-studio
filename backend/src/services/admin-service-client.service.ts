@@ -289,7 +289,7 @@ export class AdminServiceClient {
     status: ScheduleStatus,
     tableName: string,
     token: string,
-  ): Promise<{ success: boolean; message: string, data: Job }> {
+  ): Promise<{ success: boolean; message: string; data: Job }> {
     this.logger.log(`Validating job update with id : ${id}`);
 
     try {
@@ -723,6 +723,7 @@ export class AdminServiceClient {
           },
         ),
       );
+      console.log('Response data in getConfigById:', response.data.config);
 
       return response.data.config;
     } catch (error) {
@@ -767,7 +768,7 @@ export class AdminServiceClient {
   }
 
   async writeConfig(configData: any, token: string): Promise<any> {
-    this.logger.log('Writing config to database'), { configData };
+    (this.logger.log('Writing config to database'), { configData });
     this.logger.log(
       `Token type: ${typeof token}, length: ${token?.length}, first 50 chars: ${token?.substring(0, 50)}`,
     );
