@@ -41,6 +41,9 @@ import {
   Button as MuiButton,
 } from '@mui/material';
 import { getDemsStatusLov } from '@shared/lovs';
+
+// Debug: log getDemsStatusLov
+console.log('getDemsStatusLov:', getDemsStatusLov);
 import CustomTable from '@common/Tables/CustomTable';
 import { handleInputFilter, handleSelectFilter } from '@shared/helpers';
 import CronJobEditModal from './CronJobEditModal';
@@ -415,8 +418,21 @@ export const CronJobList: React.FC<CronJobListProps> = ({
           <Box sx={{ fontSize: '14px', fontWeight: '600' }}>Status</Box>
           {handleSelectFilter({
             fieldName: 'status',
-            options:
-              getDemsStatusLov[userRole as keyof typeof getDemsStatusLov] || [],
+            options: (
+              getDemsStatusLov[userRole as keyof typeof getDemsStatusLov] || []
+            ).filter((opt: any) => {
+              // Remove 'STATUS_02_ON_HOLD' (case-insensitive) by value or label
+              const target = 'status_02_on_hold';
+              if (typeof opt === 'string') {
+                return opt.toLowerCase() !== target;
+              } else if (opt && typeof opt.value === 'string') {
+                if (opt.value.toLowerCase() === target) return false;
+              }
+              if (opt && typeof opt.label === 'string') {
+                if (opt.label.toLowerCase() === target) return false;
+              }
+              return true;
+            }),
             searchingFilters,
             setSearchingFilters,
           })}
