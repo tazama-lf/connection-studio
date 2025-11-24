@@ -25,6 +25,9 @@ import {
   Job,
   Schedule,
   EmailTheme,
+  JobEmailTemplateContext,
+  generateJobflowEmailHTML,
+  generateJobflowEmailText,
 } from '@tazama-lf/tcs-lib';
 import { firstValueFrom } from 'rxjs/internal/firstValueFrom';
 import { HttpService } from '@nestjs/axios';
@@ -428,8 +431,18 @@ export class NotificationService implements OnModuleInit {
         const configName = job.endpoint_name || 'Job';
         const version = job.version || '1.0';
         theme = getEmailTheme(event, configName, version);
-        // iskai apnai template functions for Job if needed
 
+        const templateContext: JobEmailTemplateContext = {
+          event,
+          job,
+          actorName,
+          actorEmail,
+          comment,
+          tenantId,
+        };
+
+        htmlContent = generateJobflowEmailHTML(templateContext);
+        textContent = generateJobflowEmailText(templateContext);
       } else if ('cron' in actionEntity) {
         const schedule = actionEntity as Schedule;
         const configName = schedule.name || 'Schedule';
