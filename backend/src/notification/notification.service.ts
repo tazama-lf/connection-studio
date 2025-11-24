@@ -288,7 +288,6 @@ export class NotificationService implements OnModuleInit {
 
       switch (event) {
         case EventType.EditorSubmit:
-        case 'editor_submit':
           role = 'approver';
           break;
         case EventType.ApproverApprove:
