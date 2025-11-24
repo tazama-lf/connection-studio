@@ -20,13 +20,28 @@ export default function TopBar({ open, onToggle }: TopBarProps) {
 
   const pathSegments = location.pathname.split('/').filter(Boolean);
   const crumbs = pathSegments.map((seg, idx) => ({
-    label: seg.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+    label: seg.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
     path: '/' + pathSegments.slice(0, idx + 1).join('/'),
   }));
 
   return (
-    <Toolbar sx={{ backgroundColor: '#fbf9fa', minHeight: 56, px: { xs: 1, sm: 2 }, borderBottom: '1px solid', borderColor: 'divider' }}>
-      <Box sx={{ width: 64, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <Toolbar
+      sx={{
+        backgroundColor: '#fbf9fa',
+        minHeight: 56,
+        px: { xs: 1, sm: 2 },
+        borderBottom: '1px solid',
+        borderColor: 'divider',
+      }}
+    >
+      <Box
+        sx={{
+          width: 64,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
         <IconButton
           color="default"
           aria-label="toggle drawer"
@@ -39,14 +54,33 @@ export default function TopBar({ open, onToggle }: TopBarProps) {
       </Box>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }} onClick={() => { window.location.href = '/dashboard'; }}>
-          <img src="/logo.png" alt="Tazama Logo" style={{ height: 28, width: 'auto' }} />
-          <Typography variant="h6" noWrap component="div" sx={{ fontWeight: 700, color: '#000' }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            cursor: 'pointer',
+          }}
+          onClick={() => {
+            window.location.href = '/dashboard';
+          }}
+        >
+          <img
+            src="/logo.png"
+            alt="Tazama Logo"
+            style={{ height: 28, width: 'auto' }}
+          />
+          <Typography
+            variant="h6"
+            noWrap
+            component="div"
+            sx={{ fontWeight: 700, color: '#000' }}
+          >
             Tazama Connection Studio
           </Typography>
         </div>
 
-        <Breadcrumbs aria-label="breadcrumb" sx={{ ml: 1, fontSize: '0.75rem' }} separator="/">
+        {/* <Breadcrumbs aria-label="breadcrumb" sx={{ ml: 1, fontSize: '0.75rem' }} separator="/">
           <Link underline="none" color="inherit" sx={{ fontSize: '0.75rem' }} onClick={() => navigate('/dashboard')}>Dashboard</Link>
           {crumbs.map((c, i) => (
             i === crumbs.length - 1 ? (
@@ -55,7 +89,7 @@ export default function TopBar({ open, onToggle }: TopBarProps) {
               <Link key={c.path} underline="none" color="inherit" onClick={() => navigate(c.path)} sx={{ fontSize: '0.75rem' }}>{c.label}</Link>
             )
           ))}
-        </Breadcrumbs>
+        </Breadcrumbs> */}
       </div>
 
       <Box sx={{ flexGrow: 1 }} />

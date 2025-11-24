@@ -155,7 +155,17 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({
       showSuccess(`Schedule "${scheduleName}" created successfully!`);
       onJobCreated?.();
     } catch (error: any) {
-      console.error('Failed to create schedule:', error);
+      // Log backend error message if available
+      if (error?.response?.data?.message) {
+        console.error(
+          'Failed to create schedule:',
+          error.response.data.message,
+        );
+      } else if (error?.message) {
+        console.error('Failed to create schedule:', error.message);
+      } else {
+        console.error('Failed to create schedule:', error);
+      }
       // Provide user-friendly error messages based on error type
       let errorMessage =
         'We encountered an issue while creating your schedule. Please try again.';
@@ -181,7 +191,14 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({
         errorMessage =
           'Unable to connect to the service. Please check your internet connection and try again.';
       }
-      showError(errorMessage);
+      // Show the most relevant error message to the user
+      if (error?.response?.data?.message) {
+        showError(error.response.data.message);
+      } else if (error?.message) {
+        showError(error.message);
+      } else {
+        showError(errorMessage);
+      }
     } finally {
       setIsSubmitting(false);
     }
