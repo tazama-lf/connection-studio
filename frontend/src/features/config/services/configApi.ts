@@ -639,8 +639,8 @@ async getConfigsPaginated(
 
   async rejectConfig(id: number, userId: string, reason?: string): Promise<ConfigResponse> {
     try {
-      const response = await fetch(`${this.baseURL}/config/${id}/workflow/reject`, {
-        method: 'PATCH',
+      const response = await fetch(`${this.baseURL}/config/${id}/reject`, {
+        method: 'POST',
         headers: this.getAuthHeaders(),
         body: JSON.stringify({
         //  userId: userId,
