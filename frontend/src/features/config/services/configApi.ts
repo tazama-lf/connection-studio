@@ -625,7 +625,7 @@ async getConfigsPaginated(
   async approveConfig(id: number): Promise<ConfigResponse> {
     try {
       const response = await fetch(`${this.baseURL}/config/${id}/workflow/approve`, {
-        method: 'PATCH',
+        method: 'POST',
         headers: this.getAuthHeaders(),
         body: JSON.stringify({ comment: '' }), // Send empty comment to satisfy backend expectations
       });
