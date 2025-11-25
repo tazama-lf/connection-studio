@@ -664,6 +664,8 @@ export class NotificationService implements OnModuleInit {
       return;
     }
 
+    this.logger.log(`Action entity for sending email : ${JSON.stringify(actionEntity)}`)
+
     await this.sendGenericWorkflowNotification({
       event,
       tenantId: getTenantId(user),

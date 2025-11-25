@@ -108,7 +108,6 @@ export class TazamaAuthGuard implements CanActivate {
 
       const decodedToken = this.extractTokenPayload(token);
 
-
       (decodedToken as any).tokenString = token;
 
       const authenticatedUser: AuthenticatedUser = {
@@ -121,7 +120,6 @@ export class TazamaAuthGuard implements CanActivate {
 
       request.user = authenticatedUser;
 
-      
       return true;
     } catch (error) {
       const err = error as Error;

@@ -344,6 +344,7 @@ export class JobService {
 
       const requiresExistingJob =
         status === JobStatus.APPROVED ||
+        status === JobStatus.REVIEW ||
         status === JobStatus.REJECTED ||
         status === JobStatus.EXPORTED;
 
