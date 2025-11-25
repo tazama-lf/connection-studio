@@ -19,6 +19,7 @@ import {
   BadRequestException,
   NotFoundException,
   ParseEnumPipe,
+  Logger,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AdminServiceClient } from '../services/admin-service-client.service';
@@ -493,6 +494,7 @@ export class ConfigController {
 
     if (result?.success) {
       const config = result.config as Config;
+      Logger.log("Config returned from admin service: ", config)
       await this.notificationService.sendWorkflowNotification(
         EventType.ApproverApprove,
         user,
