@@ -1,5 +1,5 @@
-import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../features/auth/contexts/AuthContext';
 import { isApprover, isPublisher, isExporter, isEditor } from '../utils/roleUtils';
 import Login from '../features/auth/pages/Login';
@@ -21,6 +21,7 @@ import CRONModule from '../features/cron/pages/CRONModule';
 import DataEnrichmentModule from '../features/data-enrichment/pages/DataEnrichmentModule';
 import NotFoundPage from '../pages/NotFoundPage';
 import { ROUTES } from '../shared/config/routes.config';
+import { setupFetch401Interceptor } from '../utils/interceptor';
 const ProtectedRoute = ({
   children
 }: {
@@ -89,7 +90,18 @@ const EditorRoute = ({
   return <>{children}</>;
 };
 export const AppRoutes: React.FC = () => {
+  const navigate = useNavigate();
   const { loading } = useAuth();
+
+
+ useEffect(() => {
+    setupFetch401Interceptor(() => navigate("/login"));
+  }, [navigate]);
+
+  
+
+
+  
   if (loading) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
   }
