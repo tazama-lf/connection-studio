@@ -227,6 +227,24 @@ export class JobService {
     }
   }
 
+  async findAllHistory(
+    offset: string,
+    limit: string,
+    user: AuthenticatedUser,
+    filters?: Record<string, unknown>,
+  ): Promise<Record<string, unknown>> {
+    try {
+      return await this.adminServiceClient.getAllJobsHistory(
+        offset,
+        limit,
+        user,
+        filters
+      );
+    } catch (error: unknown) {
+      return this.handleError(error);
+    }
+  }
+
   async findOne(
     id: string,
     type: ConfigType,

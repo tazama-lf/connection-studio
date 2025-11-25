@@ -218,7 +218,37 @@ export class AdminServiceClient {
       );
       return response.data;
     } catch (error) {
-      return this.handleError(error, 'getScheduleByStatus');
+      return this.handleError(error, 'getAllJobs');
+    }
+  }
+
+  async getAllJobsHistory(
+    offset: string,
+    limit: string,
+    user: AuthenticatedUser,
+    filters?: Record<string, unknown>,
+  ): Promise<{}> {
+    try {
+      const response = await firstValueFrom(
+        this.httpService.post(
+          `${this.adminServiceUrl}/v1/admin/tcs/job/get/history`,
+          {
+            ...filters
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${user.token.tokenString}`,
+            },
+            params: {
+              offset,
+              limit,
+            },
+          },
+        ),
+      );
+      return response.data;
+    } catch (error) {
+      return this.handleError(error, 'getAllJobsHistory');
     }
   }
 

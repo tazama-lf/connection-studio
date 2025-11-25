@@ -89,6 +89,19 @@ export class JobController {
     return this.jobService.findAll(offset, limit, user, filters);
   }
 
+  @Post('/history')
+  @RequireAnyClaims(
+    TazamaClaims.PUBLISHER,
+  )
+  async getAllHistory(
+    @Query('offset') offset: string,
+    @Query('limit') limit: string,
+    @User() user: AuthenticatedUser,
+    @Body() filters?: Record<string, unknown>,
+  ) {
+    return this.jobService.findAllHistory(offset, limit, user,filters);
+  }
+
   @Get('/:id')
   @RequireAnyClaims(
     TazamaClaims.EDITOR,
