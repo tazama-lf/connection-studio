@@ -147,6 +147,38 @@ export class ConfigController {
   //   });
   // }
 
+
+  @Post(':id/reject')
+  @RequireClaims(TazamaClaims.APPROVER)
+  async rejectConfig(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: RejectionDto,
+    @User() user: AuthenticatedUser,
+    @Headers('authorization') authorization: string,
+  ): Promise<ConfigResponseDto> {
+    const authToken = authorization?.split(' ')[1];
+    const result = await this.adminServiceClient.forwardRequest(
+      'POST',
+      `/v1/admin/tcs/config/${id}/workflow/reject`,
+      dto,
+      buildForwardHeaders(user),
+    );
+
+    if (result?.success) {
+      const config = result.config as Config;
+      await this.notificationService.sendWorkflowNotification(
+        EventType.ApproverReject,
+        user,
+        config,
+        authToken,
+        dto.comment,
+      );
+    }
+
+    return result;
+  }
+
+  
   @Post('/:offset/:limit')
   @RequireAnyClaims(
     TazamaClaims.EDITOR,
@@ -507,53 +539,7 @@ export class ConfigController {
     return result;
   }
 
-  /**
-   * @deprecated Use POST /config/:id/workflow/approve instead
-   */
-  // @Patch(':id/approve')
-  // @RequireClaims(TazamaClaims.APPROVER)
-  // async approveConfigLegacy(
-  //   @Param('id', ParseIntPipe) id: number,
-  //   @Body() dto: ApprovalDto,
-  //   @User() user: AuthenticatedUser,
-  // ): Promise<ConfigResponseDto> {
-  //   return this.adminServiceClient.forwardRequest(
-  //     'POST',
-  //     `/v1/admin/tcs/config/${id}/workflow/approve`,
-  //     dto,
-  //     buildForwardHeaders(user),
-  //   );
-  // }
 
-  @Patch(':id/reject')
-  @RequireClaims(TazamaClaims.APPROVER)
-  async rejectConfig(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: RejectionDto,
-    @User() user: AuthenticatedUser,
-    @Headers('authorization') authorization: string,
-  ): Promise<ConfigResponseDto> {
-    const authToken = authorization?.split(' ')[1];
-    const result = await this.adminServiceClient.forwardRequest(
-      'POST',
-      `/v1/admin/tcs/config/${id}/workflow/reject`,
-      dto,
-      buildForwardHeaders(user),
-    );
-
-    if (result?.success) {
-      const config = result.config as Config;
-      await this.notificationService.sendWorkflowNotification(
-        EventType.ApproverReject,
-        user,
-        config,
-        authToken,
-        dto.comment,
-      );
-    }
-
-    return result;
-  }
 
   @Post(':id/update-status-to-exported')
   @RequireClaims(TazamaClaims.EXPORTER)
