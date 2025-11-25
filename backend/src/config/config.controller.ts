@@ -507,20 +507,20 @@ export class ConfigController {
   /**
    * @deprecated Use POST /config/:id/workflow/approve instead
    */
-  @Patch(':id/approve')
-  @RequireClaims(TazamaClaims.APPROVER)
-  async approveConfigLegacy(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: ApprovalDto,
-    @User() user: AuthenticatedUser,
-  ): Promise<ConfigResponseDto> {
-    return this.adminServiceClient.forwardRequest(
-      'POST',
-      `/v1/admin/tcs/config/${id}/workflow/approve`,
-      dto,
-      buildForwardHeaders(user),
-    );
-  }
+  // @Patch(':id/approve')
+  // @RequireClaims(TazamaClaims.APPROVER)
+  // async approveConfigLegacy(
+  //   @Param('id', ParseIntPipe) id: number,
+  //   @Body() dto: ApprovalDto,
+  //   @User() user: AuthenticatedUser,
+  // ): Promise<ConfigResponseDto> {
+  //   return this.adminServiceClient.forwardRequest(
+  //     'POST',
+  //     `/v1/admin/tcs/config/${id}/workflow/approve`,
+  //     dto,
+  //     buildForwardHeaders(user),
+  //   );
+  // }
 
   @Patch(':id/reject')
   @RequireClaims(TazamaClaims.APPROVER)

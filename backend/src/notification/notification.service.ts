@@ -405,6 +405,9 @@ export class NotificationService implements OnModuleInit {
       this.logger.log(
         `Sending emails to ${recipientEmails.length} recipient(s)`,
       );
+      this.logger.log(
+        `Sending emails to ${recipientEmails} recipient(s)`,
+      );
 
       let htmlContent = '';
       let textContent = '';
