@@ -73,8 +73,9 @@ export class SimulationService {
     let tcsResult: iMappingResult | null = null;
     let mappingsApplied = 0;
 
-    console.log('1--- Starting simulation for endpoint ID:', dto.endpointId);
-    console.log('2--- Payload type:', dto.payloadType);
+    // console.log('1--- Starting simulation for endpoint ID:', dto.endpointId);
+    // console.log('2--- Payload type:', dto.payloadType);
+    console.log('0. whole dto inside simulateMapping is:', dto);
 
     try {
       if (!dto.endpointId || isNaN(Number(dto.endpointId))) {
@@ -113,15 +114,14 @@ export class SimulationService {
         };
       }
       const endpointId = Number(dto.endpointId);
+
+      // first stage
       const configStage = await this.stageLoadConfig(
         endpointId,
         tenantId,
         token,
       );
-      console.log(
-        '3--- Configuration load stage completed:',
-        configStage.details.config,
-      );
+      console.log('1. first stage output (configStage):', configStage);
       stages.push(configStage);
 
       if (configStage.status === 'FAILED') {
@@ -141,10 +141,13 @@ export class SimulationService {
       //config is gotten from configStage.details
       const config = configStage.details.config as Config;
 
+      // second stage
       const parseStage = await this.stageParsePayload(
         dto.payload,
         dto.payloadType,
       );
+
+      console.log('2. second stage output (parseStage):', parseStage);
       stages.push(parseStage);
 
       if (parseStage.status === 'FAILED') {
@@ -164,11 +167,15 @@ export class SimulationService {
       const parsedPayload = parseStage.details.parsedPayload;
 
       const cleanedSchema = this.cleanSchemaForXML(config.schema);
+
+      //third stage
       const schemaStage = this.stageValidateSchema(
         parsedPayload,
         cleanedSchema,
         config,
       );
+
+      console.log('3. third stage output (schemaStage):', schemaStage);
       stages.push(schemaStage);
 
       if (schemaStage.status === 'FAILED') {
@@ -192,6 +199,12 @@ export class SimulationService {
           parsedPayload,
           config.mapping || [],
         );
+
+        //fourth stage
+        console.log(
+          '4. fourth stage output (mappingValidationStage):',
+          mappingValidationStage,
+        );
         stages.push(mappingValidationStage);
 
         if (mappingValidationStage.status === 'FAILED') {
@@ -207,11 +220,15 @@ export class SimulationService {
             { originalPayload: parsedPayload },
           );
         }
+        console.log('dto.tcsMapping is:', dto.tcsMapping);
         const tcsStage = await this.stageExecuteTCSMapping(
           parsedPayload,
           config,
           dto.tcsMapping,
         );
+
+        // fifth stage
+        console.log('5. fifth stage output (tcsStage):', tcsStage);
         stages.push(tcsStage);
 
         if (tcsStage.status === 'FAILED') {
@@ -231,17 +248,23 @@ export class SimulationService {
         tcsResult = tcsStage.details.tcsResult;
         mappingsApplied = tcsStage.details.mappingsApplied;
 
+        // yeh bilkul theek hai VIP
+        console.log('TCS VIP VIP config.mapping', config.mapping);
+
+        //ismei bhand hai ig
         const mappingDetails = this.buildMappingDetails(
           config.mapping || [],
           parsedPayload,
           tcsResult,
         );
 
+        console.log('TCS mappingDetails', mappingDetails);
+
         transformedPayload = {
           originalPayload: parsedPayload,
           dataCache: tcsResult?.dataCache || {},
           endToEndId: tcsResult?.endToEndId || null,
-          mappings: mappingDetails,
+          mappings: config.mapping,
         };
       } else {
         stages.push({
@@ -442,10 +465,12 @@ export class SimulationService {
     providedMapping?: iMappingConfiguration,
   ): Promise<ValidationStage> {
     try {
-      const tcsMapping =
-        providedMapping || this.convertConfigToTCSMapping(config);
+      console.log('provided mapping is : ', providedMapping);
+
+      // tcsMapping yahan banti hai
+      const tcsMapping = config.mapping || [];
       // const tcsMapping = providedMapping;
-      const mappingsApplied = tcsMapping.mappings?.length || 0;
+      const mappingsApplied = config?.mapping?.length || 0;
       const endpoint =
         config.endpointPath ||
         `${config.msgFam || 'unknown'}-${config.transactionType}`;
@@ -459,7 +484,7 @@ export class SimulationService {
           TxTp: this.extractTransactionType(config.endpointPath),
         };
         console.log('Enhanced payload for TCS processing:', enhancedPayload);
-        console.log('TCS Mapping Configuration:', tcsMapping);
+        console.log('TCS Mapping Configuration:', tcsMapping); //yahin pe ghalat arhi
         console.log('Endpoint for TCS processing:', endpoint);
         // tcsResult = await processMappings(payload, tcsMapping, endpoint);
 
@@ -572,6 +597,25 @@ export class SimulationService {
     return { mappings };
   }
 
+  // handling multiple destinations for single source - split value usecase
+  // if (typeof destination !== 'string' || typeof type !== 'string') {
+  //   const sourceValue = getValueByPath<string>(payload, mapping.source[0]);
+  //   const splitValues = sourceValue.split(mapping.delimiter);
+
+  //   for (let j = 0; j < mapping.destination.length; j++) {
+  //     const dest = mapping.destination[j].split('.')[1];
+  //     const destType = mapping.destination[j].split('.')[0];
+
+  //     if (destType === 'redis') {
+  //       dataCache[dest] = splitValues[j];
+  //     }
+  //     if (destType === 'transactionDetails') {
+  //       transactionRelationship[dest] = splitValues[j];
+  //     }
+  //   }
+  //   continue;
+  // }
+
   private buildMappingDetails(
     mappings: FieldMapping[],
     originalPayload: any,
@@ -600,112 +644,163 @@ export class SimulationService {
     }> = [];
 
     for (const mapping of mappings) {
+      //       mapping inside buildMappingDetails: {
+      //   source: [ 'pain001.GroupHeader.MessageId' ],
+      //   delimiter: ' ',
+      //   destination: [ 'redis.cdtrAcctId', 'redis.cdtrId', 'redis.creDtTm' ],
+      //   transformation: 'SPLIT'
+      // }
+
       const sources = mapping.source || [];
 
+      //dealing with the split usecase here
       if (
         mapping.transformation === 'SPLIT' &&
         Array.isArray(mapping.destination)
       ) {
+        // source values is an array of one thing always. we do 1:N and not N:M
+        // const sourceValue = mapping.source.map((sourcePath) => this.getValueByPath(originalPayload, sourcePath));
         const sourceValues = (Array.isArray(sources) ? sources : [sources]).map(
           (sourcePath) => this.getValueByPath(originalPayload, sourcePath),
         );
-        const splitValues = this.applyTransformation(
-          sourceValues,
-          mapping.transformation,
-          mapping.delimiter,
-          mapping.constantValue,
-          mapping.operator,
-          mapping.prefix,
-        );
 
-        for (let i = 0; i < mapping.destination.length; i++) {
-          const destination = mapping.destination[i];
+        console.log('1. source values in SPLIT mapping:', sourceValues);
 
-          let resultValue: any = null;
-          if (tcsResult && destination) {
-            const [collectionName, fieldName] = destination.split('.');
-            if (collectionName === 'redis' && tcsResult.dataCache) {
-              resultValue = tcsResult.dataCache[fieldName];
-            } else if (
-              collectionName === 'transaction' &&
-              fieldName === 'endToEndId'
-            ) {
-              resultValue = tcsResult.endToEndId;
-            }
+        // below logic is updated and correct
+        const splitValues =
+          typeof sourceValues[0] === 'string' && mapping.delimiter
+            ? sourceValues[0].split(mapping.delimiter)
+            : sourceValues[0].split(' '); //default split by space
+        //below logic is incorrect. there is a array which contains one string. use that string and apply split on it simple
+        // const splitValues = this.applyTransformation(
+        //   sourceValues,
+        //   mapping.transformation,
+        //   mapping.delimiter,
+        //   mapping.constantValue,
+        //   mapping.operator,
+        //   mapping.prefix,
+        // );
+
+        console.log('2. split values in SPLIT mapping:', splitValues); //single string
+        console.log('3. destiantions in SPLIT mapping:', mapping.destination);
+        console.log('4. data dache from tcsResult:', tcsResult?.dataCache);
+        const destinationLength = mapping.destination.length;
+
+        //   for (let i = 0; i < mapping.destination.length; i++) {
+        //     const destination = mapping.destination[i];
+
+        //     let resultValue: any = null;
+        //     if (tcsResult && destination) {
+        //       // collectionName is redis or transactionDetails
+        //       // fieldName is cdtrAcctId or endToEndId etc
+
+        //       const [collectionName, fieldName] = destination.split('.');
+
+        //       if (collectionName === 'redis' && tcsResult.dataCache) {
+        //         resultValue = tcsResult.dataCache[fieldName];
+        //       } else if (
+        //         collectionName === 'transactionDetails' &&
+        //         fieldName === 'endToEndId'
+        //       ) {
+        //         resultValue = tcsResult.endToEndId;
+        //       }
+        //     }
+
+        //     if (resultValue === null) {
+        //       resultValue =
+        //         Array.isArray(splitValues) && splitValues[i] !== undefined
+        //           ? splitValues[i]
+        //           : splitValues; // fallback to full result
+        //     }
+
+        //     const normalizedSourcesArr = Array.isArray(sources)
+        //       ? sources
+        //       : [sources];
+
+        //     details.push({
+        //       destination: destination || '',
+        //       sources: normalizedSourcesArr,
+        //       sourceValues,
+        //       transformation: mapping.transformation || 'NONE',
+        //       resultValue,
+        //       prefix: mapping.prefix,
+        //       delimiter: mapping.delimiter,
+        //       constantValue: mapping.constantValue,
+        //       operator: mapping.operator,
+        //     });
+        //   }
+        // } else {
+        //   const destination = Array.isArray(mapping.destination)
+        //     ? mapping.destination[0]
+        //     : mapping.destination;
+
+        //   const sourceValues = (Array.isArray(sources) ? sources : [sources]).map(
+        //     (sourcePath) => this.getValueByPath(originalPayload, sourcePath),
+        //   );
+        //   let resultValue: any = null;
+        //   if (tcsResult && destination) {
+        //     const [collectionName, fieldName] = destination.split('.');
+        //     if (collectionName === 'redis' && tcsResult.dataCache) {
+        //       resultValue = tcsResult.dataCache[fieldName];
+        //     } else if (
+        //       collectionName === 'transaction' &&
+        //       fieldName === 'endToEndId'
+        //     ) {
+        //       resultValue = tcsResult.endToEndId;
+        //     }
+        //   }
+
+        //   // If no TCS result available, show the transformed preview value
+        //   if (resultValue === null) {
+        //     resultValue = this.applyTransformation(
+        //       sourceValues,
+        //       mapping.transformation,
+        //       mapping.delimiter,
+        //       mapping.constantValue,
+        //       mapping.operator,
+        //       mapping.prefix,
+        //     );
+        //   }
+
+        //   const normalizedSourcesArr = Array.isArray(sources)
+        //     ? sources
+        //     : [sources];
+        //   details.push({
+        //     destination: destination || '',
+        //     sources: normalizedSourcesArr,
+        //     sourceValues,
+        //     transformation: mapping.transformation || 'NONE',
+        //     resultValue,
+        //     prefix: mapping.prefix,
+        //     delimiter: mapping.delimiter,
+        //     constantValue: mapping.constantValue,
+        //     operator: mapping.operator,
+        //   });
+        // }
+
+        for (let i = 0; i < destinationLength; i++) {
+          console.log(
+            `Processing destination index ${i} for SPLIT mapping`,
+            mapping.destination[i],
+          );
+          const [internalDataModelObject, field] =
+            mapping.destination[i].split('.');
+          const resultValue = splitValues[i];
+
+          if (internalDataModelObject == 'redis') {
           }
 
-          if (resultValue === null) {
-            resultValue =
-              Array.isArray(splitValues) && splitValues[i] !== undefined
-                ? splitValues[i]
-                : splitValues; // fallback to full result
-          }
-
-          const normalizedSourcesArr = Array.isArray(sources)
-            ? sources
-            : [sources];
-          details.push({
-            destination: destination || '',
-            sources: normalizedSourcesArr,
-            sourceValues,
-            transformation: mapping.transformation || 'NONE',
+          console.log(
+            `Mapping for ${internalDataModelObject}.${field}:`,
             resultValue,
-            prefix: mapping.prefix,
-            delimiter: mapping.delimiter,
-            constantValue: mapping.constantValue,
-            operator: mapping.operator,
-          });
-        }
-      } else {
-        const destination = Array.isArray(mapping.destination)
-          ? mapping.destination[0]
-          : mapping.destination;
-
-        const sourceValues = (Array.isArray(sources) ? sources : [sources]).map(
-          (sourcePath) => this.getValueByPath(originalPayload, sourcePath),
-        );
-        let resultValue: any = null;
-        if (tcsResult && destination) {
-          const [collectionName, fieldName] = destination.split('.');
-          if (collectionName === 'redis' && tcsResult.dataCache) {
-            resultValue = tcsResult.dataCache[fieldName];
-          } else if (
-            collectionName === 'transaction' &&
-            fieldName === 'endToEndId'
-          ) {
-            resultValue = tcsResult.endToEndId;
-          }
-        }
-
-        // If no TCS result available, show the transformed preview value
-        if (resultValue === null) {
-          resultValue = this.applyTransformation(
-            sourceValues,
-            mapping.transformation,
-            mapping.delimiter,
-            mapping.constantValue,
-            mapping.operator,
-            mapping.prefix,
           );
         }
-
-        const normalizedSourcesArr = Array.isArray(sources)
-          ? sources
-          : [sources];
-        details.push({
-          destination: destination || '',
-          sources: normalizedSourcesArr,
-          sourceValues,
-          transformation: mapping.transformation || 'NONE',
-          resultValue,
-          prefix: mapping.prefix,
-          delimiter: mapping.delimiter,
-          constantValue: mapping.constantValue,
-          operator: mapping.operator,
-        });
       }
     }
-
+    console.log(
+      'Final mapping details returned by buildMappingDetails:',
+      details,
+    );
     return details;
   }
 
@@ -1124,9 +1219,7 @@ export class SimulationService {
   ): SimulationError[] {
     this.logger.log('Validating payload against schema');
     this.logger.log(`Schema: ${JSON.stringify(schema)}...`);
-    this.logger.log(
-      `Payload: ${JSON.stringify(payload)}...`,
-    );
+    this.logger.log(`Payload: ${JSON.stringify(payload)}...`);
 
     const errors: SimulationError[] = [];
 
