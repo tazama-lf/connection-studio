@@ -8,6 +8,9 @@ import {
   Rocket,
   XCircle,
   XIcon,
+  FileText,
+  Shuffle,
+  Settings2,
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../features/auth';
@@ -1662,7 +1665,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
       >
         {/* Modal Content - Higher z-index to appear above backdrop */}
         <div
-          className="bg-white rounded-lg w-full max-w-6xl max-h-[90vh] overflow-hidden relative z-50 shadow-2xl"
+          className="bg-white rounded-lg w-full max-w-6xl max-h-[90vh] min-h-[600px] overflow-hidden relative z-50 shadow-2xl flex flex-col"
           data-id="element-727"
         >
           <div
@@ -1690,7 +1693,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
             </button>
           </div>
           <div
-            className="overflow-y-auto p-6 max-h-[calc(90vh-120px)]"
+            className="overflow-y-auto p-6 flex-1 min-h-0"
             data-id="element-732"
           >
             {/* Show rejection comment only when status is STATUS_05_REJECTED */}
@@ -1767,6 +1770,16 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
             <div className="space-y-8" data-id="element-739">
               {currentStep === 'payload' && (
                 <>
+                  <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
+                    <FileJson
+                      size={24}
+                      style={{
+                        color:
+                          currentStep === 'payload' ? '#2b7fff' : '#9ca3af',
+                      }}
+                    />{' '}
+                    Payload & Schema
+                  </h3>
                   <PayloadEditor
                     value={payload}
                     onChange={setPayload}
@@ -1959,6 +1972,16 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
               )}
               {currentStep === 'mapping' && (
                 <>
+                  <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
+                    <GitBranch
+                      size={24}
+                      style={{
+                        color:
+                          currentStep === 'mapping' ? '#2b7fff' : '#9ca3af',
+                      }}
+                    />{' '}
+                    Field Mappings
+                  </h3>
                   {console.log(
                     'EditEndpointModal - inferredSchema:',
                     inferredSchema,
@@ -1998,7 +2021,16 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
               {currentStep === 'functions' && (
                 <>
                   <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">Select Functions</h3>
+                    <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
+                      <Cog
+                        size={24}
+                        style={{
+                          color:
+                            currentStep === 'functions' ? '#2b7fff' : '#9ca3af',
+                        }}
+                      />{' '}
+                      Select Functions
+                    </h3>
 
                     {/* Validation Warning - Show if there are unmapped parameters (only for editors, not approvers/viewers) */}
                     {!readOnly &&
@@ -2049,12 +2081,18 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                     {/* Functions List */}
                     <div className="space-y-3">
                       {selectedFunctions.length === 0 ? (
-                        <div className="text-center py-12">
-                          <p className="text-gray-500 mb-4">
-                            No functions selected.{' '}
+                        <div className="flex flex-col items-center justify-center py-12 text-center">
+                          <Cog
+                            size={36}
+                            className="mb-3 text-blue-400 animate-spin-slow"
+                          />
+                          <p className="text-lg font-semibold text-gray-700 mb-2">
+                            No Functions Selected
+                          </p>
+                          <p className="text-gray-500 text-sm max-w-md">
                             {!readOnly
-                              ? 'Click "Add Function" to select functions to call at runtime.'
-                              : ''}
+                              ? 'Click "Add Function" to select and configure runtime functions for your transformation. Functions allow you to enrich, validate, or transform your data as it flows through the pipeline.'
+                              : 'No functions are configured for this connection.'}
                           </p>
                         </div>
                       ) : (
@@ -2238,17 +2276,29 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                 </>
               )}
               {currentStep === 'simulation' && (
-                <SimulationPanel
-                  endpointId={createdEndpoint?.id || existingConfig?.id}
-                  contentType={
-                    endpointData.contentType as
-                      | 'application/json'
-                      | 'application/xml'
-                  }
-                  onSimulationComplete={setIsSimulationSuccess}
-                  readOnly={readOnly}
-                  data-id="element-742"
-                />
+                <>
+                  <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
+                    <PlayCircle
+                      size={24}
+                      style={{
+                        color:
+                          currentStep === 'simulation' ? '#2b7fff' : '#9ca3af',
+                      }}
+                    />{' '}
+                    Dry Run
+                  </h3>
+                  <SimulationPanel
+                    endpointId={createdEndpoint?.id || existingConfig?.id}
+                    contentType={
+                      endpointData.contentType as
+                        | 'application/json'
+                        | 'application/xml'
+                    }
+                    onSimulationComplete={setIsSimulationSuccess}
+                    readOnly={readOnly}
+                    data-id="element-742"
+                  />
+                </>
               )}
               {currentStep === 'deploy' &&
                 (() => {
@@ -2277,7 +2327,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
             </div>
           </div>
           <div
-            className="px-6 py-3 border-t border-gray-200 flex justify-between"
+            className="px-6 py-3 border-t border-gray-200 flex justify-between sticky bottom-0 bg-white z-10"
             data-id="element-744"
           >
             <MuiButton
@@ -2422,13 +2472,13 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                         return (
                           <>
                             {currentIndex < steps.length - 1 && (
-                              <Button
-                                variant="primary"
-                                className=" !pb-[6px] !pt-[5px] bg-[#2b7fff]"
+                              <MuiButton
+                                variant="contained"
                                 onClick={handleNext}
+                                sx={{ background: '#2b7fff' }}
                               >
                                 Next
-                              </Button>
+                              </MuiButton>
                             )}
                             {/* Show approver action buttons on the last step (deployment) */}
                             {isApprover(user?.claims || []) &&

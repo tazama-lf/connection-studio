@@ -72,16 +72,17 @@ export const SimulationPanel: React.FC<SimulationPanelProps> = ({
       const payloadType = contentType === 'application/json' ? 'json' : 'xml';
 
       const xmlparser = new XMLParser({
-                ignoreAttributes: false,
-                attributeNamePrefix: '',
-              });
+        ignoreAttributes: false,
+        attributeNamePrefix: '',
+      });
       const jsonResult = xmlparser.parse(testPayload);
 
       // Run simulation via API
       const result = await simulationApi.runSimulation({
         configId: endpointId,
-        payloadType:  'json',
-        testPayload: payloadType === 'json' ? testPayload : JSON.stringify(jsonResult),
+        payloadType: 'json',
+        testPayload:
+          payloadType === 'json' ? testPayload : JSON.stringify(jsonResult),
       });
 
       setSimulationResult(result);
@@ -101,9 +102,9 @@ export const SimulationPanel: React.FC<SimulationPanelProps> = ({
   return (
     <div className="space-y-6" data-id="element-700">
       <div className="flex justify-between items-center" data-id="element-701">
-        <h3 className="text-lg font-medium text-gray-900" data-id="element-702">
+        {/* <h3 className="text-lg font-medium text-gray-900" data-id="element-702">
           Test Mapping
-        </h3>
+        </h3> */}
       </div>
       {/* Test Payload Input */}
       <div className="space-y-4" data-id="element-703">
@@ -112,10 +113,14 @@ export const SimulationPanel: React.FC<SimulationPanelProps> = ({
           data-id="element-704"
         >
           <h4
-            className="text-md font-medium text-gray-700"
+            className="text-md font-semibold flex items-center gap-2 text-blue-900"
             data-id="element-705"
           >
+            <UploadIcon size={18} className="text-blue-500" />
             Test Payload
+            <span className="ml-2 text-xs font-normal text-gray-500">
+              (Enter or import a sample payload to simulate)
+            </span>
           </h4>
           <div className="flex items-center space-x-2" data-id="element-706">
             <input
@@ -165,7 +170,10 @@ export const SimulationPanel: React.FC<SimulationPanelProps> = ({
             size="sm"
             onClick={runSimulation}
             disabled={
-              !testPayload.trim() || isRunning || !endpointId || (isApproverUser ? false : readOnly)
+              !testPayload.trim() ||
+              isRunning ||
+              !endpointId ||
+              (isApproverUser ? false : readOnly)
             }
             data-id="element-713"
           >

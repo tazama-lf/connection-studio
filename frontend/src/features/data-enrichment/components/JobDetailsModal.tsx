@@ -47,7 +47,11 @@ interface JobDetailsModalProps {
   onSave?: (updatedJob: Partial<DataEnrichmentJobResponse>) => Promise<void>;
   onClone?: (job: DataEnrichmentJobResponse) => Promise<void>;
   onSendForApproval?: (jobId: string, jobType: 'PULL' | 'PUSH') => void;
-  onApprove?: (jobId: string, jobType: 'PULL' | 'PUSH') => void;
+  onApprove?: (
+    jobId: string,
+    jobType: 'PULL' | 'PUSH',
+    reason?: string,
+  ) => void;
   onReject?: (jobId: string, jobType: 'PULL' | 'PUSH', reason: string) => void;
   onExport?: (jobId: string, jobType: 'PULL' | 'PUSH') => Promise<void>;
 }
@@ -111,6 +115,10 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
   onReject,
   onExport,
 }) => {
+  if (!isOpen) {
+    return null;
+  }
+
   const { user } = useAuth();
 
   // User role helpers
@@ -236,10 +244,6 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
     }
   };
 
-  if (!isOpen) {
-    return null;
-  }
-
   const formatDate = (dateString: string | undefined) => {
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleString('en-US', {
@@ -264,6 +268,26 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
       await onExport(job.id, jobType);
       setShowExportConfirmDialog(false);
     }
+  };
+
+  // State for approve comment
+  const [approveComment, setApproveComment] = useState('');
+
+  // Ensure comment is cleared when dialog closes
+  useEffect(() => {
+    if (!showApproveConfirmDialog) setApproveComment('');
+  }, [showApproveConfirmDialog]);
+
+  // Approve handler with comment
+  const handleApproveWithComment = () => {
+    if (onApprove && job) {
+      onApprove(
+        job.id,
+        getJobType(job).toUpperCase() as 'PULL' | 'PUSH',
+        approveComment,
+      );
+    }
+    setShowApproveConfirmDialog(false);
   };
 
   return (
@@ -1133,8 +1157,8 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
               <div className="flex justify-between items-center">
                 <MuiButton
                   type="button"
-                  variant="contained"
-                  sx={{ marginRight: '10px', backgroundColor: '#6b7280' }}
+                  variant="outlined"
+                  sx={{ marginRight: '10px' }}
                   onClick={onClose}
                   startIcon={<XCircle size={16} />}
                 >
@@ -1158,8 +1182,8 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
               <div className="flex justify-between items-center">
                 <MuiButton
                   type="button"
-                  variant="contained"
-                  sx={{ marginRight: '10px', backgroundColor: '#6b7280' }}
+                  variant="outlined"
+                  sx={{ marginRight: '10px' }}
                   onClick={onClose}
                   startIcon={<XCircle size={16} />}
                 >
@@ -1199,8 +1223,8 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
               <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
                 <MuiButton
                   type="button"
-                  variant="contained"
-                  sx={{ marginRight: '10px', backgroundColor: '#6b7280' }}
+                  variant="outlined"
+                  sx={{ marginRight: '10px' }}
                   onClick={onClose}
                   startIcon={<XCircle size={16} />}
                 >
@@ -1314,12 +1338,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
               job.status === 'STATUS_04_APPROVED'
             ) && (
               <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3 ">
-                <MuiButton
-                  type="button"
-                  variant="contained"
-                  sx={{ backgroundColor: '#6b7280' }}
-                  onClick={onClose}
-                >
+                <MuiButton type="button" variant="outlined" onClick={onClose}>
                   Cancel
                 </MuiButton>
               </div>
@@ -1567,8 +1586,8 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
               component="span"
               sx={{
                 fontWeight: 'bold',
-                color: '#33AD74',
-                backgroundColor: '#F0FDF4',
+                color: '#2B7FFF',
+                backgroundColor: '#DCEEFF',
                 padding: '2px 8px',
                 borderRadius: '4px',
                 fontSize: '15px',
@@ -1580,8 +1599,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
           </DialogContentText>
           <Box
             sx={{
-              backgroundColor: '#F0FDF4',
-              border: '1px solid #BBF7D0',
+              backgroundColor: '#DCEEFF',
               borderRadius: '8px',
               padding: '12px 16px',
               marginTop: '16px',
@@ -1590,14 +1608,42 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
             <DialogContentText
               sx={{
                 fontSize: '16px',
-                color: '#2b7fff',
+                color: '#2B7FFF',
                 margin: 0,
                 fontWeight: '500',
               }}
             >
-              ✅ Once approved, this job will be sent to the exporter for
+              ⚠️ Once approved, this job will be sent to the exporter for
               further processing.
             </DialogContentText>
+          </Box>
+          <Box sx={{ mt: 2 }}>
+            <label
+              htmlFor="approve-comment"
+              style={{
+                fontWeight: 500,
+                color: '#374151',
+                display: 'block',
+                marginBottom: 4,
+              }}
+            >
+              Comment (optional)
+            </label>
+            <textarea
+              id="approve-comment"
+              value={approveComment}
+              onChange={(e) => setApproveComment(e.target.value)}
+              rows={3}
+              style={{
+                width: '100%',
+                borderRadius: 6,
+                border: '1px solid #d1d5db',
+                padding: 8,
+                fontSize: 15,
+                resize: 'vertical',
+              }}
+              placeholder="Add a comment (optional)"
+            />
           </Box>
         </DialogContent>
         <DialogActions sx={{ padding: '12px 20px 16px 20px' }}>
@@ -1611,11 +1657,11 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
             Cancel
           </MuiButton>
           <MuiButton
-            onClick={handleApproveConfirm}
+            onClick={handleApproveWithComment}
             variant="contained"
             color="success"
             size="small"
-            sx={{ backgroundColor: '#33AD74' }}
+            sx={{ backgroundColor: '#2B7FFF' }}
             className="!pb-[6px] !pt-[5px]"
             autoFocus
           >

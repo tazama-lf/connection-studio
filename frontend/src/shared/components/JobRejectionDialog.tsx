@@ -1,7 +1,12 @@
 import React, { useState } from 'react';
-import { XIcon } from 'lucide-react';
 import { Button } from './Button';
-import { Backdrop } from '@mui/material';
+import {
+  Dialog,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  Box,
+} from '@mui/material';
 
 interface JobRejectionDialogProps {
   isOpen: boolean;
@@ -21,9 +26,7 @@ export const JobRejectionDialog: React.FC<JobRejectionDialogProps> = ({
   const [reason, setReason] = useState('');
   const [error, setError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
+  const handleSubmit = () => {
     if (!reason.trim()) {
       setError('Please provide a reason for rejection');
       return;
@@ -48,85 +51,141 @@ export const JobRejectionDialog: React.FC<JobRejectionDialogProps> = ({
     onClose();
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
-      {/* Enhanced blurred backdrop */}
-      {/* <div
-        className="absolute inset-0 backdrop-blur-sm backdrop-saturate-150"
-        onClick={handleClose}
-      /> */}
-      <Backdrop
-        sx={(theme) => ({
-          zIndex: theme.zIndex.drawer + 1,
-          overflow: 'hidden',
-        })}
-        open={true}
+    <Dialog
+      open={isOpen}
+      onClose={handleClose}
+      aria-labelledby="rejection-confirmation-dialog-title"
+      aria-describedby="rejection-confirmation-dialog-description"
+      sx={{
+        '& .MuiPaper-root': {
+          borderRadius: '12px',
+          minWidth: 400,
+        },
+      }}
+    >
+      <Box
+        sx={{
+          color: '#3B3B3B',
+          fontSize: '20px',
+          fontWeight: 'bold',
+          padding: '16px 20px',
+          borderBottom: '1px solid #CECECE',
+        }}
       >
-        {/* Modal Content */}
-        <div className="relative z-10 bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-          <div className="flex items-center justify-between p-6 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900">
-              Reject {jobType}
-            </h3>
-            <button
-              onClick={handleClose}
-              className="text-gray-400 hover:text-gray-600"
-            >
-              <XIcon className="h-6 w-6" />
-            </button>
-          </div>
+        Rejection Confirmation Required!
+      </Box>
+      <DialogContent sx={{ padding: '20px 20px' }}>
+        <DialogContentText
+          id="rejection-confirmation-dialog-description"
+          sx={{
+            fontSize: '16px',
+            lineHeight: '1.6',
+            color: '#374151',
+            marginBottom: '16px',
+          }}
+        >
+          Are you sure you want to reject{' '}
+          <Box
+            component="span"
+            sx={{
+              fontWeight: 'bold',
+              color: '#DC2626',
+              backgroundColor: '#FEF2F2',
+              padding: '2px 8px',
+              borderRadius: '4px',
+              fontSize: '15px',
+            }}
+          >
+            "{jobName}"
+          </Box>
+          ?
+        </DialogContentText>
+        <Box
+          sx={{
+            backgroundColor: '#FEF2F2',
+            border: '1px solid #FECACA',
+            borderRadius: '8px',
+            padding: '12px 16px',
+            marginTop: '16px',
+          }}
+        >
+          <DialogContentText
+            sx={{
+              fontSize: '16px',
+              color: '#DC2626',
+              margin: 0,
+              fontWeight: '500',
+            }}
+          >
+            ⚠️ Important: This will reject the {jobType.toLowerCase()} and send it back to the creator for revisions.
+          </DialogContentText>
+        </Box>
 
-          <form onSubmit={handleSubmit} className="p-6">
-            <div className="mb-4">
-              <p className="text-sm text-gray-600 mb-3">
-                You are about to reject the {jobType.toLowerCase()}:{' '}
-                <strong>{jobName}</strong>
-              </p>
-              <p className="text-sm text-gray-600 mb-4">
-                This will change the status to "Rejected" and send feedback to
-                the creator for necessary changes.
-              </p>
-            </div>
-
-            {/* REASON */}
-            <div className="mb-4">
-              <label
-                htmlFor="reason"
-                className="block text-sm font-medium text-gray-700 mb-2"
-              >
-                Reason for Rejection <span className="text-red-500">*</span>
-              </label>
-              <textarea
-                id="reason"
-                value={reason}
-                onChange={(e) => {
-                  setReason(e.target.value);
-                  if (error) setError('');
-                }}
-                placeholder={`Please provide a detailed reason for rejecting this ${jobType.toLowerCase()}...`}
-                className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  error ? 'border-red-300' : 'border-gray-300'
-                }`}
-                rows={4}
-                required
-              />
-              {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
-            </div>
-
-            {/* BUTTONS */}
-            <div className="flex justify-end space-x-3">
-              <Button type="button" variant="secondary" onClick={handleClose}>
-                Cancel
-              </Button>
-              <Button type="submit" variant="danger" disabled={!reason.trim()}>
-                Reject {jobType}
-              </Button>
-            </div>
-          </form>
+        {/* REASON */}
+        <div style={{ marginTop: '16px' }}>
+          <label
+            htmlFor="reason"
+            style={{
+              display: 'block',
+              fontSize: '14px',
+              fontWeight: '500',
+              color: '#374151',
+              marginBottom: '8px',
+            }}
+          >
+            Reason for Rejection <span style={{ color: '#ef4444' }}>*</span>
+          </label>
+          <textarea
+            id="reason"
+            value={reason}
+            onChange={(e) => {
+              setReason(e.target.value);
+              if (error) setError('');
+            }}
+            placeholder={`Please provide a detailed reason for rejecting this ${jobType.toLowerCase()}...`}
+            style={{
+              width: '100%',
+              padding: '8px 12px',
+              border: error ? '1px solid #fca5a5' : '1px solid #d1d5db',
+              borderRadius: '6px',
+              fontSize: '14px',
+              lineHeight: '1.5',
+              resize: 'vertical',
+              outline: 'none',
+              boxShadow: '0 1px 2px 0 rgb(0 0 0 / 0.05)',
+            }}
+            rows={4}
+            required
+          />
+          {error && (
+            <p style={{
+              marginTop: '4px',
+              fontSize: '14px',
+              color: '#dc2626'
+            }}>
+              {error}
+            </p>
+          )}
         </div>
-      </Backdrop>
-    </div>
+      </DialogContent>
+      <DialogActions sx={{ padding: '12px 20px 16px 20px' }}>
+        <Button
+          variant="secondary"
+          className="!pb-[6px] !pt-[5px]"
+          onClick={handleClose}
+        >
+          Cancel
+        </Button>
+        <Button
+          onClick={handleSubmit}
+          variant="danger"
+          className="!pb-[6px] !pt-[5px]"
+          disabled={!reason.trim()}
+        >
+          Yes, Reject {jobType}
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 };

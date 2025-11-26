@@ -77,15 +77,22 @@ const ApproverDEJobsPage: React.FC = () => {
     fetchDeJobs(page);
   };
 
-  const handleApproveJob = async (jobId: string, jobType: 'PULL' | 'PUSH') => {
+  const handleApproveJob = async (
+    jobId: string,
+    jobType: 'PULL' | 'PUSH',
+    reason?: string,
+  ) => {
     try {
       await dataEnrichmentApi.updateJobStatus(
         jobId,
         'STATUS_04_APPROVED',
         jobType,
+        reason,
       );
       showSuccess('Job approved successfully');
       handleJobRefresh();
+      setShowJobDetails(false);
+      setSelectedJob(null);
     } catch (error) {
       console.error('Failed to approve job:', error);
       showError('Failed to approve job');

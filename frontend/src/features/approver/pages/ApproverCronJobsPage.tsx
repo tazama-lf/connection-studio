@@ -1,24 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import { ChevronLeft, SearchIcon } from 'lucide-react';
+import { useAuth } from '@features/auth';
+import CronJobViewModal from '@features/cron/components/CronJobViewModal';
 import {
+  Box,
   Dialog,
+  DialogActions,
   DialogContent,
   DialogContentText,
-  DialogActions,
-  Box,
 } from '@mui/material';
-import { CronJobApproverList } from '../components/CronJobApproverList';
-import CronJobDetailsModal from '../components/CronJobDetailsModal';
-import type { ScheduleResponse } from '../../data-enrichment/types';
-import { dataEnrichmentApi } from '../../data-enrichment/services/dataEnrichmentApi';
-import { useToast } from '../../../shared/providers/ToastProvider';
 import { Button } from '@shared';
-import { useNavigate } from 'react-router';
-import { getPrimaryRole } from '@utils/roleUtils';
-import { useAuth } from '@features/auth';
 import { UI_CONFIG } from '@shared/config/app.config';
-import CronJobViewModal from '@features/cron/components/CronJobViewModal';
+import { getPrimaryRole } from '@utils/roleUtils';
+import { ChevronLeft } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router';
 import { JobRejectionDialog } from '../../../shared/components/JobRejectionDialog';
+import { useToast } from '../../../shared/providers/ToastProvider';
+import { dataEnrichmentApi } from '../../data-enrichment/services/dataEnrichmentApi';
+import type { ScheduleResponse } from '../../data-enrichment/types';
+import { CronJobApproverList } from '../components/CronJobApproverList';
 
 const ApproverCronJobsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -43,6 +42,7 @@ const ApproverCronJobsPage: React.FC = () => {
   const [scheduleToApprove, setScheduleToApprove] = useState<string | null>(
     null,
   );
+  const [approvalComment, setApprovalComment] = useState<string>('');
 
   console.log(selectedSchedule);
 
@@ -172,6 +172,7 @@ const ApproverCronJobsPage: React.FC = () => {
   const handleApproveCronJob = async (scheduleId: string) => {
     // Open approval dialog instead of directly approving
     setScheduleToApprove(scheduleId);
+    setApprovalComment('');
     setShowApprovalDialog(true);
   };
 
@@ -182,6 +183,7 @@ const ApproverCronJobsPage: React.FC = () => {
       await dataEnrichmentApi.updateScheduleStatus(
         scheduleToApprove,
         'STATUS_04_APPROVED',
+        approvalComment,
       );
       showSuccess('Cron job approved successfully');
       handleCronJobRefresh();
@@ -348,6 +350,34 @@ const ApproverCronJobsPage: React.FC = () => {
             ⚠️ Important: This will approve the cron job and move it to the next
             stage in the workflow.
           </DialogContentText>
+          <Box sx={{ mt: 2 }}>
+            <label
+              htmlFor="approval-comment"
+              style={{
+                fontWeight: 500,
+                color: '#374151',
+                display: 'block',
+                marginBottom: 4,
+              }}
+            >
+              Comment (optional)
+            </label>
+            <textarea
+              id="approval-comment"
+              value={approvalComment}
+              onChange={(e) => setApprovalComment(e.target.value)}
+              rows={3}
+              style={{
+                width: '100%',
+                borderRadius: 6,
+                border: '1px solid #d1d5db',
+                padding: 8,
+                fontSize: 15,
+                resize: 'vertical',
+              }}
+              placeholder="Add a comment (optional)"
+            />
+          </Box>
         </DialogContent>
         <DialogActions sx={{ padding: '12px 20px 16px 20px' }}>
           <Button

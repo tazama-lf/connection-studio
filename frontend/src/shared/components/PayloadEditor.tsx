@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { XMLParser } from "fast-xml-parser";
+import { Settings2, List, FileText } from 'lucide-react';
+import { XMLParser } from 'fast-xml-parser';
 import * as yup from 'yup';
 import { Button } from './Button';
 import {
@@ -70,9 +71,8 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
   payloadError,
   setPayloadError,
 }) => {
-  
-  console.log("shouldCreateNew", shouldCreateNew, isCloning);
-  
+  console.log('shouldCreateNew', shouldCreateNew, isCloning);
+
   // New state for endpoint form data
   const [endpointData, setEndpointData] = useState<EndpointFormData>(
     initialEndpointData || {
@@ -1173,8 +1173,9 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
     <div className="space-y-4">
       {/* Endpoint Configuration Form */}
       <div className="">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">
-          Endpoint Configuration
+        <h3 className="text-base font-semibold flex items-center gap-1 text-blue-900 mb-4">
+          <Settings2 className="text-blue-500" size={16} /> Endpoint
+          Configuration
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Version */}
@@ -1399,8 +1400,18 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
       {!readOnly && (shouldCreateNew || isCloning) && (
         <div>
           <div className="flex justify-between items-center mb-3 mt-10">
-            <h3 className="text-lg font-medium text-gray-900">
-              {configId ? 'Configuration Schema' : 'Configuration Payload'}
+            <h3 className="text-base font-semibold flex items-center gap-1 text-blue-900">
+              {configId ? (
+                <>
+                  <List className="text-blue-500" size={16} /> Configuration
+                  Schema
+                </>
+              ) : (
+                <>
+                  <FileText className="text-blue-500" size={16} /> Configuration
+                  Payload
+                </>
+              )}
             </h3>
 
             <div className="flex items-center space-x-2">
@@ -1653,8 +1664,8 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
             <div>
               <div className="flex justify-between items-start">
                 <div>
-                  <h3 className="text-lg font-medium text-gray-900">
-                    Schema Fields
+                  <h3 className="text-base font-semibold flex items-center gap-1 text-blue-900">
+                    <List className="text-blue-500" size={16} /> Schema Fields
                   </h3>
                   <p className="text-sm text-gray-600 mt-1">
                     {readOnly
@@ -1941,8 +1952,8 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
                 </div>
               )}
 
-              {/* Fields container with single scroll for all fields */}
-              <div className="overflow-x-auto overflow-y-auto max-h-96 border border-gray-200 rounded-lg">
+              {/* Fields container without internal scroll */}
+              <div className="border border-gray-200 rounded-lg">
                 <div
                   className="space-y-2 p-2"
                   style={{
