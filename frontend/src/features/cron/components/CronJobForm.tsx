@@ -17,6 +17,7 @@ import { dataEnrichmentApi } from '@features/data-enrichment/services';
 import { isApprover } from '@utils/roleUtils';
 import { useAuth } from '@features/auth';
 import cronstrue from 'cronstrue';
+import { Check, XCircle } from 'lucide-react';
 
 // Validation schema
 const validationSchema = yup.object().shape({
@@ -354,16 +355,11 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({
             >
               <Button
                 type="button"
+                variant="outlined"
+                sx={{ marginRight: '10px' }}
+                startIcon={<XCircle size={16} />}
                 onClick={onCancel}
                 disabled={isSubmitting}
-                variant="outlined"
-                sx={{
-                  px: 2,
-                  py: 1,
-                  fontSize: '0.875rem',
-                  fontWeight: 500,
-                  textTransform: 'none',
-                }}
               >
                 Cancel
               </Button>
@@ -375,14 +371,8 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({
                       <Button
                         type="button"
                         variant="contained"
-                        color="primary"
-                        sx={{
-                          px: 2,
-                          py: 1,
-                          fontSize: '0.875rem',
-                          fontWeight: 500,
-                          textTransform: 'none',
-                        }}
+                        sx={{ marginRight: '10px', backgroundColor: '#ff474d' }}
+                        startIcon={<XCircle size={16} />}
                         onClick={() => {
                           onReject(viewFormData?.id);
                         }}
@@ -394,18 +384,11 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({
                       <Button
                         type="button"
                         variant="contained"
-                        color="primary"
-                        sx={{
-                          px: 2,
-                          py: 1,
-                          fontSize: '0.875rem',
-                          fontWeight: 500,
-                          textTransform: 'none',
-                        }}
+                        sx={{ backgroundColor: '#33ad74' }}
+                        startIcon={<Check size={16} />}
                         onClick={() => {
                           onApprove(viewFormData?.id);
                         }}
-                        className="bg-green-600 hover:bg-green-700 text-white"
                       >
                         Approve
                       </Button>

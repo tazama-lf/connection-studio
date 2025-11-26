@@ -1224,39 +1224,45 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
             userIsApprover &&
             (onApprove || onReject) &&
             job.status === 'STATUS_03_UNDER_REVIEW' && (
-              <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
-                <MuiButton
-                  type="button"
-                  variant="contained"
-                  sx={{ marginRight: '10px', backgroundColor: '#6b7280' }}
-                  onClick={onClose}
-                  startIcon={<XCircle size={16} />}
-                >
-                  Close
-                </MuiButton>
-                {onReject && (
-                  <MuiButton
-                    type="button"
-                    variant="contained"
-                    sx={{ marginRight: '10px', backgroundColor: '#ff474d' }}
-                    onClick={() => setShowRejectionDialog(true)}
-                    startIcon={<XCircle size={16} />}
-                  >
-                    Reject
-                  </MuiButton>
-                )}
-                {onApprove && (
-                  <MuiButton
-                    type="button"
-                    variant="contained"
-                    sx={{ backgroundColor: '#33ad74' }}
-                    onClick={() => setShowApproveConfirmDialog(true)}
-                    startIcon={<Check size={16} />}
-                  >
-                    Approve
-                  </MuiButton>
-                )}
-              </div>
+              <>
+                <div className="px-6 py-4 border-t border-gray-200 flex justify-between items-center">
+                  <div>
+                    <MuiButton
+                      type="button"
+                      variant="outlined"
+                      sx={{ marginRight: '10px' }}
+                      onClick={onClose}
+                      startIcon={<XCircle size={16} />}
+                    >
+                      Close
+                    </MuiButton>
+                  </div>
+                  <div className="flex space-x-3">
+                    {onReject && (
+                      <MuiButton
+                        type="button"
+                        variant="contained"
+                        sx={{ marginRight: '10px', backgroundColor: '#ff474d' }}
+                        onClick={() => setShowRejectionDialog(true)}
+                        startIcon={<XCircle size={16} />}
+                      >
+                        Reject
+                      </MuiButton>
+                    )}
+                    {onApprove && (
+                      <MuiButton
+                        type="button"
+                        variant="contained"
+                        sx={{ backgroundColor: '#33ad74' }}
+                        onClick={() => setShowApproveConfirmDialog(true)}
+                        startIcon={<Check size={16} />}
+                      >
+                        Approve
+                      </MuiButton>
+                    )}
+                  </div>
+                </div>
+              </>
             )}
           {job &&
             !isLoading &&
@@ -1584,7 +1590,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
             <DialogContentText
               sx={{
                 fontSize: '16px',
-                color: '#15803D',
+                color: '#2b7fff',
                 margin: 0,
                 fontWeight: '500',
               }}
