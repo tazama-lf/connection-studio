@@ -513,7 +513,7 @@ export const dataEnrichmentApi = {
         {
           method: 'PATCH',
           body: JSON.stringify({
-            reason: reason || 'Rejected by approver',
+            reason: reason || 'Approved by approver',
           }),
         },
       );

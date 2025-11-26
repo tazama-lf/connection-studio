@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
-import { XIcon } from 'lucide-react';
-import { Button } from './Button';
+import React from 'react';
+import { JobRejectionDialog } from './JobRejectionDialog';
 
 interface RejectionDialogProps {
   isOpen: boolean;
@@ -9,105 +8,20 @@ interface RejectionDialogProps {
   configName: string;
 }
 
+// Reuse shared JobRejectionDialog for consistent approver UI
 export const RejectionDialog: React.FC<RejectionDialogProps> = ({
   isOpen,
   onClose,
   onConfirm,
   configName,
 }) => {
-  const [reason, setReason] = useState('');
-  const [error, setError] = useState('');
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!reason.trim()) {
-      setError('Please provide a reason for rejection');
-      return;
-    }
-
-    if (reason.trim().length < 10) {
-      setError(
-        'Please provide a more detailed reason (at least 10 characters)',
-      );
-      return;
-    }
-
-    onConfirm(reason.trim());
-    setReason('');
-    setError('');
-    onClose();
-  };
-
-  const handleClose = () => {
-    setReason('');
-    setError('');
-    onClose();
-  };
-
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">
-            Reject Configuration
-          </h3>
-          <button
-            onClick={handleClose}
-            className="text-gray-400 hover:text-gray-600"
-          >
-            <XIcon className="h-6 w-6" />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="p-6">
-          <div className="mb-4">
-            <p className="text-sm text-gray-600 mb-3">
-              You are about to reject the configuration:{' '}
-              <strong>{configName}</strong>
-            </p>
-            <p className="text-sm text-gray-600 mb-4">
-              This will change the status to "Request for Update" and allow the
-              editor to make changes.
-            </p>
-          </div>
-
-          <div className="mb-4">
-            <label
-              htmlFor="reason"
-              className="block text-sm font-medium text-gray-700 mb-2"
-            >
-              Reason for Rejection <span className="text-red-500">*</span>
-            </label>
-            <textarea
-              id="reason"
-              value={reason}
-              onChange={(e) => {
-                setReason(e.target.value);
-                if (error) setError('');
-              }}
-              placeholder="Please provide a detailed reason for rejecting this configuration..."
-              className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                error ? 'border-red-300' : 'border-gray-300'
-              }`}
-              rows={4}
-              required
-            />
-            {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
-          </div>
-
-          <div className="flex justify-end space-x-3">
-            <Button type="button" variant="secondary" onClick={handleClose}>
-              Cancel
-            </Button>
-            <Button type="submit" variant="danger" disabled={!reason.trim()}>
-              Reject Configuration
-            </Button>
-          </div>
-        </form>
-      </div>
-    </div>
+    <JobRejectionDialog
+      isOpen={isOpen}
+      onClose={onClose}
+      onConfirm={onConfirm}
+      jobName={configName}
+      jobType="Data Enrichment Job"
+    />
   );
 };

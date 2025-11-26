@@ -1561,8 +1561,8 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
               component="span"
               sx={{
                 fontWeight: 'bold',
-                color: '#33AD74',
-                backgroundColor: '#F0FDF4',
+                color: '#2B7FFF',
+                backgroundColor: '#DCEEFF',
                 padding: '2px 8px',
                 borderRadius: '4px',
                 fontSize: '15px',
@@ -1574,8 +1574,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
           </DialogContentText>
           <Box
             sx={{
-              backgroundColor: '#F0FDF4',
-              border: '1px solid #BBF7D0',
+              backgroundColor: '#DCEEFF',
               borderRadius: '8px',
               padding: '12px 16px',
               marginTop: '16px',
@@ -1584,12 +1583,12 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
             <DialogContentText
               sx={{
                 fontSize: '16px',
-                color: '#15803D',
+                color: '#2B7FFF',
                 margin: 0,
                 fontWeight: '500',
               }}
             >
-              ✅ Once approved, this job will be sent to the exporter for
+              ⚠️ Once approved, this job will be sent to the exporter for
               further processing.
             </DialogContentText>
           </Box>
@@ -1609,7 +1608,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
             variant="contained"
             color="success"
             size="small"
-            sx={{ backgroundColor: '#33AD74' }}
+            sx={{ backgroundColor: '#2B7FFF' }}
             className="!pb-[6px] !pt-[5px]"
             autoFocus
           >
