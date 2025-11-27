@@ -22,7 +22,9 @@ import {
 const ApproverConfigsPage: React.FC = () => {
   const navigate = useNavigate();
   // Config-related state
-  const [editingEndpointId, setEditingEndpointId] = useState<number | null>(null);
+  const [editingEndpointId, setEditingEndpointId] = useState<number | null>(
+    null,
+  );
   const [editingConfig, setEditingConfig] = useState<Config | null>(null);
   const [selectedConfig, setSelectedConfig] = useState<Config | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -31,25 +33,31 @@ const ApproverConfigsPage: React.FC = () => {
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [showChangeRequestDialog, setShowChangeRequestDialog] = useState(false);
   const [configToReject, setConfigToReject] = useState<Config | null>(null);
-  const [configToRequestChanges, setConfigToRequestChanges] = useState<Config | null>(null);
-  
+  const [configToRequestChanges, setConfigToRequestChanges] =
+    useState<Config | null>(null);
+
   // Approval confirmation dialog state
   const [showApprovalDialog, setShowApprovalDialog] = useState(false);
-  const [configToApprove, setConfigToApprove] = useState<{id: number, name: string} | null>(null);
+  const [configToApprove, setConfigToApprove] = useState<{
+    id: number;
+    name: string;
+  } | null>(null);
+  // Optional comment for approval
+  const [approvalComment, setApprovalComment] = useState('');
 
-const { user } = useAuth();
+  const { user } = useAuth();
   const { showSuccess, showError } = useToast();
 
   const handleCloseModal = () => {
     setEditingEndpointId(null);
     setEditingConfig(null);
     // Refresh the config list when modal closes
-    setRefreshKey(prev => prev + 1);
+    setRefreshKey((prev) => prev + 1);
   };
 
   const handleConfigSuccess = () => {
     // Refresh immediately when config is saved/updated
-    setRefreshKey(prev => prev + 1);
+    setRefreshKey((prev) => prev + 1);
   };
 
   const handleViewDetails = (config: Config) => {
@@ -63,16 +71,20 @@ const { user } = useAuth();
       const response = await configApi.approveConfig(configId);
       if (response.success) {
         showSuccess('Configuration approved successfully');
-        setRefreshKey(prev => prev + 1);
+        setRefreshKey((prev) => prev + 1);
       } else {
-        console.log('❌ handleApprove - Response success is false, but checking if operation actually succeeded...');
+        console.log(
+          '❌ handleApprove - Response success is false, but checking if operation actually succeeded...',
+        );
         console.log('❌ handleApprove - Config in response:', response.config);
 
         // Even if success is false, if we have a config object, the operation likely succeeded
         if (response.config) {
-          console.log('✅ handleApprove - Config object found, treating as successful despite success: false');
+          console.log(
+            '✅ handleApprove - Config object found, treating as successful despite success: false',
+          );
           showSuccess('Configuration approved successfully');
-          setRefreshKey(prev => prev + 1);
+          setRefreshKey((prev) => prev + 1);
         } else {
           showError(response.message || 'Failed to approve configuration');
         }
@@ -92,17 +104,25 @@ const { user } = useAuth();
     if (!configToReject) return;
 
     try {
-const userId = user?.email || user?.username || 'system';
-      const response = await configApi.rejectConfig(configToReject.id, userId, reason);
+      const userId = user?.email || user?.username || 'system';
+      const response = await configApi.rejectConfig(
+        configToReject.id,
+        userId,
+        reason,
+      );
       if (response.success) {
         showSuccess('Configuration rejected successfully');
-        setRefreshKey(prev => prev + 1);
+        setRefreshKey((prev) => prev + 1);
       } else {
-        console.log('❌ handleRejectConfirm - Response success is false, but checking if operation actually succeeded...');
+        console.log(
+          '❌ handleRejectConfirm - Response success is false, but checking if operation actually succeeded...',
+        );
         if (response.config) {
-          console.log('✅ handleRejectConfirm - Config object found, treating as successful despite success: false');
+          console.log(
+            '✅ handleRejectConfirm - Config object found, treating as successful despite success: false',
+          );
           showSuccess('Configuration rejected successfully');
-          setRefreshKey(prev => prev + 1);
+          setRefreshKey((prev) => prev + 1);
         } else {
           showError(response.message || 'Failed to reject configuration');
         }
@@ -117,19 +137,27 @@ const userId = user?.email || user?.username || 'system';
     if (!configToRequestChanges) return;
 
     try {
-const userId = user?.email || user?.username || 'system';
-      const response = await configApi.rejectConfig(configToRequestChanges.id, userId, requestedChanges);   
-         if (response.success) {
+      const userId = user?.email || user?.username || 'system';
+      const response = await configApi.rejectConfig(
+        configToRequestChanges.id,
+        userId,
+        requestedChanges,
+      );
+      if (response.success) {
         showSuccess('Change request sent to editor successfully');
-        setRefreshKey(prev => prev + 1);
+        setRefreshKey((prev) => prev + 1);
         // Close the modal after successful change request
         handleCloseModal();
       } else {
-        console.log('❌ handleChangeRequestConfirm - Response success is false, but checking if operation actually succeeded...');
+        console.log(
+          '❌ handleChangeRequestConfirm - Response success is false, but checking if operation actually succeeded...',
+        );
         if (response.config) {
-          console.log('✅ handleChangeRequestConfirm - Config object found, treating as successful despite success: false');
+          console.log(
+            '✅ handleChangeRequestConfirm - Config object found, treating as successful despite success: false',
+          );
           showSuccess('Change request sent to editor successfully');
-          setRefreshKey(prev => prev + 1);
+          setRefreshKey((prev) => prev + 1);
           handleCloseModal();
         } else {
           showError(response.message || 'Failed to send change request');
@@ -142,7 +170,7 @@ const userId = user?.email || user?.username || 'system';
   };
 
   const handleRefresh = () => {
-    setRefreshKey(prev => prev + 1);
+    setRefreshKey((prev) => prev + 1);
   };
 
   const handleRevertToEditor = (config: Config) => {
@@ -150,12 +178,16 @@ const userId = user?.email || user?.username || 'system';
     setShowChangeRequestDialog(true);
   };
 
-  const handleSendForApproval = async (configId: number, configName?: string) => {
+  const handleSendForApproval = async (
+    configId: number,
+    configName?: string,
+  ) => {
     // Show confirmation dialog first
-    setConfigToApprove({ 
-      id: configId, 
-      name: configName || `Config #${configId}` 
+    setConfigToApprove({
+      id: configId,
+      name: configName || `Config #${configId}`,
     });
+    setApprovalComment(''); // Reset comment field
     setShowApprovalDialog(true);
   };
 
@@ -164,10 +196,14 @@ const userId = user?.email || user?.username || 'system';
     if (!configToApprove) return;
 
     try {
-      const response = await configApi.approveConfig(configToApprove.id);
+      // Pass approvalComment to the API if supported
+      const response = await configApi.approveConfig(
+        configToApprove.id,
+        approvalComment,
+      );
       if (response.success) {
         showSuccess('Configuration approved successfully');
-        setRefreshKey(prev => prev + 1);
+        setRefreshKey((prev) => prev + 1);
         // Close the modal after successful approval
         handleCloseModal();
         setShowApprovalDialog(false);
@@ -175,7 +211,7 @@ const userId = user?.email || user?.username || 'system';
       } else {
         if (response.config) {
           showSuccess('Configuration approved successfully');
-          setRefreshKey(prev => prev + 1);
+          setRefreshKey((prev) => prev + 1);
           handleCloseModal();
           setShowApprovalDialog(false);
           setConfigToApprove(null);
@@ -195,8 +231,13 @@ const userId = user?.email || user?.username || 'system';
   return (
     <div className="min-h-screen bg-white">
       <main className="mx-auto px-4 sm:px-6 lg:px-[48px] py-[52px]">
-      
-      <Button variant='primary' className='py-1 pl-2' onClick={()=>navigate(-1)}><ChevronLeft size={20} /> <span>Go Back</span></Button>
+        <Button
+          variant="primary"
+          className="py-1 pl-2"
+          onClick={() => navigate(-1)}
+        >
+          <ChevronLeft size={20} /> <span>Go Back</span>
+        </Button>
 
         {/* Search Bar */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center my-8 gap-4">
@@ -231,12 +272,17 @@ const userId = user?.email || user?.username || 'system';
           endpointId={editingEndpointId}
           onSuccess={handleConfigSuccess}
           readOnly={true}
-          onRevertToEditor={() => editingConfig && handleRevertToEditor(editingConfig)}
+          onRevertToEditor={() =>
+            editingConfig && handleRevertToEditor(editingConfig)
+          }
           onSendForDeployment={() => {
             if (editingConfig) {
-              setConfigToApprove({ 
-                id: editingEndpointId, 
-                name: editingConfig.endpointPath || editingConfig.msgFam || `Config #${editingEndpointId}` 
+              setConfigToApprove({
+                id: editingEndpointId,
+                name:
+                  editingConfig.endpointPath ||
+                  editingConfig.msgFam ||
+                  `Config #${editingEndpointId}`,
               });
               setShowApprovalDialog(true);
             }
@@ -332,6 +378,7 @@ const userId = user?.email || user?.username || 'system';
             </Box>
             ?
           </DialogContentText>
+          {/* Optional comment field for approval */}
           <Box
             sx={{
               backgroundColor: '#dceeff',
@@ -349,8 +396,35 @@ const userId = user?.email || user?.username || 'system';
                 fontWeight: '500',
               }}
             >
-              ⚠️ Important: This will approve the configuration and move it to the next stage in the workflow.
+              ⚠️ Important: This will approve the configuration and move it to
+              the next stage in the workflow.
             </DialogContentText>
+          </Box>
+          <Box sx={{ mt: 2, mb: 1 }}>
+            <label
+              htmlFor="approval-comment"
+              style={{ fontWeight: 500, color: '#374151', fontSize: 15 }}
+            >
+              Comment (optional)
+            </label>
+            <textarea
+              id="approval-comment"
+              value={approvalComment}
+              onChange={(e) => setApprovalComment(e.target.value)}
+              placeholder="Add a comment for this approval (optional)"
+              rows={3}
+              style={{
+                width: '100%',
+                border: '1px solid #d1d5db',
+                borderRadius: 6,
+                padding: '8px 10px',
+                fontSize: 15,
+                color: '#374151',
+                marginTop: 4,
+                resize: 'vertical',
+                background: '#f9fafb',
+              }}
+            />
           </Box>
         </DialogContent>
         <DialogActions sx={{ padding: '12px 20px 16px 20px' }}>
