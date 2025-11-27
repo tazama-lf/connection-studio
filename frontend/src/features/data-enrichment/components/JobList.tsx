@@ -1,13 +1,5 @@
 import React, { useState } from 'react';
 import {
-  Eye,
-  MoreVertical,
-  ChevronDown,
-  FilterIcon,
-  Edit,
-  ChevronDownIcon,
-  ChevronUpIcon,
-  Copy,
   Play,
   Pause,
   ShieldCheck,
@@ -15,7 +7,7 @@ import {
   EyeIcon,
   EditIcon,
 } from 'lucide-react';
-import type { DataEnrichmentJobResponse, JobStatus } from '../types';
+import type { DataEnrichmentJobResponse } from '../types';
 import { Button } from '../../../shared/components/Button';
 import { useAuth } from '../../auth/contexts/AuthContext';
 import {
@@ -24,9 +16,7 @@ import {
   isExporter,
   isPublisher,
 } from '../../../utils/roleUtils';
-import { DropdownMenuWithAutoDirection } from './DropdownMenuWithAutoDirection';
 import {
-  getStatusColor,
   getStatusLabel,
 } from '../../../shared/utils/statusColors';
 import { useToast } from '../../../shared/providers/ToastProvider';
@@ -40,24 +30,11 @@ import {
   DialogContentText,
   DialogActions,
 } from '@mui/material';
-// MUI Button import for dialog actions
-// Use shared Button for dialog actions
-// For styled dialog headers
-import { XCircle } from 'lucide-react';
-
 import { handleInputFilter, handleSelectFilter } from '@shared/helpers';
 import { getDemsStatusLov } from '@shared/lovs';
 import CustomTable from '@common/Tables/CustomTable';
+import EndpointHistoryButton from './EndpointHistoryButton';
 
-const STATUS_OPTIONS = [
-  { value: 'ALL', label: 'All Statuses' },
-  { value: 'in-progress', label: 'In Progress' },
-  { value: 'approved', label: 'Approved' },
-  { value: 'exported', label: 'Exported' },
-  { value: 'deployed', label: 'Deployed' },
-  { value: 'rejected', label: 'Rejected' },
-  { value: 'suspended', label: 'Suspended' },
-] as const;
 
 interface JobListProps {
   jobs: DataEnrichmentJobResponse[];
@@ -1167,47 +1144,58 @@ export const JobList: React.FC<JobListProps> = (props) => {
           <span className="ml-2 text-gray-600">Loading configurations...</span>
         </div>
       ) : (
-        <CustomTable
-          columns={columns as any}
-          rows={jobs}
-          search={true}
-          pageSize={itemsPerPage}
-          pageSizeOptions={[10, 20, 50]}
-          // onRowClick={(params) => handleViewConfig(params.row)}
-          disableRowSelection={true}
-          pagination={
-            jobs.length > 0 && (
-              <div className="px-6 py-4 border-t border-gray-200 bg-white rounded-b-lg flex items-center justify-between">
-                <div className="text-sm text-gray-700 font-medium">
-                  Showing{' '}
-                  <span className="font-bold">
-                    {(page - 1) * itemsPerPage + 1}
-                  </span>{' '}
-                  to{' '}
-                  <span className="font-bold">
-                    {Math.min(page * itemsPerPage, totalRecords)}
-                  </span>{' '}
-                  of <span className="font-bold">{totalRecords}</span> results
+        <>
+          {userIsPublisher && (
+            <div className="mb-4 flex justify-end">
+              <Tooltip title="View Endpoint Last Runs" arrow placement="top">
+                <div>
+                  <EndpointHistoryButton />
                 </div>
-                <div className="flex items-center space-x-3">
-                  <Box>
-                    <Pagination
-                      page={page}
-                      count={totalPages}
-                      onChange={(_, newPage: number) => setPage?.(newPage)}
-                      variant="outlined"
-                      sx={{
-                        '& .MuiPaginationItem-page.Mui-selected': {
-                          backgroundColor: '#fbf9fa',
-                        },
-                      }}
-                    />
-                  </Box>
+              </Tooltip>
+            </div>
+          )}
+          <CustomTable
+            columns={columns as any}
+            rows={jobs}
+            search={true}
+            pageSize={itemsPerPage}
+            pageSizeOptions={[10, 20, 50]}
+            // onRowClick={(params) => handleViewConfig(params.row)}
+            disableRowSelection={true}
+            pagination={
+              jobs.length > 0 && (
+                <div className="px-6 py-4 border-t border-gray-200 bg-white rounded-b-lg flex items-center justify-between">
+                  <div className="text-sm text-gray-700 font-medium">
+                    Showing{' '}
+                    <span className="font-bold">
+                      {(page - 1) * itemsPerPage + 1}
+                    </span>{' '}
+                    to{' '}
+                    <span className="font-bold">
+                      {Math.min(page * itemsPerPage, totalRecords)}
+                    </span>{' '}
+                    of <span className="font-bold">{totalRecords}</span> results
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <Box>
+                      <Pagination
+                        page={page}
+                        count={totalPages}
+                        onChange={(_, newPage: number) => setPage?.(newPage)}
+                        variant="outlined"
+                        sx={{
+                          '& .MuiPaginationItem-page.Mui-selected': {
+                            backgroundColor: '#fbf9fa',
+                          },
+                        }}
+                      />
+                    </Box>
+                  </div>
                 </div>
-              </div>
-            )
-          }
-        />
+              )
+            }
+          />
+        </>
       )}
     </>
   );

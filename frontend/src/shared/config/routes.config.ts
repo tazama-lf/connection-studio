@@ -7,6 +7,7 @@ export const ROUTES = {
   DASHBOARD: '/dashboard',
   DEMS: '/dems',
   DATA_ENRICHMENT: 'data-enrichment',
+  DATA_ENRICHMENT_HISTORY: '/data-enrichment/history',
   CRON: '/cron',
   // APPROVER: '/approver',
   PUBLISHER: '/publisher',

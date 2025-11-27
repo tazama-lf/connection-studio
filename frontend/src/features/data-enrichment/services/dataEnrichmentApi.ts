@@ -463,6 +463,38 @@ export const dataEnrichmentApi = {
     }
   },
 
+  // Fetch job history / last runs for an endpoint/job
+  getJobHistory: async (
+    jobId?: string,
+    offset = 0,
+    limit = 10,
+  ): Promise<{ success: boolean; data: any[]; total?: number }> => {
+    try {
+      const url = `http://10.10.80.34:3000/job/history?offset=${offset}&limit=${limit}`;
+
+      // Only send body if jobId is provided
+      const requestOptions: RequestInit = {
+        method: 'POST',
+        headers: getAuthHeaders(),
+      };
+
+      if (jobId) {
+        requestOptions.body = JSON.stringify({ job_id: jobId });
+      }
+
+      const res = await fetch(url, requestOptions);
+
+      if (!res.ok) {
+        throw new Error('Failed to fetch job history');
+      }
+
+      return (await res.json()) as { success: boolean; data: any[]; total?: number };
+    } catch (error) {
+      console.error('Failed to fetch job history:', error);
+      throw error;
+    }
+  },
+
   getSchedule: async (id: string): Promise<ScheduleResponse> => {
     try {
       return await apiRequest<ScheduleResponse>(

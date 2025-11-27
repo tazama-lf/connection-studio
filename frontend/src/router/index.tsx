@@ -19,6 +19,7 @@ import PublisherConfigsPage from '../features/publisher/pages/PublisherConfigsPa
 import PublisherExportedItemsPage from '../features/publisher/pages/PublisherExportedItemsPage';
 import CRONModule from '../features/cron/pages/CRONModule';
 import DataEnrichmentModule from '../features/data-enrichment/pages/DataEnrichmentModule';
+import EndpointHistoryPage from '../features/data-enrichment/pages/EndpointHistoryPage';
 import NotFoundPage from '../pages/NotFoundPage';
 import { ROUTES } from '../shared/config/routes.config';
 import { setupFetch401Interceptor } from '../utils/interceptor';
@@ -184,6 +185,11 @@ export const AppRoutes: React.FC = () => {
           <EditorRoute>
             <DataEnrichmentModule />
           </EditorRoute>
+        } />
+        <Route path={ROUTES.DATA_ENRICHMENT_HISTORY} element={
+          <PublisherRoute>
+            <EndpointHistoryPage />
+          </PublisherRoute>
         } />
         <Route path={ROUTES.CRON} element={
           <EditorRoute>
