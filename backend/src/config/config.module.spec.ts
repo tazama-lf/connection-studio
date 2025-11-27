@@ -7,8 +7,6 @@ import { ConfigWorkflowService } from './config-workflow.service';
 import { PayloadParsingService } from '../services/payload-parsing.service';
 import { FileParsingService } from '../services/file-parsing.service';
 import { AdminServiceClient } from '../services/admin-service-client.service';
-import { JSONSchemaConverterService } from '../schemas/json-schema-converter.service';
-import { SchemaInferenceService } from '../schemas/schema-inference.service';
 import { TazamaDataModelService } from '../tazama-data-model/tazama-data-model.service';
 import { AuditService } from '../audit/audit.service';
 import { SftpService } from '../sftp/sftp.service';
@@ -51,24 +49,11 @@ describe('ConfigModule', () => {
             writeConfig: jest.fn(),
           },
         },
-        {
-          provide: JSONSchemaConverterService,
-          useValue: {
-            convertToJSONSchema: jest.fn(),
-            convertFromJSONSchema: jest.fn(),
-          },
-        },
-        {
-          provide: SchemaInferenceService,
-          useValue: {
-            inferSchemaFromPayload: jest.fn(),
-          },
-        },
+      
         {
           provide: TazamaDataModelService,
           useValue: {
             isValidDestinationPath: jest.fn().mockReturnValue(true),
-            getFieldType: jest.fn().mockReturnValue('string'),
           },
         },
         {

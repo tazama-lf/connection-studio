@@ -4,7 +4,6 @@ import { ConfigController } from './config.controller';
 import { ConfigService } from './config.service';
 import { ConfigRepository } from './config.repository';
 import { ConfigWorkflowService } from './config-workflow.service';
-import { SchemasModule } from '../schemas/schemas.module';
 import { AuditModule } from '../audit/audit.module';
 import { TazamaDataModelModule } from '../tazama-data-model/tazama-data-model.module';
 import { PayloadParsingService } from '../services/payload-parsing.service';
@@ -19,9 +18,6 @@ import { DatabaseService } from '@tazama-lf/tcs-lib';
 @Module({
   imports: [
     HttpModule,
-
-    SchemasModule,
-
     AuditModule,
 
     TazamaDataModelModule,

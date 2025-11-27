@@ -5,7 +5,6 @@ import { ConfigModule as NestConfigModule } from '@nestjs/config';
 import { validate } from './config/env.validation';
 import { AuthModule } from './auth/auth.module';
 import { LoggerModule } from './logger-service/logger-service.module';
-import { SchemasModule } from './schemas/schemas.module';
 import { AuditModule } from './audit/audit.module';
 import { ConfigModule } from './config/config.module';
 import { SimulationModule } from './simulation/simulation.module';
@@ -28,7 +27,6 @@ import { NotificationModule } from './notification/notification.module';
     }),
     AuthModule,
     LoggerModule,
-    SchemasModule,
     AuditModule,
     ConfigModule,
     SimulationModule,

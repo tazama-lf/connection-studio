@@ -13,7 +13,6 @@ import {
   SchemaField,
 } from '@tazama-lf/tcs-lib';
 import { AuditService } from '../audit/audit.service';
-import { JSONSchemaConverterService } from '../schemas/json-schema-converter.service';
 import { NotifyService } from '../notify/notify.service';
 
 import { TazamaDataModelService } from '../tazama-data-model/tazama-data-model.service';
@@ -50,7 +49,6 @@ export class ConfigService {
   constructor(
     private readonly configRepository: ConfigRepository,
     private readonly auditService: AuditService,
-    private readonly jsonSchemaConverter: JSONSchemaConverterService,
     private readonly tazamaDataModelService: TazamaDataModelService,
     private readonly workflowService: ConfigWorkflowService,
     private readonly sftpService: SftpService,
@@ -228,127 +226,13 @@ export class ConfigService {
           message: 'Invalid payload format. Expected string or object.',
         };
       }
-      // const parsingResult =
-      //   await this.payloadParsingService.parsePayloadToSchema(
-      //     payloadString,
-      //     dto.contentType || ContentType.JSON,
-      //   );
-      // if (!parsingResult?.success) {
-      //   this.logger.error(
-      //     'Failed to parse payload:',
-      //     parsingResult?.validation || 'Unknown error',
-      //   );
-      //   const errorDetails = parsingResult?.validation
-      //     ? ` Details: ${JSON.stringify(parsingResult.validation)}`
-      //     : '';
-
-      //   return {
-      //     success: false,
-      //     message: `Unable to parse your ${dto.contentType === ContentType.JSON ? 'JSON' : 'XML'} payload. Please check the format and try again.${errorDetails}`,
-      //     validation: {
-      //       success: false,
-      //       errors: parsingResult?.validation?.errors || [
-      //         'Invalid payload format',
-      //       ],
-      //       warnings: [],
-      //     },
-      //   };
-      // }
-
-      // let sourceFields = parsingResult.sourceFields;
-
-      // if (!sourceFields || sourceFields.length === 0) {
-      //   this.logger.error('Parsing result contains no source fields');
-      //   return {
-      //     success: false,
-      //     message: `No fields could be extracted from your ${dto.contentType === ContentType.JSON ? 'JSON' : 'XML'} payload. Please ensure it contains valid data with field names and values.`,
-      //     validation: {
-      //       success: false,
-      //       errors: [
-      //         'No fields found in payload - payload may be empty or malformed',
-      //       ],
-      //       warnings: [],
-      //     },
-      //   };
-      // }
-
-      // const duplicateErrors =
-      //   this.validateNoDuplicateSchemaFields(sourceFields);
-      // if (duplicateErrors.length > 0) {
-      //   this.logger.error(
-      //     'Duplicate fields detected in schema during config creation',
-      //     {
-      //       errors: duplicateErrors,
-      //       tenantId,
-      //       userId,
-      //       msgFam: dto.msgFam,
-      //       transactionType: dto.transactionType,
-      //       version: dto.version,
-      //       contentType: dto.contentType,
-      //       totalSourceFields: sourceFields.length,
-      //       context: 'createConfig',
-      //     },
-      //   );
-      //   return {
-      //     success: false,
-      //     message:
-      //       'Your payload contains duplicate field names. Each field must have a unique name within the schema.',
-      //     validation: {
-      //       success: false,
-      //       errors: duplicateErrors,
-      //       warnings: [],
-      //     },
-      //   };
-      // }
-
-      // if (dto.fieldAdjustments && dto.fieldAdjustments.length > 0) {
-      //   this.logger.log(
-      //     `Applying ${dto.fieldAdjustments.length} field adjustments`,
-      //   );
-
-      //   sourceFields = applyFieldAdjustments(
-      //     sourceFields,
-      //     dto.fieldAdjustments,
-      //   );
-
-      //   this.logger.log('Successfully applied field adjustments');
-      // } else {
-      //   this.logger.log('No field adjustments to apply');
-      // }
-      // const finalSchema =
-      //   this.jsonSchemaConverter.convertToJSONSchema(sourceFields);
-
-      // this.logger.log(
-      //   `Generated schema with ${Object.keys(finalSchema.properties || {}).length} properties`,
-      // );
-
-      // const validation = this.validateSchema(finalSchema);
-      // if (!validation.success) {
-      //   return {
-      //     success: false,
-      //     message: 'Schema validation failed',
-      //     validation,
-      //   };
-      // }
+     
       const endpointPath = this.generateEndpointPath(
         tenantId,
         version,
         dto.transactionType,
         dto.msgFam,
       );
-
-      // if (dto.mapping && dto.mapping.length > 0) {
-      //   for (let i = 0; i < dto.mapping.length; i++) {
-      //     const mapping = dto.mapping[i];
-      //     this.validateMapping(mapping, finalSchema, tenantId);
-
-      //     this.validateNoDuplicateDestination(
-      //       mapping,
-      //       dto.mapping.slice(0, i),
-      //       false,
-      //     );
-      //   }
-      // }
 
       const configData: Omit<Config, 'id' | 'createdAt' | 'updatedAt'> = {
         msgFam: dto.msgFam || '',
@@ -372,41 +256,32 @@ export class ConfigService {
         token,
       );
 
-      // await this.auditService.logAction({
-      //   entityType: 'CONFIG',
-      //   action: 'CREATE_CONFIG',
-      //   actor: userId,
-      //   tenantId,
-      //   endpointName: `${dto.msgFam || ''} - ${endpointPath}`,
-      //   details: `Created config with ${sourceFields.length} fields. Payload size: ${payloadString.length} chars`,
-      // });
-
       const config = await this.configRepository.findConfigById(
         configId,
         tenantId,
         token,
-      );
+      ) as Config;
 
       // Enrich config with source fields for mapping UI
-      const enrichedConfig = this.enrichConfigWithSourceFields(config!);
+      // const enrichedConfig = this.enrichConfigWithSourceFields(config!);
 
-      if (
-        enrichedConfig.sourceFields &&
-        enrichedConfig.sourceFields.length > 0
-      ) {
-        this.logger.log(
-          'FIRST 5 SOURCE FIELDS: ' +
-            enrichedConfig.sourceFields
-              .slice(0, 5)
-              .map((f) => f.name)
-              .join(', '),
-        );
-      }
+      // if (
+      //   enrichedConfig.sourceFields &&
+      //   enrichedConfig.sourceFields.length > 0
+      // ) {
+      //   this.logger.log(
+      //     'FIRST 5 SOURCE FIELDS: ' +
+      //       enrichedConfig.sourceFields
+      //         .slice(0, 5)
+      //         .map((f) => f.name)
+      //         .join(', '),
+      //   );
+      // }
 
       return {
         success: true,
         message: 'Config created successfully',
-        config: enrichedConfig,
+        config: config,
         // validation,
       };
     } catch (error) {
@@ -443,140 +318,140 @@ export class ConfigService {
     }
   }
 
-  async cloneConfig(
-    dto: CloneConfigDto,
-    tenantId: string,
-    userId: string,
-    token: string,
-  ): Promise<ConfigResponseDto> {
-    try {
-      const sourceConfig = await this.configRepository.findConfigById(
-        dto.sourceConfigId,
-        tenantId,
-        token,
-      );
+  // async cloneConfig(
+  //   dto: CloneConfigDto,
+  //   tenantId: string,
+  //   userId: string,
+  //   token: string,
+  // ): Promise<ConfigResponseDto> {
+  //   try {
+  //     const sourceConfig = await this.configRepository.findConfigById(
+  //       dto.sourceConfigId,
+  //       tenantId,
+  //       token,
+  //     );
 
-      if (!sourceConfig) {
-        return {
-          success: false,
-          message: `Source config with ID ${dto.sourceConfigId} not found`,
-        };
-      }
+  //     if (!sourceConfig) {
+  //       return {
+  //         success: false,
+  //         message: `Source config with ID ${dto.sourceConfigId} not found`,
+  //       };
+  //     }
 
-      const newMsgFam = dto.newMsgFam || sourceConfig.msgFam;
-      const newVersion = dto.newVersion || sourceConfig.version;
+  //     const newMsgFam = dto.newMsgFam || sourceConfig.msgFam;
+  //     const newVersion = dto.newVersion || sourceConfig.version;
 
-      const existingConfig =
-        await this.configRepository.findConfigByMsgFamVersionAndTransactionType(
-          newMsgFam,
-          newVersion,
-          dto.newTransactionType,
-          tenantId,
-          token,
-        );
+  //     const existingConfig =
+  //       await this.configRepository.findConfigByMsgFamVersionAndTransactionType(
+  //         newMsgFam,
+  //         newVersion,
+  //         dto.newTransactionType,
+  //         tenantId,
+  //         token,
+  //       );
 
-      if (existingConfig) {
-        return {
-          success: false,
-          message: this.buildDuplicateConfigMessage(
-            newMsgFam,
-            dto.newTransactionType,
-            newVersion,
-          ),
-        };
-      }
-      const newEndpointPath = this.generateEndpointPath(
-        tenantId,
-        newVersion,
-        dto.newTransactionType,
-        newMsgFam,
-      );
-      let finalSchema = sourceConfig.schema;
-      if (dto.fieldAdjustments && dto.fieldAdjustments.length > 0) {
-        this.logger.log(
-          `Applying ${dto.fieldAdjustments.length} field adjustments to cloned config`,
-        );
-        const existingSourceFields =
-          this.jsonSchemaConverter.convertFromJSONSchema(sourceConfig.schema);
+  //     if (existingConfig) {
+  //       return {
+  //         success: false,
+  //         message: this.buildDuplicateConfigMessage(
+  //           newMsgFam,
+  //           dto.newTransactionType,
+  //           newVersion,
+  //         ),
+  //       };
+  //     }
+  //     const newEndpointPath = this.generateEndpointPath(
+  //       tenantId,
+  //       newVersion,
+  //       dto.newTransactionType,
+  //       newMsgFam,
+  //     );
+  //     let finalSchema = sourceConfig.schema;
+  //     if (dto.fieldAdjustments && dto.fieldAdjustments.length > 0) {
+  //       this.logger.log(
+  //         `Applying ${dto.fieldAdjustments.length} field adjustments to cloned config`,
+  //       );
+  //       const existingSourceFields =
+  //         this.jsonSchemaConverter.convertFromJSONSchema(sourceConfig.schema);
 
-        const adjustedSourceFields = applyFieldAdjustments(
-          existingSourceFields,
-          dto.fieldAdjustments,
-        );
+  //       const adjustedSourceFields = applyFieldAdjustments(
+  //         existingSourceFields,
+  //         dto.fieldAdjustments,
+  //       );
 
-        finalSchema =
-          this.jsonSchemaConverter.convertToJSONSchema(adjustedSourceFields);
+  //       finalSchema =
+  //         this.jsonSchemaConverter.convertToJSONSchema(adjustedSourceFields);
 
-        this.logger.log(
-          'Successfully applied field adjustments to cloned config',
-        );
+  //       this.logger.log(
+  //         'Successfully applied field adjustments to cloned config',
+  //       );
 
-        const validation = this.validateSchema(finalSchema);
-        if (!validation.success) {
-          return {
-            success: false,
-            message: 'Adjusted schema validation failed',
-            validation,
-          };
-        }
-      }
+  //       const validation = this.validateSchema(finalSchema);
+  //       if (!validation.success) {
+  //         return {
+  //           success: false,
+  //           message: 'Adjusted schema validation failed',
+  //           validation,
+  //         };
+  //       }
+  //     }
 
-      const newConfigData: Omit<Config, 'id' | 'createdAt' | 'updatedAt'> = {
-        msgFam: newMsgFam,
-        transactionType: dto.newTransactionType,
-        endpointPath: newEndpointPath,
-        version: newVersion,
-        contentType: sourceConfig.contentType,
-        schema: finalSchema,
-        mapping: sourceConfig.mapping, // Clone the mappings
-        functions: dto.functions || sourceConfig.functions,
-        status: ConfigStatus.IN_PROGRESS,
-        tenantId,
-        createdBy: userId,
-      };
+  //     const newConfigData: Omit<Config, 'id' | 'createdAt' | 'updatedAt'> = {
+  //       msgFam: newMsgFam,
+  //       transactionType: dto.newTransactionType,
+  //       endpointPath: newEndpointPath,
+  //       version: newVersion,
+  //       contentType: sourceConfig.contentType,
+  //       schema: finalSchema,
+  //       mapping: sourceConfig.mapping, // Clone the mappings
+  //       functions: dto.functions || sourceConfig.functions,
+  //       status: ConfigStatus.IN_PROGRESS,
+  //       tenantId,
+  //       createdBy: userId,
+  //     };
 
-      const newConfigId = await this.configRepository.createConfig(
-        newConfigData,
-        token,
-      );
+  //     const newConfigId = await this.configRepository.createConfig(
+  //       newConfigData,
+  //       token,
+  //     );
 
-      await this.auditService.logAction({
-        entityType: 'CONFIG',
-        action: 'CLONE_CONFIG',
-        actor: userId,
-        tenantId,
-        endpointName: `${newMsgFam} - ${newEndpointPath} (cloned from ${dto.sourceConfigId})`,
-      });
+  //     await this.auditService.logAction({
+  //       entityType: 'CONFIG',
+  //       action: 'CLONE_CONFIG',
+  //       actor: userId,
+  //       tenantId,
+  //       endpointName: `${newMsgFam} - ${newEndpointPath} (cloned from ${dto.sourceConfigId})`,
+  //     });
 
-      const newConfig = await this.configRepository.findConfigById(
-        newConfigId,
-        tenantId,
-        token,
-      );
+  //     const newConfig = await this.configRepository.findConfigById(
+  //       newConfigId,
+  //       tenantId,
+  //       token,
+  //     );
 
-      this.logger.log(
-        `Successfully cloned config ${dto.sourceConfigId} to new config ${newConfigId}`,
-      );
+  //     this.logger.log(
+  //       `Successfully cloned config ${dto.sourceConfigId} to new config ${newConfigId}`,
+  //     );
 
-      const validation = this.validateSchema(finalSchema);
+  //     const validation = this.validateSchema(finalSchema);
 
-      return {
-        success: true,
-        message: 'Config cloned successfully',
-        config: newConfig!,
-        validation,
-      };
-    } catch (error) {
-      this.logger.error(
-        `Failed to clone config: ${error.message}`,
-        error.stack,
-      );
-      return {
-        success: false,
-        message: `Failed to clone config: ${error.message}`,
-      };
-    }
-  }
+  //     return {
+  //       success: true,
+  //       message: 'Config cloned successfully',
+  //       config: newConfig!,
+  //       validation,
+  //     };
+  //   } catch (error) {
+  //     this.logger.error(
+  //       `Failed to clone config: ${error.message}`,
+  //       error.stack,
+  //     );
+  //     return {
+  //       success: false,
+  //       message: `Failed to clone config: ${error.message}`,
+  //     };
+  //   }
+  // }
 
   async getConfigById(
     id: number,
@@ -588,7 +463,7 @@ export class ConfigService {
       tenantId,
       token,
     );
-    return config ? this.enrichConfigWithSourceFields(config) : null;
+    return config; ///g ? this.enrichConfigWithSourceFields(config) : null;
   }
 
   async getConfigByEndpoint(
@@ -603,7 +478,7 @@ export class ConfigService {
       tenantId,
       token,
     );
-    return configs.map((config) => this.enrichConfigWithSourceFields(config));
+    return configs; // configs.map((config) => this.enrichConfigWithSourceFields(config));
   }
 
   async getAllConfigs(tenantId: string, token: string): Promise<Config[]> {
@@ -611,7 +486,7 @@ export class ConfigService {
       tenantId,
       token,
     );
-    return configs.map((config) => this.enrichConfigWithSourceFields(config));
+    return configs; //  configs.map((config) => this.enrichConfigWithSourceFields(config));
   }
 
   async getPendingApprovals(
@@ -642,288 +517,288 @@ export class ConfigService {
     );
   }
 
-  async updateConfig(
-    id: number,
-    dto: UpdateConfigDto,
-    tenantId: string,
-    userId: string,
-    token: string,
-  ): Promise<ConfigResponseDto> {
-    const config = await this.configRepository.findConfigById(
-      id,
-      tenantId,
-      token,
-    );
+  // async updateConfig(
+  //   id: number,
+  //   dto: UpdateConfigDto,
+  //   tenantId: string,
+  //   userId: string,
+  //   token: string,
+  // ): Promise<ConfigResponseDto> {
+  //   const config = await this.configRepository.findConfigById(
+  //     id,
+  //     tenantId,
+  //     token,
+  //   );
 
-    if (!config) {
-      throw new NotFoundException(`Config with ID ${id} not found`);
-    }
+  //   if (!config) {
+  //     throw new NotFoundException(`Config with ID ${id} not found`);
+  //   }
 
-    const editValidation = this.workflowService.canEditConfig(
-      config.status as ConfigStatus,
-    );
-    if (!editValidation.canEdit) {
-      return {
-        success: false,
-        message: editValidation.message || 'Editing not allowed.',
-      };
-    }
+  //   const editValidation = this.workflowService.canEditConfig(
+  //     config.status as ConfigStatus,
+  //   );
+  //   if (!editValidation.canEdit) {
+  //     return {
+  //       success: false,
+  //       message: editValidation.message || 'Editing not allowed.',
+  //     };
+  //   }
 
-    if (dto.schema) {
-      const validation = this.validateSchema(dto.schema);
-      if (!validation.success) {
-        return {
-          success: false,
-          message: 'Schema validation failed',
-          validation,
-        };
-      }
-    }
+  //   if (dto.schema) {
+  //     const validation = this.validateSchema(dto.schema);
+  //     if (!validation.success) {
+  //       return {
+  //         success: false,
+  //         message: 'Schema validation failed',
+  //         validation,
+  //       };
+  //     }
+  //   }
 
-    let finalSchema = dto.schema;
-    if (dto.fieldAdjustments && dto.fieldAdjustments.length > 0) {
-      this.logger.log(
-        `Applying ${dto.fieldAdjustments.length} field adjustments to config ${id}`,
-      );
+  //   let finalSchema = dto.schema;
+  //   if (dto.fieldAdjustments && dto.fieldAdjustments.length > 0) {
+  //     this.logger.log(
+  //       `Applying ${dto.fieldAdjustments.length} field adjustments to config ${id}`,
+  //     );
 
-      const baseSchema = dto.schema || config.schema;
+  //     const baseSchema = dto.schema || config.schema;
 
-      const existingSourceFields =
-        this.jsonSchemaConverter.convertFromJSONSchema(baseSchema);
+  //     const existingSourceFields =
+  //       this.jsonSchemaConverter.convertFromJSONSchema(baseSchema);
 
-      // Apply field adjustments
-      const adjustedSourceFields = applyFieldAdjustments(
-        existingSourceFields,
-        dto.fieldAdjustments,
-      );
+  //     // Apply field adjustments
+  //     const adjustedSourceFields = applyFieldAdjustments(
+  //       existingSourceFields,
+  //       dto.fieldAdjustments,
+  //     );
 
-      const duplicateErrors =
-        this.validateNoDuplicateSchemaFields(adjustedSourceFields);
-      if (duplicateErrors.length > 0) {
-        this.logger.error(
-          'Duplicate fields detected after field adjustments during config update',
-          {
-            errors: duplicateErrors,
-            configId: id,
-            tenantId,
-            userId,
-            fieldAdjustments: dto.fieldAdjustments,
-            totalAdjustedFields: adjustedSourceFields.length,
-            context: 'updateConfig',
-          },
-        );
-        return {
-          success: false,
-          message: 'Field adjustments resulted in duplicate fields',
-          validation: {
-            success: false,
-            errors: duplicateErrors,
-            warnings: [],
-          },
-        };
-      }
+  //     const duplicateErrors =
+  //       this.validateNoDuplicateSchemaFields(adjustedSourceFields);
+  //     if (duplicateErrors.length > 0) {
+  //       this.logger.error(
+  //         'Duplicate fields detected after field adjustments during config update',
+  //         {
+  //           errors: duplicateErrors,
+  //           configId: id,
+  //           tenantId,
+  //           userId,
+  //           fieldAdjustments: dto.fieldAdjustments,
+  //           totalAdjustedFields: adjustedSourceFields.length,
+  //           context: 'updateConfig',
+  //         },
+  //       );
+  //       return {
+  //         success: false,
+  //         message: 'Field adjustments resulted in duplicate fields',
+  //         validation: {
+  //           success: false,
+  //           errors: duplicateErrors,
+  //           warnings: [],
+  //         },
+  //       };
+  //     }
 
-      // Regenerate JSON schema with adjusted fields
-      finalSchema =
-        this.jsonSchemaConverter.convertToJSONSchema(adjustedSourceFields);
+  //     // Regenerate JSON schema with adjusted fields
+  //     finalSchema =
+  //       this.jsonSchemaConverter.convertToJSONSchema(adjustedSourceFields);
 
-      this.logger.log(
-        'Successfully applied field adjustments and regenerated schema',
-      );
+  //     this.logger.log(
+  //       'Successfully applied field adjustments and regenerated schema',
+  //     );
 
-      const validation = this.validateSchema(finalSchema);
-      if (!validation.success) {
-        return {
-          success: false,
-          message: 'Adjusted schema validation failed',
-          validation,
-        };
-      }
-    }
+  //     const validation = this.validateSchema(finalSchema);
+  //     if (!validation.success) {
+  //       return {
+  //         success: false,
+  //         message: 'Adjusted schema validation failed',
+  //         validation,
+  //       };
+  //     }
+  //   }
 
-    if (dto.mapping && dto.mapping.length > 0) {
-      const schemaToValidate = finalSchema || dto.schema || config.schema;
-      for (let i = 0; i < dto.mapping.length; i++) {
-        const mapping = dto.mapping[i];
-        this.validateMapping(mapping, schemaToValidate, tenantId);
+  //   if (dto.mapping && dto.mapping.length > 0) {
+  //     const schemaToValidate = finalSchema || dto.schema || config.schema;
+  //     for (let i = 0; i < dto.mapping.length; i++) {
+  //       const mapping = dto.mapping[i];
+  //       await this.validateMapping(mapping, schemaToValidate, tenantId);
 
-        this.validateNoDuplicateDestination(
-          mapping,
-          dto.mapping.slice(0, i),
-          false,
-        );
-      }
-    }
+  //       this.validateNoDuplicateDestination(
+  //         mapping,
+  //         dto.mapping.slice(0, i),
+  //         false,
+  //       );
+  //     }
+  //   }
 
-    const updateData = { ...dto };
+  //   const updateData = { ...dto };
 
-    if (finalSchema) {
-      updateData.schema = finalSchema;
-    }
+  //   if (finalSchema) {
+  //     updateData.schema = finalSchema;
+  //   }
 
-    const isVersionChanging =
-      dto.version !== undefined && dto.version !== config.version;
-    const isMsgFamChanging =
-      dto.msgFam !== undefined && dto.msgFam !== config.msgFam;
+  //   const isVersionChanging =
+  //     dto.version !== undefined && dto.version !== config.version;
+  //   const isMsgFamChanging =
+  //     dto.msgFam !== undefined && dto.msgFam !== config.msgFam;
 
-    if (isVersionChanging || isMsgFamChanging) {
-      this.logger.log(
-        `msgFam or version changed for config ${id}. Creating NEW config instead of updating.`,
-      );
+  //   if (isVersionChanging || isMsgFamChanging) {
+  //     this.logger.log(
+  //       `msgFam or version changed for config ${id}. Creating NEW config instead of updating.`,
+  //     );
 
-      const newVersion = dto.version ?? config.version;
-      const newTransactionType = dto.transactionType ?? config.transactionType;
-      const newMsgFam = dto.msgFam ?? config.msgFam;
+  //     const newVersion = dto.version ?? config.version;
+  //     const newTransactionType = dto.transactionType ?? config.transactionType;
+  //     const newMsgFam = dto.msgFam ?? config.msgFam;
 
-      // Check if this new combination already exists
-      const existingConfig =
-        await this.configRepository.findConfigByMsgFamVersionAndTransactionType(
-          newMsgFam,
-          newVersion,
-          newTransactionType,
-          tenantId,
-          token,
-        );
+  //     // Check if this new combination already exists
+  //     const existingConfig =
+  //       await this.configRepository.findConfigByMsgFamVersionAndTransactionType(
+  //         newMsgFam,
+  //         newVersion,
+  //         newTransactionType,
+  //         tenantId,
+  //         token,
+  //       );
 
-      if (existingConfig) {
-        return {
-          success: false,
-          message: `Config with message family '${newMsgFam}', transaction type '${newTransactionType}', and version '${newVersion}' already exists for this tenant. Please use different values.`,
-        };
-      }
+  //     if (existingConfig) {
+  //       return {
+  //         success: false,
+  //         message: `Config with message family '${newMsgFam}', transaction type '${newTransactionType}', and version '${newVersion}' already exists for this tenant. Please use different values.`,
+  //       };
+  //     }
 
-      // Create new config by inserting directly into repository
-      const newEndpointPath = this.generateEndpointPath(
-        tenantId,
-        newVersion,
-        newTransactionType,
-        newMsgFam,
-      );
+  //     // Create new config by inserting directly into repository
+  //     const newEndpointPath = this.generateEndpointPath(
+  //       tenantId,
+  //       newVersion,
+  //       newTransactionType,
+  //       newMsgFam,
+  //     );
 
-      const newConfigData = {
-        msgFam: newMsgFam,
-        version: newVersion,
-        transactionType: newTransactionType,
-        endpointPath: newEndpointPath,
-        contentType: config.contentType,
-        schema: finalSchema || config.schema,
-        mapping: dto.mapping ?? config.mapping,
-        functions: dto.functions ?? config.functions,
-        status: ConfigStatus.IN_PROGRESS,
-        tenantId,
-        createdBy: userId,
-      };
+  //     const newConfigData = {
+  //       msgFam: newMsgFam,
+  //       version: newVersion,
+  //       transactionType: newTransactionType,
+  //       endpointPath: newEndpointPath,
+  //       contentType: config.contentType,
+  //       schema: finalSchema || config.schema,
+  //       mapping: dto.mapping ?? config.mapping,
+  //       functions: dto.functions ?? config.functions,
+  //       status: ConfigStatus.IN_PROGRESS,
+  //       tenantId,
+  //       createdBy: userId,
+  //     };
 
-      if (newConfigData.mapping && newConfigData.mapping.length > 0) {
-        for (let i = 0; i < newConfigData.mapping.length; i++) {
-          const mapping = newConfigData.mapping[i];
-          this.validateMapping(mapping, newConfigData.schema, tenantId);
+  //     if (newConfigData.mapping && newConfigData.mapping.length > 0) {
+  //       for (let i = 0; i < newConfigData.mapping.length; i++) {
+  //         const mapping = newConfigData.mapping[i];
+  //         this.validateMapping(mapping, newConfigData.schema, tenantId);
 
-          this.validateNoDuplicateDestination(
-            mapping,
-            newConfigData.mapping.slice(0, i),
-            false,
-          );
-        }
-      }
+  //         this.validateNoDuplicateDestination(
+  //           mapping,
+  //           newConfigData.mapping.slice(0, i),
+  //           false,
+  //         );
+  //       }
+  //     }
 
-      this.logger.log(
-        `Creating new config with msgFam: ${newMsgFam}, version: ${newVersion}, transactionType: ${newTransactionType}`,
-      );
+  //     this.logger.log(
+  //       `Creating new config with msgFam: ${newMsgFam}, version: ${newVersion}, transactionType: ${newTransactionType}`,
+  //     );
 
-      const newConfigId = await this.configRepository.createConfig(
-        newConfigData as any,
-        token,
-      );
+  //     const newConfigId = await this.configRepository.createConfig(
+  //       newConfigData as any,
+  //       token,
+  //     );
 
-      await this.auditService.logAction({
-        entityType: 'CONFIG',
-        action: 'CREATE_CONFIG',
-        actor: userId,
-        tenantId,
-        endpointName: `Config ${newConfigId} (created from update of config ${id})`,
-      });
+  //     await this.auditService.logAction({
+  //       entityType: 'CONFIG',
+  //       action: 'CREATE_CONFIG',
+  //       actor: userId,
+  //       tenantId,
+  //       endpointName: `Config ${newConfigId} (created from update of config ${id})`,
+  //     });
 
-      const newConfig = await this.configRepository.findConfigById(
-        newConfigId,
-        tenantId,
-        token,
-      );
+  //     const newConfig = await this.configRepository.findConfigById(
+  //       newConfigId,
+  //       tenantId,
+  //       token,
+  //     );
 
-      return {
-        success: true,
-        message: `msgFam or version changed. Created new config with ID ${newConfigId} instead of updating existing config ${id}.`,
-        config: newConfig!,
-      };
-    }
+  //     return {
+  //       success: true,
+  //       message: `msgFam or version changed. Created new config with ID ${newConfigId} instead of updating existing config ${id}.`,
+  //       config: newConfig!,
+  //     };
+  //   }
 
-    const isTransactionTypeChanging =
-      dto.transactionType !== undefined &&
-      dto.transactionType !== config.transactionType;
+  //   const isTransactionTypeChanging =
+  //     dto.transactionType !== undefined &&
+  //     dto.transactionType !== config.transactionType;
 
-    if (isTransactionTypeChanging) {
-      const newTransactionType = dto.transactionType!;
+  //   if (isTransactionTypeChanging) {
+  //     const newTransactionType = dto.transactionType!;
 
-      const existingConfig =
-        await this.configRepository.findConfigByMsgFamVersionAndTransactionType(
-          config.msgFam,
-          config.version,
-          newTransactionType,
-          tenantId,
-          token,
-        );
+  //     const existingConfig =
+  //       await this.configRepository.findConfigByMsgFamVersionAndTransactionType(
+  //         config.msgFam,
+  //         config.version,
+  //         newTransactionType,
+  //         tenantId,
+  //         token,
+  //       );
 
-      if (existingConfig && existingConfig.id !== id) {
-        return {
-          success: false,
-          message: `Config with message family '${config.msgFam}', transaction type '${newTransactionType}', and version '${config.version}' already exists for this tenant. Please use different values.`,
-        };
-      }
-    }
+  //     if (existingConfig && existingConfig.id !== id) {
+  //       return {
+  //         success: false,
+  //         message: `Config with message family '${config.msgFam}', transaction type '${newTransactionType}', and version '${config.version}' already exists for this tenant. Please use different values.`,
+  //       };
+  //     }
+  //   }
 
-    if (
-      dto.transactionType !== undefined ||
-      dto.msgFam !== undefined ||
-      dto.version !== undefined
-    ) {
-      const newTransactionType = dto.transactionType ?? config.transactionType;
-      const newMsgFam = dto.msgFam ?? config.msgFam;
-      const newVersion = dto.version ?? config.version;
+  //   if (
+  //     dto.transactionType !== undefined ||
+  //     dto.msgFam !== undefined ||
+  //     dto.version !== undefined
+  //   ) {
+  //     const newTransactionType = dto.transactionType ?? config.transactionType;
+  //     const newMsgFam = dto.msgFam ?? config.msgFam;
+  //     const newVersion = dto.version ?? config.version;
 
-      updateData.endpointPath = this.generateEndpointPath(
-        tenantId,
-        newVersion,
-        newTransactionType,
-        newMsgFam,
-      );
+  //     updateData.endpointPath = this.generateEndpointPath(
+  //       tenantId,
+  //       newVersion,
+  //       newTransactionType,
+  //       newMsgFam,
+  //     );
 
-      this.logger.log(
-        `Auto-generated new endpoint path: ${updateData.endpointPath} for config ${id}`,
-      );
-    }
+  //     this.logger.log(
+  //       `Auto-generated new endpoint path: ${updateData.endpointPath} for config ${id}`,
+  //     );
+  //   }
 
-    await this.configRepository.updateConfig(id, tenantId, updateData, token);
+  //   await this.configRepository.updateConfig(id, tenantId, updateData, token);
 
-    await this.auditService.logAction({
-      entityType: 'CONFIG',
-      action: 'UPDATE_CONFIG',
-      actor: userId,
-      tenantId,
-      endpointName: `Config ${id}`,
-    });
+  //   await this.auditService.logAction({
+  //     entityType: 'CONFIG',
+  //     action: 'UPDATE_CONFIG',
+  //     actor: userId,
+  //     tenantId,
+  //     endpointName: `Config ${id}`,
+  //   });
 
-    const updatedConfig = await this.configRepository.findConfigById(
-      id,
-      tenantId,
-      token,
-    );
+  //   const updatedConfig = await this.configRepository.findConfigById(
+  //     id,
+  //     tenantId,
+  //     token,
+  //   );
 
-    return {
-      success: true,
-      message: 'Config updated successfully',
-      config: updatedConfig!,
-    };
-  }
+  //   return {
+  //     success: true,
+  //     message: 'Config updated successfully',
+  //     config: updatedConfig!,
+  //   };
+  // }
 
   async deleteConfig(
     id: number,
@@ -957,63 +832,63 @@ export class ConfigService {
     };
   }
 
-  async addMapping(
-    id: number,
-    mappingDto: AddMappingDto,
-    tenantId: string,
-    userId: string,
-    token: string,
-  ): Promise<ConfigResponseDto> {
-    const config = await this.configRepository.findConfigById(
-      id,
-      tenantId,
-      token,
-    );
+  // async addMapping(
+  //   id: number,
+  //   mappingDto: AddMappingDto,
+  //   tenantId: string,
+  //   userId: string,
+  //   token: string,
+  // ): Promise<ConfigResponseDto> {
+  //   const config = await this.configRepository.findConfigById(
+  //     id,
+  //     tenantId,
+  //     token,
+  //   );
 
-    if (!config) {
-      throw new NotFoundException(`Config with ID ${id} not found`);
-    }
+  //   if (!config) {
+  //     throw new NotFoundException(`Config with ID ${id} not found`);
+  //   }
 
-    const newMapping = this.createMappingFromDto(mappingDto);
-    this.validateMapping(newMapping, config.schema, tenantId);
+  //   const newMapping = this.createMappingFromDto(mappingDto);
+  //   this.validateMapping(newMapping, config.schema, tenantId);
 
-    this.validateNoDuplicateDestination(
-      newMapping,
-      config.mapping || [],
-      false,
-    );
+  //   this.validateNoDuplicateDestination(
+  //     newMapping,
+  //     config.mapping || [],
+  //     false,
+  //   );
 
-    const updatedMappings = [...(config.mapping || []), newMapping];
+  //   const updatedMappings = [...(config.mapping || []), newMapping];
 
-    await this.configRepository.updateConfig(
-      id,
-      tenantId,
-      {
-        mapping: updatedMappings,
-      },
-      token,
-    );
+  //   await this.configRepository.updateConfig(
+  //     id,
+  //     tenantId,
+  //     {
+  //       mapping: updatedMappings,
+  //     },
+  //     token,
+  //   );
 
-    await this.auditService.logAction({
-      entityType: 'MAPPING',
-      action: 'ADD_MAPPING',
-      actor: userId,
-      tenantId,
-      endpointName: `Config ${id}`,
-    });
+  //   await this.auditService.logAction({
+  //     entityType: 'MAPPING',
+  //     action: 'ADD_MAPPING',
+  //     actor: userId,
+  //     tenantId,
+  //     endpointName: `Config ${id}`,
+  //   });
 
-    const updatedConfig = await this.configRepository.findConfigById(
-      id,
-      tenantId,
-      token,
-    );
+  //   const updatedConfig = await this.configRepository.findConfigById(
+  //     id,
+  //     tenantId,
+  //     token,
+  //   );
 
-    return {
-      success: true,
-      message: 'Mapping added successfully',
-      config: updatedConfig!,
-    };
-  }
+  //   return {
+  //     success: true,
+  //     message: 'Mapping added successfully',
+  //     config: updatedConfig!,
+  //   };
+  // }
 
   async removeMapping(
     id: number,
@@ -1070,70 +945,70 @@ export class ConfigService {
     };
   }
 
-  async updateMapping(
-    id: number,
-    mappingIndex: number,
-    mappingDto: AddMappingDto,
-    tenantId: string,
-    userId: string,
-    token: string,
-  ): Promise<ConfigResponseDto> {
-    const config = await this.configRepository.findConfigById(
-      id,
-      tenantId,
-      token,
-    );
+  // async updateMapping(
+  //   id: number,
+  //   mappingIndex: number,
+  //   mappingDto: AddMappingDto,
+  //   tenantId: string,
+  //   userId: string,
+  //   token: string,
+  // ): Promise<ConfigResponseDto> {
+  //   const config = await this.configRepository.findConfigById(
+  //     id,
+  //     tenantId,
+  //     token,
+  //   );
 
-    if (!config) {
-      throw new NotFoundException(`Config with ID ${id} not found`);
-    }
+  //   if (!config) {
+  //     throw new NotFoundException(`Config with ID ${id} not found`);
+  //   }
 
-    if (!config.mapping || mappingIndex >= config.mapping.length) {
-      throw new BadRequestException('Invalid mapping index');
-    }
+  //   if (!config.mapping || mappingIndex >= config.mapping.length) {
+  //     throw new BadRequestException('Invalid mapping index');
+  //   }
 
-    const updatedMapping = this.createMappingFromDto(mappingDto);
-    this.validateMapping(updatedMapping, config.schema, tenantId);
+  //   const updatedMapping = this.createMappingFromDto(mappingDto);
+  //   this.validateMapping(updatedMapping, config.schema, tenantId);
 
-    this.validateNoDuplicateDestination(
-      updatedMapping,
-      config.mapping,
-      true,
-      mappingIndex,
-    );
+  //   this.validateNoDuplicateDestination(
+  //     updatedMapping,
+  //     config.mapping,
+  //     true,
+  //     mappingIndex,
+  //   );
 
-    const updatedMappings = [...config.mapping];
-    updatedMappings[mappingIndex] = updatedMapping;
+  //   const updatedMappings = [...config.mapping];
+  //   updatedMappings[mappingIndex] = updatedMapping;
 
-    await this.configRepository.updateConfig(
-      id,
-      tenantId,
-      {
-        mapping: updatedMappings,
-      },
-      token,
-    );
+  //   await this.configRepository.updateConfig(
+  //     id,
+  //     tenantId,
+  //     {
+  //       mapping: updatedMappings,
+  //     },
+  //     token,
+  //   );
 
-    await this.auditService.logAction({
-      entityType: 'MAPPING',
-      action: 'UPDATE_MAPPING',
-      actor: userId,
-      tenantId,
-      endpointName: `Config ${id}`,
-    });
+  //   await this.auditService.logAction({
+  //     entityType: 'MAPPING',
+  //     action: 'UPDATE_MAPPING',
+  //     actor: userId,
+  //     tenantId,
+  //     endpointName: `Config ${id}`,
+  //   });
 
-    const updatedConfig = await this.configRepository.findConfigById(
-      id,
-      tenantId,
-      token,
-    );
+  //   const updatedConfig = await this.configRepository.findConfigById(
+  //     id,
+  //     tenantId,
+  //     token,
+  //   );
 
-    return {
-      success: true,
-      message: 'Mapping updated successfully',
-      config: updatedConfig!,
-    };
-  }
+  //   return {
+  //     success: true,
+  //     message: 'Mapping updated successfully',
+  //     config: updatedConfig!,
+  //   };
+  // }
 
   async addFunction(
     id: number,
@@ -1750,94 +1625,94 @@ export class ConfigService {
     }
   }
 
-  private validateMapping(
-    mapping: FieldMapping,
-    schema: JSONSchema,
-    _tenantId: string,
-  ): void {
-    if (
-      mapping.transformation === 'CONSTANT' ||
-      mapping.constantValue !== undefined
-    ) {
-      this.validateConstantMapping(mapping);
-      return;
-    }
+  // private async validateMapping(
+  //   mapping: FieldMapping,
+  //   schema: JSONSchema,
+  //   _tenantId: string,
+  // ): Promise<void> {
+  //   if (
+  //     mapping.transformation === 'CONSTANT' ||
+  //     mapping.constantValue !== undefined
+  //   ) {
+  //     await this.validateConstantMapping(mapping);
+  //     return;
+  //   }
 
-    const allPaths = this.extractAllPathsFromSchema(schema);
-    const sourceTypes: string[] = [];
-    if (mapping.source && Array.isArray(mapping.source)) {
-      for (const src of mapping.source) {
-        if (!allPaths.includes(src)) {
-          throw new BadRequestException(
-            `Source field '${src}' not found in schema`,
-          );
-        }
+  //   const allPaths = this.extractAllPathsFromSchema(schema);
+  //   const sourceTypes: string[] = [];
+  //   if (mapping.source && Array.isArray(mapping.source)) {
+  //     for (const src of mapping.source) {
+  //       if (!allPaths.includes(src)) {
+  //         throw new BadRequestException(
+  //           `Source field '${src}' not found in schema`,
+  //         );
+  //       }
 
-        const sourceType = this.getFieldTypeFromSchema(schema, src);
-        if (sourceType) {
-          sourceTypes.push(sourceType);
-        }
-      }
-    }
-    const destinations = Array.isArray(mapping.destination)
-      ? mapping.destination
-      : [mapping.destination];
+  //       const sourceType = this.getFieldTypeFromSchema(schema, src);
+  //       if (sourceType) {
+  //         sourceTypes.push(sourceType);
+  //       }
+  //     }
+  //   }
+  //   const destinations = Array.isArray(mapping.destination)
+  //     ? mapping.destination
+  //     : [mapping.destination];
 
-    for (const dest of destinations) {
-      if (typeof dest !== 'string' || !dest) {
-        continue;
-      }
+  //   for (const dest of destinations) {
+  //     if (typeof dest !== 'string' || !dest) {
+  //       continue;
+  //     }
 
-      const isValid = this.tazamaDataModelService.isValidDestinationPath(dest);
-      if (!isValid) {
-        throw new BadRequestException(
-          `Destination field '${dest}' is not a valid Tazama data model field. Use a field from the Tazama internal data model (e.g., transactionDetails.Amt, redis.dbtrId).`,
-        );
-      }
-      const destinationType = this.tazamaDataModelService.getFieldType(dest);
-      if (destinationType && sourceTypes.length > 0) {
-        this.validateMappingTypeCompatibility(
-          mapping,
-          sourceTypes,
-          destinationType,
-          dest,
-        );
-      }
-    }
-  }
-  private validateConstantMapping(mapping: FieldMapping): void {
-    if (mapping.constantValue === undefined) {
-      return;
-    }
+  //     const isValid = await this.tazamaDataModelService.isValidDestinationPath(dest);
+  //     if (!isValid) {
+  //       throw new BadRequestException(
+  //         `Destination field '${dest}' is not a valid Tazama data model field. Use a field from the Tazama internal data model (e.g., transactionDetails.Amt, redis.dbtrId).`,
+  //       );
+  //     }
+  //     const destinationType = await this.tazamaDataModelService.getFieldType(dest);
+  //     if (destinationType && sourceTypes.length > 0) {
+  //       await this.validateMappingTypeCompatibility(
+  //         mapping,
+  //         sourceTypes,
+  //         destinationType,
+  //         dest,
+  //       );
+  //     }
+  //   }
+  // }
+  // private async validateConstantMapping(mapping: FieldMapping): Promise<void> {
+  //   if (mapping.constantValue === undefined) {
+  //     return;
+  //   }
 
-    const destinations = Array.isArray(mapping.destination)
-      ? mapping.destination
-      : [mapping.destination];
+  //   const destinations = Array.isArray(mapping.destination)
+  //     ? mapping.destination
+  //     : [mapping.destination];
 
-    for (const dest of destinations) {
-      if (typeof dest !== 'string' || !dest) {
-        continue;
-      }
-      const destinationType = this.tazamaDataModelService.getFieldType(dest);
-      if (destinationType) {
-        const constantType = typeof mapping.constantValue;
-        const destTypeLower = destinationType.toLowerCase();
+  //   for (const dest of destinations) {
+  //     if (typeof dest !== 'string' || !dest) {
+  //       continue;
+  //     }
+  //     const destinationType = await this.tazamaDataModelService.getFieldType(dest);
+  //     if (destinationType) {
+  //       const constantType = typeof mapping.constantValue;
+  //       const destTypeLower = destinationType.toLowerCase();
 
-        if (!this.areTypesCompatible(constantType, destTypeLower)) {
-          throw new BadRequestException(
-            `Constant value type mismatch: Cannot assign constant value '${mapping.constantValue}' of type '${constantType}' to destination field '${dest}' of type '${destTypeLower}'.`,
-          );
-        }
-      }
-    }
-  }
+  //       if (!this.areTypesCompatible(constantType, destTypeLower)) {
+  //         throw new BadRequestException(
+  //           `Constant value type mismatch: Cannot assign constant value '${mapping.constantValue}' of type '${constantType}' to destination field '${dest}' of type '${destTypeLower}'.`,
+  //         );
+  //       }
+  //     }
+  //   }
+  // }
 
-  private validateMappingTypeCompatibility(
+  private async validateMappingTypeCompatibility(
     mapping: FieldMapping,
     sourceTypes: string[],
     destinationType: string,
     destinationPath: string,
-  ): void {
+  ): Promise<void> {
     const destTypeLower = destinationType.toLowerCase();
     const transformation = mapping.transformation || 'NONE';
     this.logger.debug(
@@ -2069,57 +1944,57 @@ export class ConfigService {
     return paths;
   }
 
-  async getFieldInfoFromSchema(
-    configId: number,
-    fieldPath: string,
-    tenantId: string,
-    token: string,
-  ): Promise<{ type: FieldType; isRequired: boolean } | null> {
-    const config = await this.configRepository.findConfigById(
-      configId,
-      tenantId,
-      token,
-    );
-    if (!config) {
-      return null;
-    }
+  // async getFieldInfoFromSchema(
+  //   configId: number,
+  //   fieldPath: string,
+  //   tenantId: string,
+  //   token: string,
+  // ): Promise<{ type: FieldType; isRequired: boolean } | null> {
+  //   const config = await this.configRepository.findConfigById(
+  //     configId,
+  //     tenantId,
+  //     token,
+  //   );
+  //   if (!config) {
+  //     return null;
+  //   }
 
-    try {
-      const sourceFields = this.jsonSchemaConverter.convertFromJSONSchema(
-        config.schema,
-      );
+  //   try {
+  //     const sourceFields = this.jsonSchemaConverter.convertFromJSONSchema(
+  //       config.schema,
+  //     );
 
-      const findField = (fields: any[], path: string): any => {
-        for (const field of fields) {
-          if (field.path === path) {
-            return field;
-          }
-          if (field.children) {
-            const childField = findField(field.children, path);
-            if (childField) {
-              return childField;
-            }
-          }
-        }
-        return null;
-      };
+  //     const findField = (fields: any[], path: string): any => {
+  //       for (const field of fields) {
+  //         if (field.path === path) {
+  //           return field;
+  //         }
+  //         if (field.children) {
+  //           const childField = findField(field.children, path);
+  //           if (childField) {
+  //             return childField;
+  //           }
+  //         }
+  //       }
+  //       return null;
+  //     };
 
-      const field = findField(sourceFields, fieldPath);
-      if (field) {
-        return {
-          type: field.type,
-          isRequired: field.isRequired,
-        };
-      }
-    } catch (error) {
-      this.logger.warn(
-        `Failed to extract field info for path ${fieldPath}:`,
-        error,
-      );
-    }
+  //     const field = findField(sourceFields, fieldPath);
+  //     if (field) {
+  //       return {
+  //         type: field.type,
+  //         isRequired: field.isRequired,
+  //       };
+  //     }
+  //   } catch (error) {
+  //     this.logger.warn(
+  //       `Failed to extract field info for path ${fieldPath}:`,
+  //       error,
+  //     );
+  //   }
 
-    return null;
-  }
+  //   return null;
+  // }
 
   // ======================== WORKFLOW METHODS ========================
 
@@ -2736,49 +2611,49 @@ export class ConfigService {
     };
   }
 
-  private enrichConfigWithSourceFields(config: Config): ConfigWithSourceFields {
-    try {
-      if (config && config.schema) {
-        const hierarchicalFields =
-          this.jsonSchemaConverter.convertFromJSONSchema(config.schema);
+  // private enrichConfigWithSourceFields(config: Config): ConfigWithSourceFields {
+  //   try {
+  //     if (config && config.schema) {
+  //       const hierarchicalFields =
+  //         this.jsonSchemaConverter.convertFromJSONSchema(config.schema);
 
-        this.logger.debug(
-          `Hierarchical fields count: ${hierarchicalFields.length}`,
-        );
-        if (hierarchicalFields.length > 0) {
-          this.logger.debug(
-            `First hierarchical field: ${JSON.stringify(hierarchicalFields[0])}`,
-          );
-        }
+  //       this.logger.debug(
+  //         `Hierarchical fields count: ${hierarchicalFields.length}`,
+  //       );
+  //       if (hierarchicalFields.length > 0) {
+  //         this.logger.debug(
+  //           `First hierarchical field: ${JSON.stringify(hierarchicalFields[0])}`,
+  //         );
+  //       }
 
-        const sourceFields = this.flattenSchemaFields(hierarchicalFields);
+  //       const sourceFields = this.flattenSchemaFields(hierarchicalFields);
 
-        this.logger.debug(
-          `Flattened source fields count: ${sourceFields.length}`,
-        );
-        if (sourceFields.length === 0) {
-          this.logger.warn(
-            'No source fields found after flattening. This might indicate an issue with schema structure.',
-          );
-          this.logger.debug(`Schema: ${JSON.stringify(config.schema)}`);
-          this.logger.debug(
-            `Hierarchical fields: ${JSON.stringify(hierarchicalFields)}`,
-          );
-        }
+  //       this.logger.debug(
+  //         `Flattened source fields count: ${sourceFields.length}`,
+  //       );
+  //       if (sourceFields.length === 0) {
+  //         this.logger.warn(
+  //           'No source fields found after flattening. This might indicate an issue with schema structure.',
+  //         );
+  //         this.logger.debug(`Schema: ${JSON.stringify(config.schema)}`);
+  //         this.logger.debug(
+  //           `Hierarchical fields: ${JSON.stringify(hierarchicalFields)}`,
+  //         );
+  //       }
 
-        return {
-          ...config,
-          sourceFields,
-        };
-      }
-    } catch (error) {
-      this.logger.error(
-        `Failed to enrich config with source fields: ${error.message}`,
-      );
-      this.logger.error(`Error stack: ${error.stack}`);
-    }
-    return config;
-  }
+  //       return {
+  //         ...config,
+  //         sourceFields,
+  //       };
+  //     }
+  //   } catch (error) {
+  //     this.logger.error(
+  //       `Failed to enrich config with source fields: ${error.message}`,
+  //     );
+  //     this.logger.error(`Error stack: ${error.stack}`);
+  //   }
+  //   return config;
+  // }
 
   private flattenSchemaFields(fields: SchemaField[]): SchemaField[] {
     const flattened: SchemaField[] = [];
