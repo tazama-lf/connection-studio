@@ -141,7 +141,7 @@ export class AdminServiceClient {
   async createPushJob(
     job: Record<string, unknown>,
     token: string,
-  ): Promise<{ id: string | null }> {
+  ): Promise<ISuccess> {
     this.logger.log(`Validating job creation: ${job}`);
 
     try {
@@ -168,7 +168,7 @@ export class AdminServiceClient {
   async createPullJob(
     job: Record<string, unknown>,
     token: string,
-  ): Promise<{ id: string }> {
+  ): Promise<ISuccess> {
     this.logger.log(`Validating job creation: ${job}`);
 
     try {
@@ -407,27 +407,6 @@ export class AdminServiceClient {
       return response.data;
     } catch (error) {
       return this.handleError(error, 'scheduleCreation');
-    }
-  }
-
-  async validateExisting(tableName: string, token: string): Promise<ISuccess> {
-    this.logger.log(`Validating Existing table`);
-
-    try {
-      const response = await firstValueFrom(
-        this.httpService.get(`${this.adminServiceUrl}/v1/admin/tcs/job/table`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          params: {
-            tableName,
-          },
-        }),
-      );
-
-      return response.data;
-    } catch (error) {
-      return this.handleError(error, 'validateTable');
     }
   }
 
