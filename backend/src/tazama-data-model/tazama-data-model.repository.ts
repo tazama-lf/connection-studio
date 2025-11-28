@@ -1,11 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
 import { TazamaCollectionSchema, TazamaField } from './tazama-data-model.interfaces';
+import { CreateDestinationTypeDto, CreateFieldDto, DestinationTypeResponse, FieldResponse } from './tazama-data-model.dto';
 
 @Injectable()
 export class TazamaDataModelRepository {
   constructor(private readonly databaseService: DatabaseService) {}
 
+
+  // used 
   /**
    * Get all collections from the database
    */
@@ -39,41 +42,9 @@ export class TazamaDataModelRepository {
     return collections;
   }
 
-  /**
-   * Get a specific collection by name
-   */
-  // async getCollectionByName(
-  //   collectionName: string, 
-  //   tenantId: string = 'default'
-  // ): Promise<TazamaCollectionSchema | null> {
-  //   const query = `
-  //     SELECT 
-  //       dt.destination_type_id,
-  //       dt.name as collection_name,
-  //       dt.collection_type,
-  //       dt.description as collection_description
-  //     FROM destination d
-  //     JOIN destination_type dt ON d.destination_id = dt.destination_id
-  //     WHERE d.tenant_id = $1 AND dt.name = $2
-  //   `;
-    
-  //   const result = await this.databaseService.query(query, [tenantId, collectionName]);
-    
-  //   if (result.rows.length === 0) {
-  //     return null;
-  //   }
-    
-  //   const row = result.rows[0];
-  //   const fields = await this.getCollectionFields(row.destination_type_id);
-    
-  //   return {
-  //     name: row.collection_name as any,
-  //     type: row.collection_type as 'node' | 'edge',
-  //     description: row.collection_description,
-  //     fields: fields,
-  //   };
-  // }
 
+ 
+  // help for the above getCollectionField
   /**
    * Get all fields for a collection with nested object support
    */
@@ -145,98 +116,77 @@ export class TazamaDataModelRepository {
     return fields;
   }
 
-  // these 2 below we arent using for now
+
+  // use
   /**
-   * Add a new field to a collection
+   * Create a new destination type (collection)
    */
-  async addFieldToCollection(
-    collectionName: string,
-    field: Omit<TazamaField, 'properties'>,
-    tenantId: string = 'default'
-  ): Promise<number> {
-    // First get the collection ID
-    const collectionQuery = `
-      SELECT dt.destination_type_id
-      FROM destination d
-      JOIN destination_type dt ON d.destination_id = dt.destination_id
-      WHERE d.tenant_id = $1 AND dt.name = $2
+  async createDestinationType(dto: CreateDestinationTypeDto): Promise<DestinationTypeResponse> {
+    const query = `
+      INSERT INTO destination_type (collection_type, name, description, destination_id, created_at, updated_at)
+      VALUES ($1, $2, $3, $4, NOW(), NOW())
+      RETURNING destination_type_id, collection_type, name, description, destination_id, created_at
     `;
-    
-    const collectionResult = await this.databaseService.query(collectionQuery, [tenantId, collectionName]);
-    
-    if (collectionResult.rows.length === 0) {
-      throw new Error(`Collection ${collectionName} not found`);
-    }
-    
-    const collectionId = collectionResult.rows[0].destination_type_id;
-    
-    // Get next serial number
-    const serialQuery = `
+
+    const result = await this.databaseService.query(query, [
+      dto.collection_type,
+      dto.name,
+      dto.description || null,
+      dto.destination_id,
+    ]);
+
+    return result.rows[0];
+  }
+
+
+  // use
+  /**
+   * Check if destination type exists
+   */
+  async destinationTypeExists(destinationTypeId: number): Promise<boolean> {
+    const query = `
+      SELECT destination_type_id FROM destination_type WHERE destination_type_id = $1
+    `;
+    const result = await this.databaseService.query(query, [destinationTypeId]);
+    return result.rows.length > 0;
+  }
+
+  /**
+   * Get the next serial number for a destination type
+   */
+  async getNextSerialNumber(destinationTypeId: number): Promise<number> {
+    const query = `
       SELECT COALESCE(MAX(serial_no), 0) + 1 as next_serial
       FROM destination_type_fields
       WHERE collection_id = $1 AND parent_id IS NULL
     `;
-    
-    const serialResult = await this.databaseService.query(serialQuery, [collectionId]);
-    const nextSerial = serialResult.rows[0].next_serial;
-    
-    // Insert the new field
-    const insertQuery = `
-      INSERT INTO destination_type_fields (name, field_type, serial_no, collection_id)
-      VALUES ($1, $2, $3, $4)
-      RETURNING field_id
-    `;
-    
-    const result = await this.databaseService.query(insertQuery, [
-      field.name,
-      field.type,
-      nextSerial,
-      collectionId,
-    ]);
-    
-    return result.rows[0].field_id;
+    const result = await this.databaseService.query(query, [destinationTypeId]);
+    return result.rows[0].next_serial;
   }
 
   /**
-   * Add nested property to an object field
+   * Add a field to a destination type
    */
-  async addNestedProperty(
-    collectionName: string,
-    parentFieldName: string,
-    property: Pick<TazamaField, 'name' | 'type' | 'required'>,
-    tenantId: string = 'default'
-  ): Promise<number> {
-    // Get parent field serial_no
-    const parentQuery = `
-      SELECT dtf.serial_no, dtf.collection_id
-      FROM destination d
-      JOIN destination_type dt ON d.destination_id = dt.destination_id
-      JOIN destination_type_fields dtf ON dt.destination_type_id = dtf.collection_id
-      WHERE d.tenant_id = $1 AND dt.name = $2 AND dtf.name = $3 AND dtf.parent_id IS NULL
+  async addFieldToDestinationType(
+    destinationTypeId: number, 
+    dto: CreateFieldDto, 
+    serialNo?: number
+  ): Promise<FieldResponse> {
+    const query = `
+      INSERT INTO destination_type_fields (name, field_type, parent_id, is_active, serial_no, collection_id)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING field_id, name, field_type, parent_id, is_active, serial_no, collection_id
     `;
-    
-    const parentResult = await this.databaseService.query(parentQuery, [tenantId, collectionName, parentFieldName]);
-    
-    if (parentResult.rows.length === 0) {
-      throw new Error(`Parent field ${parentFieldName} not found in collection ${collectionName}`);
-    }
-    
-    const { serial_no: parentSerialNo, collection_id: collectionId } = parentResult.rows[0];
-    
-    // Insert the nested property
-    const insertQuery = `
-      INSERT INTO destination_type_fields (name, field_type, parent_id, collection_id)
-      VALUES ($1, $2, $3, $4)
-      RETURNING field_id
-    `;
-    
-    const result = await this.databaseService.query(insertQuery, [
-      property.name,
-      property.type,
-      parentSerialNo,
-      collectionId,
+
+    const result = await this.databaseService.query(query, [
+      dto.name,
+      dto.field_type,
+      dto.parent_id || null,
+      dto.is_active !== undefined ? dto.is_active : true,
+      serialNo || null,
+      destinationTypeId,
     ]);
-    
-    return result.rows[0].field_id;
+
+    return result.rows[0];
   }
 }
