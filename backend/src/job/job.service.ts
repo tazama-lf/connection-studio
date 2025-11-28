@@ -109,7 +109,6 @@ export class JobService {
     status: JobStatus = JobStatus.INPROGRESS,
   ): Promise<ISuccess> {
     try {
-      await this.adminServiceClient.validateExisting(job.table_name, user.token.tokenString);
 
       const id = job.id ? job.id : v4();
 
@@ -120,12 +119,12 @@ export class JobService {
 
       const jobWithId = { ...job, id, path, tenant_id: user.tenantId, status };
 
-      const created = await this.adminServiceClient.createPushJob(
+      const result = await this.adminServiceClient.createPushJob(
         jobWithId,
         user.token.tokenString,
       );
 
-      if (!created.id) {
+      if (!result.success) {
         throw new Error('Failed to create push job.');
       }
 
@@ -133,10 +132,7 @@ export class JobService {
         await this.notifyService.notifyEnrichment(id, ConfigType.PUSH);
       }
 
-      return {
-        success: true,
-        message: `Job with id ${id} successfully created`,
-      };
+      return result;
     } catch (err: unknown) {
       return this.handleError(err);
     }
@@ -148,7 +144,6 @@ export class JobService {
     status: JobStatus = JobStatus.INPROGRESS,
   ): Promise<ISuccess> {
     try {
-      await this.adminServiceClient.validateExisting(job.table_name, user.token.tokenString);
 
       const exist = await this.adminServiceClient.findScheduleById(
         job.schedule_id,
@@ -186,7 +181,7 @@ export class JobService {
         status,
       };
 
-      const created = await this.adminServiceClient.createPullJob(
+      const result = await this.adminServiceClient.createPullJob(
         jobWithId,
         user.token.tokenString,
       );
@@ -195,10 +190,7 @@ export class JobService {
         await this.notifyService.notifyEnrichment(newId, ConfigType.PULL);
       }
 
-      return {
-        success: true,
-        message: `Job with id ${created.id} successfully created`,
-      };
+      return result;
     } catch (err: unknown) {
       if (Array.isArray(err)) {
         const messages = err.flatMap((e) => Object.values(e.constraints ?? {}));
