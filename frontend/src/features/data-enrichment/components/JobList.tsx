@@ -1,37 +1,36 @@
-import React, { useState } from 'react';
-import {
-  Play,
-  Pause,
-  ShieldCheck,
-  ShieldX,
-  EyeIcon,
-  EditIcon,
-} from 'lucide-react';
-import type { DataEnrichmentJobResponse } from '../types';
-import { Button } from '../../../shared/components/Button';
-import { useAuth } from '../../auth/contexts/AuthContext';
-import {
-  isEditor,
-  isApprover,
-  isExporter,
-  isPublisher,
-} from '../../../utils/roleUtils';
-import { getStatusLabel } from '../../../shared/utils/statusColors';
-import { useToast } from '../../../shared/providers/ToastProvider';
-import { dataEnrichmentApi } from '../services';
+import CustomTable from '@common/Tables/CustomTable';
 import {
   Box,
-  Pagination,
-  Tooltip,
   Dialog,
+  DialogActions,
   DialogContent,
   DialogContentText,
-  DialogActions,
+  Pagination,
+  Tooltip,
 } from '@mui/material';
 import { handleInputFilter, handleSelectFilter } from '@shared/helpers';
 import { getDemsStatusLov } from '@shared/lovs';
-import CustomTable from '@common/Tables/CustomTable';
-import EndpointHistoryButton from './EndpointHistoryButton';
+import {
+  EditIcon,
+  EyeIcon,
+  Pause,
+  Play,
+  ShieldCheck,
+  ShieldX,
+} from 'lucide-react';
+import React, { useState } from 'react';
+import { Button } from '../../../shared/components/Button';
+import { useToast } from '../../../shared/providers/ToastProvider';
+import { getStatusLabel } from '../../../shared/utils/statusColors';
+import {
+  isApprover,
+  isEditor,
+  isExporter,
+  isPublisher,
+} from '../../../utils/roleUtils';
+import { useAuth } from '../../auth/contexts/AuthContext';
+import { dataEnrichmentApi } from '../services';
+import type { DataEnrichmentJobResponse } from '../types';
 
 interface JobListProps {
   jobs: DataEnrichmentJobResponse[];
@@ -1143,15 +1142,6 @@ export const JobList: React.FC<JobListProps> = (props) => {
         </div>
       ) : (
         <>
-          {userIsPublisher && (
-            <div className="mb-4 flex justify-end">
-              <Tooltip title="View Endpoint Last Runs" arrow placement="top">
-                <div>
-                  <EndpointHistoryButton />
-                </div>
-              </Tooltip>
-            </div>
-          )}
           <CustomTable
             columns={columns as any}
             rows={jobs}

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronLeft, SearchIcon } from 'lucide-react';
+import { ActivityIcon, ChevronLeft, SearchIcon } from 'lucide-react';
 import { ConfigList } from '../../config/components/ConfigList';
 import type { Config } from '../../config/index';
 import { configApi } from '../../config/services/configApi';
@@ -243,7 +243,11 @@ const ApproverConfigsPage: React.FC = () => {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center my-8 gap-4">
           <div className="flex items-center space-x-4">
             {/* Search Bar */}
-            <h1 className="text-2xl font-bold text-gray-800">
+            <h1
+              className="text-3xl font-bold flex items-center gap-2"
+              style={{ color: '#3b3b3b' }}
+            >
+              <ActivityIcon size={28} style={{ color: '#3b82f6' }} />
               Dynamic Endpoint Monitoring Service
             </h1>
           </div>

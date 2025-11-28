@@ -8,7 +8,7 @@ import type { DataEnrichmentJobResponse } from '../../data-enrichment/types';
 import { getPrimaryRole, isExporter } from '../../../utils/roleUtils';
 import { UI_CONFIG } from '@shared/config/app.config';
 import { Button } from '@shared';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, Database } from 'lucide-react';
 import { useNavigate } from 'react-router';
 
 export const ExporterDEJobsPage: React.FC = () => {
@@ -142,12 +142,22 @@ export const ExporterDEJobsPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-white">
       <div className="mx-auto px-4 sm:px-6 lg:px-[48px] py-[52px]">
-        <Button variant='primary' className='py-1 pl-2' onClick={()=>navigate(-1)}><ChevronLeft size={20} /> <span>Go Back</span></Button>
+        <Button
+          variant="primary"
+          className="py-1 pl-2"
+          onClick={() => navigate(-1)}
+        >
+          <ChevronLeft size={20} /> <span>Go Back</span>
+        </Button>
         {/* Search Bar */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center my-8 gap-4">
           <div className="flex items-center space-x-4">
             {/* Search Bar */}
-            <h1 className="text-2xl font-bold text-gray-800">
+            <h1
+              className="text-3xl font-bold flex items-center gap-2"
+              style={{ color: '#3b3b3b' }}
+            >
+              <Database size={28} style={{ color: '#10b981' }} />
               Data Enrichment
             </h1>
           </div>

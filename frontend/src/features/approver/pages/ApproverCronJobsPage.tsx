@@ -10,7 +10,7 @@ import {
 import { Button } from '@shared';
 import { UI_CONFIG } from '@shared/config/app.config';
 import { getPrimaryRole } from '@utils/roleUtils';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, ClockIcon } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { JobRejectionDialog } from '../../../shared/components/JobRejectionDialog';
@@ -243,8 +243,12 @@ const ApproverCronJobsPage: React.FC = () => {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center my-8 gap-4">
           <div className="flex items-center space-x-4">
             {/* Search Bar */}
-            <h1 className="text-2xl font-bold text-gray-800">
-              CRON Job Module
+            <h1
+              className="text-3xl font-bold flex items-center gap-2"
+              style={{ color: '#3b3b3b' }}
+            >
+              <ClockIcon size={28} style={{ color: '#f59e0b' }} />
+              Cron Job Module
             </h1>
           </div>
         </div>

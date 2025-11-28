@@ -1,5 +1,5 @@
 ﻿import React, { useState } from 'react';
-import { ArrowLeft, SearchIcon } from 'lucide-react';
+import { ActivityIcon, ArrowLeft, SearchIcon } from 'lucide-react';
 import { ConfigList } from '../../config/components/ConfigList';
 import { configApi } from '../../config/services/configApi';
 import { useToast } from '../../../shared/providers/ToastProvider';
@@ -17,16 +17,18 @@ const ApproverDEMS: React.FC<ApproverDEMSProps> = ({ onBack }) => {
   const [selectedConfig, setSelectedConfig] = useState<Config | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const { showSuccess, showError } = useToast();
-const { user } = useAuth();
+  const { user } = useAuth();
 
   const handleApprove = async (configId: number) => {
     try {
       console.log('Approving config:', configId);
       const result = await configApi.approveConfig(configId);
-      
+
       if (result.success) {
-        showSuccess('Configuration approved successfully and sent for deployment');
-        setRefreshKey(prev => prev + 1); // Refresh the list
+        showSuccess(
+          'Configuration approved successfully and sent for deployment',
+        );
+        setRefreshKey((prev) => prev + 1); // Refresh the list
       } else {
         showError(result.message || 'Failed to approve configuration');
       }
@@ -38,16 +40,24 @@ const { user } = useAuth();
 
   const handleReject = async (config: Config) => {
     try {
-      const reason = prompt('Please provide a reason for rejection (optional):');
+      const reason = prompt(
+        'Please provide a reason for rejection (optional):',
+      );
       // Allow empty reason, don't cancel on empty string
-      
-     console.log('Rejecting config:', config.id, 'with reason:', reason);
+
+      console.log('Rejecting config:', config.id, 'with reason:', reason);
       const userId = user?.email || user?.username || 'system';
-      const result = await configApi.rejectConfig(config.id, userId, reason || 'Configuration rejected by approver');
-      
+      const result = await configApi.rejectConfig(
+        config.id,
+        userId,
+        reason || 'Configuration rejected by approver',
+      );
+
       if (result.success) {
-        showSuccess('Configuration rejected and returned to editor for changes');
-        setRefreshKey(prev => prev + 1); // Refresh the list
+        showSuccess(
+          'Configuration rejected and returned to editor for changes',
+        );
+        setRefreshKey((prev) => prev + 1); // Refresh the list
       } else {
         showError(result.message || 'Failed to reject configuration');
       }
@@ -68,7 +78,7 @@ const { user } = useAuth();
   };
 
   const handleRefresh = () => {
-    setRefreshKey(prev => prev + 1);
+    setRefreshKey((prev) => prev + 1);
   };
 
   return (
@@ -86,12 +96,20 @@ const { user } = useAuth();
 
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Dynamic Endpoint Monitoring Service</h1>
-            <p className="text-gray-600 mt-2">Review and approve pending endpoint configurations</p>
+            <h1 className="text-3xl font-bold text-gray-900">
+              Dynamic Endpoint Monitoring Service
+            </h1>
+            <p className="text-gray-600 mt-2">
+              Review and approve pending endpoint configurations
+            </p>
           </div>
-          
+
           <div className="flex items-center space-x-4">
-            <h1 className="text-2xl font-bold text-gray-800">
+            <h1
+              className="text-3xl font-bold flex items-center gap-2"
+              style={{ color: '#3b3b3b' }}
+            >
+              <ActivityIcon size={28} style={{ color: '#3b82f6' }} />
               Dynamic Endpoint Monitoring Service
             </h1>
           </div>
@@ -102,7 +120,9 @@ const { user } = useAuth();
           <div className="p-6 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-medium text-gray-900">Pending Approvals</h2>
+                <h2 className="text-lg font-medium text-gray-900">
+                  Pending Approvals
+                </h2>
                 <p className="mt-1 text-sm text-gray-600">
                   Review and approve configurations submitted by editors
                 </p>
@@ -115,7 +135,7 @@ const { user } = useAuth();
               </div>
             </div>
           </div>
-          
+
           <ConfigList
             key={refreshKey}
             searchTerm={searchTerm}

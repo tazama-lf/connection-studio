@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, SearchIcon } from 'lucide-react';
+import { ChevronLeft, Database, SearchIcon } from 'lucide-react';
 import { dataEnrichmentApi } from '../../data-enrichment/services/dataEnrichmentApi';
 import { useToast } from '../../../shared/providers/ToastProvider';
 import type { DataEnrichmentJobResponse } from '../../data-enrichment/types';
@@ -12,6 +12,8 @@ import { JobList } from '@features/data-enrichment';
 import { Button } from '@shared';
 import { useNavigate } from 'react-router';
 import JobDetailsModal from '@features/data-enrichment/components/JobDetailsModal';
+import { Tooltip } from '@mui/material';
+import EndpointHistoryButton from '@features/data-enrichment/components/EndpointHistoryButton';
 
 const PublisherDEJobsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -114,9 +116,20 @@ const PublisherDEJobsPage: React.FC = () => {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center my-8 gap-4">
           <div className="flex items-center space-x-4">
             {/* Search Bar */}
-            <h1 className="text-2xl font-bold text-gray-800">
+            <h1
+              className="text-3xl font-bold flex items-center gap-2"
+              style={{ color: '#3b3b3b' }}
+            >
+              <Database size={28} style={{ color: '#10b981' }} />
               Data Enrichment
             </h1>
+          </div>
+          <div className="mb-4 flex justify-end">
+            <Tooltip title="View Endpoint Last Runs" arrow placement="top">
+              <div>
+                <EndpointHistoryButton />
+              </div>
+            </Tooltip>
           </div>
         </div>
 

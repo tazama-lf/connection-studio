@@ -20,7 +20,7 @@ export const EndpointHistoryButton: React.FC<Props> = ({ jobId }) => {
 
   return (
     <Button variant="primary" className="py-1 pl-2" onClick={handleClick}>
-      <EyeIcon size={20} />
+      <EyeIcon size={17} />
       <span style={{ marginLeft: 8 }}>View Endpoint Last Runs</span>
     </Button>
   );

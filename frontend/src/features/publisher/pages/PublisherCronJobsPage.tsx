@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, SearchIcon } from 'lucide-react';
+import { ChevronLeft, ClockIcon, SearchIcon } from 'lucide-react';
 import { dataEnrichmentApi } from '../../data-enrichment/services/dataEnrichmentApi';
 import { useToast } from '../../../shared/providers/ToastProvider';
 import type { ScheduleResponse } from '../../data-enrichment/types';
@@ -93,8 +93,12 @@ const PublisherCronJobsPage: React.FC = () => {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center my-8 gap-4">
           <div className="flex items-center space-x-4">
             {/* Search Bar */}
-            <h1 className="text-2xl font-bold text-gray-800">
-              CRON Job Module
+            <h1
+              className="text-3xl font-bold flex items-center gap-2"
+              style={{ color: '#3b3b3b' }}
+            >
+              <ClockIcon size={28} style={{ color: '#f59e0b' }} />
+              Cron Job Module
             </h1>
           </div>
         </div>

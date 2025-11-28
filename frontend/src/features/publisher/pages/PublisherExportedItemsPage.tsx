@@ -1,4 +1,9 @@
-import { Clock, Database, SearchIcon, Settings } from 'lucide-react';
+import {
+  Clock as ClockIcon,
+  Database,
+  SearchIcon,
+  Activity as ActivityIcon,
+} from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../../features/auth/contexts/AuthContext';
 import { useToast } from '../../../shared/providers/ToastProvider';
@@ -228,17 +233,17 @@ const PublisherExportedItemsPage: React.FC = () => {
     {
       id: 'dems' as TabType,
       name: 'DEMS',
-      icon: <Settings size={18} />,
+      icon: <ActivityIcon size={28} style={{ color: '#3b82f6' }} />, // Blue
     },
     {
       id: 'cron' as TabType,
       name: 'Cron Jobs',
-      icon: <Clock size={18} />,
+      icon: <ClockIcon size={28} style={{ color: '#f59e0b' }} />, // Amber
     },
     {
       id: 'de' as TabType,
       name: 'DE Jobs',
-      icon: <Database size={18} />,
+      icon: <Database size={28} style={{ color: '#10b981' }} />, // Green
     },
   ];
 
@@ -247,22 +252,23 @@ const PublisherExportedItemsPage: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Tabs */}
         <div className="border-b border-gray-200 mb-6">
-          <nav className="-mb-px flex space-x-8">
+          <nav className="flex space-x-4">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`
-                  flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors
+                  flex items-center gap-3 px-5 py-3 rounded-t-lg font-semibold text-base transition-all duration-200 cursor-pointer
                   ${
                     activeTab === tab.id
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      ? 'bg-blue-50 border-b-4 border-blue-500 text-blue-700 shadow-sm'
+                      : 'bg-white border-b-4 border-transparent text-gray-500 hover:bg-gray-50 hover:text-blue-600'
                   }
                 `}
+                style={{ minWidth: 140 }}
               >
                 {tab.icon}
-                {tab.name}
+                <span>{tab.name}</span>
               </button>
             ))}
           </nav>

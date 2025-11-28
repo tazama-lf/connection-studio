@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Eye, Clock, Database, EyeIcon } from 'lucide-react';
-import type { SftpFileInfo, SftpFormat } from '../services/sftpApi';
-import { sftpApi } from '../services/sftpApi';
+import {
+  sftpApi,
+  type SftpFileInfo,
+  type SftpFormat,
+} from '../services/sftpApi';
 import { Button } from '../../../shared/components/Button';
 import { Tooltip } from '@mui/material';
 
@@ -42,6 +45,8 @@ export const ExportedItemsList: React.FC<ExportedItemsListProps> = (props) => {
   const [demsFileData, setDemsFileData] = useState<
     Record<string, DemsFileData>
   >({});
+
+  console.log('format, files', format, files);
 
   // Load DEMS file content when format is 'dems'
   useEffect(() => {
@@ -292,8 +297,8 @@ export const ExportedItemsList: React.FC<ExportedItemsListProps> = (props) => {
                     >
                       <Tooltip title="View Details" arrow placement="top">
                         <EyeIcon
-                          size={28}
-                          className="w-7 h-7 text-blue-600 hover:text-blue-700 cursor-pointer"
+                          size={20}
+                          style={{ color: '#2b7fff', cursor: 'pointer' }}
                         />
                       </Tooltip>
                     </button>
