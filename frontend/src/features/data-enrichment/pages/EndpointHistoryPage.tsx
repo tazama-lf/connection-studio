@@ -10,12 +10,14 @@ import {
   DialogActions,
   Tooltip,
   IconButton,
-  Container,
+  Pagination,
 } from '@mui/material';
 import { Button } from '@shared';
 import { ChevronLeft, History } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { EyeIcon, Copy } from 'lucide-react';
+import { handleInputFilter } from '@shared/helpers';
+import { UI_CONFIG } from '@shared/config/app.config';
 
 const getStatusBadge = (status?: string) => {
   if (!status) return 'bg-gray-50 text-gray-600 border border-gray-200';
@@ -50,7 +52,7 @@ const getStatusBadge = (status?: string) => {
       }
     }
   }
-
+  
   switch (normalizedStatus) {
     case 'active':
     case 'ready for approval':
@@ -92,14 +94,29 @@ const EndpointHistoryPage: React.FC = () => {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
+  // Pagination state
+  const [page, setPage] = useState<number>(1);
+  const [totalPages, setTotalPages] = useState<number>(0);
+  const [totalRecords, setTotalRecords] = useState<number>(0);
+  const itemsPerPage = UI_CONFIG?.pagination?.defaultPageSize ?? 10;
+  const [searchingFilters, setSearchingFilters] = useState<Record<string, any>>({});
   useEffect(() => {
-    const load = async () => {
+    const load = async (pageNumber: number = 1) => {
       setLoading(true);
       setError(null);
       try {
-        const res = await dataEnrichmentApi.getJobHistory(jobId);
+        const offset = Math.max(pageNumber - 1, 0);
+        const res = await dataEnrichmentApi.getJobHistory(
+          jobId,
+          offset,
+          itemsPerPage,
+          searchingFilters,
+        );
+
         setData(res.data || []);
+        const total = res.total ?? (res.data ? res.data.length : 0);
+        setTotalRecords(total);
+        setTotalPages(Math.max(1, Math.ceil(total / itemsPerPage)));
       } catch (err: any) {
         setError(err?.message || 'Failed to load history');
       } finally {
@@ -107,8 +124,18 @@ const EndpointHistoryPage: React.FC = () => {
       }
     };
 
-    load();
+    load(page);
+  }, [jobId, page, itemsPerPage, searchingFilters]);
+
+  // Reset to first page when jobId changes
+  useEffect(() => {
+    setPage(1);
   }, [jobId]);
+
+  // Reset to first page when search filters change
+  useEffect(() => {
+    setPage(1);
+  }, [searchingFilters]);
 
   const visibleColumns = [
     'job_id',
@@ -133,7 +160,7 @@ const EndpointHistoryPage: React.FC = () => {
         overflowWrap: 'break-word',
       }}
     >
-      {value ?? ''}
+      {(value === null || value === undefined || value === '') ? 'N/A' : value}
     </div>
   );
 
@@ -150,15 +177,54 @@ const EndpointHistoryPage: React.FC = () => {
     ...visibleColumns.map((key) => ({
       field: key,
       headerName: prettifyHeader(key),
+      headerAlign: 'center',
+      align: 'center',
+      sortable: false,
+      disableColumnMenu: true,
       minWidth:
         key === 'job_id'
-          ? 420
+          ? 320
           : key === 'endpoint_name'
             ? 240
             : key === 'status'
               ? 160
               : 160,
-      flex: 0,
+      flex: key === 'job_id' ? 0 : key === 'endpoint_name' ? 0 : 0,
+      // Render header for each column to ensure centered header text. For endpoint_name include the search input.
+      renderHeader: key === 'endpoint_name'
+        ? () => (
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '8px',
+                width: '100%',
+                py: '12px',
+              }}
+            >
+              <Box sx={{ fontSize: '14px', fontWeight: '600' }}>Endpoint Name</Box>
+              {handleInputFilter({
+                fieldName: 'endpointName',
+                searchingFilters,
+                setSearchingFilters,
+              })}
+            </Box>
+          )
+        : () => (
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '100%',
+                height: '100%',
+                py: '12px',
+              }}
+            >
+              <Box sx={{ fontSize: '14px', fontWeight: '600' }}>{prettifyHeader(key)}</Box>
+            </Box>
+          ),
       renderCell: (params: any) =>
         key === 'status' ? (
           <span
@@ -174,9 +240,27 @@ const EndpointHistoryPage: React.FC = () => {
     {
       field: 'actions',
       headerName: 'Actions',
-      minWidth: 80,
-      maxWidth: 80,
-      flex: 0,
+      headerAlign: 'center',
+      align: 'center',
+      // Make Actions column wider and flexible so it consumes leftover space and removes the white gap
+      minWidth: 240,
+      flex: 1,
+      sortable: false,
+      disableColumnMenu: true,
+      renderHeader: () => (
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '100%',
+            height: '100%',
+            py: '12px',
+          }}
+        >
+          <Box sx={{ fontSize: '14px', fontWeight: '600' }}>Actions</Box>
+        </Box>
+      ),
       renderCell: (params: any) => (
         <div
           style={{
@@ -225,12 +309,49 @@ const EndpointHistoryPage: React.FC = () => {
         </div>
 
         <Box sx={{ margin: '0px 45px' }}>
-          <CustomTable
-            columns={columns as any}
-            rows={data}
-            pageSize={10}
-            search={true}
-          />
+          {loading ? (
+            <div className="flex items-center justify-center p-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <span className="ml-2 text-gray-600">Loading...</span>
+            </div>
+          ) : (
+              <CustomTable
+                columns={columns as any}
+                rows={data}
+                pageSize={itemsPerPage}
+                pageSizeOptions={UI_CONFIG?.pagination?.pageSizeOptions as any}
+                search={true}
+                disableRowSelection={true}
+                pagination={
+                  data.length > 0 && (
+                    <div className="px-6 py-4 border-t border-gray-200 bg-white rounded-b-lg flex items-center justify-between">
+                      <div className="text-sm text-gray-700 font-medium">
+                        Showing{' '}
+                        <span className="font-bold">{(page - 1) * itemsPerPage + 1}</span>{' '}
+                        to{' '}
+                        <span className="font-bold">{Math.min(page * itemsPerPage, totalRecords)}</span>{' '}
+                        of <span className="font-bold">{totalRecords}</span> results
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <Box>
+                          <Pagination
+                            page={page}
+                            count={totalPages}
+                            onChange={(_, newPage: number) => setPage(newPage)}
+                            variant="outlined"
+                            sx={{
+                              '& .MuiPaginationItem-page.Mui-selected': {
+                                backgroundColor: '#fbf9fa',
+                              },
+                            }}
+                          />
+                        </Box>
+                      </div>
+                    </div>
+                  )
+                }
+              />
+          )}
         </Box>
       </div>
 
@@ -419,12 +540,7 @@ const EndpointHistoryPage: React.FC = () => {
         </DialogActions>
       </Dialog>
 
-      {loading && (
-        <div className="flex items-center justify-center p-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <span className="ml-2 text-gray-600">Loading...</span>
-        </div>
-      )}
+      {/* loading handled above the table */}
     </>
   );
 };

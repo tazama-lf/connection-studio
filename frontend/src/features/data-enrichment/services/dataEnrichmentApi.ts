@@ -468,7 +468,8 @@ export const dataEnrichmentApi = {
     jobId?: string,
     offset = 0,
     limit = 10,
-  ): Promise<{ success: boolean; data: any[]; total?: number }> => {
+    searchingFilters?: Record<string, any>,
+  ): Promise<{ success: boolean; data: any[]; total?: number; pages?: number }> => {
     try {
       const url = `http://10.10.80.34:3000/job/history?offset=${offset}&limit=${limit}`;
 
@@ -478,9 +479,10 @@ export const dataEnrichmentApi = {
         headers: getAuthHeaders(),
       };
 
-      if (jobId) {
-        requestOptions.body = JSON.stringify({ job_id: jobId });
-      }
+      const body: Record<string, any> = { ...searchingFilters };
+      if (jobId) body.job_id = jobId;
+
+      requestOptions.body = JSON.stringify(body);
 
       const res = await fetch(url, requestOptions);
 
@@ -488,7 +490,14 @@ export const dataEnrichmentApi = {
         throw new Error('Failed to fetch job history');
       }
 
-      return (await res.json()) as { success: boolean; data: any[]; total?: number };
+      const json = (await res.json()) as any;
+      // Ensure we return a consistent shape
+      return {
+        success: json.success ?? true,
+        data: json.data ?? json.jobs ?? [],
+        total: json.total ?? json.count ?? undefined,
+        pages: json.pages ?? json.totalPages ?? undefined,
+      };
     } catch (error) {
       console.error('Failed to fetch job history:', error);
       throw error;
