@@ -28,6 +28,7 @@ const DEMSModule: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isInCloneMode, setIsInCloneMode] = useState(false);
   const [isReadOnly, setIsReadOnly] = useState(false);
+  const [isCloneCheck, setIsCloneCheck] = useState(false);
 
   const handleAddNew = () => {
     setEditingEndpointId(-1);
@@ -62,6 +63,7 @@ const DEMSModule: React.FC = () => {
     // Set the editing ID to trigger EditEndpointModal with clone mode
     setEditingEndpointId(config.id);
     setIsInCloneMode(true);
+    setIsCloneCheck(true);
   };
 
   const handleViewHistory = (config: Config) => {
@@ -133,6 +135,7 @@ const DEMSModule: React.FC = () => {
           endpointId={editingEndpointId}
           onSuccess={handleConfigSuccess}
           isCloneMode={isInCloneMode}
+          isCloneCheck={isCloneCheck}
           setIsInCloneMode={setIsInCloneMode}
           readOnly={isReadOnly}
         />
