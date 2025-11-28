@@ -276,6 +276,7 @@ interface EditEndpointModalProps {
   endpointId: number; // -1 indicates new endpoint creation
   onSuccess?: () => void; // Callback when config is successfully created/updated
   isCloneMode?: boolean; // When true, load config data but treat as new config creation
+  isCloneCheck?: boolean;
   setIsInCloneMode?: any;
   readOnly?: boolean; // When true, modal is in read-only mode for approvers
   onRevertToEditor?: () => void; // For approvers to send back to editor
@@ -288,6 +289,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
   endpointId,
   onSuccess,
   isCloneMode = false,
+  isCloneCheck = false,
   setIsInCloneMode,
   readOnly = false,
   onRevertToEditor,
@@ -1165,6 +1167,15 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
 
     // If field validation failed, don't proceed (errors are shown below fields)
     if (isValid === false) {
+       setTimeout(() => {
+        const errorElement = document.querySelector(
+          '#payloadFields',
+        );
+        if (errorElement) {
+          errorElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
+      
       return;
     }
 
@@ -1218,7 +1229,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
       // Scroll to the error message at the top
       setTimeout(() => {
         const errorElement = document.querySelector(
-          '.bg-red-50.border-red-200',
+          '#payloadFields',
         );
         if (errorElement) {
           errorElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1678,7 +1689,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
             >
               {isNewEndpoint
                 ? 'Create New Connection'
-                : isCloning
+                : isCloneCheck
                   ? 'Clone Configuration'
                   : readOnly
                     ? 'View Configuration'
@@ -1732,7 +1743,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
               )}
 
             {/* MUI Stepper */}
-            <Box sx={{ width: '100%', mb: 4 }}>
+            <Box sx={{ width: '100%', mb: 4 }} id='payloadFields'>
               <Stepper
                 activeStep={steps.findIndex((s) => s.id === currentStep)}
                 alternativeLabel
@@ -2371,9 +2382,9 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                   </MuiButton>
                 )}
                 {!readOnly && (
-                  <Button
-                    variant="primary"
-                    className=" !pb-[6px] !pt-[5px] bg-[#2b7fff]"
+                  <MuiButton
+                    variant="contained"
+                    sx={{ background: '#2b7fff' }}
                     onClick={async () => {
                       console.log(
                         '🎯 Save and Next button clicked, currentStep:',
@@ -2410,7 +2421,8 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                           isStatus(
                             existingConfig?.status,
                             'STATUS_04_APPROVED',
-                          ))) ||
+                          )) &&
+                        !isCloneCheck) ||
                       (currentStep === 'deploy' &&
                         isApprover(user?.claims || []) &&
                         (isStatus(createdEndpoint?.status, '') ||
@@ -2456,7 +2468,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                               ? 'Send for Approval'
                               : 'Configuration Approved'
                         : 'Save and Next'}
-                  </Button>
+                  </MuiButton>
                 )}
                 {/* Show Next button for approvers, editors, and exporters in read-only mode on all steps */}
                 {readOnly &&
