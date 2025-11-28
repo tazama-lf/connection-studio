@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Button } from '../../../shared/components/Button';
-import { ChevronLeft, Plus } from 'lucide-react';
+import { ChevronLeft, Plus, Database } from 'lucide-react';
 
 // New job management components
 import JobList from '../components/JobList';
@@ -469,7 +469,11 @@ const DataEnrichmentModule: React.FC = () => {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center my-8 gap-4">
           <div className="flex items-center space-x-4">
             {/* Search Bar */}
-            <h1 className="text-2xl font-bold text-gray-800">
+            <h1
+              className="text-3xl font-bold flex items-center gap-2"
+              style={{ color: '#3b3b3b' }}
+            >
+              <Database size={28} style={{ color: '#10b981' }} />
               Data Enrichment
             </h1>
           </div>

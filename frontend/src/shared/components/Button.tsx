@@ -8,8 +8,9 @@ interface ButtonProps {
   onClick?: () => void;
   type?: 'button' | 'submit' | 'reset';
   disabled?: boolean;
+  style?: React.CSSProperties;
 }
- const Button: React.FC<ButtonProps> = ({
+const Button: React.FC<ButtonProps> = ({
   children,
   variant = 'primary',
   size = 'md',
@@ -17,11 +18,13 @@ interface ButtonProps {
   className = '',
   onClick,
   type = 'button',
-  disabled = false
+  disabled = false,
+  style,
 }) => {
-  const baseStyles = 'cursor-pointer inline-flex items-center justify-center font-medium rounded-md focus:outline-none transition-colors duration-150';
+  const baseStyles =
+    'cursor-pointer inline-flex items-center justify-center font-medium rounded-md focus:outline-none transition-colors duration-150';
   const variantStyles = {
-    primary: disabled 
+    primary: disabled
       ? 'text-gray-400 bg-gray-100 cursor-not-allowed border border-gray-300'
       : 'text-white bg-[#2b7fff] hover:bg-[#2b7fff] focus:outline-none border border-transparent',
     secondary: disabled
@@ -29,23 +32,30 @@ interface ButtonProps {
       : 'text-gray-700 bg-white hover:bg-gray-50 focus:outline-none border border-gray-300',
     danger: disabled
       ? 'text-gray-400 bg-gray-100 cursor-not-allowed border border-gray-300'
-      : 'text-white bg-red-600 hover:bg-red-700 focus:outline-none border border-transparent'
+      : 'text-white bg-red-600 hover:bg-red-700 focus:outline-none border border-transparent',
   };
   const sizeStyles = {
     sm: 'px-2.5 py-1.5 text-xs',
     md: 'px-4 py-2 text-sm',
-    lg: 'px-6 py-3 text-base'
+    lg: 'px-6 py-3 text-base',
   };
-  return <button 
-    type={type} 
-    className={`${baseStyles} ${variantStyles[variant]} ${sizeStyles[size]} ${disabled ? '' : ''} ${className}`} 
-    onClick={disabled ? undefined : onClick}
-    disabled={disabled}
-    data-id="element-34"
-  >
-      {icon && <span className="mr-2" data-id="element-35">{icon}</span>}
+  return (
+    <button
+      type={type}
+      className={`${baseStyles} ${variantStyles[variant]} ${sizeStyles[size]} ${disabled ? '' : ''} ${className}`}
+      style={style}
+      onClick={disabled ? undefined : onClick}
+      disabled={disabled}
+      data-id="element-34"
+    >
+      {icon && (
+        <span className="mr-2" data-id="element-35">
+          {icon}
+        </span>
+      )}
       {children}
-    </button>;
+    </button>
+  );
 };
 
 export { Button };

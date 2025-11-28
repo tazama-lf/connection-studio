@@ -1,4 +1,4 @@
-import { ChevronLeft, PlusIcon } from 'lucide-react';
+import { ChevronLeft, PlusIcon, ClockIcon } from 'lucide-react';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Button } from '../../../shared/components/Button';
@@ -37,8 +37,12 @@ const CRONModule: React.FC = () => {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center my-8 gap-4">
           <div className="flex items-center space-x-4">
             {/* Search Bar */}
-            <h1 className="text-2xl font-bold text-gray-800">
-              CRON Job Module
+            <h1
+              className="text-3xl font-bold flex items-center gap-2"
+              style={{ color: '#3b3b3b' }}
+            >
+              <ClockIcon size={28} style={{ color: '#f59e0b' }} />
+              Cron Job Module
             </h1>
           </div>
 

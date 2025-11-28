@@ -16,9 +16,7 @@ import {
   isExporter,
   isPublisher,
 } from '../../../utils/roleUtils';
-import {
-  getStatusLabel,
-} from '../../../shared/utils/statusColors';
+import { getStatusLabel } from '../../../shared/utils/statusColors';
 import { useToast } from '../../../shared/providers/ToastProvider';
 import { dataEnrichmentApi } from '../services';
 import {
@@ -34,7 +32,6 @@ import { handleInputFilter, handleSelectFilter } from '@shared/helpers';
 import { getDemsStatusLov } from '@shared/lovs';
 import CustomTable from '@common/Tables/CustomTable';
 import EndpointHistoryButton from './EndpointHistoryButton';
-
 
 interface JobListProps {
   jobs: DataEnrichmentJobResponse[];
@@ -606,7 +603,8 @@ export const JobList: React.FC<JobListProps> = (props) => {
                   job.status === 'STATUS_08_DEPLOYED'))) && (
               <Tooltip title="View Details" arrow placement="top">
                 <EyeIcon
-                  className="w-4 h-4 mr-2 text-blue-600 hover:text-blue-700 cursor-pointer"
+                  className="w-4 h-4 mr-2  cursor-pointer"
+                  style={{ color: '#2b7fff' }}
                   onClick={() => {
                     if (onViewLogs) {
                       onViewLogs(job.id);

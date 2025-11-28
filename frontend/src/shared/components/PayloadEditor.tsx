@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Settings2, List, FileText } from 'lucide-react';
+import { Settings2, List, FileText, Terminal } from 'lucide-react';
+import { Code2 } from 'lucide-react';
 import { XMLParser } from 'fast-xml-parser';
 import * as yup from 'yup';
 import { Button } from './Button';
 import {
-  UploadIcon,
   SparklesIcon,
   LoaderCircle,
   MinusCircle,
+  XCircle,
+  FilePlus,
+  ArrowDownToLine,
 } from 'lucide-react';
 import {
   type SchemaField,
@@ -1421,7 +1424,8 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
                     variant="secondary"
                     size="sm"
                     className=" cursor-pointer"
-                    icon={<LoaderCircle size={16} />}
+                    style={{ backgroundColor: '#2b7fff', color: 'white' }}
+                    icon={<FilePlus size={16} />}
                     onClick={() =>
                       onChange(
                         endpointData.contentType === 'application/json'
@@ -1442,7 +1446,8 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
                 <Button
                   variant="secondary"
                   size="sm"
-                  icon={<MinusCircle size={16} />}
+                  style={{ background: '#ff474d', color: 'white' }}
+                  icon={<XCircle size={16} />}
                   className="cursor-pointer"
                   onClick={() => onChange('')}
                 >
@@ -1463,7 +1468,8 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
                       variant="secondary"
                       size="sm"
                       className=" cursor-pointer"
-                      icon={<UploadIcon size={16} />}
+                      icon={<ArrowDownToLine size={16} />}
+                      style={{ backgroundColor: '#2b7fff', color: 'white' }}
                       onClick={() =>
                         document.getElementById('file-upload')?.click()
                       }
@@ -1559,8 +1565,8 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
           <div className="flex gap-5 w-full">
             {/* Left Side - Raw Input */}
             <div className="flex-1">
-              <h4 className="text-sm font-medium text-gray-700 mb-2">
-                Raw Input
+              <h4 className="text-sm font-bold flex items-center gap-1 text-gray-700 mb-2">
+                <Terminal className="text-blue-500" size={16} /> Raw Input
               </h4>
               <div className=" rounded-md relative bg-white">
                 <textarea
@@ -1577,8 +1583,9 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
             {/* Right Side - Formatted Preview */}
             {endpointData.contentType === 'application/json' && (
               <div className="flex-1">
-                <h4 className="text-sm font-medium text-gray-700 mb-2">
-                  Formatted Preview
+                <h4 className="text-sm font-bold flex items-center gap-1 text-gray-700 mb-2">
+                  <Code2 className="text-blue-500" size={16} /> Formatted
+                  Preview
                 </h4>
                 <div className="border rounded-md relative bg-white p-4 h-[400px] overflow-auto">
                   {FormattedJsonSection()}

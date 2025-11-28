@@ -2,7 +2,13 @@ import React, { useState } from 'react';
 import { ConfigList } from '@features/config/components/ConfigList';
 import VersionHistoryModal from '@features/config/components/VersionHistoryModal';
 import { Button } from '@shared/components/Button';
-import { PlusIcon, SearchIcon, AlertTriangleIcon, ChevronLeft } from 'lucide-react';
+import {
+  PlusIcon,
+  SearchIcon,
+  AlertTriangleIcon,
+  ChevronLeft,
+  ActivityIcon,
+} from 'lucide-react';
 import EditEndpointModal from '@shared/components/EditEndpointModal';
 import ValidationLogsTable from '@shared/components/ValidationLogsTable';
 import type { Config } from '@features/config/index';
@@ -80,11 +86,21 @@ const DEMSModule: React.FC = () => {
       /> */}
 
       <div className=" mx-auto px-4 sm:px-6 lg:px-[48px] py-[52px]">
-      <Button variant='primary' className='py-1 pl-2' onClick={()=>navigate(-1)}><ChevronLeft size={20} /> <span>Go Back</span></Button>
+        <Button
+          variant="primary"
+          className="py-1 pl-2"
+          onClick={() => navigate(-1)}
+        >
+          <ChevronLeft size={20} /> <span>Go Back</span>
+        </Button>
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center my-8 gap-4">
           <div className="flex items-center space-x-4">
             {/* Search Bar */}
-            <h1 className="text-2xl font-bold text-gray-800">
+            <h1
+              className="text-3xl font-bold flex items-center gap-2"
+              style={{ color: '#3b3b3b' }}
+            >
+              <ActivityIcon size={28} style={{ color: '#3b82f6' }} />
               Dynamic Endpoint Monitoring Service
             </h1>
           </div>

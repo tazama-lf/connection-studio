@@ -12,7 +12,7 @@ import {
   ShieldCheck,
   ShieldX,
   Pause,
-  Play
+  Play,
 } from 'lucide-react';
 import { configApi } from '../services/configApi';
 import { sftpApi } from '../../../features/exporter/services/sftpApi';
@@ -599,7 +599,8 @@ export const ConfigList: React.FC<ConfigListProps> = ({
           <div className=" flex items-center justify-center gap-2 h-full">
             <Tooltip title="View Details" arrow placement="top">
               <EyeIcon
-                className="w-4 h-4 mr-2 text-blue-600 hover:text-blue-700 cursor-pointer"
+                className="w-4 h-4 mr-2  cursor-pointer"
+                style={{ color: '#2b7fff' }}
                 onClick={() => {
                   handleViewConfig(config);
                 }}
