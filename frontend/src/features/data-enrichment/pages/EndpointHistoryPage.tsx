@@ -2,9 +2,18 @@ import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router';
 import CustomTable from '@common/Tables/CustomTable';
 import { dataEnrichmentApi } from '../services/dataEnrichmentApi';
-import { Box, Dialog, DialogTitle, DialogContent, DialogActions, Tooltip, IconButton } from '@mui/material';
+import {
+  Box,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Tooltip,
+  IconButton,
+  Container,
+} from '@mui/material';
 import { Button } from '@shared';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, History } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { EyeIcon, Copy } from 'lucide-react';
 
@@ -101,7 +110,13 @@ const EndpointHistoryPage: React.FC = () => {
     load();
   }, [jobId]);
 
-  const visibleColumns = ['job_id', 'tenant_id', 'endpoint_name', 'table_name', 'status'];
+  const visibleColumns = [
+    'job_id',
+    'tenant_id',
+    'endpoint_name',
+    'table_name',
+    'status',
+  ];
 
   const prettifyHeader = (key: string) =>
     key
@@ -111,7 +126,15 @@ const EndpointHistoryPage: React.FC = () => {
       .join(' ');
 
   const wrapCell = (value: any) => (
-    <div style={{ whiteSpace: 'normal', wordBreak: 'break-word', overflowWrap: 'break-word' }}>{value ?? ''}</div>
+    <div
+      style={{
+        whiteSpace: 'normal',
+        wordBreak: 'break-word',
+        overflowWrap: 'break-word',
+      }}
+    >
+      {value ?? ''}
+    </div>
   );
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -131,14 +154,16 @@ const EndpointHistoryPage: React.FC = () => {
         key === 'job_id'
           ? 420
           : key === 'endpoint_name'
-          ? 240
-          : key === 'status'
-          ? 160
-          : 160,
+            ? 240
+            : key === 'status'
+              ? 160
+              : 160,
       flex: 0,
       renderCell: (params: any) =>
         key === 'status' ? (
-          <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${getStatusBadge(params.value)}`}>
+          <span
+            className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${getStatusBadge(params.value)}`}
+          >
             <span className="w-2 h-2 rounded-full bg-current mr-2"></span>
             {params.value ?? 'N/A'}
           </span>
@@ -153,9 +178,22 @@ const EndpointHistoryPage: React.FC = () => {
       maxWidth: 80,
       flex: 0,
       renderCell: (params: any) => (
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%', height: '100%' }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            width: '100%',
+            height: '100%',
+          }}
+        >
           <Tooltip title="View Details" arrow placement="top">
-            <IconButton aria-label={`view-details-${params.row?.job_id ?? ''}`} onClick={() => handleView(params.row)} size="small" sx={{ alignSelf: 'center' }}>
+            <IconButton
+              aria-label={`view-details-${params.row?.job_id ?? ''}`}
+              onClick={() => handleView(params.row)}
+              size="small"
+              sx={{ alignSelf: 'center' }}
+            >
               <EyeIcon size={18} style={{ color: '#2563EB' }} />
             </IconButton>
           </Tooltip>
@@ -165,45 +203,82 @@ const EndpointHistoryPage: React.FC = () => {
   ];
 
   return (
-    <div className="p-6">
-      {error && <div className="text-red-600 mb-4">{error}</div>}
-      <div style={{ overflowX: 'auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
-          <div style={{ display: 'inline-block', width: 'auto', minWidth: 'max-content' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 8, marginBottom: 12 }}>
-              <Button
-                variant="primary"
-                className="py-1 pl-2"
-                onClick={() => navigate(-1)}
-              >
-                <ChevronLeft size={20} /> <span>Go Back</span>
-              </Button>
-              <Box sx={{ fontSize: 20, fontWeight: 700, paddingTop: 0 }}>Endpoint Last Runs</Box>
-            </div>
+    <>
+      <div className="min-h-screen bg-white">
+        {error && <div className="text-red-600 mb-4">{error}</div>}
 
-            <CustomTable columns={columns as any} rows={data} pageSize={10} search={true} />
-          </div>
+        <div className="mx-auto px-4 sm:px-6 lg:px-[48px] py-[52px]">
+          <Button
+            variant="primary"
+            className="py-1 pl-2"
+            onClick={() => navigate(-1)}
+          >
+            <ChevronLeft size={20} /> <span>Go Back</span>
+          </Button>
+          <h1
+            className="text-3xl font-bold flex items-center gap-2"
+            style={{ color: '#3b3b3b', marginTop: '32px' }}
+          >
+            <History size={28} style={{ color: '#2563EB' }} />
+            Endpoint Last Runs
+          </h1>
         </div>
+
+        <Box sx={{ margin: '0px 45px' }}>
+          <CustomTable
+            columns={columns as any}
+            rows={data}
+            pageSize={10}
+            search={true}
+          />
+        </Box>
       </div>
-      <Dialog open={modalOpen} onClose={() => setModalOpen(false)} maxWidth="md" fullWidth>
-  <DialogTitle sx={{ color: '#2B7FFF', fontWeight: 700 }}>Endpoint Run Details</DialogTitle>
+
+      <Dialog
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle sx={{ color: '#2B7FFF', fontWeight: 700 }}>
+          Endpoint Run Details
+        </DialogTitle>
         <DialogContent dividers sx={{ padding: 3 }}>
           {activeRecord ? (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
               <Box>
-                <Box sx={{ fontSize: 14, color: '#6B7280', fontWeight: 600 }}>Job Id</Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.75 }}>
-                  <Box component="code" sx={{ display: 'inline-block', fontFamily: 'monospace', fontSize: 15 }}>{activeRecord.job_id}</Box>
+                <Box sx={{ fontSize: 14, color: '#6B7280', fontWeight: 600 }}>
+                  Job Id
+                </Box>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                    mt: 0.75,
+                  }}
+                >
+                  <Box
+                    component="code"
+                    sx={{
+                      display: 'inline-block',
+                      fontFamily: 'monospace',
+                      fontSize: 15,
+                    }}
+                  >
+                    {activeRecord.job_id}
+                  </Box>
                   <Tooltip title={copied ? 'Copied!' : 'Copy Job Id'} arrow>
                     <IconButton
                       size="small"
                       onClick={async () => {
                         try {
-                          await navigator.clipboard.writeText(String(activeRecord.job_id ?? ''));
+                          await navigator.clipboard.writeText(
+                            String(activeRecord.job_id ?? ''),
+                          );
                           setCopied(true);
                           setTimeout(() => setCopied(false), 1500);
-                        } catch (e) {
-                          }
+                        } catch (e) {}
                       }}
                       aria-label="copy-job-id"
                     >
@@ -213,42 +288,74 @@ const EndpointHistoryPage: React.FC = () => {
                 </Box>
               </Box>
 
-              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3 }}>
+              <Box
+                sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3 }}
+              >
                 <Box>
-                  <Box sx={{ fontSize: 14, color: '#6B7280', fontWeight: 600 }}>Tenant Id</Box>
-                  <Box sx={{ fontSize: 15 }}>{activeRecord.tenant_id ?? '-'}</Box>
+                  <Box sx={{ fontSize: 14, color: '#6B7280', fontWeight: 600 }}>
+                    Tenant Id
+                  </Box>
+                  <Box sx={{ fontSize: 15 }}>
+                    {activeRecord.tenant_id ?? '-'}
+                  </Box>
                 </Box>
                 <Box>
-                  <Box sx={{ fontSize: 14, color: '#6B7280', fontWeight: 600 }}>Version</Box>
+                  <Box sx={{ fontSize: 14, color: '#6B7280', fontWeight: 600 }}>
+                    Version
+                  </Box>
                   <Box sx={{ fontSize: 15 }}>{activeRecord.version ?? '-'}</Box>
                 </Box>
 
                 <Box>
-                  <Box sx={{ fontSize: 14, color: '#6B7280', fontWeight: 600 }}>Endpoint Name</Box>
-                  <Box sx={{ fontSize: 15 }}>{activeRecord.endpoint_name ?? '-'}</Box>
+                  <Box sx={{ fontSize: 14, color: '#6B7280', fontWeight: 600 }}>
+                    Endpoint Name
+                  </Box>
+                  <Box sx={{ fontSize: 15 }}>
+                    {activeRecord.endpoint_name ?? '-'}
+                  </Box>
                 </Box>
                 <Box>
-                  <Box sx={{ fontSize: 14, color: '#6B7280', fontWeight: 600 }}>Table Name</Box>
-                  <Box sx={{ fontSize: 15 }}>{activeRecord.table_name ?? '-'}</Box>
+                  <Box sx={{ fontSize: 14, color: '#6B7280', fontWeight: 600 }}>
+                    Table Name
+                  </Box>
+                  <Box sx={{ fontSize: 15 }}>
+                    {activeRecord.table_name ?? '-'}
+                  </Box>
                 </Box>
 
                 <Box>
-                  <Box sx={{ fontSize: 14, color: '#6B7280', fontWeight: 600 }}>Counts</Box>
+                  <Box sx={{ fontSize: 14, color: '#6B7280', fontWeight: 600 }}>
+                    Counts
+                  </Box>
                   <Box sx={{ fontSize: 15 }}>{activeRecord.counts ?? 0}</Box>
                 </Box>
                 <Box>
-                  <Box sx={{ fontSize: 14, color: '#6B7280', fontWeight: 600 }}>Processed</Box>
-                  <Box sx={{ fontSize: 15 }}>{activeRecord.processed_counts ?? 0}</Box>
+                  <Box sx={{ fontSize: 14, color: '#6B7280', fontWeight: 600 }}>
+                    Processed
+                  </Box>
+                  <Box sx={{ fontSize: 15 }}>
+                    {activeRecord.processed_counts ?? 0}
+                  </Box>
                 </Box>
 
                 <Box>
-                  <Box sx={{ fontSize: 14, color: '#6B7280', fontWeight: 600 }}>Created At</Box>
-                  <Box sx={{ fontSize: 15, color: '#374151', mt: 0.5 }}>{activeRecord.created_at ? new Date(activeRecord.created_at).toLocaleString() : '-'}</Box>
+                  <Box sx={{ fontSize: 14, color: '#6B7280', fontWeight: 600 }}>
+                    Created At
+                  </Box>
+                  <Box sx={{ fontSize: 15, color: '#374151', mt: 0.5 }}>
+                    {activeRecord.created_at
+                      ? new Date(activeRecord.created_at).toLocaleString()
+                      : '-'}
+                  </Box>
                 </Box>
                 <Box>
-                  <Box sx={{ fontSize: 14, color: '#6B7280', fontWeight: 600 }}>Status</Box>
+                  <Box sx={{ fontSize: 14, color: '#6B7280', fontWeight: 600 }}>
+                    Status
+                  </Box>
                   <Box sx={{ mt: 0.5 }}>
-                    <span className={`inline-flex items-center px-4 py-1 rounded-full text-sm font-semibold ${getStatusBadge(activeRecord.status)}`}>
+                    <span
+                      className={`inline-flex items-center px-4 py-1 rounded-full text-sm font-semibold ${getStatusBadge(activeRecord.status)}`}
+                    >
                       <span className="w-2 h-2 rounded-full bg-current mr-2"></span>
                       {activeRecord.status ?? ''}
                     </span>
@@ -256,9 +363,13 @@ const EndpointHistoryPage: React.FC = () => {
                 </Box>
 
                 <Box>
-                  <Box sx={{ fontSize: 14, color: '#6B7280', fontWeight: 600 }}>Publishing Status</Box>
+                  <Box sx={{ fontSize: 14, color: '#6B7280', fontWeight: 600 }}>
+                    Publishing Status
+                  </Box>
                   <Box sx={{ mt: 0.5 }}>
-                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold ${getStatusBadge(activeRecord.publishing_status)}`}>
+                    <span
+                      className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold ${getStatusBadge(activeRecord.publishing_status)}`}
+                    >
                       {activeRecord.publishing_status ?? ''}
                     </span>
                   </Box>
@@ -266,15 +377,31 @@ const EndpointHistoryPage: React.FC = () => {
               </Box>
 
               <Box>
-                <Box sx={{ fontSize: 13, color: '#6B7280', fontWeight: 600 }}>Description</Box>
-                <Box sx={{ fontSize: 13, fontStyle: 'italic' }}>{activeRecord.description ?? '-'}</Box>
+                <Box sx={{ fontSize: 13, color: '#6B7280', fontWeight: 600 }}>
+                  Description
+                </Box>
+                <Box sx={{ fontSize: 13, fontStyle: 'italic' }}>
+                  {activeRecord.description ?? '-'}
+                </Box>
               </Box>
 
               <Box>
-                <Box sx={{ fontSize: 13, color: '#6B7280', fontWeight: 600 }}>Exception</Box>
+                <Box sx={{ fontSize: 13, color: '#6B7280', fontWeight: 600 }}>
+                  Exception
+                </Box>
                 {activeRecord.exception ? (
-                  <Box sx={{ backgroundColor: '#FFF1F2', border: '1px solid #FFCDD2', borderRadius: 1, p: 2, mt: 1 }}>
-                    <pre style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{activeRecord.exception}</pre>
+                  <Box
+                    sx={{
+                      backgroundColor: '#FFF1F2',
+                      border: '1px solid #FFCDD2',
+                      borderRadius: 1,
+                      p: 2,
+                      mt: 1,
+                    }}
+                  >
+                    <pre style={{ whiteSpace: 'pre-wrap', margin: 0 }}>
+                      {activeRecord.exception}
+                    </pre>
                   </Box>
                 ) : (
                   <Box sx={{ fontSize: 13, mt: 0.5 }}>-</Box>
@@ -286,11 +413,19 @@ const EndpointHistoryPage: React.FC = () => {
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setModalOpen(false)} variant="primary">Close</Button>
+          <Button onClick={() => setModalOpen(false)} variant="primary">
+            Close
+          </Button>
         </DialogActions>
       </Dialog>
-      {loading && <div className="mt-4">Loading...</div>}
-    </div>
+
+      {loading && (
+        <div className="flex items-center justify-center p-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <span className="ml-2 text-gray-600">Loading...</span>
+        </div>
+      )}
+    </>
   );
 };
 
