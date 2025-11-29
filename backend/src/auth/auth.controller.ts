@@ -13,13 +13,11 @@ import { AuthService } from './auth.service';
 import { User } from './user.decorator';
 import { TazamaAuthGuard } from './tazama-auth.guard';
 import { RequireClaims, TazamaClaims } from './auth.decorator';
-import { AuditService } from '../audit/audit.service';
 
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
-    private readonly auditService: AuditService,
     private readonly logger: LoggerService,
   ) {}
   @Post('login')
@@ -42,49 +40,5 @@ export class AuthController {
       this.logger.warn(`Login failed: ${error.message}`, AuthController.name);
       throw new UnauthorizedException('Invalid credentials');
     }
-  }
-  @UseGuards(TazamaAuthGuard)
-  @RequireClaims(TazamaClaims.VIEW_PROFILE)
-  @Get('me')
-  getMe(@User() user: any) {
-    return user;
-  }
-  @UseGuards(TazamaAuthGuard)
-  @RequireClaims(TazamaClaims.VIEW_PROFILE)
-  @Get('audit-logs')
-  async getAuditLogs(
-    @User() user: any,
-    @Query('limit') limit?: string,
-    @Query('entityType') entityType?: string,
-    @Query('actor') actor?: string,
-    @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string,
-  ) {
-    const tenantId = user?.token?.tenantId || user?.tenantId;
-    if (!tenantId) {
-      throw new Error('Tenant ID not found in user token or claims');
-    }
-    const parsedLimit = limit ? parseInt(limit, 10) : 100;
-    const logs = await this.auditService.getAuditLogs(
-      tenantId,
-      entityType,
-      actor,
-      startDate ? new Date(startDate) : undefined,
-      endDate ? new Date(endDate) : undefined,
-      parsedLimit,
-    );
-    return {
-      success: true,
-      data: logs,
-      count: logs.length,
-      filters: {
-        tenantId,
-        entityType,
-        actor,
-        startDate,
-        endDate,
-        limit: parsedLimit,
-      },
-    };
   }
 }

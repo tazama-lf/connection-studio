@@ -12,8 +12,9 @@ import {
   applyFieldAdjustments,
   SchemaField,
 } from '@tazama-lf/tcs-lib';
-import { AuditService } from '../audit/audit.service';
 import { NotifyService } from '../notify/notify.service';
+import { NotificationService } from '../notification/notification.service';
+
 
 import { TazamaDataModelService } from '../tazama-data-model/tazama-data-model.service';
 import { ConfigWorkflowService } from './config-workflow.service';
@@ -41,6 +42,8 @@ import {
   WorkflowAction,
   ConfigWithSourceFields,
 } from './config.interfaces';
+import { EventType } from 'src/enums/events.enum';
+import { AuthenticatedUser } from 'src/auth/auth.types';
 
 @Injectable()
 export class ConfigService {
@@ -48,12 +51,13 @@ export class ConfigService {
 
   constructor(
     private readonly configRepository: ConfigRepository,
-    private readonly auditService: AuditService,
     private readonly tazamaDataModelService: TazamaDataModelService,
     private readonly workflowService: ConfigWorkflowService,
     private readonly sftpService: SftpService,
     private readonly payloadParsingService: PayloadParsingService,
     private readonly notifyService: NotifyService,
+    private readonly notificationService: NotificationService,
+
   ) {}
   private generateEndpointPath(
     tenantId: string,
@@ -128,39 +132,7 @@ export class ConfigService {
     return updatedConfig!;
   }
 
-  /**
-   * Log workflow status transition with optional comment
-   */
-  private async logWorkflowTransition(
-    id: number,
-    currentStatus: ConfigStatus,
-    newStatus: ConfigStatus,
-    action: WorkflowAction,
-    userId: string,
-    tenantId: string,
-    comment?: string,
-  ): Promise<void> {
-    // Log status change
-    await this.logStatusChange(
-      id,
-      currentStatus,
-      newStatus,
-      action,
-      userId,
-      comment,
-    );
 
-    // Audit the action
-    await this.auditService.logAction({
-      action,
-      entityType: 'config',
-      entityId: id.toString(),
-      actor: userId,
-      tenantId,
-      details: `Configuration ${action.replace(/_/g, ' ')}${comment ? `: ${comment}` : ''}`,
-      newValues: { status: newStatus },
-    });
-  }
 
   /**
    * Build duplicate config error message
@@ -818,14 +790,6 @@ export class ConfigService {
 
     await this.configRepository.deleteConfig(id, tenantId, token);
 
-    await this.auditService.logAction({
-      entityType: 'CONFIG',
-      action: 'DELETE_CONFIG',
-      actor: userId,
-      tenantId,
-      endpointName: `Config ${id}`,
-    });
-
     return {
       success: true,
       message: 'Config deleted successfully',
@@ -923,14 +887,6 @@ export class ConfigService {
       },
       token,
     );
-
-    await this.auditService.logAction({
-      entityType: 'MAPPING',
-      action: 'REMOVE_MAPPING',
-      actor: userId,
-      tenantId,
-      endpointName: `Config ${id}`,
-    });
 
     const updatedConfig = await this.configRepository.findConfigById(
       id,
@@ -1041,13 +997,6 @@ export class ConfigService {
       token,
     );
 
-    await this.auditService.logAction({
-      entityType: 'FUNCTION',
-      action: 'ADD_FUNCTION',
-      actor: userId,
-      tenantId,
-      endpointName: `Config ${id}`,
-    });
 
     const updatedConfig = await this.configRepository.findConfigById(
       id,
@@ -1095,14 +1044,6 @@ export class ConfigService {
       },
       token,
     );
-
-    await this.auditService.logAction({
-      entityType: 'FUNCTION',
-      action: 'REMOVE_FUNCTION',
-      actor: userId,
-      tenantId,
-      endpointName: `Config ${id}`,
-    });
 
     const updatedConfig = await this.configRepository.findConfigById(
       id,
@@ -1153,14 +1094,6 @@ export class ConfigService {
       },
       token,
     );
-
-    await this.auditService.logAction({
-      entityType: 'FUNCTION',
-      action: 'UPDATE_FUNCTION',
-      actor: userId,
-      tenantId,
-      endpointName: `Config ${id}`,
-    });
 
     const updatedConfig = await this.configRepository.findConfigById(
       id,
@@ -2020,98 +1953,88 @@ export class ConfigService {
       token,
     );
 
-    await this.logWorkflowTransition(
-      id,
-      currentStatus,
-      newStatus,
-      action,
-      userId,
-      tenantId,
-      dto.comment,
-    );
-
     return {
       success: true,
       message: 'Configuration submitted for approval successfully',
       config: updatedConfig,
     };
   }
-  async approveConfig(
-    id: number,
-    dto: ApprovalDto,
-    tenantId: string,
-    userId: string,
-    userClaims: string[],
-    token: string,
-  ): Promise<ConfigResponseDto> {
-    const config = await this.getConfigOrThrow(id, tenantId, token);
-    const currentStatus = config.status as ConfigStatus;
-    const action: WorkflowAction = 'approve';
+  // async approveConfig(
+  //   id: number,
+  //   dto: ApprovalDto,
+  //   tenantId: string,
+  //   userId: string,
+  //   userClaims: string[],
+  //   token: string,
+  // ): Promise<ConfigResponseDto> {
+  //   const config = await this.getConfigOrThrow(id, tenantId, token);
+  //   const currentStatus = config.status as ConfigStatus;
+  //   const action: WorkflowAction = 'approve';
 
-    this.validateWorkflowAction(userClaims, currentStatus, action);
+  //   this.validateWorkflowAction(userClaims, currentStatus, action);
 
-    const newStatus = ConfigStatus.APPROVED;
-    await this.updateConfigStatus(id, tenantId, newStatus, token);
-    const updatedConfig = await this.configRepository.findConfigById(
-      id,
-      tenantId,
-      token,
-    );
-    await this.logWorkflowTransition(
-      id,
-      currentStatus,
-      newStatus,
-      action,
-      userId,
-      tenantId,
-      dto.comment,
-    );
+  //   const newStatus = ConfigStatus.APPROVED;
+  //   await this.updateConfigStatus(id, tenantId, newStatus, token);
+  //   const updatedConfig = await this.configRepository.findConfigById(
+  //     id,
+  //     tenantId,
+  //     token,
+  //   );
+  //   await this.logWorkflowTransition(
+  //     id,
+  //     currentStatus,
+  //     newStatus,
+  //     action,
+  //     userId,
+  //     tenantId,
+  //     dto.comment,
+  //   );
 
-    return {
-      success: true,
-      message: 'Configuration approved successfully',
-      config: updatedConfig || undefined,
-    };
-  }
+  //   return {
+  //     success: true,
+  //     message: 'Configuration approved successfully',
+  //     config: updatedConfig || undefined,
+  //   };
+  // }
 
-  async rejectConfig(
-    id: number,
-    dto: RejectionDto,
-    tenantId: string,
-    userId: string,
-    userClaims: string[],
-    token: string,
-  ): Promise<ConfigResponseDto> {
-    const config = await this.getConfigOrThrow(id, tenantId, token);
-    const currentStatus = config.status as ConfigStatus;
-    const action: WorkflowAction = 'reject';
+  // async rejectConfig(
+  //   id: number,
+  //   dto: RejectionDto,
+  //   tenantId: string,
+  //   userId: string,
+  //   userClaims: string[],
+  //   token: string,
+  // ): Promise<ConfigResponseDto> {
+  //   const config = await this.getConfigOrThrow(id, tenantId, token);
+  //   const currentStatus = config.status as ConfigStatus;
+  //   const action: WorkflowAction = 'reject';
 
-    this.validateWorkflowAction(userClaims, currentStatus, action);
+  //   this.validateWorkflowAction(userClaims, currentStatus, action);
 
-    const newStatus = ConfigStatus.REJECTED;
-    const updatedConfig = await this.updateConfigStatus(
-      id,
-      tenantId,
-      newStatus,
-      token,
-    );
+  //   const newStatus = ConfigStatus.REJECTED;
+  //   const updatedConfig = await this.updateConfigStatus(
+  //     id,
+  //     tenantId,
+  //     newStatus,
+  //     token,
+  //   );
 
-    await this.logWorkflowTransition(
-      id,
-      currentStatus,
-      newStatus,
-      action,
-      userId,
-      tenantId,
-      dto.comment,
-    );
+  //   await this.logWorkflowTransition(
+  //     id,
+  //     currentStatus,
+  //     newStatus,
+  //     action,
+  //     userId,
+  //     tenantId,
+  //     dto.comment,
+  //   );
 
-    return {
-      success: true,
-      message: 'Configuration rejected successfully',
-      config: updatedConfig,
-    };
-  }
+  //   return {
+  //     success: true,
+  //     message: 'Configuration rejected successfully',
+  //     config: updatedConfig,
+  //   };
+  // }
 
   async updateStatusToExported(
     id: number,
@@ -2159,22 +2082,7 @@ export class ConfigService {
       userId,
       dto.comment,
     );
-    try {
-      await this.auditService.logAction({
-        action: 'update_status_to_exported',
-        entityType: 'config',
-        entityId: id.toString(),
-        actor: userId,
-        tenantId,
-        details: `Configuration status updated from ${currentStatus} to ${newStatus}${dto.comment ? `: ${dto.comment}` : ''}`,
-        oldValues: { status: currentStatus },
-        newValues: { status: newStatus },
-      });
-    } catch (auditError) {
-      this.logger.warn(
-        `Failed to log audit entry for config ${id} status update: ${auditError.message}`,
-      );
-    }
+    
     const updatedConfig = await this.configRepository.findConfigById(
       id,
       tenantId,
@@ -2187,22 +2095,163 @@ export class ConfigService {
       config: updatedConfig || undefined,
     };
   }
+  async submitConfig(
+    id:number,
+    dto: SubmitForApprovalDto,
+    user: AuthenticatedUser,
+    token:string
+  )
+  : Promise<ConfigResponseDto> {
+
+    // Retrieve user info from token
+    const config = await this.configRepository.findConfigById(
+      id,
+      user.tenantId,
+      token,
+    );
+
+
+    if (!config) {
+      throw new NotFoundException(`Config with ID ${id} not found`);
+    }
+
+
+    const updatedConfig = await this.configRepository.getupdateConfigByStatus(
+        id,
+        ConfigStatus.UNDER_REVIEW,
+        token,
+      );
+
+
+      
+          if (updatedConfig) {
+            const config = updatedConfig as Config;
+            await this.notificationService.sendWorkflowNotification(
+              EventType.EditorSubmit,
+              user,
+              config,
+              token,
+              dto.comment,
+            );
+          }
+
+      return {
+        success:true,
+        message: `Configuration ${id} submitted for approval successfully`,
+      };
+      
+
+    }
+  async approveConfig(
+    id:number,
+    dto: ApprovalDto,
+    user: AuthenticatedUser,
+    token:string
+  )
+  : Promise<ConfigResponseDto> {
+
+    // Retrieve user info from token
+    const config = await this.configRepository.findConfigById(
+      id,
+      user.tenantId,
+      token,
+    );
+
+
+    if (!config) {
+      throw new NotFoundException(`Config with ID ${id} not found`);
+    }
+
+
+    const updatedConfig = await this.configRepository.getupdateConfigByStatus(
+        id,
+        ConfigStatus.APPROVED,
+        token,
+      );
+
+
+      
+          if (updatedConfig) {
+            const config = updatedConfig as Config;
+            await this.notificationService.sendWorkflowNotification(
+              EventType.ApproverApprove,
+              user,
+              config,
+              token,
+              dto.comment,
+            );
+          }
+
+      return {
+        success:true,
+        message: `Configuration ${id} has been approved successfully`,
+      };
+      
+
+    }
+
+ async rejectConfig(
+    id:number,
+    dto: SubmitForApprovalDto,
+    user: AuthenticatedUser,
+    token:string
+  )
+  : Promise<ConfigResponseDto> {
+
+    // Retrieve user info from token
+    const config = await this.configRepository.findConfigById(
+      id,
+      user.tenantId,
+      token,
+    );
+
+
+    if (!config) {
+      throw new NotFoundException(`Config with ID ${id} not found`);
+    }
+
+
+    const updatedConfig = await this.configRepository.getupdateConfigByStatus(
+        id,
+        ConfigStatus.REJECTED,
+        token,
+      );
+
+
+      
+          if (updatedConfig) {
+            const config = updatedConfig as Config;
+            await this.notificationService.sendWorkflowNotification(
+                EventType.ApproverReject,
+                user,
+                config,
+                token,
+                dto.comment,
+            );
+          }
+
+      return {
+        success:true,
+        message: `Configuration ${id} has been rejected successfully`,
+      };
+      
+
+    }
   async exportConfig(
-    id: number,
+    id:number,
     dto: StatusTransitionDto,
-    tenantId: string,
-    userId: string,
-    userClaims: string[],
-    token: string,
+    user: AuthenticatedUser,
+    token:string
   ): Promise<ConfigResponseDto> {
     const config = await this.configRepository.findConfigById(
       id,
-      tenantId,
+      user.tenantId,
       token,
     );
     if (!config) {
       throw new NotFoundException(`Config with ID ${id} not found`);
     }
+    const tenantId = user.tenantId;
 
     const fileName = `dems_${tenantId}_${id}`;
 
@@ -2224,8 +2273,19 @@ export class ConfigService {
         token,
       );
 
+      if (result) {
+        const exportedConfig = result as Config;
+        await this.notificationService.sendWorkflowNotification(
+          EventType.ExporterExport,
+          user,
+          exportedConfig,
+          token,
+          dto.comment,
+        );
+      }
+
       return {
-        success:true,
+        success: true,
         message: `Configuration ${id} exported successfully`,
         config: result as Config | undefined,
       };
@@ -2240,9 +2300,12 @@ export class ConfigService {
   async deployConfig(
     id: number,
     dto: DeploymentDto,
+    user: AuthenticatedUser,
+
     tenantId: string,
     userId: string,
-    userClaims: string[],
+    // userClaims: string[],
+
     token: string,
   ): Promise<ConfigResponseDto> {
     // const config = await this.configRepository.findConfigById(
@@ -2318,7 +2381,7 @@ export class ConfigService {
           createdAt: configData.createdAt || new Date(),
           updatedAt: new Date(),
         };
-
+   
 
         console.log("deployedConfigData", deployedConfigData);
 
@@ -2360,6 +2423,23 @@ export class ConfigService {
       } else {
         this.logger.warn(`No transactionType found in config file ${fileName}`);
       }
+      const functions = configData.functions;
+      const datamodelFn = Array.isArray(functions)
+    ? functions.find((fn) => fn.functionName === 'addDatamodelTable')
+    : functions;
+    if (datamodelFn)
+        {
+        this.logger.log(`Creating datamodel table as per function: ${functions.functionName}`);
+        await this.configRepository.createTazamaDataModelTable(
+          datamodelFn.tableName,
+          datamodelFn.columns,
+          token,
+        );
+        this.logger.log(
+          `Successfully created datamodel table "${functions.parameters.tableName}" from deployed config`,
+        );
+      }
+      
       await this.sftpService.deleteFile(fileName);
       this.logger.log(`Deleted config file from SFTP: ${fileName}`);      
 
@@ -2369,6 +2449,17 @@ export class ConfigService {
       //   newStatus,
       //   token,
       // );
+           
+      // Use configData as the deployedConfig for notification
+      const deployedConfig = configData as Config;
+      await this.notificationService.sendWorkflowNotification(
+        EventType.PublisherDeploy,
+        user,
+        deployedConfig,
+        token,
+        dto.comment,
+      );
+      
 
       this.logger.log(
         `Successfully updated original config ${id} status to ${newStatus}`,
@@ -2436,15 +2527,6 @@ export class ConfigService {
       dto.comment,
     );
 
-    await this.auditService.logAction({
-      action: 'return_to_progress',
-      entityType: 'config',
-      entityId: id.toString(),
-      actor: userId,
-      tenantId,
-      details: `Configuration returned to progress${dto.comment ? `: ${dto.comment}` : ''}`,
-      newValues: { status: newStatus },
-    });
 
     return {
       success: true,
@@ -2492,55 +2574,6 @@ export class ConfigService {
     };
   }
 
-  async getAuditHistory(
-    id: number,
-    tenantId: string,
-    token: string,
-  ): Promise<{
-    configId: number;
-    history: Array<{
-      action: string;
-      actor: string;
-      timestamp: Date;
-      details: string;
-      previousStatus?: string;
-      newStatus?: string;
-    }>;
-  }> {
-    const config = await this.configRepository.findConfigById(
-      id,
-      tenantId,
-      token,
-    );
-    if (!config) {
-      throw new NotFoundException(`Config with ID ${id} not found`);
-    }
-    const auditLogs = await this.auditService.getAuditLogs(
-      tenantId,
-      'config',
-      undefined,
-      undefined,
-      undefined,
-      100,
-    );
-
-    const configLogs = auditLogs
-      .filter((log) => log.entity_id === id.toString())
-      .map((log) => ({
-        action: log.action,
-        actor: log.actor,
-        timestamp: log.timestamp,
-        details: log.details || '',
-        previousStatus: log.old_values?.status,
-        newStatus: log.new_values?.status,
-      }));
-
-    return {
-      configId: id,
-      history: configLogs,
-    };
-  }
-
   private async logStatusChange(
     configId: number,
     previousStatus: ConfigStatus,
@@ -2575,7 +2608,7 @@ export class ConfigService {
     id: number,
     publishingStatus: 'active' | 'inactive',
     tenantId: string,
-    userId: string,
+    user: AuthenticatedUser,
     token: string,
   ): Promise<ConfigResponseDto> {
     const result = await this.configRepository.updatePublishingStatus(
@@ -2601,6 +2634,18 @@ export class ConfigService {
       );
       throw new BadRequestException(
         `Failed to activate config: ${error.message}`,
+      );
+    }
+    if (result?.success && result.config) {
+      const config = result.config as Config;
+      await this.notificationService.sendWorkflowNotification(
+        publishingStatus === 'active'
+          ? EventType.PublisherActivate
+          : EventType.PublisherDeactivate,
+        user,
+        config,
+        token,
+        `Publishing status changed to ${publishingStatus}`,
       );
     }
 

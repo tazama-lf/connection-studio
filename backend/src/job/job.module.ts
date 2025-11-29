@@ -3,7 +3,6 @@ import { JobService } from './job.service';
 import { JobController } from './job.controller';
 import { LoggerModule } from '../logger-service/logger-service.module';
 import { DatabaseModule } from '../database/database.module';
-import { AuditModule } from '../audit/audit.module';
 import { DryRunModule } from '../dry-run/dry-run.module';
 import { ConfigModule } from '@nestjs/config';
 import { SftpModule } from 'src/sftp/sftp.module';
@@ -19,7 +18,6 @@ import { NotificationModule } from 'src/notification/notification.module';
   imports: [
     LoggerModule,
     DatabaseModule,
-    AuditModule,
     DryRunModule,
     ConfigModule,
     SftpModule,

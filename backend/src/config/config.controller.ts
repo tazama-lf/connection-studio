@@ -24,7 +24,6 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AdminServiceClient } from '../services/admin-service-client.service';
 import { ConfigService } from './config.service';
-import { NotificationService } from '../notification/notification.service';
 import { TazamaAuthGuard } from '../auth/tazama-auth.guard';
 import { User } from '../auth/user.decorator';
 import type { AuthenticatedUser } from '../auth/auth.types';
@@ -59,6 +58,8 @@ function getTokenString(user: AuthenticatedUser): string {
   return user.token.tokenString;
 }
 
+
+// // serive 
 function buildForwardHeaders(user: AuthenticatedUser): Record<string, string> {
   return {
     Authorization: `Bearer ${getTokenString(user)}`,
@@ -74,7 +75,6 @@ export class ConfigController {
   constructor(
     private readonly adminServiceClient: AdminServiceClient,
     private readonly configService: ConfigService,
-    private readonly notificationService: NotificationService,
   ) {}
 
   private autoDetectContentType(
@@ -96,18 +96,20 @@ export class ConfigController {
     }
   }
 
-  private generateEndpointPath(
-    tenantId: string,
-    version: string,
-    transactionType: string,
-    msgFam?: string,
-  ): string {
-    const basePath = `/${tenantId}/${version}`;
-    if (msgFam?.trim()) {
-      return `${basePath}/${msgFam}/${transactionType}`;
-    }
-    return `${basePath}/${transactionType}`;
-  }
+
+  // remove this method
+  // private generateEndpointPath(
+  //   tenantId: string,
+  //   version: string,
+  //   transactionType: string,
+  //   msgFam?: string,
+  // ): string {
+  //   const basePath = `/${tenantId}/${version}`;
+  //   if (msgFam?.trim()) {
+  //     return `${basePath}/${msgFam}/${transactionType}`;
+  //   }
+  //   return `${basePath}/${transactionType}`;
+  // }
 
   // private async sendWorkflowNotification(
   //   event:
@@ -150,30 +152,21 @@ export class ConfigController {
 
   @Post(':id/reject')
   @RequireClaims(TazamaClaims.APPROVER)
-  async rejectConfig(
+   async rejectConfig(
     @Param('id', ParseIntPipe) id: number,
-    @Body() dto: RejectionDto,
+    @Body() dto: SubmitForApprovalDto,
     @User() user: AuthenticatedUser,
     @Headers('authorization') authorization: string,
   ): Promise<ConfigResponseDto> {
-    const authToken = authorization?.split(' ')[1];
-    const result = await this.adminServiceClient.forwardRequest(
-      'POST',
-      `/v1/admin/tcs/config/${id}/workflow/reject`,
+    const token = authorization?.replace('Bearer ', '') as string;
+
+    const result = await this.configService.rejectConfig(
+      id,
       dto,
-      buildForwardHeaders(user),
+      user,
+      token,
     );
 
-    if (result?.success) {
-      const config = result.config as Config;
-      await this.notificationService.sendWorkflowNotification(
-        EventType.ApproverReject,
-        user,
-        config,
-        authToken,
-        dto.comment,
-      );
-    }
 
     return result;
   }
@@ -199,62 +192,64 @@ export class ConfigController {
       buildForwardHeaders(user),
     );
   }
-  @Post('upload')
-  @RequireClaims(TazamaClaims.EDITOR)
-  @HttpCode(HttpStatus.CREATED)
-  @UseInterceptors(FileInterceptor('file'))
-  async createConfigFromFile(
-    @UploadedFile() file: Express.Multer.File,
-    @Body('msgFam') msgFam: string,
-    @Body('transactionType') transactionType: string,
-    @Body('version') version: string,
-    @User() user: AuthenticatedUser,
-  ): Promise<ConfigResponseDto> {
-    if (!file) {
-      throw new BadRequestException('No file uploaded');
-    }
 
-    // const validTransactionTypes = Object.values(TransactionType);
-    // if (!validTransactionTypes.includes(transactionType as TransactionType)) {
-    //   throw new BadRequestException(
-    //     `Invalid transactionType. Must be one of: ${validTransactionTypes.join(', ')}`,
-    //   );
-    // }
+  // unused method
+  // @Post('upload')
+  // @RequireClaims(TazamaClaims.EDITOR)
+  // @HttpCode(HttpStatus.CREATED)
+  // @UseInterceptors(FileInterceptor('file'))
+  // async createConfigFromFile(
+  //   @UploadedFile() file: Express.Multer.File,
+  //   @Body('msgFam') msgFam: string,
+  //   @Body('transactionType') transactionType: string,
+  //   @Body('version') version: string,
+  //   @User() user: AuthenticatedUser,
+  // ): Promise<ConfigResponseDto> {
+  //   if (!file) {
+  //     throw new BadRequestException('No file uploaded');
+  //   }
 
-    const content = file.buffer.toString('utf8');
-    const autoDetectedContentType = this.autoDetectContentType(
-      file.originalname,
-      content,
-    );
+  //   // const validTransactionTypes = Object.values(TransactionType);
+  //   // if (!validTransactionTypes.includes(transactionType as TransactionType)) {
+  //   //   throw new BadRequestException(
+  //   //     `Invalid transactionType. Must be one of: ${validTransactionTypes.join(', ')}`,
+  //   //   );
+  //   // }
 
-    const dto: CreateConfigDto = {
-      msgFam,
-      transactionType,
-      version,
-      payload: content,
-      contentType: autoDetectedContentType,
-    };
+  //   const content = file.buffer.toString('utf8');
+  //   const autoDetectedContentType = this.autoDetectContentType(
+  //     file.originalname,
+  //     content,
+  //   );
 
-    const result = await this.configService.createConfig(
-      dto,
-      getTenantId(user),
-      decodeValidatedToken(user).preferredUsername,
-      user.token.tokenString,
-    );
+  //   const dto: CreateConfigDto = {
+  //     msgFam,
+  //     transactionType,
+  //     version,
+  //     payload: content,
+  //     contentType: autoDetectedContentType,
+  //   };
 
-    if (!result.success) {
-      throw new BadRequestException(
-        result.message || 'Failed to create config',
-      );
-    }
+  //   const result = await this.configService.createConfig(
+  //     dto,
+  //     getTenantId(user),
+  //     decodeValidatedToken(user).preferredUsername,
+  //     user.token.tokenString,
+  //   );
 
-    return {
-      success: true,
-      message: 'Config created successfully from file',
-      config: result.config,
-      validation: result.validation,
-    };
-  }
+  //   if (!result.success) {
+  //     throw new BadRequestException(
+  //       result.message || 'Failed to create config',
+  //     );
+  //   }
+
+  //   return {
+  //     success: true,
+  //     message: 'Config created successfully from file',
+  //     config: result.config,
+  //     validation: result.validation,
+  //   };
+  // }
 
   @Post()
   @RequireClaims(TazamaClaims.EDITOR)
@@ -264,6 +259,8 @@ export class ConfigController {
     @User() user: AuthenticatedUser,
     @Req() request: any,
   ): Promise<ConfigResponseDto> {
+
+    // user.token ---> daikh laina
     const authHeader = request.headers.authorization || '';
     const token = authHeader.replace('Bearer ', '');
 
@@ -287,54 +284,61 @@ export class ConfigController {
       validation: result.validation,
     };
   }
-  @Get('pending-approvals/:offset/:limit')
-  @RequireClaims(TazamaClaims.APPROVER)
-  async getPendingApprovals(
-    @Param('offset') offset: string,
-    @Param('limit') limit: string,
-    @User() user: AuthenticatedUser,
-  ): Promise<ConfigResponseDto[]> {
-    return this.adminServiceClient.forwardRequest(
-      'GET',
-      `/v1/admin/tcs/config/pending-approvals/${offset}/${limit}`,
-      undefined,
-      buildForwardHeaders(user),
-    );
-  }
 
-  @Get('transaction/:type/:offset/:limit')
-  @RequireClaims(TazamaClaims.EDITOR)
-  async getConfigsByTransactionType(
-    @Param('type') type: string,
-    @Param('offset') offset: string,
-    @Param('limit') limit: string,
-    @User() user: AuthenticatedUser,
-  ): Promise<Config[]> {
-    return this.adminServiceClient.forwardRequest(
-      'GET',
-      `/v1/admin/tcs/config/transaction/${type}/${offset}/${limit}`,
-      undefined,
-      buildForwardHeaders(user),
-    );
-  }
+  // remoe this
+  // @Get('pending-approvals/:offset/:limit')
+  // @RequireClaims(TazamaClaims.APPROVER)
+  // async getPendingApprovals(
+  //   @Param('offset') offset: string,
+  //   @Param('limit') limit: string,
+  //   @User() user: AuthenticatedUser,
+  // ): Promise<ConfigResponseDto[]> {
+  //   return this.adminServiceClient.forwardRequest(
+  //     'GET',
+  //     `/v1/admin/tcs/config/pending-approvals/${offset}/${limit}`,
+  //     undefined,
+  //     buildForwardHeaders(user),
+  //   );
+  // }
 
-  @Get('endpoint/:path/:version/:offset/:limit')
-  @RequireClaims(TazamaClaims.EDITOR)
-  async getConfigByEndpoint(
-    @Param('path') path: string,
-    @Param('version') version: string,
-    @Param('offset') offset: string,
-    @Param('limit') limit: string,
-    @User() user: AuthenticatedUser,
-  ): Promise<Config[]> {
-    const configs = await this.adminServiceClient.forwardRequest(
-      'GET',
-      `/v1/admin/tcs/config/endpoint/${encodeURIComponent(path)}/${encodeURIComponent(version || 'v1')}/${offset}/${limit}`,
-      undefined,
-      buildForwardHeaders(user),
-    );
-    return configs;
-  }
+
+  // remove this
+
+  // @Get('transaction/:type/:offset/:limit')
+  // @RequireClaims(TazamaClaims.EDITOR)
+  // async getConfigsByTransactionType(
+  //   @Param('type') type: string,
+  //   @Param('offset') offset: string,
+  //   @Param('limit') limit: string,
+  //   @User() user: AuthenticatedUser,
+  // ): Promise<Config[]> {
+  //   return this.adminServiceClient.forwardRequest(
+  //     'GET',
+  //     `/v1/admin/tcs/config/transaction/${type}/${offset}/${limit}`,
+  //     undefined,
+  //     buildForwardHeaders(user),
+  //   );
+  // }
+
+
+  // remove 
+  // @Get('endpoint/:path/:version/:offset/:limit')
+  // @RequireClaims(TazamaClaims.EDITOR)
+  // async getConfigByEndpoint(
+  //   @Param('path') path: string,
+  //   @Param('version') version: string,
+  //   @Param('offset') offset: string,
+  //   @Param('limit') limit: string,
+  //   @User() user: AuthenticatedUser,
+  // ): Promise<Config[]> {
+  //   const configs = await this.adminServiceClient.forwardRequest(
+  //     'GET',
+  //     `/v1/admin/tcs/config/endpoint/${encodeURIComponent(path)}/${encodeURIComponent(version || 'v1')}/${offset}/${limit}`,
+  //     undefined,
+  //     buildForwardHeaders(user),
+  //   );
+  //   return configs;
+  // }
   @Get(':id')
   @RequireAnyClaims(
     TazamaClaims.EDITOR,
@@ -400,21 +404,23 @@ export class ConfigController {
       buildForwardHeaders(user),
     );
   }
-  @Post(':id/mapping')
-  @RequireClaims(TazamaClaims.EDITOR)
-  async addMapping(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: AddMappingDto,
-    @User() user: AuthenticatedUser,
-  ): Promise<ConfigResponseDto> {
-    console.log('The dto in add mapping ', dto);
-    return this.adminServiceClient.forwardRequest(
-      'POST',
-      `/v1/admin/tcs/config/${id}/mapping`,
-      dto,
-      buildForwardHeaders(user),
-    );
-  }
+
+  // remove tshi
+  // @Post(':id/mapping')
+  // @RequireClaims(TazamaClaims.EDITOR)
+  // async addMapping(
+  //   @Param('id', ParseIntPipe) id: number,
+  //   @Body() dto: AddMappingDto,
+  //   @User() user: AuthenticatedUser,
+  // ): Promise<ConfigResponseDto> {
+  //   console.log('The dto in add mapping ', dto);
+  //   return this.adminServiceClient.forwardRequest(
+  //     'POST',
+  //     `/v1/admin/tcs/config/${id}/mapping`,
+  //     dto,
+  //     buildForwardHeaders(user),
+  //   );
+  // }
   @Delete(':id/mapping/:index')
   @RequireClaims(TazamaClaims.EDITOR)
   async removeMapping(
@@ -484,60 +490,40 @@ export class ConfigController {
     @User() user: AuthenticatedUser,
     @Headers('authorization') authorization: string,
   ): Promise<ConfigResponseDto> {
-    const authToken = authorization?.split(' ')[1] as string;
-    const result = await this.adminServiceClient.forwardRequest(
-      'POST',
-      `/v1/admin/tcs/config/${id}/workflow/submit`,
+    const token = authorization?.replace('Bearer ', '') as string;
+
+    const result = await this.configService.submitConfig(
+      id,
       dto,
-      buildForwardHeaders(user),
+      user,
+      token,
     );
 
-    console.log(' Result after submit for approval ', result);
-    if (result?.success) {
-      const config = result.config as Config;
-      await this.notificationService.sendWorkflowNotification(
-        EventType.EditorSubmit,
-        user,
-        config,
-        authToken,
-        dto.comment,
-      );
-    }
 
     return result;
   }
-
+  
   @Post(':id/workflow/approve')
   @RequireClaims(TazamaClaims.APPROVER)
-  async approveConfig(
+   async approveConfig(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: ApprovalDto,
     @User() user: AuthenticatedUser,
     @Headers('authorization') authorization: string,
   ): Promise<ConfigResponseDto> {
-    const authToken = authorization?.split(' ')[1];
+    const token = authorization?.replace('Bearer ', '') as string;
 
-    const result = await this.adminServiceClient.forwardRequest(
-      'POST',
-      `/v1/admin/tcs/config/${id}/workflow/approve`,
+    const result = await this.configService.approveConfig(
+      id,
       dto,
-      buildForwardHeaders(user),
+      user,
+      token,
     );
 
-    if (result?.success) {
-      const config = result.config as Config;
-      Logger.log("Config returned from admin service: ", config)
-      await this.notificationService.sendWorkflowNotification(
-        EventType.ApproverApprove,
-        user,
-        config,
-        authToken,
-        dto.comment,
-      );
-    }
 
     return result;
   }
+
 
 
 
@@ -573,9 +559,7 @@ export class ConfigController {
     const result = await this.configService.exportConfig(
       id,
       dto,
-      getTenantId(user),
-      decodeValidatedToken(user).preferredUsername,
-      getUserClaims(user),
+      user,
       token,
     );
 
@@ -585,17 +569,6 @@ export class ConfigController {
     //   dto,
     //   buildForwardHeaders(user),
     // );
-
-    if (result.success) {
-      const config = result.config as Config;
-      await this.notificationService.sendWorkflowNotification(
-        EventType.ExporterExport,
-        user,
-        config as Config,
-        token,
-        dto.comment,
-      );
-    }
 
     return result;
   }
@@ -613,9 +586,10 @@ export class ConfigController {
     const result = await this.configService.deployConfig(
       id,
       dto,
+      user,
       getTenantId(user),
       decodeValidatedToken(user).preferredUsername,
-      getUserClaims(user),
+      // getUserClaims(user),
       token,
     );
 
@@ -626,16 +600,16 @@ export class ConfigController {
     //   buildForwardHeaders(user),
     // );
 
-    if (result?.success) {
-      const config = result.config as Config;
-      await this.notificationService.sendWorkflowNotification(
-        EventType.PublisherDeploy,
-        user,
-        config,
-        token,
-        dto.comment,
-      );
-    }
+    // if (result?.success) {
+    //   const config = result.config as Config;
+    //   await this.notificationService.sendWorkflowNotification(
+    //     EventType.PublisherDeploy,
+    //     user,
+    //     config,
+    //     token,
+    //     dto.comment,
+    //   );
+    // }
 
     return result;
   }
@@ -673,24 +647,6 @@ export class ConfigController {
     );
   }
 
-  @Get(':id/audit-history')
-  @RequireAnyClaims(
-    TazamaClaims.EDITOR,
-    TazamaClaims.APPROVER,
-    TazamaClaims.PUBLISHER,
-    TazamaClaims.EXPORTER,
-  )
-  async getAuditHistory(
-    @Param('id', ParseIntPipe) id: number,
-    @User() user: AuthenticatedUser,
-  ): Promise<any> {
-    return this.adminServiceClient.forwardRequest(
-      'GET',
-      `/v1/admin/tcs/config/${id}/audit-history`,
-      undefined,
-      buildForwardHeaders(user),
-    );
-  }
 
   @Patch('/update/status/:id')
   @RequireAnyClaims(
@@ -724,22 +680,22 @@ export class ConfigController {
       id,
       dto.publishing_status,
       getTenantId(user),
-      decodeValidatedToken(user).preferredUsername,
+      user,
       getTokenString(user),
     );
 
-    if (result?.success) {
-      const config = result.config as Config;
-      await this.notificationService.sendWorkflowNotification(
-        dto.publishing_status === 'active'
-          ? EventType.PublisherActivate
-          : EventType.PublisherDeactivate,
-        user,
-        config,
-        token,
-        `Publishing status changed to ${dto.publishing_status}`,
-      );
-    }
+    // if (result?.success) {
+    //   const config = result.config as Config;
+    //   await this.notificationService.sendWorkflowNotification(
+    //     dto.publishing_status === 'active'
+    //       ? EventType.PublisherActivate
+    //       : EventType.PublisherDeactivate,
+    //     user,
+    //     config,
+    //     token,
+    //     `Publishing status changed to ${dto.publishing_status}`,
+    //   );
+    // }
 
     return result;
   }

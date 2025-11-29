@@ -8,7 +8,6 @@ import { PayloadParsingService } from '../services/payload-parsing.service';
 import { FileParsingService } from '../services/file-parsing.service';
 import { AdminServiceClient } from '../services/admin-service-client.service';
 import { TazamaDataModelService } from '../tazama-data-model/tazama-data-model.service';
-import { AuditService } from '../audit/audit.service';
 import { SftpService } from '../sftp/sftp.service';
 import { ConfigService as NestConfigService } from '@nestjs/config';
 import { DatabaseService } from '../database/database.service';
@@ -54,12 +53,6 @@ describe('ConfigModule', () => {
           provide: TazamaDataModelService,
           useValue: {
             isValidDestinationPath: jest.fn().mockReturnValue(true),
-          },
-        },
-        {
-          provide: AuditService,
-          useValue: {
-            logAction: jest.fn(),
           },
         },
         {

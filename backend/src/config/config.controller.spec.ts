@@ -651,27 +651,7 @@ describe('ConfigController', () => {
       });
     });
 
-    describe('getAuditHistory', () => {
-      it('should get audit history for config', async () => {
-        const mockHistory = {
-          configId: 1,
-          history: [
-            {
-              action: 'create_config',
-              actor: 'user123',
-              timestamp: new Date(),
-              details: 'Config created',
-            },
-          ],
-        };
-
-        adminServiceClient.forwardRequest.mockResolvedValue(mockHistory);
-
-        const result = await controller.getAuditHistory(1, mockUser);
-
-        expect(result).toEqual(mockHistory);
-      });
-    });
+  
   });
 
   describe('updatePublishingStatus', () => {

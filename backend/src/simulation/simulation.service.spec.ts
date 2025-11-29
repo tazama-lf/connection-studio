@@ -1,7 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { SimulationService, SimulatePayloadDto } from './simulation.service';
 import { AdminServiceClient } from '../services/admin-service-client.service';
-import { AuditService } from '../audit/audit.service';
 
 describe('SimulationService', () => {
   let service: SimulationService;
@@ -10,17 +9,11 @@ describe('SimulationService', () => {
     forwardRequest: jest.fn(),
   } as unknown as jest.Mocked<AdminServiceClient>;
 
-  const auditServiceMock = {
-    logAction: jest.fn(),
-    getAuditLogs: jest.fn(),
-  } as unknown as jest.Mocked<AuditService>;
-
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SimulationService,
         { provide: AdminServiceClient, useValue: adminServiceClientMock },
-        { provide: AuditService, useValue: auditServiceMock },
       ],
     }).compile();
 

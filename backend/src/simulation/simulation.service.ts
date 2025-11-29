@@ -1,7 +1,6 @@
 ﻿import { Injectable, Logger } from '@nestjs/common';
 import { AdminServiceClient } from '../services/admin-service-client.service';
 import { Config, FieldMapping } from '../config/config.interfaces';
-import { AuditService } from '../audit/audit.service';
 import {
   processMappings,
   iMappingConfiguration,
@@ -57,7 +56,6 @@ export class SimulationService {
 
   constructor(
     private readonly adminServiceClient: AdminServiceClient,
-    private readonly auditService: AuditService,
   ) {}
 
   async simulateMapping(
@@ -75,7 +73,6 @@ export class SimulationService {
 
     // console.log('1--- Starting simulation for endpoint ID:', dto.endpointId);
     // console.log('2--- Payload type:', dto.payloadType);
-    console.log('0. whole dto inside simulateMapping is:', dto);
 
     try {
       if (!dto.endpointId || isNaN(Number(dto.endpointId))) {
@@ -284,18 +281,7 @@ export class SimulationService {
       }
       const finalStatus = errors.length === 0 ? 'PASSED' : 'FAILED';
 
-      void this.auditService.logAction({
-        entityType: 'SIMULATION',
-        action: 'TCS_SIMULATE_MAPPING',
-        actor: userId || 'SYSTEM',
-        tenantId,
-        entityId: dto.endpointId.toString(),
-        endpointName: config.endpointPath || undefined,
-        version: config.version || undefined,
-        details: `Simulation ${finalStatus} for endpoint ${dto.endpointId}, mappings applied: ${mappingsApplied}, stages: ${stages.filter((s) => s.status === 'PASSED').length}/${stages.length}`,
-        status: finalStatus === 'PASSED' ? 'SUCCESS' : 'FAILURE',
-        severity: finalStatus === 'PASSED' ? 'LOW' : 'MEDIUM',
-      });
+
 
       return this.createStageBasedResult(
         dto,

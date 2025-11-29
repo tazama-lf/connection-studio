@@ -6,8 +6,6 @@ import {
 } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 import { ConfigService } from '@nestjs/config';
-import { KeycloakService } from '../Keycloak/keycloak.service';
-import { EmailCacheService } from '../Keycloak/email-cache.service';
 import {
   generateWorkflowEmailHTML,
   generateWorkflowEmailText,
@@ -63,8 +61,6 @@ export class NotificationService implements OnModuleInit {
 
   constructor(
     private readonly configService: ConfigService,
-    private readonly keycloakService: KeycloakService,
-    private readonly emailCacheService: EmailCacheService,
     private readonly httpService: HttpService,
   ) { }
 
@@ -311,13 +307,13 @@ export class NotificationService implements OnModuleInit {
       }
 
       if (fetchAll) {
-        const cachedEmails = this.emailCacheService.getEmailsByRole(
-          tenantId,
-          'all',
-        );
-        if (cachedEmails && cachedEmails.length > 0) {
-          return cachedEmails;
-        }
+        // const cachedEmails = this.emailCacheService.getEmailsByRole(
+        //   tenantId,
+        //   'all',
+        // );
+        // if (cachedEmails && cachedEmails.length > 0) {
+        //   return cachedEmails;
+        // }
 
         this.logger.log(
           `Fetching all user emails from AuthService for tenant '${tenantId}'`,
@@ -327,7 +323,7 @@ export class NotificationService implements OnModuleInit {
           groupName,
           undefined,
         );
-        this.emailCacheService.setEmailsByRole(tenantId, 'all', emails);
+        // this.emailCacheService.setEmailsByRole(tenantId, 'all', emails);
         this.logger.log(
           `✓ Fetched ${emails.length} total emails from Auth Service`,
         );
@@ -335,13 +331,13 @@ export class NotificationService implements OnModuleInit {
       }
 
       if (role) {
-        const cachedEmails = this.emailCacheService.getEmailsByRole(
-          tenantId,
-          role,
-        );
-        if (cachedEmails && cachedEmails.length > 0) {
-          return cachedEmails;
-        }
+        // const cachedEmails = this.emailCacheService.getEmailsByRole(
+        //   tenantId,
+        //   role,
+        // );
+        // if (cachedEmails && cachedEmails.length > 0) {
+        //   return cachedEmails;
+        // }
 
         this.logger.log(`Fetching emails for role '${role}' from AuthService`);
         const emails = await this.getUserGroupMembers(
@@ -349,7 +345,7 @@ export class NotificationService implements OnModuleInit {
           groupName,
           role,
         );
-        this.emailCacheService.setEmailsByRole(tenantId, role, emails);
+        // this.emailCacheService.setEmailsByRole(tenantId, role, emails);
 
         this.logger.log(`✓ Fetched ${emails} emails for role '${role}'`);
         return emails;
@@ -521,31 +517,31 @@ export class NotificationService implements OnModuleInit {
     } = data;
 
     let recipientEmails: string[] = [];
-    try {
-      const cachedEmails = this.emailCacheService.getEmailsByRole(
-        tenantId,
-        'all',
-      );
-      if (cachedEmails && cachedEmails.length > 0) {
-        recipientEmails = cachedEmails;
-      } else {
-        recipientEmails = await this.keycloakService.getAllEmails(tenantId);
-        this.emailCacheService.setEmailsByRole(
-          tenantId,
-          'all',
-          recipientEmails,
-        );
-      }
-    } catch (error) {
-      this.logger.warn(
-        `Failed to fetch user emails for tenant ${tenantId}: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      );
-      return {
-        success: false,
-        message: 'Failed to fetch recipient emails',
-        recipients: 0,
-      };
-    }
+    // try {
+    //   const cachedEmails = this.emailCacheService.getEmailsByRole(
+    //     tenantId,
+    //     'all',
+    //   );
+    //   if (cachedEmails && cachedEmails.length > 0) {
+    //     recipientEmails = cachedEmails;
+    //   } else {
+    //     recipientEmails = await this.keycloakService.getAllEmails(tenantId);
+    //     this.emailCacheService.setEmailsByRole(
+    //       tenantId,
+    //       'all',
+    //       recipientEmails,
+    //     );
+    //   }
+    // } catch (error) {
+    //   this.logger.warn(
+    //     `Failed to fetch user emails for tenant ${tenantId}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+    //   );
+    //   return {
+    //     success: false,
+    //     message: 'Failed to fetch recipient emails',
+    //     recipients: 0,
+    //   };
+    // }
 
     if (recipientEmails.length === 0) {
       this.logger.warn(`No users found for tenant ${tenantId}`);
