@@ -84,9 +84,10 @@ export const CronJobList: React.FC<CronJobListProps> = ({
   const [itemsPerPage] = useState(UI_CONFIG.pagination.defaultPageSize);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
 
-  // Action state for debouncing
-  const [isActionInProgress, setIsActionInProgress] = useState(false);
-  const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
+  // General action loading state for confirmation dialog
+  const [actionLoading, setActionLoading] = useState<
+    '' | 'export' | 'approval'
+  >('');
 
   // Helper function for pluralization
   const getIterationText = (count: number) => {
@@ -170,8 +171,8 @@ export const CronJobList: React.FC<CronJobListProps> = ({
   // Handle export with confirmation
   const handleExportConfirm = async () => {
     if (confirmDialog.schedule) {
+      setActionLoading('export');
       try {
-        setIsActionInProgress(true);
         await dataEnrichmentApi.updateScheduleStatus(
           confirmDialog.schedule.id,
           'STATUS_06_EXPORTED',
@@ -184,7 +185,7 @@ export const CronJobList: React.FC<CronJobListProps> = ({
         showError('Failed to export cron job');
         setConfirmDialog({ open: false, type: '', schedule: null });
       } finally {
-        setIsActionInProgress(false);
+        setActionLoading('');
       }
     }
   };
@@ -266,9 +267,8 @@ export const CronJobList: React.FC<CronJobListProps> = ({
   // Handle approval confirmation
   const handleApprovalConfirm = async () => {
     if (!confirmDialog.schedule) return;
-
+    setActionLoading('approval');
     try {
-      setIsActionInProgress(true);
       await dataEnrichmentApi.updateScheduleStatus(
         confirmDialog.schedule.id,
         'STATUS_03_UNDER_REVIEW',
@@ -283,7 +283,7 @@ export const CronJobList: React.FC<CronJobListProps> = ({
       showError('Failed to submit cron job for approval');
       setConfirmDialog({ open: false, type: '', schedule: null });
     } finally {
-      setIsActionInProgress(false);
+      setActionLoading('');
     }
   };
 
@@ -740,10 +740,48 @@ export const CronJobList: React.FC<CronJobListProps> = ({
                 }}
                 variant="primary"
                 className="!pb-[6px] !pt-[5px] bg-[#2b7fff]"
+                disabled={actionLoading === confirmDialog.type}
               >
-                {confirmDialog.type === 'export' && 'Yes, Export Cron Job'}
-                {confirmDialog.type === 'approval' &&
-                  'Yes, Submit for Approval'}
+                {['export', 'approval'].map(
+                  (type) =>
+                    confirmDialog.type === type && (
+                      <>
+                        {actionLoading === type && (
+                          <span className="w-4 h-4 flex items-center justify-center mr-2">
+                            <svg
+                              className="animate-spin"
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                            >
+                              <circle
+                                cx="12"
+                                cy="12"
+                                r="10"
+                                stroke="#fff"
+                                strokeWidth="4"
+                                fill="none"
+                                opacity="0.2"
+                              />
+                              <path
+                                d="M22 12a10 10 0 0 1-10 10"
+                                stroke="#fff"
+                                strokeWidth="4"
+                                fill="none"
+                              />
+                            </svg>
+                          </span>
+                        )}
+                        {actionLoading === type
+                          ? type === 'export'
+                            ? 'Exporting...'
+                            : 'Submitting...'
+                          : type === 'export'
+                            ? 'Yes, Export Cron Job'
+                            : 'Yes, Submit for Approval'}
+                      </>
+                    ),
+                )}
               </Button>
             </DialogActions>
           </Dialog>

@@ -43,6 +43,7 @@ const ApproverCronJobsPage: React.FC = () => {
     null,
   );
   const [approvalComment, setApprovalComment] = useState<string>('');
+  const [isApproving, setIsApproving] = useState(false);
 
   console.log(selectedSchedule);
 
@@ -178,7 +179,7 @@ const ApproverCronJobsPage: React.FC = () => {
 
   const handleApprovalConfirm = async () => {
     if (!scheduleToApprove) return;
-
+    setIsApproving(true);
     try {
       await dataEnrichmentApi.updateScheduleStatus(
         scheduleToApprove,
@@ -194,6 +195,8 @@ const ApproverCronJobsPage: React.FC = () => {
     } catch (error) {
       console.error('Failed to approve cron job:', error);
       showError('Failed to approve cron job');
+    } finally {
+      setIsApproving(false);
     }
   };
 
@@ -398,8 +401,35 @@ const ApproverCronJobsPage: React.FC = () => {
             onClick={handleApprovalConfirm}
             variant="primary"
             className="!pb-[6px] !pt-[5px]"
+            disabled={isApproving}
           >
-            Yes, Approve Cron Job
+            {isApproving && (
+              <span className="w-4 h-4 flex items-center justify-center mr-2">
+                <svg
+                  className="animate-spin"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="#fff"
+                    strokeWidth="4"
+                    fill="none"
+                    opacity="0.2"
+                  />
+                  <path
+                    d="M22 12a10 10 0 0 1-10 10"
+                    stroke="#fff"
+                    strokeWidth="4"
+                    fill="none"
+                  />
+                </svg>
+              </span>
+            )}
+            {isApproving ? 'Approving...' : 'Yes, Approve Cron Job'}
           </Button>
         </DialogActions>
       </Dialog>

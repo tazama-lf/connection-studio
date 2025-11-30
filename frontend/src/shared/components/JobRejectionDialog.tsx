@@ -11,22 +11,20 @@ import {
 interface JobRejectionDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (reason: string) => void;
+  onConfirm: (reason: string) => Promise<void> | void;
   jobName: string;
   jobType: 'Data Enrichment Job' | 'Cron Job';
 }
 
-export const JobRejectionDialog: React.FC<JobRejectionDialogProps> = ({
-  isOpen,
-  onClose,
-  onConfirm,
-  jobName,
-  jobType,
-}) => {
+export const JobRejectionDialog: React.FC<JobRejectionDialogProps> = (
+  props,
+) => {
+  const { isOpen, onClose, onConfirm, jobName, jobType } = props;
   const [reason, setReason] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!reason.trim()) {
       setError('Please provide a reason for rejection');
       return;
@@ -39,10 +37,15 @@ export const JobRejectionDialog: React.FC<JobRejectionDialogProps> = ({
       return;
     }
 
-    onConfirm(reason.trim());
-    setReason('');
-    setError('');
-    onClose();
+    setLoading(true);
+    try {
+      await onConfirm(reason.trim());
+      setReason('');
+      setError('');
+      onClose();
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleClose = () => {
@@ -118,7 +121,8 @@ export const JobRejectionDialog: React.FC<JobRejectionDialogProps> = ({
               fontWeight: '500',
             }}
           >
-            ⚠️ Important: This will reject the {jobType.toLowerCase()} and send it back to the creator for revisions.
+            ⚠️ Important: This will reject the {jobType.toLowerCase()} and send
+            it back to the creator for revisions.
           </DialogContentText>
         </Box>
 
@@ -159,11 +163,13 @@ export const JobRejectionDialog: React.FC<JobRejectionDialogProps> = ({
             required
           />
           {error && (
-            <p style={{
-              marginTop: '4px',
-              fontSize: '14px',
-              color: '#dc2626'
-            }}>
+            <p
+              style={{
+                marginTop: '4px',
+                fontSize: '14px',
+                color: '#dc2626',
+              }}
+            >
               {error}
             </p>
           )}
@@ -174,6 +180,7 @@ export const JobRejectionDialog: React.FC<JobRejectionDialogProps> = ({
           variant="secondary"
           className="!pb-[6px] !pt-[5px]"
           onClick={handleClose}
+          disabled={loading}
         >
           Cancel
         </Button>
@@ -181,9 +188,37 @@ export const JobRejectionDialog: React.FC<JobRejectionDialogProps> = ({
           onClick={handleSubmit}
           variant="danger"
           className="!pb-[6px] !pt-[5px]"
-          disabled={!reason.trim()}
+          disabled={!reason.trim() || loading}
         >
-          Yes, Reject {jobType}
+          {loading ? (
+            <>
+              <span className="mr-2 align-middle inline-block">
+                <svg
+                  className="animate-spin h-4 w-4 text-white"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8v8z"
+                  ></path>
+                </svg>
+              </span>
+              Rejecting...
+            </>
+          ) : (
+            <>Yes, Reject {jobType}</>
+          )}
         </Button>
       </DialogActions>
     </Dialog>

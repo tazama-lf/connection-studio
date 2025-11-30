@@ -1,6 +1,8 @@
 import CustomTable from '@common/Tables/CustomTable';
 import {
+  Backdrop,
   Box,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -51,6 +53,7 @@ interface JobListProps {
 }
 
 export const JobList: React.FC<JobListProps> = (props) => {
+  const [openLoader, setOpenLoader] = useState(false);
   // State for Pause/Resume confirmation dialogs (must be inside component)
   const [showPauseConfirmDialog, setShowPauseConfirmDialog] = useState<{
     open: boolean;
@@ -92,6 +95,10 @@ export const JobList: React.FC<JobListProps> = (props) => {
   const userIsApprover = user?.claims ? isApprover(user.claims) : false;
   const userIsExporter = user?.claims ? isExporter(user.claims) : false;
   const userIsPublisher = user?.claims ? isPublisher(user.claims) : false;
+
+  const closeLoader = () => {
+    setOpenLoader(false);
+  };
 
   // Determine user role for status filter
   const userRole = userIsPublisher
@@ -186,28 +193,40 @@ export const JobList: React.FC<JobListProps> = (props) => {
     job: DataEnrichmentJobResponse,
     newStatus: 'active' | 'in-active',
   ) => {
+    setOpenLoader(true);
+    setShowActivateConfirmDialog({
+      open: false,
+      job: null,
+    });
+    setShowDeactivateConfirmDialog({
+      open: false,
+      job: null,
+    });
+
     try {
-      console.log('Toggling job publishing status:', job.id, 'to:', newStatus);
-      await dataEnrichmentApi.updatePublishingStatus(
+      const data = await dataEnrichmentApi.updatePublishingStatus(
         job.id,
         newStatus,
         job.type?.toUpperCase() as 'PULL' | 'PUSH',
       );
 
-      const statusLabel = newStatus === 'active' ? 'activated' : 'deactivated';
-      showSuccess(
-        `Job ${job.endpoint_name || job.id} has been ${statusLabel} successfully`,
-      );
-
-      // Refresh the job list
-      if (props.onRefresh) {
-        props.onRefresh();
+      if (data?.success) {
+        const statusLabel =
+          newStatus === 'active' ? 'activated' : 'deactivated';
+        showSuccess(
+          `Job ${job.endpoint_name || job.id} has been ${statusLabel} successfully`,
+        );
+        // Refresh the job list
+        if (props.onRefresh) {
+          props.onRefresh();
+        }
       }
     } catch (error) {
       console.error('Error toggling job publishing status:', error);
       showError('Failed to update publishing status. Please try again.');
     } finally {
       setDropdownOpen(null);
+      setOpenLoader(false);
     }
   };
 
@@ -999,11 +1018,9 @@ export const JobList: React.FC<JobListProps> = (props) => {
                         'active',
                       );
                     }
-                    setShowActivateConfirmDialog({ open: false, job: null });
                   }}
                   variant="primary"
                   className="!pb-[6px] !pt-[5px]"
-                  autoFocus
                 >
                   Yes, Activate Job
                 </Button>
@@ -1111,11 +1128,9 @@ export const JobList: React.FC<JobListProps> = (props) => {
                         'in-active',
                       );
                     }
-                    setShowDeactivateConfirmDialog({ open: false, job: null });
                   }}
                   variant="primary"
                   className="!pb-[6px] !pt-[5px]"
-                  autoFocus
                 >
                   Yes, Deactivate Job
                 </Button>
@@ -1185,6 +1200,14 @@ export const JobList: React.FC<JobListProps> = (props) => {
           />
         </>
       )}
+
+      <Backdrop
+        sx={(theme) => ({ color: '#fff', zIndex: theme.zIndex.drawer + 100 })}
+        open={openLoader}
+        onClick={closeLoader}
+      >
+        <CircularProgress color="inherit" />
+      </Backdrop>
     </>
   );
 };

@@ -264,9 +264,14 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
   // Handle export confirmation
   const handleExportConfirm = async () => {
     if (onExport && job) {
-      const jobType = getJobType(job) === 'push' ? 'PUSH' : 'PULL';
-      await onExport(job.id, jobType);
-      setShowExportConfirmDialog(false);
+      setIsSaving(true);
+      try {
+        const jobType = getJobType(job) === 'push' ? 'PUSH' : 'PULL';
+        await onExport(job.id, jobType);
+        setShowExportConfirmDialog(false);
+      } finally {
+        setIsSaving(false);
+      }
     }
   };
 
@@ -279,15 +284,20 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
   }, [showApproveConfirmDialog]);
 
   // Approve handler with comment
-  const handleApproveWithComment = () => {
+  const handleApproveWithComment = async () => {
     if (onApprove && job) {
-      onApprove(
-        job.id,
-        getJobType(job).toUpperCase() as 'PULL' | 'PUSH',
-        approveComment,
-      );
+      setIsSaving(true);
+      try {
+        await onApprove(
+          job.id,
+          getJobType(job).toUpperCase() as 'PULL' | 'PUSH',
+          approveComment,
+        );
+        setShowApproveConfirmDialog(false);
+      } finally {
+        setIsSaving(false);
+      }
     }
-    setShowApproveConfirmDialog(false);
   };
 
   return (
@@ -1435,8 +1445,37 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
             sx={{ backgroundColor: '#2B7FFF' }}
             className="!pb-[6px] !pt-[5px]"
             autoFocus
+            disabled={isSaving}
+            startIcon={
+              isSaving ? (
+                <span className="w-4 h-4 flex items-center justify-center">
+                  <svg
+                    className="animate-spin"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="#fff"
+                      strokeWidth="4"
+                      fill="none"
+                      opacity="0.2"
+                    />
+                    <path
+                      d="M22 12a10 10 0 0 1-10 10"
+                      stroke="#fff"
+                      strokeWidth="4"
+                      fill="none"
+                    />
+                  </svg>
+                </span>
+              ) : undefined
+            }
           >
-            Yes, Export Job
+            {isSaving ? 'Exporting...' : 'Yes, Export Job'}
           </MuiButton>
         </DialogActions>
       </Dialog>
@@ -1664,8 +1703,37 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
             sx={{ backgroundColor: '#2B7FFF' }}
             className="!pb-[6px] !pt-[5px]"
             autoFocus
+            disabled={isSaving}
+            startIcon={
+              isSaving ? (
+                <span className="w-4 h-4 flex items-center justify-center">
+                  <svg
+                    className="animate-spin"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="#fff"
+                      strokeWidth="4"
+                      fill="none"
+                      opacity="0.2"
+                    />
+                    <path
+                      d="M22 12a10 10 0 0 1-10 10"
+                      stroke="#fff"
+                      strokeWidth="4"
+                      fill="none"
+                    />
+                  </svg>
+                </span>
+              ) : undefined
+            }
           >
-            Yes, Approve Job
+            {isSaving ? 'Approving...' : 'Yes, Approve Job'}
           </MuiButton>
         </DialogActions>
       </Dialog>

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Backdrop, CircularProgress } from '@mui/material';
 import { ActivityIcon, ChevronLeft, SearchIcon } from 'lucide-react';
 import { ConfigList } from '../../config/components/ConfigList';
 import type { Config } from '../../config/index';
@@ -44,6 +45,10 @@ const ApproverConfigsPage: React.FC = () => {
   } | null>(null);
   // Optional comment for approval
   const [approvalComment, setApprovalComment] = useState('');
+  // Loader for approval
+  const [approvalLoading, setApprovalLoading] = useState(false);
+  // Loader for rejection
+  const [rejectionLoading, setRejectionLoading] = useState(false);
 
   const { user } = useAuth();
   const { showSuccess, showError } = useToast();
@@ -102,7 +107,7 @@ const ApproverConfigsPage: React.FC = () => {
 
   const handleRejectConfirm = async (reason: string) => {
     if (!configToReject) return;
-
+    setRejectionLoading(true);
     try {
       const userId = user?.email || user?.username || 'system';
       const response = await configApi.rejectConfig(
@@ -130,6 +135,8 @@ const ApproverConfigsPage: React.FC = () => {
     } catch (error) {
       console.error('Failed to reject config:', error);
       showError('Failed to reject configuration');
+    } finally {
+      setRejectionLoading(false);
     }
   };
 
@@ -194,7 +201,7 @@ const ApproverConfigsPage: React.FC = () => {
   // Handle actual approval after confirmation
   const handleApprovalConfirm = async () => {
     if (!configToApprove) return;
-
+    setApprovalLoading(true);
     try {
       // Pass approvalComment to the API if supported
       const response = await configApi.approveConfig(
@@ -225,6 +232,8 @@ const ApproverConfigsPage: React.FC = () => {
       showError('Failed to approve configuration');
       setShowApprovalDialog(false);
       setConfigToApprove(null);
+    } finally {
+      setApprovalLoading(false);
     }
   };
 
@@ -296,15 +305,24 @@ const ApproverConfigsPage: React.FC = () => {
 
       {/* Rejection Dialog */}
       {configToReject && (
-        <RejectionDialog
-          isOpen={showRejectionDialog}
-          onClose={() => {
-            setShowRejectionDialog(false);
-            setConfigToReject(null);
-          }}
-          onConfirm={handleRejectConfirm}
-          configName={configToReject.endpointPath}
-        />
+        <>
+          <RejectionDialog
+            isOpen={showRejectionDialog}
+            onClose={() => {
+              setShowRejectionDialog(false);
+              setConfigToReject(null);
+            }}
+            onConfirm={handleRejectConfirm}
+            configName={configToReject.endpointPath}
+            loading={rejectionLoading}
+          />
+          <Backdrop
+            sx={(theme) => ({ color: '#fff', zIndex: theme.zIndex.drawer + 100 })}
+            open={rejectionLoading}
+          >
+            <CircularProgress color="inherit" />
+          </Backdrop>
+        </>
       )}
 
       {/* Config Review Modal */}
@@ -446,9 +464,30 @@ const ApproverConfigsPage: React.FC = () => {
             onClick={handleApprovalConfirm}
             variant="primary"
             className="!pb-[6px] !pt-[5px] bg-[#2b7fff]"
+            disabled={approvalLoading}
           >
-            Yes, Approve Configuration
+            {approvalLoading ? (
+              <>
+                <CircularProgress
+                  size={18}
+                  color="inherit"
+                  style={{ marginRight: 8 }}
+                />
+                Approving...
+              </>
+            ) : (
+              'Yes, Approve Configuration'
+            )}
           </Button>
+          <Backdrop
+            sx={(theme) => ({
+              color: '#fff',
+              zIndex: theme.zIndex.drawer + 100,
+            })}
+            open={approvalLoading}
+          >
+            <CircularProgress color="inherit" />
+          </Backdrop>
         </DialogActions>
       </Dialog>
     </div>

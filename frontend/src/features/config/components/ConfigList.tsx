@@ -102,6 +102,9 @@ export const ConfigList: React.FC<ConfigListProps> = ({
   onReject,
   onSendForDeployment,
 }) => {
+  const [actionLoading, setActionLoading] = useState<
+    '' | 'export' | 'pause' | 'resume' | 'activate' | 'deactivate'
+  >('');
   const [configs, setConfigs] = useState<Config[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -346,39 +349,67 @@ export const ConfigList: React.FC<ConfigListProps> = ({
   // Confirmation handlers
   const handleExportConfirm = async () => {
     if (confirmDialog.config) {
-      await handleExportConfig(confirmDialog.config);
-      setConfirmDialog({ open: false, type: '', config: null });
+      setActionLoading('export');
+      try {
+        await handleExportConfig(confirmDialog.config);
+        setConfirmDialog({ open: false, type: '', config: null });
+      } finally {
+        setActionLoading('');
+      }
     }
   };
 
   const handlePauseConfirm = async () => {
     if (confirmDialog.config) {
-      await handleUpdateConfigStatus(confirmDialog.config, 'STATUS_02_ON_HOLD');
-      setConfirmDialog({ open: false, type: '', config: null });
+      setActionLoading('pause');
+      try {
+        await handleUpdateConfigStatus(
+          confirmDialog.config,
+          'STATUS_02_ON_HOLD',
+        );
+        setConfirmDialog({ open: false, type: '', config: null });
+      } finally {
+        setActionLoading('');
+      }
     }
   };
 
   const handleResumeConfirm = async () => {
     if (confirmDialog.config) {
-      await handleUpdateConfigStatus(
-        confirmDialog.config,
-        'STATUS_01_IN_PROGRESS',
-      );
-      setConfirmDialog({ open: false, type: '', config: null });
+      setActionLoading('resume');
+      try {
+        await handleUpdateConfigStatus(
+          confirmDialog.config,
+          'STATUS_01_IN_PROGRESS',
+        );
+        setConfirmDialog({ open: false, type: '', config: null });
+      } finally {
+        setActionLoading('');
+      }
     }
   };
 
   const handleActivateConfirm = async () => {
     if (confirmDialog.config) {
-      await handleTogglePublishingStatus(confirmDialog.config, 'active');
-      setConfirmDialog({ open: false, type: '', config: null });
+      setActionLoading('activate');
+      try {
+        await handleTogglePublishingStatus(confirmDialog.config, 'active');
+        setConfirmDialog({ open: false, type: '', config: null });
+      } finally {
+        setActionLoading('');
+      }
     }
   };
 
   const handleDeactivateConfirm = async () => {
     if (confirmDialog.config) {
-      await handleTogglePublishingStatus(confirmDialog.config, 'inactive');
-      setConfirmDialog({ open: false, type: '', config: null });
+      setActionLoading('deactivate');
+      try {
+        await handleTogglePublishingStatus(confirmDialog.config, 'inactive');
+        setConfirmDialog({ open: false, type: '', config: null });
+      } finally {
+        setActionLoading('');
+      }
     }
   };
 
@@ -918,13 +949,54 @@ export const ConfigList: React.FC<ConfigListProps> = ({
             }}
             variant="primary"
             className="!pb-[6px] !pt-[5px]"
+            disabled={actionLoading === confirmDialog.type}
           >
-            {confirmDialog.type === 'export' && 'Yes, Export Configuration'}
-            {confirmDialog.type === 'pause' && 'Yes, Pause Configuration'}
-            {confirmDialog.type === 'resume' && 'Yes, Resume Configuration'}
-            {confirmDialog.type === 'activate' && 'Yes, Activate Configuration'}
-            {confirmDialog.type === 'deactivate' &&
-              'Yes, Deactivate Configuration'}
+            {['export', 'pause', 'resume', 'activate', 'deactivate'].map(
+              (type) =>
+                confirmDialog.type === type && (
+                  <>
+                    {actionLoading === type && (
+                      <span className="w-4 h-4 flex items-center justify-center mr-2">
+                        <svg
+                          className="animate-spin"
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="#fff"
+                            strokeWidth="4"
+                            fill="none"
+                            opacity="0.2"
+                          />
+                          <path
+                            d="M22 12a10 10 0 0 1-10 10"
+                            stroke="#fff"
+                            strokeWidth="4"
+                            fill="none"
+                          />
+                        </svg>
+                      </span>
+                    )}
+                    {actionLoading === type
+                      ? (type === 'export' && 'Exporting...') ||
+                        (type === 'pause' && 'Pausing...') ||
+                        (type === 'resume' && 'Resuming...') ||
+                        (type === 'activate' && 'Activating...') ||
+                        (type === 'deactivate' && 'Deactivating...')
+                      : (type === 'export' && 'Yes, Export Configuration') ||
+                        (type === 'pause' && 'Yes, Pause Configuration') ||
+                        (type === 'resume' && 'Yes, Resume Configuration') ||
+                        (type === 'activate' &&
+                          'Yes, Activate Configuration') ||
+                        (type === 'deactivate' &&
+                          'Yes, Deactivate Configuration')}
+                  </>
+                ),
+            )}
           </Button>
         </DialogActions>
       </Dialog>

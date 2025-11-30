@@ -408,6 +408,7 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({
                       fontSize: '0.875rem',
                       fontWeight: 500,
                       textTransform: 'none',
+                      background: '#2b7fff',
                     }}
                     onClick={handleSendForApproval}
                   >
@@ -425,6 +426,7 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({
                     fontSize: '0.875rem',
                     fontWeight: 500,
                     textTransform: 'none',
+                    background: '#2b7fff',
                   }}
                   onClick={handleSaveEdit}
                   title={!isValid ? 'Please fill all required fields' : ''}
@@ -443,6 +445,7 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({
                     fontSize: '0.875rem',
                     fontWeight: 500,
                     textTransform: 'none',
+                    background: '#2b7fff',
                   }}
                   title={!isValid ? 'Please fill all required fields' : ''}
                 >
