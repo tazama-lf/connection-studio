@@ -13,7 +13,23 @@ import {
   Pagination,
 } from '@mui/material';
 import { Button } from '@shared';
-import { ChevronLeft, History } from 'lucide-react';
+import {
+  ChevronLeft,
+  History,
+  X,
+  User,
+  Hash,
+  Database,
+  Table,
+  ListOrdered,
+  CheckCircle,
+  Clock,
+  FileText,
+  Info,
+  AlertTriangle,
+  FileCheck2,
+  FileOutput as FileOutputLucide,
+} from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { EyeIcon, Copy } from 'lucide-react';
 import { handleInputFilter } from '@shared/helpers';
@@ -52,7 +68,7 @@ const getStatusBadge = (status?: string) => {
       }
     }
   }
-  
+
   switch (normalizedStatus) {
     case 'active':
     case 'ready for approval':
@@ -99,7 +115,9 @@ const EndpointHistoryPage: React.FC = () => {
   const [totalPages, setTotalPages] = useState<number>(0);
   const [totalRecords, setTotalRecords] = useState<number>(0);
   const itemsPerPage = UI_CONFIG?.pagination?.defaultPageSize ?? 10;
-  const [searchingFilters, setSearchingFilters] = useState<Record<string, any>>({});
+  const [searchingFilters, setSearchingFilters] = useState<Record<string, any>>(
+    {},
+  );
   useEffect(() => {
     const load = async (pageNumber: number = 1) => {
       setLoading(true);
@@ -160,7 +178,7 @@ const EndpointHistoryPage: React.FC = () => {
         overflowWrap: 'break-word',
       }}
     >
-      {(value === null || value === undefined || value === '') ? 'N/A' : value}
+      {value === null || value === undefined || value === '' ? 'N/A' : value}
     </div>
   );
 
@@ -191,40 +209,45 @@ const EndpointHistoryPage: React.FC = () => {
               : 160,
       flex: key === 'job_id' ? 0 : key === 'endpoint_name' ? 0 : 0,
       // Render header for each column to ensure centered header text. For endpoint_name include the search input.
-      renderHeader: key === 'endpoint_name'
-        ? () => (
-            <Box
-              sx={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: '8px',
-                width: '100%',
-                py: '12px',
-              }}
-            >
-              <Box sx={{ fontSize: '14px', fontWeight: '600' }}>Endpoint Name</Box>
-              {handleInputFilter({
-                fieldName: 'endpointName',
-                searchingFilters,
-                setSearchingFilters,
-              })}
-            </Box>
-          )
-        : () => (
-            <Box
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '100%',
-                height: '100%',
-                py: '12px',
-              }}
-            >
-              <Box sx={{ fontSize: '14px', fontWeight: '600' }}>{prettifyHeader(key)}</Box>
-            </Box>
-          ),
+      renderHeader:
+        key === 'endpoint_name'
+          ? () => (
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '8px',
+                  width: '100%',
+                  py: '12px',
+                }}
+              >
+                <Box sx={{ fontSize: '14px', fontWeight: '600' }}>
+                  Endpoint Name
+                </Box>
+                {handleInputFilter({
+                  fieldName: 'endpointName',
+                  searchingFilters,
+                  setSearchingFilters,
+                })}
+              </Box>
+            )
+          : () => (
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '100%',
+                  height: '100%',
+                  py: '12px',
+                }}
+              >
+                <Box sx={{ fontSize: '14px', fontWeight: '600' }}>
+                  {prettifyHeader(key)}
+                </Box>
+              </Box>
+            ),
       renderCell: (params: any) =>
         key === 'status' ? (
           <span
@@ -315,42 +338,47 @@ const EndpointHistoryPage: React.FC = () => {
               <span className="ml-2 text-gray-600">Loading...</span>
             </div>
           ) : (
-              <CustomTable
-                columns={columns as any}
-                rows={data}
-                pageSize={itemsPerPage}
-                pageSizeOptions={UI_CONFIG?.pagination?.pageSizeOptions as any}
-                search={true}
-                disableRowSelection={true}
-                pagination={
-                  data.length > 0 && (
-                    <div className="px-6 py-4 border-t border-gray-200 bg-white rounded-b-lg flex items-center justify-between">
-                      <div className="text-sm text-gray-700 font-medium">
-                        Showing{' '}
-                        <span className="font-bold">{(page - 1) * itemsPerPage + 1}</span>{' '}
-                        to{' '}
-                        <span className="font-bold">{Math.min(page * itemsPerPage, totalRecords)}</span>{' '}
-                        of <span className="font-bold">{totalRecords}</span> results
-                      </div>
-                      <div className="flex items-center space-x-3">
-                        <Box>
-                          <Pagination
-                            page={page}
-                            count={totalPages}
-                            onChange={(_, newPage: number) => setPage(newPage)}
-                            variant="outlined"
-                            sx={{
-                              '& .MuiPaginationItem-page.Mui-selected': {
-                                backgroundColor: '#fbf9fa',
-                              },
-                            }}
-                          />
-                        </Box>
-                      </div>
+            <CustomTable
+              columns={columns as any}
+              rows={data}
+              pageSize={itemsPerPage}
+              pageSizeOptions={UI_CONFIG?.pagination?.pageSizeOptions as any}
+              search={true}
+              disableRowSelection={true}
+              pagination={
+                data.length > 0 && (
+                  <div className="px-6 py-4 border-t border-gray-200 bg-white rounded-b-lg flex items-center justify-between">
+                    <div className="text-sm text-gray-700 font-medium">
+                      Showing{' '}
+                      <span className="font-bold">
+                        {(page - 1) * itemsPerPage + 1}
+                      </span>{' '}
+                      to{' '}
+                      <span className="font-bold">
+                        {Math.min(page * itemsPerPage, totalRecords)}
+                      </span>{' '}
+                      of <span className="font-bold">{totalRecords}</span>{' '}
+                      results
                     </div>
-                  )
-                }
-              />
+                    <div className="flex items-center space-x-3">
+                      <Box>
+                        <Pagination
+                          page={page}
+                          count={totalPages}
+                          onChange={(_, newPage: number) => setPage(newPage)}
+                          variant="outlined"
+                          sx={{
+                            '& .MuiPaginationItem-page.Mui-selected': {
+                              backgroundColor: '#fbf9fa',
+                            },
+                          }}
+                        />
+                      </Box>
+                    </div>
+                  </div>
+                )
+              }
+            />
           )}
         </Box>
       </div>
@@ -361,15 +389,40 @@ const EndpointHistoryPage: React.FC = () => {
         maxWidth="md"
         fullWidth
       >
-        <DialogTitle sx={{ color: '#2B7FFF', fontWeight: 700 }}>
-          Endpoint Run Details
+        <DialogTitle
+          sx={{
+            color: '#2B7FFF',
+            fontWeight: 700,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
+          <span>Endpoint Run Details</span>
+          <IconButton
+            aria-label="close"
+            onClick={() => setModalOpen(false)}
+            size="small"
+            sx={{ ml: 2 }}
+          >
+            <X size={22} />
+          </IconButton>
         </DialogTitle>
         <DialogContent dividers sx={{ padding: 3 }}>
           {activeRecord ? (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
               <Box>
-                <Box sx={{ fontSize: 14, color: '#6B7280', fontWeight: 600 }}>
-                  Job Id
+                <Box
+                  sx={{
+                    fontSize: 18,
+                    color: 'black',
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                  }}
+                >
+                  <Hash size={18} style={{ color: '#2563EB' }} /> Job Id
                 </Box>
                 <Box
                   sx={{
@@ -413,45 +466,104 @@ const EndpointHistoryPage: React.FC = () => {
                 sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3 }}
               >
                 <Box>
-                  <Box sx={{ fontSize: 14, color: '#6B7280', fontWeight: 600 }}>
-                    Tenant Id
+                  <Box
+                    sx={{
+                      fontSize: 18,
+                      color: 'black',
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1,
+                    }}
+                  >
+                    <User size={18} style={{ color: '#2563EB' }} /> Tenant Id
                   </Box>
                   <Box sx={{ fontSize: 15 }}>
-                    {activeRecord.tenant_id ?? '-'}
+                    {activeRecord.tenant_id ?? 'N/A'}
                   </Box>
                 </Box>
                 <Box>
-                  <Box sx={{ fontSize: 14, color: '#6B7280', fontWeight: 600 }}>
-                    Version
+                  <Box
+                    sx={{
+                      fontSize: 18,
+                      color: 'black',
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1,
+                    }}
+                  >
+                    <FileText size={18} style={{ color: '#2563EB' }} /> Version
                   </Box>
-                  <Box sx={{ fontSize: 15 }}>{activeRecord.version ?? '-'}</Box>
+                  <Box sx={{ fontSize: 15 }}>
+                    {activeRecord.version ?? 'N/A'}
+                  </Box>
                 </Box>
 
                 <Box>
-                  <Box sx={{ fontSize: 14, color: '#6B7280', fontWeight: 600 }}>
-                    Endpoint Name
+                  <Box
+                    sx={{
+                      fontSize: 18,
+                      color: 'black',
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1,
+                    }}
+                  >
+                    <Database size={18} style={{ color: '#2563EB' }} /> Endpoint
+                    Name
                   </Box>
                   <Box sx={{ fontSize: 15 }}>
-                    {activeRecord.endpoint_name ?? '-'}
+                    {activeRecord.endpoint_name ?? 'N/A'}
                   </Box>
                 </Box>
                 <Box>
-                  <Box sx={{ fontSize: 14, color: '#6B7280', fontWeight: 600 }}>
-                    Table Name
+                  <Box
+                    sx={{
+                      fontSize: 18,
+                      color: 'black',
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1,
+                    }}
+                  >
+                    <Table size={18} style={{ color: '#2563EB' }} /> Table Name
                   </Box>
                   <Box sx={{ fontSize: 15 }}>
-                    {activeRecord.table_name ?? '-'}
+                    {activeRecord.table_name ?? 'N/A'}
                   </Box>
                 </Box>
 
                 <Box>
-                  <Box sx={{ fontSize: 14, color: '#6B7280', fontWeight: 600 }}>
+                  <Box
+                    sx={{
+                      fontSize: 18,
+                      color: 'black',
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1,
+                    }}
+                  >
+                    <ListOrdered size={18} style={{ color: '#2563EB' }} />{' '}
                     Counts
                   </Box>
                   <Box sx={{ fontSize: 15 }}>{activeRecord.counts ?? 0}</Box>
                 </Box>
                 <Box>
-                  <Box sx={{ fontSize: 14, color: '#6B7280', fontWeight: 600 }}>
+                  <Box
+                    sx={{
+                      fontSize: 18,
+                      color: 'black',
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1,
+                    }}
+                  >
+                    <CheckCircle size={18} style={{ color: '#2563EB' }} />{' '}
                     Processed
                   </Box>
                   <Box sx={{ fontSize: 15 }}>
@@ -460,18 +572,36 @@ const EndpointHistoryPage: React.FC = () => {
                 </Box>
 
                 <Box>
-                  <Box sx={{ fontSize: 14, color: '#6B7280', fontWeight: 600 }}>
-                    Created At
+                  <Box
+                    sx={{
+                      fontSize: 18,
+                      color: 'black',
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1,
+                    }}
+                  >
+                    <Clock size={18} style={{ color: '#2563EB' }} /> Created At
                   </Box>
                   <Box sx={{ fontSize: 15, color: '#374151', mt: 0.5 }}>
                     {activeRecord.created_at
                       ? new Date(activeRecord.created_at).toLocaleString()
-                      : '-'}
+                      : 'N/A'}
                   </Box>
                 </Box>
                 <Box>
-                  <Box sx={{ fontSize: 14, color: '#6B7280', fontWeight: 600 }}>
-                    Status
+                  <Box
+                    sx={{
+                      fontSize: 18,
+                      color: 'black',
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1,
+                    }}
+                  >
+                    <FileCheck2 size={18} style={{ color: '#2563EB' }} /> Status
                   </Box>
                   <Box sx={{ mt: 0.5 }}>
                     <span
@@ -484,30 +614,67 @@ const EndpointHistoryPage: React.FC = () => {
                 </Box>
 
                 <Box>
-                  <Box sx={{ fontSize: 14, color: '#6B7280', fontWeight: 600 }}>
+                  <Box
+                    sx={{
+                      fontSize: 18,
+                      color: 'black',
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1,
+                    }}
+                  >
+                    <FileOutputLucide size={18} style={{ color: '#2563EB' }} />{' '}
                     Publishing Status
                   </Box>
                   <Box sx={{ mt: 0.5 }}>
                     <span
-                      className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold ${getStatusBadge(activeRecord.publishing_status)}`}
+                      className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold
+                        ${
+                          activeRecord.publishing_status === 'active'
+                            ? 'bg-green-50 text-green-600 border border-green-200'
+                            : activeRecord.publishing_status === 'in-active'
+                              ? 'bg-red-50 text-red-600 border border-red-200'
+                              : getStatusBadge(activeRecord.publishing_status)
+                        }
+                      `}
                     >
                       {activeRecord.publishing_status ?? ''}
                     </span>
                   </Box>
                 </Box>
+
+                <Box>
+                  <Box
+                    sx={{
+                      fontSize: 18,
+                      color: 'black',
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1,
+                    }}
+                  >
+                    <Info size={15} style={{ color: '#2563EB' }} /> Description
+                  </Box>
+                  <Box sx={{ fontSize: 15 }}>
+                    {activeRecord.description ?? 'N/A'}
+                  </Box>
+                </Box>
               </Box>
 
               <Box>
-                <Box sx={{ fontSize: 13, color: '#6B7280', fontWeight: 600 }}>
-                  Description
-                </Box>
-                <Box sx={{ fontSize: 13, fontStyle: 'italic' }}>
-                  {activeRecord.description ?? '-'}
-                </Box>
-              </Box>
-
-              <Box>
-                <Box sx={{ fontSize: 13, color: '#6B7280', fontWeight: 600 }}>
+                <Box
+                  sx={{
+                    fontSize: 13,
+                    color: 'black',
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                  }}
+                >
+                  <AlertTriangle size={15} style={{ color: '#ff474d' }} />{' '}
                   Exception
                 </Box>
                 {activeRecord.exception ? (
@@ -525,7 +692,7 @@ const EndpointHistoryPage: React.FC = () => {
                     </pre>
                   </Box>
                 ) : (
-                  <Box sx={{ fontSize: 13, mt: 0.5 }}>-</Box>
+                  <Box sx={{ fontSize: 13, mt: 0.5 }}>N/A</Box>
                 )}
               </Box>
             </Box>
@@ -533,11 +700,7 @@ const EndpointHistoryPage: React.FC = () => {
             <div>No data</div>
           )}
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setModalOpen(false)} variant="primary">
-            Close
-          </Button>
-        </DialogActions>
+        {/* No DialogActions/Close button at bottom; close icon is in title */}
       </Dialog>
 
       {/* loading handled above the table */}
