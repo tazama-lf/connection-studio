@@ -317,7 +317,7 @@ export class AdminServiceClient {
   async updateJobActivation(
     id: string,
     status: ScheduleStatus,
-    tableName: string,
+    type: ConfigType,
     token: string,
   ): Promise<{ success: boolean; message: string; data: Job }> {
     this.logger.log(`Validating job update with id : ${id}`);
@@ -326,7 +326,7 @@ export class AdminServiceClient {
       const response = await firstValueFrom(
         this.httpService.put(
           `${this.adminServiceUrl}/v1/admin/tcs/job/update/activation/${id}`,
-          { status, tableName },
+          { status, type },
           {
             headers: {
               Authorization: `Bearer ${token}`,
