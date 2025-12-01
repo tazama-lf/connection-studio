@@ -11,6 +11,7 @@ import {
   Job,
   JobStatus,
   JobSummary,
+  Schedule,
   ScheduleStatus,
   SFTPConnection,
   SourceType,
@@ -161,7 +162,7 @@ export class JobService {
         );
       }
 
-      let {connection} = job;
+      let { connection } = job;
 
       if (job.source_type === SourceType.SFTP) {
         validateFileType(job.file.path);
@@ -318,7 +319,7 @@ export class JobService {
       const { success, data } = await this.adminServiceClient.updateJobActivation(
         id,
         status,
-        type === ConfigType.PUSH ? 'push_jobs' : 'pull_jobs',
+        type,
         user.token.tokenString,
       );
 
@@ -358,7 +359,7 @@ export class JobService {
         status === JobStatus.REJECTED ||
         status === JobStatus.EXPORTED;
 
-      let existingJob: any = null;
+      let existingJob: Job | null = null;
 
       if (requiresExistingJob) {
         existingJob = await this.findOne(id, type, user.token.tokenString);
@@ -369,7 +370,7 @@ export class JobService {
           await this.notificationService.sendWorkflowNotification(
             EventType.EditorSubmit,
             user,
-            existingJob,
+            { ...existingJob, status: JobStatus.REVIEW } as Job,
             user.token.tokenString,
           )
           break;
@@ -378,7 +379,7 @@ export class JobService {
           await this.notificationService.sendWorkflowNotification(
             EventType.ApproverApprove,
             user,
-            existingJob,
+            { ...existingJob, status: JobStatus.APPROVED } as Job,
             user.token.tokenString,
           )
           break;
@@ -393,7 +394,7 @@ export class JobService {
           await this.notificationService.sendWorkflowNotification(
             EventType.ApproverReject,
             user,
-            existingJob,
+            { ...existingJob, status: JobStatus.REJECTED } as Job,
             user.token.tokenString,
           )
           break;
@@ -408,7 +409,7 @@ export class JobService {
           await this.notificationService.sendWorkflowNotification(
             EventType.ExporterExport,
             user,
-            existingJob,
+            { ...existingJob, status: JobStatus.EXPORTED } as Job,
             user.token.tokenString,
           )
 
@@ -418,7 +419,7 @@ export class JobService {
         case JobStatus.DEPLOYED: {
           const fileData = await this.sftpService.readFile(fileName);
 
-          let deployPayload: any = { ...fileData, publishing_status: ScheduleStatus.ACTIVE };
+          let deployPayload = { ...fileData, publishing_status: ScheduleStatus.ACTIVE };
 
           if (type === ConfigType.PULL) {
             const connection = { ...fileData.connection } as SFTPConnection;
@@ -449,7 +450,7 @@ export class JobService {
           await this.notificationService.sendWorkflowNotification(
             EventType.PublisherDeploy,
             user,
-            fileData,
+            { ...fileData, status: JobStatus.DEPLOYED },
             user.token.tokenString,
           )
 

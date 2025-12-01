@@ -22,7 +22,7 @@ import { SchedulerService } from './scheduler.service';
 @Controller('scheduler')
 @UseGuards(TazamaAuthGuard)
 export class SchedulerController {
-  constructor(private readonly schedulerService: SchedulerService) {}
+  constructor(private readonly schedulerService: SchedulerService) { }
 
   @Post('/create')
   @RequireAnyClaims(TazamaClaims.EDITOR)
@@ -113,7 +113,7 @@ export class SchedulerController {
       id,
       user.tenantId,
       status,
-      user.token.tokenString,
+      user,
       reason,
     );
   }
