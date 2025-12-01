@@ -5,15 +5,15 @@ import {
 } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { ISuccess, JobStatus, Schedule } from '@tazama-lf/tcs-lib';
-import { AuthenticatedUser } from 'src/auth/auth.types';
+import { AuthenticatedUser } from '../auth/auth.types';
 import { v4 } from 'uuid';
 import { AdminServiceClient } from '../services/admin-service-client.service';
 import { SftpService } from '../sftp/sftp.service';
 import { validateCronExpression } from '../utils/helpers';
 import { CreateScheduleJobDto } from './dto/create-schedule.dto';
 import { UpdateScheduleJobDto } from './dto/update-schedule-dto';
-import { EventType } from 'src/enums/events.enum';
-import { NotificationService } from 'src/notification/notification.service';
+import { EventType } from '../enums/events.enum';
+import { NotificationService } from '../notification/notification.service';
 
 @Injectable()
 export class SchedulerService {
