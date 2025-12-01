@@ -19,7 +19,7 @@ import { CLAIMS_KEY, IS_PUBLIC_KEY, ANY_CLAIMS_KEY } from './auth.decorator';
 export class TazamaAuthGuard implements CanActivate {
   private readonly logger = new Logger(TazamaAuthGuard.name);
 
-  constructor(private reflector: Reflector) {}
+  constructor(private readonly reflector: Reflector) {}
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const logContext = 'TazamaAuthGuard.canActivate()';
 
@@ -71,10 +71,10 @@ export class TazamaAuthGuard implements CanActivate {
       let invalidClaims: string[] = [];
       if (requiredClaims && requiredClaims.length > 0) {
         const hasAllClaims = requiredClaims.every(
-          (claim) => validated[claim] === true,
+          (claim) => validated[claim],
         );
         validClaims = requiredClaims.filter(
-          (claim) => validated[claim] === true,
+          (claim) => validated[claim],
         );
         invalidClaims = requiredClaims.filter((claim) => !validated[claim]);
         hasValidAccess = hasAllClaims;
@@ -86,10 +86,10 @@ export class TazamaAuthGuard implements CanActivate {
         }
       } else if (anyRequiredClaims && anyRequiredClaims.length > 0) {
         const hasAnyClaim = anyRequiredClaims.some(
-          (claim) => validated[claim] === true,
+          (claim) => validated[claim],
         );
         validClaims = anyRequiredClaims.filter(
-          (claim) => validated[claim] === true,
+          (claim) => validated[claim],
         );
         invalidClaims = anyRequiredClaims.filter((claim) => !validated[claim]);
         hasValidAccess = hasAnyClaim;

@@ -16,13 +16,13 @@ export class AuditInterceptor implements NestInterceptor {
     const request = context.switchToHttp().getRequest();
 
     // Extract user information
-    const user = request.user;
+    const {user} = request;
     const actor = user?.token?.clientId || user?.token?.sub || 'unknown-user';
     const tenantId = user?.token?.tenantId || 'unknown-tenant';
 
     // Extract request details
-    const method = request.method;
-    const url = request.url;
+    const {method} = request;
+    const {url} = request;
     const controller = context.getClass().name;
 
     // Determine action based on method and route

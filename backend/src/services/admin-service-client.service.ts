@@ -288,7 +288,7 @@ export class AdminServiceClient {
     limit: number,
     token: string,
   ): Promise<JobSummary[]> {
-    this.logger.log(`Getting job by status`);
+    this.logger.log('Getting job by status');
 
     try {
       const response = await firstValueFrom(
@@ -494,7 +494,7 @@ export class AdminServiceClient {
     user: AuthenticatedUser,
     filters?: Record<string, unknown>,
   ): Promise<{}> {
-    this.logger.log(`Getting all schedules`);
+    this.logger.log('Getting all schedules');
 
     try {
       const response = await firstValueFrom(
@@ -539,7 +539,7 @@ export class AdminServiceClient {
               Authorization: `Bearer ${token}`,
             },
             params: {
-              status: status,
+              status,
               tenantId: tenant_id,
               page,
               limit,
@@ -742,8 +742,8 @@ export class AdminServiceClient {
 
   async getAllConfigs(
     token: string,
-    limit: number = 10,
-    offset: number = 0,
+    limit = 10,
+    offset = 0,
   ): Promise<{
     configs: any[];
     pagination: { total: number; limit: number; offset: number; pages: number };
@@ -852,8 +852,8 @@ export class AdminServiceClient {
     endpointPath: string,
     version: string,
     token: string,
-    limit: number = 10,
-    offset: number = 0,
+    limit = 10,
+    offset = 0,
   ): Promise<{
     configs: any[];
     pagination: { total: number; limit: number; offset: number; pages: number };
@@ -891,8 +891,8 @@ export class AdminServiceClient {
   async getConfigsByTransactionType(
     transactionType: string,
     token: string,
-    limit: number = 10,
-    offset: number = 0,
+    limit = 10,
+    offset = 0,
   ): Promise<{
     configs: any[];
     pagination: { total: number; limit: number; offset: number; pages: number };

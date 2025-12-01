@@ -1,4 +1,4 @@
-﻿// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: Apache-2.0
 import { Injectable, Logger } from '@nestjs/common';
 import { AdminServiceClient } from '../services/admin-service-client.service';
 import { Config, TransactionType } from './config.interfaces';
@@ -11,7 +11,7 @@ export class ConfigRepository {
 
   async runRawQuery(query: string, token: string): Promise<any> {
     this.logger.log('Executing raw SQL query via admin-service');
-    return this.adminServiceClient.runRawQuery(query, token);
+    return await this.adminServiceClient.runRawQuery(query, token);
   }
 
   async createConfig(
@@ -86,8 +86,8 @@ export class ConfigRepository {
     version: string,
     tenantId: string,
     token?: string,
-    limit: number = 10,
-    offset: number = 0,
+    limit = 10,
+    offset = 0,
   ): Promise<Config[]> {
     try {
       const result = await this.adminServiceClient.getConfigByEndpoint(
@@ -106,8 +106,8 @@ export class ConfigRepository {
   async findConfigsByTenant(
     tenantId: string,
     token?: string,
-    limit: number = 10,
-    offset: number = 0,
+    limit = 10,
+    offset = 0,
   ): Promise<Config[]> {
     try {
       const result = await this.adminServiceClient.getAllConfigs(
@@ -125,8 +125,8 @@ export class ConfigRepository {
     transactionType: TransactionType,
     tenantId: string,
     token?: string,
-    limit: number = 10,
-    offset: number = 0,
+    limit = 10,
+    offset = 0,
   ): Promise<Config[]> {
     try {
       const result = await this.adminServiceClient.getConfigsByTransactionType(
@@ -173,7 +173,7 @@ export class ConfigRepository {
     publishingStatus: 'active' | 'inactive',
     token: string,
   ): Promise<any> {
-    return this.adminServiceClient.updatePublishingStatus(
+    return await this.adminServiceClient.updatePublishingStatus(
       id,
       publishingStatus,
       token,

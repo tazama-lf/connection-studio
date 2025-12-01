@@ -4,7 +4,7 @@ import { Pool, QueryResult } from 'pg';
 
 @Injectable()
 export class DatabaseService implements OnModuleDestroy {
-  private pool: Pool;
+  private readonly pool: Pool;
 
   constructor(private readonly configService: ConfigService) {
     this.pool = new Pool({
@@ -13,7 +13,7 @@ export class DatabaseService implements OnModuleDestroy {
     });
   }
 
-  async query(sql: string, params?: unknown[]): Promise<QueryResult<any>> {
+  async query(sql: string, params?: unknown[]): Promise<QueryResult> {
     const result = await this.pool.query(sql, params);
     return result;
   }

@@ -17,7 +17,7 @@ export class TazamaDataModelController {
       const data = await this.tazamaDataModelService.getDestinationOptions();
       return {
         success: true,
-        data: data,
+        data,
       };
     } catch (error) {
       return {
@@ -38,7 +38,7 @@ export class TazamaDataModelController {
       return {
         success: true,
         message: 'Destination type created successfully',
-        data: data,
+        data,
       };
     } catch (error) {
       return {
@@ -62,7 +62,7 @@ export class TazamaDataModelController {
       return {
         success: true,
         message: 'Field added successfully',
-        data: data,
+        data,
       };
     } catch (error) {
       return {

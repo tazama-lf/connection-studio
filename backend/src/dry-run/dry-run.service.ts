@@ -26,7 +26,7 @@ export class DryRunService {
   async transformFileToJSON(
     sftp: SFTPClient,
     file: FileSettings,
-  ): Promise<Record<string, unknown>[]> {
+  ): Promise<Array<Record<string, unknown>>> {
     try {
       const buffer = await sftp.get(file.path);
 
@@ -66,7 +66,7 @@ export class DryRunService {
           escape: '"',
           record_delimiter: ['\r\n', '\n', '\r'],
         });
-        return records as Record<string, unknown>[];
+        return records as Array<Record<string, unknown>>;
       }
 
       throw new Error('Unsupported file type');
@@ -127,7 +127,7 @@ export class DryRunService {
 
   private async dryRunSftpJob(job: CreatePullJobDto): Promise<void> {
     const sftpCon = job.connection as SFTPConnection;
-    const file = job.file;
+    const {file} = job;
     let sftp = new SFTPClient();
 
     try {
@@ -136,7 +136,7 @@ export class DryRunService {
       if (!file?.path) throw new Error('File path not provided in job config');
       const fileExists = await sftp.exists(file.path);
       if (!fileExists)
-        throw new Error(`File ${file.path} not found on SFTP server`);
+        {throw new Error(`File ${file.path} not found on SFTP server`);}
 
       const records = await this.transformFileToJSON(sftp, file);
 
@@ -156,9 +156,9 @@ export class DryRunService {
   async dryRun(job: CreatePullJobDto): Promise<void> {
     try {
       if (job.source_type === SourceType.HTTP) {
-        return await this.dryRunHttpJob(job);
+        await this.dryRunHttpJob(job); 
       } else {
-        return await this.dryRunSftpJob(job);
+        await this.dryRunSftpJob(job); 
       }
     } catch (error: any) {
       this.loggerService.error(`Dry run failed, ${error.message}`);

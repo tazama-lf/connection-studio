@@ -27,7 +27,7 @@ export class AuditService {
   }
 
   async logAction(entry: AuditLogEntry): Promise<void> {
-    return await this.dbService.logAction(entry);
+    await this.dbService.logAction(entry);
   }
 
   async logEndpointCreated(
@@ -281,7 +281,7 @@ export class AuditService {
     actor?: string,
     startDate?: Date,
     endDate?: Date,
-    limit: number = 100,
+    limit = 100,
   ): Promise<any[]> {
     return await this.dbService.getAuditLogs(
       tenantId,

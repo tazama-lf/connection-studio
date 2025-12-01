@@ -192,7 +192,7 @@ export class ConfigController {
     @User() user: AuthenticatedUser,
     @Body() filters?: Record<string, any>,
   ): Promise<Config[]> {
-    return this.adminServiceClient.forwardRequest(
+    return await this.adminServiceClient.forwardRequest(
       'POST',
       `/v1/admin/tcs/config/${offset}/${limit}`,
       filters,
@@ -294,7 +294,7 @@ export class ConfigController {
     @Param('limit') limit: string,
     @User() user: AuthenticatedUser,
   ): Promise<ConfigResponseDto[]> {
-    return this.adminServiceClient.forwardRequest(
+    return await this.adminServiceClient.forwardRequest(
       'GET',
       `/v1/admin/tcs/config/pending-approvals/${offset}/${limit}`,
       undefined,
@@ -310,7 +310,7 @@ export class ConfigController {
     @Param('limit') limit: string,
     @User() user: AuthenticatedUser,
   ): Promise<Config[]> {
-    return this.adminServiceClient.forwardRequest(
+    return await this.adminServiceClient.forwardRequest(
       'GET',
       `/v1/admin/tcs/config/transaction/${type}/${offset}/${limit}`,
       undefined,
@@ -365,7 +365,7 @@ export class ConfigController {
     @Body() dto: UpdateConfigDto,
     @User() user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
-    return this.adminServiceClient.forwardRequest(
+    return await this.adminServiceClient.forwardRequest(
       'PUT',
       `/v1/admin/tcs/config/${id}/write`,
       dto,
@@ -379,7 +379,7 @@ export class ConfigController {
     @Body() dto: CloneConfigDto,
     @User() user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
-    return this.adminServiceClient.forwardRequest(
+    return await this.adminServiceClient.forwardRequest(
       'POST',
       '/v1/admin/tcs/config/clone',
       dto,
@@ -408,7 +408,7 @@ export class ConfigController {
     @User() user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
     console.log('The dto in add mapping ', dto);
-    return this.adminServiceClient.forwardRequest(
+    return await this.adminServiceClient.forwardRequest(
       'POST',
       `/v1/admin/tcs/config/${id}/mapping`,
       dto,
@@ -422,7 +422,7 @@ export class ConfigController {
     @Param('index', ParseIntPipe) index: number,
     @User() user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
-    return this.adminServiceClient.forwardRequest(
+    return await this.adminServiceClient.forwardRequest(
       'DELETE',
       `/v1/admin/tcs/config/${id}/mapping/${index}`,
       undefined,
@@ -437,7 +437,7 @@ export class ConfigController {
     @Body() dto: AddFunctionDto,
     @User() user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
-    return this.adminServiceClient.forwardRequest(
+    return await this.adminServiceClient.forwardRequest(
       'POST',
       `/v1/admin/tcs/config/${id}/function`,
       dto,
@@ -452,7 +452,7 @@ export class ConfigController {
     @Param('index', ParseIntPipe) index: number,
     @User() user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
-    return this.adminServiceClient.forwardRequest(
+    return await this.adminServiceClient.forwardRequest(
       'DELETE',
       `/v1/admin/tcs/config/${id}/function/${index}`,
       undefined,
@@ -468,7 +468,7 @@ export class ConfigController {
     @Body() dto: AddFunctionDto,
     @User() user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
-    return this.adminServiceClient.forwardRequest(
+    return await this.adminServiceClient.forwardRequest(
       'PUT',
       `/v1/admin/tcs/config/${id}/function/${index}`,
       dto,
@@ -484,7 +484,7 @@ export class ConfigController {
     @User() user: AuthenticatedUser,
     @Headers('authorization') authorization: string,
   ): Promise<ConfigResponseDto> {
-    const authToken = authorization?.split(' ')[1] as string;
+    const authToken = authorization?.split(' ')[1];
     const result = await this.adminServiceClient.forwardRequest(
       'POST',
       `/v1/admin/tcs/config/${id}/workflow/submit`,
@@ -526,7 +526,7 @@ export class ConfigController {
 
     if (result?.success) {
       const config = result.config as Config;
-      Logger.log("Config returned from admin service: ", config)
+      Logger.log('Config returned from admin service: ', config)
       await this.notificationService.sendWorkflowNotification(
         EventType.ApproverApprove,
         user,
@@ -550,7 +550,7 @@ export class ConfigController {
     @Headers('authorization') authorization?: string,
   ): Promise<ConfigResponseDto> {
     const token = authorization?.replace('Bearer ', '') || getTokenString(user);
-    return this.configService.updateStatusToExported(
+    return await this.configService.updateStatusToExported(
       id,
       dto,
       getTenantId(user),
@@ -568,7 +568,7 @@ export class ConfigController {
     @User() user: AuthenticatedUser,
     @Headers('authorization') authorization: string,
   ): Promise<ConfigResponseDto> {
-    const token = authorization?.replace('Bearer ', '') as string;
+    const token = authorization?.replace('Bearer ', '');
 
     const result = await this.configService.exportConfig(
       id,
@@ -587,11 +587,11 @@ export class ConfigController {
     // );
 
     if (result.success) {
-      const config = result.config as Config;
+      const config = result.config!;
       await this.notificationService.sendWorkflowNotification(
         EventType.ExporterExport,
         user,
-        config as Config,
+        config,
         token,
         dto.comment,
       );
@@ -608,7 +608,7 @@ export class ConfigController {
     @User() user: AuthenticatedUser,
     @Headers('authorization') authorization: string,
   ): Promise<ConfigResponseDto> {
-    const token = authorization?.replace('Bearer ', '') as string;
+    const token = authorization?.replace('Bearer ', '');
 
     const result = await this.configService.deployConfig(
       id,
@@ -627,7 +627,7 @@ export class ConfigController {
     // );
 
     if (result?.success) {
-      const config = result.config as Config;
+      const config = result.config!;
       await this.notificationService.sendWorkflowNotification(
         EventType.PublisherDeploy,
         user,
@@ -647,7 +647,7 @@ export class ConfigController {
     @Body() dto: StatusTransitionDto,
     @User() user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
-    return this.adminServiceClient.forwardRequest(
+    return await this.adminServiceClient.forwardRequest(
       'POST',
       `/v1/admin/tcs/config/${id}/workflow/return-to-progress`,
       dto,
@@ -665,7 +665,7 @@ export class ConfigController {
     @Param('id', ParseIntPipe) id: number,
     @User() user: AuthenticatedUser,
   ): Promise<any> {
-    return this.adminServiceClient.forwardRequest(
+    return await this.adminServiceClient.forwardRequest(
       'GET',
       `/v1/admin/tcs/config/${id}/workflow/status`,
       undefined,
@@ -684,7 +684,7 @@ export class ConfigController {
     @Param('id', ParseIntPipe) id: number,
     @User() user: AuthenticatedUser,
   ): Promise<any> {
-    return this.adminServiceClient.forwardRequest(
+    return await this.adminServiceClient.forwardRequest(
       'GET',
       `/v1/admin/tcs/config/${id}/audit-history`,
       undefined,
@@ -703,7 +703,7 @@ export class ConfigController {
     @Query('status', new ParseEnumPipe(ConfigStatus)) status: ConfigStatus,
     @User() user: AuthenticatedUser,
   ): Promise<any> {
-    return this.adminServiceClient.forwardRequest(
+    return await this.adminServiceClient.forwardRequest(
       'PATCH',
       `/v1/admin/tcs/config/${id}/status`,
       { status },
@@ -719,7 +719,7 @@ export class ConfigController {
     @User() user: AuthenticatedUser,
     @Headers('authorization') authorization: string,
   ): Promise<ConfigResponseDto> {
-    const token = authorization?.replace('Bearer ', '') as string;
+    const token = authorization?.replace('Bearer ', '');
     const result = await this.configService.updatePublishingStatus(
       id,
       dto.publishing_status,
@@ -729,7 +729,7 @@ export class ConfigController {
     );
 
     if (result?.success) {
-      const config = result.config as Config;
+      const config = result.config!;
       await this.notificationService.sendWorkflowNotification(
         dto.publishing_status === 'active'
           ? EventType.PublisherActivate

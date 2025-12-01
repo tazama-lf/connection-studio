@@ -414,7 +414,7 @@ export class NotificationService implements OnModuleInit {
       let theme: EmailTheme | null = null;
 
       if ('transactionType' in actionEntity) {
-        const config = actionEntity as Config;
+        const config = actionEntity;
         const configName =
           config.transactionType || 'Configuration';
         const version = config.version || '1.0';
@@ -430,7 +430,7 @@ export class NotificationService implements OnModuleInit {
         htmlContent = generateWorkflowEmailHTML(templateContext);
         textContent = generateWorkflowEmailText(templateContext);
       } else if ('source_type' in actionEntity) {
-        const job = actionEntity as Job;
+        const job = actionEntity;
         const configName = job.endpoint_name || 'Job';
         const version = job.version || '1.0';
         theme = getEmailTheme(event, configName, version);
@@ -672,8 +672,8 @@ export class NotificationService implements OnModuleInit {
       actorEmail: decodedToken.preferredUsername,
       actorName: decodedToken.preferredUsername,
       actionEntity,
-      authToken: authToken,
-      groupName: groupName,
+      authToken,
+      groupName,
       comment,
     });
   }

@@ -161,7 +161,7 @@ export class JobService {
         );
       }
 
-      let connection = job.connection;
+      let {connection} = job;
 
       if (job.source_type === SourceType.SFTP) {
         validateFileType(job.file.path);
@@ -244,11 +244,11 @@ export class JobService {
   ): Promise<Job & { schedule_name?: string }> {
     try {
       if (!id) {
-        throw new BadRequestException("id is required.");
+        throw new BadRequestException('id is required.');
       }
 
       const tableName =
-        type === ConfigType.PUSH ? "push_jobs" : "pull_jobs";
+        type === ConfigType.PUSH ? 'push_jobs' : 'pull_jobs';
 
       const record = await this.adminServiceClient.findJobById(
         id,
@@ -258,12 +258,12 @@ export class JobService {
 
       if (!record) {
         throw new BadRequestException(
-          `${type === ConfigType.PUSH ? "Push Job" : "Pull Job"} with id ${id} not found.`
+          `${type === ConfigType.PUSH ? 'Push Job' : 'Pull Job'} with id ${id} not found.`
         );
       }
 
       if (!record.schedule_id) {
-        this.loggerService.log("Schedule ID not found")
+        this.loggerService.log('Schedule ID not found')
         return record;
       }
 
@@ -425,9 +425,7 @@ export class JobService {
 
             if (connection.auth_type === AuthType.USERNAME_PASSWORD && connection.password) {
               connection.password = decrypt(connection.password);
-            } else if (connection.private_key) {
-              connection.private_key = decrypt(connection.private_key);
-            }
+            } else connection.private_key &&= decrypt(connection.private_key);
 
             delete deployPayload.schedule_name;
 

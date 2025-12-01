@@ -8,7 +8,7 @@ interface CachedEmails {
 @Injectable()
 export class EmailCacheService {
   private readonly logger = new Logger(EmailCacheService.name);
-  private readonly cache: Map<string, Map<string, CachedEmails>> = new Map();
+  private readonly cache = new Map<string, Map<string, CachedEmails>>();
   private readonly cacheDuration = 15 * 60 * 1000;
 
   getEmailsByRole(tenantId: string, role: string): string[] | null {

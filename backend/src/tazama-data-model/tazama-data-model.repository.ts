@@ -12,7 +12,7 @@ export class TazamaDataModelRepository {
   /**
    * Get all collections from the database
    */
-  async getAllCollections(tenantId: string = 'default'): Promise<TazamaCollectionSchema[]> {
+  async getAllCollections(tenantId = 'default'): Promise<TazamaCollectionSchema[]> {
     const query = `
       SELECT 
         dt.destination_type_id,
@@ -32,10 +32,10 @@ export class TazamaDataModelRepository {
       const fields = await this.getCollectionFields(row.destination_type_id);
       
       collections.push({
-        name: row.collection_name as any,
+        name: row.collection_name,
         type: row.collection_type as 'node' | 'edge',
         description: row.collection_description,
-        fields: fields,
+        fields,
       });
     }
     
@@ -96,7 +96,7 @@ export class TazamaDataModelRepository {
     for (const rootField of rootFields) {
       const tazamaField: TazamaField = {
         name: rootField.name,
-        type: rootField.type as any,
+        type: rootField.type,
         required: rootField.required,
       };
       
@@ -105,7 +105,7 @@ export class TazamaDataModelRepository {
         const nestedFields = nestedFieldsMap.get(rootField.serial_no) || [];
         tazamaField.properties = nestedFields.map(nf => ({
           name: nf.name,
-          type: nf.type as any,
+          type: nf.type,
           required: nf.required,
         }));
       }

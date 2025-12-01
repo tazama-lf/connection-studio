@@ -26,7 +26,7 @@ export class KeycloakService {
   private readonly keycloakClientId: string;
   private readonly keycloakClientSecret: string;
   private accessToken: string | null = null;
-  private tokenExpiry: number = 0;
+  private tokenExpiry = 0;
 
   constructor(
     private readonly configService: ConfigService,

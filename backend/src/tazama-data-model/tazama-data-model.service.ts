@@ -62,7 +62,7 @@ export class TazamaDataModelService {
 
   // used from controller for GET
   
-  async getDestinationOptions(tenantId: string = 'default'): Promise<Array<{
+  async getDestinationOptions(tenantId = 'default'): Promise<Array<{
     value: TazamaDestinationPath;
     label: string;
     collection: string;
@@ -115,7 +115,7 @@ export class TazamaDataModelService {
         }));
         options.push(base);
         field.properties.forEach((sub: any) =>
-          processField(schemaName, sub, path, fieldPath),
+          { processField(schemaName, sub, path, fieldPath); },
         );
       } else {
         options.push(base);
