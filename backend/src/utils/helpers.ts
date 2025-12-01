@@ -13,7 +13,7 @@ interface DecodedUserInfo {
   tenantDetails: string[];
 }
 
-const IV_LENGTH = parseInt(process.env.IV_LENGTH!);
+const IV_LENGTH = parseInt(process.env.IV_LENGTH!, 10);
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY!;
 const key = Buffer.from(ENCRYPTION_KEY, 'utf8');
 
@@ -26,7 +26,7 @@ export function encrypt(text: string): string {
     encrypted += cipher.final('hex');
 
     return iv.toString('hex') + ':' + encrypted;
-  } catch {
+  } catch (error){
     throw new Error('Failed to encrypt sensitive data');
   }
 }

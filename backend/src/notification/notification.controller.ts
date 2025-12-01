@@ -173,8 +173,9 @@ export class NotificationController {
 
   @Get('status')
   async getEmailStatus() {
-    const {isConfigured} = this.notificationService;
-    const hasTransporter = this.notificationService.transporter !== null;
+    const status = this.notificationService.getStatus();
+    const {isConfigured} = status;
+    const hasTransporter = status.hasTransporter;
 
     const smtpHost = process.env.SMTP_HOST || 'NOT_SET';
     const smtpUser = process.env.SMTP_USER || 'NOT_SET';

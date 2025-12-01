@@ -121,6 +121,14 @@ export class NotificationService implements OnModuleInit {
     }
   }
 
+  // Getter method for status check
+  getStatus() {
+    return {
+      isConfigured: this.isConfigured,
+      hasTransporter: this.transporter !== null,
+    };
+  }
+
   async sendEmail(options: EmailOptions): Promise<boolean> {
     if (!this.isConfigured || !this.transporter) {
       this.logger.warn(
