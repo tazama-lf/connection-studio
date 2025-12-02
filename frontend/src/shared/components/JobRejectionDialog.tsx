@@ -187,6 +187,7 @@ export const JobRejectionDialog: React.FC<JobRejectionDialogProps> = (
         <Button
           onClick={handleSubmit}
           variant="danger"
+          style={{ background: '#ff474d' }}
           className="!pb-[6px] !pt-[5px]"
           disabled={!reason.trim() || loading}
         >
@@ -217,7 +218,7 @@ export const JobRejectionDialog: React.FC<JobRejectionDialogProps> = (
               Rejecting...
             </>
           ) : (
-            <>Yes, Reject {jobType}</>
+            <>Yes, Reject</>
           )}
         </Button>
       </DialogActions>
