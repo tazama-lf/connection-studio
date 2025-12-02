@@ -156,11 +156,12 @@ const EndpointHistoryPage: React.FC = () => {
   }, [searchingFilters]);
 
   const visibleColumns = [
-    'job_id',
-    'tenant_id',
     'endpoint_name',
     'table_name',
-    'status',
+    'counts',
+    'processed_counts',
+    'created_at',
+    'exception',
   ];
 
   const prettifyHeader = (key: string) =>
@@ -194,20 +195,22 @@ const EndpointHistoryPage: React.FC = () => {
   const columns = [
     ...visibleColumns.map((key) => ({
       field: key,
-      headerName: prettifyHeader(key),
+      headerName: prettifyHeader(key === 'processed_counts' ? 'processed' : key),
       headerAlign: 'center',
       align: 'center',
       sortable: false,
       disableColumnMenu: true,
       minWidth:
-        key === 'job_id'
-          ? 320
-          : key === 'endpoint_name'
-            ? 240
-            : key === 'status'
-              ? 160
-              : 160,
-      flex: key === 'job_id' ? 0 : key === 'endpoint_name' ? 0 : 0,
+        key === 'endpoint_name'
+          ? 240
+          : key === 'table_name'
+            ? 180
+            : key === 'created_at'
+              ? 200
+              : key === 'exception'
+                ? 140
+                : 120,
+      flex: key === 'endpoint_name' ? 0 : 0,
       // Render header for each column to ensure centered header text. For endpoint_name include the search input.
       renderHeader:
         key === 'endpoint_name'
@@ -244,18 +247,24 @@ const EndpointHistoryPage: React.FC = () => {
                 }}
               >
                 <Box sx={{ fontSize: '14px', fontWeight: '600' }}>
-                  {prettifyHeader(key)}
+                  {prettifyHeader(key === 'processed_counts' ? 'processed' : key)}
                 </Box>
               </Box>
             ),
       renderCell: (params: any) =>
-        key === 'status' ? (
+        key === 'exception' ? (
           <span
-            className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${getStatusBadge(params.value)}`}
+          
           >
-            <span className="w-2 h-2 rounded-full bg-current mr-2"></span>
-            {params.value ?? 'N/A'}
+            <span className=""></span>
+            {params.value ? 'Yes' : 'No'}
           </span>
+        ) : key === 'created_at' ? (
+          wrapCell(
+            params.value
+              ? new Date(params.value).toLocaleString()
+              : 'N/A'
+          )
         ) : (
           wrapCell(params.value)
         ),
@@ -608,7 +617,7 @@ const EndpointHistoryPage: React.FC = () => {
                       className={`inline-flex items-center px-4 py-1 rounded-full text-sm font-semibold ${getStatusBadge(activeRecord.status)}`}
                     >
                       <span className="w-2 h-2 rounded-full bg-current mr-2"></span>
-                      {activeRecord.status ?? ''}
+                      {activeRecord.status ?? 'N/A'}
                     </span>
                   </Box>
                 </Box>
