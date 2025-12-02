@@ -185,7 +185,7 @@ export class ConfigController {
     @User() user: AuthenticatedUser,
     @Body() filters?: Record<string, any>,
   ): Promise<Config[]> {
-    return this.adminServiceClient.forwardRequest(
+    return await this.adminServiceClient.forwardRequest(
       'POST',
       `/v1/admin/tcs/config/${offset}/${limit}`,
       filters,
@@ -369,7 +369,7 @@ export class ConfigController {
     @Body() dto: UpdateConfigDto,
     @User() user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
-    return this.adminServiceClient.forwardRequest(
+    return await this.adminServiceClient.forwardRequest(
       'PUT',
       `/v1/admin/tcs/config/${id}/write`,
       dto,
@@ -383,7 +383,7 @@ export class ConfigController {
     @Body() dto: CloneConfigDto,
     @User() user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
-    return this.adminServiceClient.forwardRequest(
+    return await this.adminServiceClient.forwardRequest(
       'POST',
       '/v1/admin/tcs/config/clone',
       dto,
@@ -428,7 +428,7 @@ export class ConfigController {
     @Param('index', ParseIntPipe) index: number,
     @User() user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
-    return this.adminServiceClient.forwardRequest(
+    return await this.adminServiceClient.forwardRequest(
       'DELETE',
       `/v1/admin/tcs/config/${id}/mapping/${index}`,
       undefined,
@@ -443,7 +443,7 @@ export class ConfigController {
     @Body() dto: AddFunctionDto,
     @User() user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
-    return this.adminServiceClient.forwardRequest(
+    return await this.adminServiceClient.forwardRequest(
       'POST',
       `/v1/admin/tcs/config/${id}/function`,
       dto,
@@ -458,7 +458,7 @@ export class ConfigController {
     @Param('index', ParseIntPipe) index: number,
     @User() user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
-    return this.adminServiceClient.forwardRequest(
+    return await this.adminServiceClient.forwardRequest(
       'DELETE',
       `/v1/admin/tcs/config/${id}/function/${index}`,
       undefined,
@@ -474,7 +474,7 @@ export class ConfigController {
     @Body() dto: AddFunctionDto,
     @User() user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
-    return this.adminServiceClient.forwardRequest(
+    return await this.adminServiceClient.forwardRequest(
       'PUT',
       `/v1/admin/tcs/config/${id}/function/${index}`,
       dto,
@@ -536,7 +536,7 @@ export class ConfigController {
     @Headers('authorization') authorization?: string,
   ): Promise<ConfigResponseDto> {
     const token = authorization?.replace('Bearer ', '') || getTokenString(user);
-    return this.configService.updateStatusToExported(
+    return await this.configService.updateStatusToExported(
       id,
       dto,
       getTenantId(user),
@@ -554,7 +554,7 @@ export class ConfigController {
     @User() user: AuthenticatedUser,
     @Headers('authorization') authorization: string,
   ): Promise<ConfigResponseDto> {
-    const token = authorization?.replace('Bearer ', '') as string;
+    const token = authorization?.replace('Bearer ', '');
 
     const result = await this.configService.exportConfig(
       id,
@@ -581,7 +581,7 @@ export class ConfigController {
     @User() user: AuthenticatedUser,
     @Headers('authorization') authorization: string,
   ): Promise<ConfigResponseDto> {
-    const token = authorization?.replace('Bearer ', '') as string;
+    const token = authorization?.replace('Bearer ', '');
 
     const result = await this.configService.deployConfig(
       id,
@@ -621,7 +621,7 @@ export class ConfigController {
     @Body() dto: StatusTransitionDto,
     @User() user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
-    return this.adminServiceClient.forwardRequest(
+    return await this.adminServiceClient.forwardRequest(
       'POST',
       `/v1/admin/tcs/config/${id}/workflow/return-to-progress`,
       dto,
@@ -639,7 +639,7 @@ export class ConfigController {
     @Param('id', ParseIntPipe) id: number,
     @User() user: AuthenticatedUser,
   ): Promise<any> {
-    return this.adminServiceClient.forwardRequest(
+    return await this.adminServiceClient.forwardRequest(
       'GET',
       `/v1/admin/tcs/config/${id}/workflow/status`,
       undefined,
@@ -659,7 +659,7 @@ export class ConfigController {
     @Query('status', new ParseEnumPipe(ConfigStatus)) status: ConfigStatus,
     @User() user: AuthenticatedUser,
   ): Promise<any> {
-    return this.adminServiceClient.forwardRequest(
+    return await this.adminServiceClient.forwardRequest(
       'PATCH',
       `/v1/admin/tcs/config/${id}/status`,
       { status },
@@ -675,7 +675,7 @@ export class ConfigController {
     @User() user: AuthenticatedUser,
     @Headers('authorization') authorization: string,
   ): Promise<ConfigResponseDto> {
-    const token = authorization?.replace('Bearer ', '') as string;
+    const token = authorization?.replace('Bearer ', '');
     const result = await this.configService.updatePublishingStatus(
       id,
       dto.publishing_status,

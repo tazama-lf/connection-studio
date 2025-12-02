@@ -128,7 +128,7 @@ export class NotifyService implements OnModuleInit {
       await this.demsNatsService.handleResponse({
         transactionID: configId
       },
-      ["dems.notify"]
+      ['dems.notify']
     );
 
       this.logger.log(

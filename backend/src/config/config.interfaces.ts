@@ -1,4 +1,10 @@
 // Re-export types from tcs-lib for consistency
+import type {
+  Config,
+  ConfigResponseDto,
+  SchemaField,
+} from '@tazama-lf/tcs-lib';
+
 export type {
   JSONSchema,
   AdjustFieldDto,
@@ -22,12 +28,6 @@ export type {
   SchemaField,
   Config,
   ConfigResponseDto,
-} from '@tazama-lf/tcs-lib';
-
-import type {
-  Config,
-  ConfigResponseDto,
-  SchemaField,
 } from '@tazama-lf/tcs-lib';
 
 export { ContentType, ConfigStatus } from '@tazama-lf/tcs-lib';

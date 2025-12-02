@@ -1,4 +1,4 @@
-﻿import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { AdminServiceClient } from '../services/admin-service-client.service';
 import { Config, FieldMapping } from '../config/config.interfaces';
 import {
@@ -161,7 +161,7 @@ export class SimulationService {
         );
       }
 
-      const parsedPayload = parseStage.details.parsedPayload;
+      const {parsedPayload} = parseStage.details;
 
       const cleanedSchema = this.cleanSchemaForXML(config.schema);
 
@@ -795,9 +795,7 @@ export class SimulationService {
 
     const normalizedPath = path.replace(/\[(\d+)\]/g, '.$1');
 
-    return normalizedPath.split('.').reduce((current, key) => {
-      return current && current[key] !== undefined ? current[key] : undefined;
-    }, obj);
+    return normalizedPath.split('.').reduce((current, key) => current?.[key] !== undefined ? current[key] : undefined, obj);
   }
 
   private applyTransformation(
@@ -1063,7 +1061,7 @@ export class SimulationService {
   private normalizeXmlParsedObjectWithSchema(
     obj: any,
     schema?: any,
-    path: string = '',
+    path = '',
   ): any {
     if (!obj || typeof obj !== 'object') {
       return obj;
@@ -1098,7 +1096,7 @@ export class SimulationService {
         if (Object.keys(obj).length === 1 || hasOnlyTextAndAttributes) {
           return value;
         }
-        normalized['textContent'] = value;
+        normalized.textContent = value;
         continue;
       }
       const currentPath = path ? `${path}.${key}` : key;
@@ -1185,7 +1183,7 @@ export class SimulationService {
         if (Object.keys(obj).length === 1) {
           return value;
         }
-        normalized['textContent'] = value;
+        normalized.textContent = value;
         continue;
       }
       if (value && typeof value === 'object') {
@@ -1470,8 +1468,7 @@ export class SimulationService {
       strictSchema.additionalProperties = true;
     }
 
-    if (strictSchema.properties) {
-      strictSchema.properties = Object.keys(strictSchema.properties).reduce(
+    strictSchema.properties &&= Object.keys(strictSchema.properties).reduce<any>(
         (acc, key) => {
           acc[key] = this.enforceStrictSchema(
             strictSchema.properties[key],
@@ -1479,28 +1476,21 @@ export class SimulationService {
           );
           return acc;
         },
-        {} as any,
+        {},
       );
-    }
 
     if (strictSchema.items && strictSchema.type !== 'array') {
       strictSchema.items = this.enforceStrictSchema(strictSchema.items, config);
     }
-    if (strictSchema.oneOf) {
-      strictSchema.oneOf = strictSchema.oneOf.map((s: any) =>
+    strictSchema.oneOf &&= strictSchema.oneOf.map((s: any) =>
         this.enforceStrictSchema(s, config),
       );
-    }
-    if (strictSchema.anyOf) {
-      strictSchema.anyOf = strictSchema.anyOf.map((s: any) =>
+    strictSchema.anyOf &&= strictSchema.anyOf.map((s: any) =>
         this.enforceStrictSchema(s, config),
       );
-    }
-    if (strictSchema.allOf) {
-      strictSchema.allOf = strictSchema.allOf.map((s: any) =>
+    strictSchema.allOf &&= strictSchema.allOf.map((s: any) =>
         this.enforceStrictSchema(s, config),
       );
-    }
 
     return strictSchema;
   }

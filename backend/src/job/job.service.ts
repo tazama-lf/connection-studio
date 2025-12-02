@@ -11,6 +11,7 @@ import {
   Job,
   JobStatus,
   JobSummary,
+  Schedule,
   ScheduleStatus,
   SFTPConnection,
   SourceType,
@@ -109,7 +110,6 @@ export class JobService {
     status: JobStatus = JobStatus.INPROGRESS,
   ): Promise<ISuccess> {
     try {
-      await this.adminServiceClient.validateExisting(job.table_name, user.token.tokenString);
 
       const id = job.id ? job.id : v4();
 
@@ -120,12 +120,12 @@ export class JobService {
 
       const jobWithId = { ...job, id, path, tenant_id: user.tenantId, status };
 
-      const created = await this.adminServiceClient.createPushJob(
+      const result = await this.adminServiceClient.createPushJob(
         jobWithId,
         user.token.tokenString,
       );
 
-      if (!created.id) {
+      if (!result.success) {
         throw new Error('Failed to create push job.');
       }
 
@@ -133,10 +133,7 @@ export class JobService {
         await this.notifyService.notifyEnrichment(id, ConfigType.PUSH);
       }
 
-      return {
-        success: true,
-        message: `Job with id ${id} successfully created`,
-      };
+      return result;
     } catch (err: unknown) {
       return this.handleError(err);
     }
@@ -148,7 +145,6 @@ export class JobService {
     status: JobStatus = JobStatus.INPROGRESS,
   ): Promise<ISuccess> {
     try {
-      await this.adminServiceClient.validateExisting(job.table_name, user.token.tokenString);
 
       const exist = await this.adminServiceClient.findScheduleById(
         job.schedule_id,
@@ -166,7 +162,7 @@ export class JobService {
         );
       }
 
-      let connection = job.connection;
+      let { connection } = job;
 
       if (job.source_type === SourceType.SFTP) {
         validateFileType(job.file.path);
@@ -186,7 +182,7 @@ export class JobService {
         status,
       };
 
-      const created = await this.adminServiceClient.createPullJob(
+      const result = await this.adminServiceClient.createPullJob(
         jobWithId,
         user.token.tokenString,
       );
@@ -195,10 +191,7 @@ export class JobService {
         await this.notifyService.notifyEnrichment(newId, ConfigType.PULL);
       }
 
-      return {
-        success: true,
-        message: `Job with id ${created.id} successfully created`,
-      };
+      return result;
     } catch (err: unknown) {
       if (Array.isArray(err)) {
         const messages = err.flatMap((e) => Object.values(e.constraints ?? {}));
@@ -252,11 +245,11 @@ export class JobService {
   ): Promise<Job & { schedule_name?: string }> {
     try {
       if (!id) {
-        throw new BadRequestException("id is required.");
+        throw new BadRequestException('id is required.');
       }
 
       const tableName =
-        type === ConfigType.PUSH ? "push_jobs" : "pull_jobs";
+        type === ConfigType.PUSH ? 'push_jobs' : 'pull_jobs';
 
       const record = await this.adminServiceClient.findJobById(
         id,
@@ -266,12 +259,12 @@ export class JobService {
 
       if (!record) {
         throw new BadRequestException(
-          `${type === ConfigType.PUSH ? "Push Job" : "Pull Job"} with id ${id} not found.`
+          `${type === ConfigType.PUSH ? 'Push Job' : 'Pull Job'} with id ${id} not found.`
         );
       }
 
       if (!record.schedule_id) {
-        this.loggerService.log("Schedule ID not found")
+        this.loggerService.log('Schedule ID not found')
         return record;
       }
 
@@ -326,7 +319,7 @@ export class JobService {
       const { success, data } = await this.adminServiceClient.updateJobActivation(
         id,
         status,
-        type === ConfigType.PUSH ? 'push_jobs' : 'pull_jobs',
+        type,
         user.token.tokenString,
       );
 
@@ -366,7 +359,7 @@ export class JobService {
         status === JobStatus.REJECTED ||
         status === JobStatus.EXPORTED;
 
-      let existingJob: any = null;
+      let existingJob: Job | null = null;
 
       if (requiresExistingJob) {
         existingJob = await this.findOne(id, type, user.token.tokenString);
@@ -377,7 +370,7 @@ export class JobService {
           await this.notificationService.sendWorkflowNotification(
             EventType.EditorSubmit,
             user,
-            existingJob,
+            { ...existingJob, status: JobStatus.REVIEW } as Job,
             user.token.tokenString,
           )
           break;
@@ -386,7 +379,7 @@ export class JobService {
           await this.notificationService.sendWorkflowNotification(
             EventType.ApproverApprove,
             user,
-            existingJob,
+            { ...existingJob, status: JobStatus.APPROVED } as Job,
             user.token.tokenString,
           )
           break;
@@ -401,7 +394,7 @@ export class JobService {
           await this.notificationService.sendWorkflowNotification(
             EventType.ApproverReject,
             user,
-            existingJob,
+            { ...existingJob, status: JobStatus.REJECTED } as Job,
             user.token.tokenString,
           )
           break;
@@ -416,7 +409,7 @@ export class JobService {
           await this.notificationService.sendWorkflowNotification(
             EventType.ExporterExport,
             user,
-            existingJob,
+            { ...existingJob, status: JobStatus.EXPORTED } as Job,
             user.token.tokenString,
           )
 
@@ -426,16 +419,14 @@ export class JobService {
         case JobStatus.DEPLOYED: {
           const fileData = await this.sftpService.readFile(fileName);
 
-          let deployPayload: any = { ...fileData, publishing_status: ScheduleStatus.ACTIVE };
+          let deployPayload = { ...fileData, publishing_status: ScheduleStatus.ACTIVE };
 
           if (type === ConfigType.PULL) {
             const connection = { ...fileData.connection } as SFTPConnection;
 
             if (connection.auth_type === AuthType.USERNAME_PASSWORD && connection.password) {
               connection.password = decrypt(connection.password);
-            } else if (connection.private_key) {
-              connection.private_key = decrypt(connection.private_key);
-            }
+            } else connection.private_key &&= decrypt(connection.private_key);
 
             delete deployPayload.schedule_name;
 
@@ -459,7 +450,7 @@ export class JobService {
           await this.notificationService.sendWorkflowNotification(
             EventType.PublisherDeploy,
             user,
-            fileData,
+            { ...fileData, status: JobStatus.DEPLOYED },
             user.token.tokenString,
           )
 

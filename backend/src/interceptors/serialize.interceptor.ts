@@ -1,11 +1,11 @@
 import {
-  CallHandler,
-  ExecutionContext,
-  NestInterceptor,
+  type CallHandler,
+  type ExecutionContext,
+  type NestInterceptor,
   UseInterceptors,
 } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
-import { map, Observable } from 'rxjs';
+import { map, type Observable } from 'rxjs';
 
 type Constructor<T> = new (...args: any[]) => T;
 

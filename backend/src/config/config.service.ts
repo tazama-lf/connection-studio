@@ -154,7 +154,7 @@ export class ConfigService {
     token: string,
   ): Promise<ConfigResponseDto> {
     try {
-      this.logger.log("Creating new config...", dto.schema);
+      this.logger.log('Creating new config...', dto.schema);
       const version = dto.version || 'v1';
       const msgFam = dto.msgFam || 'unknown';
       const existingConfig =
@@ -228,11 +228,11 @@ export class ConfigService {
         token,
       );
 
-      const config = await this.configRepository.findConfigById(
+      const config = (await this.configRepository.findConfigById(
         configId,
         tenantId,
         token,
-      ) as Config;
+      ))!;
 
       // Enrich config with source fields for mapping UI
       // const enrichedConfig = this.enrichConfigWithSourceFields(config!);
@@ -253,7 +253,7 @@ export class ConfigService {
       return {
         success: true,
         message: 'Config created successfully',
-        config: config,
+        config,
         // validation,
       };
     } catch (error) {
@@ -263,7 +263,7 @@ export class ConfigService {
       );
 
       const msgFam = dto.msgFam || 'unknown';
-      const transactionType = dto.transactionType;
+      const {transactionType} = dto;
       const version = dto.version || 'v1';
 
       let userMessage =
@@ -482,7 +482,7 @@ export class ConfigService {
     tenantId: string,
     token: string,
   ): Promise<Config[]> {
-    return this.configRepository.findConfigsByTransactionType(
+    return await this.configRepository.findConfigsByTransactionType(
       transactionType,
       tenantId,
       token,
@@ -1525,7 +1525,7 @@ export class ConfigService {
   private validateNoDuplicateDestination(
     newMapping: FieldMapping,
     existingMappings: FieldMapping[],
-    isUpdate: boolean = false,
+    isUpdate = false,
     updateIndex?: number,
   ): void {
     const newDestinations = Array.isArray(newMapping.destination)
@@ -1940,7 +1940,7 @@ export class ConfigService {
     token: string,
   ): Promise<ConfigResponseDto> {
     const config = await this.getConfigOrThrow(id, tenantId, token);
-    const currentStatus = config.status as ConfigStatus;
+    const currentStatus = config.status!;
     const action: WorkflowAction = 'submit_for_approval';
 
     this.validateWorkflowAction(userClaims, currentStatus, action);
@@ -2376,14 +2376,14 @@ export class ConfigService {
           mapping: configData.mapping == null ? null : configData.mapping,
           functions: configData.functions == null ? null : configData.functions,
           credentials: configData.credentials,
-          tenantId: tenantId,
+          tenantId,
           createdBy: configData.createdBy || userId,
           createdAt: configData.createdAt || new Date(),
           updatedAt: new Date(),
         };
    
 
-        console.log("deployedConfigData", deployedConfigData);
+        console.log('deployedConfigData', deployedConfigData);
 
         this.logger.log(
           `Deploying config data - schema length: ${deployedConfigData.schema?.length}, mapping length: ${deployedConfigData.mapping?.length}`,
@@ -2408,7 +2408,7 @@ export class ConfigService {
         this.logger.log('Credentials present in config');
       }
 
-      const transactionType = configData.transactionType ;
+      const {transactionType} = configData ;
       if (transactionType) {
         this.logger.log(
           `Creating table for transaction type: ${transactionType}`,
@@ -2552,7 +2552,7 @@ export class ConfigService {
       throw new NotFoundException(`Config with ID ${id} not found`);
     }
 
-    const currentStatus = config.status as ConfigStatus;
+    const currentStatus = config.status!;
     const permissions = this.workflowService.validateUserPermissions(
       userClaims,
       currentStatus,

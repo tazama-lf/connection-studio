@@ -57,7 +57,7 @@ export class AuthService {
           response.data?.expires_in ?? response.data?.expiresIn ?? null,
       };
     } catch (error) {
-      if (error.response && error.response.status === 401) {
+      if (error.response?.status === 401) {
         this.loggerService.warn(`Invalid credentials for user ${username}`);
         throw new UnauthorizedException('Invalid credentials');
       }

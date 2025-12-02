@@ -5,13 +5,15 @@ import {
 } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { ISuccess, JobStatus, Schedule } from '@tazama-lf/tcs-lib';
-import { AuthenticatedUser } from 'src/auth/auth.types';
+import { AuthenticatedUser } from '../auth/auth.types';
 import { v4 } from 'uuid';
 import { AdminServiceClient } from '../services/admin-service-client.service';
 import { SftpService } from '../sftp/sftp.service';
 import { validateCronExpression } from '../utils/helpers';
 import { CreateScheduleJobDto } from './dto/create-schedule.dto';
 import { UpdateScheduleJobDto } from './dto/update-schedule-dto';
+import { EventType } from '../enums/events.enum';
+import { NotificationService } from '../notification/notification.service';
 
 @Injectable()
 export class SchedulerService {
@@ -19,6 +21,7 @@ export class SchedulerService {
     private readonly loggerService: LoggerService,
     private readonly sftpService: SftpService,
     private readonly adminServiceClient: AdminServiceClient,
+    private readonly notificationService: NotificationService
   ) { }
 
   async create(
@@ -125,7 +128,7 @@ export class SchedulerService {
     id: string,
     tenantId: string,
     status: JobStatus,
-    token: string,
+    user: AuthenticatedUser,
     reason?: string,
   ): Promise<ISuccess> {
     try {
@@ -135,36 +138,85 @@ export class SchedulerService {
         );
       }
 
+      const requiresExistingJob =
+        status === JobStatus.APPROVED ||
+        status === JobStatus.REVIEW ||
+        status === JobStatus.REJECTED ||
+        status === JobStatus.EXPORTED;
+
+      let existing: Schedule | null = null;
+
+      if (requiresExistingJob) {
+        existing = await this.findOne(id, user.token.tokenString);
+      }
+
       const fileName = `cron_${tenantId}_${id}`;
 
       switch (status) {
+        case JobStatus.REVIEW: {
+          await this.notificationService.sendWorkflowNotification(
+            EventType.EditorSubmit,
+            user,
+            { ...existing, status: JobStatus.REVIEW } as Schedule,
+            user.token.tokenString,
+          )
+          break;
+        }
+        case JobStatus.APPROVED: {
+          await this.notificationService.sendWorkflowNotification(
+            EventType.ApproverApprove,
+            user,
+            { ...existing, status: JobStatus.APPROVED } as Schedule,
+            user.token.tokenString,
+          )
+          break;
+        }
         case JobStatus.REJECTED: {
           if (!reason) {
             throw new BadRequestException(
               'Rejection reason is required when rejecting a cron job.',
             );
           }
+
+          await this.notificationService.sendWorkflowNotification(
+            EventType.ApproverReject,
+            user,
+            { ...existing, status: JobStatus.REJECTED } as Schedule,
+            user.token.tokenString,
+          )
           break;
         }
         case JobStatus.EXPORTED: {
-          const existing = await this.findOne(id, token);
           await this.sftpService.createFile(fileName, {
             ...existing,
             status: JobStatus.READY,
           });
 
-          this.loggerService.log(
-            `Successfully uploaded config file (${fileName}) on SFTP server.`,
-          );
+          await this.notificationService.sendWorkflowNotification(
+            EventType.ExporterExport,
+            user,
+            { ...existing, status: JobStatus.EXPORTED } as Schedule,
+            user.token.tokenString,
+          )
           break;
         }
         case JobStatus.DEPLOYED: {
-          const existing = await this.sftpService.readFile(fileName);
-          await this.create(existing, tenantId, token, JobStatus.DEPLOYED);
+          const fileData = await this.sftpService.readFile(fileName);
+          await this.create(fileData, tenantId, user.token.tokenString, JobStatus.DEPLOYED);
           await this.sftpService.deleteFile(fileName);
+
+
+          await this.notificationService.sendWorkflowNotification(
+            EventType.PublisherDeploy,
+            user,
+            { ...fileData, status: JobStatus.DEPLOYED },
+            user.token.tokenString,
+          )
+
+
           return {
             success: true,
-            message: `Job with id ${id} successfully deployed.`,
+            message: `Schedule with id ${id} successfully deployed.`,
           };
         }
 
@@ -176,7 +228,7 @@ export class SchedulerService {
         id,
         status,
         tenantId,
-        token,
+        user.token.tokenString,
         reason,
       );
     } catch (err) {

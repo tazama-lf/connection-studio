@@ -16,6 +16,4 @@ describe('TazamaDataModelService', () => {
     expect(service).toBeDefined();
   });
 
-  
-
 });
