@@ -648,7 +648,7 @@ const EndpointHistoryPage: React.FC = () => {
                         }
                       `}
                     >
-                      {activeRecord.publishing_status ?? ''}
+                      {activeRecord.publishing_status ?? 'N/A'}
                     </span>
                   </Box>
                 </Box>
