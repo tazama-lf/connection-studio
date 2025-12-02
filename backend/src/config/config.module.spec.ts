@@ -4,8 +4,6 @@ import { ConfigController } from './config.controller';
 import { ConfigService } from './config.service';
 import { ConfigRepository } from './config.repository';
 import { ConfigWorkflowService } from './config-workflow.service';
-import { PayloadParsingService } from '../services/payload-parsing.service';
-import { FileParsingService } from '../services/file-parsing.service';
 import { AdminServiceClient } from '../services/admin-service-client.service';
 import { TazamaDataModelService } from '../tazama-data-model/tazama-data-model.service';
 import { SftpService } from '../sftp/sftp.service';
@@ -27,18 +25,6 @@ describe('ConfigModule', () => {
         ConfigService,
         ConfigRepository,
         ConfigWorkflowService,
-        {
-          provide: PayloadParsingService,
-          useValue: {
-            parsePayloadToSchema: jest.fn(),
-          },
-        },
-        {
-          provide: FileParsingService,
-          useValue: {
-            parseFile: jest.fn(),
-          },
-        },
         {
           provide: AdminServiceClient,
           useValue: {

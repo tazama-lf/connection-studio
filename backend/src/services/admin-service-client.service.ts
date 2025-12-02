@@ -848,45 +848,45 @@ export class AdminServiceClient {
     }
   }
 
-  async getConfigByEndpoint(
-    endpointPath: string,
-    version: string,
-    token: string,
-    limit = 10,
-    offset = 0,
-  ): Promise<{
-    configs: any[];
-    pagination: { total: number; limit: number; offset: number; pages: number };
-  }> {
-    this.logger.log(
-      `Getting config by endpoint: ${endpointPath}, version: ${version} (limit: ${limit}, offset: ${offset})`,
-    );
+  // async getConfigByEndpoint(
+  //   endpointPath: string,
+  //   version: string,
+  //   token: string,
+  //   limit = 10,
+  //   offset = 0,
+  // ): Promise<{
+  //   configs: any[];
+  //   pagination: { total: number; limit: number; offset: number; pages: number };
+  // }> {
+  //   this.logger.log(
+  //     `Getting config by endpoint: ${endpointPath}, version: ${version} (limit: ${limit}, offset: ${offset})`,
+  //   );
 
-    try {
-      const response = await firstValueFrom(
-        this.httpService.get(
-          `${this.adminServiceUrl}/v1/admin/tcs/config/endpoint/${endpointPath}/${version}/${offset}/${limit}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          },
-        ),
-      );
+  //   try {
+  //     const response = await firstValueFrom(
+  //       this.httpService.get(
+  //         `${this.adminServiceUrl}/v1/admin/tcs/config/endpoint/${endpointPath}/${version}/${offset}/${limit}`,
+  //         {
+  //           headers: {
+  //             Authorization: `Bearer ${token}`,
+  //           },
+  //         },
+  //       ),
+  //     );
 
-      return {
-        configs: response.data.configs || [],
-        pagination: response.data.pagination || {
-          total: 0,
-          limit,
-          offset,
-          pages: 0,
-        },
-      };
-    } catch (error) {
-      return this.handleError(error, 'getConfigByEndpoint');
-    }
-  }
+  //     return {
+  //       configs: response.data.configs || [],
+  //       pagination: response.data.pagination || {
+  //         total: 0,
+  //         limit,
+  //         offset,
+  //         pages: 0,
+  //       },
+  //     };
+  //   } catch (error) {
+  //     return this.handleError(error, 'getConfigByEndpoint');
+  //   }
+  // }
 
   async getConfigsByTransactionType(
     transactionType: string,
@@ -995,6 +995,54 @@ export class AdminServiceClient {
       return this.handleError(error, 'updateConfigByStatus');
     }
   }
+  async findConfigsByStatus(
+    filters: {
+      tenantId: string;
+      status?: string;
+      endpointPath?: string;
+      version?: string;
+      transactionType?: string;
+      createdDate?: string;
+      limit?: number;
+      offset?: number;
+    },
+    token: string,
+  ): Promise<{
+    configs: any[];
+    pagination: { total: number; limit: number; offset: number; pages: number };
+  }> {
+    this.logger.log(`Finding configs by status with filters:`, filters);
+
+    try {
+      const { limit = 10, offset = 0, ...filterPayload } = filters;
+
+      const response = await firstValueFrom(
+        this.httpService.post(
+          `${this.adminServiceUrl}/v1/admin/tcs/config/${offset}/${limit}`,
+          filterPayload,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+          },
+        ),
+      );
+
+      return {
+        configs: response.data.configs || [],
+        pagination: response.data.pagination || {
+          total: 0,
+          limit,
+          offset,
+          pages: 0,
+        },
+      };
+    } catch (error) {
+      return this.handleError(error, 'findConfigsByStatus');
+    }
+  }
+
   async updatePublishingStatus(
     id: number,
     publishingStatus: 'active' | 'inactive',

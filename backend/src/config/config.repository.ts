@@ -82,27 +82,27 @@ export class ConfigRepository {
     }
   }
 
-  async findConfigByEndpoint(
-    endpointPath: string,
-    version: string,
-    tenantId: string,
-    token?: string,
-    limit = 10,
-    offset = 0,
-  ): Promise<Config[]> {
-    try {
-      const result = await this.adminServiceClient.getConfigByEndpoint(
-        endpointPath,
-        version,
-        token || tenantId,
-        limit,
-        offset,
-      );
-      return result.configs;
-    } catch {
-      return [];
-    }
-  }
+  // async findConfigByEndpoint(
+  //   endpointPath: string,
+  //   version: string,
+  //   tenantId: string,
+  //   token?: string,
+  //   limit = 10,
+  //   offset = 0,
+  // ): Promise<Config[]> {
+  //   try {
+  //     const result = await this.adminServiceClient.getConfigByEndpoint(
+  //       endpointPath,
+  //       version,
+  //       token || tenantId,
+  //       limit,
+  //       offset,
+  //     );
+  //     return result.configs;
+  //   } catch {
+  //     return [];
+  //   }
+  // }
 
   async findConfigsByTenant(
     tenantId: string,
@@ -227,5 +227,173 @@ export class ConfigRepository {
   ): Promise<void> {
     this.logger.log(`Updating config ${id} status to ${status}`);
     await this.adminServiceClient.writeConfigUpdate(id, { status }, token);
+  }
+
+  async getAllConfigsWithFilters(
+    offset: number,
+    limit: number,
+    filters: Record<string, any>,
+    token: string,
+  ): Promise<Config[]> {
+    return await this.adminServiceClient.forwardRequest(
+      'POST',
+      `/v1/admin/tcs/config/${offset}/${limit}`,
+      filters,
+      { Authorization: `Bearer ${token}` },
+    );
+  }
+
+  async getPendingApprovals(
+    offset: number,
+    limit: number,
+    token: string,
+  ): Promise<any[]> {
+    return await this.adminServiceClient.forwardRequest(
+      'GET',
+      `/v1/admin/tcs/config/pending-approvals/${offset}/${limit}`,
+      undefined,
+      { Authorization: `Bearer ${token}` },
+    );
+  }
+
+  async addMapping(
+    id: number,
+    mappingData: any,
+    token: string,
+  ): Promise<any> {
+    return await this.adminServiceClient.forwardRequest(
+      'POST',
+      `/v1/admin/tcs/config/${id}/mapping`,
+      mappingData,
+      { Authorization: `Bearer ${token}` },
+    );
+  }
+
+  async removeMapping(
+    id: number,
+    index: number,
+    token: string,
+  ): Promise<any> {
+    return await this.adminServiceClient.forwardRequest(
+      'DELETE',
+      `/v1/admin/tcs/config/${id}/mapping/${index}`,
+      undefined,
+      { Authorization: `Bearer ${token}` },
+    );
+  }
+
+  async addFunction(
+    id: number,
+    functionData: any,
+    token: string,
+  ): Promise<any> {
+    return await this.adminServiceClient.forwardRequest(
+      'POST',
+      `/v1/admin/tcs/config/${id}/function`,
+      functionData,
+      { Authorization: `Bearer ${token}` },
+    );
+  }
+
+  async removeFunction(
+    id: number,
+    index: number,
+    token: string,
+  ): Promise<any> {
+    return await this.adminServiceClient.forwardRequest(
+      'DELETE',
+      `/v1/admin/tcs/config/${id}/function/${index}`,
+      undefined,
+      { Authorization: `Bearer ${token}` },
+    );
+  }
+
+  async updateFunction(
+    id: number,
+    index: number,
+    functionData: any,
+    token: string,
+  ): Promise<any> {
+    return await this.adminServiceClient.forwardRequest(
+      'PUT',
+      `/v1/admin/tcs/config/${id}/function/${index}`,
+      functionData,
+      { Authorization: `Bearer ${token}` },
+    );
+  }
+
+  // async returnToProgress(
+  //   id: number,
+  //   data: any,
+  //   token: string,
+  // ): Promise<any> {
+  //   return await this.adminServiceClient.forwardRequest(
+  //     'POST',
+  //     `/v1/admin/tcs/config/${id}/workflow/return-to-progress`,
+  //     data,
+  //     { Authorization: `Bearer ${token}` },
+  //   );
+  // }
+
+  // async getWorkflowStatus(
+  //   id: number,
+  //   token: string,
+  // ): Promise<any> {
+  //   return await this.adminServiceClient.forwardRequest(
+  //     'GET',
+  //     `/v1/admin/tcs/config/${id}/workflow/status`,
+  //     undefined,
+  //     { Authorization: `Bearer ${token}` },
+  //   );
+  // }
+
+  // async getAuditHistory(
+  //   id: number,
+  //   token: string,
+  // ): Promise<any> {
+  //   return await this.adminServiceClient.forwardRequest(
+  //     'GET',
+  //     `/v1/admin/tcs/config/${id}/audit-history`,
+  //     undefined,
+  //     { Authorization: `Bearer ${token}` },
+  //   );
+  // }
+
+  // async updateStatusDirect(
+  //   id: number,
+  //   status: string,
+  //   token: string,
+  // ): Promise<any> {
+  //   return await this.adminServiceClient.forwardRequest(
+  //     'PATCH',
+  //     `/v1/admin/tcs/config/${id}/status`,
+  //     { status },
+  //     { Authorization: `Bearer ${token}` },
+  //   );
+  // }
+
+  async updateConfigViaWrite(
+    id: number,
+    updateData: any,
+    token: string,
+  ): Promise<any> {
+    return await this.adminServiceClient.forwardRequest(
+      'PUT',
+      `/v1/admin/tcs/config/${id}/write`,
+      updateData,
+      { Authorization: `Bearer ${token}` },
+    );
+  }
+
+  async deleteConfigViaWrite(
+    id: number,
+    token: string,
+  ): Promise<void> {
+    await this.adminServiceClient.forwardRequest(
+      'DELETE',
+      `/v1/admin/tcs/config/${id}/write`,
+      undefined,
+      { Authorization: `Bearer ${token}` },
+    );
   }
 }

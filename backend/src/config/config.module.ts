@@ -5,8 +5,6 @@ import { ConfigService } from './config.service';
 import { ConfigRepository } from './config.repository';
 import { ConfigWorkflowService } from './config-workflow.service';
 import { TazamaDataModelModule } from '../tazama-data-model/tazama-data-model.module';
-import { PayloadParsingService } from '../services/payload-parsing.service';
-import { FileParsingService } from '../services/file-parsing.service';
 import { AdminServiceClient } from '../services/admin-service-client.service';
 import { SftpModule } from '../sftp/sftp.module';
 import { NotificationModule } from '../notification/notification.module';
@@ -28,8 +26,6 @@ import { DatabaseService } from '@tazama-lf/tcs-lib';
     ConfigService,
     ConfigRepository,
     ConfigWorkflowService,
-    PayloadParsingService,
-    FileParsingService,
     AdminServiceClient,
     {
       provide: DatabaseService,
@@ -50,8 +46,6 @@ import { DatabaseService } from '@tazama-lf/tcs-lib';
     ConfigService,
     ConfigRepository,
     ConfigWorkflowService,
-    PayloadParsingService,
-    FileParsingService,
     AdminServiceClient,
   ],
 })

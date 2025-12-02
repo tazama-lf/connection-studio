@@ -211,44 +211,7 @@ describe('ConfigRepository', () => {
     });
   });
 
-  describe('findConfigByEndpoint', () => {
-    it('should return config by endpoint path and version', async () => {
-      adminServiceClient.getConfigByEndpoint.mockResolvedValue(
-        mockPaginatedResponse([mockConfig]),
-      );
 
-      const result = await repository.findConfigByEndpoint(
-        '/tenant1/v1/pain/pacs.008',
-        'v1',
-        'tenant1',
-        'mock-token',
-      );
-
-      expect(result).toEqual([mockConfig]);
-      expect(adminServiceClient.getConfigByEndpoint).toHaveBeenCalledWith(
-        '/tenant1/v1/pain/pacs.008',
-        'v1',
-        'mock-token',
-        10,
-        0,
-      );
-    });
-
-    it('should return null when config not found', async () => {
-      adminServiceClient.getConfigByEndpoint.mockRejectedValue(
-        new Error('Not found'),
-      );
-
-      const result = await repository.findConfigByEndpoint(
-        '/nonexistent',
-        'v1',
-        'tenant1',
-        'mock-token',
-      );
-
-      expect(result).toEqual([]);
-    });
-  });
 
   describe('findConfigsByTenant', () => {
     it('should return all configs for tenant', async () => {
