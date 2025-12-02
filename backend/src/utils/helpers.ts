@@ -1,11 +1,11 @@
 import { BadRequestException } from '@nestjs/common';
 import { CronTime } from 'cron';
-import * as crypto from 'crypto';
+import * as crypto from 'node:crypto';
 import dotenv from 'dotenv';
-import * as path from 'path';
-import { AuthenticatedUser } from 'src/auth/auth.types';
-dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+import * as path from 'node:path';
+import type { AuthenticatedUser } from 'src/auth/auth.types';
 import * as jwt from 'jsonwebtoken';
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 interface DecodedUserInfo {
   preferredUsername: string;
@@ -13,7 +13,7 @@ interface DecodedUserInfo {
   tenantDetails: string[];
 }
 
-const IV_LENGTH = parseInt(process.env.IV_LENGTH!);
+const IV_LENGTH = parseInt(process.env.IV_LENGTH!, 10);
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY!;
 const key = Buffer.from(ENCRYPTION_KEY, 'utf8');
 
@@ -26,7 +26,7 @@ export function encrypt(text: string): string {
     encrypted += cipher.final('hex');
 
     return iv.toString('hex') + ':' + encrypted;
-  } catch {
+  } catch (error){
     throw new Error('Failed to encrypt sensitive data');
   }
 }

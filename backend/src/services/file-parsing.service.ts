@@ -4,8 +4,7 @@ import {
   validateFileType,
   detectContentType,
   getAllowedMimeTypes,
-} from '@tazama-lf/tcs-lib';
-import { ContentType, ParsedFileResult } from '@tazama-lf/tcs-lib';
+ ContentType, ParsedFileResult } from '@tazama-lf/tcs-lib';
 
 @Injectable()
 export class FileParsingService {

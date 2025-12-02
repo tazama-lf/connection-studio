@@ -141,7 +141,7 @@ export class AdminServiceClient {
   async createPushJob(
     job: Record<string, unknown>,
     token: string,
-  ): Promise<{ id: string | null }> {
+  ): Promise<ISuccess> {
     this.logger.log(`Validating job creation: ${job}`);
 
     try {
@@ -168,7 +168,7 @@ export class AdminServiceClient {
   async createPullJob(
     job: Record<string, unknown>,
     token: string,
-  ): Promise<{ id: string }> {
+  ): Promise<ISuccess> {
     this.logger.log(`Validating job creation: ${job}`);
 
     try {
@@ -288,7 +288,7 @@ export class AdminServiceClient {
     limit: number,
     token: string,
   ): Promise<JobSummary[]> {
-    this.logger.log(`Getting job by status`);
+    this.logger.log('Getting job by status');
 
     try {
       const response = await firstValueFrom(
@@ -317,7 +317,7 @@ export class AdminServiceClient {
   async updateJobActivation(
     id: string,
     status: ScheduleStatus,
-    tableName: string,
+    type: ConfigType,
     token: string,
   ): Promise<{ success: boolean; message: string; data: Job }> {
     this.logger.log(`Validating job update with id : ${id}`);
@@ -326,7 +326,7 @@ export class AdminServiceClient {
       const response = await firstValueFrom(
         this.httpService.put(
           `${this.adminServiceUrl}/v1/admin/tcs/job/update/activation/${id}`,
-          { status, tableName },
+          { status, type },
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -407,27 +407,6 @@ export class AdminServiceClient {
       return response.data;
     } catch (error) {
       return this.handleError(error, 'scheduleCreation');
-    }
-  }
-
-  async validateExisting(tableName: string, token: string): Promise<ISuccess> {
-    this.logger.log(`Validating Existing table`);
-
-    try {
-      const response = await firstValueFrom(
-        this.httpService.get(`${this.adminServiceUrl}/v1/admin/tcs/job/table`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          params: {
-            tableName,
-          },
-        }),
-      );
-
-      return response.data;
-    } catch (error) {
-      return this.handleError(error, 'validateTable');
     }
   }
 
@@ -515,7 +494,7 @@ export class AdminServiceClient {
     user: AuthenticatedUser,
     filters?: Record<string, unknown>,
   ): Promise<{}> {
-    this.logger.log(`Getting all schedules`);
+    this.logger.log('Getting all schedules');
 
     try {
       const response = await firstValueFrom(
@@ -560,7 +539,7 @@ export class AdminServiceClient {
               Authorization: `Bearer ${token}`,
             },
             params: {
-              status: status,
+              status,
               tenantId: tenant_id,
               page,
               limit,
@@ -763,8 +742,8 @@ export class AdminServiceClient {
 
   async getAllConfigs(
     token: string,
-    limit: number = 10,
-    offset: number = 0,
+    limit = 10,
+    offset = 0,
   ): Promise<{
     configs: any[];
     pagination: { total: number; limit: number; offset: number; pages: number };
@@ -873,8 +852,8 @@ export class AdminServiceClient {
     endpointPath: string,
     version: string,
     token: string,
-    limit: number = 10,
-    offset: number = 0,
+    limit = 10,
+    offset = 0,
   ): Promise<{
     configs: any[];
     pagination: { total: number; limit: number; offset: number; pages: number };
@@ -912,8 +891,8 @@ export class AdminServiceClient {
   async getConfigsByTransactionType(
     transactionType: string,
     token: string,
-    limit: number = 10,
-    offset: number = 0,
+    limit = 10,
+    offset = 0,
   ): Promise<{
     configs: any[];
     pagination: { total: number; limit: number; offset: number; pages: number };

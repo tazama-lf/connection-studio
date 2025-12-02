@@ -12,7 +12,7 @@ import {
 } from '@nestjs/common';
 import { JobStatus } from '@tazama-lf/tcs-lib';
 import { RequireAnyClaims, TazamaClaims } from 'src/auth/auth.decorator';
-import { type AuthenticatedUser } from 'src/auth/auth.types';
+import type { AuthenticatedUser } from 'src/auth/auth.types';
 import { TazamaAuthGuard } from 'src/auth/tazama-auth.guard';
 import { User } from 'src/auth/user.decorator';
 import { CreateScheduleJobDto } from './dto/create-schedule.dto';
@@ -22,7 +22,7 @@ import { SchedulerService } from './scheduler.service';
 @Controller('scheduler')
 @UseGuards(TazamaAuthGuard)
 export class SchedulerController {
-  constructor(private readonly schedulerService: SchedulerService) {}
+  constructor(private readonly schedulerService: SchedulerService) { }
 
   @Post('/create')
   @RequireAnyClaims(TazamaClaims.EDITOR)
@@ -30,7 +30,7 @@ export class SchedulerController {
     @Body() schedule: CreateScheduleJobDto,
     @User() user: AuthenticatedUser,
   ) {
-    return this.schedulerService.create(
+    return await this.schedulerService.create(
       schedule,
       user.tenantId,
       user.token.tokenString,
@@ -50,7 +50,7 @@ export class SchedulerController {
     @User() user: AuthenticatedUser,
     @Body() filters?: Record<string, unknown>,
   ) {
-    return this.schedulerService.findAll(offset, limit, user, filters);
+    return await this.schedulerService.findAll(offset, limit, user, filters);
   }
 
   @Patch('/update/:id')
@@ -60,7 +60,7 @@ export class SchedulerController {
     @Body() body: UpdateScheduleJobDto,
     @User() user: AuthenticatedUser,
   ) {
-    return this.schedulerService.update(id, body, user.token.tokenString);
+    return await this.schedulerService.update(id, body, user.token.tokenString);
   }
 
   @Get('/:id')
@@ -71,7 +71,7 @@ export class SchedulerController {
     TazamaClaims.PUBLISHER,
   )
   async getById(@Param('id') id: string, @User() user: AuthenticatedUser) {
-    return this.schedulerService.findOne(id, user.token.tokenString);
+    return await this.schedulerService.findOne(id, user.token.tokenString);
   }
 
   @Get('/get/status')
@@ -113,7 +113,7 @@ export class SchedulerController {
       id,
       user.tenantId,
       status,
-      user.token.tokenString,
+      user,
       reason,
     );
   }

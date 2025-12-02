@@ -8,15 +8,15 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import { createHash } from 'crypto';
+import { createHash } from 'node:crypto';
 import SFTPClient from 'ssh2-sftp-client';
 import * as utils from '../utils/helpers';
 import { SftpFile } from './types/sftp.interface';
 
 @Injectable()
 export class SftpService implements OnModuleInit, OnModuleDestroy {
-  private consumerSftp: SFTPClient;
-  private producerSftp: SFTPClient;
+  private readonly consumerSftp: SFTPClient;
+  private readonly producerSftp: SFTPClient;
 
   constructor(
     private readonly loggerService: LoggerService,
@@ -201,7 +201,7 @@ export class SftpService implements OnModuleInit, OnModuleDestroy {
       }
 
       const rawData = fileBuffer.toString('utf8').trim();
-      console.log("SOHAIB: rawData", rawData,{rawData})
+      console.log('SOHAIB: rawData', rawData,{rawData})
       return JSON.parse(rawData);
     } catch (error: unknown) {
       if (

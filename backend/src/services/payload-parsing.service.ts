@@ -5,9 +5,7 @@ import {
   validatePayloadStructure,
   type PayloadParsingResult,
 } from '@tazama-lf/tcs-lib';
-import { ContentType } from '@tazama-lf/tcs-lib';
-import { SchemaField } from '@tazama-lf/tcs-lib';
-import { AdjustFieldDto, SchemaValidationResultDto } from '@tazama-lf/tcs-lib';
+import { ContentType , SchemaField , AdjustFieldDto, SchemaValidationResultDto } from '@tazama-lf/tcs-lib';
 
 @Injectable()
 export class PayloadParsingService {
@@ -16,7 +14,7 @@ export class PayloadParsingService {
     contentType: ContentType,
     filename?: string,
   ): Promise<PayloadParsingResult | undefined> {
-    return parsePayloadToSchema(payload, contentType, filename);
+    return await parsePayloadToSchema(payload, contentType, filename);
   }
 
   applyFieldAdjustments(
@@ -30,6 +28,6 @@ export class PayloadParsingService {
     payload: string,
     contentType: ContentType,
   ): Promise<SchemaValidationResultDto> {
-    return validatePayloadStructure(payload, contentType);
+    return await validatePayloadStructure(payload, contentType);
   }
 }

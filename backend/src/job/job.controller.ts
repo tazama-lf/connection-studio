@@ -12,7 +12,7 @@ import {
 } from '@nestjs/common';
 import { ConfigType, JobStatus, ScheduleStatus } from '@tazama-lf/tcs-lib';
 import { plainToInstance } from 'class-transformer';
-import { type AuthenticatedUser } from 'src/auth/auth.types';
+import type { AuthenticatedUser } from 'src/auth/auth.types';
 import { TazamaAuthGuard } from 'src/auth/tazama-auth.guard';
 import { User } from 'src/auth/user.decorator';
 import {
@@ -86,7 +86,7 @@ export class JobController {
     @User() user: AuthenticatedUser,
     @Body() filters?: Record<string, unknown>,
   ) {
-    return this.jobService.findAll(offset, limit, user, filters);
+    return await this.jobService.findAll(offset, limit, user, filters);
   }
 
   @Post('/history')
@@ -99,7 +99,7 @@ export class JobController {
     @User() user: AuthenticatedUser,
     @Body() filters?: Record<string, unknown>,
   ) {
-    return this.jobService.findAllHistory(offset, limit, user,filters);
+    return await this.jobService.findAllHistory(offset, limit, user,filters);
   }
 
   @Get('/:id')
