@@ -424,7 +424,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
             py: '12px',
           }}
         >
-          <Box sx={{ fontSize: '14px', fontWeight: '600' }}>Endpoint Path</Box>
+          <Box sx={{ fontSize: '14px', fontWeight: '600' }}>Endpoint Name</Box>
           {handleInputFilter({
             fieldName: 'endpointName',
             searchingFilters,

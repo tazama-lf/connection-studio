@@ -483,10 +483,10 @@ export const pushValidationSchema = yup.object({
                 return this.createError({ message: 'API path must start with "/" (e.g: /customer/data_2025)' });
             }
 
-            // Check for valid API path characters (allow alphanumeric, /, _, -, but no spaces or special chars)
-            const validPathPattern = /^[\/a-zA-Z0-9_-]+$/;
+            // Check for valid API path characters (allow alphanumeric, /, _, -, ., but no spaces or special chars)
+            const validPathPattern = /^[\/a-zA-Z0-9_.-]+$/;
             if (!validPathPattern.test(trimmedValue)) {
-                return this.createError({ message: 'API path contains invalid characters. Only letters, numbers, /, _, - are allowed (no spaces)' });
+                return this.createError({ message: 'API path contains invalid characters. Only letters, numbers, /, _, -, . are allowed (no spaces)' });
             }
 
             // Prevent double slashes
@@ -505,8 +505,8 @@ export const pushValidationSchema = yup.object({
                 if (segment.length === 0) {
                     return this.createError({ message: 'API path cannot have empty segments' });
                 }
-                if (!/^[a-zA-Z0-9_-]+$/.test(segment)) {
-                    return this.createError({ message: `Invalid path segment "${segment}". Use only letters, numbers, _ and -` });
+                if (!/^[a-zA-Z0-9_.-]+$/.test(segment)) {
+                    return this.createError({ message: `Invalid path segment "${segment}". Use only letters, numbers, _, -, .` });
                 }
             }
 

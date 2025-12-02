@@ -2,13 +2,12 @@ import { useAuth } from '@features/auth';
 import { yupResolver } from '@hookform/resolvers/yup';
 import {
   Button,
-  Grid,
   CircularProgress,
   Dialog,
-  DialogTitle,
+  DialogActions,
   DialogContent,
   DialogContentText,
-  DialogActions,
+  Grid,
 } from '@mui/material';
 import Alert from '@mui/material/Alert';
 import Backdrop from '@mui/material/Backdrop';
@@ -16,7 +15,6 @@ import Box from '@mui/material/Box';
 import { DownloadIcon, Loader2, Save, UploadIcon, XIcon } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { useToast } from '../../../shared/providers/ToastProvider';
 import {
   ApiPathInputField,
   DatabaseTableInputField,
@@ -33,6 +31,7 @@ import {
   VersionInputField,
 } from '../../../shared/components/FormFields';
 import ValidationError from '../../../shared/components/ValidationError';
+import { useToast } from '../../../shared/providers/ToastProvider';
 import { dataEnrichmentApi } from '../services';
 import type { ScheduleResponse } from '../types';
 import {
@@ -45,7 +44,6 @@ import {
   pushValidationSchema,
   sourceTypeOptions,
 } from './validationSchema';
-import { isEditor } from '../../../utils/roleUtils';
 
 // TYPES
 interface DataEnrichmentEditModalProps {
@@ -863,25 +861,32 @@ export const DataEnrichmentEditModal: React.FC<
           >
             {(() => {
               const version = watch('version');
-              const endpointPath = watch('endpointPath');
+              let endpointPath = watch('endpointPath') || '';
 
               // Clean version (remove 'v' prefix and slashes)
               const cleanVersion =
                 version?.replace(/^v?\/*/g, '').replace(/\/+$/g, '') || '';
 
-              // Clean endpoint path (ensure it starts with /)
-              const cleanPath = endpointPath?.startsWith('/')
-                ? endpointPath
-                : `/${endpointPath || ''}`;
+              // Remove tenant/enrichment/version prefix if present in endpointPath
+              const prefixRegex = new RegExp(
+                `^/?${tenantId}/enrichment(/v?${cleanVersion.replace(/\./g, '\\.')})?`,
+                'i',
+              );
+              endpointPath = endpointPath.replace(prefixRegex, '');
 
-              if (!version && !endpointPath) {
+              // Clean endpoint path (ensure it starts with /)
+              const cleanPath = endpointPath.startsWith('/')
+                ? endpointPath
+                : `/${endpointPath}`;
+
+              if (!version && !endpointPath.trim()) {
                 return `/${tenantId}/enrichment/{version}{path}`;
               }
 
               const versionPart = cleanVersion
                 ? `/${cleanVersion}`
                 : '/{version}';
-              const pathPart = endpointPath ? cleanPath : '/{path}';
+              const pathPart = endpointPath.trim() ? cleanPath : '/{path}';
 
               return `/${tenantId}/enrichment${versionPart}${pathPart}`;
             })()}
