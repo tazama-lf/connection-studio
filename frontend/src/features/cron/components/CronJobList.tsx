@@ -56,6 +56,8 @@ interface CronJobListProps {
 export const CronJobList: React.FC<CronJobListProps> = ({
   searchTerm = '',
 }) => {
+  // General action in-progress state for edit/reject etc.
+  const [isActionInProgress, setIsActionInProgress] = useState(false);
   const [schedules, setSchedules] = useState<ScheduleResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -572,10 +574,12 @@ export const CronJobList: React.FC<CronJobListProps> = ({
         </div>
       )}
 
-      {loading ? (
-        <div className="flex items-center justify-center p-8">
+      {loading || isActionInProgress ? (
+        <div className="flex items-center justify-center p-8 fixed inset-0 z-50 bg-white bg-opacity-60">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <span className="ml-2 text-gray-600">Loading schedules...</span>
+          <span className="ml-2 text-gray-600">
+            {loading ? 'Loading schedules...' : 'Processing...'}
+          </span>
         </div>
       ) : (
         <>
