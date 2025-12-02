@@ -2,7 +2,18 @@ import { Controller, Get, Post, Body, Param, ParseIntPipe } from '@nestjs/common
 import { TazamaDataModelService } from './tazama-data-model.service';
 import { TazamaDataModelRepository } from './tazama-data-model.repository';
 import { DatabaseService } from '../database/database.service';
-import type { CreateDestinationTypeDto, CreateFieldDto } from './tazama-data-model.dto';
+import type { CreateDestinationTypeDto, CreateFieldDto, DestinationTypeResponse, FieldResponse } from './tazama-data-model.dto';
+import { TazamaDestinationPath, TazamaFieldType } from './tazama-data-model.interfaces';
+
+interface DestinationOption {
+  value: TazamaDestinationPath;
+  label: string;
+  collection: string;
+  field: string;
+  type: TazamaFieldType;
+  required: boolean;
+  properties?: unknown[];
+}
 
 @Controller('tazama-data-model')
 export class TazamaDataModelController {
@@ -12,7 +23,7 @@ export class TazamaDataModelController {
     private readonly databaseService: DatabaseService,
   ) {}
   @Get('destination-options')
-  async getDestinationOptions(): Promise<{ success: boolean; data: any[]; error?: string }> {
+  async getDestinationOptions(): Promise<{ success: boolean; data: DestinationOption[]; error?: string }> {
     try {
       const data = await this.tazamaDataModelService.getDestinationOptions();
       return {
@@ -36,7 +47,7 @@ export class TazamaDataModelController {
   async createDestinationType(@Body() dto: CreateDestinationTypeDto): Promise<{ 
     success: boolean; 
     message: string; 
-    data: any 
+    data: DestinationTypeResponse | null 
   }> {
     try {
       const data = await this.tazamaDataModelService.createDestinationType(dto);
@@ -62,7 +73,7 @@ export class TazamaDataModelController {
   async addFieldToDestinationType(
     @Param('destinationTypeId', ParseIntPipe) destinationTypeId: number,
     @Body() dto: CreateFieldDto,
-  ): Promise<{ success: boolean; message: string; data: any }> {
+  ): Promise<{ success: boolean; message: string; data: FieldResponse | null }> {
     try {
       const data = await this.tazamaDataModelService.addFieldToDestinationType(destinationTypeId, dto);
       return {

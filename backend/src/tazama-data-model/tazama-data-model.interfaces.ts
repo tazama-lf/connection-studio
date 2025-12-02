@@ -1,7 +1,7 @@
 /**
  * Tazama Internal Data Model Interfaces
  */
-export type TazamaCollectionName = 'transactionDetails' | 'redis';
+export type TazamaCollectionName = string;
 export type TazamaFieldType =
   | 'STRING'
   | 'NUMBER'
@@ -15,7 +15,7 @@ export interface TazamaField {
   type: 'string' | 'number' | 'boolean' | 'date' | 'object';
   required: boolean;
   description?: string;
-  example?: any;
+  example?: string | number | boolean | Date | Record<string, unknown>;
   properties?: TazamaField[]; // For object types, define nested properties
 }
 export interface TazamaCollectionSchema {
@@ -31,12 +31,12 @@ export interface TazamaDataModelExtension {
   fieldType: TazamaFieldType;
   description?: string;
   isRequired: boolean;
-  defaultValue?: any;
+  defaultValue?: string | number | boolean | null;
   validation?: {
     pattern?: string;
     min?: number;
     max?: number;
-    enum?: any[];
+    enum?: Array<string | number | boolean>;
   };
   tenantId: string;
   createdBy: string;

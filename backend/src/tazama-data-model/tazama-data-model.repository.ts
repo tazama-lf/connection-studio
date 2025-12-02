@@ -3,6 +3,43 @@ import { DatabaseService } from '../database/database.service';
 import { TazamaCollectionSchema, TazamaField } from './tazama-data-model.interfaces';
 import { CreateDestinationTypeDto, CreateFieldDto, DestinationTypeResponse, FieldResponse } from './tazama-data-model.dto';
 
+interface CollectionRow {
+  destination_type_id: number;
+  collection_name: string;
+  collection_type: 'node' | 'edge';
+  collection_description: string;
+}
+
+interface FieldRow {
+  field_id: number;
+  field_name: string;
+  field_type: string;
+  parent_id: number | null;
+  serial_no: number;
+  is_active: boolean;
+}
+
+interface DatabaseResult<T = unknown> {
+  rows: T[];
+}
+
+interface CreateDestinationTypeRow {
+  destination_type_id: number;
+  collection_type: string;
+  name: string;
+  description: string;
+  destination_id: number;
+  created_at: Date;
+}
+
+interface SerialNumberRow {
+  next_serial: number;
+}
+
+interface ExistsRow {
+  destination_type_id: number;
+}
+
 @Injectable()
 export class TazamaDataModelRepository {
   constructor(private readonly databaseService: DatabaseService) {}
@@ -25,20 +62,21 @@ export class TazamaDataModelRepository {
       ORDER BY dt.name
     `;
     
-    const result = await this.databaseService.query(query, [tenantId]);
-    const collections: TazamaCollectionSchema[] = [];
+    const result = await this.databaseService.query(query, [tenantId]) as DatabaseResult<CollectionRow>;
     
-    for (const row of result.rows) {
+    // Process collections concurrently to avoid no-await-in-loop
+    const collectionsPromises = result.rows.map(async (row) => {
       const fields = await this.getCollectionFields(row.destination_type_id);
       
-      collections.push({
+      return {
         name: row.collection_name,
-        type: row.collection_type as 'node' | 'edge',
+        type: row.collection_type,
         description: row.collection_description,
         fields,
-      });
-    }
+      };
+    });
     
+    const collections = await Promise.all(collectionsPromises);
     return collections;
   }
 
@@ -62,31 +100,22 @@ export class TazamaDataModelRepository {
       ORDER BY dtf.serial_no, dtf.field_id
     `;
     
-    const result = await this.databaseService.query(query, [collectionId]);
+    const result = await this.databaseService.query(query, [collectionId]) as DatabaseResult<FieldRow>;
     
     // Separate root fields and nested fields
-    const rootFields: any[] = [];
-    const nestedFieldsMap = new Map<number, any[]>();
+    const rootFields: FieldRow[] = [];
+    const nestedFieldsMap = new Map<number, FieldRow[]>();
     
     for (const row of result.rows) {
-      const field = {
-        field_id: row.field_id,
-        name: row.field_name,
-        type: row.field_type,
-        required: false, // We removed is_required from schema
-        parent_id: row.parent_id,
-        serial_no: row.serial_no,
-      };
-      
       if (row.parent_id === null) {
         // Root field
-        rootFields.push(field);
+        rootFields.push(row);
       } else {
         // Nested field - group by parent_id
         if (!nestedFieldsMap.has(row.parent_id)) {
           nestedFieldsMap.set(row.parent_id, []);
         }
-        nestedFieldsMap.get(row.parent_id)!.push(field);
+        nestedFieldsMap.get(row.parent_id)!.push(row);
       }
     }
     
@@ -95,18 +124,18 @@ export class TazamaDataModelRepository {
     
     for (const rootField of rootFields) {
       const tazamaField: TazamaField = {
-        name: rootField.name,
-        type: rootField.type,
-        required: rootField.required,
+        name: rootField.field_name,
+        type: rootField.field_type as 'string' | 'number' | 'boolean' | 'object' | 'date',
+        required: false, // We removed is_required from schema
       };
       
       // If this is an object type, add nested properties
-      if (rootField.type === 'object') {
-        const nestedFields = nestedFieldsMap.get(rootField.serial_no) || [];
+      if (rootField.field_type === 'object') {
+        const nestedFields = nestedFieldsMap.get(rootField.serial_no) ?? [];
         tazamaField.properties = nestedFields.map(nf => ({
-          name: nf.name,
-          type: nf.type,
-          required: nf.required,
+          name: nf.field_name,
+          type: nf.field_type as 'string' | 'number' | 'boolean' | 'object' | 'date',
+          required: false,
         }));
       }
       
@@ -131,11 +160,11 @@ export class TazamaDataModelRepository {
     const result = await this.databaseService.query(query, [
       dto.collection_type,
       dto.name,
-      dto.description || null,
+      dto.description ?? null,
       dto.destination_id,
-    ]);
+    ]) as DatabaseResult<CreateDestinationTypeRow>;
 
-    return result.rows[0];
+    return result.rows[0] as DestinationTypeResponse;
   }
 
 
@@ -147,7 +176,7 @@ export class TazamaDataModelRepository {
     const query = `
       SELECT destination_type_id FROM destination_type WHERE destination_type_id = $1
     `;
-    const result = await this.databaseService.query(query, [destinationTypeId]);
+    const result = await this.databaseService.query(query, [destinationTypeId]) as DatabaseResult<ExistsRow>;
     return result.rows.length > 0;
   }
 
@@ -160,7 +189,7 @@ export class TazamaDataModelRepository {
       FROM destination_type_fields
       WHERE collection_id = $1 AND parent_id IS NULL
     `;
-    const result = await this.databaseService.query(query, [destinationTypeId]);
+    const result = await this.databaseService.query(query, [destinationTypeId]) as DatabaseResult<SerialNumberRow>;
     return result.rows[0].next_serial;
   }
 
@@ -181,12 +210,21 @@ export class TazamaDataModelRepository {
     const result = await this.databaseService.query(query, [
       dto.name,
       dto.field_type,
-      dto.parent_id || null,
-      dto.is_active !== undefined ? dto.is_active : true,
-      serialNo || null,
+      dto.parent_id ?? null,
+      dto.is_active ?? true,
+      serialNo ?? null,
       destinationTypeId,
-    ]);
+    ]) as DatabaseResult<FieldRow>;
 
-    return result.rows[0];
+    const [row] = result.rows;
+    return {
+      field_id: row.field_id,
+      name: row.field_name,
+      field_type: row.field_type,
+      parent_id: row.parent_id ?? undefined,
+      is_active: row.is_active,
+      serial_no: row.serial_no,
+      collection_id: destinationTypeId,
+    };
   }
 }

@@ -1,12 +1,41 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import {
-  TazamaCollectionName,
-  TazamaCollectionSchema,
-  TazamaDestinationPath,
   TazamaFieldType,
+  TazamaField,
 } from './tazama-data-model.interfaces';
 import { TazamaDataModelRepository } from './tazama-data-model.repository';
 import { CreateDestinationTypeDto, CreateFieldDto, DestinationTypeResponse, FieldResponse } from './tazama-data-model.dto';
+
+interface FieldOption {
+  value: string;
+  label: string;
+  collection: string;
+  field: string;
+  type: string;
+  required: boolean;
+  properties?: FieldProperty[];
+}
+
+interface FieldProperty {
+  name: string;
+  type: string;
+  required: boolean;
+}
+
+interface ErrorWithMessage {
+  message: string;
+  stack?: string;
+}
+
+interface FieldSelectOption {
+  value: string;
+  label: string;
+  collection: string;
+  field: string;
+  type: TazamaFieldType;
+  required: boolean;
+  properties?: FieldProperty[];
+}
 
 @Injectable()
 export class TazamaDataModelService {
@@ -62,25 +91,17 @@ export class TazamaDataModelService {
 
   // used from controller for GET
   
-  async getDestinationOptions(tenantId = 'default'): Promise<Array<{
-    value: TazamaDestinationPath;
-    label: string;
-    collection: string;
-    field: string;
-    type: TazamaFieldType;
-    required: boolean;
-    properties?: any[];
-  }>> {
+  async getDestinationOptions(tenantId = 'default'): Promise<FieldSelectOption[]> {
     const schemas = await this.repository.getAllCollections(tenantId);
-    const options: any[] = [];
+    const options: FieldOption[] = [];
 
     
     const processField = (
       schemaName: string,
-      field: any,
+      field: TazamaField,
       parentPath?: string,
       parentFieldPath?: string,
-    ) => {
+    ): void => {
       const path = parentPath
         ? `${parentPath}.${field.name}`
         : `${schemaName}.${field.name}`;
@@ -89,15 +110,7 @@ export class TazamaDataModelService {
         ? `${parentFieldPath}.${field.name}`
         : field.name;
 
-      const base: {
-        value: string;
-        label: string;
-        collection: string;
-        field: string;
-        type: string;
-        required: boolean;
-        properties?: any[];
-      } = {
+      const base: FieldOption = {
         value: path,
         label: path,
         collection: schemaName,
@@ -108,13 +121,13 @@ export class TazamaDataModelService {
 
       
       if (field.type === 'object' && field.properties?.length) {
-        base.properties = field.properties.map((prop: any) => ({
+        base.properties = field.properties.map((prop: TazamaField) => ({
           name: prop.name,
           type: prop.type,
           required: prop.required,
         }));
         options.push(base);
-        field.properties.forEach((sub: any) =>
+        field.properties.forEach((sub: TazamaField) =>
           { processField(schemaName, sub, path, fieldPath); },
         );
       } else {
@@ -129,7 +142,17 @@ export class TazamaDataModelService {
       }
     }
 
-    return options.sort((a, b) => a.label.localeCompare(b.label));
+    const resultOptions: FieldSelectOption[] = options.map(opt => ({
+      value: opt.value,
+      label: opt.label,
+      collection: opt.collection,
+      field: opt.field,
+      type: opt.type as TazamaFieldType,
+      required: opt.required,
+      properties: opt.properties,
+    }));
+
+    return resultOptions.sort((a, b) => a.label.localeCompare(b.label));
   }
 
   /**
@@ -140,9 +163,12 @@ export class TazamaDataModelService {
       const result = await this.repository.createDestinationType(dto);
       this.logger.log(`Created destination type: ${dto.name} with ID: ${result.destination_type_id}`);
       return result;
-    } catch (error) {
-      this.logger.error(`Failed to create destination type: ${error.message}`, error.stack);
-      throw new BadRequestException(`Failed to create destination type: ${error.message}`);
+    } catch (error: unknown) {
+      const errorWithMessage = error as ErrorWithMessage;
+      const errorMessage = errorWithMessage.message || 'Unknown error';
+      const errorStack = errorWithMessage.stack;
+      this.logger.error(`Failed to create destination type: ${errorMessage}`, errorStack);
+      throw new BadRequestException(`Failed to create destination type: ${errorMessage}`);
     }
   }
 
@@ -169,9 +195,12 @@ export class TazamaDataModelService {
       const result = await this.repository.addFieldToDestinationType(destinationTypeId, dto, serialNo);
       this.logger.log(`Added field: ${dto.name} to destination type: ${destinationTypeId}`);
       return result;
-    } catch (error) {
-      this.logger.error(`Failed to add field: ${error.message}`, error.stack);
-      throw new BadRequestException(`Failed to add field: ${error.message}`);
+    } catch (error: unknown) {
+      const errorWithMessage = error as ErrorWithMessage;
+      const errorMessage = errorWithMessage.message || 'Unknown error';
+      const errorStack = errorWithMessage.stack;
+      this.logger.error(`Failed to add field: ${errorMessage}`, errorStack);
+      throw new BadRequestException(`Failed to add field: ${errorMessage}`);
     }
   }
 
