@@ -1011,7 +1011,7 @@ export class AdminServiceClient {
     configs: any[];
     pagination: { total: number; limit: number; offset: number; pages: number };
   }> {
-    this.logger.log(`Finding configs by status with filters:`, filters);
+    this.logger.log('Finding configs by status with filters:', filters);
 
     try {
       const { limit = 10, offset = 0, ...filterPayload } = filters;

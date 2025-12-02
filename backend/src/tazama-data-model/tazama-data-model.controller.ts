@@ -12,17 +12,18 @@ export class TazamaDataModelController {
     private readonly databaseService: DatabaseService,
   ) {}
   @Get('destination-options')
-  async getDestinationOptions() {
+  async getDestinationOptions(): Promise<{ success: boolean; data: any[]; error?: string }> {
     try {
       const data = await this.tazamaDataModelService.getDestinationOptions();
       return {
         success: true,
         data,
       };
-    } catch (error) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       return {
         success: false,
-        error: error.message,
+        error: errorMessage,
         data: [],
       };
     }
@@ -32,7 +33,11 @@ export class TazamaDataModelController {
    * Create a new destination type (collection)
    */
   @Post('destination-types')
-  async createDestinationType(@Body() dto: CreateDestinationTypeDto) {
+  async createDestinationType(@Body() dto: CreateDestinationTypeDto): Promise<{ 
+    success: boolean; 
+    message: string; 
+    data: any 
+  }> {
     try {
       const data = await this.tazamaDataModelService.createDestinationType(dto);
       return {
@@ -40,10 +45,11 @@ export class TazamaDataModelController {
         message: 'Destination type created successfully',
         data,
       };
-    } catch (error) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       return {
         success: false,
-        message: error.message,
+        message: errorMessage,
         data: null,
       };
     }
@@ -56,7 +62,7 @@ export class TazamaDataModelController {
   async addFieldToDestinationType(
     @Param('destinationTypeId', ParseIntPipe) destinationTypeId: number,
     @Body() dto: CreateFieldDto,
-  ) {
+  ): Promise<{ success: boolean; message: string; data: any }> {
     try {
       const data = await this.tazamaDataModelService.addFieldToDestinationType(destinationTypeId, dto);
       return {
@@ -64,13 +70,13 @@ export class TazamaDataModelController {
         message: 'Field added successfully',
         data,
       };
-    } catch (error) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       return {
         success: false,
-        message: error.message,
+        message: errorMessage,
         data: null,
       };
     }
   }
-
 }

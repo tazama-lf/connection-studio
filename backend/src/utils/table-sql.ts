@@ -6,18 +6,16 @@ export interface ColumnDef {
 }
 
 export function createTableSQL( table: string, cols: ColumnDef[]): string {
-  const tname = `${table}`;
+  const tname = table;
 
-  const defs = cols.map((c: ColumnDef) => {
-    return `"${c.name}" ${c.type}`;
-  });
+  const defs = cols.map((c: ColumnDef) => `"${c.name}" ${c.type}`);
 
-  const pks = cols.filter((c: ColumnDef) => c.isPrimaryKey === true || c.isPrimaryKey === "true").map((c: ColumnDef) => `"${c.name}"`);
+  const pks = cols.filter((c: ColumnDef) => c.isPrimaryKey === true || c.isPrimaryKey === 'true').map((c: ColumnDef) => `"${c.name}"`);
 
-  const pk = pks.length ? `, PRIMARY KEY (${pks.join(",")})` : "";
+  const pk = pks.length ? `, PRIMARY KEY (${pks.join(',')})` : '';
 
   return `CREATE TABLE IF NOT EXISTS "${tname}" (
-    ${defs.join(",")}
+    ${defs.join(',')}
     ${pk}
   );`;
 }

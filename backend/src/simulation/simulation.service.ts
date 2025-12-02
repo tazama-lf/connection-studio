@@ -122,7 +122,7 @@ export class SimulationService {
       stages.push(configStage);
 
       if (configStage.status === 'FAILED') {
-        errors.push(...(configStage.errors || []));
+        errors.push(...(configStage.errors ?? []));
         return this.createStageBasedResult(
           dto,
           timestamp,
@@ -148,7 +148,7 @@ export class SimulationService {
       stages.push(parseStage);
 
       if (parseStage.status === 'FAILED') {
-        errors.push(...(parseStage.errors || []));
+        errors.push(...(parseStage.errors ?? []));
         return this.createStageBasedResult(
           dto,
           timestamp,
@@ -176,7 +176,7 @@ export class SimulationService {
       stages.push(schemaStage);
 
       if (schemaStage.status === 'FAILED') {
-        errors.push(...(schemaStage.errors || []));
+        errors.push(...(schemaStage.errors ?? []));
         return this.createStageBasedResult(
           dto,
           timestamp,
@@ -194,7 +194,7 @@ export class SimulationService {
       if (hasMappings) {
         const mappingValidationStage = this.stageValidateMappings(
           parsedPayload,
-          config.mapping || [],
+          config.mapping ?? [],
         );
 
         //fourth stage

@@ -26,9 +26,6 @@ import {
   JobEmailTemplateContext,
   generateJobflowEmailHTML,
   generateJobflowEmailText,
-  ScheduleEmailTemplateContext,
-  generateScheduleflowEmailHTML,
-  generateScheduleflowEmailText,
 } from '@tazama-lf/tcs-lib';
 import { firstValueFrom } from 'rxjs/internal/firstValueFrom';
 import { HttpService } from '@nestjs/axios';
@@ -459,17 +456,17 @@ export class NotificationService implements OnModuleInit {
         const version = '1.0';
         theme = getEmailTheme(event, configName, version);
 
-        const templateContext: ScheduleEmailTemplateContext = {
+        const templateContext: EmailTemplateContext = {
           event,
-          schedule,
+          config: schedule,
           actorName,
           actorEmail,
           comment,
           tenantId,
         };
 
-        htmlContent = generateScheduleflowEmailHTML(templateContext);
-        textContent = generateScheduleflowEmailText(templateContext);
+        htmlContent = generateWorkflowEmailHTML(templateContext);
+        textContent = generateWorkflowEmailText(templateContext);
       } else {
         this.logger.warn('Invalid actionEntity type');
         return {
@@ -539,7 +536,7 @@ export class NotificationService implements OnModuleInit {
       actorName,
     } = data;
 
-    let recipientEmails: string[] = [];
+    const recipientEmails: string[] = [];
     // try {
     //   const cachedEmails = this.emailCacheService.getEmailsByRole(
     //     tenantId,

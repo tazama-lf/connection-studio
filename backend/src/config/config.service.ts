@@ -2048,7 +2048,7 @@ export class ConfigService {
 
       
           if (updatedConfig) {
-            const config = updatedConfig as Config;
+            const config = updatedConfig;
             await this.notificationService.sendWorkflowNotification(
               EventType.EditorSubmit,
               user,
@@ -2095,7 +2095,7 @@ export class ConfigService {
 
       
           if (updatedConfig) {
-            const config = updatedConfig as Config;
+            const config = updatedConfig;
             await this.notificationService.sendWorkflowNotification(
               EventType.ApproverApprove,
               user,
@@ -2143,7 +2143,7 @@ export class ConfigService {
 
       
           if (updatedConfig) {
-            const config = updatedConfig as Config;
+            const config = updatedConfig;
             await this.notificationService.sendWorkflowNotification(
                 EventType.ApproverReject,
                 user,
@@ -2174,7 +2174,7 @@ export class ConfigService {
     if (!config) {
       throw new NotFoundException(`Config with ID ${id} not found`);
     }
-    const tenantId = user.tenantId;
+    const {tenantId} = user;
 
     const fileName = `dems_${tenantId}_${id}`;
 
@@ -2197,7 +2197,7 @@ export class ConfigService {
       );
 
       if (result) {
-        const exportedConfig = result as Config;
+        const exportedConfig = result;
         await this.notificationService.sendWorkflowNotification(
           EventType.ExporterExport,
           user,
@@ -2346,7 +2346,7 @@ export class ConfigService {
       } else {
         this.logger.warn(`No transactionType found in config file ${fileName}`);
       }
-      const functions = configData.functions;
+      const {functions} = configData;
       const datamodelFn = Array.isArray(functions)
     ? functions.find((fn) => fn.functionName === 'addDatamodelTable')
     : functions;
@@ -2649,7 +2649,7 @@ export class ConfigService {
     return {
       success: true,
       message: 'Config retrieved successfully',
-      config: config,
+      config,
     };
   }
 
@@ -2686,7 +2686,7 @@ export class ConfigService {
     token: string,
   ): Promise<Config[]> {
     return await this.configRepository.findConfigsByTransactionType(
-      type as TransactionType,
+      type,
       token,
       token,
       limit,

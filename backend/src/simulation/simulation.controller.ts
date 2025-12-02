@@ -20,7 +20,7 @@ export class SimulationController {
     @Body() dto: SimulatePayloadDto,
     @User() user?: AuthenticatedUser,
   ): Promise<SimulationResult> {
-    const serviceDto: any = {
+    const serviceDto = {
       endpointId: dto.configId,
       payload: dto.testPayload,
       payloadType:
@@ -28,7 +28,7 @@ export class SimulationController {
           ? 'application/json'
           : 'application/xml',
       tcsMapping: dto.tcsMapping,
-    };
+    } as const;
 
     this.logger.log(
       `TCS simulation requested for endpoint ${serviceDto.endpointId}`,
@@ -37,7 +37,7 @@ export class SimulationController {
     const userId = user?.token?.sub;
     const tenantId = user?.token?.tenantId;
 
-    if (!tenantId) {
+    if (!tenantId || !user?.token) {
       throw new Error('Tenant ID not found in user context');
     }
 
@@ -45,7 +45,7 @@ export class SimulationController {
       serviceDto,
       tenantId,
       userId,
-      user?.token?.tokenString,
+      user.token.tokenString,
     );
 
     this.logger.log(
