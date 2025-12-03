@@ -201,7 +201,6 @@ export class SftpService implements OnModuleInit, OnModuleDestroy {
       }
 
       const rawData = fileBuffer.toString('utf8').trim();
-      console.log('SOHAIB: rawData', rawData,{rawData})
       return JSON.parse(rawData);
     } catch (error: unknown) {
       if (

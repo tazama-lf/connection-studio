@@ -69,9 +69,9 @@ export class SimulationService {
     const errors: SimulationError[] = [];
     let transformedPayload: unknown = {};
     let tcsResult: iMappingResult | null = null;
+    let enhancedPayload: any;
+    let mappingsApplied: number = 0;
 
-    // console.log('1--- Starting simulation for endpoint ID:', dto.endpointId);
-    // console.log('2--- Payload type:', dto.payloadType);
 
     try {
       if (!dto.endpointId || isNaN(dto.endpointId)) {
@@ -117,7 +117,6 @@ export class SimulationService {
         tenantId,
         token,
       );
-      this.logger.debug('1. first stage output (configStage):', configStage);
       stages.push(configStage);
 
       if (configStage.status === 'FAILED') {
@@ -143,7 +142,6 @@ export class SimulationService {
         dto.payloadType,
       );
 
-      this.logger.debug('2. second stage output (parseStage):', parseStage);
       stages.push(parseStage);
 
       if (parseStage.status === 'FAILED') {
@@ -172,7 +170,6 @@ export class SimulationService {
         config,
       );
 
-      this.logger.debug('3. third stage output (schemaStage):', schemaStage);
       stages.push(schemaStage);
 
       if (schemaStage.status === 'FAILED') {
@@ -196,12 +193,6 @@ export class SimulationService {
           parsedPayload,
           config.mapping ?? [],
         );
-
-        //fourth stage
-        this.logger.debug(
-          '4. fourth stage output (mappingValidationStage):',
-          mappingValidationStage,
-        );
         stages.push(mappingValidationStage);
 
         if (mappingValidationStage.status === 'FAILED') {
@@ -217,7 +208,6 @@ export class SimulationService {
             { originalPayload: parsedPayload },
           );
         }
-        this.logger.debug('dto.tcsMapping is:', dto.tcsMapping);
         const tcsStage = await this.stageExecuteTCSMapping(
           parsedPayload,
           config,
@@ -225,7 +215,6 @@ export class SimulationService {
         );
 
         // fifth stage
-        this.logger.debug('5. fifth stage output (tcsStage):', tcsStage);
         stages.push(tcsStage);
 
         if (tcsStage.status === 'FAILED') {
@@ -247,7 +236,6 @@ export class SimulationService {
         tcsResult = extractedTcsResult;
 
         // yeh bilkul theek hai VIP
-        this.logger.debug('TCS VIP VIP config.mapping', config.mapping);
 
         //ismei bhand hai ig
         const mappingDetails = this.buildMappingDetails(
@@ -256,7 +244,6 @@ export class SimulationService {
           extractedTcsResult,
         );
 
-        this.logger.debug('TCS mappingDetails', mappingDetails);
 
         transformedPayload = {
           originalPayload: parsedPayload,
@@ -452,7 +439,6 @@ export class SimulationService {
     providedMapping?: iMappingConfiguration,
   ): Promise<ValidationStage> {
     try {
-      this.logger.debug('provided mapping is : ', providedMapping);
 
       // tcsMapping yahan banti hai
       const tcsMapping = config.mapping ?? [];
@@ -464,28 +450,17 @@ export class SimulationService {
       let tcsResult;
 
       try {
-        this.logger.debug('payload before TCS processing:', payload);
-        const enhancedPayload = {
-          ...payload,
-          TenantId: config.tenantId,
-          TxTp: this.extractTransactionType(config.endpointPath),
-        };
-        this.logger.debug('Enhanced payload for TCS processing:', enhancedPayload);
-        this.logger.debug('TCS Mapping Configuration:', tcsMapping); //yahin pe ghalat arhi
-        this.logger.debug('Endpoint for TCS processing:', endpoint);
-        // tcsResult = await processMappings(payload, tcsMapping, endpoint);
+  
 
         // are we sedning the right stuff?
         tcsResult = await processMappings(
-          enhancedPayload,
+          payload,
           tcsMapping,
           endpoint,
         );
 
-        this.logger.debug('FINAL--> TCS mapping result: ', tcsResult);
-      } catch (mappingError: unknown) {
-        this.logger.error('--> Mapping error: ', mappingError);
-        if (mappingError instanceof Error && mappingError.message.includes('loggerService')) {
+      } catch (mappingError: any) {
+        if (mappingError.message?.includes('loggerService')) {
           this.logger.error(
             'TCS lib processMappings has logger issue - this should be fixed in tcs-lib',
           );
@@ -652,7 +627,6 @@ export class SimulationService {
           (sourcePath) => this.getValueByPath(originalPayload, sourcePath),
         );
 
-        this.logger.debug('1. source values in SPLIT mapping:', sourceValues);
 
         // below logic is updated and correct
         const [firstValue] = sourceValues;
@@ -670,9 +644,6 @@ export class SimulationService {
         //   mapping.prefix,
         // );
 
-        this.logger.debug('2. split values in SPLIT mapping:', splitValues); //single string
-        this.logger.debug('3. destiantions in SPLIT mapping:', mapping.destination);
-        this.logger.debug('4. data dache from tcsResult:', tcsResult?.dataCache);
         const destinationLength = mapping.destination.length;
 
         //   for (let i = 0; i < mapping.destination.length; i++) {
@@ -767,11 +738,8 @@ export class SimulationService {
         //   });
         // }
 
-        for (let i = 0; i < destinationLength; i += 1) {
-          this.logger.debug(
-            `Processing destination index ${i} for SPLIT mapping`,
-            mapping.destination[i],
-          );
+        for (let i = 0; i < destinationLength; i++) {
+          
           const [internalDataModelObject, field] =
             mapping.destination[i].split('.');
           const resultValue = splitValues[i];
@@ -779,18 +747,10 @@ export class SimulationService {
           if (internalDataModelObject === 'redis') {
             // Redis-specific logic would go here
           }
-
-          this.logger.debug(
-            `Mapping for ${internalDataModelObject}.${field}:`,
-            resultValue,
-          );
         }
       }
     }
-    this.logger.debug(
-      'Final mapping details returned by buildMappingDetails:',
-      details,
-    );
+    
     return details;
   }
 

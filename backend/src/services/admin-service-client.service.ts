@@ -732,7 +732,6 @@ export class AdminServiceClient {
           },
         ),
       );
-      console.log('Response data in getConfigById:', response.data.config);
 
       return response.data.config;
     } catch (error) {
@@ -888,44 +887,44 @@ export class AdminServiceClient {
   //   }
   // }
 
-  async getConfigsByTransactionType(
-    transactionType: string,
-    token: string,
-    limit = 10,
-    offset = 0,
-  ): Promise<{
-    configs: any[];
-    pagination: { total: number; limit: number; offset: number; pages: number };
-  }> {
-    this.logger.log(
-      `Getting configs by transaction type: ${transactionType} (limit: ${limit}, offset: ${offset})`,
-    );
+  // async getConfigsByTransactionType(
+  //   transactionType: string,
+  //   token: string,
+  //   limit = 10,
+  //   offset = 0,
+  // ): Promise<{
+  //   configs: any[];
+  //   pagination: { total: number; limit: number; offset: number; pages: number };
+  // }> {
+  //   this.logger.log(
+  //     `Getting configs by transaction type: ${transactionType} (limit: ${limit}, offset: ${offset})`,
+  //   );
 
-    try {
-      const response = await firstValueFrom(
-        this.httpService.get(
-          `${this.adminServiceUrl}/v1/admin/tcs/config/transaction/${transactionType}/${offset}/${limit}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          },
-        ),
-      );
+  //   try {
+  //     const response = await firstValueFrom(
+  //       this.httpService.get(
+  //         `${this.adminServiceUrl}/v1/admin/tcs/config/transaction/${transactionType}/${offset}/${limit}`,
+  //         {
+  //           headers: {
+  //             Authorization: `Bearer ${token}`,
+  //           },
+  //         },
+  //       ),
+  //     );
 
-      return {
-        configs: response.data.configs || [],
-        pagination: response.data.pagination || {
-          total: 0,
-          limit,
-          offset,
-          pages: 0,
-        },
-      };
-    } catch (error) {
-      return this.handleError(error, 'getConfigsByTransactionType');
-    }
-  }
+  //     return {
+  //       configs: response.data.configs || [],
+  //       pagination: response.data.pagination || {
+  //         total: 0,
+  //         limit,
+  //         offset,
+  //         pages: 0,
+  //       },
+  //     };
+  //   } catch (error) {
+  //     return this.handleError(error, 'getConfigsByTransactionType');
+  //   }
+  // }
 
   async getPendingApprovals(token: string): Promise<any[]> {
     this.logger.log('Getting pending approvals');
@@ -974,13 +973,18 @@ export class AdminServiceClient {
     id: number,
     status: string,
     token: string,
+    comment?: string,
   ): Promise<Config | null> {
     this.logger.log(`Updating config status to ${status} for config ${id}`);
     try {
+      const body: any = { status };
+      if (comment !== undefined) {
+        body.comments = comment;
+      }
       const response = await firstValueFrom(
-        this.httpService.patch(
-          `${this.adminServiceUrl}/v1/admin/tcs/config/${id}/status`,
-          { status },
+        this.httpService.put(
+          `${this.adminServiceUrl}/v1/admin/tcs/config/${id}/write`,
+          body,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -1011,7 +1015,7 @@ export class AdminServiceClient {
     configs: any[];
     pagination: { total: number; limit: number; offset: number; pages: number };
   }> {
-    this.logger.log('Finding configs by status with filters:', filters);
+    this.logger.log(`Finding configs by status with filters:`, filters);
 
     try {
       const { limit = 10, offset = 0, ...filterPayload } = filters;

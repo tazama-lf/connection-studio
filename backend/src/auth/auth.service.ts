@@ -19,7 +19,6 @@ export class AuthService {
 
   async login(username: string, password: string) {
     const authUrl = this.configService.get<string>('TAZAMA_AUTH_URL');
-    console.log('Auth URL:', authUrl);
     if (!authUrl) {
       this.loggerService.error(
         'TAZAMA_AUTH_URL is not set in environment variables',

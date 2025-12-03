@@ -67,12 +67,14 @@ export class ConfigRepository {
     id: number,
     status: string,
     token: string,
+    comment?: string,
   ): Promise<Config | null> {
     try {
       const result = await this.adminServiceClient.updateConfigByStatus(
         id,
         status,
         token,
+        comment,
       );
       return result;
     } catch(error) {
@@ -104,62 +106,62 @@ export class ConfigRepository {
   //   }
   // }
 
-  async findConfigsByTenant(
-    tenantId: string,
-    token?: string,
-    limit = 10,
-    offset = 0,
-  ): Promise<Config[]> {
-    try {
-      const result = await this.adminServiceClient.getAllConfigs(
-        token || tenantId,
-        limit,
-        offset,
-      );
-      return result.configs;
-    } catch {
-      return [];
-    }
-  }
+  // async findConfigsByTenant(
+  //   tenantId: string,
+  //   token?: string,
+  //   limit = 10,
+  //   offset = 0,
+  // ): Promise<Config[]> {
+  //   try {
+  //     const result = await this.adminServiceClient.getAllConfigs(
+  //       token || tenantId,
+  //       limit,
+  //       offset,
+  //     );
+  //     return result.configs;
+  //   } catch {
+  //     return [];
+  //   }
+  // }
 
-  async findConfigsByTransactionType(
-    transactionType: TransactionType,
-    tenantId: string,
-    token?: string,
-    limit = 10,
-    offset = 0,
-  ): Promise<Config[]> {
-    try {
-      const result = await this.adminServiceClient.getConfigsByTransactionType(
-        transactionType,
-        token || tenantId,
-        limit,
-        offset,
-      );
-      return result.configs;
-    } catch {
-      return [];
-    }
-  }
+  // async findConfigsByTransactionType(
+  //   transactionType: TransactionType,
+  //   tenantId: string,
+  //   token?: string,
+  //   limit = 10,
+  //   offset = 0,
+  // ): Promise<Config[]> {
+  //   try {
+  //     const result = await this.adminServiceClient.getConfigsByTransactionType(
+  //       transactionType,
+  //       token || tenantId,
+  //       limit,
+  //       offset,
+  //     );
+  //     return result.configs;
+  //   } catch {
+  //     return [];
+  //   }
+  // }
 
-  async findConfigByVersionAndTransactionType(
-    version: string,
-    transactionType: string,
-    tenantId: string,
-    token?: string,
-  ): Promise<Config | null> {
-    try {
-      const result = await this.adminServiceClient.getAllConfigs(
-        token || tenantId,
-      );
-      const match = result.configs.find(
-        (c) => c.version === version && c.transactionType === transactionType,
-      );
-      return match || null;
-    } catch {
-      return null;
-    }
-  }
+  // async findConfigByVersionAndTransactionType(
+  //   version: string,
+  //   transactionType: string,
+  //   tenantId: string,
+  //   token?: string,
+  // ): Promise<Config | null> {
+  //   try {
+  //     const result = await this.adminServiceClient.getAllConfigs(
+  //       token || tenantId,
+  //     );
+  //     const match = result.configs.find(
+  //       (c) => c.version === version && c.transactionType === transactionType,
+  //     );
+  //     return match || null;
+  //   } catch {
+  //     return null;
+  //   }
+  // }
 
   async updateConfig(
     id: number,
@@ -243,18 +245,18 @@ export class ConfigRepository {
     );
   }
 
-  async getPendingApprovals(
-    offset: number,
-    limit: number,
-    token: string,
-  ): Promise<any[]> {
-    return await this.adminServiceClient.forwardRequest(
-      'GET',
-      `/v1/admin/tcs/config/pending-approvals/${offset}/${limit}`,
-      undefined,
-      { Authorization: `Bearer ${token}` },
-    );
-  }
+  // async getPendingApprovals(
+  //   offset: number,
+  //   limit: number,
+  //   token: string,
+  // ): Promise<any[]> {
+  //   return await this.adminServiceClient.forwardRequest(
+  //     'GET',
+  //     `/v1/admin/tcs/config/pending-approvals/${offset}/${limit}`,
+  //     undefined,
+  //     { Authorization: `Bearer ${token}` },
+  //   );
+  // }
 
   async addMapping(
     id: number,
