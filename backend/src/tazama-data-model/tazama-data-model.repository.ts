@@ -16,6 +16,7 @@ interface FieldRow {
   field_type: string;
   parent_id: number | null;
   serial_no: number;
+  collection_id: number;
   is_active: boolean;
 }
 
@@ -55,7 +56,9 @@ export class TazamaDataModelRepository {
         dt.destination_type_id,
         dt.name as collection_name,
         dt.collection_type,
-        dt.description as collection_description
+        dt.description as collection_description,
+        dt.destination_type_id as destination_type_id,
+        dt.destination_id as destination_id
       FROM destination d
       JOIN destination_type dt ON d.destination_id = dt.destination_id
       WHERE d.tenant_id = $1
@@ -94,6 +97,7 @@ export class TazamaDataModelRepository {
         dtf.field_type,
         dtf.parent_id,
         dtf.serial_no,
+        dtf.collection_id,
         dtf.is_active
       FROM destination_type_fields dtf
       WHERE dtf.collection_id = $1 AND dtf.is_active = true
@@ -127,6 +131,9 @@ export class TazamaDataModelRepository {
         name: rootField.field_name,
         type: rootField.field_type as 'string' | 'number' | 'boolean' | 'object' | 'date',
         required: false, // We removed is_required from schema
+        parent_id: rootField.parent_id,
+        serial_no: rootField.serial_no,
+        collection_id: rootField.collection_id,
       };
       
       // If this is an object type, add nested properties
@@ -136,6 +143,9 @@ export class TazamaDataModelRepository {
           name: nf.field_name,
           type: nf.field_type as 'string' | 'number' | 'boolean' | 'object' | 'date',
           required: false,
+          parent_id: nf.parent_id,
+          serial_no: nf.serial_no,
+          collection_id: nf.collection_id,
         }));
       }
       

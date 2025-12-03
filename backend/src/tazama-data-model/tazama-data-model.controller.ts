@@ -12,6 +12,9 @@ interface DestinationOption {
   field: string;
   type: TazamaFieldType;
   required: boolean;
+  parent_id: number | null;
+  serial_no: number;
+  collection_id: number;
   properties?: unknown[];
 }
 
@@ -19,8 +22,6 @@ interface DestinationOption {
 export class TazamaDataModelController {
   constructor(
     private readonly tazamaDataModelService: TazamaDataModelService,
-    private readonly tazamaRepository: TazamaDataModelRepository,
-    private readonly databaseService: DatabaseService,
   ) {}
   @Get('destination-options')
   async getDestinationOptions(): Promise<{ success: boolean; data: DestinationOption[]; error?: string }> {

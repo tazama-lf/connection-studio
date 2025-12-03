@@ -13,6 +13,9 @@ interface FieldOption {
   field: string;
   type: string;
   required: boolean;
+  parent_id: number | null;
+  serial_no: number;
+  collection_id: number;
   properties?: FieldProperty[];
 }
 
@@ -34,6 +37,9 @@ interface FieldSelectOption {
   field: string;
   type: TazamaFieldType;
   required: boolean;
+  parent_id: number | null;
+  serial_no: number;
+  collection_id: number;
   properties?: FieldProperty[];
 }
 
@@ -47,6 +53,8 @@ export class TazamaDataModelService {
   async getDestinationOptions(tenantId = 'default'): Promise<FieldSelectOption[]> {
     const schemas = await this.repository.getAllCollections(tenantId);
     const options: FieldOption[] = [];
+
+    this.logger.log("the schema returned is, ", schemas)
 
     
     const processField = (
@@ -70,7 +78,12 @@ export class TazamaDataModelService {
         field: fieldPath,
         type: field.type.toUpperCase(),
         required: field.required,
+        parent_id: field.parent_id ?? null,
+        serial_no: field.serial_no ?? 0,
+        collection_id: field.collection_id ?? 0,
       };
+
+      this.logger.log("this is ", base)
 
       
       if (field.type === 'object' && field.properties?.length) {
@@ -102,7 +115,11 @@ export class TazamaDataModelService {
       field: opt.field,
       type: opt.type as TazamaFieldType,
       required: opt.required,
+      parent_id: opt.parent_id,
+      serial_no: opt.serial_no,
+      collection_id: opt.collection_id,
       properties: opt.properties,
+  
     }));
 
     return resultOptions.sort((a, b) => a.label.localeCompare(b.label));

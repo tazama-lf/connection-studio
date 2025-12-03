@@ -14,6 +14,9 @@ export interface TazamaField {
   name: string;
   type: 'string' | 'number' | 'boolean' | 'date' | 'object';
   required: boolean;
+  parent_id?: number | null;
+  serial_no?: number;
+  collection_id?: number;
   description?: string;
   example?: string | number | boolean | Date | Record<string, unknown>;
   properties?: TazamaField[]; // For object types, define nested properties
