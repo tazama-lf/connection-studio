@@ -43,53 +43,6 @@ export class TazamaDataModelService {
 
   constructor(private readonly repository: TazamaDataModelRepository) {}
 
-  // remove
-  // async isValidDestinationPath(path: TazamaDestinationPath, tenantId: string = 'default'): Promise<boolean> {
-  //   const [collectionName, ...rest] = path.split('.');
-  //   const fieldPath = rest.join('.');
-  //   if (!collectionName || !fieldPath) return false;
-    
-  //   const schema = await this.repository.getCollectionByName(collectionName, tenantId);
-  //   if (!schema) return false;
-    
-  //   const checkNested = (fields: any[], target: string): boolean => {
-  //     for (const f of fields) {
-  //       if (f.name === target) return true;
-  //       if (target.startsWith(f.name + '.') && f.properties?.length) {
-  //         const subPath = target.slice(f.name.length + 1);
-  //         return checkNested(f.properties, subPath);
-  //       }
-  //     }
-  //     return false;
-  //   };
-  //   return checkNested(schema.fields, fieldPath);
-  // }
-
-  // async getCollectionSchema(
-  //   collectionName: TazamaCollectionName,
-  //   tenantId: string = 'default'
-  // ): Promise<TazamaCollectionSchema | null> {
-  //   return await this.repository.getCollectionByName(collectionName, tenantId);
-  // }
-
-
-  // async getFieldType(path: TazamaDestinationPath, tenantId: string = 'default'): Promise<TazamaFieldType | null> {
-  //   const [collectionName, fieldName] = path.split('.');
-  //   const schema = await this.getCollectionSchema(
-  //     collectionName as TazamaCollectionName,
-  //     tenantId
-  //   );
-  //   if (!schema) return null;
-  //   const field = schema.fields.find((f) => f.name === fieldName);
-  //   return field?.type ? (field.type.toUpperCase() as TazamaFieldType) : null;
-  // }
-
-
-
-
-
-
-  // used from controller for GET
   
   async getDestinationOptions(tenantId = 'default'): Promise<FieldSelectOption[]> {
     const schemas = await this.repository.getAllCollections(tenantId);
@@ -186,13 +139,28 @@ export class TazamaDataModelService {
     }
 
     try {
+      // Sanitize DTO to handle potential string values for optional integer fields
+      const sanitizedDto: CreateFieldDto = {
+        ...dto,
+        parent_id: dto.parent_id === undefined || dto.parent_id === null
+          ? undefined 
+          : (typeof (dto.parent_id as any) === 'string' && (dto.parent_id as any).trim() === '')
+            ? undefined
+            : Number(dto.parent_id),
+        serial_no: dto.serial_no === undefined || dto.serial_no === null
+          ? undefined 
+          : (typeof (dto.serial_no as any) === 'string' && (dto.serial_no as any).trim() === '')
+            ? undefined
+            : Number(dto.serial_no),
+      };
+
       // Get next serial number if not provided and it's a root field
-      let serialNo = dto.serial_no;
-      if (!serialNo && !dto.parent_id) {
+      let serialNo = sanitizedDto.serial_no;
+      if (!serialNo && !sanitizedDto.parent_id) {
         serialNo = await this.repository.getNextSerialNumber(destinationTypeId);
       }
 
-      const result = await this.repository.addFieldToDestinationType(destinationTypeId, dto, serialNo);
+      const result = await this.repository.addFieldToDestinationType(destinationTypeId, sanitizedDto, serialNo);
       this.logger.log(`Added field: ${dto.name} to destination type: ${destinationTypeId}`);
       return result;
     } catch (error: unknown) {
