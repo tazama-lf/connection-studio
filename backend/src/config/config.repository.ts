@@ -36,8 +36,10 @@ export class ConfigRepository {
   ): Promise<Config | null> {
     try {
       return await this.adminServiceClient.getConfigById(id, token || tenantId);
-    } catch {
-      return null;
+    } catch (error) {
+      const err = error as Error;
+      this.logger.error(`Error finding config by ID ${id}: ${err.message}`);
+      throw error;
     }
   }
 
@@ -59,8 +61,10 @@ export class ConfigRepository {
           c.transactionType === transactionType,
       );
       return match || null;
-    } catch {
-      return null;
+    } catch (error) {
+      const err = error as Error;
+      this.logger.error(`Error finding config by msgFam/version/transactionType: ${err.message}`);
+      throw error;
     }
   }
   async getupdateConfigByStatus(

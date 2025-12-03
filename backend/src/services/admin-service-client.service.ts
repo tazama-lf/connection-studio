@@ -591,132 +591,132 @@ export class AdminServiceClient {
 
   // ==================== TCS OPERATIONS ====================
 
-  async validateConfigCreation(
-    msgFam: string,
-    transactionType: string,
-    version: string,
-    token: string,
-  ): Promise<{ success: boolean; message?: string; validated?: boolean }> {
-    this.logger.log(
-      `Validating config creation: ${msgFam}/${version}/${transactionType}`,
-    );
+  // async validateConfigCreation(
+  //   msgFam: string,
+  //   transactionType: string,
+  //   version: string,
+  //   token: string,
+  // ): Promise<{ success: boolean; message?: string; validated?: boolean }> {
+  //   this.logger.log(
+  //     `Validating config creation: ${msgFam}/${version}/${transactionType}`,
+  //   );
 
-    try {
-      const response = await firstValueFrom(
-        this.httpService.post(
-          `${this.adminServiceUrl}/v1/admin/tcs/config`,
-          { msgFam, transactionType, version },
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-          },
-        ),
-      );
+  //   try {
+  //     const response = await firstValueFrom(
+  //       this.httpService.post(
+  //         `${this.adminServiceUrl}/v1/admin/tcs/config`,
+  //         { msgFam, transactionType, version },
+  //         {
+  //           headers: {
+  //             Authorization: `Bearer ${token}`,
+  //             'Content-Type': 'application/json',
+  //           },
+  //         },
+  //       ),
+  //     );
 
-      this.logger.log(`Validation response: ${JSON.stringify(response.data)}`);
-      return response.data;
-    } catch (error) {
-      return this.handleError(error, 'validateConfigCreation');
-    }
-  }
+  //     this.logger.log(`Validation response: ${JSON.stringify(response.data)}`);
+  //     return response.data;
+  //   } catch (error) {
+  //     return this.handleError(error, 'validateConfigCreation');
+  //   }
+  // }
 
-  async validateConfigUpdate(
-    id: number,
-    updates: { msgFam?: string; transactionType?: string; version?: string },
-    token: string,
-  ): Promise<{
-    success: boolean;
-    message?: string;
-    validated?: boolean;
-    config?: any;
-  }> {
-    this.logger.log(`Validating config update for ID: ${id}`);
+  // async validateConfigUpdate(
+  //   id: number,
+  //   updates: { msgFam?: string; transactionType?: string; version?: string },
+  //   token: string,
+  // ): Promise<{
+  //   success: boolean;
+  //   message?: string;
+  //   validated?: boolean;
+  //   config?: any;
+  // }> {
+  //   this.logger.log(`Validating config update for ID: ${id}`);
 
-    try {
-      const response = await firstValueFrom(
-        this.httpService.put(
-          `${this.adminServiceUrl}/v1/admin/tcs/config/${id}`,
-          updates,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-          },
-        ),
-      );
+  //   try {
+  //     const response = await firstValueFrom(
+  //       this.httpService.put(
+  //         `${this.adminServiceUrl}/v1/admin/tcs/config/${id}`,
+  //         updates,
+  //         {
+  //           headers: {
+  //             Authorization: `Bearer ${token}`,
+  //             'Content-Type': 'application/json',
+  //           },
+  //         },
+  //       ),
+  //     );
 
-      return response.data;
-    } catch (error) {
-      return this.handleError(error, 'validateConfigUpdate');
-    }
-  }
-  async validateConfigClone(
-    sourceConfigId: number,
-    newMsgFam: string,
-    newVersion: string,
-    newTransactionType: string,
-    token: string,
-  ): Promise<{
-    success: boolean;
-    message?: string;
-    validated?: boolean;
-    sourceConfig?: any;
-  }> {
-    this.logger.log(
-      `Validating config clone from ID: ${sourceConfigId} to ${newMsgFam}/${newVersion}/${newTransactionType}`,
-    );
+  //     return response.data;
+  //   } catch (error) {
+  //     return this.handleError(error, 'validateConfigUpdate');
+  //   }
+  // }
+  // async validateConfigClone(
+  //   sourceConfigId: number,
+  //   newMsgFam: string,
+  //   newVersion: string,
+  //   newTransactionType: string,
+  //   token: string,
+  // ): Promise<{
+  //   success: boolean;
+  //   message?: string;
+  //   validated?: boolean;
+  //   sourceConfig?: any;
+  // }> {
+  //   this.logger.log(
+  //     `Validating config clone from ID: ${sourceConfigId} to ${newMsgFam}/${newVersion}/${newTransactionType}`,
+  //   );
 
-    try {
-      const response = await firstValueFrom(
-        this.httpService.post(
-          `${this.adminServiceUrl}/v1/admin/tcs/config/clone`,
-          { sourceConfigId, newMsgFam, newVersion, newTransactionType },
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-          },
-        ),
-      );
+  //   try {
+  //     const response = await firstValueFrom(
+  //       this.httpService.post(
+  //         `${this.adminServiceUrl}/v1/admin/tcs/config/clone`,
+  //         { sourceConfigId, newMsgFam, newVersion, newTransactionType },
+  //         {
+  //           headers: {
+  //             Authorization: `Bearer ${token}`,
+  //             'Content-Type': 'application/json',
+  //           },
+  //         },
+  //       ),
+  //     );
 
-      return response.data;
-    } catch (error) {
-      return this.handleError(error, 'validateConfigClone');
-    }
-  }
+  //     return response.data;
+  //   } catch (error) {
+  //     return this.handleError(error, 'validateConfigClone');
+  //   }
+  // }
 
-  async validateConfigDeletion(
-    id: number,
-    token: string,
-  ): Promise<{
-    success: boolean;
-    message?: string;
-    validated?: boolean;
-    config?: any;
-  }> {
-    this.logger.log(`Validating config deletion for ID: ${id}`);
+  // async validateConfigDeletion(
+  //   id: number,
+  //   token: string,
+  // ): Promise<{
+  //   success: boolean;
+  //   message?: string;
+  //   validated?: boolean;
+  //   config?: any;
+  // }> {
+  //   this.logger.log(`Validating config deletion for ID: ${id}`);
 
-    try {
-      const response = await firstValueFrom(
-        this.httpService.delete(
-          `${this.adminServiceUrl}/v1/admin/tcs/config/${id}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          },
-        ),
-      );
+  //   try {
+  //     const response = await firstValueFrom(
+  //       this.httpService.delete(
+  //         `${this.adminServiceUrl}/v1/admin/tcs/config/${id}`,
+  //         {
+  //           headers: {
+  //             Authorization: `Bearer ${token}`,
+  //           },
+  //         },
+  //       ),
+  //     );
 
-      return response.data;
-    } catch (error) {
-      return this.handleError(error, 'validateConfigDeletion');
-    }
-  }
+  //     return response.data;
+  //   } catch (error) {
+  //     return this.handleError(error, 'validateConfigDeletion');
+  //   }
+  // }
 
   async getConfigById(id: number, token: string): Promise<any> {
     this.logger.log(`Getting config by ID: ${id}`);
@@ -733,8 +733,17 @@ export class AdminServiceClient {
         ),
       );
 
+      if (!response.data || !response.data.config) {
+        this.logger.warn(`Config ${id} not found in admin-service response`);
+        return null;
+      }
+
       return response.data.config;
-    } catch (error) {
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        this.logger.warn(`Config ${id} not found (404 from admin-service)`);
+        return null;
+      }
       return this.handleError(error, 'getConfigById');
     }
   }
@@ -847,84 +856,6 @@ export class AdminServiceClient {
     }
   }
 
-  // async getConfigByEndpoint(
-  //   endpointPath: string,
-  //   version: string,
-  //   token: string,
-  //   limit = 10,
-  //   offset = 0,
-  // ): Promise<{
-  //   configs: any[];
-  //   pagination: { total: number; limit: number; offset: number; pages: number };
-  // }> {
-  //   this.logger.log(
-  //     `Getting config by endpoint: ${endpointPath}, version: ${version} (limit: ${limit}, offset: ${offset})`,
-  //   );
-
-  //   try {
-  //     const response = await firstValueFrom(
-  //       this.httpService.get(
-  //         `${this.adminServiceUrl}/v1/admin/tcs/config/endpoint/${endpointPath}/${version}/${offset}/${limit}`,
-  //         {
-  //           headers: {
-  //             Authorization: `Bearer ${token}`,
-  //           },
-  //         },
-  //       ),
-  //     );
-
-  //     return {
-  //       configs: response.data.configs || [],
-  //       pagination: response.data.pagination || {
-  //         total: 0,
-  //         limit,
-  //         offset,
-  //         pages: 0,
-  //       },
-  //     };
-  //   } catch (error) {
-  //     return this.handleError(error, 'getConfigByEndpoint');
-  //   }
-  // }
-
-  // async getConfigsByTransactionType(
-  //   transactionType: string,
-  //   token: string,
-  //   limit = 10,
-  //   offset = 0,
-  // ): Promise<{
-  //   configs: any[];
-  //   pagination: { total: number; limit: number; offset: number; pages: number };
-  // }> {
-  //   this.logger.log(
-  //     `Getting configs by transaction type: ${transactionType} (limit: ${limit}, offset: ${offset})`,
-  //   );
-
-  //   try {
-  //     const response = await firstValueFrom(
-  //       this.httpService.get(
-  //         `${this.adminServiceUrl}/v1/admin/tcs/config/transaction/${transactionType}/${offset}/${limit}`,
-  //         {
-  //           headers: {
-  //             Authorization: `Bearer ${token}`,
-  //           },
-  //         },
-  //       ),
-  //     );
-
-  //     return {
-  //       configs: response.data.configs || [],
-  //       pagination: response.data.pagination || {
-  //         total: 0,
-  //         limit,
-  //         offset,
-  //         pages: 0,
-  //       },
-  //     };
-  //   } catch (error) {
-  //     return this.handleError(error, 'getConfigsByTransactionType');
-  //   }
-  // }
 
   async getPendingApprovals(token: string): Promise<any[]> {
     this.logger.log('Getting pending approvals');
