@@ -13,7 +13,7 @@ import * as _ from 'lodash';
 export interface SimulatePayloadDto {
   endpointId: number;
   payloadType: 'application/json' | 'application/xml';
-  payload: any;
+  payload: unknown;
   tcsMapping?: iMappingConfiguration;
 }
 
@@ -21,7 +21,7 @@ export interface SimulationError {
   field: string;
   message: string;
   path?: string;
-  value?: any;
+  value?: unknown;
 }
 
 export interface ValidationStage {
@@ -29,7 +29,7 @@ export interface ValidationStage {
   status: 'PASSED' | 'FAILED' | 'SKIPPED';
   message: string;
   errors?: SimulationError[];
-  details?: any;
+  details?: unknown;
 }
 
 export interface SimulationResult {
@@ -37,7 +37,7 @@ export interface SimulationResult {
   errors: SimulationError[];
   stages: ValidationStage[];
   tcsResult: iMappingResult | null;
-  transformedPayload: any;
+  transformedPayload: unknown;
   summary: {
     endpointId: number;
     tenantId: string;
@@ -67,15 +67,14 @@ export class SimulationService {
     const timestamp = new Date().toISOString();
     const stages: ValidationStage[] = [];
     const errors: SimulationError[] = [];
-    let transformedPayload: any = {};
+    let transformedPayload: unknown = {};
     let tcsResult: iMappingResult | null = null;
-    let mappingsApplied = 0;
 
     // console.log('1--- Starting simulation for endpoint ID:', dto.endpointId);
     // console.log('2--- Payload type:', dto.payloadType);
 
     try {
-      if (!dto.endpointId || isNaN(Number(dto.endpointId))) {
+      if (!dto.endpointId || isNaN(dto.endpointId)) {
         return {
           status: 'FAILED',
           errors: [
@@ -98,9 +97,9 @@ export class SimulationService {
             },
           ],
           tcsResult: null,
-          transformedPayload: {},
+          transformedPayload,
           summary: {
-            endpointId: dto.endpointId as any,
+            endpointId: dto.endpointId,
             tenantId,
             timestamp,
             mappingsApplied: 0,
@@ -110,7 +109,7 @@ export class SimulationService {
           },
         };
       }
-      const endpointId = Number(dto.endpointId);
+      const {endpointId} = dto;
 
       // first stage
       const configStage = await this.stageLoadConfig(
@@ -118,7 +117,7 @@ export class SimulationService {
         tenantId,
         token,
       );
-      console.log('1. first stage output (configStage):', configStage);
+      this.logger.debug('1. first stage output (configStage):', configStage);
       stages.push(configStage);
 
       if (configStage.status === 'FAILED') {
@@ -136,7 +135,7 @@ export class SimulationService {
       }
 
       //config is gotten from configStage.details
-      const config = configStage.details.config as Config;
+      const {config} = (configStage.details as { config: Config });
 
       // second stage
       const parseStage = await this.stageParsePayload(
@@ -144,7 +143,7 @@ export class SimulationService {
         dto.payloadType,
       );
 
-      console.log('2. second stage output (parseStage):', parseStage);
+      this.logger.debug('2. second stage output (parseStage):', parseStage);
       stages.push(parseStage);
 
       if (parseStage.status === 'FAILED') {
@@ -161,18 +160,19 @@ export class SimulationService {
         );
       }
 
-      const {parsedPayload} = parseStage.details;
+      const parseDetails = parseStage.details as { parsedPayload: Record<string, unknown> };
+      const {parsedPayload} = parseDetails;
 
       const cleanedSchema = this.cleanSchemaForXML(config.schema);
 
       //third stage
       const schemaStage = this.stageValidateSchema(
         parsedPayload,
-        cleanedSchema,
+        cleanedSchema as Record<string, unknown>,
         config,
       );
 
-      console.log('3. third stage output (schemaStage):', schemaStage);
+      this.logger.debug('3. third stage output (schemaStage):', schemaStage);
       stages.push(schemaStage);
 
       if (schemaStage.status === 'FAILED') {
@@ -198,14 +198,14 @@ export class SimulationService {
         );
 
         //fourth stage
-        console.log(
+        this.logger.debug(
           '4. fourth stage output (mappingValidationStage):',
           mappingValidationStage,
         );
         stages.push(mappingValidationStage);
 
         if (mappingValidationStage.status === 'FAILED') {
-          errors.push(...(mappingValidationStage.errors || []));
+          errors.push(...(mappingValidationStage.errors ?? []));
           return this.createStageBasedResult(
             dto,
             timestamp,
@@ -217,7 +217,7 @@ export class SimulationService {
             { originalPayload: parsedPayload },
           );
         }
-        console.log('dto.tcsMapping is:', dto.tcsMapping);
+        this.logger.debug('dto.tcsMapping is:', dto.tcsMapping);
         const tcsStage = await this.stageExecuteTCSMapping(
           parsedPayload,
           config,
@@ -225,11 +225,11 @@ export class SimulationService {
         );
 
         // fifth stage
-        console.log('5. fifth stage output (tcsStage):', tcsStage);
+        this.logger.debug('5. fifth stage output (tcsStage):', tcsStage);
         stages.push(tcsStage);
 
         if (tcsStage.status === 'FAILED') {
-          errors.push(...(tcsStage.errors || []));
+          errors.push(...(tcsStage.errors ?? []));
           return this.createStageBasedResult(
             dto,
             timestamp,
@@ -242,25 +242,26 @@ export class SimulationService {
           );
         }
 
-        tcsResult = tcsStage.details.tcsResult;
-        mappingsApplied = tcsStage.details.mappingsApplied;
+        const tcsDetails = tcsStage.details as { tcsResult: iMappingResult; mappingsApplied: number };
+        const { tcsResult: extractedTcsResult } = tcsDetails;
+        tcsResult = extractedTcsResult;
 
         // yeh bilkul theek hai VIP
-        console.log('TCS VIP VIP config.mapping', config.mapping);
+        this.logger.debug('TCS VIP VIP config.mapping', config.mapping);
 
         //ismei bhand hai ig
         const mappingDetails = this.buildMappingDetails(
-          config.mapping || [],
+          config.mapping ?? [],
           parsedPayload,
-          tcsResult,
+          extractedTcsResult,
         );
 
-        console.log('TCS mappingDetails', mappingDetails);
+        this.logger.debug('TCS mappingDetails', mappingDetails);
 
         transformedPayload = {
           originalPayload: parsedPayload,
-          dataCache: tcsResult?.dataCache || {},
-          endToEndId: tcsResult?.endToEndId || null,
+          dataCache: extractedTcsResult?.dataCache ?? {},
+          endToEndId: extractedTcsResult?.endToEndId ?? null,
           mappings: config.mapping,
         };
       } else {
@@ -279,9 +280,6 @@ export class SimulationService {
           originalPayload: parsedPayload,
         };
       }
-      const finalStatus = errors.length === 0 ? 'PASSED' : 'FAILED';
-
-
 
       return this.createStageBasedResult(
         dto,
@@ -293,12 +291,13 @@ export class SimulationService {
         tcsResult,
         transformedPayload,
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       stages.push({
         name: 'System Error',
         status: 'FAILED',
         message: 'Unexpected system error occurred',
-        errors: [{ field: 'system', message: error.message }],
+        errors: [{ field: 'system', message: errorMessage }],
       });
 
       return this.createStageBasedResult(
@@ -307,7 +306,7 @@ export class SimulationService {
         userId,
         tenantId,
         stages,
-        [{ field: 'system', message: 'Simulation error: ' + error.message }],
+        [{ field: 'system', message: 'Simulation error: ' + errorMessage }],
         null,
         {},
       );
@@ -358,17 +357,18 @@ export class SimulationService {
         message: `Configuration loaded successfully (ID: ${endpointId})`,
         details: { config },
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       return {
         name: '1. Load Configuration',
         status: 'FAILED',
         message: 'Failed to load configuration',
-        errors: [{ field: 'endpointId', message: error.message }],
+        errors: [{ field: 'endpointId', message: errorMessage }],
       };
     }
   }
   private async stageParsePayload(
-    payload: any,
+    payload: unknown,
     payloadType: string,
   ): Promise<ValidationStage> {
     try {
@@ -380,19 +380,20 @@ export class SimulationService {
         message: `Payload parsed successfully as ${payloadType}`,
         details: { parsedPayload, payloadType },
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       return {
         name: '2. Parse Payload',
         status: 'FAILED',
-        message: `Failed to parse payload: ${error.message}`,
-        errors: [{ field: 'payload', message: error.message }],
+        message: `Failed to parse payload: ${errorMessage}`,
+        errors: [{ field: 'payload', message: errorMessage }],
       };
     }
   }
 
   private stageValidateSchema(
-    payload: any,
-    schema: any,
+    payload: Record<string, unknown>,
+    schema: Record<string, unknown>,
     config?: Config,
   ): ValidationStage {
     const errors = this.validatePayloadAgainstSchema(payload, schema, config);
@@ -413,14 +414,14 @@ export class SimulationService {
       message: 'Payload conforms to the saved schema',
       details: {
         schemaType: schema.type,
-        requiredFields: schema.required || [],
+        requiredFields: schema.required ?? [],
       },
     };
   }
 
   private stageValidateMappings(
-    payload: any,
-    mappings: any[],
+    payload: Record<string, unknown>,
+    mappings: unknown[],
   ): ValidationStage {
     const errors = this.validateMappings(payload, mappings);
 
@@ -446,32 +447,32 @@ export class SimulationService {
   }
 
   private async stageExecuteTCSMapping(
-    payload: any,
+    payload: Record<string, unknown>,
     config: Config,
     providedMapping?: iMappingConfiguration,
   ): Promise<ValidationStage> {
     try {
-      console.log('provided mapping is : ', providedMapping);
+      this.logger.debug('provided mapping is : ', providedMapping);
 
       // tcsMapping yahan banti hai
-      const tcsMapping = config.mapping || [];
+      const tcsMapping = config.mapping ?? [];
       // const tcsMapping = providedMapping;
-      const mappingsApplied = config?.mapping?.length || 0;
+      const mappingsApplied = tcsMapping.length;
       const endpoint =
         config.endpointPath ||
-        `${config.msgFam || 'unknown'}-${config.transactionType}`;
+        `${config.msgFam ?? 'unknown'}-${config.transactionType}`;
       let tcsResult;
 
       try {
-        console.log('payload before TCS processing:', payload);
+        this.logger.debug('payload before TCS processing:', payload);
         const enhancedPayload = {
           ...payload,
           TenantId: config.tenantId,
           TxTp: this.extractTransactionType(config.endpointPath),
         };
-        console.log('Enhanced payload for TCS processing:', enhancedPayload);
-        console.log('TCS Mapping Configuration:', tcsMapping); //yahin pe ghalat arhi
-        console.log('Endpoint for TCS processing:', endpoint);
+        this.logger.debug('Enhanced payload for TCS processing:', enhancedPayload);
+        this.logger.debug('TCS Mapping Configuration:', tcsMapping); //yahin pe ghalat arhi
+        this.logger.debug('Endpoint for TCS processing:', endpoint);
         // tcsResult = await processMappings(payload, tcsMapping, endpoint);
 
         // are we sedning the right stuff?
@@ -481,16 +482,16 @@ export class SimulationService {
           endpoint,
         );
 
-        console.log('FINAL--> TCS mapping result: ', tcsResult);
-      } catch (mappingError: any) {
-        console.log('--> Mapping error: ', mappingError);
-        if (mappingError.message?.includes('loggerService')) {
+        this.logger.debug('FINAL--> TCS mapping result: ', tcsResult);
+      } catch (mappingError: unknown) {
+        this.logger.error('--> Mapping error: ', mappingError);
+        if (mappingError instanceof Error && mappingError.message.includes('loggerService')) {
           this.logger.error(
             'TCS lib processMappings has logger issue - this should be fixed in tcs-lib',
           );
           tcsResult = {
             dataCache: {},
-            transactionRelationship: {} as any,
+            transactionRelationship: {},
             endToEndId: '',
           };
         } else {
@@ -504,23 +505,25 @@ export class SimulationService {
         message: `Successfully executed ${mappingsApplied} TCS mapping function(s)`,
         details: {
           mappingsApplied,
-          tcsResult,
-          dataCache: tcsResult?.dataCache || {},
-          transactionRelationship: tcsResult?.transactionRelationship || {},
-          endToEndId: tcsResult?.endToEndId || '',
+          tcsResult: tcsResult ?? null,
+          dataCache: (tcsResult as any)?.dataCache ?? {},
+          transactionRelationship: (tcsResult as any)?.transactionRelationship ?? {},
+          endToEndId: (tcsResult as any)?.endToEndId ?? '',
         },
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.logger.error('TCS mapping execution failed:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorStack = error instanceof Error ? error.stack : undefined;
       return {
         name: '5. Execute TCS Mapping Functions',
         status: 'FAILED',
-        message: `TCS mapping execution failed: ${error.message || 'Unknown error'}`,
+        message: `TCS mapping execution failed: ${errorMessage}`,
         errors: [
           {
             field: 'tcsMapping',
-            message: error.message || 'Unknown error',
-            value: error.stack ? error.stack.substring(0, 200) : undefined,
+            message: errorMessage,
+            value: errorStack ? errorStack.substring(0, 200) : undefined,
           },
         ],
       };
@@ -544,7 +547,7 @@ export class SimulationService {
 
     if (config.mapping && Array.isArray(config.mapping)) {
       for (const mapping of config.mapping) {
-        const source = mapping.source || [];
+        const source = mapping.source ?? [];
 
         const normalizedSources = (
           Array.isArray(source) ? source : [source]
@@ -553,8 +556,7 @@ export class SimulationService {
           mapping.transformation === 'SPLIT' &&
           Array.isArray(mapping.destination)
         ) {
-          for (let i = 0; i < mapping.destination.length; i++) {
-            const destination = mapping.destination[i];
+          for (const [index, destination] of mapping.destination.entries()) {
             mappings.push({
               destination: destination || '',
               source: normalizedSources,
@@ -568,7 +570,7 @@ export class SimulationService {
             : mapping.destination;
 
           const separator =
-            mapping.transformation === 'CONCAT' ? mapping.delimiter || ' ' : '';
+            mapping.transformation === 'CONCAT' ? mapping.delimiter ?? ' ' : '';
 
           mappings.push({
             destination: destination || '',
@@ -604,28 +606,28 @@ export class SimulationService {
 
   private buildMappingDetails(
     mappings: FieldMapping[],
-    originalPayload: any,
+    originalPayload: Record<string, unknown>,
     tcsResult: iMappingResult | null,
   ): Array<{
     destination: string;
     sources: string[];
-    sourceValues: any[];
+    sourceValues: unknown[];
     transformation: string;
-    resultValue: any;
+    resultValue: unknown;
     prefix?: string;
     delimiter?: string;
-    constantValue?: any;
+    constantValue?: unknown;
     operator?: string;
   }> {
     const details: Array<{
       destination: string;
       sources: string[];
-      sourceValues: any[];
+      sourceValues: unknown[];
       transformation: string;
-      resultValue: any;
+      resultValue: unknown;
       prefix?: string;
       delimiter?: string;
-      constantValue?: any;
+      constantValue?: unknown;
       operator?: string;
     }> = [];
 
@@ -637,7 +639,7 @@ export class SimulationService {
       //   transformation: 'SPLIT'
       // }
 
-      const sources = mapping.source || [];
+      const sources = mapping.source ?? [];
 
       //dealing with the split usecase here
       if (
@@ -650,13 +652,14 @@ export class SimulationService {
           (sourcePath) => this.getValueByPath(originalPayload, sourcePath),
         );
 
-        console.log('1. source values in SPLIT mapping:', sourceValues);
+        this.logger.debug('1. source values in SPLIT mapping:', sourceValues);
 
         // below logic is updated and correct
+        const [firstValue] = sourceValues;
         const splitValues =
-          typeof sourceValues[0] === 'string' && mapping.delimiter
-            ? sourceValues[0].split(mapping.delimiter)
-            : sourceValues[0].split(' '); //default split by space
+          typeof firstValue === 'string' && mapping.delimiter
+            ? firstValue.split(mapping.delimiter)
+            : typeof firstValue === 'string' ? firstValue.split(' ') : []; //default split by space
         //below logic is incorrect. there is a array which contains one string. use that string and apply split on it simple
         // const splitValues = this.applyTransformation(
         //   sourceValues,
@@ -667,9 +670,9 @@ export class SimulationService {
         //   mapping.prefix,
         // );
 
-        console.log('2. split values in SPLIT mapping:', splitValues); //single string
-        console.log('3. destiantions in SPLIT mapping:', mapping.destination);
-        console.log('4. data dache from tcsResult:', tcsResult?.dataCache);
+        this.logger.debug('2. split values in SPLIT mapping:', splitValues); //single string
+        this.logger.debug('3. destiantions in SPLIT mapping:', mapping.destination);
+        this.logger.debug('4. data dache from tcsResult:', tcsResult?.dataCache);
         const destinationLength = mapping.destination.length;
 
         //   for (let i = 0; i < mapping.destination.length; i++) {
@@ -764,8 +767,8 @@ export class SimulationService {
         //   });
         // }
 
-        for (let i = 0; i < destinationLength; i++) {
-          console.log(
+        for (let i = 0; i < destinationLength; i += 1) {
+          this.logger.debug(
             `Processing destination index ${i} for SPLIT mapping`,
             mapping.destination[i],
           );
@@ -773,41 +776,42 @@ export class SimulationService {
             mapping.destination[i].split('.');
           const resultValue = splitValues[i];
 
-          if (internalDataModelObject == 'redis') {
+          if (internalDataModelObject === 'redis') {
+            // Redis-specific logic would go here
           }
 
-          console.log(
+          this.logger.debug(
             `Mapping for ${internalDataModelObject}.${field}:`,
             resultValue,
           );
         }
       }
     }
-    console.log(
+    this.logger.debug(
       'Final mapping details returned by buildMappingDetails:',
       details,
     );
     return details;
   }
 
-  private getValueByPath(obj: any, path: string): any {
+  private getValueByPath(obj: Record<string, unknown>, path: string): unknown {
     if (!path) return undefined;
 
     const normalizedPath = path.replace(/\[(\d+)\]/g, '.$1');
 
-    return normalizedPath.split('.').reduce((current, key) => current?.[key] !== undefined ? current[key] : undefined, obj);
+    return normalizedPath.split('.').reduce((current, key) => current?.[key] === undefined ? undefined : current[key], obj);
   }
 
   private applyTransformation(
-    sourceValues: any[],
+    sourceValues: unknown[],
     transformation: string | undefined,
     delimiter?: string,
-    constantValue?: any,
+    constantValue?: unknown,
     operator?: string,
     prefix?: string,
-  ): any {
+  ): unknown {
     if (!transformation || transformation === 'NONE') {
-      const value = sourceValues[0];
+      const value = sourceValues[0] as string;
       return prefix ? `${prefix}${value}` : value;
     }
 
@@ -819,7 +823,7 @@ export class SimulationService {
         const values = sourceValues.filter(
           (v) => v !== undefined && v !== null,
         );
-        const concatenated = values.join(delimiter || ' ');
+        const concatenated = values.map(v => String(v)).join(delimiter ?? ' ');
         return prefix ? `${prefix}${concatenated}` : concatenated;
       }
 
@@ -848,7 +852,7 @@ export class SimulationService {
                 result = val1 * val2;
                 break;
               case 'DIVIDE':
-                result = val2 !== 0 ? val1 / val2 : 0;
+                result = val2 === 0 ? 0 : val1 / val2;
                 break;
               default:
                 result = val1;
@@ -860,12 +864,12 @@ export class SimulationService {
       }
 
       case 'SPLIT': {
-        const splitValue = sourceValues[0];
+        const [splitValue] = sourceValues;
         if (typeof splitValue === 'string' && delimiter) {
           const parts = splitValue.split(delimiter);
           return prefix ? `${prefix}${parts[0]}` : parts[0];
         }
-        return prefix ? `${prefix}${splitValue}` : splitValue;
+        return prefix ? `${prefix}${String(splitValue)}` : String(splitValue);
       }
 
       default:
@@ -881,14 +885,14 @@ export class SimulationService {
     stages: ValidationStage[],
     errors: SimulationError[],
     tcsResult: iMappingResult | null,
-    transformedPayload: any,
+    transformedPayload: unknown,
   ): SimulationResult {
     const passedStages = stages.filter((s) => s.status === 'PASSED').length;
     const failedStages = stages.filter((s) => s.status === 'FAILED').length;
     const totalStages = stages.length;
     const mappingsApplied = tcsResult
-      ? stages.find((s) => s.name.includes('TCS Mapping'))?.details
-          ?.mappingsApplied || 0
+      ? (stages.find((s) => s.name.includes('TCS Mapping'))?.details as { mappingsApplied?: number })
+          ?.mappingsApplied ?? 0
       : 0;
 
     return {
@@ -910,7 +914,7 @@ export class SimulationService {
     };
   }
 
-  private async parsePayload(payload: any, payloadType: string): Promise<any> {
+  private async parsePayload(payload: unknown, payloadType: string): Promise<Record<string, unknown>> {
     if (!payloadType) {
       throw new Error(
         'payloadType is required. Must be either "application/json" or "application/xml"',
@@ -947,9 +951,10 @@ export class SimulationService {
           `XML parsed successfully: ${JSON.stringify(result).substring(0, 200)}...`,
         );
         return result;
-      } catch (xmlError: any) {
-        this.logger.error(`XML parsing failed: ${xmlError.message}`);
-        throw new Error(`Invalid XML payload: ${xmlError.message}`);
+      } catch (xmlError: unknown) {
+        const errorMessage = xmlError instanceof Error ? xmlError.message : 'Unknown error';
+        this.logger.error(`XML parsing failed: ${errorMessage}`);
+        throw new Error(`Invalid XML payload: ${errorMessage}`);
       }
     }
 
@@ -957,11 +962,12 @@ export class SimulationService {
       if (typeof payload === 'string') {
         try {
           return JSON.parse(payload);
-        } catch (jsonError: any) {
-          throw new Error(`Invalid JSON payload: ${jsonError.message}`);
+        } catch (jsonError: unknown) {
+          const errorMessage = jsonError instanceof Error ? jsonError.message : 'Unknown error';
+          throw new Error(`Invalid JSON payload: ${errorMessage}`);
         }
       }
-      return payload;
+      return payload as Record<string, unknown>;
     }
 
     throw new Error(
@@ -969,7 +975,7 @@ export class SimulationService {
     );
   }
 
-  private normalizePayloadForValidation(payload: any, config?: Config): any {
+  private normalizePayloadForValidation(payload: Record<string, unknown>, config?: Config): Record<string, unknown> {
     if (!payload || typeof payload !== 'object') {
       return payload;
     }
@@ -981,7 +987,7 @@ export class SimulationService {
       );
       if (config?.schema?.properties) {
         const schemaRootKeys = Object.keys(config.schema.properties);
-        const payloadRootKeys = Object.keys(normalized);
+        const payloadRootKeys = Object.keys(normalized as Record<string, unknown>);
 
         if (
           schemaRootKeys.length === 1 &&
@@ -995,18 +1001,18 @@ export class SimulationService {
         }
       }
 
-      return normalized;
+      return normalized as Record<string, unknown>;
     }
 
     return payload;
   }
 
-  private cleanSchemaForXML(schema: any): any {
+  private cleanSchemaForXML(schema: unknown): unknown {
     if (!schema || typeof schema !== 'object') {
       return schema;
     }
 
-    const cleanedSchema = { ...schema };
+    const cleanedSchema = { ...schema } as any;
 
     if (cleanedSchema.required && Array.isArray(cleanedSchema.required)) {
       const originalRequired = cleanedSchema.required;
@@ -1059,10 +1065,10 @@ export class SimulationService {
   }
 
   private normalizeXmlParsedObjectWithSchema(
-    obj: any,
-    schema?: any,
+    obj: unknown,
+    schema?: unknown,
     path = '',
-  ): any {
+  ): unknown {
     if (!obj || typeof obj !== 'object') {
       return obj;
     }
@@ -1113,11 +1119,11 @@ export class SimulationService {
           fieldSchema?.type === 'string' &&
           typeof normalizedValue === 'object' &&
           normalizedValue !== null &&
-          (normalizedValue.textContent !== undefined ||
-            normalizedValue['#text'] !== undefined)
+          ((normalizedValue as any).textContent !== undefined ||
+            (normalizedValue as any)['#text'] !== undefined)
         ) {
           normalized[key] =
-            normalizedValue.textContent || normalizedValue['#text'];
+            (normalizedValue as any).textContent || (normalizedValue as any)['#text'];
         } else {
           normalized[key] = normalizedValue;
         }
@@ -1296,24 +1302,25 @@ export class SimulationService {
           });
         }
       }
-    } catch (schemaError: any) {
-      this.logger.error(`Schema validation error: ${schemaError.message}`);
+    } catch (schemaError: unknown) {
+      const errorMessage = schemaError instanceof Error ? schemaError.message : 'Unknown error';
+      this.logger.error(`Schema validation error: ${errorMessage}`);
       errors.push({
         field: 'schema',
-        message: 'Schema validation error: ' + schemaError.message,
+        message: 'Schema validation error: ' + errorMessage,
       });
     }
 
     return errors;
   }
 
-  private validateMappings(payload: any, mappings: any[]): SimulationError[] {
+  private validateMappings(payload: Record<string, unknown>, mappings: unknown[]): SimulationError[] {
     const errors: SimulationError[] = [];
 
     const runtimeContextFields = ['tenantId', 'tenant_id', 'userId', 'user_id'];
 
-    for (let i = 0; i < mappings.length; i++) {
-      const mapping = mappings[i];
+    for (let i = 0; i < mappings.length; i += 1) {
+      const mapping = mappings[i] as any; // Type assertion for complex mapping validation
       let sources: string[] = [];
       if (mapping.sources && Array.isArray(mapping.sources)) {
         sources = mapping.sources;
@@ -1403,7 +1410,7 @@ export class SimulationService {
     const pathParts = normalizedPath.split('.');
 
     let current = obj;
-    for (let i = 0; i < pathParts.length; i++) {
+    for (let i = 0; i < pathParts.length; i += 1) {
       const part = pathParts[i];
       if (Array.isArray(current)) {
         return true;

@@ -34,10 +34,14 @@ export class SimulationController {
       `TCS simulation requested for endpoint ${serviceDto.endpointId}`,
     );
 
-    const userId = user?.token?.sub;
-    const tenantId = user?.token?.tenantId;
+    if (!user?.token) {
+      throw new Error('User authentication required');
+    }
 
-    if (!tenantId || !user?.token) {
+    const { token } = user;
+    const { sub: userId, tenantId } = token;
+
+    if (!tenantId) {
       throw new Error('Tenant ID not found in user context');
     }
 

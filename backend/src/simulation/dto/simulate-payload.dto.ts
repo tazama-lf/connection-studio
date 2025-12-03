@@ -29,5 +29,5 @@ export class SimulatePayloadDto {
 
   @IsObject()
   @IsOptional()
-  tcsMapping?: Record<string, any>;
+  tcsMapping?: Record<string, unknown>;
 }
