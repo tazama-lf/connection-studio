@@ -1807,142 +1807,7 @@ export class ConfigService {
       config: updatedConfig,
     };
   }
-  // async approveConfig(
-  //   id: number,
-  //   dto: ApprovalDto,
-  //   tenantId: string,
-  //   userId: string,
-  //   userClaims: string[],
-  //   token: string,
-  // ): Promise<ConfigResponseDto> {
-  //   const config = await this.getConfigOrThrow(id, tenantId, token);
-  //   const currentStatus = config.status as ConfigStatus;
-  //   const action: WorkflowAction = 'approve';
-
-  //   this.validateWorkflowAction(userClaims, currentStatus, action);
-
-  //   const newStatus = ConfigStatus.APPROVED;
-  //   await this.updateConfigStatus(id, tenantId, newStatus, token);
-  //   const updatedConfig = await this.configRepository.findConfigById(
-  //     id,
-  //     tenantId,
-  //     token,
-  //   );
-  //   await this.logWorkflowTransition(
-  //     id,
-  //     currentStatus,
-  //     newStatus,
-  //     action,
-  //     userId,
-  //     tenantId,
-  //     dto.comment,
-  //   );
-
-  //   return {
-  //     success: true,
-  //     message: 'Configuration approved successfully',
-  //     config: updatedConfig || undefined,
-  //   };
-  // }
-
-  // async rejectConfig(
-  //   id: number,
-  //   dto: RejectionDto,
-  //   tenantId: string,
-  //   userId: string,
-  //   userClaims: string[],
-  //   token: string,
-  // ): Promise<ConfigResponseDto> {
-  //   const config = await this.getConfigOrThrow(id, tenantId, token);
-  //   const currentStatus = config.status as ConfigStatus;
-  //   const action: WorkflowAction = 'reject';
-
-  //   this.validateWorkflowAction(userClaims, currentStatus, action);
-
-  //   const newStatus = ConfigStatus.REJECTED;
-  //   const updatedConfig = await this.updateConfigStatus(
-  //     id,
-  //     tenantId,
-  //     newStatus,
-  //     token,
-  //   );
-
-  //   await this.logWorkflowTransition(
-  //     id,
-  //     currentStatus,
-  //     newStatus,
-  //     action,
-  //     userId,
-  //     tenantId,
-  //     dto.comment,
-  //   );
-
-  //   return {
-  //     success: true,
-  //     message: 'Configuration rejected successfully',
-  //     config: updatedConfig,
-  //   };
-  // }
-
-  // async updateStatusToExported(
-  //   id: number,
-  //   dto: StatusTransitionDto,
-  //   tenantId: string,
-  //   userId: string,
-  //   userClaims: string[],
-  //   token: string,
-  // ): Promise<ConfigResponseDto> {
-  //   const config = await this.configRepository.findConfigById(
-  //     id,
-  //     tenantId,
-  //     token,
-  //   );
-  //   if (!config) {
-  //     throw new NotFoundException(`Config with ID ${id} not found`);
-  //   }
-
-  //   const currentStatus = config.status!;
-  //   if (currentStatus !== ConfigStatus.APPROVED) {
-  //     throw new BadRequestException(
-  //       `Can only export configurations in APPROVED status. Current status: ${currentStatus}`,
-  //     );
-  //   }
-  //   if (!userClaims.includes('exporter')) {
-  //     throw new ForbiddenException('Only exporters can export configurations');
-  //   }
-
-  //   const newStatus = ConfigStatus.EXPORTED;
-
-  //   await this.configRepository.updateConfig(
-  //     id,
-  //     tenantId,
-  //     {
-  //       status: newStatus,
-  //     },
-  //     token,
-  //   );
-
-  //   await this.logStatusChange(
-  //     id,
-  //     currentStatus,
-  //     newStatus,
-  //     'export',
-  //     userId,
-  //     dto.comment,
-  //   );
-    
-  //   const updatedConfig = await this.configRepository.findConfigById(
-  //     id,
-  //     tenantId,
-  //     token,
-  //   );
-
-  //   return {
-  //     success: true,
-  //     message: `Configuration status updated to ${newStatus} successfully`,
-  //     config: updatedConfig || undefined,
-  //   };
-  // }
+ 
   async submitConfig(
     id:number,
     dto: SubmitForApprovalDto,
@@ -2171,19 +2036,19 @@ export class ConfigService {
 
     token: string,
   ): Promise<ConfigResponseDto> {
-    const config = await this.configRepository.findConfigById(
-      id,
-      tenantId,
-      token,
-    );
-    if (!config) {
-      throw new NotFoundException(`Config with ID ${id} not found`);
-    }
+    // const config = await this.configRepository.findConfigById(
+    //   id,
+    //   tenantId,
+    //   token,
+    // );
+    // if (!config) {
+    //   throw new NotFoundException(`Config with ID ${id} not found`);
+    // }
 
     // Validate workflow action permissions and status transition
-    const currentStatus = config.status as ConfigStatus;
-    const action: WorkflowAction = 'deploy';
-    this.validateWorkflowAction(user.validClaims || [], currentStatus, action);
+    // const currentStatus = config.status as ConfigStatus;
+    // const action: WorkflowAction = 'deploy';
+    // this.validateWorkflowAction(user.validClaims || [], currentStatus, action);
 
     const fileName = `dems_${tenantId}_${id}`;
     let sftpConfigStatus: ConfigStatus;
