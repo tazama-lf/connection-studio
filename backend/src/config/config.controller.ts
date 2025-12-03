@@ -7,7 +7,6 @@ import {
   Delete,
   Body,
   Param,
-  Query,
   ParseIntPipe,
   UseGuards,
   HttpCode,
@@ -15,7 +14,6 @@ import {
   Req,
   Headers,
   BadRequestException,
-  ParseEnumPipe,
 } from '@nestjs/common';
 import { ConfigService } from './config.service';
 import { NotificationService } from '../notification/notification.service';
@@ -51,89 +49,32 @@ export class ConfigController {
   ) {}
 
 
-  // private async sendWorkflowNotification(
-  //   event:
-  //     | 'editor_submit'
-  //     | 'approver_approve'
-  //     | 'exporter_export'
-  //     | 'publisher_deploy'
-  //     | 'publisher_activate'
-  //     | 'publisher_deactivate'
-  //     | 'approver_reject',
-  //   configId: number,
-  //   user: AuthenticatedUser,
-  //   config: Config,
-  //   authToken: string,
-  //   comment?: string,
-  // ): Promise<void> {
-  //   const decodedToken = decodeValidatedToken(user);
-  //   const groupName =
-  //     decodedToken.tenantDetails.length > 0
-  //       ? decodedToken.tenantDetails[0].replace(/\//g, '')
-  //       : null;
-
-  //   if (!groupName) {
-  //     throw new Error('Group name not found in tenant details');
-  //   }
-
-  //   await this.notificationService.sendGenericWorkflowNotification({
-  //     event,
-  //     configId,
-  //     tenantId: getTenantId(user),
-  //     actorEmail: decodedToken.preferredUsername,
-  //     actorName: decodedToken.preferredUsername,
-  //     config,
-  //     authToken: authToken,
-  //     groupName: groupName,
-  //     comment,
-  //   });
-  // }
-
-
-  @Post(':id/reject')
-  @RequireClaims(TazamaClaims.APPROVER)
-  async rejectConfig(
+ @Post('/:id/mapping')
+  @RequireClaims(TazamaClaims.EDITOR)
+  async addMapping(
     @Param('id', ParseIntPipe) id: number,
-    @Body() dto: RejectionDto,
+    @Body() dto: AddMappingDto,
     @User() user: AuthenticatedUser,
-    @Headers('authorization') authorization: string,
   ): Promise<ConfigResponseDto> {
-    const token = authorization?.replace('Bearer ', '');
-    
-    const result = await this.configService.rejectConfig(
+    return await this.configService.addMappingViaService(
       id,
       dto,
-      user,
-      token,
-    );
-
-    console.log('Config rejected:', result);
-    return result;
-  }
-
-  
-  @Post('/:offset/:limit')
-  @RequireAnyClaims(
-    TazamaClaims.EDITOR,
-    TazamaClaims.APPROVER,
-    TazamaClaims.PUBLISHER,
-    TazamaClaims.EXPORTER,
-  )
-  async getAllConfigs(
-    @Param('offset') offset: string,
-    @Param('limit') limit: string,
-    @User() user: AuthenticatedUser,
-    @Body() filters?: Record<string, any>,
-  ): Promise<Config[]> {
-    return await this.configService.getAllConfigs(
-      parseInt(offset),
-      parseInt(limit),
-      filters || {},
       user.token.tokenString,
     );
   }
-
-
+  @Delete(':id/mapping/:index')
+  @RequireClaims(TazamaClaims.EDITOR)
+  async removeMapping(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('index', ParseIntPipe) index: number,
+    @User() user: AuthenticatedUser,
+  ): Promise<ConfigResponseDto> {
+    return await this.configService.removeMappingViaService(
+      id,
+      index,
+      user.token.tokenString,
+    );
+  }
   @Post()
   @RequireClaims(TazamaClaims.EDITOR)
   @HttpCode(HttpStatus.CREATED)
@@ -165,53 +106,21 @@ export class ConfigController {
       validation: result.validation,
     };
   }
-  @Get('pending-approvals/:offset/:limit')
-  @RequireClaims(TazamaClaims.APPROVER)
-  async getPendingApprovals(
-    @Param('offset') offset: string,
-    @Param('limit') limit: string,
-    @User() user: AuthenticatedUser,
-  ): Promise<ConfigResponseDto[]> {
-    return await this.configService.getPendingApprovals(
-      parseInt(offset),
-      parseInt(limit),
-      user.token.tokenString,
-    );
-  }
-
-  @Get('transaction/:type/:offset/:limit')
-  @RequireClaims(TazamaClaims.EDITOR)
-  async getConfigsByTransactionType(
-    @Param('type') type: string,
-    @Param('offset') offset: string,
-    @Param('limit') limit: string,
-    @User() user: AuthenticatedUser,
-  ): Promise<Config[]> {
-    return await this.configService.getConfigsByTransactionType(
-      type,
-      parseInt(offset),
-      parseInt(limit),
-      user.token.tokenString,
-    );
-  }
-
-  // @Get('endpoint/:path/:version/:offset/:limit')
-  // @RequireClaims(TazamaClaims.EDITOR)
-  // async getConfigByEndpoint(
-  //   @Param('path') path: string,
-  //   @Param('version') version: string,
+  // @Get('pending-approvals/:offset/:limit')
+  // @RequireClaims(TazamaClaims.APPROVER)
+  // async getPendingApprovals(
   //   @Param('offset') offset: string,
   //   @Param('limit') limit: string,
   //   @User() user: AuthenticatedUser,
-  // ): Promise<Config[]> {
-  //   return await this.configService.getConfigByEndpoint(
-  //     decodeURIComponent(path),
-  //     decodeURIComponent(version || 'v1'),
+  // ): Promise<ConfigResponseDto[]> {
+  //   return await this.configService.getPendingApprovals(
   //     parseInt(offset),
   //     parseInt(limit),
   //     user.token.tokenString,
   //   );
   // }
+
+ 
   @Get(':id')
   @RequireAnyClaims(
     TazamaClaims.EDITOR,
@@ -244,45 +153,8 @@ export class ConfigController {
     );
   }
 
-  @Delete(':id')
-  @RequireClaims(TazamaClaims.EDITOR)
-  @HttpCode(HttpStatus.NO_CONTENT)
-  async deleteConfig(
-    @Param('id', ParseIntPipe) id: number,
-    @User() user: AuthenticatedUser,
-  ): Promise<void> {
-    await this.configService.deleteConfigViaWrite(
-      id,
-      user.token.tokenString,
-    );
-  }
-  @Post(':id/mapping')
-  @RequireClaims(TazamaClaims.EDITOR)
-  async addMapping(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: AddMappingDto,
-    @User() user: AuthenticatedUser,
-  ): Promise<ConfigResponseDto> {
-    console.log('The dto in add mapping ', dto);
-    return await this.configService.addMappingViaService(
-      id,
-      dto,
-      user.token.tokenString,
-    );
-  }
-  @Delete(':id/mapping/:index')
-  @RequireClaims(TazamaClaims.EDITOR)
-  async removeMapping(
-    @Param('id', ParseIntPipe) id: number,
-    @Param('index', ParseIntPipe) index: number,
-    @User() user: AuthenticatedUser,
-  ): Promise<ConfigResponseDto> {
-    return await this.configService.removeMappingViaService(
-      id,
-      index,
-      user.token.tokenString,
-    );
-  }
+
+ 
 
   @Post(':id/function')
   @RequireClaims(TazamaClaims.EDITOR)
@@ -327,6 +199,8 @@ export class ConfigController {
       user.token.tokenString,
     );
   }
+  
+ 
 
   @Post(':id/workflow/submit')
   @RequireClaims(TazamaClaims.EDITOR)
@@ -345,7 +219,6 @@ export class ConfigController {
       token,
     );
 
-    console.log(' Result after submit for approval ', result);
     return result;
   }
 
@@ -365,31 +238,8 @@ export class ConfigController {
       user,
       token,
     );
-
-    console.log('Config approved:', result);
     return result;
   }
-
-
-
-  // @Post(':id/update-status-to-exported')
-  // @RequireClaims(TazamaClaims.EXPORTER)
-  // async updateStatusToExported(
-  //   @Param('id', ParseIntPipe) id: number,
-  //   @Body() dto: StatusTransitionDto,
-  //   @User() user: AuthenticatedUser,
-  //   @Headers('authorization') authorization?: string,
-  // ): Promise<ConfigResponseDto> {
-  //   const token = authorization?.replace('Bearer ', '') || user.token.tokenString;
-  //   return await this.configService.updateStatusToExported(
-  //     id,
-  //     dto,
-  //     user.tenantId,
-  //     user.userId,
-  //     user.validClaims,
-  //     token,
-  //   );
-  // }
 
   @Post(':id/workflow/export')
   @RequireClaims(TazamaClaims.EXPORTER)
@@ -469,71 +319,6 @@ export class ConfigController {
     return result;
   }
 
-  // @Post(':id/workflow/return-to-progress')
-  // @RequireClaims(TazamaClaims.EDITOR)
-  // async returnToProgress(
-  //   @Param('id', ParseIntPipe) id: number,
-  //   @Body() dto: StatusTransitionDto,
-  //   @User() user: AuthenticatedUser,
-  // ): Promise<ConfigResponseDto> {
-  //   return await this.configService.returnToProgress(
-  //     id,
-  //     dto,
-  //     user.token.tokenString,
-  //   );
-  // }
-
-  // @Get(':id/workflow/status')
-  // @RequireAnyClaims(
-  //   TazamaClaims.EDITOR,
-  //   TazamaClaims.APPROVER,
-  //   TazamaClaims.PUBLISHER,
-  // )
-  // async getWorkflowStatus(
-  //   @Param('id', ParseIntPipe) id: number,
-  //   @User() user: AuthenticatedUser,
-  // ): Promise<any> {
-  //   return await this.configService.getWorkflowStatus(
-  //     id,
-  //     user.token.tokenString,
-  //   );
-  // }
-
-  // @Get(':id/audit-history')
-  // @RequireAnyClaims(
-  //   TazamaClaims.EDITOR,
-  //   TazamaClaims.APPROVER,
-  //   TazamaClaims.PUBLISHER,
-  //   TazamaClaims.EXPORTER,
-  // )
-  // async getAuditHistory(
-  //   @Param('id', ParseIntPipe) id: number,
-  //   @User() user: AuthenticatedUser,
-  // ): Promise<any> {
-  //   return await this.configService.getAuditHistory(
-  //     id,
-  //     user.token.tokenString,
-  //   );
-  // }
-
-  // @Patch('/update/status/:id')
-  // @RequireAnyClaims(
-  //   TazamaClaims.EXPORTER,
-  //   TazamaClaims.PUBLISHER,
-  //   TazamaClaims.EDITOR,
-  // )
-  // async updateStatus(
-  //   @Param('id', ParseIntPipe) id: number,
-  //   @Query('status', new ParseEnumPipe(ConfigStatus)) status: ConfigStatus,
-  //   @User() user: AuthenticatedUser,
-  // ): Promise<any> {
-  //   return await this.configService.updateStatusDirect(
-  //     id,
-  //     status,
-  //     user.token.tokenString,
-  //   );
-  // }
-
   @Patch(':id/publishing-status')
   @RequireAnyClaims(TazamaClaims.PUBLISHER)
   async updatePublishingStatus(
@@ -566,4 +351,57 @@ export class ConfigController {
 
     return result;
   }
+    @Post(':id/reject')
+  @RequireClaims(TazamaClaims.APPROVER)
+  async rejectConfig(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: RejectionDto,
+    @User() user: AuthenticatedUser,
+    @Headers('authorization') authorization: string,
+  ): Promise<ConfigResponseDto> {
+    const token = authorization?.replace('Bearer ', '');
+    
+    const result = await this.configService.rejectConfig(
+      id,
+      dto,
+      user,
+      token,
+    );
+
+    return result;
+  }
+    @Delete(':id')
+  @RequireClaims(TazamaClaims.EDITOR)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteConfig(
+    @Param('id', ParseIntPipe) id: number,
+    @User() user: AuthenticatedUser,
+  ): Promise<void> {
+    await this.configService.deleteConfigViaWrite(
+      id,
+      user.token.tokenString,
+    );
+  }
+  @Post('/:offset/:limit')
+  @RequireAnyClaims(
+    TazamaClaims.EDITOR,
+    TazamaClaims.APPROVER,
+    TazamaClaims.PUBLISHER,
+    TazamaClaims.EXPORTER,
+  )
+  async getAllConfigs(
+    @Param('offset') offset: string,
+    @Param('limit') limit: string,
+    @User() user: AuthenticatedUser,
+    @Body() filters?: Record<string, any>,
+  ): Promise<Config[]> {
+    return await this.configService.getAllConfigs(
+      parseInt(offset),
+      parseInt(limit),
+      filters || {},
+      user.token.tokenString,
+    );
+  }
+
+
 }

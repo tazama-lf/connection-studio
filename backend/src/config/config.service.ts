@@ -9,7 +9,7 @@ import { ConfigRepository } from './config.repository';
 import {
   FieldType,
   JSONSchema,
-  applyFieldAdjustments,
+  // applyFieldAdjustments,
   SchemaField,
 } from '@tazama-lf/tcs-lib';
 import { NotifyService } from '../notify/notify.service';
@@ -209,6 +209,7 @@ export class ConfigService {
         contentType: dto.contentType || ContentType.JSON,
         schema: dto.schema as JSONSchema,
         mapping: dto.mapping,
+        functions: dto.functions,
         status: ConfigStatus.IN_PROGRESS,
         tenantId,
         createdBy: userId,
@@ -1080,22 +1081,7 @@ export class ConfigService {
     }
   }
 
-  private collectAllPaths(fields: any[]): string[] {
-    const paths: string[] = [];
-
-    const traverse = (fieldList: any[]) => {
-      for (const field of fieldList) {
-        paths.push(field.path);
-        if (field.children && field.children.length > 0) {
-          traverse(field.children);
-        }
-      }
-    };
-
-    traverse(fields);
-    return paths;
-  }
-
+ 
   private validateSchema(schema: JSONSchema): {
     success: boolean;
     errors: string[];
@@ -1125,68 +1111,7 @@ export class ConfigService {
     };
   }
 
-  private validateNoDuplicateSchemaFields(sourceFields: any[]): string[] {
-    const errors: string[] = [];
-    const seenNames = new Set<string>();
-    const seenPaths = new Set<string>();
-    const duplicateNames: string[] = [];
-    const duplicatePaths: string[] = [];
-
-    for (let i = 0; i < sourceFields.length; i++) {
-      const field = sourceFields[i];
-
-      if (!field.name || !field.path) {
-        continue;
-      }
-
-      if (seenNames.has(field.name)) {
-        const errorMsg = `Duplicate field name '${field.name}' found in schema`;
-        errors.push(errorMsg);
-        duplicateNames.push(field.name);
-
-        this.logger.error(`Schema validation failed: ${errorMsg}`, {
-          duplicateFieldName: field.name,
-          fieldPath: field.path,
-          fieldType: field.type,
-          fieldIndex: i,
-          context: 'validateNoDuplicateSchemaFields',
-        });
-      } else {
-        seenNames.add(field.name);
-      }
-
-      if (seenPaths.has(field.path)) {
-        const errorMsg = `Duplicate field path '${field.path}' found in schema`;
-        errors.push(errorMsg);
-        duplicatePaths.push(field.path);
-
-        this.logger.error(`Schema validation failed: ${errorMsg}`, {
-          duplicateFieldPath: field.path,
-          fieldName: field.name,
-          fieldType: field.type,
-          fieldIndex: i,
-          context: 'validateNoDuplicateSchemaFields',
-        });
-      } else {
-        seenPaths.add(field.path);
-      }
-    }
-
-    if (errors.length > 0) {
-      this.logger.error(
-        `Schema contains ${errors.length} duplicate field error(s)`,
-        {
-          totalErrors: errors.length,
-          duplicateFieldNames: duplicateNames,
-          duplicateFieldPaths: duplicatePaths,
-          totalFieldsProcessed: sourceFields.length,
-          context: 'validateNoDuplicateSchemaFields',
-        },
-      );
-    }
-
-    return errors;
-  }
+ 
 
   private createMappingFromDto(dto: AddMappingDto): FieldMapping {
     if (dto.transformation) {
@@ -2085,11 +2010,16 @@ export class ConfigService {
       throw new NotFoundException(`Config with ID ${id} not found`);
     }
 
+    const currentStatus = config.status as ConfigStatus;
+    const action: WorkflowAction = 'approve';
+    this.validateWorkflowAction(user.validClaims || [], currentStatus, action);
+
 
     const updatedConfig = await this.configRepository.getupdateConfigByStatus(
         id,
         ConfigStatus.APPROVED,
         token,
+        dto.comment,
       );
 
 
@@ -2133,11 +2063,16 @@ export class ConfigService {
       throw new NotFoundException(`Config with ID ${id} not found`);
     }
 
+    const currentStatus = config.status as ConfigStatus;
+    const action: WorkflowAction = 'reject';
+    this.validateWorkflowAction(user.validClaims || [], currentStatus, action);
+
 
     const updatedConfig = await this.configRepository.getupdateConfigByStatus(
         id,
         ConfigStatus.REJECTED,
         token,
+        dto.comment,
       );
 
 
@@ -2174,6 +2109,11 @@ export class ConfigService {
     if (!config) {
       throw new NotFoundException(`Config with ID ${id} not found`);
     }
+
+    const currentStatus = config.status as ConfigStatus;
+    const action: WorkflowAction = 'export';
+    this.validateWorkflowAction(user.validClaims || [], currentStatus, action);
+
     const {tenantId} = user;
 
     const fileName = `dems_${tenantId}_${id}`;
@@ -2231,22 +2171,27 @@ export class ConfigService {
 
     token: string,
   ): Promise<ConfigResponseDto> {
-    // const config = await this.configRepository.findConfigById(
-    //   id,
-    //   tenantId,
-    //   token,
-    // );
-    // if (!config) {
-    //   throw new NotFoundException(`Config with ID ${id} not found`);
-    // }
+    const config = await this.configRepository.findConfigById(
+      id,
+      tenantId,
+      token,
+    );
+    if (!config) {
+      throw new NotFoundException(`Config with ID ${id} not found`);
+    }
+
+    // Validate workflow action permissions and status transition
+    const currentStatus = config.status as ConfigStatus;
+    const action: WorkflowAction = 'deploy';
+    this.validateWorkflowAction(user.validClaims || [], currentStatus, action);
 
     const fileName = `dems_${tenantId}_${id}`;
-    let currentStatus: ConfigStatus;
+    let sftpConfigStatus: ConfigStatus;
     let configData: any;
     try {
       this.logger.log(`Reading config file from SFTP: ${fileName}`);
       configData = await this.sftpService.readFile(fileName) as Config;
-      currentStatus = configData.status as ConfigStatus;
+      sftpConfigStatus = configData.status as ConfigStatus;
       this.logger.log(`Config data retrieved: ${configData}`);
       // this.logger.log(
       //   `Successfully read config file from SFTP with status: ${currentStatus}`
@@ -2292,7 +2237,7 @@ export class ConfigService {
           transactionType: configData.transactionType || null,
           contentType: configData.contentType || 'application/json',
           endpointPath: configData.endpointPath || null,
-          status: currentStatus,
+          status: sftpConfigStatus,
           publishingStatus: configData.publishingStatus || 'active',
           version: configData.version,
           schema: configData.schema == null ? null : configData.schema,
@@ -2305,9 +2250,6 @@ export class ConfigService {
           updatedAt: new Date(),
         };
    
-
-        console.log('deployedConfigData', deployedConfigData);
-
         this.logger.log(
           `Deploying config data - schema length: ${deployedConfigData.schema?.length}, mapping length: ${deployedConfigData.mapping?.length}`,
         );
@@ -2667,32 +2609,32 @@ export class ConfigService {
     );
   }
 
-  async getPendingApprovals(
-    offset: number,
-    limit: number,
-    token: string,
-  ): Promise<any[]> {
-    return await this.configRepository.getPendingApprovals(
-      offset,
-      limit,
-      token,
-    );
-  }
+  // async getPendingApprovals(
+  //   offset: number,
+  //   limit: number,
+  //   token: string,
+  // ): Promise<any[]> {
+  //   return await this.configRepository.getPendingApprovals(
+  //     offset,
+  //     limit,
+  //     token,
+  //   );
+  // }
 
-  async getConfigsByTransactionType(
-    type: string,
-    offset: number,
-    limit: number,
-    token: string,
-  ): Promise<Config[]> {
-    return await this.configRepository.findConfigsByTransactionType(
-      type,
-      token,
-      token,
-      limit,
-      offset,
-    );
-  }
+  // async getConfigsByTransactionType(
+  //   type: string,
+  //   offset: number,
+  //   limit: number,
+  //   token: string,
+  // ): Promise<Config[]> {
+  //   return await this.configRepository.findConfigsByTransactionType(
+  //     type,
+  //     token,
+  //     token,
+  //     limit,
+  //     offset,
+  //   );
+  // }
 
   // async getConfigByEndpoint(
   //   path: string,
