@@ -12,16 +12,16 @@ import {
   ScheduleStatus,
   SourceType,
 } from '@tazama-lf/tcs-lib';
-import { AuthenticatedUser } from '../auth/auth.types';
-import { DatabaseService } from '../database/database.service';
-import { DryRunService } from '../dry-run/dry-run.service';
-import { NotifyService } from '../notify/notify.service';
-import { AdminServiceClient } from '../services/admin-service-client.service';
-import { SftpService } from '../sftp/sftp.service';
-import { CreatePushJobDto } from './dto/create-push-job.dto';
-import { JobService } from './job.service';
-import { SchedulerService } from '../scheduler/scheduler.service';
-import { NotificationService } from '../notification/notification.service';
+import { AuthenticatedUser } from '../../src/auth/auth.types';
+import { DatabaseService } from '../../src/database/database.service';
+import { DryRunService } from '../../src/dry-run/dry-run.service';
+import { NotifyService } from '../../src/notify/notify.service';
+import { AdminServiceClient } from '../../src/services/admin-service-client.service';
+import { SftpService } from '../../src/sftp/sftp.service';
+import { CreatePushJobDto } from '../../src/job/dto/create-push-job.dto';
+import { JobService } from '../../src/job/job.service';
+import { SchedulerService } from '../../src/scheduler/scheduler.service';
+import { NotificationService } from '../../src/notification/notification.service';
 import * as helpers from '../../src/utils/helpers';
 
 jest.spyOn(helpers, 'encrypt').mockReturnValue('encrypted-password');
