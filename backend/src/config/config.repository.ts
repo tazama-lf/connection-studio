@@ -174,11 +174,7 @@ export class ConfigRepository {
     );
   }
 
-  async addMapping(
-    id: number,
-    mappingData: any,
-    token: string,
-  ): Promise<any> {
+  async addMapping(id: number, mappingData: any, token: string): Promise<any> {
     return await this.adminServiceClient.forwardRequest(
       'POST',
       `/v1/admin/tcs/config/${id}/mapping`,

@@ -319,8 +319,6 @@ export class NotificationService implements OnModuleInit {
       }
 
       if (fetchAll) {
-      
-
         this.logger.log(
           `Fetching all user emails from AuthService for tenant '${tenantId}'`,
         );
@@ -336,8 +334,6 @@ export class NotificationService implements OnModuleInit {
       }
 
       if (role) {
-       
-
         this.logger.log(`Fetching emails for role '${role}' from AuthService`);
         const emails = await this.getUserGroupMembers(
           authToken,
@@ -524,7 +520,7 @@ export class NotificationService implements OnModuleInit {
     } = data;
 
     const recipientEmails: string[] = [];
-    
+
     if (recipientEmails.length === 0) {
       this.logger.warn(`No users found for tenant ${tenantId}`);
       return { success: false, message: 'No recipients found', recipients: 0 };

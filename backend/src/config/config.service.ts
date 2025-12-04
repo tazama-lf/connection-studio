@@ -6,9 +6,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { ConfigRepository } from './config.repository';
-import {
-  JSONSchema,
-} from '@tazama-lf/tcs-lib';
+import { JSONSchema } from '@tazama-lf/tcs-lib';
 import { NotifyService } from '../notify/notify.service';
 import { NotificationService } from '../notification/notification.service';
 import { ConfigWorkflowService } from './config-workflow.service';
@@ -16,11 +14,9 @@ import { SftpService } from '../sftp/sftp.service';
 import {
   Config,
   CreateConfigDto,
- 
   ConfigResponseDto,
   ContentType,
   ConfigStatus,
-  
   StatusTransitionDto,
   SubmitForApprovalDto,
   ApprovalDto,
@@ -55,7 +51,6 @@ export class ConfigService {
     return `${basePath}/${transactionType}`;
   }
 
- 
   private async getConfigOrThrow(
     id: number,
     tenantId: string,
@@ -71,7 +66,6 @@ export class ConfigService {
     }
     return config;
   }
-
 
   private validateWorkflowAction(
     userClaims: string[],
@@ -186,7 +180,6 @@ export class ConfigService {
         token,
       ))!;
 
-
       return {
         success: true,
         message: 'Config created successfully',
@@ -247,12 +240,9 @@ export class ConfigService {
     id: number,
     dto: SubmitForApprovalDto,
     user: AuthenticatedUser,
-    token:string
-  )
-  : Promise<ConfigResponseDto> {
-
+    token: string,
+  ): Promise<ConfigResponseDto> {
     await this.getConfigOrThrow(id, user.tenantId, token);
-
 
     const updatedConfig = await this.configRepository.getupdateConfigByStatus(
       id,
@@ -280,10 +270,8 @@ export class ConfigService {
     id: number,
     dto: ApprovalDto,
     user: AuthenticatedUser,
-    token:string
-  )
-  : Promise<ConfigResponseDto> {
-
+    token: string,
+  ): Promise<ConfigResponseDto> {
     const config = await this.getConfigOrThrow(id, user.tenantId, token);
 
     const currentStatus = config.status!;
@@ -291,22 +279,22 @@ export class ConfigService {
     this.validateWorkflowAction(user.validClaims || [], currentStatus, action);
 
     const updatedConfig = await this.configRepository.getupdateConfigByStatus(
-        id,
-        ConfigStatus.APPROVED,
+      id,
+      ConfigStatus.APPROVED,
+      token,
+      dto.comment,
+    );
+
+    if (updatedConfig) {
+      const config = updatedConfig;
+      await this.notificationService.sendWorkflowNotification(
+        EventType.ApproverApprove,
+        user,
+        config,
         token,
         dto.comment,
       );
-      
-          if (updatedConfig) {
-            const config = updatedConfig;
-            await this.notificationService.sendWorkflowNotification(
-              EventType.ApproverApprove,
-              user,
-              config,
-              token,
-              dto.comment,
-            );
-          }
+    }
 
     return {
       success: true,
@@ -314,14 +302,12 @@ export class ConfigService {
     };
   }
 
- async rejectConfig(
-    id:number,
+  async rejectConfig(
+    id: number,
     dto: RejectionDto,
     user: AuthenticatedUser,
-    token:string
-  )
-  : Promise<ConfigResponseDto> {
-
+    token: string,
+  ): Promise<ConfigResponseDto> {
     const config = await this.getConfigOrThrow(id, user.tenantId, token);
 
     const currentStatus = config.status!;
@@ -423,8 +409,7 @@ export class ConfigService {
     userId: string,
 
     token: string,
-  ): Promise<ConfigResponseDto> {    
-    
+  ): Promise<ConfigResponseDto> {
     const fileName = `dems_${tenantId}_${id}`;
     let sftpConfigStatus: ConfigStatus;
     let configData: any;
@@ -432,13 +417,10 @@ export class ConfigService {
       this.logger.log(`Reading config file from SFTP: ${fileName}`);
       configData = (await this.sftpService.readFile(fileName)) as Config;
       sftpConfigStatus = configData.status as ConfigStatus;
-    }
-
-    catch (error) {
-      
-        throw new BadRequestException(
-          `Cannot deploy config ${id}: status is undefined and SFTP read failed. Error: ${error.message}`,
-        );
+    } catch (error) {
+      throw new BadRequestException(
+        `Cannot deploy config ${id}: status is undefined and SFTP read failed. Error: ${error.message}`,
+      );
     }
 
     const newStatus = ConfigStatus.DEPLOYED;
@@ -547,7 +529,6 @@ export class ConfigService {
       );
     }
   }
-
 
   async updatePublishingStatus(
     id: number,
@@ -661,8 +642,6 @@ export class ConfigService {
       token,
     );
   }
-
-
 
   async getConfigById(
     id: number,

@@ -20,16 +20,16 @@ import { TazamaAuthGuard } from '../auth/tazama-auth.guard';
 import { User } from '../auth/user.decorator';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { CreateConfigDto, UpdateConfigDto } from '../dto/config/dto';
-import {
-  type AddMappingDto,
-  type AddFunctionDto,
-  type ConfigResponseDto,
-  type Config,
-  type SubmitForApprovalDto,
-  type ApprovalDto,
-  type RejectionDto,
-  type DeploymentDto,
-  type StatusTransitionDto,
+import type {
+  AddMappingDto,
+  AddFunctionDto,
+  ConfigResponseDto,
+  Config,
+  SubmitForApprovalDto,
+  ApprovalDto,
+  RejectionDto,
+  DeploymentDto,
+  StatusTransitionDto,
 } from '../config/config.interfaces';
 import {
   RequireClaims,
@@ -40,9 +40,7 @@ import {
 @Controller('config')
 @UseGuards(TazamaAuthGuard)
 export class ConfigController {
-  constructor(
-    private readonly configService: ConfigService,
-  ) {}
+  constructor(private readonly configService: ConfigService) {}
 
   @Post('/:id/mapping')
   @RequireClaims(TazamaClaims.EDITOR)
@@ -101,7 +99,6 @@ export class ConfigController {
       validation: result.validation,
     };
   }
-
 
   @Get(':id')
   @RequireAnyClaims(

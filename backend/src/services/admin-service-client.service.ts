@@ -853,7 +853,6 @@ export class AdminServiceClient {
     }
   }
 
-
   async runRawQuery(query: string, token: string): Promise<any> {
     this.logger.log('Executing raw SQL query via admin-service');
 
