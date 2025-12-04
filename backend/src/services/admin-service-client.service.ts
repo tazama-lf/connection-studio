@@ -44,6 +44,47 @@ export class AdminServiceClient {
    * @param headers - Additional headers to include
    * @returns Response from admin-service
    */
+
+  async updateConfigStatus(
+    id: number,
+    status: string,
+    token: string,
+  ): Promise<{ success: boolean; message: string }> {
+    const url = `${this.adminServiceUrl}/v1/admin/tcs/tcs/config/status/${id}`;
+    this.logger.log(
+      `Updating config ${id} status to ${status} via ${url}`,
+    );
+
+    try {
+      const response = await firstValueFrom(
+        this.httpService.put(
+          url,
+          { status },
+          {
+            headers: {
+              Authorization: token.startsWith('Bearer ') ? token : `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+          },
+        ),
+      );
+
+      this.logger.log(
+        `Config ${id} status updated successfully to ${status}`,
+      );
+      return response.data;
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || error.message;
+      this.logger.error(
+        `Failed to update config ${id} status: ${errorMessage}`,
+      );
+      throw new HttpException(
+        errorMessage || 'Failed to update config status',
+        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
   async forwardRequest(
     method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH',
     path: string,

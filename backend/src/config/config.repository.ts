@@ -2,7 +2,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { AdminServiceClient } from '../services/admin-service-client.service';
 import { Config } from './config.interfaces';
-import { ColumnDef, createTableSQL } from 'src/utils/table-sql';
+import { ColumnDef, createTableSQL } from '../utils/table-sql';
 
 @Injectable()
 export class ConfigRepository {
