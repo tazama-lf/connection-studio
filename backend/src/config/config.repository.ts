@@ -2,7 +2,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { AdminServiceClient } from '../services/admin-service-client.service';
 import { Config } from './config.interfaces';
-import { ColumnDef, createTableSQL } from 'src/utils/table-sql';
+import { ColumnDef, createTableSQL } from '../utils/table-sql';
 
 @Injectable()
 export class ConfigRepository {
@@ -91,14 +91,6 @@ export class ConfigRepository {
       throw new Error('Failed to update config status message: ' + err.message);
     }
   }
-  // async updateConfig(
-  //   id: number,
-  //   tenantId: string,
-  //   updateData: Partial<Config>,
-  //   token: string,
-  // ): Promise<void> {
-  //   await this.adminServiceClient.writeConfigUpdate(id, updateData, token);
-  // }
   async updatePublishingStatus(
     id: number,
     publishingStatus: 'active' | 'inactive',
@@ -174,7 +166,11 @@ export class ConfigRepository {
     );
   }
 
-  async addMapping(id: number, mappingData: any, token: string): Promise<any> {
+  async addMapping(
+    id: number,
+    mappingData: any,
+    token: string,
+  ): Promise<any> {
     return await this.adminServiceClient.forwardRequest(
       'POST',
       `/v1/admin/tcs/config/${id}/mapping`,

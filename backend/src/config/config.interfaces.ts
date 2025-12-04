@@ -1,4 +1,4 @@
-// Re-export types from tcs-lib for consistency
+// // Re-export types from tcs-lib for consistency
 import type {
   Config,
   ConfigResponseDto,
@@ -32,7 +32,6 @@ export type {
 
 export { ContentType, ConfigStatus } from '@tazama-lf/tcs-lib';
 
-// Additional status values used by the backend
 export const AdditionalConfigStatus = {
   EXPORTED: 'EXPORTED' as const,
 } as const;
@@ -43,22 +42,15 @@ export const AdditionalWorkflowAction = {
   RETURN_TO_PROGRESS: 'return_to_progress' as const,
 } as const;
 
-// Keep backend-specific interfaces
 export interface MappingSource {
-  field: string; // Field path in source schema
+  field: string; 
 }
 
 export interface MappingDestination {
-  field: string; // Field path in destination schema
+  field: string; 
 }
 
-// Extended Config with source fields for backend use
-export interface ConfigWithSourceFields extends Config {
-  sourceFields?: SchemaField[]; // Source fields with array notation (.0.) for mapping UI
-}
 
-// Enhanced config response that includes source fields for mapping UI
-export interface EnhancedConfigResponseDto extends ConfigResponseDto {
-  config?: ConfigWithSourceFields;
-  sourceFields?: SchemaField[]; // Source fields with array notation (.0.) for mapping UI
+export interface UpdateConfigStatusDto {
+  status: string; 
 }

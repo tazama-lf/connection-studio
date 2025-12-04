@@ -24,8 +24,8 @@ import {
   DeploymentDto,
   WorkflowAction,
 } from './config.interfaces';
-import { EventType } from 'src/enums/events.enum';
-import { AuthenticatedUser } from 'src/auth/auth.types';
+import { EventType } from '../enums/events.enum';
+import { AuthenticatedUser } from '../auth/auth.types';
 
 @Injectable()
 export class ConfigService {
@@ -66,6 +66,37 @@ export class ConfigService {
     }
     return config;
   }
+
+  async updateConfigStatus(
+    id: number,
+    status: string,
+    tenantId: string,
+    userId: string,
+    token: string,
+  ): Promise<ConfigResponseDto> {
+    this.logger.log(
+      `[${tenantId}] Updating config ${id} status to ${status} by user ${userId}`,
+    );
+
+    await this.getConfigOrThrow(id, tenantId, token);
+
+    const result = await this.configRepository.updateConfigStatus(
+      id,
+      status,
+      token,
+    );
+
+    this.logger.log(
+      `[${tenantId}] Config ${id} status updated successfully to ${status}`,
+    );
+
+    return {
+      success: true,
+      message: `Config status updated to ${status}`,
+    };
+  }
+
+
 
   private validateWorkflowAction(
     userClaims: string[],

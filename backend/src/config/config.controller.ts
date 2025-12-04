@@ -7,6 +7,7 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   ParseIntPipe,
   UseGuards,
   HttpCode,
@@ -19,17 +20,17 @@ import { ConfigService } from './config.service';
 import { TazamaAuthGuard } from '../auth/tazama-auth.guard';
 import { User } from '../auth/user.decorator';
 import type { AuthenticatedUser } from '../auth/auth.types';
-import { CreateConfigDto, UpdateConfigDto } from '../dto/config/dto';
-import type {
-  AddMappingDto,
-  AddFunctionDto,
-  ConfigResponseDto,
-  Config,
-  SubmitForApprovalDto,
-  ApprovalDto,
-  RejectionDto,
-  DeploymentDto,
-  StatusTransitionDto,
+import { CreateConfigDto, UpdateConfigDto } from './dto';
+import {
+  type AddMappingDto,
+  type AddFunctionDto,
+  type ConfigResponseDto,
+  type Config,
+  type SubmitForApprovalDto,
+  type ApprovalDto,
+  type RejectionDto,
+  type DeploymentDto,
+  type StatusTransitionDto,
 } from '../config/config.interfaces';
 import {
   RequireClaims,
@@ -276,6 +277,30 @@ export class ConfigController {
     // }
 
     return result;
+  }
+  @Patch('update/status/:id')
+  @RequireAnyClaims(
+    TazamaClaims.EDITOR,
+    TazamaClaims.APPROVER,
+    TazamaClaims.PUBLISHER,
+  )
+  async updateConfigStatus(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('status') status: string,
+    @User() user: AuthenticatedUser,
+    @Headers('authorization') authorization: string,
+  ): Promise<ConfigResponseDto> {
+    const token = authorization?.replace('Bearer ', '');
+    if (!status) {
+      throw new BadRequestException('Status is required as query parameter');
+    }
+    return await this.configService.updateConfigStatus(
+      id,
+      status,
+      user.tenantId,
+      user.userId,
+      token,
+    );
   }
 
   @Patch(':id/publishing-status')
