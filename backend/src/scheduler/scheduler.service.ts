@@ -4,7 +4,7 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import { ISuccess, JobStatus, Schedule } from '@tazama-lf/tcs-lib';
+import { ISuccess, JobStatus, PaginatedResult, Schedule } from '@tazama-lf/tcs-lib';
 import { AuthenticatedUser } from '../auth/auth.types';
 import { v4 } from 'uuid';
 import { AdminServiceClient } from '../services/admin-service-client.service';
@@ -22,7 +22,7 @@ export class SchedulerService {
     private readonly sftpService: SftpService,
     private readonly adminServiceClient: AdminServiceClient,
     private readonly notificationService: NotificationService,
-  ) {}
+  ) { }
 
   async create(
     schedule: CreateScheduleJobDto,
@@ -61,7 +61,7 @@ export class SchedulerService {
     limit: string,
     user: AuthenticatedUser,
     filters?: Record<string, unknown>,
-  ): Promise<{}> {
+  ): Promise<PaginatedResult<Schedule>> {
     return await this.adminServiceClient.getAllSchedule(
       offset,
       limit,
@@ -140,6 +140,14 @@ export class SchedulerService {
           'Both status and table_name are required.',
         );
       }
+
+      const result = await this.adminServiceClient.updateScheduleByStatus(
+        id,
+        status,
+        tenantId,
+        user.token.tokenString,
+        reason,
+      );
 
       const requiresExistingJob =
         status === JobStatus.APPROVED ||
@@ -230,13 +238,7 @@ export class SchedulerService {
           break;
       }
 
-      return await this.adminServiceClient.updateScheduleByStatus(
-        id,
-        status,
-        tenantId,
-        user.token.tokenString,
-        reason,
-      );
+      return result
     } catch (err) {
       this.loggerService.error(err.message);
       throw new BadRequestException(err.message);

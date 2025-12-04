@@ -11,6 +11,8 @@ import {
   Job,
   JobStatus,
   JobSummary,
+  PaginatedResult,
+  PullJobHistory,
   Schedule,
   ScheduleStatus,
   SFTPConnection,
@@ -41,7 +43,7 @@ export class JobService {
     private readonly adminServiceClient: AdminServiceClient,
     private readonly schedulerService: SchedulerService,
     private readonly notificationService: NotificationService,
-  ) {}
+  ) { }
 
   private handleError(err: unknown): never {
     const message = err instanceof Error ? err.message : String(err);
@@ -212,7 +214,7 @@ export class JobService {
     limit: string,
     user: AuthenticatedUser,
     filters?: Record<string, unknown>,
-  ): Promise<Record<string, unknown>> {
+  ): Promise<PaginatedResult<Job>> {
     try {
       return await this.adminServiceClient.getAllJobs(
         offset,
@@ -230,7 +232,7 @@ export class JobService {
     limit: string,
     user: AuthenticatedUser,
     filters?: Record<string, unknown>,
-  ): Promise<Record<string, unknown>> {
+  ): Promise<PaginatedResult<PullJobHistory>> {
     try {
       return await this.adminServiceClient.getAllJobsHistory(
         offset,
@@ -353,8 +355,17 @@ export class JobService {
     reason?: string,
   ): Promise<ISuccess> {
     try {
-      const fileName = `de_${user.tenantId}_${id}`;
 
+      const result = await this.adminServiceClient.updateJobByStatus(
+        id,
+        status,
+        user.tenantId,
+        type,
+        user.token.tokenString,
+        reason,
+      );
+
+      const fileName = `de_${user.tenantId}_${id}`;
       const requiresExistingJob =
         status === JobStatus.APPROVED ||
         status === JobStatus.REVIEW ||
@@ -468,14 +479,7 @@ export class JobService {
         }
       }
 
-      return await this.adminServiceClient.updateJobByStatus(
-        id,
-        status,
-        user.tenantId,
-        type,
-        user.token.tokenString,
-        reason,
-      );
+      return result
     } catch (error: unknown) {
       return this.handleError(error);
     }
