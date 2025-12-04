@@ -34,5 +34,4 @@ export class PushJob {
 
   @Expose()
   updated_at: Date;
-
 }

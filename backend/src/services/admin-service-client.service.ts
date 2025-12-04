@@ -233,7 +233,7 @@ export class AdminServiceClient {
         this.httpService.post(
           `${this.adminServiceUrl}/v1/admin/tcs/job/get/history`,
           {
-            ...filters
+            ...filters,
           },
           {
             headers: {
@@ -733,6 +733,11 @@ export class AdminServiceClient {
         ),
       );
 
+      if (!response.data?.config) {
+        this.logger.warn(`Config ${id} not found in admin-service response`);
+        return null;
+      }
+
       return response.data.config;
     } catch (error) {
       return this.handleError(error, 'getConfigById');
@@ -917,7 +922,7 @@ export class AdminServiceClient {
     configs: any[];
     pagination: { total: number; limit: number; offset: number; pages: number };
   }> {
-    this.logger.log(`Finding configs by status with filters:`, filters);
+    this.logger.log('Finding configs by status with filters:', filters);
 
     try {
       const { limit = 10, offset = 0, ...filterPayload } = filters;

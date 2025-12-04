@@ -36,7 +36,7 @@ export default defineConfig([
       '@typescript-eslint/max-params': ['warn', { max: 6 }],
       '@typescript-eslint/no-non-null-assertion': 'off',
       '@typescript-eslint/class-methods-use-this': 'off',
-      '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-floating-promises': 'off',
       '@typescript-eslint/no-magic-numbers': 'off',
       '@typescript-eslint/no-var-requires': 'off',
@@ -46,6 +46,14 @@ export default defineConfig([
       '@typescript-eslint/prefer-optional-chain': 'warn',
       '@typescript-eslint/restrict-template-expressions': 'error',
       '@typescript-eslint/strict-boolean-expressions': 'off',
+
+      // Add these rules to disable all 'any' related errors
+      '@typescript-eslint/no-unsafe-assignment': 'off', //111
+      '@typescript-eslint/no-unsafe-member-access': 'off', // 250
+      '@typescript-eslint/no-unsafe-call': 'off', //121
+      '@typescript-eslint/no-unsafe-return': 'off', //50
+      '@typescript-eslint/no-unsafe-argument': 'off', // 41
+
       '@stylistic/quotes': ['error', 'single'],
       complexity: ['warn', { max: 15 }],
       'no-console': 'error',

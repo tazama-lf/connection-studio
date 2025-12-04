@@ -149,7 +149,7 @@ export class ConfigService {
           message: 'Invalid payload format. Expected string or object.',
         };
       }
-     
+
       const endpointPath = this.generateEndpointPath(
         tenantId,
         version,
@@ -200,7 +200,7 @@ export class ConfigService {
       );
 
       const msgFam = dto.msgFam || 'unknown';
-      const {transactionType} = dto;
+      const { transactionType } = dto;
       const version = dto.version || 'v1';
 
       let userMessage =
@@ -244,7 +244,7 @@ export class ConfigService {
   }
 
   async submitConfig(
-    id:number,
+    id: number,
     dto: SubmitForApprovalDto,
     user: AuthenticatedUser,
     token:string
@@ -255,33 +255,29 @@ export class ConfigService {
 
 
     const updatedConfig = await this.configRepository.getupdateConfigByStatus(
-        id,
-        ConfigStatus.UNDER_REVIEW,
+      id,
+      ConfigStatus.UNDER_REVIEW,
+      token,
+    );
+
+    if (updatedConfig) {
+      const config = updatedConfig;
+      await this.notificationService.sendWorkflowNotification(
+        EventType.EditorSubmit,
+        user,
+        config,
         token,
+        dto.comment,
       );
-
-
-      
-          if (updatedConfig) {
-            const config = updatedConfig;
-            await this.notificationService.sendWorkflowNotification(
-              EventType.EditorSubmit,
-              user,
-              config,
-              token,
-              dto.comment,
-            );
-          }
-
-      return {
-        success:true,
-        message: `Configuration ${id} submitted for approval successfully`,
-      };
-      
-
     }
+
+    return {
+      success: true,
+      message: `Configuration ${id} submitted for approval successfully`,
+    };
+  }
   async approveConfig(
-    id:number,
+    id: number,
     dto: ApprovalDto,
     user: AuthenticatedUser,
     token:string
@@ -290,10 +286,9 @@ export class ConfigService {
 
     const config = await this.getConfigOrThrow(id, user.tenantId, token);
 
-    const currentStatus = config.status as ConfigStatus;
+    const currentStatus = config.status!;
     const action: WorkflowAction = 'approve';
     this.validateWorkflowAction(user.validClaims || [], currentStatus, action);
-
 
     const updatedConfig = await this.configRepository.getupdateConfigByStatus(
         id,
@@ -313,13 +308,11 @@ export class ConfigService {
             );
           }
 
-      return {
-        success:true,
-        message: `Configuration ${id} has been approved successfully`,
-      };
-      
-
-    }
+    return {
+      success: true,
+      message: `Configuration ${id} has been approved successfully`,
+    };
+  }
 
  async rejectConfig(
     id:number,
@@ -331,57 +324,57 @@ export class ConfigService {
 
     const config = await this.getConfigOrThrow(id, user.tenantId, token);
 
-    const currentStatus = config.status as ConfigStatus;
+    const currentStatus = config.status!;
     const action: WorkflowAction = 'reject';
     this.validateWorkflowAction(user.validClaims || [], currentStatus, action);
 
-
     const updatedConfig = await this.configRepository.getupdateConfigByStatus(
-        id,
-        ConfigStatus.REJECTED,
+      id,
+      ConfigStatus.REJECTED,
+      token,
+      dto.comment,
+    );
+
+    if (updatedConfig) {
+      const config = updatedConfig;
+      await this.notificationService.sendWorkflowNotification(
+        EventType.ApproverReject,
+        user,
+        config,
         token,
         dto.comment,
       );
-
-
-      
-          if (updatedConfig) {
-            const config = updatedConfig;
-            await this.notificationService.sendWorkflowNotification(
-                EventType.ApproverReject,
-                user,
-                config,
-                token,
-                dto.comment,
-            );
-          }
-
-      return {
-        success:true,
-        message: `Configuration ${id} has been rejected successfully`,
-      };
-      
-
     }
+
+    return {
+      success: true,
+      message: `Configuration ${id} has been rejected successfully`,
+    };
+  }
   async exportConfig(
-    id:number,
+    id: number,
     dto: StatusTransitionDto,
     user: AuthenticatedUser,
-    token:string
+    token: string,
   ): Promise<ConfigResponseDto> {
     const config = await this.getConfigOrThrow(id, user.tenantId, token);
 
-    const currentStatus = config.status as ConfigStatus;
+    const currentStatus = config.status!;
     const action: WorkflowAction = 'export';
     this.validateWorkflowAction(user.validClaims || [], currentStatus, action);
 
-    const {tenantId} = user;
+    const { tenantId } = user;
 
     const fileName = `dems_${tenantId}_${id}`;
 
     try {
       const currentStatus = ConfigStatus.READY_FOR_DEPLOYMENT;
-      const configToExport = { ...config, status: currentStatus , msg_fam: config.msgFam, tenant_id: config.tenantId };
+      const configToExport = {
+        ...config,
+        status: currentStatus,
+        msg_fam: config.msgFam,
+        tenant_id: config.tenantId,
+      };
       await this.sftpService.createFile(fileName, {
         ...configToExport,
         status: ConfigStatus.READY_FOR_DEPLOYMENT,
@@ -437,7 +430,7 @@ export class ConfigService {
     let configData: any;
     try {
       this.logger.log(`Reading config file from SFTP: ${fileName}`);
-      configData = await this.sftpService.readFile(fileName) as Config;
+      configData = (await this.sftpService.readFile(fileName)) as Config;
       sftpConfigStatus = configData.status as ConfigStatus;
     }
 
@@ -469,7 +462,7 @@ export class ConfigService {
           createdAt: configData.createdAt || new Date(),
           updatedAt: new Date(),
         };
-   
+
         this.logger.log(
           `Deploying config data - schema length: ${deployedConfigData.schema?.length}, mapping length: ${deployedConfigData.mapping?.length}`,
         );
@@ -493,7 +486,7 @@ export class ConfigService {
         this.logger.log('Credentials present in config');
       }
 
-      const {transactionType} = configData ;
+      const { transactionType } = configData;
       if (transactionType) {
         this.logger.log(
           `Creating table for transaction type: ${transactionType}`,
@@ -508,13 +501,14 @@ export class ConfigService {
       } else {
         this.logger.warn(`No transactionType found in config file ${fileName}`);
       }
-      const {functions} = configData;
+      const { functions } = configData;
       const datamodelFn = Array.isArray(functions)
-    ? functions.find((fn) => fn.functionName === 'addDatamodelTable')
-    : functions;
-    if (datamodelFn)
-        {
-        this.logger.log(`Creating datamodel table as per function: ${functions.functionName}`);
+        ? functions.find((fn) => fn.functionName === 'addDatamodelTable')
+        : functions;
+      if (datamodelFn) {
+        this.logger.log(
+          `Creating datamodel table as per function: ${functions.functionName}`,
+        );
         await this.configRepository.createTazamaDataModelTable(
           datamodelFn.tableName,
           datamodelFn.columns,
@@ -524,9 +518,9 @@ export class ConfigService {
           `Successfully created datamodel table "${functions.parameters.tableName}" from deployed config`,
         );
       }
-      
+
       await this.sftpService.deleteFile(fileName);
-      this.logger.log(`Deleted config file from SFTP: ${fileName}`);      
+      this.logger.log(`Deleted config file from SFTP: ${fileName}`);
 
       const deployedConfig = configData as Config;
       await this.notificationService.sendWorkflowNotification(
@@ -536,7 +530,6 @@ export class ConfigService {
         token,
         dto.comment,
       );
-      
 
       this.logger.log(
         `Successfully updated original config ${id} status to ${newStatus}`,
@@ -619,10 +612,7 @@ export class ConfigService {
     );
   }
 
-  async deleteConfigViaWrite(
-    id: number,
-    token: string,
-  ): Promise<void> {
+  async deleteConfigViaWrite(id: number, token: string): Promise<void> {
     await this.configRepository.deleteConfigViaWrite(id, token);
   }
 

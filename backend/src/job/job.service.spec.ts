@@ -401,7 +401,7 @@ describe('JobService', () => {
     it('should create a push job successfully', async () => {
       const expectedResult = {
         success: true,
-        message: 'Job Created Successfully'
+        message: 'Job Created Successfully',
       };
 
       adminServiceClient.createPushJob.mockResolvedValue(expectedResult);
@@ -427,7 +427,7 @@ describe('JobService', () => {
       const deployedJob = { ...createPushDto, id: mockJobId };
       adminServiceClient.createPushJob.mockResolvedValue({
         success: true,
-        message: 'Job Created Successfully'
+        message: 'Job Created Successfully',
       });
       notifyService.notifyEnrichment.mockResolvedValue(undefined);
 
@@ -447,7 +447,7 @@ describe('JobService', () => {
     it('should throw error if job creation fails', async () => {
       adminServiceClient.createPushJob.mockResolvedValue({
         success: false,
-        message: 'Job creation failed'
+        message: 'Job creation failed',
       });
 
       await expect(
@@ -459,7 +459,9 @@ describe('JobService', () => {
 
     it('should handle validation errors', async () => {
       const errorMessage = 'Validation failed';
-      adminServiceClient.createPushJob.mockRejectedValue(new Error(errorMessage));
+      adminServiceClient.createPushJob.mockRejectedValue(
+        new Error(errorMessage),
+      );
 
       await expect(
         service.createPush(createPushDto as CreatePushJobDto, mockUser),
@@ -475,7 +477,7 @@ describe('JobService', () => {
     it('should create a pull job successfully', async () => {
       const expectedResult = {
         success: true,
-        message: 'Job Created Successfully'
+        message: 'Job Created Successfully',
       };
 
       adminServiceClient.findScheduleById.mockResolvedValue(mockSchedule);
@@ -513,7 +515,7 @@ describe('JobService', () => {
       dryRunService.dryRun.mockResolvedValue(undefined);
       adminServiceClient.createPullJob.mockResolvedValue({
         success: true,
-        message: 'Job Created Successfully'
+        message: 'Job Created Successfully',
       });
 
       await service.createPull(sftpPullJob, mockUser);
@@ -554,11 +556,15 @@ describe('JobService', () => {
       dryRunService.dryRun.mockResolvedValue(undefined);
       adminServiceClient.createPullJob.mockResolvedValue({
         success: true,
-        message: 'Job Created Successfully'
+        message: 'Job Created Successfully',
       });
       notifyService.notifyEnrichment.mockResolvedValue(undefined);
 
-      const result = await service.createPull(deployedJob, mockUser, JobStatus.DEPLOYED);
+      const result = await service.createPull(
+        deployedJob,
+        mockUser,
+        JobStatus.DEPLOYED,
+      );
 
       expect(result.success).toBe(true);
       expect(notifyService.notifyEnrichment).toHaveBeenCalled();
@@ -1041,7 +1047,7 @@ describe('JobService', () => {
         sftpService.readFile.mockResolvedValue(mockPushJob);
         adminServiceClient.createPushJob.mockResolvedValue({
           success: true,
-          message: 'Job Created Successfully'
+          message: 'Job Created Successfully',
         });
         sftpService.deleteFile.mockResolvedValue(undefined);
         notificationService.sendWorkflowNotification.mockResolvedValue(
@@ -1069,7 +1075,7 @@ describe('JobService', () => {
         dryRunService.dryRun.mockResolvedValue(undefined);
         adminServiceClient.createPullJob.mockResolvedValue({
           success: true,
-          message: 'Job Created Successfully'
+          message: 'Job Created Successfully',
         });
         sftpService.deleteFile.mockResolvedValue(undefined);
         notificationService.sendWorkflowNotification.mockResolvedValue(

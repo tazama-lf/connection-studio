@@ -54,7 +54,7 @@ export class PullJobResponseDto {
   schedule_id: string;
 
   @Expose()
-  schedule_name: string
+  schedule_name: string;
 
   @Expose()
   endpoint_name: string;

@@ -642,12 +642,7 @@ describe('SchedulerService', () => {
 
     it('should throw BadRequestException if status is missing', async () => {
       await expect(
-        service.updateStatus(
-          scheduleId,
-          mockTenantId,
-          null as any,
-          mockUser,
-        ),
+        service.updateStatus(scheduleId, mockTenantId, null as any, mockUser),
       ).rejects.toThrow(BadRequestException);
     });
 

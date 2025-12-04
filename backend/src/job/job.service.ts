@@ -40,8 +40,8 @@ export class JobService {
     private readonly notifyService: NotifyService,
     private readonly adminServiceClient: AdminServiceClient,
     private readonly schedulerService: SchedulerService,
-    private readonly notificationService: NotificationService
-  ) { }
+    private readonly notificationService: NotificationService,
+  ) {}
 
   private handleError(err: unknown): never {
     const message = err instanceof Error ? err.message : String(err);
@@ -50,7 +50,7 @@ export class JobService {
   }
 
   private encryptSftpCredentials(
-    connection: SFTPConnectionDto
+    connection: SFTPConnectionDto,
   ): SFTPConnectionDto {
     const encryptedConnection = { ...connection };
 
@@ -70,12 +70,17 @@ export class JobService {
     id: string,
     job: UpdatePushJobDto | UpdatePullJobDto,
     type: ConfigType,
-    user: AuthenticatedUser
+    user: AuthenticatedUser,
   ): Promise<ISuccess> {
     const existingJob = await this.findOne(id, type, user.token.tokenString);
 
-    if (existingJob.status !== JobStatus.INPROGRESS && existingJob.status !== JobStatus.REJECTED) {
-      throw new ForbiddenException('Only In-Progress/Rejected jobs can be edited');
+    if (
+      existingJob.status !== JobStatus.INPROGRESS &&
+      existingJob.status !== JobStatus.REJECTED
+    ) {
+      throw new ForbiddenException(
+        'Only In-Progress/Rejected jobs can be edited',
+      );
     }
 
     let updatedJob: UpdatePushJobDto | UpdatePullJobDto = {
@@ -89,10 +94,7 @@ export class JobService {
         validateFileType(pullJob.file.path);
       }
 
-      if (
-        pullJob.source_type === SourceType.SFTP &&
-        pullJob.connection
-      ) {
+      if (pullJob.source_type === SourceType.SFTP && pullJob.connection) {
         const sftpConn = pullJob.connection as SFTPConnectionDto;
         updatedJob = {
           ...updatedJob,
@@ -101,7 +103,12 @@ export class JobService {
       }
     }
 
-    return await this.adminServiceClient.updateJob(id, updatedJob, type, user.token.tokenString);
+    return await this.adminServiceClient.updateJob(
+      id,
+      updatedJob,
+      type,
+      user.token.tokenString,
+    );
   }
 
   async createPush(
@@ -110,7 +117,6 @@ export class JobService {
     status: JobStatus = JobStatus.INPROGRESS,
   ): Promise<ISuccess> {
     try {
-
       const id = job.id ? job.id : v4();
 
       const path =
@@ -145,7 +151,6 @@ export class JobService {
     status: JobStatus = JobStatus.INPROGRESS,
   ): Promise<ISuccess> {
     try {
-
       const exist = await this.adminServiceClient.findScheduleById(
         job.schedule_id,
         user.token.tokenString,
@@ -231,7 +236,7 @@ export class JobService {
         offset,
         limit,
         user,
-        filters
+        filters,
       );
     } catch (error: unknown) {
       return this.handleError(error);
@@ -241,47 +246,42 @@ export class JobService {
   async findOne(
     id: string,
     type: ConfigType,
-    token: string
+    token: string,
   ): Promise<Job & { schedule_name?: string }> {
     try {
       if (!id) {
         throw new BadRequestException('id is required.');
       }
 
-      const tableName =
-        type === ConfigType.PUSH ? 'push_jobs' : 'pull_jobs';
+      const tableName = type === ConfigType.PUSH ? 'push_jobs' : 'pull_jobs';
 
       const record = await this.adminServiceClient.findJobById(
         id,
         tableName,
-        token
+        token,
       );
 
       if (!record) {
         throw new BadRequestException(
-          `${type === ConfigType.PUSH ? 'Push Job' : 'Pull Job'} with id ${id} not found.`
+          `${type === ConfigType.PUSH ? 'Push Job' : 'Pull Job'} with id ${id} not found.`,
         );
       }
 
       if (!record.schedule_id) {
-        this.loggerService.log('Schedule ID not found')
+        this.loggerService.log('Schedule ID not found');
         return record;
       }
 
       const schedule = await this.schedulerService.findOne(
         record.schedule_id,
-        token
+        token,
       );
 
-      return schedule
-        ? { ...record, schedule_name: schedule.name }
-        : record;
-
+      return schedule ? { ...record, schedule_name: schedule.name } : record;
     } catch (err) {
       return this.handleError(err);
     }
   }
-
 
   async findByStatus(
     status: JobStatus,
@@ -316,23 +316,25 @@ export class JobService {
     user: AuthenticatedUser,
   ): Promise<ISuccess> {
     try {
-      const { success, data } = await this.adminServiceClient.updateJobActivation(
-        id,
-        status,
-        type,
-        user.token.tokenString,
-      );
+      const { success, data } =
+        await this.adminServiceClient.updateJobActivation(
+          id,
+          status,
+          type,
+          user.token.tokenString,
+        );
 
       if (success) {
         await this.notifyService.notifyEnrichment(id, type);
         await this.notificationService.sendWorkflowNotification(
-          status === ScheduleStatus.ACTIVE ? EventType.PublisherActivate : EventType.PublisherDeactivate,
+          status === ScheduleStatus.ACTIVE
+            ? EventType.PublisherActivate
+            : EventType.PublisherDeactivate,
           user,
           data,
           user.token.tokenString,
-        )
+        );
       }
-
 
       return {
         success: true,
@@ -372,7 +374,7 @@ export class JobService {
             user,
             { ...existingJob, status: JobStatus.REVIEW } as Job,
             user.token.tokenString,
-          )
+          );
           break;
         }
         case JobStatus.APPROVED: {
@@ -381,7 +383,7 @@ export class JobService {
             user,
             { ...existingJob, status: JobStatus.APPROVED } as Job,
             user.token.tokenString,
-          )
+          );
           break;
         }
         case JobStatus.REJECTED: {
@@ -396,12 +398,11 @@ export class JobService {
             user,
             { ...existingJob, status: JobStatus.REJECTED } as Job,
             user.token.tokenString,
-          )
+          );
           break;
         }
 
         case JobStatus.EXPORTED: {
-
           await this.sftpService.createFile(fileName, {
             ...existingJob,
             status: JobStatus.READY,
@@ -411,7 +412,7 @@ export class JobService {
             user,
             { ...existingJob, status: JobStatus.EXPORTED } as Job,
             user.token.tokenString,
-          )
+          );
 
           break;
         }
@@ -419,12 +420,18 @@ export class JobService {
         case JobStatus.DEPLOYED: {
           const fileData = await this.sftpService.readFile(fileName);
 
-          let deployPayload = { ...fileData, publishing_status: ScheduleStatus.ACTIVE };
+          let deployPayload = {
+            ...fileData,
+            publishing_status: ScheduleStatus.ACTIVE,
+          };
 
           if (type === ConfigType.PULL) {
             const connection = { ...fileData.connection } as SFTPConnection;
 
-            if (connection.auth_type === AuthType.USERNAME_PASSWORD && connection.password) {
+            if (
+              connection.auth_type === AuthType.USERNAME_PASSWORD &&
+              connection.password
+            ) {
               connection.password = decrypt(connection.password);
             } else connection.private_key &&= decrypt(connection.private_key);
 
@@ -452,7 +459,7 @@ export class JobService {
             user,
             { ...fileData, status: JobStatus.DEPLOYED },
             user.token.tokenString,
-          )
+          );
 
           return {
             success: true,
@@ -473,5 +480,4 @@ export class JobService {
       return this.handleError(error);
     }
   }
-
 }

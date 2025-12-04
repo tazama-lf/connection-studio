@@ -1,9 +1,22 @@
-import { Controller, Get, Post, Body, Param, ParseIntPipe } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  ParseIntPipe,
+} from '@nestjs/common';
 import { TazamaDataModelService } from './tazama-data-model.service';
-import { TazamaDataModelRepository } from './tazama-data-model.repository';
-import { DatabaseService } from '../database/database.service';
-import type { CreateDestinationTypeDto, CreateFieldDto, DestinationTypeResponse, FieldResponse } from './tazama-data-model.dto';
-import { TazamaDestinationPath, TazamaFieldType } from './tazama-data-model.interfaces';
+import type {
+  CreateDestinationTypeDto,
+  CreateFieldDto,
+  DestinationTypeResponse,
+  FieldResponse,
+} from './tazama-data-model.dto';
+import {
+  TazamaDestinationPath,
+  TazamaFieldType,
+} from './tazama-data-model.interfaces';
 
 interface DestinationOption {
   value: TazamaDestinationPath;
@@ -24,7 +37,11 @@ export class TazamaDataModelController {
     private readonly tazamaDataModelService: TazamaDataModelService,
   ) {}
   @Get('destination-options')
-  async getDestinationOptions(): Promise<{ success: boolean; data: DestinationOption[]; error?: string }> {
+  async getDestinationOptions(): Promise<{
+    success: boolean;
+    data: DestinationOption[];
+    error?: string;
+  }> {
     try {
       const data = await this.tazamaDataModelService.getDestinationOptions();
       return {
@@ -32,7 +49,8 @@ export class TazamaDataModelController {
         data,
       };
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
       return {
         success: false,
         error: errorMessage,
@@ -45,10 +63,10 @@ export class TazamaDataModelController {
    * Create a new destination type (collection)
    */
   @Post('destination-types')
-  async createDestinationType(@Body() dto: CreateDestinationTypeDto): Promise<{ 
-    success: boolean; 
-    message: string; 
-    data: DestinationTypeResponse | null 
+  async createDestinationType(@Body() dto: CreateDestinationTypeDto): Promise<{
+    success: boolean;
+    message: string;
+    data: DestinationTypeResponse | null;
   }> {
     try {
       const data = await this.tazamaDataModelService.createDestinationType(dto);
@@ -58,7 +76,8 @@ export class TazamaDataModelController {
         data,
       };
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
       return {
         success: false,
         message: errorMessage,
@@ -74,16 +93,24 @@ export class TazamaDataModelController {
   async addFieldToDestinationType(
     @Param('destinationTypeId', ParseIntPipe) destinationTypeId: number,
     @Body() dto: CreateFieldDto,
-  ): Promise<{ success: boolean; message: string; data: FieldResponse | null }> {
+  ): Promise<{
+    success: boolean;
+    message: string;
+    data: FieldResponse | null;
+  }> {
     try {
-      const data = await this.tazamaDataModelService.addFieldToDestinationType(destinationTypeId, dto);
+      const data = await this.tazamaDataModelService.addFieldToDestinationType(
+        destinationTypeId,
+        dto,
+      );
       return {
         success: true,
         message: 'Field added successfully',
         data,
       };
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
       return {
         success: false,
         message: errorMessage,

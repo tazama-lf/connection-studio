@@ -10,9 +10,15 @@ import { ConfigService } from '@nestjs/config';
 import { NotificationModule } from 'src/notification/notification.module';
 
 @Module({
-  imports: [LoggerModule, DatabaseModule, SftpModule, HttpModule, NotificationModule],
+  imports: [
+    LoggerModule,
+    DatabaseModule,
+    SftpModule,
+    HttpModule,
+    NotificationModule,
+  ],
   providers: [SchedulerService, AdminServiceClient, ConfigService],
   controllers: [SchedulerController],
   exports: [AdminServiceClient, SchedulerService],
 })
-export class SchedulerModule { }
+export class SchedulerModule {}
