@@ -9,8 +9,6 @@ import { AdminServiceClient } from '../services/admin-service-client.service';
 import { SftpModule } from '../sftp/sftp.module';
 import { NotificationModule } from '../notification/notification.module';
 import { NotifyModule } from '../notify/notify.module';
-import { ConfigService as NestConfigService } from '@nestjs/config';
-import { DatabaseService } from '@tazama-lf/tcs-lib';
 
 @Module({
   imports: [
@@ -27,20 +25,6 @@ import { DatabaseService } from '@tazama-lf/tcs-lib';
     ConfigRepository,
     ConfigWorkflowService,
     AdminServiceClient,
-    {
-      provide: DatabaseService,
-      useFactory: (nestConfigService: NestConfigService) => {
-        const dbConfig = {
-          host: nestConfigService.get<string>('DB_HOST') || 'localhost',
-          port: nestConfigService.get<number>('DB_PORT') || 5432,
-          database: nestConfigService.get<string>('DB_NAME') || 'postgres',
-          user: nestConfigService.get<string>('DB_USER') || 'postgres',
-          password: nestConfigService.get<string>('DB_PASS') || 'newpassword',
-        };
-        return new DatabaseService(dbConfig);
-      },
-      inject: [NestConfigService],
-    },
   ],
   exports: [
     ConfigService,

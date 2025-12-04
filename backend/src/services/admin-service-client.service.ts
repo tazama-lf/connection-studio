@@ -849,27 +849,6 @@ export class AdminServiceClient {
   }
 
 
-  async getPendingApprovals(token: string): Promise<any[]> {
-    this.logger.log('Getting pending approvals');
-
-    try {
-      const response = await firstValueFrom(
-        this.httpService.get(
-          `${this.adminServiceUrl}/v1/admin/tcs/config/pending-approvals`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          },
-        ),
-      );
-
-      return response.data.configs || [];
-    } catch (error) {
-      return this.handleError(error, 'getPendingApprovals');
-    }
-  }
-
   async runRawQuery(query: string, token: string): Promise<any> {
     this.logger.log('Executing raw SQL query via admin-service');
 

@@ -16,7 +16,6 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { ConfigService } from './config.service';
-// import { NotificationService } from '../notification/notification.service';
 import { TazamaAuthGuard } from '../auth/tazama-auth.guard';
 import { User } from '../auth/user.decorator';
 import type { AuthenticatedUser } from '../auth/auth.types';
@@ -37,14 +36,12 @@ import {
   TazamaClaims,
   RequireAnyClaims,
 } from '../auth/auth.decorator';
-import { EventType } from 'src/enums/events.enum';
 
 @Controller('config')
 @UseGuards(TazamaAuthGuard)
 export class ConfigController {
   constructor(
     private readonly configService: ConfigService,
-    // private readonly notificationService: NotificationService,
   ) {}
 
 
@@ -105,19 +102,7 @@ export class ConfigController {
       validation: result.validation,
     };
   }
-  // @Get('pending-approvals/:offset/:limit')
-  // @RequireClaims(TazamaClaims.APPROVER)
-  // async getPendingApprovals(
-  //   @Param('offset') offset: string,
-  //   @Param('limit') limit: string,
-  //   @User() user: AuthenticatedUser,
-  // ): Promise<ConfigResponseDto[]> {
-  //   return await this.configService.getPendingApprovals(
-  //     parseInt(offset),
-  //     parseInt(limit),
-  //     user.token.tokenString,
-  //   );
-  // }
+
 
  
   @Get(':id')

@@ -1,5 +1,5 @@
 import { IsString, IsOptional, IsEnum, IsObject } from 'class-validator';
-import { ContentType } from './create-config.dto';
+import { ContentType } from '@tazama-lf/tcs-lib';
 
 export class UpdateConfigDto {
   @IsString()
