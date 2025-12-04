@@ -21,8 +21,8 @@ export class SchedulerService {
     private readonly loggerService: LoggerService,
     private readonly sftpService: SftpService,
     private readonly adminServiceClient: AdminServiceClient,
-    private readonly notificationService: NotificationService
-  ) { }
+    private readonly notificationService: NotificationService,
+  ) {}
 
   async create(
     schedule: CreateScheduleJobDto,
@@ -78,7 +78,10 @@ export class SchedulerService {
     try {
       const existingSchedule = await this.findOne(id, token);
 
-      if (existingSchedule?.status !== JobStatus.INPROGRESS && existingSchedule?.status !== JobStatus.REJECTED) {
+      if (
+        existingSchedule?.status !== JobStatus.INPROGRESS &&
+        existingSchedule?.status !== JobStatus.REJECTED
+      ) {
         throw new ForbiddenException(
           'Only In-Progress Cron jobs can be edited',
         );
@@ -159,7 +162,7 @@ export class SchedulerService {
             user,
             { ...existing, status: JobStatus.REVIEW } as Schedule,
             user.token.tokenString,
-          )
+          );
           break;
         }
         case JobStatus.APPROVED: {
@@ -168,7 +171,7 @@ export class SchedulerService {
             user,
             { ...existing, status: JobStatus.APPROVED } as Schedule,
             user.token.tokenString,
-          )
+          );
           break;
         }
         case JobStatus.REJECTED: {
@@ -183,7 +186,7 @@ export class SchedulerService {
             user,
             { ...existing, status: JobStatus.REJECTED } as Schedule,
             user.token.tokenString,
-          )
+          );
           break;
         }
         case JobStatus.EXPORTED: {
@@ -197,22 +200,25 @@ export class SchedulerService {
             user,
             { ...existing, status: JobStatus.EXPORTED } as Schedule,
             user.token.tokenString,
-          )
+          );
           break;
         }
         case JobStatus.DEPLOYED: {
           const fileData = await this.sftpService.readFile(fileName);
-          await this.create(fileData, tenantId, user.token.tokenString, JobStatus.DEPLOYED);
+          await this.create(
+            fileData,
+            tenantId,
+            user.token.tokenString,
+            JobStatus.DEPLOYED,
+          );
           await this.sftpService.deleteFile(fileName);
-
 
           await this.notificationService.sendWorkflowNotification(
             EventType.PublisherDeploy,
             user,
             { ...fileData, status: JobStatus.DEPLOYED },
             user.token.tokenString,
-          )
-
+          );
 
           return {
             success: true,

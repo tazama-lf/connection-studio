@@ -650,8 +650,6 @@ describe('ConfigController', () => {
         expect(result).toEqual(mockStatus);
       });
     });
-
-  
   });
 
   describe('updatePublishingStatus', () => {

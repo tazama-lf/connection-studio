@@ -1,7 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
-import { TazamaCollectionSchema, TazamaField } from './tazama-data-model.interfaces';
-import { CreateDestinationTypeDto, CreateFieldDto, DestinationTypeResponse, FieldResponse } from './tazama-data-model.dto';
+import {
+  TazamaCollectionSchema,
+  TazamaField,
+} from './tazama-data-model.interfaces';
+import {
+  CreateDestinationTypeDto,
+  CreateFieldDto,
+  DestinationTypeResponse,
+  FieldResponse,
+} from './tazama-data-model.dto';
 
 interface CollectionRow {
   destination_type_id: number;
@@ -45,12 +53,13 @@ interface ExistsRow {
 export class TazamaDataModelRepository {
   constructor(private readonly databaseService: DatabaseService) {}
 
-
-  // used 
+  // used
   /**
    * Get all collections from the database
    */
-  async getAllCollections(tenantId = 'default'): Promise<TazamaCollectionSchema[]> {
+  async getAllCollections(
+    tenantId = 'default',
+  ): Promise<TazamaCollectionSchema[]> {
     const query = `
       SELECT 
         dt.destination_type_id,
@@ -64,13 +73,15 @@ export class TazamaDataModelRepository {
       WHERE d.tenant_id = $1
       ORDER BY dt.name
     `;
-    
-    const result = await this.databaseService.query(query, [tenantId]) as DatabaseResult<CollectionRow>;
-    
+
+    const result = (await this.databaseService.query(query, [
+      tenantId,
+    ])) as DatabaseResult<CollectionRow>;
+
     // Process collections concurrently to avoid no-await-in-loop
     const collectionsPromises = result.rows.map(async (row) => {
       const fields = await this.getCollectionFields(row.destination_type_id);
-      
+
       return {
         name: row.collection_name,
         type: row.collection_type,
@@ -78,18 +89,18 @@ export class TazamaDataModelRepository {
         fields,
       };
     });
-    
+
     const collections = await Promise.all(collectionsPromises);
     return collections;
   }
 
-
- 
   // help for the above getCollectionField
   /**
    * Get all fields for a collection with nested object support
    */
-  private async getCollectionFields(collectionId: number): Promise<TazamaField[]> {
+  private async getCollectionFields(
+    collectionId: number,
+  ): Promise<TazamaField[]> {
     const query = `
       SELECT 
         dtf.field_id,
@@ -103,13 +114,15 @@ export class TazamaDataModelRepository {
       WHERE dtf.collection_id = $1 AND dtf.is_active = true
       ORDER BY dtf.serial_no, dtf.field_id
     `;
-    
-    const result = await this.databaseService.query(query, [collectionId]) as DatabaseResult<FieldRow>;
-    
+
+    const result = (await this.databaseService.query(query, [
+      collectionId,
+    ])) as DatabaseResult<FieldRow>;
+
     // Separate root fields and nested fields
     const rootFields: FieldRow[] = [];
     const nestedFieldsMap = new Map<number, FieldRow[]>();
-    
+
     for (const row of result.rows) {
       if (row.parent_id === null) {
         // Root field
@@ -122,61 +135,71 @@ export class TazamaDataModelRepository {
         nestedFieldsMap.get(row.parent_id)!.push(row);
       }
     }
-    
+
     // Build the hierarchical structure
     const fields: TazamaField[] = [];
-    
+
     for (const rootField of rootFields) {
       const tazamaField: TazamaField = {
         name: rootField.field_name,
-        type: rootField.field_type as 'string' | 'number' | 'boolean' | 'object' | 'date',
+        type: rootField.field_type as
+          | 'string'
+          | 'number'
+          | 'boolean'
+          | 'object'
+          | 'date',
         required: false, // We removed is_required from schema
         parent_id: rootField.parent_id,
         serial_no: rootField.serial_no,
         collection_id: rootField.collection_id,
       };
-      
+
       // If this is an object type, add nested properties
       if (rootField.field_type === 'object') {
         const nestedFields = nestedFieldsMap.get(rootField.serial_no) ?? [];
-        tazamaField.properties = nestedFields.map(nf => ({
+        tazamaField.properties = nestedFields.map((nf) => ({
           name: nf.field_name,
-          type: nf.field_type as 'string' | 'number' | 'boolean' | 'object' | 'date',
+          type: nf.field_type as
+            | 'string'
+            | 'number'
+            | 'boolean'
+            | 'object'
+            | 'date',
           required: false,
           parent_id: nf.parent_id,
           serial_no: nf.serial_no,
           collection_id: nf.collection_id,
         }));
       }
-      
+
       fields.push(tazamaField);
     }
-    
+
     return fields;
   }
-
 
   // use
   /**
    * Create a new destination type (collection)
    */
-  async createDestinationType(dto: CreateDestinationTypeDto): Promise<DestinationTypeResponse> {
+  async createDestinationType(
+    dto: CreateDestinationTypeDto,
+  ): Promise<DestinationTypeResponse> {
     const query = `
       INSERT INTO destination_type (collection_type, name, description, destination_id, created_at, updated_at)
       VALUES ($1, $2, $3, $4, NOW(), NOW())
       RETURNING destination_type_id, collection_type, name, description, destination_id, created_at
     `;
 
-    const result = await this.databaseService.query(query, [
+    const result = (await this.databaseService.query(query, [
       dto.collection_type,
       dto.name,
       dto.description ?? null,
       dto.destination_id,
-    ]) as DatabaseResult<CreateDestinationTypeRow>;
+    ])) as DatabaseResult<CreateDestinationTypeRow>;
 
     return result.rows[0] as DestinationTypeResponse;
   }
-
 
   // use
   /**
@@ -186,7 +209,9 @@ export class TazamaDataModelRepository {
     const query = `
       SELECT destination_type_id FROM destination_type WHERE destination_type_id = $1
     `;
-    const result = await this.databaseService.query(query, [destinationTypeId]) as DatabaseResult<ExistsRow>;
+    const result = (await this.databaseService.query(query, [
+      destinationTypeId,
+    ])) as DatabaseResult<ExistsRow>;
     return result.rows.length > 0;
   }
 
@@ -199,7 +224,9 @@ export class TazamaDataModelRepository {
       FROM destination_type_fields
       WHERE collection_id = $1 AND parent_id IS NULL
     `;
-    const result = await this.databaseService.query(query, [destinationTypeId]) as DatabaseResult<SerialNumberRow>;
+    const result = (await this.databaseService.query(query, [
+      destinationTypeId,
+    ])) as DatabaseResult<SerialNumberRow>;
     return result.rows[0].next_serial;
   }
 
@@ -207,9 +234,9 @@ export class TazamaDataModelRepository {
    * Add a field to a destination type
    */
   async addFieldToDestinationType(
-    destinationTypeId: number, 
-    dto: CreateFieldDto, 
-    serialNo?: number
+    destinationTypeId: number,
+    dto: CreateFieldDto,
+    serialNo?: number,
   ): Promise<FieldResponse> {
     const query = `
       INSERT INTO destination_type_fields (name, field_type, parent_id, is_active, serial_no, collection_id)
@@ -217,14 +244,14 @@ export class TazamaDataModelRepository {
       RETURNING field_id, name, field_type, parent_id, is_active, serial_no, collection_id
     `;
 
-    const result = await this.databaseService.query(query, [
+    const result = (await this.databaseService.query(query, [
       dto.name,
       dto.field_type,
       dto.parent_id ?? null,
       dto.is_active ?? true,
       serialNo ?? null,
       destinationTypeId,
-    ]) as DatabaseResult<FieldRow>;
+    ])) as DatabaseResult<FieldRow>;
 
     const [row] = result.rows;
     return {

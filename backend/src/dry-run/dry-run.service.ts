@@ -127,7 +127,7 @@ export class DryRunService {
 
   private async dryRunSftpJob(job: CreatePullJobDto): Promise<void> {
     const sftpCon = job.connection as SFTPConnection;
-    const {file} = job;
+    const { file } = job;
     let sftp = new SFTPClient();
 
     try {
@@ -135,8 +135,9 @@ export class DryRunService {
 
       if (!file?.path) throw new Error('File path not provided in job config');
       const fileExists = await sftp.exists(file.path);
-      if (!fileExists)
-        {throw new Error(`File ${file.path} not found on SFTP server`);}
+      if (!fileExists) {
+        throw new Error(`File ${file.path} not found on SFTP server`);
+      }
 
       const records = await this.transformFileToJSON(sftp, file);
 
@@ -156,9 +157,9 @@ export class DryRunService {
   async dryRun(job: CreatePullJobDto): Promise<void> {
     try {
       if (job.source_type === SourceType.HTTP) {
-        await this.dryRunHttpJob(job); 
+        await this.dryRunHttpJob(job);
       } else {
-        await this.dryRunSftpJob(job); 
+        await this.dryRunSftpJob(job);
       }
     } catch (error: any) {
       this.loggerService.error(`Dry run failed, ${error.message}`);

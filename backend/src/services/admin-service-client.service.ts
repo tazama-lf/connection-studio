@@ -233,7 +233,7 @@ export class AdminServiceClient {
         this.httpService.post(
           `${this.adminServiceUrl}/v1/admin/tcs/job/get/history`,
           {
-            ...filters
+            ...filters,
           },
           {
             headers: {
@@ -733,7 +733,7 @@ export class AdminServiceClient {
         ),
       );
 
-      if (!response.data || !response.data.config) {
+      if (!response.data?.config) {
         this.logger.warn(`Config ${id} not found in admin-service response`);
         return null;
       }
@@ -856,7 +856,6 @@ export class AdminServiceClient {
     }
   }
 
-
   async getPendingApprovals(token: string): Promise<any[]> {
     this.logger.log('Getting pending approvals');
 
@@ -946,7 +945,7 @@ export class AdminServiceClient {
     configs: any[];
     pagination: { total: number; limit: number; offset: number; pages: number };
   }> {
-    this.logger.log(`Finding configs by status with filters:`, filters);
+    this.logger.log('Finding configs by status with filters:', filters);
 
     try {
       const { limit = 10, offset = 0, ...filterPayload } = filters;

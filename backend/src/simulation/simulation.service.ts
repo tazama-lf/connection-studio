@@ -54,9 +54,7 @@ export interface SimulationResult {
 export class SimulationService {
   private readonly logger = new Logger(SimulationService.name);
 
-  constructor(
-    private readonly adminServiceClient: AdminServiceClient,
-  ) {}
+  constructor(private readonly adminServiceClient: AdminServiceClient) {}
 
   async simulateMapping(
     dto: SimulatePayloadDto,
@@ -69,9 +67,6 @@ export class SimulationService {
     const errors: SimulationError[] = [];
     let transformedPayload: unknown = {};
     let tcsResult: iMappingResult | null = null;
-    let enhancedPayload: any;
-    let mappingsApplied: number = 0;
-
 
     try {
       if (!dto.endpointId || isNaN(dto.endpointId)) {
@@ -109,7 +104,7 @@ export class SimulationService {
           },
         };
       }
-      const {endpointId} = dto;
+      const { endpointId } = dto;
 
       // first stage
       const configStage = await this.stageLoadConfig(
@@ -134,7 +129,7 @@ export class SimulationService {
       }
 
       //config is gotten from configStage.details
-      const {config} = (configStage.details as { config: Config });
+      const { config } = configStage.details as { config: Config };
 
       // second stage
       const parseStage = await this.stageParsePayload(
@@ -158,8 +153,10 @@ export class SimulationService {
         );
       }
 
-      const parseDetails = parseStage.details as { parsedPayload: Record<string, unknown> };
-      const {parsedPayload} = parseDetails;
+      const parseDetails = parseStage.details as {
+        parsedPayload: Record<string, unknown>;
+      };
+      const { parsedPayload } = parseDetails;
 
       const cleanedSchema = this.cleanSchemaForXML(config.schema);
 
@@ -231,24 +228,18 @@ export class SimulationService {
           );
         }
 
-        const tcsDetails = tcsStage.details as { tcsResult: iMappingResult; mappingsApplied: number };
+        const tcsDetails = tcsStage.details as {
+          tcsResult: iMappingResult;
+          mappingsApplied: number;
+        };
         const { tcsResult: extractedTcsResult } = tcsDetails;
         tcsResult = extractedTcsResult;
-
-        // yeh bilkul theek hai VIP
-
-        //ismei bhand hai ig
-        const mappingDetails = this.buildMappingDetails(
-          config.mapping ?? [],
-          parsedPayload,
-          extractedTcsResult,
-        );
 
 
         transformedPayload = {
           originalPayload: parsedPayload,
-          dataCache: extractedTcsResult?.dataCache ?? {},
-          endToEndId: extractedTcsResult?.endToEndId ?? null,
+          dataCache: extractedTcsResult?.dataCache,
+          endToEndId: extractedTcsResult?.endToEndId,
           mappings: config.mapping,
         };
       } else {
@@ -279,7 +270,8 @@ export class SimulationService {
         transformedPayload,
       );
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
       stages.push({
         name: 'System Error',
         status: 'FAILED',
@@ -345,7 +337,8 @@ export class SimulationService {
         details: { config },
       };
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
       return {
         name: '1. Load Configuration',
         status: 'FAILED',
@@ -368,7 +361,8 @@ export class SimulationService {
         details: { parsedPayload, payloadType },
       };
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
       return {
         name: '2. Parse Payload',
         status: 'FAILED',
@@ -439,7 +433,6 @@ export class SimulationService {
     providedMapping?: iMappingConfiguration,
   ): Promise<ValidationStage> {
     try {
-
       // tcsMapping yahan banti hai
       const tcsMapping = config.mapping ?? [];
       // const tcsMapping = providedMapping;
@@ -450,15 +443,8 @@ export class SimulationService {
       let tcsResult;
 
       try {
-  
-
         // are we sedning the right stuff?
-        tcsResult = await processMappings(
-          payload,
-          tcsMapping,
-          endpoint,
-        );
-
+        tcsResult = await processMappings(payload, tcsMapping, endpoint);
       } catch (mappingError: any) {
         if (mappingError.message?.includes('loggerService')) {
           this.logger.error(
@@ -481,14 +467,16 @@ export class SimulationService {
         details: {
           mappingsApplied,
           tcsResult: tcsResult ?? null,
-          dataCache: (tcsResult as any)?.dataCache ?? {},
-          transactionRelationship: (tcsResult as any)?.transactionRelationship ?? {},
-          endToEndId: (tcsResult as any)?.endToEndId ?? '',
+          dataCache: (tcsResult)?.dataCache ?? {},
+          transactionRelationship:
+            (tcsResult)?.transactionRelationship ?? {},
+          endToEndId: (tcsResult)?.endToEndId ?? '',
         },
       };
     } catch (error: unknown) {
       this.logger.error('TCS mapping execution failed:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
       const errorStack = error instanceof Error ? error.stack : undefined;
       return {
         name: '5. Execute TCS Mapping Functions',
@@ -504,338 +492,329 @@ export class SimulationService {
       };
     }
   }
-  private convertConfigToTCSMapping(config: Config): {
-    mappings?: Array<{
-      destination: string;
-      source: string[];
-      separator?: string;
-      prefix?: string;
-      suffix?: string;
-    }>;
-  } {
-    const mappings: Array<{
-      destination: string;
-      source: string[];
-      separator?: string;
-      prefix?: string;
-    }> = [];
+  // private convertConfigToTCSMapping(config: Config): {
+  //   mappings?: Array<{
+  //     destination: string;
+  //     source: string[];
+  //     separator?: string;
+  //     prefix?: string;
+  //     suffix?: string;
+  //   }>;
+  // } {
+  //   const mappings: Array<{
+  //     destination: string;
+  //     source: string[];
+  //     separator?: string;
+  //     prefix?: string;
+  //   }> = [];
 
-    if (config.mapping && Array.isArray(config.mapping)) {
-      for (const mapping of config.mapping) {
-        const source = mapping.source ?? [];
+  //   if (config.mapping && Array.isArray(config.mapping)) {
+  //     for (const mapping of config.mapping) {
+  //       const source = mapping.source ?? [];
 
-        const normalizedSources = (
-          Array.isArray(source) ? source : [source]
-        ).map((source) => source.replace(/\[(\d+)\]/g, '.$1'));
-        if (
-          mapping.transformation === 'SPLIT' &&
-          Array.isArray(mapping.destination)
-        ) {
-          for (const [index, destination] of mapping.destination.entries()) {
-            mappings.push({
-              destination: destination || '',
-              source: normalizedSources,
-              separator: mapping.delimiter || ' ',
-              prefix: mapping.prefix,
-            });
-          }
-        } else {
-          const destination = Array.isArray(mapping.destination)
-            ? mapping.destination[0]
-            : mapping.destination;
+  //       const normalizedSources = (
+  //         Array.isArray(source) ? source : [source]
+  //       ).map((source) => source.replace(/\[(\d+)\]/g, '.$1'));
+  //       if (
+  //         mapping.transformation === 'SPLIT' &&
+  //         Array.isArray(mapping.destination)
+  //       ) {
+  //         for (const [index, destination] of mapping.destination.entries()) {
+  //           mappings.push({
+  //             destination: destination || '',
+  //             source: normalizedSources,
+  //             separator: mapping.delimiter || ' ',
+  //             prefix: mapping.prefix,
+  //           });
+  //         }
+  //       } else {
+  //         const destination = Array.isArray(mapping.destination)
+  //           ? mapping.destination[0]
+  //           : mapping.destination;
 
-          const separator =
-            mapping.transformation === 'CONCAT' ? mapping.delimiter ?? ' ' : '';
+  //         const separator =
+  //           mapping.transformation === 'CONCAT'
+  //             ? (mapping.delimiter ?? ' ')
+  //             : '';
 
-          mappings.push({
-            destination: destination || '',
-            source: normalizedSources,
-            separator,
-            prefix: mapping.prefix,
-          });
-        }
-      }
-    }
-
-    return { mappings };
-  }
-
-  // handling multiple destinations for single source - split value usecase
-  // if (typeof destination !== 'string' || typeof type !== 'string') {
-  //   const sourceValue = getValueByPath<string>(payload, mapping.source[0]);
-  //   const splitValues = sourceValue.split(mapping.delimiter);
-
-  //   for (let j = 0; j < mapping.destination.length; j++) {
-  //     const dest = mapping.destination[j].split('.')[1];
-  //     const destType = mapping.destination[j].split('.')[0];
-
-  //     if (destType === 'redis') {
-  //       dataCache[dest] = splitValues[j];
-  //     }
-  //     if (destType === 'transactionDetails') {
-  //       transactionRelationship[dest] = splitValues[j];
+  //         mappings.push({
+  //           destination: destination || '',
+  //           source: normalizedSources,
+  //           separator,
+  //           prefix: mapping.prefix,
+  //         });
+  //       }
   //     }
   //   }
-  //   continue;
+
+  //   return { mappings };
   // }
 
-  private buildMappingDetails(
-    mappings: FieldMapping[],
-    originalPayload: Record<string, unknown>,
-    tcsResult: iMappingResult | null,
-  ): Array<{
-    destination: string;
-    sources: string[];
-    sourceValues: unknown[];
-    transformation: string;
-    resultValue: unknown;
-    prefix?: string;
-    delimiter?: string;
-    constantValue?: unknown;
-    operator?: string;
-  }> {
-    const details: Array<{
-      destination: string;
-      sources: string[];
-      sourceValues: unknown[];
-      transformation: string;
-      resultValue: unknown;
-      prefix?: string;
-      delimiter?: string;
-      constantValue?: unknown;
-      operator?: string;
-    }> = [];
+  // private buildMappingDetails(
+  //   mappings: FieldMapping[],
+  //   originalPayload: Record<string, unknown>,
+  //   tcsResult: iMappingResult | null,
+  // ): Array<{
+  //   destination: string;
+  //   sources: string[];
+  //   sourceValues: unknown[];
+  //   transformation: string;
+  //   resultValue: unknown;
+  //   prefix?: string;
+  //   delimiter?: string;
+  //   constantValue?: unknown;
+  //   operator?: string;
+  // }> {
+  //   const details: Array<{
+  //     destination: string;
+  //     sources: string[];
+  //     sourceValues: unknown[];
+  //     transformation: string;
+  //     resultValue: unknown;
+  //     prefix?: string;
+  //     delimiter?: string;
+  //     constantValue?: unknown;
+  //     operator?: string;
+  //   }> = [];
 
-    for (const mapping of mappings) {
-      //       mapping inside buildMappingDetails: {
-      //   source: [ 'pain001.GroupHeader.MessageId' ],
-      //   delimiter: ' ',
-      //   destination: [ 'redis.cdtrAcctId', 'redis.cdtrId', 'redis.creDtTm' ],
-      //   transformation: 'SPLIT'
-      // }
+  //   for (const mapping of mappings) {
+  //     //       mapping inside buildMappingDetails: {
+  //     //   source: [ 'pain001.GroupHeader.MessageId' ],
+  //     //   delimiter: ' ',
+  //     //   destination: [ 'redis.cdtrAcctId', 'redis.cdtrId', 'redis.creDtTm' ],
+  //     //   transformation: 'SPLIT'
+  //     // }
 
-      const sources = mapping.source ?? [];
+  //     const sources = mapping.source ?? [];
 
-      //dealing with the split usecase here
-      if (
-        mapping.transformation === 'SPLIT' &&
-        Array.isArray(mapping.destination)
-      ) {
-        // source values is an array of one thing always. we do 1:N and not N:M
-        // const sourceValue = mapping.source.map((sourcePath) => this.getValueByPath(originalPayload, sourcePath));
-        const sourceValues = (Array.isArray(sources) ? sources : [sources]).map(
-          (sourcePath) => this.getValueByPath(originalPayload, sourcePath),
-        );
+  //     //dealing with the split usecase here
+  //     if (
+  //       mapping.transformation === 'SPLIT' &&
+  //       Array.isArray(mapping.destination)
+  //     ) {
+  //       // source values is an array of one thing always. we do 1:N and not N:M
+  //       // const sourceValue = mapping.source.map((sourcePath) => this.getValueByPath(originalPayload, sourcePath));
+  //       const sourceValues = (Array.isArray(sources) ? sources : [sources]).map(
+  //         (sourcePath) => this.getValueByPath(originalPayload, sourcePath),
+  //       );
 
+  //       // below logic is updated and correct
+  //       const [firstValue] = sourceValues;
+  //       const splitValues =
+  //         typeof firstValue === 'string' && mapping.delimiter
+  //           ? firstValue.split(mapping.delimiter)
+  //           : typeof firstValue === 'string'
+  //             ? firstValue.split(' ')
+  //             : []; //default split by space
+  //       //below logic is incorrect. there is a array which contains one string. use that string and apply split on it simple
+  //       // const splitValues = this.applyTransformation(
+  //       //   sourceValues,
+  //       //   mapping.transformation,
+  //       //   mapping.delimiter,
+  //       //   mapping.constantValue,
+  //       //   mapping.operator,
+  //       //   mapping.prefix,
+  //       // );
 
-        // below logic is updated and correct
-        const [firstValue] = sourceValues;
-        const splitValues =
-          typeof firstValue === 'string' && mapping.delimiter
-            ? firstValue.split(mapping.delimiter)
-            : typeof firstValue === 'string' ? firstValue.split(' ') : []; //default split by space
-        //below logic is incorrect. there is a array which contains one string. use that string and apply split on it simple
-        // const splitValues = this.applyTransformation(
-        //   sourceValues,
-        //   mapping.transformation,
-        //   mapping.delimiter,
-        //   mapping.constantValue,
-        //   mapping.operator,
-        //   mapping.prefix,
-        // );
+  //       const destinationLength = mapping.destination.length;
 
-        const destinationLength = mapping.destination.length;
+  //       //   for (let i = 0; i < mapping.destination.length; i++) {
+  //       //     const destination = mapping.destination[i];
 
-        //   for (let i = 0; i < mapping.destination.length; i++) {
-        //     const destination = mapping.destination[i];
+  //       //     let resultValue: any = null;
+  //       //     if (tcsResult && destination) {
+  //       //       // collectionName is redis or transactionDetails
+  //       //       // fieldName is cdtrAcctId or endToEndId etc
 
-        //     let resultValue: any = null;
-        //     if (tcsResult && destination) {
-        //       // collectionName is redis or transactionDetails
-        //       // fieldName is cdtrAcctId or endToEndId etc
+  //       //       const [collectionName, fieldName] = destination.split('.');
 
-        //       const [collectionName, fieldName] = destination.split('.');
+  //       //       if (collectionName === 'redis' && tcsResult.dataCache) {
+  //       //         resultValue = tcsResult.dataCache[fieldName];
+  //       //       } else if (
+  //       //         collectionName === 'transactionDetails' &&
+  //       //         fieldName === 'endToEndId'
+  //       //       ) {
+  //       //         resultValue = tcsResult.endToEndId;
+  //       //       }
+  //       //     }
 
-        //       if (collectionName === 'redis' && tcsResult.dataCache) {
-        //         resultValue = tcsResult.dataCache[fieldName];
-        //       } else if (
-        //         collectionName === 'transactionDetails' &&
-        //         fieldName === 'endToEndId'
-        //       ) {
-        //         resultValue = tcsResult.endToEndId;
-        //       }
-        //     }
+  //       //     if (resultValue === null) {
+  //       //       resultValue =
+  //       //         Array.isArray(splitValues) && splitValues[i] !== undefined
+  //       //           ? splitValues[i]
+  //       //           : splitValues; // fallback to full result
+  //       //     }
 
-        //     if (resultValue === null) {
-        //       resultValue =
-        //         Array.isArray(splitValues) && splitValues[i] !== undefined
-        //           ? splitValues[i]
-        //           : splitValues; // fallback to full result
-        //     }
+  //       //     const normalizedSourcesArr = Array.isArray(sources)
+  //       //       ? sources
+  //       //       : [sources];
 
-        //     const normalizedSourcesArr = Array.isArray(sources)
-        //       ? sources
-        //       : [sources];
+  //       //     details.push({
+  //       //       destination: destination || '',
+  //       //       sources: normalizedSourcesArr,
+  //       //       sourceValues,
+  //       //       transformation: mapping.transformation || 'NONE',
+  //       //       resultValue,
+  //       //       prefix: mapping.prefix,
+  //       //       delimiter: mapping.delimiter,
+  //       //       constantValue: mapping.constantValue,
+  //       //       operator: mapping.operator,
+  //       //     });
+  //       //   }
+  //       // } else {
+  //       //   const destination = Array.isArray(mapping.destination)
+  //       //     ? mapping.destination[0]
+  //       //     : mapping.destination;
 
-        //     details.push({
-        //       destination: destination || '',
-        //       sources: normalizedSourcesArr,
-        //       sourceValues,
-        //       transformation: mapping.transformation || 'NONE',
-        //       resultValue,
-        //       prefix: mapping.prefix,
-        //       delimiter: mapping.delimiter,
-        //       constantValue: mapping.constantValue,
-        //       operator: mapping.operator,
-        //     });
-        //   }
-        // } else {
-        //   const destination = Array.isArray(mapping.destination)
-        //     ? mapping.destination[0]
-        //     : mapping.destination;
+  //       //   const sourceValues = (Array.isArray(sources) ? sources : [sources]).map(
+  //       //     (sourcePath) => this.getValueByPath(originalPayload, sourcePath),
+  //       //   );
+  //       //   let resultValue: any = null;
+  //       //   if (tcsResult && destination) {
+  //       //     const [collectionName, fieldName] = destination.split('.');
+  //       //     if (collectionName === 'redis' && tcsResult.dataCache) {
+  //       //       resultValue = tcsResult.dataCache[fieldName];
+  //       //     } else if (
+  //       //       collectionName === 'transaction' &&
+  //       //       fieldName === 'endToEndId'
+  //       //     ) {
+  //       //       resultValue = tcsResult.endToEndId;
+  //       //     }
+  //       //   }
 
-        //   const sourceValues = (Array.isArray(sources) ? sources : [sources]).map(
-        //     (sourcePath) => this.getValueByPath(originalPayload, sourcePath),
-        //   );
-        //   let resultValue: any = null;
-        //   if (tcsResult && destination) {
-        //     const [collectionName, fieldName] = destination.split('.');
-        //     if (collectionName === 'redis' && tcsResult.dataCache) {
-        //       resultValue = tcsResult.dataCache[fieldName];
-        //     } else if (
-        //       collectionName === 'transaction' &&
-        //       fieldName === 'endToEndId'
-        //     ) {
-        //       resultValue = tcsResult.endToEndId;
-        //     }
-        //   }
+  //       //   // If no TCS result available, show the transformed preview value
+  //       //   if (resultValue === null) {
+  //       //     resultValue = this.applyTransformation(
+  //       //       sourceValues,
+  //       //       mapping.transformation,
+  //       //       mapping.delimiter,
+  //       //       mapping.constantValue,
+  //       //       mapping.operator,
+  //       //       mapping.prefix,
+  //       //     );
+  //       //   }
 
-        //   // If no TCS result available, show the transformed preview value
-        //   if (resultValue === null) {
-        //     resultValue = this.applyTransformation(
-        //       sourceValues,
-        //       mapping.transformation,
-        //       mapping.delimiter,
-        //       mapping.constantValue,
-        //       mapping.operator,
-        //       mapping.prefix,
-        //     );
-        //   }
+  //       //   const normalizedSourcesArr = Array.isArray(sources)
+  //       //     ? sources
+  //       //     : [sources];
+  //       //   details.push({
+  //       //     destination: destination || '',
+  //       //     sources: normalizedSourcesArr,
+  //       //     sourceValues,
+  //       //     transformation: mapping.transformation || 'NONE',
+  //       //     resultValue,
+  //       //     prefix: mapping.prefix,
+  //       //     delimiter: mapping.delimiter,
+  //       //     constantValue: mapping.constantValue,
+  //       //     operator: mapping.operator,
+  //       //   });
+  //       // }
 
-        //   const normalizedSourcesArr = Array.isArray(sources)
-        //     ? sources
-        //     : [sources];
-        //   details.push({
-        //     destination: destination || '',
-        //     sources: normalizedSourcesArr,
-        //     sourceValues,
-        //     transformation: mapping.transformation || 'NONE',
-        //     resultValue,
-        //     prefix: mapping.prefix,
-        //     delimiter: mapping.delimiter,
-        //     constantValue: mapping.constantValue,
-        //     operator: mapping.operator,
-        //   });
-        // }
+  //       for (let i = 0; i < destinationLength; i++) {
+  //         const [internalDataModelObject, field] =
+  //           mapping.destination[i].split('.');
+  //         const resultValue = splitValues[i];
 
-        for (let i = 0; i < destinationLength; i++) {
-          
-          const [internalDataModelObject, field] =
-            mapping.destination[i].split('.');
-          const resultValue = splitValues[i];
+  //         if (internalDataModelObject === 'redis') {
+  //           // Redis-specific logic would go here
+  //         }
+  //       }
+  //     }
+  //   }
 
-          if (internalDataModelObject === 'redis') {
-            // Redis-specific logic would go here
-          }
-        }
-      }
-    }
-    
-    return details;
-  }
+  //   return details;
+  // }
 
-  private getValueByPath(obj: Record<string, unknown>, path: string): unknown {
-    if (!path) return undefined;
+  // private getValueByPath(obj: Record<string, unknown>, path: string): unknown {
+  //   if (!path) return undefined;
 
-    const normalizedPath = path.replace(/\[(\d+)\]/g, '.$1');
+  //   const normalizedPath = path.replace(/\[(\d+)\]/g, '.$1');
 
-    return normalizedPath.split('.').reduce((current, key) => current?.[key] === undefined ? undefined : current[key], obj);
-  }
+  //   return normalizedPath
+  //     .split('.')
+  //     .reduce(
+  //       (current, key) =>
+  //         current?.[key] === undefined ? undefined : current[key],
+  //       obj,
+  //     );
+  // }
 
-  private applyTransformation(
-    sourceValues: unknown[],
-    transformation: string | undefined,
-    delimiter?: string,
-    constantValue?: unknown,
-    operator?: string,
-    prefix?: string,
-  ): unknown {
-    if (!transformation || transformation === 'NONE') {
-      const value = sourceValues[0] as string;
-      return prefix ? `${prefix}${value}` : value;
-    }
+  // private applyTransformation(
+  //   sourceValues: unknown[],
+  //   transformation: string | undefined,
+  //   delimiter?: string,
+  //   constantValue?: unknown,
+  //   operator?: string,
+  //   prefix?: string,
+  // ): unknown {
+  //   if (!transformation || transformation === 'NONE') {
+  //     const value = sourceValues[0] as string;
+  //     return prefix ? `${prefix}${value}` : value;
+  //   }
 
-    switch (transformation) {
-      case 'CONSTANT':
-        return constantValue;
+  //   switch (transformation) {
+  //     case 'CONSTANT':
+  //       return constantValue;
 
-      case 'CONCAT': {
-        const values = sourceValues.filter(
-          (v) => v !== undefined && v !== null,
-        );
-        const concatenated = values.map(v => String(v)).join(delimiter ?? ' ');
-        return prefix ? `${prefix}${concatenated}` : concatenated;
-      }
+  //     case 'CONCAT': {
+  //       const values = sourceValues.filter(
+  //         (v) => v !== undefined && v !== null,
+  //       );
+  //       const concatenated = values
+  //         .map((v) => String(v))
+  //         .join(delimiter ?? ' ');
+  //       return prefix ? `${prefix}${concatenated}` : concatenated;
+  //     }
 
-      case 'SUM': {
-        const numericValues = sourceValues
-          .map((v) => parseFloat(v as string))
-          .filter((v) => !isNaN(v));
-        const sum = numericValues.reduce((acc, val) => acc + val, 0);
-        return prefix ? `${prefix}${sum}` : sum;
-      }
+  //     case 'SUM': {
+  //       const numericValues = sourceValues
+  //         .map((v) => parseFloat(v as string))
+  //         .filter((v) => !isNaN(v));
+  //       const sum = numericValues.reduce((acc, val) => acc + val, 0);
+  //       return prefix ? `${prefix}${sum}` : sum;
+  //     }
 
-      case 'MATH': {
-        if (sourceValues.length >= 2 && operator) {
-          const val1 = parseFloat(sourceValues[0] as string);
-          const val2 = parseFloat(sourceValues[1] as string);
-          if (!isNaN(val1) && !isNaN(val2)) {
-            let result: number;
-            switch (operator) {
-              case 'ADD':
-                result = val1 + val2;
-                break;
-              case 'SUBTRACT':
-                result = val1 - val2;
-                break;
-              case 'MULTIPLY':
-                result = val1 * val2;
-                break;
-              case 'DIVIDE':
-                result = val2 === 0 ? 0 : val1 / val2;
-                break;
-              default:
-                result = val1;
-            }
-            return prefix ? `${prefix}${result}` : result;
-          }
-        }
-        return sourceValues[0];
-      }
+  //     case 'MATH': {
+  //       if (sourceValues.length >= 2 && operator) {
+  //         const val1 = parseFloat(sourceValues[0] as string);
+  //         const val2 = parseFloat(sourceValues[1] as string);
+  //         if (!isNaN(val1) && !isNaN(val2)) {
+  //           let result: number;
+  //           switch (operator) {
+  //             case 'ADD':
+  //               result = val1 + val2;
+  //               break;
+  //             case 'SUBTRACT':
+  //               result = val1 - val2;
+  //               break;
+  //             case 'MULTIPLY':
+  //               result = val1 * val2;
+  //               break;
+  //             case 'DIVIDE':
+  //               result = val2 === 0 ? 0 : val1 / val2;
+  //               break;
+  //             default:
+  //               result = val1;
+  //           }
+  //           return prefix ? `${prefix}${result}` : result;
+  //         }
+  //       }
+  //       return sourceValues[0];
+  //     }
 
-      case 'SPLIT': {
-        const [splitValue] = sourceValues;
-        if (typeof splitValue === 'string' && delimiter) {
-          const parts = splitValue.split(delimiter);
-          return prefix ? `${prefix}${parts[0]}` : parts[0];
-        }
-        return prefix ? `${prefix}${String(splitValue)}` : String(splitValue);
-      }
+  //     case 'SPLIT': {
+  //       const [splitValue] = sourceValues;
+  //       if (typeof splitValue === 'string' && delimiter) {
+  //         const parts = splitValue.split(delimiter);
+  //         return prefix ? `${prefix}${parts[0]}` : parts[0];
+  //       }
+  //       return prefix ? `${prefix}${String(splitValue)}` : String(splitValue);
+  //     }
 
-      default:
-        return sourceValues[0];
-    }
-  }
+  //     default:
+  //       return sourceValues[0];
+  //   }
+  // }
 
   private createStageBasedResult(
     dto: SimulatePayloadDto,
@@ -851,8 +830,11 @@ export class SimulationService {
     const failedStages = stages.filter((s) => s.status === 'FAILED').length;
     const totalStages = stages.length;
     const mappingsApplied = tcsResult
-      ? (stages.find((s) => s.name.includes('TCS Mapping'))?.details as { mappingsApplied?: number })
-          ?.mappingsApplied ?? 0
+      ? ((
+          stages.find((s) => s.name.includes('TCS Mapping'))?.details as {
+            mappingsApplied?: number;
+          }
+        )?.mappingsApplied ?? 0)
       : 0;
 
     return {
@@ -874,7 +856,10 @@ export class SimulationService {
     };
   }
 
-  private async parsePayload(payload: unknown, payloadType: string): Promise<Record<string, unknown>> {
+  private async parsePayload(
+    payload: unknown,
+    payloadType: string,
+  ): Promise<Record<string, unknown>> {
     if (!payloadType) {
       throw new Error(
         'payloadType is required. Must be either "application/json" or "application/xml"',
@@ -912,7 +897,8 @@ export class SimulationService {
         );
         return result;
       } catch (xmlError: unknown) {
-        const errorMessage = xmlError instanceof Error ? xmlError.message : 'Unknown error';
+        const errorMessage =
+          xmlError instanceof Error ? xmlError.message : 'Unknown error';
         this.logger.error(`XML parsing failed: ${errorMessage}`);
         throw new Error(`Invalid XML payload: ${errorMessage}`);
       }
@@ -923,7 +909,8 @@ export class SimulationService {
         try {
           return JSON.parse(payload);
         } catch (jsonError: unknown) {
-          const errorMessage = jsonError instanceof Error ? jsonError.message : 'Unknown error';
+          const errorMessage =
+            jsonError instanceof Error ? jsonError.message : 'Unknown error';
           throw new Error(`Invalid JSON payload: ${errorMessage}`);
         }
       }
@@ -935,7 +922,10 @@ export class SimulationService {
     );
   }
 
-  private normalizePayloadForValidation(payload: Record<string, unknown>, config?: Config): Record<string, unknown> {
+  private normalizePayloadForValidation(
+    payload: Record<string, unknown>,
+    config?: Config,
+  ): Record<string, unknown> {
     if (!payload || typeof payload !== 'object') {
       return payload;
     }
@@ -947,7 +937,9 @@ export class SimulationService {
       );
       if (config?.schema?.properties) {
         const schemaRootKeys = Object.keys(config.schema.properties);
-        const payloadRootKeys = Object.keys(normalized as Record<string, unknown>);
+        const payloadRootKeys = Object.keys(
+          normalized as Record<string, unknown>,
+        );
 
         if (
           schemaRootKeys.length === 1 &&
@@ -1083,7 +1075,8 @@ export class SimulationService {
             (normalizedValue as any)['#text'] !== undefined)
         ) {
           normalized[key] =
-            (normalizedValue as any).textContent || (normalizedValue as any)['#text'];
+            (normalizedValue as any).textContent ||
+            (normalizedValue as any)['#text'];
         } else {
           normalized[key] = normalizedValue;
         }
@@ -1263,7 +1256,8 @@ export class SimulationService {
         }
       }
     } catch (schemaError: unknown) {
-      const errorMessage = schemaError instanceof Error ? schemaError.message : 'Unknown error';
+      const errorMessage =
+        schemaError instanceof Error ? schemaError.message : 'Unknown error';
       this.logger.error(`Schema validation error: ${errorMessage}`);
       errors.push({
         field: 'schema',
@@ -1274,7 +1268,10 @@ export class SimulationService {
     return errors;
   }
 
-  private validateMappings(payload: Record<string, unknown>, mappings: unknown[]): SimulationError[] {
+  private validateMappings(
+    payload: Record<string, unknown>,
+    mappings: unknown[],
+  ): SimulationError[] {
     const errors: SimulationError[] = [];
 
     const runtimeContextFields = ['tenantId', 'tenant_id', 'userId', 'user_id'];
@@ -1435,29 +1432,25 @@ export class SimulationService {
       strictSchema.additionalProperties = true;
     }
 
-    strictSchema.properties &&= Object.keys(strictSchema.properties).reduce<any>(
-        (acc, key) => {
-          acc[key] = this.enforceStrictSchema(
-            strictSchema.properties[key],
-            config,
-          );
-          return acc;
-        },
-        {},
-      );
+    strictSchema.properties &&= Object.keys(
+      strictSchema.properties,
+    ).reduce<any>((acc, key) => {
+      acc[key] = this.enforceStrictSchema(strictSchema.properties[key], config);
+      return acc;
+    }, {});
 
     if (strictSchema.items && strictSchema.type !== 'array') {
       strictSchema.items = this.enforceStrictSchema(strictSchema.items, config);
     }
     strictSchema.oneOf &&= strictSchema.oneOf.map((s: any) =>
-        this.enforceStrictSchema(s, config),
-      );
+      this.enforceStrictSchema(s, config),
+    );
     strictSchema.anyOf &&= strictSchema.anyOf.map((s: any) =>
-        this.enforceStrictSchema(s, config),
-      );
+      this.enforceStrictSchema(s, config),
+    );
     strictSchema.allOf &&= strictSchema.allOf.map((s: any) =>
-        this.enforceStrictSchema(s, config),
-      );
+      this.enforceStrictSchema(s, config),
+    );
 
     return strictSchema;
   }

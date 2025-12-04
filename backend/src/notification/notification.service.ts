@@ -31,7 +31,11 @@ import { firstValueFrom } from 'rxjs/internal/firstValueFrom';
 import { HttpService } from '@nestjs/axios';
 import { AuthenticatedUser } from '../auth/auth.types';
 
-import { decodeValidatedToken, getGroupNameFromToken, getTenantId } from '../utils/helpers';
+import {
+  decodeValidatedToken,
+  getGroupNameFromToken,
+  getTenantId,
+} from '../utils/helpers';
 import { EventType } from '../enums/events.enum';
 
 export interface EmailOptions {
@@ -62,7 +66,7 @@ export class NotificationService implements OnModuleInit {
   constructor(
     private readonly configService: ConfigService,
     private readonly httpService: HttpService,
-  ) { }
+  ) {}
 
   onModuleInit() {
     this.initializeTransporter();
@@ -371,7 +375,7 @@ export class NotificationService implements OnModuleInit {
     tenantId: string;
     actorEmail: string;
     actorName: string;
-    actionEntity: Config | Job | Schedule,
+    actionEntity: Config | Job | Schedule;
     authToken: string;
     groupName: string;
     comment?: string;
@@ -409,9 +413,7 @@ export class NotificationService implements OnModuleInit {
       this.logger.log(
         `Sending emails to ${recipientEmails.length} recipient(s)`,
       );
-      this.logger.log(
-        `Sending emails to ${recipientEmails} recipient(s)`,
-      );
+      this.logger.log(`Sending emails to ${recipientEmails} recipient(s)`);
 
       let htmlContent = '';
       let textContent = '';
@@ -419,8 +421,7 @@ export class NotificationService implements OnModuleInit {
 
       if ('transactionType' in actionEntity) {
         const config = actionEntity;
-        const configName =
-          config.transactionType || 'Configuration';
+        const configName = config.transactionType || 'Configuration';
         const version = config.version || '1.0';
         theme = getEmailTheme(event, configName, version);
         const templateContext: EmailTemplateContext = {
@@ -646,7 +647,6 @@ export class NotificationService implements OnModuleInit {
         }),
       );
 
-
       this.logger.log('Response from Auth Service: ', response.data);
 
       const responseArr =
@@ -665,7 +665,6 @@ export class NotificationService implements OnModuleInit {
     }
   }
 
-
   async sendWorkflowNotification(
     event: EventType,
     user: AuthenticatedUser,
@@ -676,11 +675,15 @@ export class NotificationService implements OnModuleInit {
     const decodedToken = decodeValidatedToken(user);
     const groupName = getGroupNameFromToken(decodedToken);
     if (!groupName) {
-      this.logger.error('Group name not found in token. Cannot send notification.');
+      this.logger.error(
+        'Group name not found in token. Cannot send notification.',
+      );
       return;
     }
 
-    this.logger.log(`Action entity for sending email : ${JSON.stringify(actionEntity)}`)
+    this.logger.log(
+      `Action entity for sending email : ${JSON.stringify(actionEntity)}`,
+    );
 
     await this.sendGenericWorkflowNotification({
       event,
@@ -693,5 +696,4 @@ export class NotificationService implements OnModuleInit {
       comment,
     });
   }
-
 }

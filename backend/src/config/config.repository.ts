@@ -63,7 +63,9 @@ export class ConfigRepository {
       return match || null;
     } catch (error) {
       const err = error as Error;
-      this.logger.error(`Error finding config by msgFam/version/transactionType: ${err.message}`);
+      this.logger.error(
+        `Error finding config by msgFam/version/transactionType: ${err.message}`,
+      );
       throw error;
     }
   }
@@ -81,9 +83,11 @@ export class ConfigRepository {
         comment,
       );
       return result;
-    } catch(error) {
+    } catch (error) {
       const err = error as Error;
-      this.logger.error(`Error updating config status: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      this.logger.error(
+        `Error updating config status: ${err instanceof Error ? err.message : 'Unknown error'}`,
+      );
       throw new Error('Failed to update config status message: ' + err.message);
     }
   }
@@ -221,11 +225,12 @@ export class ConfigRepository {
 
     token: string,
   ): Promise<void> {
-
-   const createTableQuery = createTableSQL( tableName, columns);
-  this.logger.log(`Creating table for TazamaDataModel type: ${tableName} with query: ${createTableQuery}`);
-  await this.adminServiceClient.runRawQuery(createTableQuery, token);
-}
+    const createTableQuery = createTableSQL(tableName, columns);
+    this.logger.log(
+      `Creating table for TazamaDataModel type: ${tableName} with query: ${createTableQuery}`,
+    );
+    await this.adminServiceClient.runRawQuery(createTableQuery, token);
+  }
   async updateConfigStatus(
     id: number,
     status: string,
@@ -262,11 +267,7 @@ export class ConfigRepository {
   //   );
   // }
 
-  async addMapping(
-    id: number,
-    mappingData: any,
-    token: string,
-  ): Promise<any> {
+  async addMapping(id: number, mappingData: any, token: string): Promise<any> {
     return await this.adminServiceClient.forwardRequest(
       'POST',
       `/v1/admin/tcs/config/${id}/mapping`,
@@ -275,11 +276,7 @@ export class ConfigRepository {
     );
   }
 
-  async removeMapping(
-    id: number,
-    index: number,
-    token: string,
-  ): Promise<any> {
+  async removeMapping(id: number, index: number, token: string): Promise<any> {
     return await this.adminServiceClient.forwardRequest(
       'DELETE',
       `/v1/admin/tcs/config/${id}/mapping/${index}`,
@@ -301,11 +298,7 @@ export class ConfigRepository {
     );
   }
 
-  async removeFunction(
-    id: number,
-    index: number,
-    token: string,
-  ): Promise<any> {
+  async removeFunction(id: number, index: number, token: string): Promise<any> {
     return await this.adminServiceClient.forwardRequest(
       'DELETE',
       `/v1/admin/tcs/config/${id}/function/${index}`,
@@ -391,10 +384,7 @@ export class ConfigRepository {
     );
   }
 
-  async deleteConfigViaWrite(
-    id: number,
-    token: string,
-  ): Promise<void> {
+  async deleteConfigViaWrite(id: number, token: string): Promise<void> {
     await this.adminServiceClient.forwardRequest(
       'DELETE',
       `/v1/admin/tcs/config/${id}/write`,

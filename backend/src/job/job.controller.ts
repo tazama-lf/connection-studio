@@ -31,7 +31,7 @@ import { JobService } from './job.service';
 @Controller('job')
 @UseGuards(TazamaAuthGuard)
 export class JobController {
-  constructor(private readonly jobService: JobService) { }
+  constructor(private readonly jobService: JobService) {}
 
   @Post('/create/push')
   @RequireAnyClaims(TazamaClaims.EDITOR)
@@ -39,10 +39,7 @@ export class JobController {
     @Body() job: CreatePushJobDto,
     @User() user: AuthenticatedUser,
   ) {
-    return await this.jobService.createPush(
-      job,
-      user
-    );
+    return await this.jobService.createPush(job, user);
   }
 
   @Post('/create/pull')
@@ -51,10 +48,7 @@ export class JobController {
     @Body() job: CreatePullJobDto,
     @User() user: AuthenticatedUser,
   ) {
-    return await this.jobService.createPull(
-      job,
-      user,
-    );
+    return await this.jobService.createPull(job, user);
   }
 
   @Patch('/update/:id')
@@ -65,12 +59,7 @@ export class JobController {
     @Query('type') type: ConfigType,
     @User() user: AuthenticatedUser,
   ) {
-    return await this.jobService.updateJob(
-      id,
-      job,
-      type,
-      user,
-    );
+    return await this.jobService.updateJob(id, job, type, user);
   }
 
   @Post('/all')
@@ -90,16 +79,14 @@ export class JobController {
   }
 
   @Post('/history')
-  @RequireAnyClaims(
-    TazamaClaims.PUBLISHER,
-  )
+  @RequireAnyClaims(TazamaClaims.PUBLISHER)
   async getAllHistory(
     @Query('offset') offset: string,
     @Query('limit') limit: string,
     @User() user: AuthenticatedUser,
     @Body() filters?: Record<string, unknown>,
   ) {
-    return await this.jobService.findAllHistory(offset, limit, user,filters);
+    return await this.jobService.findAllHistory(offset, limit, user, filters);
   }
 
   @Get('/:id')
@@ -164,13 +151,7 @@ export class JobController {
     @User() user: AuthenticatedUser,
     @Body('reason') reason?: string,
   ) {
-    return await this.jobService.updateStatus(
-      id,
-      status,
-      type,
-      user,
-      reason,
-    );
+    return await this.jobService.updateStatus(id, status, type, user, reason);
   }
 
   @Patch('/update/activation/:id')
@@ -181,11 +162,6 @@ export class JobController {
     @Query('type') type: ConfigType,
     @User() user: AuthenticatedUser,
   ) {
-    return await this.jobService.updateActivation(
-      id,
-      status,
-      type,
-      user
-    );
+    return await this.jobService.updateActivation(id, status, type, user);
   }
 }

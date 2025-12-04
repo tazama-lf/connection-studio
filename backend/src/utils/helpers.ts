@@ -26,7 +26,7 @@ export function encrypt(text: string): string {
     encrypted += cipher.final('hex');
 
     return iv.toString('hex') + ':' + encrypted;
-  } catch (error){
+  } catch (error) {
     throw new Error('Failed to encrypt sensitive data');
   }
 }
@@ -55,8 +55,10 @@ export function decrypt(text: string): string {
 export function validateCronExpression(expression: string): void {
   try {
     new CronTime(expression);
-  } catch (error) {
-    throw new BadRequestException(`Invalid Cron Expression : ${error.message}`);
+  } catch (error: unknown) {
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error';
+    throw new BadRequestException(`Invalid Cron Expression : ${errorMessage}`);
   }
 }
 
@@ -88,7 +90,6 @@ export function getTenantId(user: AuthenticatedUser): string {
   }
   return tenantId;
 }
-
 
 function decodeTokenString(tokenString: string): jwt.JwtPayload | null {
   try {
@@ -133,11 +134,12 @@ export function decodeValidatedToken(user: AuthenticatedUser): DecodedUserInfo {
   };
 }
 
-
-export const getGroupNameFromToken = (decodedToken: DecodedUserInfo): string  | null => {
-  const groupName = decodedToken.tenantDetails.length > 0
-            ? decodedToken.tenantDetails[0].replace(/\//g, '')
-            : null;
+export const getGroupNameFromToken = (
+  decodedToken: DecodedUserInfo,
+): string | null => {
+  const groupName =
+    decodedToken.tenantDetails.length > 0
+      ? decodedToken.tenantDetails[0].replace(/\//g, '')
+      : null;
   return groupName;
-
-}
+};

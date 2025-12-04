@@ -211,8 +211,6 @@ describe('ConfigRepository', () => {
     });
   });
 
-
-
   describe('findConfigsByTenant', () => {
     it('should return all configs for tenant', async () => {
       const mockConfigs = [mockConfig];

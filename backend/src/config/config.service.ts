@@ -127,8 +127,6 @@ export class ConfigService {
     return updatedConfig!;
   }
 
-
-
   /**
    * Build duplicate config error message
    */
@@ -193,7 +191,7 @@ export class ConfigService {
           message: 'Invalid payload format. Expected string or object.',
         };
       }
-     
+
       const endpointPath = this.generateEndpointPath(
         tenantId,
         version,
@@ -259,7 +257,7 @@ export class ConfigService {
       );
 
       const msgFam = dto.msgFam || 'unknown';
-      const {transactionType} = dto;
+      const { transactionType } = dto;
       const version = dto.version || 'v1';
 
       let userMessage =
@@ -921,7 +919,6 @@ export class ConfigService {
       token,
     );
 
-
     const updatedConfig = await this.configRepository.findConfigById(
       id,
       tenantId,
@@ -1081,7 +1078,6 @@ export class ConfigService {
     }
   }
 
- 
   private validateSchema(schema: JSONSchema): {
     success: boolean;
     errors: string[];
@@ -1110,8 +1106,6 @@ export class ConfigService {
       warnings,
     };
   }
-
- 
 
   private createMappingFromDto(dto: AddMappingDto): FieldMapping {
     if (dto.transformation) {
@@ -1807,15 +1801,13 @@ export class ConfigService {
       config: updatedConfig,
     };
   }
- 
+
   async submitConfig(
-    id:number,
+    id: number,
     dto: SubmitForApprovalDto,
     user: AuthenticatedUser,
-    token:string
-  )
-  : Promise<ConfigResponseDto> {
-
+    token: string,
+  ): Promise<ConfigResponseDto> {
     // Retrieve user info from token
     const config = await this.configRepository.findConfigById(
       id,
@@ -1823,46 +1815,38 @@ export class ConfigService {
       token,
     );
 
-
     if (!config) {
       throw new NotFoundException(`Config with ID ${id} not found`);
     }
-
 
     const updatedConfig = await this.configRepository.getupdateConfigByStatus(
-        id,
-        ConfigStatus.UNDER_REVIEW,
+      id,
+      ConfigStatus.UNDER_REVIEW,
+      token,
+    );
+
+    if (updatedConfig) {
+      const config = updatedConfig;
+      await this.notificationService.sendWorkflowNotification(
+        EventType.EditorSubmit,
+        user,
+        config,
         token,
+        dto.comment,
       );
-
-
-      
-          if (updatedConfig) {
-            const config = updatedConfig;
-            await this.notificationService.sendWorkflowNotification(
-              EventType.EditorSubmit,
-              user,
-              config,
-              token,
-              dto.comment,
-            );
-          }
-
-      return {
-        success:true,
-        message: `Configuration ${id} submitted for approval successfully`,
-      };
-      
-
     }
+
+    return {
+      success: true,
+      message: `Configuration ${id} submitted for approval successfully`,
+    };
+  }
   async approveConfig(
-    id:number,
+    id: number,
     dto: ApprovalDto,
     user: AuthenticatedUser,
-    token:string
-  )
-  : Promise<ConfigResponseDto> {
-
+    token: string,
+  ): Promise<ConfigResponseDto> {
     // Retrieve user info from token
     const config = await this.configRepository.findConfigById(
       id,
@@ -1870,52 +1854,44 @@ export class ConfigService {
       token,
     );
 
-
     if (!config) {
       throw new NotFoundException(`Config with ID ${id} not found`);
     }
 
-    const currentStatus = config.status as ConfigStatus;
+    const currentStatus = config.status!;
     const action: WorkflowAction = 'approve';
     this.validateWorkflowAction(user.validClaims || [], currentStatus, action);
 
-
     const updatedConfig = await this.configRepository.getupdateConfigByStatus(
-        id,
-        ConfigStatus.APPROVED,
+      id,
+      ConfigStatus.APPROVED,
+      token,
+      dto.comment,
+    );
+
+    if (updatedConfig) {
+      const config = updatedConfig;
+      await this.notificationService.sendWorkflowNotification(
+        EventType.ApproverApprove,
+        user,
+        config,
         token,
         dto.comment,
       );
-
-
-      
-          if (updatedConfig) {
-            const config = updatedConfig;
-            await this.notificationService.sendWorkflowNotification(
-              EventType.ApproverApprove,
-              user,
-              config,
-              token,
-              dto.comment,
-            );
-          }
-
-      return {
-        success:true,
-        message: `Configuration ${id} has been approved successfully`,
-      };
-      
-
     }
 
- async rejectConfig(
-    id:number,
+    return {
+      success: true,
+      message: `Configuration ${id} has been approved successfully`,
+    };
+  }
+
+  async rejectConfig(
+    id: number,
     dto: SubmitForApprovalDto,
     user: AuthenticatedUser,
-    token:string
-  )
-  : Promise<ConfigResponseDto> {
-
+    token: string,
+  ): Promise<ConfigResponseDto> {
     // Retrieve user info from token
     const config = await this.configRepository.findConfigById(
       id,
@@ -1923,48 +1899,42 @@ export class ConfigService {
       token,
     );
 
-
     if (!config) {
       throw new NotFoundException(`Config with ID ${id} not found`);
     }
 
-    const currentStatus = config.status as ConfigStatus;
+    const currentStatus = config.status!;
     const action: WorkflowAction = 'reject';
     this.validateWorkflowAction(user.validClaims || [], currentStatus, action);
 
-
     const updatedConfig = await this.configRepository.getupdateConfigByStatus(
-        id,
-        ConfigStatus.REJECTED,
+      id,
+      ConfigStatus.REJECTED,
+      token,
+      dto.comment,
+    );
+
+    if (updatedConfig) {
+      const config = updatedConfig;
+      await this.notificationService.sendWorkflowNotification(
+        EventType.ApproverReject,
+        user,
+        config,
         token,
         dto.comment,
       );
-
-
-      
-          if (updatedConfig) {
-            const config = updatedConfig;
-            await this.notificationService.sendWorkflowNotification(
-                EventType.ApproverReject,
-                user,
-                config,
-                token,
-                dto.comment,
-            );
-          }
-
-      return {
-        success:true,
-        message: `Configuration ${id} has been rejected successfully`,
-      };
-      
-
     }
+
+    return {
+      success: true,
+      message: `Configuration ${id} has been rejected successfully`,
+    };
+  }
   async exportConfig(
-    id:number,
+    id: number,
     dto: StatusTransitionDto,
     user: AuthenticatedUser,
-    token:string
+    token: string,
   ): Promise<ConfigResponseDto> {
     const config = await this.configRepository.findConfigById(
       id,
@@ -1975,17 +1945,22 @@ export class ConfigService {
       throw new NotFoundException(`Config with ID ${id} not found`);
     }
 
-    const currentStatus = config.status as ConfigStatus;
+    const currentStatus = config.status!;
     const action: WorkflowAction = 'export';
     this.validateWorkflowAction(user.validClaims || [], currentStatus, action);
 
-    const {tenantId} = user;
+    const { tenantId } = user;
 
     const fileName = `dems_${tenantId}_${id}`;
 
     try {
       const currentStatus = ConfigStatus.READY_FOR_DEPLOYMENT;
-      const configToExport = { ...config, status: currentStatus , msg_fam: config.msgFam, tenant_id: config.tenantId };
+      const configToExport = {
+        ...config,
+        status: currentStatus,
+        msg_fam: config.msgFam,
+        tenant_id: config.tenantId,
+      };
       await this.sftpService.createFile(fileName, {
         ...configToExport,
         status: ConfigStatus.DEPLOYED,
@@ -2055,30 +2030,28 @@ export class ConfigService {
     let configData: any;
     try {
       this.logger.log(`Reading config file from SFTP: ${fileName}`);
-      configData = await this.sftpService.readFile(fileName) as Config;
+      configData = (await this.sftpService.readFile(fileName)) as Config;
       sftpConfigStatus = configData.status as ConfigStatus;
       this.logger.log(`Config data retrieved: ${configData}`);
       // this.logger.log(
       //   `Successfully read config file from SFTP with status: ${currentStatus}`
       // );
-    }
-
-    //   if (configData?.status) {
-    //     currentStatus = configData.status as ConfigStatus;
-    //   } else if (config.status) {
-    //     currentStatus = ConfigStatus.READY_FOR_DEPLOYMENT;
-    //   } else {
-    //     throw new BadRequestException(
-    //       `Cannot deploy config ${id}: status not found in SFTP or database. Please ensure the config has been exported first.`,
-    //     );
-    //   }
-    catch (error) {
+    } catch (error) {
+      //   if (configData?.status) {
+      //     currentStatus = configData.status as ConfigStatus;
+      //   } else if (config.status) {
+      //     currentStatus = ConfigStatus.READY_FOR_DEPLOYMENT;
+      //   } else {
+      //     throw new BadRequestException(
+      //       `Cannot deploy config ${id}: status not found in SFTP or database. Please ensure the config has been exported first.`,
+      //     );
+      //   }
       // if (config.status) {
       //   currentStatus = config.status;
       // } else {
-        throw new BadRequestException(
-          `Cannot deploy config ${id}: status is undefined and SFTP read failed. Error: ${error.message}`,
-        );
+      throw new BadRequestException(
+        `Cannot deploy config ${id}: status is undefined and SFTP read failed. Error: ${error.message}`,
+      );
       // }
     }
 
@@ -2114,7 +2087,7 @@ export class ConfigService {
           createdAt: configData.createdAt || new Date(),
           updatedAt: new Date(),
         };
-   
+
         this.logger.log(
           `Deploying config data - schema length: ${deployedConfigData.schema?.length}, mapping length: ${deployedConfigData.mapping?.length}`,
         );
@@ -2138,7 +2111,7 @@ export class ConfigService {
         this.logger.log('Credentials present in config');
       }
 
-      const {transactionType} = configData ;
+      const { transactionType } = configData;
       if (transactionType) {
         this.logger.log(
           `Creating table for transaction type: ${transactionType}`,
@@ -2153,13 +2126,14 @@ export class ConfigService {
       } else {
         this.logger.warn(`No transactionType found in config file ${fileName}`);
       }
-      const {functions} = configData;
+      const { functions } = configData;
       const datamodelFn = Array.isArray(functions)
-    ? functions.find((fn) => fn.functionName === 'addDatamodelTable')
-    : functions;
-    if (datamodelFn)
-        {
-        this.logger.log(`Creating datamodel table as per function: ${functions.functionName}`);
+        ? functions.find((fn) => fn.functionName === 'addDatamodelTable')
+        : functions;
+      if (datamodelFn) {
+        this.logger.log(
+          `Creating datamodel table as per function: ${functions.functionName}`,
+        );
         await this.configRepository.createTazamaDataModelTable(
           datamodelFn.tableName,
           datamodelFn.columns,
@@ -2169,9 +2143,9 @@ export class ConfigService {
           `Successfully created datamodel table "${functions.parameters.tableName}" from deployed config`,
         );
       }
-      
+
       await this.sftpService.deleteFile(fileName);
-      this.logger.log(`Deleted config file from SFTP: ${fileName}`);      
+      this.logger.log(`Deleted config file from SFTP: ${fileName}`);
 
       // await this.configRepository.updateConfigStatus(
       //   id,
@@ -2179,7 +2153,7 @@ export class ConfigService {
       //   newStatus,
       //   token,
       // );
-           
+
       // Use configData as the deployedConfig for notification
       const deployedConfig = configData as Config;
       await this.notificationService.sendWorkflowNotification(
@@ -2189,7 +2163,6 @@ export class ConfigService {
         token,
         dto.comment,
       );
-      
 
       this.logger.log(
         `Successfully updated original config ${id} status to ${newStatus}`,
@@ -2207,8 +2180,6 @@ export class ConfigService {
       );
     }
   }
-
-
 
   private async logStatusChange(
     configId: number,
@@ -2371,10 +2342,7 @@ export class ConfigService {
     );
   }
 
-  async deleteConfigViaWrite(
-    id: number,
-    token: string,
-  ): Promise<void> {
+  async deleteConfigViaWrite(id: number, token: string): Promise<void> {
     await this.configRepository.deleteConfigViaWrite(id, token);
   }
 
@@ -2438,7 +2406,6 @@ export class ConfigService {
   // ): Promise<any> {
   //   return await this.configRepository.updateStatusDirect(id, status, token);
   // }
-
 
   async getConfigById(
     id: number,

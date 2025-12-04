@@ -5,12 +5,16 @@ export interface ColumnDef {
   param: string;
 }
 
-export function createTableSQL( table: string, cols: ColumnDef[]): string {
+export function createTableSQL(table: string, cols: ColumnDef[]): string {
   const tname = table;
 
   const defs = cols.map((c: ColumnDef) => `"${c.name}" ${c.type}`);
 
-  const pks = cols.filter((c: ColumnDef) => c.isPrimaryKey === true || c.isPrimaryKey === 'true').map((c: ColumnDef) => `"${c.name}"`);
+  const pks = cols
+    .filter(
+      (c: ColumnDef) => c.isPrimaryKey === true || c.isPrimaryKey === 'true',
+    )
+    .map((c: ColumnDef) => `"${c.name}"`);
 
   const pk = pks.length ? `, PRIMARY KEY (${pks.join(',')})` : '';
 

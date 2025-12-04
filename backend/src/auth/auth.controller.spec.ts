@@ -21,7 +21,6 @@ describe('AuthController', () => {
     validClaims: ['view-profile'],
   };
 
-
   beforeEach(async () => {
     const mockAuthService = {
       authenticate: jest.fn(),
@@ -30,8 +29,6 @@ describe('AuthController', () => {
       login: jest.fn(),
       isTokenExpired: jest.fn(),
     };
-
-
 
     const mockLoggerService = {
       log: jest.fn(),
@@ -145,5 +142,4 @@ describe('AuthController', () => {
       );
     });
   });
-
 });

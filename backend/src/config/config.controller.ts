@@ -48,8 +48,7 @@ export class ConfigController {
     private readonly notificationService: NotificationService,
   ) {}
 
-
- @Post('/:id/mapping')
+  @Post('/:id/mapping')
   @RequireClaims(TazamaClaims.EDITOR)
   async addMapping(
     @Param('id', ParseIntPipe) id: number,
@@ -120,7 +119,6 @@ export class ConfigController {
   //   );
   // }
 
- 
   @Get(':id')
   @RequireAnyClaims(
     TazamaClaims.EDITOR,
@@ -152,9 +150,6 @@ export class ConfigController {
       user.token.tokenString,
     );
   }
-
-
- 
 
   @Post(':id/function')
   @RequireClaims(TazamaClaims.EDITOR)
@@ -199,8 +194,6 @@ export class ConfigController {
       user.token.tokenString,
     );
   }
-  
- 
 
   @Post(':id/workflow/submit')
   @RequireClaims(TazamaClaims.EDITOR)
@@ -211,13 +204,8 @@ export class ConfigController {
     @Headers('authorization') authorization: string,
   ): Promise<ConfigResponseDto> {
     const token = authorization?.replace('Bearer ', '');
-    
-    const result = await this.configService.submitConfig(
-      id,
-      dto,
-      user,
-      token,
-    );
+
+    const result = await this.configService.submitConfig(id, dto, user, token);
 
     return result;
   }
@@ -232,12 +220,7 @@ export class ConfigController {
   ): Promise<ConfigResponseDto> {
     const token = authorization?.replace('Bearer ', '');
 
-    const result = await this.configService.approveConfig(
-      id,
-      dto,
-      user,
-      token,
-    );
+    const result = await this.configService.approveConfig(id, dto, user, token);
     return result;
   }
 
@@ -251,12 +234,7 @@ export class ConfigController {
   ): Promise<ConfigResponseDto> {
     const token = authorization?.replace('Bearer ', '');
 
-    const result = await this.configService.exportConfig(
-      id,
-      dto,
-      user,
-      token,
-    );
+    const result = await this.configService.exportConfig(id, dto, user, token);
 
     // const result = await this.adminServiceClient.forwardRequest(
     //   'POST',
@@ -351,7 +329,7 @@ export class ConfigController {
 
     return result;
   }
-    @Post(':id/reject')
+  @Post(':id/reject')
   @RequireClaims(TazamaClaims.APPROVER)
   async rejectConfig(
     @Param('id', ParseIntPipe) id: number,
@@ -360,27 +338,19 @@ export class ConfigController {
     @Headers('authorization') authorization: string,
   ): Promise<ConfigResponseDto> {
     const token = authorization?.replace('Bearer ', '');
-    
-    const result = await this.configService.rejectConfig(
-      id,
-      dto,
-      user,
-      token,
-    );
+
+    const result = await this.configService.rejectConfig(id, dto, user, token);
 
     return result;
   }
-    @Delete(':id')
+  @Delete(':id')
   @RequireClaims(TazamaClaims.EDITOR)
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteConfig(
     @Param('id', ParseIntPipe) id: number,
     @User() user: AuthenticatedUser,
   ): Promise<void> {
-    await this.configService.deleteConfigViaWrite(
-      id,
-      user.token.tokenString,
-    );
+    await this.configService.deleteConfigViaWrite(id, user.token.tokenString);
   }
   @Post('/:offset/:limit')
   @RequireAnyClaims(
@@ -402,6 +372,4 @@ export class ConfigController {
       user.token.tokenString,
     );
   }
-
-
 }

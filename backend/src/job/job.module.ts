@@ -24,8 +24,8 @@ import { NotificationModule } from 'src/notification/notification.module';
     NotifyModule,
     HttpModule,
     SchedulerModule,
-    NotificationModule
+    NotificationModule,
   ],
   exports: [AdminServiceClient],
 })
-export class JobModule { }
+export class JobModule {}

@@ -70,12 +70,8 @@ export class TazamaAuthGuard implements CanActivate {
       let validClaims: string[] = [];
       let invalidClaims: string[] = [];
       if (requiredClaims && requiredClaims.length > 0) {
-        const hasAllClaims = requiredClaims.every(
-          (claim) => validated[claim],
-        );
-        validClaims = requiredClaims.filter(
-          (claim) => validated[claim],
-        );
+        const hasAllClaims = requiredClaims.every((claim) => validated[claim]);
+        validClaims = requiredClaims.filter((claim) => validated[claim]);
         invalidClaims = requiredClaims.filter((claim) => !validated[claim]);
         hasValidAccess = hasAllClaims;
         if (!hasAllClaims) {
@@ -85,12 +81,8 @@ export class TazamaAuthGuard implements CanActivate {
           );
         }
       } else if (anyRequiredClaims && anyRequiredClaims.length > 0) {
-        const hasAnyClaim = anyRequiredClaims.some(
-          (claim) => validated[claim],
-        );
-        validClaims = anyRequiredClaims.filter(
-          (claim) => validated[claim],
-        );
+        const hasAnyClaim = anyRequiredClaims.some((claim) => validated[claim]);
+        validClaims = anyRequiredClaims.filter((claim) => validated[claim]);
         invalidClaims = anyRequiredClaims.filter((claim) => !validated[claim]);
         hasValidAccess = hasAnyClaim;
         if (!hasAnyClaim) {

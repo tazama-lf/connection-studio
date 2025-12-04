@@ -34,7 +34,7 @@ describe('ConfigModule', () => {
             writeConfig: jest.fn(),
           },
         },
-      
+
         {
           provide: TazamaDataModelService,
           useValue: {
