@@ -36,7 +36,7 @@ interface CreateDestinationTypeRow {
   destination_type_id: number;
   collection_type: string;
   name: string;
-  description: string;
+  description?: string;
   destination_id: number;
   created_at: Date;
 }
