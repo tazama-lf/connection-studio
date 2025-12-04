@@ -86,6 +86,7 @@ export class TazamaDataModelRepository {
         name: row.collection_name,
         type: row.collection_type,
         description: row.collection_description,
+        collection_id: row.destination_type_id,
         fields,
       };
     });

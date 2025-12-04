@@ -57,6 +57,8 @@ export class TazamaDataModelService {
     const schemas = await this.repository.getAllCollections(tenantId);
     const options: FieldOption[] = [];
 
+    this.logger.log("The schema rcvd is ", schemas)
+    // -----------------------
     const processField = (
       schemaName: string,
       field: TazamaField,
@@ -65,11 +67,11 @@ export class TazamaDataModelService {
     ): void => {
       const path = parentPath
         ? `${parentPath}.${field.name}`
-        : `${schemaName}.${field.name}`;
+        : `${schemaName}.${field.name}?` || '';
 
       const fieldPath = parentFieldPath
         ? `${parentFieldPath}.${field.name}`
-        : field.name;
+        : field.name || '';
 
       const base: FieldOption = {
         value: path,
@@ -82,6 +84,8 @@ export class TazamaDataModelService {
         serial_no: field.serial_no ?? 0,
         collection_id: field.collection_id ?? 0,
       };
+
+      this.logger.log("the base is ", base)
 
       if (field.type === 'object' && field.properties?.length) {
         base.properties = field.properties.map((prop: TazamaField) => ({
@@ -99,9 +103,28 @@ export class TazamaDataModelService {
     };
 
     for (const schema of schemas) {
-      for (const field of schema.fields) {
-        if (field.name === '_id' || field.name === '_rev') continue;
-        processField(schema.name, field);
+      // If schema has no fields, add a placeholder option for the collection itself
+      if (schema.fields.length === 0) {
+        const emptyCollectionOption: FieldOption = {
+          value: schema.name,
+          label: schema.name,
+          collection: schema.name,
+          field: '',
+          type: '',
+          required: false,
+          parent_id: null,
+          serial_no: 0,
+          collection_id: schema.collection_id ?? 0,
+          properties: [],
+        };
+        this.logger.log('Adding empty collection option:', emptyCollectionOption);
+        options.push(emptyCollectionOption);
+      } else {
+        // Process fields normally
+        for (const field of schema.fields) {
+          if (field.name === '_id' || field.name === '_rev') continue;
+          processField(schema.name, field);
+        }
       }
     }
 

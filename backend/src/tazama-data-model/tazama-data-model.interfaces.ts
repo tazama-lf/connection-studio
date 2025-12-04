@@ -26,6 +26,7 @@ export interface TazamaCollectionSchema {
   type: 'node' | 'edge';
   description: string;
   fields: TazamaField[];
+  collection_id?: number;
 }
 export interface TazamaDataModelExtension {
   id: number;
