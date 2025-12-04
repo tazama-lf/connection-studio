@@ -57,8 +57,6 @@ export class TazamaDataModelService {
     const schemas = await this.repository.getAllCollections(tenantId);
     const options: FieldOption[] = [];
 
-    this.logger.log("The schema rcvd is ", schemas)
-    // -----------------------
     const processField = (
       schemaName: string,
       field: TazamaField,
@@ -85,7 +83,6 @@ export class TazamaDataModelService {
         collection_id: field.collection_id ?? 0,
       };
 
-      this.logger.log("the base is ", base)
 
       if (field.type === 'object' && field.properties?.length) {
         base.properties = field.properties.map((prop: TazamaField) => ({

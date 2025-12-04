@@ -10,6 +10,7 @@ import { JSONSchema } from '@tazama-lf/tcs-lib';
 import { NotifyService } from '../notify/notify.service';
 import { NotificationService } from '../notification/notification.service';
 import { ConfigWorkflowService } from './config-workflow.service';
+import { ConfigUtilsService } from './config-utils.service';
 import { SftpService } from '../sftp/sftp.service';
 import {
   Config,
@@ -34,23 +35,11 @@ export class ConfigService {
   constructor(
     private readonly configRepository: ConfigRepository,
     private readonly workflowService: ConfigWorkflowService,
+    private readonly configUtils: ConfigUtilsService,
     private readonly sftpService: SftpService,
     private readonly notifyService: NotifyService,
     private readonly notificationService: NotificationService,
   ) {}
-  private generateEndpointPath(
-    tenantId: string,
-    version: string,
-    transactionType: string,
-    msgFam?: string,
-  ): string {
-    const basePath = `/${tenantId}/${version}`;
-    if (msgFam?.trim()) {
-      return `${basePath}/${msgFam}/${transactionType}`;
-    }
-    return `${basePath}/${transactionType}`;
-  }
-
   private async getConfigOrThrow(
     id: number,
     tenantId: string,
@@ -80,7 +69,7 @@ export class ConfigService {
 
     await this.getConfigOrThrow(id, tenantId, token);
 
-    const result = await this.configRepository.updateConfigStatus(
+    await this.configRepository.updateConfigStatus(
       id,
       status,
       token,
@@ -113,14 +102,6 @@ export class ConfigService {
     }
   }
 
-  private buildDuplicateConfigMessage(
-    msgFam: string,
-    transactionType: string,
-    version: string,
-  ): string {
-    return `Config with message family '${msgFam}', transaction type '${transactionType}', and version '${version}' already exists for this tenant. Please use different values.`;
-  }
-
   // ======================== CRUD OPERATIONS ========================
 
   async createConfig(
@@ -131,8 +112,8 @@ export class ConfigService {
   ): Promise<ConfigResponseDto> {
     try {
       this.logger.log('Creating new config...', dto.schema);
-      const version = dto.version || 'v1';
-      const msgFam = dto.msgFam || 'unknown';
+      const version = dto.version ?? 'v1';
+      const msgFam = dto.msgFam ?? 'unknown';
       const existingConfig =
         await this.configRepository.findConfigByMsgFamVersionAndTransactionType(
           msgFam,
@@ -147,7 +128,7 @@ export class ConfigService {
         );
         return {
           success: false,
-          message: this.buildDuplicateConfigMessage(
+          message: this.configUtils.buildDuplicateConfigMessage(
             msgFam,
             dto.transactionType,
             version,
@@ -163,19 +144,7 @@ export class ConfigService {
         };
       }
 
-      let payloadString: string;
-      if (typeof dto.payload === 'string') {
-        payloadString = dto.payload;
-      } else if (typeof dto.payload === 'object') {
-        payloadString = JSON.stringify(dto.payload, null, 2);
-      } else {
-        return {
-          success: false,
-          message: 'Invalid payload format. Expected string or object.',
-        };
-      }
-
-      const endpointPath = this.generateEndpointPath(
+      const endpointPath = this.configUtils.generateEndpointPath(
         tenantId,
         version,
         dto.transactionType,
@@ -183,11 +152,11 @@ export class ConfigService {
       );
 
       const configData: Omit<Config, 'id' | 'createdAt' | 'updatedAt'> = {
-        msgFam: dto.msgFam || '',
+        msgFam: dto.msgFam ?? '',
         transactionType: dto.transactionType,
         endpointPath,
         version,
-        contentType: dto.contentType || ContentType.JSON,
+        contentType: dto.contentType ?? ContentType.JSON,
         schema: dto.schema as JSONSchema,
         mapping: dto.mapping,
         functions: dto.functions,
@@ -223,26 +192,16 @@ export class ConfigService {
         error.stack,
       );
 
-      const msgFam = dto.msgFam || 'unknown';
+      const msgFam = dto.msgFam ?? 'unknown';
       const { transactionType } = dto;
-      const version = dto.version || 'v1';
+      const version = dto.version ?? 'v1';
 
-      let userMessage =
-        'Failed to create configuration. Please check your input and try again.';
-
-      if (
-        error.message &&
-        (error.message.includes('duplicate key value') ||
-          error.message.includes('unique constraint'))
-      ) {
-        userMessage = `A configuration with Message Family '${msgFam}', Transaction Type '${transactionType}', and Version '${version}' already exists. Please use different values.`;
-      } else if (error.message?.includes('validation')) {
-        userMessage = `Validation error: ${error.message}`;
-      } else if (error.message?.includes('schema')) {
-        userMessage = `Schema error: ${error.message}`;
-      } else if (error.message) {
-        userMessage = error.message;
-      }
+      const userMessage = this.configUtils.buildUserErrorMessage(
+        error,
+        msgFam,
+        transactionType,
+        version,
+      );
 
       return {
         success: false,
@@ -307,7 +266,7 @@ export class ConfigService {
 
     const currentStatus = config.status!;
     const action: WorkflowAction = 'approve';
-    this.validateWorkflowAction(user.validClaims || [], currentStatus, action);
+    this.validateWorkflowAction(user.validClaims, currentStatus, action);
 
     const updatedConfig = await this.configRepository.getupdateConfigByStatus(
       id,
@@ -343,7 +302,7 @@ export class ConfigService {
 
     const currentStatus = config.status!;
     const action: WorkflowAction = 'reject';
-    this.validateWorkflowAction(user.validClaims || [], currentStatus, action);
+    this.validateWorkflowAction(user.validClaims, currentStatus, action);
 
     const updatedConfig = await this.configRepository.getupdateConfigByStatus(
       id,
@@ -378,7 +337,7 @@ export class ConfigService {
 
     const currentStatus = config.status!;
     const action: WorkflowAction = 'export';
-    this.validateWorkflowAction(user.validClaims || [], currentStatus, action);
+    this.validateWorkflowAction(user.validClaims, currentStatus, action);
 
     const { tenantId } = user;
 
@@ -459,20 +418,20 @@ export class ConfigService {
     try {
       try {
         const deployedConfigData = {
-          msgFam: configData.msgFam || null,
-          transactionType: configData.transactionType || null,
-          contentType: configData.contentType || 'application/json',
-          endpointPath: configData.endpointPath || null,
+          msgFam: configData.msgFam ?? null,
+          transactionType: configData.transactionType ?? null,
+          contentType: configData.contentType ?? 'application/json',
+          endpointPath: configData.endpointPath ?? null,
           status: sftpConfigStatus,
-          publishingStatus: configData.publishingStatus || 'active',
+          publishingStatus: configData.publishingStatus ?? 'active',
           version: configData.version,
-          schema: configData.schema == null ? null : configData.schema,
-          mapping: configData.mapping == null ? null : configData.mapping,
-          functions: configData.functions == null ? null : configData.functions,
+          schema: configData.schema === null ? null : configData.schema,
+          mapping: configData.mapping === null ? null : configData.mapping,
+          functions: configData.functions === null ? null : configData.functions,
           credentials: configData.credentials,
           tenantId,
-          createdBy: configData.createdBy || userId,
-          createdAt: configData.createdAt || new Date(),
+          createdBy: configData.createdBy ?? userId,
+          createdAt: configData.createdAt ?? new Date(),
           updatedAt: new Date(),
         };
 
@@ -576,7 +535,7 @@ export class ConfigService {
 
     if (!result.success) {
       throw new NotFoundException(
-        result.message || `Config with ID ${id} not found`,
+        result.message ?? `Config with ID ${id} not found`,
       );
     }
 

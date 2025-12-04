@@ -32,12 +32,12 @@ export class ConfigWorkflowService {
       [ConfigStatus.REJECTED]: [ConfigStatus.IN_PROGRESS],
     };
     const allowedTransitions = validTransitions[normalizedFromStatus];
-    if (!allowedTransitions?.includes(normalizedToStatus)) {
+    if (!allowedTransitions.includes(normalizedToStatus)) {
       return {
         isValid: false,
         currentStatus: normalizedFromStatus as any,
         targetStatus: normalizedToStatus as any,
-        allowedNextStatuses: (allowedTransitions || []) as any,
+        allowedNextStatuses: allowedTransitions as any,
         reason: `Invalid transition from ${normalizedFromStatus} to ${normalizedToStatus}`,
       };
     }
