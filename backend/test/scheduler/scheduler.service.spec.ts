@@ -1,15 +1,15 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import { DatabaseService } from '../database/database.service';
-import { SftpService } from '../sftp/sftp.service';
-import { SchedulerService } from './scheduler.service';
-import { AdminServiceClient } from '../services/admin-service-client.service';
+import { DatabaseService } from '../../src/database/database.service';
+import { SftpService } from '../../src/sftp/sftp.service';
+import { SchedulerService } from '../../src/scheduler/scheduler.service';
+import { AdminServiceClient } from '../../src/services/admin-service-client.service';
 import { JobStatus, Schedule } from '@tazama-lf/tcs-lib';
-import { CreateScheduleJobDto } from './dto/create-schedule.dto';
+import { CreateScheduleJobDto } from '../../src/scheduler/dto/create-schedule.dto';
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
-import { UpdateScheduleJobDto } from './dto/update-schedule-dto';
+import { UpdateScheduleJobDto } from '../../src/scheduler/dto/update-schedule-dto';
 import { AuthenticatedUser } from 'src/auth/auth.types';
-import { NotificationService } from '../notification/notification.service';
+import { NotificationService } from '../../src/notification/notification.service';
 
 describe('SchedulerService', () => {
   let service: SchedulerService;
@@ -24,11 +24,17 @@ describe('SchedulerService', () => {
     cron: '0 0 * * *',
     iterations: 1,
     comments: null,
-    start_date: new Date('2025-01-01'),
-    end_date: new Date('2025-12-31'),
     tenant_id: 'tenant_abc',
     status: JobStatus.INPROGRESS,
   };
+
+
+  const mockPaginated = {
+    total: 0,
+    offset: 0,
+    limit: 10,
+    pages: 2,
+  }
 
   const mockTenantId = 'tenant_abc';
   const mockToken = 'mock-jwt-token';
@@ -110,8 +116,6 @@ describe('SchedulerService', () => {
     const createScheduleDto = {
       name: 'Test Schedule',
       cron: '0 0 * * *',
-      start_date: new Date('2025-01-01'),
-      end_date: new Date('2025-12-31'),
     };
 
     it('should create a schedule successfully', async () => {
@@ -228,7 +232,7 @@ describe('SchedulerService', () => {
     const limit = '10';
 
     it('should return all schedules with pagination', async () => {
-      const mockSchedules = [mockSchedule];
+      const mockSchedules = { ...mockPaginated, data: [mockSchedule] };
       adminServiceClient.getAllSchedule.mockResolvedValue(mockSchedules);
 
       const result = await service.findAll(offset, limit, mockUser);
@@ -243,7 +247,7 @@ describe('SchedulerService', () => {
     });
 
     it('should return schedules with filters', async () => {
-      const mockSchedules = [mockSchedule];
+      const mockSchedules = { ...mockPaginated, data: [mockSchedule] };
       const filters = { status: JobStatus.APPROVED };
       adminServiceClient.getAllSchedule.mockResolvedValue(mockSchedules);
 

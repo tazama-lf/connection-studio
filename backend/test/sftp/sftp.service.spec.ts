@@ -7,11 +7,11 @@ import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import SFTPClient from 'ssh2-sftp-client';
-import * as utils from '../utils/helpers';
-import { SftpService } from './sftp.service';
+import * as utils from '../../src/utils/helpers';
+import { SftpService } from '../../src/sftp/sftp.service';
 
 jest.mock('ssh2-sftp-client');
-jest.mock('../utils/helpers');
+jest.mock('../../src/utils/helpers');
 
 describe('SftpService', () => {
   let service: SftpService;

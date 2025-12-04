@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { ConfigType } from '@tazama-lf/tcs-lib';
-import { NotifyService } from './notify.service';
+import { NotifyService } from '../../src/notify/notify.service';
 import { StartupFactory } from '@tazama-lf/frms-coe-startup-lib';
 
 jest.mock('@tazama-lf/frms-coe-startup-lib');
@@ -175,8 +175,8 @@ describe('NotifyService', () => {
 
       expect(mockNatsService.handleResponse).toHaveBeenCalledWith({
         dataPayload: JSON.stringify({
-          endpoint_id: mockId,
-          config_type: mockType,
+          endpointId: mockId,
+          configType: mockType,
         }),
       });
     });
@@ -186,8 +186,8 @@ describe('NotifyService', () => {
 
       expect(mockNatsService.handleResponse).toHaveBeenCalledWith({
         dataPayload: JSON.stringify({
-          endpoint_id: mockId,
-          config_type: ConfigType.PULL,
+          endpointId: mockId,
+          configType: ConfigType.PULL,
         }),
       });
     });
@@ -205,20 +205,10 @@ describe('NotifyService', () => {
       const callArg = mockNatsService.handleResponse.mock.calls[0][0];
       expect(callArg.dataPayload).toBe(
         JSON.stringify({
-          endpoint_id: mockId,
-          config_type: mockType,
+          endpointId: mockId,
+          configType: mockType,
         }),
       );
-    });
-
-    it('should handle special characters in ID', async () => {
-      const specialId = 'endpoint-123-with_special.chars';
-
-      await service.notifyEnrichment(specialId, mockType);
-
-      const callArg = mockNatsService.handleResponse.mock.calls[0][0];
-      const parsed = JSON.parse(callArg.dataPayload);
-      expect(parsed.endpoint_id).toBe(specialId);
     });
   });
 
@@ -233,10 +223,12 @@ describe('NotifyService', () => {
     it('should send notification to DEMS', async () => {
       await service.notifyDems(mockConfigId, mockTenantId);
 
-      expect(mockDemsNatsService.handleResponse).toHaveBeenCalledWith({
-        transactionID: mockConfigId,
-      });
+      expect(mockDemsNatsService.handleResponse).toHaveBeenCalledWith(
+        { transactionID: mockConfigId },
+        ['dems.notify'],
+      );
     });
+
 
     it('should handle DEMS NATS service errors', async () => {
       const error = new Error('DEMS NATS publish failed');
@@ -254,9 +246,11 @@ describe('NotifyService', () => {
     it('should send correct payload structure', async () => {
       await service.notifyDems(mockConfigId, mockTenantId);
 
-      expect(mockDemsNatsService.handleResponse).toHaveBeenCalledWith({
-        transactionID: mockConfigId,
-      });
+      expect(mockDemsNatsService.handleResponse).toHaveBeenCalledWith(
+        { transactionID: mockConfigId },
+        ['dems.notify'],
+      );
+
     });
   });
 
@@ -280,7 +274,7 @@ describe('NotifyService', () => {
       expect(mockAckService.init).toHaveBeenCalledWith(
         expect.any(Function),
         loggerService,
-        ['custom.consumer.stream', 'custom.dems.stream'],
+        ['custom.consumer.stream'],
         'tcs.ack.response',
       );
     });

@@ -11,13 +11,13 @@ import {
 import { of, throwError } from 'rxjs';
 import SFTPClient from 'ssh2-sftp-client';
 import * as iconv from 'iconv-lite';
-import { CreatePullJobDto } from '../job/dto/create-pull-job.dto';
-import { DryRunService } from './dry-run.service';
-import * as helpers from '../utils/helpers';
+import { CreatePullJobDto } from '../../src/job/dto/create-pull-job.dto';
+import { DryRunService } from '../../src/dry-run/dry-run.service';
+import * as helpers from '../../src/utils/helpers';
 
 jest.mock('ssh2-sftp-client');
 jest.mock('iconv-lite');
-jest.mock('../utils/helpers');
+jest.mock('../../src/utils/helpers');
 
 describe('DryRunService', () => {
   let service: DryRunService;
@@ -139,7 +139,7 @@ describe('DryRunService', () => {
         'https://api.example.com/data',
         expect.objectContaining({
           headers: { 'Content-Type': 'application/json' },
-          timeout: 3000,
+          timeout: 15000,
         }),
       );
     });
@@ -189,7 +189,7 @@ describe('DryRunService', () => {
         'https://api.example.com/data',
         {
           headers: { 'Content-Type': 'application/json' },
-          timeout: 3000,
+          timeout: 15000,
         },
       );
     });
