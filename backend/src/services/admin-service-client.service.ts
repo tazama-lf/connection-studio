@@ -739,11 +739,7 @@ export class AdminServiceClient {
       }
 
       return response.data.config;
-    } catch (error: any) {
-      if (error.response?.status === 404) {
-        this.logger.warn(`Config ${id} not found (404 from admin-service)`);
-        return null;
-      }
+    } catch (error) {
       return this.handleError(error, 'getConfigById');
     }
   }
@@ -760,8 +756,9 @@ export class AdminServiceClient {
 
     try {
       const response = await firstValueFrom(
-        this.httpService.get(
+        this.httpService.post(
           `${this.adminServiceUrl}/v1/admin/tcs/config/${offset}/${limit}`,
+          {},
           {
             headers: {
               Authorization: `Bearer ${token}`,
