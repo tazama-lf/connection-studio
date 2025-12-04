@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { Injectable, Logger } from '@nestjs/common';
 import { AdminServiceClient } from '../services/admin-service-client.service';
-import { Config, TransactionType } from './config.interfaces';
+import { Config } from './config.interfaces';
 import { ColumnDef, createTableSQL } from 'src/utils/table-sql';
 
 @Injectable()
@@ -87,94 +87,14 @@ export class ConfigRepository {
       throw new Error('Failed to update config status message: ' + err.message);
     }
   }
-
-  // async findConfigByEndpoint(
-  //   endpointPath: string,
-  //   version: string,
+  // async updateConfig(
+  //   id: number,
   //   tenantId: string,
-  //   token?: string,
-  //   limit = 10,
-  //   offset = 0,
-  // ): Promise<Config[]> {
-  //   try {
-  //     const result = await this.adminServiceClient.getConfigByEndpoint(
-  //       endpointPath,
-  //       version,
-  //       token || tenantId,
-  //       limit,
-  //       offset,
-  //     );
-  //     return result.configs;
-  //   } catch {
-  //     return [];
-  //   }
+  //   updateData: Partial<Config>,
+  //   token: string,
+  // ): Promise<void> {
+  //   await this.adminServiceClient.writeConfigUpdate(id, updateData, token);
   // }
-
-  // async findConfigsByTenant(
-  //   tenantId: string,
-  //   token?: string,
-  //   limit = 10,
-  //   offset = 0,
-  // ): Promise<Config[]> {
-  //   try {
-  //     const result = await this.adminServiceClient.getAllConfigs(
-  //       token || tenantId,
-  //       limit,
-  //       offset,
-  //     );
-  //     return result.configs;
-  //   } catch {
-  //     return [];
-  //   }
-  // }
-
-  // async findConfigsByTransactionType(
-  //   transactionType: TransactionType,
-  //   tenantId: string,
-  //   token?: string,
-  //   limit = 10,
-  //   offset = 0,
-  // ): Promise<Config[]> {
-  //   try {
-  //     const result = await this.adminServiceClient.getConfigsByTransactionType(
-  //       transactionType,
-  //       token || tenantId,
-  //       limit,
-  //       offset,
-  //     );
-  //     return result.configs;
-  //   } catch {
-  //     return [];
-  //   }
-  // }
-
-  // async findConfigByVersionAndTransactionType(
-  //   version: string,
-  //   transactionType: string,
-  //   tenantId: string,
-  //   token?: string,
-  // ): Promise<Config | null> {
-  //   try {
-  //     const result = await this.adminServiceClient.getAllConfigs(
-  //       token || tenantId,
-  //     );
-  //     const match = result.configs.find(
-  //       (c) => c.version === version && c.transactionType === transactionType,
-  //     );
-  //     return match || null;
-  //   } catch {
-  //     return null;
-  //   }
-  // }
-
-  async updateConfig(
-    id: number,
-    tenantId: string,
-    updateData: Partial<Config>,
-    token: string,
-  ): Promise<void> {
-    await this.adminServiceClient.writeConfigUpdate(id, updateData, token);
-  }
   async updatePublishingStatus(
     id: number,
     publishingStatus: 'active' | 'inactive',
@@ -249,19 +169,6 @@ export class ConfigRepository {
     );
   }
 
-  // async getPendingApprovals(
-  //   offset: number,
-  //   limit: number,
-  //   token: string,
-  // ): Promise<any[]> {
-  //   return await this.adminServiceClient.forwardRequest(
-  //     'GET',
-  //     `/v1/admin/tcs/config/pending-approvals/${offset}/${limit}`,
-  //     undefined,
-  //     { Authorization: `Bearer ${token}` },
-  //   );
-  // }
-
   async addMapping(
     id: number,
     mappingData: any,
@@ -327,56 +234,6 @@ export class ConfigRepository {
       { Authorization: `Bearer ${token}` },
     );
   }
-
-  // async returnToProgress(
-  //   id: number,
-  //   data: any,
-  //   token: string,
-  // ): Promise<any> {
-  //   return await this.adminServiceClient.forwardRequest(
-  //     'POST',
-  //     `/v1/admin/tcs/config/${id}/workflow/return-to-progress`,
-  //     data,
-  //     { Authorization: `Bearer ${token}` },
-  //   );
-  // }
-
-  // async getWorkflowStatus(
-  //   id: number,
-  //   token: string,
-  // ): Promise<any> {
-  //   return await this.adminServiceClient.forwardRequest(
-  //     'GET',
-  //     `/v1/admin/tcs/config/${id}/workflow/status`,
-  //     undefined,
-  //     { Authorization: `Bearer ${token}` },
-  //   );
-  // }
-
-  // async getAuditHistory(
-  //   id: number,
-  //   token: string,
-  // ): Promise<any> {
-  //   return await this.adminServiceClient.forwardRequest(
-  //     'GET',
-  //     `/v1/admin/tcs/config/${id}/audit-history`,
-  //     undefined,
-  //     { Authorization: `Bearer ${token}` },
-  //   );
-  // }
-
-  // async updateStatusDirect(
-  //   id: number,
-  //   status: string,
-  //   token: string,
-  // ): Promise<any> {
-  //   return await this.adminServiceClient.forwardRequest(
-  //     'PATCH',
-  //     `/v1/admin/tcs/config/${id}/status`,
-  //     { status },
-  //     { Authorization: `Bearer ${token}` },
-  //   );
-  // }
 
   async updateConfigViaWrite(
     id: number,

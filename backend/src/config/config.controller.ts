@@ -16,7 +16,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { ConfigService } from './config.service';
-import { NotificationService } from '../notification/notification.service';
+// import { NotificationService } from '../notification/notification.service';
 import { TazamaAuthGuard } from '../auth/tazama-auth.guard';
 import { User } from '../auth/user.decorator';
 import type { AuthenticatedUser } from '../auth/auth.types';
@@ -29,7 +29,6 @@ import {
   type SubmitForApprovalDto,
   type ApprovalDto,
   type RejectionDto,
-  ConfigStatus,
   type DeploymentDto,
   type StatusTransitionDto,
 } from '../config/config.interfaces';
@@ -45,7 +44,7 @@ import { EventType } from 'src/enums/events.enum';
 export class ConfigController {
   constructor(
     private readonly configService: ConfigService,
-    private readonly notificationService: NotificationService,
+    // private readonly notificationService: NotificationService,
   ) {}
 
 
@@ -265,16 +264,16 @@ export class ConfigController {
     //   buildForwardHeaders(user),
     // );
 
-    if (result.success) {
-      const config = result.config!;
-      await this.notificationService.sendWorkflowNotification(
-        EventType.ExporterExport,
-        user,
-        config,
-        token,
-        dto.comment,
-      );
-    }
+    // if (result.success) {
+    //   const config = result.config!;
+    //   await this.notificationService.sendWorkflowNotification(
+    //     EventType.ExporterExport,
+    //     user,
+    //     config,
+    //     token,
+    //     dto.comment,
+    //   );
+    // }
 
     return result;
   }
@@ -305,16 +304,16 @@ export class ConfigController {
     //   buildForwardHeaders(user),
     // );
 
-    if (result?.success) {
-      const config = result.config!;
-      await this.notificationService.sendWorkflowNotification(
-        EventType.PublisherDeploy,
-        user,
-        config,
-        token,
-        dto.comment,
-      );
-    }
+    // if (result?.success) {
+    //   const config = result.config!;
+    //   await this.notificationService.sendWorkflowNotification(
+    //     EventType.PublisherDeploy,
+    //     user,
+    //     config,
+    //     token,
+    //     dto.comment,
+    //   );
+    // }
 
     return result;
   }
@@ -336,18 +335,18 @@ export class ConfigController {
       token,
     );
 
-    if (result?.success) {
-      const config = result.config!;
-      await this.notificationService.sendWorkflowNotification(
-        dto.publishing_status === 'active'
-          ? EventType.PublisherActivate
-          : EventType.PublisherDeactivate,
-        user,
-        config,
-        token,
-        `Publishing status changed to ${dto.publishing_status}`,
-      );
-    }
+    // if (result?.success) {
+    //   const config = result.config!;
+    //   await this.notificationService.sendWorkflowNotification(
+    //     dto.publishing_status === 'active'
+    //       ? EventType.PublisherActivate
+    //       : EventType.PublisherDeactivate,
+    //     user,
+    //     config,
+    //     token,
+    //     `Publishing status changed to ${dto.publishing_status}`,
+    //   );
+    // }
 
     return result;
   }
