@@ -218,23 +218,6 @@ export class ConfigController {
 
     const result = await this.configService.exportConfig(id, dto, user, token);
 
-    // const result = await this.adminServiceClient.forwardRequest(
-    //   'POST',
-    //   `/v1/admin/tcs/config/${id}/workflow/export`,
-    //   dto,
-    //   buildForwardHeaders(user),
-    // );
-
-    // if (result.success) {
-    //   const config = result.config!;
-    //   await this.notificationService.sendWorkflowNotification(
-    //     EventType.ExporterExport,
-    //     user,
-    //     config,
-    //     token,
-    //     dto.comment,
-    //   );
-    // }
 
     return result;
   }
@@ -257,24 +240,6 @@ export class ConfigController {
       user.userId,
       token,
     );
-
-    // const result = await this.adminServiceClient.forwardRequest(
-    //   'POST',
-    //   `/v1/admin/tcs/config/${id}/workflow/deploy`,
-    //   dto,
-    //   buildForwardHeaders(user),
-    // );
-
-    // if (result?.success) {
-    //   const config = result.config!;
-    //   await this.notificationService.sendWorkflowNotification(
-    //     EventType.PublisherDeploy,
-    //     user,
-    //     config,
-    //     token,
-    //     dto.comment,
-    //   );
-    // }
 
     return result;
   }
@@ -319,20 +284,6 @@ export class ConfigController {
       user,
       token,
     );
-
-    // if (result?.success) {
-    //   const config = result.config!;
-    //   await this.notificationService.sendWorkflowNotification(
-    //     dto.publishing_status === 'active'
-    //       ? EventType.PublisherActivate
-    //       : EventType.PublisherDeactivate,
-    //     user,
-    //     config,
-    //     token,
-    //     `Publishing status changed to ${dto.publishing_status}`,
-    //   );
-    // }
-
     return result;
   }
   @Post(':id/reject')

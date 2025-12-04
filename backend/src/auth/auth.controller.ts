@@ -3,16 +3,10 @@ import {
   Post,
   Body,
   UnauthorizedException,
-  Get,
-  UseGuards,
   HttpCode,
-  Query,
 } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { AuthService } from './auth.service';
-import { User } from './user.decorator';
-import { TazamaAuthGuard } from './tazama-auth.guard';
-import { RequireClaims, TazamaClaims } from './auth.decorator';
 
 @Controller('auth')
 export class AuthController {
