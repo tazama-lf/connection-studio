@@ -8,6 +8,8 @@ import {
   Job,
   JobStatus,
   JobSummary,
+  PaginatedResult,
+  PullJobHistory,
   Schedule,
   ScheduleStatus,
 } from '@tazama-lf/tcs-lib';
@@ -197,7 +199,7 @@ export class AdminServiceClient {
     limit: string,
     user: AuthenticatedUser,
     filters?: Record<string, unknown>,
-  ): Promise<{}> {
+  ): Promise<PaginatedResult<Job>> {
     try {
       const response = await firstValueFrom(
         this.httpService.post(
@@ -227,7 +229,7 @@ export class AdminServiceClient {
     limit: string,
     user: AuthenticatedUser,
     filters?: Record<string, unknown>,
-  ): Promise<{}> {
+  ): Promise<PaginatedResult<PullJobHistory>> {
     try {
       const response = await firstValueFrom(
         this.httpService.post(
@@ -493,7 +495,7 @@ export class AdminServiceClient {
     limit: string,
     user: AuthenticatedUser,
     filters?: Record<string, unknown>,
-  ): Promise<{}> {
+  ): Promise<PaginatedResult<Schedule>> {
     this.logger.log('Getting all schedules');
 
     try {

@@ -1,5 +1,4 @@
-import { Type } from 'class-transformer';
-import { IsDate, IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class CreateScheduleJobDto {
   @IsOptional()
@@ -14,13 +13,4 @@ export class CreateScheduleJobDto {
 
   @IsNumber()
   iterations: number;
-
-  @IsDate()
-  @Type(() => Date)
-  start_date: Date;
-
-  @IsOptional()
-  @IsDate()
-  @Type(() => Date)
-  end_date?: Date;
 }
