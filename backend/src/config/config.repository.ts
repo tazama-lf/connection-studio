@@ -10,10 +10,10 @@ export class ConfigRepository {
 
   constructor(private readonly adminServiceClient: AdminServiceClient) {}
 
-  async runRawQuery(query: string, token: string): Promise<any> {
-    this.logger.log('Executing raw SQL query via admin-service');
-    return await this.adminServiceClient.runRawQuery(query, token);
-  }
+  // async runRawQuery(query: string, token: string): Promise<any> {
+  //   this.logger.log('Executing raw SQL query via admin-service');
+  //   return await this.adminServiceClient.runRawQuery(query, token);
+  // }
 
   async createConfig(
     configData: Omit<Config, 'id' | 'createdAt' | 'updatedAt'>,
@@ -50,24 +50,16 @@ export class ConfigRepository {
     tenantId: string,
     token?: string,
   ): Promise<Config | null> {
-    try {
-      const result = await this.adminServiceClient.getAllConfigs(
-        token ?? tenantId,
-      );
-      const match = result.configs.find(
-        (c) =>
-          c.msgFam === msgFam &&
-          c.version === version &&
-          c.transactionType === transactionType,
-      );
-      return match ?? null;
-    } catch (error) {
-      const err = error as Error;
-      this.logger.error(
-        `Error finding config by msgFam/version/transactionType: ${err.message}`,
-      );
-      throw error;
-    }
+    const result = await this.adminServiceClient.getAllConfigs(
+      token ?? tenantId,
+    );
+    const match = result.configs.find(
+      (c) =>
+        c.msgFam === msgFam &&
+        c.version === version &&
+        c.transactionType === transactionType,
+    );
+    return match ?? null;
   }
   async getupdateConfigByStatus(
     id: number,
@@ -75,23 +67,12 @@ export class ConfigRepository {
     token: string,
     comment?: string,
   ): Promise<Config | null> {
-    try {
-      const result = await this.adminServiceClient.updateConfigByStatus(
-        id,
-        status,
-        token,
-        comment,
-      );
-      return result;
-    } catch (error) {
-      const err = error as Error;
-      this.logger.error(
-        `Error updating config status: ${err instanceof Error ? err.message : 'Unknown error'}`,
-      );
-      throw new Error('Failed to update config status message: ' + err.message, { 
-        cause: error 
-      });
-    }
+    return await this.adminServiceClient.updateConfigByStatus(
+      id,
+      status,
+      token,
+      comment,
+    );
   }
   async updatePublishingStatus(
     id: number,
@@ -105,16 +86,8 @@ export class ConfigRepository {
     );
   }
 
-  async deleteConfig(
-    id: number,
-    tenantId: string,
-    token: string,
-  ): Promise<void> {
-    await this.adminServiceClient.writeConfigDelete(id, token);
-  }
 
   async createDeployedConfig(configData: any, token: string): Promise<number> {
-    this.logger.log('Creating deployed config via admin-service');
     const result = await this.adminServiceClient.writeConfig(configData, token);
     if (!result?.id) {
       throw new Error('Failed to create deployed config: no ID returned');
@@ -126,25 +99,20 @@ export class ConfigRepository {
     transactionType: string,
     token: string,
   ): Promise<void> {
-    this.logger.log(`Creating table for transaction type: ${transactionType}`);
-    await this.adminServiceClient.createTransactionTypeTable(transactionType, token);
+    return await this.adminServiceClient.createTransactionTypeTable(transactionType, token);
   }
   async createTazamaDataModelTable(
     tableName: string,
     columns: ColumnDef[],
     token: string,
   ): Promise<void> {
-    this.logger.log(
-      `Creating table for TazamaDataModel type: ${tableName}`,
-    );
-    await this.adminServiceClient.createTazamaDataModelTable(tableName, columns, token);
+    return await this.adminServiceClient.createTazamaDataModelTable(tableName, columns, token);
   }
   async updateConfigStatus(
     id: number,
     status: string,
     token: string,
   ): Promise<void> {
-    this.logger.log(`Updating config ${id} status to ${status}`);
     await this.adminServiceClient.writeConfigUpdate(id, { status }, token);
   }
 
@@ -154,12 +122,7 @@ export class ConfigRepository {
     filters: Record<string, any>,
     token: string,
   ): Promise<Config[]> {
-    return await this.adminServiceClient.forwardRequest(
-      'POST',
-      `/v1/admin/tcs/config/${offset}/${limit}`,
-      filters,
-      { Authorization: `Bearer ${token}` },
-    );
+    return await this.adminServiceClient.getAllConfigsWithFilters(offset, limit, filters, token);
   }
 
   async addMapping(
@@ -167,21 +130,11 @@ export class ConfigRepository {
     mappingData: any,
     token: string,
   ): Promise<any> {
-    return await this.adminServiceClient.forwardRequest(
-      'POST',
-      `/v1/admin/tcs/config/${id}/mapping`,
-      mappingData,
-      { Authorization: `Bearer ${token}` },
-    );
+    return await this.adminServiceClient.addMapping(id, mappingData, token);
   }
 
   async removeMapping(id: number, index: number, token: string): Promise<any> {
-    return await this.adminServiceClient.forwardRequest(
-      'DELETE',
-      `/v1/admin/tcs/config/${id}/mapping/${index}`,
-      undefined,
-      { Authorization: `Bearer ${token}` },
-    );
+    return await this.adminServiceClient.removeMapping(id, index, token);
   }
 
   async addFunction(
@@ -189,56 +142,20 @@ export class ConfigRepository {
     functionData: any,
     token: string,
   ): Promise<any> {
-    return await this.adminServiceClient.forwardRequest(
-      'POST',
-      `/v1/admin/tcs/config/${id}/function`,
-      functionData,
-      { Authorization: `Bearer ${token}` },
-    );
+    return await this.adminServiceClient.addFunction(id, functionData, token);
   }
 
   async removeFunction(id: number, index: number, token: string): Promise<any> {
-    return await this.adminServiceClient.forwardRequest(
-      'DELETE',
-      `/v1/admin/tcs/config/${id}/function/${index}`,
-      undefined,
-      { Authorization: `Bearer ${token}` },
-    );
+    return await this.adminServiceClient.removeFunction(id, index, token);
   }
 
-  async updateFunction(
-    id: number,
-    index: number,
-    functionData: any,
-    token: string,
-  ): Promise<any> {
-    return await this.adminServiceClient.forwardRequest(
-      'PUT',
-      `/v1/admin/tcs/config/${id}/function/${index}`,
-      functionData,
-      { Authorization: `Bearer ${token}` },
-    );
-  }
 
   async updateConfigViaWrite(
     id: number,
     updateData: any,
     token: string,
   ): Promise<any> {
-    return await this.adminServiceClient.forwardRequest(
-      'PUT',
-      `/v1/admin/tcs/config/${id}/write`,
-      updateData,
-      { Authorization: `Bearer ${token}` },
-    );
+    return await this.adminServiceClient.writeConfigUpdate(id, updateData, token);
   }
 
-  async deleteConfigViaWrite(id: number, token: string): Promise<void> {
-    await this.adminServiceClient.forwardRequest(
-      'DELETE',
-      `/v1/admin/tcs/config/${id}/write`,
-      undefined,
-      { Authorization: `Bearer ${token}` },
-    );
-  }
 }

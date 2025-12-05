@@ -18,7 +18,7 @@ export class SimulationController {
   @Post('run')
   async simulateMapping(
     @Body() dto: SimulatePayloadDto,
-    @User() user?: AuthenticatedUser,
+    @User() user: AuthenticatedUser,
   ): Promise<SimulationResult> {
     const serviceDto = {
       endpointId: dto.configId,
@@ -30,31 +30,13 @@ export class SimulationController {
       tcsMapping: dto.tcsMapping,
     } as const;
 
-    this.logger.log(
-      `TCS simulation requested for endpoint ${serviceDto.endpointId}`,
-    );
-
-    if (!user?.token) {
-      throw new Error('User authentication required');
-    }
-
-    const { token } = user;
-    const { sub: userId, tenantId } = token;
-
-    if (!tenantId) {
-      throw new Error('Tenant ID not found in user context');
-    }
-
     const result = await this.simulationService.simulateMapping(
       serviceDto,
-      tenantId,
-      userId,
+      user.tenantId,
+      user.userId,
       user.token.tokenString,
     );
 
-    this.logger.log(
-      `TCS simulation completed with status: ${result.status}, errors: ${result.errors.length}`,
-    );
 
     return result;
   }

@@ -59,8 +59,8 @@ export class SimulationService {
   async simulateMapping(
     dto: SimulatePayloadDto,
     tenantId: string,
-    userId?: string,
-    token?: string,
+    userId: string,
+    token: string,
   ): Promise<SimulationResult> {
     const timestamp = new Date().toISOString();
     const stages: ValidationStage[] = [];

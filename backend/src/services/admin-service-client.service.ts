@@ -896,28 +896,28 @@ export class AdminServiceClient {
     }
   }
 
-  async runRawQuery(query: string, token: string): Promise<any> {
-    this.logger.log('Executing raw SQL query via admin-service');
+  // async runRawQuery(query: string, token: string): Promise<any> {
+  //   this.logger.log('Executing raw SQL query via admin-service');
 
-    try {
-      const response = await firstValueFrom(
-        this.httpService.post(
-          `${this.adminServiceUrl}/v1/admin/tcs/raw-query`,
-          { query },
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-          },
-        ),
-      );
+  //   try {
+  //     const response = await firstValueFrom(
+  //       this.httpService.post(
+  //         `${this.adminServiceUrl}/v1/admin/tcs/raw-query`,
+  //         { query },
+  //         {
+  //           headers: {
+  //             Authorization: `Bearer ${token}`,
+  //             'Content-Type': 'application/json',
+  //           },
+  //         },
+  //       ),
+  //     );
 
-      return response.data;
-    } catch (error) {
-      return this.handleError(error, 'runRawQuery');
-    }
-  }
+  //     return response.data;
+  //   } catch (error) {
+  //     return this.handleError(error, 'runRawQuery');
+  //   }
+  // }
   async updateConfigByStatus(
     id: number,
     status: string,
@@ -1023,6 +1023,64 @@ export class AdminServiceClient {
     } catch (error) {
       return this.handleError(error, 'updatePublishingStatus');
     }
+  }
+
+  async getAllConfigsWithFilters(
+    offset: number,
+    limit: number,
+    filters: Record<string, any>,
+    token: string,
+  ): Promise<Config[]> {
+    return await this.forwardRequest(
+      'POST',
+      `/v1/admin/tcs/config/${offset}/${limit}`,
+      filters,
+      { Authorization: token.startsWith('Bearer ') ? token : `Bearer ${token}` },
+    );
+  }
+
+  async addMapping(
+    id: number,
+    mappingData: any,
+    token: string,
+  ): Promise<any> {
+    return await this.forwardRequest(
+      'POST',
+      `/v1/admin/tcs/config/${id}/mapping`,
+      mappingData,
+      { Authorization: token.startsWith('Bearer ') ? token : `Bearer ${token}` },
+    );
+  }
+
+  async removeMapping(id: number, index: number, token: string): Promise<any> {
+    return await this.forwardRequest(
+      'DELETE',
+      `/v1/admin/tcs/config/${id}/mapping/${index}`,
+      undefined,
+      { Authorization: token.startsWith('Bearer ') ? token : `Bearer ${token}` },
+    );
+  }
+
+  async addFunction(
+    id: number,
+    functionData: any,
+    token: string,
+  ): Promise<any> {
+    return await this.forwardRequest(
+      'POST',
+      `/v1/admin/tcs/config/${id}/function`,
+      functionData,
+      { Authorization: token.startsWith('Bearer ') ? token : `Bearer ${token}` },
+    );
+  }
+
+  async removeFunction(id: number, index: number, token: string): Promise<any> {
+    return await this.forwardRequest(
+      'DELETE',
+      `/v1/admin/tcs/config/${id}/function/${index}`,
+      undefined,
+      { Authorization: token.startsWith('Bearer ') ? token : `Bearer ${token}` },
+    );
   }
 
   async getAllCollections(tenantId: string = 'default', token: string): Promise<any> {
@@ -1140,25 +1198,12 @@ export class AdminServiceClient {
   }
 
   async createTransactionTypeTable(transactionType: string, token: string): Promise<void> {
-    this.logger.log(`Creating transaction type table: ${transactionType}`);
-
-    try {
-      const authHeader = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
-      await firstValueFrom(
-        this.httpService.post(
-          `${this.adminServiceUrl}/v1/admin/tcs/deploy/transaction-type-table`,
-          { transactionType },
-          {
-            headers: {
-              Authorization: authHeader,
-              'Content-Type': 'application/json',
-            },
-          },
-        ),
-      );
-    } catch (error) {
-      return this.handleError(error, 'createTransactionTypeTable');
-    }
+    return await this.forwardRequest(
+      'POST',
+      '/v1/admin/tcs/deploy/transaction-type-table',
+      { transactionType },
+      { Authorization: token.startsWith('Bearer ') ? token : `Bearer ${token}` },
+    );
   }
 
   async createTazamaDataModelTable(
@@ -1166,25 +1211,12 @@ export class AdminServiceClient {
     columns: Array<{ name: string; type: string; isPrimaryKey?: boolean | string; param?: string }>,
     token: string,
   ): Promise<void> {
-    this.logger.log(`Creating Tazama data model table: ${tableName}`);
-
-    try {
-      const authHeader = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
-      await firstValueFrom(
-        this.httpService.post(
-          `${this.adminServiceUrl}/v1/admin/tcs/data-model/table`,
-          { tableName, columns },
-          {
-            headers: {
-              Authorization: authHeader,
-              'Content-Type': 'application/json',
-            },
-          },
-        ),
-      );
-    } catch (error) {
-      return this.handleError(error, 'createTazamaDataModelTable');
-    }
+    return await this.forwardRequest(
+      'POST',
+      '/v1/admin/tcs/data-model/table',
+      { tableName, columns },
+      { Authorization: token.startsWith('Bearer ') ? token : `Bearer ${token}` },
+    );
   }
 
   private handleError(error: any, operation: string): any {

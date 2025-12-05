@@ -26,12 +26,14 @@ import type {
   AddFunctionDto,
   ConfigResponseDto,
   Config,
+} from '../config/config.interfaces';
+import type {
   SubmitForApprovalDto,
   ApprovalDto,
   RejectionDto,
   DeploymentDto,
   StatusTransitionDto,
-} from '../config/config.interfaces';
+} from '@tazama-lf/tcs-lib';
 import {
   RequireClaims,
   TazamaClaims,
@@ -75,16 +77,15 @@ export class ConfigController {
   async createConfig(
     @Body() dto: CreateConfigDto,
     @User() user: AuthenticatedUser,
-    @Req() request: any,
   ): Promise<ConfigResponseDto> {
-    const authHeader = request.headers.authorization ?? '';
-    const token = authHeader.replace('Bearer ', '');
+    // const authHeader = request.headers.authorization ?? '';
+    // const token = authHeader.replace('Bearer ', '');
 
     const result = await this.configService.createConfig(
       dto,
       user.tenantId,
       user.userId,
-      token,
+      user.token.tokenString,
     );
 
     if (!result.success) {
@@ -96,8 +97,6 @@ export class ConfigController {
     return {
       success: true,
       message: 'Config created successfully',
-      config: result.config,
-      validation: result.validation,
     };
   }
 
@@ -160,88 +159,31 @@ export class ConfigController {
       user.token.tokenString,
     );
   }
-
-  @Put(':id/function/:index')
-  @RequireClaims(TazamaClaims.EDITOR)
-  async updateFunction(
+  @Post(':id/workflow')
+  @RequireAnyClaims(
+    TazamaClaims.EDITOR,
+    TazamaClaims.APPROVER,
+    TazamaClaims.PUBLISHER,
+    TazamaClaims.EXPORTER,
+  )
+  async workflow(
     @Param('id', ParseIntPipe) id: number,
-    @Param('index', ParseIntPipe) index: number,
-    @Body() dto: AddFunctionDto,
+    @Query('action') action: string,
+    @Body() dto: SubmitForApprovalDto | ApprovalDto | RejectionDto | DeploymentDto | StatusTransitionDto,
     @User() user: AuthenticatedUser,
+    @Headers('authorization') authorization: string,
   ): Promise<ConfigResponseDto> {
-    return await this.configService.updateFunctionViaService(
+    if (!action) {
+      throw new BadRequestException('Action is required as query parameter');
+    }
+
+    return await this.configService.handleWorkflowAction(
       id,
-      index,
-      dto,
-      user.token.tokenString,
-    );
-  }
-
-  @Post(':id/workflow/submit')
-  @RequireClaims(TazamaClaims.EDITOR)
-  async submitForApproval(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: SubmitForApprovalDto,
-    @User() user: AuthenticatedUser,
-    @Headers('authorization') authorization: string,
-  ): Promise<ConfigResponseDto> {
-    const token = authorization.replace('Bearer ', '');
-
-    const result = await this.configService.submitConfig(id, dto, user, token);
-
-    return result;
-  }
-
-  @Post(':id/workflow/approve')
-  @RequireClaims(TazamaClaims.APPROVER)
-  async approveConfig(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: ApprovalDto,
-    @User() user: AuthenticatedUser,
-    @Headers('authorization') authorization: string,
-  ): Promise<ConfigResponseDto> {
-    const token = authorization.replace('Bearer ', '');
-
-    const result = await this.configService.approveConfig(id, dto, user, token);
-    return result;
-  }
-
-  @Post(':id/workflow/export')
-  @RequireClaims(TazamaClaims.EXPORTER)
-  async exportConfig(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: StatusTransitionDto,
-    @User() user: AuthenticatedUser,
-    @Headers('authorization') authorization: string,
-  ): Promise<ConfigResponseDto> {
-    const token = authorization.replace('Bearer ', '');
-
-    const result = await this.configService.exportConfig(id, dto, user, token);
-
-
-    return result;
-  }
-
-  @Post(':id/workflow/deploy')
-  @RequireClaims(TazamaClaims.PUBLISHER)
-  async deployConfig(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: DeploymentDto,
-    @User() user: AuthenticatedUser,
-    @Headers('authorization') authorization: string,
-  ): Promise<ConfigResponseDto> {
-    const token = authorization.replace('Bearer ', '');
-
-    const result = await this.configService.deployConfig(
-      id,
+      action,
       dto,
       user,
-      user.tenantId,
-      user.userId,
-      token,
+      user.token.tokenString,
     );
-
-    return result;
   }
   @Patch('update/status/:id')
   @RequireAnyClaims(
@@ -286,29 +228,20 @@ export class ConfigController {
     );
     return result;
   }
-  @Post(':id/reject')
-  @RequireClaims(TazamaClaims.APPROVER)
-  async rejectConfig(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: RejectionDto,
-    @User() user: AuthenticatedUser,
-    @Headers('authorization') authorization: string,
-  ): Promise<ConfigResponseDto> {
-    const token = authorization.replace('Bearer ', '');
+  // @Post(':id/reject')
+  // @RequireClaims(TazamaClaims.APPROVER)
+  // async rejectConfig(
+  //   @Param('id', ParseIntPipe) id: number,
+  //   @Body() dto: RejectionDto,
+  //   @User() user: AuthenticatedUser,
+  //   @Headers('authorization') authorization: string,
+  // ): Promise<ConfigResponseDto> {
+  //   const token = authorization.replace('Bearer ', '');
 
-    const result = await this.configService.rejectConfig(id, dto, user, token);
+  //   const result = await this.configService.rejectConfig(id, dto, user, token);
 
-    return result;
-  }
-  @Delete(':id')
-  @RequireClaims(TazamaClaims.EDITOR)
-  @HttpCode(HttpStatus.NO_CONTENT)
-  async deleteConfig(
-    @Param('id', ParseIntPipe) id: number,
-    @User() user: AuthenticatedUser,
-  ): Promise<void> {
-    await this.configService.deleteConfigViaWrite(id, user.token.tokenString);
-  }
+  //   return result;
+  // }
   @Post('/:offset/:limit')
   @RequireAnyClaims(
     TazamaClaims.EDITOR,
