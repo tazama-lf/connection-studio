@@ -5,7 +5,12 @@ import {
   Body,
   Param,
   ParseIntPipe,
+  Req,
+  Logger,
+  UseGuards,
 } from '@nestjs/common';
+import { TazamaAuthGuard } from '../auth/tazama-auth.guard';
+import { RequireAnyClaims, TazamaClaims } from '../auth/auth.decorator';
 import { TazamaDataModelService } from './tazama-data-model.service';
 import type {
   CreateDestinationTypeDto,
@@ -32,18 +37,39 @@ interface DestinationOption {
 }
 
 @Controller('tazama-data-model')
+@UseGuards(TazamaAuthGuard)
 export class TazamaDataModelController {
+  private readonly logger = new Logger(TazamaDataModelController.name);
+  
   constructor(
     private readonly tazamaDataModelService: TazamaDataModelService,
   ) {}
   @Get('destination-options')
-  async getDestinationOptions(): Promise<{
+  @RequireAnyClaims(
+    TazamaClaims.EDITOR,
+    TazamaClaims.APPROVER,
+    TazamaClaims.PUBLISHER,
+    TazamaClaims.EXPORTER,
+  )
+  async getDestinationOptions(@Req() request: any): Promise<{
     success: boolean;
     data: DestinationOption[];
     error?: string;
   }> {
     try {
-      const data = await this.tazamaDataModelService.getDestinationOptions();
+      const authHeader = request.headers.authorization || '';
+      this.logger.debug(`Received authorization header: ${authHeader ? 'present' : 'missing'}`);
+      const token = authHeader.replace('Bearer ', '').trim();
+      
+      if (!token) {
+        return {
+          success: false,
+          error: 'Authorization token is required',
+          data: [],
+        };
+      }
+      
+      const data = await this.tazamaDataModelService.getDestinationOptions('default', token);
       return {
         success: true,
         data,
@@ -59,17 +85,35 @@ export class TazamaDataModelController {
     }
   }
 
-  /**
-   * Create a new destination type (collection)
-   */
+
   @Post('destination-types')
-  async createDestinationType(@Body() dto: CreateDestinationTypeDto): Promise<{
+  @RequireAnyClaims(
+    TazamaClaims.EDITOR,
+    TazamaClaims.APPROVER,
+    TazamaClaims.PUBLISHER,
+    TazamaClaims.EXPORTER,
+  )
+  async createDestinationType(
+    @Body() dto: CreateDestinationTypeDto,
+    @Req() request: any,
+  ): Promise<{
     success: boolean;
     message: string;
     data: DestinationTypeResponse | null;
   }> {
     try {
-      const data = await this.tazamaDataModelService.createDestinationType(dto);
+      const authHeader = request.headers.authorization || '';
+      const token = authHeader.replace('Bearer ', '').trim();
+      
+      if (!token) {
+        return {
+          success: false,
+          message: 'Authorization token is required',
+          data: null,
+        };
+      }
+      
+      const data = await this.tazamaDataModelService.createDestinationType(dto, token);
       return {
         success: true,
         message: 'Destination type created successfully',
@@ -86,22 +130,39 @@ export class TazamaDataModelController {
     }
   }
 
-  /**
-   * Add a field to a destination type
-   */
+
   @Post('destination-types/:destinationTypeId/fields')
+  @RequireAnyClaims(
+    TazamaClaims.EDITOR,
+    TazamaClaims.APPROVER,
+    TazamaClaims.PUBLISHER,
+    TazamaClaims.EXPORTER,
+  )
   async addFieldToDestinationType(
     @Param('destinationTypeId', ParseIntPipe) destinationTypeId: number,
     @Body() dto: CreateFieldDto,
+    @Req() request: any,
   ): Promise<{
     success: boolean;
     message: string;
     data: FieldResponse | null;
   }> {
     try {
+      const authHeader = request.headers.authorization || '';
+      const token = authHeader.replace('Bearer ', '').trim();
+      
+      if (!token) {
+        return {
+          success: false,
+          message: 'Authorization token is required',
+          data: null,
+        };
+      }
+      
       const data = await this.tazamaDataModelService.addFieldToDestinationType(
         destinationTypeId,
         dto,
+        token,
       );
       return {
         success: true,

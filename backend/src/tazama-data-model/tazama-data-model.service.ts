@@ -53,8 +53,9 @@ export class TazamaDataModelService {
 
   async getDestinationOptions(
     tenantId = 'default',
+    token: string,
   ): Promise<FieldSelectOption[]> {
-    const schemas = await this.repository.getAllCollections(tenantId);
+    const schemas = await this.repository.getAllCollections(tenantId, token);
     const options: FieldOption[] = [];
 
     const processField = (
@@ -100,7 +101,6 @@ export class TazamaDataModelService {
     };
 
     for (const schema of schemas) {
-      // If schema has no fields, add a placeholder option for the collection itself
       if (schema.fields.length === 0) {
         const emptyCollectionOption: FieldOption = {
           value: schema.name,
@@ -117,7 +117,6 @@ export class TazamaDataModelService {
         this.logger.log('Adding empty collection option:', emptyCollectionOption);
         options.push(emptyCollectionOption);
       } else {
-        // Process fields normally
         for (const field of schema.fields) {
           if (field.name === '_id' || field.name === '_rev') continue;
           processField(schema.name, field);
@@ -141,14 +140,13 @@ export class TazamaDataModelService {
     return resultOptions.sort((a, b) => a.label.localeCompare(b.label));
   }
 
-  /**
-   * Create a new destination type (collection)
-   */
+
   async createDestinationType(
     dto: CreateDestinationTypeDto,
+    token: string,
   ): Promise<DestinationTypeResponse> {
     try {
-      const result = await this.repository.createDestinationType(dto);
+      const result = await this.repository.createDestinationType(dto, token);
       this.logger.log(
         `Created destination type: ${dto.name} with ID: ${result.destination_type_id}`,
       );
@@ -167,16 +165,15 @@ export class TazamaDataModelService {
     }
   }
 
-  /**
-   * Add a single field to a destination type
-   */
+  
   async addFieldToDestinationType(
     destinationTypeId: number,
     dto: CreateFieldDto,
+    token: string,
   ): Promise<FieldResponse> {
     // Validate destination type exists
     const exists =
-      await this.repository.destinationTypeExists(destinationTypeId);
+      await this.repository.destinationTypeExists(destinationTypeId, token);
     if (!exists) {
       throw new BadRequestException(
         `Destination type with ID ${destinationTypeId} not found`,
@@ -184,7 +181,6 @@ export class TazamaDataModelService {
     }
 
     try {
-      // Sanitize DTO to handle potential string values for optional integer fields
       const sanitizedDto: CreateFieldDto = {
         ...dto,
         parent_id:
@@ -203,16 +199,11 @@ export class TazamaDataModelService {
               : dto.serial_no,
       };
 
-      // Get next serial number if not provided and it's a root field
-      let serialNo = sanitizedDto.serial_no;
-      if (!serialNo && !sanitizedDto.parent_id) {
-        serialNo = await this.repository.getNextSerialNumber(destinationTypeId);
-      }
-
       const result = await this.repository.addFieldToDestinationType(
         destinationTypeId,
         sanitizedDto,
-        serialNo,
+        token,
+        sanitizedDto.serial_no,
       );
       this.logger.log(
         `Added field: ${dto.name} to destination type: ${destinationTypeId}`,

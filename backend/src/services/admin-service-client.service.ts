@@ -1025,6 +1025,120 @@ export class AdminServiceClient {
     }
   }
 
+  async getAllCollections(tenantId: string = 'default', token: string): Promise<any> {
+    this.logger.log(`Fetching all collections for tenant: ${tenantId}`);
+    this.logger.debug(`Token received: ${token ? `${token.substring(0, 20)}...` : 'EMPTY'}`);
+
+    try {
+      const authHeader = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
+      this.logger.debug(`Authorization header: ${authHeader.substring(0, 30)}...`);
+      const response = await firstValueFrom(
+        this.httpService.get(
+          `${this.adminServiceUrl}/v1/admin/tcs/data-model/collections/${tenantId}`,
+          {
+            headers: {
+              Authorization: authHeader,
+              'Content-Type': 'application/json',
+            },
+          },
+        ),
+      );
+
+      return response.data;
+    } catch (error) {
+      return this.handleError(error, 'getAllCollections');
+    }
+  }
+
+  async createDestinationType(
+    dto: {
+      collection_type: string;
+      name: string;
+      description?: string;
+      destination_id: number;
+    },
+    token: string,
+  ): Promise<any> {
+    this.logger.log(`Creating destination type: ${dto.name}`);
+
+    try {
+      const authHeader = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
+      const response = await firstValueFrom(
+        this.httpService.post(
+          `${this.adminServiceUrl}/v1/admin/tcs/data-model/destination-types`,
+          dto,
+          {
+            headers: {
+              Authorization: authHeader,
+              'Content-Type': 'application/json',
+            },
+          },
+        ),
+      );
+
+      return response.data;
+    } catch (error) {
+      return this.handleError(error, 'createDestinationType');
+    }
+  }
+
+  async destinationTypeExists(destinationTypeId: number, token: string): Promise<any> {
+    this.logger.log(`Checking if destination type ${destinationTypeId} exists`);
+
+    try {
+      const authHeader = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
+      const response = await firstValueFrom(
+        this.httpService.get(
+          `${this.adminServiceUrl}/v1/admin/tcs/data-model/destination-types/${destinationTypeId}/exists`,
+          {
+            headers: {
+              Authorization: authHeader,
+              'Content-Type': 'application/json',
+            },
+          },
+        ),
+      );
+
+      return response.data;
+    } catch (error) {
+      return this.handleError(error, 'destinationTypeExists');
+    }
+  }
+
+  async addFieldToDestinationType(
+    destinationTypeId: number,
+    dto: {
+      name: string;
+      field_type: string;
+      parent_id?: number;
+      is_active?: boolean;
+      serial_no?: number;
+    },
+    token: string,
+  ): Promise<any> {
+    this.logger.log(`Adding field ${dto.name} to destination type ${destinationTypeId}`);
+
+    try {
+      const authHeader = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
+      const response = await firstValueFrom(
+        this.httpService.post(
+          `${this.adminServiceUrl}/v1/admin/tcs/data-model/destination-types/${destinationTypeId}/fields`,
+          dto,
+          {
+            headers: {
+              Authorization: authHeader,
+              'Content-Type': 'application/json',
+            },
+          },
+        ),
+      );
+
+      return response.data;
+    } catch (error) {
+      return this.handleError(error, 'addFieldToDestinationType');
+    }
+  }
+
   private handleError(error: any, operation: string): any {
     if (error.response) {
       const { status, data } = error.response;
