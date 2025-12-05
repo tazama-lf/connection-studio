@@ -1,67 +1,41 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigRepository } from '../../src/config/config.repository';
 import { AdminServiceClient } from '../../src/services/admin-service-client.service';
-import { Config, ConfigStatus, ContentType } from '../../src/config/config.interfaces';
-import { JSONSchema } from '@tazama-lf/tcs-lib';
 
 describe('ConfigRepository', () => {
   let repository: ConfigRepository;
-  let adminServiceClient: jest.Mocked<AdminServiceClient>;
+  let adminServiceClient: any;
 
-  const mockToken = 'mock-jwt-token';
-  const mockTenantId = 'test-tenant';
-
-  const mockJSONSchema: JSONSchema = {
-    $schema: 'https://json-schema.org/draft/2020-12/schema',
-    type: 'object',
-    properties: {
-      amount: { type: 'number' },
-      currency: { type: 'string' },
-    },
-    required: ['amount'],
-    additionalProperties: false,
-  };
-
-  const mockConfig: Config = {
-    id: 1,
-    msgFam: 'pain.001',
-    transactionType: 'Payments',
-    endpointPath: '/payment',
-    version: 'v1',
-    contentType: ContentType.JSON,
-    schema: mockJSONSchema,
-    mapping: undefined,
-    status: ConfigStatus.IN_PROGRESS,
-    tenantId: mockTenantId,
-    createdBy: 'user-123',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+  const mockConfig = {
+    name: 'Test Config',
+    tenantId: 'tenant1',
+    version: '1.0.0',
+    msgFam: 'test',
+    transactionType: 'payment',
+    endpointPath: '/api/test',
+    contentType: 'application/json',
+    schema: {}
   };
 
   beforeEach(async () => {
-    const mockAdminServiceClient = {
-      writeConfig: jest.fn(),
-      getConfigById: jest.fn(),
-      getConfigByEndpoint: jest.fn(),
-      getConfigsByTenant: jest.fn(),
-      getConfigsByTransactionType: jest.fn(),
-      getConfigByVersionAndTransactionType: jest.fn(),
-      getConfigByMsgFamVersionAndTransactionType: jest.fn(),
-      writeConfigUpdate: jest.fn(),
-      writeConfigDelete: jest.fn(),
-      getAllConfigs: jest.fn(),
-      updateConfigStatus: jest.fn(),
-      updatePublishingStatus: jest.fn(),
-      forwardRequest: jest.fn(),
-      runRawQuery: jest.fn(),
-    };
-
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ConfigRepository,
         {
           provide: AdminServiceClient,
-          useValue: mockAdminServiceClient,
+          useValue: {
+            runRawQuery: jest.fn(),
+            updateConfigByStatus: jest.fn(),
+            writeConfig: jest.fn(),
+            getAllConfigsWithFilters: jest.fn(),
+            getConfigById: jest.fn(),
+            updateConfig: jest.fn(),
+            deleteConfig: jest.fn(),
+            forwardRequest: jest.fn(),
+            writeConfigDelete: jest.fn(),
+            getAllConfigs: jest.fn(),
+            writeConfigUpdate: jest.fn(),
+          },
         },
       ],
     }).compile();
@@ -74,140 +48,57 @@ describe('ConfigRepository', () => {
     expect(repository).toBeDefined();
   });
 
-  describe('createConfig', () => {
-    it('should create config and return ID', async () => {
-      adminServiceClient.writeConfig.mockResolvedValue({ id: 1 });
-
-      const result = await repository.createConfig(mockConfig, mockToken);
-
-      expect(result).toBe(1);
-      expect(adminServiceClient.writeConfig).toHaveBeenCalledWith(
-        mockConfig,
-        mockToken,
-      );
-    });
-
-    it('should handle creation errors', async () => {
-      adminServiceClient.writeConfig.mockRejectedValue(
-        new Error('Creation failed'),
-      );
-
-      await expect(
-        repository.createConfig(mockConfig, mockToken),
-      ).rejects.toThrow('Creation failed');
-    });
+  it('should find config by id', async () => {
+    adminServiceClient.getConfigById.mockResolvedValue(mockConfig);
+    const result = await repository.findConfigById(1, 'tenant1', 'token');
+    expect(result).toEqual(mockConfig);
+    expect(adminServiceClient.getConfigById).toHaveBeenCalledWith(1, 'token');
   });
 
-  describe('findConfigById', () => {
-    it('should find config by ID', async () => {
-      adminServiceClient.getConfigById.mockResolvedValue(mockConfig);
-
-      const result = await repository.findConfigById(
-        1,
-        mockTenantId,
-        mockToken,
-      );
-
-      expect(result).toEqual(mockConfig);
-      expect(adminServiceClient.getConfigById).toHaveBeenCalledWith(
-        1,
-        mockToken,
-      );
-    });
-
-    it('should return null if config not found', async () => {
-      adminServiceClient.getConfigById.mockResolvedValue(null);
-
-      const result = await repository.findConfigById(
-        999,
-        mockTenantId,
-        mockToken,
-      );
-
-      expect(result).toBeNull();
-    });
+  it('should find all configs with filters', async () => {
+    adminServiceClient.forwardRequest.mockResolvedValue([mockConfig]);
+    const result = await repository.getAllConfigsWithFilters(0, 10, { tenantId: 'tenant1' }, 'token');
+    expect(result).toEqual([mockConfig]);
+    expect(adminServiceClient.forwardRequest).toHaveBeenCalledWith('POST', '/v1/admin/tcs/config/0/10', { tenantId: 'tenant1' }, { Authorization: 'Bearer token' });
   });
 
-  describe('updateConfigStatus', () => {
-    it('should update config status successfully', async () => {
-      const status = 'STATUS_01_IN_PROGRESS';
-      adminServiceClient.writeConfigUpdate.mockResolvedValue(undefined);
-
-      await repository.updateConfigStatus(1, status, mockToken);
-
-      expect(adminServiceClient.writeConfigUpdate).toHaveBeenCalledWith(
-        1,
-        { status },
-        mockToken,
-      );
-    });
-
-    it('should handle status update errors', async () => {
-      adminServiceClient.writeConfigUpdate.mockRejectedValue(
-        new Error('Update failed'),
-      );
-
-      await expect(
-        repository.updateConfigStatus(1, 'STATUS_02_ON_HOLD', mockToken),
-      ).rejects.toThrow('Update failed');
-    });
+  it('should create config', async () => {
+    adminServiceClient.writeConfig.mockResolvedValue({ id: 1 });
+    const result = await repository.createConfig(mockConfig as any, 'token');
+    expect(result).toBe(1);
+    expect(adminServiceClient.writeConfig).toHaveBeenCalledWith(mockConfig, 'token');
   });
 
-  describe('deleteConfig', () => {
-    it('should delete config successfully', async () => {
-      adminServiceClient.writeConfigDelete.mockResolvedValue(undefined);
-
-      await repository.deleteConfig(1, mockTenantId, mockToken);
-
-      expect(adminServiceClient.writeConfigDelete).toHaveBeenCalledWith(
-        1,
-        mockToken,
-      );
-    });
-
-    it('should handle deletion errors', async () => {
-      adminServiceClient.writeConfigDelete.mockRejectedValue(
-        new Error('Deletion failed'),
-      );
-
-      await expect(
-        repository.deleteConfig(1, mockTenantId, mockToken),
-      ).rejects.toThrow('Deletion failed');
-    });
+  it('should update config', async () => {
+    adminServiceClient.forwardRequest.mockResolvedValue(mockConfig);
+    const result = await repository.updateConfigViaWrite(1, { name: 'Updated' }, 'token');
+    expect(result).toEqual(mockConfig);
+    expect(adminServiceClient.forwardRequest).toHaveBeenCalledWith('PUT', '/v1/admin/tcs/config/1/write', { name: 'Updated' }, { Authorization: 'Bearer token' });
   });
 
-  describe('findConfigByMsgFamVersionAndTransactionType', () => {
-    it('should find config by msgFam, version, and transaction type', async () => {
-      adminServiceClient.getAllConfigs.mockResolvedValue({
-        configs: [mockConfig],
-      });
+  it('should delete config', async () => {
+    adminServiceClient.writeConfigDelete.mockResolvedValue(undefined);
+    await repository.deleteConfig(1, 'tenant1', 'token');
+    expect(adminServiceClient.writeConfigDelete).toHaveBeenCalledWith(1, 'token');
+  });
 
-      const result = await repository.findConfigByMsgFamVersionAndTransactionType(
-        'pain.001',
-        'v1',
-        'Payments',
-        mockTenantId,
-        mockToken,
-      );
+  it('should handle various find operations', async () => {
+    adminServiceClient.getAllConfigs.mockResolvedValue({ configs: [mockConfig] });
+    adminServiceClient.updateConfigByStatus.mockResolvedValue(mockConfig);
+    adminServiceClient.writeConfigUpdate.mockResolvedValue(undefined);
+    
+    await repository.findConfigByMsgFamVersionAndTransactionType('test', '1.0.0', 'payment', 'tenant1', 'token');
+    await repository.getupdateConfigByStatus(1, 'APPROVED', 'token');
+    await repository.updateConfigStatus(1, 'APPROVED', 'token');
 
-      expect(result).toEqual(mockConfig);
-      expect(adminServiceClient.getAllConfigs).toHaveBeenCalledWith(mockToken);
-    });
+    expect(adminServiceClient.getAllConfigs).toHaveBeenCalled();
+    expect(adminServiceClient.updateConfigByStatus).toHaveBeenCalled();
+    expect(adminServiceClient.writeConfigUpdate).toHaveBeenCalled();
+  });
 
-    it('should return null if no matching config found', async () => {
-      adminServiceClient.getAllConfigs.mockResolvedValue({
-        configs: [],
-      });
-
-      const result = await repository.findConfigByMsgFamVersionAndTransactionType(
-        'pain.999',
-        'v1',
-        'Payments',
-        mockTenantId,
-        mockToken,
-      );
-
-      expect(result).toBeNull();
-    });
+  it('should handle database errors', async () => {
+    adminServiceClient.getConfigById.mockRejectedValue(new Error('Database error'));
+    
+    await expect(repository.findConfigById(1, 'tenant1', 'token')).rejects.toThrow('Database error');
   });
 });

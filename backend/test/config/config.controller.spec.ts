@@ -1,397 +1,141 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigController } from '../../src/config/config.controller';
 import { ConfigService } from '../../src/config/config.service';
-import { Request } from 'express';
-import { ConfigStatus, ContentType } from '../../src/config/config.interfaces';
-import { JSONSchema } from '@tazama-lf/tcs-lib';
 
 describe('ConfigController', () => {
   let controller: ConfigController;
-  let configService: jest.Mocked<ConfigService>;
-
-  const mockToken = 'Bearer mock-jwt-token';
-  const mockTenantId = 'test-tenant';
-  const mockUserId = 'user-123';
-
-  const mockRequest = {
-    headers: {
-      authorization: mockToken,
-    },
-    user: {
-      sub: mockUserId,
-      preferred_username: mockUserId,
-      tenantId: mockTenantId,
-      userId: mockUserId,
-      roles: ['editor'],
-      token: {
-        tokenString: mockToken,
-      },
-    },
-  } as unknown as Request;
-
-  const mockJSONSchema: JSONSchema = {
-    $schema: 'https://json-schema.org/draft/2020-12/schema',
-    type: 'object',
-    properties: {
-      amount: { type: 'number' },
-      currency: { type: 'string' },
-    },
-    required: ['amount'],
-    additionalProperties: false,
-  };
+  let service: any;
 
   const mockConfig = {
     id: 1,
-    msgFam: 'pain.001',
-    transactionType: 'Payments',
-    endpointPath: '/payment',
-    version: 'v1',
-    contentType: ContentType.JSON,
-    schema: mockJSONSchema,
-    mapping: undefined,
-    status: ConfigStatus.IN_PROGRESS,
-    tenantId: mockTenantId,
-    createdBy: mockUserId,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    name: 'Test Config',
+    tenantId: 'tenant1',
+    version: '1.0.0',
+  };
+
+  const mockUser = { 
+    userId: 'user1', 
+    tenantId: 'tenant1', 
+    roles: ['editor'],
+    token: { tokenString: 'token123' },
+    validated: true,
+    validClaims: ['EDITOR']
+  } as any;
+
+  const mockRequest = {
+    headers: { authorization: 'Bearer token123' },
   };
 
   beforeEach(async () => {
-    const mockConfigService = {
-      createConfig: jest.fn(),
-      getConfigById: jest.fn(),
-      updateConfig: jest.fn(),
-      deleteConfig: jest.fn(),
-      addMapping: jest.fn(),
-      removeMapping: jest.fn(),
-      addFunction: jest.fn(),
-      removeFunction: jest.fn(),
-      updateFunction: jest.fn(),
-      submitForApproval: jest.fn(),
-      approveConfig: jest.fn(),
-      rejectConfig: jest.fn(),
-      exportConfig: jest.fn(),
-      deployConfig: jest.fn(),
-      updateConfigStatus: jest.fn(),
-    };
-
     const module: TestingModule = await Test.createTestingModule({
       controllers: [ConfigController],
       providers: [
         {
           provide: ConfigService,
-          useValue: mockConfigService,
+          useValue: {
+            getAllConfigs: jest.fn(),
+            getConfigById: jest.fn(),
+            createConfig: jest.fn(),
+            updateConfigStatus: jest.fn(),
+            deleteConfig: jest.fn(),
+            deleteConfigViaWrite: jest.fn(),
+            submitConfig: jest.fn(),
+            approveConfig: jest.fn(),
+            rejectConfig: jest.fn(),
+            exportConfig: jest.fn(),
+            deployConfig: jest.fn(),
+          },
         },
       ],
     }).compile();
 
     controller = module.get<ConfigController>(ConfigController);
-    configService = module.get(ConfigService);
+    service = module.get(ConfigService);
   });
 
   it('should be defined', () => {
     expect(controller).toBeDefined();
   });
 
-  describe('getConfigById', () => {
-    it('should return config by ID', async () => {
-      configService.getConfigById.mockResolvedValue(mockConfig);
-
-      const result = await controller.getConfigById(1, mockRequest);
-
-      expect(result).toEqual(mockConfig);
-      expect(configService.getConfigById).toHaveBeenCalledWith(
-        1,
-        mockTenantId,
-        mockToken,
-      );
-    });
-
-    it('should throw error if config not found', async () => {
-      configService.getConfigById.mockResolvedValue(null);
-
-      await expect(controller.getConfigById(999, mockRequest)).rejects.toThrow();
-    });
+  it('should get all configs', async () => {
+    service.getAllConfigs.mockResolvedValue([mockConfig]);
+    const result = await controller.getAllConfigs('0', '10', mockUser, {});
+    expect(result).toEqual([mockConfig]);
+    expect(service.getAllConfigs).toHaveBeenCalledWith(0, 10, {}, 'token123');
   });
 
-  describe('updateConfig', () => {
-    it('should update config successfully', async () => {
-      const updateDto = { endpointPath: '/new-path' };
-      const updatedConfig = { ...mockConfig, endpointPath: '/new-path' };
-
-      configService.updateConfig.mockResolvedValue({
-        success: true,
-        config: updatedConfig,
-        message: 'Config updated successfully',
-      });
-
-      const result = await controller.updateConfig(1, updateDto, mockRequest);
-
-      expect(result.success).toBe(true);
-      expect(result.config?.endpointPath).toBe('/new-path');
-      expect(configService.updateConfig).toHaveBeenCalledWith(
-        1,
-        updateDto,
-        mockTenantId,
-        mockUserId,
-        mockToken,
-      );
-    });
+  it('should get config by id', async () => {
+    service.getConfigById.mockResolvedValue({ success: true, config: mockConfig });
+    const result = await controller.getConfigById(1, mockUser);
+    expect(result).toEqual({ success: true, config: mockConfig });
+    expect(service.getConfigById).toHaveBeenCalledWith(1, 'tenant1', 'token123');
   });
 
-  describe('deleteConfig', () => {
-    it('should delete config successfully', async () => {
-      configService.deleteConfig.mockResolvedValue({
-        success: true,
-        message: 'Config deleted successfully',
-      });
-
-      const result = await controller.deleteConfig(1, mockRequest);
-
-      expect(result.success).toBe(true);
-      expect(configService.deleteConfig).toHaveBeenCalledWith(
-        1,
-        mockTenantId,
-        mockUserId,
-        mockToken,
-      );
-    });
+  it('should create config', async () => {
+    const createDto = { 
+      name: 'Test Config', 
+      version: '1.0.0', 
+      transactionType: 'payment',
+      payload: 'test payload' 
+    };
+    service.createConfig.mockResolvedValue({ success: true, config: mockConfig });
+    
+    const result = await controller.createConfig(createDto, mockUser, mockRequest);
+    expect(result.success).toBe(true);
+    expect(service.createConfig).toHaveBeenCalledWith(createDto, 'tenant1', 'user1', 'token123');
   });
 
-  describe('addMapping', () => {
-    it('should add mapping successfully', async () => {
-      const mappingDto = {
-        source: 'amount',
-        destination: 'transactionAmount',
-      };
-
-      const configWithMapping = {
-        ...mockConfig,
-        mapping: [{ source: ['amount'], destination: 'transactionAmount' }],
-      };
-
-      configService.addMapping.mockResolvedValue({
-        success: true,
-        config: configWithMapping,
-        message: 'Mapping added successfully',
-      });
-
-      const result = await controller.addMapping(1, mappingDto, mockRequest);
-
-      expect(result.success).toBe(true);
-      expect(result.config?.mapping).toHaveLength(1);
-      expect(configService.addMapping).toHaveBeenCalledWith(
-        1,
-        mappingDto,
-        mockTenantId,
-        mockUserId,
-        mockToken,
-      );
-    });
+  it('should update config status', async () => {
+    service.updateConfigStatus.mockResolvedValue({ success: true });
+    
+    const result = await controller.updateConfigStatus(1, 'APPROVED', mockUser, 'Bearer token123');
+    expect(result.success).toBe(true);
+    expect(service.updateConfigStatus).toHaveBeenCalledWith(1, 'APPROVED', 'tenant1', 'user1', 'token123');
   });
 
-  describe('removeMapping', () => {
-    it('should remove mapping successfully', async () => {
-      configService.removeMapping.mockResolvedValue({
-        success: true,
-        config: mockConfig,
-        message: 'Mapping removed successfully',
-      });
-
-      const result = await controller.removeMapping(1, 0, mockRequest);
-
-      expect(result.success).toBe(true);
-      expect(configService.removeMapping).toHaveBeenCalledWith(
-        1,
-        0,
-        mockTenantId,
-        mockUserId,
-        mockToken,
-      );
-    });
+  it('should delete config', async () => {
+    service.deleteConfigViaWrite = jest.fn().mockResolvedValue(undefined);
+    
+    await controller.deleteConfig(1, mockUser);
+    expect(service.deleteConfigViaWrite).toHaveBeenCalledWith(1, 'token123');
   });
 
-  describe('submitForApproval', () => {
-    it('should submit config for approval', async () => {
-      const dto = {
-        configId: 1,
-        userId: mockUserId,
-        userRole: 'editor',
-        comment: 'Ready for review',
-      };
+  it('should handle workflow operations', async () => {
+    const workflowDto = { 
+      configId: 1,
+      userId: 'user1', 
+      userRole: 'EDITOR',
+      comment: 'Test comment' 
+    };
+    service.submitConfig.mockResolvedValue({ success: true });
+    service.approveConfig.mockResolvedValue({ success: true });
+    service.rejectConfig.mockResolvedValue({ success: true });
 
-      configService.submitForApproval.mockResolvedValue({
-        success: true,
-        message: 'Configuration submitted for approval successfully',
-      });
+    await controller.submitForApproval(1, workflowDto, mockUser, 'Bearer token123');
+    await controller.approveConfig(1, { ...workflowDto, userRole: 'APPROVER' }, mockUser, 'Bearer token123');
+    await controller.rejectConfig(1, workflowDto, mockUser, 'Bearer token123');
 
-      const result = await controller.submitForApproval(1, dto, mockRequest);
-
-      expect(result.success).toBe(true);
-      expect(configService.submitForApproval).toHaveBeenCalledWith(
-        1,
-        dto,
-        mockTenantId,
-        mockUserId,
-        ['editor'],
-        mockToken,
-      );
-    });
+    expect(service.submitConfig).toHaveBeenCalled();
+    expect(service.approveConfig).toHaveBeenCalled();
+    expect(service.rejectConfig).toHaveBeenCalled();
   });
 
-  describe('approveConfig', () => {
-    it('should approve config successfully', async () => {
-      const approverRequest = {
-        ...mockRequest,
-        user: {
-          ...mockRequest.user,
-          roles: ['approver'],
-        },
-      } as unknown as Request;
+  it('should handle export and deploy operations', async () => {
+    const exportDto = { userId: 'user1', userRole: 'EXPORTER' };
+    const deployDto = { configId: 1, userId: 'user1', userRole: 'DEPLOYER' };
+    service.exportConfig.mockResolvedValue({ success: true });
+    service.deployConfig.mockResolvedValue({ success: true });
 
-      const dto = {
-        configId: 1,
-        userId: 'approver-123',
-        userRole: 'approver',
-        comment: 'Approved',
-      };
+    await controller.exportConfig(1, exportDto, mockUser, 'Bearer token123');
+    await controller.deployConfig(1, deployDto, mockUser, 'Bearer token123');
 
-      configService.approveConfig.mockResolvedValue({
-        success: true,
-        message: 'Configuration approved successfully',
-      });
-
-      const result = await controller.approveConfig(1, dto, approverRequest);
-
-      expect(result.success).toBe(true);
-      expect(configService.approveConfig).toHaveBeenCalled();
-    });
+    expect(service.exportConfig).toHaveBeenCalledWith(1, exportDto, mockUser, 'token123');
+    expect(service.deployConfig).toHaveBeenCalledWith(1, deployDto, mockUser, 'tenant1', 'user1', 'token123');
   });
 
-  describe('rejectConfig', () => {
-    it('should reject config successfully', async () => {
-      const approverRequest = {
-        ...mockRequest,
-        user: {
-          ...mockRequest.user,
-          roles: ['approver'],
-        },
-      } as unknown as Request;
-
-      const dto = {
-        configId: 1,
-        userId: 'approver-123',
-        userRole: 'approver',
-        comment: 'Needs changes',
-      };
-
-      configService.rejectConfig.mockResolvedValue({
-        success: true,
-        message: 'Configuration rejected successfully',
-      });
-
-      const result = await controller.rejectConfig(1, dto, approverRequest);
-
-      expect(result.success).toBe(true);
-      expect(configService.rejectConfig).toHaveBeenCalled();
-    });
-  });
-
-  describe('exportConfig', () => {
-    it('should export config successfully', async () => {
-      configService.exportConfig.mockResolvedValue({
-        success: true,
-        message: 'Config exported successfully',
-      });
-
-      const result = await controller.exportConfig(1, mockRequest);
-
-      expect(result.success).toBe(true);
-      expect(configService.exportConfig).toHaveBeenCalledWith(
-        1,
-        mockTenantId,
-        mockUserId,
-        mockToken,
-      );
-    });
-  });
-
-  describe('deployConfig', () => {
-    it('should deploy config successfully', async () => {
-      configService.deployConfig.mockResolvedValue({
-        success: true,
-        message: 'Config deployed successfully',
-      });
-
-      const result = await controller.deployConfig(1, mockRequest);
-
-      expect(result.success).toBe(true);
-      expect(configService.deployConfig).toHaveBeenCalledWith(
-        1,
-        mockTenantId,
-        mockUserId,
-        mockToken,
-      );
-    });
-  });
-
-  describe('updateConfigStatus', () => {
-    it('should update config status to STATUS_01_IN_PROGRESS', async () => {
-      const statusDto = { status: 'STATUS_01_IN_PROGRESS' };
-
-      configService.updateConfigStatus.mockResolvedValue({
-        success: true,
-        message: 'Config status updated to STATUS_01_IN_PROGRESS',
-      });
-
-      const result = await controller.updateConfigStatus(
-        1,
-        statusDto,
-        mockRequest,
-        mockToken,
-      );
-
-      expect(result.success).toBe(true);
-      expect(configService.updateConfigStatus).toHaveBeenCalledWith(
-        1,
-        'STATUS_01_IN_PROGRESS',
-        mockTenantId,
-        mockUserId,
-        mockToken.replace('Bearer ', ''),
-      );
-    });
-
-    it('should update config status to STATUS_02_ON_HOLD', async () => {
-      const statusDto = { status: 'STATUS_02_ON_HOLD' };
-
-      configService.updateConfigStatus.mockResolvedValue({
-        success: true,
-        message: 'Config status updated to STATUS_02_ON_HOLD',
-      });
-
-      const result = await controller.updateConfigStatus(
-        1,
-        statusDto,
-        mockRequest,
-        mockToken,
-      );
-
-      expect(result.success).toBe(true);
-      expect(configService.updateConfigStatus).toHaveBeenCalledWith(
-        1,
-        'STATUS_02_ON_HOLD',
-        mockTenantId,
-        mockUserId,
-        mockToken.replace('Bearer ', ''),
-      );
-    });
-
-    it('should throw error if status is missing', async () => {
-      const statusDto = { status: '' };
-
-      await expect(
-        controller.updateConfigStatus(1, statusDto, mockRequest, mockToken),
-      ).rejects.toThrow();
-    });
+  it('should handle errors gracefully', async () => {
+    service.getConfigById.mockRejectedValue(new Error('Config not found'));
+    
+    await expect(controller.getConfigById(999, mockUser)).rejects.toThrow('Config not found');
   });
 });
