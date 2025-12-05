@@ -1139,6 +1139,54 @@ export class AdminServiceClient {
     }
   }
 
+  async createTransactionTypeTable(transactionType: string, token: string): Promise<void> {
+    this.logger.log(`Creating transaction type table: ${transactionType}`);
+
+    try {
+      const authHeader = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
+      await firstValueFrom(
+        this.httpService.post(
+          `${this.adminServiceUrl}/v1/admin/tcs/deploy/transaction-type-table`,
+          { transactionType },
+          {
+            headers: {
+              Authorization: authHeader,
+              'Content-Type': 'application/json',
+            },
+          },
+        ),
+      );
+    } catch (error) {
+      return this.handleError(error, 'createTransactionTypeTable');
+    }
+  }
+
+  async createTazamaDataModelTable(
+    tableName: string,
+    columns: Array<{ name: string; type: string; isPrimaryKey?: boolean | string; param?: string }>,
+    token: string,
+  ): Promise<void> {
+    this.logger.log(`Creating Tazama data model table: ${tableName}`);
+
+    try {
+      const authHeader = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
+      await firstValueFrom(
+        this.httpService.post(
+          `${this.adminServiceUrl}/v1/admin/tcs/data-model/table`,
+          { tableName, columns },
+          {
+            headers: {
+              Authorization: authHeader,
+              'Content-Type': 'application/json',
+            },
+          },
+        ),
+      );
+    } catch (error) {
+      return this.handleError(error, 'createTazamaDataModelTable');
+    }
+  }
+
   private handleError(error: any, operation: string): any {
     if (error.response) {
       const { status, data } = error.response;

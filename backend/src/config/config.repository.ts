@@ -2,7 +2,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { AdminServiceClient } from '../services/admin-service-client.service';
 import { Config } from './config.interfaces';
-import { ColumnDef, createTableSQL } from '../utils/table-sql';
+import { ColumnDef } from '../utils/table-sql';
 
 @Injectable()
 export class ConfigRepository {
@@ -127,23 +127,17 @@ export class ConfigRepository {
     token: string,
   ): Promise<void> {
     this.logger.log(`Creating table for transaction type: ${transactionType}`);
-    const createTableQuery = `CREATE TABLE IF NOT EXISTS "${transactionType}" (
-  id SERIAL PRIMARY KEY,
-  document JSONB NOT NULL
-);`;
-    await this.adminServiceClient.runRawQuery(createTableQuery, token);
+    await this.adminServiceClient.createTransactionTypeTable(transactionType, token);
   }
   async createTazamaDataModelTable(
     tableName: string,
     columns: ColumnDef[],
-
     token: string,
   ): Promise<void> {
-    const createTableQuery = createTableSQL(tableName, columns);
     this.logger.log(
-      `Creating table for TazamaDataModel type: ${tableName} with query: ${createTableQuery}`,
+      `Creating table for TazamaDataModel type: ${tableName}`,
     );
-    await this.adminServiceClient.runRawQuery(createTableQuery, token);
+    await this.adminServiceClient.createTazamaDataModelTable(tableName, columns, token);
   }
   async updateConfigStatus(
     id: number,
