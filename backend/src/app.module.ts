@@ -9,7 +9,6 @@ import { ConfigModule } from './config/config.module';
 import { SimulationModule } from './simulation/simulation.module';
 import { TazamaDataModelModule } from './tazama-data-model/tazama-data-model.module';
 import { APP_INTERCEPTOR } from '@nestjs/core';
-import { TokenExpiryInterceptor } from './auth/token-expiry.interceptor';
 import { SftpModule } from './sftp/sftp.module';
 import { NotifyModule } from './notify/notify.module';
 import { SchedulerModule } from './scheduler/scheduler.module';
@@ -35,12 +34,6 @@ import { NotificationModule } from './notification/notification.module';
     NotificationModule,
   ],
   controllers: [AppController],
-  providers: [
-    AppService,
-    {
-      provide: APP_INTERCEPTOR,
-      useClass: TokenExpiryInterceptor,
-    },
-  ],
+  providers: [AppService],
 })
 export class AppModule {}
