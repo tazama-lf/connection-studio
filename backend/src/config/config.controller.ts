@@ -20,20 +20,21 @@ import { ConfigService } from './config.service';
 import { TazamaAuthGuard } from '../auth/tazama-auth.guard';
 import { User } from '../auth/user.decorator';
 import type { AuthenticatedUser } from '../auth/auth.types';
-import { CreateConfigDto, UpdateConfigDto } from './dto';
+import {
+  CreateConfigDto,
+  UpdateConfigDto,
+  SubmitForApprovalDto,
+  ApprovalDto,
+  RejectionDto,
+  DeploymentDto,
+  StatusTransitionDto,
+} from './dto';
 import type {
   AddMappingDto,
   AddFunctionDto,
   ConfigResponseDto,
   Config,
 } from '../config/config.interfaces';
-import type {
-  SubmitForApprovalDto,
-  ApprovalDto,
-  RejectionDto,
-  DeploymentDto,
-  StatusTransitionDto,
-} from '@tazama-lf/tcs-lib';
 import {
   RequireClaims,
   TazamaClaims,
@@ -171,7 +172,6 @@ export class ConfigController {
     @Query('action') action: string,
     @Body() dto: SubmitForApprovalDto | ApprovalDto | RejectionDto | DeploymentDto | StatusTransitionDto,
     @User() user: AuthenticatedUser,
-    @Headers('authorization') authorization: string,
   ): Promise<ConfigResponseDto> {
     if (!action) {
       throw new BadRequestException('Action is required as query parameter');

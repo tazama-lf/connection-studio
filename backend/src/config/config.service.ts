@@ -26,7 +26,7 @@ import {
   ApprovalDto,
   RejectionDto,
   DeploymentDto,
-} from '@tazama-lf/tcs-lib';
+} from './dto';
 import { EventType } from '../enums/events.enum';
 import { AuthenticatedUser } from '../auth/auth.types';
 
@@ -251,7 +251,7 @@ export class ConfigService {
             user,
             config,
             token,
-            submitDto.comment,
+            submitDto?.comment,
           );
         }
 
@@ -267,7 +267,7 @@ export class ConfigService {
           id,
           ConfigStatus.APPROVED,
           token,
-          approvalDto.comment,
+          approvalDto?.comment,
         );
 
         if (updatedConfig) {
@@ -277,7 +277,7 @@ export class ConfigService {
             user,
             config,
             token,
-            approvalDto.comment,
+            approvalDto?.comment,
           );
         }
 
@@ -355,7 +355,7 @@ export class ConfigService {
               user,
               exportedConfig,
               token,
-              exportDto.comment,
+              exportDto?.comment,
             );
           }
 
@@ -477,7 +477,7 @@ export class ConfigService {
             user,
             deployedConfig,
             token,
-            deployDto.comment,
+            deployDto?.comment,
           );
 
           this.logger.log(
