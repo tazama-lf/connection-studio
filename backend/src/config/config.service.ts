@@ -151,7 +151,7 @@ export class ConfigService {
         endpointPath,
         version,
         contentType: dto.contentType ?? ContentType.JSON,
-        schema: dto.schema as JSONSchema,
+        schema: dto.schema as unknown as JSONSchema,
         mapping: dto.mapping,
         functions: dto.functions,
         status: ConfigStatus.IN_PROGRESS,

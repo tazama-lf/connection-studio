@@ -37,9 +37,8 @@ export class CreateConfigDto {
   @IsOptional()
   schema?: Record<string, any>;
 
-  @IsString()
-  @IsOptional()
-  payload?: string;
+  @IsNotEmpty()
+  payload: string | Record<string, unknown>;
 
   @IsString()
   @IsOptional()
