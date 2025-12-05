@@ -91,11 +91,11 @@ describe('AuthService', () => {
         token: mockToken,
         expiresIn: null,
       });
-      expect(httpService.post).toHaveBeenCalledWith(authUrl, {
+      expect(httpService.post).toHaveBeenCalledWith(`${authUrl}/login`, {
         username,
         password,
       });
-      expect(loggerService.log).toHaveBeenCalledWith('Login successful');
+      expect(loggerService.log).toHaveBeenCalledWith('Auth service responded', 'AuthService');
     });
 
     it('should successfully login with token in data.token field', async () => {
@@ -114,7 +114,7 @@ describe('AuthService', () => {
         token: mockToken,
         expiresIn: 3600,
       });
-      expect(loggerService.log).toHaveBeenCalledWith('Login successful');
+      expect(loggerService.log).toHaveBeenCalledWith('Auth service responded', 'AuthService');
     });
 
     it('should successfully login with token in data.access_token field', async () => {
