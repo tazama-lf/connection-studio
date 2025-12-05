@@ -462,6 +462,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
               getDemsStatusLov[userRole as keyof typeof getDemsStatusLov] || [],
             searchingFilters,
             setSearchingFilters,
+            setPage: setPage
           })}
         </Box>
       ),

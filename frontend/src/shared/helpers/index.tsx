@@ -20,6 +20,7 @@ interface SelectOption {
 interface SelectFilterProps {
   fieldName: string;
   options: SelectOption[];
+  setPage?: (page: number) => void;
   searchingFilters?: Record<string, any>;
   setSearchingFilters: React.Dispatch<
     React.SetStateAction<Record<string, any>>
@@ -95,6 +96,7 @@ export const handleSelectFilter = ({
   fieldName,
   options,
   searchingFilters,
+  setPage,
   setSearchingFilters,
 }: SelectFilterProps) => {
   const [localValue, setLocalValue] = React.useState(
@@ -111,6 +113,9 @@ export const handleSelectFilter = ({
           const selectedValue = event.target.value;
           setLocalValue(selectedValue);
 
+          if (setPage) {
+            setPage(1); // Reset to first page on filter change
+          }
           // setTableLoading(true);
           if (selectedValue === '') {
             // When "Show All" is selected, remove the filter
