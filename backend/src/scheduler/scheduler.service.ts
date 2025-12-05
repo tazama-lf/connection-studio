@@ -141,13 +141,17 @@ export class SchedulerService {
         );
       }
 
-      const result = await this.adminServiceClient.updateScheduleByStatus(
-        id,
-        status,
-        tenantId,
-        user.token.tokenString,
-        reason,
-      );
+
+      let result: ISuccess | null = null;
+      if (status !== JobStatus.DEPLOYED) {
+        result = await this.adminServiceClient.updateScheduleByStatus(
+          id,
+          status,
+          tenantId,
+          user.token.tokenString,
+          reason,
+        );
+      }
 
       const requiresExistingJob =
         status === JobStatus.APPROVED ||
@@ -238,7 +242,7 @@ export class SchedulerService {
           break;
       }
 
-      return result
+      return result ?? { success: true, message: 'Cron Job Status updated successfully' };
     } catch (err) {
       this.loggerService.error(err.message);
       throw new BadRequestException(err.message);

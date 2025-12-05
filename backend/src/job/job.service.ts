@@ -356,14 +356,17 @@ export class JobService {
   ): Promise<ISuccess> {
     try {
 
-      const result = await this.adminServiceClient.updateJobByStatus(
-        id,
-        status,
-        user.tenantId,
-        type,
-        user.token.tokenString,
-        reason,
-      );
+      let result: ISuccess | null = null;
+      if (status !== JobStatus.DEPLOYED) {
+        result = await this.adminServiceClient.updateJobByStatus(
+          id,
+          status,
+          user.tenantId,
+          type,
+          user.token.tokenString,
+          reason,
+        );
+      }
 
       const fileName = `de_${user.tenantId}_${id}`;
       const requiresExistingJob =
@@ -479,7 +482,7 @@ export class JobService {
         }
       }
 
-      return result
+      return result ?? { success: true, message: 'Job Status updated successfully' };
     } catch (error: unknown) {
       return this.handleError(error);
     }
