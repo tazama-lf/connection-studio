@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
-import { AuthService } from './auth.service';
+import { AuthService } from '../../src/auth/auth.service';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import {
   UnauthorizedException,

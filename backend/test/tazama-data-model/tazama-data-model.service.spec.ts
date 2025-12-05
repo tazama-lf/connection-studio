@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { TazamaDataModelService } from './tazama-data-model.service';
+import { TazamaDataModelService } from '../../src/tazama-data-model/tazama-data-model.service';
 
 describe('TazamaDataModelService', () => {
   let service: TazamaDataModelService;
