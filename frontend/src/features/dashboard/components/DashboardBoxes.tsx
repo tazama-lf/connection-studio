@@ -117,7 +117,7 @@ const DashboardBoxes: React.FC = () => {
   };
 
   const baseItems = [
-    { id: 'dems', title: 'Dynamic Endpoint Monitoring', subtitle: 'Review and approve configuration changes for data endpoints and mappings.', icon: <ActivityIcon />, color: '#3b82f6' },
+    { id: 'dems', title: 'Dynamic Event Monitoring', subtitle: 'Review and approve configuration changes for data endpoints and mappings.', icon: <ActivityIcon />, color: '#3b82f6' },
     { id: 'de', title: 'Data Enrichment', subtitle: 'Approve or reject data enrichment job requests and monitor their status.', icon: <DatabaseIcon />, color: '#10b981' },
     { id: 'cron', title: 'Cron Job Management', subtitle: 'Review and approve scheduled cron job configurations and executions.', icon: <ClockIcon />, color: '#f59e0b' }
   ];

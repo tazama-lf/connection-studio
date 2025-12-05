@@ -8,7 +8,7 @@ const PublisherModule: React.FC = () => {
   const modules = [
     {
       id: 'configs',
-      name: 'Dynamic Endpoint Monitoring Service',
+      name: 'Dynamic Event Monitoring Service',
       description: 'Review and publish approved configurations',
       icon: <Settings size={24} />,
       color: 'bg-purple-100 text-purple-600',

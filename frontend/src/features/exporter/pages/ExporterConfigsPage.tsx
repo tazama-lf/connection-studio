@@ -124,7 +124,7 @@ export const ExporterConfigsPage: React.FC = () => {
               style={{ color: '#3b3b3b' }}
             >
               <ActivityIcon size={28} style={{ color: '#3b82f6' }} />
-              Dynamic Endpoint Monitoring Service
+              Dynamic Event Monitoring Service
             </h1>
           </div>
         </div>

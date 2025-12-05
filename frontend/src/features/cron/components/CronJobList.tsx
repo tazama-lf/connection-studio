@@ -230,18 +230,16 @@ export const CronJobList: React.FC<CronJobListProps> = ({
     try {
       setIsActionInProgress(true);
 
-      // Clean up the form data: remove empty strings for optional date fields
-      // const cleanedForm = {
-      //   ...editForm,
-      //   end_date:
-      //     editForm.end_date && editForm.end_date.trim() !== ''
-      //       ? editForm.end_date
-      //       : undefined,
-      // };
+      // Prepare payload: only send name, cron (from cronExpression), and iterations
+      const payload = {
+        name: editForm.name,
+        cron: editForm.cronExpression,
+        iterations: editForm.iterations,
+      };
 
-      console.log('ssss', editForm);
+      console.log('Update payload:', payload);
 
-      await dataEnrichmentApi.updateSchedule(selectedSchedule.id, editForm);
+      await dataEnrichmentApi.updateSchedule(selectedSchedule.id, payload);
 
       showSuccess('Schedule updated successfully');
       setIsEditJobSaved(true);

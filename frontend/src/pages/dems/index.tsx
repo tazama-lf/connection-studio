@@ -83,7 +83,7 @@ const DEMSModule: React.FC = () => {
   return (
     <div className="min-h-screen bg-white">
       {/* <AuthHeader
-        title="Dynamic Endpoint Monitoring Service"
+        title="Dynamic Event Monitoring Service"
         showBackButton={true}
       /> */}
 
@@ -103,7 +103,7 @@ const DEMSModule: React.FC = () => {
               style={{ color: '#3b3b3b' }}
             >
               <ActivityIcon size={28} style={{ color: '#3b82f6' }} />
-              Dynamic Endpoint Monitoring Service
+              Dynamic Event Monitoring Service
             </h1>
           </div>
           <Button onClick={handleAddNew} icon={<PlusIcon size={16} />}>

@@ -385,7 +385,7 @@ export const DataEnrichmentFormModal: React.FC<
             control={control}
             label={
               <>
-                Endpoint Name <span className="text-red-500">*</span>
+                Connector Name <span className="text-red-500">*</span>
               </>
             }
             type="text"
@@ -470,7 +470,7 @@ export const DataEnrichmentFormModal: React.FC<
                   Host <span className="text-red-500">*</span>
                 </>
               }
-              placeholder="10.10.80.37"
+              placeholder=""
             />
             {errors?.host && (
               <ValidationError message={errors?.host?.message} />
@@ -706,7 +706,7 @@ export const DataEnrichmentFormModal: React.FC<
             control={control}
             label={
               <>
-                Endpoint Name <span className="text-red-500">*</span>
+                Connector Name <span className="text-red-500">*</span>
               </>
             }
             type="text"
@@ -921,13 +921,13 @@ export const DataEnrichmentFormModal: React.FC<
                 )}
               </div>
             </div>
-            {/* Endpoint Name */}
+            {/* Connector Name */}
             <div className="grid grid-cols-3 gap-4" data-id="element-1004">
               <div
                 className="col-span-1 text-sm font-medium text-gray-500"
                 data-id="element-1005"
               >
-                Endpoint Name
+                Connector Name
               </div>
               <div
                 className="col-span-2 text-sm text-gray-900"
@@ -1303,9 +1303,11 @@ export const DataEnrichmentFormModal: React.FC<
             : await dataEnrichmentApi.createPushJob(payload);
       }
 
-      const successMessage = editMode
+      // Use backend message if available, otherwise use default
+      const backendMessage = (response as any)?.message;
+      const successMessage = backendMessage || (editMode
         ? `Data enrichment endpoint "${formValues.name}" updated successfully!`
-        : `Data enrichment endpoint "${formValues.name}" created successfully! You can now send it for approval.`;
+        : `Data enrichment endpoint "${formValues.name}" created successfully! You can now send it for approval.`);
 
       setCreateSuccess(successMessage);
       onSave(response);
@@ -1317,31 +1319,16 @@ export const DataEnrichmentFormModal: React.FC<
     } catch (error) {
       console.error('=== CREATE ENDPOINT ERROR ===', error);
 
+      // Extract backend error message directly from Error object or response
       let errorMessage = 'Failed to create endpoint';
 
-      if (error && typeof error === 'object' && 'response' in error) {
+      if (error instanceof Error) {
+        // The apiRequest function already extracts errorData.message and throws it
+        errorMessage = error.message;
+      } else if (error && typeof error === 'object') {
+        // Fallback for non-Error objects
         const apiError = error as any;
-        const backendMessage =
-          apiError.response?.data?.message ||
-          apiError.response?.data?.error ||
-          apiError.response?.data?.details;
-
-        if (backendMessage) {
-          errorMessage = `Backend error: ${backendMessage}`;
-        } else if (apiError.response?.status === 400) {
-          errorMessage = 'Bad Request: Invalid data sent to backend';
-        } else {
-          errorMessage = `HTTP ${apiError.response?.status}: ${apiError.message || 'Unknown error'}`;
-        }
-      } else if (
-        error instanceof TypeError &&
-        error.message.includes('fetch')
-      ) {
-        errorMessage =
-          'Cannot connect to data enrichment service. Please ensure the service is running';
-      } else {
-        errorMessage =
-          error instanceof Error ? error.message : 'Unknown error occurred';
+        errorMessage = apiError.message || apiError.error || 'Unknown error occurred';
       }
 
       setCreateError(errorMessage);

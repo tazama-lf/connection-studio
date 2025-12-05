@@ -242,7 +242,7 @@ const PublisherExportedItemsPage: React.FC = () => {
     },
     {
       id: 'de' as TabType,
-      name: 'DE Jobs',
+      name: 'Data Enrichment Jobs',
       icon: <Database size={28} style={{ color: '#10b981' }} />, // Green
     },
   ];

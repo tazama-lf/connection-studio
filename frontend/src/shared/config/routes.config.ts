@@ -25,7 +25,7 @@ export const NAVIGATION = {
   mainModules: [
     {
       id: 'dems',
-      name: 'Dynamic Endpoint Monitoring Service',
+      name: 'Dynamic Event Monitoring Service',
       description:
         'Monitor and manage API endpoints, configurations, and field mappings',
       path: ROUTES.DEMS,

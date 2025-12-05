@@ -31,9 +31,9 @@ export const defaultValues = {
 export const pullValidationSchema = yup.object({
     name: yup
         .string()
-        .required('Endpoint name is required')
-        .min(3, 'Endpoint name must be at least 3 characters')
-        .max(50, 'Endpoint name cannot exceed 50 characters')
+        .required('Connector name is required')
+        .min(3, 'Connector name must be at least 3 characters')
+        .max(50, 'Connector name cannot exceed 50 characters')
         .matches(
             /^[a-zA-Z][a-zA-Z0-9_-]*[a-zA-Z0-9]$|^[a-zA-Z]$/,
             'Must start with a letter and end with letter/number (only a-z, 0-9, _, - are allowed)'

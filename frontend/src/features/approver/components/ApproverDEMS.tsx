@@ -97,7 +97,7 @@ const ApproverDEMS: React.FC<ApproverDEMSProps> = ({ onBack }) => {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">
-              Dynamic Endpoint Monitoring Service
+              Dynamic Event Monitoring Service
             </h1>
             <p className="text-gray-600 mt-2">
               Review and approve pending endpoint configurations
@@ -110,7 +110,7 @@ const ApproverDEMS: React.FC<ApproverDEMSProps> = ({ onBack }) => {
               style={{ color: '#3b3b3b' }}
             >
               <ActivityIcon size={28} style={{ color: '#3b82f6' }} />
-              Dynamic Endpoint Monitoring Service
+              Dynamic Event Monitoring Service
             </h1>
           </div>
         </div>

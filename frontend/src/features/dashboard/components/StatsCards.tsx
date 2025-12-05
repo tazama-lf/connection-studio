@@ -108,7 +108,7 @@ const StatsCards: React.FC = () => {
   const navigate = useNavigate();
 
   const items: StatCard[] = [
-    { id: 'dems', title: 'Dynamic Endpoint Monitoring', value: 46, subtitle: 'All endpoints in system', color: '#3b82f6', icon: <ActivityIcon size={18} />, path: ROUTES.DEMS, percent: 46 },
+    { id: 'dems', title: 'Dynamic Event Monitoring', value: 46, subtitle: 'All endpoints in system', color: '#3b82f6', icon: <ActivityIcon size={18} />, path: ROUTES.DEMS, percent: 46 },
     { id: 'de', title: 'Data Enrichment Jobs', value: 9, subtitle: 'Pull and Push Jobs', color: '#10b981', icon: <DatabaseIcon size={18} />, path: ROUTES.DATA_ENRICHMENT, percent: 9 },
     { id: 'cron', title: 'Cron Jobs Management', value: 40, subtitle: 'Schedules', color: '#f59e0b', icon: <ClockIcon size={18} />, path: ROUTES.CRON, percent: 40 },
   ];

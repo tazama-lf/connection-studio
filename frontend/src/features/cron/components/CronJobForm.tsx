@@ -50,9 +50,7 @@ const validationSchema = yup.object().shape({
 const defaultValues = {
   name: '',
   cronExpression: '',
-  iterations: 1,
-  startDate: '2025-11-18',
-  endDate: '2025-12-31',
+  iterations: 1
 };
 
 interface CronJobFormProps {
@@ -146,7 +144,6 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({
         name: data.name.trim(),
         cron: data.cronExpression.trim(),
         iterations: data.iterations,
-        start_date: data.startDate,
       };
 
       const response = await dataEnrichmentApi.createSchedule(scheduleData);

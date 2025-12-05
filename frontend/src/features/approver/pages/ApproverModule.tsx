@@ -24,7 +24,7 @@ export const ApproverModule: React.FC = () => {
   const modules = [
     {
       id: 'dems',
-      name: 'Dynamic Endpoint Monitoring Service',
+      name: 'Dynamic Event Monitoring Service',
       description: 'Review and approve configuration changes for data endpoints and mappings.',
       icon: <Settings size={24} />,
       color: 'bg-purple-100 text-purple-600',

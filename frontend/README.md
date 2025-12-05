@@ -123,7 +123,7 @@ src/
 │   │   └── services/  # Enrichment API services
 │   ├── dashboard/     # Main dashboard module
 │   │   └── pages/     # Dashboard pages
-│   ├── dems/          # Dynamic Endpoint Monitoring Service
+│   ├── dems/          # Dynamic Event Monitoring Service
 │   │   ├── pages/     # DEMS module pages
 │   │   └── services/  # Endpoint API services
 │   └── shared/        # Shared feature utilities

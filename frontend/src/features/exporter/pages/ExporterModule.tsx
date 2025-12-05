@@ -24,7 +24,7 @@ export const ExporterModule: React.FC = () => {
   const modules = [
     {
       id: 'dems',
-      name: 'Dynamic Endpoint Monitoring Service',
+      name: 'Dynamic Event Monitoring Service',
       description: 'View and export approved configurations',
       icon: <Settings size={24} />,
       color: 'bg-purple-100 text-purple-600',

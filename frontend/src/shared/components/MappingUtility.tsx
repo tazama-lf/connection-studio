@@ -7,6 +7,8 @@ import {
   FolderIcon,
   DatabaseIcon,
   ServerIcon,
+  Shuffle,
+  FileText,
 } from 'lucide-react';
 import { Button } from './Button';
 import {
@@ -1094,9 +1096,16 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
           // Determine the actual type for this node - redis nodes should be purple
           const nodeType = node.id.startsWith('redis') ? 'redis' : type;
           const isRedis = node.id === 'redis';
+          const isTenantId = node.id === 'TenantId' && depth === 0;
 
           return (
             <div key={node.id} data-id="element-177">
+              {/* Add "System Reserved" heading before TenantId */}
+              {isTenantId && (
+                <div className="mb-2 mt-4">
+                  <div className="text-sm text-gray-600">System Reserved</div>
+                </div>
+              )}
               {/* Add spacing and heading before redis section */}
               {isRedis && index > 0 && (
                 <div className="mt-4 mb-2">
@@ -1230,9 +1239,10 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
               {selectedTransformation !== 'constant' && (
                 <div className="space-y-4" data-id="element-195">
                   <h4
-                    className="font-medium text-gray-700"
+                    className="font-medium text-gray-700 flex items-center gap-2"
                     data-id="element-196"
                   >
+                    <FileText size={18} style={{ color: '#2b7fff' }} />
                     Source Fields
                   </h4>
                   <div
@@ -1300,7 +1310,8 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
 
               {/* Transformation */}
               <div className="space-y-4" data-id="element-200">
-                <h4 className="font-medium text-gray-700" data-id="element-201">
+                <h4 className="font-medium text-gray-700 flex items-center gap-2" data-id="element-201">
+                  <Shuffle size={18} style={{ color: '#2b7fff' }} />
                   Transformation
                 </h4>
                 <div
@@ -1464,7 +1475,8 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
               </div>
               {/* Destination Selection */}
               <div className="space-y-4" data-id="element-229">
-                <h4 className="font-medium text-gray-700" data-id="element-230">
+                <h4 className="font-medium text-gray-700 flex items-center gap-2" data-id="element-230">
+                  <DatabaseIcon size={18} style={{ color: '#2b7fff' }} />
                   Destination
                 </h4>
                 <div

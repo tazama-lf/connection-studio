@@ -94,9 +94,9 @@ export const CloneJobModal: React.FC<CloneJobModalProps> = ({
       return;
     }
 
-    // For pull jobs, endpoint name is required
+    // For pull jobs, connector name is required
     if (job.type === 'pull' && !newEndpointName.trim()) {
-      showError('Endpoint name is required for pull jobs');
+      showError('Connector name is required for pull jobs');
       return;
     }
 

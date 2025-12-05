@@ -142,11 +142,11 @@ const DataEnrichmentModule: React.FC = () => {
       // We just need to refresh the jobs list with scroll preservation
       fetchDeJobsWithScrollPreservation();
 
-      // Show success message
+      // Show success message from backend if available
+      const backendMessage = jobResponse?.message;
       const jobName = jobResponse?.endpoint_name || 'New endpoint';
-      showSuccess(
-        `${jobName} has been saved successfully! You can now send it for approval.`,
-      );
+      const successMessage = backendMessage || `${jobName} has been saved successfully! You can now send it for approval.`;
+      showSuccess(successMessage);
     } catch (error) {
       console.error('Failed to handle job creation:', error);
       showError('Failed to handle job creation');

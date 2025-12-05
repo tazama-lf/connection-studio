@@ -285,9 +285,11 @@ export const DataEnrichmentEditModal: React.FC<
             : await dataEnrichmentApi.createPushJob(payload);
       }
 
-      const successMessage = editMode
+      // Use backend message if available, otherwise use default
+      const backendMessage = (response as any)?.message;
+      const successMessage =( backendMessage || 'Job created successfully' ) || (editMode
         ? `Data enrichment endpoint "${formValues.name}" updated successfully!`
-        : `Data enrichment endpoint "${formValues.name}" created successfully! You can now send it for approval.`;
+        : `Data enrichment endpoint "${formValues.name}" created successfully! You can now send it for approval.`);
 
       showSuccess('Success', successMessage);
       // Only call onSave if not already called above
@@ -302,31 +304,16 @@ export const DataEnrichmentEditModal: React.FC<
     } catch (error) {
       console.error('=== CREATE ENDPOINT ERROR ===', error);
 
+      // Extract backend error message directly from Error object
       let errorMessage = 'Failed to create endpoint';
 
-      if (error && typeof error === 'object' && 'response' in error) {
+      if (error instanceof Error) {
+        // The apiRequest function already extracts errorData.message and throws it
+        errorMessage = error.message;
+      } else if (error && typeof error === 'object') {
+        // Fallback for non-Error objects
         const apiError = error as any;
-        const backendMessage =
-          apiError.response?.data?.message ||
-          apiError.response?.data?.error ||
-          apiError.response?.data?.details;
-
-        if (backendMessage) {
-          errorMessage = `Backend error: ${backendMessage}`;
-        } else if (apiError.response?.status === 400) {
-          errorMessage = 'Bad Request: Invalid data sent to backend';
-        } else {
-          errorMessage = `HTTP ${apiError.response?.status}: ${apiError.message || 'Unknown error'}`;
-        }
-      } else if (
-        error instanceof TypeError &&
-        error.message.includes('fetch')
-      ) {
-        errorMessage =
-          'Cannot connect to data enrichment service. Please ensure the service is running';
-      } else {
-        errorMessage =
-          error instanceof Error ? error.message : 'Unknown error occurred';
+        errorMessage = apiError.message || apiError.error || 'Unknown error occurred';
       }
 
       showError('Error', errorMessage);
