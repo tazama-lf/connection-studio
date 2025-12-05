@@ -14,7 +14,6 @@ import { NotifyModule } from '../notify/notify.module';
 @Module({
   imports: [
     HttpModule,
-
     TazamaDataModelModule,
     SftpModule,
     NotificationModule,

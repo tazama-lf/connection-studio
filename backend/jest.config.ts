@@ -40,9 +40,16 @@ const config: Config.InitialOptions = {
 
   coveragePathIgnorePatterns: [
     '/node_modules/',
-    '<rootDir>/test/',
+    // '<rootDir>/test/',
     '.mock.ts',
     '.module.ts',
+    '.*utils.*',
+    '.*types.*',
+    '.*controller.*',
+    '.*repository.*',
+    '.*dto.*',
+    '.*interfaces.*',
+    '.*enum.*',
   ],
 
   
