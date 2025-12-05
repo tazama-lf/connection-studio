@@ -1,10 +1,4 @@
 // // Re-export types from tcs-lib for consistency
-import type {
-  Config,
-  ConfigResponseDto,
-  SchemaField,
-} from '@tazama-lf/tcs-lib';
-
 export type {
   JSONSchema,
   AdjustFieldDto,
@@ -25,7 +19,6 @@ export type {
   StatusTransitionValidation,
   WorkflowAction,
   TransactionType,
-  SchemaField,
   Config,
   ConfigResponseDto,
 } from '@tazama-lf/tcs-lib';

@@ -21,16 +21,16 @@ import { TazamaAuthGuard } from '../auth/tazama-auth.guard';
 import { User } from '../auth/user.decorator';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { CreateConfigDto, UpdateConfigDto } from './dto';
-import {
-  type AddMappingDto,
-  type AddFunctionDto,
-  type ConfigResponseDto,
-  type Config,
-  type SubmitForApprovalDto,
-  type ApprovalDto,
-  type RejectionDto,
-  type DeploymentDto,
-  type StatusTransitionDto,
+import type {
+  AddMappingDto,
+  AddFunctionDto,
+  ConfigResponseDto,
+  Config,
+  SubmitForApprovalDto,
+  ApprovalDto,
+  RejectionDto,
+  DeploymentDto,
+  StatusTransitionDto,
 } from '../config/config.interfaces';
 import {
   RequireClaims,
@@ -77,7 +77,7 @@ export class ConfigController {
     @User() user: AuthenticatedUser,
     @Req() request: any,
   ): Promise<ConfigResponseDto> {
-    const authHeader = request.headers.authorization || '';
+    const authHeader = request.headers.authorization ?? '';
     const token = authHeader.replace('Bearer ', '');
 
     const result = await this.configService.createConfig(
@@ -185,7 +185,7 @@ export class ConfigController {
     @User() user: AuthenticatedUser,
     @Headers('authorization') authorization: string,
   ): Promise<ConfigResponseDto> {
-    const token = authorization?.replace('Bearer ', '');
+    const token = authorization.replace('Bearer ', '');
 
     const result = await this.configService.submitConfig(id, dto, user, token);
 
@@ -200,7 +200,7 @@ export class ConfigController {
     @User() user: AuthenticatedUser,
     @Headers('authorization') authorization: string,
   ): Promise<ConfigResponseDto> {
-    const token = authorization?.replace('Bearer ', '');
+    const token = authorization.replace('Bearer ', '');
 
     const result = await this.configService.approveConfig(id, dto, user, token);
     return result;
@@ -214,7 +214,7 @@ export class ConfigController {
     @User() user: AuthenticatedUser,
     @Headers('authorization') authorization: string,
   ): Promise<ConfigResponseDto> {
-    const token = authorization?.replace('Bearer ', '');
+    const token = authorization.replace('Bearer ', '');
 
     const result = await this.configService.exportConfig(id, dto, user, token);
 
@@ -230,7 +230,7 @@ export class ConfigController {
     @User() user: AuthenticatedUser,
     @Headers('authorization') authorization: string,
   ): Promise<ConfigResponseDto> {
-    const token = authorization?.replace('Bearer ', '');
+    const token = authorization.replace('Bearer ', '');
 
     const result = await this.configService.deployConfig(
       id,
@@ -255,7 +255,7 @@ export class ConfigController {
     @User() user: AuthenticatedUser,
     @Headers('authorization') authorization: string,
   ): Promise<ConfigResponseDto> {
-    const token = authorization?.replace('Bearer ', '');
+    const token = authorization.replace('Bearer ', '');
     if (!status) {
       throw new BadRequestException('Status is required as query parameter');
     }
@@ -276,7 +276,7 @@ export class ConfigController {
     @User() user: AuthenticatedUser,
     @Headers('authorization') authorization: string,
   ): Promise<ConfigResponseDto> {
-    const token = authorization?.replace('Bearer ', '');
+    const token = authorization.replace('Bearer ', '');
     const result = await this.configService.updatePublishingStatus(
       id,
       dto.publishing_status,
@@ -294,7 +294,7 @@ export class ConfigController {
     @User() user: AuthenticatedUser,
     @Headers('authorization') authorization: string,
   ): Promise<ConfigResponseDto> {
-    const token = authorization?.replace('Bearer ', '');
+    const token = authorization.replace('Bearer ', '');
 
     const result = await this.configService.rejectConfig(id, dto, user, token);
 
@@ -323,9 +323,9 @@ export class ConfigController {
     @Body() filters?: Record<string, any>,
   ): Promise<Config[]> {
     return await this.configService.getAllConfigs(
-      parseInt(offset),
-      parseInt(limit),
-      filters || {},
+      parseInt(offset, 10),
+      parseInt(limit, 10),
+      filters ?? {},
       user.token.tokenString,
     );
   }

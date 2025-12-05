@@ -35,7 +35,7 @@ export class ConfigRepository {
     token?: string,
   ): Promise<Config | null> {
     try {
-      return await this.adminServiceClient.getConfigById(id, token || tenantId);
+      return await this.adminServiceClient.getConfigById(id, token ?? tenantId);
     } catch (error) {
       const err = error as Error;
       this.logger.error(`Error finding config by ID ${id}: ${err.message}`);
@@ -52,7 +52,7 @@ export class ConfigRepository {
   ): Promise<Config | null> {
     try {
       const result = await this.adminServiceClient.getAllConfigs(
-        token || tenantId,
+        token ?? tenantId,
       );
       const match = result.configs.find(
         (c) =>
@@ -60,7 +60,7 @@ export class ConfigRepository {
           c.version === version &&
           c.transactionType === transactionType,
       );
-      return match || null;
+      return match ?? null;
     } catch (error) {
       const err = error as Error;
       this.logger.error(
@@ -88,7 +88,9 @@ export class ConfigRepository {
       this.logger.error(
         `Error updating config status: ${err instanceof Error ? err.message : 'Unknown error'}`,
       );
-      throw new Error('Failed to update config status message: ' + err.message);
+      throw new Error('Failed to update config status message: ' + err.message, { 
+        cause: error 
+      });
     }
   }
   async updatePublishingStatus(
