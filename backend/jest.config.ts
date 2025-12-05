@@ -50,7 +50,8 @@ const config: Config.InitialOptions = {
     '.*dto.*',
     '.*interfaces.*',
     '.*enum.*',
-    '/services/'
+    '/services/',
+    '/database/'
   ],
 
   

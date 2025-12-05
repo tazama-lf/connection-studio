@@ -28,7 +28,6 @@ describe('SchedulerService', () => {
     status: JobStatus.INPROGRESS,
   };
 
-
   const mockPaginated = {
     total: 0,
     offset: 0,
