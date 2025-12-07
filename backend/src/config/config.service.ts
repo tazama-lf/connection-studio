@@ -168,10 +168,16 @@ export class ConfigService {
         token,
       );
 
+      const config = await this.configRepository.findConfigById(
+        configId,
+        tenantId,
+        token,
+      );
 
       return {
         success: true,
         message: 'Config created successfully',
+        config: config as Config,
       };
     } catch (error) {
       this.logger.error(

@@ -95,10 +95,7 @@ export class ConfigController {
       );
     }
 
-    return {
-      success: true,
-      message: 'Config created successfully',
-    };
+    return result;
   }
 
   @Get(':id')

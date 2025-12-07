@@ -871,7 +871,7 @@ export class AdminServiceClient {
         ),
       );
 
-      return response.data.config;
+      return response.data;
     } catch (error) {
       return this.handleError(error, 'writeConfigUpdate');
     }
