@@ -66,7 +66,7 @@ export class TazamaDataModelService {
     ): void => {
       const path = parentPath
         ? `${parentPath}.${field.name}`
-        : `${schemaName}.${field.name}?` || '';
+        : `${schemaName}.${field.name}` || '';
 
       const fieldPath = parentFieldPath
         ? `${parentFieldPath}.${field.name}`
