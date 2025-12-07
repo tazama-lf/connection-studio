@@ -40,6 +40,9 @@ export interface DestinationOption {
   description?: string;
   example?: unknown;
   isExtension?: boolean; // true for custom extensions
+  collection_id?: number; // unique identifier for the collection
+  parent_id?: number; // unique identifier for the parent field (if nested)
+  serial_no?: number; // unique identifier for the option
 }
 
 export interface DataModelExtension {
@@ -391,6 +394,62 @@ class DataModelApiService {
       >(response);
     } catch (error) {
       console.error('Error validating destination path:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Create a new destination type (immediate parent/collection)
+   */
+  async createImmediateParent(request: {
+    collection_type: string;
+    name: string;
+    description: string;
+    destination_id: number;
+  }): Promise<DataModelApiResponse> {
+    try {
+      console.log('🚀 DataModelApi - Creating destination type:', request);
+      const response = await fetch(
+        `${this.baseURL}/tazama-data-model/destination-types`,
+        {
+          method: 'POST',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify(request),
+        },
+      );
+      console.log('📡 DataModelApi - Response status:', response.status);
+      return this.handleResponse<DataModelApiResponse>(response);
+    } catch (error) {
+      console.error('❌ DataModelApi - Error creating destination type:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Create a new field under a destination type (parent or child)
+   */
+  async createParentChildDestination(
+    destinationTypeId: number,
+    request: {
+      name: string;
+      field_type: string;
+      parent_id?: string | number | null;
+    },
+  ): Promise<DataModelApiResponse> {
+    try {
+      console.log('🚀 DataModelApi - Creating destination field:', request);
+      const response = await fetch(
+        `${this.baseURL}/tazama-data-model/destination-types/${destinationTypeId}/fields`,
+        {
+          method: 'POST',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify(request),
+        },
+      );
+      console.log('📡 DataModelApi - Response status:', response.status);
+      return this.handleResponse<DataModelApiResponse>(response);
+    } catch (error) {
+      console.error('❌ DataModelApi - Error creating destination field:', error);
       throw error;
     }
   }

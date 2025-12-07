@@ -8,9 +8,6 @@ import {
   Rocket,
   XCircle,
   XIcon,
-  FileText,
-  Shuffle,
-  Settings2,
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../features/auth';
@@ -21,6 +18,10 @@ import {
 } from '../../features/config/services/configApi';
 import FunctionsApiService from '../../features/functions/services/functionsApi';
 import {
+  dataModelApi,
+  type DestinationOption,
+} from '../../features/data-model';
+import {
   isApprover,
   isEditor,
   isExporter,
@@ -28,7 +29,6 @@ import {
 } from '../../utils/roleUtils';
 import { useToast } from '../providers/ToastProvider';
 import type {
-  AddFunctionDto,
   AllowedFunctionName,
   FunctionDefinition,
 } from '../types/functions.types';
@@ -78,22 +78,286 @@ const CustomStepIcon = (props: StepIconProps) => {
 
 // Function Selection Form Component
 interface FunctionSelectionFormProps {
-  onAddFunction: (functionData: AddFunctionDto) => void;
+  onAddFunction: (functionData: any, selectedFunction?: any) => void;
   onClose: () => void;
+  currentSchema?: any; // Add currentSchema prop
 }
 
 const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
   onAddFunction,
   onClose,
+  currentSchema,
 }) => {
+  const tenantId = useAuth().user?.tenantId || '';
   const [selectedFunction, setSelectedFunction] =
     useState<AllowedFunctionName>('addAccount');
   const [selectedConfiguration, setSelectedConfiguration] = useState('');
   const [selectedOptionalParams, setSelectedOptionalParams] = useState<
     string[]
   >([]);
+  const [dataModelForm, setDataModelForm] = useState<any>({});
+
+  // State for destination tree from API
+  const [destinationTree, setDestinationTree] = useState<any[]>([]);
+
+  // Fetch destination options from API
+  useEffect(() => {
+    const fetchDestinationOptions = async () => {
+      try {
+        const response = await dataModelApi.getDestinationOptions();
+        if (response.success && response.data) {
+          const treeNodes = convertDestinationOptionsToTree(response.data);
+          setDestinationTree(treeNodes);
+        }
+      } catch (error) {
+        console.error('Error fetching destination options:', error);
+      }
+    };
+    fetchDestinationOptions();
+  }, []);
+
+  // Convert destination options to tree structure
+  const convertDestinationOptionsToTree = (options: DestinationOption[]) => {
+    const collections = new Map<string, DestinationOption[]>();
+
+    options.forEach((option) => {
+      const existing = collections.get(option.collection) || [];
+      existing.push(option);
+      collections.set(option.collection, existing);
+    });
+
+    const sortedCollections = Array.from(collections.entries()).sort(
+      ([a], [b]) => {
+        if (a === 'redis') return 1;
+        if (b === 'redis') return -1;
+        return a.localeCompare(b);
+      },
+    );
+
+    const buildNestedTree = (
+      collectionName: string,
+      fields: DestinationOption[],
+      collection_id: number | null,
+    ) => {
+      const rootMap = new Map<
+        string,
+        { node: any; children: Map<string, any> }
+      >();
+
+      fields.forEach((field) => {
+        const parts = field.field.split('.');
+        let currentLevel = rootMap;
+        let currentPath: string[] = [collectionName];
+
+        parts.forEach((part, index) => {
+          const isLeaf = index === parts.length - 1;
+          currentPath = [...currentPath, part];
+          const pathKey = parts.slice(0, index + 1).join('.');
+          const fullPath = `${collectionName}.${pathKey}`;
+
+          if (!currentLevel.has(part)) {
+            currentLevel.set(part, {
+              node: {
+                id: isLeaf ? field.value : fullPath,
+                name: part,
+                path: [...currentPath],
+                type: isLeaf ? field.type.toLowerCase() : 'object',
+                collection_id: collection_id,
+                serial_no: isLeaf ? field.serial_no : null,
+              },
+              children: new Map(),
+            });
+          } else if (isLeaf) {
+            const existing = currentLevel.get(part)!;
+            existing.node.id = field.value;
+            existing.node.type = field.type.toLowerCase();
+            existing.node.serial_no = field.serial_no;
+          }
+
+          const entry = currentLevel.get(part)!;
+          currentLevel = entry.children;
+        });
+      });
+
+      const convertMapToNodes = (map: Map<string, any>): any[] => {
+        return Array.from(map.values()).map(({ node, children }) => ({
+          ...node,
+          children: children.size > 0 ? convertMapToNodes(children) : undefined,
+        }));
+      };
+
+      return convertMapToNodes(rootMap);
+    };
+
+    return sortedCollections.map(([collectionName, fields]) => {
+      const collection_id = fields[0]?.collection_id ?? null;
+
+      return {
+        id: collectionName,
+        name: collectionName.charAt(0).toUpperCase() + collectionName.slice(1),
+        path: [collectionName],
+        collection_id: collection_id,
+        serial_no: null,
+        children: buildNestedTree(collectionName, fields, collection_id),
+      };
+    });
+  };
+
+  // Build source tree from currentSchema (similar to MappingUtility)
+  const buildSourceOptions = (schema: any): any[] => {
+    const options: any[] = [];
+
+    if (!schema) return options;
+
+    // Handle array format (InferredField[])
+    if (Array.isArray(schema)) {
+      schema.forEach((field) => {
+        // Only include fields with type 'object'
+        if (field.type && field.type.toLowerCase() === 'object') {
+          const cleanPath = (field.path || field.name || '').replace(
+            /\[0\]/g,
+            '.0',
+          );
+          options.push({
+            label: field.name || cleanPath,
+            value: cleanPath,
+            group: 'Sources',
+          });
+        }
+      });
+    }
+    // Handle JSON schema format
+    else if (schema.properties && typeof schema.properties === 'object') {
+      const traverseSchema = (props: any, parentPath: string = '') => {
+        Object.entries(props).forEach(([key, value]: [string, any]) => {
+          const path = parentPath ? `${parentPath}.${key}` : key;
+
+          // Only include fields with type 'object'
+          if (value.type && value.type.toLowerCase() === 'object') {
+            options.push({
+              label: key,
+              value: path,
+              group: 'Sources',
+            });
+          }
+
+          // Recursively traverse nested objects
+          if (value.properties && typeof value.properties === 'object') {
+            traverseSchema(value.properties, path);
+          }
+          // Handle arrays with object items
+          else if (value.items && value.items.properties) {
+            traverseSchema(value.items.properties, path);
+          }
+        });
+      };
+
+      traverseSchema(schema.properties);
+    }
+
+    return options;
+  };
+
+  const getPrimaryKeyOptions = () => {
+    const result: any[] = [];
+
+    // Build options from destinationTree
+    // Object types become groups, their children become options
+    function buildPrimaryKeyOptions(node: any) {
+      // If node is of type 'object', it becomes a group
+      // if (node.type && node.type.toLowerCase() === 'object') {
+      // Add children as options under this group
+      if (Array.isArray(node.children) && node.children.length > 0) {
+        node.children.forEach((child: any) => {
+          result.push({
+            label: child.id,
+            value: child.id,
+            group: node.id, // Parent becomes the group name
+          });
+
+          // Recursively process if child has more children
+          if (child.children && child.children.length > 0) {
+            buildPrimaryKeyOptions(child);
+          }
+        });
+      }
+      // }
+    }
+
+    // Traverse destination tree
+    destinationTree.forEach((n) => buildPrimaryKeyOptions(n));
+
+    return result;
+  };
+
+  const jsonBOptions = () => {
+    const result: any[] = [];
+
+    // Add Sources from currentSchema (only object types)
+    const sourceOptions = buildSourceOptions(currentSchema);
+    result.push(...sourceOptions);
+
+    // Add Destinations from destinationTree (only object types)
+    function traverseDestinations(node: any) {
+      result.push({
+        label: node.id || '',
+        value: node.id,
+        group: 'Destinations',
+      });
+
+      if (Array.isArray(node.children)) {
+        node.children.forEach((child: any) => {
+          if (child.type && child.type.toLowerCase() === 'object') {
+            traverseDestinations(child);
+          }
+        });
+      }
+    }
+
+    destinationTree.forEach((n) => traverseDestinations(n));
+
+    return result;
+  };
+
   const functionConfig = FUNCTION_CONFIGS[selectedFunction];
   const handleAddFunction = () => {
+    // Special handling for addDataModel function
+    if (selectedFunction === 'addDataModel') {
+      let jsonKeyparsed: any = {};
+      try {
+        jsonKeyparsed = JSON.parse(dataModelForm?.jsonKey || '{}');
+        console.log("jsonKeyparsed",jsonKeyparsed);
+        
+      } catch (error) {
+        console.error('❌ Invalid JSON in jsonKey:', dataModelForm?.jsonKey);
+        jsonKeyparsed = {}; // fallback
+      }
+      // Build payload from dataModelForm
+      const payload = {
+        columns: [
+          {
+            name: '_key',
+            type: 'string',
+            param: dataModelForm?.primaryKey || '',
+            datasource: 'dataModel',
+          },
+          {
+            name: 'data',
+            type: 'jsonb',
+            param: jsonKeyparsed?.value || '',
+            datasource:
+              jsonKeyparsed?.group === 'Sources' ? 'payload' : 'dataModel',
+          },
+        ],
+        tableName: tenantId + '_' + (dataModelForm?.tableName || ''),
+        functionName: 'addDataModelTable',
+      };
+
+      console.log('Final addDataModel Function Data:', payload);
+      onAddFunction(payload, selectedFunction);
+      return;
+    }
+
     const config = functionConfig.configurations.find(
       (c) => c.name === selectedConfiguration,
     );
@@ -147,6 +411,16 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
         : [...prev, paramName],
     );
   };
+
+  const handleValidationDataModel = () => {
+    if (
+      dataModelForm?.tableName &&
+      dataModelForm?.primaryKey &&
+      dataModelForm?.jsonKey
+    )
+      return true;
+  };
+
   return (
     <div className="space-y-4">
       <div>
@@ -169,92 +443,203 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
           ))}
         </select>
       </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Select Parameter Configuration
-        </label>
-        <div className="space-y-2">
-          {functionConfig.configurations.map((config) => (
-            <div
-              key={config.name}
-              className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                selectedConfiguration === config.name
-                  ? 'border-blue-500 bg-blue-50'
-                  : 'border-gray-300 hover:border-gray-400'
-              }`}
-              onClick={() => setSelectedConfiguration(config.name)}
-            >
-              <div className="flex items-center space-x-2">
-                <input
-                  type="radio"
-                  name="configuration"
-                  value={config.name}
-                  checked={selectedConfiguration === config.name}
-                  onChange={() => setSelectedConfiguration(config.name)}
-                  className="text-blue-600"
-                />
-                <div>
-                  <h4 className="font-medium">{config.displayName}</h4>
-                  <p className="text-sm text-gray-600">{config.description}</p>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-      {/* Optional Parameters Selection */}
-      {functionConfig.optionalParameters &&
-        functionConfig.optionalParameters.length > 0 && (
+      {functionConfig?.dataModelConfiguration &&
+      selectedFunction === 'addDataModel' ? (
+        <div className="space-y-4 pt-1 border-gray-200">
+          <h3 className="text-sm font-medium text-gray-700">
+            Data Model Configuration
+          </h3>
+
+          {/* Table Name Field */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Optional Parameters (Select any that you need)
+              Table Name
             </label>
-            <div className="space-y-2 max-h-40 overflow-y-auto">
-              {functionConfig.optionalParameters.map((param) => (
+            <input
+              type="text"
+              value={dataModelForm?.tableName || ''}
+              onChange={(e) =>
+                setDataModelForm({
+                  ...dataModelForm,
+                  tableName: e.target.value,
+                })
+              }
+              placeholder="Enter table name"
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
+          {/* Primary Key Select Field */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Primary Key
+            </label>
+            <select
+              value={dataModelForm?.primaryKey || ''}
+              onChange={(e) =>
+                setDataModelForm({
+                  ...dataModelForm,
+                  primaryKey: e.target.value,
+                })
+              }
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+            >
+              <option value="">Select Primary Key</option>
+
+              {/* Dynamically generate optgroups based on unique groups in getPrimaryKeyOptions */}
+              {Array.from(
+                new Set(getPrimaryKeyOptions().map((opt: any) => opt.group)),
+              ).map((groupName: any) => (
+                <optgroup key={groupName} label={groupName}>
+                  {getPrimaryKeyOptions()
+                    .filter((option: any) => option.group === groupName)
+                    .map((option: any) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                </optgroup>
+              ))}
+            </select>
+          </div>
+
+          {/* JSON Key Select Field with Dynamic Grouping */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              JsonB
+            </label>
+            <select
+              value={dataModelForm?.jsonKey || ''}
+              onChange={(e) =>
+                setDataModelForm({ ...dataModelForm, jsonKey: e.target.value })
+              }
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+            >
+              <option value="">Select JsonB</option>
+
+              {/* Dynamically generate optgroups based on unique groups in jsonBOptions */}
+              {Array.from(
+                new Set(jsonBOptions().map((opt: any) => opt.group)),
+              ).map((groupName: any) => (
+                <optgroup key={groupName} label={groupName}>
+                  {jsonBOptions()
+                    .filter((option: any) => option.group === groupName)
+                    .map((option: any) => (
+                      <option
+                        key={option.value}
+                        value={JSON.stringify({
+                          value: option.value,
+                          label: option.label,
+                          group: option.group
+                        })}
+                      >
+                        {option.label}
+                      </option>
+                    ))}
+                </optgroup>
+              ))}
+            </select>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Select Parameter Configuration
+            </label>
+            <div className="space-y-2">
+              {functionConfig.configurations.map((config) => (
                 <div
-                  key={param.name}
-                  className={`p-3 border rounded-lg cursor-pointer transition-colors ${
-                    selectedOptionalParams.includes(param.name)
+                  key={config.name}
+                  className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                    selectedConfiguration === config.name
                       ? 'border-blue-500 bg-blue-50'
                       : 'border-gray-300 hover:border-gray-400'
                   }`}
-                  onClick={() => handleOptionalParamToggle(param.name)}
+                  onClick={() => setSelectedConfiguration(config.name)}
                 >
                   <div className="flex items-center space-x-2">
                     <input
-                      type="checkbox"
-                      checked={selectedOptionalParams.includes(param.name)}
-                      onChange={() => handleOptionalParamToggle(param.name)}
-                      className="text-blue-600 rounded"
+                      type="radio"
+                      name="configuration"
+                      value={config.name}
+                      checked={selectedConfiguration === config.name}
+                      onChange={() => setSelectedConfiguration(config.name)}
+                      className="text-blue-600"
                     />
                     <div>
-                      <h4 className="font-medium">
-                        {param.displayName} ({param.name})
-                      </h4>
+                      <h4 className="font-medium">{config.displayName}</h4>
                       <p className="text-sm text-gray-600">
-                        {param.description}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        Type: {param.type}
+                        {config.description}
                       </p>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
-            {selectedOptionalParams.length > 0 && (
-              <p className="text-sm text-blue-600 mt-2">
-                Selected optional parameters:{' '}
-                {selectedOptionalParams.join(', ')}
-              </p>
-            )}
           </div>
-        )}
+          {/* Optional Parameters Selection */}
+          {functionConfig.optionalParameters &&
+            functionConfig.optionalParameters.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Optional Parameters (Select any that you need)
+                </label>
+                <div className="space-y-2 max-h-40 overflow-y-auto">
+                  {functionConfig.optionalParameters.map((param) => (
+                    <div
+                      key={param.name}
+                      className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                        selectedOptionalParams.includes(param.name)
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                      onClick={() => handleOptionalParamToggle(param.name)}
+                    >
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={selectedOptionalParams.includes(param.name)}
+                          onChange={() => handleOptionalParamToggle(param.name)}
+                          className="text-blue-600 rounded"
+                        />
+                        <div>
+                          <h4 className="font-medium">
+                            {param.displayName} ({param.name})
+                          </h4>
+                          <p className="text-sm text-gray-600">
+                            {param.description}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            Type: {param.type}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {selectedOptionalParams.length > 0 && (
+                  <p className="text-sm text-blue-600 mt-2">
+                    Selected optional parameters:{' '}
+                    {selectedOptionalParams.join(', ')}
+                  </p>
+                )}
+              </div>
+            )}
+        </>
+      )}
       <div className="flex justify-end space-x-3 pt-4">
         <Button variant="secondary" onClick={onClose}>
           Cancel
         </Button>
-        <Button onClick={handleAddFunction} disabled={!selectedConfiguration}>
+        <Button
+          onClick={handleAddFunction}
+          disabled={
+            selectedFunction === 'addDataModel'
+              ? !handleValidationDataModel()
+              : !selectedConfiguration
+          }
+        >
           Add Function
         </Button>
       </div>
@@ -812,42 +1197,44 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
   };
 
   // Functions step handlers
-  const handleAddFunction = async (functionData: AddFunctionDto) => {
+  const handleAddFunction = async (
+    functionData: any,
+    selectedFunction: any,
+  ) => {
     if (!createdEndpoint?.id && !existingConfig?.id) {
       showError('No configuration ID available to add function');
       return;
     }
-    // Check for duplicate functions in local state first
-    const isDuplicate = selectedFunctions.some((existingFunction) => {
-      // Check if function name matches
-      if (existingFunction.functionName !== functionData.functionName) {
-        return false;
+    if (selectedFunction !== 'addDataModel') {
+      // Check for duplicate functions in local state first
+      const isDuplicate = selectedFunctions.some((existingFunction) => {
+        // Check if function name matches
+        if (existingFunction.functionName !== functionData.functionName) {
+          return false;
+        }
+        // Check if parameters match (order doesn't matter)
+        const existingParams = existingFunction.params || [];
+        const newParams = functionData.params || [];
+        if (existingParams.length !== newParams.length) {
+          return false;
+        }
+        // Sort both parameter arrays and compare
+        const sortedExisting = [...existingParams].sort();
+        const sortedNew = [...newParams].sort();
+        return sortedExisting.every(
+          (param, index) => param === sortedNew[index],
+        );
+      });
+      if (isDuplicate) {
+        showError(
+          'This function with the same parameters already exists. Please modify the parameters or choose a different function.',
+        );
+        return;
       }
-      // Check if parameters match (order doesn't matter)
-      const existingParams = existingFunction.params || [];
-      const newParams = functionData.params || [];
-      if (existingParams.length !== newParams.length) {
-        return false;
-      }
-      // Sort both parameter arrays and compare
-      const sortedExisting = [...existingParams].sort();
-      const sortedNew = [...newParams].sort();
-      return sortedExisting.every((param, index) => param === sortedNew[index]);
-    });
-    if (isDuplicate) {
-      showError(
-        'This function with the same parameters already exists. Please modify the parameters or choose a different function.',
-      );
-      return;
     }
     try {
       setLoading(true);
       const configId = createdEndpoint?.id || existingConfig?.id;
-      console.log(':floppy_disk: Adding function to backend:');
-      console.log('Config ID:', configId);
-      console.log('Function Data:', JSON.stringify(functionData, null, 2));
-      console.log('Function Name:', functionData.functionName);
-      console.log('Function Params:', functionData.params);
       const response = await FunctionsApiService.addFunction(
         configId,
         functionData,
@@ -861,7 +1248,11 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
           functionName: functionData.functionName,
           params: functionData.params,
         };
-        setSelectedFunctions([...selectedFunctions, newFunction]);
+        if (selectedFunction === 'addDataModel') {
+          setSelectedFunctions([...selectedFunctions, functionData]);
+        } else {
+          setSelectedFunctions([...selectedFunctions, newFunction]);
+        }
         setShowAddFunctionModal(false);
         console.log('Function added successfully');
       } else {
@@ -1006,7 +1397,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
       }
 
       // Check each parameter
-      func.params.forEach((param) => {
+      func?.params?.forEach((param: any) => {
         // Strip prefix from parameter too before comparing
         const paramWithoutPrefix = param.replace(
           /^(redis\.|transactionDetails\.|dataCache\.|transaction\.|cache\.)/i,
@@ -1167,15 +1558,13 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
 
     // If field validation failed, don't proceed (errors are shown below fields)
     if (isValid === false) {
-       setTimeout(() => {
-        const errorElement = document.querySelector(
-          '#payloadFields',
-        );
+      setTimeout(() => {
+        const errorElement = document.querySelector('#payloadFields');
         if (errorElement) {
           errorElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
       }, 100);
-      
+
       return;
     }
 
@@ -1228,9 +1617,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
 
       // Scroll to the error message at the top
       setTimeout(() => {
-        const errorElement = document.querySelector(
-          '#payloadFields',
-        );
+        const errorElement = document.querySelector('#payloadFields');
         if (errorElement) {
           errorElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
@@ -1743,7 +2130,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
               )}
 
             {/* MUI Stepper */}
-            <Box sx={{ width: '100%', mb: 4 }} id='payloadFields'>
+            <Box sx={{ width: '100%', mb: 4 }} id="payloadFields">
               <Stepper
                 activeStep={steps.findIndex((s) => s.id === currentStep)}
                 alternativeLabel
@@ -2144,24 +2531,29 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                             }
                           });
 
-                          const unmappedParams = func.params.filter((param) => {
-                            // Strip prefix from parameter before checking
-                            const paramWithoutPrefix = param.replace(
-                              /^(redis\.|transactionDetails\.|dataCache\.|transaction\.|cache\.)/i,
-                              '',
-                            );
-                            const paramLower = paramWithoutPrefix.toLowerCase();
-                            return (
-                              !runtimeContextFields.includes(paramLower) &&
-                              !mappedDestinations.has(paramLower)
-                            );
-                          });
+                          const unmappedParams =
+                            func.params && func.params.length > 0
+                              ? func.params.filter((param: string) => {
+                                  // Strip prefix from parameter before checking
+                                  const paramWithoutPrefix = param.replace(
+                                    /^(redis\.|transactionDetails\.|dataCache\.|transaction\.|cache\.)/i,
+                                    '',
+                                  );
+                                  const paramLower =
+                                    paramWithoutPrefix.toLowerCase();
+                                  return (
+                                    !runtimeContextFields.includes(
+                                      paramLower,
+                                    ) && !mappedDestinations.has(paramLower)
+                                  );
+                                })
+                              : [];
 
                           return (
                             <div
                               key={index}
                               className={`p-4 rounded-lg border flex justify-between items-center ${
-                                unmappedParams.length > 0
+                                unmappedParams?.length > 0
                                   ? 'bg-red-50 border-red-200'
                                   : 'bg-gray-50 border-gray-200'
                               }`}
@@ -2171,58 +2563,79 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                                   <h4 className="font-medium">
                                     {func.functionName}
                                   </h4>
-                                  {unmappedParams.length > 0 && (
+                                  {unmappedParams?.length > 0 && (
                                     <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full">
                                       {unmappedParams.length} unmapped
                                     </span>
                                   )}
                                 </div>
+                                {func?.tableName && (
+                                  <p className="text-sm text-gray-600 mt-1">
+                                    Table Name: {func.tableName}
+                                  </p>
+                                )}
                                 <p className="text-sm text-gray-600 mt-1">
                                   Parameters:{' '}
-                                  {func.params
-                                    .map((param) => {
-                                      // Strip prefix from parameter before checking
-                                      const paramWithoutPrefix = param.replace(
-                                        /^(redis\.|transactionDetails\.|dataCache\.|transaction\.|cache\.)/i,
-                                        '',
-                                      );
-                                      const paramLower =
-                                        paramWithoutPrefix.toLowerCase();
-                                      const isMapped =
-                                        runtimeContextFields.includes(
-                                          paramLower,
-                                        ) || mappedDestinations.has(paramLower);
-                                      const isRuntime =
-                                        runtimeContextFields.includes(
-                                          paramLower,
-                                        );
-                                      return (
-                                        <span
-                                          key={param}
-                                          className={
-                                            isRuntime
-                                              ? 'text-blue-600'
-                                              : isMapped
-                                                ? 'text-green-600'
-                                                : 'text-red-600 font-medium'
-                                          }
-                                          title={
-                                            isRuntime
-                                              ? 'Runtime context field'
-                                              : isMapped
-                                                ? 'Mapped'
-                                                : 'Not mapped - please create a mapping for this parameter'
-                                          }
-                                        >
-                                          {param}
-                                        </span>
-                                      );
-                                    })
-                                    .reduce(
-                                      (prev, curr) => [prev, ', ', curr] as any,
-                                    )}
+                                  {func?.params && func.params.length > 0
+                                    ? func.params
+                                        .map((param: string) => {
+                                          // Strip prefix from parameter before checking
+                                          const paramWithoutPrefix =
+                                            param.replace(
+                                              /^(redis\.|transactionDetails\.|dataCache\.|transaction\.|cache\.)/i,
+                                              '',
+                                            );
+                                          const paramLower =
+                                            paramWithoutPrefix.toLowerCase();
+                                          const isMapped =
+                                            runtimeContextFields.includes(
+                                              paramLower,
+                                            ) ||
+                                            mappedDestinations.has(paramLower);
+                                          const isRuntime =
+                                            runtimeContextFields.includes(
+                                              paramLower,
+                                            );
+                                          return (
+                                            <span
+                                              key={param}
+                                              className={
+                                                isRuntime
+                                                  ? 'text-blue-600'
+                                                  : isMapped
+                                                    ? 'text-green-600'
+                                                    : 'text-red-600 font-medium'
+                                              }
+                                              title={
+                                                isRuntime
+                                                  ? 'Runtime context field'
+                                                  : isMapped
+                                                    ? 'Mapped'
+                                                    : 'Not mapped - please create a mapping for this parameter'
+                                              }
+                                            >
+                                              {param}
+                                            </span>
+                                          );
+                                        })
+                                        .reduce(
+                                          (prev: any, curr: any) =>
+                                            [prev, ', ', curr] as any,
+                                        )
+                                    : func?.columns && func.columns.length > 0
+                                      ? func.columns
+                                          .map((column) => (
+                                            <span className="text-green-600">
+                                              {column.param}
+                                            </span>
+                                          ))
+                                          .reduce(
+                                            (prev, curr) =>
+                                              [prev, ', ', curr] as any,
+                                          )
+                                      : 'No parameters'}
                                 </p>
-                                {unmappedParams.length > 0 && (
+                                {unmappedParams?.length > 0 && (
                                   <p className="text-xs text-red-600 mt-2">
                                     ⚠️ Missing mappings:{' '}
                                     {unmappedParams.join(', ')}
@@ -2279,6 +2692,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                           <FunctionSelectionForm
                             onAddFunction={handleAddFunction}
                             onClose={() => setShowAddFunctionModal(false)}
+                            currentSchema={currentSchema}
                           />
                         </div>
                       </Backdrop>

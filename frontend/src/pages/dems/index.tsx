@@ -1,19 +1,53 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ConfigList } from '@features/config/components/ConfigList';
 import VersionHistoryModal from '@features/config/components/VersionHistoryModal';
 import { Button } from '@shared/components/Button';
 import {
   PlusIcon,
-  SearchIcon,
-  AlertTriangleIcon,
   ChevronLeft,
   ActivityIcon,
+  XIcon,
+  LassoSelect,
+  Circle,
+  CheckCircleIcon,
+  XCircle,
+  DatabaseIcon,
+  ServerIcon,
+  FolderTreeIcon,
+  FolderIcon,
+  FileIcon,
 } from 'lucide-react';
 import EditEndpointModal from '@shared/components/EditEndpointModal';
 import ValidationLogsTable from '@shared/components/ValidationLogsTable';
 import type { Config } from '@features/config/index';
-import CustomTable from '@common/Tables/CustomTable';
 import { useNavigate } from 'react-router';
+import { Backdrop, Box, Grid, Button as MuiButton } from '@mui/material';
+import { dataModelApi, type DestinationOption } from '@features/data-model';
+import { get, useForm } from 'react-hook-form';
+import {
+  AlphaNumericInputField,
+  SelectField,
+  // @ts-ignore - FormFields is a .jsx file without TypeScript declarations
+} from '@shared/components/FormFields';
+
+interface TreeNode {
+  id: string;
+  name: string;
+  children?: TreeNode[];
+  type?: string;
+  path: string[];
+  collection_id?: number | null;
+  serial_no?: number | null;
+}
+
+export const defaultValues = {
+  destination: '',
+  destinationType: '',
+  destination_name: '',
+  field_type: '',
+  immediate_parent: '',
+  parent_destination: '',
+};
 
 // DEMS Module now uses real backend configurations instead of mock data
 const DEMSModule: React.FC = () => {
@@ -29,6 +63,281 @@ const DEMSModule: React.FC = () => {
   const [isInCloneMode, setIsInCloneMode] = useState(false);
   const [isReadOnly, setIsReadOnly] = useState(false);
   const [isCloneCheck, setIsCloneCheck] = useState(false);
+
+  // State for dynamic destination tree from API
+  const [destinationTree, setDestinationTree] = useState<TreeNode[]>([]);
+  const [addDestinationStep, setAddDestinationStep] = React.useState<number>(0);
+  const [showAddDestination, setShowAddDestination] = React.useState(false);
+  const [destinationForm, setDestinationForm] = React.useState<{
+    [key: string]: any;
+  }>({});
+
+  const { control, handleSubmit, watch, setValue, getValues, reset, trigger } =
+    useForm({
+      // resolver: yupResolver({} as any),
+      defaultValues,
+      mode: 'onChange',
+    });
+
+  const selectedImmediateParent = watch('immediate_parent');
+
+  // Reset parent_destination when immediate_parent changes
+  useEffect(() => {
+    setValue('parent_destination', '');
+  }, [selectedImmediateParent, setValue]);
+
+  // Disable body scroll when any modal is open
+  useEffect(() => {
+    if (
+      showAddDestination ||
+      editingEndpointId !== null ||
+      showVersionHistoryModal
+    ) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+
+    // Cleanup on unmount
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [showAddDestination, editingEndpointId, showVersionHistoryModal]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setDestinationForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleAddDestination = () => {
+    setShowAddDestination(true);
+    setAddDestinationStep(1);
+  };
+
+  const handleContinue = () => {
+    if (addDestinationStep === 2) {
+      setValue('destination_name', '');
+      setValue('immediate_parent', '');
+      setValue('parent_destination', '');
+    }
+
+    if (addDestinationStep === 3) {
+      return;
+    }
+
+    if (
+      addDestinationStep === 2 &&
+      destinationForm?.destinationType !== 'child'
+    ) {
+      setValue('field_type', 'object');
+    }
+
+    if (
+      addDestinationStep === 2 &&
+      destinationForm?.destinationType === 'child'
+    ) {
+      setValue('field_type', 'string');
+    }
+
+    setAddDestinationStep((prev) => prev + 1);
+    setShowAddDestination(true);
+  };
+
+  const handleCloseAddDestinationModal = () => {
+    setDestinationForm({});
+    setAddDestinationStep(0);
+    setShowAddDestination(false);
+    reset(); // Reset form fields
+  };
+
+  const handleAddDestinationSubmit = async (data: any) => {
+    try {
+      // Prepare the API request based on destination type
+      const requestImmediateParentPayload: any = {
+        collection_type: data.destination_name,
+        name: data.destination_name,
+        destination_id: 1,
+      };
+
+      const requestParentChildPayload: any = {
+        name: data.destination_name,
+        field_type: data.field_type,
+        parent_id: data?.parent_destination || '',
+      };
+
+      // Call the API
+      const response =
+        destinationForm?.destinationType === 'immediate-parent'
+          ? await dataModelApi.createImmediateParent(
+              requestImmediateParentPayload,
+            )
+          : await dataModelApi.createParentChildDestination(
+              Number(data?.immediate_parent),
+              requestParentChildPayload,
+            );
+
+      if (response?.success) {
+        // Refresh destination tree
+        await fetchDestinationOptions();
+        // Close modal
+        handleCloseAddDestinationModal();
+        // Show success message (you can add toast here)
+      } else {
+        console.error('❌ Failed to add destination:', response.message);
+        // Show error message (you can add toast here)
+      }
+    } catch (error) {
+      console.error('❌ Error adding destination:', error);
+      // Show error message (you can add toast here)
+    }
+  };
+
+  const handleBack = () => {
+    setAddDestinationStep((prevStep) => prevStep - 1);
+    setShowAddDestination(true);
+  };
+
+  const convertDestinationOptionsToTree = (
+    options: DestinationOption[],
+  ): TreeNode[] => {
+    // Group options by collection
+    const collections = new Map<string, DestinationOption[]>();
+
+    options.forEach((option) => {
+      const existing = collections.get(option.collection) || [];
+      existing.push(option);
+      collections.set(option.collection, existing);
+    });
+
+    // Sort so redis goes at the end
+    const sortedCollections = Array.from(collections.entries()).sort(
+      ([a], [b]) => {
+        if (a === 'redis') return 1;
+        if (b === 'redis') return -1;
+        return a.localeCompare(b);
+      },
+    );
+
+    // Build nested tree
+    const buildNestedTree = (
+      collectionName: string,
+      fields: DestinationOption[],
+      collection_id: number | null,
+    ): TreeNode[] => {
+      const rootMap = new Map<
+        string,
+        { node: TreeNode; children: Map<string, any> }
+      >();
+
+      fields.forEach((field) => {
+        const parts = field.field.split('.');
+        let currentLevel = rootMap;
+        let currentPath: string[] = [collectionName];
+
+        parts.forEach((part, index) => {
+          const isLeaf = index === parts.length - 1;
+          currentPath = [...currentPath, part];
+          const pathKey = parts.slice(0, index + 1).join('.');
+          const fullPath = `${collectionName}.${pathKey}`;
+
+          if (!currentLevel.has(part)) {
+            currentLevel.set(part, {
+              node: {
+                id: isLeaf ? field.value : fullPath,
+                name: part,
+                path: [...currentPath],
+                type: isLeaf ? field.type.toLowerCase() : 'object',
+                collection_id: collection_id, // <-- ADD COLLECTION ID
+                serial_no: isLeaf ? field.serial_no : null, // <-- ADD SERIAL ID
+              },
+              children: new Map(),
+            });
+          } else if (isLeaf) {
+            const existing = currentLevel.get(part)!;
+            existing.node.id = field.value;
+            existing.node.type = field.type.toLowerCase();
+            existing.node.serial_no = field.serial_no; // update serial_no for leaf
+          }
+
+          const entry = currentLevel.get(part)!;
+          currentLevel = entry.children;
+        });
+      });
+
+      const convertMapToNodes = (map: Map<string, any>): TreeNode[] => {
+        return Array.from(map.values()).map(({ node, children }) => ({
+          ...node,
+          children: children.size > 0 ? convertMapToNodes(children) : undefined,
+        }));
+      };
+
+      return convertMapToNodes(rootMap);
+    };
+
+    return sortedCollections.map(([collectionName, fields]) => {
+      const collection_id = fields[0]?.collection_id ?? null;
+
+      return {
+        id: collectionName,
+        name: collectionName.charAt(0).toUpperCase() + collectionName.slice(1),
+        path: [collectionName],
+        collection_id: collection_id, // <-- ADD COLLECTION ID on root
+        serial_no: null, // root never has serial_no
+        children: buildNestedTree(collectionName, fields, collection_id),
+      };
+    });
+  };
+
+  const fetchDestinationOptions = async () => {
+    try {
+      const response = await dataModelApi.getDestinationOptions();
+      // Backend returns {success: true, data: [...]}
+      if (response.success && response.data) {
+        console.log('response', response.data);
+
+        const treeNodes = convertDestinationOptionsToTree(response.data);
+        setDestinationTree(treeNodes);
+      } else {
+        throw new Error(
+          response.message || 'Failed to fetch destination options',
+        );
+      }
+    } catch (error) {
+      console.error('Error fetching destination options:', error);
+
+      // Fallback to empty array on error
+      setDestinationTree([]);
+    } finally {
+    }
+  };
+
+  // Load destination options from API on mount
+  useEffect(() => {
+    fetchDestinationOptions();
+  }, []);
+
+  // Generate unique collection options from destination tree
+  const getImmediateParentOptions = () => {
+    return destinationTree.map((collection) => ({
+      value: collection.collection_id,
+      label: collection.name,
+    }));
+  };
+
+  const getParentDestinationOptions = () => {
+    const collection = destinationTree.find(
+      (col) => col.collection_id === Number(selectedImmediateParent),
+    );
+
+    if (!collection || !collection.children) return [];
+
+    return collection.children
+      .filter((child) => child?.type === 'object')
+      .map((child) => ({
+        value: child.serial_no,
+        label: child.name,
+      }));
+  };
 
   const handleAddNew = () => {
     setEditingEndpointId(-1);
@@ -82,12 +391,7 @@ const DEMSModule: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* <AuthHeader
-        title="Dynamic Endpoint Monitoring Service"
-        showBackButton={true}
-      /> */}
-
-      <div className=" mx-auto px-4 sm:px-6 lg:px-[48px] py-[52px]">
+      <div className=" mx-auto px-4 sm:px-6 lg:px-12 py-[52px]">
         <Button
           variant="primary"
           className="py-1 pl-2"
@@ -106,9 +410,17 @@ const DEMSModule: React.FC = () => {
               Dynamic Endpoint Monitoring Service
             </h1>
           </div>
-          <Button onClick={handleAddNew} icon={<PlusIcon size={16} />}>
-            Create New Connection
-          </Button>
+          <div className="flex items-center space-x-2">
+            <Button
+              onClick={handleAddDestination}
+              icon={<PlusIcon size={16} />}
+            >
+              Extend Data Model
+            </Button>
+            <Button onClick={handleAddNew} icon={<PlusIcon size={16} />}>
+              Create New Connection
+            </Button>
+          </div>
         </div>
 
         {/* Content Section */}
@@ -148,6 +460,722 @@ const DEMSModule: React.FC = () => {
           onClose={handleCloseVersionHistoryModal}
           config={selectedConfig}
         />
+      )}
+
+      {showAddDestination && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          data-id="element-1046"
+          style={{ overflow: 'hidden' }}
+        >
+          <Backdrop
+            sx={(theme) => ({
+              zIndex: theme.zIndex.drawer + 1,
+              overflow: 'hidden',
+            })}
+            open={true}
+          >
+            <div className="bg-white rounded-lg w-full max-w-4xl overflow-hidden relative z-10 shadow-2xl">
+              <div
+                className="flex justify-between items-center px-6 py-4 border-b border-gray-200"
+                data-id="element-1048"
+              >
+                <Box
+                  sx={{
+                    fontSize: '20px',
+                    fontWeight: 'bold',
+                    color: '#2b7fff',
+                  }}
+                >
+                  Extend Data Model
+                </Box>
+                <button
+                  onClick={() => setShowAddDestination(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                  data-id="element-1050"
+                >
+                  <XIcon size={24} data-id="element-1051" />
+                </button>
+              </div>
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  minHeight: '400px',
+                  padding: 6,
+                }}
+              >
+                {addDestinationStep === 1 && (
+                  <>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 1,
+                        fontSize: {
+                          xs: '20px',
+                          sm: '24px',
+                          md: '28px',
+                        },
+                        fontWeight: 'bold',
+                        color: '#3b3b3b',
+                        marginBottom: 4,
+                      }}
+                    >
+                      Please Select Destination
+                      <Box
+                        sx={{
+                          display: { xs: 'none', sm: 'block' },
+                        }}
+                      >
+                        <LassoSelect size={28} color="#36ce9f" />
+                      </Box>
+                    </Box>
+
+                    <Box
+                      sx={{
+                        display: 'grid',
+                        gridTemplateColumns: {
+                          xs: '1fr',
+                          sm: '1fr 1fr',
+                        },
+                        gap: 4,
+                        width: '100%',
+                        maxWidth: '700px',
+                        position: 'relative',
+                        zIndex: 1,
+                      }}
+                    >
+                      {/* Data Model Box */}
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: 3,
+                          border: `2px solid ${destinationForm?.destination === 'data-model' ? '#3b82f6' : '#e5e7eb'}`,
+                          borderRadius: 2,
+                          backgroundColor:
+                            destinationForm?.destination === 'data-model'
+                              ? '#eff6ff'
+                              : '#f8fafc',
+                          cursor: 'pointer',
+                          transition: 'all 0.3s ease-in-out',
+                          position: 'relative',
+                          '&:hover': {
+                            borderColor: '#3b82f6',
+                            backgroundColor: '#eff6ff',
+                            transform: 'translateY(-2px)',
+                            boxShadow: '0 4px 12px rgba(59, 130, 246, 0.15)',
+                          },
+                        }}
+                        onClick={() => {
+                          setDestinationForm((prev) => ({
+                            ...prev,
+                            destination: 'data-model',
+                          }));
+                        }}
+                      >
+                        {/* Hidden radio input */}
+                        <input
+                          type="radio"
+                          name="destinationType"
+                          value="data-model"
+                          checked={
+                            destinationForm?.destination === 'data-model'
+                          }
+                          onChange={handleInputChange}
+                          style={{ display: 'none' }}
+                        />
+
+                        {/* Selection circle */}
+                        <Box
+                          sx={{
+                            position: 'absolute',
+                            top: 16,
+                            right: 16,
+                          }}
+                        >
+                          {destinationForm?.destination === 'data-model' ? (
+                            <CheckCircleIcon size={20} color="#3b82f6" />
+                          ) : (
+                            <Circle size={20} color="#d1d5db" />
+                          )}
+                        </Box>
+
+                        <DatabaseIcon size={48} color="#3b82f6" />
+                        <Box
+                          sx={{
+                            marginTop: 2,
+                            fontSize: '16px',
+                            fontWeight: 'bold',
+                            color: '#374151',
+                          }}
+                        >
+                          DATA MODEL
+                        </Box>
+                        <Box
+                          sx={{
+                            marginTop: 1,
+                            fontSize: '12px',
+                            color: '#6b7280',
+                            textAlign: 'center',
+                            lineHeight: 1.4,
+                          }}
+                        >
+                          Data Model Destination receives data directly from
+                          source without any parent destination.
+                        </Box>
+                      </Box>
+
+                      {/* Data Cache Box */}
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: 3,
+                          border: `2px solid ${destinationForm?.destination === 'data-cache' ? '#3b82f6' : '#e5e7eb'}`,
+                          borderRadius: 2,
+                          backgroundColor:
+                            destinationForm?.destination === 'data-cache'
+                              ? '#eff6ff'
+                              : '#f8fafc',
+                          cursor: 'pointer',
+                          transition: 'all 0.3s ease-in-out',
+                          position: 'relative',
+                          '&:hover': {
+                            borderColor: '#3b82f6',
+                            backgroundColor: '#eff6ff',
+                            transform: 'translateY(-2px)',
+                            boxShadow: '0 4px 12px rgba(59, 130, 246, 0.15)',
+                          },
+                        }}
+                        onClick={() => {
+                          setDestinationForm((prev) => ({
+                            ...prev,
+                            destination: 'data-cache',
+                          }));
+                        }}
+                      >
+                        {/* Hidden radio input */}
+                        <input
+                          type="radio"
+                          name="destinationType"
+                          value="data-cache"
+                          checked={
+                            destinationForm?.destination === 'data-cache'
+                          }
+                          onChange={handleInputChange}
+                          style={{ display: 'none' }}
+                        />
+
+                        {/* Selection circle */}
+                        <Box
+                          sx={{
+                            position: 'absolute',
+                            top: 16,
+                            right: 16,
+                          }}
+                        >
+                          {destinationForm?.destination === 'data-cache' ? (
+                            <CheckCircleIcon size={20} color="#3b82f6" />
+                          ) : (
+                            <Circle size={20} color="#d1d5db" />
+                          )}
+                        </Box>
+
+                        <ServerIcon size={48} color="#3b82f6" />
+                        <Box
+                          sx={{
+                            marginTop: 2,
+                            fontSize: '16px',
+                            fontWeight: 'bold',
+                            color: '#374151',
+                          }}
+                        >
+                          DATA CACHE
+                        </Box>
+                        <Box
+                          sx={{
+                            marginTop: 1,
+                            fontSize: '12px',
+                            color: '#6b7280',
+                            textAlign: 'center',
+                            lineHeight: 1.4,
+                          }}
+                        >
+                          Data Cache Destination is assigned to parent
+                          destination and receives data directly.
+                        </Box>
+                      </Box>
+                    </Box>
+                  </>
+                )}
+
+                {addDestinationStep === 2 && (
+                  <>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 1,
+                        fontSize: {
+                          xs: '20px',
+                          sm: '24px',
+                          md: '28px',
+                        },
+                        fontWeight: 'bold',
+                        color: '#3b3b3b',
+                        marginBottom: 4,
+                      }}
+                    >
+                      Please Select Destination Type
+                      <Box
+                        sx={{
+                          display: { xs: 'none', sm: 'block' },
+                        }}
+                      >
+                        <LassoSelect size={28} color="#36ce9f" />
+                      </Box>
+                    </Box>
+
+                    <Box
+                      sx={{
+                        display: 'grid',
+                        gridTemplateColumns: {
+                          xs: '1fr',
+                          sm:
+                            destinationForm?.destination === 'data-model'
+                              ? '1fr 1fr 1fr'
+                              : '1fr 1fr',
+                        },
+                        gap: 4,
+                        width: '100%',
+                        maxWidth:
+                          destinationForm?.destination !== 'data-model'
+                            ? '700px'
+                            : undefined,
+                        position: 'relative',
+                        zIndex: 1,
+                      }}
+                    >
+                      {/* Immediate Parent Box */}
+                      {destinationForm?.destination === 'data-model' && (
+                        <Box
+                          sx={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            padding: 3,
+                            border: `2px solid ${destinationForm?.destinationType === 'immediate-parent' ? '#3b82f6' : '#e5e7eb'}`,
+                            borderRadius: 2,
+                            backgroundColor:
+                              destinationForm?.destinationType ===
+                              'immediate-parent'
+                                ? '#eff6ff'
+                                : '#f8fafc',
+                            cursor: 'pointer',
+                            transition: 'all 0.3s ease-in-out',
+                            position: 'relative',
+                            '&:hover': {
+                              borderColor: '#3b82f6',
+                              backgroundColor: '#eff6ff',
+                              transform: 'translateY(-2px)',
+                              boxShadow: '0 4px 12px rgba(59, 130, 246, 0.15)',
+                            },
+                          }}
+                          onClick={() => {
+                            setDestinationForm((prev) => ({
+                              ...prev,
+                              destinationType: 'immediate-parent',
+                            }));
+                          }}
+                        >
+                          {/* Hidden radio input */}
+                          <input
+                            type="radio"
+                            name="destinationType"
+                            value="immediate-parent"
+                            checked={
+                              destinationForm?.destinationType ===
+                              'immediate-parent'
+                            }
+                            onChange={handleInputChange}
+                            style={{ display: 'none' }}
+                          />
+
+                          {/* Selection circle */}
+                          <Box
+                            sx={{
+                              position: 'absolute',
+                              top: 16,
+                              right: 16,
+                            }}
+                          >
+                            {destinationForm?.destinationType ===
+                            'immediate-parent' ? (
+                              <CheckCircleIcon size={20} color="#3b82f6" />
+                            ) : (
+                              <Circle size={20} color="#d1d5db" />
+                            )}
+                          </Box>
+
+                          <FolderTreeIcon size={48} color="#3b82f6" />
+                          <Box
+                            sx={{
+                              marginTop: 2,
+                              fontSize: '16px',
+                              fontWeight: 'bold',
+                              color: '#374151',
+                            }}
+                          >
+                            IMMEDIATE PARENT
+                          </Box>
+                          <Box
+                            sx={{
+                              marginTop: 1,
+                              fontSize: '12px',
+                              color: '#6b7280',
+                              textAlign: 'center',
+                              lineHeight: 1.4,
+                            }}
+                          >
+                            Immediate Parent Destination receives data directly
+                            from source without any parent destination.
+                          </Box>
+                        </Box>
+                      )}
+                      {/* Parent Box */}
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: 3,
+                          border: `2px solid ${destinationForm?.destinationType === 'parent' ? '#3b82f6' : '#e5e7eb'}`,
+                          borderRadius: 2,
+                          backgroundColor:
+                            destinationForm?.destinationType === 'parent'
+                              ? '#eff6ff'
+                              : '#f8fafc',
+                          cursor: 'pointer',
+                          transition: 'all 0.3s ease-in-out',
+                          position: 'relative',
+                          '&:hover': {
+                            borderColor: '#3b82f6',
+                            backgroundColor: '#eff6ff',
+                            transform: 'translateY(-2px)',
+                            boxShadow: '0 4px 12px rgba(59, 130, 246, 0.15)',
+                          },
+                        }}
+                        onClick={() => {
+                          setDestinationForm((prev) => ({
+                            ...prev,
+                            destinationType: 'parent',
+                          }));
+                        }}
+                      >
+                        {/* Hidden radio input */}
+                        <input
+                          type="radio"
+                          name="destinationType"
+                          value="parent"
+                          checked={
+                            destinationForm?.destinationType === 'parent'
+                          }
+                          onChange={handleInputChange}
+                          style={{ display: 'none' }}
+                        />
+
+                        {/* Selection circle */}
+                        <Box
+                          sx={{
+                            position: 'absolute',
+                            top: 16,
+                            right: 16,
+                          }}
+                        >
+                          {destinationForm?.destinationType === 'parent' ? (
+                            <CheckCircleIcon size={20} color="#3b82f6" />
+                          ) : (
+                            <Circle size={20} color="#d1d5db" />
+                          )}
+                        </Box>
+
+                        <FolderIcon size={48} color="#3b82f6" />
+                        <Box
+                          sx={{
+                            marginTop: 2,
+                            fontSize: '16px',
+                            fontWeight: 'bold',
+                            color: '#374151',
+                          }}
+                        >
+                          PARENT
+                        </Box>
+                        <Box
+                          sx={{
+                            marginTop: 1,
+                            fontSize: '12px',
+                            color: '#6b7280',
+                            textAlign: 'center',
+                            lineHeight: 1.4,
+                          }}
+                        >
+                          Parent Destination is used to group multiple child
+                          destinations under a single entity.
+                        </Box>
+                      </Box>
+
+                      {/* Child Box */}
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: 3,
+                          border: `2px solid ${destinationForm?.destinationType === 'child' ? '#3b82f6' : '#e5e7eb'}`,
+                          borderRadius: 2,
+                          backgroundColor:
+                            destinationForm?.destinationType === 'child'
+                              ? '#eff6ff'
+                              : '#f8fafc',
+                          cursor: 'pointer',
+                          transition: 'all 0.3s ease-in-out',
+                          position: 'relative',
+                          '&:hover': {
+                            borderColor: '#3b82f6',
+                            backgroundColor: '#eff6ff',
+                            transform: 'translateY(-2px)',
+                            boxShadow: '0 4px 12px rgba(59, 130, 246, 0.15)',
+                          },
+                        }}
+                        onClick={() => {
+                          setDestinationForm((prev) => ({
+                            ...prev,
+                            destinationType: 'child',
+                          }));
+                        }}
+                      >
+                        {/* Hidden radio input */}
+                        <input
+                          type="radio"
+                          name="destinationType"
+                          value="child"
+                          checked={destinationForm?.destinationType === 'child'}
+                          onChange={handleInputChange}
+                          style={{ display: 'none' }}
+                        />
+
+                        {/* Selection circle */}
+                        <Box
+                          sx={{
+                            position: 'absolute',
+                            top: 16,
+                            right: 16,
+                          }}
+                        >
+                          {destinationForm?.destinationType === 'child' ? (
+                            <CheckCircleIcon size={20} color="#3b82f6" />
+                          ) : (
+                            <Circle size={20} color="#d1d5db" />
+                          )}
+                        </Box>
+
+                        <FileIcon size={48} color="#3b82f6" />
+                        <Box
+                          sx={{
+                            marginTop: 2,
+                            fontSize: '16px',
+                            fontWeight: 'bold',
+                            color: '#374151',
+                          }}
+                        >
+                          CHILD
+                        </Box>
+                        <Box
+                          sx={{
+                            marginTop: 1,
+                            fontSize: '12px',
+                            color: '#6b7280',
+                            textAlign: 'center',
+                            lineHeight: 1.4,
+                          }}
+                        >
+                          Child Destination is assigned to parent destination
+                          and receives data directly.
+                        </Box>
+                      </Box>
+                    </Box>
+                  </>
+                )}
+
+                {addDestinationStep === 3 && (
+                  <>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 1,
+                        fontSize: {
+                          xs: '20px',
+                          sm: '24px',
+                          md: '28px',
+                        },
+                        fontWeight: 'bold',
+                        color: '#3b3b3b',
+                        marginBottom: 4,
+                      }}
+                    >
+                      Configure Destination Detail
+                      <Box
+                        sx={{
+                          display: { xs: 'none', sm: 'block' },
+                        }}
+                      >
+                        <LassoSelect size={28} color="#36ce9f" />
+                      </Box>
+                    </Box>
+                    <form
+                      className=" w-full"
+                      onSubmit={handleSubmit(handleAddDestinationSubmit)}
+                      // className="space-y-2"
+                    >
+                      <div data-id="element-818">
+                        <Grid container spacing={2}>
+                          {destinationForm?.destinationType !==
+                            'immediate-parent' && (
+                            <Grid
+                              size={{
+                                xs: 12,
+                                md: 6,
+                              }}
+                            >
+                              <SelectField
+                                name="immediate_parent"
+                                label="Select Immediate Parent"
+                                control={control}
+                                placeholder="Select immediate parent"
+                                options={getImmediateParentOptions()}
+                              />
+                            </Grid>
+                          )}
+
+                          {destinationForm?.destinationType === 'child' && (
+                            <Grid
+                              size={{
+                                xs: 12,
+                                md: 6,
+                              }}
+                            >
+                              <SelectField
+                                name="parent_destination"
+                                label="Select Parent Destination"
+                                control={control}
+                                placeholder="Select parent destination"
+                                options={getParentDestinationOptions()}
+                                disabled={
+                                  !selectedImmediateParent ||
+                                  !getParentDestinationOptions().length
+                                }
+                              />
+                            </Grid>
+                          )}
+
+                          {/* Destination Name */}
+                          <Grid
+                            size={{
+                              xs: 12,
+                              md: 6,
+                            }}
+                          >
+                            <AlphaNumericInputField
+                              name="destination_name"
+                              label="Destination Name"
+                              control={control}
+                              placeholder="Enter destination name"
+                              maxLength={50}
+                            />
+                          </Grid>
+
+                          {/* Field Type */}
+                          <Grid
+                            size={{
+                              xs: 12,
+                              md: 6,
+                            }}
+                          >
+                            <SelectField
+                              name="field_type"
+                              label="Field Type"
+                              control={control}
+                              placeholder="Select field type"
+                              options={
+                                destinationForm?.destinationType === 'child'
+                                  ? [
+                                      { value: 'string', label: 'String' },
+                                      { value: 'number', label: 'Number' },
+                                    ]
+                                  : [{ value: 'object', label: 'Object' }]
+                              }
+                              disabled={
+                                destinationForm?.destinationType !== 'child'
+                              }
+                            />
+                          </Grid>
+                        </Grid>
+                      </div>
+                    </form>
+                  </>
+                )}
+              </Box>
+              <div className="px-6 py-3 border-t border-gray-200 flex justify-between sticky bottom-0 bg-white z-10">
+                <MuiButton
+                  onClick={handleCloseAddDestinationModal}
+                  type="button"
+                  variant="outlined"
+                  sx={{ marginRight: '10px' }}
+                  startIcon={<XCircle size={16} />}
+                >
+                  Cancel
+                </MuiButton>
+                <Box>
+                  {addDestinationStep !== 1 && (
+                    <MuiButton
+                      variant="outlined"
+                      sx={{ marginRight: '10px' }}
+                      onClick={handleBack}
+                    >
+                      Back
+                    </MuiButton>
+                  )}
+                  <MuiButton
+                    variant="contained"
+                    sx={{ background: '#2b7fff' }}
+                    onClick={
+                      addDestinationStep === 3
+                        ? handleSubmit(handleAddDestinationSubmit)
+                        : handleContinue
+                    }
+                  >
+                    {addDestinationStep === 3 ? 'Submit' : 'Continue'}
+                  </MuiButton>
+                </Box>
+              </div>
+            </div>
+          </Backdrop>
+        </div>
       )}
     </div>
   );
