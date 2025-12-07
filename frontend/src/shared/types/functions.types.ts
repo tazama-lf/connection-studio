@@ -3,16 +3,21 @@ export type AllowedFunctionName =
   | 'addAccount'
   | 'addAccountHolder'
   | 'addEntity'
-  | 'saveTransactionDetails';
-
+  | 'saveTransactionDetails'
+  | 'addDataModel'
+  | 'addDataModelTable';
 export interface FunctionDefinition {
-  params: string[];
+  params?: any;
   functionName: AllowedFunctionName;
+  columns?: Record<string, any>[];
+  tableName?: string;
 }
 
 export interface AddFunctionDto {
-  params: string[];
+  params?: string[];
   functionName: AllowedFunctionName;
+  columns?: Record<string, any>[];
+  tableName?: string;
 }
 
 export interface FunctionResponseDto {
@@ -47,6 +52,7 @@ export interface FunctionConfig {
     parameters: string;
     description: string;
   }[];
+  dataModelConfiguration?: any
 }
 
 // Available function configurations
@@ -282,5 +288,13 @@ export const FUNCTION_CONFIGS: Record<AllowedFunctionName, FunctionConfig> = {
           'Parameters: source, destination, TxTp, MsgId, CreDtTm, EndToEndId, TenantId',
       },
     ],
+  },
+  addDataModel: {
+    name: 'addDataModel',
+    displayName: 'Add Data Model',
+    requiredParameters: [],
+    optionalParameters: [],
+    configurations: [],
+    dataModelConfiguration: [],
   },
 };
