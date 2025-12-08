@@ -320,11 +320,6 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
             >
               {cloneMode ? 'Clone' : editMode ? 'Edit' : 'View'} Data Enrichment
               Endpoint
-              <Box
-                sx={{ fontSize: '14px', fontWeight: 'bold', color: '#3b3b3b' }}
-              >
-                {job?.endpoint_name || 'Loading...'}
-              </Box>
             </Box>
             <button
               onClick={onClose}
@@ -398,7 +393,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label className="block text-sm font-bold text-gray-800 mb-2  px-0 py-0 rounded">
-                      Endpoint Name <span className="text-red-500">*</span>
+                      Connector Name <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"

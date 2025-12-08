@@ -477,7 +477,7 @@ export const DataEnrichmentEditModal: React.FC<
             disabled={true}
             label={
               <>
-                Endpoint Name <span className="text-red-500">*</span>
+                Connector Name <span className="text-red-500">*</span>
               </>
             }
             type="text"
@@ -799,7 +799,7 @@ export const DataEnrichmentEditModal: React.FC<
             control={control}
             label={
               <>
-                Endpoint Name <span className="text-red-500">*</span>
+                Connector Name <span className="text-red-500">*</span>
               </>
             }
             type="text"

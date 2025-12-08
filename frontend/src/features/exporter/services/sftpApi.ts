@@ -201,7 +201,7 @@ export class SftpApiService {
    * This will update the status to 'deployed' in the respective service
    * For 'cron' format: updates schedule status via /api/scheduler/update/status/:id
    * For 'de' format: updates job status via /api/job/update/status/:id
-   * For 'dems' format: triggers workflow deploy via /api/config/:id/workflow/deploy
+   * For 'dems' format: triggers workflow deploy via /api/config/:id/workflow?action=deploy
    */
   async publishItem(id: string, format: SftpFormat, type?: 'PULL' | 'PUSH' | string): Promise<void> {
     try {
@@ -222,7 +222,7 @@ export class SftpApiService {
         // Update config status using the workflow deploy endpoint
         // This will change status to 'deployed' AND execute CREATE TABLE query
         await this.apiRequest<{ success: boolean; message: string }>(
-          `${this.baseURL}/config/${id}/workflow/deploy`,
+          `${this.baseURL}/config/${id}/workflow?action=deploy`,
           {
             method: 'POST',
             body: JSON.stringify({
