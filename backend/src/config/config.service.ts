@@ -435,23 +435,30 @@ export class ConfigService {
             );
           
 
-          const { functions } = configData.functions || {};
+          const functions = configData.functions || null;
+
           const datamodelFn = Array.isArray(functions)
-            ? functions.find((fn) => fn.functionName == 'addDataModelTable')
-            : functions;
+            ? functions.find((fn) => fn.functionName === 'addDataModelTable')
+            : (functions && functions.functionName === 'addDataModelTable'
+                ? functions
+                : null);
+
           if (datamodelFn) {
             this.logger.log(
               `Creating datamodel table as per function: ${datamodelFn.functionName}`,
             );
+
             await this.configRepository.createTazamaDataModelTable(
               datamodelFn.tableName,
               datamodelFn.columns,
               token,
             );
+
             this.logger.log(
-              `Successfully created datamodel table "${functions.parameters.tableName}" from deployed config`,
+              `Successfully created datamodel table "${datamodelFn.tableName}" from deployed config`,
             );
           }
+
 
           await this.sftpService.deleteFile(fileName);
           this.logger.log(`Deleted config file from SFTP: ${fileName}`);
