@@ -1083,7 +1083,7 @@ export class AdminServiceClient {
     );
   }
 
-  async getAllCollections(tenantId: string = 'default', token: string): Promise<any> {
+  async getAllCollections(tenantId: string, token: string): Promise<any> {
     this.logger.log(`Fetching all collections for tenant: ${tenantId}`);
     this.logger.debug(`Token received: ${token ? `${token.substring(0, 20)}...` : 'EMPTY'}`);
 

@@ -16,7 +16,7 @@ export class TazamaDataModelRepository {
 
 
   async getAllCollections(
-    tenantId = 'default',
+    tenantId : string,
     token: string,
   ): Promise<TazamaCollectionSchema[]> {
     const response = await this.adminServiceClient.getAllCollections(tenantId, token);

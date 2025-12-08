@@ -10,10 +10,6 @@ export class ConfigRepository {
 
   constructor(private readonly adminServiceClient: AdminServiceClient) {}
 
-  // async runRawQuery(query: string, token: string): Promise<any> {
-  //   this.logger.log('Executing raw SQL query via admin-service');
-  //   return await this.adminServiceClient.runRawQuery(query, token);
-  // }
 
   async createConfig(
     configData: Omit<Config, 'id' | 'createdAt' | 'updatedAt'>,

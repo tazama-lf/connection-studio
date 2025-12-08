@@ -11,6 +11,10 @@ import {
 } from '@nestjs/common';
 import { TazamaAuthGuard } from '../auth/tazama-auth.guard';
 import { RequireAnyClaims, TazamaClaims } from '../auth/auth.decorator';
+import { User } from '../auth/user.decorator';
+import type { AuthenticatedUser } from '../auth/auth.types';
+
+
 import { TazamaDataModelService } from './tazama-data-model.service';
 import type {
   CreateDestinationTypeDto,
@@ -51,15 +55,14 @@ export class TazamaDataModelController {
     TazamaClaims.PUBLISHER,
     TazamaClaims.EXPORTER,
   )
-  async getDestinationOptions(@Req() request: any): Promise<{
+
+  async getDestinationOptions( @User() user: AuthenticatedUser): Promise<{
     success: boolean;
     data: DestinationOption[];
     error?: string;
   }> {
     try {
-      const authHeader = request.headers.authorization || '';
-      this.logger.debug(`Received authorization header: ${authHeader ? 'present' : 'missing'}`);
-      const token = authHeader.replace('Bearer ', '').trim();
+      const token = user.token;
       
       if (!token) {
         return {
@@ -69,7 +72,7 @@ export class TazamaDataModelController {
         };
       }
       
-      const data = await this.tazamaDataModelService.getDestinationOptions('default', token);
+      const data = await this.tazamaDataModelService.getDestinationOptions(user.tenantId, user.token.tokenString);
       return {
         success: true,
         data,
