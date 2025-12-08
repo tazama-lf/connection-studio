@@ -396,6 +396,7 @@ export class ConfigService {
         try {
           try {
             const deployedConfigData = {
+              id: configData.id,
               msgFam: configData.msgFam ?? null,
               transactionType: configData.transactionType ?? null,
               contentType: configData.contentType ?? 'application/json',
@@ -424,15 +425,8 @@ export class ConfigService {
             throw insertError;
           }
 
-          if (configData.credentials) {
-            this.logger.log('Credentials present in config');
-          }
-
           const { transactionType } = configData;
-          if (transactionType) {
-            this.logger.log(
-              `Creating table for transaction type: ${transactionType}`,
-            );
+          
             await this.configRepository.createTransactionTypeTable(
               transactionType,
               token,
@@ -440,13 +434,11 @@ export class ConfigService {
             this.logger.log(
               `Successfully created table "${transactionType}" from deployed config`,
             );
-          } else {
-            this.logger.warn(`No transactionType found in config file ${fileName}`);
-          }
+          
 
           const { functions } = configData;
           const datamodelFn = Array.isArray(functions)
-            ? functions.find((fn) => fn.functionName === 'addDatamodelTable')
+            ? functions.find((fn) => fn.functionName === 'addDataModelTable')
             : functions;
           if (datamodelFn) {
             this.logger.log(
