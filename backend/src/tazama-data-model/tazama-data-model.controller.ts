@@ -98,15 +98,14 @@ export class TazamaDataModelController {
   )
   async createDestinationType(
     @Body() dto: CreateDestinationTypeDto,
-    @Req() request: any,
-  ): Promise<{
+    @User() user: AuthenticatedUser,
+    ): Promise<{
     success: boolean;
     message: string;
     data: DestinationTypeResponse | null;
   }> {
     try {
-      const authHeader = request.headers.authorization || '';
-      const token = authHeader.replace('Bearer ', '').trim();
+      const token = user.token.tokenString;
       
       if (!token) {
         return {
@@ -144,15 +143,14 @@ export class TazamaDataModelController {
   async addFieldToDestinationType(
     @Param('destinationTypeId', ParseIntPipe) destinationTypeId: number,
     @Body() dto: CreateFieldDto,
-    @Req() request: any,
+    @User() user: AuthenticatedUser
   ): Promise<{
     success: boolean;
     message: string;
     data: FieldResponse | null;
   }> {
     try {
-      const authHeader = request.headers.authorization || '';
-      const token = authHeader.replace('Bearer ', '').trim();
+      const token = user.token.tokenString;
       
       if (!token) {
         return {

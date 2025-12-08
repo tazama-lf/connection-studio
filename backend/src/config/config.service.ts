@@ -417,17 +417,9 @@ export class ConfigService {
               updatedAt: new Date(),
             };
 
-            this.logger.log(
-              `Deploying config data - schema length: ${deployedConfigData.schema?.length}, mapping length: ${deployedConfigData.mapping?.length}`,
-            );
-
-            const insertedId = await this.configRepository.createDeployedConfig(
+             await this.configRepository.createDeployedConfig(
               deployedConfigData,
               token,
-            );
-
-            this.logger.log(
-              `Successfully inserted deployed config, new record id: ${insertedId}`,
             );
           } catch (insertError) {
             this.logger.error(
