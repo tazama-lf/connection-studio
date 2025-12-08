@@ -341,12 +341,8 @@ export class ConfigService {
           };
           await this.sftpService.createFile(fileName, {
             ...configToExport,
-            status: ConfigStatus.READY_FOR_DEPLOYMENT,
+            status: ConfigStatus.DEPLOYED,
           });
-
-          this.logger.log(
-            `Successfully uploaded config file (${fileName}) with status '${ConfigStatus.READY_FOR_DEPLOYMENT}' to SFTP servers.`,
-          );
 
           const result = await this.configRepository.getupdateConfigByStatus(
             id,
