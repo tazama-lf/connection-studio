@@ -382,8 +382,7 @@ export class ConfigService {
         let configData: any;
 
         try {
-          this.logger.log(`Reading config file from SFTP: ${fileName}`);
-          configData = (await this.sftpService.readFile(fileName)) as Config;
+          configData = await this.sftpService.readFile(fileName);
           sftpConfigStatus = configData.status as ConfigStatus;
         } catch (error) {
           throw new BadRequestException(
@@ -436,13 +435,13 @@ export class ConfigService {
             );
           
 
-          const { functions } = configData;
+          const { functions } = configData.functions || {};
           const datamodelFn = Array.isArray(functions)
-            ? functions.find((fn) => fn.functionName === 'addDataModelTable')
+            ? functions.find((fn) => fn.functionName == 'addDataModelTable')
             : functions;
           if (datamodelFn) {
             this.logger.log(
-              `Creating datamodel table as per function: ${functions.functionName}`,
+              `Creating datamodel table as per function: ${datamodelFn.functionName}`,
             );
             await this.configRepository.createTazamaDataModelTable(
               datamodelFn.tableName,
