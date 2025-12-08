@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ConfigList } from '@features/config/components/ConfigList';
 import VersionHistoryModal from '@features/config/components/VersionHistoryModal';
 import { Button } from '@shared/components/Button';
+import * as yup from 'yup';
 import {
   PlusIcon,
   ChevronLeft,
@@ -21,9 +22,10 @@ import EditEndpointModal from '@shared/components/EditEndpointModal';
 import ValidationLogsTable from '@shared/components/ValidationLogsTable';
 import type { Config } from '@features/config/index';
 import { useNavigate } from 'react-router';
-import { Backdrop, Box, Grid, Button as MuiButton } from '@mui/material';
+import { Backdrop, Box, Grid, Button as MuiButton, CircularProgress } from '@mui/material';
 import { dataModelApi, type DestinationOption } from '@features/data-model';
-import { get, useForm } from 'react-hook-form';
+import { useToast } from '@shared/providers/ToastProvider';
+import { useForm } from 'react-hook-form';
 import {
   AlphaNumericInputField,
   SelectField,
@@ -49,6 +51,54 @@ export const defaultValues = {
   parent_destination: '',
 };
 
+type DestinationFormValues = typeof defaultValues;
+
+// Validation schema for step 1 - Select Destination
+const step1ValidationSchema = yup.object({
+  destination: yup
+    .string()
+    .required('Please select a destination type')
+    .oneOf(['data-model', 'data-cache'], 'Invalid destination type'),
+});
+
+// Validation schema for step 2 - Select Destination Type
+const step2ValidationSchema = yup.object({
+  destination: yup.string().required(),
+  destinationType: yup
+    .string()
+    .required('Please select a destination type')
+    .test('valid-type', 'Invalid destination type', function (value) {
+      const { destination } = this.parent;
+      if (destination === 'data-model') {
+        return ['immediate-parent', 'parent', 'child'].includes(value);
+      }
+      return ['parent', 'child'].includes(value);
+    }),
+});
+
+// Validation schema for step 3 - Configure Destination Details
+const step3ValidationSchema = yup.object({
+  destination_name: yup
+    .string()
+    .required('Destination name is required')
+    .min(2, 'Destination name must be at least 2 characters')
+    .max(50, 'Destination name cannot exceed 50 characters')
+    .matches(
+      /^[a-zA-Z][a-zA-Z0-9-]*$/,
+      'Must start with a letter and contain only letters, numbers'
+    )
+    .trim(),
+  immediate_parent: yup.string().when('destinationType', {
+    is: (val: any) => val !== 'immediate-parent',
+    then: (schema) => schema.required('Please select an immediate parent'),
+    otherwise: (schema) => schema.nullable(),
+  }),
+  field_type: yup
+    .string()
+    .required('Field type is required')
+    .oneOf(['string', 'number', 'object'], 'Invalid field type'),
+});
+
 // DEMS Module now uses real backend configurations instead of mock data
 const DEMSModule: React.FC = () => {
   const navigate = useNavigate();
@@ -71,10 +121,12 @@ const DEMSModule: React.FC = () => {
   const [destinationForm, setDestinationForm] = React.useState<{
     [key: string]: any;
   }>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { control, handleSubmit, watch, setValue, getValues, reset, trigger } =
-    useForm({
-      // resolver: yupResolver({} as any),
+  const { showSuccess, showError } = useToast();
+
+  const { control, handleSubmit, watch, setValue, getValues, reset, setError, clearErrors, formState: { errors } } =
+    useForm<DestinationFormValues>({
       defaultValues,
       mode: 'onChange',
     });
@@ -114,7 +166,29 @@ const DEMSModule: React.FC = () => {
     setAddDestinationStep(1);
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
+    // Get current form values
+    const formValues = getValues();
+
+    // Validate based on current step
+    try {
+      if (addDestinationStep === 1) {
+        await step1ValidationSchema.validate(formValues, { abortEarly: false });
+        clearErrors('destination');
+      } else if (addDestinationStep === 2) {
+        await step2ValidationSchema.validate(formValues, { abortEarly: false });
+        clearErrors('destinationType');
+      }
+    } catch (error: any) {
+      // Set errors from validation
+      if (error.inner) {
+        error.inner.forEach((err: any) => {
+          setError(err.path, { message: err.message });
+        });
+      }
+      return;
+    }
+
     if (addDestinationStep === 2) {
       setValue('destination_name', '');
       setValue('immediate_parent', '');
@@ -151,7 +225,12 @@ const DEMSModule: React.FC = () => {
   };
 
   const handleAddDestinationSubmit = async (data: any) => {
+    setIsSubmitting(true);
     try {
+      // Validate step 3 before submitting
+      await step3ValidationSchema.validate(data, { abortEarly: false });
+      clearErrors();
+
       // Prepare the API request based on destination type
       const requestImmediateParentPayload: any = {
         collection_type: data.destination_name,
@@ -169,32 +248,47 @@ const DEMSModule: React.FC = () => {
       const response =
         destinationForm?.destinationType === 'immediate-parent'
           ? await dataModelApi.createImmediateParent(
-              requestImmediateParentPayload,
-            )
+            requestImmediateParentPayload,
+          )
           : await dataModelApi.createParentChildDestination(
-              Number(data?.immediate_parent),
-              requestParentChildPayload,
-            );
+            Number(data?.immediate_parent),
+            requestParentChildPayload,
+          );
 
       if (response?.success) {
         // Refresh destination tree
         await fetchDestinationOptions();
         // Close modal
         handleCloseAddDestinationModal();
-        // Show success message (you can add toast here)
+        // Show success message
+        showSuccess('Success', 'Destination added successfully');
       } else {
         console.error('❌ Failed to add destination:', response.message);
-        // Show error message (you can add toast here)
+        // Show error message
+        showError('Error', response.message || 'Failed to add destination');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Error adding destination:', error);
-      // Show error message (you can add toast here)
+
+      // Handle validation errors
+      if (error.inner) {
+        error.inner.forEach((err: any) => {
+          setError(err.path, { message: err.message });
+        });
+        return;
+      }
+
+      // Show API error message
+      showError('Error', error?.message || 'An error occurred while adding destination');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleBack = () => {
     setAddDestinationStep((prevStep) => prevStep - 1);
     setShowAddDestination(true);
+    clearErrors();
   };
 
   const convertDestinationOptionsToTree = (
@@ -318,10 +412,21 @@ const DEMSModule: React.FC = () => {
 
   // Generate unique collection options from destination tree
   const getImmediateParentOptions = () => {
-    return destinationTree.map((collection) => ({
-      value: collection.collection_id,
-      label: collection.name,
-    }));
+    return destinationTree
+      .filter((collection) => {
+        if (destinationForm?.destination === 'data-cache') {
+          return collection.collection_id === 2;
+        }
+        if (destinationForm?.destination === 'data-model') {
+          return collection.collection_id !== 2;
+        }
+
+        return false;
+      })
+      .map((collection) => ({
+        value: collection.collection_id,
+        label: collection.name,
+      }));
   };
 
   const getParentDestinationOptions = () => {
@@ -485,9 +590,36 @@ const DEMSModule: React.FC = () => {
                     fontSize: '20px',
                     fontWeight: 'bold',
                     color: '#2b7fff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 0.5,
                   }}
                 >
-                  Extend Data Model
+                  <span>Extend Data Model</span>
+                  {addDestinationStep >= 1 && destinationForm?.destination && (
+                    <>
+                      <span style={{ color: '#000', fontSize: '14px', fontWeight: 'normal' }}>
+                        {' '}{'>'}{' '}
+                      </span>
+                      <span style={{ color: '#000', fontSize: '14px', fontWeight: 'normal' }}>
+                        {destinationForm.destination === 'data-model' ? 'Data Model' : 'Data Cache'}
+                      </span>
+                    </>
+                  )}
+                  {addDestinationStep >= 2 && destinationForm?.destinationType && (
+                    <>
+                      <span style={{ color: '#000', fontSize: '14px', fontWeight: 'normal' }}>
+                        {' '}{'>'}{' '}
+                      </span>
+                      <span style={{ color: '#000', fontSize: '14px', fontWeight: 'normal' }}>
+                        {destinationForm.destinationType === 'immediate-parent'
+                          ? 'Immediate Parent'
+                          : destinationForm.destinationType === 'parent'
+                            ? 'Parent'
+                            : 'Child'}
+                      </span>
+                    </>
+                  )}
                 </Box>
                 <button
                   onClick={() => setShowAddDestination(false)}
@@ -578,6 +710,8 @@ const DEMSModule: React.FC = () => {
                             ...prev,
                             destination: 'data-model',
                           }));
+                          setValue('destination', 'data-model');
+                          clearErrors('destination');
                         }}
                       >
                         {/* Hidden radio input */}
@@ -661,6 +795,8 @@ const DEMSModule: React.FC = () => {
                             ...prev,
                             destination: 'data-cache',
                           }));
+                          setValue('destination', 'data-cache');
+                          clearErrors('destination');
                         }}
                       >
                         {/* Hidden radio input */}
@@ -779,7 +915,7 @@ const DEMSModule: React.FC = () => {
                             borderRadius: 2,
                             backgroundColor:
                               destinationForm?.destinationType ===
-                              'immediate-parent'
+                                'immediate-parent'
                                 ? '#eff6ff'
                                 : '#f8fafc',
                             cursor: 'pointer',
@@ -797,6 +933,8 @@ const DEMSModule: React.FC = () => {
                               ...prev,
                               destinationType: 'immediate-parent',
                             }));
+                            setValue('destinationType', 'immediate-parent');
+                            clearErrors('destinationType');
                           }}
                         >
                           {/* Hidden radio input */}
@@ -821,7 +959,7 @@ const DEMSModule: React.FC = () => {
                             }}
                           >
                             {destinationForm?.destinationType ===
-                            'immediate-parent' ? (
+                              'immediate-parent' ? (
                               <CheckCircleIcon size={20} color="#3b82f6" />
                             ) : (
                               <Circle size={20} color="#d1d5db" />
@@ -882,6 +1020,8 @@ const DEMSModule: React.FC = () => {
                             ...prev,
                             destinationType: 'parent',
                           }));
+                          setValue('destinationType', 'parent');
+                          clearErrors('destinationType');
                         }}
                       >
                         {/* Hidden radio input */}
@@ -965,6 +1105,8 @@ const DEMSModule: React.FC = () => {
                             ...prev,
                             destinationType: 'child',
                           }));
+                          setValue('destinationType', 'child');
+                          clearErrors('destinationType');
                         }}
                       >
                         {/* Hidden radio input */}
@@ -1050,27 +1192,32 @@ const DEMSModule: React.FC = () => {
                     <form
                       className=" w-full"
                       onSubmit={handleSubmit(handleAddDestinationSubmit)}
-                      // className="space-y-2"
+                    // className="space-y-2"
                     >
                       <div data-id="element-818">
                         <Grid container spacing={2}>
                           {destinationForm?.destinationType !==
                             'immediate-parent' && (
-                            <Grid
-                              size={{
-                                xs: 12,
-                                md: 6,
-                              }}
-                            >
-                              <SelectField
-                                name="immediate_parent"
-                                label="Select Immediate Parent"
-                                control={control}
-                                placeholder="Select immediate parent"
-                                options={getImmediateParentOptions()}
-                              />
-                            </Grid>
-                          )}
+                              <Grid
+                                size={{
+                                  xs: 12,
+                                  md: 6,
+                                }}
+                              >
+                                <SelectField
+                                  name="immediate_parent"
+                                  label="Select Immediate Parent"
+                                  control={control}
+                                  placeholder="Select immediate parent"
+                                  options={getImmediateParentOptions()}
+                                />
+                                {errors.immediate_parent && (
+                                  <p className="text-red-600 text-sm mt-1 ml-1">
+                                    {errors.immediate_parent.message}
+                                  </p>
+                                )}
+                              </Grid>
+                            )}
 
                           {destinationForm?.destinationType === 'child' && (
                             <Grid
@@ -1081,7 +1228,7 @@ const DEMSModule: React.FC = () => {
                             >
                               <SelectField
                                 name="parent_destination"
-                                label="Select Parent Destination"
+                                label="Select Parent Destination (Optional)"
                                 control={control}
                                 placeholder="Select parent destination"
                                 options={getParentDestinationOptions()}
@@ -1090,6 +1237,11 @@ const DEMSModule: React.FC = () => {
                                   !getParentDestinationOptions().length
                                 }
                               />
+                              {errors.parent_destination && (
+                                <p className="text-red-600 text-sm mt-1 ml-1">
+                                  {errors.parent_destination.message}
+                                </p>
+                              )}
                             </Grid>
                           )}
 
@@ -1107,6 +1259,11 @@ const DEMSModule: React.FC = () => {
                               placeholder="Enter destination name"
                               maxLength={50}
                             />
+                            {errors.destination_name && (
+                              <p className="text-red-600 text-sm mt-1 ml-1">
+                                {errors.destination_name.message}
+                              </p>
+                            )}
                           </Grid>
 
                           {/* Field Type */}
@@ -1124,15 +1281,20 @@ const DEMSModule: React.FC = () => {
                               options={
                                 destinationForm?.destinationType === 'child'
                                   ? [
-                                      { value: 'string', label: 'String' },
-                                      { value: 'number', label: 'Number' },
-                                    ]
+                                    { value: 'string', label: 'String' },
+                                    { value: 'number', label: 'Number' },
+                                  ]
                                   : [{ value: 'object', label: 'Object' }]
                               }
                               disabled={
                                 destinationForm?.destinationType !== 'child'
                               }
                             />
+                            {errors.field_type && (
+                              <p className="text-red-600 text-sm mt-1 ml-1">
+                                {errors.field_type.message}
+                              </p>
+                            )}
                           </Grid>
                         </Grid>
                       </div>
@@ -1168,12 +1330,26 @@ const DEMSModule: React.FC = () => {
                         ? handleSubmit(handleAddDestinationSubmit)
                         : handleContinue
                     }
+                    disabled={
+                      isSubmitting ||
+                      (addDestinationStep === 1 && !destinationForm?.destination) ||
+                      (addDestinationStep === 2 && !destinationForm?.destinationType)
+                    }
+                    startIcon={isSubmitting && addDestinationStep === 3 ? <CircularProgress size={16} color="inherit" /> : null}
                   >
-                    {addDestinationStep === 3 ? 'Submit' : 'Continue'}
+                    {addDestinationStep === 3 ? (isSubmitting ? 'Submitting...' : 'Submit') : 'Continue'}
                   </MuiButton>
                 </Box>
               </div>
             </div>
+          </Backdrop>
+
+          {/* Loading Backdrop */}
+          <Backdrop
+            sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 2 }}
+            open={isSubmitting}
+          >
+            <CircularProgress color="inherit" />
           </Backdrop>
         </div>
       )}
