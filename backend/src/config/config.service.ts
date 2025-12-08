@@ -437,26 +437,48 @@ export class ConfigService {
 
           const functions = configData.functions || null;
 
-          const datamodelFn = Array.isArray(functions)
-            ? functions.find((fn) => fn.functionName === 'addDataModelTable')
-            : (functions && functions.functionName === 'addDataModelTable'
-                ? functions
-                : null);
-
-          if (datamodelFn) {
-            this.logger.log(
-              `Creating datamodel table as per function: ${datamodelFn.functionName}`,
+          if (Array.isArray(functions)) {
+            const datamodelFunctions = functions.filter(
+              (fn) => fn.functionName === 'addDataModelTable'
             );
 
-            await this.configRepository.createTazamaDataModelTable(
-              datamodelFn.tableName,
-              datamodelFn.columns,
-              token,
-            );
+            for (const datamodelFn of datamodelFunctions) {
+              if (datamodelFn.tableName) {
+                this.logger.log(
+                  `Creating datamodel table: ${datamodelFn.tableName}`,
+                );
 
-            this.logger.log(
-              `Successfully created datamodel table "${datamodelFn.tableName}" from deployed config`,
-            );
+                await this.configRepository.createTazamaDataModelTable(
+                  datamodelFn.tableName,
+                  datamodelFn.columns,
+                  token,
+                );
+
+                this.logger.log(
+                  `Successfully created datamodel table "${datamodelFn.tableName}"`,
+                );
+              } else {
+                this.logger.warn(
+                  `Skipping addDataModelTable function without tableName`,
+                );
+              }
+            }
+          } else if (functions && functions.functionName === 'addDataModelTable') {
+            if (functions.tableName) {
+              this.logger.log(
+                `Creating datamodel table: ${functions.tableName}`,
+              );
+
+              await this.configRepository.createTazamaDataModelTable(
+                functions.tableName,
+                functions.columns,
+                token,
+              );
+
+              this.logger.log(
+                `Successfully created datamodel table "${functions.tableName}"`,
+              );
+            }
           }
 
 
