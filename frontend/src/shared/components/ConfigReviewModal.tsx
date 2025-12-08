@@ -179,7 +179,11 @@ export const ConfigReviewModal: React.FC<ConfigReviewModalProps> = ({
                             {func.functionName}
                           </span>
                           <div className="text-sm text-gray-700">
-                            Parameters: {func.params?.join(', ') || 'None'}
+                            {func.columns && func.columns.length > 0 ? (
+                              <span>Columns: {func.columns.map((col: any) => col.param).join(', ')}</span>
+                            ) : (
+                              <span>Parameters: {func.params?.join(', ') || 'None'}</span>
+                            )}
                           </div>
                         </div>
                       </div>

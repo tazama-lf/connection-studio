@@ -325,7 +325,11 @@ export const DeploymentConfirmation: React.FC<DeploymentConfirmationProps> = ({
                         {func.functionName}
                       </span>
                       <div className="text-sm text-gray-700">
-                        Parameters: {func.params?.join(', ') || 'None'}
+                        {func.columns && func.columns.length > 0 ? (
+                          `Columns: ${func.columns.map((col: any) => col.param).join(', ')}`
+                        ) : (
+                          `Parameters: ${func.params?.join(', ') || 'None'}`
+                        )}
                       </div>
                     </div>
                   </div>
