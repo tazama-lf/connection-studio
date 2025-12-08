@@ -404,7 +404,7 @@ export class ConfigService {
               transactionType: configData.transactionType ?? null,
               contentType: configData.contentType ?? 'application/json',
               endpointPath: configData.endpointPath ?? null,
-              status: sftpConfigStatus,
+              status: newStatus,
               publishingStatus: configData.publishingStatus ?? 'active',
               version: configData.version,
               schema: configData.schema === null ? null : configData.schema,
