@@ -280,7 +280,7 @@ const PublisherExportedItemsPage: React.FC = () => {
             <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
               type="text"
-              placeholder={`Search ${tabs.find((t) => t.id === activeTab)?.name.toLowerCase()}...`}
+              placeholder={`Search ${tabs.find((t) => t.id === activeTab)?.name}...`}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"

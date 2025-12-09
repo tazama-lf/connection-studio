@@ -324,12 +324,15 @@ export const DeploymentConfirmation: React.FC<DeploymentConfirmationProps> = ({
                       <span className="text-xs font-medium text-green-600 bg-green-100 px-2 py-1 rounded">
                         {func.functionName}
                       </span>
+                      {func?.tableName && (
+                        <p className="text-sm text-gray-700">
+                          Table Name: {func.tableName}
+                        </p>
+                      )}
                       <div className="text-sm text-gray-700">
-                        {func.columns && func.columns.length > 0 ? (
-                          `Columns: ${func.columns.map((col: any) => col.param).join(', ')}`
-                        ) : (
-                          `Parameters: ${func.params?.join(', ') || 'None'}`
-                        )}
+                        {func.columns && func.columns.length > 0
+                          ? `Columns: ${func.columns.map((col: any) => col.param).join(', ')}`
+                          : `Parameters: ${func.params?.join(', ') || 'None'}`}
                       </div>
                     </div>
                   </div>

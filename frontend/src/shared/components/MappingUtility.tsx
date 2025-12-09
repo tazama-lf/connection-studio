@@ -1310,7 +1310,10 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
 
               {/* Transformation */}
               <div className="space-y-4" data-id="element-200">
-                <h4 className="font-medium text-gray-700 flex items-center gap-2" data-id="element-201">
+                <h4
+                  className="font-medium text-gray-700 flex items-center gap-2"
+                  data-id="element-201"
+                >
                   <Shuffle size={18} style={{ color: '#2b7fff' }} />
                   Transformation
                 </h4>
@@ -1475,7 +1478,10 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
               </div>
               {/* Destination Selection */}
               <div className="space-y-4" data-id="element-229">
-                <h4 className="font-medium text-gray-700 flex items-center gap-2" data-id="element-230">
+                <h4
+                  className="font-medium text-gray-700 flex items-center gap-2"
+                  data-id="element-230"
+                >
                   <DatabaseIcon size={18} style={{ color: '#2b7fff' }} />
                   Destination
                 </h4>
@@ -1624,6 +1630,9 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                         : Array.isArray(mapping.source)
                           ? mapping.source.join(' + ')
                           : mapping.source}
+                    {!mapping.transformation &&
+                      mapping?.constantValue &&
+                      `"${mapping.constantValue}"`}
                     <ArrowRightIcon size={16} className="inline mx-2" />
                     {mapping.prefix ? `"${mapping.prefix}" + ` : ''}
                     {/* Fixed: Show destinations for SPLIT transformation */}

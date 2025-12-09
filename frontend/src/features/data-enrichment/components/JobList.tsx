@@ -439,7 +439,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
     {
       field: 'status',
       headerName: 'Status',
-      minWidth: 200,
+      minWidth: 260,
       flex: 1,
       sortable: false,
       align: 'center',
@@ -476,9 +476,33 @@ export const JobList: React.FC<JobListProps> = (props) => {
       ),
     },
     {
+      field: 'cron_job_name',
+      headerName: 'Cron Job Name',
+      minWidth: 200,
+      flex: 0.5,
+      sortable: false,
+      disableColumnMenu: true,
+      align: 'center',
+      renderHeader: () => (
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '8px',
+            width: '100%',
+            height: '100%',
+            py: '12px',
+          }}
+        >
+          <Box sx={{ fontSize: '14px', fontWeight: '600' }}>Cron Job Name</Box>
+        </Box>
+      ),
+    },
+    {
       field: 'created_at',
       headerName: 'Created Time',
-      minWidth: 220,
+      minWidth: 200,
       flex: 1,
       sortable: false,
       disableColumnMenu: true,
@@ -518,7 +542,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
     {
       field: 'type',
       headerName: 'Type',
-      minWidth: 100,
+      minWidth: 140,
       flex: 0.5,
       sortable: false,
       disableColumnMenu: true,
@@ -585,7 +609,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
     {
       field: 'actions',
       headerName: 'Actions',
-      minWidth: 240,
+      minWidth: 140,
       flex: 1.2,
       sortable: false,
       disableColumnMenu: true,

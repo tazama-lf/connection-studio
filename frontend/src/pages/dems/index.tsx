@@ -595,23 +595,23 @@ const DEMSModule: React.FC = () => {
                     gap: 0.5,
                   }}
                 >
-                  <span>Extend Data Model</span>
+                  <span className=' mr-1'>Extend Data Model</span>
                   {addDestinationStep >= 1 && destinationForm?.destination && (
                     <>
-                      <span style={{ color: '#000', fontSize: '14px', fontWeight: 'normal' }}>
+                      <span className="text-[#6b7280]" style={{ fontSize: '12px', fontWeight: 'normal' }}>
                         {' '}{'>'}{' '}
                       </span>
-                      <span style={{ color: '#000', fontSize: '14px', fontWeight: 'normal' }}>
+                      <span className="text-[#6b7280]" style={{ fontSize: '12px', fontWeight: 'normal' }}>
                         {destinationForm.destination === 'data-model' ? 'Data Model' : 'Data Cache'}
                       </span>
                     </>
                   )}
                   {addDestinationStep >= 2 && destinationForm?.destinationType && (
                     <>
-                      <span style={{ color: '#000', fontSize: '14px', fontWeight: 'normal' }}>
+                      <span className="text-[#6b7280]" style={{ fontSize: '12px', fontWeight: 'normal' }}>
                         {' '}{'>'}{' '}
                       </span>
-                      <span style={{ color: '#000', fontSize: '14px', fontWeight: 'normal' }}>
+                      <span className="text-[#6b7280]" style={{ fontSize: '12px', fontWeight: 'normal' }}>
                         {destinationForm.destinationType === 'immediate-parent'
                           ? 'Immediate Parent'
                           : destinationForm.destinationType === 'parent'

@@ -221,7 +221,7 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
           options.push({
             label: field.name || cleanPath,
             value: cleanPath,
-            group: 'Sources',
+            group: 'Payload',
           });
         }
       });
@@ -237,7 +237,7 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
             options.push({
               label: key,
               value: path,
-              group: 'Sources',
+              group: 'Payload',
             });
           }
 
@@ -285,7 +285,10 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
     }
 
     // Traverse destination tree
-    destinationTree.forEach((n) => buildPrimaryKeyOptions(n));
+    destinationTree.forEach((n) => {
+      if (n?.collection_id !== 1 && n?.collection_id !== 2)
+        buildPrimaryKeyOptions(n);
+    });
 
     return result;
   };
@@ -302,7 +305,7 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
       result.push({
         label: node.id || '',
         value: node.id,
-        group: 'Destinations',
+        group: 'Extended Data Model',
       });
 
       if (Array.isArray(node.children)) {
@@ -314,7 +317,10 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
       }
     }
 
-    destinationTree.forEach((n) => traverseDestinations(n));
+    destinationTree.forEach((n) => {
+      if (n?.collection_id !== 1 && n?.collection_id !== 2)
+        traverseDestinations(n);
+    });
 
     return result;
   };
@@ -326,8 +332,7 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
       let jsonKeyparsed: any = {};
       try {
         jsonKeyparsed = JSON.parse(dataModelForm?.jsonKey || '{}');
-        console.log("jsonKeyparsed",jsonKeyparsed);
-        
+        console.log('jsonKeyparsed', jsonKeyparsed);
       } catch (error) {
         console.error('❌ Invalid JSON in jsonKey:', dataModelForm?.jsonKey);
         jsonKeyparsed = {}; // fallback
@@ -346,7 +351,7 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
             type: 'jsonb',
             param: jsonKeyparsed?.value || '',
             datasource:
-              jsonKeyparsed?.group === 'Sources' ? 'payload' : 'dataModel',
+              jsonKeyparsed?.group === 'Payload' ? 'payload' : 'dataModel',
           },
         ],
         tableName: tenantId + '_' + (dataModelForm?.tableName || ''),
@@ -506,7 +511,7 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
           {/* JSON Key Select Field with Dynamic Grouping */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              JsonB
+              Data
             </label>
             <select
               value={dataModelForm?.jsonKey || ''}
@@ -515,7 +520,7 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
               }
               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
             >
-              <option value="">Select JsonB</option>
+              <option value="">Select Data</option>
 
               {/* Dynamically generate optgroups based on unique groups in jsonBOptions */}
               {Array.from(
@@ -530,7 +535,7 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
                         value={JSON.stringify({
                           value: option.value,
                           label: option.label,
-                          group: option.group
+                          group: option.group,
                         })}
                       >
                         {option.label}
