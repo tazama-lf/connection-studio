@@ -1,13 +1,12 @@
-import { Expose, Transform, Type } from 'class-transformer';
 import {
-  type Schedule,
   AuthType,
   FileType,
   IngestMode,
   JobStatus,
   ScheduleStatus,
-  SourceType,
+  SourceType
 } from '@tazama-lf/tcs-lib';
+import { Expose, Transform, Type } from 'class-transformer';
 import { CreatePullJobDto } from './create-pull-job.dto';
 
 export class HTTPConnectionDto {
@@ -68,13 +67,12 @@ export class PullJobResponseDto {
   @Expose()
   @Type((opts) => {
     const obj = opts?.object as CreatePullJobDto;
-    if (obj?.source_type === SourceType.HTTP) {
-      return HTTPConnectionDto;
+    switch (obj.source_type) {
+      case SourceType.HTTP:
+        return HTTPConnectionDto;
+      case SourceType.SFTP:
+        return SFTPConnectionDto;
     }
-    if (obj?.source_type === SourceType.SFTP) {
-      return SFTPConnectionDto;
-    }
-    return Object;
   })
   connection: HTTPConnectionDto | SFTPConnectionDto;
 

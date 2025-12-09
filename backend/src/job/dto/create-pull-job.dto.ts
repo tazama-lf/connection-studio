@@ -93,20 +93,19 @@ export class CreatePullJobDto {
       return Object;
     }
     const obj = opts.object as CreatePullJobDto;
-    if (obj.source_type === SourceType.HTTP) {
-      return HTTPConnectionDto;
+    switch (obj.source_type) {
+      case SourceType.HTTP:
+        return HTTPConnectionDto;
+      case SourceType.SFTP:
+        return SFTPConnectionDto;
     }
-    if (obj.source_type === SourceType.SFTP) {
-      return SFTPConnectionDto;
-    }
-    return Object;
   })
   connection: HTTPConnectionDto | SFTPConnectionDto;
 
   @ValidateNested()
   @Type((opts) => {
     const obj = opts?.object as CreatePullJobDto;
-    if (obj?.source_type === SourceType.SFTP) {
+    if (obj.source_type === SourceType.SFTP) {
       return FileSettingDto;
     }
     return Object;

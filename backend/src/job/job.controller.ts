@@ -10,7 +10,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ConfigType, JobStatus, ScheduleStatus } from '@tazama-lf/tcs-lib';
+import { ConfigType, ISuccess, Job, JobStatus, JobSummary, PaginatedResult, PullJobHistory, ScheduleStatus } from '@tazama-lf/tcs-lib';
 import { plainToInstance } from 'class-transformer';
 import type { AuthenticatedUser } from 'src/auth/auth.types';
 import { TazamaAuthGuard } from 'src/auth/tazama-auth.guard';
@@ -31,14 +31,14 @@ import { JobService } from './job.service';
 @Controller('job')
 @UseGuards(TazamaAuthGuard)
 export class JobController {
-  constructor(private readonly jobService: JobService) {}
+  constructor(private readonly jobService: JobService) { }
 
   @Post('/create/push')
   @RequireAnyClaims(TazamaClaims.EDITOR)
   async createPushJob(
     @Body() job: CreatePushJobDto,
     @User() user: AuthenticatedUser,
-  ) {
+  ): Promise<ISuccess> {
     return await this.jobService.createPush(job, user);
   }
 
@@ -47,7 +47,7 @@ export class JobController {
   async createPullJob(
     @Body() job: CreatePullJobDto,
     @User() user: AuthenticatedUser,
-  ) {
+  ): Promise<ISuccess> {
     return await this.jobService.createPull(job, user);
   }
 
@@ -58,7 +58,7 @@ export class JobController {
     @Body() job: UpdatePushJobDto | UpdatePullJobDto,
     @Query('type') type: ConfigType,
     @User() user: AuthenticatedUser,
-  ) {
+  ): Promise<ISuccess> {
     return await this.jobService.updateJob(id, job, type, user);
   }
 
@@ -74,7 +74,7 @@ export class JobController {
     @Query('limit') limit: string,
     @User() user: AuthenticatedUser,
     @Body() filters?: Record<string, unknown>,
-  ) {
+  ): Promise<PaginatedResult<Job>> {
     return await this.jobService.findAll(offset, limit, user, filters);
   }
 
@@ -85,7 +85,7 @@ export class JobController {
     @Query('limit') limit: string,
     @User() user: AuthenticatedUser,
     @Body() filters?: Record<string, unknown>,
-  ) {
+  ): Promise<PaginatedResult<PullJobHistory>> {
     return await this.jobService.findAllHistory(offset, limit, user, filters);
   }
 
@@ -100,7 +100,7 @@ export class JobController {
     @Param('id') id: string,
     @Query('type') type: ConfigType,
     @User() user: AuthenticatedUser,
-  ) {
+  ): Promise<PullJobResponseDto | PushJob> {
     const record = await this.jobService.findOne(
       id,
       type,
@@ -127,7 +127,7 @@ export class JobController {
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
     @User() user: AuthenticatedUser,
-  ) {
+  ): Promise<JobSummary[]> {
     return await this.jobService.findByStatus(
       status,
       page,
@@ -150,7 +150,7 @@ export class JobController {
     @Query('type') type: ConfigType,
     @User() user: AuthenticatedUser,
     @Body('reason') reason?: string,
-  ) {
+  ): Promise<ISuccess> {
     return await this.jobService.updateStatus(id, status, type, user, reason);
   }
 
@@ -161,7 +161,7 @@ export class JobController {
     @Query('status') status: ScheduleStatus,
     @Query('type') type: ConfigType,
     @User() user: AuthenticatedUser,
-  ) {
+  ): Promise<ISuccess> {
     return await this.jobService.updateActivation(id, status, type, user);
   }
 }

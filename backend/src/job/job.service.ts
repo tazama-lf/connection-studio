@@ -383,19 +383,21 @@ export class JobService {
 
       switch (status) {
         case JobStatus.REVIEW: {
+          const updatedJob = { ...existingJob, status: JobStatus.REVIEW }
           await this.notificationService.sendWorkflowNotification(
             EventType.EditorSubmit,
             user,
-            { ...existingJob, status: JobStatus.REVIEW } as Job,
+            updatedJob as Job,
             user.token.tokenString,
           );
           break;
         }
         case JobStatus.APPROVED: {
+          const updatedJob = { ...existingJob, status: JobStatus.APPROVED } as Job
           await this.notificationService.sendWorkflowNotification(
             EventType.ApproverApprove,
             user,
-            { ...existingJob, status: JobStatus.APPROVED } as Job,
+            updatedJob,
             user.token.tokenString,
           );
           break;
@@ -407,10 +409,11 @@ export class JobService {
             );
           }
 
+          const updatedJob = { ...existingJob, status: JobStatus.REJECTED } as Job
           await this.notificationService.sendWorkflowNotification(
             EventType.ApproverReject,
             user,
-            { ...existingJob, status: JobStatus.REJECTED } as Job,
+            updatedJob,
             user.token.tokenString,
           );
           break;
@@ -421,10 +424,11 @@ export class JobService {
             ...existingJob,
             status: JobStatus.READY,
           });
+          const updatedJob = { ...existingJob, status: JobStatus.EXPORTED } as Job
           await this.notificationService.sendWorkflowNotification(
             EventType.ExporterExport,
             user,
-            { ...existingJob, status: JobStatus.EXPORTED } as Job,
+            updatedJob,
             user.token.tokenString,
           );
 
@@ -468,10 +472,11 @@ export class JobService {
 
           await this.sftpService.deleteFile(fileName);
 
+          const updatedJob = { ...fileData, status: JobStatus.DEPLOYED } as Job
           await this.notificationService.sendWorkflowNotification(
             EventType.PublisherDeploy,
             user,
-            { ...fileData, status: JobStatus.DEPLOYED },
+            updatedJob,
             user.token.tokenString,
           );
 
