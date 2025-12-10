@@ -15,6 +15,7 @@ import {
 } from '@tazama-lf/tcs-lib';
 import { firstValueFrom } from 'rxjs';
 import { AuthenticatedUser } from 'src/auth/auth.types';
+import { CreatePushJobDto } from 'src/job/dto/create-push-job.dto';
 import { UpdatePullJobDto } from 'src/job/dto/update-pull-job.dto';
 import { UpdatePushJobDto } from 'src/job/dto/update-push-job.dto';
 import { UpdateScheduleJobDto } from 'src/scheduler/dto/update-schedule-dto';
@@ -182,7 +183,7 @@ export class AdminServiceClient {
   // ==================== JOB OPERATIONS ====================
 
   async createPushJob(
-    job: Record<string, unknown>,
+    job: Partial<Job>,
     token: string,
   ): Promise<ISuccess> {
     this.logger.log(`Validating job creation: ${job}`);
@@ -209,7 +210,7 @@ export class AdminServiceClient {
   }
 
   async createPullJob(
-    job: Record<string, unknown>,
+    job: Partial<Job>,
     token: string,
   ): Promise<ISuccess> {
     this.logger.log(`Validating job creation: ${job}`);

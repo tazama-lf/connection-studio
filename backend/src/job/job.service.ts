@@ -13,15 +13,17 @@ import {
   JobSummary,
   PaginatedResult,
   PullJobHistory,
-  Schedule,
   ScheduleStatus,
   SFTPConnection,
-  SourceType,
+  SourceType
 } from '@tazama-lf/tcs-lib';
 import { v4 } from 'uuid';
 import { AuthenticatedUser } from '../auth/auth.types';
 import { DryRunService } from '../dry-run/dry-run.service';
+import { EventType } from '../enums/events.enum';
+import { NotificationService } from '../notification/notification.service';
 import { NotifyService } from '../notify/notify.service';
+import { SchedulerService } from '../scheduler/scheduler.service';
 import { AdminServiceClient } from '../services/admin-service-client.service';
 import { SftpService } from '../sftp/sftp.service';
 import { decrypt, encrypt, validateFileType } from '../utils/helpers';
@@ -29,9 +31,6 @@ import { CreatePullJobDto, SFTPConnectionDto } from './dto/create-pull-job.dto';
 import { CreatePushJobDto } from './dto/create-push-job.dto';
 import { UpdatePullJobDto } from './dto/update-pull-job.dto';
 import { UpdatePushJobDto } from './dto/update-push-job.dto';
-import { SchedulerService } from '../scheduler/scheduler.service';
-import { NotificationService } from '../notification/notification.service';
-import { EventType } from '../enums/events.enum';
 
 @Injectable()
 export class JobService {
@@ -54,7 +53,7 @@ export class JobService {
   private encryptSftpCredentials(
     connection: SFTPConnectionDto,
   ): SFTPConnectionDto {
-    const encryptedConnection = { ...connection };
+    const encryptedConnection = Object.assign({}, connection);
 
     if (
       connection.auth_type === AuthType.USERNAME_PASSWORD &&
@@ -85,23 +84,21 @@ export class JobService {
       );
     }
 
-    let updatedJob: UpdatePushJobDto | UpdatePullJobDto = {
-      ...job,
-    };
+    let updatedJob: UpdatePushJobDto | UpdatePullJobDto = Object.assign(
+      {},
+      job,
+    );
 
     if (type === ConfigType.PULL) {
       const pullJob = job as UpdatePullJobDto;
-
       if (pullJob.source_type === SourceType.SFTP && pullJob.file?.path) {
         validateFileType(pullJob.file.path);
       }
-
       if (pullJob.source_type === SourceType.SFTP && pullJob.connection) {
         const sftpConn = pullJob.connection as SFTPConnectionDto;
-        updatedJob = {
-          ...updatedJob,
+        updatedJob = Object.assign({}, updatedJob, {
           connection: this.encryptSftpCredentials(sftpConn),
-        };
+        });
       }
     }
 
@@ -126,7 +123,12 @@ export class JobService {
           ? job.path
           : `/${user.tenantId}/enrichment/${job.version}${job.path}`;
 
-      const jobWithId = { ...job, id, path, tenant_id: user.tenantId, status };
+      const jobWithId = Object.assign({}, job, {
+        id,
+        path,
+        tenant_id: user.tenantId,
+        status,
+      });
 
       const result = await this.adminServiceClient.createPushJob(
         jobWithId,
@@ -179,15 +181,14 @@ export class JobService {
 
       await this.dryRunService.dryRun(job);
 
-      const newId = job.id ? job.id : v4();
+      const newId = job.id ?? v4();
 
-      const jobWithId = {
-        ...job,
+      const jobWithId = Object.assign({}, job, {
         id: newId,
         connection,
         tenant_id: user.tenantId,
         status,
-      };
+      });
 
       const result = await this.adminServiceClient.createPullJob(
         jobWithId,
@@ -383,17 +384,19 @@ export class JobService {
 
       switch (status) {
         case JobStatus.REVIEW: {
-          const updatedJob = { ...existingJob, status: JobStatus.REVIEW }
+          const updatedJob = structuredClone(existingJob)!;
+          updatedJob.status = JobStatus.REVIEW;
           await this.notificationService.sendWorkflowNotification(
             EventType.EditorSubmit,
             user,
-            updatedJob as Job,
+            updatedJob,
             user.token.tokenString,
           );
           break;
         }
         case JobStatus.APPROVED: {
-          const updatedJob = { ...existingJob, status: JobStatus.APPROVED } as Job
+          const updatedJob = structuredClone(existingJob)!;
+          updatedJob.status = JobStatus.APPROVED;
           await this.notificationService.sendWorkflowNotification(
             EventType.ApproverApprove,
             user,
@@ -409,7 +412,8 @@ export class JobService {
             );
           }
 
-          const updatedJob = { ...existingJob, status: JobStatus.REJECTED } as Job
+          const updatedJob = structuredClone(existingJob)!;
+          updatedJob.status = JobStatus.REJECTED;
           await this.notificationService.sendWorkflowNotification(
             EventType.ApproverReject,
             user,
@@ -420,11 +424,15 @@ export class JobService {
         }
 
         case JobStatus.EXPORTED: {
-          await this.sftpService.createFile(fileName, {
-            ...existingJob,
-            status: JobStatus.READY,
-          });
-          const updatedJob = { ...existingJob, status: JobStatus.EXPORTED } as Job
+
+          const exportPayload = structuredClone(existingJob!);
+          exportPayload.status = JobStatus.READY;
+
+          await this.sftpService.createFile(fileName, exportPayload);
+
+          const updatedJob = structuredClone(existingJob!);
+          updatedJob.status = JobStatus.EXPORTED;
+
           await this.notificationService.sendWorkflowNotification(
             EventType.ExporterExport,
             user,
@@ -438,24 +446,25 @@ export class JobService {
         case JobStatus.DEPLOYED: {
           const fileData = await this.sftpService.readFile(fileName);
 
-          let deployPayload = {
-            ...fileData,
-            publishing_status: ScheduleStatus.ACTIVE,
-          };
+          const deployPayload: any = structuredClone(fileData);
+          deployPayload.publishing_status = ScheduleStatus.ACTIVE;
 
           if (type === ConfigType.PULL) {
-            const connection = { ...fileData.connection } as SFTPConnection;
+            const connection: SFTPConnection = structuredClone(
+              fileData.connection,
+            );
 
             if (
               connection.auth_type === AuthType.USERNAME_PASSWORD &&
               connection.password
             ) {
               connection.password = decrypt(connection.password);
-            } else connection.private_key &&= decrypt(connection.private_key);
+            } else {
+              connection.private_key &&= decrypt(connection.private_key);
+            }
 
             delete deployPayload.schedule_name;
-
-            deployPayload = { ...deployPayload, connection };
+            deployPayload.connection = connection;
 
             await this.createPull(
               deployPayload as CreatePullJobDto,
@@ -472,7 +481,9 @@ export class JobService {
 
           await this.sftpService.deleteFile(fileName);
 
-          const updatedJob = { ...fileData, status: JobStatus.DEPLOYED } as Job
+          const updatedJob: Job = structuredClone(fileData);
+          updatedJob.status = JobStatus.DEPLOYED;
+
           await this.notificationService.sendWorkflowNotification(
             EventType.PublisherDeploy,
             user,
@@ -480,14 +491,19 @@ export class JobService {
             user.token.tokenString,
           );
 
+
           return {
             success: true,
             message: `Job with id ${id} successfully deployed.`,
           };
         }
+        default:
+          break;
       }
 
-      return result ?? { success: true, message: 'Job Status updated successfully' };
+      return (
+        result ?? { success: true, message: 'Job Status updated successfully' }
+      );
     } catch (error: unknown) {
       return this.handleError(error);
     }
