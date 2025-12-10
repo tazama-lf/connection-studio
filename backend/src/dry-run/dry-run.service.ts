@@ -21,7 +21,7 @@ export class DryRunService {
   constructor(
     private readonly loggerService: LoggerService,
     private readonly httpService: HttpService,
-  ) {}
+  ) { }
 
   async transformFileToJSON(
     sftp: SFTPClient,
@@ -38,38 +38,42 @@ export class DryRunService {
         }
       } catch (decodeError) {
         this.loggerService.warn(`Decoding failed : ${decodeError}`);
-        throw new Error(decodeError.message);
+        throw new Error(decodeError.message, { cause: decodeError });
       }
 
-      if (file.file_type === FileType.JSON) {
-        const parsed = JSON.parse(decoded);
-        return Array.isArray(parsed) ? parsed : [parsed];
-      }
+      switch (file.file_type) {
+        case FileType.JSON: {
+          const parsed = JSON.parse(decoded);
+          return Array.isArray(parsed) ? parsed : [parsed];
+        }
 
-      if (file.file_type === FileType.CSV || file.file_type === FileType.TSV) {
-        const records = parse(decoded, {
-          delimiter:
-            file.file_type === FileType.CSV ? (file.delimiter ?? ',') : '\t',
-          columns: (headers: string[]) =>
-            headers.map((h) =>
-              h
-                .trim()
-                .toLowerCase()
-                .replace(/\s+/g, '_')
-                .replace(/[^\w_]/g, ''),
-            ),
-          skip_empty_lines: true,
-          trim: true,
-          relax_quotes: true,
-          quote: '"',
-          relax_column_count: true,
-          escape: '"',
-          record_delimiter: ['\r\n', '\n', '\r'],
-        });
-        return records as Array<Record<string, unknown>>;
-      }
+        case FileType.CSV:
+        case FileType.TSV: {
+          const delimiter =
+            file.file_type === FileType.CSV ? file.delimiter ?? ',' : '\t';
 
-      throw new Error('Unsupported file type');
+          const records = parse(decoded, {
+            delimiter,
+            columns: (headers: string[]) =>
+              headers.map((h) =>
+                h
+                  .trim()
+                  .toLowerCase()
+                  .replace(/\s+/g, '_')
+                  .replace(/[^\w_]/g, ''),
+              ),
+            skip_empty_lines: true,
+            trim: true,
+            relax_quotes: true,
+            quote: '"',
+            relax_column_count: true,
+            escape: '"',
+            record_delimiter: ['\r\n', '\n', '\r'],
+          });
+
+          return records as Array<Record<string, unknown>>;
+        }
+      }
     } catch (error) {
       this.loggerService.error('Error transforming file:', error);
       throw error;
@@ -121,7 +125,7 @@ export class DryRunService {
       }
       return sftp;
     } catch (err: any) {
-      throw new Error(`SFTP connection failed: ${err.message}`);
+      throw new Error(`SFTP connection failed: ${err.message}`, { cause: err });
     }
   }
 
@@ -133,7 +137,7 @@ export class DryRunService {
     try {
       sftp = await this.createSftpConnection(sftpCon);
 
-      if (!file?.path) throw new Error('File path not provided in job config');
+      if (!file.path) throw new Error('File path not provided in job config');
       const fileExists = await sftp.exists(file.path);
       if (!fileExists) {
         throw new Error(`File ${file.path} not found on SFTP server`);
@@ -141,7 +145,7 @@ export class DryRunService {
 
       const records = await this.transformFileToJSON(sftp, file);
 
-      if (!records || records.length === 0) {
+      if (records.length === 0) {
         this.loggerService.warn(
           `No data found in provided file with path :${file.path} `,
         );
@@ -163,7 +167,7 @@ export class DryRunService {
       }
     } catch (error: any) {
       this.loggerService.error(`Dry run failed, ${error.message}`);
-      throw new Error(`Dry run failed, ${error.message}`);
+      throw new Error(`Dry run failed, ${error.message}`, { cause: error });
     }
   }
 }
