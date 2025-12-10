@@ -31,6 +31,7 @@ import { CreatePullJobDto, SFTPConnectionDto } from './dto/create-pull-job.dto';
 import { CreatePushJobDto } from './dto/create-push-job.dto';
 import { UpdatePullJobDto } from './dto/update-pull-job.dto';
 import { UpdatePushJobDto } from './dto/update-push-job.dto';
+import { HTTPConnectionDto } from './dto/fetch-pull-job.dto';
 
 @Injectable()
 export class JobService {
@@ -443,15 +444,15 @@ export class JobService {
         }
 
         case JobStatus.DEPLOYED: {
-          const fileData = await this.sftpService.readFile(fileName);
+          const fileData = await this.sftpService.readFile(fileName) as Job;
 
           const deployPayload: any = structuredClone(fileData);
           deployPayload.publishing_status = ScheduleStatus.ACTIVE;
 
           if (type === ConfigType.PULL) {
-            const connection: SFTPConnection = structuredClone(
+            const connection = structuredClone(
               fileData.connection,
-            );
+            ) as SFTPConnection || HTTPConnectionDto;
 
             if (
               connection.auth_type === AuthType.USERNAME_PASSWORD &&

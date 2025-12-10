@@ -12,6 +12,7 @@ import { createHash } from 'node:crypto';
 import SFTPClient from 'ssh2-sftp-client';
 import * as utils from '../utils/helpers';
 import { SftpFile } from './types/sftp.interface';
+import { Job, Schedule } from '@tazama-lf/tcs-lib';
 
 @Injectable()
 export class SftpService implements OnModuleInit, OnModuleDestroy {
@@ -91,7 +92,7 @@ export class SftpService implements OnModuleInit, OnModuleDestroy {
     this.loggerService.log('SFTP connections closed.');
   }
 
-  async createFile(fileName: string, data: unknown): Promise<void> {
+  async createFile(fileName: string, data: Job | Schedule): Promise<void> {
     try {
       const nodeEnv = this.configService.get<string>('NODE_ENV');
       const sftpHost = this.configService.get<string>('SFTP_HOST_CONSUMER');
@@ -163,7 +164,7 @@ export class SftpService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  async readFile(fileName: string): Promise<any> {
+  async readFile(fileName: string): Promise<Job | Schedule> {
     try {
       const sftpHost = this.configService.get<string>('SFTP_HOST_PRODUCER');
       if (!sftpHost) {
@@ -260,11 +261,11 @@ export class SftpService implements OnModuleInit, OnModuleDestroy {
   async listFiles(
     remoteDir: string,
     format: 'de' | 'cron' | 'dems',
-    tenant_id: string,
+    tenantId: string,
   ): Promise<SftpFile[]> {
     try {
       const regex = new RegExp(
-        `^${format}_${tenant_id}_[A-Za-z0-9_-]+\\.json$`,
+        `^${format}_${tenantId}_[A-Za-z0-9_-]+\\.json$`,
       );
 
       const allFiles = await this.producerSftp.list('/upload');

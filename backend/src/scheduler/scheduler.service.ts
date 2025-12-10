@@ -217,7 +217,7 @@ export class SchedulerService {
           break;
         }
         case JobStatus.DEPLOYED: {
-          const fileData = await this.sftpService.readFile(fileName);
+          const fileData = await this.sftpService.readFile(fileName) as Schedule;
           await this.create(
             fileData,
             tenantId,

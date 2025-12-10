@@ -13,6 +13,8 @@ import { User } from 'src/auth/user.decorator';
 import { Serialize } from 'src/interceptors/serialize.interceptor';
 import { FetchSftpDto } from './dto/fetch-sftp.dto';
 import { SftpService } from './sftp.service';
+import { SftpFile } from './types/sftp.interface';
+import { Job, Schedule } from '@tazama-lf/tcs-lib';
 
 @Controller('sftp')
 @UseGuards(TazamaAuthGuard)
@@ -20,7 +22,7 @@ export class SftpController {
   constructor(
     private readonly sftpService: SftpService,
     private readonly configService: ConfigService,
-  ) {}
+  ) { }
 
   @Get('/all')
   @Serialize(FetchSftpDto)
@@ -28,7 +30,7 @@ export class SftpController {
   async getFiles(
     @Query('format') format: 'de' | 'cron' | 'dems',
     @User() user: AuthenticatedUser,
-  ) {
+  ): Promise<SftpFile[]> {
     const sftpHost = this.configService.get<string>('SFTP_HOST_PRODUCER');
 
     if (!sftpHost) {
@@ -42,7 +44,7 @@ export class SftpController {
 
   @Get('/read')
   @RequireClaims(TazamaClaims.PUBLISHER)
-  async viewFile(@Query('name') name: string) {
+  async viewFile(@Query('name') name: string): Promise<Schedule | Job> {
     return await this.sftpService.readFile(name);
   }
 }
