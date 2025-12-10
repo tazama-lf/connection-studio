@@ -181,14 +181,13 @@ export class JobService {
 
       await this.dryRunService.dryRun(job);
 
-      const newId = job.id ?? v4();
+      const newId = job.id ? job.id : v4();
 
-      const jobWithId = Object.assign({}, job, {
-        id: newId,
-        connection,
-        tenant_id: user.tenantId,
-        status,
-      });
+      const jobWithId = structuredClone(job) as Job;
+      jobWithId.id = newId;
+      jobWithId.connection = connection;
+      jobWithId.tenant_id = user.tenantId;
+      jobWithId.status = status;
 
       const result = await this.adminServiceClient.createPullJob(
         jobWithId,

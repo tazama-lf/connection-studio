@@ -33,12 +33,10 @@ export class SchedulerService {
     try {
       validateCronExpression(schedule.cron);
 
-      const scheduleWithId = {
-        ...schedule,
-        id: schedule.id ?? v4(),
-        tenant_id: tenantId,
-        status,
-      };
+      const scheduleWithId = structuredClone(schedule) as Schedule;
+      scheduleWithId.id = schedule.id ? schedule.id : v4();
+      scheduleWithId.tenant_id = tenantId;
+      scheduleWithId.status = status;
 
       return await this.adminServiceClient.createSchedule(
         scheduleWithId,
@@ -98,13 +96,10 @@ export class SchedulerService {
     status: JobStatus,
     page: number,
     limit: number,
-    tenant_id: string,
+    tenantId: string,
     token: string,
   ): Promise<Schedule[]> {
     try {
-      if (!status || !page || !limit) {
-        throw new BadRequestException('Status, page, and limit are required.');
-      }
 
       if (page < 1 || limit < 1) {
         throw new BadRequestException(
@@ -116,7 +111,7 @@ export class SchedulerService {
         status,
         page,
         limit,
-        tenant_id,
+        tenantId,
         token,
       );
     } catch (err) {
@@ -135,12 +130,6 @@ export class SchedulerService {
     reason?: string,
   ): Promise<ISuccess> {
     try {
-      if (!status) {
-        throw new BadRequestException(
-          'Both status and table_name are required.',
-        );
-      }
-
 
       let result: ISuccess | null = null;
       if (status !== JobStatus.DEPLOYED) {
@@ -169,19 +158,25 @@ export class SchedulerService {
 
       switch (status) {
         case JobStatus.REVIEW: {
+          const updated = structuredClone(existing!);
+          updated.status = JobStatus.REVIEW;
+
           await this.notificationService.sendWorkflowNotification(
             EventType.EditorSubmit,
             user,
-            { ...existing, status: JobStatus.REVIEW } as Schedule,
+            updated,
             user.token.tokenString,
           );
           break;
         }
         case JobStatus.APPROVED: {
+          const updated = structuredClone(existing!);
+          updated.status = JobStatus.APPROVED;
+
           await this.notificationService.sendWorkflowNotification(
             EventType.ApproverApprove,
             user,
-            { ...existing, status: JobStatus.APPROVED } as Schedule,
+            updated,
             user.token.tokenString,
           );
           break;
@@ -193,24 +188,30 @@ export class SchedulerService {
             );
           }
 
+          const updated = structuredClone(existing!);
+          updated.status = JobStatus.REJECTED;
+
           await this.notificationService.sendWorkflowNotification(
             EventType.ApproverReject,
             user,
-            { ...existing, status: JobStatus.REJECTED } as Schedule,
+            updated,
             user.token.tokenString,
           );
           break;
         }
         case JobStatus.EXPORTED: {
-          await this.sftpService.createFile(fileName, {
-            ...existing,
-            status: JobStatus.READY,
-          });
+          const exportPayload = structuredClone(existing!);
+          exportPayload.status = JobStatus.READY;
+
+          await this.sftpService.createFile(fileName, exportPayload);
+
+          const updated = structuredClone(existing!);
+          updated.status = JobStatus.EXPORTED;
 
           await this.notificationService.sendWorkflowNotification(
             EventType.ExporterExport,
             user,
-            { ...existing, status: JobStatus.EXPORTED } as Schedule,
+            updated,
             user.token.tokenString,
           );
           break;
@@ -225,10 +226,13 @@ export class SchedulerService {
           );
           await this.sftpService.deleteFile(fileName);
 
+          const updated = structuredClone(fileData);
+          updated.status = JobStatus.DEPLOYED;
+
           await this.notificationService.sendWorkflowNotification(
             EventType.PublisherDeploy,
             user,
-            { ...fileData, status: JobStatus.DEPLOYED },
+            updated,
             user.token.tokenString,
           );
 
@@ -242,7 +246,9 @@ export class SchedulerService {
           break;
       }
 
-      return result ?? { success: true, message: 'Cron Job Status updated successfully' };
+      return (
+        result ?? { success: true, message: 'Cron Job Status updated successfully' }
+      );
     } catch (err) {
       this.loggerService.error(err.message);
       throw new BadRequestException(err.message);

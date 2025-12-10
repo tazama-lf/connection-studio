@@ -10,7 +10,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { JobStatus } from '@tazama-lf/tcs-lib';
+import { ISuccess, JobStatus, PaginatedResult, Schedule } from '@tazama-lf/tcs-lib';
 import { RequireAnyClaims, TazamaClaims } from 'src/auth/auth.decorator';
 import type { AuthenticatedUser } from 'src/auth/auth.types';
 import { TazamaAuthGuard } from 'src/auth/tazama-auth.guard';
@@ -22,14 +22,14 @@ import { SchedulerService } from './scheduler.service';
 @Controller('scheduler')
 @UseGuards(TazamaAuthGuard)
 export class SchedulerController {
-  constructor(private readonly schedulerService: SchedulerService) {}
+  constructor(private readonly schedulerService: SchedulerService) { }
 
   @Post('/create')
   @RequireAnyClaims(TazamaClaims.EDITOR)
   async createJob(
     @Body() schedule: CreateScheduleJobDto,
     @User() user: AuthenticatedUser,
-  ) {
+  ): Promise<ISuccess> {
     return await this.schedulerService.create(
       schedule,
       user.tenantId,
@@ -49,7 +49,7 @@ export class SchedulerController {
     @Query('limit') limit: string,
     @User() user: AuthenticatedUser,
     @Body() filters?: Record<string, unknown>,
-  ) {
+  ): Promise<PaginatedResult<Schedule>> {
     return await this.schedulerService.findAll(offset, limit, user, filters);
   }
 
@@ -59,7 +59,7 @@ export class SchedulerController {
     @Param('id') id: string,
     @Body() body: UpdateScheduleJobDto,
     @User() user: AuthenticatedUser,
-  ) {
+  ): Promise<ISuccess> {
     return await this.schedulerService.update(id, body, user.token.tokenString);
   }
 
@@ -70,7 +70,7 @@ export class SchedulerController {
     TazamaClaims.EXPORTER,
     TazamaClaims.PUBLISHER,
   )
-  async getById(@Param('id') id: string, @User() user: AuthenticatedUser) {
+  async getById(@Param('id') id: string, @User() user: AuthenticatedUser): Promise<Schedule | null> {
     return await this.schedulerService.findOne(id, user.token.tokenString);
   }
 
@@ -86,7 +86,7 @@ export class SchedulerController {
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
     @User() user: AuthenticatedUser,
-  ) {
+  ): Promise<Schedule[]> {
     return await this.schedulerService.findByStatus(
       status,
       page,
@@ -108,7 +108,7 @@ export class SchedulerController {
     @Query('status') status: JobStatus,
     @User() user: AuthenticatedUser,
     @Body('reason') reason?: string,
-  ) {
+  ): Promise<ISuccess> {
     return await this.schedulerService.updateStatus(
       id,
       user.tenantId,

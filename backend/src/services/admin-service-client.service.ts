@@ -457,7 +457,7 @@ export class AdminServiceClient {
   // ==================== SCHEDULER OPERATIONS ====================
 
   async createSchedule(
-    schedule: Record<string, unknown>,
+    schedule: Partial<Schedule>,
     token: string,
   ): Promise<{ success: boolean; message: string }> {
     this.logger.log(`Validating schedule creation: ${schedule}`);
@@ -569,7 +569,7 @@ export class AdminServiceClient {
     status: JobStatus,
     page: number,
     limit: number,
-    tenant_id: string,
+    tenantId: string,
     token: string,
   ): Promise<Schedule[]> {
     this.logger.log(`Getting schedules with statuses: ${status}`);
@@ -584,7 +584,7 @@ export class AdminServiceClient {
             },
             params: {
               status,
-              tenantId: tenant_id,
+              tenantId,
               page,
               limit,
             },
