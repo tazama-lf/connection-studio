@@ -63,7 +63,8 @@ describe('ConfigService', () => {
         }},
         { provide: NotifyService, useValue: { 
           sendMessage: jest.fn(),
-          notifyDems: jest.fn()
+          notifyDems: jest.fn(),
+          notifyEnrichment: jest.fn()
         }},
         { provide: NotificationService, useValue: { 
           sendNotification: jest.fn(),

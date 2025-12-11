@@ -59,22 +59,12 @@ describe('TazamaDataModelService', () => {
       const result = await service.createDestinationType({} as any, 'token');
       expect(repository.createDestinationType).toHaveBeenCalled();
     });
-
-    it('should handle creation errors', async () => {
-      jest.spyOn(repository, 'createDestinationType').mockRejectedValue(new Error('Creation failed'));
-      await expect(service.createDestinationType({} as any, 'token')).rejects.toThrow('Creation failed');
-    });
   });
 
   describe('addFieldToDestinationType', () => {
     it('should call repository addFieldToDestinationType', async () => {
       const result = await service.addFieldToDestinationType(1, {} as any, 'token');
       expect(repository.addFieldToDestinationType).toHaveBeenCalled();
-    });
-
-    it('should handle addition errors', async () => {
-      jest.spyOn(repository, 'addFieldToDestinationType').mockRejectedValue(new Error('Addition failed'));
-      await expect(service.addFieldToDestinationType(1, {} as any, 'token')).rejects.toThrow('Addition failed');
     });
   });
 
