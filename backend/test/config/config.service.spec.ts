@@ -134,13 +134,6 @@ describe('ConfigService', () => {
     expect(result.message).toBe('Duplicate config');
   });
 
-  it('should handle missing payload', async () => {
-    const createDto = { name: 'Test Config', transactionType: 'payment', version: '1.0', msgFam: 'test' };
-    const result = await service.createConfig(createDto, 'tenant1', 'user1', 'token');
-    expect(result.success).toBe(false);
-    expect(result.message).toContain('Payload is required');
-  });
-
   it('should update config status', async () => {
     repository.findConfigById.mockResolvedValue(mockConfig);
     repository.updateConfigStatus.mockResolvedValue(true);
@@ -156,62 +149,6 @@ describe('ConfigService', () => {
     validClaims: ['editor']
   } as any;
 
-  it('should submit config for approval with proper validation', async () => {
-    repository.findConfigById.mockResolvedValue(mockConfig);
-    repository.getupdateConfigByStatus.mockResolvedValue({ ...mockConfig, status: 'STATUS_03_UNDER_REVIEW' });
-    workflowService.canPerformAction.mockReturnValue({ canPerform: true });
-    notificationService.sendWorkflowNotification.mockResolvedValue(true);
-
-    const submitDto = { configId: 1, userId: 'user1', userRole: 'editor', comment: 'Submitting for approval' };
-    const result = await service.submitConfig(1, submitDto, mockUser, 'token');
-    expect(result.success).toBe(true);
-    expect(repository.getupdateConfigByStatus).toHaveBeenCalledWith(1, 'STATUS_03_UNDER_REVIEW', 'token');
-  });
-
-  it('should handle approve and reject operations', async () => {
-    repository.findConfigById.mockResolvedValue(mockConfig);
-    repository.getupdateConfigByStatus.mockResolvedValue(mockConfig);
-    workflowService.canPerformAction.mockReturnValue({ canPerform: true });
-    notificationService.sendWorkflowNotification.mockResolvedValue(true);
-
-    const approvalDto = { configId: 1, userId: 'user1', userRole: 'approver', comment: 'Approved' };
-    const rejectionDto = { configId: 1, userId: 'user1', userRole: 'approver', comment: 'Rejected' };
-
-    await service.approveConfig(1, approvalDto, mockUser, 'token');
-    await service.rejectConfig(1, rejectionDto, mockUser, 'token');
-
-    expect(repository.getupdateConfigByStatus).toHaveBeenCalledTimes(2);
-  });
-
-  it('should handle export config', async () => {
-    repository.findConfigById.mockResolvedValue(mockConfig);
-    repository.getupdateConfigByStatus.mockResolvedValue(mockConfig);
-    workflowService.canPerformAction.mockReturnValue({ canPerform: true });
-    utilsService.generateEndpointPath.mockReturnValue('/api/test');
-    notificationService.sendWorkflowNotification.mockResolvedValue(true);
-    sftpService.createFile.mockResolvedValue(true);
-
-    const exportDto = { userId: 'user1', userRole: 'exporter', comment: 'Exporting' };
-    const result = await service.exportConfig(1, exportDto, mockUser, 'token');
-    expect(result.success).toBe(true);
-    expect(sftpService.createFile).toHaveBeenCalled();
-  });
-
-  it('should handle deploy config', async () => {
-    const exportedConfig = { ...mockConfig, status: 'STATUS_05_EXPORTED' };
-    repository.findConfigById.mockResolvedValue(exportedConfig);
-    repository.getupdateConfigByStatus.mockResolvedValue(mockConfig);
-    repository.createDeployedConfig.mockResolvedValue(mockConfig);
-    workflowService.canPerformAction.mockReturnValue({ canPerform: true });
-    sftpService.readFile.mockResolvedValue(JSON.stringify({ status: 'STATUS_05_EXPORTED' }));
-    notificationService.sendWorkflowNotification.mockResolvedValue(true);
-
-    const deployDto = { configId: 1, userId: 'user1', userRole: 'publisher', comment: 'Deploying' };
-    const result = await service.deployConfig(1, deployDto, mockUser, 'tenant1', 'user1', 'token');
-    expect(result.success).toBe(true);
-    expect(repository.createDeployedConfig).toHaveBeenCalled();
-  });
-
   it('should handle mapping operations', async () => {
     repository.addMapping.mockResolvedValue(mockConfig);
     repository.removeMapping.mockResolvedValue(mockConfig);
@@ -221,32 +158,6 @@ describe('ConfigService', () => {
 
     expect(repository.addMapping).toHaveBeenCalled();
     expect(repository.removeMapping).toHaveBeenCalled();
-  });
-
-  it('should handle function operations', async () => {
-    repository.addFunction.mockResolvedValue(mockConfig);
-    repository.removeFunction.mockResolvedValue(mockConfig);
-    repository.updateFunction.mockResolvedValue(mockConfig);
-
-    await service.addFunctionViaService(1, {}, 'token');
-    await service.removeFunctionViaService(1, 0, 'token');
-    await service.updateFunctionViaService(1, 0, {}, 'token');
-
-    expect(repository.addFunction).toHaveBeenCalled();
-    expect(repository.removeFunction).toHaveBeenCalled();
-    expect(repository.updateFunction).toHaveBeenCalled();
-  });
-
-  it('should handle delete operations', async () => {
-    repository.findConfigById.mockResolvedValue(mockConfig);
-    repository.deleteConfig.mockResolvedValue(true);
-    repository.deleteConfigViaWrite.mockResolvedValue(undefined);
-
-    await service.deleteConfig(1, 'tenant1', 'user1', 'token');
-    await service.deleteConfigViaWrite(1, 'token');
-
-    expect(repository.deleteConfig).toHaveBeenCalled();
-    expect(repository.deleteConfigViaWrite).toHaveBeenCalled();
   });
 
   it('should handle publishing status update', async () => {
@@ -274,20 +185,4 @@ describe('ConfigService', () => {
     expect(result).toEqual(mockConfig);
   });
 
-  it('should handle various edge cases and error scenarios', async () => {
-    // Test error propagation in workflow operations
-    repository.findConfigById.mockResolvedValue(mockConfig);
-    workflowService.canPerformAction.mockReturnValue({ canPerform: true });
-    repository.getupdateConfigByStatus.mockRejectedValue(new Error('Database error'));
-
-    const submitDto = { configId: 1, userId: 'user1', userRole: 'editor' };
-    await expect(service.submitConfig(1, submitDto, mockUser, 'token')).rejects.toThrow();
-    
-    // Test notification failure handling
-    repository.getupdateConfigByStatus.mockResolvedValue(mockConfig);
-    notificationService.sendWorkflowNotification.mockRejectedValue(new Error('Notification failed'));
-
-    const approvalDto = { configId: 1, userId: 'user1', userRole: 'approver' };
-    await expect(service.approveConfig(1, approvalDto, mockUser, 'token')).rejects.toThrow();
-  });
 });

@@ -10,6 +10,13 @@ import {
 import { of, throwError } from 'rxjs';
 import * as jwt from 'jsonwebtoken';
 
+// Create a mock for jwt
+const mockJwt = {
+  ...jest.requireActual('jsonwebtoken'),
+  decode: jest.fn(),
+  sign: jwt.sign, // Keep the real sign function for test setup
+};
+
 describe('AuthService', () => {
   let service: AuthService;
   let httpService: HttpService;
@@ -264,6 +271,35 @@ describe('AuthService', () => {
       const result = service.isTokenExpired(token);
 
       expect(result).toBe(true);
+    });
+  });
+
+  // Note: The catch blocks in isTokenExpired and getTokenTimeToExpiry are defensive programming
+  // In practice, jwt.decode() from jsonwebtoken library handles malformed tokens gracefully
+  // and returns null rather than throwing errors. However, we can test error handling by
+  // creating scenarios where the function might encounter unexpected input types.
+  describe('error handling scenarios', () => {
+    it('should handle potential errors in isTokenExpired', () => {
+      // Test with various edge cases that might cause issues
+      expect(service.isTokenExpired('')).toBe(true);
+      expect(service.isTokenExpired(' ')).toBe(true);
+      expect(service.isTokenExpired('not.a.token')).toBe(true);
+      expect(service.isTokenExpired('.')).toBe(true);
+      expect(service.isTokenExpired('..')).toBe(true);
+      
+      // These should all return true without throwing errors
+      // The actual error handling in catch blocks is defensive programming
+    });
+
+    it('should handle potential errors in getTokenTimeToExpiry', () => {
+      // Test with various edge cases that might cause issues
+      expect(service.getTokenTimeToExpiry('')).toBe(0);
+      expect(service.getTokenTimeToExpiry(' ')).toBe(0);
+      expect(service.getTokenTimeToExpiry('not.a.token')).toBe(0);
+      expect(service.getTokenTimeToExpiry('.')).toBe(0);
+      expect(service.getTokenTimeToExpiry('..')).toBe(0);
+      
+      // These should all return 0 without throwing errors
     });
   });
 
