@@ -23,10 +23,8 @@ export interface CloneConfigRequest {
 }
 
 export interface FieldMapping {
-  source?: string | string[];
-  destination?: string | string[];
-  sources?: string[];
-  destinations?: string[];
+  source?: string | string[]; // string[] for CONCAT/SUM transformations
+  destination?: string | string[]; // string[] for SPLIT transformation
   separator?: string;
   transformation?: string;
   delimiter?: string;
@@ -62,11 +60,8 @@ export interface ConfigResponse {
 }
 
 export interface AddMappingRequest {
-  source?: string;
-  destination?: string;
-  sources?: string[];
-  destinations?: string[];
-  sumFields?: string[]; 
+  source?: string | string[]; // string[] for CONCAT/SUM transformations
+  destination?: string | string[]; // string[] for SPLIT transformation
   delimiter?: string;
   separator?: string; 
   constantValue?: any; 

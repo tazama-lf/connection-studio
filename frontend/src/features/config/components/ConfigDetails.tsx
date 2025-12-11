@@ -372,7 +372,7 @@ export const ConfigDetails: React.FC<ConfigDetailsProps> = ({
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-2">
                             <code className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                              {mapping.source || (mapping.sources && mapping.sources.join(' + '))}
+                              {Array.isArray(mapping.source) ? mapping.source.join(' + ') : mapping?.source}
                             </code>
                             <span className="text-gray-400">→</span>
                             <code className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">

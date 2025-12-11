@@ -281,17 +281,13 @@ export const DeploymentConfirmation: React.FC<DeploymentConfirmationProps> = ({
                         <span className="font-medium text-gray-900">
                           {Array.isArray(mapping.source)
                             ? mapping.source.join(', ')
-                            : mapping.source ||
-                              mapping.sources?.join(', ') ||
-                              'N/A'}
+                            : mapping.source || 'N/A'}
                         </span>
                         <span className="text-gray-500 mx-2">→</span>
                         <span className="font-medium text-gray-900">
                           {Array.isArray(mapping.destination)
                             ? mapping.destination.join(', ')
-                            : mapping.destination ||
-                              mapping.destinations?.join(', ') ||
-                              'N/A'}
+                            : mapping.destination || 'N/A'}
                         </span>
                       </div>
                     </div>
