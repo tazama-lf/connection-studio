@@ -15,7 +15,6 @@ import {
 } from '@tazama-lf/tcs-lib';
 import { firstValueFrom } from 'rxjs';
 import { AuthenticatedUser } from 'src/auth/auth.types';
-import { CreatePushJobDto } from 'src/job/dto/create-push-job.dto';
 import { UpdatePullJobDto } from 'src/job/dto/update-pull-job.dto';
 import { UpdatePushJobDto } from 'src/job/dto/update-push-job.dto';
 import { UpdateScheduleJobDto } from 'src/scheduler/dto/update-schedule-dto';
@@ -30,7 +29,7 @@ export class AdminServiceClient {
     private readonly configService: ConfigService,
   ) {
     this.adminServiceUrl =
-      this.configService.get<string>('ADMIN_SERVICE_URL') ||
+      this.configService.get<string>('ADMIN_SERVICE_URL') ??
       'http://localhost:3100';
     this.logger.log(
       `AdminServiceClient initialized with URL: ${this.adminServiceUrl}`,
@@ -75,13 +74,13 @@ export class AdminServiceClient {
       );
       return response.data;
     } catch (error: any) {
-      const errorMessage = error.response?.data?.message || error.message;
+      const errorMessage = error.response?.data?.message ?? error.message;
       this.logger.error(
         `Failed to update config ${id} status: ${errorMessage}`,
       );
       throw new HttpException(
-        errorMessage || 'Failed to update config status',
-        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+        errorMessage ?? 'Failed to update config status',
+        error.response?.status ?? HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -137,12 +136,6 @@ export class AdminServiceClient {
             this.httpService.patch(url, body, { headers }),
           );
           break;
-
-        default:
-          throw new HttpException(
-            `Unsupported HTTP method: ${String(method)}`,
-            HttpStatus.BAD_REQUEST,
-          );
       }
 
       this.logger.log(`${method} ${path} - Success (${response.status})`);
@@ -160,10 +153,14 @@ export class AdminServiceClient {
           `Admin-service error (${status}): ${JSON.stringify(data)}`,
         );
 
-        throw new HttpException(
-          data.message || data || 'Request failed',
-          status,
-        );
+        const message =
+          data && typeof data === 'object' && 'message' in data && typeof data.message === 'string'
+            ? data.message
+            : typeof data === 'string'
+              ? data
+              : 'Request failed';
+
+        throw new HttpException(message, status);
       } else if (error.request) {
         this.logger.error(`No response from admin-service: ${error.message}`);
         throw new HttpException(
@@ -186,7 +183,7 @@ export class AdminServiceClient {
     job: Partial<Job>,
     token: string,
   ): Promise<ISuccess> {
-    this.logger.log(`Validating job creation: ${job}`);
+    this.logger.log('Validating job creation');
 
     try {
       const response = await firstValueFrom(
@@ -213,7 +210,7 @@ export class AdminServiceClient {
     job: Partial<Job>,
     token: string,
   ): Promise<ISuccess> {
-    this.logger.log(`Validating job creation: ${job}`);
+    this.logger.log('Validating job creation');
 
     try {
       const response = await firstValueFrom(
@@ -460,7 +457,7 @@ export class AdminServiceClient {
     schedule: Partial<Schedule>,
     token: string,
   ): Promise<{ success: boolean; message: string }> {
-    this.logger.log(`Validating schedule creation: ${schedule}`);
+    this.logger.log('Validating schedule creation');
 
     try {
       const response = await firstValueFrom(
@@ -812,8 +809,8 @@ export class AdminServiceClient {
       );
 
       return {
-        configs: response.data.configs || [],
-        pagination: response.data.pagination || {
+        configs: response.data.configs ?? [],
+        pagination: response.data.pagination ?? {
           total: 0,
           limit,
           offset,
@@ -826,9 +823,9 @@ export class AdminServiceClient {
   }
 
   async writeConfig(configData: any, token: string): Promise<any> {
-    (this.logger.log('Writing config to database'), { configData });
+    this.logger.log('Writing config to database');
     this.logger.log(
-      `Token type: ${typeof token}, length: ${token?.length}, first 50 chars: ${token?.substring(0, 50)}`,
+      `Token type: ${typeof token}, length: ${token.length}, first 50 chars: ${token.substring(0, 50)}`,
     );
 
     try {
@@ -984,8 +981,8 @@ export class AdminServiceClient {
       );
 
       return {
-        configs: response.data.configs || [],
-        pagination: response.data.pagination || {
+        configs: response.data.configs ?? [],
+        pagination: response.data.pagination ?? {
           total: 0,
           limit,
           offset,
@@ -1228,8 +1225,8 @@ export class AdminServiceClient {
       );
 
       throw new HttpException(
-        data?.message || 'Admin service returned an error response',
-        status || HttpStatus.BAD_GATEWAY,
+        data?.message ?? 'Admin service returned an error response',
+        status ?? HttpStatus.BAD_GATEWAY,
       );
     } else if (error.request) {
       this.logger.error(
