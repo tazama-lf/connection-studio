@@ -31,6 +31,10 @@ describe('TazamaDataModelService', () => {
 
     service = module.get<TazamaDataModelService>(TazamaDataModelService);
     repository = module.get<TazamaDataModelRepository>(TazamaDataModelRepository);
+
+    // Mock the logger to suppress error logs during tests
+    jest.spyOn(service['logger'], 'log').mockImplementation();
+    jest.spyOn(service['logger'], 'error').mockImplementation();
   });
 
   afterEach(() => {
@@ -59,12 +63,85 @@ describe('TazamaDataModelService', () => {
       const result = await service.createDestinationType({} as any, 'token');
       expect(repository.createDestinationType).toHaveBeenCalled();
     });
+
+    it('should handle repository errors and throw BadRequestException', async () => {
+      jest.spyOn(repository, 'createDestinationType').mockRejectedValue(new Error('Database error occurred'));
+      
+      await expect(service.createDestinationType({ name: 'test' } as any, 'token'))
+        .rejects.toThrow('Failed to create destination type: Database error occurred');
+    });
+
+    it('should handle unknown errors without message', async () => {
+      jest.spyOn(repository, 'createDestinationType').mockRejectedValue({ someUnknownError: true });
+      
+      await expect(service.createDestinationType({ name: 'test' } as any, 'token'))
+        .rejects.toThrow('Failed to create destination type: Unknown error');
+    });
+
+    it('should log successful creation', async () => {
+      const loggerSpy = jest.spyOn(service['logger'], 'log').mockImplementation();
+      const mockResult = { 
+        destination_type_id: 123, 
+        name: 'Test Type',
+        collection_type: 'test',
+        destination_id: 1,
+        created_at: new Date()
+      };
+      jest.spyOn(repository, 'createDestinationType').mockResolvedValue(mockResult as any);
+      
+      await service.createDestinationType({ name: 'Test Type' } as any, 'token');
+      
+      expect(loggerSpy).toHaveBeenCalledWith(
+        'Created destination type: Test Type with ID: 123'
+      );
+      
+      // Restore the mock after this test
+      loggerSpy.mockRestore();
+    });
   });
 
   describe('addFieldToDestinationType', () => {
     it('should call repository addFieldToDestinationType', async () => {
       const result = await service.addFieldToDestinationType(1, {} as any, 'token');
       expect(repository.addFieldToDestinationType).toHaveBeenCalled();
+    });
+
+    it('should throw BadRequestException if destination type does not exist', async () => {
+      jest.spyOn(repository, 'destinationTypeExists').mockResolvedValue(false);
+      
+      await expect(service.addFieldToDestinationType(999, {} as any, 'token'))
+        .rejects.toThrow('Destination type with ID 999 not found');
+    });
+
+    it('should handle repository errors and throw BadRequestException', async () => {
+      jest.spyOn(repository, 'destinationTypeExists').mockResolvedValue(true);
+      jest.spyOn(repository, 'addFieldToDestinationType').mockRejectedValue(new Error('Database connection failed'));
+      
+      await expect(service.addFieldToDestinationType(1, { name: 'test' } as any, 'token'))
+        .rejects.toThrow('Failed to add field: Database connection failed');
+    });
+
+    it('should handle unknown errors without message', async () => {
+      jest.spyOn(repository, 'destinationTypeExists').mockResolvedValue(true);
+      jest.spyOn(repository, 'addFieldToDestinationType').mockRejectedValue({ unknownError: true });
+      
+      await expect(service.addFieldToDestinationType(1, { name: 'test' } as any, 'token'))
+        .rejects.toThrow('Failed to add field: Unknown error');
+    });
+
+    it('should log successful field addition', async () => {
+      const loggerSpy = jest.spyOn(service['logger'], 'log').mockImplementation();
+      jest.spyOn(repository, 'destinationTypeExists').mockResolvedValue(true);
+      jest.spyOn(repository, 'addFieldToDestinationType').mockResolvedValue({ id: 1, name: 'Test Field' } as any);
+      
+      await service.addFieldToDestinationType(1, { name: 'Test Field' } as any, 'token');
+      
+      expect(loggerSpy).toHaveBeenCalledWith(
+        'Added field: Test Field to destination type: 1'
+      );
+      
+      // Restore the mock after this test
+      loggerSpy.mockRestore();
     });
   });
 
@@ -281,6 +358,53 @@ describe('TazamaDataModelService', () => {
         'token',
         undefined
       );
+    });
+
+    it('should handle fields with null/undefined properties for nullish coalescing', async () => {
+      const mockCollections = [
+        {
+          name: 'NullTestCollection',
+          collection_id: undefined,
+          fields: [
+            {
+              name: 'nullField',
+              type: 'string',
+              required: false,
+              parent_id: undefined,
+              serial_no: undefined,
+              collection_id: undefined,
+            }
+          ]
+        }
+      ];
+
+      jest.spyOn(repository, 'getAllCollections').mockResolvedValue(mockCollections as any);
+
+      const result = await service.getDestinationOptions('tenant1', 'token');
+      
+      expect(result.length).toBeGreaterThan(0);
+      const field = result.find(r => r.label.includes('nullField'));
+      expect(field).toBeDefined();
+    });
+
+    it('should handle logger call in empty collection case', async () => {
+      const loggerSpy = jest.spyOn(service['logger'], 'log').mockImplementation();
+      const mockCollections = [
+        {
+          name: 'EmptyCollection',
+          collection_id: 1,
+          fields: [] // Empty fields array
+        }
+      ];
+
+      jest.spyOn(repository, 'getAllCollections').mockResolvedValue(mockCollections as any);
+
+      await service.getDestinationOptions('tenant1', 'token');
+      
+      expect(loggerSpy).toHaveBeenCalled();
+      
+      // Restore the mock after this test
+      loggerSpy.mockRestore();
     });
   });
 });
