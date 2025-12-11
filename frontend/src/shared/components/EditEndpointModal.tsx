@@ -10,6 +10,7 @@ import {
   XIcon,
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
+import * as yup from 'yup';
 import { useAuth } from '../../features/auth';
 import {
   configApi,
@@ -96,6 +97,7 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
     string[]
   >([]);
   const [dataModelForm, setDataModelForm] = useState<any>({});
+  const [tableNameError, setTableNameError] = useState<string>('');
 
   // State for destination tree from API
   const [destinationTree, setDestinationTree] = useState<any[]>([]);
@@ -463,15 +465,39 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
             <input
               type="text"
               value={dataModelForm?.tableName || ''}
-              onChange={(e) =>
+              onChange={(e) => {
+                const value = e.target.value;
                 setDataModelForm({
                   ...dataModelForm,
-                  tableName: e.target.value,
-                })
-              }
+                  tableName: value,
+                });
+                
+                // Validate table name
+                const tableNameSchema = yup
+                  .string()
+                  .required('Table name is required')
+                  .matches(
+                    /^[a-z_][a-z0-9_]*$/,
+                    'Table name must start with a lowercase letter or underscore and contain only lowercase letters, numbers, and underscores'
+                  );
+                
+                try {
+                  tableNameSchema.validateSync(value);
+                  setTableNameError('');
+                } catch (err) {
+                  if (err instanceof yup.ValidationError) {
+                    setTableNameError(err.message);
+                  }
+                }
+              }}
               placeholder="Enter table name"
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className={`w-full p-3 border rounded-lg focus:ring-2 focus:border-transparent ${
+                tableNameError ? 'border-red-300 bg-red-50' : 'border-gray-300'
+              }`}
             />
+            {tableNameError && (
+              <p className="mt-1 text-sm text-red-600">{tableNameError}</p>
+            )}
           </div>
 
           {/* Primary Key Select Field */}
