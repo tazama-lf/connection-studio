@@ -88,17 +88,19 @@ export class TazamaAuthGuard implements CanActivate {
     requiredClaims: string[];
     anyClaims: string[];
   } {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- getAllAndOverride can return undefined at runtime
     const requiredClaims =
       this.reflector.getAllAndOverride<string[]>(CLAIMS_KEY, [
         context.getHandler(),
         context.getClass(),
-      ]) || [];
+      ]) ?? [];
 
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- getAllAndOverride can return undefined at runtime
     const anyClaims =
       this.reflector.getAllAndOverride<string[]>(ANY_CLAIMS_KEY, [
         context.getHandler(),
         context.getClass(),
-      ]) || [];
+      ]) ?? [];
 
     if (requiredClaims.length === 0 && anyClaims.length === 0) {
       throw new UnauthorizedException('No required claims specified');

@@ -432,7 +432,7 @@ export class ConfigService {
               (fn) => fn.functionName === 'addDataModelTable',
             );
 
-            for (const datamodelFn of datamodelFunctions) {
+            const tableCreationPromises = datamodelFunctions.map(async (datamodelFn) => {
               if (datamodelFn.tableName) {
                 this.logger.log(
                   `Creating datamodel table: ${datamodelFn.tableName}`,
@@ -452,7 +452,9 @@ export class ConfigService {
                   'Skipping addDataModelTable function without tableName',
                 );
               }
-            }
+            });
+
+            await Promise.all(tableCreationPromises)
           } else if (
             functions?.functionName === 'addDataModelTable'
           ) {
