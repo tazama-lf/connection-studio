@@ -150,13 +150,14 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
     );
   // Note: Auto 'v' prefix transform removed - accepts both formats as-is
 
-  const transactionTypeSchema = yup
-    .string()
-    .required('Transaction Type is required')
-    .matches(
-      /^[a-zA-Z0-9]+([_\-\/][a-zA-Z0-9]+)*$/,
-      'Transaction Type must be alphanumeric and can only contain _, -, / in the middle (not at start or end)',
-    );
+const transactionTypeSchema = yup
+  .string()
+  .required('Transaction Type is required')
+  .matches(
+    /^[A-Za-z_][A-Za-z0-9_]*$/,
+    'Transaction Type must start with a letter or underscore and contain only letters, numbers, or underscores'
+  );
+
 
   // Event Type (msgFam) validation - Optional but with same format rules as Transaction Type
   const eventTypeSchema = yup
@@ -1678,7 +1679,7 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
                     {readOnly
                       ? 'Review the schema fields below for this configuration.'
                       : configId
-                        ? 'Manually add, remove, and edit schema fields below.'
+                        ? 'Manually change type and requirements below.'
                         : 'Generate schema fields from your payload above, then adjust field types and requirements below.'}
                   </p>
                 </div>
