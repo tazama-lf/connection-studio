@@ -1351,18 +1351,14 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
     const runtimeContextFields = ['tenantid', 'tenant_id', 'userid', 'user_id'];
 
     // Extract all destination fields from currentMappings (store in lowercase for case-insensitive comparison)
-    // Also strip common prefixes like "redis.", "transactionDetails.", "dataCache.", etc.
+    // Keep the full destination with prefix for exact matching (e.g., transactionDetails.CreDtTm vs redis.creDtTm)
     const mappedDestinations = new Set<string>();
     const mappedDestinationsOriginal = new Map<string, string>(); // Map lowercase -> original case
 
     currentMappings.forEach((mapping: any) => {
       const processDestination = (dest: string) => {
-        // Strip common prefixes before storing
-        const withoutPrefix = dest.replace(
-          /^(redis\.|transactionDetails\.|dataCache\.|transaction\.|cache\.)/i,
-          '',
-        );
-        const lowerDest = withoutPrefix.toLowerCase();
+        // Store full destination (with prefix) in lowercase for exact matching
+        const lowerDest = dest.toLowerCase();
         mappedDestinations.add(lowerDest);
         mappedDestinationsOriginal.set(lowerDest, dest); // Store original with prefix for logging
       };
@@ -1385,7 +1381,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
     });
 
     console.log(
-      '🔍 Mapped destinations (lowercase, without prefixes):',
+      '🔍 Mapped destinations (lowercase, with prefixes):',
       Array.from(mappedDestinations),
     );
     console.log('🔍 Runtime context fields (lowercase):', runtimeContextFields);
@@ -1403,31 +1399,33 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
 
       // Check each parameter
       func?.params?.forEach((param: any) => {
-        // Strip prefix from parameter too before comparing
+        // Compare full parameter name (with prefix) for exact matching
+        const paramLower = param.toLowerCase();
+        // Also check without prefix for runtime context fields
         const paramWithoutPrefix = param.replace(
           /^(redis\.|transactionDetails\.|dataCache\.|transaction\.|cache\.)/i,
           '',
         );
-        const paramLower = paramWithoutPrefix.toLowerCase();
+        const paramWithoutPrefixLower = paramWithoutPrefix.toLowerCase();
 
         // Skip runtime context fields - they're provided at execution time
-        if (runtimeContextFields.includes(paramLower)) {
+        if (runtimeContextFields.includes(paramWithoutPrefixLower)) {
           console.log(
             `✓ Parameter "${param}" is a runtime context field (will be provided at execution time)`,
           );
           return;
         }
 
-        // Check if parameter is mapped (case-insensitive, after stripping prefixes from both sides)
+        // Check if parameter is mapped (case-insensitive, with full prefix)
         if (!mappedDestinations.has(paramLower)) {
           errors.push(
             `❌ Function "${functionConfig.displayName}": Parameter "${param}" is not mapped. ` +
-              `Please create a mapping with destination "${paramWithoutPrefix}" (can use prefixes like redis., transactionDetails., etc.) in the Mapping step.`,
+              `Please create a mapping with destination "${param}" in the Mapping step.`,
           );
         } else {
           const mappedAs = mappedDestinationsOriginal.get(paramLower);
           console.log(
-            `✓ Parameter "${param}" (stripped: "${paramWithoutPrefix}") is mapped (as "${mappedAs}")`,
+            `✓ Parameter "${param}" is mapped (as "${mappedAs}")`,
           );
         }
       });
@@ -2507,14 +2505,8 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
 
                           currentMappings.forEach((mapping: any) => {
                             const processDestination = (dest: string) => {
-                              // Strip common prefixes before storing
-                              const withoutPrefix = dest.replace(
-                                /^(redis\.|transactionDetails\.|dataCache\.|transaction\.|cache\.)/i,
-                                '',
-                              );
-                              mappedDestinations.add(
-                                withoutPrefix.toLowerCase(),
-                              );
+                              // Store the full destination (with prefix) in lowercase for exact matching
+                              mappedDestinations.add(dest.toLowerCase());
                             };
 
                             if (mapping.destination) {
@@ -2539,16 +2531,16 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                           const unmappedParams =
                             func.params && func.params.length > 0
                               ? func.params.filter((param: string) => {
-                                  // Strip prefix from parameter before checking
+                                  // Compare full parameter name (with prefix) for exact matching
+                                  const paramLower = param.toLowerCase();
+                                  // Also check without prefix for the parameter name itself (for runtime context)
                                   const paramWithoutPrefix = param.replace(
                                     /^(redis\.|transactionDetails\.|dataCache\.|transaction\.|cache\.)/i,
                                     '',
-                                  );
-                                  const paramLower =
-                                    paramWithoutPrefix.toLowerCase();
+                                  ).toLowerCase();
                                   return (
                                     !runtimeContextFields.includes(
-                                      paramLower,
+                                      paramWithoutPrefix,
                                     ) && !mappedDestinations.has(paramLower)
                                   );
                                 })
@@ -2584,22 +2576,21 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                                   {func?.params && func.params.length > 0
                                     ? func.params
                                         .map((param: string) => {
-                                          // Strip prefix from parameter before checking
+                                          // Check with full parameter name (including prefix)
+                                          const paramLower = param.toLowerCase();
                                           const paramWithoutPrefix =
                                             param.replace(
                                               /^(redis\.|transactionDetails\.|dataCache\.|transaction\.|cache\.)/i,
                                               '',
-                                            );
-                                          const paramLower =
-                                            paramWithoutPrefix.toLowerCase();
+                                            ).toLowerCase();
                                           const isMapped =
                                             runtimeContextFields.includes(
-                                              paramLower,
+                                              paramWithoutPrefix,
                                             ) ||
                                             mappedDestinations.has(paramLower);
                                           const isRuntime =
                                             runtimeContextFields.includes(
-                                              paramLower,
+                                              paramWithoutPrefix,
                                             );
                                           return (
                                             <span
