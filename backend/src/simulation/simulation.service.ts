@@ -432,12 +432,10 @@ export class SimulationService {
   ): Promise<ValidationStage> {
     try {
       // tcsMapping yahan banti hai
-      const tcsMapping = config.mapping || [];
+      const tcsMapping = config.mapping ?? [];
       // const tcsMapping = providedMapping;
       const mappingsApplied = tcsMapping.length;
-      const endpoint =
-        config.endpointPath ??
-        `${config.msgFam || 'unknown'}-${config.transactionType || 'unknown'}`;
+      const endpoint = config.endpointPath;
       let tcsResult;
 
       try {
@@ -609,7 +607,7 @@ export class SimulationService {
         payload,
         config?.schema,
       );
-      if (config?.schema?.properties) {
+      if (config && config.schema.properties) {
         const schemaRootKeys = Object.keys(config.schema.properties);
         const payloadRootKeys = Object.keys(
           normalized as Record<string, unknown>,
@@ -684,9 +682,10 @@ export class SimulationService {
     );
     const hasTextContent = Object.prototype.hasOwnProperty.call(obj, '#text');
     const hasNestedStructure = Object.values(obj).some(
-      (val) => val && typeof val === 'object' && !Array.isArray(val),
+      (val) => val !== null && val !== undefined && typeof val === 'object' && !Array.isArray(val),
     );
 
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- Boolean OR logic, not nullish coalescing
     return hasXmlAttributes || hasTextContent || hasNestedStructure;
   }
 
@@ -919,12 +918,13 @@ export class SimulationService {
           }
 
           errors.push({
-            field: error.instancePath ?? 'root',
+            field: error.instancePath || 'root',
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- Using || to handle empty strings
             message: error.message || 'Schema validation failed',
             path: error.instancePath,
             value: _.get(
               normalizedPayload,
-              error.instancePath ? error.instancePath.replace(/^\//, '').replace(/\//g, '.') : undefined,
+              error.instancePath.replace(/^\//, '').replace(/\//g, '.'),
             ),
           });
         }
