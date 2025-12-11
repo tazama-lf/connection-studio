@@ -451,6 +451,7 @@ const DEMSModule: React.FC = () => {
   const handleCloseModal = () => {
     setEditingEndpointId(null);
     setIsInCloneMode(false); // Reset clone mode
+    setIsCloneCheck(false); // Reset clone check
     setIsReadOnly(false); // Reset read-only mode
     // Refresh the config list when modal closes
     setRefreshKey((prev) => prev + 1);
@@ -471,6 +472,7 @@ const DEMSModule: React.FC = () => {
     // Open EditEndpointModal in edit mode
     setEditingEndpointId(config.id);
     setIsReadOnly(false);
+    setIsCloneCheck(false); // Ensure clone check is false for edit mode
   };
 
   const handleCloneConfig = (config: Config) => {
