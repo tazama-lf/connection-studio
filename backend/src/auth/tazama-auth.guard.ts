@@ -6,8 +6,9 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { validateTokenAndClaims } from '@tazama-lf/auth-lib';
 import * as jwt from 'jsonwebtoken';
+import { validateTokenAndClaims } from '@tazama-lf/auth-lib';
+
 import type {
   TazamaToken,
   ClaimValidationResult,
@@ -20,136 +21,130 @@ export class TazamaAuthGuard implements CanActivate {
   private readonly logger = new Logger(TazamaAuthGuard.name);
 
   constructor(private readonly reflector: Reflector) {}
-  async canActivate(context: ExecutionContext): Promise<boolean> {
+
+  canActivate(context: ExecutionContext): boolean {
     const logContext = 'TazamaAuthGuard.canActivate()';
 
-    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
-    if (isPublic) {
-      return true;
+    if (this.isPublicRoute(context)) return true;
+
+    const request = context.switchToHttp().getRequest();
+    const token = this.extractBearerToken(request.headers.authorization, logContext);
+
+    const { requiredClaims, anyClaims } = this.getClaimsFromDecorators(context);
+
+    const validated = validateTokenAndClaims(
+      token,
+      [...requiredClaims, ...anyClaims],
+    );
+
+    const { status, valid, invalid } = this.evaluateClaimResult(
+      requiredClaims,
+      anyClaims,
+      validated,
+      logContext,
+    );
+
+    if (!status) {
+      throw new UnauthorizedException(`Missing or invalid claims: ${invalid.join(', ')}`);
     }
 
-    const requiredClaims = this.reflector.getAllAndOverride<string[]>(
-      CLAIMS_KEY,
-      [context.getHandler(), context.getClass()],
-    );
-    const anyRequiredClaims = this.reflector.getAllAndOverride<string[]>(
-      ANY_CLAIMS_KEY,
-      [context.getHandler(), context.getClass()],
-    );
-    const request = context.switchToHttp().getRequest();
-    const authHeader = request.headers.authorization;
+    const decoded = this.extractTokenPayload(token);
+    const authenticatedUser: AuthenticatedUser = {
+      token: { ...decoded, tokenString: token },
+      validated,
+      validClaims: valid,
+      tenantId: decoded.tenantId,
+      userId: decoded.clientId,
+    };
 
+    request.user = authenticatedUser;
+    return true;
+  }
+
+private isPublicRoute(context: ExecutionContext): boolean {
+  return this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
+    context.getHandler(),
+    context.getClass(),
+  ]);
+}
+
+
+  private extractBearerToken(
+    authHeader: string | undefined,
+    ctx: string,
+  ): string {
     if (!authHeader?.startsWith('Bearer ')) {
-      this.logger.warn('No Bearer token provided', logContext);
+      this.logger.warn('No Bearer token provided', ctx);
       throw new UnauthorizedException('No Bearer token provided');
     }
+    return authHeader.split(' ')[1];
+  }
 
-    if (
-      (!requiredClaims || requiredClaims.length === 0) &&
-      (!anyRequiredClaims || anyRequiredClaims.length === 0)
-    ) {
-      this.logger.warn(
-        'No required claims specified for protected route',
-        logContext,
-      );
+  private getClaimsFromDecorators(context: ExecutionContext): {
+    requiredClaims: string[];
+    anyClaims: string[];
+  } {
+    const requiredClaims =
+      this.reflector.getAllAndOverride<string[]>(CLAIMS_KEY, [
+        context.getHandler(),
+        context.getClass(),
+      ]) ?? [];
+
+    const anyClaims =
+      this.reflector.getAllAndOverride<string[]>(ANY_CLAIMS_KEY, [
+        context.getHandler(),
+        context.getClass(),
+      ]) ?? [];
+
+    if (requiredClaims.length === 0 && anyClaims.length === 0) {
       throw new UnauthorizedException('No required claims specified');
     }
-    try {
-      const token = authHeader.split(' ')[1];
 
-      const claimsToValidate = requiredClaims || anyRequiredClaims || [];
+    return { requiredClaims, anyClaims };
+  }
 
-      const validated: ClaimValidationResult = validateTokenAndClaims(
-        token,
-        claimsToValidate,
-      );
-      let hasValidAccess = false;
-      let validClaims: string[] = [];
-      let invalidClaims: string[] = [];
-      if (requiredClaims && requiredClaims.length > 0) {
-        const hasAllClaims = requiredClaims.every((claim) => validated[claim]);
-        validClaims = requiredClaims.filter((claim) => validated[claim]);
-        invalidClaims = requiredClaims.filter((claim) => !validated[claim]);
-        hasValidAccess = hasAllClaims;
-        if (!hasAllClaims) {
-          this.logger.warn(
-            `User missing required claims. Required: [${requiredClaims.join(', ')}], Invalid: [${invalidClaims.join(', ')}]`,
-            logContext,
-          );
-        }
-      } else if (anyRequiredClaims && anyRequiredClaims.length > 0) {
-        const hasAnyClaim = anyRequiredClaims.some((claim) => validated[claim]);
-        validClaims = anyRequiredClaims.filter((claim) => validated[claim]);
-        invalidClaims = anyRequiredClaims.filter((claim) => !validated[claim]);
-        hasValidAccess = hasAnyClaim;
-        if (!hasAnyClaim) {
-          this.logger.warn(
-            `User missing any required claims. Required (any of): [${anyRequiredClaims.join(', ')}], Invalid: [${invalidClaims.join(', ')}]`,
-            logContext,
-          );
-        }
-      }
-      if (!hasValidAccess) {
-        throw new UnauthorizedException(
-          `Missing or invalid claims: ${invalidClaims.join(', ')}`,
+  private evaluateClaimResult(
+    required: string[],
+    any: string[],
+    validated: ClaimValidationResult,
+    ctx: string,
+  ): { status: boolean; valid: string[]; invalid: string[] } {
+    if (required.length > 0) {
+      const valid = required.filter((c) => validated[c]);
+      const invalid = required.filter((c) => !validated[c]);
+
+      if (invalid.length > 0) {
+        this.logger.warn(
+          `User missing required claims. Required: [${required.join(', ')}], Invalid: [${invalid.join(', ')}]`,
+          ctx,
         );
+        return { status: false, valid, invalid };
       }
 
-      const decodedToken = this.extractTokenPayload(token);
-
-      (decodedToken as any).tokenString = token;
-
-      const authenticatedUser: AuthenticatedUser = {
-        token: decodedToken,
-        validated,
-        validClaims,
-        tenantId: decodedToken.tenantId || '',
-        userId: decodedToken.clientId || '',
-      };
-
-      request.user = authenticatedUser;
-
-      return true;
-    } catch (error) {
-      const err = error as Error;
-      this.logger.log('error', err);
-
-      this.logger.error(
-        `Authentication failed: ${err.name}: ${err.message}`,
-        logContext,
-      );
-      if (error instanceof UnauthorizedException) {
-        throw error;
-      }
-      throw new UnauthorizedException('Token validation failed');
+      return { status: true, valid, invalid };
     }
+
+    const valid = any.filter((c) => validated[c]);
+    const invalid = any.filter((c) => !validated[c]);
+
+    if (valid.length === 0) {
+      this.logger.warn(
+        `User missing any required claims. Required (any): [${any.join(', ')}], Invalid: [${invalid.join(', ')}]`,
+        ctx,
+      );
+      return { status: false, valid, invalid };
+    }
+
+    return { status: true, valid, invalid };
   }
 
   private extractTokenPayload(token: string): TazamaToken {
-    try {
-      const decoded = jwt.decode(token) as TazamaToken;
-      if (!decoded) {
-        throw new Error('Failed to decode token');
-      }
+    const decoded = jwt.decode(token) as TazamaToken | null;
 
-      if (!decoded.clientId) {
-        throw new Error('Token missing clientId');
-      }
-      if (!decoded.tenantId) {
-        throw new Error('Token missing tenantId');
-      }
-      if (!decoded.claims || !Array.isArray(decoded.claims)) {
-        throw new Error('Token missing or invalid claims array');
-      }
-
-      return decoded;
-    } catch (error) {
-      const err = error as Error;
-      this.logger.error(`Failed to extract token payload: ${err.message}`);
+    if (!decoded) {
       throw new UnauthorizedException('Invalid token format');
     }
+
+    return decoded;
   }
 }
