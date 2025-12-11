@@ -166,7 +166,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
           } else if (Array.isArray(mapping.source) && mapping.source.length > 1) {
             // Multiple sources - check for CONCAT or SUM
             if (mapping.separator || mapping.delimiter) {
-              inferredTransformation = 'CONCAT';
+              inferredTransformation = 'CONCATENATE';
             } else if (mapping.operator === 'SUM') {
               inferredTransformation = 'SUM';
             } else {
