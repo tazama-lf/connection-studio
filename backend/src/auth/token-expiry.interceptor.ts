@@ -18,7 +18,7 @@ export class TokenExpiryInterceptor implements NestInterceptor {
 
     if (authorizationHeader) {
       const token = authorizationHeader.replace('Bearer ', '');
-      
+
       if (this.authService.isTokenExpired(token)) {
         throw new UnauthorizedException('Token has expired');
       }

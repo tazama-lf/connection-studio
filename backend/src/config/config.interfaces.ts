@@ -36,14 +36,13 @@ export const AdditionalWorkflowAction = {
 } as const;
 
 export interface MappingSource {
-  field: string; 
+  field: string;
 }
 
 export interface MappingDestination {
-  field: string; 
+  field: string;
 }
 
-
 export interface UpdateConfigStatusDto {
-  status: string; 
+  status: string;
 }

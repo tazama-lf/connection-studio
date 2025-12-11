@@ -24,8 +24,8 @@ export const Public = (): any => SetMetadata(IS_PUBLIC_KEY, true);
  * Decorator to specify a single claim requirement
  * @param claim - Single required claim
  */
-export const RequireClaim = (claim: string): any => SetMetadata(CLAIMS_KEY, [claim]);
-
+export const RequireClaim = (claim: string): any =>
+  SetMetadata(CLAIMS_KEY, [claim]);
 
 export const TazamaClaims = {
   EDITOR: 'editor',
@@ -40,10 +40,12 @@ export const TazamaClaims = {
   UMA_AUTHORIZATION: 'uma_authorization',
 } as const;
 
-
 export const RequireEditorRole = (): any => RequireClaim(TazamaClaims.EDITOR);
-export const RequireApproverRole = (): any => RequireClaim(TazamaClaims.APPROVER);
-export const RequireExporterRole = (): any => RequireClaim(TazamaClaims.EXPORTER);
-export const RequirePublisherRole = (): any => RequireClaim(TazamaClaims.PUBLISHER);
+export const RequireApproverRole = (): any =>
+  RequireClaim(TazamaClaims.APPROVER);
+export const RequireExporterRole = (): any =>
+  RequireClaim(TazamaClaims.EXPORTER);
+export const RequirePublisherRole = (): any =>
+  RequireClaim(TazamaClaims.PUBLISHER);
 export const RequireAccountManagement = (): any =>
   RequireClaims(TazamaClaims.MANAGE_ACCOUNT, TazamaClaims.MANAGE_ACCOUNT_LINKS);

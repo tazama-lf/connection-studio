@@ -10,7 +10,6 @@ export class ConfigRepository {
 
   constructor(private readonly adminServiceClient: AdminServiceClient) {}
 
-
   async createConfig(
     configData: Omit<Config, 'id' | 'createdAt' | 'updatedAt'>,
     token: string,
@@ -82,7 +81,6 @@ export class ConfigRepository {
     );
   }
 
-
   async createDeployedConfig(configData: any, token: string): Promise<number> {
     const result = await this.adminServiceClient.writeConfig(configData, token);
     if (!result?.id) {
@@ -95,14 +93,21 @@ export class ConfigRepository {
     transactionType: string,
     token: string,
   ): Promise<void> {
-    return await this.adminServiceClient.createTransactionTypeTable(transactionType, token);
+    await this.adminServiceClient.createTransactionTypeTable(
+      transactionType,
+      token,
+    );
   }
   async createTazamaDataModelTable(
     tableName: string,
     columns: ColumnDef[],
     token: string,
   ): Promise<void> {
-    return await this.adminServiceClient.createTazamaDataModelTable(tableName, columns, token);
+    await this.adminServiceClient.createTazamaDataModelTable(
+      tableName,
+      columns,
+      token,
+    );
   }
   async updateConfigStatus(
     id: number,
@@ -118,14 +123,15 @@ export class ConfigRepository {
     filters: Record<string, any>,
     token: string,
   ): Promise<Config[]> {
-    return await this.adminServiceClient.getAllConfigsWithFilters(offset, limit, filters, token);
+    return await this.adminServiceClient.getAllConfigsWithFilters(
+      offset,
+      limit,
+      filters,
+      token,
+    );
   }
 
-  async addMapping(
-    id: number,
-    mappingData: any,
-    token: string,
-  ): Promise<any> {
+  async addMapping(id: number, mappingData: any, token: string): Promise<any> {
     return await this.adminServiceClient.addMapping(id, mappingData, token);
   }
 
@@ -145,13 +151,15 @@ export class ConfigRepository {
     return await this.adminServiceClient.removeFunction(id, index, token);
   }
 
-
   async updateConfigViaWrite(
     id: number,
     updateData: any,
     token: string,
   ): Promise<any> {
-    return await this.adminServiceClient.writeConfigUpdate(id, updateData, token);
+    return await this.adminServiceClient.writeConfigUpdate(
+      id,
+      updateData,
+      token,
+    );
   }
-
 }

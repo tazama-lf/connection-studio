@@ -17,7 +17,10 @@ export class AuthService {
     private readonly loggerService: LoggerService,
   ) {}
 
-  async login(username: string, password: string): Promise<{ message: string; token: string; expiresIn: number | null }> {
+  async login(
+    username: string,
+    password: string,
+  ): Promise<{ message: string; token: string; expiresIn: number | null }> {
     const authUrl = this.configService.get<string>('TAZAMA_AUTH_URL');
     if (!authUrl) {
       this.loggerService.error(
@@ -45,10 +48,10 @@ export class AuthService {
       const token =
         typeof response.data === 'string'
           ? response.data
-          : response.data?.token ??
+          : (response.data?.token ??
             response.data?.access_token ??
             response.data?.jwt ??
-            response.data?.user?.token;
+            response.data?.user?.token);
       return {
         message: 'Login successful',
         token,
