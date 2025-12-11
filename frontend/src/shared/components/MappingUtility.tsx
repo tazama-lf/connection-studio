@@ -1005,9 +1005,9 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
           ? selectedDestinations // Array for SPLIT
           : selectedDestinations[0], // Single destination
       delimiter:
-        selectedTransformation === 'split' ? delimiter || ' ' : undefined,
-      separator:
-        selectedTransformation === 'concatenate' ? delimiter || ' ' : undefined,
+        selectedTransformation === 'split' || selectedTransformation === 'concatenate'
+          ? delimiter || ' '
+          : undefined,
       constantValue:
         selectedTransformation === 'constant' ? selectedSources[0] : undefined,
       prefix: prefix.trim() || undefined,
@@ -1373,7 +1373,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         {selectedTransformation === 'split'
                           ? 'Split Delimiter'
-                          : 'Separator'}
+                          : 'Concatenate Delimiter'}
                       </label>
                       <input
                         type="text"
@@ -1646,12 +1646,12 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                   </span>
                   {mapping.separator && (
                     <span className="text-xs text-gray-500">
-                      (separator: "{mapping.separator}")
+                      (delimiter: "{mapping.separator}")
                     </span>
                   )}
                   {mapping.delimiter && (
                     <span className="text-xs text-gray-500">
-                      (separator: "{mapping.delimiter}")
+                      (delimiter: "{mapping.delimiter}")
                     </span>
                   )}
                 </div>

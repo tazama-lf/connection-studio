@@ -381,7 +381,7 @@ export const ConfigDetails: React.FC<ConfigDetailsProps> = ({
                           </div>
                           {mapping.separator && (
                             <span className="text-xs text-gray-500">
-                              Separator: "{mapping.separator}"
+                              Delimiter: "{mapping.separator}"
                             </span>
                           )}
                         </div>
