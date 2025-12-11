@@ -150,12 +150,45 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
           mappings,
         );
         console.log('✅ MappingUtility - Mappings count:', mappings.length);
+        
+        // Ensure all mappings have transformation field set
+        const mappingsWithTransformation = mappings.map((mapping: FieldMapping) => {
+          // If transformation is already set, keep it
+          if (mapping.transformation) {
+            return mapping;
+          }
+          
+          // Infer transformation based on mapping structure
+          let inferredTransformation = 'NONE';
+          
+          if (mapping.constantValue !== undefined) {
+            inferredTransformation = 'CONSTANT';
+          } else if (Array.isArray(mapping.source) && mapping.source.length > 1) {
+            // Multiple sources - check for CONCAT or SUM
+            if (mapping.separator || mapping.delimiter) {
+              inferredTransformation = 'CONCAT';
+            } else if (mapping.operator === 'SUM') {
+              inferredTransformation = 'SUM';
+            } else {
+              inferredTransformation = 'CONCAT'; // Default for multiple sources
+            }
+          } else if (Array.isArray(mapping.destination) && mapping.destination.length > 1) {
+            // Multiple destinations - SPLIT
+            inferredTransformation = 'SPLIT';
+          }
+          
+          return {
+            ...mapping,
+            transformation: inferredTransformation,
+          };
+        });
+        
         console.log(
           '✅ MappingUtility - About to call setCurrentMappings with:',
-          mappings,
+          mappingsWithTransformation,
         );
-        setCurrentMappings(mappings);
-        validateMappings(mappings);
+        setCurrentMappings(mappingsWithTransformation);
+        validateMappings(mappingsWithTransformation);
         console.log(
           '✅ MappingUtility - setCurrentMappings and validateMappings called successfully',
         );
@@ -748,7 +781,6 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
     const isValid = newMappings.every(
       (mapping) =>
         mapping.source ||
-        mapping.sources ||
         mapping.constantValue !== undefined,
     );
     onMappingChange(isValid);
@@ -833,6 +865,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
     const usedDestinations = new Set<string>();
     currentMappings.forEach((mapping) => {
       // Collect all destinations from existing mappings
+      // Note: destination can be either string or string[] (for SPLIT)
       if (mapping.destination) {
         if (Array.isArray(mapping.destination)) {
           mapping.destination.forEach((dest) => {
@@ -841,11 +874,6 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
         } else {
           usedDestinations.add(mapping.destination);
         }
-      }
-      if (mapping.destinations && Array.isArray(mapping.destinations)) {
-        mapping.destinations.forEach((dest) => {
-          if (dest) usedDestinations.add(dest);
-        });
       }
     });
 
@@ -967,24 +995,15 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
     // Create AddMappingRequest object for API
     const mappingRequest = {
       source:
-        selectedTransformation === 'split'
-          ? selectedSources[0]
-          : selectedTransformation === 'concatenate'
-            ? undefined
-            : selectedTransformation === 'sum'
-              ? undefined
-              : selectedTransformation === 'constant'
-                ? undefined
-                : selectedSources[0],
+        selectedTransformation === 'concatenate' || selectedTransformation === 'sum'
+          ? selectedSources // Array for CONCAT/SUM
+          : selectedTransformation === 'constant'
+            ? selectedSources[0] // Constant value
+            : selectedSources[0], // Single source for SPLIT/DIRECT
       destination:
         selectedTransformation === 'split'
-          ? undefined
-          : selectedDestinations[0],
-      sources:
-        selectedTransformation === 'concatenate' ? selectedSources : undefined,
-      sumFields: selectedTransformation === 'sum' ? selectedSources : undefined,
-      destinations:
-        selectedTransformation === 'split' ? selectedDestinations : undefined,
+          ? selectedDestinations // Array for SPLIT
+          : selectedDestinations[0], // Single destination
       delimiter:
         selectedTransformation === 'split' ? delimiter || ' ' : undefined,
       separator:
@@ -1006,30 +1025,18 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
         console.log('✅ Mapping saved successfully to backend');
 
         // Create FieldMapping object for local state (includes transformation info)
+       
         const newFieldMapping: FieldMapping = {
           source:
-            selectedTransformation === 'split'
-              ? selectedSources[0]
-              : selectedTransformation === 'concatenate'
-                ? undefined
-                : selectedTransformation === 'sum'
-                  ? undefined
-                  : selectedTransformation === 'constant'
-                    ? undefined
-                    : selectedSources[0],
+            selectedTransformation === 'concatenate' || selectedTransformation === 'sum'
+              ? selectedSources // Array for CONCAT/SUM
+              : selectedTransformation === 'constant'
+                ? selectedSources[0] // Constant value
+                : selectedSources[0], // Single source for SPLIT/DIRECT
           destination:
             selectedTransformation === 'split'
-              ? undefined
-              : selectedDestinations[0],
-          sources:
-            selectedTransformation === 'concatenate' ||
-            selectedTransformation === 'sum'
-              ? selectedSources
-              : undefined,
-          destinations:
-            selectedTransformation === 'split'
-              ? selectedDestinations
-              : undefined,
+              ? selectedDestinations // Array for SPLIT
+              : selectedDestinations[0], // Single destination
           delimiter:
             selectedTransformation === 'split' ? delimiter || ' ' : undefined,
           separator:
@@ -1625,22 +1632,17 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                   <span className="text-sm text-gray-600">
                     {mapping.transformation === 'CONSTANT'
                       ? `"${mapping.constantValue}"`
-                      : mapping.sources
-                        ? mapping.sources.join(' + ')
-                        : Array.isArray(mapping.source)
-                          ? mapping.source.join(' + ')
-                          : mapping.source}
+                      : Array.isArray(mapping.source)
+                        ? mapping.source.join(' + ')
+                        : mapping.source}
                     {!mapping.transformation &&
                       mapping?.constantValue &&
                       `"${mapping.constantValue}"`}
                     <ArrowRightIcon size={16} className="inline mx-2" />
                     {mapping.prefix ? `"${mapping.prefix}" + ` : ''}
-                    {/* Fixed: Show destinations for SPLIT transformation */}
-                    {mapping.destinations
-                      ? mapping.destinations.join(' + ')
-                      : Array.isArray(mapping.destination)
-                        ? mapping.destination.join(' + ')
-                        : mapping.destination}
+                    {Array.isArray(mapping.destination)
+                      ? mapping.destination.join(' + ')
+                      : mapping.destination}
                   </span>
                   {mapping.separator && (
                     <span className="text-xs text-gray-500">
