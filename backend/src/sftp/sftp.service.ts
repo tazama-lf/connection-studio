@@ -12,7 +12,7 @@ import { createHash } from 'node:crypto';
 import SFTPClient from 'ssh2-sftp-client';
 import * as utils from '../utils/helpers';
 import { SftpFile } from './types/sftp.interface';
-import { Job, Schedule } from '@tazama-lf/tcs-lib';
+import { Job, Schedule, Config } from '@tazama-lf/tcs-lib';
 
 @Injectable()
 export class SftpService implements OnModuleInit, OnModuleDestroy {
@@ -92,7 +92,7 @@ export class SftpService implements OnModuleInit, OnModuleDestroy {
     this.loggerService.log('SFTP connections closed.');
   }
 
-  async createFile(fileName: string, data: Job | Schedule | unknown): Promise<void> {
+  async createFile(fileName: string, data: Job | Schedule | Config): Promise<void> {
     try {
       const nodeEnv = this.configService.get<string>('NODE_ENV');
       const sftpHost = this.configService.get<string>('SFTP_HOST_CONSUMER');
