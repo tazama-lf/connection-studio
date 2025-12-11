@@ -17,7 +17,7 @@ export class AuthService {
     private readonly loggerService: LoggerService,
   ) {}
 
-  async login(username: string, password: string) {
+  async login(username: string, password: string): Promise<{ message: string; token: string; expiresIn: number | null }> {
     const authUrl = this.configService.get<string>('TAZAMA_AUTH_URL');
     if (!authUrl) {
       this.loggerService.error(
@@ -31,7 +31,7 @@ export class AuthService {
       const response = await firstValueFrom(
         this.httpService.post(`${authUrl}/login`, { username, password }),
       );
-      if (!response?.data) {
+      if (!response.data) {
         this.loggerService.error(
           'Auth service did not return a valid response',
           AuthService.name,
@@ -45,9 +45,9 @@ export class AuthService {
       const token =
         typeof response.data === 'string'
           ? response.data
-          : response.data?.token ||
-            response.data?.access_token ||
-            response.data?.jwt ||
+          : response.data?.token ??
+            response.data?.access_token ??
+            response.data?.jwt ??
             response.data?.user?.token;
       return {
         message: 'Login successful',

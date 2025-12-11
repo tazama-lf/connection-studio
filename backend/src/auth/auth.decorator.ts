@@ -8,30 +8,25 @@ export const ANY_CLAIMS_KEY = 'anyClaims'; // New key for "any of these claims" 
  * Decorator to specify required claims for a route
  * @param claims - Array of required claims (all must be present)
  */
-export const RequireClaims = (...claims: string[]) =>
+export const RequireClaims = (...claims: string[]): any =>
   SetMetadata(CLAIMS_KEY, claims);
 
 /**
  * Decorator to specify claims where ANY of them can satisfy the requirement
  * @param claims - Array of claims (user needs at least one)
  */
-export const RequireAnyClaims = (...claims: string[]) =>
+export const RequireAnyClaims = (...claims: string[]): any =>
   SetMetadata(ANY_CLAIMS_KEY, claims);
 
-/**
- * Decorator to mark a route as public (no authentication required)
- */
-export const Public = () => SetMetadata(IS_PUBLIC_KEY, true);
+export const Public = (): any => SetMetadata(IS_PUBLIC_KEY, true);
 
 /**
  * Decorator to specify a single claim requirement
  * @param claim - Single required claim
  */
-export const RequireClaim = (claim: string) => SetMetadata(CLAIMS_KEY, [claim]);
+export const RequireClaim = (claim: string): any => SetMetadata(CLAIMS_KEY, [claim]);
 
-/**
- * Common Tazama claims for convenience
- */
+
 export const TazamaClaims = {
   EDITOR: 'editor',
   APPROVER: 'approver',
@@ -45,12 +40,10 @@ export const TazamaClaims = {
   UMA_AUTHORIZATION: 'uma_authorization',
 } as const;
 
-/**
- * Convenience decorators for common Tazama roles
- */
-export const RequireEditorRole = () => RequireClaim(TazamaClaims.EDITOR);
-export const RequireApproverRole = () => RequireClaim(TazamaClaims.APPROVER);
-export const RequireExporterRole = () => RequireClaim(TazamaClaims.EXPORTER);
-export const RequirePublisherRole = () => RequireClaim(TazamaClaims.PUBLISHER);
-export const RequireAccountManagement = () =>
+
+export const RequireEditorRole = (): any => RequireClaim(TazamaClaims.EDITOR);
+export const RequireApproverRole = (): any => RequireClaim(TazamaClaims.APPROVER);
+export const RequireExporterRole = (): any => RequireClaim(TazamaClaims.EXPORTER);
+export const RequirePublisherRole = (): any => RequireClaim(TazamaClaims.PUBLISHER);
+export const RequireAccountManagement = (): any =>
   RequireClaims(TazamaClaims.MANAGE_ACCOUNT, TazamaClaims.MANAGE_ACCOUNT_LINKS);

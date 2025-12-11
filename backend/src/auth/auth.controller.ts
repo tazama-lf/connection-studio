@@ -16,7 +16,7 @@ export class AuthController {
   ) {}
   @Post('login')
   @HttpCode(200)
-  async login(@Body() body: { username: string; password: string }) {
+  async login(@Body() body: { username: string; password: string }): Promise<{ message: string; token: string; expiresIn?: any }> {
     try {
       const result = await this.authService.login(body.username, body.password);
 
@@ -33,6 +33,7 @@ export class AuthController {
     } catch (error) {
       this.logger.warn(`Login failed: ${error.message}`, AuthController.name);
       throw new UnauthorizedException('Invalid credentials');
+      
     }
   }
 }

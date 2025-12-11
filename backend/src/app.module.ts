@@ -8,7 +8,6 @@ import { LoggerModule } from './logger-service/logger-service.module';
 import { ConfigModule } from './config/config.module';
 import { SimulationModule } from './simulation/simulation.module';
 import { TazamaDataModelModule } from './tazama-data-model/tazama-data-model.module';
-import { APP_INTERCEPTOR } from '@nestjs/core';
 import { SftpModule } from './sftp/sftp.module';
 import { NotifyModule } from './notify/notify.module';
 import { SchedulerModule } from './scheduler/scheduler.module';
