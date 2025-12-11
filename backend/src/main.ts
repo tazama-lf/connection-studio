@@ -1,3 +1,4 @@
+/* eslint-disable import/first -- dotenv must be imported and configured before other modules that depend on environment variables */
 import * as dotenv from 'dotenv';
 
 dotenv.config({ path: '.env' });
@@ -8,11 +9,12 @@ import { ConfigService } from '@nestjs/config';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
+/* eslint-enable import/first */
 
 
 
 
-async function bootstrap() {
+async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
   const logger = app.get(LoggerService);
