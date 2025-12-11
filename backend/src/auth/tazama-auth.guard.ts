@@ -61,14 +61,13 @@ export class TazamaAuthGuard implements CanActivate {
     return true;
   }
 
-  private isPublicRoute(context: ExecutionContext): boolean {
-    return (
-      this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
-        context.getHandler(),
-        context.getClass(),
-      ]) === true
-    );
-  }
+private isPublicRoute(context: ExecutionContext): boolean {
+  return this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
+    context.getHandler(),
+    context.getClass(),
+  ]);
+}
+
 
   private extractBearerToken(
     authHeader: string | undefined,
@@ -89,13 +88,13 @@ export class TazamaAuthGuard implements CanActivate {
       this.reflector.getAllAndOverride<string[]>(CLAIMS_KEY, [
         context.getHandler(),
         context.getClass(),
-      ]);
+      ]) ?? [];
 
     const anyClaims =
       this.reflector.getAllAndOverride<string[]>(ANY_CLAIMS_KEY, [
         context.getHandler(),
         context.getClass(),
-      ]);
+      ]) ?? [];
 
     if (requiredClaims.length === 0 && anyClaims.length === 0) {
       throw new UnauthorizedException('No required claims specified');
