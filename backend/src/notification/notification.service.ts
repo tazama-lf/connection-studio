@@ -68,7 +68,7 @@ export class NotificationService implements OnModuleInit {
     private readonly httpService: HttpService,
   ) {}
 
-  onModuleInit() {
+  onModuleInit() : void {
     this.initializeTransporter();
   }
 
@@ -93,7 +93,7 @@ export class NotificationService implements OnModuleInit {
     try {
       this.transporter = nodemailer.createTransport({
         host: smtpHost,
-        port: smtpPort || 587,
+        port: smtpPort ?? 587,
         secure: smtpSecure,
         auth: {
           user: smtpUser,
@@ -122,7 +122,7 @@ export class NotificationService implements OnModuleInit {
   }
 
   // Getter method for status check
-  getStatus() {
+  getStatus() : {isConfigured: boolean, hasTransporter: boolean} {
     return {
       isConfigured: this.isConfigured,
       hasTransporter: this.transporter !== null,
@@ -139,10 +139,10 @@ export class NotificationService implements OnModuleInit {
 
     try {
       const fromEmail =
-        this.configService.get<string>('SMTP_FROM_EMAIL') ||
+        this.configService.get<string>('SMTP_FROM_EMAIL')
         this.configService.get<string>('SMTP_USER');
       const fromName =
-        this.configService.get<string>('SMTP_FROM_NAME') ||
+        this.configService.get<string>('SMTP_FROM_NAME') ??
         'Tazama Connection Studio';
 
       const mailOptions: nodemailer.SendMailOptions = {
@@ -150,7 +150,7 @@ export class NotificationService implements OnModuleInit {
         to: Array.isArray(options.to) ? options.to.join(', ') : options.to,
         subject: options.subject,
         text: options.text,
-        html: options.html || `<p>${options.text}</p>`,
+        html: options.html ?? `<p>${options.text}</p>`,
       };
 
       if (options.replyTo) {
@@ -179,7 +179,7 @@ export class NotificationService implements OnModuleInit {
       context.version,
       context.transactionType,
       context.configId,
-      context.requesterName || '',
+      context.requesterName ?? '',
       context.requesterEmail,
       context.comment,
       context.tenantId,
@@ -190,7 +190,7 @@ export class NotificationService implements OnModuleInit {
       context.version,
       context.transactionType,
       context.configId,
-      context.requesterName || '',
+      context.requesterName ?? '',
       context.requesterEmail,
       context.comment,
       context.tenantId,
@@ -222,7 +222,7 @@ export class NotificationService implements OnModuleInit {
       context.version,
       context.transactionType,
       context.configId,
-      context.requesterName || '',
+      context.requesterName ?? '',
       context.requesterEmail,
       context.comment,
       context.tenantId,
@@ -233,7 +233,7 @@ export class NotificationService implements OnModuleInit {
       context.version,
       context.transactionType,
       context.configId,
-      context.requesterName || '',
+      context.requesterName ?? '',
       context.requesterEmail,
       context.comment,
       context.tenantId,
@@ -259,7 +259,7 @@ export class NotificationService implements OnModuleInit {
       context.version,
       context.transactionType,
       context.configId,
-      context.requesterName || '',
+      context.requesterName ?? '',
       context.requesterEmail,
       context.comment,
       context.tenantId,
@@ -270,7 +270,7 @@ export class NotificationService implements OnModuleInit {
       context.version,
       context.transactionType,
       context.configId,
-      context.requesterName || '',
+      context.requesterName ?? '',
       context.requesterEmail,
       context.comment,
       context.tenantId,
@@ -313,9 +313,6 @@ export class NotificationService implements OnModuleInit {
         case EventType.PublisherDeactivate:
           fetchAll = true;
           break;
-        default:
-          this.logger.warn(`Unknown event type: ${event}`);
-          return [];
       }
 
       if (fetchAll) {
@@ -341,7 +338,7 @@ export class NotificationService implements OnModuleInit {
           role,
         );
 
-        this.logger.log(`✓ Fetched ${emails} emails for role '${role}'`);
+        this.logger.log(`Fetched ${emails.length} emails for role '${role}'`);
         return emails;
       }
 
@@ -392,14 +389,11 @@ export class NotificationService implements OnModuleInit {
         };
       }
 
-      this.logger.log(
-        `Sending emails to ${recipientEmails.length} recipient(s)`,
-      );
-      this.logger.log(`Sending emails to ${recipientEmails} recipient(s)`);
+      this.logger.log(`Sending emails to ${recipientEmails.length} recipient(s)`);
 
       let htmlContent = '';
       let textContent = '';
-      let theme: EmailTheme | null = null;
+      let theme: EmailTheme;
 
       if ('transactionType' in actionEntity) {
         const config = actionEntity;
@@ -459,14 +453,7 @@ export class NotificationService implements OnModuleInit {
         };
       }
 
-      if (!theme) {
-        this.logger.warn(`No email theme found for event '${event}'`);
-        return {
-          success: false,
-          message: 'No email theme found',
-          recipients: 0,
-        };
-      }
+     
 
       const emailSent = await this.sendEmail({
         to: recipientEmails.join(', '),
@@ -527,7 +514,7 @@ export class NotificationService implements OnModuleInit {
     }
 
     const isActivation = publishingStatus === 'active';
-    const subject = `Configuration ${isActivation ? 'Activated' : 'Deactivated'}: ${config.transactionType || 'Configuration'} v${config.version || '1.0'}`;
+    const subject = `Configuration ${isActivation ? 'Activated' : 'Deactivated'}: ${config.transactionType ?? 'Configuration'} v${config.version ?? '1.0'}`;
 
     const text = generatePublishingStatusEmailText(
       configId,
@@ -608,7 +595,7 @@ export class NotificationService implements OnModuleInit {
 
       const responseArr =
         response.data && Array.isArray(response.data) ? response.data : [];
-      const emailList = responseArr?.map((obj) => obj?.username);
+      const emailList = responseArr.map((obj) => obj?.username);
       this.logger.log('Fetched user emails: ', emailList);
       return emailList;
     } catch (error) {

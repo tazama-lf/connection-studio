@@ -33,7 +33,7 @@ export default defineConfig([
       '@eslint-community/eslint-comments/require-description': ['error', { ignore: ['eslint-enable'] }],
       '@eslint-community/eslint-comments/disable-enable-pair': 'error',
       '@typescript-eslint/init-declarations': 'off',
-      '@typescript-eslint/max-params': ['warn', { max: 7 }],
+      '@typescript-eslint/max-params': ['warn', { max: 6 }],
       '@typescript-eslint/no-non-null-assertion': 'off',
       '@typescript-eslint/class-methods-use-this': 'off',
       '@typescript-eslint/no-explicit-any': 'off',
@@ -55,6 +55,7 @@ export default defineConfig([
       '@typescript-eslint/no-unsafe-argument': 'off', // 41
 
       '@stylistic/quotes': ['error', 'single'],
+      'max-lines': ['warn', { max: 450 }],
       complexity: ['warn', { max: 15 }],
       'no-console': 'error',
       'no-unneeded-ternary': 'off',
