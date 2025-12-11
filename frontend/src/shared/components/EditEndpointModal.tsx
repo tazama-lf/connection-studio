@@ -1210,6 +1210,20 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
       showError('No configuration ID available to add function');
       return;
     }
+    
+    // Check if saveTransactionDetails already exists - only allow once
+    if (functionData.functionName === 'saveTransactionDetails') {
+      const existingSaveTransaction = selectedFunctions.find(
+        (func) => func.functionName === 'saveTransactionDetails'
+      );
+      if (existingSaveTransaction) {
+        showError(
+          'Save Transaction Details can only be added once. If you need different optional parameters, please remove the existing function first and add it again'
+        );
+        return;
+      }
+    }
+    
     if (selectedFunction !== 'addDataModel') {
       // Check for duplicate functions in local state first
       const isDuplicate = selectedFunctions.some((existingFunction) => {
@@ -1372,11 +1386,6 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
         } else {
           processDestination(mapping.destination);
         }
-      }
-      if (mapping.destinations && Array.isArray(mapping.destinations)) {
-        mapping.destinations.forEach((dest: string) =>
-          processDestination(dest),
-        );
       }
     });
 
@@ -2097,7 +2106,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
             className="overflow-y-auto p-6 flex-1 min-h-0"
             data-id="element-732"
           >
-            {/* Show rejection comment only when status is STATUS_05_REJECTED */}
+            {/* Show rejection comment when status is STATUS_05_REJECTED */}
             {(isStatus(createdEndpoint?.status, 'STATUS_05_REJECTED') ||
               isStatus(existingConfig?.status, 'STATUS_05_REJECTED')) &&
               (createdEndpoint?.comments || existingConfig?.comments) && (
@@ -2123,6 +2132,41 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                         Rejection Comment
                       </h4>
                       <p className="text-sm text-red-700">
+                        {createdEndpoint?.comments ||
+                          existingConfig?.comments ||
+                          'No comment provided.'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+            {/* Show approval comment when status is STATUS_04_APPROVED */}
+            {(isStatus(createdEndpoint?.status, 'STATUS_04_APPROVED') ||
+              isStatus(existingConfig?.status, 'STATUS_04_APPROVED')) &&
+              (createdEndpoint?.comments || existingConfig?.comments) && (
+                <div className="my-2 mb-10 p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0 mt-0.5">
+                      <svg
+                        className="w-5 h-5 text-green-600"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="text-sm font-medium text-green-800 mb-1">
+                        Approval Comment
+                      </h4>
+                      <p className="text-sm text-green-700">
                         {createdEndpoint?.comments ||
                           existingConfig?.comments ||
                           'No comment provided.'}
@@ -2517,14 +2561,6 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                               } else {
                                 processDestination(mapping.destination);
                               }
-                            }
-                            if (
-                              mapping.destinations &&
-                              Array.isArray(mapping.destinations)
-                            ) {
-                              mapping.destinations.forEach((dest: string) =>
-                                processDestination(dest),
-                              );
                             }
                           });
 
