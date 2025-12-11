@@ -12,7 +12,6 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
-  Req,
   Headers,
   BadRequestException,
 } from '@nestjs/common';
@@ -167,7 +166,13 @@ export class ConfigController {
   async workflow(
     @Param('id', ParseIntPipe) id: number,
     @Query('action') action: string,
-    @Body() dto: SubmitForApprovalDto | ApprovalDto | RejectionDto | DeploymentDto | StatusTransitionDto,
+    @Body()
+    dto:
+      | SubmitForApprovalDto
+      | ApprovalDto
+      | RejectionDto
+      | DeploymentDto
+      | StatusTransitionDto,
     @User() user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
     if (!action) {

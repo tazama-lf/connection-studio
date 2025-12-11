@@ -32,9 +32,11 @@ export class ConfigUtilsService {
     let userMessage =
       'Failed to create configuration. Please check your input and try again.';
 
-    const isDuplicateKey = error.message?.includes('duplicate key value') ?? false;
-    const isUniqueConstraint = error.message?.includes('unique constraint') ?? false;
-    
+    const isDuplicateKey =
+      error.message?.includes('duplicate key value') ?? false;
+    const isUniqueConstraint =
+      error.message?.includes('unique constraint') ?? false;
+
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- logical OR needed for boolean values
     if (isDuplicateKey || isUniqueConstraint) {
       userMessage = `A configuration with Message Family '${msgFam}', Transaction Type '${transactionType}', and Version '${version}' already exists. Please use different values.`;

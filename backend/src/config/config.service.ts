@@ -71,11 +71,7 @@ export class ConfigService {
 
     await this.getConfigOrThrow(id, tenantId, token);
 
-    await this.configRepository.updateConfigStatus(
-      id,
-      status,
-      token,
-    );
+    await this.configRepository.updateConfigStatus(id, status, token);
 
     this.logger.log(
       `[${tenantId}] Config ${id} status updated successfully to ${status}`,
@@ -86,8 +82,6 @@ export class ConfigService {
       message: `Config status updated to ${status}`,
     };
   }
-
-
 
   private validateWorkflowAction(
     userClaims: string[],
@@ -114,7 +108,7 @@ export class ConfigService {
   ): Promise<ConfigResponseDto> {
     try {
       this.logger.log('Creating new config...', dto.schema);
-      const version = dto.version ;
+      const { version } = dto;
       const msgFam = dto.msgFam ?? 'unknown';
       const existingConfig =
         await this.configRepository.findConfigByMsgFamVersionAndTransactionType(
@@ -177,7 +171,7 @@ export class ConfigService {
       return {
         success: true,
         message: 'Config created successfully',
-        config: config as Config,
+        config: config!,
       };
     } catch (error) {
       this.logger.error(
@@ -187,7 +181,7 @@ export class ConfigService {
 
       const msgFam = dto.msgFam ?? 'unknown';
       const { transactionType } = dto;
-      const version = dto.version ?? 'v1';
+      const { version } = dto;
 
       const userMessage = this.configUtils.buildUserErrorMessage(
         error,
@@ -203,12 +197,11 @@ export class ConfigService {
     }
   }
 
-    async workflow(
+  async workflow(
     id: number,
     user: AuthenticatedUser,
     token: string,
   ): Promise<ConfigResponseDto> {
-
     //ye hata doh update khud error de ga
     await this.getConfigOrThrow(id, user.tenantId, token);
 
@@ -244,11 +237,12 @@ export class ConfigService {
     switch (action.toLowerCase()) {
       case 'submit': {
         const submitDto = dto as SubmitForApprovalDto;
-        const updatedConfig = await this.configRepository.getupdateConfigByStatus(
-          id,
-          ConfigStatus.UNDER_REVIEW,
-          token,
-        );
+        const updatedConfig =
+          await this.configRepository.getupdateConfigByStatus(
+            id,
+            ConfigStatus.UNDER_REVIEW,
+            token,
+          );
 
         if (updatedConfig) {
           const config = updatedConfig;
@@ -257,7 +251,7 @@ export class ConfigService {
             user,
             config,
             token,
-            submitDto?.comment,
+            submitDto.comment,
           );
         }
 
@@ -266,15 +260,16 @@ export class ConfigService {
           message: `Configuration ${id} submitted for approval successfully`,
         };
       }
-      
+
       case 'approve': {
         const approvalDto = dto as ApprovalDto;
-        const updatedConfig = await this.configRepository.getupdateConfigByStatus(
-          id,
-          ConfigStatus.APPROVED,
-          token,
-          approvalDto?.comment,
-        );
+        const updatedConfig =
+          await this.configRepository.getupdateConfigByStatus(
+            id,
+            ConfigStatus.APPROVED,
+            token,
+            approvalDto.comment,
+          );
 
         if (updatedConfig) {
           const config = updatedConfig;
@@ -283,7 +278,7 @@ export class ConfigService {
             user,
             config,
             token,
-            approvalDto?.comment,
+            approvalDto.comment,
           );
         }
 
@@ -292,16 +287,17 @@ export class ConfigService {
           message: `Configuration ${id} has been approved successfully`,
         };
       }
-      
+
       case 'reject': {
         const rejectionDto = dto as RejectionDto;
 
-        const updatedConfig = await this.configRepository.getupdateConfigByStatus(
-          id,
-          ConfigStatus.REJECTED,
-          token,
-          rejectionDto.comment,
-        );
+        const updatedConfig =
+          await this.configRepository.getupdateConfigByStatus(
+            id,
+            ConfigStatus.REJECTED,
+            token,
+            rejectionDto.comment,
+          );
 
         if (updatedConfig) {
           const config = updatedConfig;
@@ -319,7 +315,7 @@ export class ConfigService {
           message: `Configuration ${id} has been rejected successfully`,
         };
       }
-      
+
       case 'export': {
         const exportDto = dto as StatusTransitionDto;
         const config = await this.getConfigOrThrow(id, user.tenantId, token);
@@ -332,17 +328,13 @@ export class ConfigService {
         const fileName = `dems_${tenantId}_${id}`;
 
         try {
-          const exportStatus = ConfigStatus.READY_FOR_DEPLOYMENT;
           const configToExport = {
             ...config,
-            status: exportStatus,
+            status: ConfigStatus.DEPLOYED,
             msg_fam: config.msgFam,
             tenant_id: config.tenantId,
           };
-          await this.sftpService.createFile(fileName, {
-            ...configToExport,
-            status: ConfigStatus.DEPLOYED,
-          });
+          await this.sftpService.createFile(fileName, configToExport);
 
           const result = await this.configRepository.getupdateConfigByStatus(
             id,
@@ -357,7 +349,7 @@ export class ConfigService {
               user,
               exportedConfig,
               token,
-              exportDto?.comment,
+              exportDto.comment,
             );
           }
 
@@ -373,17 +365,15 @@ export class ConfigService {
           );
         }
       }
-      
+
       case 'deploy': {
         const deployDto = dto as DeploymentDto;
         const { tenantId, userId } = user;
         const fileName = `dems_${tenantId}_${id}`;
-        let sftpConfigStatus: ConfigStatus;
         let configData: any;
 
         try {
           configData = await this.sftpService.readFile(fileName);
-          sftpConfigStatus = configData.status as ConfigStatus;
         } catch (error) {
           throw new BadRequestException(
             `Cannot deploy config ${id}: status is undefined and SFTP read failed. Error: ${error.message}`,
@@ -405,7 +395,8 @@ export class ConfigService {
               version: configData.version,
               schema: configData.schema === null ? null : configData.schema,
               mapping: configData.mapping === null ? null : configData.mapping,
-              functions: configData.functions === null ? null : configData.functions,
+              functions:
+                configData.functions === null ? null : configData.functions,
               credentials: configData.credentials,
               tenantId,
               createdBy: configData.createdBy ?? userId,
@@ -413,7 +404,7 @@ export class ConfigService {
               updatedAt: new Date(),
             };
 
-             await this.configRepository.createDeployedConfig(
+            await this.configRepository.createDeployedConfig(
               deployedConfigData,
               token,
             );
@@ -425,21 +416,20 @@ export class ConfigService {
           }
 
           const { transactionType } = configData;
-          
-            await this.configRepository.createTransactionTypeTable(
-              transactionType,
-              token,
-            );
-            this.logger.log(
-              `Successfully created table "${transactionType}" from deployed config`,
-            );
-          
 
-          const functions = configData.functions || null;
+          await this.configRepository.createTransactionTypeTable(
+            transactionType,
+            token,
+          );
+          this.logger.log(
+            `Successfully created table "${transactionType}" from deployed config`,
+          );
+
+          const functions = configData.functions ?? null;
 
           if (Array.isArray(functions)) {
             const datamodelFunctions = functions.filter(
-              (fn) => fn.functionName === 'addDataModelTable'
+              (fn) => fn.functionName === 'addDataModelTable',
             );
 
             for (const datamodelFn of datamodelFunctions) {
@@ -459,11 +449,13 @@ export class ConfigService {
                 );
               } else {
                 this.logger.warn(
-                  `Skipping addDataModelTable function without tableName`,
+                  'Skipping addDataModelTable function without tableName',
                 );
               }
             }
-          } else if (functions && functions.functionName === 'addDataModelTable') {
+          } else if (
+            functions?.functionName === 'addDataModelTable'
+          ) {
             if (functions.tableName) {
               this.logger.log(
                 `Creating datamodel table: ${functions.tableName}`,
@@ -481,7 +473,6 @@ export class ConfigService {
             }
           }
 
-
           await this.sftpService.deleteFile(fileName);
           this.logger.log(`Deleted config file from SFTP: ${fileName}`);
 
@@ -491,7 +482,7 @@ export class ConfigService {
             user,
             deployedConfig,
             token,
-            deployDto?.comment,
+            deployDto.comment,
           );
 
           this.logger.log(
@@ -510,7 +501,7 @@ export class ConfigService {
           );
         }
       }
-      
+
       default:
         throw new BadRequestException(
           `Invalid workflow action: ${action}. Valid actions are: submit, approve, reject, export, deploy`,

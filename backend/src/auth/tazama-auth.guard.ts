@@ -28,14 +28,17 @@ export class TazamaAuthGuard implements CanActivate {
     if (this.isPublicRoute(context)) return true;
 
     const request = context.switchToHttp().getRequest();
-    const token = this.extractBearerToken(request.headers.authorization, logContext);
+    const token = this.extractBearerToken(
+      request.headers.authorization,
+      logContext,
+    );
 
     const { requiredClaims, anyClaims } = this.getClaimsFromDecorators(context);
 
-    const validated = validateTokenAndClaims(
-      token,
-      [...requiredClaims, ...anyClaims],
-    );
+    const validated = validateTokenAndClaims(token, [
+      ...requiredClaims,
+      ...anyClaims,
+    ]);
 
     const { status, valid, invalid } = this.evaluateClaimResult(
       requiredClaims,
@@ -45,7 +48,9 @@ export class TazamaAuthGuard implements CanActivate {
     );
 
     if (!status) {
-      throw new UnauthorizedException(`Missing or invalid claims: ${invalid.join(', ')}`);
+      throw new UnauthorizedException(
+        `Missing or invalid claims: ${invalid.join(', ')}`,
+      );
     }
 
     const decoded = this.extractTokenPayload(token);
@@ -61,13 +66,12 @@ export class TazamaAuthGuard implements CanActivate {
     return true;
   }
 
-private isPublicRoute(context: ExecutionContext): boolean {
-  return this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
-    context.getHandler(),
-    context.getClass(),
-  ]);
-}
-
+  private isPublicRoute(context: ExecutionContext): boolean {
+    return this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+  }
 
   private extractBearerToken(
     authHeader: string | undefined,
@@ -88,13 +92,13 @@ private isPublicRoute(context: ExecutionContext): boolean {
       this.reflector.getAllAndOverride<string[]>(CLAIMS_KEY, [
         context.getHandler(),
         context.getClass(),
-      ]) ?? [];
+      ]) || [];
 
     const anyClaims =
       this.reflector.getAllAndOverride<string[]>(ANY_CLAIMS_KEY, [
         context.getHandler(),
         context.getClass(),
-      ]) ?? [];
+      ]) || [];
 
     if (requiredClaims.length === 0 && anyClaims.length === 0) {
       throw new UnauthorizedException('No required claims specified');
