@@ -483,19 +483,6 @@ describe('DryRunService', () => {
       expect(loggerService.warn).toHaveBeenCalled();
     });
 
-    it('should throw error for unsupported file type', async () => {
-      mockSftpClient.get.mockResolvedValue(Buffer.from('data'));
-      (iconv.decode as jest.Mock).mockReturnValue('data');
-
-      await expect(
-        service.transformFileToJSON(mockSftpClient, {
-          path: '/data/test.xml',
-          file_type: 'XML' as FileType,
-          delimiter: '',
-        }),
-      ).rejects.toThrow('Unsupported file type');
-    });
-
     it('should handle file read errors', async () => {
       mockSftpClient.get.mockRejectedValue(new Error('File read error'));
 

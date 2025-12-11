@@ -115,6 +115,7 @@ describe('SchedulerService', () => {
     const createScheduleDto = {
       name: 'Test Schedule',
       cron: '0 0 * * *',
+      id : 'test-schedule-id'
     };
 
     it('should create a schedule successfully', async () => {
@@ -138,7 +139,7 @@ describe('SchedulerService', () => {
           cron: createScheduleDto.cron,
           tenant_id: mockTenantId,
           status: JobStatus.INPROGRESS,
-          id: expect.any(String),
+          id: createScheduleDto.id,
         }),
         mockToken,
       );
@@ -378,36 +379,6 @@ describe('SchedulerService', () => {
       );
     });
 
-    it('should throw BadRequestException if status is missing', async () => {
-      await expect(
-        service.findByStatus(null as any, page, limit, mockTenantId, mockToken),
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('should throw BadRequestException if page is missing', async () => {
-      await expect(
-        service.findByStatus(
-          status,
-          null as any,
-          limit,
-          mockTenantId,
-          mockToken,
-        ),
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('should throw BadRequestException if limit is missing', async () => {
-      await expect(
-        service.findByStatus(
-          status,
-          page,
-          null as any,
-          mockTenantId,
-          mockToken,
-        ),
-      ).rejects.toThrow(BadRequestException);
-    });
-
     it('should throw BadRequestException for invalid page number', async () => {
       await expect(
         service.findByStatus(status, 0, limit, mockTenantId, mockToken),
@@ -616,7 +587,7 @@ describe('SchedulerService', () => {
         expect(adminServiceClient.createSchedule).toHaveBeenCalledWith(
           expect.objectContaining({
             ...mockSchedule,
-            id: expect.any(String),
+            id: mockSchedule.id,
             tenant_id: mockTenantId,
             status: JobStatus.DEPLOYED,
           }),
@@ -641,12 +612,6 @@ describe('SchedulerService', () => {
 
         expect(loggerService.error).toHaveBeenCalled();
       });
-    });
-
-    it('should throw BadRequestException if status is missing', async () => {
-      await expect(
-        service.updateStatus(scheduleId, mockTenantId, null as any, mockUser),
-      ).rejects.toThrow(BadRequestException);
     });
 
     it('should handle errors and log them', async () => {

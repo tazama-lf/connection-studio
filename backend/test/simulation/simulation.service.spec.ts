@@ -1309,4 +1309,3 @@ describe('SimulationService', () => {
     });
   });
 });
-w
