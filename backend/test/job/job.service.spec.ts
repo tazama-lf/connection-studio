@@ -13,7 +13,6 @@ import {
   SourceType,
 } from '@tazama-lf/tcs-lib';
 import { AuthenticatedUser } from '../../src/auth/auth.types';
-import { DatabaseService } from '../../src/database/database.service';
 import { DryRunService } from '../../src/dry-run/dry-run.service';
 import { NotifyService } from '../../src/notify/notify.service';
 import { AdminServiceClient } from '../../src/services/admin-service-client.service';
@@ -101,12 +100,6 @@ describe('JobService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         JobService,
-        {
-          provide: DatabaseService,
-          useValue: {
-            query: jest.fn(),
-          },
-        },
         {
           provide: SchedulerService,
           useValue: {

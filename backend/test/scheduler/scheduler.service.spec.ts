@@ -1,6 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import { DatabaseService } from '../../src/database/database.service';
 import { SftpService } from '../../src/sftp/sftp.service';
 import { SchedulerService } from '../../src/scheduler/scheduler.service';
 import { AdminServiceClient } from '../../src/services/admin-service-client.service';
@@ -59,12 +58,6 @@ describe('SchedulerService', () => {
           },
         },
         {
-          provide: DatabaseService,
-          useValue: {
-            query: jest.fn(),
-          },
-        },
-        {
           provide: SftpService,
           useValue: {
             createFile: jest.fn(),
@@ -115,7 +108,7 @@ describe('SchedulerService', () => {
     const createScheduleDto = {
       name: 'Test Schedule',
       cron: '0 0 * * *',
-      id : 'test-schedule-id'
+      id: 'test-schedule-id'
     };
 
     it('should create a schedule successfully', async () => {

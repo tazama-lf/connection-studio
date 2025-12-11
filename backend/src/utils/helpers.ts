@@ -26,8 +26,10 @@ export function encrypt(text: string): string {
     encrypted += cipher.final('hex');
 
     return iv.toString('hex') + ':' + encrypted;
-  } catch (error) {
-    throw new Error('Failed to encrypt sensitive data');
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    this.loggerService.error(message);
+    throw new BadRequestException(message);
   }
 }
 
@@ -47,18 +49,22 @@ export function decrypt(text: string): string {
     decrypted += decipher.final('utf8');
 
     return decrypted;
-  } catch {
-    throw new Error('Failed to decrypt sensitive data');
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    this.loggerService.error(message);
+    throw new BadRequestException(message);
   }
 }
 
 export function validateCronExpression(expression: string): void {
   try {
-    new CronTime(expression);
+    const isValid = CronTime.validateCronExpression(expression);
+    if (!isValid.valid) {
+      throw new Error('Expression did not pass validation');
+    }
   } catch (error: unknown) {
-    const errorMessage =
-      error instanceof Error ? error.message : 'Unknown error';
-    throw new BadRequestException(`Invalid Cron Expression : ${errorMessage}`);
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    throw new BadRequestException(`Invalid Cron Expression: ${message}`);
   }
 }
 

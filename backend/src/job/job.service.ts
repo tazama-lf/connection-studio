@@ -31,7 +31,6 @@ import { CreatePullJobDto, SFTPConnectionDto } from './dto/create-pull-job.dto';
 import { CreatePushJobDto } from './dto/create-push-job.dto';
 import { UpdatePullJobDto } from './dto/update-pull-job.dto';
 import { UpdatePushJobDto } from './dto/update-push-job.dto';
-import { HTTPConnectionDto } from './dto/fetch-pull-job.dto';
 
 @Injectable()
 export class JobService {
@@ -182,7 +181,7 @@ export class JobService {
 
       await this.dryRunService.dryRun(job);
 
-      const newId = job.id ? job.id : v4();
+      const newId = job.id ?? v4();
 
       const jobWithId = structuredClone(job) as Job;
       jobWithId.id = newId;
@@ -452,7 +451,7 @@ export class JobService {
           if (type === ConfigType.PULL) {
             const connection = structuredClone(
               fileData.connection,
-            ) as SFTPConnection || HTTPConnectionDto;
+            ) as SFTPConnection;
 
             if (
               connection.auth_type === AuthType.USERNAME_PASSWORD &&
