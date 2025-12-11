@@ -5,7 +5,6 @@ import {
   Body,
   Param,
   ParseIntPipe,
-  Req,
   Logger,
   UseGuards,
 } from '@nestjs/common';
@@ -62,15 +61,6 @@ export class TazamaDataModelController {
     error?: string;
   }> {
     try {
-      const token = user.token;
-      
-      if (!token) {
-        return {
-          success: false,
-          error: 'Authorization token is required',
-          data: [],
-        };
-      }
       
       const data = await this.tazamaDataModelService.getDestinationOptions(user.tenantId, user.token.tokenString);
       return {

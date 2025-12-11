@@ -20,7 +20,7 @@ export class TazamaDataModelRepository {
     token: string,
   ): Promise<TazamaCollectionSchema[]> {
     const response = await this.adminServiceClient.getAllCollections(tenantId, token);
-    return response.data || [];
+    return response.data ?? [];
   }
 
 
@@ -35,7 +35,7 @@ export class TazamaDataModelRepository {
 
   async destinationTypeExists(destinationTypeId: number, token: string): Promise<boolean> {
     const response = await this.adminServiceClient.destinationTypeExists(destinationTypeId, token);
-    return response.exists || false;
+    return response.exists ?? false;
   }
 
 
