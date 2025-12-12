@@ -1,6 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigWorkflowService } from '../../src/config/config-workflow.service';
-import { ConfigStatus } from '../../src/config/config.interfaces';
+import {
+  ConfigStatus,
+} from '../../src/config/config.interfaces';
 
 describe('ConfigWorkflowService', () => {
   let service: ConfigWorkflowService;
@@ -10,108 +12,219 @@ describe('ConfigWorkflowService', () => {
       providers: [ConfigWorkflowService],
     }).compile();
 
-    service = module.get<ConfigWorkflowService>(ConfigWorkflowService);
+    service = module.get(ConfigWorkflowService);
   });
 
-  it('should be defined', () => {
-    expect(service).toBeDefined();
-  });
+  it('returns valid transition when allowed', () => {
+    const result = service.validateStatusTransition(
+      ConfigStatus.IN_PROGRESS,
+      ConfigStatus.UNDER_REVIEW,
+      'submit_for_approval',
+    );
 
-  it('should validate status transitions', () => {
-    // Test valid transitions using actual WorkflowAction values
-    const result1 = service.canPerformAction(['editor'], ConfigStatus.IN_PROGRESS, 'submit_for_approval');
-    expect(result1.canPerform).toBe(true);
-
-    const result2 = service.canPerformAction(['approver'], ConfigStatus.UNDER_REVIEW, 'approve');  
-    expect(result2.canPerform).toBe(true);
-
-    const result3 = service.canPerformAction(['approver'], ConfigStatus.UNDER_REVIEW, 'reject');
-    expect(result3.canPerform).toBe(true);
-  });
-
-  it('should reject invalid transitions', () => {
-    // Test invalid transitions 
-    const result1 = service.canPerformAction(['editor'], ConfigStatus.DEPLOYED, 'submit_for_approval');
-    expect(result1.canPerform).toBe(false);
-    expect(result1.message).toBeDefined();
-  });
-
-  it('should validate user permissions', () => {
-    // Test permission validation - editor cannot approve
-    const result = service.canPerformAction(['editor'], ConfigStatus.UNDER_REVIEW, 'approve');
-    expect(result.canPerform).toBe(false);
-    expect(result.message).toContain('approver');
-  });
-
-  it('should check if config can be edited', () => {
-    // Test editable statuses
-    const editableResult = service.canEditConfig(ConfigStatus.IN_PROGRESS);
-    expect(editableResult.canEdit).toBe(true);
-
-    const rejectedResult = service.canEditConfig(ConfigStatus.REJECTED);
-    expect(rejectedResult.canEdit).toBe(true);
-
-    // Test non-editable statuses
-    const deployedResult = service.canEditConfig(ConfigStatus.DEPLOYED);
-    expect(deployedResult.canEdit).toBe(false);
-    expect(deployedResult.message).toContain('not allowed');
-
-    const approvedResult = service.canEditConfig(ConfigStatus.APPROVED);
-    expect(approvedResult.canEdit).toBe(false);
-    expect(approvedResult.message).toContain('not allowed');
-  });
-
-  it('should get action descriptions', () => {
-    const description = service.getActionDescription('submit_for_approval');
-    expect(description).toBeDefined();
-    expect(typeof description).toBe('string');
-    expect(description).toBe('Submit for Approval');
-  });
-
-  it('should handle status normalization', () => {
-    // Test the normalize status functionality indirectly through validation
-    const result = service.validateStatusTransition(ConfigStatus.IN_PROGRESS, ConfigStatus.UNDER_REVIEW, 'submit_for_approval');
     expect(result.isValid).toBe(true);
   });
 
-  it('should validate workflow actions with proper error messages', () => {
-    // Test insufficient permissions - viewer role does not exist
-    const result1 = service.canPerformAction(['viewer'], ConfigStatus.IN_PROGRESS, 'submit_for_approval');
-    expect(result1.canPerform).toBe(false);
-    expect(result1.message).toContain('editor');
+  it('returns invalid transition when not allowed', () => {
+    const result = service.validateStatusTransition(
+      ConfigStatus.IN_PROGRESS,
+      ConfigStatus.APPROVED,
+      'approve',
+    );
 
-    // Test invalid status transition
-    const result2 = service.canPerformAction(['editor'], ConfigStatus.DEPLOYED, 'submit_for_approval');
-    expect(result2.canPerform).toBe(false);
-    expect(result2.message).toBeDefined();
+    expect(result.isValid).toBe(false);
+    expect(result.reason).toContain('Invalid transition');
   });
 
-  it('should handle edge cases', () => {
-    // Test empty claims array
-    const result1 = service.canPerformAction([], ConfigStatus.IN_PROGRESS, 'submit_for_approval');
-    expect(result1.canPerform).toBe(false);
+  it('allows editor to edit and submit IN_PROGRESS config', () => {
+    const result = service.validateUserPermissions(
+      ['editor'],
+      ConfigStatus.IN_PROGRESS,
+      'submit_for_approval',
+    );
 
-    // Test unknown action - this returns status transition error since unknown action maps to undefined status
-    const result2 = service.canPerformAction(['editor'], ConfigStatus.IN_PROGRESS, 'unknown_action');
-    expect(result2.canPerform).toBe(false);
-    expect(result2.message).toContain('Invalid transition');
+    expect(result.canEdit).toBe(true);
+    expect(result.canSubmit).toBe(true);
   });
 
-  it('should validate exporter permissions', () => {
-    const result = service.canPerformAction(['exporter'], ConfigStatus.APPROVED, 'export');
+  it('allows approver actions in UNDER_REVIEW', () => {
+    const result = service.validateUserPermissions(
+      ['approver'],
+      ConfigStatus.UNDER_REVIEW,
+      'approve',
+    );
+
+    expect(result.canApprove).toBe(true);
+    expect(result.canReject).toBe(true);
+  });
+
+  it('allows exporter to export APPROVED config', () => {
+    const result = service.validateUserPermissions(
+      ['exporter'],
+      ConfigStatus.APPROVED,
+      'export',
+    );
+
+    expect(result.canExport).toBe(true);
+  });
+
+  it('allows publisher to deploy APPROVED config', () => {
+    const result = service.validateUserPermissions(
+      ['publisher'],
+      ConfigStatus.APPROVED,
+      'deploy',
+    );
+
+    expect(result.canDeploy).toBe(true);
+  });
+
+  it('returns correct target status for actions', () => {
+    expect(service.getTargetStatus('approve')).toBe(ConfigStatus.APPROVED);
+    expect(service.getTargetStatus('reject')).toBe(ConfigStatus.REJECTED);
+    expect(service.getTargetStatus('deploy')).toBe(ConfigStatus.DEPLOYED);
+  });
+
+  it('allows editor to submit config for approval', () => {
+    const result = service.canPerformAction(
+      ['editor'],
+      ConfigStatus.IN_PROGRESS,
+      'submit_for_approval',
+    );
+
     expect(result.canPerform).toBe(true);
-
-    const invalidResult = service.canPerformAction(['exporter'], ConfigStatus.IN_PROGRESS, 'export');
-    expect(invalidResult.canPerform).toBe(false);
-    expect(invalidResult.message).toContain('Invalid transition');
   });
 
-  it('should validate publisher permissions', () => {
-    const result = service.canPerformAction(['publisher'], ConfigStatus.EXPORTED, 'deploy');
-    expect(result.canPerform).toBe(true);
+  it('allows approver to approve UNDER_REVIEW config', () => {
+    const result = service.canPerformAction(
+      ['approver'],
+      ConfigStatus.UNDER_REVIEW,
+      'approve',
+    );
 
-    const invalidResult = service.canPerformAction(['publisher'], ConfigStatus.IN_PROGRESS, 'deploy');
-    expect(invalidResult.canPerform).toBe(false);
-    expect(invalidResult.message).toContain('Invalid transition');
+    expect(result.canPerform).toBe(true);
+  });
+
+  it('allows exporter to export APPROVED config', () => {
+    const result = service.canPerformAction(
+      ['exporter'],
+      ConfigStatus.APPROVED,
+      'export',
+    );
+
+    expect(result.canPerform).toBe(true);
+  });
+
+  it('allows publisher to deploy EXPORTED config', () => {
+    const result = service.canPerformAction(
+      ['publisher'],
+      ConfigStatus.EXPORTED,
+      'deploy',
+    );
+
+    expect(result.canPerform).toBe(true);
+  });
+
+  it('blocks submit when user is not editor', () => {
+    const result = service.canPerformAction(
+      ['approver'],
+      ConfigStatus.IN_PROGRESS,
+      'submit_for_approval',
+    );
+
+    expect(result.canPerform).toBe(false);
+    expect(result.message).toContain('Only editors');
+  });
+
+  it('blocks approve when user is not approver', () => {
+    const result = service.canPerformAction(
+      ['editor'],
+      ConfigStatus.UNDER_REVIEW,
+      'approve',
+    );
+
+    expect(result.canPerform).toBe(false);
+    expect(result.message).toContain('Only approvers');
+  });
+
+  it('blocks reject when user is not approver', () => {
+    const result = service.canPerformAction(
+      ['editor'],
+      ConfigStatus.UNDER_REVIEW,
+      'reject',
+    );
+
+    expect(result.canPerform).toBe(false);
+    expect(result.message).toBe(
+      'Only approvers can reject configurations in UNDER_REVIEW status',
+    );
+  });
+
+  it('blocks export when user is not exporter', () => {
+    const result = service.canPerformAction(
+      ['editor'],
+      ConfigStatus.APPROVED,
+      'export',
+    );
+
+    expect(result.canPerform).toBe(false);
+    expect(result.message).toBe(
+      'Only exporters can export configurations in APPROVED status',
+    );
+  });
+
+  it('blocks deploy when user is not publisher', () => {
+    const result = service.canPerformAction(
+      ['editor'],
+      ConfigStatus.EXPORTED,
+      'deploy',
+    );
+
+    expect(result.canPerform).toBe(false);
+    expect(result.message).toBe(
+      'Only publishers can deploy configurations in EXPORTED status',
+    );
+  });
+
+  it('blocks return_to_progress when user is not editor or not rejected', () => {
+    const result = service.canPerformAction(
+      ['approver'],
+      ConfigStatus.REJECTED,
+      'return_to_progress',
+    );
+
+    expect(result.canPerform).toBe(false);
+    expect(result.message).toBe(
+      'Only editors can return rejected configurations to progress',
+    );
+  });
+
+  it('returns invalid transition for unknown action', () => {
+    const result = service.canPerformAction(
+      ['editor'],
+      ConfigStatus.IN_PROGRESS,
+      'unknown_action',
+    );
+
+    expect(result.canPerform).toBe(false);
+    expect(result.message).toContain('Invalid transition');
+  });
+
+  it('allows editing for IN_PROGRESS config', () => {
+    const result = service.canEditConfig(ConfigStatus.IN_PROGRESS);
+    expect(result.canEdit).toBe(true);
+  });
+
+  it('blocks editing for DEPLOYED config', () => {
+    const result = service.canEditConfig(ConfigStatus.DEPLOYED);
+    expect(result.canEdit).toBe(false);
+    expect(result.message).toContain('Editing not allowed');
+  });
+
+  it('returns correct action descriptions', () => {
+    expect(service.getActionDescription('approve')).toBe('Approve');
+    expect(service.getActionDescription('export')).toBe('Export');
+    expect(service.getActionDescription('return_to_progress')).toBe(
+      'Return to Progress',
+    );
   });
 });
