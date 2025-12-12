@@ -466,7 +466,7 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
               type="text"
               value={dataModelForm?.tableName || ''}
               onChange={(e) => {
-                const value = e.target.value;
+                const value = e.target.value.toLowerCase();
                 setDataModelForm({
                   ...dataModelForm,
                   tableName: value,
@@ -490,8 +490,15 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
                   }
                 }
               }}
+              onKeyPress={(e) => {
+                // Only allow alphanumeric and underscore
+                const char = e.key;
+                if (!/[a-zA-Z0-9_]/.test(char)) {
+                  e.preventDefault();
+                }
+              }}
               placeholder="Enter table name"
-              className={`w-full p-3 border rounded-lg focus:ring-2 focus:border-transparent ${
+              className={`w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                 tableNameError ? 'border-red-300 bg-red-50' : 'border-gray-300'
               }`}
             />

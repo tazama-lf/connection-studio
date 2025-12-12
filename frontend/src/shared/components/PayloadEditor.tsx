@@ -154,12 +154,12 @@ const transactionTypeSchema = yup
   .string()
   .required('Transaction Type is required')
   .matches(
-    /^[A-Za-z_][A-Za-z0-9_]*$/,
-    'Transaction Type must start with a letter or underscore and contain only letters, numbers, or underscores'
+    /^[a-z_][a-z0-9_\-/]*$/,
+    'Transaction Type must start with a lowercase letter or underscore and contain only lowercase letters, numbers, underscores, hyphens, or forward slashes'
   );
 
 
-  // Event Type (msgFam) validation - Optional but with same format rules as Transaction Type
+  // Event Type (msgFam) validation - Optional
   const eventTypeSchema = yup
     .string()
     .notRequired() // Optional field
@@ -1290,7 +1290,7 @@ const transactionTypeSchema = yup
                   type="text"
                   value={endpointData.transactionType || ''}
                   onChange={(e) =>
-                    handleEndpointDataChange('transactionType', e.target.value)
+                    handleEndpointDataChange('transactionType', e.target.value.toLowerCase())
                   }
                   onKeyPress={(e) => {
                     // Only allow alphanumeric and special chars: _, -, /
