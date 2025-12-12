@@ -17,7 +17,6 @@ import {
   type FieldAdjustment,
 } from '../../features/config/services/configApi';
 import ReactJson from 'react-json-view';
-
 interface PayloadEditorProps {
   value: string;
   onChange: (value: string) => void;
@@ -39,7 +38,6 @@ interface PayloadEditorProps {
   payloadError?: any; // External payload error from parent component
   setPayloadError?: any; // Callback to set external payload error
 }
-
 interface EndpointFormData {
   version: string;
   transactionType: string;
@@ -47,7 +45,6 @@ interface EndpointFormData {
   contentType: string;
   msgFam?: string;
 }
-
 interface InferredField {
   path: string;
   type: 'String' | 'Number' | 'Boolean' | 'Object' | 'Array';
@@ -55,7 +52,6 @@ interface InferredField {
   level: number;
   required: boolean;
 }
-
 export const PayloadEditor: React.FC<PayloadEditorProps> = ({
   value,
   onChange,
@@ -74,9 +70,6 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
   payloadError,
   setPayloadError,
 }) => {
-  console.log('shouldCreateNew', shouldCreateNew, isCloning);
-
-  // New state for endpoint form data
   const [endpointData, setEndpointData] = useState<EndpointFormData>(
     initialEndpointData || {
       version: '',
@@ -86,11 +79,8 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
       msgFam: '',
     },
   );
-
-  // State for inferred fields from schema generation
   const [inferredFields, setInferredFields] = useState<InferredField[]>([]);
   const [showInferredFields, setShowInferredFields] = useState(false);
-
   const [fieldGenerationError, setFieldGenerationError] = useState<
     string | null
   >(null);
@@ -101,13 +91,9 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
     type: 'String' as InferredField['type'],
     required: false,
   });
-
-  // State for payload validation
   const [isPayloadValid, setIsPayloadValid] = useState<boolean>(false);
   const [payloadValidationMessage, setPayloadValidationMessage] =
     useState<string>('');
-
-  // State for field validation errors
   const [fieldErrors, setFieldErrors] = useState<{
     version: string;
     transactionType: string;
@@ -119,16 +105,10 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
     eventType: '',
     payload: '',
   });
-
-  // State to track if validation should be shown (only after save attempt)
   const [showValidationErrors, setShowValidationErrors] = useState(false);
-
-  // Helper function for capitalizing strings
   const capitalizeFirstLetter = (string: string): string => {
     return string.charAt(0).toUpperCase() + string.slice(1).toLowerCase();
   };
-
-  // Helper function to safely parse JSON
   const safeJsonParse = (
     jsonString: string,
   ): { success: boolean; data?: any; error?: string } => {
@@ -139,8 +119,6 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
       return { success: false, error: 'Invalid JSON format' };
     }
   };
-
-  // Yup validation schemas
   const versionSchema = yup
     .string()
     .required('Version is required')
@@ -148,18 +126,14 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
       /^v?\d+\.\d+\.\d+$/,
       'Version must follow semantic versioning format (e.g: 1.0.0 or v1.0.0)',
     );
-  // Note: Auto 'v' prefix transform removed - accepts both formats as-is
-
 const transactionTypeSchema = yup
   .string()
   .required('Transaction Type is required')
   .matches(
-    /^[a-z_][a-z0-9_\-]*$/,
-    'Transaction Type must start with a lowercase letter or underscore and contain only lowercase letters, numbers, underscores, or hyphens'
+    /^[a-z_][a-z0-9_]*$/,
+    'Transaction Type must start with a lowercase letter or underscore and contain only lowercase letters, numbers, or underscores'
   );
 
-
-  // Event Type (msgFam) validation - Optional
   const eventTypeSchema = yup
     .string()
     .notRequired() // Optional field
@@ -167,16 +141,12 @@ const transactionTypeSchema = yup
       'format',
       'Event Type must be alphanumeric and can only contain _, -, / in the middle (not at start or end)',
       function (value) {
-        // If empty, it's valid (optional field)
         if (!value || value.trim() === '') {
           return true;
         }
-        // If has value, validate format
         return /^[a-zA-Z0-9]+([_\-\/][a-zA-Z0-9]+)*$/.test(value);
       },
     );
-
-  // Validation functions
   const validateVersion = (version: string): string => {
     try {
       versionSchema.validateSync(version);
@@ -188,7 +158,6 @@ const transactionTypeSchema = yup
       return 'Invalid version format';
     }
   };
-
   const validateTransactionType = (transactionType: string): string => {
     try {
       transactionTypeSchema.validateSync(transactionType);
@@ -200,7 +169,6 @@ const transactionTypeSchema = yup
       return 'Invalid transaction type format';
     }
   };
-
   const validateEventType = (eventType: string): string => {
     try {
       eventTypeSchema.validateSync(eventType);
@@ -212,61 +180,45 @@ const transactionTypeSchema = yup
       return 'Invalid event type format';
     }
   };
-
-  // Function to validate all fields and update error state
   const validateAllFields = () => {
     const versionError = validateVersion(endpointData.version);
     const transactionTypeError = validateTransactionType(
       endpointData.transactionType,
     );
     const eventTypeError = validateEventType(endpointData.msgFam || '');
-
     const errors = {
       version: versionError,
       transactionType: transactionTypeError,
       eventType: eventTypeError,
       payload: '',
     };
-
     setFieldErrors(errors);
     setShowValidationErrors(true);
-
-    // Notify parent component about validation errors
     if (onValidationErrorsChange) {
       onValidationErrorsChange({
         version: versionError,
         transactionType: transactionTypeError,
       });
     }
-
     return !versionError && !transactionTypeError && !eventTypeError;
   };
-
-  // Expose validation function to parent through useEffect
   useEffect(() => {
-    // Store validation function in a way parent can trigger it
     (window as any).__validatePayloadEditorFields = validateAllFields;
-
     return () => {
       delete (window as any).__validatePayloadEditorFields;
     };
   }, [endpointData.version, endpointData.transactionType, endpointData.msgFam]);
-
   const validatePayloadContent = (
     payloadValue: string,
     contentType: string,
     checkRequired: boolean = false,
   ): { isValid: boolean; message: string; error: string } => {
-    // Only check if payload is required when explicitly requested (e.g., on save)
     if (checkRequired && (!payloadValue || !payloadValue.trim())) {
       return { isValid: false, message: '', error: 'Payload is required' };
     }
-
-    // If payload is empty but we're not checking required, consider it valid (not yet filled)
     if (!payloadValue || !payloadValue.trim()) {
       return { isValid: true, message: '', error: '' };
     }
-
     if (contentType === 'application/json') {
       try {
         JSON.parse(payloadValue);
@@ -310,30 +262,20 @@ const transactionTypeSchema = yup
     }
     return { isValid: false, message: '', error: 'Unsupported content type' };
   };
-
-  // Handle adding a new field manually
   const handleAddField = () => {
     if (!newField.path.trim()) {
       return;
     }
-
-    // Check if field already exists
     const existsAlready = inferredFields.some(
       (f) => f.path === newField.path.trim(),
     );
     if (existsAlready) {
       return; // Don't add duplicates
     }
-
-    // Calculate the level based on dots in path
     const level = (newField.path.match(/\./g) || []).length;
-
-    // Determine parent path
     const pathParts = newField.path.split('.');
     const parent =
       pathParts.length > 1 ? pathParts.slice(0, -1).join('.') : undefined;
-
-    // Create new field
     const fieldToAdd: InferredField = {
       path: newField.path.trim(),
       type: newField.type,
@@ -341,47 +283,26 @@ const transactionTypeSchema = yup
       parent,
       required: newField.required,
     };
-
-    // Add to fields list
     setInferredFields((prev) =>
       [...prev, fieldToAdd].sort((a, b) => a.path.localeCompare(b.path)),
     );
-
-    // Reset form
     setNewField({
       path: '',
       type: 'String',
       required: false,
     });
     setShowAddFieldForm(false);
-
-    console.log('✅ Added new field manually:', fieldToAdd);
   };
-
-  // Convert SchemaField array to InferredField array for editing existing configs
   const convertSchemaFieldsToInferredFields = (
     schemaFields: SchemaField[],
   ): InferredField[] => {
     const convertFields = (fields: SchemaField[]): InferredField[] => {
       const inferredFields: InferredField[] = [];
-
       fields.forEach((field) => {
-        // Calculate level from the path itself (count dots and .0. separately)
-        // For "CstmrCdtTrfInitn.GrpHdr.InitgPty.Id.PrvtId.Othr" -> level 5
-        // For "CstmrCdtTrfInitn.GrpHdr.InitgPty.Id.PrvtId.Othr.0.Id" -> level 7
         const dotCount = (field.path.match(/\./g) || []).length;
         const level = dotCount;
-
-        // Debug logging for array fields
         if (field.type === 'array' && field.children) {
-          console.log(`🔍 Processing array field: ${field.path}`, {
-            arrayElementType: field.arrayElementType,
-            childrenCount: field.children.length,
-            childrenPaths: field.children.map((c) => c.path),
-            level,
-          });
         }
-
         const inferredField: InferredField = {
           path: field.path,
           type: capitalizeFirstLetter(field.type) as InferredField['type'],
@@ -393,55 +314,25 @@ const transactionTypeSchema = yup
             : undefined,
           required: field.isRequired,
         };
-
         inferredFields.push(inferredField);
-
-        // Recursively convert child fields
         if (field.children && field.children.length > 0) {
-          // Process children regardless of type - they have their own paths and levels
           const childFields = convertFields(field.children);
           if (field.type === 'array' && field.arrayElementType === 'object') {
-            console.log(
-              `✅ Array ${field.path} generated ${childFields.length} child fields:`,
-              childFields.map((f) => f.path),
-            );
           }
           inferredFields.push(...childFields);
         }
       });
-
       return inferredFields;
     };
-
     return convertFields(schemaFields);
   };
-
-  // Sync local state with parent when editing existing endpoint
   useEffect(() => {
     if (initialEndpointData) {
       setEndpointData(initialEndpointData);
-      console.log(
-        'PayloadEditor - Updated with existing endpoint data:',
-        initialEndpointData,
-      );
     }
   }, [initialEndpointData]);
-
-  // Initialize with existing schema fields when editing, or when returning from other steps
   useEffect(() => {
-    // Load existing schema fields whenever they change (including when returning from other steps)
     if (existingSchemaFields && existingSchemaFields.length > 0) {
-      console.log('🚨🚨🚨 ARRAY DEBUG START 🚨🚨🚨');
-      console.log(
-        'PayloadEditor - Converting existing schema fields:',
-        existingSchemaFields,
-      );
-      console.log(
-        '🔢 Raw schema fields received:',
-        existingSchemaFields.length,
-      );
-
-      // Check if existingSchemaFields is already InferredField[] format
       if (
         existingSchemaFields[0] &&
         typeof existingSchemaFields[0] === 'object' &&
@@ -449,74 +340,29 @@ const transactionTypeSchema = yup
         'type' in existingSchemaFields[0] &&
         'level' in existingSchemaFields[0]
       ) {
-        console.log(
-          '🚨 Schema is already InferredField[] format, using directly',
-        );
         setInferredFields(existingSchemaFields as InferredField[]);
         setShowInferredFields(true);
-        console.log(
-          'PayloadEditor - Initialized with existing InferredField[]:',
-          existingSchemaFields,
-        );
-        console.log(
-          `🔢 FINAL RESULT: Total fields loaded: ${existingSchemaFields.length}`,
-        );
       } else {
-        // Legacy: Convert SchemaField[] to InferredField[]
-        console.log(
-          '🚨 Schema is SchemaField[] format, converting to InferredField[]',
-        );
-        console.log(
-          '🚨 First few SchemaFields:',
-          existingSchemaFields
-            .slice(0, 5)
-            .map((f: any) => ({ name: f.name, path: f.path, type: f.type })),
-        );
         const inferredFields = convertSchemaFieldsToInferredFields(
           existingSchemaFields as SchemaField[],
         );
-        console.log(
-          '🚨 First few InferredFields after conversion:',
-          inferredFields
-            .slice(0, 5)
-            .map((f) => ({ path: f.path, type: f.type, level: f.level })),
-        );
         setInferredFields(inferredFields);
         setShowInferredFields(true);
-        console.log(
-          'PayloadEditor - Initialized with existing schema fields:',
-          inferredFields,
-        );
-        console.log(
-          `🔢 FINAL RESULT: Total fields loaded: ${inferredFields.length}`,
-        );
       }
-
-      console.log('🚨🚨🚨 ARRAY DEBUG END 🚨🚨🚨');
     } else if (
       configId &&
       (!existingSchemaFields || existingSchemaFields.length === 0)
     ) {
-      // When editing existing config but no schema fields exist, show empty schema editor
-      console.log(
-        'PayloadEditor - Showing empty schema editor for existing config',
-      );
       setShowInferredFields(true);
       setInferredFields([]);
     } else if (!configId) {
-      console.log('PayloadEditor - No existing schema fields provided');
-      // For new endpoints, also show the schema editor
       setShowInferredFields(true);
       setInferredFields([]);
     }
   }, [existingSchemaFields, configId]); // Removed hasUserMadeEdits dependency
-
-  // Always show the schema fields section (no auto-generation)
   useEffect(() => {
     setShowInferredFields(true);
   }, []); // Only run once on component mount
-
-  // Notify parent component when field adjustments change
   useEffect(() => {
     if (onFieldAdjustmentsChange && inferredFields.length > 0) {
       const fieldAdjustments = inferredFields.map((field) => ({
@@ -532,65 +378,33 @@ const transactionTypeSchema = yup
       onFieldAdjustmentsChange(fieldAdjustments);
     }
   }, [inferredFields, onFieldAdjustmentsChange]);
-
-  // Notify parent component when schema changes
   useEffect(() => {
     if (onSchemaChange) {
-      // IMPORTANT: Call onSchemaChange whenever inferredFields changes, even if empty
-      // This ensures parent component (EditEndpointModal) always has the latest schema state
       if (inferredFields.length > 0) {
-        // Pass the InferredField[] array directly to preserve all field information
-        console.log(
-          '📤 PayloadEditor: Notifying parent of schema change:',
-          inferredFields.length,
-          'fields',
-        );
         onSchemaChange(inferredFields);
       } else {
-        // If no fields, notify parent with null to prevent stale data
-        console.log('📤 PayloadEditor: Notifying parent of empty schema');
-        // Don't set to null - let parent decide what to do with existing schema
-        // onSchemaChange(null);
       }
     }
   }, [inferredFields, onSchemaChange]);
-
-  // Manual generation function for new connections
   const handleGenerateFields = async () => {
-    console.log('🔄 handleGenerateFields called');
-    console.log('📄 Current payload value:', value);
-    console.log('📏 Payload length:', value?.length);
-    console.log('🎨 Content type:', endpointData.contentType);
-
     if (!value.trim()) {
       setFieldGenerationError('Please enter a payload first.');
       return;
     }
-
-    // Prevent multiple simultaneous calls
     if (isGeneratingFields) {
-      console.log('⚠️ Generation already in progress, ignoring duplicate call');
       return;
     }
-
     setIsGeneratingFields(true);
     setFieldGenerationError(null);
-
     try {
-      console.log('🔍 Generating schema from payload...');
-      // Generate schema from the current payload
       const schema = generateSchemaFromPayload(value, endpointData.contentType);
-      console.log('✅ Generated schema:', schema);
-
       if (schema) {
-        // Convert schema to InferredField format for display
         const convertSchemaToFields = (
           schemaFields: SchemaField[],
           level = 0,
           parentPath = '',
         ): InferredField[] => {
           const fields: InferredField[] = [];
-
           schemaFields.forEach((field) => {
             fields.push({
               path: field.path,
@@ -603,44 +417,32 @@ const transactionTypeSchema = yup
                   : undefined),
               required: field.isRequired,
             });
-
             if (field.children) {
               fields.push(
                 ...convertSchemaToFields(field.children, level + 1, field.path),
               );
             }
           });
-
           return fields;
         };
-
         const fields = convertSchemaToFields(schema);
-        console.log('✅ Converted to inferred fields:', fields);
-        console.log('📊 Total fields generated:', fields.length);
-
         setInferredFields(fields);
         setShowInferredFields(true);
-
-        console.log('✅ Fields successfully set in state');
       } else {
-        console.error('❌ Schema generation returned null');
         setFieldGenerationError('Failed to generate schema from payload');
       }
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error occurred';
-      console.error('❌ Schema inference error:', error);
       setFieldGenerationError(`Schema inference failed: ${errorMessage}`);
     } finally {
       setIsGeneratingFields(false);
     }
   };
-
   const handleEndpointDataChange = (
     field: keyof EndpointFormData,
     newValue: string,
   ) => {
-    // Remove spaces from version, transactionType, and msgFam fields as they're used in URL paths
     let sanitizedValue = newValue;
     if (
       field === 'version' ||
@@ -649,31 +451,23 @@ const transactionTypeSchema = yup
     ) {
       sanitizedValue = newValue.replace(/\s/g, '');
     }
-
     const updatedData = { ...endpointData, [field]: sanitizedValue };
     setEndpointData(updatedData);
     if (onEndpointDataChange) {
       onEndpointDataChange(updatedData);
     }
-
-    // Clear validation errors when user starts typing
     if (showValidationErrors) {
-      // Map field names to error field names
       const errorFieldMap: Record<string, string> = {
         version: 'version',
         transactionType: 'transactionType',
         msgFam: 'eventType',
       };
-
       const errorField = errorFieldMap[field] || field;
-
       setFieldErrors((prev) => ({
         ...prev,
         [errorField]: '',
       }));
     }
-
-    // If content type changed, re-validate the payload
     if (field === 'contentType') {
       const payloadValidation = validatePayloadContent(value || '', newValue);
       setIsPayloadValid(payloadValidation.isValid);
@@ -681,24 +475,16 @@ const transactionTypeSchema = yup
       setFieldErrors((prev) => ({ ...prev, payload: payloadValidation.error }));
     }
   };
-
-  // Validation function to check if payload is valid JSON or XML
   const validatePayload = (payloadValue: string, contentType: string) => {
     const validation = validatePayloadContent(payloadValue, contentType);
     setIsPayloadValid(validation.isValid);
     setPayloadValidationMessage(validation.message);
     setFieldErrors((prev) => ({ ...prev, payload: validation.error }));
   };
-
-  // Validate payload when it changes or when component mounts
   useEffect(() => {
     validatePayload(value, endpointData.contentType);
   }, [value, endpointData.contentType]);
-
-  // Initialize field validation on mount and when endpointData changes
-  // Note: Validation errors are only shown when user attempts to save, not on initial load
   useEffect(() => {
-    // Don't set validation errors on initial load - only validate when saving
     setFieldErrors({
       version: '',
       transactionType: '',
@@ -706,20 +492,15 @@ const transactionTypeSchema = yup
       payload: '',
     });
   }, [endpointData.version, endpointData.transactionType, endpointData.msgFam]);
-
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      // Check file extension against selected content type
       const fileName = file.name.toLowerCase();
       const isJsonFile = fileName.endsWith('.json');
       const isXmlFile = fileName.endsWith('.xml');
-
       const expectedContentType = endpointData.contentType;
       const isJsonExpected = expectedContentType === 'application/json';
       const isXmlExpected = expectedContentType === 'application/xml';
-
-      // Validate file extension matches content type
       if ((isJsonExpected && !isJsonFile) || (isXmlExpected && !isXmlFile)) {
         const expectedFormat = isJsonExpected ? 'JSON (.json)' : 'XML (.xml)';
         const actualFormat = isJsonFile
@@ -731,16 +512,12 @@ const transactionTypeSchema = yup
           ...prev,
           payload: `File format mismatch: Expected ${expectedFormat} file but received ${actualFormat} file. Please select the correct file type or change the Content Type setting.`,
         }));
-        // Clear the file input
         event.target.value = '';
         return;
       }
-
       const reader = new FileReader();
       reader.onload = (e) => {
         const content = e.target?.result as string;
-
-        // Validate file content matches the expected format
         let contentValidationError = '';
         if (isJsonExpected) {
           try {
@@ -763,25 +540,20 @@ const transactionTypeSchema = yup
               'Invalid XML file: The uploaded file contains invalid XML format.';
           }
         }
-
         if (contentValidationError) {
           setFieldErrors((prev) => ({
             ...prev,
             payload: contentValidationError,
           }));
-          // Clear the file input
           event.target.value = '';
           return;
         }
-
-        // Clear any previous errors and set the content
         setFieldErrors((prev) => ({ ...prev, payload: '' }));
         onChange(content);
       };
       reader.readAsText(file);
     }
   };
-
   const generateSchemaFromPayload = (
     payload: string,
     contentType: string,
@@ -795,22 +567,17 @@ const transactionTypeSchema = yup
       }
     } else if (contentType === 'application/xml') {
       try {
-        // First, validate XML format
         const parser = new DOMParser();
         const xmlDoc = parser.parseFromString(payload, 'text/xml');
         const parseError = xmlDoc.getElementsByTagName('parsererror');
         if (parseError.length > 0) {
           throw new Error('XML parsing error');
         }
-
-        // Convert XML to JSON using fast-xml-parser
         const xmlparser = new XMLParser({
           ignoreAttributes: false,
           attributeNamePrefix: '',
         });
         const jsonResult = xmlparser.parse(payload);
-
-        // Generate schema from the converted JSON
         return generateJSONSchema(jsonResult);
       } catch (e) {
         throw new Error('Invalid XML format');
@@ -818,21 +585,12 @@ const transactionTypeSchema = yup
     }
     return null;
   };
-
   const generateJSONSchema = (obj: any, path = ''): SchemaField[] => {
     const schema: SchemaField[] = [];
-
-    console.log(`🔍 generateJSONSchema called with path: "${path}"`);
-    console.log(
-      `📦 Object keys:`,
-      obj && typeof obj === 'object' ? Object.keys(obj) : 'Not an object',
-    );
-
     if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
       Object.entries(obj).forEach(([key, value]) => {
         const fieldPath = path ? `${path}.${key}` : key;
         let fieldType: string;
-
         if (Array.isArray(value)) {
           fieldType = 'array';
         } else if (value && typeof value === 'object') {
@@ -840,11 +598,6 @@ const transactionTypeSchema = yup
         } else {
           fieldType = typeof value;
         }
-
-        console.log(
-          `  ➡️ Processing field: ${fieldPath}, type: ${fieldType}, isArray: ${Array.isArray(value)}`,
-        );
-
         const field: SchemaField = {
           name: key,
           path: fieldPath,
@@ -856,35 +609,19 @@ const transactionTypeSchema = yup
             | 'array',
           isRequired: true,
         };
-
         if (
           typeof value === 'object' &&
           value !== null &&
           !Array.isArray(value)
         ) {
-          // Handle nested objects - recursively process
-          console.log(`    🔄 Recursing into nested object at ${fieldPath}`);
           field.children = generateJSONSchema(value, fieldPath);
         } else if (Array.isArray(value) && value.length > 0) {
           const firstElement = value[0];
-          console.log(
-            `    📋 Array at ${fieldPath}, first element type:`,
-            typeof firstElement,
-            'isArray:',
-            Array.isArray(firstElement),
-          );
-
           if (
             typeof firstElement === 'object' &&
             firstElement !== null &&
             !Array.isArray(firstElement)
           ) {
-            // Generate schema for array elements with objects
-            // IMPORTANT: Use [0] notation for arrays to match schema utils expectations
-            console.log(
-              `    🔄 Recursing into array element object at ${fieldPath}[0]`,
-            );
-            // Update the field path to include [0] so it matches children paths
             field.path = `${fieldPath}[0]`;
             field.children = generateJSONSchema(
               firstElement,
@@ -892,48 +629,27 @@ const transactionTypeSchema = yup
             );
             field.arrayElementType = 'object';
           } else if (Array.isArray(firstElement)) {
-            // Handle arrays of arrays
-            console.log(`    📋 Array of arrays at ${fieldPath}`);
             field.children = [];
             field.arrayElementType = 'array';
           } else {
-            // Primitive array elements (string, number, boolean)
-            console.log(`    🔤 Primitive array at ${fieldPath}`);
             field.arrayElementType = typeof firstElement;
           }
         }
-
-        console.log(
-          `  ✅ Created field: ${fieldPath}, has children:`,
-          !!field.children,
-          'children count:',
-          field.children?.length || 0,
-        );
         schema.push(field);
       });
     }
-
-    console.log(
-      `✅ generateJSONSchema returning ${schema.length} fields for path "${path}"`,
-    );
     return schema;
   };
-
   const generateXMLSchema = (element: Element, path = ''): SchemaField[] => {
     const schema: SchemaField[] = [];
     const fieldPath = path ? `${path}.${element.tagName}` : element.tagName;
-
-    // Create the main element field
     const field: SchemaField = {
       name: element.tagName,
       path: fieldPath,
       type: 'object',
       isRequired: true,
     };
-
     const children: SchemaField[] = [];
-
-    // Handle XML attributes - xml2js mergeAttrs puts these as properties of the element
     if (element.attributes && element.attributes.length > 0) {
       Array.from(element.attributes).forEach((attr) => {
         children.push({
@@ -944,11 +660,8 @@ const transactionTypeSchema = yup
         });
       });
     }
-
-    // Handle child elements - xml2js makes these properties too
     const childElements = Array.from(element.children);
     if (childElements.length > 0) {
-      // Group elements by tag name to handle multiple elements with same name
       const elementGroups = new Map<string, Element[]>();
       childElements.forEach((child) => {
         const tagName = child.tagName;
@@ -957,14 +670,11 @@ const transactionTypeSchema = yup
         }
         elementGroups.get(tagName)!.push(child);
       });
-
       elementGroups.forEach((elements, tagName) => {
         if (elements.length === 1) {
-          // Single element - xml2js creates direct property
           const childSchemas = generateXMLSchema(elements[0], fieldPath);
           children.push(...childSchemas);
         } else {
-          // Multiple elements with same name - xml2js creates array
           const arrayField: SchemaField = {
             name: tagName,
             path: `${fieldPath}.${tagName}`,
@@ -972,49 +682,33 @@ const transactionTypeSchema = yup
             isRequired: true,
             arrayElementType: 'object',
           };
-
           if (elements.length > 0) {
-            // Use first element as template for array items
-            // Generate schema but only use the children, not the element wrapper itself
             const templateSchema = generateXMLSchema(
               elements[0],
               `${fieldPath}.${tagName}.0`,
             );
             if (templateSchema.length > 0 && templateSchema[0].children) {
-              // Extract only the children to avoid duplicate nesting
-              // (disciplines.discipline -> just the children of discipline, not discipline itself)
               arrayField.children = templateSchema[0].children;
             }
           }
-
           children.push(arrayField);
         }
       });
     }
-
-    // Handle text content for leaf nodes
     if (element.textContent?.trim() && childElements.length === 0) {
       field.type = 'string';
     }
-
-    // Add children if we have any
     if (children.length > 0) {
       field.children = children;
     }
-
     schema.push(field);
     return schema;
   };
-
-  // Convert InferredField array back to SchemaField array for API updates
   const convertInferredFieldsToSchemaFields = (
     fields: InferredField[],
   ): SchemaField[] => {
     const schemaFields: SchemaField[] = [];
-
-    // Process only root level fields first
     const rootFields = fields.filter((f) => f.level === 0);
-
     rootFields.forEach((rootField) => {
       const schemaField: SchemaField = {
         name: rootField.path.split('.').pop() || rootField.path,
@@ -1027,28 +721,21 @@ const transactionTypeSchema = yup
           | 'array',
         isRequired: rootField.required,
       };
-
-      // Find direct children for this field
       const directChildren = fields.filter(
         (f) =>
           f.path !== rootField.path &&
           f.path.startsWith(rootField.path + '.') &&
           f.level === rootField.level + 1,
       );
-
       if (directChildren.length > 0) {
-        // Recursively process children
         schemaField.children = convertInferredFieldsToSchemaFields(
           fields.filter((f) => f.path.startsWith(rootField.path + '.')),
         );
       }
-
       schemaFields.push(schemaField);
     });
-
     return schemaFields;
   };
-
   const sampleJsonPayload = `{
   "pain001": {
     "GroupHeader": {
@@ -1098,7 +785,6 @@ const transactionTypeSchema = yup
   },
   "TenantId":"123"
 }`;
-
   const sampleXmlPayload = `<?xml version="1.0" encoding="UTF-8"?>
 <Document xmlns="urn:iso:std:iso:20022:tech:xsd:pacs.008.001.11">
   <FIToFICstmrCdtTrf>
@@ -1128,10 +814,8 @@ const transactionTypeSchema = yup
     </CdtTrfTxInf>
   </FIToFICstmrCdtTrf>
 </Document>`;
-
   const FormattedJsonSection = () => {
     const parseResult = safeJsonParse(value);
-
     if (parseResult.success && parseResult.data) {
       return (
         <ReactJson
@@ -1149,7 +833,6 @@ const transactionTypeSchema = yup
         />
       );
     }
-
     return (
       <div className="flex items-center justify-center h-full text-gray-400">
         <div className="text-center">
@@ -1172,17 +855,16 @@ const transactionTypeSchema = yup
       </div>
     );
   };
-
   return (
     <div className="space-y-4">
-      {/* Endpoint Configuration Form */}
+      {}
       <div className="">
         <h3 className="text-base font-semibold flex items-center gap-1 text-blue-900 mb-4">
           <Settings2 className="text-blue-500" size={16} /> Endpoint
           Configuration
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Version */}
+          {}
           <div>
             <label
               htmlFor="version"
@@ -1201,11 +883,8 @@ const transactionTypeSchema = yup
                     handleEndpointDataChange('version', e.target.value)
                   }
                   onKeyPress={(e) => {
-                    // Only allow numbers, dots, and 'v' character
                     const char = e.key;
                     const currentValue = (e.target as HTMLInputElement).value;
-
-                    // Allow only: digits (0-9), dot (.), and 'v' only at the start
                     if (
                       !/[0-9.]/.test(char) &&
                       !(char === 'v' && currentValue.length === 0)
@@ -1229,8 +908,7 @@ const transactionTypeSchema = yup
               <p className="mt-1 text-sm text-red-600">{fieldErrors.version}</p>
             )}
           </div>
-
-          {/* Event Type (Optional) */}
+          {}
           <div>
             <label
               htmlFor="msgFam"
@@ -1249,7 +927,6 @@ const transactionTypeSchema = yup
                     handleEndpointDataChange('msgFam', e.target.value)
                   }
                   onKeyPress={(e) => {
-                    // Only allow alphanumeric and special chars: _, -, /
                     const char = e.key;
                     if (!/[a-zA-Z0-9_\-/]/.test(char)) {
                       e.preventDefault();
@@ -1273,8 +950,7 @@ const transactionTypeSchema = yup
               </p>
             )}
           </div>
-
-          {/* Transaction Type */}
+          {}
           <div>
             <label
               htmlFor="transaction-type"
@@ -1293,7 +969,6 @@ const transactionTypeSchema = yup
                     handleEndpointDataChange('transactionType', e.target.value.toLowerCase())
                   }
                   onKeyPress={(e) => {
-                    // Only allow alphanumeric and special chars: _, -
                     const char = e.key;
                     if (!/[a-zA-Z0-9_\-]/.test(char)) {
                       e.preventDefault();
@@ -1317,8 +992,7 @@ const transactionTypeSchema = yup
               </p>
             )}
           </div>
-
-          {/* Content Type */}
+          {}
           <div>
             <label
               htmlFor="content-type"
@@ -1340,7 +1014,6 @@ const transactionTypeSchema = yup
                       ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
                       : 'bg-white border-gray-300'
                   }`}
-                  // readOnly={isReadOnly}
                   disabled={isReadOnly}
                 >
                   <option value="application/json">application/json</option>
@@ -1350,23 +1023,9 @@ const transactionTypeSchema = yup
             })()}
           </div>
         </div>
-
-        {/* Description */}
-        {/* <div>
-          <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
-            Description
-          </label>
-          <textarea
-            id="description"
-            value={endpointData.description}
-            onChange={(e) => handleEndpointDataChange('description', e.target.value)}
-            placeholder="Brief description of this endpoint..."
-            rows={2}
-            className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-          />
-        </div> */}
-
-        {/* Real-time Endpoint Path Preview */}
+        {}
+        {}
+        {}
         {endpointData.transactionType && (
           <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <div className="flex items-start gap-3">
@@ -1389,7 +1048,7 @@ const transactionTypeSchema = yup
                 <h4 className="text-sm font-medium text-blue-900 mb-2">
                   Endpoint Path Preview
                 </h4>
-                {/* <p className="text-xs text-blue-700 mb-2">This endpoint will be accessible at:</p> */}
+                {}
                 <div className="bg-white border border-blue-200 rounded px-3 py-2 font-mono text-sm text-gray-900">
                   /{tenantId}/{endpointData.version || 'v1'}/
                   {endpointData.msgFam ? `${endpointData.msgFam}/` : ''}
@@ -1400,7 +1059,6 @@ const transactionTypeSchema = yup
           </div>
         )}
       </div>
-
       {!readOnly && (shouldCreateNew || isCloning) && (
         <div>
           <div className="flex justify-between items-center mb-3 mt-10">
@@ -1417,7 +1075,6 @@ const transactionTypeSchema = yup
                 </>
               )}
             </h3>
-
             <div className="flex items-center space-x-2">
               {!isEditMode && !value && !readOnly && (
                 <div className="flex space-x-2">
@@ -1482,7 +1139,6 @@ const transactionTypeSchema = yup
               </div>
             </div>
           </div>
-
           {payloadError &&
             !(payloadValidationMessage || fieldErrors.payload) && (
               <div className="my-6 p-4 bg-red-50 border border-red-200 rounded-lg">
@@ -1530,8 +1186,7 @@ const transactionTypeSchema = yup
                 </div>
               </div>
             )}
-
-          {/* Format Validation Status - Full Width Below Heading */}
+          {}
           {!readOnly &&
             !isEditMode &&
             (payloadValidationMessage || fieldErrors.payload) && (
@@ -1559,12 +1214,11 @@ const transactionTypeSchema = yup
             )}
         </div>
       )}
-
-      {/* Code Editor - Hide completely in edit mode */}
+      {}
       {!isEditMode && (shouldCreateNew || isCloning) && (
         <>
           <div className="flex gap-5 w-full">
-            {/* Left Side - Raw Input */}
+            {}
             <div className="flex-1">
               <h4 className="text-sm font-bold flex items-center gap-1 text-gray-700 mb-2">
                 <Terminal className="text-blue-500" size={16} /> Raw Input
@@ -1580,8 +1234,7 @@ const transactionTypeSchema = yup
                 />
               </div>
             </div>
-
-            {/* Right Side - Formatted Preview */}
+            {}
             {endpointData.contentType === 'application/json' && (
               <div className="flex-1">
                 <h4 className="text-sm font-bold flex items-center gap-1 text-gray-700 mb-2">
@@ -1594,16 +1247,14 @@ const transactionTypeSchema = yup
               </div>
             )}
           </div>
-
-          {/* Schema Generation Info */}
+          {}
           <div className="my-6">
             {fieldGenerationError && (
               <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-700 text-center">
                 {fieldGenerationError}
               </div>
             )}
-
-            {/* Show Generate Fields button for creation mode */}
+            {}
             {value && isPayloadValid && (
               <div className="text-center mb-4">
                 <Button
@@ -1621,7 +1272,6 @@ const transactionTypeSchema = yup
                 </Button>
               </div>
             )}
-
             <div className="text-center">
               <p className="text-sm text-gray-600">
                 {value.trim()
@@ -1632,8 +1282,7 @@ const transactionTypeSchema = yup
           </div>
         </>
       )}
-
-      {/* Edit Mode Info */}
+      {}
       {isEditMode && !readOnly && (
         <div className="my-5 mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
           <div className="flex items-start gap-3">
@@ -1664,8 +1313,7 @@ const transactionTypeSchema = yup
           </div>
         </div>
       )}
-
-      {/* Schema Fields Section */}
+      {}
       {showInferredFields && (
         <div className="mt-6 space-y-4">
           {(isEditMode || readOnly || inferredFields.length > 0) && (
@@ -1686,19 +1334,12 @@ const transactionTypeSchema = yup
               </div>
             </div>
           )}
-
-          {/* Field Editor Content */}
+          {}
           {inferredFields.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
-              {/* <p className="text-sm">No schema fields generated yet.</p> */}
-              {/* <p className="text-xs mt-1">
-                    {configId 
-                      ? 'Use the field editor to manually add schema fields for this config:'
-                      : 'Enter a valid JSON or XML payload above, then click "Generate Fields from Payload" to create schema fields.'
-                    }
-                  </p> */}
-
-              {/* Add Field Button for Empty State - Only in edit mode and not read-only */}
+              {}
+              {}
+              {}
               {isEditMode && !readOnly && (
                 <div className="mt-4">
                   {!showAddFieldForm ? (
@@ -1727,7 +1368,7 @@ const transactionTypeSchema = yup
                         Add Your First Field
                       </h4>
                       <div className="space-y-3">
-                        {/* Field Path Input */}
+                        {}
                         <div>
                           <label
                             htmlFor="empty-field-path"
@@ -1752,8 +1393,7 @@ const transactionTypeSchema = yup
                             Use dots for nested fields (parent.child)
                           </p>
                         </div>
-
-                        {/* Field Type Select */}
+                        {}
                         <div>
                           <label
                             htmlFor="empty-field-type"
@@ -1779,8 +1419,7 @@ const transactionTypeSchema = yup
                             <option value="Array">Array</option>
                           </select>
                         </div>
-
-                        {/* Required Checkbox */}
+                        {}
                         <div className="flex items-center">
                           <input
                             id="empty-field-required"
@@ -1801,8 +1440,7 @@ const transactionTypeSchema = yup
                             Required field
                           </label>
                         </div>
-
-                        {/* Action Buttons */}
+                        {}
                         <div className="flex justify-center space-x-2 mt-4">
                           <button
                             onClick={() => {
@@ -1833,7 +1471,7 @@ const transactionTypeSchema = yup
             </div>
           ) : (
             <>
-              {/* Field Summary */}
+              {}
               <div className="mb-3 p-2 bg-slate-50 rounded border border-slate-200">
                 <div className="flex items-center justify-between text-xs">
                   <div className="flex items-center gap-3">
@@ -1850,8 +1488,7 @@ const transactionTypeSchema = yup
                   </div>
                 </div>
               </div>
-
-              {/* Add Field Section - Only show when editing existing configs and not read-only */}
+              {}
               {isEditMode && !readOnly && (
                 <div className="mb-4">
                   {!showAddFieldForm ? (
@@ -1877,7 +1514,7 @@ const transactionTypeSchema = yup
                   ) : (
                     <div className="p-3 border border-gray-200 rounded bg-gray-50">
                       <div className="grid grid-cols-12 gap-2 items-center">
-                        {/* Field Path Input */}
+                        {}
                         <div className="col-span-5">
                           <input
                             type="text"
@@ -1892,8 +1529,7 @@ const transactionTypeSchema = yup
                             className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           />
                         </div>
-
-                        {/* Field Type Select */}
+                        {}
                         <div className="col-span-2">
                           <select
                             value={newField.type}
@@ -1912,8 +1548,7 @@ const transactionTypeSchema = yup
                             <option value="Array">Array</option>
                           </select>
                         </div>
-
-                        {/* Required Checkbox */}
+                        {}
                         <div className="col-span-2 flex items-center">
                           <input
                             type="checkbox"
@@ -1930,8 +1565,7 @@ const transactionTypeSchema = yup
                             Required
                           </label>
                         </div>
-
-                        {/* Action Buttons */}
+                        {}
                         <div className="col-span-3 flex justify-end gap-1">
                           <button
                             onClick={() => {
@@ -1959,8 +1593,7 @@ const transactionTypeSchema = yup
                   )}
                 </div>
               )}
-
-              {/* Fields container without internal scroll */}
+              {}
               <div className="border border-gray-200 rounded-lg">
                 <div
                   className="space-y-2 p-2"
@@ -1976,7 +1609,7 @@ const transactionTypeSchema = yup
                       <div className="flex gap-3 items-center w-full">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center">
-                            {/* Simple spacing-based indentation with full width */}
+                            {}
                             <div
                               className="flex items-center w-full"
                               style={{ paddingLeft: `${field.level * 24}px` }}
@@ -1995,22 +1628,11 @@ const transactionTypeSchema = yup
                           <select
                             value={field.type}
                             onChange={(e) => {
-                              console.log(
-                                `🔄 Type changed for field "${field.path}": ${field.type} → ${e.target.value}`,
-                              );
                               const updatedFields = [...inferredFields];
                               updatedFields[index] = {
                                 ...field,
                                 type: e.target.value as InferredField['type'],
                               };
-                              console.log(
-                                '📊 Updated fields after type change:',
-                                updatedFields.map((f) => ({
-                                  path: f.path,
-                                  type: f.type,
-                                  required: f.required,
-                                })),
-                              );
                               setInferredFields(updatedFields);
                             }}
                             disabled={readOnly}
@@ -2030,18 +1652,11 @@ const transactionTypeSchema = yup
                               id={`required-${index}`}
                               checked={field.required}
                               onChange={(e) => {
-                                console.log(
-                                  `☑️ Required changed for field "${field.path}": ${field.required} → ${e.target.checked}`,
-                                );
                                 const updatedFields = [...inferredFields];
-
-                                // Update current field
                                 updatedFields[index] = {
                                   ...field,
                                   required: e.target.checked,
                                 };
-
-                                // Update all child fields with same required status
                                 updatedFields.forEach((f, i) => {
                                   if (f.path.startsWith(field.path + '.')) {
                                     updatedFields[i] = {
@@ -2050,15 +1665,6 @@ const transactionTypeSchema = yup
                                     };
                                   }
                                 });
-
-                                console.log(
-                                  '📊 Updated fields after required change (with children):',
-                                  updatedFields.map((f) => ({
-                                    path: f.path,
-                                    type: f.type,
-                                    required: f.required,
-                                  })),
-                                );
                                 setInferredFields(updatedFields);
                               }}
                               disabled={readOnly}
@@ -2079,23 +1685,8 @@ const transactionTypeSchema = yup
               </div>
             </>
           )}
-
-          {/* Schema Edit Info */}
-          {/* {configId && inferredFields.length > 0 && (
-            <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <div className="flex items-center gap-2">
-                <div className="text-blue-600">
-                  <SaveIcon size={16} />
-                </div>
-                <div>
-                  <h4 className="text-sm font-medium text-blue-900">Schema Changes Ready</h4>
-                  <p className="text-xs text-blue-700 mt-1">
-                    Your schema field changes will be saved when you click the main "Save" button above.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )} */}
+          {}
+          {}
         </div>
       )}
     </div>
