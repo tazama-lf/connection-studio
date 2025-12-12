@@ -14,10 +14,10 @@ import {
   ScheduleStatus,
 } from '@tazama-lf/tcs-lib';
 import { firstValueFrom } from 'rxjs';
-import { AuthenticatedUser } from 'src/auth/auth.types';
-import { UpdatePullJobDto } from 'src/job/dto/update-pull-job.dto';
-import { UpdatePushJobDto } from 'src/job/dto/update-push-job.dto';
-import { UpdateScheduleJobDto } from 'src/scheduler/dto/update-schedule-dto';
+import { AuthenticatedUser } from '../auth/auth.types';
+import { UpdatePullJobDto } from '../job/dto/update-pull-job.dto';
+import { UpdatePushJobDto } from '../job/dto/update-push-job.dto';
+import { UpdateScheduleJobDto } from '../scheduler/dto/update-schedule-dto';
 
 @Injectable()
 export class AdminServiceClient {
@@ -632,133 +632,7 @@ export class AdminServiceClient {
 
   // ==================== TCS OPERATIONS ====================
 
-  // async validateConfigCreation(
-  //   msgFam: string,
-  //   transactionType: string,
-  //   version: string,
-  //   token: string,
-  // ): Promise<{ success: boolean; message?: string; validated?: boolean }> {
-  //   this.logger.log(
-  //     `Validating config creation: ${msgFam}/${version}/${transactionType}`,
-  //   );
-
-  //   try {
-  //     const response = await firstValueFrom(
-  //       this.httpService.post(
-  //         `${this.adminServiceUrl}/v1/admin/tcs/config`,
-  //         { msgFam, transactionType, version },
-  //         {
-  //           headers: {
-  //             Authorization: `Bearer ${token}`,
-  //             'Content-Type': 'application/json',
-  //           },
-  //         },
-  //       ),
-  //     );
-
-  //     this.logger.log(`Validation response: ${JSON.stringify(response.data)}`);
-  //     return response.data;
-  //   } catch (error) {
-  //     return this.handleError(error, 'validateConfigCreation');
-  //   }
-  // }
-
-  // async validateConfigUpdate(
-  //   id: number,
-  //   updates: { msgFam?: string; transactionType?: string; version?: string },
-  //   token: string,
-  // ): Promise<{
-  //   success: boolean;
-  //   message?: string;
-  //   validated?: boolean;
-  //   config?: any;
-  // }> {
-  //   this.logger.log(`Validating config update for ID: ${id}`);
-
-  //   try {
-  //     const response = await firstValueFrom(
-  //       this.httpService.put(
-  //         `${this.adminServiceUrl}/v1/admin/tcs/config/${id}`,
-  //         updates,
-  //         {
-  //           headers: {
-  //             Authorization: `Bearer ${token}`,
-  //             'Content-Type': 'application/json',
-  //           },
-  //         },
-  //       ),
-  //     );
-
-  //     return response.data;
-  //   } catch (error) {
-  //     return this.handleError(error, 'validateConfigUpdate');
-  //   }
-  // }
-  // async validateConfigClone(
-  //   sourceConfigId: number,
-  //   newMsgFam: string,
-  //   newVersion: string,
-  //   newTransactionType: string,
-  //   token: string,
-  // ): Promise<{
-  //   success: boolean;
-  //   message?: string;
-  //   validated?: boolean;
-  //   sourceConfig?: any;
-  // }> {
-  //   this.logger.log(
-  //     `Validating config clone from ID: ${sourceConfigId} to ${newMsgFam}/${newVersion}/${newTransactionType}`,
-  //   );
-
-  //   try {
-  //     const response = await firstValueFrom(
-  //       this.httpService.post(
-  //         `${this.adminServiceUrl}/v1/admin/tcs/config/clone`,
-  //         { sourceConfigId, newMsgFam, newVersion, newTransactionType },
-  //         {
-  //           headers: {
-  //             Authorization: `Bearer ${token}`,
-  //             'Content-Type': 'application/json',
-  //           },
-  //         },
-  //       ),
-  //     );
-
-  //     return response.data;
-  //   } catch (error) {
-  //     return this.handleError(error, 'validateConfigClone');
-  //   }
-  // }
-
-  // async validateConfigDeletion(
-  //   id: number,
-  //   token: string,
-  // ): Promise<{
-  //   success: boolean;
-  //   message?: string;
-  //   validated?: boolean;
-  //   config?: any;
-  // }> {
-  //   this.logger.log(`Validating config deletion for ID: ${id}`);
-
-  //   try {
-  //     const response = await firstValueFrom(
-  //       this.httpService.delete(
-  //         `${this.adminServiceUrl}/v1/admin/tcs/config/${id}`,
-  //         {
-  //           headers: {
-  //             Authorization: `Bearer ${token}`,
-  //           },
-  //         },
-  //       ),
-  //     );
-
-  //     return response.data;
-  //   } catch (error) {
-  //     return this.handleError(error, 'validateConfigDeletion');
-  //   }
-  // }
-
+ 
   async getConfigById(id: number, token: string): Promise<any> {
     this.logger.log(`Getting config by ID: ${id}`);
 

@@ -213,20 +213,6 @@ export class SimulationService {
         // fifth stage
         stages.push(tcsStage);
 
-        if (tcsStage.status === 'FAILED') {
-          errors.push(...(tcsStage.errors ?? []));
-          return this.createStageBasedResult(
-            dto,
-            timestamp,
-            userId,
-            tenantId,
-            stages,
-            errors,
-            null,
-            { originalPayload: parsedPayload },
-          );
-        }
-
         const tcsDetails = tcsStage.details as {
           tcsResult: iMappingResult;
           mappingsApplied: number;
@@ -431,15 +417,12 @@ export class SimulationService {
     providedMapping?: iMappingConfiguration,
   ): Promise<ValidationStage> {
     try {
-      // tcsMapping yahan banti hai
       const tcsMapping = config.mapping ?? [];
-      // const tcsMapping = providedMapping;
       const mappingsApplied = tcsMapping.length;
       const endpoint = config.endpointPath;
       let tcsResult;
 
       try {
-        // are we sedning the right stuff?
         tcsResult = await processMappings(payload, tcsMapping, endpoint);
       } catch (mappingError: any) {
         if (mappingError.message?.includes('loggerService')) {
@@ -572,9 +555,7 @@ export class SimulationService {
         const errorMessage =
           xmlError instanceof Error ? xmlError.message : 'Unknown error';
         this.logger.error(`XML parsing failed: ${errorMessage}`);
-        throw new Error(`Invalid XML payload: ${errorMessage}`, { 
-          cause: xmlError 
-        });
+        throw new Error(`Invalid XML payload: ${errorMessage}`, { cause: xmlError });
       }
     }
 
@@ -585,9 +566,7 @@ export class SimulationService {
         } catch (jsonError: unknown) {
           const errorMessage =
             jsonError instanceof Error ? jsonError.message : 'Unknown error';
-          throw new Error(`Invalid JSON payload: ${errorMessage}`, { 
-            cause: jsonError 
-          });
+          throw new Error(`Invalid JSON payload: ${errorMessage}`, { cause: jsonError });
         }
       }
       return payload as Record<string, unknown>;
@@ -697,7 +676,6 @@ export class SimulationService {
     if (!obj || typeof obj !== 'object') {
       return obj;
     }
-
     if (Array.isArray(obj)) {
       return obj.map((item) =>
         this.normalizeXmlParsedObjectWithSchema(item, schema, path),
@@ -866,12 +844,6 @@ export class SimulationService {
 
       const schemaWithStrict = this.enforceStrictSchema(schema, config);
 
-      // this.logger.log(`Original schema: ${JSON.stringify(schema)}`);
-      // this.logger.log(`Strict schema: ${JSON.stringify(schemaWithStrict)}`);
-      // this.logger.log(
-      //   `Normalized payload: ${JSON.stringify(normalizedPayload).substring(0, 500)}...`,
-      // );
-
       const validate = ajv.compile(schemaWithStrict);
 
       const valid = validate(payload);
@@ -887,13 +859,6 @@ export class SimulationService {
         );
 
         for (const error of validate.errors) {
-          if (
-            error.keyword === 'additionalProperties' &&
-            error.instancePath &&
-            this.isArrayPath(normalizedPayload, error.instancePath)
-          ) {
-            continue;
-          }
           if (error.keyword === 'type' && error.instancePath && error.instancePath.includes('/')) {
             const pathSegments = error.instancePath.split('/');
             const isArrayElement = pathSegments.some((segment) =>
@@ -1132,7 +1097,7 @@ export class SimulationService {
 
   extractTransactionType = (url: string): string => {
     const parts = url.split('/');
-    const transactionType = parts[parts.length - 1]; // Get the last part
+    const transactionType = parts[parts.length - 1]; 
     return transactionType || 'unknown';
   };
 }
