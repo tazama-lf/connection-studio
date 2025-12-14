@@ -768,28 +768,6 @@ export class AdminServiceClient {
     }
   }
 
-  // async runRawQuery(query: string, token: string): Promise<any> {
-  //   this.logger.log('Executing raw SQL query via admin-service');
-
-  //   try {
-  //     const response = await firstValueFrom(
-  //       this.httpService.post(
-  //         `${this.adminServiceUrl}/v1/admin/tcs/raw-query`,
-  //         { query },
-  //         {
-  //           headers: {
-  //             Authorization: `Bearer ${token}`,
-  //             'Content-Type': 'application/json',
-  //           },
-  //         },
-  //       ),
-  //     );
-
-  //     return response.data;
-  //   } catch (error) {
-  //     return this.handleError(error, 'runRawQuery');
-  //   }
-  // }
   async updateConfigByStatus(
     id: number,
     status: string,

@@ -78,8 +78,6 @@ export class ConfigController {
     @Body() dto: CreateConfigDto,
     @User() user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
-    // const authHeader = request.headers.authorization ?? '';
-    // const token = authHeader.replace('Bearer ', '');
 
     const result = await this.configService.createConfig(
       dto,
@@ -230,20 +228,7 @@ export class ConfigController {
     );
     return result;
   }
-  // @Post(':id/reject')
-  // @RequireClaims(TazamaClaims.APPROVER)
-  // async rejectConfig(
-  //   @Param('id', ParseIntPipe) id: number,
-  //   @Body() dto: RejectionDto,
-  //   @User() user: AuthenticatedUser,
-  //   @Headers('authorization') authorization: string,
-  // ): Promise<ConfigResponseDto> {
-  //   const token = authorization.replace('Bearer ', '');
-
-  //   const result = await this.configService.rejectConfig(id, dto, user, token);
-
-  //   return result;
-  // }
+  
   @Post('/:offset/:limit')
   @RequireAnyClaims(
     TazamaClaims.EDITOR,

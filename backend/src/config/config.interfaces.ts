@@ -1,4 +1,3 @@
-// // Re-export types from tcs-lib for consistency
 export type {
   JSONSchema,
   AdjustFieldDto,
@@ -29,7 +28,6 @@ export const AdditionalConfigStatus = {
   EXPORTED: 'EXPORTED' as const,
 } as const;
 
-// Additional workflow actions used by the backend
 export const AdditionalWorkflowAction = {
   EXPORT: 'export' as const,
   RETURN_TO_PROGRESS: 'return_to_progress' as const,
