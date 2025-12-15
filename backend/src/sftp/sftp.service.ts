@@ -92,7 +92,10 @@ export class SftpService implements OnModuleInit, OnModuleDestroy {
     this.loggerService.log('SFTP connections closed.');
   }
 
-  async createFile(fileName: string, data: Job | Schedule | Config): Promise<void> {
+  async createFile(
+    fileName: string,
+    data: Job | Schedule | Config,
+  ): Promise<void> {
     try {
       const nodeEnv = this.configService.get<string>('NODE_ENV');
       const sftpHost = this.configService.get<string>('SFTP_HOST_CONSUMER');
@@ -264,9 +267,7 @@ export class SftpService implements OnModuleInit, OnModuleDestroy {
     tenantId: string,
   ): Promise<SftpFile[]> {
     try {
-      const regex = new RegExp(
-        `^${format}_${tenantId}_[A-Za-z0-9_-]+\\.json$`,
-      );
+      const regex = new RegExp(`^${format}_${tenantId}_[A-Za-z0-9_-]+\\.json$`);
 
       const allFiles = await this.producerSftp.list('/upload');
       this.loggerService.log(

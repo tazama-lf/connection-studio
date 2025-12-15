@@ -8,7 +8,11 @@ import { AdminServiceClient } from '../services/admin-service-client.service';
 @Module({
   imports: [HttpModule],
   controllers: [TazamaDataModelController],
-  providers: [TazamaDataModelRepository, TazamaDataModelService, AdminServiceClient],
+  providers: [
+    TazamaDataModelRepository,
+    TazamaDataModelService,
+    AdminServiceClient,
+  ],
   exports: [TazamaDataModelService, TazamaDataModelRepository],
 })
-export class TazamaDataModelModule { }
+export class TazamaDataModelModule {}

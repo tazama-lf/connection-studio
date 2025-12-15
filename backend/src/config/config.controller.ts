@@ -78,7 +78,6 @@ export class ConfigController {
     @Body() dto: CreateConfigDto,
     @User() user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
-
     const result = await this.configService.createConfig(
       dto,
       user.tenantId,
@@ -228,7 +227,7 @@ export class ConfigController {
     );
     return result;
   }
-  
+
   @Post('/:offset/:limit')
   @RequireAnyClaims(
     TazamaClaims.EDITOR,

@@ -432,32 +432,32 @@ export class ConfigService {
               (fn) => fn.functionName === 'addDataModelTable',
             );
 
-            const tableCreationPromises = datamodelFunctions.map(async (datamodelFn) => {
-              if (datamodelFn.tableName) {
-                this.logger.log(
-                  `Creating datamodel table: ${datamodelFn.tableName}`,
-                );
+            const tableCreationPromises = datamodelFunctions.map(
+              async (datamodelFn) => {
+                if (datamodelFn.tableName) {
+                  this.logger.log(
+                    `Creating datamodel table: ${datamodelFn.tableName}`,
+                  );
 
-                await this.configRepository.createTazamaDataModelTable(
-                  datamodelFn.tableName,
-                  datamodelFn.columns,
-                  token,
-                );
+                  await this.configRepository.createTazamaDataModelTable(
+                    datamodelFn.tableName,
+                    datamodelFn.columns,
+                    token,
+                  );
 
-                this.logger.log(
-                  `Successfully created datamodel table "${datamodelFn.tableName}"`,
-                );
-              } else {
-                this.logger.warn(
-                  'Skipping addDataModelTable function without tableName',
-                );
-              }
-            });
+                  this.logger.log(
+                    `Successfully created datamodel table "${datamodelFn.tableName}"`,
+                  );
+                } else {
+                  this.logger.warn(
+                    'Skipping addDataModelTable function without tableName',
+                  );
+                }
+              },
+            );
 
-            await Promise.all(tableCreationPromises)
-          } else if (
-            functions?.functionName === 'addDataModelTable'
-          ) {
+            await Promise.all(tableCreationPromises);
+          } else if (functions?.functionName === 'addDataModelTable') {
             if (functions.tableName) {
               this.logger.log(
                 `Creating datamodel table: ${functions.tableName}`,

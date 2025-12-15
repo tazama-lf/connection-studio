@@ -21,7 +21,7 @@ export class DryRunService {
   constructor(
     private readonly loggerService: LoggerService,
     private readonly httpService: HttpService,
-  ) { }
+  ) {}
 
   async transformFileToJSON(
     sftp: SFTPClient,
@@ -50,7 +50,7 @@ export class DryRunService {
         case FileType.CSV:
         case FileType.TSV: {
           const delimiter =
-            file.file_type === FileType.CSV ? file.delimiter ?? ',' : '\t';
+            file.file_type === FileType.CSV ? (file.delimiter ?? ',') : '\t';
 
           const records = parse(decoded, {
             delimiter,

@@ -26,4 +26,4 @@ import { JobService } from './job.service';
   ],
   exports: [AdminServiceClient],
 })
-export class JobModule { }
+export class JobModule {}

@@ -32,7 +32,7 @@ describe('SchedulerService', () => {
     offset: 0,
     limit: 10,
     pages: 2,
-  }
+  };
 
   const mockTenantId = 'tenant_abc';
   const mockToken = 'mock-jwt-token';
@@ -108,7 +108,7 @@ describe('SchedulerService', () => {
     const createScheduleDto = {
       name: 'Test Schedule',
       cron: '0 0 * * *',
-      id: 'test-schedule-id'
+      id: 'test-schedule-id',
     };
 
     it('should create a schedule successfully', async () => {

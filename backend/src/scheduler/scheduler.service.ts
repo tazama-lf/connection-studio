@@ -4,7 +4,12 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
-import { ISuccess, JobStatus, PaginatedResult, Schedule } from '@tazama-lf/tcs-lib';
+import {
+  ISuccess,
+  JobStatus,
+  PaginatedResult,
+  Schedule,
+} from '@tazama-lf/tcs-lib';
 import { AuthenticatedUser } from '../auth/auth.types';
 import { v4 } from 'uuid';
 import { AdminServiceClient } from '../services/admin-service-client.service';
@@ -22,7 +27,7 @@ export class SchedulerService {
     private readonly sftpService: SftpService,
     private readonly adminServiceClient: AdminServiceClient,
     private readonly notificationService: NotificationService,
-  ) { }
+  ) {}
 
   async create(
     schedule: CreateScheduleJobDto,
@@ -100,7 +105,6 @@ export class SchedulerService {
     token: string,
   ): Promise<Schedule[]> {
     try {
-
       if (page < 1 || limit < 1) {
         throw new BadRequestException(
           'Page and limit must be positive integers.',
@@ -130,7 +134,6 @@ export class SchedulerService {
     reason?: string,
   ): Promise<ISuccess> {
     try {
-
       let result: ISuccess | null = null;
       if (status !== JobStatus.DEPLOYED) {
         result = await this.adminServiceClient.updateScheduleByStatus(
@@ -217,7 +220,9 @@ export class SchedulerService {
           break;
         }
         case JobStatus.DEPLOYED: {
-          const fileData = await this.sftpService.readFile(fileName) as Schedule;
+          const fileData = (await this.sftpService.readFile(
+            fileName,
+          )) as Schedule;
           await this.create(
             fileData,
             tenantId,
@@ -247,7 +252,10 @@ export class SchedulerService {
       }
 
       return (
-        result ?? { success: true, message: 'Cron Job Status updated successfully' }
+        result ?? {
+          success: true,
+          message: 'Cron Job Status updated successfully',
+        }
       );
     } catch (err) {
       this.loggerService.error(err.message);

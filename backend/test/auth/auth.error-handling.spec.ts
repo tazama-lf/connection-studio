@@ -62,7 +62,7 @@ describe('AuthService Error Handling', () => {
 
       expect(result).toBe(true);
       expect(loggerService.warn).toHaveBeenCalledWith(
-        'Failed to check token expiry: Invalid token format'
+        'Failed to check token expiry: Invalid token format',
       );
     });
   });
@@ -77,7 +77,7 @@ describe('AuthService Error Handling', () => {
 
       expect(result).toBe(0);
       expect(loggerService.warn).toHaveBeenCalledWith(
-        'Failed to get time to expiry: Token decode failed'
+        'Failed to get time to expiry: Token decode failed',
       );
     });
   });

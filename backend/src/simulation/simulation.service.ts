@@ -222,8 +222,8 @@ export class SimulationService {
 
         transformedPayload = {
           originalPayload: parsedPayload,
-            dataCache: extractedTcsResult.dataCache,
-            endToEndId: extractedTcsResult.endToEndId,
+          dataCache: extractedTcsResult.dataCache,
+          endToEndId: extractedTcsResult.endToEndId,
           mappings: config.mapping,
         };
       } else {
@@ -489,7 +489,7 @@ export class SimulationService {
           stages.find((s) => s.name.includes('TCS Mapping'))?.details as {
             mappingsApplied?: number;
           }
-  ).mappingsApplied ?? 0)
+        ).mappingsApplied ?? 0)
       : 0;
 
     return {
@@ -555,7 +555,9 @@ export class SimulationService {
         const errorMessage =
           xmlError instanceof Error ? xmlError.message : 'Unknown error';
         this.logger.error(`XML parsing failed: ${errorMessage}`);
-        throw new Error(`Invalid XML payload: ${errorMessage}`, { cause: xmlError });
+        throw new Error(`Invalid XML payload: ${errorMessage}`, {
+          cause: xmlError,
+        });
       }
     }
 
@@ -566,7 +568,9 @@ export class SimulationService {
         } catch (jsonError: unknown) {
           const errorMessage =
             jsonError instanceof Error ? jsonError.message : 'Unknown error';
-          throw new Error(`Invalid JSON payload: ${errorMessage}`, { cause: jsonError });
+          throw new Error(`Invalid JSON payload: ${errorMessage}`, {
+            cause: jsonError,
+          });
         }
       }
       return payload as Record<string, unknown>;
@@ -661,7 +665,11 @@ export class SimulationService {
     );
     const hasTextContent = Object.prototype.hasOwnProperty.call(obj, '#text');
     const hasNestedStructure = Object.values(obj).some(
-      (val) => val !== null && val !== undefined && typeof val === 'object' && !Array.isArray(val),
+      (val) =>
+        val !== null &&
+        val !== undefined &&
+        typeof val === 'object' &&
+        !Array.isArray(val),
     );
 
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- Boolean OR logic, not nullish coalescing
@@ -859,7 +867,11 @@ export class SimulationService {
         );
 
         for (const error of validate.errors) {
-          if (error.keyword === 'type' && error.instancePath && error.instancePath.includes('/')) {
+          if (
+            error.keyword === 'type' &&
+            error.instancePath &&
+            error.instancePath.includes('/')
+          ) {
             const pathSegments = error.instancePath.split('/');
             const isArrayElement = pathSegments.some((segment) =>
               /^\d+$/.test(segment),
@@ -922,9 +934,7 @@ export class SimulationService {
       if (mappingSources && Array.isArray(mappingSources)) {
         sources = mappingSources;
       } else if (source) {
-        sources = Array.isArray(source)
-          ? source
-          : [source];
+        sources = Array.isArray(source) ? source : [source];
       }
       if (
         mapping.transformation === 'CONSTANT' ||
@@ -1075,7 +1085,10 @@ export class SimulationService {
       strictSchema.properties,
     ).reduce<any>((acc, key) => {
       const updatedAcc = { ...acc };
-      updatedAcc[key] = this.enforceStrictSchema(strictSchema.properties[key], config);
+      updatedAcc[key] = this.enforceStrictSchema(
+        strictSchema.properties[key],
+        config,
+      );
       return updatedAcc;
     }, {});
 
@@ -1097,7 +1110,7 @@ export class SimulationService {
 
   extractTransactionType = (url: string): string => {
     const parts = url.split('/');
-    const transactionType = parts[parts.length - 1]; 
+    const transactionType = parts[parts.length - 1];
     return transactionType || 'unknown';
   };
 }

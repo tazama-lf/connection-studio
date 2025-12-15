@@ -10,7 +10,12 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ISuccess, JobStatus, PaginatedResult, Schedule } from '@tazama-lf/tcs-lib';
+import {
+  ISuccess,
+  JobStatus,
+  PaginatedResult,
+  Schedule,
+} from '@tazama-lf/tcs-lib';
 import { RequireAnyClaims, TazamaClaims } from 'src/auth/auth.decorator';
 import type { AuthenticatedUser } from 'src/auth/auth.types';
 import { TazamaAuthGuard } from 'src/auth/tazama-auth.guard';
@@ -22,7 +27,7 @@ import { SchedulerService } from './scheduler.service';
 @Controller('scheduler')
 @UseGuards(TazamaAuthGuard)
 export class SchedulerController {
-  constructor(private readonly schedulerService: SchedulerService) { }
+  constructor(private readonly schedulerService: SchedulerService) {}
 
   @Post('/create')
   @RequireAnyClaims(TazamaClaims.EDITOR)
@@ -70,7 +75,10 @@ export class SchedulerController {
     TazamaClaims.EXPORTER,
     TazamaClaims.PUBLISHER,
   )
-  async getById(@Param('id') id: string, @User() user: AuthenticatedUser): Promise<Schedule | null> {
+  async getById(
+    @Param('id') id: string,
+    @User() user: AuthenticatedUser,
+  ): Promise<Schedule | null> {
     return await this.schedulerService.findOne(id, user.token.tokenString);
   }
 

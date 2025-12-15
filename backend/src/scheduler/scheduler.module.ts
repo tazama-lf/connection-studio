@@ -9,12 +9,7 @@ import { ConfigService } from '@nestjs/config';
 import { NotificationModule } from 'src/notification/notification.module';
 
 @Module({
-  imports: [
-    LoggerModule,
-    SftpModule,
-    HttpModule,
-    NotificationModule,
-  ],
+  imports: [LoggerModule, SftpModule, HttpModule, NotificationModule],
   providers: [SchedulerService, AdminServiceClient, ConfigService],
   controllers: [SchedulerController],
   exports: [AdminServiceClient, SchedulerService],

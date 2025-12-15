@@ -68,7 +68,7 @@ export class NotificationService implements OnModuleInit {
     private readonly httpService: HttpService,
   ) {}
 
-  onModuleInit() : void {
+  onModuleInit(): void {
     this.initializeTransporter();
   }
 
@@ -122,7 +122,7 @@ export class NotificationService implements OnModuleInit {
   }
 
   // Getter method for status check
-  getStatus() : {isConfigured: boolean, hasTransporter: boolean} {
+  getStatus(): { isConfigured: boolean; hasTransporter: boolean } {
     return {
       isConfigured: this.isConfigured,
       hasTransporter: this.transporter !== null,
@@ -138,9 +138,8 @@ export class NotificationService implements OnModuleInit {
     }
 
     try {
-      const fromEmail =
-        this.configService.get<string>('SMTP_FROM_EMAIL')
-        this.configService.get<string>('SMTP_USER');
+      const fromEmail = this.configService.get<string>('SMTP_FROM_EMAIL');
+      this.configService.get<string>('SMTP_USER');
       const fromName =
         this.configService.get<string>('SMTP_FROM_NAME') ??
         'Tazama Connection Studio';
@@ -389,7 +388,9 @@ export class NotificationService implements OnModuleInit {
         };
       }
 
-      this.logger.log(`Sending emails to ${recipientEmails.length} recipient(s)`);
+      this.logger.log(
+        `Sending emails to ${recipientEmails.length} recipient(s)`,
+      );
 
       let htmlContent = '';
       let textContent = '';
@@ -452,8 +453,6 @@ export class NotificationService implements OnModuleInit {
           recipients: 0,
         };
       }
-
-     
 
       const emailSent = await this.sendEmail({
         to: recipientEmails.join(', '),

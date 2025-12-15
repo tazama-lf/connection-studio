@@ -42,7 +42,9 @@ class EnvironmentVariables {
   @IsNumberString()
   SESSION_TIMEOUT_MINUTES?: string;
 }
-export const validate = (config: Record<string, unknown>): EnvironmentVariables => {
+export const validate = (
+  config: Record<string, unknown>,
+): EnvironmentVariables => {
   const validatedConfig = plainToClass(EnvironmentVariables, config, {
     enableImplicitConversion: true,
   });

@@ -36,7 +36,9 @@ describe('NotificationService', () => {
         {
           provide: HttpService,
           useValue: {
-            get: jest.fn().mockReturnValue(of({ data: [{ username: 'test@test.com' }] })),
+            get: jest
+              .fn()
+              .mockReturnValue(of({ data: [{ username: 'test@test.com' }] })),
           },
         },
       ],
@@ -53,7 +55,7 @@ describe('NotificationService', () => {
       warn: service['logger'].warn,
       debug: service['logger'].debug,
     };
-    
+
     // Suppress all logger output by default
     service['logger'].log = jest.fn();
     service['logger'].error = jest.fn();
@@ -79,63 +81,89 @@ describe('NotificationService', () => {
   describe('initializeTransporter', () => {
     it('should warn when SMTP not configured', () => {
       // Create a fresh spy for this specific test
-      const loggerWarnSpy = jest.spyOn(service['logger'], 'warn').mockImplementation(() => {});
+      const loggerWarnSpy = jest
+        .spyOn(service['logger'], 'warn')
+        .mockImplementation(() => {});
       jest.spyOn(configService, 'get').mockReturnValue(undefined);
 
       service.onModuleInit();
 
-      expect(loggerWarnSpy).toHaveBeenCalledWith(' SMTP NOT CONFIGURED - Email notifications will be logged but not sent');
+      expect(loggerWarnSpy).toHaveBeenCalledWith(
+        ' SMTP NOT CONFIGURED - Email notifications will be logged but not sent',
+      );
     });
 
     it('should handle SMTP connection error', () => {
       // Create a fresh spy for this specific test
-      const loggerErrorSpy = jest.spyOn(service['logger'], 'error').mockImplementation(() => {});
+      const loggerErrorSpy = jest
+        .spyOn(service['logger'], 'error')
+        .mockImplementation(() => {});
       jest.spyOn(configService, 'get').mockImplementation((key: string) => {
-        const config = { SMTP_HOST: 'smtp.test.com', SMTP_USER: 'test', SMTP_PASS: 'pass' };
+        const config = {
+          SMTP_HOST: 'smtp.test.com',
+          SMTP_USER: 'test',
+          SMTP_PASS: 'pass',
+        };
         return config[key];
       });
-      
-      mockTransporter.verify = jest.fn((callback) => callback(new Error('Connection failed')));
-      (nodemailer.createTransport as jest.Mock).mockReturnValue(mockTransporter);
+
+      mockTransporter.verify = jest.fn((callback) =>
+        callback(new Error('Connection failed')),
+      );
+      (nodemailer.createTransport as jest.Mock).mockReturnValue(
+        mockTransporter,
+      );
 
       service.onModuleInit();
 
-      expect(loggerErrorSpy).toHaveBeenCalledWith(' SMTP connection error: Connection failed');
+      expect(loggerErrorSpy).toHaveBeenCalledWith(
+        ' SMTP connection error: Connection failed',
+      );
     });
 
     it('should handle transporter creation error', () => {
       // Create a fresh spy for this specific test
-      const loggerErrorSpy = jest.spyOn(service['logger'], 'error').mockImplementation(() => {});
+      const loggerErrorSpy = jest
+        .spyOn(service['logger'], 'error')
+        .mockImplementation(() => {});
       jest.spyOn(configService, 'get').mockImplementation((key: string) => {
-        const config = { SMTP_HOST: 'smtp.test.com', SMTP_USER: 'test', SMTP_PASS: 'pass' };
+        const config = {
+          SMTP_HOST: 'smtp.test.com',
+          SMTP_USER: 'test',
+          SMTP_PASS: 'pass',
+        };
         return config[key];
       });
-      
+
       (nodemailer.createTransport as jest.Mock).mockImplementation(() => {
         throw new Error('Transport creation failed');
       });
 
       service.onModuleInit();
 
-      expect(loggerErrorSpy).toHaveBeenCalledWith('Failed to initialize SMTP transporter: Transport creation failed');
+      expect(loggerErrorSpy).toHaveBeenCalledWith(
+        'Failed to initialize SMTP transporter: Transport creation failed',
+      );
     });
 
     it('should successfully configure SMTP', () => {
       const loggerLogSpy = jest.spyOn(service['logger'], 'log');
       jest.spyOn(configService, 'get').mockImplementation((key: string) => {
-        const config = { 
-          SMTP_HOST: 'smtp.test.com', 
-          SMTP_USER: 'test', 
+        const config = {
+          SMTP_HOST: 'smtp.test.com',
+          SMTP_USER: 'test',
           SMTP_PASS: 'pass',
           SMTP_PORT: 587,
-          SMTP_SECURE: 'true'
+          SMTP_SECURE: 'true',
         };
         return config[key];
       });
 
       service.onModuleInit();
 
-      expect(loggerLogSpy).toHaveBeenCalledWith(' SMTP configured and ready: smtp.test.com');
+      expect(loggerLogSpy).toHaveBeenCalledWith(
+        ' SMTP configured and ready: smtp.test.com',
+      );
     });
   });
 
@@ -145,7 +173,10 @@ describe('NotificationService', () => {
       service['isConfigured'] = true;
       service['transporter'] = mockTransporter;
       jest.spyOn(configService, 'get').mockImplementation((key: string) => {
-        const config = { SMTP_FROM_EMAIL: 'test@test.com', SMTP_FROM_NAME: 'Test' };
+        const config = {
+          SMTP_FROM_EMAIL: 'test@test.com',
+          SMTP_FROM_NAME: 'Test',
+        };
         return config[key];
       });
 
@@ -158,7 +189,9 @@ describe('NotificationService', () => {
       });
 
       expect(result).toBe(false);
-      expect(loggerErrorSpy).toHaveBeenCalledWith('Failed to send email: Send failed');
+      expect(loggerErrorSpy).toHaveBeenCalledWith(
+        'Failed to send email: Send failed',
+      );
     });
 
     it('should set replyTo when provided and log it', async () => {
@@ -178,7 +211,7 @@ describe('NotificationService', () => {
       expect(mockTransporter.sendMail).toHaveBeenCalledWith(
         expect.objectContaining({
           replyTo: 'reply@test.com',
-        })
+        }),
       );
     });
 
@@ -195,7 +228,7 @@ describe('NotificationService', () => {
 
       expect(result).toBe(false);
       expect(loggerWarnSpy).toHaveBeenCalledWith(
-        ' [DRY RUN] Would send email to: test@test.com'
+        ' [DRY RUN] Would send email to: test@test.com',
       );
     });
 
@@ -212,7 +245,7 @@ describe('NotificationService', () => {
 
       expect(result).toBe(false);
       expect(loggerWarnSpy).toHaveBeenCalledWith(
-        ' [DRY RUN] Would send email to: test1@test.com, test2@test.com'
+        ' [DRY RUN] Would send email to: test1@test.com, test2@test.com',
       );
     });
   });
@@ -234,7 +267,7 @@ describe('NotificationService', () => {
 
       const result = await service.sendRejectionNotification(
         'editor@test.com',
-        context
+        context,
       );
 
       expect(result).toBe(true);
@@ -243,7 +276,7 @@ describe('NotificationService', () => {
           to: 'editor@test.com',
           subject: 'Configuration Rejected: TestConfig v1.0',
           replyTo: 'john@test.com',
-        })
+        }),
       );
     });
   });
@@ -303,7 +336,7 @@ describe('NotificationService', () => {
 
       const result = await service.sendChangesRequested(
         'editor@test.com',
-        context
+        context,
       );
 
       expect(result).toBe(true);
@@ -311,7 +344,7 @@ describe('NotificationService', () => {
         expect.objectContaining({
           to: 'editor@test.com',
           subject: 'Changes Requested: TestConfig v1.0',
-        })
+        }),
       );
     });
   });
@@ -333,7 +366,7 @@ describe('NotificationService', () => {
 
       const result = await service.sendSubmitForApproval(
         ['approver1@test.com', 'approver2@test.com'],
-        context
+        context,
       );
 
       expect(result).toBe(true);
@@ -342,7 +375,7 @@ describe('NotificationService', () => {
           to: ['approver1@test.com', 'approver2@test.com'],
           subject: 'Approval Required: TestConfig v1.0',
           replyTo: 'john@test.com',
-        })
+        }),
       );
     });
 
@@ -364,96 +397,132 @@ describe('NotificationService', () => {
 
       expect(result).toBe(false);
       expect(loggerWarnSpy).toHaveBeenCalledWith(
-        'No approver emails found for tenant tenant1'
+        'No approver emails found for tenant tenant1',
       );
     });
   });
 
   describe('fetchRecipientEmails', () => {
     it('should handle ApproverApprove event', async () => {
-      const getUserGroupMembersSpy = jest.spyOn(service, 'getUserGroupMembers').mockResolvedValue(['exporter@test.com']);
+      const getUserGroupMembersSpy = jest
+        .spyOn(service, 'getUserGroupMembers')
+        .mockResolvedValue(['exporter@test.com']);
 
       const result = await service.fetchRecipientEmails(
         EventType.ApproverApprove,
         'tenant1',
         'token',
-        'group1'
+        'group1',
       );
 
-      expect(getUserGroupMembersSpy).toHaveBeenCalledWith('token', 'group1', 'exporter');
+      expect(getUserGroupMembersSpy).toHaveBeenCalledWith(
+        'token',
+        'group1',
+        'exporter',
+      );
       expect(result).toEqual(['exporter@test.com']);
     });
 
     it('should handle ExporterExport event', async () => {
-      const getUserGroupMembersSpy = jest.spyOn(service, 'getUserGroupMembers').mockResolvedValue(['publisher@test.com']);
+      const getUserGroupMembersSpy = jest
+        .spyOn(service, 'getUserGroupMembers')
+        .mockResolvedValue(['publisher@test.com']);
 
       const result = await service.fetchRecipientEmails(
         EventType.ExporterExport,
         'tenant1',
         'token',
-        'group1'
+        'group1',
       );
 
-      expect(getUserGroupMembersSpy).toHaveBeenCalledWith('token', 'group1', 'publisher');
+      expect(getUserGroupMembersSpy).toHaveBeenCalledWith(
+        'token',
+        'group1',
+        'publisher',
+      );
       expect(result).toEqual(['publisher@test.com']);
     });
 
     it('should handle ApproverReject event', async () => {
-      const getUserGroupMembersSpy = jest.spyOn(service, 'getUserGroupMembers').mockResolvedValue(['editor@test.com']);
+      const getUserGroupMembersSpy = jest
+        .spyOn(service, 'getUserGroupMembers')
+        .mockResolvedValue(['editor@test.com']);
 
       const result = await service.fetchRecipientEmails(
         EventType.ApproverReject,
         'tenant1',
         'token',
-        'group1'
+        'group1',
       );
 
-      expect(getUserGroupMembersSpy).toHaveBeenCalledWith('token', 'group1', 'editor');
+      expect(getUserGroupMembersSpy).toHaveBeenCalledWith(
+        'token',
+        'group1',
+        'editor',
+      );
       expect(result).toEqual(['editor@test.com']);
     });
 
     it('should handle PublisherActivate event (fetchAll)', async () => {
       const loggerLogSpy = jest.spyOn(service['logger'], 'log');
-      const getUserGroupMembersSpy = jest.spyOn(service, 'getUserGroupMembers').mockResolvedValue(['all@test.com']);
+      const getUserGroupMembersSpy = jest
+        .spyOn(service, 'getUserGroupMembers')
+        .mockResolvedValue(['all@test.com']);
 
       const result = await service.fetchRecipientEmails(
         EventType.PublisherActivate,
         'tenant1',
         'token',
-        'group1'
+        'group1',
       );
 
-      expect(loggerLogSpy).toHaveBeenCalledWith("Fetching all user emails from AuthService for tenant 'tenant1'");
-      expect(getUserGroupMembersSpy).toHaveBeenCalledWith('token', 'group1', undefined);
+      expect(loggerLogSpy).toHaveBeenCalledWith(
+        "Fetching all user emails from AuthService for tenant 'tenant1'",
+      );
+      expect(getUserGroupMembersSpy).toHaveBeenCalledWith(
+        'token',
+        'group1',
+        undefined,
+      );
       expect(result).toEqual(['all@test.com']);
     });
 
     it('should handle PublisherDeactivate event (fetchAll)', async () => {
-      const getUserGroupMembersSpy = jest.spyOn(service, 'getUserGroupMembers').mockResolvedValue(['all@test.com']);
+      const getUserGroupMembersSpy = jest
+        .spyOn(service, 'getUserGroupMembers')
+        .mockResolvedValue(['all@test.com']);
 
       const result = await service.fetchRecipientEmails(
         EventType.PublisherDeactivate,
         'tenant1',
         'token',
-        'group1'
+        'group1',
       );
 
-      expect(getUserGroupMembersSpy).toHaveBeenCalledWith('token', 'group1', undefined);
+      expect(getUserGroupMembersSpy).toHaveBeenCalledWith(
+        'token',
+        'group1',
+        undefined,
+      );
       expect(result).toEqual(['all@test.com']);
     });
 
     it('should return empty array on error', async () => {
       const loggerErrorSpy = jest.spyOn(service['logger'], 'error');
-      jest.spyOn(service, 'getUserGroupMembers').mockRejectedValue(new Error('Fetch failed'));
+      jest
+        .spyOn(service, 'getUserGroupMembers')
+        .mockRejectedValue(new Error('Fetch failed'));
 
       const result = await service.fetchRecipientEmails(
         EventType.EditorSubmit,
         'tenant1',
         'token',
-        'group1'
+        'group1',
       );
 
-      expect(loggerErrorSpy).toHaveBeenCalledWith('Failed to fetch recipient emails: Error: Fetch failed');
+      expect(loggerErrorSpy).toHaveBeenCalledWith(
+        'Failed to fetch recipient emails: Error: Fetch failed',
+      );
       expect(result).toEqual([]);
     });
 
@@ -465,7 +534,7 @@ describe('NotificationService', () => {
         EventType.ApproverApprove,
         'tenant1',
         'token',
-        'group1'
+        'group1',
       );
 
       expect(emails).toEqual([]);
@@ -476,20 +545,20 @@ describe('NotificationService', () => {
       // This tests that the function passes through whatever getUserGroupMembers returns
       jest.spyOn(service, 'getUserGroupMembers').mockResolvedValue([
         { id: '1', name: 'User1' }, // No email property
-        { id: '2', name: 'User2' }  // No email property
+        { id: '2', name: 'User2' }, // No email property
       ] as any);
 
       const emails = await service.fetchRecipientEmails(
         EventType.ApproverApprove,
         'tenant1',
         'token',
-        'group1'
+        'group1',
       );
 
       // The function returns the raw user objects when no email extraction is performed
       expect(emails).toEqual([
         { id: '1', name: 'User1' },
-        { id: '2', name: 'User2' }
+        { id: '2', name: 'User2' },
       ]);
     });
 
@@ -500,7 +569,7 @@ describe('NotificationService', () => {
         'UNKNOWN_EVENT' as EventType, // Use an event type that doesn't match any case
         'tenant1',
         'token',
-        'group1'
+        'group1',
       );
 
       expect(emails).toEqual([]);
@@ -509,7 +578,9 @@ describe('NotificationService', () => {
 
   describe('sendGenericWorkflowNotification', () => {
     it('should handle Job actionEntity (source_type)', async () => {
-      jest.spyOn(service, 'fetchRecipientEmails').mockResolvedValue(['user@test.com']);
+      jest
+        .spyOn(service, 'fetchRecipientEmails')
+        .mockResolvedValue(['user@test.com']);
       jest.spyOn(service, 'sendEmail').mockResolvedValue(true);
 
       const jobEntity = {
@@ -533,7 +604,9 @@ describe('NotificationService', () => {
     });
 
     it('should handle Schedule actionEntity (cron)', async () => {
-      jest.spyOn(service, 'fetchRecipientEmails').mockResolvedValue(['user@test.com']);
+      jest
+        .spyOn(service, 'fetchRecipientEmails')
+        .mockResolvedValue(['user@test.com']);
       jest.spyOn(service, 'sendEmail').mockResolvedValue(true);
 
       const scheduleEntity = {
@@ -578,7 +651,9 @@ describe('NotificationService', () => {
     });
 
     it('should handle sendEmail failure (SMTP not configured)', async () => {
-      jest.spyOn(service, 'fetchRecipientEmails').mockResolvedValue(['user@test.com']);
+      jest
+        .spyOn(service, 'fetchRecipientEmails')
+        .mockResolvedValue(['user@test.com']);
       jest.spyOn(service, 'sendEmail').mockResolvedValue(false);
 
       const configEntity = {
@@ -602,7 +677,9 @@ describe('NotificationService', () => {
 
     it('should handle exception during processing', async () => {
       const loggerErrorSpy = jest.spyOn(service['logger'], 'error');
-      jest.spyOn(service, 'fetchRecipientEmails').mockRejectedValue(new Error('Network error'));
+      jest
+        .spyOn(service, 'fetchRecipientEmails')
+        .mockRejectedValue(new Error('Network error'));
 
       const result = await service.sendGenericWorkflowNotification({
         event: EventType.EditorSubmit,
@@ -614,7 +691,9 @@ describe('NotificationService', () => {
         groupName: 'group1',
       });
 
-      expect(loggerErrorSpy).toHaveBeenCalledWith('Error sending notification: Error: Network error');
+      expect(loggerErrorSpy).toHaveBeenCalledWith(
+        'Error sending notification: Error: Network error',
+      );
       expect(result.success).toBe(false);
       expect(result.message).toBe('Network error');
     });
@@ -622,23 +701,36 @@ describe('NotificationService', () => {
 
   describe('getUserGroupMembers', () => {
     it('should handle service unavailable exception', async () => {
-      jest.spyOn(httpService, 'get').mockReturnValue(throwError(() => new Error('Service down')));
+      jest
+        .spyOn(httpService, 'get')
+        .mockReturnValue(throwError(() => new Error('Service down')));
       const loggerErrorSpy = jest.spyOn(service['logger'], 'error');
 
-      await expect(service.getUserGroupMembers('token', 'group1', 'role1')).rejects.toThrow(ServiceUnavailableException);
-      expect(loggerErrorSpy).toHaveBeenCalledWith('Error fetching user group members: ', expect.any(Error));
+      await expect(
+        service.getUserGroupMembers('token', 'group1', 'role1'),
+      ).rejects.toThrow(ServiceUnavailableException);
+      expect(loggerErrorSpy).toHaveBeenCalledWith(
+        'Error fetching user group members: ',
+        expect.any(Error),
+      );
     });
 
     it('should handle non-array response data', async () => {
-      jest.spyOn(httpService, 'get').mockReturnValue(of({ 
-        data: null,
-        status: 200,
-        statusText: 'OK',
-        headers: {},
-        config: {} as any
-      }));
+      jest.spyOn(httpService, 'get').mockReturnValue(
+        of({
+          data: null,
+          status: 200,
+          statusText: 'OK',
+          headers: {},
+          config: {} as any,
+        }),
+      );
 
-      const result = await service.getUserGroupMembers('token', 'group1', 'role1');
+      const result = await service.getUserGroupMembers(
+        'token',
+        'group1',
+        'role1',
+      );
 
       expect(result).toEqual([]);
     });
@@ -651,7 +743,7 @@ describe('NotificationService', () => {
         sub: 'user-id',
         email: 'user@test.com',
         tenant_id: 'tenant1',
-        token: { tokenString: 'valid-jwt-token' }
+        token: { tokenString: 'valid-jwt-token' },
       };
 
       // Mock the helper functions to return appropriate values
@@ -665,10 +757,12 @@ describe('NotificationService', () => {
         EventType.EditorSubmit,
         mockUser as any,
         { transactionType: 'Test' } as any,
-        'token'
+        'token',
       );
 
-      expect(loggerErrorSpy).toHaveBeenCalledWith('Group name not found in token. Cannot send notification.');
+      expect(loggerErrorSpy).toHaveBeenCalledWith(
+        'Group name not found in token. Cannot send notification.',
+      );
     });
 
     it('should successfully send workflow notification', async () => {
@@ -676,7 +770,7 @@ describe('NotificationService', () => {
         sub: 'user-id',
         email: 'user@test.com',
         tenant_id: 'tenant1',
-        token: { tokenString: 'valid-jwt-token' }
+        token: { tokenString: 'valid-jwt-token' },
       };
 
       const mockDecoded = { preferredUsername: 'testuser' };
@@ -687,7 +781,7 @@ describe('NotificationService', () => {
       jest.spyOn(service, 'sendGenericWorkflowNotification').mockResolvedValue({
         success: true,
         message: 'Sent',
-        recipients: 1
+        recipients: 1,
       });
 
       const loggerLogSpy = jest.spyOn(service['logger'], 'log');
@@ -696,11 +790,11 @@ describe('NotificationService', () => {
         EventType.EditorSubmit,
         mockUser as any,
         { transactionType: 'Test' } as any,
-        'token'
+        'token',
       );
 
       expect(loggerLogSpy).toHaveBeenCalledWith(
-        'Action entity for sending email : {"transactionType":"Test"}'
+        'Action entity for sending email : {"transactionType":"Test"}',
       );
       expect(service.sendGenericWorkflowNotification).toHaveBeenCalled();
     });
@@ -708,7 +802,9 @@ describe('NotificationService', () => {
 
   describe('sendPublishingStatusNotification', () => {
     it('should always return no recipients found (current implementation)', async () => {
-      const loggerWarnSpy = jest.spyOn(service['logger'], 'warn').mockImplementation(() => {});
+      const loggerWarnSpy = jest
+        .spyOn(service['logger'], 'warn')
+        .mockImplementation(() => {});
 
       const result = await service.sendPublishingStatusNotification({
         configId: 1,
@@ -719,7 +815,9 @@ describe('NotificationService', () => {
         actorName: 'Actor',
       });
 
-      expect(loggerWarnSpy).toHaveBeenCalledWith('No users found for tenant tenant1');
+      expect(loggerWarnSpy).toHaveBeenCalledWith(
+        'No users found for tenant tenant1',
+      );
       expect(result.success).toBe(false);
       expect(result.message).toBe('No recipients found');
       expect(result.recipients).toBe(0);
@@ -742,7 +840,7 @@ describe('NotificationService', () => {
       });
 
       expect(loggerWarnSpy).toHaveBeenCalledWith(
-        "No recipients found for event 'editor_submit' in tenant 'tenant1'"
+        "No recipients found for event 'editor_submit' in tenant 'tenant1'",
       );
       expect(result.success).toBe(false);
       expect(result.message).toBe('No recipients found');
@@ -751,7 +849,9 @@ describe('NotificationService', () => {
 
     it('should log recipients count in sendGenericWorkflowNotification', async () => {
       const loggerLogSpy = jest.spyOn(service['logger'], 'log');
-      jest.spyOn(service, 'fetchRecipientEmails').mockResolvedValue(['user@test.com']);
+      jest
+        .spyOn(service, 'fetchRecipientEmails')
+        .mockResolvedValue(['user@test.com']);
       jest.spyOn(service, 'sendEmail').mockResolvedValue(true);
 
       await service.sendGenericWorkflowNotification({
@@ -764,7 +864,9 @@ describe('NotificationService', () => {
         groupName: 'group1',
       });
 
-      expect(loggerLogSpy).toHaveBeenCalledWith('Sending emails to 1 recipient(s)');
+      expect(loggerLogSpy).toHaveBeenCalledWith(
+        'Sending emails to 1 recipient(s)',
+      );
     });
   });
 });

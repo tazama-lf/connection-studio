@@ -11,9 +11,6 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 /* eslint-enable import/first */
 
-
-
-
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);

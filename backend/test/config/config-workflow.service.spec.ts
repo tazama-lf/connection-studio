@@ -1,8 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigWorkflowService } from '../../src/config/config-workflow.service';
-import {
-  ConfigStatus,
-} from '../../src/config/config.interfaces';
+import { ConfigStatus } from '../../src/config/config.interfaces';
 
 describe('ConfigWorkflowService', () => {
   let service: ConfigWorkflowService;

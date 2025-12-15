@@ -4,7 +4,7 @@ import {
   IngestMode,
   JobStatus,
   ScheduleStatus,
-  SourceType
+  SourceType,
 } from '@tazama-lf/tcs-lib';
 import { Expose, Transform, Type } from 'class-transformer';
 import { CreatePullJobDto } from './create-pull-job.dto';

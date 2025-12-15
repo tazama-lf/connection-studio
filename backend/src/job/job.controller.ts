@@ -10,7 +10,16 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ConfigType, ISuccess, Job, JobStatus, JobSummary, PaginatedResult, PullJobHistory, ScheduleStatus } from '@tazama-lf/tcs-lib';
+import {
+  ConfigType,
+  ISuccess,
+  Job,
+  JobStatus,
+  JobSummary,
+  PaginatedResult,
+  PullJobHistory,
+  ScheduleStatus,
+} from '@tazama-lf/tcs-lib';
 import { plainToInstance } from 'class-transformer';
 import type { AuthenticatedUser } from 'src/auth/auth.types';
 import { TazamaAuthGuard } from 'src/auth/tazama-auth.guard';
@@ -31,7 +40,7 @@ import { JobService } from './job.service';
 @Controller('job')
 @UseGuards(TazamaAuthGuard)
 export class JobController {
-  constructor(private readonly jobService: JobService) { }
+  constructor(private readonly jobService: JobService) {}
 
   @Post('/create/push')
   @RequireAnyClaims(TazamaClaims.EDITOR)

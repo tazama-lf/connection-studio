@@ -229,7 +229,6 @@ describe('NotifyService', () => {
       );
     });
 
-
     it('should handle DEMS NATS service errors', async () => {
       const error = new Error('DEMS NATS publish failed');
       mockDemsNatsService.handleResponse.mockRejectedValue(error);
@@ -250,7 +249,6 @@ describe('NotifyService', () => {
         { transactionID: mockConfigId },
         ['dems.notify'],
       );
-
     });
   });
 

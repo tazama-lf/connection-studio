@@ -15,7 +15,7 @@ import {
   PullJobHistory,
   ScheduleStatus,
   SFTPConnection,
-  SourceType
+  SourceType,
 } from '@tazama-lf/tcs-lib';
 import { v4 } from 'uuid';
 import { AuthenticatedUser } from '../auth/auth.types';
@@ -42,7 +42,7 @@ export class JobService {
     private readonly adminServiceClient: AdminServiceClient,
     private readonly schedulerService: SchedulerService,
     private readonly notificationService: NotificationService,
-  ) { }
+  ) {}
 
   private handleError(err: unknown): never {
     const message = err instanceof Error ? err.message : String(err);
@@ -355,7 +355,6 @@ export class JobService {
     reason?: string,
   ): Promise<ISuccess> {
     try {
-
       let result: ISuccess | null = null;
       if (status !== JobStatus.DEPLOYED) {
         result = await this.adminServiceClient.updateJobByStatus(
@@ -423,7 +422,6 @@ export class JobService {
         }
 
         case JobStatus.EXPORTED: {
-
           const exportPayload = structuredClone(existingJob!);
           exportPayload.status = JobStatus.READY;
 
@@ -443,7 +441,7 @@ export class JobService {
         }
 
         case JobStatus.DEPLOYED: {
-          const fileData = await this.sftpService.readFile(fileName) as Job;
+          const fileData = (await this.sftpService.readFile(fileName)) as Job;
 
           const deployPayload: any = structuredClone(fileData);
           deployPayload.publishing_status = ScheduleStatus.ACTIVE;
@@ -489,7 +487,6 @@ export class JobService {
             updatedJob,
             user.token.tokenString,
           );
-
 
           return {
             success: true,

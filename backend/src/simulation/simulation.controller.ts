@@ -37,7 +37,6 @@ export class SimulationController {
       user.token.tokenString,
     );
 
-
     return result;
   }
 }

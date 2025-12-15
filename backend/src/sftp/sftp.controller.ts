@@ -22,7 +22,7 @@ export class SftpController {
   constructor(
     private readonly sftpService: SftpService,
     private readonly configService: ConfigService,
-  ) { }
+  ) {}
 
   @Get('/all')
   @Serialize(FetchSftpDto)

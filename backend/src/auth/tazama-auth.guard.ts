@@ -88,18 +88,17 @@ export class TazamaAuthGuard implements CanActivate {
     requiredClaims: string[];
     anyClaims: string[];
   } {
-     
     const requiredClaims =
-  this.reflector.getAllAndOverride<string[] | undefined>(CLAIMS_KEY, [
-    context.getHandler(),
-    context.getClass(),
-  ]) ?? [];
+      this.reflector.getAllAndOverride<string[] | undefined>(CLAIMS_KEY, [
+        context.getHandler(),
+        context.getClass(),
+      ]) ?? [];
 
-  const anyClaims =
-  this.reflector.getAllAndOverride<string[] | undefined>(ANY_CLAIMS_KEY, [
-    context.getHandler(),
-    context.getClass(),
-  ]) ?? [];
+    const anyClaims =
+      this.reflector.getAllAndOverride<string[] | undefined>(ANY_CLAIMS_KEY, [
+        context.getHandler(),
+        context.getClass(),
+      ]) ?? [];
 
     if (requiredClaims.length === 0 && anyClaims.length === 0) {
       throw new UnauthorizedException('No required claims specified');

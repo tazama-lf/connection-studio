@@ -13,7 +13,6 @@ import { RequireAnyClaims, TazamaClaims } from '../auth/auth.decorator';
 import { User } from '../auth/user.decorator';
 import type { AuthenticatedUser } from '../auth/auth.types';
 
-
 import { TazamaDataModelService } from './tazama-data-model.service';
 import type {
   CreateDestinationTypeDto,
@@ -43,7 +42,7 @@ interface DestinationOption {
 @UseGuards(TazamaAuthGuard)
 export class TazamaDataModelController {
   private readonly logger = new Logger(TazamaDataModelController.name);
-  
+
   constructor(
     private readonly tazamaDataModelService: TazamaDataModelService,
   ) {}
@@ -54,15 +53,16 @@ export class TazamaDataModelController {
     TazamaClaims.PUBLISHER,
     TazamaClaims.EXPORTER,
   )
-
-  async getDestinationOptions( @User() user: AuthenticatedUser): Promise<{
+  async getDestinationOptions(@User() user: AuthenticatedUser): Promise<{
     success: boolean;
     data: DestinationOption[];
     error?: string;
   }> {
     try {
-      
-      const data = await this.tazamaDataModelService.getDestinationOptions(user.tenantId, user.token.tokenString);
+      const data = await this.tazamaDataModelService.getDestinationOptions(
+        user.tenantId,
+        user.token.tokenString,
+      );
       return {
         success: true,
         data,
@@ -78,7 +78,6 @@ export class TazamaDataModelController {
     }
   }
 
-
   @Post('destination-types')
   @RequireAnyClaims(
     TazamaClaims.EDITOR,
@@ -89,14 +88,14 @@ export class TazamaDataModelController {
   async createDestinationType(
     @Body() dto: CreateDestinationTypeDto,
     @User() user: AuthenticatedUser,
-    ): Promise<{
+  ): Promise<{
     success: boolean;
     message: string;
     data: DestinationTypeResponse | null;
   }> {
     try {
       const token = user.token.tokenString;
-      
+
       if (!token) {
         return {
           success: false,
@@ -104,8 +103,11 @@ export class TazamaDataModelController {
           data: null,
         };
       }
-      
-      const data = await this.tazamaDataModelService.createDestinationType(dto, token);
+
+      const data = await this.tazamaDataModelService.createDestinationType(
+        dto,
+        token,
+      );
       return {
         success: true,
         message: 'Destination type created successfully',
@@ -122,7 +124,6 @@ export class TazamaDataModelController {
     }
   }
 
-
   @Post('destination-types/:destinationTypeId/fields')
   @RequireAnyClaims(
     TazamaClaims.EDITOR,
@@ -133,7 +134,7 @@ export class TazamaDataModelController {
   async addFieldToDestinationType(
     @Param('destinationTypeId', ParseIntPipe) destinationTypeId: number,
     @Body() dto: CreateFieldDto,
-    @User() user: AuthenticatedUser
+    @User() user: AuthenticatedUser,
   ): Promise<{
     success: boolean;
     message: string;
@@ -141,7 +142,7 @@ export class TazamaDataModelController {
   }> {
     try {
       const token = user.token.tokenString;
-      
+
       if (!token) {
         return {
           success: false,
@@ -149,7 +150,7 @@ export class TazamaDataModelController {
           data: null,
         };
       }
-      
+
       const data = await this.tazamaDataModelService.addFieldToDestinationType(
         destinationTypeId,
         dto,

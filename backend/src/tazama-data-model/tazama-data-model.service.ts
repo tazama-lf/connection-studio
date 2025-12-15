@@ -84,7 +84,6 @@ export class TazamaDataModelService {
         collection_id: field.collection_id ?? 0,
       };
 
-
       if (field.type === 'object' && field.properties?.length) {
         base.properties = field.properties.map((prop: TazamaField) => ({
           name: prop.name,
@@ -114,7 +113,10 @@ export class TazamaDataModelService {
           collection_id: schema.collection_id ?? 0,
           properties: [],
         };
-        this.logger.log('Adding empty collection option:', emptyCollectionOption);
+        this.logger.log(
+          'Adding empty collection option:',
+          emptyCollectionOption,
+        );
         options.push(emptyCollectionOption);
       } else {
         for (const field of schema.fields) {
@@ -140,7 +142,6 @@ export class TazamaDataModelService {
     return resultOptions.sort((a, b) => a.label.localeCompare(b.label));
   }
 
-
   async createDestinationType(
     dto: CreateDestinationTypeDto,
     token: string,
@@ -165,15 +166,16 @@ export class TazamaDataModelService {
     }
   }
 
-  
   async addFieldToDestinationType(
     destinationTypeId: number,
     dto: CreateFieldDto,
     token: string,
   ): Promise<FieldResponse> {
     // Validate destination type exists
-    const exists =
-      await this.repository.destinationTypeExists(destinationTypeId, token);
+    const exists = await this.repository.destinationTypeExists(
+      destinationTypeId,
+      token,
+    );
     if (!exists) {
       throw new BadRequestException(
         `Destination type with ID ${destinationTypeId} not found`,

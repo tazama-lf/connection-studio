@@ -102,7 +102,10 @@ describe('AuthService', () => {
         username,
         password,
       });
-      expect(loggerService.log).toHaveBeenCalledWith('Auth service responded', 'AuthService');
+      expect(loggerService.log).toHaveBeenCalledWith(
+        'Auth service responded',
+        'AuthService',
+      );
     });
 
     it('should successfully login with token in data.token field', async () => {
@@ -121,7 +124,10 @@ describe('AuthService', () => {
         token: mockToken,
         expiresIn: 3600,
       });
-      expect(loggerService.log).toHaveBeenCalledWith('Auth service responded', 'AuthService');
+      expect(loggerService.log).toHaveBeenCalledWith(
+        'Auth service responded',
+        'AuthService',
+      );
     });
 
     it('should successfully login with token in data.access_token field', async () => {
@@ -286,7 +292,7 @@ describe('AuthService', () => {
       expect(service.isTokenExpired('not.a.token')).toBe(true);
       expect(service.isTokenExpired('.')).toBe(true);
       expect(service.isTokenExpired('..')).toBe(true);
-      
+
       // These should all return true without throwing errors
       // The actual error handling in catch blocks is defensive programming
     });
@@ -298,7 +304,7 @@ describe('AuthService', () => {
       expect(service.getTokenTimeToExpiry('not.a.token')).toBe(0);
       expect(service.getTokenTimeToExpiry('.')).toBe(0);
       expect(service.getTokenTimeToExpiry('..')).toBe(0);
-      
+
       // These should all return 0 without throwing errors
     });
   });

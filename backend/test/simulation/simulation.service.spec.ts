@@ -1,12 +1,15 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { SimulationService, SimulatePayloadDto } from '../../src/simulation/simulation.service';
+import {
+  SimulationService,
+  SimulatePayloadDto,
+} from '../../src/simulation/simulation.service';
 import { AdminServiceClient } from '../../src/services/admin-service-client.service';
 
 jest.mock('@tazama-lf/tcs-lib', () => ({
   processMappings: jest.fn().mockResolvedValue({
     dataCache: { mappedField: 'mapped_value' },
     endToEndId: 'e2e-123',
-    status: 'success'
+    status: 'success',
   }),
   iMappingConfiguration: {},
   iMappingResult: {},
@@ -40,15 +43,17 @@ describe('SimulationService', () => {
   beforeEach(async () => {
     // Reset all mocks before each test
     jest.clearAllMocks();
-    
+
     // Setup default mock implementations
     adminServiceClientMock.getConfigById.mockResolvedValue({
       id: 1,
-      payloads: [{ 
-        contentType: 'application/json',
-        schema: { type: 'object' }
-      }],
-      tenantId: 'tenant-1'
+      payloads: [
+        {
+          contentType: 'application/json',
+          schema: { type: 'object' },
+        },
+      ],
+      tenantId: 'tenant-1',
     });
 
     const module: TestingModule = await Test.createTestingModule({
@@ -74,7 +79,12 @@ describe('SimulationService', () => {
       payload: '{}',
     };
 
-    const result = await service.simulateMapping(dto as any, 'tenant-1', 'user1', 'token');
+    const result = await service.simulateMapping(
+      dto as any,
+      'tenant-1',
+      'user1',
+      'token',
+    );
     expect(result.status).toBe('FAILED');
     expect(result.errors.length).toBeGreaterThan(0);
     expect(result.errors[0].field).toBe('endpointId');
@@ -83,26 +93,33 @@ describe('SimulationService', () => {
   it('should handle successful JSON payload simulation', async () => {
     const mockConfig = {
       id: 1,
-      payloads: [{ 
-        contentType: 'application/json',
-        schema: {
-          type: 'object',
-          properties: { test: { type: 'string' } }
-        }
-      }],
+      payloads: [
+        {
+          contentType: 'application/json',
+          schema: {
+            type: 'object',
+            properties: { test: { type: 'string' } },
+          },
+        },
+      ],
       mappings: [],
-      tenantId: 'tenant-1'
+      tenantId: 'tenant-1',
     };
 
     adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
 
-    const dto: SimulatePayloadDto = { 
-      endpointId: 1, 
-      payloadType: 'application/json', 
-      payload: { test: 'value' } 
+    const dto: SimulatePayloadDto = {
+      endpointId: 1,
+      payloadType: 'application/json',
+      payload: { test: 'value' },
     };
 
-    const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+    const result = await service.simulateMapping(
+      dto,
+      'tenant-1',
+      'user1',
+      'token',
+    );
     // Since we don't have real validation setup, just expect it to execute
     expect(result).toBeDefined();
     expect(result.summary.endpointId).toBe(1);
@@ -111,26 +128,33 @@ describe('SimulationService', () => {
   it('should handle XML payload simulation', async () => {
     const mockConfig = {
       id: 1,
-      payloads: [{ 
-        contentType: 'application/xml',
-        schema: {
-          type: 'object',
-          properties: { root: { type: 'object' } }
-        }
-      }],
+      payloads: [
+        {
+          contentType: 'application/xml',
+          schema: {
+            type: 'object',
+            properties: { root: { type: 'object' } },
+          },
+        },
+      ],
       mappings: [],
-      tenantId: 'tenant-1'
+      tenantId: 'tenant-1',
     };
 
     adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
 
-    const dto: SimulatePayloadDto = { 
-      endpointId: 1, 
-      payloadType: 'application/xml', 
-      payload: '<root><test>value</test></root>' 
+    const dto: SimulatePayloadDto = {
+      endpointId: 1,
+      payloadType: 'application/xml',
+      payload: '<root><test>value</test></root>',
     };
 
-    const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+    const result = await service.simulateMapping(
+      dto,
+      'tenant-1',
+      'user1',
+      'token',
+    );
     expect(result).toBeDefined();
     expect(result.summary.endpointId).toBe(1);
   });
@@ -138,13 +162,18 @@ describe('SimulationService', () => {
   it('should handle missing config', async () => {
     adminServiceClientMock.getConfigById.mockResolvedValue(null);
 
-    const dto: SimulatePayloadDto = { 
-      endpointId: 999, 
-      payloadType: 'application/json', 
-      payload: {} 
+    const dto: SimulatePayloadDto = {
+      endpointId: 999,
+      payloadType: 'application/json',
+      payload: {},
     };
 
-    const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+    const result = await service.simulateMapping(
+      dto,
+      'tenant-1',
+      'user1',
+      'token',
+    );
     expect(result.status).toBe('FAILED');
     expect(result.errors.length).toBeGreaterThan(0);
   });
@@ -152,93 +181,126 @@ describe('SimulationService', () => {
   it('should handle schema validation failure', async () => {
     const mockConfig = {
       id: 1,
-      payloads: [{ 
-        contentType: 'application/json',
-        schema: {
-          type: 'object',
-          properties: { required_field: { type: 'string' } },
-          required: ['required_field']
-        }
-      }],
+      payloads: [
+        {
+          contentType: 'application/json',
+          schema: {
+            type: 'object',
+            properties: { required_field: { type: 'string' } },
+            required: ['required_field'],
+          },
+        },
+      ],
       mappings: [],
-      tenantId: 'tenant-1'
+      tenantId: 'tenant-1',
     };
 
     adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
 
-    const dto: SimulatePayloadDto = { 
-      endpointId: 1, 
-      payloadType: 'application/json', 
-      payload: { wrong_field: 'value' } 
+    const dto: SimulatePayloadDto = {
+      endpointId: 1,
+      payloadType: 'application/json',
+      payload: { wrong_field: 'value' },
     };
 
-    const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+    const result = await service.simulateMapping(
+      dto,
+      'tenant-1',
+      'user1',
+      'token',
+    );
     expect(result.status).toBe('FAILED');
     expect(result.errors.length).toBeGreaterThan(0);
   });
 
   it('should handle JSON parsing errors', async () => {
-    const dto: SimulatePayloadDto = { 
-      endpointId: 1, 
-      payloadType: 'application/json', 
-      payload: 'invalid json{' 
+    const dto: SimulatePayloadDto = {
+      endpointId: 1,
+      payloadType: 'application/json',
+      payload: 'invalid json{',
     };
 
-    const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+    const result = await service.simulateMapping(
+      dto,
+      'tenant-1',
+      'user1',
+      'token',
+    );
     expect(result.status).toBe('FAILED');
   });
 
   it('should handle XML parsing errors', async () => {
-    const dto: SimulatePayloadDto = { 
-      endpointId: 1, 
-      payloadType: 'application/xml', 
-      payload: '<invalid><xml>' 
+    const dto: SimulatePayloadDto = {
+      endpointId: 1,
+      payloadType: 'application/xml',
+      payload: '<invalid><xml>',
     };
 
-    const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+    const result = await service.simulateMapping(
+      dto,
+      'tenant-1',
+      'user1',
+      'token',
+    );
     expect(result.status).toBe('FAILED');
   });
 
   it('should handle service errors', async () => {
-    adminServiceClientMock.getConfigById.mockRejectedValue(new Error('Service error'));
+    adminServiceClientMock.getConfigById.mockRejectedValue(
+      new Error('Service error'),
+    );
 
-    const dto: SimulatePayloadDto = { 
-      endpointId: 1, 
-      payloadType: 'application/json', 
-      payload: {} 
+    const dto: SimulatePayloadDto = {
+      endpointId: 1,
+      payloadType: 'application/json',
+      payload: {},
     };
 
-    const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+    const result = await service.simulateMapping(
+      dto,
+      'tenant-1',
+      'user1',
+      'token',
+    );
     expect(result.status).toBe('FAILED');
   });
 
   it('should handle mapping validation and processing', async () => {
     const mockConfig = {
       id: 1,
-      payloads: [{ 
-        contentType: 'application/json',
-        schema: {
-          type: 'object',
-          properties: { amount: { type: 'number' } }
-        }
-      }],
-      mapping: [{
-        source: 'amount',
-        target: 'mappedAmount',
-        transformation: 'direct'
-      }],
-      tenantId: 'tenant-1'
+      payloads: [
+        {
+          contentType: 'application/json',
+          schema: {
+            type: 'object',
+            properties: { amount: { type: 'number' } },
+          },
+        },
+      ],
+      mapping: [
+        {
+          source: 'amount',
+          target: 'mappedAmount',
+          transformation: 'direct',
+        },
+      ],
+      tenantId: 'tenant-1',
     };
 
     adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
 
-    const dto: SimulatePayloadDto = { 
-      endpointId: 1, 
-      payloadType: 'application/json', 
-      payload: { amount: 1000 } 
+    const dto: SimulatePayloadDto = {
+      endpointId: 1,
+      payloadType: 'application/json',
+      payload: { amount: 1000 },
     };
 
-    const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+    const result = await service.simulateMapping(
+      dto,
+      'tenant-1',
+      'user1',
+      'token',
+    );
     expect(result).toBeDefined();
     expect(result.summary.mappingsApplied).toBeGreaterThanOrEqual(0);
   });
@@ -246,39 +308,48 @@ describe('SimulationService', () => {
   it('should handle custom TCS mapping in dto', async () => {
     const mockConfig = {
       id: 1,
-      payloads: [{ 
-        contentType: 'application/json',
-        schema: { type: 'object' }
-      }],
-      tenantId: 'tenant-1'
+      payloads: [
+        {
+          contentType: 'application/json',
+          schema: { type: 'object' },
+        },
+      ],
+      tenantId: 'tenant-1',
     };
 
     adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
 
     const customMapping = {
       mapping: [],
-      functions: []
+      functions: [],
     } as any;
 
-    const dto: SimulatePayloadDto = { 
-      endpointId: 1, 
-      payloadType: 'application/json', 
+    const dto: SimulatePayloadDto = {
+      endpointId: 1,
+      payloadType: 'application/json',
       payload: { test: 'value' },
-      tcsMapping: customMapping
+      tcsMapping: customMapping,
     };
 
-    const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+    const result = await service.simulateMapping(
+      dto,
+      'tenant-1',
+      'user1',
+      'token',
+    );
     expect(result).toBeDefined();
   });
 
   it('should handle tenant mismatch errors', async () => {
     const mockConfig = {
       id: 1,
-      payloads: [{ 
-        contentType: 'application/json',
-        schema: { type: 'object' }
-      }],
-      tenantId: 'different-tenant' // Different tenant
+      payloads: [
+        {
+          contentType: 'application/json',
+          schema: { type: 'object' },
+        },
+      ],
+      tenantId: 'different-tenant', // Different tenant
     };
 
     adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
@@ -286,27 +357,34 @@ describe('SimulationService', () => {
     const dto: SimulatePayloadDto = {
       endpointId: 1,
       payloadType: 'application/json',
-      payload: { test: 'value' }
+      payload: { test: 'value' },
     };
 
-    const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+    const result = await service.simulateMapping(
+      dto,
+      'tenant-1',
+      'user1',
+      'token',
+    );
     expect(result.status).toBe('FAILED');
   });
 
   it('should handle invalid mapping configurations', async () => {
     const mockConfig = {
       id: 1,
-      payloads: [{ 
-        contentType: 'application/json',
-        schema: { type: 'object' }
-      }],
+      payloads: [
+        {
+          contentType: 'application/json',
+          schema: { type: 'object' },
+        },
+      ],
       mapping: [
         {
           // Invalid mapping without required fields
-          id: 'invalid-map'
-        }
+          id: 'invalid-map',
+        },
       ],
-      tenantId: 'tenant-1'
+      tenantId: 'tenant-1',
     };
 
     adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
@@ -314,10 +392,15 @@ describe('SimulationService', () => {
     const dto: SimulatePayloadDto = {
       endpointId: 1,
       payloadType: 'application/json',
-      payload: { test: 'value' }
+      payload: { test: 'value' },
     };
 
-    const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+    const result = await service.simulateMapping(
+      dto,
+      'tenant-1',
+      'user1',
+      'token',
+    );
     expect(result).toBeDefined();
   });
 
@@ -325,11 +408,13 @@ describe('SimulationService', () => {
     it('should cover stageLoadConfig with tenant mismatch', async () => {
       const mockConfig = {
         id: 1,
-        payloads: [{ 
-          contentType: 'application/json',
-          schema: { type: 'object' }
-        }],
-        tenantId: 'wrong-tenant' // Different tenant to trigger mismatch
+        payloads: [
+          {
+            contentType: 'application/json',
+            schema: { type: 'object' },
+          },
+        ],
+        tenantId: 'wrong-tenant', // Different tenant to trigger mismatch
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
@@ -337,10 +422,15 @@ describe('SimulationService', () => {
       const dto: SimulatePayloadDto = {
         endpointId: 1,
         payloadType: 'application/json',
-        payload: { test: 'value' }
+        payload: { test: 'value' },
       };
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
       expect(result.status).toBe('FAILED');
       // Just check that the result has errors, don't check specific message
       expect(result.errors.length).toBeGreaterThan(0);
@@ -349,31 +439,33 @@ describe('SimulationService', () => {
     it('should cover stageParsePayload with complex XML', async () => {
       const mockConfig = {
         id: 1,
-        payloads: [{ 
-          contentType: 'application/xml',
-          schema: { 
-            type: 'object',
-            properties: {
-              root: {
-                type: 'object',
-                properties: {
-                  items: {
-                    type: 'array',
-                    items: { 
-                      type: 'object',
-                      properties: {
-                        id: { type: 'string' },
-                        value: { type: 'number' }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }],
+        payloads: [
+          {
+            contentType: 'application/xml',
+            schema: {
+              type: 'object',
+              properties: {
+                root: {
+                  type: 'object',
+                  properties: {
+                    items: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'string' },
+                          value: { type: 'number' },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        ],
         mappings: [],
-        tenantId: 'tenant-1'
+        tenantId: 'tenant-1',
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
@@ -388,30 +480,37 @@ describe('SimulationService', () => {
               <item><id>2</id><value>200</value></item>
             </items>
           </root>
-        `
+        `,
       };
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
       expect(result).toBeDefined();
     });
 
     it('should cover schema validation with additionalProperties false', async () => {
       const mockConfig = {
         id: 1,
-        payloads: [{ 
-          contentType: 'application/json',
-          schema: {
-            type: 'object',
-            properties: {
-              name: { type: 'string' },
-              age: { type: 'number' }
+        payloads: [
+          {
+            contentType: 'application/json',
+            schema: {
+              type: 'object',
+              properties: {
+                name: { type: 'string' },
+                age: { type: 'number' },
+              },
+              additionalProperties: false,
+              required: ['name'],
             },
-            additionalProperties: false,
-            required: ['name']
-          }
-        }],
+          },
+        ],
         mappings: [],
-        tenantId: 'tenant-1'
+        tenantId: 'tenant-1',
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
@@ -419,36 +518,43 @@ describe('SimulationService', () => {
       const dto: SimulatePayloadDto = {
         endpointId: 1,
         payloadType: 'application/json',
-        payload: { 
+        payload: {
           name: 'John',
           age: 30,
-          extra: 'not allowed' // This should trigger additionalProperties validation
-        }
+          extra: 'not allowed', // This should trigger additionalProperties validation
+        },
       };
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
       expect(result).toBeDefined();
     });
 
     it('should cover TCS mapping execution with complex mappings', async () => {
       const mockConfig = {
         id: 1,
-        payloads: [{ 
-          contentType: 'application/json',
-          schema: {
-            type: 'object',
-            properties: {
-              transaction: {
-                type: 'object',
-                properties: {
-                  id: { type: 'string' },
-                  amount: { type: 'number' },
-                  currency: { type: 'string' }
-                }
-              }
-            }
-          }
-        }],
+        payloads: [
+          {
+            contentType: 'application/json',
+            schema: {
+              type: 'object',
+              properties: {
+                transaction: {
+                  type: 'object',
+                  properties: {
+                    id: { type: 'string' },
+                    amount: { type: 'number' },
+                    currency: { type: 'string' },
+                  },
+                },
+              },
+            },
+          },
+        ],
         mapping: [
           {
             ruleId: 'rule-001',
@@ -458,8 +564,8 @@ describe('SimulationService', () => {
             destinationPath: 'processedTransaction.transactionId',
             processor: {
               expression: 'value',
-              artifactOverrides: {}
-            }
+              artifactOverrides: {},
+            },
           },
           {
             ruleId: 'rule-002',
@@ -469,11 +575,11 @@ describe('SimulationService', () => {
             destinationPath: 'processedTransaction.amount',
             processor: {
               expression: 'parseFloat(value)',
-              artifactOverrides: {}
-            }
-          }
+              artifactOverrides: {},
+            },
+          },
         ],
-        tenantId: 'tenant-1'
+        tenantId: 'tenant-1',
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
@@ -485,12 +591,17 @@ describe('SimulationService', () => {
           transaction: {
             id: 'txn-123',
             amount: 99.99,
-            currency: 'USD'
-          }
-        }
+            currency: 'USD',
+          },
+        },
       };
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
       expect(result).toBeDefined();
       // Don't assume mappings will be applied, just check the result is defined
       expect(result.summary).toBeDefined();
@@ -499,18 +610,20 @@ describe('SimulationService', () => {
     it('should cover mapping validation with invalid mappings', async () => {
       const mockConfig = {
         id: 1,
-        payloads: [{ 
-          contentType: 'application/json',
-          schema: { type: 'object' }
-        }],
+        payloads: [
+          {
+            contentType: 'application/json',
+            schema: { type: 'object' },
+          },
+        ],
         mapping: [
           {
             // Missing required fields to trigger validation errors
             id: 'invalid-mapping',
             // Missing ruleId, cfg, sourcePath, etc.
-          }
+          },
         ],
-        tenantId: 'tenant-1'
+        tenantId: 'tenant-1',
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
@@ -518,32 +631,39 @@ describe('SimulationService', () => {
       const dto: SimulatePayloadDto = {
         endpointId: 1,
         payloadType: 'application/json',
-        payload: { test: 'value' }
+        payload: { test: 'value' },
       };
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
       expect(result).toBeDefined();
     });
 
     it('should cover XML parsing with CDATA sections', async () => {
       const mockConfig = {
         id: 1,
-        payloads: [{ 
-          contentType: 'application/xml',
-          schema: {
-            type: 'object',
-            properties: {
-              root: {
-                type: 'object',
-                properties: {
-                  data: { type: 'string' }
-                }
-              }
-            }
-          }
-        }],
+        payloads: [
+          {
+            contentType: 'application/xml',
+            schema: {
+              type: 'object',
+              properties: {
+                root: {
+                  type: 'object',
+                  properties: {
+                    data: { type: 'string' },
+                  },
+                },
+              },
+            },
+          },
+        ],
         mappings: [],
-        tenantId: 'tenant-1'
+        tenantId: 'tenant-1',
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
@@ -551,40 +671,48 @@ describe('SimulationService', () => {
       const dto: SimulatePayloadDto = {
         endpointId: 1,
         payloadType: 'application/xml',
-        payload: '<root><data><![CDATA[Some <complex> & special characters!]]></data></root>'
+        payload:
+          '<root><data><![CDATA[Some <complex> & special characters!]]></data></root>',
       };
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
       expect(result).toBeDefined();
     });
 
     it('should cover array validation within XML payload', async () => {
       const mockConfig = {
         id: 1,
-        payloads: [{ 
-          contentType: 'application/xml',
-          schema: {
-            type: 'object',
-            properties: {
-              root: {
-                type: 'object',
-                properties: {
-                  items: {
-                    type: 'array',
+        payloads: [
+          {
+            contentType: 'application/xml',
+            schema: {
+              type: 'object',
+              properties: {
+                root: {
+                  type: 'object',
+                  properties: {
                     items: {
-                      type: 'object',
-                      properties: {
-                        value: { type: 'string' }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }],
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          value: { type: 'string' },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        ],
         mappings: [],
-        tenantId: 'tenant-1'
+        tenantId: 'tenant-1',
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
@@ -600,25 +728,35 @@ describe('SimulationService', () => {
               <item><value>third</value></item>
             </items>
           </root>
-        `
+        `,
       };
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
       expect(result).toBeDefined();
     });
 
     it('should cover service error handling in config loading', async () => {
       adminServiceClientMock.getConfigById.mockRejectedValue(
-        new Error('Database connection failed')
+        new Error('Database connection failed'),
       );
 
       const dto: SimulatePayloadDto = {
         endpointId: 1,
         payloadType: 'application/json',
-        payload: { test: 'value' }
+        payload: { test: 'value' },
       };
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
       expect(result.status).toBe('FAILED');
       // Just check that there are errors, don't check specific message
       expect(result.errors.length).toBeGreaterThan(0);
@@ -627,33 +765,35 @@ describe('SimulationService', () => {
     it('should cover complex path field value extraction', async () => {
       const mockConfig = {
         id: 1,
-        payloads: [{ 
-          contentType: 'application/json',
-          schema: {
-            type: 'object',
-            properties: {
-              data: {
-                type: 'object',
-                properties: {
-                  items: {
-                    type: 'array',
+        payloads: [
+          {
+            contentType: 'application/json',
+            schema: {
+              type: 'object',
+              properties: {
+                data: {
+                  type: 'object',
+                  properties: {
                     items: {
-                      type: 'object',
-                      properties: {
-                        details: {
-                          type: 'object',
-                          properties: {
-                            value: { type: 'string' }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }],
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          details: {
+                            type: 'object',
+                            properties: {
+                              value: { type: 'string' },
+                            },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        ],
         mapping: [
           {
             ruleId: 'rule-array',
@@ -662,11 +802,11 @@ describe('SimulationService', () => {
             sourcePath: 'data.items[0].details.value',
             destinationPath: 'extracted.firstValue',
             processor: {
-              expression: 'value'
-            }
-          }
+              expression: 'value',
+            },
+          },
         ],
-        tenantId: 'tenant-1'
+        tenantId: 'tenant-1',
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
@@ -678,34 +818,41 @@ describe('SimulationService', () => {
           data: {
             items: [
               { details: { value: 'first_item' } },
-              { details: { value: 'second_item' } }
-            ]
-          }
-        }
+              { details: { value: 'second_item' } },
+            ],
+          },
+        },
       };
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
       expect(result).toBeDefined();
     });
 
     it('should cover strict schema enforcement with runtime context fields', async () => {
       const mockConfig = {
         id: 1,
-        payloads: [{ 
-          contentType: 'application/json',
-          schema: {
-            type: 'object',
-            properties: {
-              tenantId: { type: 'string' },
-              userId: { type: 'string' },
-              businessData: { type: 'string' }
+        payloads: [
+          {
+            contentType: 'application/json',
+            schema: {
+              type: 'object',
+              properties: {
+                tenantId: { type: 'string' },
+                userId: { type: 'string' },
+                businessData: { type: 'string' },
+              },
+              required: ['tenantId', 'userId', 'businessData'], // Runtime context fields should be filtered out
+              additionalProperties: false,
             },
-            required: ['tenantId', 'userId', 'businessData'], // Runtime context fields should be filtered out
-            additionalProperties: false
-          }
-        }],
+          },
+        ],
         mappings: [],
-        tenantId: 'tenant-1'
+        tenantId: 'tenant-1',
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
@@ -714,43 +861,50 @@ describe('SimulationService', () => {
         endpointId: 1,
         payloadType: 'application/json',
         payload: {
-          businessData: 'important_data'
+          businessData: 'important_data',
           // Note: not providing tenantId/userId which are runtime context fields
-        }
+        },
       };
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
       expect(result).toBeDefined();
     });
 
     it('should cover array schema enforcement with nested objects', async () => {
       const mockConfig = {
         id: 1,
-        payloads: [{ 
-          contentType: 'application/json',
-          schema: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                id: { type: 'string' },
-                nestedArray: {
-                  type: 'array',
-                  items: {
-                    type: 'object',
-                    properties: {
-                      value: { type: 'string' }
+        payloads: [
+          {
+            contentType: 'application/json',
+            schema: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  id: { type: 'string' },
+                  nestedArray: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        value: { type: 'string' },
+                      },
+                      additionalProperties: false,
                     },
-                    additionalProperties: false
-                  }
-                }
+                  },
+                },
+                additionalProperties: false,
               },
-              additionalProperties: false
-            }
-          }
-        }],
+            },
+          },
+        ],
         mappings: [],
-        tenantId: 'tenant-1'
+        tenantId: 'tenant-1',
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
@@ -763,41 +917,54 @@ describe('SimulationService', () => {
             id: '1',
             nestedArray: [
               { value: 'nested_value_1' },
-              { value: 'nested_value_2' }
-            ]
-          }
-        ]
+              { value: 'nested_value_2' },
+            ],
+          },
+        ],
       };
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
       expect(result).toBeDefined();
     });
 
     it('should cover schema with oneOf/anyOf/allOf constructs', async () => {
       const mockConfig = {
         id: 1,
-        payloads: [{ 
-          contentType: 'application/json',
-          schema: {
-            type: 'object',
-            properties: {
-              data: {
-                oneOf: [
-                  {
-                    type: 'object',
-                    properties: { type: { const: 'A' }, value: { type: 'string' } }
-                  },
-                  {
-                    type: 'object',
-                    properties: { type: { const: 'B' }, number: { type: 'number' } }
-                  }
-                ]
-              }
-            }
-          }
-        }],
+        payloads: [
+          {
+            contentType: 'application/json',
+            schema: {
+              type: 'object',
+              properties: {
+                data: {
+                  oneOf: [
+                    {
+                      type: 'object',
+                      properties: {
+                        type: { const: 'A' },
+                        value: { type: 'string' },
+                      },
+                    },
+                    {
+                      type: 'object',
+                      properties: {
+                        type: { const: 'B' },
+                        number: { type: 'number' },
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+          },
+        ],
         mappings: [],
-        tenantId: 'tenant-1'
+        tenantId: 'tenant-1',
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
@@ -806,21 +973,28 @@ describe('SimulationService', () => {
         endpointId: 1,
         payloadType: 'application/json',
         payload: {
-          data: { type: 'A', value: 'test_string' }
-        }
+          data: { type: 'A', value: 'test_string' },
+        },
       };
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
       expect(result).toBeDefined();
     });
 
     it('should cover empty path field value extraction', async () => {
       const mockConfig = {
         id: 1,
-        payloads: [{ 
-          contentType: 'application/json',
-          schema: { type: 'object' }
-        }],
+        payloads: [
+          {
+            contentType: 'application/json',
+            schema: { type: 'object' },
+          },
+        ],
         mapping: [
           {
             ruleId: 'rule-empty',
@@ -829,11 +1003,11 @@ describe('SimulationService', () => {
             sourcePath: '', // Empty path to trigger getFieldValue with empty path
             destinationPath: 'result.empty',
             processor: {
-              expression: 'value || "default"'
-            }
-          }
+              expression: 'value || "default"',
+            },
+          },
         ],
-        tenantId: 'tenant-1'
+        tenantId: 'tenant-1',
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
@@ -841,10 +1015,15 @@ describe('SimulationService', () => {
       const dto: SimulatePayloadDto = {
         endpointId: 1,
         payloadType: 'application/json',
-        payload: { test: 'value' }
+        payload: { test: 'value' },
       };
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
       expect(result).toBeDefined();
     });
 
@@ -852,24 +1031,26 @@ describe('SimulationService', () => {
       const mockConfig = {
         id: 1,
         tenantId: 'tenant-1',
-        payloads: [{ 
-          contentType: 'application/json',
-          schema: {
-            type: 'object',
-            properties: {
-              transaction: {
-                type: 'object',
-                properties: {
-                  id: { type: 'string' },
-                  amount: { type: 'number' },
-                  currency: { type: 'string' }
+        payloads: [
+          {
+            contentType: 'application/json',
+            schema: {
+              type: 'object',
+              properties: {
+                transaction: {
+                  type: 'object',
+                  properties: {
+                    id: { type: 'string' },
+                    amount: { type: 'number' },
+                    currency: { type: 'string' },
+                  },
+                  required: ['id', 'amount'],
                 },
-                required: ['id', 'amount']
-              }
+              },
+              required: ['transaction'],
             },
-            required: ['transaction']
-          }
-        }],
+          },
+        ],
         // Add schema at root level as expected by service
         schema: {
           type: 'object',
@@ -879,12 +1060,12 @@ describe('SimulationService', () => {
               properties: {
                 id: { type: 'string' },
                 amount: { type: 'number' },
-                currency: { type: 'string' }
+                currency: { type: 'string' },
               },
-              required: ['id', 'amount']
-            }
+              required: ['id', 'amount'],
+            },
           },
-          required: ['transaction']
+          required: ['transaction'],
         },
         mapping: [
           {
@@ -895,10 +1076,10 @@ describe('SimulationService', () => {
             destinationPath: 'processedTransaction.transactionId',
             processor: {
               expression: 'value',
-              artifactOverrides: {}
-            }
-          }
-        ]
+              artifactOverrides: {},
+            },
+          },
+        ],
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
@@ -909,13 +1090,18 @@ describe('SimulationService', () => {
         payload: {
           transaction: {
             id: 'txn-12345',
-            amount: 100.50,
-            currency: 'USD'
-          }
-        }
+            amount: 100.5,
+            currency: 'USD',
+          },
+        },
       };
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
       expect(result).toBeDefined();
       expect(result.stages.length).toBeGreaterThan(0); // Should have stages regardless of status
       // The execution should complete more stages now
@@ -926,10 +1112,15 @@ describe('SimulationService', () => {
       const dto: SimulatePayloadDto = {
         endpointId: 1,
         payloadType: 'application/json',
-        payload: { test: 'value' }
+        payload: { test: 'value' },
       };
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', '');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        '',
+      );
       expect(result.status).toBe('FAILED');
     });
 
@@ -940,25 +1131,27 @@ describe('SimulationService', () => {
         schema: {
           type: 'object',
           items: {
-            type: 'string'
+            type: 'string',
           },
           properties: {
-            data: { type: 'string' }
-          }
+            data: { type: 'string' },
+          },
         },
-        payloads: [{ 
-          contentType: 'application/json',
-          schema: {
-            type: 'object',
-            items: {
-              type: 'string'
+        payloads: [
+          {
+            contentType: 'application/json',
+            schema: {
+              type: 'object',
+              items: {
+                type: 'string',
+              },
+              properties: {
+                data: { type: 'string' },
+              },
             },
-            properties: {
-              data: { type: 'string' }
-            }
-          }
-        }],
-        mapping: []
+          },
+        ],
+        mapping: [],
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
@@ -966,10 +1159,15 @@ describe('SimulationService', () => {
       const dto: SimulatePayloadDto = {
         endpointId: 1,
         payloadType: 'application/json',
-        payload: { data: 'test' }
+        payload: { data: 'test' },
       };
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
       expect(result).toBeDefined();
     });
 
@@ -981,20 +1179,22 @@ describe('SimulationService', () => {
           type: 'object',
           oneOf: [
             { properties: { type: { const: 'A' } } },
-            { properties: { type: { const: 'B' } } }
-          ]
+            { properties: { type: { const: 'B' } } },
+          ],
         },
-        payloads: [{ 
-          contentType: 'application/json',
-          schema: {
-            type: 'object',
-            oneOf: [
-              { properties: { type: { const: 'A' } } },
-              { properties: { type: { const: 'B' } } }
-            ]
-          }
-        }],
-        mapping: []
+        payloads: [
+          {
+            contentType: 'application/json',
+            schema: {
+              type: 'object',
+              oneOf: [
+                { properties: { type: { const: 'A' } } },
+                { properties: { type: { const: 'B' } } },
+              ],
+            },
+          },
+        ],
+        mapping: [],
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
@@ -1002,10 +1202,15 @@ describe('SimulationService', () => {
       const dto: SimulatePayloadDto = {
         endpointId: 1,
         payloadType: 'application/json',
-        payload: { type: 'A' }
+        payload: { type: 'A' },
       };
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
       expect(result).toBeDefined();
     });
 
@@ -1017,20 +1222,22 @@ describe('SimulationService', () => {
           type: 'object',
           anyOf: [
             { properties: { field1: { type: 'string' } } },
-            { properties: { field2: { type: 'number' } } }
-          ]
+            { properties: { field2: { type: 'number' } } },
+          ],
         },
-        payloads: [{ 
-          contentType: 'application/json',
-          schema: {
-            type: 'object',
-            anyOf: [
-              { properties: { field1: { type: 'string' } } },
-              { properties: { field2: { type: 'number' } } }
-            ]
-          }
-        }],
-        mapping: []
+        payloads: [
+          {
+            contentType: 'application/json',
+            schema: {
+              type: 'object',
+              anyOf: [
+                { properties: { field1: { type: 'string' } } },
+                { properties: { field2: { type: 'number' } } },
+              ],
+            },
+          },
+        ],
+        mapping: [],
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
@@ -1038,10 +1245,15 @@ describe('SimulationService', () => {
       const dto: SimulatePayloadDto = {
         endpointId: 1,
         payloadType: 'application/json',
-        payload: { field1: 'test' }
+        payload: { field1: 'test' },
       };
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
       expect(result).toBeDefined();
     });
 
@@ -1053,20 +1265,22 @@ describe('SimulationService', () => {
           type: 'object',
           allOf: [
             { properties: { id: { type: 'string' } } },
-            { properties: { name: { type: 'string' } } }
-          ]
+            { properties: { name: { type: 'string' } } },
+          ],
         },
-        payloads: [{ 
-          contentType: 'application/json',
-          schema: {
-            type: 'object',
-            allOf: [
-              { properties: { id: { type: 'string' } } },
-              { properties: { name: { type: 'string' } } }
-            ]
-          }
-        }],
-        mapping: []
+        payloads: [
+          {
+            contentType: 'application/json',
+            schema: {
+              type: 'object',
+              allOf: [
+                { properties: { id: { type: 'string' } } },
+                { properties: { name: { type: 'string' } } },
+              ],
+            },
+          },
+        ],
+        mapping: [],
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
@@ -1074,10 +1288,15 @@ describe('SimulationService', () => {
       const dto: SimulatePayloadDto = {
         endpointId: 1,
         payloadType: 'application/json',
-        payload: { id: '1', name: 'test' }
+        payload: { id: '1', name: 'test' },
       };
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
       expect(result).toBeDefined();
     });
 
@@ -1105,24 +1324,26 @@ describe('SimulationService', () => {
             type: 'object',
             properties: {
               id: { type: 'string' },
-              value: { type: 'number' }
-            }
-          }
+              value: { type: 'number' },
+            },
+          },
         },
-        payloads: [{ 
-          contentType: 'application/json',
-          schema: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                id: { type: 'string' },
-                value: { type: 'number' }
-              }
-            }
-          }
-        }],
-        mapping: []
+        payloads: [
+          {
+            contentType: 'application/json',
+            schema: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  id: { type: 'string' },
+                  value: { type: 'number' },
+                },
+              },
+            },
+          },
+        ],
+        mapping: [],
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
@@ -1132,11 +1353,16 @@ describe('SimulationService', () => {
         payloadType: 'application/json',
         payload: [
           { id: '1', value: 100 },
-          { id: '2', value: 200 }
-        ]
+          { id: '2', value: 200 },
+        ],
       };
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
       expect(result).toBeDefined();
     });
 
@@ -1150,22 +1376,24 @@ describe('SimulationService', () => {
             tenantId: { type: 'string' },
             userId: { type: 'string' },
             tenant_id: { type: 'string' },
-            user_id: { type: 'string' }
+            user_id: { type: 'string' },
           },
-          required: ['tenantId', 'userId', 'tenant_id', 'user_id']
+          required: ['tenantId', 'userId', 'tenant_id', 'user_id'],
         },
-        payloads: [{ 
-          contentType: 'application/json',
-          schema: {
-            type: 'object',
-            properties: {
-              tenantId: { type: 'string' },
-              userId: { type: 'string' }
+        payloads: [
+          {
+            contentType: 'application/json',
+            schema: {
+              type: 'object',
+              properties: {
+                tenantId: { type: 'string' },
+                userId: { type: 'string' },
+              },
+              required: ['tenantId', 'userId'],
             },
-            required: ['tenantId', 'userId']
-          }
-        }],
-        mapping: []
+          },
+        ],
+        mapping: [],
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
@@ -1173,10 +1401,15 @@ describe('SimulationService', () => {
       const dto: SimulatePayloadDto = {
         endpointId: 1,
         payloadType: 'application/json',
-        payload: {}
+        payload: {},
       };
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
       expect(result).toBeDefined();
     });
 
@@ -1185,10 +1418,12 @@ describe('SimulationService', () => {
         id: 1,
         tenantId: 'tenant-1',
         schema: { type: 'object' },
-        payloads: [{ 
-          contentType: 'application/json',
-          schema: { type: 'object' }
-        }],
+        payloads: [
+          {
+            contentType: 'application/json',
+            schema: { type: 'object' },
+          },
+        ],
         mapping: [
           {
             ruleId: 'rule-001',
@@ -1196,9 +1431,9 @@ describe('SimulationService', () => {
             cfg: '1.0',
             sources: ['tenantId', 'userId'],
             destinationPath: 'result.contextData',
-            processor: { expression: 'value' }
-          }
-        ]
+            processor: { expression: 'value' },
+          },
+        ],
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
@@ -1206,10 +1441,15 @@ describe('SimulationService', () => {
       const dto: SimulatePayloadDto = {
         endpointId: 1,
         payloadType: 'application/json',
-        payload: { someData: 'test' }
+        payload: { someData: 'test' },
       };
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
       expect(result).toBeDefined();
     });
 
@@ -1218,10 +1458,12 @@ describe('SimulationService', () => {
         id: 1,
         tenantId: 'tenant-1',
         schema: { type: 'object' },
-        payloads: [{ 
-          contentType: 'application/json',
-          schema: { type: 'object' }
-        }],
+        payloads: [
+          {
+            contentType: 'application/json',
+            schema: { type: 'object' },
+          },
+        ],
         mapping: [
           {
             ruleId: 'rule-001',
@@ -1229,9 +1471,9 @@ describe('SimulationService', () => {
             cfg: '1.0',
             source: ['field1', 'field2'],
             destinationPath: 'result.data',
-            processor: { expression: 'value' }
-          }
-        ]
+            processor: { expression: 'value' },
+          },
+        ],
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
@@ -1239,10 +1481,15 @@ describe('SimulationService', () => {
       const dto: SimulatePayloadDto = {
         endpointId: 1,
         payloadType: 'application/json',
-        payload: { field1: 'value1', field2: 'value2' }
+        payload: { field1: 'value1', field2: 'value2' },
       };
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
       expect(result).toBeDefined();
     });
 
@@ -1251,10 +1498,12 @@ describe('SimulationService', () => {
         id: 1,
         tenantId: 'tenant-1',
         schema: { type: 'object' },
-        payloads: [{ 
-          contentType: 'application/json',
-          schema: { type: 'object' }
-        }],
+        payloads: [
+          {
+            contentType: 'application/json',
+            schema: { type: 'object' },
+          },
+        ],
         mapping: [
           {
             ruleId: 'rule-001',
@@ -1263,9 +1512,9 @@ describe('SimulationService', () => {
             transformation: 'CONSTANT',
             constantValue: 'FIXED_VALUE',
             destinationPath: 'result.constant',
-            processor: { expression: 'value' }
-          }
-        ]
+            processor: { expression: 'value' },
+          },
+        ],
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
@@ -1273,10 +1522,15 @@ describe('SimulationService', () => {
       const dto: SimulatePayloadDto = {
         endpointId: 1,
         payloadType: 'application/json',
-        payload: { someData: 'test' }
+        payload: { someData: 'test' },
       };
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
       expect(result).toBeDefined();
     });
 
@@ -1285,10 +1539,12 @@ describe('SimulationService', () => {
         id: 1,
         tenantId: 'tenant-1',
         schema: { type: 'object' },
-        payloads: [{ 
-          contentType: 'application/json',
-          schema: { type: 'object' }
-        }],
+        payloads: [
+          {
+            contentType: 'application/json',
+            schema: { type: 'object' },
+          },
+        ],
         mapping: [
           {
             ruleId: 'rule-001',
@@ -1296,9 +1552,9 @@ describe('SimulationService', () => {
             cfg: '1.0',
             sources: ['missingField'],
             destinationPath: 'result.data',
-            processor: { expression: 'value' }
-          }
-        ]
+            processor: { expression: 'value' },
+          },
+        ],
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
@@ -1308,12 +1564,17 @@ describe('SimulationService', () => {
         payloadType: 'application/json',
         payload: {
           root: {
-            missingField: 'value'
-          }
-        }
+            missingField: 'value',
+          },
+        },
       };
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
       expect(result).toBeDefined();
     });
 
@@ -1322,19 +1583,21 @@ describe('SimulationService', () => {
         id: 1,
         tenantId: 'tenant-1',
         schema: { type: 'object' },
-        payloads: [{ 
-          contentType: 'application/json',
-          schema: { type: 'object' }
-        }],
+        payloads: [
+          {
+            contentType: 'application/json',
+            schema: { type: 'object' },
+          },
+        ],
         mapping: [
           {
             ruleId: 'rule-001',
             id: 'mapping-001',
             cfg: '1.0',
             sources: ['field1'],
-            processor: { expression: 'value' }
-          }
-        ]
+            processor: { expression: 'value' },
+          },
+        ],
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
@@ -1342,10 +1605,15 @@ describe('SimulationService', () => {
       const dto: SimulatePayloadDto = {
         endpointId: 1,
         payloadType: 'application/json',
-        payload: { field1: 'value1' }
+        payload: { field1: 'value1' },
       };
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
       expect(result).toBeDefined();
     });
 
@@ -1359,26 +1627,28 @@ describe('SimulationService', () => {
             root: {
               type: 'object',
               properties: {
-                element: { type: 'string' }
-              }
-            }
-          }
+                element: { type: 'string' },
+              },
+            },
+          },
         },
-        payloads: [{ 
-          contentType: 'application/xml',
-          schema: {
-            type: 'object',
-            properties: {
-              root: {
-                type: 'object',
-                properties: {
-                  element: { type: 'string' }
-                }
-              }
-            }
-          }
-        }],
-        mapping: []
+        payloads: [
+          {
+            contentType: 'application/xml',
+            schema: {
+              type: 'object',
+              properties: {
+                root: {
+                  type: 'object',
+                  properties: {
+                    element: { type: 'string' },
+                  },
+                },
+              },
+            },
+          },
+        ],
+        mapping: [],
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
@@ -1386,10 +1656,15 @@ describe('SimulationService', () => {
       const dto: SimulatePayloadDto = {
         endpointId: 1,
         payloadType: 'application/xml',
-        payload: '<root><element attr="value">text content</element></root>'
+        payload: '<root><element attr="value">text content</element></root>',
       };
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
       expect(result).toBeDefined();
     });
 
@@ -1398,11 +1673,13 @@ describe('SimulationService', () => {
         id: 1,
         tenantId: 'tenant-1',
         schema: { type: 'object' },
-        payloads: [{ 
-          contentType: 'application/xml',
-          schema: { type: 'object' }
-        }],
-        mapping: []
+        payloads: [
+          {
+            contentType: 'application/xml',
+            schema: { type: 'object' },
+          },
+        ],
+        mapping: [],
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
@@ -1410,20 +1687,30 @@ describe('SimulationService', () => {
       const dto: SimulatePayloadDto = {
         endpointId: 1,
         payloadType: 'application/xml',
-        payload: ''
+        payload: '',
       };
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
       expect(result.status).toBe('FAILED');
     });
 
     it('should handle payload with missing payloadType', async () => {
       const dto: any = {
         endpointId: 1,
-        payload: { test: 'value' }
+        payload: { test: 'value' },
       };
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
       expect(result.status).toBe('FAILED');
     });
 
@@ -1433,16 +1720,18 @@ describe('SimulationService', () => {
         tenantId: 'tenant-1',
         schema: {
           type: 'object',
-          properties: null
+          properties: null,
         },
-        payloads: [{ 
-          contentType: 'application/json',
-          schema: {
-            type: 'object',
-            properties: null
-          }
-        }],
-        mapping: []
+        payloads: [
+          {
+            contentType: 'application/json',
+            schema: {
+              type: 'object',
+              properties: null,
+            },
+          },
+        ],
+        mapping: [],
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
@@ -1450,10 +1739,15 @@ describe('SimulationService', () => {
       const dto: SimulatePayloadDto = {
         endpointId: 1,
         payloadType: 'application/json',
-        payload: { test: 'value' }
+        payload: { test: 'value' },
       };
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
       expect(result).toBeDefined();
     });
 
@@ -1469,30 +1763,32 @@ describe('SimulationService', () => {
               items: {
                 type: 'object',
                 properties: {
-                  value: { type: 'string' }
-                }
-              }
-            }
-          }
+                  value: { type: 'string' },
+                },
+              },
+            },
+          },
         },
-        payloads: [{ 
-          contentType: 'application/json',
-          schema: {
-            type: 'object',
-            properties: {
-              items: {
-                type: 'array',
+        payloads: [
+          {
+            contentType: 'application/json',
+            schema: {
+              type: 'object',
+              properties: {
                 items: {
-                  type: 'object',
-                  properties: {
-                    value: { type: 'string' }
-                  }
-                }
-              }
-            }
-          }
-        }],
-        mapping: []
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      value: { type: 'string' },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        ],
+        mapping: [],
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
@@ -1503,12 +1799,17 @@ describe('SimulationService', () => {
         payload: {
           items: [
             { value: 'test1', extra: 'field1' },
-            { value: 'test2', extra: 'field2' }
-          ]
-        }
+            { value: 'test2', extra: 'field2' },
+          ],
+        },
       };
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
       expect(result).toBeDefined();
     });
 
@@ -1517,10 +1818,12 @@ describe('SimulationService', () => {
         id: 1,
         tenantId: 'tenant-1',
         schema: { type: 'object' },
-        payloads: [{ 
-          contentType: 'application/json',
-          schema: { type: 'object' }
-        }],
+        payloads: [
+          {
+            contentType: 'application/json',
+            schema: { type: 'object' },
+          },
+        ],
         mapping: [
           {
             ruleId: 'rule-001',
@@ -1528,9 +1831,9 @@ describe('SimulationService', () => {
             cfg: '1.0',
             sources: ['items[0].value'],
             destinationPath: 'result.firstValue',
-            processor: { expression: 'value' }
-          }
-        ]
+            processor: { expression: 'value' },
+          },
+        ],
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
@@ -1539,14 +1842,16 @@ describe('SimulationService', () => {
         endpointId: 1,
         payloadType: 'application/json',
         payload: {
-          items: [
-            { value: 'first' },
-            { value: 'second' }
-          ]
-        }
+          items: [{ value: 'first' }, { value: 'second' }],
+        },
       };
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
       expect(result).toBeDefined();
     });
 
@@ -1555,10 +1860,12 @@ describe('SimulationService', () => {
         id: 1,
         tenantId: 'tenant-1',
         schema: { type: 'object' },
-        payloads: [{ 
-          contentType: 'application/json',
-          schema: { type: 'object' }
-        }],
+        payloads: [
+          {
+            contentType: 'application/json',
+            schema: { type: 'object' },
+          },
+        ],
         mapping: [
           {
             ruleId: 'rule-001',
@@ -1566,9 +1873,9 @@ describe('SimulationService', () => {
             cfg: '1.0',
             sources: ['tenantId', 'userId', 'tenant_id', 'user_id'],
             destinationPath: 'result.contextData',
-            processor: { expression: 'value' }
-          }
-        ]
+            processor: { expression: 'value' },
+          },
+        ],
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
@@ -1576,10 +1883,15 @@ describe('SimulationService', () => {
       const dto: SimulatePayloadDto = {
         endpointId: 1,
         payloadType: 'application/json',
-        payload: { someData: 'test' }
+        payload: { someData: 'test' },
       };
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
       expect(result).toBeDefined();
     });
 
@@ -1592,23 +1904,25 @@ describe('SimulationService', () => {
           properties: {
             items: {
               type: 'array',
-              items: { type: 'string' }
-            }
-          }
+              items: { type: 'string' },
+            },
+          },
         },
-        payloads: [{ 
-          contentType: 'application/json',
-          schema: {
-            type: 'object',
-            properties: {
-              items: {
-                type: 'array',
-                items: { type: 'string' }
-              }
-            }
-          }
-        }],
-        mapping: []
+        payloads: [
+          {
+            contentType: 'application/json',
+            schema: {
+              type: 'object',
+              properties: {
+                items: {
+                  type: 'array',
+                  items: { type: 'string' },
+                },
+              },
+            },
+          },
+        ],
+        mapping: [],
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
@@ -1617,26 +1931,35 @@ describe('SimulationService', () => {
         endpointId: 1,
         payloadType: 'application/json',
         payload: {
-          items: ['item1', 'item2', { extra: 'data' }]
-        }
+          items: ['item1', 'item2', { extra: 'data' }],
+        },
       };
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
       expect(result).toBeDefined();
     });
 
     it('should handle TCS mapping with logger service error', async () => {
       const { processMappings } = require('@tazama-lf/tcs-lib');
-      processMappings.mockRejectedValueOnce(new Error('loggerService is not defined'));
+      processMappings.mockRejectedValueOnce(
+        new Error('loggerService is not defined'),
+      );
 
       const mockConfig = {
         id: 1,
         tenantId: 'tenant-1',
         schema: { type: 'object' },
-        payloads: [{ 
-          contentType: 'application/json',
-          schema: { type: 'object' }
-        }],
+        payloads: [
+          {
+            contentType: 'application/json',
+            schema: { type: 'object' },
+          },
+        ],
         mapping: [
           {
             ruleId: 'rule-001',
@@ -1644,10 +1967,10 @@ describe('SimulationService', () => {
             cfg: '1.0',
             sources: ['field1'],
             destinationPath: 'result.data',
-            processor: { expression: 'value' }
-          }
+            processor: { expression: 'value' },
+          },
         ],
-        endpointPath: 'test-endpoint'
+        endpointPath: 'test-endpoint',
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
@@ -1655,31 +1978,40 @@ describe('SimulationService', () => {
       const dto: SimulatePayloadDto = {
         endpointId: 1,
         payloadType: 'application/json',
-        payload: { field1: 'value1' }
+        payload: { field1: 'value1' },
       };
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
       expect(result).toBeDefined();
-      
+
       processMappings.mockResolvedValue({
         dataCache: { mappedField: 'mapped_value' },
         endToEndId: 'e2e-123',
-        status: 'success'
+        status: 'success',
       });
     });
 
     it('should handle TCS mapping with non-logger error', async () => {
       const { processMappings } = require('@tazama-lf/tcs-lib');
-      processMappings.mockRejectedValueOnce(new Error('Some other mapping error'));
+      processMappings.mockRejectedValueOnce(
+        new Error('Some other mapping error'),
+      );
 
       const mockConfig = {
         id: 1,
         tenantId: 'tenant-1',
         schema: { type: 'object' },
-        payloads: [{ 
-          contentType: 'application/json',
-          schema: { type: 'object' }
-        }],
+        payloads: [
+          {
+            contentType: 'application/json',
+            schema: { type: 'object' },
+          },
+        ],
         mapping: [
           {
             ruleId: 'rule-001',
@@ -1687,10 +2019,10 @@ describe('SimulationService', () => {
             cfg: '1.0',
             sources: ['field1'],
             destinationPath: 'result.data',
-            processor: { expression: 'value' }
-          }
+            processor: { expression: 'value' },
+          },
         ],
-        endpointPath: 'test-endpoint'
+        endpointPath: 'test-endpoint',
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
@@ -1698,16 +2030,21 @@ describe('SimulationService', () => {
       const dto: SimulatePayloadDto = {
         endpointId: 1,
         payloadType: 'application/json',
-        payload: { field1: 'value1' }
+        payload: { field1: 'value1' },
       };
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
       expect(result.status).toBe('FAILED');
-      
+
       processMappings.mockResolvedValue({
         dataCache: { mappedField: 'mapped_value' },
         endToEndId: 'e2e-123',
-        status: 'success'
+        status: 'success',
       });
     });
 
@@ -1718,13 +2055,11 @@ describe('SimulationService', () => {
         new Error('Unexpected mapping failure'),
       );
 
-      jest
-        .spyOn(adminServiceClientMock, 'getConfigById')
-        .mockResolvedValue({
-          endpointPath: '/test/path',
-          mapping: [{ source: 'test', destination: 'out' }],
-          schema: { type: 'object' },
-        } as any);
+      jest.spyOn(adminServiceClientMock, 'getConfigById').mockResolvedValue({
+        endpointPath: '/test/path',
+        mapping: [{ source: 'test', destination: 'out' }],
+        schema: { type: 'object' },
+      } as any);
 
       const dto: SimulatePayloadDto = {
         endpointId: 1,
@@ -1756,7 +2091,7 @@ describe('SimulationService', () => {
       processMappings.mockResolvedValue({
         dataCache: { mappedField: 'mapped_value' },
         endToEndId: 'e2e-123',
-        status: 'success'
+        status: 'success',
       });
     });
 
@@ -1767,19 +2102,21 @@ describe('SimulationService', () => {
         schema: {
           type: 'object',
           properties: {
-            data: { type: 'string' }
-          }
+            data: { type: 'string' },
+          },
         },
-        payloads: [{ 
-          contentType: 'application/json',
-          schema: {
-            type: 'object',
-            properties: {
-              data: { type: 'string' }
-            }
-          }
-        }],
-        mapping: []
+        payloads: [
+          {
+            contentType: 'application/json',
+            schema: {
+              type: 'object',
+              properties: {
+                data: { type: 'string' },
+              },
+            },
+          },
+        ],
+        mapping: [],
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
@@ -1789,11 +2126,16 @@ describe('SimulationService', () => {
         payloadType: 'application/json',
         payload: {
           data: 'test',
-          extra: { nested: 'value' }
-        }
+          extra: { nested: 'value' },
+        },
       };
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
       expect(result).toBeDefined();
     });
 
@@ -1802,10 +2144,12 @@ describe('SimulationService', () => {
         id: 1,
         tenantId: 'tenant-1',
         schema: { type: 'object' },
-        payloads: [{ 
-          contentType: 'application/json',
-          schema: { type: 'object' }
-        }],
+        payloads: [
+          {
+            contentType: 'application/json',
+            schema: { type: 'object' },
+          },
+        ],
         mapping: [
           {
             ruleId: 'rule-001',
@@ -1813,9 +2157,9 @@ describe('SimulationService', () => {
             cfg: '1.0',
             source: 'singleField',
             destinationPath: 'result.data',
-            processor: { expression: 'value' }
-          }
-        ]
+            processor: { expression: 'value' },
+          },
+        ],
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
@@ -1823,10 +2167,15 @@ describe('SimulationService', () => {
       const dto: SimulatePayloadDto = {
         endpointId: 1,
         payloadType: 'application/json',
-        payload: { singleField: 'value' }
+        payload: { singleField: 'value' },
       };
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
       expect(result).toBeDefined();
     });
 
@@ -1835,15 +2184,17 @@ describe('SimulationService', () => {
         id: 1,
         tenantId: 'tenant-1',
         schema: {
-          type: 'object'
+          type: 'object',
         },
-        payloads: [{ 
-          contentType: 'application/json',
-          schema: {
-            type: 'object'
-          }
-        }],
-        mapping: []
+        payloads: [
+          {
+            contentType: 'application/json',
+            schema: {
+              type: 'object',
+            },
+          },
+        ],
+        mapping: [],
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
@@ -1851,10 +2202,15 @@ describe('SimulationService', () => {
       const dto: SimulatePayloadDto = {
         endpointId: 1,
         payloadType: 'application/json',
-        payload: { anyField: 'anyValue' }
+        payload: { anyField: 'anyValue' },
       };
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
       expect(result).toBeDefined();
     });
 
@@ -1871,28 +2227,30 @@ describe('SimulationService', () => {
                 element: {
                   type: 'object',
                   properties: {
-                    textContent: { type: 'string' }
-                  }
-                }
-              }
-            }
-          }
+                    textContent: { type: 'string' },
+                  },
+                },
+              },
+            },
+          },
         },
-        payloads: [{ 
-          contentType: 'application/xml',
-          schema: {
-            type: 'object',
-            properties: {
-              root: {
-                type: 'object',
-                properties: {
-                  element: { type: 'string' }
-                }
-              }
-            }
-          }
-        }],
-        mapping: []
+        payloads: [
+          {
+            contentType: 'application/xml',
+            schema: {
+              type: 'object',
+              properties: {
+                root: {
+                  type: 'object',
+                  properties: {
+                    element: { type: 'string' },
+                  },
+                },
+              },
+            },
+          },
+        ],
+        mapping: [],
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
@@ -1900,10 +2258,16 @@ describe('SimulationService', () => {
       const dto: SimulatePayloadDto = {
         endpointId: 1,
         payloadType: 'application/xml',
-        payload: '<root><element attr1="value1" attr2="value2">text value</element></root>'
+        payload:
+          '<root><element attr1="value1" attr2="value2">text value</element></root>',
       };
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
       expect(result).toBeDefined();
     });
 
@@ -1917,28 +2281,30 @@ describe('SimulationService', () => {
             level1: {
               properties: {
                 level2: {
-                  type: 'string'
-                }
-              }
-            }
-          }
+                  type: 'string',
+                },
+              },
+            },
+          },
         },
-        payloads: [{ 
-          contentType: 'application/json',
-          schema: {
-            type: 'object',
-            properties: {
-              level1: {
-                properties: {
-                  level2: {
-                    type: 'string'
-                  }
-                }
-              }
-            }
-          }
-        }],
-        mapping: []
+        payloads: [
+          {
+            contentType: 'application/json',
+            schema: {
+              type: 'object',
+              properties: {
+                level1: {
+                  properties: {
+                    level2: {
+                      type: 'string',
+                    },
+                  },
+                },
+              },
+            },
+          },
+        ],
+        mapping: [],
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
@@ -1948,12 +2314,17 @@ describe('SimulationService', () => {
         payloadType: 'application/json',
         payload: {
           level1: {
-            level2: 'value'
-          }
-        }
+            level2: 'value',
+          },
+        },
       };
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
       expect(result).toBeDefined();
     });
 
@@ -1968,27 +2339,29 @@ describe('SimulationService', () => {
               type: 'object',
               properties: {
                 item: {
-                  type: 'string'
-                }
-              }
-            }
-          }
+                  type: 'string',
+                },
+              },
+            },
+          },
         },
-        payloads: [{ 
-          contentType: 'application/xml',
-          schema: {
-            type: 'object',
-            properties: {
-              root: {
-                type: 'object',
-                properties: {
-                  item: { type: 'string' }
-                }
-              }
-            }
-          }
-        }],
-        mapping: []
+        payloads: [
+          {
+            contentType: 'application/xml',
+            schema: {
+              type: 'object',
+              properties: {
+                root: {
+                  type: 'object',
+                  properties: {
+                    item: { type: 'string' },
+                  },
+                },
+              },
+            },
+          },
+        ],
+        mapping: [],
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
@@ -1996,10 +2369,15 @@ describe('SimulationService', () => {
       const dto: SimulatePayloadDto = {
         endpointId: 1,
         payloadType: 'application/xml',
-        payload: '<root><item>simple text</item></root>'
+        payload: '<root><item>simple text</item></root>',
       };
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
       expect(result).toBeDefined();
     });
 
@@ -2010,19 +2388,21 @@ describe('SimulationService', () => {
         schema: {
           type: 'object',
           properties: {
-            root: { type: 'string' }
-          }
+            root: { type: 'string' },
+          },
         },
-        payloads: [{ 
-          contentType: 'application/xml',
-          schema: {
-            type: 'object',
-            properties: {
-              root: { type: 'string' }
-            }
-          }
-        }],
-        mapping: []
+        payloads: [
+          {
+            contentType: 'application/xml',
+            schema: {
+              type: 'object',
+              properties: {
+                root: { type: 'string' },
+              },
+            },
+          },
+        ],
+        mapping: [],
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
@@ -2030,10 +2410,15 @@ describe('SimulationService', () => {
       const dto: SimulatePayloadDto = {
         endpointId: 1,
         payloadType: 'application/xml',
-        payload: '<root>simple text content</root>'
+        payload: '<root>simple text content</root>',
       };
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
       expect(result).toBeDefined();
     });
 
@@ -2046,23 +2431,25 @@ describe('SimulationService', () => {
           items: {
             type: 'object',
             properties: {
-              id: { type: 'number' }
-            }
-          }
+              id: { type: 'number' },
+            },
+          },
         },
-        payloads: [{ 
-          contentType: 'application/json',
-          schema: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                id: { type: 'number' }
-              }
-            }
-          }
-        }],
-        mapping: []
+        payloads: [
+          {
+            contentType: 'application/json',
+            schema: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  id: { type: 'number' },
+                },
+              },
+            },
+          },
+        ],
+        mapping: [],
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
@@ -2070,13 +2457,15 @@ describe('SimulationService', () => {
       const dto: SimulatePayloadDto = {
         endpointId: 1,
         payloadType: 'application/json',
-        payload: [
-          { id: 'string_not_number' },
-          { id: 123 }
-        ]
+        payload: [{ id: 'string_not_number' }, { id: 123 }],
       };
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
       expect(result).toBeDefined();
     });
 
@@ -2090,26 +2479,28 @@ describe('SimulationService', () => {
             data: {
               type: 'object',
               properties: {
-                value: { type: 'string' }
-              }
-            }
-          }
+                value: { type: 'string' },
+              },
+            },
+          },
         },
-        payloads: [{ 
-          contentType: 'application/json',
-          schema: {
-            type: 'object',
-            properties: {
-              data: {
-                type: 'object',
-                properties: {
-                  value: { type: 'string' }
-                }
-              }
-            }
-          }
-        }],
-        mapping: []
+        payloads: [
+          {
+            contentType: 'application/json',
+            schema: {
+              type: 'object',
+              properties: {
+                data: {
+                  type: 'object',
+                  properties: {
+                    value: { type: 'string' },
+                  },
+                },
+              },
+            },
+          },
+        ],
+        mapping: [],
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
@@ -2120,12 +2511,17 @@ describe('SimulationService', () => {
         payload: {
           data: {
             value: 'test',
-            extra: 'field'
-          }
-        }
+            extra: 'field',
+          },
+        },
       };
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
       expect(result).toBeDefined();
     });
 
@@ -2143,34 +2539,36 @@ describe('SimulationService', () => {
                 properties: {
                   nested: {
                     type: 'array',
-                    items: { type: 'string' }
-                  }
-                }
-              }
-            }
-          }
+                    items: { type: 'string' },
+                  },
+                },
+              },
+            },
+          },
         },
-        payloads: [{ 
-          contentType: 'application/json',
-          schema: {
-            type: 'object',
-            properties: {
-              items: {
-                type: 'array',
+        payloads: [
+          {
+            contentType: 'application/json',
+            schema: {
+              type: 'object',
+              properties: {
                 items: {
-                  type: 'object',
-                  properties: {
-                    nested: {
-                      type: 'array',
-                      items: { type: 'string' }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }],
-        mapping: []
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      nested: {
+                        type: 'array',
+                        items: { type: 'string' },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        ],
+        mapping: [],
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
@@ -2182,13 +2580,18 @@ describe('SimulationService', () => {
           items: [
             {
               nested: ['value1', 'value2'],
-              extra: 'field'
-            }
-          ]
-        }
+              extra: 'field',
+            },
+          ],
+        },
       };
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
       expect(result).toBeDefined();
     });
 
@@ -2199,19 +2602,21 @@ describe('SimulationService', () => {
         schema: {
           type: 'object',
           properties: {
-            root: { type: 'string' }
-          }
+            root: { type: 'string' },
+          },
         },
-        payloads: [{ 
-          contentType: 'application/xml',
-          schema: {
-            type: 'object',
-            properties: {
-              root: { type: 'string' }
-            }
-          }
-        }],
-        mapping: []
+        payloads: [
+          {
+            contentType: 'application/xml',
+            schema: {
+              type: 'object',
+              properties: {
+                root: { type: 'string' },
+              },
+            },
+          },
+        ],
+        mapping: [],
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
@@ -2219,10 +2624,15 @@ describe('SimulationService', () => {
       const dto: SimulatePayloadDto = {
         endpointId: 1,
         payloadType: 'application/xml',
-        payload: '<root>text</root>'
+        payload: '<root>text</root>',
       };
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
       expect(result).toBeDefined();
     });
 
@@ -2234,19 +2644,21 @@ describe('SimulationService', () => {
           type: 'object',
           properties: {
             field1: { type: 'string' },
-            field2: { type: 'string' }
-          }
+            field2: { type: 'string' },
+          },
         },
-        payloads: [{ 
-          contentType: 'application/json',
-          schema: {
-            type: 'object',
-            properties: {
-              field1: { type: 'string' },
-              field2: { type: 'string' }
-            }
-          }
-        }],
+        payloads: [
+          {
+            contentType: 'application/json',
+            schema: {
+              type: 'object',
+              properties: {
+                field1: { type: 'string' },
+                field2: { type: 'string' },
+              },
+            },
+          },
+        ],
         mapping: [
           {
             ruleId: 'rule-001',
@@ -2254,7 +2666,7 @@ describe('SimulationService', () => {
             cfg: '1.0',
             sources: ['field1'],
             destinationPath: 'result.field1',
-            processor: { expression: 'value' }
+            processor: { expression: 'value' },
           },
           {
             ruleId: 'rule-002',
@@ -2262,10 +2674,10 @@ describe('SimulationService', () => {
             cfg: '1.0',
             sources: ['field2'],
             destinationPath: 'result.field2',
-            processor: { expression: 'value' }
-          }
+            processor: { expression: 'value' },
+          },
         ],
-        endpointPath: 'test-endpoint'
+        endpointPath: 'test-endpoint',
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
@@ -2273,16 +2685,19 @@ describe('SimulationService', () => {
       const dto: SimulatePayloadDto = {
         endpointId: 1,
         payloadType: 'application/json',
-        payload: { field1: 'value1', field2: 'value2' }
+        payload: { field1: 'value1', field2: 'value2' },
       };
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
       expect(result).toBeDefined();
       expect(result.summary).toBeDefined();
       expect(result.summary.mappingsApplied).toBeGreaterThanOrEqual(0);
     });
-
-
 
     it('should normalize XML object with only #text property', async () => {
       const xmlObj = { '#text': 'simple text content' };
@@ -2348,13 +2763,11 @@ describe('SimulationService', () => {
       expect(result).toBe('second');
     });
 
-
-
     it('should handle isArrayPath when current becomes array during traversal', async () => {
-      const obj = { 
-        level1: { 
-          level2: [{ id: 1 }, { id: 2 }] 
-        } 
+      const obj = {
+        level1: {
+          level2: [{ id: 1 }, { id: 2 }],
+        },
       };
       const result = (service as any).isArrayPath(obj, 'level1/level2/0');
       expect(result).toBe(true);
@@ -2362,7 +2775,10 @@ describe('SimulationService', () => {
 
     it('should handle isArrayPath when path part not found in object', async () => {
       const obj = { field1: { field2: 'value' } };
-      const result = (service as any).isArrayPath(obj, 'field1/nonexistent/field');
+      const result = (service as any).isArrayPath(
+        obj,
+        'field1/nonexistent/field',
+      );
       expect(result).toBe(false);
     });
 
@@ -2378,7 +2794,9 @@ describe('SimulationService', () => {
     });
 
     it('should handle normalizeXmlParsedObject with primitive value', async () => {
-      const result = (service as any).normalizeXmlParsedObject('primitive string');
+      const result = (service as any).normalizeXmlParsedObject(
+        'primitive string',
+      );
       expect(result).toBe('primitive string');
     });
 
@@ -2395,25 +2813,34 @@ describe('SimulationService', () => {
     });
 
     it('should handle normalizeXmlParsedObjectWithSchema with getSchemaTypeAtPath returning string', async () => {
-      const xmlObj = { 
+      const xmlObj = {
         '#text': 'text value',
-        '@attr': 'attribute value'
+        '@attr': 'attribute value',
       };
-      const schema = { 
+      const schema = {
         type: 'object',
         properties: {
-          field: { type: 'string' }
-        }
+          field: { type: 'string' },
+        },
       };
-      
-      jest.spyOn(service as any, 'getSchemaTypeAtPath').mockReturnValue('string');
-      
-      const result = (service as any).normalizeXmlParsedObjectWithSchema(xmlObj, schema, '/field');
+
+      jest
+        .spyOn(service as any, 'getSchemaTypeAtPath')
+        .mockReturnValue('string');
+
+      const result = (service as any).normalizeXmlParsedObjectWithSchema(
+        xmlObj,
+        schema,
+        '/field',
+      );
       expect(result).toBeDefined();
     });
 
     it('should handle getSchemaTypeAtPath with undefined path', async () => {
-      const schema = { type: 'object', properties: { field: { type: 'string' } } };
+      const schema = {
+        type: 'object',
+        properties: { field: { type: 'string' } },
+      };
       const result = (service as any).getSchemaTypeAtPath(schema, undefined);
       expect(result).toBeNull();
     });
@@ -2431,10 +2858,10 @@ describe('SimulationService', () => {
           level1: {
             type: 'object',
             properties: {
-              level2: { type: 'string' }
-            }
-          }
-        }
+              level2: { type: 'string' },
+            },
+          },
+        },
       };
       const result = (service as any).getSchemaAtPath(schema, '/level1/level2');
       if (result) {
@@ -2455,7 +2882,10 @@ describe('SimulationService', () => {
     });
 
     it('should handle isXmlParsedObject with object containing @attributes', async () => {
-      const result = (service as any).isXmlParsedObject({ '@attr': 'value', field: 'data' });
+      const result = (service as any).isXmlParsedObject({
+        '@attr': 'value',
+        field: 'data',
+      });
       expect(result).toBe(true);
     });
 
@@ -2464,10 +2894,13 @@ describe('SimulationService', () => {
       const config = {
         schema: {
           type: 'array',
-          items: { type: 'object', properties: { id: { type: 'number' } } }
-        }
+          items: { type: 'object', properties: { id: { type: 'number' } } },
+        },
       };
-      const result = (service as any).normalizePayloadForValidation(payload, config);
+      const result = (service as any).normalizePayloadForValidation(
+        payload,
+        config,
+      );
       expect(Array.isArray(result)).toBe(true);
     });
 
@@ -2480,16 +2913,23 @@ describe('SimulationService', () => {
 
       const mockConfig = {
         id: 1,
-        payloads: [{ 
-          contentType: 'application/json',
-          schema: { type: 'object' }
-        }],
-        tenantId: 'tenant-1'
+        payloads: [
+          {
+            contentType: 'application/json',
+            schema: { type: 'object' },
+          },
+        ],
+        tenantId: 'tenant-1',
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
       expect(result).toBeDefined();
       expect(result.summary.endpointId).toBe(1);
     });
@@ -2500,7 +2940,7 @@ describe('SimulationService', () => {
         payloadType: 'application/json',
         payload: {},
       };
-      
+
       const result = (service as any).createStageBasedResult(
         dto,
         new Date().toISOString(),
@@ -2509,20 +2949,24 @@ describe('SimulationService', () => {
         [],
         [],
         null,
-        null
+        null,
       );
-      
+
       expect(result).toBeDefined();
       expect(result.summary).toBeDefined();
     });
 
     it('should handle extractTransactionType with nested DataCache structure', async () => {
-      const result = (service as any).extractTransactionType('/api/v1/pacs.002');
+      const result = (service as any).extractTransactionType(
+        '/api/v1/pacs.002',
+      );
       expect(result).toBe('pacs.002');
     });
 
     it('should handle extractTransactionType with debtor info', async () => {
-      const result = (service as any).extractTransactionType('/api/v1/pacs.008');
+      const result = (service as any).extractTransactionType(
+        '/api/v1/pacs.008',
+      );
       expect(result).toBe('pacs.008');
     });
 
@@ -2532,12 +2976,12 @@ describe('SimulationService', () => {
           level2: {
             items: [
               { id: 1, name: 'valid' },
-              { id: 'invalid', name: 'test' }
-            ]
-          }
-        }
+              { id: 'invalid', name: 'test' },
+            ],
+          },
+        },
       };
-      
+
       const schema = {
         type: 'object',
         properties: {
@@ -2553,19 +2997,22 @@ describe('SimulationService', () => {
                       type: 'object',
                       properties: {
                         id: { type: 'number' },
-                        name: { type: 'string' }
+                        name: { type: 'string' },
                       },
-                      required: ['id', 'name']
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
+                      required: ['id', 'name'],
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
       };
 
-      const result = (service as any).validatePayloadAgainstSchema(payload, schema);
+      const result = (service as any).validatePayloadAgainstSchema(
+        payload,
+        schema,
+      );
       expect(result).toBeDefined();
       if (result && typeof result === 'object' && 'valid' in result) {
         expect(typeof result.valid).toBe('boolean');
@@ -2576,17 +3023,21 @@ describe('SimulationService', () => {
       const xmlObj = {
         field: {
           '#text': 'text value',
-          subField: 'other'
-        }
+          subField: 'other',
+        },
       };
       const schema = {
         type: 'object',
         properties: {
-          field: { type: 'string' }
-        }
+          field: { type: 'string' },
+        },
       };
-      
-      const result = (service as any).normalizeXmlParsedObjectWithSchema(xmlObj, schema, '/');
+
+      const result = (service as any).normalizeXmlParsedObjectWithSchema(
+        xmlObj,
+        schema,
+        '/',
+      );
       expect(result).toBeDefined();
       expect(result.field).toBeDefined();
     });
@@ -2596,9 +3047,9 @@ describe('SimulationService', () => {
         parent: {
           child: {
             textContent: 'nested text',
-            otherField: 'value'
-          }
-        }
+            otherField: 'value',
+          },
+        },
       };
       const schema = {
         type: 'object',
@@ -2606,13 +3057,17 @@ describe('SimulationService', () => {
           parent: {
             type: 'object',
             properties: {
-              child: { type: 'string' }
-            }
-          }
-        }
+              child: { type: 'string' },
+            },
+          },
+        },
       };
-      
-      const result = (service as any).normalizeXmlParsedObjectWithSchema(xmlObj, schema, '/');
+
+      const result = (service as any).normalizeXmlParsedObjectWithSchema(
+        xmlObj,
+        schema,
+        '/',
+      );
       expect(result).toBeDefined();
     });
 
@@ -2623,12 +3078,15 @@ describe('SimulationService', () => {
           level1: {
             type: 'object',
             properties: {
-              level2: { type: 'number' }
-            }
-          }
-        }
+              level2: { type: 'number' },
+            },
+          },
+        },
       };
-      const result = (service as any).getSchemaTypeAtPath(schema, 'level1.level2');
+      const result = (service as any).getSchemaTypeAtPath(
+        schema,
+        'level1.level2',
+      );
       expect(result).toBe('number');
     });
 
@@ -2636,10 +3094,13 @@ describe('SimulationService', () => {
       const schema = {
         type: 'object',
         properties: {
-          field1: { type: 'string' }
-        }
+          field1: { type: 'string' },
+        },
       };
-      const result = (service as any).getSchemaTypeAtPath(schema, 'nonexistent');
+      const result = (service as any).getSchemaTypeAtPath(
+        schema,
+        'nonexistent',
+      );
       expect(result).toBeNull();
     });
 
@@ -2648,40 +3109,45 @@ describe('SimulationService', () => {
         endpointId: 1,
         payloadType: 'application/json',
         payload: {
-          items: [
-            { id: 1, name: 'test', extraField: 'should fail' }
-          ]
+          items: [{ id: 1, name: 'test', extraField: 'should fail' }],
         },
       };
 
       const mockConfig = {
         id: 1,
-        payloads: [{ 
-          contentType: 'application/json',
-          schema: { 
-            type: 'object',
-            properties: {
-              items: {
-                type: 'array',
+        payloads: [
+          {
+            contentType: 'application/json',
+            schema: {
+              type: 'object',
+              properties: {
                 items: {
-                  type: 'object',
-                  properties: {
-                    id: { type: 'number' },
-                    name: { type: 'string' }
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      id: { type: 'number' },
+                      name: { type: 'string' },
+                    },
+                    additionalProperties: false,
                   },
-                  additionalProperties: false
-                }
-              }
-            }
-          }
-        }],
-        tenantId: 'tenant-1'
+                },
+              },
+            },
+          },
+        ],
+        tenantId: 'tenant-1',
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
-      
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
+
       // Validation might pass or fail depending on array handling
       expect(result).toBeDefined();
       expect(result.summary).toBeDefined();
@@ -2692,12 +3158,16 @@ describe('SimulationService', () => {
         field: {
           textContent: 'text1',
           '#text': 'text2',
-          nested: 'value'
-        }
+          nested: 'value',
+        },
       };
       const schema = { type: 'object' };
-      
-      const result = (service as any).normalizeXmlParsedObjectWithSchema(xmlObj, schema, '/');
+
+      const result = (service as any).normalizeXmlParsedObjectWithSchema(
+        xmlObj,
+        schema,
+        '/',
+      );
       expect(result).toBeDefined();
     });
 
@@ -2706,20 +3176,26 @@ describe('SimulationService', () => {
         description: {
           '#text': 'Product description',
           '@lang': 'en',
-          '@version': '1.0'
-        }
+          '@version': '1.0',
+        },
       };
-      
+
       const schema = {
         type: 'object',
         properties: {
-          description: { type: 'string' }
-        }
+          description: { type: 'string' },
+        },
       };
 
-      jest.spyOn(service as any, 'getSchemaTypeAtPath').mockReturnValue('string');
-      
-      const result = (service as any).normalizeXmlParsedObjectWithSchema(xmlObj, schema, '');
+      jest
+        .spyOn(service as any, 'getSchemaTypeAtPath')
+        .mockReturnValue('string');
+
+      const result = (service as any).normalizeXmlParsedObjectWithSchema(
+        xmlObj,
+        schema,
+        '',
+      );
       expect(result).toBeDefined();
       expect(result.description).toBe('Product description');
     });
@@ -2729,18 +3205,22 @@ describe('SimulationService', () => {
         field: {
           '#text': 'text value',
           '@attr1': 'value1',
-          '@attr2': 'value2'
-        }
+          '@attr2': 'value2',
+        },
       };
-      
+
       const schema = {
         type: 'object',
         properties: {
-          field: { type: 'object' }
-        }
+          field: { type: 'object' },
+        },
       };
-      
-      const result = (service as any).normalizeXmlParsedObjectWithSchema(xmlObj, schema, '');
+
+      const result = (service as any).normalizeXmlParsedObjectWithSchema(
+        xmlObj,
+        schema,
+        '',
+      );
       expect(result).toBeDefined();
     });
 
@@ -2749,11 +3229,11 @@ describe('SimulationService', () => {
         parent: {
           child: {
             textContent: 'extracted text',
-            otherData: 'ignored'
-          }
-        }
+            otherData: 'ignored',
+          },
+        },
       };
-      
+
       const childSchema = { type: 'string' };
       const schema = {
         type: 'object',
@@ -2761,15 +3241,21 @@ describe('SimulationService', () => {
           parent: {
             type: 'object',
             properties: {
-              child: childSchema
-            }
-          }
-        }
+              child: childSchema,
+            },
+          },
+        },
       };
 
-      jest.spyOn(service as any, 'getSchemaAtPath').mockReturnValue(childSchema);
-      
-      const result = (service as any).normalizeXmlParsedObjectWithSchema(xmlObj, schema, '');
+      jest
+        .spyOn(service as any, 'getSchemaAtPath')
+        .mockReturnValue(childSchema);
+
+      const result = (service as any).normalizeXmlParsedObjectWithSchema(
+        xmlObj,
+        schema,
+        '',
+      );
       expect(result).toBeDefined();
       expect(result.parent.child).toBe('extracted text');
     });
@@ -2779,11 +3265,11 @@ describe('SimulationService', () => {
         parent: {
           child: {
             '#text': 'text from #text',
-            other: 'data'
-          }
-        }
+            other: 'data',
+          },
+        },
       };
-      
+
       const childSchema = { type: 'string' };
       const schema = {
         type: 'object',
@@ -2791,18 +3277,24 @@ describe('SimulationService', () => {
           parent: {
             type: 'object',
             properties: {
-              child: childSchema
-            }
-          }
-        }
+              child: childSchema,
+            },
+          },
+        },
       };
 
-      jest.spyOn(service as any, 'getSchemaAtPath').mockImplementation((s, p) => {
-        if (p === 'parent.child') return childSchema;
-        return null;
-      });
-      
-      const result = (service as any).normalizeXmlParsedObjectWithSchema(xmlObj, schema, '');
+      jest
+        .spyOn(service as any, 'getSchemaAtPath')
+        .mockImplementation((s, p) => {
+          if (p === 'parent.child') return childSchema;
+          return null;
+        });
+
+      const result = (service as any).normalizeXmlParsedObjectWithSchema(
+        xmlObj,
+        schema,
+        '',
+      );
       expect(result).toBeDefined();
     });
 
@@ -2816,15 +3308,18 @@ describe('SimulationService', () => {
               level2: {
                 type: 'object',
                 properties: {
-                  level3: { type: 'boolean' }
-                }
-              }
-            }
-          }
-        }
+                  level3: { type: 'boolean' },
+                },
+              },
+            },
+          },
+        },
       };
-      
-      const result = (service as any).getSchemaAtPath(schema, '/level1/level2/level3');
+
+      const result = (service as any).getSchemaAtPath(
+        schema,
+        '/level1/level2/level3',
+      );
       expect(result).toBeDefined();
       if (result) {
         expect(result.type).toBe('boolean');
@@ -2838,39 +3333,46 @@ describe('SimulationService', () => {
         payload: {
           transactions: [
             { amount: 100, currency: 'USD' },
-            { amount: 'invalid', currency: 'EUR' }
-          ]
+            { amount: 'invalid', currency: 'EUR' },
+          ],
         },
       };
 
       const mockConfig = {
         id: 1,
-        payloads: [{ 
-          contentType: 'application/json',
-          schema: { 
-            type: 'object',
-            properties: {
-              transactions: {
-                type: 'array',
-                items: {
-                  type: 'object',
-                  properties: {
-                    amount: { type: 'number' },
-                    currency: { type: 'string' }
+        payloads: [
+          {
+            contentType: 'application/json',
+            schema: {
+              type: 'object',
+              properties: {
+                transactions: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      amount: { type: 'number' },
+                      currency: { type: 'string' },
+                    },
+                    required: ['amount', 'currency'],
                   },
-                  required: ['amount', 'currency']
-                }
-              }
-            }
-          }
-        }],
-        tenantId: 'tenant-1'
+                },
+              },
+            },
+          },
+        ],
+        tenantId: 'tenant-1',
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
-      
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
+
       expect(result).toBeDefined();
       expect(result.summary).toBeDefined();
     });
@@ -2879,18 +3381,22 @@ describe('SimulationService', () => {
       const xmlObj = {
         item: {
           '#text': 'text value',
-          nested: { field: 'value' }
-        }
+          nested: { field: 'value' },
+        },
       };
-      
+
       const schema = {
         type: 'object',
         properties: {
-          item: { type: 'object' }
-        }
+          item: { type: 'object' },
+        },
       };
-      
-      const result = (service as any).normalizeXmlParsedObjectWithSchema(xmlObj, schema, '');
+
+      const result = (service as any).normalizeXmlParsedObjectWithSchema(
+        xmlObj,
+        schema,
+        '',
+      );
       expect(result).toBeDefined();
       // The item should be processed
       expect(result.item).toBeDefined();
@@ -2901,20 +3407,26 @@ describe('SimulationService', () => {
         data: {
           '#text': 'content',
           '@id': '123',
-          child: 'nested'
-        }
+          child: 'nested',
+        },
       };
-      
+
       const schema = {
         type: 'object',
         properties: {
-          data: { type: 'string' }
-        }
+          data: { type: 'string' },
+        },
       };
 
-      jest.spyOn(service as any, 'getSchemaTypeAtPath').mockReturnValue('string');
-      
-      const result = (service as any).normalizeXmlParsedObjectWithSchema(xmlObj, schema, '');
+      jest
+        .spyOn(service as any, 'getSchemaTypeAtPath')
+        .mockReturnValue('string');
+
+      const result = (service as any).normalizeXmlParsedObjectWithSchema(
+        xmlObj,
+        schema,
+        '',
+      );
       expect(result).toBeDefined();
       expect(result.data).toBe('content');
     });
@@ -2923,20 +3435,24 @@ describe('SimulationService', () => {
       const xmlObj = {
         element: {
           '#text': 'only text',
-          '@attr': 'attribute'
-        }
+          '@attr': 'attribute',
+        },
       };
-      
+
       const schema = {
         type: 'object',
         properties: {
-          element: { type: 'object' }
-        }
+          element: { type: 'object' },
+        },
       };
-      
+
       jest.spyOn(service as any, 'getSchemaTypeAtPath').mockReturnValue(null);
-      
-      const result = (service as any).normalizeXmlParsedObjectWithSchema(xmlObj, schema, '');
+
+      const result = (service as any).normalizeXmlParsedObjectWithSchema(
+        xmlObj,
+        schema,
+        '',
+      );
       expect(result).toBeDefined();
       expect(result.element).toBe('only text');
     });
@@ -2944,66 +3460,78 @@ describe('SimulationService', () => {
     it('should handle currentPath construction with empty path', async () => {
       const xmlObj = {
         rootField: {
-          nested: 'value'
-        }
+          nested: 'value',
+        },
       };
-      
+
       const schema = {
         type: 'object',
         properties: {
           rootField: {
             type: 'object',
             properties: {
-              nested: { type: 'string' }
-            }
-          }
-        }
+              nested: { type: 'string' },
+            },
+          },
+        },
       };
-      
-      const result = (service as any).normalizeXmlParsedObjectWithSchema(xmlObj, schema, '');
+
+      const result = (service as any).normalizeXmlParsedObjectWithSchema(
+        xmlObj,
+        schema,
+        '',
+      );
       expect(result).toBeDefined();
       expect(result.rootField.nested).toBe('value');
     });
 
     it('should handle currentPath construction with existing path', async () => {
       const xmlObj = {
-        child: 'value'
+        child: 'value',
       };
-      
+
       const schema = {
         type: 'object',
         properties: {
           parent: {
             type: 'object',
             properties: {
-              child: { type: 'string' }
-            }
-          }
-        }
+              child: { type: 'string' },
+            },
+          },
+        },
       };
-      
-      const result = (service as any).normalizeXmlParsedObjectWithSchema(xmlObj, schema, 'parent');
+
+      const result = (service as any).normalizeXmlParsedObjectWithSchema(
+        xmlObj,
+        schema,
+        'parent',
+      );
       expect(result).toBeDefined();
     });
 
     it('should handle normalizeXmlParsedObjectWithSchema with array at root', async () => {
       const xmlObj = [
         { id: 1, name: 'first' },
-        { id: 2, name: 'second' }
+        { id: 2, name: 'second' },
       ];
-      
+
       const schema = {
         type: 'array',
         items: {
           type: 'object',
           properties: {
             id: { type: 'number' },
-            name: { type: 'string' }
-          }
-        }
+            name: { type: 'string' },
+          },
+        },
       };
-      
-      const result = (service as any).normalizeXmlParsedObjectWithSchema(xmlObj, schema, '');
+
+      const result = (service as any).normalizeXmlParsedObjectWithSchema(
+        xmlObj,
+        schema,
+        '',
+      );
       expect(Array.isArray(result)).toBe(true);
       expect(result).toHaveLength(2);
     });
@@ -3013,23 +3541,27 @@ describe('SimulationService', () => {
         data: {
           '@id': '123',
           '@version': '1.0',
-          content: 'actual data'
-        }
+          content: 'actual data',
+        },
       };
-      
+
       const schema = {
         type: 'object',
         properties: {
           data: {
             type: 'object',
             properties: {
-              content: { type: 'string' }
-            }
-          }
-        }
+              content: { type: 'string' },
+            },
+          },
+        },
       };
-      
-      const result = (service as any).normalizeXmlParsedObjectWithSchema(xmlObj, schema, '');
+
+      const result = (service as any).normalizeXmlParsedObjectWithSchema(
+        xmlObj,
+        schema,
+        '',
+      );
       expect(result).toBeDefined();
       expect(result.data).toBeDefined();
       expect(result.data['@id']).toBeUndefined();
@@ -3045,23 +3577,30 @@ describe('SimulationService', () => {
 
       const mockConfig = {
         id: 1,
-        payloads: [{ 
-          contentType: 'application/json',
-          schema: { 
-            type: 'object',
-            properties: {
-              value: { type: 'number' }
+        payloads: [
+          {
+            contentType: 'application/json',
+            schema: {
+              type: 'object',
+              properties: {
+                value: { type: 'number' },
+              },
+              required: ['value'],
             },
-            required: ['value']
-          }
-        }],
-        tenantId: 'tenant-1'
+          },
+        ],
+        tenantId: 'tenant-1',
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
-      
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
+
       expect(result.status).toBe('FAILED');
       expect(result.errors.length).toBeGreaterThan(0);
     });
@@ -3070,12 +3609,18 @@ describe('SimulationService', () => {
       const payload = { test: 'value' };
       const schema = { type: 'number' };
 
-      const result = (service as any).validatePayloadAgainstSchema(payload, schema);
-      
+      const result = (service as any).validatePayloadAgainstSchema(
+        payload,
+        schema,
+      );
+
       expect(result).toBeDefined();
       if (result && !result.valid && result.errors) {
-        const hasMessageOrFallback = result.errors.every(e => 
-          e.message === '' || e.message === 'Schema validation failed' || e.message
+        const hasMessageOrFallback = result.errors.every(
+          (e) =>
+            e.message === '' ||
+            e.message === 'Schema validation failed' ||
+            e.message,
         );
         expect(hasMessageOrFallback).toBe(true);
       }
@@ -3088,40 +3633,47 @@ describe('SimulationService', () => {
         payload: {
           items: [
             { id: 1, allowed: true },
-            { id: 2, allowed: false, extra: 'not allowed' }
-          ]
+            { id: 2, allowed: false, extra: 'not allowed' },
+          ],
         },
       };
 
       const mockConfig = {
         id: 1,
-        payloads: [{ 
-          contentType: 'application/json',
-          schema: { 
-            type: 'object',
-            properties: {
-              items: {
-                type: 'array',
+        payloads: [
+          {
+            contentType: 'application/json',
+            schema: {
+              type: 'object',
+              properties: {
                 items: {
-                  type: 'object',
-                  properties: {
-                    id: { type: 'number' },
-                    allowed: { type: 'boolean' }
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      id: { type: 'number' },
+                      allowed: { type: 'boolean' },
+                    },
+                    additionalProperties: false,
+                    required: ['id', 'allowed'],
                   },
-                  additionalProperties: false,
-                  required: ['id', 'allowed']
-                }
-              }
-            }
-          }
-        }],
-        tenantId: 'tenant-1'
+                },
+              },
+            },
+          },
+        ],
+        tenantId: 'tenant-1',
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
-      
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
+
       // May pass or fail depending on validation, but should handle additionalProperties
       expect(result).toBeDefined();
     });
@@ -3132,49 +3684,53 @@ describe('SimulationService', () => {
         payloadType: 'application/json',
         payload: {
           nested: {
-            values: [100, 'invalid', 300]
-          }
+            values: [100, 'invalid', 300],
+          },
         },
       };
 
       const mockConfig = {
         id: 1,
-        payloads: [{ 
-          contentType: 'application/json',
-          schema: { 
-            type: 'object',
-            properties: {
-              nested: {
-                type: 'object',
-                properties: {
-                  values: {
-                    type: 'array',
-                    items: { type: 'number' }
-                  }
-                }
-              }
-            }
-          }
-        }],
-        tenantId: 'tenant-1'
+        payloads: [
+          {
+            contentType: 'application/json',
+            schema: {
+              type: 'object',
+              properties: {
+                nested: {
+                  type: 'object',
+                  properties: {
+                    values: {
+                      type: 'array',
+                      items: { type: 'number' },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        ],
+        tenantId: 'tenant-1',
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
-      
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
+
       expect(result.status).toBe('FAILED');
       expect(result.errors.length).toBeGreaterThan(0);
     });
 
     it('should continue loop on additionalProperties error when isArrayPath is true', async () => {
       const payload = {
-        list: [
-          { name: 'valid' },
-          { name: 'valid2', extra: 'field' }
-        ]
+        list: [{ name: 'valid' }, { name: 'valid2', extra: 'field' }],
       };
-      
+
       const schema = {
         type: 'object',
         properties: {
@@ -3183,16 +3739,19 @@ describe('SimulationService', () => {
             items: {
               type: 'object',
               properties: {
-                name: { type: 'string' }
+                name: { type: 'string' },
               },
-              additionalProperties: false
-            }
-          }
-        }
+              additionalProperties: false,
+            },
+          },
+        },
       };
 
-      const result = (service as any).validatePayloadAgainstSchema(payload, schema);
-      
+      const result = (service as any).validatePayloadAgainstSchema(
+        payload,
+        schema,
+      );
+
       expect(result).toBeDefined();
       // Validation should handle the array path
     });
@@ -3201,8 +3760,11 @@ describe('SimulationService', () => {
       const payload = 'should be object';
       const schema = { type: 'object' };
 
-      const result = (service as any).validatePayloadAgainstSchema(payload, schema);
-      
+      const result = (service as any).validatePayloadAgainstSchema(
+        payload,
+        schema,
+      );
+
       expect(result).toBeDefined();
       if (result && typeof result === 'object' && 'valid' in result) {
         expect(result.valid).toBe(false);
@@ -3227,9 +3789,9 @@ describe('SimulationService', () => {
     it('should handle XML object with only xmlns properties', async () => {
       const xmlObj = {
         'xmlns:soap': 'http://schemas.xmlsoap.org/soap/envelope/',
-        'xmlns:xsi': 'http://www.w3.org/2001/XMLSchema-instance'
+        'xmlns:xsi': 'http://www.w3.org/2001/XMLSchema-instance',
       };
-      
+
       const result = (service as any).normalizeXmlParsedObject(xmlObj);
       expect(result).toBeDefined();
       expect(Object.keys(result)).toHaveLength(0);
@@ -3239,9 +3801,9 @@ describe('SimulationService', () => {
       const xmlObj = {
         $: { meta: 'data' },
         field: 'value',
-        nested: { data: 'content' }
+        nested: { data: 'content' },
       };
-      
+
       const result = (service as any).normalizeXmlParsedObject(xmlObj);
       expect(result).toBeDefined();
       expect(result.$).toBeUndefined();
@@ -3254,12 +3816,12 @@ describe('SimulationService', () => {
         parent: {
           child: {
             grandchild: {
-              value: 'deep'
-            }
-          }
-        }
+              value: 'deep',
+            },
+          },
+        },
       };
-      
+
       const result = (service as any).normalizeXmlParsedObject(xmlObj);
       expect(result).toBeDefined();
       expect(result.parent.child.grandchild.value).toBe('deep');
@@ -3269,9 +3831,9 @@ describe('SimulationService', () => {
       const xmlObj = {
         field: null,
         another: undefined,
-        number: 0
+        number: 0,
       };
-      
+
       const result = (service as any).normalizeXmlParsedObject(xmlObj);
       expect(result).toBeDefined();
       expect(result.field).toBeNull();
@@ -3287,22 +3849,29 @@ describe('SimulationService', () => {
 
       const mockConfig = {
         id: 1,
-        payloads: [{ 
-          contentType: 'application/json',
-          schema: { 
-            type: 'object',
-            properties: {
-              field: { type: 'string' }
-            }
-          }
-        }],
-        tenantId: 'tenant-1'
+        payloads: [
+          {
+            contentType: 'application/json',
+            schema: {
+              type: 'object',
+              properties: {
+                field: { type: 'string' },
+              },
+            },
+          },
+        ],
+        tenantId: 'tenant-1',
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
-      
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
+
       expect(result.status).toBe('FAILED');
       expect(result.errors.length).toBeGreaterThan(0);
     });
@@ -3311,10 +3880,10 @@ describe('SimulationService', () => {
       const xmlObj = {
         level1: [
           { level2: [{ value: 'a' }, { value: 'b' }] },
-          { level2: [{ value: 'c' }] }
-        ]
+          { level2: [{ value: 'c' }] },
+        ],
       };
-      
+
       const schema = {
         type: 'object',
         properties: {
@@ -3325,15 +3894,19 @@ describe('SimulationService', () => {
               properties: {
                 level2: {
                   type: 'array',
-                  items: { type: 'object' }
-                }
-              }
-            }
-          }
-        }
+                  items: { type: 'object' },
+                },
+              },
+            },
+          },
+        },
       };
-      
-      const result = (service as any).normalizeXmlParsedObjectWithSchema(xmlObj, schema, '');
+
+      const result = (service as any).normalizeXmlParsedObjectWithSchema(
+        xmlObj,
+        schema,
+        '',
+      );
       expect(result).toBeDefined();
       expect(result.level1).toBeDefined();
       expect(Array.isArray(result.level1)).toBe(true);
@@ -3352,10 +3925,10 @@ describe('SimulationService', () => {
           '@id': '123',
           '#text': 'some text',
           nested: 'value',
-          'xmlns:ns': 'namespace'
-        }
+          'xmlns:ns': 'namespace',
+        },
       };
-      
+
       const result = (service as any).normalizeXmlParsedObject(xmlObj);
       expect(result).toBeDefined();
       expect(result.element).toBeDefined();
@@ -3369,10 +3942,13 @@ describe('SimulationService', () => {
           '@attr': { type: 'string' },
           $: { type: 'object' },
           normalField: 'string',
-          objectField: { type: 'object', properties: { inner: { type: 'string' } } }
-        }
+          objectField: {
+            type: 'object',
+            properties: { inner: { type: 'string' } },
+          },
+        },
       };
-      
+
       const result = (service as any).cleanSchemaForXML(schema);
       expect(result.properties).toBeDefined();
       expect(result.properties.normalField).toBe('string');
@@ -3381,16 +3957,17 @@ describe('SimulationService', () => {
     });
 
     it('should cover normalizeXmlParsedObjectWithSchema with array root', async () => {
-      const arrData = [
-        { field: 'value1' },
-        { field: 'value2' }
-      ];
+      const arrData = [{ field: 'value1' }, { field: 'value2' }];
       const schema = {
         type: 'array',
-        items: { type: 'object', properties: { field: { type: 'string' } } }
+        items: { type: 'object', properties: { field: { type: 'string' } } },
       };
-      
-      const result = (service as any).normalizeXmlParsedObjectWithSchema(arrData, schema, '');
+
+      const result = (service as any).normalizeXmlParsedObjectWithSchema(
+        arrData,
+        schema,
+        '',
+      );
       expect(Array.isArray(result)).toBe(true);
       expect(result).toHaveLength(2);
     });
@@ -3399,9 +3976,9 @@ describe('SimulationService', () => {
       const xmlObj = {
         parent: {
           child: {
-            '#text': 'value'
-          }
-        }
+            '#text': 'value',
+          },
+        },
       };
       const schema = {
         type: 'object',
@@ -3409,13 +3986,17 @@ describe('SimulationService', () => {
           parent: {
             type: 'object',
             properties: {
-              child: { type: 'string' }
-            }
-          }
-        }
+              child: { type: 'string' },
+            },
+          },
+        },
       };
-      
-      const result = (service as any).normalizeXmlParsedObjectWithSchema(xmlObj, schema, '');
+
+      const result = (service as any).normalizeXmlParsedObjectWithSchema(
+        xmlObj,
+        schema,
+        '',
+      );
       expect(result.parent).toBeDefined();
       expect(result.parent.child).toBeDefined();
     });
@@ -3428,8 +4009,8 @@ describe('SimulationService', () => {
         payloadType: 'JSON',
         schemaVersion: '1.0',
         schema: {
-          type: 'string'
-        }
+          type: 'string',
+        },
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(config);
@@ -3438,10 +4019,15 @@ describe('SimulationService', () => {
         tenantId: 'tenant123',
         endpointId: 123,
         payload: JSON.stringify(123),
-        payloadType: 'application/json' as 'application/json'
+        payloadType: 'application/json' as 'application/json',
       };
 
-      const result = await service.simulateMapping(dto, 'tenant123', 'user1', 'token123');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant123',
+        'user1',
+        'token123',
+      );
       expect(result.errors).toBeDefined();
     });
 
@@ -3453,15 +4039,18 @@ describe('SimulationService', () => {
             Document: {
               type: 'object',
               properties: {
-                field: { type: 'string' }
-              }
-            }
-          }
-        }
+                field: { type: 'string' },
+              },
+            },
+          },
+        },
       };
       const payload = { field: { '#text': 'value' } };
-      
-      const result = (service as any).normalizePayloadForValidation(payload, config);
+
+      const result = (service as any).normalizePayloadForValidation(
+        payload,
+        config,
+      );
       expect(result).toBeDefined();
       expect(result.Document).toBeDefined();
     });
@@ -3472,11 +4061,11 @@ describe('SimulationService', () => {
         properties: {
           'xmlns:ns': { type: 'string' },
           '@attr': { type: 'string' },
-          normalField: { type: 'string' }
+          normalField: { type: 'string' },
         },
-        required: ['xmlns:ns', '@attr', 'normalField']
+        required: ['xmlns:ns', '@attr', 'normalField'],
       };
-      
+
       const result = (service as any).cleanSchemaForXML(schema);
       expect(result.required).toBeDefined();
       expect(result.required.length).toBeLessThan(schema.required.length);
@@ -3485,14 +4074,18 @@ describe('SimulationService', () => {
     it('should cover array map in normalizeXmlParsedObjectWithSchema', async () => {
       const arrData = [
         { '#text': 'value1', '@id': '1' },
-        { '#text': 'value2', '@id': '2' }
+        { '#text': 'value2', '@id': '2' },
       ];
       const schema = {
         type: 'array',
-        items: { type: 'string' }
+        items: { type: 'string' },
       };
-      
-      const result = (service as any).normalizeXmlParsedObjectWithSchema(arrData, schema, '');
+
+      const result = (service as any).normalizeXmlParsedObjectWithSchema(
+        arrData,
+        schema,
+        '',
+      );
       expect(Array.isArray(result)).toBe(true);
     });
 
@@ -3500,9 +4093,9 @@ describe('SimulationService', () => {
       const xmlObj = {
         level1: {
           level2: {
-            '#text': 'value'
-          }
-        }
+            '#text': 'value',
+          },
+        },
       };
       const schema = {
         type: 'object',
@@ -3510,13 +4103,17 @@ describe('SimulationService', () => {
           level1: {
             type: 'object',
             properties: {
-              level2: { type: 'string' }
-            }
-          }
-        }
+              level2: { type: 'string' },
+            },
+          },
+        },
       };
-      
-      const result = (service as any).normalizeXmlParsedObjectWithSchema(xmlObj, schema, 'root');
+
+      const result = (service as any).normalizeXmlParsedObjectWithSchema(
+        xmlObj,
+        schema,
+        'root',
+      );
       expect(result.level1).toBeDefined();
     });
 
@@ -3530,10 +4127,10 @@ describe('SimulationService', () => {
         schema: {
           type: 'object',
           properties: {
-            field: { type: 'number' }
+            field: { type: 'number' },
           },
-          additionalProperties: false
-        }
+          additionalProperties: false,
+        },
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(config);
@@ -3542,10 +4139,15 @@ describe('SimulationService', () => {
         tenantId: 'tenant123',
         endpointId: 123,
         payload: JSON.stringify({ field: 'not-a-number' }),
-        payloadType: 'application/json' as 'application/json'
+        payloadType: 'application/json' as 'application/json',
       };
 
-      const result = await service.simulateMapping(dto, 'tenant123', 'user1', 'token123');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant123',
+        'user1',
+        'token123',
+      );
       expect(result.errors).toBeDefined();
       expect(result.errors.length).toBeGreaterThan(0);
     });
@@ -3560,9 +4162,9 @@ describe('SimulationService', () => {
         schema: {
           type: 'object',
           properties: {
-            root: { type: 'object' }
-          }
-        }
+            root: { type: 'object' },
+          },
+        },
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(config);
@@ -3571,10 +4173,15 @@ describe('SimulationService', () => {
         tenantId: 'tenant123',
         endpointId: 123,
         payload: '<root><unclosed>',
-        payloadType: 'application/xml' as 'application/xml'
+        payloadType: 'application/xml' as 'application/xml',
       };
 
-      const result = await service.simulateMapping(dto, 'tenant123', 'user1', 'token123');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant123',
+        'user1',
+        'token123',
+      );
       expect(result.status).toBe('FAILED');
       expect(result.errors).toBeDefined();
     });
@@ -3592,10 +4199,10 @@ describe('SimulationService', () => {
             Dbtr: {
               type: 'object',
               properties: {
-                Nm: { type: 'string' }
-              }
-            }
-          }
+                Nm: { type: 'string' },
+              },
+            },
+          },
         },
         tcsMapping: [
           {
@@ -3616,14 +4223,14 @@ describe('SimulationService', () => {
                       cfg: '001@1.0',
                       txTp: 'pain.001.001.11',
                       source: ['Dbtr.Nm'],
-                      destination: 'DebtorName'
-                    }
-                  ]
-                }
-              }
-            ]
-          }
-        ]
+                      destination: 'DebtorName',
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        ],
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(config);
@@ -3632,10 +4239,15 @@ describe('SimulationService', () => {
         tenantId: 'tenant123',
         endpointId: 123,
         payload: JSON.stringify({ Dbtr: { Nm: 'Test Name' } }),
-        payloadType: 'application/json' as 'application/json'
+        payloadType: 'application/json' as 'application/json',
       };
 
-      const result = await service.simulateMapping(dto, 'tenant123', 'user1', 'token123');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant123',
+        'user1',
+        'token123',
+      );
       expect(result.summary).toBeDefined();
       expect(result.stages).toBeDefined();
     });
@@ -3645,20 +4257,24 @@ describe('SimulationService', () => {
         root: [
           { item: { '#text': 'value1' } },
           { item: { '#text': 'value2' } },
-          { item: { '#text': 'value3' } }
-        ]
+          { item: { '#text': 'value3' } },
+        ],
       };
       const schema = {
         type: 'object',
         properties: {
           root: {
             type: 'array',
-            items: { type: 'object', properties: { item: { type: 'string' } } }
-          }
-        }
+            items: { type: 'object', properties: { item: { type: 'string' } } },
+          },
+        },
       };
-      
-      const result = (service as any).normalizeXmlParsedObjectWithSchema(xmlData, schema, '');
+
+      const result = (service as any).normalizeXmlParsedObjectWithSchema(
+        xmlData,
+        schema,
+        '',
+      );
       expect(result).toBeDefined();
       expect(result.root).toBeDefined();
       expect(Array.isArray(result.root)).toBe(true);
@@ -3669,10 +4285,10 @@ describe('SimulationService', () => {
         level1: {
           level2: {
             level3: {
-              '#text': 'deep-value'
-            }
-          }
-        }
+              '#text': 'deep-value',
+            },
+          },
+        },
       };
       const schema = {
         type: 'object',
@@ -3683,15 +4299,19 @@ describe('SimulationService', () => {
               level2: {
                 type: 'object',
                 properties: {
-                  level3: { type: 'string' }
-                }
-              }
-            }
-          }
-        }
+                  level3: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
       };
-      
-      const result = (service as any).normalizeXmlParsedObjectWithSchema(xmlData, schema, '');
+
+      const result = (service as any).normalizeXmlParsedObjectWithSchema(
+        xmlData,
+        schema,
+        '',
+      );
       expect(result.level1.level2.level3).toBe('deep-value');
     });
 
@@ -3708,12 +4328,12 @@ describe('SimulationService', () => {
             nested: {
               type: 'object',
               properties: {
-                field: { type: 'number' }
-              }
-            }
+                field: { type: 'number' },
+              },
+            },
           },
-          additionalProperties: false
-        }
+          additionalProperties: false,
+        },
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(config);
@@ -3722,10 +4342,15 @@ describe('SimulationService', () => {
         tenantId: 'tenant123',
         endpointId: 456,
         payload: JSON.stringify({ nested: { field: 'string-not-number' } }),
-        payloadType: 'application/json' as 'application/json'
+        payloadType: 'application/json' as 'application/json',
       };
 
-      const result = await service.simulateMapping(dto, 'tenant123', 'user1', 'token123');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant123',
+        'user1',
+        'token123',
+      );
       expect(result.errors).toBeDefined();
       expect(result.errors.length).toBeGreaterThan(0);
     });
@@ -3745,13 +4370,13 @@ describe('SimulationService', () => {
               items: {
                 type: 'object',
                 properties: {
-                  value: { type: 'number' }
-                }
-              }
-            }
+                  value: { type: 'number' },
+                },
+              },
+            },
           },
-          additionalProperties: false
-        }
+          additionalProperties: false,
+        },
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(config);
@@ -3759,11 +4384,18 @@ describe('SimulationService', () => {
       const dto = {
         tenantId: 'tenant123',
         endpointId: 789,
-        payload: JSON.stringify({ items: [{ value: 'not-a-number' }, { value: 123 }] }),
-        payloadType: 'application/json' as 'application/json'
+        payload: JSON.stringify({
+          items: [{ value: 'not-a-number' }, { value: 123 }],
+        }),
+        payloadType: 'application/json' as 'application/json',
       };
 
-      const result = await service.simulateMapping(dto, 'tenant123', 'user1', 'token123');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant123',
+        'user1',
+        'token123',
+      );
       expect(result.errors).toBeDefined();
       expect(result.errors.length).toBeGreaterThan(0);
     });
@@ -3788,15 +4420,15 @@ describe('SimulationService', () => {
                       type: 'object',
                       properties: {
                         MsgId: { type: 'string' },
-                        CreDtTm: { type: 'string' }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
+                        CreDtTm: { type: 'string' },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
       };
 
       adminServiceClientMock.getConfigById.mockResolvedValue(config);
@@ -3804,11 +4436,17 @@ describe('SimulationService', () => {
       const dto = {
         tenantId: 'tenant123',
         endpointId: 999,
-        payload: '<Document><CstmrCdtTrfInitn><GrpHdr><MsgId>MSG001</MsgId><CreDtTm>2024-01-01T12:00:00</CreDtTm></GrpHdr></CstmrCdtTrfInitn></Document>',
-        payloadType: 'application/xml' as 'application/xml'
+        payload:
+          '<Document><CstmrCdtTrfInitn><GrpHdr><MsgId>MSG001</MsgId><CreDtTm>2024-01-01T12:00:00</CreDtTm></GrpHdr></CstmrCdtTrfInitn></Document>',
+        payloadType: 'application/xml' as 'application/xml',
       };
 
-      const result = await service.simulateMapping(dto, 'tenant123', 'user1', 'token123');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant123',
+        'user1',
+        'token123',
+      );
       expect(result.transformedPayload).toBeDefined();
     });
 
@@ -3816,14 +4454,18 @@ describe('SimulationService', () => {
       const xmlArray = [
         { '#text': 'item1', '@id': '1' },
         { '#text': 'item2', '@id': '2' },
-        { '#text': 'item3', '@id': '3' }
+        { '#text': 'item3', '@id': '3' },
       ];
       const schema = {
         type: 'array',
-        items: { type: 'string' }
+        items: { type: 'string' },
       };
 
-      const result = (service as any).normalizeXmlParsedObjectWithSchema(xmlArray, schema, '');
+      const result = (service as any).normalizeXmlParsedObjectWithSchema(
+        xmlArray,
+        schema,
+        '',
+      );
       expect(Array.isArray(result)).toBe(true);
       expect(result.length).toBe(3);
     });

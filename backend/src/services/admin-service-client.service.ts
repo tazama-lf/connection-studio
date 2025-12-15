@@ -51,9 +51,7 @@ export class AdminServiceClient {
     token: string,
   ): Promise<{ success: boolean; message: string }> {
     const url = `${this.adminServiceUrl}/v1/admin/tcs/tcs/config/status/${id}`;
-    this.logger.log(
-      `Updating config ${id} status to ${status} via ${url}`,
-    );
+    this.logger.log(`Updating config ${id} status to ${status} via ${url}`);
 
     try {
       const response = await firstValueFrom(
@@ -62,16 +60,16 @@ export class AdminServiceClient {
           { status },
           {
             headers: {
-              Authorization: token.startsWith('Bearer ') ? token : `Bearer ${token}`,
+              Authorization: token.startsWith('Bearer ')
+                ? token
+                : `Bearer ${token}`,
               'Content-Type': 'application/json',
             },
           },
         ),
       );
 
-      this.logger.log(
-        `Config ${id} status updated successfully to ${status}`,
-      );
+      this.logger.log(`Config ${id} status updated successfully to ${status}`);
       return response.data;
     } catch (error: any) {
       const errorMessage = error.response?.data?.message ?? error.message;
@@ -154,7 +152,10 @@ export class AdminServiceClient {
         );
 
         const message =
-          data && typeof data === 'object' && 'message' in data && typeof data.message === 'string'
+          data &&
+          typeof data === 'object' &&
+          'message' in data &&
+          typeof data.message === 'string'
             ? data.message
             : typeof data === 'string'
               ? data
@@ -179,10 +180,7 @@ export class AdminServiceClient {
 
   // ==================== JOB OPERATIONS ====================
 
-  async createPushJob(
-    job: Partial<Job>,
-    token: string,
-  ): Promise<ISuccess> {
+  async createPushJob(job: Partial<Job>, token: string): Promise<ISuccess> {
     this.logger.log('Validating job creation');
 
     try {
@@ -206,10 +204,7 @@ export class AdminServiceClient {
     }
   }
 
-  async createPullJob(
-    job: Partial<Job>,
-    token: string,
-  ): Promise<ISuccess> {
+  async createPullJob(job: Partial<Job>, token: string): Promise<ISuccess> {
     this.logger.log('Validating job creation');
 
     try {
@@ -632,7 +627,6 @@ export class AdminServiceClient {
 
   // ==================== TCS OPERATIONS ====================
 
- 
   async getConfigById(id: number, token: string): Promise<any> {
     this.logger.log(`Getting config by ID: ${id}`);
 
@@ -885,20 +879,20 @@ export class AdminServiceClient {
       'POST',
       `/v1/admin/tcs/config/${offset}/${limit}`,
       filters,
-      { Authorization: token.startsWith('Bearer ') ? token : `Bearer ${token}` },
+      {
+        Authorization: token.startsWith('Bearer ') ? token : `Bearer ${token}`,
+      },
     );
   }
 
-  async addMapping(
-    id: number,
-    mappingData: any,
-    token: string,
-  ): Promise<any> {
+  async addMapping(id: number, mappingData: any, token: string): Promise<any> {
     return await this.forwardRequest(
       'POST',
       `/v1/admin/tcs/config/${id}/mapping`,
       mappingData,
-      { Authorization: token.startsWith('Bearer ') ? token : `Bearer ${token}` },
+      {
+        Authorization: token.startsWith('Bearer ') ? token : `Bearer ${token}`,
+      },
     );
   }
 
@@ -907,7 +901,9 @@ export class AdminServiceClient {
       'DELETE',
       `/v1/admin/tcs/config/${id}/mapping/${index}`,
       undefined,
-      { Authorization: token.startsWith('Bearer ') ? token : `Bearer ${token}` },
+      {
+        Authorization: token.startsWith('Bearer ') ? token : `Bearer ${token}`,
+      },
     );
   }
 
@@ -920,7 +916,9 @@ export class AdminServiceClient {
       'POST',
       `/v1/admin/tcs/config/${id}/function`,
       functionData,
-      { Authorization: token.startsWith('Bearer ') ? token : `Bearer ${token}` },
+      {
+        Authorization: token.startsWith('Bearer ') ? token : `Bearer ${token}`,
+      },
     );
   }
 
@@ -929,17 +927,25 @@ export class AdminServiceClient {
       'DELETE',
       `/v1/admin/tcs/config/${id}/function/${index}`,
       undefined,
-      { Authorization: token.startsWith('Bearer ') ? token : `Bearer ${token}` },
+      {
+        Authorization: token.startsWith('Bearer ') ? token : `Bearer ${token}`,
+      },
     );
   }
 
   async getAllCollections(tenantId: string, token: string): Promise<any> {
     this.logger.log(`Fetching all collections for tenant: ${tenantId}`);
-    this.logger.debug(`Token received: ${token ? `${token.substring(0, 20)}...` : 'EMPTY'}`);
+    this.logger.debug(
+      `Token received: ${token ? `${token.substring(0, 20)}...` : 'EMPTY'}`,
+    );
 
     try {
-      const authHeader = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
-      this.logger.debug(`Authorization header: ${authHeader.substring(0, 30)}...`);
+      const authHeader = token.startsWith('Bearer ')
+        ? token
+        : `Bearer ${token}`;
+      this.logger.debug(
+        `Authorization header: ${authHeader.substring(0, 30)}...`,
+      );
       const response = await firstValueFrom(
         this.httpService.get(
           `${this.adminServiceUrl}/v1/admin/tcs/data-model/collections/${tenantId}`,
@@ -970,7 +976,9 @@ export class AdminServiceClient {
     this.logger.log(`Creating destination type: ${dto.name}`);
 
     try {
-      const authHeader = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
+      const authHeader = token.startsWith('Bearer ')
+        ? token
+        : `Bearer ${token}`;
       const response = await firstValueFrom(
         this.httpService.post(
           `${this.adminServiceUrl}/v1/admin/tcs/data-model/destination-types`,
@@ -990,11 +998,16 @@ export class AdminServiceClient {
     }
   }
 
-  async destinationTypeExists(destinationTypeId: number, token: string): Promise<any> {
+  async destinationTypeExists(
+    destinationTypeId: number,
+    token: string,
+  ): Promise<any> {
     this.logger.log(`Checking if destination type ${destinationTypeId} exists`);
 
     try {
-      const authHeader = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
+      const authHeader = token.startsWith('Bearer ')
+        ? token
+        : `Bearer ${token}`;
       const response = await firstValueFrom(
         this.httpService.get(
           `${this.adminServiceUrl}/v1/admin/tcs/data-model/destination-types/${destinationTypeId}/exists`,
@@ -1024,10 +1037,14 @@ export class AdminServiceClient {
     },
     token: string,
   ): Promise<any> {
-    this.logger.log(`Adding field ${dto.name} to destination type ${destinationTypeId}`);
+    this.logger.log(
+      `Adding field ${dto.name} to destination type ${destinationTypeId}`,
+    );
 
     try {
-      const authHeader = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
+      const authHeader = token.startsWith('Bearer ')
+        ? token
+        : `Bearer ${token}`;
       const response = await firstValueFrom(
         this.httpService.post(
           `${this.adminServiceUrl}/v1/admin/tcs/data-model/destination-types/${destinationTypeId}/fields`,
@@ -1047,25 +1064,37 @@ export class AdminServiceClient {
     }
   }
 
-  async createTransactionTypeTable(transactionType: string, token: string): Promise<void> {
+  async createTransactionTypeTable(
+    transactionType: string,
+    token: string,
+  ): Promise<void> {
     return await this.forwardRequest(
       'POST',
       '/v1/admin/tcs/deploy/transaction-type-table',
       { transactionType },
-      { Authorization: token.startsWith('Bearer ') ? token : `Bearer ${token}` },
+      {
+        Authorization: token.startsWith('Bearer ') ? token : `Bearer ${token}`,
+      },
     );
   }
 
   async createTazamaDataModelTable(
     tableName: string,
-    columns: Array<{ name: string; type: string; isPrimaryKey?: boolean | string; param?: string }>,
+    columns: Array<{
+      name: string;
+      type: string;
+      isPrimaryKey?: boolean | string;
+      param?: string;
+    }>,
     token: string,
   ): Promise<void> {
     return await this.forwardRequest(
       'POST',
       '/v1/admin/tcs/data-model/table',
       { tableName, columns },
-      { Authorization: token.startsWith('Bearer ') ? token : `Bearer ${token}` },
+      {
+        Authorization: token.startsWith('Bearer ') ? token : `Bearer ${token}`,
+      },
     );
   }
 

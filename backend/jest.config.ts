@@ -51,10 +51,9 @@ const config: Config.InitialOptions = {
     '.*interfaces.*',
     '.*enum.*',
     '/services/',
-    '/database/'
+    '/database/',
   ],
 
-  
   moduleNameMapper: {
     '^ioredis$': '<rootDir>/__mocks__/ioredis.js',
   },
