@@ -1080,18 +1080,12 @@ export class AdminServiceClient {
 
   async createTazamaDataModelTable(
     tableName: string,
-    columns: Array<{
-      name: string;
-      type: string;
-      isPrimaryKey?: boolean | string;
-      param?: string;
-    }>,
     token: string,
   ): Promise<void> {
     return await this.forwardRequest(
       'POST',
       '/v1/admin/tcs/data-model/table',
-      { tableName, columns },
+      { tableName },
       {
         Authorization: token.startsWith('Bearer ') ? token : `Bearer ${token}`,
       },

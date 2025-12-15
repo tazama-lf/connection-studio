@@ -441,7 +441,6 @@ export class ConfigService {
 
                   await this.configRepository.createTazamaDataModelTable(
                     datamodelFn.tableName,
-                    datamodelFn.columns,
                     token,
                   );
 
@@ -465,7 +464,6 @@ export class ConfigService {
 
               await this.configRepository.createTazamaDataModelTable(
                 functions.tableName,
-                functions.columns,
                 token,
               );
 
