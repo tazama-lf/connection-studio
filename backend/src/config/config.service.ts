@@ -189,7 +189,6 @@ export class ConfigService {
     user: AuthenticatedUser,
     token: string,
   ): Promise<ConfigResponseDto> {
-    //ye hata doh update khud error de ga
     await this.getConfigOrThrow(id, user.tenantId, token);
 
     const updatedConfig = await this.configRepository.getupdateConfigByStatus(

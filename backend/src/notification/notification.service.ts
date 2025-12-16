@@ -615,8 +615,6 @@ export class NotificationService implements OnModuleInit {
       return;
     }
 
-    
-
     await this.sendGenericWorkflowNotification({
       event,
       tenantId: getTenantId(user),
