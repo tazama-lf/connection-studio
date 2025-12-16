@@ -7,16 +7,13 @@ import {
 } from './config.interfaces';
 @Injectable()
 export class ConfigWorkflowService {
-  private normalizeStatus(status: string): string {
-    return status;
-  }
   validateStatusTransition(
     fromStatus: string,
     toStatus: string,
     _action: any,
   ): StatusTransitionValidation {
-    const normalizedFromStatus = this.normalizeStatus(fromStatus);
-    const normalizedToStatus = this.normalizeStatus(toStatus);
+    const normalizedFromStatus = fromStatus;
+    const normalizedToStatus = toStatus;
     const validTransitions: Record<string, string[]> = {
       [ConfigStatus.IN_PROGRESS]: [ConfigStatus.UNDER_REVIEW],
       [ConfigStatus.ON_HOLD]: [ConfigStatus.IN_PROGRESS],
