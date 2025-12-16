@@ -461,7 +461,6 @@ describe('ConfigService', () => {
 
     expect(mockRepo.createTazamaDataModelTable).toHaveBeenCalledWith(
       'dm_table',
-      [{ name: 'id', type: 'text' }],
       token,
     );
   });
@@ -598,12 +597,10 @@ describe('ConfigService', () => {
     expect(mockRepo.createTazamaDataModelTable).toHaveBeenCalledTimes(2);
     expect(mockRepo.createTazamaDataModelTable).toHaveBeenCalledWith(
       'table_one',
-      [{ name: 'id', type: 'text' }],
       token,
     );
     expect(mockRepo.createTazamaDataModelTable).toHaveBeenCalledWith(
       'table_two',
-      [{ name: 'name', type: 'text' }],
       token,
     );
   });

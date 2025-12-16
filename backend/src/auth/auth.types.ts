@@ -1,4 +1,5 @@
 import type { TazamaToken, ClaimValidationResult } from '@tazama-lf/auth-lib';
+import type { Request } from 'express';
 
 export interface AuthenticatedUser {
   token: TazamaToken;

@@ -439,10 +439,10 @@ export class ConfigService {
                     `Creating datamodel table: ${datamodelFn.tableName}`,
                   );
 
-                  await this.configRepository.createTazamaDataModelTable(
-                    datamodelFn.tableName,
-                    token,
-                  );
+                    await this.configRepository.createTazamaDataModelTable(
+                      datamodelFn.tableName,
+                      token,
+                    );
 
                   this.logger.log(
                     `Successfully created datamodel table "${datamodelFn.tableName}"`,
@@ -462,10 +462,10 @@ export class ConfigService {
                 `Creating datamodel table: ${functions.tableName}`,
               );
 
-              await this.configRepository.createTazamaDataModelTable(
-                functions.tableName,
-                token,
-              );
+                await this.configRepository.createTazamaDataModelTable(
+                  functions.tableName,
+                  token,
+                );
 
               this.logger.log(
                 `Successfully created datamodel table "${functions.tableName}"`,
