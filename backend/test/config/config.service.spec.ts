@@ -658,7 +658,7 @@ describe('ConfigService', () => {
       ),
     ).rejects.toThrow('Failed to activate config: NATS down');
   });
-  it('removes mapping via service', async () => {
+  it('removes function via service', async () => {
     mockRepo.removeFunction = jest.fn().mockResolvedValue({
       success: true,
     });
@@ -668,7 +668,7 @@ describe('ConfigService', () => {
     expect(mockRepo.removeFunction).toHaveBeenCalledWith(1, 0, token);
     expect(result).toEqual({ success: true });
   });
-  it('removes function via service', async () => {
+  it('removes mapping via service', async () => {
     mockRepo.removeMapping = jest.fn().mockResolvedValue({
       success: true,
     });
