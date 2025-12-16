@@ -4,9 +4,11 @@ import {
   Body,
   UnauthorizedException,
   HttpCode,
+  ValidationPipe,
 } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { AuthService } from './auth.service';
+import { LoginDto } from './dto/login.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -17,7 +19,8 @@ export class AuthController {
   @Post('login')
   @HttpCode(200)
   async login(
-    @Body() body: { username: string; password: string },
+    @Body(new ValidationPipe({ whitelist: true, transform: true }))
+    body: LoginDto,
   ): Promise<{ message: string; token: string; expiresIn?: any }> {
     try {
       const result = await this.authService.login(body.username, body.password);
@@ -30,7 +33,7 @@ export class AuthController {
       }
       return response;
     } catch (error) {
-      this.logger.warn(`Login failed: ${error.message}`, AuthController.name);
+      this.logger.warn(`Login attempt failed`, AuthController.name);
       throw new UnauthorizedException('Invalid credentials');
     }
   }
