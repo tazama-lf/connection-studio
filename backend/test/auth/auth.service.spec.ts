@@ -14,7 +14,7 @@ import * as jwt from 'jsonwebtoken';
 const mockJwt = {
   ...jest.requireActual('jsonwebtoken'),
   decode: jest.fn(),
-  sign: jwt.sign, // Keep the real sign function for test setup
+  sign: jwt.sign,
 };
 
 describe('AuthService', () => {
@@ -280,48 +280,37 @@ describe('AuthService', () => {
     });
   });
 
-  // Note: The catch blocks in isTokenExpired and getTokenTimeToExpiry are defensive programming
-  // In practice, jwt.decode() from jsonwebtoken library handles malformed tokens gracefully
-  // and returns null rather than throwing errors. However, we can test error handling by
-  // creating scenarios where the function might encounter unexpected input types.
   describe('error handling scenarios', () => {
     it('should handle potential errors in isTokenExpired', () => {
-      // Test with various edge cases that might cause issues
       expect(service.isTokenExpired('')).toBe(true);
       expect(service.isTokenExpired(' ')).toBe(true);
       expect(service.isTokenExpired('not.a.token')).toBe(true);
       expect(service.isTokenExpired('.')).toBe(true);
       expect(service.isTokenExpired('..')).toBe(true);
-
-      // These should all return true without throwing errors
-      // The actual error handling in catch blocks is defensive programming
     });
 
     it('should handle potential errors in getTokenTimeToExpiry', () => {
-      // Test with various edge cases that might cause issues
       expect(service.getTokenTimeToExpiry('')).toBe(0);
       expect(service.getTokenTimeToExpiry(' ')).toBe(0);
       expect(service.getTokenTimeToExpiry('not.a.token')).toBe(0);
       expect(service.getTokenTimeToExpiry('.')).toBe(0);
       expect(service.getTokenTimeToExpiry('..')).toBe(0);
-
-      // These should all return 0 without throwing errors
     });
   });
 
   describe('getTokenTimeToExpiry', () => {
     it('should return time to expiry for valid token', () => {
-      const futureTime = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
+      const futureTime = Math.floor(Date.now() / 1000) + 3600;
       const token = jwt.sign({ exp: futureTime, user: 'test' }, 'secret');
 
       const result = service.getTokenTimeToExpiry(token);
 
-      expect(result).toBeGreaterThan(3500); // Should be close to 3600
+      expect(result).toBeGreaterThan(3500);
       expect(result).toBeLessThanOrEqual(3600);
     });
 
     it('should return 0 for expired token', () => {
-      const pastTime = Math.floor(Date.now() / 1000) - 3600; // 1 hour ago
+      const pastTime = Math.floor(Date.now() / 1000) - 3600;
       const token = jwt.sign({ exp: pastTime, user: 'test' }, 'secret');
 
       const result = service.getTokenTimeToExpiry(token);

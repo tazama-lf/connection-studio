@@ -19,7 +19,7 @@ export interface TazamaField {
   collection_id?: number;
   description?: string;
   example?: string | number | boolean | Date | Record<string, unknown>;
-  properties?: TazamaField[]; // For object types, define nested properties
+  properties?: TazamaField[];
 }
 export interface TazamaCollectionSchema {
   name: TazamaCollectionName;

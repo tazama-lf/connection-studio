@@ -819,10 +819,6 @@ export class SimulationService {
     schema: any,
     config?: Config,
   ): SimulationError[] {
-    this.logger.log('Validating payload against schema');
-    this.logger.log(`Schema: ${JSON.stringify(schema)}...`);
-    this.logger.log(`Payload: ${JSON.stringify(payload)}...`);
-
     const errors: SimulationError[] = [];
 
     if (!schema) {

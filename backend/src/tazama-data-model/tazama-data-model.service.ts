@@ -113,10 +113,7 @@ export class TazamaDataModelService {
           collection_id: schema.collection_id ?? 0,
           properties: [],
         };
-        this.logger.log(
-          'Adding empty collection option:',
-          emptyCollectionOption,
-        );
+        this.logger.log(`Empty collection encountered: ${schema.name}`);
         options.push(emptyCollectionOption);
       } else {
         for (const field of schema.fields) {
@@ -171,7 +168,6 @@ export class TazamaDataModelService {
     dto: CreateFieldDto,
     token: string,
   ): Promise<FieldResponse> {
-    // Validate destination type exists
     const exists = await this.repository.destinationTypeExists(
       destinationTypeId,
       token,
@@ -208,7 +204,7 @@ export class TazamaDataModelService {
         sanitizedDto.serial_no,
       );
       this.logger.log(
-        `Added field: ${dto.name} to destination type: ${destinationTypeId}`,
+        `Added field: ${result.name} to destination type: ${destinationTypeId}`,
       );
       return result;
     } catch (error: unknown) {

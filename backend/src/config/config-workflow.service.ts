@@ -196,10 +196,7 @@ export class ConfigWorkflowService {
     canEdit: boolean;
     message?: string;
   } {
-    const editableStatuses = [
-      ConfigStatus.IN_PROGRESS,
-      ConfigStatus.REJECTED, // Can edit after rejection
-    ];
+    const editableStatuses = [ConfigStatus.IN_PROGRESS, ConfigStatus.REJECTED];
     if (!editableStatuses.includes(currentStatus)) {
       return {
         canEdit: false,

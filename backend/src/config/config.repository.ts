@@ -26,10 +26,10 @@ export class ConfigRepository {
   async findConfigById(
     id: number,
     tenantId: string,
-    token?: string,
+    token: string,
   ): Promise<Config | null> {
     try {
-      return await this.adminServiceClient.getConfigById(id, token ?? tenantId);
+      return await this.adminServiceClient.getConfigById(id, token);
     } catch (error) {
       const err = error as Error;
       this.logger.error(`Error finding config by ID ${id}: ${err.message}`);
@@ -101,10 +101,7 @@ export class ConfigRepository {
     tableName: string,
     token: string,
   ): Promise<void> {
-    await this.adminServiceClient.createTazamaDataModelTable(
-      tableName,
-      token,
-    );
+    await this.adminServiceClient.createTazamaDataModelTable(tableName, token);
   }
   async updateConfigStatus(
     id: number,

@@ -65,17 +65,9 @@ export class ConfigService {
     userId: string,
     token: string,
   ): Promise<ConfigResponseDto> {
-    this.logger.log(
-      `[${tenantId}] Updating config ${id} status to ${status} by user ${userId}`,
-    );
-
     await this.getConfigOrThrow(id, tenantId, token);
 
     await this.configRepository.updateConfigStatus(id, status, token);
-
-    this.logger.log(
-      `[${tenantId}] Config ${id} status updated successfully to ${status}`,
-    );
 
     return {
       success: true,
@@ -107,7 +99,6 @@ export class ConfigService {
     token: string,
   ): Promise<ConfigResponseDto> {
     try {
-      this.logger.log('Creating new config...', dto.schema);
       const { version } = dto;
       const msgFam = dto.msgFam ?? 'unknown';
       const existingConfig =
@@ -152,10 +143,6 @@ export class ConfigService {
         tenantId,
         createdBy: userId,
       };
-
-      this.logger.log(
-        `Config data prepared with status: "${configData.status}" (type: ${typeof configData.status})`,
-      );
 
       const configId = await this.configRepository.createConfig(
         configData,
@@ -421,9 +408,6 @@ export class ConfigService {
             transactionType,
             token,
           );
-          this.logger.log(
-            `Successfully created table "${transactionType}" from deployed config`,
-          );
 
           const functions = configData.functions ?? null;
 
@@ -435,17 +419,9 @@ export class ConfigService {
             const tableCreationPromises = datamodelFunctions.map(
               async (datamodelFn) => {
                 if (datamodelFn.tableName) {
-                  this.logger.log(
-                    `Creating datamodel table: ${datamodelFn.tableName}`,
-                  );
-
-                    await this.configRepository.createTazamaDataModelTable(
-                      datamodelFn.tableName,
-                      token,
-                    );
-
-                  this.logger.log(
-                    `Successfully created datamodel table "${datamodelFn.tableName}"`,
+                  await this.configRepository.createTazamaDataModelTable(
+                    datamodelFn.tableName,
+                    token,
                   );
                 } else {
                   this.logger.warn(
@@ -458,23 +434,14 @@ export class ConfigService {
             await Promise.all(tableCreationPromises);
           } else if (functions?.functionName === 'addDataModelTable') {
             if (functions.tableName) {
-              this.logger.log(
-                `Creating datamodel table: ${functions.tableName}`,
-              );
-
-                await this.configRepository.createTazamaDataModelTable(
-                  functions.tableName,
-                  token,
-                );
-
-              this.logger.log(
-                `Successfully created datamodel table "${functions.tableName}"`,
+              await this.configRepository.createTazamaDataModelTable(
+                functions.tableName,
+                token,
               );
             }
           }
 
           await this.sftpService.deleteFile(fileName);
-          this.logger.log(`Deleted config file from SFTP: ${fileName}`);
 
           const deployedConfig = configData as Config;
           await this.notificationService.sendWorkflowNotification(
@@ -483,10 +450,6 @@ export class ConfigService {
             deployedConfig,
             token,
             deployDto.comment,
-          );
-
-          this.logger.log(
-            `Successfully updated original config ${id} status to ${newStatus}`,
           );
 
           return {
@@ -530,9 +493,6 @@ export class ConfigService {
 
     try {
       await this.notifyService.notifyDems(id.toString(), tenantId);
-      this.logger.log(
-        `NATS notification sent to DEMS for activated config ${id}`,
-      );
     } catch (error) {
       this.logger.error(
         `Failed to send NATS notification for config ${id}: ${error.message}`,

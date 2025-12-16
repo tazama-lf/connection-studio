@@ -31,9 +31,6 @@ export class AdminServiceClient {
     this.adminServiceUrl =
       this.configService.get<string>('ADMIN_SERVICE_URL') ??
       'http://localhost:3100';
-    this.logger.log(
-      `AdminServiceClient initialized with URL: ${this.adminServiceUrl}`,
-    );
   }
 
   /**
@@ -51,7 +48,6 @@ export class AdminServiceClient {
     token: string,
   ): Promise<{ success: boolean; message: string }> {
     const url = `${this.adminServiceUrl}/v1/admin/tcs/tcs/config/status/${id}`;
-    this.logger.log(`Updating config ${id} status to ${status} via ${url}`);
 
     try {
       const response = await firstValueFrom(
@@ -69,7 +65,6 @@ export class AdminServiceClient {
         ),
       );
 
-      this.logger.log(`Config ${id} status updated successfully to ${status}`);
       return response.data;
     } catch (error: any) {
       const errorMessage = error.response?.data?.message ?? error.message;
@@ -90,8 +85,6 @@ export class AdminServiceClient {
     headers?: Record<string, string>,
   ): Promise<any> {
     const url = `${this.adminServiceUrl}${path}`;
-
-    this.logger.log(`Forwarding ${method} request to: ${url}`);
     if (body) {
       this.logger.debug(
         `Request body: ${JSON.stringify(body).substring(0, 200)}...`,
@@ -628,8 +621,6 @@ export class AdminServiceClient {
   // ==================== TCS OPERATIONS ====================
 
   async getConfigById(id: number, token: string): Promise<any> {
-    this.logger.log(`Getting config by ID: ${id}`);
-
     try {
       const response = await firstValueFrom(
         this.httpService.get(
@@ -661,8 +652,6 @@ export class AdminServiceClient {
     configs: any[];
     pagination: { total: number; limit: number; offset: number; pages: number };
   }> {
-    this.logger.log(`Getting all configs (limit: ${limit}, offset: ${offset})`);
-
     try {
       const response = await firstValueFrom(
         this.httpService.post(
@@ -691,11 +680,6 @@ export class AdminServiceClient {
   }
 
   async writeConfig(configData: any, token: string): Promise<any> {
-    this.logger.log('Writing config to database');
-    this.logger.log(
-      `Token type: ${typeof token}, length: ${token.length}, first 50 chars: ${token.substring(0, 50)}`,
-    );
-
     try {
       const response = await firstValueFrom(
         this.httpService.post(
@@ -721,8 +705,6 @@ export class AdminServiceClient {
     updateData: any,
     token: string,
   ): Promise<any> {
-    this.logger.log(`Writing config update to database for ID: ${id}`);
-
     try {
       const response = await firstValueFrom(
         this.httpService.put(
@@ -744,8 +726,6 @@ export class AdminServiceClient {
   }
 
   async writeConfigDelete(id: number, token: string): Promise<void> {
-    this.logger.log(`Writing config deletion to database for ID: ${id}`);
-
     try {
       await firstValueFrom(
         this.httpService.delete(
@@ -768,7 +748,6 @@ export class AdminServiceClient {
     token: string,
     comment?: string,
   ): Promise<Config | null> {
-    this.logger.log(`Updating config status to ${status} for config ${id}`);
     try {
       const body: any = { status };
       if (comment !== undefined) {
@@ -808,8 +787,6 @@ export class AdminServiceClient {
     configs: any[];
     pagination: { total: number; limit: number; offset: number; pages: number };
   }> {
-    this.logger.log('Finding configs by status with filters:', filters);
-
     try {
       const { limit = 10, offset = 0, ...filterPayload } = filters;
 
@@ -845,10 +822,6 @@ export class AdminServiceClient {
     publishingStatus: 'active' | 'inactive',
     token: string,
   ): Promise<any> {
-    this.logger.log(
-      `Updating publishing_status to ${publishingStatus} for config ${id}`,
-    );
-
     try {
       const response = await firstValueFrom(
         this.httpService.patch(
@@ -934,7 +907,6 @@ export class AdminServiceClient {
   }
 
   async getAllCollections(tenantId: string, token: string): Promise<any> {
-    this.logger.log(`Fetching all collections for tenant: ${tenantId}`);
     this.logger.debug(
       `Token received: ${token ? `${token.substring(0, 20)}...` : 'EMPTY'}`,
     );
@@ -973,8 +945,6 @@ export class AdminServiceClient {
     },
     token: string,
   ): Promise<any> {
-    this.logger.log(`Creating destination type: ${dto.name}`);
-
     try {
       const authHeader = token.startsWith('Bearer ')
         ? token
@@ -1002,8 +972,6 @@ export class AdminServiceClient {
     destinationTypeId: number,
     token: string,
   ): Promise<any> {
-    this.logger.log(`Checking if destination type ${destinationTypeId} exists`);
-
     try {
       const authHeader = token.startsWith('Bearer ')
         ? token
@@ -1037,10 +1005,6 @@ export class AdminServiceClient {
     },
     token: string,
   ): Promise<any> {
-    this.logger.log(
-      `Adding field ${dto.name} to destination type ${destinationTypeId}`,
-    );
-
     try {
       const authHeader = token.startsWith('Bearer ')
         ? token

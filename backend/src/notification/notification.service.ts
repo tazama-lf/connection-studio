@@ -121,7 +121,6 @@ export class NotificationService implements OnModuleInit {
     }
   }
 
-  // Getter method for status check
   getStatus(): { isConfigured: boolean; hasTransporter: boolean } {
     return {
       isConfigured: this.isConfigured,
@@ -533,13 +532,6 @@ export class NotificationService implements OnModuleInit {
       actorName,
     );
 
-    this.logger.log(
-      `[Publishing Status] Sending ${publishingStatus} notification for config ${configId}`,
-    );
-    this.logger.log(
-      `  Recipients: ${recipientEmails.length} (${recipientEmails.join(', ')})`,
-    );
-
     const result = await this.sendEmail({
       to: recipientEmails.join(', '),
       subject,
@@ -579,7 +571,6 @@ export class NotificationService implements OnModuleInit {
       url = url.concat(`&subGroupRoleName=${roleName}`);
     }
 
-    this.logger.log('Fetching user group members from URL: ', url);
     try {
       const response = await firstValueFrom(
         this.httpService.get(url, {
@@ -590,12 +581,12 @@ export class NotificationService implements OnModuleInit {
         }),
       );
 
-      this.logger.log('Response from Auth Service: ', response.data);
+      this.logger.debug('Response from Auth Service: ', response.data);
 
       const responseArr =
         response.data && Array.isArray(response.data) ? response.data : [];
       const emailList = responseArr.map((obj) => obj?.username);
-      this.logger.log('Fetched user emails: ', emailList);
+      this.logger.debug('Fetched user emails: ', emailList);
       return emailList;
     } catch (error) {
       this.logger.error('Error fetching user group members: ', error);
@@ -624,9 +615,7 @@ export class NotificationService implements OnModuleInit {
       return;
     }
 
-    this.logger.log(
-      `Action entity for sending email : ${JSON.stringify(actionEntity)}`,
-    );
+    
 
     await this.sendGenericWorkflowNotification({
       event,

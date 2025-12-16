@@ -48,7 +48,6 @@ describe('NotificationService', () => {
     configService = module.get<ConfigService>(ConfigService);
     httpService = module.get<HttpService>(HttpService);
 
-    // Store original logger methods and suppress output to clean up test console
     originalLoggerMethods = {
       log: service['logger'].log,
       error: service['logger'].error,
@@ -56,7 +55,6 @@ describe('NotificationService', () => {
       debug: service['logger'].debug,
     };
 
-    // Suppress all logger output by default
     service['logger'].log = jest.fn();
     service['logger'].error = jest.fn();
     service['logger'].warn = jest.fn();
@@ -64,7 +62,6 @@ describe('NotificationService', () => {
   });
 
   afterEach(() => {
-    // Restore original logger methods
     if (originalLoggerMethods && service) {
       service['logger'].log = originalLoggerMethods.log;
       service['logger'].error = originalLoggerMethods.error;
@@ -793,9 +790,6 @@ describe('NotificationService', () => {
         'token',
       );
 
-      expect(loggerLogSpy).toHaveBeenCalledWith(
-        'Action entity for sending email : {"transactionType":"Test"}',
-      );
       expect(service.sendGenericWorkflowNotification).toHaveBeenCalled();
     });
   });

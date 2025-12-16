@@ -21,9 +21,6 @@ export class AuthController {
   ): Promise<{ message: string; token: string; expiresIn?: any }> {
     try {
       const result = await this.authService.login(body.username, body.password);
-
-      this.logger.log('Login successful', AuthController.name);
-
       const response: any = {
         message: 'Login successful',
         token: result.token,

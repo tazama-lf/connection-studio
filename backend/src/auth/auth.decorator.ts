@@ -2,8 +2,7 @@ import { SetMetadata } from '@nestjs/common';
 
 export const CLAIMS_KEY = 'claims';
 export const IS_PUBLIC_KEY = 'isPublic';
-export const ANY_CLAIMS_KEY = 'anyClaims'; // New key for "any of these claims" logic
-
+export const ANY_CLAIMS_KEY = 'anyClaims';
 /**
  * Decorator to specify required claims for a route
  * @param claims - Array of required claims (all must be present)
