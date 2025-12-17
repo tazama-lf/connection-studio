@@ -29,6 +29,15 @@ export class ConfigWorkflowService {
       [ConfigStatus.REJECTED]: [ConfigStatus.IN_PROGRESS],
     };
     const allowedTransitions = validTransitions[normalizedFromStatus];
+    if (!allowedTransitions) {
+      return {
+        isValid: false,
+        currentStatus: normalizedFromStatus as any,
+        targetStatus: normalizedToStatus as any,
+        allowedNextStatuses: [] as any,
+        reason: `Unknown status: ${normalizedFromStatus}`,
+   };
+ }
     if (!allowedTransitions.includes(normalizedToStatus)) {
       return {
         isValid: false,
@@ -100,7 +109,11 @@ export class ConfigWorkflowService {
       deploy: ConfigStatus.DEPLOYED,
       return_to_progress: ConfigStatus.IN_PROGRESS,
     };
-    return actionToStatusMap[action];
+     const targetStatus = actionToStatusMap[action];
+      if (!targetStatus) {
+      throw new Error(`Unknown workflow action: ${action}`);
+    }
+   return targetStatus;
   }
   canPerformAction(
     userClaims: string[],
