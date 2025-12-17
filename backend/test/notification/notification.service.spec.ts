@@ -795,7 +795,35 @@ describe('NotificationService', () => {
   });
 
   describe('sendPublishingStatusNotification', () => {
-    it('should always return no recipients found (current implementation)', async () => {
+    it('should fetch recipients and send publishing status notification', async () => {
+      const mockEmails = ['user1@test.com', 'user2@test.com'];
+      jest
+        .spyOn(service, 'getUserGroupMembers')
+        .mockResolvedValue(mockEmails);
+      jest.spyOn(service, 'sendEmail').mockResolvedValue(true);
+
+      const result = await service.sendPublishingStatusNotification({
+        configId: 1,
+        config: { transactionType: 'Test', version: '1.0' },
+        tenantId: 'tenant1',
+        publishingStatus: 'active',
+        actorEmail: 'actor@test.com',
+        actorName: 'Actor',
+        authToken: 'test-token',
+        groupName: 'test-group',
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.recipients).toBe(2);
+      expect(service.getUserGroupMembers).toHaveBeenCalledWith(
+        'test-token',
+        'test-group',
+        undefined,
+      );
+    });
+
+    it('should return no recipients found when getUserGroupMembers returns empty array', async () => {
+      jest.spyOn(service, 'getUserGroupMembers').mockResolvedValue([]);
       const loggerWarnSpy = jest
         .spyOn(service['logger'], 'warn')
         .mockImplementation(() => {});
@@ -807,6 +835,8 @@ describe('NotificationService', () => {
         publishingStatus: 'active',
         actorEmail: 'actor@test.com',
         actorName: 'Actor',
+        authToken: 'test-token',
+        groupName: 'test-group',
       });
 
       expect(loggerWarnSpy).toHaveBeenCalledWith(
@@ -815,6 +845,79 @@ describe('NotificationService', () => {
       expect(result.success).toBe(false);
       expect(result.message).toBe('No recipients found');
       expect(result.recipients).toBe(0);
+    });
+
+    it('should handle errors when fetching recipients', async () => {
+      jest
+        .spyOn(service, 'getUserGroupMembers')
+        .mockRejectedValue(new Error('Auth service unavailable'));
+      const loggerErrorSpy = jest
+        .spyOn(service['logger'], 'error')
+        .mockImplementation(() => {});
+
+      const result = await service.sendPublishingStatusNotification({
+        configId: 1,
+        config: { transactionType: 'Test', version: '1.0' },
+        tenantId: 'tenant1',
+        publishingStatus: 'active',
+        actorEmail: 'actor@test.com',
+        actorName: 'Actor',
+        authToken: 'test-token',
+        groupName: 'test-group',
+      });
+
+      expect(loggerErrorSpy).toHaveBeenCalled();
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('Failed to fetch recipients');
+      expect(result.recipients).toBe(0);
+    });
+
+    it('should deduplicate email addresses', async () => {
+      const mockEmails = [
+        'user1@test.com',
+        'user2@test.com',
+        'user1@test.com',
+      ];
+      jest
+        .spyOn(service, 'getUserGroupMembers')
+        .mockResolvedValue(mockEmails);
+      jest.spyOn(service, 'sendEmail').mockResolvedValue(true);
+
+      const result = await service.sendPublishingStatusNotification({
+        configId: 1,
+        config: { transactionType: 'Test', version: '1.0' },
+        tenantId: 'tenant1',
+        publishingStatus: 'active',
+        actorEmail: 'actor@test.com',
+        actorName: 'Actor',
+        authToken: 'test-token',
+        groupName: 'test-group',
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.recipients).toBe(2); // Deduplicated from 3 to 2
+    });
+
+    it('should filter out null and undefined emails', async () => {
+      const mockEmails = ['user1@test.com', null, 'user2@test.com', undefined];
+      jest
+        .spyOn(service, 'getUserGroupMembers')
+        .mockResolvedValue(mockEmails as any);
+      jest.spyOn(service, 'sendEmail').mockResolvedValue(true);
+
+      const result = await service.sendPublishingStatusNotification({
+        configId: 1,
+        config: { transactionType: 'Test', version: '1.0' },
+        tenantId: 'tenant1',
+        publishingStatus: 'active',
+        actorEmail: 'actor@test.com',
+        actorName: 'Actor',
+        authToken: 'test-token',
+        groupName: 'test-group',
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.recipients).toBe(2); // Only valid emails
     });
   });
 

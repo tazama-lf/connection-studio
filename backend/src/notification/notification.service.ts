@@ -493,6 +493,8 @@ export class NotificationService implements OnModuleInit {
     publishingStatus: 'active' | 'inactive';
     actorEmail: string;
     actorName: string;
+    authToken: string;
+    groupName: string;
   }): Promise<{ success: boolean; message: string; recipients: number }> {
     const {
       configId,
@@ -501,9 +503,33 @@ export class NotificationService implements OnModuleInit {
       publishingStatus,
       actorEmail,
       actorName,
+      authToken,
+      groupName,
     } = data;
 
-    const recipientEmails: string[] = [];
+    let recipientEmails: string[] = [];
+
+    try {
+      this.logger.log(
+        `Fetching all user emails from AuthService for tenant '${tenantId}'`,
+      );
+      const emails = await this.getUserGroupMembers(
+        authToken,
+        groupName,
+        undefined,
+      );
+      
+      recipientEmails = [...new Set(emails.filter((email) => email))];
+      
+      this.logger.log(
+        `✓ Fetched ${recipientEmails.length} unique email(s) from Auth Service`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to fetch recipient emails for tenant ${tenantId}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
+      return { success: false, message: 'Failed to fetch recipients', recipients: 0 };
+    }
 
     if (recipientEmails.length === 0) {
       this.logger.warn(`No users found for tenant ${tenantId}`);
