@@ -140,7 +140,7 @@ export class ConfigWorkflowService {
           return {
             canPerform: false,
             message:
-              'Only editors can submit configurations for approval from IN_PROGRESS or CHANGES_REQUESTED status',
+              'Only editors can submit configurations for approval from IN_PROGRESS status',
           };
         }
         break;
@@ -167,7 +167,7 @@ export class ConfigWorkflowService {
           return {
             canPerform: false,
             message:
-              'Only publishers can deploy configurations in EXPORTED status',
+              'Only publishers can deploy configurations in APPROVED, EXPORTED, or READY_FOR_DEPLOYMENT status',
           };
         }
         break;
