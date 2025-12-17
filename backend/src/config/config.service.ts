@@ -154,11 +154,15 @@ export class ConfigService {
         tenantId,
         token,
       );
-
+      if (!config) {
+      throw new NotFoundException(
+        `Config ${configId} was created but could not be retrieved`,
+      );
+    }
       return {
         success: true,
         message: 'Config created successfully',
-        config: config!,
+        config: config,
       };
     } catch (error) {
       this.logger.error(
