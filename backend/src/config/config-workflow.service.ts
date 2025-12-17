@@ -109,11 +109,11 @@ export class ConfigWorkflowService {
       deploy: ConfigStatus.DEPLOYED,
       return_to_progress: ConfigStatus.IN_PROGRESS,
     };
-     const targetStatus = actionToStatusMap[action];
-      if (!targetStatus) {
-      throw new Error(`Unknown workflow action: ${action}`);
+    const targetStatus = actionToStatusMap[action];
+    if (!targetStatus) {
+      return undefined as any;
     }
-   return targetStatus;
+    return targetStatus;
   }
   canPerformAction(
     userClaims: string[],

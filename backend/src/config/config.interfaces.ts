@@ -1,11 +1,9 @@
 export type {
   JSONSchema,
-  AdjustFieldDto,
   FieldMapping,
   FunctionDefinition,
   AllowedFunctionName,
   CreateConfigDto,
-  CloneConfigDto,
   UpdateConfigDto,
   AddMappingDto,
   AddFunctionDto,
