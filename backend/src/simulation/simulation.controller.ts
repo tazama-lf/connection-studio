@@ -1,6 +1,6 @@
 import { Controller, Post, Body, UseGuards, Logger } from '@nestjs/common';
 import { SimulationService } from './simulation.service';
-import type { SimulationResult } from './simulation.service';
+import type { SimulationResult } from './dto/simulation.dto';
 import { SimulatePayloadDto, PayloadType } from './dto/simulate-payload.dto';
 import { TazamaAuthGuard } from '../auth/tazama-auth.guard';
 import { RequireAnyClaims, TazamaClaims } from '../auth/auth.decorator';

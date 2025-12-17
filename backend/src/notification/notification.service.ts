@@ -79,7 +79,7 @@ export class NotificationService implements OnModuleInit {
     const smtpPass = this.configService.get<string>('SMTP_PASS');
     const smtpSecure = this.configService.get<string>('SMTP_SECURE') === 'true';
 
-    if (!smtpHost || !smtpUser || !smtpPass) {
+    if (!smtpHost || !smtpPass) {
       this.logger.warn(
         ' SMTP NOT CONFIGURED - Email notifications will be logged but not sent',
       );
@@ -138,7 +138,6 @@ export class NotificationService implements OnModuleInit {
 
     try {
       const fromEmail = this.configService.get<string>('SMTP_FROM_EMAIL');
-      this.configService.get<string>('SMTP_USER');
       const fromName =
         this.configService.get<string>('SMTP_FROM_NAME') ??
         'Tazama Connection Studio';

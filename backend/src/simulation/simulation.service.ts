@@ -10,45 +10,12 @@ import * as xml2js from 'xml2js';
 import Ajv from 'ajv';
 import * as _ from 'lodash';
 
-export interface SimulatePayloadDto {
-  endpointId: number;
-  payloadType: 'application/json' | 'application/xml';
-  payload: unknown;
-  tcsMapping?: iMappingConfiguration;
-}
-
-export interface SimulationError {
-  field: string;
-  message: string;
-  path?: string;
-  value?: unknown;
-}
-
-export interface ValidationStage {
-  name: string;
-  status: 'PASSED' | 'FAILED' | 'SKIPPED';
-  message: string;
-  errors?: SimulationError[];
-  details?: unknown;
-}
-
-export interface SimulationResult {
-  status: 'PASSED' | 'FAILED';
-  errors: SimulationError[];
-  stages: ValidationStage[];
-  tcsResult: iMappingResult | null;
-  transformedPayload: unknown;
-  summary: {
-    endpointId: number;
-    tenantId: string;
-    timestamp: string;
-    validatedBy?: string;
-    mappingsApplied: number;
-    totalStages: number;
-    passedStages: number;
-    failedStages: number;
-  };
-}
+import type {
+  SimulatePayloadDto,
+  SimulationError,
+  ValidationStage,
+  SimulationResult,
+} from './dto/simulation.dto';
 
 @Injectable()
 export class SimulationService {
@@ -424,8 +391,10 @@ export class SimulationService {
 
       try {
         tcsResult = await processMappings(payload, tcsMapping, endpoint);
-      } catch (mappingError: any) {
-        if (mappingError.message?.includes('loggerService')) {
+      } catch (mappingError: unknown) {
+        const mappingErrorMessage =
+          mappingError instanceof Error ? mappingError.message : String(mappingError);
+        if (typeof mappingErrorMessage === 'string' && mappingErrorMessage.includes('loggerService')) {
           this.logger.error(
             'TCS lib processMappings has logger issue - this should be fixed in tcs-lib',
           );
