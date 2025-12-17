@@ -138,6 +138,10 @@ export class NotificationService implements OnModuleInit {
 
     try {
       const fromEmail = this.configService.get<string>('SMTP_FROM_EMAIL');
+       if (!fromEmail) {
+        this.logger.error('SMTP_FROM_EMAIL is not configured');
+        throw new Error('SMTP_FROM_EMAIL is required when SMTP is enabled');
+      }
       const fromName =
         this.configService.get<string>('SMTP_FROM_NAME') ??
         'Tazama Connection Studio';
