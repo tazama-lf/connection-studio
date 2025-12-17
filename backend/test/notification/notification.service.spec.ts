@@ -538,8 +538,7 @@ describe('NotificationService', () => {
     });
 
     it('should return empty array when getUserGroupMembers returns users without email property', async () => {
-      // Mock getUserGroupMembers to return users without email property
-      // This tests that the function passes through whatever getUserGroupMembers returns
+      
       jest.spyOn(service, 'getUserGroupMembers').mockResolvedValue([
         { id: '1', name: 'User1' }, // No email property
         { id: '2', name: 'User2' }, // No email property
@@ -552,11 +551,8 @@ describe('NotificationService', () => {
         'group1',
       );
 
-      // The function returns the raw user objects when no email extraction is performed
-      expect(emails).toEqual([
-        { id: '1', name: 'User1' },
-        { id: '2', name: 'User2' },
-      ]);
+       // getUserGroupMembers is mocked to return objects, fetchRecipientEmails passes them through
++      expect(emails).toEqual([{ id: '1', name: 'User1' }, { id: '2', name: 'User2' }]);
     });
 
     it('should return empty array when no role and fetchAll is false (lines 344-345)', async () => {

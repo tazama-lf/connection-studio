@@ -179,7 +179,7 @@ describe('ConfigWorkflowService', () => {
 
     expect(result.canPerform).toBe(false);
     expect(result.message).toBe(
-      'Only publishers can deploy configurations in EXPORTED status',
+      'Only publishers can deploy configurations in APPROVED, EXPORTED, or READY_FOR_DEPLOYMENT status',
     );
   });
 
