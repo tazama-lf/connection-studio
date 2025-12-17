@@ -559,7 +559,7 @@ export class SimulationService {
         payload,
         config?.schema,
       );
-      if (config?.schema.properties) {
+      if (config?.schema?.properties) {
         const schemaRootKeys = Object.keys(config.schema.properties);
         const payloadRootKeys = Object.keys(
           normalized as Record<string, unknown>,
