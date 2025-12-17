@@ -819,7 +819,7 @@ export class SimulationService {
 
       const validate = ajv.compile(schemaWithStrict);
 
-      const valid = validate(payload);
+      const valid = validate(normalizedPayload);
 
       this.logger.debug(`Schema validation result: ${valid}`);
       this.logger.debug(
