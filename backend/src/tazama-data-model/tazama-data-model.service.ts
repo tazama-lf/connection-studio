@@ -12,8 +12,8 @@ interface FieldOption {
   value: string;
   label: string;
   collection: string;
-  field: string;
-  type: string;
+  field?: string;
+  type?: string;
   required: boolean;
   parent_id: number | null;
   serial_no: number;
@@ -36,8 +36,8 @@ interface FieldSelectOption {
   value: string;
   label: string;
   collection: string;
-  field: string;
-  type: TazamaFieldType;
+  field?: string;
+  type?: TazamaFieldType;
   required: boolean;
   parent_id: number | null;
   serial_no: number;
@@ -105,8 +105,7 @@ export class TazamaDataModelService {
           value: schema.name,
           label: schema.name,
           collection: schema.name,
-          field: '',
-          type: '',
+          // Omit field and type for empty collection placeholders
           required: false,
           parent_id: null,
           serial_no: 0,
@@ -123,18 +122,21 @@ export class TazamaDataModelService {
       }
     }
 
-    const resultOptions: FieldSelectOption[] = options.map((opt) => ({
-      value: opt.value,
-      label: opt.label,
-      collection: opt.collection,
-      field: opt.field,
-      type: opt.type as TazamaFieldType,
-      required: opt.required,
-      parent_id: opt.parent_id,
-      serial_no: opt.serial_no,
-      collection_id: opt.collection_id,
-      properties: opt.properties,
-    }));
+    const resultOptions: FieldSelectOption[] = options
+      .map((opt) => ({
+        value: opt.value,
+        label: opt.label,
+        collection: opt.collection,
+        field: opt.field,
+        type: opt.type ? (opt.type.toUpperCase() as TazamaFieldType) : undefined,
+        required: opt.required,
+        parent_id: opt.parent_id,
+        serial_no: opt.serial_no,
+        collection_id: opt.collection_id,
+        properties: opt.properties,
+      }))
+      // Filter out placeholder entries (empty collections with no field/type)
+      .filter((opt) => opt.field !== undefined && opt.type !== undefined);
 
     return resultOptions.sort((a, b) => a.label.localeCompare(b.label));
   }
