@@ -35,23 +35,19 @@ export class AuthController {
       }
       return response;
     } catch (error) {
-      // Distinguish authentication failures from service/network errors
       if (error instanceof UnauthorizedException) {
-        // True authentication failure (invalid credentials)
         this.logger.warn(
           `Authentication failed for user ${body.username}`,
           AuthController.name,
         );
         throw error;
       } else if (error instanceof ServiceUnavailableException) {
-        // Service/network issues
         this.logger.error(
           `Auth service unavailable during login attempt: ${error.message}`,
           AuthController.name,
         );
         throw error;
       } else {
-        // Unexpected errors
         this.logger.error(
           `Unexpected error during login: ${error instanceof Error ? error.message : String(error)}`,
           AuthController.name,
