@@ -5,7 +5,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { ConfigService as NestConfigService } from '@nestjs/config';
 import { RequireClaims, TazamaClaims } from 'src/auth/auth.decorator';
 import type { AuthenticatedUser } from 'src/auth/auth.types';
 import { TazamaAuthGuard } from 'src/auth/tazama-auth.guard';
@@ -21,7 +21,7 @@ import { Job, Schedule } from '@tazama-lf/tcs-lib';
 export class SftpController {
   constructor(
     private readonly sftpService: SftpService,
-    private readonly configService: ConfigService,
+    private readonly configService: NestConfigService,
   ) {}
 
   @Get('/all')
