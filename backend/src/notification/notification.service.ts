@@ -138,7 +138,7 @@ export class NotificationService implements OnModuleInit {
 
     try {
       const fromEmail = this.configService.get<string>('SMTP_FROM_EMAIL');
-       if (!fromEmail) {
+      if (!fromEmail) {
         this.logger.error('SMTP_FROM_EMAIL is not configured');
         throw new Error('SMTP_FROM_EMAIL is required when SMTP is enabled');
       }
@@ -511,7 +511,7 @@ export class NotificationService implements OnModuleInit {
       groupName,
     } = data;
 
-    let recipientEmails: string[] = [];
+    let recipientEmails: string[];
 
     try {
       this.logger.log(
@@ -522,9 +522,9 @@ export class NotificationService implements OnModuleInit {
         groupName,
         undefined,
       );
-      
+
       recipientEmails = [...new Set(emails.filter((email) => email))];
-      
+
       this.logger.log(
         `✓ Fetched ${recipientEmails.length} unique email(s) from Auth Service`,
       );
@@ -532,7 +532,11 @@ export class NotificationService implements OnModuleInit {
       this.logger.error(
         `Failed to fetch recipient emails for tenant ${tenantId}: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
-      return { success: false, message: 'Failed to fetch recipients', recipients: 0 };
+      return {
+        success: false,
+        message: 'Failed to fetch recipients',
+        recipients: 0,
+      };
     }
 
     if (recipientEmails.length === 0) {

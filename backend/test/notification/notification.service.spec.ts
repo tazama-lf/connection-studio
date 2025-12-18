@@ -538,7 +538,6 @@ describe('NotificationService', () => {
     });
 
     it('should return empty array when getUserGroupMembers returns users without email property', async () => {
-      
       jest.spyOn(service, 'getUserGroupMembers').mockResolvedValue([
         { id: '1', name: 'User1' }, // No email property
         { id: '2', name: 'User2' }, // No email property
@@ -551,8 +550,11 @@ describe('NotificationService', () => {
         'group1',
       );
 
-       // getUserGroupMembers is mocked to return objects, fetchRecipientEmails passes them through
-+      expect(emails).toEqual([{ id: '1', name: 'User1' }, { id: '2', name: 'User2' }]);
+      // getUserGroupMembers is mocked to return objects, fetchRecipientEmails passes them through
+      +expect(emails).toEqual([
+        { id: '1', name: 'User1' },
+        { id: '2', name: 'User2' },
+      ]);
     });
 
     it('should return empty array when no role and fetchAll is false (lines 344-345)', async () => {
@@ -793,9 +795,7 @@ describe('NotificationService', () => {
   describe('sendPublishingStatusNotification', () => {
     it('should fetch recipients and send publishing status notification', async () => {
       const mockEmails = ['user1@test.com', 'user2@test.com'];
-      jest
-        .spyOn(service, 'getUserGroupMembers')
-        .mockResolvedValue(mockEmails);
+      jest.spyOn(service, 'getUserGroupMembers').mockResolvedValue(mockEmails);
       jest.spyOn(service, 'sendEmail').mockResolvedValue(true);
 
       const result = await service.sendPublishingStatusNotification({
@@ -869,14 +869,8 @@ describe('NotificationService', () => {
     });
 
     it('should deduplicate email addresses', async () => {
-      const mockEmails = [
-        'user1@test.com',
-        'user2@test.com',
-        'user1@test.com',
-      ];
-      jest
-        .spyOn(service, 'getUserGroupMembers')
-        .mockResolvedValue(mockEmails);
+      const mockEmails = ['user1@test.com', 'user2@test.com', 'user1@test.com'];
+      jest.spyOn(service, 'getUserGroupMembers').mockResolvedValue(mockEmails);
       jest.spyOn(service, 'sendEmail').mockResolvedValue(true);
 
       const result = await service.sendPublishingStatusNotification({

@@ -14,7 +14,7 @@ export class ConfigWorkflowService {
   ): StatusTransitionValidation {
     const normalizedFromStatus = fromStatus;
     const normalizedToStatus = toStatus;
-    const validTransitions: Record<string, string[]> = {
+    const validTransitions: Partial<Record<string, string[]>> = {
       [ConfigStatus.IN_PROGRESS]: [ConfigStatus.UNDER_REVIEW],
       [ConfigStatus.ON_HOLD]: [ConfigStatus.IN_PROGRESS],
       [ConfigStatus.UNDER_REVIEW]: [
@@ -29,15 +29,15 @@ export class ConfigWorkflowService {
       [ConfigStatus.REJECTED]: [ConfigStatus.IN_PROGRESS],
     };
     const allowedTransitions = validTransitions[normalizedFromStatus];
-    if (!allowedTransitions) {
+    if (allowedTransitions === undefined) {
       return {
         isValid: false,
         currentStatus: normalizedFromStatus as any,
         targetStatus: normalizedToStatus as any,
         allowedNextStatuses: [] as any,
         reason: `Unknown status: ${normalizedFromStatus}`,
-   };
- }
+      };
+    }
     if (!allowedTransitions.includes(normalizedToStatus)) {
       return {
         isValid: false,
