@@ -26,7 +26,7 @@ import { NotifyService } from '../notify/notify.service';
 import { SchedulerService } from '../scheduler/scheduler.service';
 import { AdminServiceClient } from '../services/admin-service-client.service';
 import { SftpService } from '../sftp/sftp.service';
-import { decrypt, encrypt, validateFileType } from '../utils/helpers';
+import { decrypt, encrypt, escapeRegex, validateFileType } from '../utils/helpers';
 import { CreatePullJobDto, SFTPConnectionDto } from './dto/create-pull-job.dto';
 import { CreatePushJobDto } from './dto/create-push-job.dto';
 import { UpdatePullJobDto } from './dto/update-pull-job.dto';
@@ -42,7 +42,7 @@ export class JobService {
     private readonly adminServiceClient: AdminServiceClient,
     private readonly schedulerService: SchedulerService,
     private readonly notificationService: NotificationService,
-  ) {}
+  ) { }
 
   private handleError(err: unknown): never {
     const message = err instanceof Error ? err.message : String(err);
@@ -367,7 +367,9 @@ export class JobService {
         );
       }
 
-      const fileName = `de_${user.tenantId}_${id}`;
+      const safeTenantId = escapeRegex(user.tenantId);
+
+      const fileName = `de_${safeTenantId}_${id}`;
       const requiresExistingJob =
         status === JobStatus.APPROVED ||
         status === JobStatus.REVIEW ||

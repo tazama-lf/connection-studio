@@ -248,8 +248,8 @@ export class SftpService implements OnModuleInit, OnModuleDestroy {
         );
       }
 
-      if (fileExists) this.producerSftp.delete(path);
-      if (hashExists) this.producerSftp.delete(integrityFilePath);
+      if (fileExists) await this.producerSftp.delete(path);
+      if (hashExists) await this.producerSftp.delete(integrityFilePath);
 
       this.loggerService.log('File(s) deleted.');
     } catch (error: unknown) {
@@ -267,7 +267,12 @@ export class SftpService implements OnModuleInit, OnModuleDestroy {
     tenantId: string,
   ): Promise<SftpFile[]> {
     try {
-      const regex = new RegExp(`^${format}_${tenantId}_[A-Za-z0-9_-]+\\.json$`);
+
+      const safeTenantId = utils.escapeRegex(tenantId);
+
+      const regex = new RegExp(
+        `^${format}_${safeTenantId}_[A-Za-z0-9_-]+\\.json$`,
+      );
 
       const allFiles = await this.producerSftp.list('/upload');
       this.loggerService.log(
