@@ -26,6 +26,7 @@ import {
   ApprovalDto,
   RejectionDto,
   DeploymentDto,
+  WorkflowActionDto,
 } from './dto';
 import { EventType } from '../enums/events.enum';
 import { AuthenticatedUser } from '../auth/auth.types';
@@ -219,14 +220,14 @@ export class ConfigService {
 
   async handleWorkflowAction(
     id: number,
-    action: string,
-    dto: any,
+    actionDto: WorkflowActionDto,
     user: AuthenticatedUser,
     token: string,
   ): Promise<ConfigResponseDto> {
-    switch (action.toLowerCase()) {
+    const action = actionDto.action;
+    switch (action) {
       case 'submit': {
-        const submitDto = dto as SubmitForApprovalDto;
+        const submitDto = actionDto.data;
         const updatedConfig =
           await this.configRepository.getupdateConfigByStatus(
             id,
@@ -252,7 +253,7 @@ export class ConfigService {
       }
 
       case 'approve': {
-        const approvalDto = dto as ApprovalDto;
+        const approvalDto = actionDto.data;
         const updatedConfig =
           await this.configRepository.getupdateConfigByStatus(
             id,
@@ -279,7 +280,7 @@ export class ConfigService {
       }
 
       case 'reject': {
-        const rejectionDto = dto as RejectionDto;
+        const rejectionDto = actionDto.data;
 
         const updatedConfig =
           await this.configRepository.getupdateConfigByStatus(
@@ -307,7 +308,7 @@ export class ConfigService {
       }
 
       case 'export': {
-        const exportDto = dto as StatusTransitionDto;
+        const exportDto = actionDto.data;
         const config = await this.getConfigOrThrow(id, user.tenantId, token);
 
         const currentStatus = config.status!;
@@ -357,7 +358,7 @@ export class ConfigService {
       }
 
       case 'deploy': {
-        const deployDto = dto as DeploymentDto;
+        const deployDto = actionDto.data;
         const { tenantId, userId } = user;
         const fileName = `dems_${tenantId}_${id}`;
         let configData: any;

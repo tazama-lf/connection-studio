@@ -108,7 +108,7 @@ export class ConfigRepository {
     status: string,
     token: string,
   ): Promise<void> {
-    await this.adminServiceClient.writeConfigUpdate(id, { status }, token);
+    await this.adminServiceClient.updateConfigStatus(id, status, token);
   }
 
   async getAllConfigsWithFilters(

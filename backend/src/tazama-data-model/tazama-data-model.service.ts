@@ -101,11 +101,13 @@ export class TazamaDataModelService {
 
     for (const schema of schemas) {
       if (schema.fields.length === 0) {
-        const emptyCollectionOption: FieldOption = {
-          value: schema.name,
+        
+        const emptyCollectionMarker: FieldOption = {
+          value: `${schema.name}.__empty__`,
           label: schema.name,
           collection: schema.name,
-          // Omit field and type for empty collection placeholders
+          field: '__empty__', 
+          type: 'OBJECT',
           required: false,
           parent_id: null,
           serial_no: 0,
@@ -113,7 +115,7 @@ export class TazamaDataModelService {
           properties: [],
         };
         this.logger.log(`Empty collection encountered: ${schema.name}`);
-        options.push(emptyCollectionOption);
+        options.push(emptyCollectionMarker);
       } else {
         for (const field of schema.fields) {
           if (field.name === '_id' || field.name === '_rev') continue;
@@ -135,7 +137,6 @@ export class TazamaDataModelService {
         collection_id: opt.collection_id,
         properties: opt.properties,
       }))
-      // Filter out placeholder entries (empty collections with no field/type)
       .filter((opt) => opt.field !== undefined && opt.type !== undefined);
 
     return resultOptions.sort((a, b) => a.label.localeCompare(b.label));
