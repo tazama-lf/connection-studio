@@ -321,6 +321,8 @@ export class ConfigService {
         try {
           const configToExport = {
             ...config,
+              // Status is set to DEPLOYED here (not EXPORTED) so the file is ready
+  // for deployment without requiring a status update during the deploy phase
             status: ConfigStatus.DEPLOYED,
             msg_fam: config.msgFam,
             tenant_id: config.tenantId,
