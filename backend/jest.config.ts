@@ -54,9 +54,6 @@ const config: Config.InitialOptions = {
     '/database/',
   ],
 
-  moduleNameMapper: {
-    '^ioredis$': '<rootDir>/__mocks__/ioredis.js',
-  },
   verbose: true,
 };
 
