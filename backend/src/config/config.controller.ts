@@ -27,6 +27,7 @@ import {
   RejectionDto,
   DeploymentDto,
   StatusTransitionDto,
+  WorkflowActionDto,
 } from './dto';
 import type {
   AddMappingDto,
@@ -176,10 +177,32 @@ export class ConfigController {
       throw new BadRequestException('Action is required as query parameter');
     }
 
+    const normalizedAction = action.toLowerCase();
+    let actionDto: WorkflowActionDto;
+
+    switch (normalizedAction) {
+      case 'submit':
+        actionDto = { action: 'submit', data: dto as SubmitForApprovalDto };
+        break;
+      case 'approve':
+        actionDto = { action: 'approve', data: dto as ApprovalDto };
+        break;
+      case 'reject':
+        actionDto = { action: 'reject', data: dto as RejectionDto };
+        break;
+      case 'export':
+        actionDto = { action: 'export', data: dto as StatusTransitionDto };
+        break;
+      case 'deploy':
+        actionDto = { action: 'deploy', data: dto as DeploymentDto };
+        break;
+      default:
+        throw new BadRequestException(`Unknown workflow action: ${action}`);
+    }
+
     return await this.configService.handleWorkflowAction(
       id,
-      action,
-      dto,
+      actionDto,
       user,
       user.token.tokenString,
     );

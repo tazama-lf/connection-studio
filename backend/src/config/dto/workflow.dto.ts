@@ -6,6 +6,38 @@ export class SubmitForApprovalDto {
   comment?: string;
 }
 
+export interface SubmitWorkflowActionDto {
+  action: 'submit';
+  data: SubmitForApprovalDto;
+}
+
+export interface ApproveWorkflowActionDto {
+  action: 'approve';
+  data: ApprovalDto;
+}
+
+export interface RejectWorkflowActionDto {
+  action: 'reject';
+  data: RejectionDto;
+}
+
+export interface ExportWorkflowActionDto {
+  action: 'export';
+  data: StatusTransitionDto;
+}
+
+export interface DeployWorkflowActionDto {
+  action: 'deploy';
+  data: DeploymentDto;
+}
+
+export type WorkflowActionDto =
+  | SubmitWorkflowActionDto
+  | ApproveWorkflowActionDto
+  | RejectWorkflowActionDto
+  | ExportWorkflowActionDto
+  | DeployWorkflowActionDto;
+
 export class ApprovalDto {
   @IsString()
   @IsOptional()

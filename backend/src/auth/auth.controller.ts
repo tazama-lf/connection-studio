@@ -3,10 +3,14 @@ import {
   Post,
   Body,
   UnauthorizedException,
+  ServiceUnavailableException,
+  InternalServerErrorException,
   HttpCode,
+  ValidationPipe,
 } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { AuthService } from './auth.service';
+import { LoginDto } from './dto/login.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -17,13 +21,11 @@ export class AuthController {
   @Post('login')
   @HttpCode(200)
   async login(
-    @Body() body: { username: string; password: string },
+    @Body(new ValidationPipe({ whitelist: true, transform: true }))
+    body: LoginDto,
   ): Promise<{ message: string; token: string; expiresIn?: any }> {
     try {
       const result = await this.authService.login(body.username, body.password);
-
-      this.logger.log('Login successful', AuthController.name);
-
       const response: any = {
         message: 'Login successful',
         token: result.token,
@@ -33,8 +35,27 @@ export class AuthController {
       }
       return response;
     } catch (error) {
-      this.logger.warn(`Login failed: ${error.message}`, AuthController.name);
-      throw new UnauthorizedException('Invalid credentials');
+      if (error instanceof UnauthorizedException) {
+        this.logger.warn(
+          `Authentication failed for user ${body.username}`,
+          AuthController.name,
+        );
+        throw error;
+      } else if (error instanceof ServiceUnavailableException) {
+        this.logger.error(
+          `Auth service unavailable during login attempt`,
+          AuthController.name,
+        );
+        throw error;
+      } else {
+        this.logger.error(
+          `Unexpected error during login`,
+          AuthController.name,
+        );
+        throw new InternalServerErrorException(
+          'An unexpected error occurred during login',
+        );
+      }
     }
   }
 }

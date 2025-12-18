@@ -29,8 +29,8 @@ interface DestinationOption {
   value: TazamaDestinationPath;
   label: string;
   collection: string;
-  field: string;
-  type: TazamaFieldType;
+  field?: string;
+  type?: TazamaFieldType;
   required: boolean;
   parent_id: number | null;
   serial_no: number;

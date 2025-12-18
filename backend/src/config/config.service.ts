@@ -26,6 +26,7 @@ import {
   ApprovalDto,
   RejectionDto,
   DeploymentDto,
+  WorkflowActionDto,
 } from './dto';
 import { EventType } from '../enums/events.enum';
 import { AuthenticatedUser } from '../auth/auth.types';
@@ -65,17 +66,9 @@ export class ConfigService {
     userId: string,
     token: string,
   ): Promise<ConfigResponseDto> {
-    this.logger.log(
-      `[${tenantId}] Updating config ${id} status to ${status} by user ${userId}`,
-    );
-
     await this.getConfigOrThrow(id, tenantId, token);
 
     await this.configRepository.updateConfigStatus(id, status, token);
-
-    this.logger.log(
-      `[${tenantId}] Config ${id} status updated successfully to ${status}`,
-    );
 
     return {
       success: true,
@@ -107,7 +100,6 @@ export class ConfigService {
     token: string,
   ): Promise<ConfigResponseDto> {
     try {
-      this.logger.log('Creating new config...', dto.schema);
       const { version } = dto;
       const msgFam = dto.msgFam ?? 'unknown';
       const existingConfig =
@@ -153,10 +145,6 @@ export class ConfigService {
         createdBy: userId,
       };
 
-      this.logger.log(
-        `Config data prepared with status: "${configData.status}" (type: ${typeof configData.status})`,
-      );
-
       const configId = await this.configRepository.createConfig(
         configData,
         token,
@@ -167,11 +155,15 @@ export class ConfigService {
         tenantId,
         token,
       );
-
+      if (!config) {
+      throw new NotFoundException(
+        `Config ${configId} was created but could not be retrieved`,
+      );
+    }
       return {
         success: true,
         message: 'Config created successfully',
-        config: config!,
+        config: config,
       };
     } catch (error) {
       this.logger.error(
@@ -202,7 +194,6 @@ export class ConfigService {
     user: AuthenticatedUser,
     token: string,
   ): Promise<ConfigResponseDto> {
-    //ye hata doh update khud error de ga
     await this.getConfigOrThrow(id, user.tenantId, token);
 
     const updatedConfig = await this.configRepository.getupdateConfigByStatus(
@@ -229,14 +220,14 @@ export class ConfigService {
 
   async handleWorkflowAction(
     id: number,
-    action: string,
-    dto: any,
+    actionDto: WorkflowActionDto,
     user: AuthenticatedUser,
     token: string,
   ): Promise<ConfigResponseDto> {
-    switch (action.toLowerCase()) {
+    const action = actionDto.action;
+    switch (action) {
       case 'submit': {
-        const submitDto = dto as SubmitForApprovalDto;
+        const submitDto = actionDto.data;
         const updatedConfig =
           await this.configRepository.getupdateConfigByStatus(
             id,
@@ -262,7 +253,7 @@ export class ConfigService {
       }
 
       case 'approve': {
-        const approvalDto = dto as ApprovalDto;
+        const approvalDto = actionDto.data;
         const updatedConfig =
           await this.configRepository.getupdateConfigByStatus(
             id,
@@ -289,7 +280,7 @@ export class ConfigService {
       }
 
       case 'reject': {
-        const rejectionDto = dto as RejectionDto;
+        const rejectionDto = actionDto.data;
 
         const updatedConfig =
           await this.configRepository.getupdateConfigByStatus(
@@ -317,7 +308,7 @@ export class ConfigService {
       }
 
       case 'export': {
-        const exportDto = dto as StatusTransitionDto;
+        const exportDto = actionDto.data;
         const config = await this.getConfigOrThrow(id, user.tenantId, token);
 
         const currentStatus = config.status!;
@@ -367,7 +358,7 @@ export class ConfigService {
       }
 
       case 'deploy': {
-        const deployDto = dto as DeploymentDto;
+        const deployDto = actionDto.data;
         const { tenantId, userId } = user;
         const fileName = `dems_${tenantId}_${id}`;
         let configData: any;
@@ -421,9 +412,6 @@ export class ConfigService {
             transactionType,
             token,
           );
-          this.logger.log(
-            `Successfully created table "${transactionType}" from deployed config`,
-          );
 
           const functions = configData.functions ?? null;
 
@@ -435,18 +423,9 @@ export class ConfigService {
             const tableCreationPromises = datamodelFunctions.map(
               async (datamodelFn) => {
                 if (datamodelFn.tableName) {
-                  this.logger.log(
-                    `Creating datamodel table: ${datamodelFn.tableName}`,
-                  );
-
                   await this.configRepository.createTazamaDataModelTable(
                     datamodelFn.tableName,
-                    datamodelFn.columns,
                     token,
-                  );
-
-                  this.logger.log(
-                    `Successfully created datamodel table "${datamodelFn.tableName}"`,
                   );
                 } else {
                   this.logger.warn(
@@ -459,24 +438,14 @@ export class ConfigService {
             await Promise.all(tableCreationPromises);
           } else if (functions?.functionName === 'addDataModelTable') {
             if (functions.tableName) {
-              this.logger.log(
-                `Creating datamodel table: ${functions.tableName}`,
-              );
-
               await this.configRepository.createTazamaDataModelTable(
                 functions.tableName,
-                functions.columns,
                 token,
-              );
-
-              this.logger.log(
-                `Successfully created datamodel table "${functions.tableName}"`,
               );
             }
           }
 
           await this.sftpService.deleteFile(fileName);
-          this.logger.log(`Deleted config file from SFTP: ${fileName}`);
 
           const deployedConfig = configData as Config;
           await this.notificationService.sendWorkflowNotification(
@@ -485,10 +454,6 @@ export class ConfigService {
             deployedConfig,
             token,
             deployDto.comment,
-          );
-
-          this.logger.log(
-            `Successfully updated original config ${id} status to ${newStatus}`,
           );
 
           return {
@@ -532,9 +497,6 @@ export class ConfigService {
 
     try {
       await this.notifyService.notifyDems(id.toString(), tenantId);
-      this.logger.log(
-        `NATS notification sent to DEMS for activated config ${id}`,
-      );
     } catch (error) {
       this.logger.error(
         `Failed to send NATS notification for config ${id}: ${error.message}`,

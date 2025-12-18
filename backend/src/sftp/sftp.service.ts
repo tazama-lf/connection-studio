@@ -6,7 +6,7 @@ import {
   OnModuleDestroy,
   OnModuleInit,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { ConfigService as NestConfigService } from '@nestjs/config';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { createHash } from 'node:crypto';
 import SFTPClient from 'ssh2-sftp-client';
@@ -21,7 +21,7 @@ export class SftpService implements OnModuleInit, OnModuleDestroy {
 
   constructor(
     private readonly loggerService: LoggerService,
-    private readonly configService: ConfigService,
+    private readonly configService: NestConfigService,
   ) {
     this.consumerSftp = new SFTPClient();
     this.producerSftp = new SFTPClient();

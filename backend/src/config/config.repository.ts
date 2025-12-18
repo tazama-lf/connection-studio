@@ -2,7 +2,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { AdminServiceClient } from '../services/admin-service-client.service';
 import { Config } from './config.interfaces';
-import { ColumnDef } from '../utils/table-sql';
 
 @Injectable()
 export class ConfigRepository {
@@ -27,10 +26,10 @@ export class ConfigRepository {
   async findConfigById(
     id: number,
     tenantId: string,
-    token?: string,
+    token: string,
   ): Promise<Config | null> {
     try {
-      return await this.adminServiceClient.getConfigById(id, token ?? tenantId);
+      return await this.adminServiceClient.getConfigById(id, token);
     } catch (error) {
       const err = error as Error;
       this.logger.error(`Error finding config by ID ${id}: ${err.message}`);
@@ -100,21 +99,16 @@ export class ConfigRepository {
   }
   async createTazamaDataModelTable(
     tableName: string,
-    columns: ColumnDef[],
     token: string,
   ): Promise<void> {
-    await this.adminServiceClient.createTazamaDataModelTable(
-      tableName,
-      columns,
-      token,
-    );
+    await this.adminServiceClient.createTazamaDataModelTable(tableName, token);
   }
   async updateConfigStatus(
     id: number,
     status: string,
     token: string,
   ): Promise<void> {
-    await this.adminServiceClient.writeConfigUpdate(id, { status }, token);
+    await this.adminServiceClient.updateConfigStatus(id, status, token);
   }
 
   async getAllConfigsWithFilters(

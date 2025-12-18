@@ -79,7 +79,7 @@ export class NotificationService implements OnModuleInit {
     const smtpPass = this.configService.get<string>('SMTP_PASS');
     const smtpSecure = this.configService.get<string>('SMTP_SECURE') === 'true';
 
-    if (!smtpHost || !smtpUser || !smtpPass) {
+    if (!smtpHost || !smtpPass) {
       this.logger.warn(
         ' SMTP NOT CONFIGURED - Email notifications will be logged but not sent',
       );
@@ -121,7 +121,6 @@ export class NotificationService implements OnModuleInit {
     }
   }
 
-  // Getter method for status check
   getStatus(): { isConfigured: boolean; hasTransporter: boolean } {
     return {
       isConfigured: this.isConfigured,
@@ -139,7 +138,10 @@ export class NotificationService implements OnModuleInit {
 
     try {
       const fromEmail = this.configService.get<string>('SMTP_FROM_EMAIL');
-      this.configService.get<string>('SMTP_USER');
+       if (!fromEmail) {
+        this.logger.error('SMTP_FROM_EMAIL is not configured');
+        throw new Error('SMTP_FROM_EMAIL is required when SMTP is enabled');
+      }
       const fromName =
         this.configService.get<string>('SMTP_FROM_NAME') ??
         'Tazama Connection Studio';
@@ -495,6 +497,8 @@ export class NotificationService implements OnModuleInit {
     publishingStatus: 'active' | 'inactive';
     actorEmail: string;
     actorName: string;
+    authToken: string;
+    groupName: string;
   }): Promise<{ success: boolean; message: string; recipients: number }> {
     const {
       configId,
@@ -503,9 +507,33 @@ export class NotificationService implements OnModuleInit {
       publishingStatus,
       actorEmail,
       actorName,
+      authToken,
+      groupName,
     } = data;
 
-    const recipientEmails: string[] = [];
+    let recipientEmails: string[] = [];
+
+    try {
+      this.logger.log(
+        `Fetching all user emails from AuthService for tenant '${tenantId}'`,
+      );
+      const emails = await this.getUserGroupMembers(
+        authToken,
+        groupName,
+        undefined,
+      );
+      
+      recipientEmails = [...new Set(emails.filter((email) => email))];
+      
+      this.logger.log(
+        `✓ Fetched ${recipientEmails.length} unique email(s) from Auth Service`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to fetch recipient emails for tenant ${tenantId}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
+      return { success: false, message: 'Failed to fetch recipients', recipients: 0 };
+    }
 
     if (recipientEmails.length === 0) {
       this.logger.warn(`No users found for tenant ${tenantId}`);
@@ -531,13 +559,6 @@ export class NotificationService implements OnModuleInit {
       publishingStatus,
       actorEmail,
       actorName,
-    );
-
-    this.logger.log(
-      `[Publishing Status] Sending ${publishingStatus} notification for config ${configId}`,
-    );
-    this.logger.log(
-      `  Recipients: ${recipientEmails.length} (${recipientEmails.join(', ')})`,
     );
 
     const result = await this.sendEmail({
@@ -579,7 +600,6 @@ export class NotificationService implements OnModuleInit {
       url = url.concat(`&subGroupRoleName=${roleName}`);
     }
 
-    this.logger.log('Fetching user group members from URL: ', url);
     try {
       const response = await firstValueFrom(
         this.httpService.get(url, {
@@ -590,12 +610,12 @@ export class NotificationService implements OnModuleInit {
         }),
       );
 
-      this.logger.log('Response from Auth Service: ', response.data);
+      this.logger.debug('Response from Auth Service: ', response.data);
 
       const responseArr =
         response.data && Array.isArray(response.data) ? response.data : [];
       const emailList = responseArr.map((obj) => obj?.username);
-      this.logger.log('Fetched user emails: ', emailList);
+      this.logger.debug('Fetched user emails: ', emailList);
       return emailList;
     } catch (error) {
       this.logger.error('Error fetching user group members: ', error);
@@ -623,10 +643,6 @@ export class NotificationService implements OnModuleInit {
       );
       return;
     }
-
-    this.logger.log(
-      `Action entity for sending email : ${JSON.stringify(actionEntity)}`,
-    );
 
     await this.sendGenericWorkflowNotification({
       event,

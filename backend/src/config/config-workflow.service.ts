@@ -7,16 +7,13 @@ import {
 } from './config.interfaces';
 @Injectable()
 export class ConfigWorkflowService {
-  private normalizeStatus(status: string): string {
-    return status;
-  }
   validateStatusTransition(
     fromStatus: string,
     toStatus: string,
     _action: any,
   ): StatusTransitionValidation {
-    const normalizedFromStatus = this.normalizeStatus(fromStatus);
-    const normalizedToStatus = this.normalizeStatus(toStatus);
+    const normalizedFromStatus = fromStatus;
+    const normalizedToStatus = toStatus;
     const validTransitions: Record<string, string[]> = {
       [ConfigStatus.IN_PROGRESS]: [ConfigStatus.UNDER_REVIEW],
       [ConfigStatus.ON_HOLD]: [ConfigStatus.IN_PROGRESS],
@@ -32,6 +29,15 @@ export class ConfigWorkflowService {
       [ConfigStatus.REJECTED]: [ConfigStatus.IN_PROGRESS],
     };
     const allowedTransitions = validTransitions[normalizedFromStatus];
+    if (!allowedTransitions) {
+      return {
+        isValid: false,
+        currentStatus: normalizedFromStatus as any,
+        targetStatus: normalizedToStatus as any,
+        allowedNextStatuses: [] as any,
+        reason: `Unknown status: ${normalizedFromStatus}`,
+   };
+ }
     if (!allowedTransitions.includes(normalizedToStatus)) {
       return {
         isValid: false,
@@ -103,7 +109,11 @@ export class ConfigWorkflowService {
       deploy: ConfigStatus.DEPLOYED,
       return_to_progress: ConfigStatus.IN_PROGRESS,
     };
-    return actionToStatusMap[action];
+    const targetStatus = actionToStatusMap[action];
+    if (!targetStatus) {
+      return undefined as any;
+    }
+    return targetStatus;
   }
   canPerformAction(
     userClaims: string[],
@@ -130,7 +140,7 @@ export class ConfigWorkflowService {
           return {
             canPerform: false,
             message:
-              'Only editors can submit configurations for approval from IN_PROGRESS or CHANGES_REQUESTED status',
+              'Only editors can submit configurations for approval from IN_PROGRESS status',
           };
         }
         break;
@@ -157,7 +167,7 @@ export class ConfigWorkflowService {
           return {
             canPerform: false,
             message:
-              'Only publishers can deploy configurations in EXPORTED status',
+              'Only publishers can deploy configurations in APPROVED, EXPORTED, or READY_FOR_DEPLOYMENT status',
           };
         }
         break;
@@ -196,10 +206,7 @@ export class ConfigWorkflowService {
     canEdit: boolean;
     message?: string;
   } {
-    const editableStatuses = [
-      ConfigStatus.IN_PROGRESS,
-      ConfigStatus.REJECTED, // Can edit after rejection
-    ];
+    const editableStatuses = [ConfigStatus.IN_PROGRESS, ConfigStatus.REJECTED];
     if (!editableStatuses.includes(currentStatus)) {
       return {
         canEdit: false,
