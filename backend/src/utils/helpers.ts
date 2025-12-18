@@ -13,13 +13,18 @@ interface DecodedUserInfo {
   tenantDetails: string[];
 }
 
-const IV_LENGTH = parseInt(process.env.IV_LENGTH!, 10);
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY!;
-const key = Buffer.from(ENCRYPTION_KEY, 'utf8');
+
+const { ENCRYPTION_KEY, IV_LENGTH } = process.env;
+
+const key = Buffer.from(ENCRYPTION_KEY!, 'utf8');
+
+if (key.length !== 32) {
+  throw new Error('ENCRYPTION_KEY must be 32 bytes for aes-256-cbc');
+}
 
 export function encrypt(text: string): string {
   try {
-    const iv = crypto.randomBytes(IV_LENGTH);
+    const iv = crypto.randomBytes(parseInt(IV_LENGTH!, 10));
     const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
 
     let encrypted = cipher.update(text, 'utf8', 'hex');
@@ -28,33 +33,34 @@ export function encrypt(text: string): string {
     return iv.toString('hex') + ':' + encrypted;
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
-    this.loggerService.error(message);
-    throw new BadRequestException(message);
+    throw new Error(message, { cause: error });
   }
 }
 
 export function decrypt(text: string): string {
+  const parts = text.split(':');
+  if (parts.length !== 2) {
+    throw new Error('Invalid encrypted payload format');
+  }
+
+  const [ivHex, encrypted] = parts;
+
   try {
-    const parts = text.split(':');
-    if (parts.length !== 2) {
-      throw new Error('Invalid encrypted format');
-    }
-
-    const iv = Buffer.from(parts[0], 'hex');
-    const encryptedText = Buffer.from(parts[1], 'hex');
-
+    const iv = Buffer.from(ivHex, 'hex');
     const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
 
-    let decrypted = decipher.update(encryptedText, undefined, 'utf8');
-    decrypted += decipher.final('utf8');
-
+    let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+    decrypted = decipher.final('utf8');
     return decrypted;
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    this.loggerService.error(message);
-    throw new BadRequestException(message);
+  } catch (error) {
+    throw new Error('Failed to decrypt payload', { cause: error });
   }
 }
+
+export function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 
 export function validateCronExpression(expression: string): void {
   try {
