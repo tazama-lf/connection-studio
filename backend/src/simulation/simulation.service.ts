@@ -393,8 +393,13 @@ export class SimulationService {
         tcsResult = await processMappings(payload, tcsMapping, endpoint);
       } catch (mappingError: unknown) {
         const mappingErrorMessage =
-          mappingError instanceof Error ? mappingError.message : String(mappingError);
-        if (typeof mappingErrorMessage === 'string' && mappingErrorMessage.includes('loggerService')) {
+          mappingError instanceof Error
+            ? mappingError.message
+            : String(mappingError);
+        if (
+          typeof mappingErrorMessage === 'string' &&
+          mappingErrorMessage.includes('loggerService')
+        ) {
           this.logger.error(
             'TCS lib processMappings has logger issue - this should be fixed in tcs-lib',
           );
@@ -559,21 +564,24 @@ export class SimulationService {
         payload,
         config?.schema,
       );
-      if (config?.schema?.properties) {
-        const schemaRootKeys = Object.keys(config.schema.properties);
-        const payloadRootKeys = Object.keys(
-          normalized as Record<string, unknown>,
-        );
-
-        if (
-          schemaRootKeys.length === 1 &&
-          !payloadRootKeys.includes(schemaRootKeys[0])
-        ) {
-          const [rootKey] = schemaRootKeys;
-          this.logger.debug(
-            `Wrapping payload with schema root element: ${rootKey}`,
+      if (config?.schema) {
+        const schemaProperties = config.schema.properties;
+        if (schemaProperties) {
+          const schemaRootKeys = Object.keys(schemaProperties);
+          const payloadRootKeys = Object.keys(
+            normalized as Record<string, unknown>,
           );
-          return { [rootKey]: normalized };
+
+          if (
+            schemaRootKeys.length === 1 &&
+            !payloadRootKeys.includes(schemaRootKeys[0])
+          ) {
+            const [rootKey] = schemaRootKeys;
+            this.logger.debug(
+              `Wrapping payload with schema root element: ${rootKey}`,
+            );
+            return { [rootKey]: normalized };
+          }
         }
       }
 

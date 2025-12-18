@@ -101,43 +101,27 @@ export class TazamaDataModelService {
 
     for (const schema of schemas) {
       if (schema.fields.length === 0) {
-        
-        const emptyCollectionMarker: FieldOption = {
-          value: `${schema.name}.__empty__`,
-          label: schema.name,
-          collection: schema.name,
-          field: '__empty__', 
-          type: 'OBJECT',
-          required: false,
-          parent_id: null,
-          serial_no: 0,
-          collection_id: schema.collection_id ?? 0,
-          properties: [],
-        };
-        this.logger.log(`Empty collection encountered: ${schema.name}`);
-        options.push(emptyCollectionMarker);
-      } else {
-        for (const field of schema.fields) {
-          if (field.name === '_id' || field.name === '_rev') continue;
-          processField(schema.name, field);
-        }
+        continue;
+      }
+
+      for (const field of schema.fields) {
+        if (field.name === '_id' || field.name === '_rev') continue;
+        processField(schema.name, field);
       }
     }
 
-    const resultOptions: FieldSelectOption[] = options
-      .map((opt) => ({
-        value: opt.value,
-        label: opt.label,
-        collection: opt.collection,
-        field: opt.field,
-        type: opt.type ? (opt.type.toUpperCase() as TazamaFieldType) : undefined,
-        required: opt.required,
-        parent_id: opt.parent_id,
-        serial_no: opt.serial_no,
-        collection_id: opt.collection_id,
-        properties: opt.properties,
-      }))
-      .filter((opt) => opt.field !== undefined && opt.type !== undefined);
+    const resultOptions: FieldSelectOption[] = options.map((opt) => ({
+      value: opt.value,
+      label: opt.label,
+      collection: opt.collection,
+      field: opt.field,
+      type: opt.type ? (opt.type as TazamaFieldType) : undefined,
+      required: opt.required,
+      parent_id: opt.parent_id,
+      serial_no: opt.serial_no,
+      collection_id: opt.collection_id,
+      properties: opt.properties,
+    }));
 
     return resultOptions.sort((a, b) => a.label.localeCompare(b.label));
   }
@@ -182,29 +166,11 @@ export class TazamaDataModelService {
     }
 
     try {
-      const sanitizedDto: CreateFieldDto = {
-        ...dto,
-        parent_id:
-          dto.parent_id === undefined
-            ? undefined
-            : typeof (dto.parent_id as any) === 'string' &&
-                (dto.parent_id as any).trim() === ''
-              ? undefined
-              : dto.parent_id,
-        serial_no:
-          dto.serial_no === undefined
-            ? undefined
-            : typeof (dto.serial_no as any) === 'string' &&
-                (dto.serial_no as any).trim() === ''
-              ? undefined
-              : dto.serial_no,
-      };
-
       const result = await this.repository.addFieldToDestinationType(
         destinationTypeId,
-        sanitizedDto,
+        dto,
         token,
-        sanitizedDto.serial_no,
+        dto.serial_no,
       );
       this.logger.log(
         `Added field: ${result.name} to destination type: ${destinationTypeId}`,

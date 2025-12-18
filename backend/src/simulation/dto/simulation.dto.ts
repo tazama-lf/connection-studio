@@ -1,4 +1,4 @@
-import { iMappingConfiguration, iMappingResult } from '@tazama-lf/tcs-lib';
+import type { iMappingConfiguration, iMappingResult } from '@tazama-lf/tcs-lib';
 
 export interface SimulatePayloadDto {
   endpointId: number;

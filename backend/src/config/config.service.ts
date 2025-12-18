@@ -20,14 +20,7 @@ import {
   ConfigStatus,
   WorkflowAction,
 } from './config.interfaces';
-import {
-  StatusTransitionDto,
-  SubmitForApprovalDto,
-  ApprovalDto,
-  RejectionDto,
-  DeploymentDto,
-  WorkflowActionDto,
-} from './dto';
+import { WorkflowActionDto, SftpConfigDataDto } from './dto';
 import { EventType } from '../enums/events.enum';
 import { AuthenticatedUser } from '../auth/auth.types';
 
@@ -156,14 +149,14 @@ export class ConfigService {
         token,
       );
       if (!config) {
-      throw new NotFoundException(
-        `Config ${configId} was created but could not be retrieved`,
-      );
-    }
+        throw new NotFoundException(
+          `Config ${configId} was created but could not be retrieved`,
+        );
+      }
       return {
         success: true,
         message: 'Config created successfully',
-        config: config,
+        config,
       };
     } catch (error) {
       this.logger.error(
@@ -224,7 +217,7 @@ export class ConfigService {
     user: AuthenticatedUser,
     token: string,
   ): Promise<ConfigResponseDto> {
-    const action = actionDto.action;
+    const {action} = actionDto;
     switch (action) {
       case 'submit': {
         const submitDto = actionDto.data;
@@ -321,6 +314,8 @@ export class ConfigService {
         try {
           const configToExport = {
             ...config,
+            // Status is set to DEPLOYED here (not EXPORTED) so the file is ready
+            // for deployment without requiring a status update during the deploy phase
             status: ConfigStatus.DEPLOYED,
             msg_fam: config.msgFam,
             tenant_id: config.tenantId,
@@ -361,10 +356,12 @@ export class ConfigService {
         const deployDto = actionDto.data;
         const { tenantId, userId } = user;
         const fileName = `dems_${tenantId}_${id}`;
-        let configData: any;
+        let configData: SftpConfigDataDto;
 
         try {
-          configData = await this.sftpService.readFile(fileName);
+          configData = (await this.sftpService.readFile(
+            fileName,
+          )) as unknown as SftpConfigDataDto;
         } catch (error) {
           throw new BadRequestException(
             `Cannot deploy config ${id}: status is undefined and SFTP read failed. Error: ${error.message}`,
@@ -384,10 +381,9 @@ export class ConfigService {
               status: newStatus,
               publishingStatus: configData.publishingStatus ?? 'active',
               version: configData.version,
-              schema: configData.schema === null ? null : configData.schema,
-              mapping: configData.mapping === null ? null : configData.mapping,
-              functions:
-                configData.functions === null ? null : configData.functions,
+              schema: configData.schema ?? null,
+              mapping: configData.mapping ?? null,
+              functions: configData.functions ?? null,
               credentials: configData.credentials,
               tenantId,
               createdBy: configData.createdBy ?? userId,
@@ -408,10 +404,12 @@ export class ConfigService {
 
           const { transactionType } = configData;
 
-          await this.configRepository.createTransactionTypeTable(
-            transactionType,
-            token,
-          );
+          if (transactionType) {
+            await this.configRepository.createTransactionTypeTable(
+              transactionType,
+              token,
+            );
+          }
 
           const functions = configData.functions ?? null;
 
@@ -468,11 +466,6 @@ export class ConfigService {
           );
         }
       }
-
-      default:
-        throw new BadRequestException(
-          `Invalid workflow action: ${action}. Valid actions are: submit, approve, reject, export, deploy`,
-        );
     }
   }
 

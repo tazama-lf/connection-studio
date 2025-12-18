@@ -43,15 +43,12 @@ export class AuthController {
         throw error;
       } else if (error instanceof ServiceUnavailableException) {
         this.logger.error(
-          `Auth service unavailable during login attempt`,
+          'Auth service unavailable during login attempt',
           AuthController.name,
         );
         throw error;
       } else {
-        this.logger.error(
-          `Unexpected error during login`,
-          AuthController.name,
-        );
+        this.logger.error('Unexpected error during login', AuthController.name);
         throw new InternalServerErrorException(
           'An unexpected error occurred during login',
         );
