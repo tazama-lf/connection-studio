@@ -152,7 +152,6 @@ export class SimulationService {
       const hasMappings = config.mapping && config.mapping.length > 0;
 
       if (hasMappings) {
-        console.log("mapping dekho idhar ", config.mapping);
         const mappingValidationStage = this.stageValidateMappings(
           parsedPayload,
           config.mapping ?? [],
