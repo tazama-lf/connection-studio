@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Settings, Database, Clock } from 'lucide-react';
 import { useToast } from '../../../shared/providers/ToastProvider';
 import { useAuth } from '../../auth/contexts/AuthContext';
-import { isExporter } from '../../../utils/roleUtils';
+import { isExporter } from '../../../utils/common/roleUtils';
 
 export const ExporterModule: React.FC = () => {
   const navigate = useNavigate();

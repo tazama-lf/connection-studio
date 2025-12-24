@@ -126,31 +126,31 @@ export interface InferSchemaResponse {
 export interface CreateMappingRequest {
   name: string;
   endpointId?: number;
-  sourceFields: {
+  sourceFields: Array<{
     path: string;
     type: string;
     isRequired: boolean;
-  }[];
-  destinationFields: {
+  }>;
+  destinationFields: Array<{
     path: string;
     type: string;
     isRequired: boolean;
-  }[];
+  }>;
   transformation: TransformationType;
 }
 
 export interface UpdateMappingRequest {
   name?: string;
-  sourceFields?: {
+  sourceFields?: Array<{
     path: string;
     type: string;
     isRequired: boolean;
-  }[];
-  destinationFields?: {
+  }>;
+  destinationFields?: Array<{
     path: string;
     type: string;
     isRequired: boolean;
-  }[];
+  }>;
   transformation?: TransformationType;
   status?: MappingStatus;
 }
@@ -159,16 +159,16 @@ export interface MappingResponse {
   id: string;
   name: string;
   endpointId?: number;
-  sourceFields: {
+  sourceFields: Array<{
     path: string;
     type: string;
     isRequired: boolean;
-  }[];
-  destinationFields: {
+  }>;
+  destinationFields: Array<{
     path: string;
     type: string;
     isRequired: boolean;
-  }[];
+  }>;
   transformation: TransformationType;
   status: MappingStatus;
   createdAt: string;

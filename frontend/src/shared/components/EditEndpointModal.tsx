@@ -27,7 +27,7 @@ import {
   isEditor,
   isExporter,
   isPublisher,
-} from '../../utils/roleUtils';
+} from '../../utils/common/roleUtils';
 import { useToast } from '../providers/ToastProvider';
 import type {
   AllowedFunctionName,

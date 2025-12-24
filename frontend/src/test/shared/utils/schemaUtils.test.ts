@@ -1,4 +1,7 @@
-import { convertInferredFieldsToJsonSchema, type InferredField } from '../../../shared/utils/schemaUtils';
+import {
+  convertInferredFieldsToJsonSchema,
+  type InferredField,
+} from '../../../shared/utils/schemaUtils';
 
 describe('convertInferredFieldsToJsonSchema', () => {
   beforeEach(() => {
@@ -133,8 +136,18 @@ describe('convertInferredFieldsToJsonSchema', () => {
       { path: 'company', type: 'Object', required: true, level: 0 },
       { path: 'company.name', type: 'String', required: true, level: 1 },
       { path: 'company.employees', type: 'Array', required: true, level: 1 },
-      { path: 'company.employees.name', type: 'String', required: true, level: 2 },
-      { path: 'company.employees.role', type: 'String', required: false, level: 2 },
+      {
+        path: 'company.employees.name',
+        type: 'String',
+        required: true,
+        level: 2,
+      },
+      {
+        path: 'company.employees.role',
+        type: 'String',
+        required: false,
+        level: 2,
+      },
     ];
 
     const result = convertInferredFieldsToJsonSchema(fields);

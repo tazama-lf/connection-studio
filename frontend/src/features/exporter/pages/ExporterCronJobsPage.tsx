@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useToast } from '../../../shared/providers/ToastProvider';
 import { useAuth } from '../../auth/contexts/AuthContext';
 import { CronJobList } from '../../cron/components/CronJobList';
-import { isExporter } from '../../../utils/roleUtils';
+import { isExporter } from '../../../utils/common/roleUtils';
 import { ChevronLeft, ClockIcon } from 'lucide-react';
 import { Button } from '@shared';
 import { useNavigate } from 'react-router';

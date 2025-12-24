@@ -1,4 +1,3 @@
-import { Input } from '@mui/material';
 import React from 'react';
 
 interface InputFilterProps {
@@ -10,6 +9,7 @@ interface InputFilterProps {
   setSearchingFilters: React.Dispatch<
     React.SetStateAction<Record<string, any>>
   >;
+  setPage?: (page: number) => void;
 }
 
 interface SelectOption {
@@ -35,6 +35,7 @@ export const handleInputFilter = ({
   maxLength,
   searchingFilters,
   setSearchingFilters,
+  setPage,
 }: InputFilterProps) => {
   const [localValue, setLocalValue] = React.useState(
     searchingFilters[fieldName] || '',
@@ -47,21 +48,23 @@ export const handleInputFilter = ({
         onKeyDown={(event) => {
           if (event.key === 'Enter') {
             const target = event.target as HTMLInputElement;
+            if (setPage) {
+              setPage(1);
+            }
             setSearchingFilters((prev: Record<string, any>) => ({
               ...prev,
               [fieldName]: target.value.trim(),
             }));
-            // setTableLoading(true);
           }
         }}
         onChange={(event) => {
           const value = event.target.value;
           setLocalValue(value);
 
-          // Trigger API call if the filter value is cleared
           if (value.length <= 0) {
-            // setTableLoading(true);
-            // deleting that search filter key which is cleared
+            if (setPage) {
+              setPage(1);
+            }
             const updatedFilters = { ...searchingFilters };
             delete updatedFilters[fieldName];
             setSearchingFilters(updatedFilters);

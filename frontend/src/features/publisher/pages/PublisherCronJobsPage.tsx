@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ClockIcon, SearchIcon } from 'lucide-react';
-import { dataEnrichmentApi } from '../../data-enrichment/services/dataEnrichmentApi';
+import { cronJobApi as cronJobService } from '../../cron/handlers';
 import { useToast } from '../../../shared/providers/ToastProvider';
-import type { ScheduleResponse } from '../../data-enrichment/types';
+import type { ScheduleResponse } from '../../cron/types';
 import PublisherCronJobList from '../components/PublisherCronJobList';
 import PublisherCronJobDetailsModal from '../components/PublisherCronJobDetailsModal';
 import { Button } from '@shared';
 import { useNavigate } from 'react-router';
 import { useAuth } from '@features/auth';
-import { getPrimaryRole } from '@utils/roleUtils';
+import { getPrimaryRole } from '@utils/common/roleUtils';
 import { UI_CONFIG } from '@shared/config/app.config';
 import CronJobApproverList from '@features/approver/components/CronJobApproverList';
-import CronJobViewModal from '@features/cron/components/CronJobViewModal';
+import CronJobViewModal from '@features/cron/components/CronJobViewModal/index';
 
 const PublisherCronJobsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -46,7 +46,7 @@ const PublisherCronJobsPage: React.FC = () => {
 
       const params = { limit, offset, userRole: userRole as string };
 
-      const response = await dataEnrichmentApi.getCronJobList(
+      const response = await cronJobService.getList(
         params,
         searchingFilters,
       );

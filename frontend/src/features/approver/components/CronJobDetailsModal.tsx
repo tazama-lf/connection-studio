@@ -3,7 +3,7 @@ import { X, Calendar, Clock } from 'lucide-react';
 import type { ScheduleResponse } from '../../data-enrichment/types';
 import { Button } from '../../../shared/components/Button';
 import { useAuth } from '../../auth/contexts/AuthContext';
-import { isApprover } from '../../../utils/roleUtils';
+import { isApprover } from '../../../utils/common/roleUtils';
 
 interface CronJobDetailsModalProps {
   isOpen: boolean;

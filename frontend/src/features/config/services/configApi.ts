@@ -9,7 +9,7 @@ export interface CreateConfigRequest {
   version?: string;
   contentType?: 'application/json' | 'application/xml';
   payload?: string;
-  schema?: any; 
+  schema?: any;
   mapping?: FieldMapping[];
   functions?: FunctionDefinition[];
   fieldAdjustments?: FieldAdjustment[];
@@ -63,8 +63,8 @@ export interface AddMappingRequest {
   source?: string | string[]; // string[] for CONCAT/SUM transformations
   destination?: string | string[]; // string[] for SPLIT transformation
   delimiter?: string;
-  separator?: string; 
-  constantValue?: any; 
+  separator?: string;
+  constantValue?: any;
   prefix?: string;
 }
 
@@ -99,9 +99,9 @@ interface PaginationParams {
 }
 
 export class ConfigApiService {
-  private baseURL: string;
+  private readonly baseURL: string;
   constructor() {
-    this.baseURL = API_CONFIG.AUTH_BASE_URL; 
+    this.baseURL = API_CONFIG.AUTH_BASE_URL;
   }
 
   private getAuthHeaders(): Record<string, string> {
@@ -284,7 +284,7 @@ export class ConfigApiService {
         `${this.baseURL}/config/pending-approvals/10/0`,
         {
           method: 'POST',
-          headers: headers,
+          headers,
         },
       );
       const responseData = await this.handleResponse<any>(response);
@@ -404,8 +404,8 @@ export class ConfigApiService {
       const headers = this.getAuthHeaders();
       const method = 'PATCH';
       const response = await fetch(url, {
-        method: method,
-        headers: headers,
+        method,
+        headers,
       });
       const result = await this.handleResponse<ConfigResponse>(response);
       return result;
@@ -423,8 +423,8 @@ export class ConfigApiService {
       const headers = this.getAuthHeaders();
       const method = 'PATCH';
       const response = await fetch(url, {
-        method: method,
-        headers: headers,
+        method,
+        headers,
         body: JSON.stringify({
           publishing_status: publishingStatus,
         }),
@@ -461,7 +461,7 @@ export class ConfigApiService {
       const headers = this.getAuthHeaders();
       const response = await fetch(url, {
         method: 'POST',
-        headers: headers,
+        headers,
         body: JSON.stringify(payload || {}),
       });
       const result = await this.handleResponse<ConfigResponse>(response);
@@ -474,21 +474,18 @@ export class ConfigApiService {
   async submitForApproval(
     id: number,
     userId: string,
-    userRole: string = 'editor',
+    userRole = 'editor',
     comment?: string,
   ): Promise<ConfigResponse> {
-    return this.updateWorkflow(id, 'submit', {
+    return await this.updateWorkflow(id, 'submit', {
       configId: id,
       userId,
       userRole,
       comment,
     });
   }
-  async approveConfig(
-    id: number,
-    comment: string = '',
-  ): Promise<ConfigResponse> {
-    return this.updateWorkflow(id, 'approve', { comment });
+  async approveConfig(id: number, comment = ''): Promise<ConfigResponse> {
+    return await this.updateWorkflow(id, 'approve', { comment });
   }
 
   async rejectConfig(
@@ -496,13 +493,13 @@ export class ConfigApiService {
     _userId: string,
     reason?: string,
   ): Promise<ConfigResponse> {
-    return this.updateWorkflow(id, 'reject', {
+    return await this.updateWorkflow(id, 'reject', {
       comment: reason || 'Configuration rejected by approver',
     });
   }
 
   async exportConfig(id: number, notes?: string): Promise<ConfigResponse> {
-    return this.updateWorkflow(id, 'export', {
+    return await this.updateWorkflow(id, 'export', {
       comment: notes || 'Exported for deployment',
       userId: 'system',
       userRole: 'exporter',
@@ -510,7 +507,7 @@ export class ConfigApiService {
   }
 
   async deployConfig(id: number, notes?: string): Promise<ConfigResponse> {
-    return this.updateWorkflow(id, 'deploy', {
+    return await this.updateWorkflow(id, 'deploy', {
       notes: notes || 'Deployed to production',
       actionBy: 'publisher',
     });

@@ -38,7 +38,7 @@ export interface CompleteTaskRequest {
 
 // Flowable API service
 export class FlowableApiService {
-  private baseURL: string;
+  private readonly baseURL: string;
 
   constructor() {
     this.baseURL = API_CONFIG.AUTH_BASE_URL; // Using same base URL as auth
@@ -97,7 +97,10 @@ export class FlowableApiService {
       console.log(`✅ FlowableApiService - Tasks for role ${role}:`, result);
       return result;
     } catch (error) {
-      console.error(`❌ FlowableApiService - Failed to get tasks for role ${role}:`, error);
+      console.error(
+        `❌ FlowableApiService - Failed to get tasks for role ${role}:`,
+        error,
+      );
       throw error;
     }
   }
@@ -115,10 +118,13 @@ export class FlowableApiService {
       });
 
       const result = await this.handleResponse<TaskResponse>(response);
-      console.log(`✅ FlowableApiService - Task completed:`, result);
+      console.log('✅ FlowableApiService - Task completed:', result);
       return result;
     } catch (error) {
-      console.error(`❌ FlowableApiService - Failed to complete task ${request.taskId}:`, error);
+      console.error(
+        `❌ FlowableApiService - Failed to complete task ${request.taskId}:`,
+        error,
+      );
       throw error;
     }
   }

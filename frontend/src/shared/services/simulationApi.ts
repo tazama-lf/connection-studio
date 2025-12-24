@@ -46,7 +46,7 @@ export interface ValidationResult {
 }
 
 export class SimulationApiService {
-  private baseURL: string;
+  private readonly baseURL: string;
 
   constructor() {
     this.baseURL = API_CONFIG.AUTH_BASE_URL; // Using same base URL as other services

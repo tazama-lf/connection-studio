@@ -4,7 +4,7 @@ import type { ScheduleResponse } from '../../data-enrichment/types';
 import { Button } from '../../../shared/components/Button';
 import { DropdownMenuWithAutoDirection } from '../../../features/data-enrichment/components/DropdownMenuWithAutoDirection';
 import { useAuth } from '../../auth/contexts/AuthContext';
-import { getPrimaryRole, isApprover } from '../../../utils/roleUtils';
+import { getPrimaryRole, isApprover } from '../../../utils/common/roleUtils';
 import {
   getStatusColor,
   getStatusLabel,

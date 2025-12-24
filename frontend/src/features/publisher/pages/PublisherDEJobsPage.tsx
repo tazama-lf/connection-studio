@@ -6,7 +6,7 @@ import type { DataEnrichmentJobResponse } from '../../data-enrichment/types';
 import PublisherDEJobList from '../components/PublisherDEJobList';
 import PublisherDEJobDetailsModal from '../components/PublisherDEJobDetailsModal';
 import { useAuth } from '@features/auth';
-import { getPrimaryRole } from '@utils/roleUtils';
+import { getPrimaryRole } from '@utils/common/roleUtils';
 import { UI_CONFIG } from '@shared/config/app.config';
 import { JobList } from '@features/data-enrichment';
 import { Button } from '@shared';

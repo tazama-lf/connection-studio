@@ -6,7 +6,7 @@ import {
   getPrimaryRole,
   getRoleDisplayInfo,
   type UserRole,
-} from '../../utils/roleUtils';
+} from '../../utils/common/roleUtils';
 
 describe('roleUtils', () => {
   describe('hasRole', () => {

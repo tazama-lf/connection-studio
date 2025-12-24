@@ -24,12 +24,12 @@ export class FunctionsApiService {
       const url = `${API_CONFIG.API_BASE_URL}${API_CONFIG.ENDPOINTS.CONFIG.ADD_FUNCTION.replace(':id', configId.toString())}`;
       const headers = this.getAuthHeaders();
       const body = JSON.stringify(functionData);
-      
+
       console.log('🌐 FunctionsApiService.addFunction:');
       console.log('URL:', url);
       console.log('Headers:', headers);
       console.log('Body:', body);
-      
+
       const response = await fetch(url, {
         method: 'POST',
         headers,
@@ -41,9 +41,11 @@ export class FunctionsApiService {
         console.error('❌ HTTP Error Response:', {
           status: response.status,
           statusText: response.statusText,
-          body: errorText
+          body: errorText,
         });
-        throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
+        throw new Error(
+          `HTTP error! status: ${response.status}, body: ${errorText}`,
+        );
       }
 
       const result = await response.json();

@@ -21,8 +21,8 @@ export interface User {
 
 // Authentication API service
 export class AuthApiService {
-  private authBaseURL: string;
-  private defaultHeaders: Record<string, string>;
+  private readonly authBaseURL: string;
+  private readonly defaultHeaders: Record<string, string>;
 
   constructor() {
     this.authBaseURL = API_CONFIG.AUTH_BASE_URL;
@@ -65,7 +65,7 @@ export class AuthApiService {
           localStorage.removeItem('authToken');
           localStorage.removeItem('user');
         }
-        
+
         throw new Error('Unauthorized - Token expired');
       }
 
@@ -90,49 +90,42 @@ export class AuthApiService {
     }
   }
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
-    return this.authRequest<AuthResponse>(API_CONFIG.ENDPOINTS.AUTH.LOGIN, {
-      method: 'POST',
-      body: credentials,
-    });
+    return await this.authRequest<AuthResponse>(
+      API_CONFIG.ENDPOINTS.AUTH.LOGIN,
+      {
+        method: 'POST',
+        body: credentials,
+      },
+    );
   }
-
-  // async logout(): Promise<void> {
-  //   return this.authRequest<void>(API_CONFIG.ENDPOINTS.AUTH.LOGOUT, {
-  //     method: 'POST',
-  //   });
-  // }
-
-  // async refreshToken(): Promise<AuthResponse> {
-  //   return this.authRequest<AuthResponse>(API_CONFIG.ENDPOINTS.AUTH.REFRESH, {
-  //     method: 'POST',
-  //   });
-  // }
 
   async refreshSession(): Promise<{ success: boolean; message: string }> {
     const token = localStorage.getItem('authToken');
     const user = localStorage.getItem('user');
-    
+
     if (!token || !user) {
       throw new Error('No authentication data found');
     }
-    
+
     try {
       const userData = JSON.parse(user);
       const decodedToken = this.decodeToken(token);
-      
+
       if (!decodedToken) {
         throw new Error('Invalid token');
       }
-      
-      return this.authRequest<{ success: boolean; message: string }>('/auth/session/refresh', {
-        method: 'POST',
-        body: {
-          userId: decodedToken.id || userData.id,
-          tenantId: decodedToken.tenantId || userData.tenantId,
-          tokenString: token
-        },
 
-      });
+      return this.authRequest<{ success: boolean; message: string }>(
+        '/auth/session/refresh',
+        {
+          method: 'POST',
+          body: {
+            userId: decodedToken.id || userData.id,
+            tenantId: decodedToken.tenantId || userData.tenantId,
+            tokenString: token,
+          },
+        },
+      );
     } catch (error) {
       console.error('Failed to decode token for session refresh:', error);
       throw error;
@@ -140,7 +133,7 @@ export class AuthApiService {
   }
 
   async getProfile(): Promise<User> {
-    return this.authRequest<User>(API_CONFIG.ENDPOINTS.AUTH.PROFILE);
+    return await this.authRequest<User>(API_CONFIG.ENDPOINTS.AUTH.PROFILE);
   }
 
   // Helper method to decode JWT token and extract user info

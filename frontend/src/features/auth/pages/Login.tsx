@@ -21,7 +21,7 @@ import { AiOutlineEye, AiOutlineEyeInvisible } from 'react-icons/ai';
 import { MdEmail, MdLock } from 'react-icons/md';
 import { useNavigate } from 'react-router-dom'; // For commented-out API logic
 import * as yup from 'yup';
-import { isApprover } from '../../../utils/roleUtils';
+import { isApprover } from '../../../utils/common/roleUtils';
 import { useAuth } from '../contexts/AuthContext';
 import { authApi } from '../services/authApi';
 

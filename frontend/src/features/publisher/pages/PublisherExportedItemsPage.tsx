@@ -7,7 +7,7 @@ import {
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../../features/auth/contexts/AuthContext';
 import { useToast } from '../../../shared/providers/ToastProvider';
-import { isExporter, isPublisher } from '../../../utils/roleUtils';
+import { isExporter, isPublisher } from '../../../utils/common/roleUtils';
 import { ExportedItemDetailsModal } from '../../exporter/components/ExportedItemDetailsModal';
 import { ExportedItemsList } from '../../exporter/components/ExportedItemsList';
 import type {

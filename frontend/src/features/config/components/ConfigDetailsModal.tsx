@@ -3,7 +3,7 @@ import { X, Calendar, Clock, Database, Globe, Settings, Download, Upload } from 
 import type { Config } from '../index';
 import { Button } from '../../../shared/components/Button';
 import { useAuth } from '../../auth/contexts/AuthContext';
-import { isApprover, isExporter, isPublisher } from '../../../utils/roleUtils';
+import { isApprover, isExporter, isPublisher } from '../../../utils/common/roleUtils';
 import { getStatusColor, getStatusLabel } from '../../../shared/utils/statusColors';
 
 interface ConfigDetailsModalProps {

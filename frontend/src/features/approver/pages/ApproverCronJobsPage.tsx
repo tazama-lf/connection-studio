@@ -1,5 +1,5 @@
 import { useAuth } from '@features/auth';
-import CronJobViewModal from '@features/cron/components/CronJobViewModal';
+import CronJobViewModal from '@features/cron/components/CronJobViewModal/index';
 import {
   Box,
   Dialog,
@@ -9,14 +9,14 @@ import {
 } from '@mui/material';
 import { Button } from '@shared';
 import { UI_CONFIG } from '@shared/config/app.config';
-import { getPrimaryRole } from '@utils/roleUtils';
+import { getPrimaryRole } from '@utils/common/roleUtils';
 import { ChevronLeft, ClockIcon } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { JobRejectionDialog } from '../../../shared/components/JobRejectionDialog';
 import { useToast } from '../../../shared/providers/ToastProvider';
-import { dataEnrichmentApi } from '../../data-enrichment/services/dataEnrichmentApi';
-import type { ScheduleResponse } from '../../data-enrichment/types';
+import { cronJobApi, cronJobApi as cronJobService } from '../../cron/handlers';
+import type { ScheduleResponse } from '../../cron/types';
 import { CronJobApproverList } from '../components/CronJobApproverList';
 
 const ApproverCronJobsPage: React.FC = () => {
@@ -113,7 +113,7 @@ const ApproverCronJobsPage: React.FC = () => {
 
       const params = { limit, offset, userRole: userRole as string };
 
-      const response = await dataEnrichmentApi.getCronJobList(
+      const response = await cronJobService.getList(
         params,
         searchingFilters,
       );
@@ -156,7 +156,7 @@ const ApproverCronJobsPage: React.FC = () => {
         setSelectedSchedule({ ...schedule, cronExpression: schedule.cron });
       } else {
         // If not found in current list, fetch from API
-        const scheduleDetails = await dataEnrichmentApi.getSchedule(scheduleId);
+        const scheduleDetails = await cronJobService.getById(scheduleId);
         setSelectedSchedule({
           ...scheduleDetails,
           cronExpression: scheduleDetails.cron,
@@ -181,7 +181,7 @@ const ApproverCronJobsPage: React.FC = () => {
     if (!scheduleToApprove) return;
     setIsApproving(true);
     try {
-      await dataEnrichmentApi.updateScheduleStatus(
+      await cronJobService.updateStatus(
         scheduleToApprove,
         'STATUS_04_APPROVED',
         approvalComment,
@@ -210,7 +210,7 @@ const ApproverCronJobsPage: React.FC = () => {
     if (!scheduleToReject) return;
 
     try {
-      await dataEnrichmentApi.updateScheduleStatus(
+      await cronJobApi.updateStatus(
         scheduleToReject,
         'STATUS_05_REJECTED',
         reason,

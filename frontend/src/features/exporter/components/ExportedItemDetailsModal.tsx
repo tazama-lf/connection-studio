@@ -26,7 +26,7 @@ import {
 } from '../../../shared/utils/statusColors';
 import { dataEnrichmentApi } from '../../data-enrichment/services/dataEnrichmentApi';
 import { useAuth } from '../../../features/auth/contexts/AuthContext';
-import { isExporter, isPublisher } from '../../../utils/roleUtils';
+import { isExporter, isPublisher } from '../../../utils/common/roleUtils';
 import {
   Backdrop,
   Box,

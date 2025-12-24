@@ -10,7 +10,10 @@ import { SftpError } from '../../features/exporter/services/sftpApi';
  * @param operation - The operation being performed (for context)
  * @returns A user-friendly error message string
  */
-export const getUserFriendlyErrorMessage = (error: any, operation: string = 'operation'): string => {
+export const getUserFriendlyErrorMessage = (
+  error: any,
+  operation = 'operation',
+): string => {
   // Handle SFTP-specific errors
   if (error instanceof SftpError) {
     switch (error.errorType) {
@@ -26,8 +29,10 @@ export const getUserFriendlyErrorMessage = (error: any, operation: string = 'ope
   }
 
   // Handle file corruption errors from backend messages
-  if (error?.message === 'File or its integrity file not found' ||
-      (error?.message && error.message.includes('File or its integrity file not found'))) {
+  if (
+    error?.message === 'File or its integrity file not found' ||
+    error?.message?.includes('File or its integrity file not found')
+  ) {
     return 'File appears to be corrupted or missing. The file or its integrity verification failed.';
   }
 
@@ -57,18 +62,24 @@ export const getUserFriendlyErrorMessage = (error: any, operation: string = 'ope
 
     // Handle specific validation messages
     if (errorData?.message) {
-      const message = errorData.message;
+      const { message } = errorData;
 
       // Common validation error patterns
       if (message.includes('should not exist') && message.includes('id')) {
         return 'Unable to save changes. Please refresh the page and try again.';
       }
 
-      if (message.includes('schedule_id') && message.includes('should not be empty')) {
+      if (
+        message.includes('schedule_id') &&
+        message.includes('should not be empty')
+      ) {
         return 'A schedule must be selected for this job. Please choose a schedule and try again.';
       }
 
-      if (message.includes('schedule_id') && message.includes('must be a UUID')) {
+      if (
+        message.includes('schedule_id') &&
+        message.includes('must be a UUID')
+      ) {
         return 'Invalid schedule selected. Please choose a valid schedule and try again.';
       }
 
@@ -140,13 +151,11 @@ export const getUserFriendlyErrorMessage = (error: any, operation: string = 'ope
  * @param error - The error object
  * @returns An object with error details for logging
  */
-export const getErrorDetails = (error: any) => {
-  return {
-    message: error?.message || 'Unknown error',
-    status: error?.response?.status,
-    statusText: error?.response?.statusText,
-    data: error?.response?.data,
-    url: error?.config?.url,
-    method: error?.config?.method,
-  };
-};
+export const getErrorDetails = (error: any) => ({
+  message: error?.message || 'Unknown error',
+  status: error?.response?.status,
+  statusText: error?.response?.statusText,
+  data: error?.response?.data,
+  url: error?.config?.url,
+  method: error?.config?.method,
+});

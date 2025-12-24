@@ -24,7 +24,7 @@ import {
   isEditor,
   isExporter,
   isPublisher,
-} from '../../../utils/roleUtils';
+} from '../../../utils/common/roleUtils';
 import { useToast } from '../../../shared/providers/ToastProvider';
 import CustomTable from '@common/Tables/CustomTable';
 import {

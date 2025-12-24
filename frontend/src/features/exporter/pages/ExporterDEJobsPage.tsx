@@ -5,7 +5,7 @@ import { dataEnrichmentApi } from '../../data-enrichment/services';
 import { JobList } from '../../data-enrichment/components/JobList';
 import JobDetailsModal from '../../data-enrichment/components/JobDetailsModal';
 import type { DataEnrichmentJobResponse } from '../../data-enrichment/types';
-import { getPrimaryRole, isExporter } from '../../../utils/roleUtils';
+import { getPrimaryRole, isExporter } from '../../../utils/common/roleUtils';
 import { UI_CONFIG } from '@shared/config/app.config';
 import { Button } from '@shared';
 import { ChevronLeft, Database } from 'lucide-react';

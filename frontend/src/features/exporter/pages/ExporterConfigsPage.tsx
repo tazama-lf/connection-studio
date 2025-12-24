@@ -4,7 +4,7 @@ import { useAuth } from '../../auth/contexts/AuthContext';
 import { ConfigList } from '../../config/components/ConfigList';
 import EditEndpointModal from '../../../shared/components/EditEndpointModal';
 import { configApi } from '../../config/services/configApi';
-import { isExporter } from '../../../utils/roleUtils';
+import { isExporter } from '../../../utils/common/roleUtils';
 import type { Config } from '../../config/index';
 import { Button } from '@shared';
 import { ActivityIcon, ChevronLeft } from 'lucide-react';

@@ -212,13 +212,6 @@ export const ConfigDetails: React.FC<ConfigDetailsProps> = ({
               <div className="text-green-800">{successMessage}</div>
             </div>
           )}
-
-
-
-
-
-          
-
           {config && (
             <div className="space-y-6">
               {/* Basic Information */}

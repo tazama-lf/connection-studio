@@ -8,7 +8,7 @@ export class SftpError extends Error {
   constructor(
     message: string,
     errorType: 'CORRUPTED_FILE' | 'NOT_FOUND' | 'UNAUTHORIZED' | 'GENERAL',
-    originalError?: any
+    originalError?: any,
   ) {
     super(message);
     this.name = 'SftpError';
@@ -55,7 +55,7 @@ export type SftpFormat = 'de' | 'cron' | 'dems';
 
 // SFTP API service
 export class SftpApiService {
-  private baseURL: string;
+  private readonly baseURL: string;
 
   constructor() {
     this.baseURL = API_CONFIG.AUTH_BASE_URL;
@@ -70,7 +70,10 @@ export class SftpApiService {
     };
   }
 
-  private async apiRequest<T>(url: string, options: RequestInit = {}): Promise<T> {
+  private async apiRequest<T>(
+    url: string,
+    options: RequestInit = {},
+  ): Promise<T> {
     const response = await fetch(url, {
       ...options,
       headers: {
@@ -86,7 +89,9 @@ export class SftpApiService {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      throw new Error(
+        errorData.message || `HTTP error! status: ${response.status}`,
+      );
     }
 
     return await response.json();
@@ -100,25 +105,27 @@ export class SftpApiService {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      
+
       // Handle specific SFTP errors with user-friendly messages
-      if (errorData.message === 'File or its integrity file not found' || 
-          (errorData.message && errorData.message.includes('File or its integrity file not found'))) {
+      if (
+        errorData.message === 'File or its integrity file not found' ||
+        errorData.message?.includes('File or its integrity file not found')
+      ) {
         throw new SftpError(
           'File appears to be corrupted or missing. The file or its integrity verification failed.',
           'CORRUPTED_FILE',
-          errorData
+          errorData,
         );
       }
-      
+
       if (response.status === 404) {
         throw new SftpError('File not found', 'NOT_FOUND', errorData);
       }
-      
+
       throw new SftpError(
         errorData.message || `HTTP error! status: ${response.status}`,
         'GENERAL',
-        errorData
+        errorData,
       );
     }
 
@@ -156,10 +163,10 @@ export class SftpApiService {
   async readFile(name: string): Promise<SftpFileContent> {
     try {
       console.log('Reading SFTP file:', name);
-      
+
       // Remove .json extension if present
       const fileName = name.endsWith('.json') ? name.slice(0, -5) : name;
-      
+
       const response = await fetch(
         `${this.baseURL}/sftp/read?name=${encodeURIComponent(fileName)}`,
         {
@@ -182,7 +189,7 @@ export class SftpApiService {
    * Format: dev_cron_1234_<UUID>.json or dev_de_1234_<UUID>.json
    */
   extractIdFromFilename(filename: string): string | null {
-    const match = filename.match(/_([\w-]{36})\.json$/);
+    const match = /_([\w-]{36})\.json$/.exec(filename);
     return match ? match[1] : null;
   }
 
@@ -203,15 +210,19 @@ export class SftpApiService {
    * For 'de' format: updates job status via /api/job/update/status/:id
    * For 'dems' format: triggers workflow deploy via /api/config/:id/workflow?action=deploy
    */
-  async publishItem(id: string, format: SftpFormat, type?: 'PULL' | 'PUSH' | string): Promise<void> {
+  async publishItem(
+    id: string,
+    format: SftpFormat,
+    type?: 'PULL' | 'PUSH' | string,
+  ): Promise<void> {
     try {
       console.log('Publishing item:', { id, format, type });
-      
+
       if (format === 'cron') {
         // Update schedule status using the scheduler API endpoint
         const queryParams = new URLSearchParams();
         queryParams.append('status', 'STATUS_08_DEPLOYED');
-        
+
         await this.apiRequest<{ success: boolean; message: string }>(
           `${this.baseURL}/scheduler/update/status/${id}?${queryParams.toString()}`,
           {
@@ -236,21 +247,25 @@ export class SftpApiService {
       } else {
         // Update job status - requires type parameter (for 'de' format)
         let jobType: string | undefined = type;
-        
+
         // Normalize the type to uppercase
         if (jobType) {
           jobType = jobType.toUpperCase();
           if (jobType !== 'PULL' && jobType !== 'PUSH') {
-            throw new Error(`Invalid job type: ${jobType}. Must be PULL or PUSH.`);
+            throw new Error(
+              `Invalid job type: ${jobType}. Must be PULL or PUSH.`,
+            );
           }
         } else {
-          throw new Error('Job type (PULL/PUSH) is required for data enrichment jobs');
+          throw new Error(
+            'Job type (PULL/PUSH) is required for data enrichment jobs',
+          );
         }
-        
+
         const queryParams = new URLSearchParams();
         queryParams.append('status', 'STATUS_08_DEPLOYED');
         queryParams.append('type', jobType.toLowerCase());
-        
+
         await this.apiRequest<{ success: boolean; message: string }>(
           `${this.baseURL}/job/update/status/${id}?${queryParams.toString()}`,
           {
@@ -258,7 +273,7 @@ export class SftpApiService {
           },
         );
       }
-      
+
       console.log('Item published successfully:', id);
     } catch (error) {
       console.error('Failed to publish item:', error);

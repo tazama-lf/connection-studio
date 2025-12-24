@@ -1,11 +1,10 @@
 import React, { useEffect } from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../features/auth/contexts/AuthContext';
-import { isApprover, isPublisher, isExporter, isEditor } from '../utils/roleUtils';
+import { isApprover, isPublisher, isExporter, isEditor } from '../utils/common/roleUtils';
 import Login from '../features/auth/pages/Login';
 import Dashboard from '../features/dashboard/pages/Dashboard';
 import DEMSModule from '@pages/dems';
-import ApproverModule from '../features/approver/pages/ApproverModule';
 import ApproverConfigsPage from '../features/approver/pages/ApproverConfigsPage';
 import ApproverDEJobsPage from '../features/approver/pages/ApproverDEJobsPage';
 import ApproverCronJobsPage from '../features/approver/pages/ApproverCronJobsPage';
@@ -17,12 +16,12 @@ import PublisherCronJobsPage from '../features/publisher/pages/PublisherCronJobs
 import PublisherDEJobsPage from '../features/publisher/pages/PublisherDEJobsPage';
 import PublisherConfigsPage from '../features/publisher/pages/PublisherConfigsPage';
 import PublisherExportedItemsPage from '../features/publisher/pages/PublisherExportedItemsPage';
-import CRONModule from '../features/cron/pages/CRONModule';
+import CRONModule from '../features/cron/pages/index';
 import DataEnrichmentModule from '../features/data-enrichment/pages/DataEnrichmentModule';
 import EndpointHistoryPage from '../features/data-enrichment/pages/EndpointHistoryPage';
 import NotFoundPage from '../pages/NotFoundPage';
 import { ROUTES } from '../shared/config/routes.config';
-import { setupFetch401Interceptor } from '../utils/interceptor';
+import { setupFetch401Interceptor } from '../utils/common/interceptor';
 const ProtectedRoute = ({
   children
 }: {
@@ -99,10 +98,6 @@ export const AppRoutes: React.FC = () => {
     setupFetch401Interceptor(() => navigate("/login"));
   }, [navigate]);
 
-  
-
-
-  
   if (loading) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
   }

@@ -9,14 +9,14 @@ export type AllowedFunctionName =
 export interface FunctionDefinition {
   params?: any;
   functionName: AllowedFunctionName;
-  columns?: Record<string, any>[];
+  columns?: Array<Record<string, any>>;
   tableName?: string;
 }
 
 export interface AddFunctionDto {
   params?: string[];
   functionName: AllowedFunctionName;
-  columns?: Record<string, any>[];
+  columns?: Array<Record<string, any>>;
   tableName?: string;
 }
 
@@ -34,25 +34,25 @@ export interface FunctionResponseDto {
 export interface FunctionConfig {
   name: AllowedFunctionName;
   displayName: string;
-  requiredParameters: {
+  requiredParameters: Array<{
     name: string;
     displayName: string;
     type: string;
     description: string;
-  }[];
-  optionalParameters: {
+  }>;
+  optionalParameters: Array<{
     name: string;
     displayName: string;
     type: string;
     description: string;
-  }[];
-  configurations: {
+  }>;
+  configurations: Array<{
     name: string;
     displayName: string;
     parameters: string;
     description: string;
-  }[];
-  dataModelConfiguration?: any
+  }>;
+  dataModelConfiguration?: any;
 }
 
 // Available function configurations

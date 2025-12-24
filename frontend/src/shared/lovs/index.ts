@@ -6,14 +6,20 @@ export const getDemsStatusLov = {
     { label: 'STATUS_04_APPROVED', value: 'STATUS_04_APPROVED' },
     { label: 'STATUS_05_REJECTED', value: 'STATUS_05_REJECTED' },
     { label: 'STATUS_06_EXPORTED', value: 'STATUS_06_EXPORTED' },
-    { label: 'STATUS_07_READY_FOR_DEPLOYMENT', value: 'STATUS_07_READY_FOR_DEPLOYMENT' },
+    {
+      label: 'STATUS_07_READY_FOR_DEPLOYMENT',
+      value: 'STATUS_07_READY_FOR_DEPLOYMENT',
+    },
     { label: 'STATUS_08_DEPLOYED', value: 'STATUS_08_DEPLOYED' },
   ],
   approver: [
     { label: 'STATUS_03_UNDER_REVIEW', value: 'STATUS_03_UNDER_REVIEW' },
     { label: 'STATUS_04_APPROVED', value: 'STATUS_04_APPROVED' },
     { label: 'STATUS_06_EXPORTED', value: 'STATUS_06_EXPORTED' },
-    { label: 'STATUS_07_READY_FOR_DEPLOYMENT', value: 'STATUS_07_READY_FOR_DEPLOYMENT' },
+    {
+      label: 'STATUS_07_READY_FOR_DEPLOYMENT',
+      value: 'STATUS_07_READY_FOR_DEPLOYMENT',
+    },
     { label: 'STATUS_08_DEPLOYED', value: 'STATUS_08_DEPLOYED' },
   ],
   exporter: [

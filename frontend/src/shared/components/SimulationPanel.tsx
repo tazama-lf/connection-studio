@@ -7,7 +7,7 @@ import {
 } from '../services/simulationApi';
 import ReactJson from 'react-json-view';
 import { useAuth } from '@features/auth';
-import { isApprover } from '@utils/roleUtils';
+import { isApprover } from '@utils/common/roleUtils';
 import { XMLParser } from 'fast-xml-parser';
 interface SimulationPanelProps {
   endpointId?: number;

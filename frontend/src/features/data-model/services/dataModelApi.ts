@@ -124,7 +124,7 @@ export interface DataModelApiResponse<T = unknown> {
 }
 
 class DataModelApiService {
-  private baseURL: string;
+  private readonly baseURL: string;
 
   constructor() {
     this.baseURL = API_CONFIG.AUTH_BASE_URL;
@@ -420,7 +420,10 @@ class DataModelApiService {
       console.log('📡 DataModelApi - Response status:', response.status);
       return this.handleResponse<DataModelApiResponse>(response);
     } catch (error) {
-      console.error('❌ DataModelApi - Error creating destination type:', error);
+      console.error(
+        '❌ DataModelApi - Error creating destination type:',
+        error,
+      );
       throw error;
     }
   }
@@ -449,7 +452,10 @@ class DataModelApiService {
       console.log('📡 DataModelApi - Response status:', response.status);
       return this.handleResponse<DataModelApiResponse>(response);
     } catch (error) {
-      console.error('❌ DataModelApi - Error creating destination field:', error);
+      console.error(
+        '❌ DataModelApi - Error creating destination field:',
+        error,
+      );
       throw error;
     }
   }

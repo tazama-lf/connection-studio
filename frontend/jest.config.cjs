@@ -13,7 +13,15 @@ module.exports = {
       tsconfig: {
         jsx: 'react-jsx',
         esModuleInterop: true,
-        allowSyntheticDefaultImports: true
+        allowSyntheticDefaultImports: true,
+        baseUrl: 'src',
+        paths: {
+          '@*': ['*'],
+          '@features/*': ['features/*'],
+          '@shared/*': ['shared/*'],
+          '@utils/*': ['utils/*'],
+          '@common/*': ['common/*'],
+        }
       }
     }],
   },
@@ -24,18 +32,27 @@ module.exports = {
     '!src/vite-env.d.ts',
     '!src/test/**',
     '!src/shared/config/environment.config.ts',
+    '!src/**/types/**',
+    '!src/**/constants/**',
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
+    '^@features/(.*)$': '<rootDir>/src/features/$1',
+    '^@shared/(.*)$': '<rootDir>/src/shared/$1',
+    '^@utils/(.*)$': '<rootDir>/src/utils/$1',
+    '^@common/(.*)$': '<rootDir>/src/common/$1',
     '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
     '\\.(svg|png|jpg|jpeg|gif)$': 'jest-transform-stub'
   },
-  testPathIgnorePatterns: [
-    '<rootDir>/node_modules/',
-    '<rootDir>/dist/'
-  ],
+ testPathIgnorePatterns: [
+  '<rootDir>/node_modules/',
+  '<rootDir>/dist/',
+  '/constants/',
+  '/types/',
+],
+
   coverageThreshold: {
     global: {
       branches: 95,
