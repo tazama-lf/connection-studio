@@ -1676,13 +1676,12 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                   )}
                   <span className="text-sm text-gray-600">
                     {mapping.transformation === 'CONSTANT'
-                      ? `"${mapping.constantValue}"`
+                      ? typeof mapping.constantValue === 'number'
+                        ? mapping.constantValue
+                        : `"${mapping.constantValue}"`
                       : Array.isArray(mapping.source)
                         ? mapping.source.join(' + ')
                         : mapping.source}
-                    {!mapping.transformation &&
-                      mapping?.constantValue &&
-                      `"${mapping.constantValue}"`}
                     <ArrowRightIcon size={16} className="inline mx-2" />
                     {mapping.prefix ? `"${mapping.prefix}" + ` : ''}
                     {Array.isArray(mapping.destination)
