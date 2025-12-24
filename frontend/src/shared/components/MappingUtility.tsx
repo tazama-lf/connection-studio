@@ -992,6 +992,48 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       return;
     }
 
+    // Helper to get destination type
+    const getDestinationType = (fieldPath: string): string | undefined => {
+      const parts = fieldPath.split('.');
+      if (parts.length === 0) return undefined;
+
+      const findType = (
+        nodes: TreeNode[],
+        pathParts: string[],
+        depth: number = 0,
+      ): string | undefined => {
+        if (pathParts.length === 0) return undefined;
+
+        const [first, ...rest] = pathParts;
+        const node = nodes.find(
+          (n) => n.name.toLowerCase() === first.toLowerCase(),
+        );
+
+        if (!node) return undefined;
+        if (rest.length === 0) {
+          return node.type;
+        }
+        if (node.children) return findType(node.children, rest, depth + 1);
+
+        return undefined;
+      };
+
+      const result = findType(destinationTree, parts);
+      return result;
+    };
+
+    // Determine if destination is number type
+    const destPath = selectedTransformation === 'split' 
+      ? selectedDestinations[0] 
+      : selectedDestinations[0];
+    const destType = destPath ? getDestinationType(destPath) : undefined;
+    const isNumberType = destType && (
+      destType === 'number' || 
+      destType === 'integer' || 
+      destType === 'double' || 
+      destType === 'float'
+    );
+
     // Create AddMappingRequest object for API
     const mappingRequest = {
       source:
@@ -1011,6 +1053,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       constantValue:
         selectedTransformation === 'constant' ? selectedSources[0] : undefined,
       prefix: prefix.trim() || undefined,
+      type: isNumberType ? 'number' : undefined,
     };
 
     // Call API to save mapping directly
@@ -1050,6 +1093,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
           transformation: selectedTransformation.toUpperCase(),
           operator: selectedTransformation === 'sum' ? 'SUM' : undefined,
           prefix: prefix.trim() || undefined,
+          type: isNumberType ? 'number' : undefined,
         };
 
         // Update local state only after successful API call
