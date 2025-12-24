@@ -1034,6 +1034,11 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       destType === 'float'
     );
 
+    // Convert constant value to number if needed
+    const constantValue = selectedTransformation === 'constant' 
+      ? (isNumberType ? Number(selectedSources[0]) : selectedSources[0])
+      : undefined;
+
     // Create AddMappingRequest object for API
     const mappingRequest = {
       source:
@@ -1050,8 +1055,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
         selectedTransformation === 'split' || selectedTransformation === 'concatenate'
           ? delimiter || ' '
           : undefined,
-      constantValue:
-        selectedTransformation === 'constant' ? selectedSources[0] : undefined,
+      constantValue: constantValue,
       prefix: prefix.trim() || undefined,
       type: isNumberType ? 'number' : undefined,
     };
@@ -1086,10 +1090,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
             selectedTransformation === 'concatenate'
               ? delimiter || ' '
               : undefined,
-          constantValue:
-            selectedTransformation === 'constant'
-              ? selectedSources[0]
-              : undefined,
+          constantValue: constantValue,
           transformation: selectedTransformation.toUpperCase(),
           operator: selectedTransformation === 'sum' ? 'SUM' : undefined,
           prefix: prefix.trim() || undefined,
