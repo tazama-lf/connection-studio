@@ -1,19 +1,72 @@
 import React, { useState, useEffect } from 'react';
 import { X, Copy } from 'lucide-react';
-import { Button } from '../../../../shared/components/Button';
-import type { CloneJobModalProps } from '../../types';
-import { cronJobApi as cronJobService } from '../../../cron/handlers';
-import { dataEnrichmentApi } from '../../handlers/index';
-import { useToast } from '../../../../shared/providers/ToastProvider';
-import { getJobType, determineSourceType } from '../../utils';
+import { Button } from '../../../shared/components/Button';
+import type { DataEnrichmentJobResponse } from '../types';
+import { dataEnrichmentApi } from '../services/dataEnrichmentApi';
+import { useToast } from '../../../shared/providers/ToastProvider';
+
+
+interface CloneJobModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  job: DataEnrichmentJobResponse | null;
+  onSuccess?: () => void;
+}
+
+// Helper function to determine job type
+const getJobType = (job: DataEnrichmentJobResponse): 'push' | 'pull' => {
+  if (job.type?.toLowerCase() === 'push' || job.type?.toLowerCase() === 'pull') {
+    return job.type.toLowerCase() as 'push' | 'pull';
+  }
+  // Fallback: if job has path but no source_type, it's PUSH; otherwise it's PULL
+  return (job.path && !job.source_type) ? 'push' : 'pull';
+};
+
+// Helper function to determine source type consistently
+const determineSourceType = (job: DataEnrichmentJobResponse): 'HTTP' | 'SFTP' => {
+  // First check if source_type is explicitly set
+  if (job.source_type) {
+    console.log('🔍 Using explicit source_type:', job.source_type);
+    return job.source_type as 'HTTP' | 'SFTP';
+  }
+  
+  // Auto-detect from connection object
+  if (job.connection) {
+    let connectionObj = job.connection;
+    
+    // If connection is a string, try to parse it
+    if (typeof job.connection === 'string') {
+      try {
+        connectionObj = JSON.parse(job.connection);
+        console.log('🔍 Parsed connection string for source type detection:', connectionObj);
+      } catch (e) {
+        console.error('❌ Failed to parse connection string for source type detection:', e);
+        return 'HTTP'; // Default fallback
+      }
+    }
+    
+    // Check parsed or direct object
+    if (connectionObj && typeof connectionObj === 'object') {
+      if ('host' in connectionObj && connectionObj.host) {
+        console.log('🔍 Auto-detected SFTP from connection.host:', connectionObj.host);
+        return 'SFTP';
+      } else if ('url' in connectionObj && connectionObj.url) {
+        console.log('🔍 Auto-detected HTTP from connection.url:', connectionObj.url);
+        return 'HTTP';
+      }
+    }
+  }
+  
+  // Default fallback
+  console.log('🔍 Defaulting to HTTP - no clear indicators');
+  return 'HTTP';
+};
 
 export const CloneJobModal: React.FC<CloneJobModalProps> = ({
   isOpen,
   onClose,
   job,
-  onSuccess,
-  onCreatePullJob,
-  onCreatePushJob,
+  onSuccess
 }) => {
   const [newVersion, setNewVersion] = useState('');
   const [newEndpointName, setNewEndpointName] = useState('');
@@ -56,10 +109,12 @@ export const CloneJobModal: React.FC<CloneJobModalProps> = ({
         // Need to provide required fields for CreatePullJobDto
         // Determine source_type for pull jobs using consistent logic
         const sourceType = determineSourceType(job);
+        console.log('🔍 Final determined source_type for cloning:', sourceType);
 
         // Handle connection data - create default if missing
         let connectionData = job.connection;
         if (!connectionData) {
+          console.log('No connection data found, creating default based on source type...');
           if (sourceType === 'SFTP') {
             connectionData = {
               host: '',
@@ -86,10 +141,11 @@ export const CloneJobModal: React.FC<CloneJobModalProps> = ({
         let scheduleId = job.schedule_id;
         
         if (!scheduleId) {
+          console.log('No schedule_id found on job, attempting to get available schedules...');
           showSuccess('Finding or creating schedule for cloned job...'); // Give user feedback
           try {
             // Try to get available approved schedules
-            const schedules = await cronJobService.getAll();
+            const schedules = await dataEnrichmentApi.getAllSchedules();
             const approvedSchedules = schedules.filter((schedule: any) => 
               schedule.status === 'approved' || schedule.status === 'exported' || schedule.status === 'deployed'
             );
@@ -97,9 +153,11 @@ export const CloneJobModal: React.FC<CloneJobModalProps> = ({
             if (approvedSchedules.length > 0) {
               // Use the first available approved schedule
               scheduleId = approvedSchedules[0].id;
+              console.log('Using first available approved schedule:', scheduleId);
             } else {
               // Create a default schedule for this job
-              const defaultSchedule = await cronJobService.create({
+              console.log('No approved schedules found, creating a default schedule...');
+              const defaultSchedule = await dataEnrichmentApi.createSchedule({
                 name: `Schedule for ${newEndpointName} (Cloned)`,
                 cron: '0 */6 * * *', // Every 6 hours as default
                 iterations: -1, // Infinite iterations
@@ -108,12 +166,14 @@ export const CloneJobModal: React.FC<CloneJobModalProps> = ({
               
               if (defaultSchedule.success) {
                 // Note: We need to get the created schedule ID - this might need adjustment based on API response
-                const createdSchedules = await cronJobService.getAll();
+                const createdSchedules = await dataEnrichmentApi.getAllSchedules();
                 const newSchedule = createdSchedules.find((s: any) => s.name === `Schedule for ${newEndpointName} (Cloned)`);
                 scheduleId = newSchedule?.id;
+                console.log('Created new schedule with ID:', scheduleId);
               }
             }
           } catch (scheduleError) {
+            console.error('Failed to handle schedule:', scheduleError);
             showError('Failed to create or find a schedule for the cloned job. Please try again.');
             setIsCloning(false);
             return;
@@ -138,7 +198,16 @@ export const CloneJobModal: React.FC<CloneJobModalProps> = ({
           ...(job.file && { file: job.file }) // Optional for SFTP jobs
         };
 
-        result = onCreatePullJob ? await onCreatePullJob(pullJobData) : await dataEnrichmentApi.createPullJob(pullJobData);
+        console.log('🔄 Cloning pull job with data:', JSON.stringify(pullJobData, null, 2));
+        console.log('🔄 Original job schedule_id:', job.schedule_id);
+        console.log('🔄 Using schedule_id:', scheduleId);
+        console.log('🔄 Original job source_type:', job.source_type);
+        console.log('🔄 Using source_type:', sourceType);
+        console.log('🔄 Original connection object:', job.connection);
+        console.log('🔄 Using connection data:', connectionData);
+        console.log('🔄 Connection has host:', connectionData && 'host' in connectionData);
+        console.log('🔄 Connection has url:', connectionData && 'url' in connectionData);
+        result = await dataEnrichmentApi.createPullJob(pullJobData);
         
       } else {
         // Clone push job with only version
@@ -152,7 +221,8 @@ export const CloneJobModal: React.FC<CloneJobModalProps> = ({
           mode: job.mode || 'append' as 'append' | 'replace'
         };
 
-        result = onCreatePushJob ? await onCreatePushJob(pushJobData) : await dataEnrichmentApi.createPushJob(pushJobData);
+        console.log('🔄 Cloning push job with data:', pushJobData);
+        result = await dataEnrichmentApi.createPushJob(pushJobData);
       }
       
       // result is DataEnrichmentJobResponse, not a success wrapper
@@ -164,6 +234,7 @@ export const CloneJobModal: React.FC<CloneJobModalProps> = ({
         showError('Failed to clone job - no ID returned');
       }
     } catch (error) {
+      console.error('❌ Clone failed:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to clone job';
       showError(errorMessage);
     } finally {
@@ -185,6 +256,8 @@ export const CloneJobModal: React.FC<CloneJobModalProps> = ({
       minute: '2-digit',
     });
   };
+
+
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -304,6 +377,13 @@ export const CloneJobModal: React.FC<CloneJobModalProps> = ({
                       type="text"
                       value={(() => {
                         const finalSourceType = job.source_type || determineSourceType(job);
+                        console.log('🔍 Display source type determination:', {
+                          jobSourceType: job.source_type,
+                          hasConnection: !!job.connection,
+                          hasHost: job.connection && 'host' in job.connection && !!job.connection.host,
+                          hasUrl: job.connection && 'url' in job.connection && !!job.connection.url,
+                          finalSourceType
+                        });
                         return finalSourceType;
                       })()}
                       readOnly
@@ -419,7 +499,9 @@ export const CloneJobModal: React.FC<CloneJobModalProps> = ({
                         if (typeof job.connection === 'string') {
                           try {
                             connectionObj = JSON.parse(job.connection);
+                            console.log('📋 Parsed connection string:', connectionObj);
                           } catch (e) {
+                            console.error('❌ Failed to parse connection string:', e);
                             return (
                               <div className="bg-red-50 p-3 rounded border border-red-200">
                                 <p className="text-sm text-red-800">

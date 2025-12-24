@@ -29,11 +29,11 @@ import {
   TextInputField,
   URLInputField,
   VersionInputField,
-} from '../../../../shared/components/FormFields.jsx';
-import ValidationError from '../../../../shared/components/ValidationError';
-import { useToast } from '../../../../shared/providers/ToastProvider';
-import { cronJobApi as cronJobService } from '../../../cron/handlers';
-import type { ScheduleResponse } from '../../../cron/types';
+} from '../../../shared/components/FormFields';
+import ValidationError from '../../../shared/components/ValidationError';
+import { useToast } from '../../../shared/providers/ToastProvider';
+import { dataEnrichmentApi } from '../services';
+import type { ScheduleResponse } from '../types';
 import {
   authenticationTypeOptions,
   defaultValues,
@@ -43,8 +43,17 @@ import {
   pullValidationSchema,
   pushValidationSchema,
   sourceTypeOptions,
-} from '../../utils';
-import type { DataEnrichmentEditModalProps } from '../../types';
+} from './validationSchema';
+
+// TYPES
+interface DataEnrichmentEditModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onCloseWithRefresh?: () => void;
+  onSave?: (formData: any) => void;
+  editMode?: boolean;
+  selectedJob?: any;
+}
 
 const getJobType = (job) => {
   if (
@@ -59,6 +68,7 @@ const getJobType = (job) => {
 
 export const DataEnrichmentEditModal: React.FC<
   DataEnrichmentEditModalProps
+  // ----------PROPS
 > = ({
   isOpen,
   onClose,
@@ -66,11 +76,6 @@ export const DataEnrichmentEditModal: React.FC<
   onSave,
   editMode = false,
   selectedJob,
-  onCreatePullJob,
-  onCreatePushJob,
-  onUpdatePullJob,
-  onUpdatePushJob,
-  onUpdateJobStatus,
 }) => {
   // ----------STATES
   const [availableSchedules, setAvailableSchedules] = useState<
@@ -260,11 +265,11 @@ export const DataEnrichmentEditModal: React.FC<
 
       let response;
       if (editMode && selectedJob?.id) {
-        if (configurationType === 'pull' && onUpdatePullJob) {
-          response = await onUpdatePullJob(selectedJob.id, payload);
-        } else if (configurationType === 'push' && onUpdatePushJob) {
-          response = await onUpdatePushJob(selectedJob.id, payload);
-        }
+        response =
+          configurationType === 'pull'
+            ? await dataEnrichmentApi.updatePullJob(selectedJob.id, payload)
+            : await dataEnrichmentApi.updatePushJob(selectedJob.id, payload);
+        // If selectedJob.status is rejected, show Send for Approval button, else close modal and fetch data
         if (selectedJob?.status === 'STATUS_05_REJECTED') {
           setShowSendForApproval(true);
         } else {
@@ -274,11 +279,10 @@ export const DataEnrichmentEditModal: React.FC<
           return;
         }
       } else {
-        if (configurationType === 'pull' && onCreatePullJob) {
-          response = await onCreatePullJob(payload);
-        } else if (configurationType === 'push' && onCreatePushJob) {
-          response = await onCreatePushJob(payload);
-        }
+        response =
+          configurationType === 'pull'
+            ? await dataEnrichmentApi.createPullJob(payload)
+            : await dataEnrichmentApi.createPushJob(payload);
       }
 
       // Use backend message if available, otherwise use default
@@ -327,12 +331,13 @@ export const DataEnrichmentEditModal: React.FC<
   const auth = useAuth();
   const user = auth?.user;
 
+  // Handler for send for approval (calls API)
   const handleSendForApprovalConfirm = async () => {
-    if (selectedJob && selectedJob.id && onUpdateJobStatus) {
+    if (selectedJob && selectedJob.id) {
       const jobType = getJobType(selectedJob) === 'push' ? 'PUSH' : 'PULL';
       setIsCreating(true);
       try {
-        await onUpdateJobStatus(
+        await dataEnrichmentApi.updateJobStatus(
           selectedJob.id,
           'STATUS_03_UNDER_REVIEW',
           jobType,
@@ -364,7 +369,7 @@ export const DataEnrichmentEditModal: React.FC<
       if (!isOpen) return;
 
       try {
-        const schedules = await cronJobService.getAll();
+        const schedules = await dataEnrichmentApi.getAllSchedules();
         const schedule_data = schedules?.data;
 
         // Filter schedules to only show approved, exported, and deployed schedules

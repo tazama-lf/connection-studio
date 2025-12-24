@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router';
 import CustomTable from '@common/Tables/CustomTable';
-import { dataEnrichmentApi } from '../handlers/index';
+import { dataEnrichmentApi } from '../services/dataEnrichmentApi';
 import {
   Box,
   Dialog,
   DialogTitle,
   DialogContent,
+  DialogActions,
   Tooltip,
   IconButton,
   Pagination,

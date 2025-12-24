@@ -2,10 +2,13 @@ import React from 'react';
 import { useNavigate } from 'react-router';
 import { Button } from '@shared';
 import { EyeIcon } from 'lucide-react';
-import { ROUTES } from '../../../../shared/config/routes.config';
-import type { EndpointHistoryButtonProps } from '../../types';
+import { ROUTES } from '../../../shared/config/routes.config';
 
-export const EndpointHistoryButton: React.FC<EndpointHistoryButtonProps> = ({ jobId }) => {
+interface Props {
+  jobId?: string;
+}
+
+export const EndpointHistoryButton: React.FC<Props> = ({ jobId }) => {
   const navigate = useNavigate();
 
   const handleClick = () => {

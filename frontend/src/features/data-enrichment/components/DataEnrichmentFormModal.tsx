@@ -20,6 +20,7 @@ import {
 import React, { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import {
+  AlphaNumericInputField,
   ApiPathInputField,
   DatabaseTableInputField,
   DelimiterInputField,
@@ -33,21 +34,30 @@ import {
   TextInputField,
   URLInputField,
   VersionInputField,
-} from '../../../../shared/components/FormFields.jsx';
+} from '../../../shared/components/FormFields';
 import ValidationError from '../../../shared/components/ValidationError';
-import { cronJobApi as cronJobService } from '../../../cron/handlers';
-import type { ScheduleResponse } from '../../../cron/types';
+import { dataEnrichmentApi } from '../services';
+import type { ScheduleResponse } from '../types';
 import {
   authenticationTypeOptions,
-  defaultFormValues,
+  defaultValues,
   fileFormatOptions,
   getAssociatedScheduleOptions,
   ingestModeOptions,
   pullValidationSchema,
   pushValidationSchema,
   sourceTypeOptions,
-} from '../../utils';
-import type { DataEnrichmentFormModalProps } from '../../types';
+} from './validationSchema';
+
+// TYPES
+interface DataEnrichmentFormModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (formData: any) => void;
+  editMode?: boolean;
+  jobId?: string;
+  jobType?: 'pull' | 'push';
+}
 
 // Helper function for pluralization
 const getIterationText = (count: number) => {
@@ -56,19 +66,8 @@ const getIterationText = (count: number) => {
 
 export const DataEnrichmentFormModal: React.FC<
   DataEnrichmentFormModalProps
-> = ({ 
-  isOpen, 
-  onClose, 
-  onSave, 
-  editMode = false, 
-  jobId, 
-  jobType,
-  onGetJob,
-  onCreatePullJob,
-  onCreatePushJob,
-  onUpdatePullJob,
-  onUpdatePushJob,
-}) => {
+  // ----------PROPS
+> = ({ isOpen, onClose, onSave, editMode = false, jobId, jobType }) => {
   // ----------STATES
   const [currentStep, setCurrentStep] = useState<
     'config' | 'preview' | 'summary'
@@ -122,10 +121,12 @@ export const DataEnrichmentFormModal: React.FC<
     formState: { errors, isValid },
   } = useForm({
     resolver: yupResolver(loadSchema),
-    defaultValues: defaultFormValues,
+    defaultValues,
     mode: 'onChange',
   });
 
+  console.log('errors', errors);
+  // Ref to track if we should scroll to error on next render
   const shouldScrollToErrorRef = useRef(false);
   // Ref for error message container to scroll to
   const errorMessageRef = useRef<HTMLDivElement>(null);
@@ -219,7 +220,10 @@ export const DataEnrichmentFormModal: React.FC<
     }
   };
 
+  // Form submission handler for React Hook Form
   const onSubmit = (data: any) => {
+    console.log('Form Data:', data);
+    // Navigate to review/summary page after successful form validation
     setCurrentStep('summary');
   };
 
@@ -288,7 +292,7 @@ export const DataEnrichmentFormModal: React.FC<
 
       try {
         setSchedulesLoading(true);
-        const schedules = await cronJobService.getAll();
+        const schedules = await dataEnrichmentApi.getAllSchedules();
         const schedule_data = schedules?.data;
 
         // Filter schedules to only show approved, exported, and deployed schedules
@@ -298,8 +302,11 @@ export const DataEnrichmentFormModal: React.FC<
             schedule.status === 'STATUS_06_EXPORTED',
         );
 
+        console.log('filteredSchedules', schedules);
         setAvailableSchedules(filteredSchedules);
       } catch (error) {
+        console.error('Failed to load schedules:', error);
+        // Keep empty array as fallback
         setAvailableSchedules([]);
       } finally {
         setSchedulesLoading(false);
@@ -309,9 +316,10 @@ export const DataEnrichmentFormModal: React.FC<
     loadSchedules();
   }, [isOpen]);
 
+  // Load job data when in edit mode
   useEffect(() => {
     const loadJobData = async () => {
-      if (!isOpen || !editMode || !jobId || !onGetJob) {
+      if (!isOpen || !editMode || !jobId) {
         return;
       }
 
@@ -319,7 +327,7 @@ export const DataEnrichmentFormModal: React.FC<
         setIsLoadingJob(true);
         setCreateError(null);
 
-        const job = await onGetJob(
+        const job = await dataEnrichmentApi.getJob(
           jobId,
           jobType?.toUpperCase() as 'PULL' | 'PUSH',
         );
@@ -350,6 +358,7 @@ export const DataEnrichmentFormModal: React.FC<
 
         setConfigurationType(finalConfigType);
       } catch (error) {
+        console.error('Failed to load job data:', error);
         setCreateError('Failed to load job data. Please try again.');
       } finally {
         setIsLoadingJob(false);
@@ -1280,19 +1289,18 @@ export const DataEnrichmentFormModal: React.FC<
         }
       }
 
+      // Call appropriate API based on mode and configuration type
       let response;
       if (editMode && jobId) {
-        if (configurationType === 'pull' && onUpdatePullJob) {
-          response = await onUpdatePullJob(jobId, payload);
-        } else if (configurationType === 'push' && onUpdatePushJob) {
-          response = await onUpdatePushJob(jobId, payload);
-        }
+        response =
+          configurationType === 'pull'
+            ? await dataEnrichmentApi.updatePullJob(jobId, payload)
+            : await dataEnrichmentApi.updatePushJob(jobId, payload);
       } else {
-        if (configurationType === 'pull' && onCreatePullJob) {
-          response = await onCreatePullJob(payload);
-        } else if (configurationType === 'push' && onCreatePushJob) {
-          response = await onCreatePushJob(payload);
-        }
+        response =
+          configurationType === 'pull'
+            ? await dataEnrichmentApi.createPullJob(payload)
+            : await dataEnrichmentApi.createPushJob(payload);
       }
 
       // Use backend message if available, otherwise use default
@@ -1309,6 +1317,9 @@ export const DataEnrichmentFormModal: React.FC<
         onClose();
       }, 200);
     } catch (error) {
+      console.error('=== CREATE ENDPOINT ERROR ===', error);
+
+      // Extract backend error message directly from Error object or response
       let errorMessage = 'Failed to create endpoint';
 
       if (error instanceof Error) {
@@ -1660,12 +1671,12 @@ export const DataEnrichmentFormModal: React.FC<
                           }}
                           onClick={() => {
                             setShowConfigForm(false);
-                            reset(defaultFormValues);
+                            reset(defaultValues);
                             setCreateError(null);
                             setCreateSuccess(null);
                           }}
                           startIcon={<ArrowLeft size={16} />}
-                        ></Button>
+                        >
                           Back
                         </Button>
 

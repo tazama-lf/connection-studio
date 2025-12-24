@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import React, { useState } from 'react';
 import { Button } from '../../../shared/components/Button';
+import { useToast } from '../../../shared/providers/ToastProvider';
 import { getStatusLabel } from '../../../shared/utils/statusColors';
 import {
   isApprover,
@@ -30,10 +31,30 @@ import {
   isPublisher,
 } from '../../../utils/common/roleUtils';
 import { useAuth } from '../../auth/contexts/AuthContext';
-import type { DataEnrichmentJobResponse, JobListProps } from '../../types';
+import { dataEnrichmentApi } from '../services';
+import type { DataEnrichmentJobResponse } from '../types';
+
+interface JobListProps {
+  jobs: DataEnrichmentJobResponse[];
+  isLoading?: boolean;
+  onViewLogs?: (jobId: string) => void;
+  onEdit?: (job: DataEnrichmentJobResponse) => void;
+  onClone?: (job: DataEnrichmentJobResponse) => void;
+  onRefresh?: () => void;
+  page?: number;
+  setPage?: (page: number) => void;
+  totalPages?: number;
+  totalRecords?: number;
+  itemsPerPage?: number;
+  searchingFilters?: any;
+  setSearchingFilters?: any;
+  error?: string | null;
+  loading?: boolean;
+}
 
 export const JobList: React.FC<JobListProps> = (props) => {
   const [openLoader, setOpenLoader] = useState(false);
+  // State for Pause/Resume confirmation dialogs (must be inside component)
   const [showPauseConfirmDialog, setShowPauseConfirmDialog] = useState<{
     open: boolean;
     job: DataEnrichmentJobResponse | null;
@@ -42,6 +63,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
     open: boolean;
     job: DataEnrichmentJobResponse | null;
   }>({ open: false, job: null });
+  // State for Activate/Deactivate confirmation dialogs (must be inside component)
   const [showActivateConfirmDialog, setShowActivateConfirmDialog] = useState<{
     open: boolean;
     job: DataEnrichmentJobResponse | null;
@@ -51,7 +73,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
       open: false,
       job: null,
     });
-
+  // Destructure after logging
   const {
     jobs,
     isLoading = false,
@@ -67,9 +89,6 @@ export const JobList: React.FC<JobListProps> = (props) => {
     setSearchingFilters,
     error,
     loading,
-    onResumeJob,
-    onUpdateStatus,
-    onTogglePublishingStatus,
   } = props;
   const { user } = useAuth();
   const userIsEditor = user?.claims ? isEditor(user.claims) : false;
@@ -81,6 +100,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
     setOpenLoader(false);
   };
 
+  // Determine user role for status filter
   const userRole = userIsPublisher
     ? 'publisher'
     : userIsExporter
@@ -92,12 +112,17 @@ export const JobList: React.FC<JobListProps> = (props) => {
   const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
   const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
   const [typeDropdownOpen, setTypeDropdownOpen] = useState(false);
+  const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
+
+  // Toast hook
+  const { showSuccess, showError } = useToast();
 
   // Close dropdowns when clicking outside
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
 
+      // Don't close if clicking on dropdown buttons or dropdown content
       if (
         target.closest('.filter-dropdown') ||
         target.closest('.dropdown-menu') ||
@@ -117,7 +142,96 @@ export const JobList: React.FC<JobListProps> = (props) => {
     }
   }, [statusDropdownOpen, dropdownOpen]);
 
+  const handleResumeJob = async (job: DataEnrichmentJobResponse) => {
+    try {
+      setUpdatingStatus(job.id);
+      await dataEnrichmentApi.updateJobStatus(
+        job.id,
+        'STATUS_01_IN_PROGRESS',
+        job.type?.toUpperCase() as 'PULL' | 'PUSH',
+      );
+      showSuccess(`Job ${job.endpoint_name || job.id} resumed successfully`);
+      if (props.onRefresh) {
+        props.onRefresh();
+      }
+    } catch (error) {
+      console.error('Failed to resume job:', error);
+      showError('Failed to resume job');
+    } finally {
+      setUpdatingStatus(null);
+      setDropdownOpen(null);
+    }
+  };
+
+  const handleUpdateJobStatus = async (
+    job: DataEnrichmentJobResponse,
+    status: string,
+  ) => {
+    try {
+      setUpdatingStatus(job.id);
+      await dataEnrichmentApi.updateStatus(
+        job.id,
+        status,
+        job.type?.toUpperCase() as 'PULL' | 'PUSH',
+      );
+      showSuccess(
+        `Job status updated to ${getStatusLabel(status)} successfully`,
+      );
+      if (props.onRefresh) {
+        props.onRefresh();
+      }
+    } catch (error) {
+      console.error('Failed to update job status:', error);
+      showError('Failed to update job status');
+    } finally {
+      setUpdatingStatus(null);
+      setDropdownOpen(null);
+    }
+  };
+
+  const handleTogglePublishingStatus = async (
+    job: DataEnrichmentJobResponse,
+    newStatus: 'active' | 'in-active',
+  ) => {
+    setOpenLoader(true);
+    setShowActivateConfirmDialog({
+      open: false,
+      job: null,
+    });
+    setShowDeactivateConfirmDialog({
+      open: false,
+      job: null,
+    });
+
+    try {
+      const data = await dataEnrichmentApi.updatePublishingStatus(
+        job.id,
+        newStatus,
+        job.type?.toUpperCase() as 'PULL' | 'PUSH',
+      );
+
+      if (data?.success) {
+        const statusLabel =
+          newStatus === 'active' ? 'activated' : 'deactivated';
+        showSuccess(
+          `Job ${job.endpoint_name || job.id} has been ${statusLabel} successfully`,
+        );
+        // Refresh the job list
+        if (props.onRefresh) {
+          props.onRefresh();
+        }
+      }
+    } catch (error) {
+      console.error('Error toggling job publishing status:', error);
+      showError('Failed to update publishing status. Please try again.');
+    } finally {
+      setDropdownOpen(null);
+      setOpenLoader(false);
+    }
+  };
+
   if (isLoading) {
+    console.log('🔄 Rendering LOADING state');
     return (
       <div className="flex justify-center items-center py-8">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -125,6 +239,76 @@ export const JobList: React.FC<JobListProps> = (props) => {
       </div>
     );
   }
+
+  // const getStatusText = (status: string) => {
+  //   const normalizedStatus = status.toLowerCase();
+
+  //   // Handle STATUS_XX_NAME format from database
+  //   if (normalizedStatus.startsWith('status_')) {
+  //     // Extract the name part after the number (e.g., STATUS_03_UNDER_REVIEW -> UNDER_REVIEW)
+  //     const parts = normalizedStatus.split('_');
+  //     if (parts.length >= 3) {
+  //       const statusName = parts.slice(2).join('_'); // Get everything after STATUS_XX_
+  //       switch (statusName) {
+  //         case 'in_progress':
+  //           return 'IN-PROGRESS';
+  //         case 'under_review':
+  //           return 'UNDER REVIEW';
+  //         case 'approved':
+  //           return 'APPROVED';
+  //         case 'rejected':
+  //           return 'REJECTED';
+  //         case 'changes_requested':
+  //           return 'CHANGES REQUESTED';
+  //         case 'exported':
+  //           return 'EXPORTED';
+  //         case 'ready_for_deployment':
+  //           return 'READY FOR DEPLOYMENT';
+  //         case 'deployed':
+  //           return 'DEPLOYED';
+  //         case 'suspended':
+  //           return 'SUSPENDED';
+  //         default:
+  //           return statusName.toUpperCase().replace(/_/g, ' ');
+  //       }
+  //     }
+  //   }
+
+  //   // Handle legacy status formats
+  //   switch (normalizedStatus) {
+  //     case 'active':
+  //       return 'READY FOR APPROVAL';
+  //     case 'draft':
+  //     case 'in-progress':
+  //     case 'in_progress':
+  //       return 'IN-PROGRESS';
+  //     case 'suspended':
+  //       return 'SUSPENDED';
+  //     case 'status_01_in_progress':
+  //       return 'IN-PROGRESS';
+  //     case 'cloned':
+  //       return 'CLONED';
+  //     case 'approved':
+  //       return 'APPROVED';
+  //     case 'under review':
+  //     case 'under_review':
+  //       return 'UNDER REVIEW';
+  //     case 'deployed':
+  //       return 'DEPLOYED';
+  //     case 'rejected':
+  //       return 'REJECTED';
+  //     case 'changes_requested':
+  //     case 'changes requested':
+  //       return 'CHANGES REQUESTED';
+  //     case 'exported':
+  //       return 'EXPORTED';
+  //     case 'ready_for_deployment':
+  //     case 'ready for deployment':
+  //       return 'READY FOR DEPLOYMENT';
+  //     default:
+  //       return status.toUpperCase().replace(/_/g, ' ');
+  //   }
+  // };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -608,8 +792,8 @@ export const JobList: React.FC<JobListProps> = (props) => {
                 </Button>
                 <Button
                   onClick={async () => {
-                    if (showPauseConfirmDialog.job && onUpdateStatus) {
-                      await onUpdateStatus(
+                    if (showPauseConfirmDialog.job) {
+                      await handleUpdateJobStatus(
                         showPauseConfirmDialog.job,
                         'STATUS_02_ON_HOLD',
                       );
@@ -716,8 +900,11 @@ export const JobList: React.FC<JobListProps> = (props) => {
                 </Button>
                 <Button
                   onClick={async () => {
-                    if (showResumeConfirmDialog.job && onResumeJob) {
-                      await onResumeJob(showResumeConfirmDialog.job);
+                    if (showResumeConfirmDialog.job) {
+                      await handleUpdateJobStatus(
+                        showResumeConfirmDialog.job,
+                        'STATUS_01_IN_PROGRESS',
+                      );
                     }
                     setShowResumeConfirmDialog({ open: false, job: null });
                   }}
@@ -850,8 +1037,8 @@ export const JobList: React.FC<JobListProps> = (props) => {
                 </Button>
                 <Button
                   onClick={async () => {
-                    if (showActivateConfirmDialog.job && onTogglePublishingStatus) {
-                      await onTogglePublishingStatus(
+                    if (showActivateConfirmDialog.job) {
+                      await handleTogglePublishingStatus(
                         showActivateConfirmDialog.job,
                         'active',
                       );
@@ -960,8 +1147,8 @@ export const JobList: React.FC<JobListProps> = (props) => {
                 </Button>
                 <Button
                   onClick={async () => {
-                    if (showDeactivateConfirmDialog.job && onTogglePublishingStatus) {
-                      await onTogglePublishingStatus(
+                    if (showDeactivateConfirmDialog.job) {
+                      await handleTogglePublishingStatus(
                         showDeactivateConfirmDialog.job,
                         'in-active',
                       );

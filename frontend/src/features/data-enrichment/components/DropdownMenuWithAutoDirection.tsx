@@ -1,5 +1,9 @@
 import React, { useRef, useEffect, useState } from 'react';
-import type { DropdownMenuWithAutoDirectionProps } from '../../types';
+
+interface DropdownMenuWithAutoDirectionProps {
+  children: React.ReactNode;
+  forceDirection?: 'top' | 'bottom' | 'auto';
+}
 
 export const DropdownMenuWithAutoDirection: React.FC<DropdownMenuWithAutoDirectionProps> = ({ 
   children, 

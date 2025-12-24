@@ -1,11 +1,13 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Button } from '../../../shared/components/Button';
 import { ChevronLeft, Plus, Database } from 'lucide-react';
 
+// New job management components
 import JobList from '../components/JobList';
 import JobDetailsModal from '../components/JobDetailsModal';
 import { DataEnrichmentFormModal } from '../components/DataEnrichmentFormModal';
-import { dataEnrichmentApi } from '../handlers/index';
+// CloneJobModal removed - now using JobDetailsModal in clone mode
+import { dataEnrichmentApi } from '../services/dataEnrichmentApi';
 import type {
   DataEnrichmentJobResponse,
   JobStatus,
@@ -31,99 +33,50 @@ const DataEnrichmentModule: React.FC = () => {
   const { showSuccess, showError } = useToast();
   const { user } = useAuth();
 
-  const [uiState, setUiState] = useState({
-    showJobForm: false,
-    showJobDetails: false,
-    jobDetailsEditMode: false,
-    showCloneModal: false,
-  });
+  // User role detection
+  const userIsEditor = user?.claims ? isEditor(user.claims) : false;
+  const userIsApprover = user?.claims ? isApprover(user.claims) : false;
+  const userIsExporter = user?.claims ? isExporter(user.claims) : false;
+  const userIsPublisher = user?.claims ? isPublisher(user.claims) : false;
 
-  const [jobState, setJobState] = useState<{
-    selectedJob: DataEnrichmentJobResponse | null;
-    jobToClone: DataEnrichmentJobResponse | null;
-    editJob: DataEnrichmentJobResponse | null;
-  }>({
-    selectedJob: null,
-    jobToClone: null,
-    editJob: null,
-  });
+  const userRole = getPrimaryRole(user?.claims as string[]);
 
-  const [paginationState, setPaginationState] = useState({
-    page: 1,
-    totalPages: 0,
-    totalRecords: 0,
-    currentPage: 1,
-  });
-
-  const [filterState, setFilterState] = useState<{
-    statusFilter: JobStatus | 'ALL';
-    typeFilter: 'push' | 'pull' | 'ALL';
-    searchQuery: string;
-    searchingFilters: Record<string, any>;
-  }>({
-    statusFilter: 'ALL',
-    typeFilter: 'ALL',
-    searchQuery: '',
-    searchingFilters: {},
-  });
-
-  const [loadingState, setLoadingState] = useState({
-    jobsLoading: false,
-    jobDetailsLoading: false,
-    loading: true,
-  });
-
-  const [dataState, setDataState] = useState<{
-    jobs: DataEnrichmentJobResponse[];
-    error: string | null;
-  }>({
-    jobs: [],
-    error: null,
-  });
-
+  // Job management state
+  const [jobs, setJobs] = useState<DataEnrichmentJobResponse[]>([]);
+  const [jobsLoading, setJobsLoading] = useState(false);
+  const [showJobForm, setShowJobForm] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(UI_CONFIG.pagination.defaultPageSize);
+  const [statusFilter, setStatusFilter] = useState<JobStatus | 'ALL'>('ALL');
+  const [typeFilter, setTypeFilter] = useState<'push' | 'pull' | 'ALL'>('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
 
-  const userRoles = useMemo(() => ({
-    isEditor: user?.claims ? isEditor(user.claims) : false,
-    isApprover: user?.claims ? isApprover(user.claims) : false,
-    isExporter: user?.claims ? isExporter(user.claims) : false,
-    isPublisher: user?.claims ? isPublisher(user.claims) : false,
-    primaryRole: getPrimaryRole(user?.claims as string[]),
-  }), [user?.claims]);
+  // Job details modal state
+  const [showJobDetails, setShowJobDetails] = useState(false);
+  const [selectedJob, setSelectedJob] =
+    useState<DataEnrichmentJobResponse | null>(null);
+  const [jobDetailsLoading, setJobDetailsLoading] = useState(false);
+  const [jobDetailsEditMode, setJobDetailsEditMode] = useState(false);
 
-  const { isEditor: userIsEditor, isApprover: userIsApprover, primaryRole: userRole } = userRoles;
+  // Edit job state - keep for backwards compatibility but use JobDetailsModal instead
+  const [editJob, setEditJob] = useState<DataEnrichmentJobResponse | null>(
+    null,
+  );
 
-  const fetchDeJobs = useCallback(async (pageNumber: number = 1): Promise<void> => {
-    try {
-      setLoadingState(prev => ({ ...prev, loading: true }));
-      setDataState(prev => ({ ...prev, error: null }));
+  // Clone job state - now using JobDetailsModal in clone mode
+  const [showCloneModal, setShowCloneModal] = useState(false);
+  const [jobToClone, setJobToClone] =
+    useState<DataEnrichmentJobResponse | null>(null);
 
-      const limit: number = itemsPerPage;
-      const offset: number = pageNumber - 1;
+  const [page, setPage] = useState<number>(1);
+  const [totalPages, setTotalPages] = useState<number>(0);
+  const [totalRecords, setTotalRecords] = useState<number>(0);
+  const [searchingFilters, setSearchingFilters] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-      const params = { limit, offset, userRole: userRole as string };
-
-      const response = await dataEnrichmentApi.getAllJobs(
-        params,
-        filterState.searchingFilters,
-      );
-
-      setDataState(prev => ({ ...prev, jobs: response.jobs }));
-      setPaginationState(prev => ({
-        ...prev,
-        totalPages: response.pages,
-        totalRecords: response.total,
-      }));
-    } catch (err: unknown) {
-      const errorMessage =
-        err instanceof Error ? err.message : 'Failed to fetch configurations';
-      setDataState(prev => ({ ...prev, error: errorMessage }));
-    } finally {
-      setLoadingState(prev => ({ ...prev, loading: false }));
-    }
-  }, [itemsPerPage, userRole, filterState.searchingFilters]);
-
-  const fetchDeJobsWithScrollPreservation = useCallback((pageNumber: number = 1) => {
+  // Helper function to preserve scroll position during refresh
+  const fetchDeJobsWithScrollPreservation = (pageNumber: number = 1) => {
     const scrollPosition = window.scrollY;
     fetchDeJobs(pageNumber)
       .then(() => {
@@ -149,13 +102,40 @@ const DataEnrichmentModule: React.FC = () => {
           }
         }, 100);
       });
-  }, [fetchDeJobs]);
+  };
+
+  const fetchDeJobs = async (pageNumber: number = 1): Promise<void> => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const limit: number = itemsPerPage;
+      const offset: number = pageNumber - 1;
+
+      const params = { limit, offset, userRole: userRole as string };
+
+      const response = await dataEnrichmentApi.getAllJobs(
+        params,
+        searchingFilters,
+      );
+
+      setJobs(response.jobs);
+      setTotalPages(response.pages);
+      setTotalRecords(response.total);
+    } catch (err: unknown) {
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to fetch configurations';
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    fetchDeJobs(paginationState.page);
-  }, [paginationState.page, filterState.searchingFilters, fetchDeJobs]);
+    fetchDeJobs(page);
+  }, [page, searchingFilters]);
 
-  const handleCreateJob = useCallback(async (jobResponse: any) => {
+  const handleCreateJob = async (jobResponse: any) => {
     try {
       console.log('Job created successfully:', jobResponse);
       // The DataEnrichmentFormModal already shows its own success message
@@ -171,51 +151,57 @@ const DataEnrichmentModule: React.FC = () => {
       console.error('Failed to handle job creation:', error);
       showError('Failed to handle job creation');
     }
-  }, [fetchDeJobsWithScrollPreservation, showSuccess, showError]);
+  };
 
   const handleViewJobDetails = useCallback(
     async (jobId: string) => {
       try {
-        setLoadingState(prev => ({ ...prev, jobDetailsLoading: true }));
-        setUiState(prev => ({ ...prev, showJobDetails: true }));
+        setJobDetailsLoading(true);
+        setShowJobDetails(true);
 
         // Find the job in the current list to determine its type
-        const job = dataState.jobs.find((j) => j.id === jobId);
+        const job = jobs.find((j) => j.id === jobId);
         // Backend expects lowercase 'push' or 'pull' matching ConfigType enum
         const jobType = job?.type?.toUpperCase() as 'PULL' | 'PUSH' | undefined;
 
         // Fetch job details from the API
         const jobDetails = await dataEnrichmentApi.getJob(jobId, jobType);
         console.log('jobDetails', jobDetails);
-        setJobState(prev => ({ ...prev, selectedJob: jobDetails }));
+        setSelectedJob(jobDetails);
       } catch (error) {
         console.error('Failed to load job details:', error);
         showError('Failed to load job details');
       } finally {
-        setLoadingState(prev => ({ ...prev, jobDetailsLoading: false }));
+        setJobDetailsLoading(false);
       }
     },
-    [dataState.jobs, showError],
-  );
+    [jobs, showError],
+  ); // Removed userIsApprover and userIsEditor from deps - they're just for logging
 
-  const handleSaveJobChanges = useCallback(async (
+  const handleSaveJobChanges = async (
     updatedJob: Partial<DataEnrichmentJobResponse>,
   ) => {
-    if (!jobState.selectedJob) return;
+    if (!selectedJob) return;
 
     try {
-      const jobType = (updatedJob.type || jobState.selectedJob.type)?.toLowerCase() as
+      console.log('=== SAVE JOB CHANGES DEBUG ===');
+      console.log('Original job:', selectedJob);
+      console.log('Updated job data:', updatedJob);
+
+      // Determine job type for API call (use updated type if changed, otherwise original)
+      const jobType = (updatedJob.type || selectedJob.type)?.toLowerCase() as
         | 'pull'
         | 'push';
       console.log('Final job type for API:', jobType);
 
+      // Check if job type changed
       const typeChanged =
-        updatedJob.type && updatedJob.type !== jobState.selectedJob.type;
+        updatedJob.type && updatedJob.type !== selectedJob.type;
       console.log(
         'Job type changed?',
         typeChanged,
         'from',
-        jobState.selectedJob.type,
+        selectedJob.type,
         'to',
         updatedJob.type,
       );
@@ -224,50 +210,65 @@ const DataEnrichmentModule: React.FC = () => {
         console.warn(
           '⚠️ Job type change detected. This may require creating a new job instead of updating.',
         );
+        // For now, we'll prevent type changes since backend might not support it
         showError(
           'Changing job type is not supported. Please create a new job instead.',
         );
         return;
       }
 
+      // Use the create API methods to create new jobs (editing creates new versions)
       let response;
       if (jobType === 'push') {
-        const originalTableName = jobState.selectedJob.table_name || '';
+        // Generate a unique table name for the new version by appending timestamp
+        const originalTableName = selectedJob.table_name || '';
         const versionSuffix = `_v${Date.now()}`;
         const newTableName = updatedJob.table_name
-          ? updatedJob.table_name 
-          : `${originalTableName}${versionSuffix}`;
+          ? updatedJob.table_name // If user changed it, use their value
+          : `${originalTableName}${versionSuffix}`; // Otherwise, create versioned name
 
+        // Build push job data - explicitly only include fields needed for PUSH jobs
         const pushData: CreatePushJobDto = {
           endpoint_name:
-            updatedJob.endpoint_name || jobState.selectedJob.endpoint_name || '',
-          description: updatedJob.description || jobState.selectedJob.description,
-          version: updatedJob.version || jobState.selectedJob.version || 'v1',
-          path: updatedJob.path || jobState.selectedJob.path || '',
+            updatedJob.endpoint_name || selectedJob.endpoint_name || '',
+          description: updatedJob.description || selectedJob.description,
+          version: updatedJob.version || selectedJob.version || 'v1',
+          path: updatedJob.path || selectedJob.path || '',
           table_name: newTableName,
-          mode: (updatedJob.mode || jobState.selectedJob.mode || 'append') as
+          mode: (updatedJob.mode || selectedJob.mode || 'append') as
             | 'append'
             | 'replace',
         };
 
+        console.log(
+          'Push data to send (creating new job with versioned table):',
+          pushData,
+        );
+        console.log('Excluded fields from updatedJob:', {
+          schedule_id: updatedJob.schedule_id,
+          source_type: updatedJob.source_type,
+          connection: updatedJob.connection,
+        });
         response = await dataEnrichmentApi.createPushJob(pushData);
       } else {
+        // Determine source type - ensure it's uppercase to match backend enum
         const sourceType = (
           updatedJob.source_type ||
-          jobState.selectedJob.source_type ||
+          selectedJob.source_type ||
           'HTTP'
         ).toUpperCase() as 'HTTP' | 'SFTP';
 
+        // Build connection object based on source type
         let connection;
         if (sourceType === 'HTTP') {
           connection = {
             url:
               (updatedJob.connection as any)?.url ||
-              (jobState.selectedJob.connection as any)?.url ||
+              (selectedJob.connection as any)?.url ||
               '',
             headers:
               (updatedJob.connection as any)?.headers ||
-              (jobState.selectedJob.connection as any)?.headers ||
+              (selectedJob.connection as any)?.headers ||
               {},
           };
         } else {
@@ -275,30 +276,31 @@ const DataEnrichmentModule: React.FC = () => {
           connection = {
             host:
               (updatedJob.connection as any)?.host ||
-              (jobState.selectedJob.connection as any)?.host ||
+              (selectedJob.connection as any)?.host ||
               '',
             port:
               (updatedJob.connection as any)?.port ||
-              (jobState.selectedJob.connection as any)?.port ||
+              (selectedJob.connection as any)?.port ||
               22,
             auth_type:
               (updatedJob.connection as any)?.auth_type ||
-              (jobState.selectedJob.connection as any)?.auth_type ||
+              (selectedJob.connection as any)?.auth_type ||
               'USERNAME_PASSWORD',
             user_name:
               (updatedJob.connection as any)?.user_name ||
-              (jobState.selectedJob.connection as any)?.user_name ||
+              (selectedJob.connection as any)?.user_name ||
               '',
             password:
               (updatedJob.connection as any)?.password ||
-              (jobState.selectedJob.connection as any)?.password,
+              (selectedJob.connection as any)?.password,
             private_key:
               (updatedJob.connection as any)?.private_key ||
-              (jobState.selectedJob.connection as any)?.private_key,
+              (selectedJob.connection as any)?.private_key,
           };
         }
 
-        const originalTableName = jobState.selectedJob.table_name || '';
+        // Generate a unique table name for the new version by appending timestamp
+        const originalTableName = selectedJob.table_name || '';
         const versionSuffix = `_v${Date.now()}`;
         const newTableName = updatedJob.table_name
           ? updatedJob.table_name // If user changed it, use their value
@@ -307,20 +309,20 @@ const DataEnrichmentModule: React.FC = () => {
         const pullData: CreatePullJobDto = {
           // id: selectedJob.id, // Remove ID - we're creating new jobs, not updating
           endpoint_name:
-            updatedJob.endpoint_name || jobState.selectedJob.endpoint_name || '',
-          description: updatedJob.description || jobState.selectedJob.description || '',
-          version: updatedJob.version || jobState.selectedJob.version || 'v1',
+            updatedJob.endpoint_name || selectedJob.endpoint_name || '',
+          description: updatedJob.description || selectedJob.description || '',
+          version: updatedJob.version || selectedJob.version || 'v1',
           source_type: sourceType,
           table_name: newTableName,
-          mode: (updatedJob.mode || jobState.selectedJob.mode || 'append') as
+          mode: (updatedJob.mode || selectedJob.mode || 'append') as
             | 'append'
             | 'replace',
           connection: connection,
-          schedule_id: updatedJob.schedule_id || jobState.selectedJob.schedule_id || '',
+          schedule_id: updatedJob.schedule_id || selectedJob.schedule_id || '',
           // Only include file for SFTP connections
           ...(sourceType === 'SFTP' && {
             file: updatedJob.file ||
-              jobState.selectedJob.file || {
+              selectedJob.file || {
                 path: '',
                 file_type: 'CSV' as const,
                 delimiter: ',',
@@ -365,9 +367,9 @@ const DataEnrichmentModule: React.FC = () => {
 
       throw error; // Re-throw to let modal handle the error state
     }
-  }, [jobState.selectedJob, showError, showSuccess, fetchDeJobsWithScrollPreservation]);
+  };
 
-  const handleSendForApproval = useCallback(async (
+  const handleSendForApproval = async (
     jobId: string,
     jobType: 'PULL' | 'PUSH',
   ) => {
@@ -389,16 +391,13 @@ const DataEnrichmentModule: React.FC = () => {
       console.error('Failed to send job for approval:', error);
       showError('Failed to send job for approval. Please try again.');
     }
-  }, [showSuccess, showError, fetchDeJobsWithScrollPreservation]);
+  };
 
-  const handleCloseJobDetails = useCallback(() => {
-    setUiState(prev => ({
-      ...prev,
-      showJobDetails: false,
-      jobDetailsEditMode: false,
-    }));
-    setJobState(prev => ({ ...prev, selectedJob: null }));
-  }, []);
+  const handleCloseJobDetails = () => {
+    setShowJobDetails(false);
+    setSelectedJob(null);
+    setJobDetailsEditMode(false);
+  };
 
   const handleEditJob = useCallback(
     async (job: DataEnrichmentJobResponse) => {
@@ -425,12 +424,9 @@ const DataEnrichmentModule: React.FC = () => {
       }
 
       try {
-        setLoadingState(prev => ({ ...prev, jobDetailsLoading: true }));
-        setUiState(prev => ({
-          ...prev,
-          jobDetailsEditMode: true,
-          showJobDetails: true,
-        }));
+        setJobDetailsLoading(true);
+        setJobDetailsEditMode(true);
+        setShowJobDetails(true);
 
         // Find the job in the current list to determine its type
         const jobType = job?.type?.toUpperCase() as 'PULL' | 'PUSH' | undefined;
@@ -441,23 +437,23 @@ const DataEnrichmentModule: React.FC = () => {
         console.log('Calling dataEnrichmentApi.getJob for edit...');
         const jobDetails = await dataEnrichmentApi.getJob(job.id, jobType);
         console.log('Job details received for edit:', jobDetails);
-        setJobState(prev => ({ ...prev, selectedJob: jobDetails }));
+        setSelectedJob(jobDetails);
         console.log('Modal should now open in edit mode');
       } catch (error) {
         console.error('Failed to load job details for edit:', error);
         const userFriendlyMessage = getUserFriendlyErrorMessage(error, 'load');
         showError(userFriendlyMessage);
       } finally {
-        setLoadingState(prev => ({ ...prev, jobDetailsLoading: false }));
+        setJobDetailsLoading(false);
       }
     },
     [showError],
   );
 
-  const handleCloseEditJob = useCallback(() => {
-    setJobState(prev => ({ ...prev, editJob: null }));
-    setUiState(prev => ({ ...prev, showJobForm: false }));
-  }, []);
+  const handleCloseEditJob = () => {
+    setEditJob(null);
+    setShowJobForm(false);
+  };
 
   return (
     <div className="min-h-screen bg-white">
@@ -485,7 +481,7 @@ const DataEnrichmentModule: React.FC = () => {
             <Button
               variant="primary"
               icon={<Plus size={16} />}
-              onClick={() => setUiState(prev => ({ ...prev, showJobForm: true }))}
+              onClick={() => setShowJobForm(true)}
             >
               Create New Enrichment Job
             </Button>
@@ -535,8 +531,8 @@ const DataEnrichmentModule: React.FC = () => {
                   variant="secondary"
                   size="sm"
                   onClick={() => {
-                    setFilterState(prev => ({ ...prev, statusFilter: 'STATUS_01_IN_PROGRESS' }));
-                    setPaginationState(prev => ({ ...prev, page: 1 }));
+                    setStatusFilter('STATUS_01_IN_PROGRESS');
+                    setCurrentPage(1);
                   }}
                 >
                   View Pending Jobs
@@ -547,43 +543,43 @@ const DataEnrichmentModule: React.FC = () => {
         )}
 
         <JobList
-          jobs={dataState.jobs}
-          isLoading={loadingState.jobsLoading}
+          jobs={jobs}
+          isLoading={jobsLoading}
           onViewLogs={handleViewJobDetails}
           onEdit={handleEditJob}
-          onRefresh={() => fetchDeJobsWithScrollPreservation(paginationState.page)}
-          page={paginationState.page}
-          setPage={(page) => setPaginationState(prev => ({ ...prev, page }))}
+          onRefresh={() => fetchDeJobsWithScrollPreservation(page)}
+          page={page}
+          setPage={setPage}
           itemsPerPage={itemsPerPage}
-          totalPages={paginationState.totalPages}
-          totalRecords={paginationState.totalRecords}
-          searchingFilters={filterState.searchingFilters}
-          setSearchingFilters={(filters: Record<string, any>) => setFilterState(prev => ({ ...prev, searchingFilters: filters }))}
-          error={dataState.error}
-          loading={loadingState.loading}
+          totalPages={totalPages}
+          totalRecords={totalRecords}
+          searchingFilters={searchingFilters}
+          setSearchingFilters={setSearchingFilters}
+          error={error}
+          loading={loading}
         />
 
         {/* Modal for creating new jobs */}
-        {uiState.showJobForm && (
+        {showJobForm && (
           <DataEnrichmentFormModal
-            isOpen={uiState.showJobForm}
-            onClose={jobState.editJob ? handleCloseEditJob : () => setUiState(prev => ({ ...prev, showJobForm: false }))}
+            isOpen={showJobForm}
+            onClose={editJob ? handleCloseEditJob : () => setShowJobForm(false)}
             onSave={handleCreateJob}
-            editMode={!!jobState.editJob}
-            jobId={jobState.editJob?.id}
+            editMode={!!editJob}
+            jobId={editJob?.id}
             jobType={
-              jobState.editJob?.type?.toLowerCase() as 'pull' | 'push' | undefined
+              editJob?.type?.toLowerCase() as 'pull' | 'push' | undefined
             }
           />
         )}
 
         {/* Modal for viewing job details */}
-        {uiState.showJobDetails && !uiState.jobDetailsEditMode && (
+        {showJobDetails && !jobDetailsEditMode && (
           <JobDetailsModal
-            isOpen={uiState.showJobDetails && !uiState.jobDetailsEditMode}
+            isOpen={showJobDetails && !jobDetailsEditMode}
             onClose={handleCloseJobDetails}
-            job={jobState.selectedJob}
-            isLoading={loadingState.jobDetailsLoading}
+            job={selectedJob}
+            isLoading={jobDetailsLoading}
             editMode={false}
             onSave={handleSaveJobChanges}
             onSendForApproval={handleSendForApproval}
@@ -591,17 +587,17 @@ const DataEnrichmentModule: React.FC = () => {
         )}
 
         {/* MODAL FOR EDITING JOB DETAILS */}
-        {uiState.jobDetailsEditMode && (
+        {jobDetailsEditMode && (
           <DataEnrichmentEditModal
-            isOpen={uiState.jobDetailsEditMode}
+            isOpen={jobDetailsEditMode}
             onClose={handleCloseJobDetails}
             onCloseWithRefresh={() => {
               handleCloseJobDetails();
-              fetchDeJobsWithScrollPreservation(paginationState.page);
+              fetchDeJobsWithScrollPreservation(page);
             }}
             // onSave={handleCreateJob}
             editMode={true}
-            selectedJob={jobState.selectedJob}
+            selectedJob={selectedJob}
           />
         )}
       </div>

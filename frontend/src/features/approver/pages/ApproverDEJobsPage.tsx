@@ -1,7 +1,7 @@
 import { useAuth } from '@features/auth';
-import { Button } from '@shared';
-import { UI_CONFIG } from '@shared/config/app.config';
-import { getPrimaryRole } from '@utils/roleUtils';
+import { Button } from "@shared";
+import { UI_CONFIG } from "@shared/config/app.config";
+import { getPrimaryRole } from "@utils/common/roleUtils";
 import { ChevronLeft, Database } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';

@@ -3,6 +3,7 @@ import {
   Box,
   Button as MuiButton,
   Dialog,
+  DialogTitle,
   DialogContent,
   DialogContentText,
   DialogActions,
@@ -26,15 +27,79 @@ import {
   X as XIcon,
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
-import { JobRejectionDialog } from '../../../../shared/components/JobRejectionDialog';
+import { JobRejectionDialog } from '../../../shared/components/JobRejectionDialog';
 import {
   getStatusColor as getCentralizedStatusColor,
   getJobTypeColor,
-} from '../../../../shared/utils/statusColors';
-import { isApprover, isEditor, isExporter } from '../../../../utils/common/roleUtils';
-import { useAuth } from '../../../auth/contexts/AuthContext';
-import type { DataEnrichmentJobResponse, JobDetailsModalProps } from '../../types';
-import { getJobType, determineSourceType } from '../../utils';
+  getStatusLabel,
+} from '../../../shared/utils/statusColors';
+import { isApprover, isEditor, isExporter } from '../../../utils/common/roleUtils';
+import { useAuth } from '../../auth/contexts/AuthContext';
+import type { DataEnrichmentJobResponse } from '../types';
+
+interface JobDetailsModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  job: DataEnrichmentJobResponse | null;
+  isLoading?: boolean;
+  editMode?: boolean;
+  cloneMode?: boolean;
+  onSave?: (updatedJob: Partial<DataEnrichmentJobResponse>) => Promise<void>;
+  onClone?: (job: DataEnrichmentJobResponse) => Promise<void>;
+  onSendForApproval?: (jobId: string, jobType: 'PULL' | 'PUSH') => void;
+  onApprove?: (
+    jobId: string,
+    jobType: 'PULL' | 'PUSH',
+    reason?: string,
+  ) => void;
+  onReject?: (jobId: string, jobType: 'PULL' | 'PUSH', reason: string) => void;
+  onExport?: (jobId: string, jobType: 'PULL' | 'PUSH') => Promise<void>;
+}
+
+// Helper function to determine job type
+const getJobType = (job: DataEnrichmentJobResponse): 'push' | 'pull' => {
+  if (
+    job.type?.toLowerCase() === 'push' ||
+    job.type?.toLowerCase() === 'pull'
+  ) {
+    return job.type.toLowerCase() as 'push' | 'pull';
+  }
+  // Fallback: if job has path but no source_type, it's PUSH; otherwise it's PULL
+  return job.path && !job.source_type ? 'push' : 'pull';
+};
+
+// Helper function to determine connection type from connection object
+const getConnectionType = (
+  job: DataEnrichmentJobResponse,
+): 'HTTP' | 'SFTP' | null => {
+  // First check explicit source_type
+  if (job.source_type) {
+    return job.source_type as 'HTTP' | 'SFTP';
+  }
+
+  // Auto-detect from connection object structure
+  if (job.connection && typeof job.connection === 'object') {
+    // Handle case where connection might be a string (JSON string)
+    let connectionObj = job.connection;
+    if (typeof job.connection === 'string') {
+      try {
+        connectionObj = JSON.parse(job.connection);
+      } catch (e) {
+        return null;
+      }
+    }
+
+    if (connectionObj && typeof connectionObj === 'object') {
+      if ('host' in connectionObj && connectionObj.host) {
+        return 'SFTP';
+      } else if ('url' in connectionObj && connectionObj.url) {
+        return 'HTTP';
+      }
+    }
+  }
+
+  return null;
+};
 
 const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
   isOpen,
@@ -179,10 +244,22 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
     }
   };
 
+  const formatDate = (dateString: string | undefined) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
   const getConfigTypeColor = (type: string | undefined) => {
     return getJobTypeColor(type);
   };
 
+  // State for export confirmation dialog
 
   // Handle export confirmation
   const handleExportConfirm = async () => {
@@ -640,7 +717,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                             </span>
                             <span className="text-sm text-gray-900 block">
                               {(() => {
-                                const sourceType = determineSourceType(job);
+                                const sourceType = getConnectionType(job);
                                 return sourceType || 'Unknown';
                               })()}
                             </span>
@@ -763,11 +840,11 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                         marginBottom: '16px',
                       }}
                     >
-                      Connection Details ({determineSourceType(job) || 'Unknown'})
+                      Connection Details ({getConnectionType(job) || 'Unknown'})
                     </Box>
 
                     {(() => {
-                      const connectionType = determineSourceType(job);
+                      const connectionType = getConnectionType(job);
                       let connectionObj = job.connection;
 
                       // Handle case where connection might be a string
@@ -860,7 +937,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                     )}
 
                     {(() => {
-                      const connectionType = determineSourceType(job);
+                      const connectionType = getConnectionType(job);
                       let connectionObj = job.connection;
 
                       // Handle case where connection might be a string
@@ -995,7 +1072,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                     )}
 
                     {/* File Settings for SFTP */}
-                    {determineSourceType(job) === 'SFTP' && job.file && (
+                    {getConnectionType(job) === 'SFTP' && job.file && (
                       <div className="mt-4 pt-4 border-t border-blue-200">
                         <Box
                           sx={{

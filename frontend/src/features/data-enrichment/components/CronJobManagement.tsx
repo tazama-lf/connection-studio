@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Button } from '../../../../shared/components/Button';
+import { Button } from '../../../shared/components/Button';
 import { Plus, Clock, CheckCircle, XCircle, Send } from 'lucide-react';
-import { dataEnrichmentApi } from '../../handlers/index';
-import { cronJobApi as cronJobService } from '../../../cron/handlers';
-import type { ScheduleResponse } from '../../../cron/types';
-import { useToast } from '../../../../shared/providers/ToastProvider';
-import { useAuth } from '../../../auth/contexts/AuthContext';
-import { isEditor, isApprover } from '../../../../utils/common/roleUtils';
-import { getStatusColor, getStatusLabel } from '../../../../shared/utils/statusColors';
+import { dataEnrichmentApi } from '../services/dataEnrichmentApi';
+import type { ScheduleResponse } from '../types';
+import { useToast } from '../../../shared/providers/ToastProvider';
+import { useAuth } from '../../auth/contexts/AuthContext';
+import { isEditor, isApprover } from '../../../utils/common/roleUtils';
+import { getStatusColor, getStatusLabel } from '../../../shared/utils/statusColors';
 
 interface CronJobManagementProps {
   onCreateSchedule?: () => void;
@@ -31,7 +30,7 @@ const CronJobManagement: React.FC<CronJobManagementProps> = ({ onCreateSchedule 
   const loadSchedules = async () => {
     try {
       setLoading(true);
-      const response = await cronJobService.getAll();
+      const response = await dataEnrichmentApi.getAllSchedules();
       setSchedules(response);
     } catch (error) {
       console.error('Failed to load schedules:', error);

@@ -1,6 +1,14 @@
 import React from 'react';
-import { Button } from '../../../../shared/components/Button';
-import type { PaginationProps } from '../../types';
+import { Button } from '../../../shared/components/Button';
+
+interface PaginationProps {
+  currentPage: number;
+  totalPages: number;
+  totalItems: number;
+  itemsPerPage: number;
+  onPageChange: (page: number) => void;
+  onItemsPerPageChange: (itemsPerPage: number) => void;
+}
 
 export const Pagination: React.FC<PaginationProps> = ({
   currentPage,

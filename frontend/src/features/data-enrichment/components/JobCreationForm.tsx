@@ -8,11 +8,16 @@ import type {
   FileConfig,
   AuthType,
   FileType,
-  JobFormProps,
-} from '../../types';
-import type { ScheduleResponse } from '../../../cron/types';
-import { Button } from '../../../../shared/components/Button';
-import { cronJobApi as cronJobService } from '../../../cron/handlers';
+  ScheduleResponse,
+} from '../types';
+import { Button } from '../../../shared/components/Button';
+import { dataEnrichmentApi } from '../services/dataEnrichmentApi';
+
+interface JobFormProps {
+  onSubmit: (jobData: CreateDataEnrichmentJobRequest) => void;
+  onCancel: () => void;
+  isLoading?: boolean;
+}
 
 export const JobCreationForm: React.FC<JobFormProps> = ({
   onSubmit,
@@ -38,7 +43,7 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
       try {
         setSchedulesLoading(true);
         setErrorMessage(null);
-        const schedules = await cronJobService.getAll();
+        const schedules = await dataEnrichmentApi.getAllSchedules();
         // Filter schedules to only show approved, exported, and deployed schedules
         const filteredSchedules = schedules.filter((schedule: any) => 
           schedule.status === 'approved' || schedule.status === 'exported' || schedule.status === 'deployed'
