@@ -8,7 +8,7 @@ export const getCronJobErrorMessage = (error: unknown): string => {
   if (err?.response?.status === 400) {
     return CRON_JOB_ERROR_MESSAGES.INVALID_INPUT;
   }
-
+//
   if (err?.response?.status === 409) {
     return CRON_JOB_ERROR_MESSAGES.DUPLICATE_NAME;
   }
