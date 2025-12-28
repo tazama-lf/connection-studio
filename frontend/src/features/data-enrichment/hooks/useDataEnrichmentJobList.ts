@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import type { DataEnrichmentJobResponse } from '../types';
+import { DATA_ENRICHMENT_JOB_STATUSES } from '../constants';
 import { useToast } from '../../../shared/providers/ToastProvider';
 import { UI_CONFIG } from '../../../shared/config/app.config';
 import { useAuth } from '../../auth/contexts/AuthContext';
@@ -130,15 +131,15 @@ export const useDataEnrichmentJobList = () => {
 
   const handleEdit = useCallback(
     async (job: DataEnrichmentJobResponse) => {
-      const jobStatus = job.status || 'STATUS_01_IN_PROGRESS';
-      if (jobStatus === 'STATUS_04_APPROVED') {
+      const jobStatus = job.status || DATA_ENRICHMENT_JOB_STATUSES.IN_PROGRESS;
+      if (jobStatus === DATA_ENRICHMENT_JOB_STATUSES.APPROVED) {
         showError('Approved jobs cannot be edited. Please create a new job instead.');
         return;
       }
 
       if (
-        jobStatus !== 'STATUS_01_IN_PROGRESS' &&
-        jobStatus !== 'STATUS_05_REJECTED'
+        jobStatus !== DATA_ENRICHMENT_JOB_STATUSES.IN_PROGRESS &&
+        jobStatus !== DATA_ENRICHMENT_JOB_STATUSES.REJECTED
       ) {
         showError(`Jobs with status "${jobStatus}" cannot be edited.`);
         return;

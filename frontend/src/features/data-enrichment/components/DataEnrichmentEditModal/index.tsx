@@ -52,6 +52,7 @@ import {
   sourceTypeOptions,
 } from '../validationSchema';
 import type { DataEnrichmentEditModalProps } from '../../types';
+import { DATA_ENRICHMENT_JOB_STATUSES } from '../../constants';
 
 export const DataEnrichmentEditModal: React.FC<
   DataEnrichmentEditModalProps
@@ -189,8 +190,8 @@ export const DataEnrichmentEditModal: React.FC<
         // Filter schedules to only show approved, exported, and deployed schedules
         const filteredSchedules = schedules?.filter(
           (schedule: any) =>
-            schedule.status === 'STATUS_04_APPROVED' ||
-            schedule.status === 'STATUS_06_EXPORTED',
+            schedule.status === DATA_ENRICHMENT_JOB_STATUSES.APPROVED ||
+            schedule.status === DATA_ENRICHMENT_JOB_STATUSES.EXPORTED,
         );
 
         setAvailableSchedules(filteredSchedules || []);

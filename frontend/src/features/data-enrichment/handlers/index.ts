@@ -25,6 +25,7 @@ import {
   DATA_ENRICHMENT_SUCCESS_MESSAGES,
   DATA_ENRICHMENT_JOB_STATUSES,
 } from '../constants';
+import { DATA_ENRICHMENT_JOB_STATUSES as STATUS } from '../constants';
 import { getJobType } from '../utils';
 
 const { API_BASE_URL } = ENV;
@@ -191,7 +192,7 @@ export const scheduleApi = {
     queryParams.append('limit', limit.toString());
 
     const scheduler_body = {
-      status: 'STATUS_04_APPROVED,STATUS_06_EXPORTED',
+      status: `${DATA_ENRICHMENT_JOB_STATUSES.APPROVED},${DATA_ENRICHMENT_JOB_STATUSES.EXPORTED}`,
     };
 
     return await apiRequest<ScheduleResponse[]>(
@@ -581,7 +582,7 @@ export const handleResumeJob = async (
 ) => {
   try {
     const jobType = job.type === 'push' ? 'PUSH' : 'PULL';
-    await dataEnrichmentJobApi.updateStatus(job.id, 'STATUS_01_IN_PROGRESS', jobType);
+    await dataEnrichmentJobApi.updateStatus(job.id, DATA_ENRICHMENT_JOB_STATUSES.IN_PROGRESS, jobType);
     showSuccess('Job resumed successfully');
     onJobUpdate();
   } catch (error) {
@@ -653,7 +654,7 @@ export const handleSubmitForApproval = async (
   onUpdate: () => void
 ) => {
   try {
-    await scheduleApi.updateStatus(scheduleId, 'STATUS_03_UNDER_REVIEW');
+    await scheduleApi.updateStatus(scheduleId, DATA_ENRICHMENT_JOB_STATUSES.UNDER_REVIEW);
     showSuccess('Schedule submitted for approval');
     onUpdate();
   } catch (error) {
@@ -669,7 +670,7 @@ export const handleApproveSchedule = async (
   onUpdate: () => void
 ) => {
   try {
-    await scheduleApi.updateStatus(scheduleId, 'STATUS_04_APPROVED');
+    await scheduleApi.updateStatus(scheduleId, DATA_ENRICHMENT_JOB_STATUSES.APPROVED);
     showSuccess('Schedule approved successfully');
     onUpdate();
   } catch (error) {
@@ -685,7 +686,7 @@ export const handleRejectSchedule = async (
   onUpdate: () => void
 ) => {
   try {
-    await scheduleApi.updateStatus(scheduleId, 'STATUS_05_REJECTED');
+    await scheduleApi.updateStatus(scheduleId, DATA_ENRICHMENT_JOB_STATUSES.REJECTED);
     showSuccess('Schedule rejected');
     onUpdate();
   } catch (error) {
@@ -796,7 +797,7 @@ export const handleEditSendForApprovalConfirm = async (
 
   try {
     const jobType = job.type === 'push' ? 'PUSH' : 'PULL';
-    await dataEnrichmentJobApi.updateStatus(job.id, 'STATUS_03_UNDER_REVIEW', jobType);
+    await dataEnrichmentJobApi.updateStatus(job.id, DATA_ENRICHMENT_JOB_STATUSES.UNDER_REVIEW, jobType);
     showSuccess('Job sent for approval');
     onSuccess?.();
     setShowApprovalDialog(false);
@@ -948,7 +949,7 @@ export const saveDataEnrichmentJob = async (options: SaveJobOptions) => {
         configurationType === 'pull'
             ? await dataEnrichmentJobApi.updatePullJob(selectedJob.id, payload)
             : await dataEnrichmentJobApi.updatePushJob(selectedJob.id, payload);
-      if (selectedJob?.status === 'STATUS_05_REJECTED') {
+      if (selectedJob?.status === DATA_ENRICHMENT_JOB_STATUSES.REJECTED) {
         setShowSendForApproval(true);
       } else {
         if (onSave) onSave(response);
@@ -971,7 +972,7 @@ export const saveDataEnrichmentJob = async (options: SaveJobOptions) => {
         : `Data enrichment endpoint "${formValues.name}" created successfully! You can now send it for approval.`);
 
     showSuccess('Success', successMessage);
-    if (!response?.status || selectedJob?.status === 'STATUS_05_REJECTED') {
+    if (!response?.status || selectedJob?.status === DATA_ENRICHMENT_JOB_STATUSES.REJECTED) {
       if (onSave) onSave(response);
     }
   } catch (error) {

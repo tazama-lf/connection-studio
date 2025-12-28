@@ -49,6 +49,7 @@ import {
 import { getJobType, getConnectionType } from '../../utils';
 
 import type { JobDetailsModalProps } from '../../types';
+import { DATA_ENRICHMENT_JOB_STATUSES } from '../../constants';
 
 const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
   isOpen,
@@ -1080,8 +1081,8 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
             !editMode &&
             !cloneMode &&
             userIsEditor &&
-            (job.status === 'STATUS_01_IN_PROGRESS' ||
-              job.status === 'STATUS_05_REJECTED') &&
+            (job.status === DATA_ENRICHMENT_JOB_STATUSES.IN_PROGRESS ||
+              job.status === DATA_ENRICHMENT_JOB_STATUSES.REJECTED) &&
             onSendForApproval && (
               <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
                 <MuiButton
@@ -1110,7 +1111,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
             !cloneMode &&
             userIsApprover &&
             (onApprove || onReject) &&
-            job.status === 'STATUS_03_UNDER_REVIEW' && (
+            job.status === DATA_ENRICHMENT_JOB_STATUSES.UNDER_REVIEW && (
               <>
                 <div className="px-6 py-4 border-t border-gray-200 flex justify-between items-center">
                   <div>
@@ -1157,7 +1158,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
             !cloneMode &&
             onExport &&
             userIsExporter &&
-            job.status === 'STATUS_04_APPROVED' && (
+            job.status === DATA_ENRICHMENT_JOB_STATUSES.APPROVED && (
               <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3 ">
                 <MuiButton
                   type="button"
@@ -1186,19 +1187,19 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
             !cloneMode &&
             !(
               userIsEditor &&
-              (job.status === 'STATUS_01_IN_PROGRESS' ||
-                job.status === 'STATUS_05_REJECTED') &&
+              (job.status === DATA_ENRICHMENT_JOB_STATUSES.IN_PROGRESS ||
+                job.status === DATA_ENRICHMENT_JOB_STATUSES.REJECTED) &&
               onSendForApproval
             ) &&
             !(
               userIsApprover &&
               (onApprove || onReject) &&
-              job.status === 'STATUS_03_UNDER_REVIEW'
+              job.status === DATA_ENRICHMENT_JOB_STATUSES.UNDER_REVIEW
             ) &&
             !(
               onExport &&
               userIsExporter &&
-              job.status === 'STATUS_04_APPROVED'
+              job.status === DATA_ENRICHMENT_JOB_STATUSES.APPROVED
             ) && (
               <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3 ">
                 <MuiButton type="button" variant="outlined" onClick={onClose}>

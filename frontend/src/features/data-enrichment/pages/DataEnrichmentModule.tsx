@@ -8,6 +8,7 @@ import { DataEnrichmentFormModal } from '../components/DataEnrichmentFormModal';
 import { DataEnrichmentEditModal } from '../components/DataEnrichmentEditModal';
 import { useDataEnrichmentJobList } from '../hooks/useDataEnrichmentJobList';
 import { useToast } from '../../../shared/providers/ToastProvider';
+import { DATA_ENRICHMENT_JOB_STATUSES } from '../constants';
 
 
 const DataEnrichmentModule: React.FC = () => {
@@ -194,7 +195,7 @@ const DataEnrichmentModule: React.FC = () => {
                   variant="secondary"
                   size="sm"
                   onClick={() => {
-                    setSearchingFilters({ status: 'STATUS_01_IN_PROGRESS' });
+                    setSearchingFilters({ status: DATA_ENRICHMENT_JOB_STATUSES.IN_PROGRESS });
                   }}
                 >
                   View Pending Jobs

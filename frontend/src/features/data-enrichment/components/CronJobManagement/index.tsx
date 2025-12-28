@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '../../../../shared/components/Button';
 import { Plus, Clock, CheckCircle, XCircle, Send } from 'lucide-react';
 import { scheduleApi } from '../../handlers';
+import { DATA_ENRICHMENT_JOB_STATUSES } from '../../constants';
 import type { ScheduleResponse, CronJobManagementProps } from '../../types';
 import { useToast } from '../../../../shared/providers/ToastProvider';
 import { useAuth } from '../../../auth/contexts/AuthContext';
@@ -32,8 +33,11 @@ const CronJobManagement: React.FC<CronJobManagementProps> = ({ onCreateSchedule 
   const loadSchedules = async () => {
     try {
       setLoading(true);
-      const response = await scheduleApi.getAll();
-      setSchedules(response);
+      const schedulesResp = await scheduleApi.getAll();
+      const normalized: any[] = Array.isArray(schedulesResp)
+        ? schedulesResp
+        : schedulesResp?.data || schedulesResp?.results || schedulesResp?.items || [];
+      setSchedules(normalized || []);
     } catch (error) {
       console.error('Failed to load schedules:', error);
       showError('Failed to load cron jobs');
@@ -68,16 +72,16 @@ const CronJobManagement: React.FC<CronJobManagementProps> = ({ onCreateSchedule 
     // Get icon based on status
     let icon = null;
     switch (status) {
-      case 'STATUS_01_IN_PROGRESS':
+      case DATA_ENRICHMENT_JOB_STATUSES.IN_PROGRESS:
         icon = <Clock size={12} className="mr-1" />;
         break;
-      case 'STATUS_03_UNDER_REVIEW':
+      case DATA_ENRICHMENT_JOB_STATUSES.UNDER_REVIEW:
         icon = <Send size={12} className="mr-1" />;
         break;
-      case 'STATUS_04_APPROVED':
+      case DATA_ENRICHMENT_JOB_STATUSES.APPROVED:
         icon = <CheckCircle size={12} className="mr-1" />;
         break;
-      case 'STATUS_05_REJECTED':
+      case DATA_ENRICHMENT_JOB_STATUSES.REJECTED:
         icon = <XCircle size={12} className="mr-1" />;
         break;
     }
@@ -93,7 +97,7 @@ const CronJobManagement: React.FC<CronJobManagementProps> = ({ onCreateSchedule 
   const getFilteredSchedules = () => {
     if (userIsApprover) {
       // Approvers see all "under-review" schedules
-      return schedules.filter(schedule => schedule.status === 'STATUS_03_UNDER_REVIEW');
+      return schedules.filter(schedule => schedule.status === DATA_ENRICHMENT_JOB_STATUSES.UNDER_REVIEW);
     } else if (userIsEditor) {
       // Editors see their own schedules in any status
       return schedules; // In a real app, you'd filter by creator/owner
@@ -161,7 +165,7 @@ const CronJobManagement: React.FC<CronJobManagementProps> = ({ onCreateSchedule 
                 </div>
 
                 <div className="flex items-center space-x-2">
-                  {userIsEditor && schedule.status === 'STATUS_01_IN_PROGRESS' && (
+                  {userIsEditor && schedule.status === DATA_ENRICHMENT_JOB_STATUSES.IN_PROGRESS && (
                     <Button
                       variant="secondary"
                       size="sm"
@@ -173,7 +177,7 @@ const CronJobManagement: React.FC<CronJobManagementProps> = ({ onCreateSchedule 
                     </Button>
                   )}
 
-                  {userIsApprover && schedule.status === 'STATUS_03_UNDER_REVIEW' && (
+                  {userIsApprover && schedule.status === DATA_ENRICHMENT_JOB_STATUSES.UNDER_REVIEW && (
                     <>
                       <Button
                         variant="primary"

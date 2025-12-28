@@ -11,7 +11,8 @@ import type {
   ScheduleResponse,
 } from '../../types';
 import { Button } from '../../../../shared/components/Button';
-import { dataEnrichmentJobApi as dataEnrichmentApi } from '../../handlers';
+import { dataEnrichmentJobApi as dataEnrichmentApi, scheduleApi } from '../../handlers';
+import { DATA_ENRICHMENT_JOB_STATUSES } from '../../constants';
 
 import type { JobFormProps } from '../../types';
 
@@ -39,12 +40,15 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
       try {
         setSchedulesLoading(true);
         setErrorMessage(null);
-        const schedules = await dataEnrichmentApi.getAllSchedules();
-        // Filter schedules to only show approved, exported, and deployed schedules
-        const filteredSchedules = schedules.filter((schedule: any) => 
-          schedule.status === 'approved' || schedule.status === 'exported' || schedule.status === 'deployed'
+        const schedulesResp = await scheduleApi.getAll();
+        const schedule_data: any[] = Array.isArray(schedulesResp)
+          ? schedulesResp
+          : schedulesResp?.data || schedulesResp?.results || schedulesResp?.items || [];
+        // Filter schedules to only show approved/exported statuses used by backend
+        const filteredSchedules = (schedule_data || []).filter((schedule: any) =>
+          schedule?.status === DATA_ENRICHMENT_JOB_STATUSES.APPROVED || schedule?.status === DATA_ENRICHMENT_JOB_STATUSES.EXPORTED
         );
-        setAvailableSchedules(filteredSchedules);
+        setAvailableSchedules(filteredSchedules || []);
       } catch (error) {
         console.error('Failed to load schedules:', error);
         setErrorMessage('Unable to load available schedules. Please refresh the page or try again later.');

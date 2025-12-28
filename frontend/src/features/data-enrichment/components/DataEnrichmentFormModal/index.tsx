@@ -36,7 +36,7 @@ import {
   VersionInputField,
 } from '../../../../shared/components/FormFields';
 import ValidationError from '../../../../shared/components/ValidationError';
-import { dataEnrichmentJobApi as dataEnrichmentApi } from '../../handlers';
+import { dataEnrichmentJobApi as dataEnrichmentApi, scheduleApi } from '../../handlers';
 import {
   handleFormInputChange,
   handleContinue as continueForm,
@@ -53,6 +53,7 @@ import {
   pushValidationSchema,
   sourceTypeOptions,
 } from '../validationSchema';
+import { DATA_ENRICHMENT_JOB_STATUSES } from '../../constants';
 
 import type { DataEnrichmentFormModalProps } from '../../types';
 
@@ -289,18 +290,19 @@ export const DataEnrichmentFormModal: React.FC<
 
       try {
         setSchedulesLoading(true);
-        const schedules = await dataEnrichmentApi.getAllSchedules();
-        const schedule_data = schedules?.data;
+        const schedulesResp = await scheduleApi.getAll();
+        const schedule_data: any[] = Array.isArray(schedulesResp)
+          ? schedulesResp
+          : schedulesResp?.data || schedulesResp?.results || schedulesResp?.items || [];
 
-        // Filter schedules to only show approved, exported, and deployed schedules
-        const filteredSchedules = schedule_data?.filter(
-          (schedule: any) =>
-            schedule.status === 'STATUS_04_APPROVED' ||
-            schedule.status === 'STATUS_06_EXPORTED',
+        // Filter schedules to only show approved/exported statuses
+        const filteredSchedules = (schedule_data || []).filter((schedule: any) =>
+          schedule?.status === DATA_ENRICHMENT_JOB_STATUSES.APPROVED ||
+          schedule?.status === DATA_ENRICHMENT_JOB_STATUSES.EXPORTED,
         );
 
-        console.log('filteredSchedules', schedules);
-        setAvailableSchedules(filteredSchedules);
+        console.log('filteredSchedules', filteredSchedules);
+        setAvailableSchedules(filteredSchedules || []);
       } catch (error) {
         console.error('Failed to load schedules:', error);
         // Keep empty array as fallback
@@ -339,15 +341,15 @@ export const DataEnrichmentFormModal: React.FC<
         const isPushJob = job.path && !job.source_type;
         const finalConfigType = isPushJob ? 'push' : detectedConfigType;
 
-        setFormData({
-          ...formData,
+        setFormData((prev) => ({
+          ...prev,
           name: job.endpoint_name,
           description: job.description || '',
           configurationType: finalConfigType,
           sourceType: job.source_type?.toLowerCase() || 'sftp',
           // Populate other fields based on job type and source type
           targetTable: job.table_name || '',
-        });
+        }));
 
         if (job.schedule_id) {
           setSelectedScheduleId(job.schedule_id);

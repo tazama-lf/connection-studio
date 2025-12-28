@@ -39,6 +39,7 @@ import {
   handleUpdateJobStatus as updateJobStatus,
   handleTogglePublishingStatus as togglePublishing,
 } from '../../handlers';
+import { DATA_ENRICHMENT_JOB_STATUSES } from '../../constants';
 import type { DataEnrichmentJobResponse } from '../../types';
 
 import type { JobListProps } from '../../types';
@@ -590,15 +591,17 @@ export const JobList: React.FC<JobListProps> = (props) => {
         return (
           <div className="flex items-center justify-center gap-2 h-full">
             {/* View Details - Available to all roles that have view permissions */}
-            {((userIsEditor && onViewLogs) ||
+            {(
+              (userIsEditor && onViewLogs) ||
               userIsApprover ||
               (userIsExporter &&
-                (job.status === 'STATUS_04_APPROVED' ||
-                  job.status === 'STATUS_06_EXPORTED' ||
-                  job.status === 'STATUS_08_DEPLOYED')) ||
+                (job.status === DATA_ENRICHMENT_JOB_STATUSES.APPROVED ||
+                  job.status === DATA_ENRICHMENT_JOB_STATUSES.EXPORTED ||
+                  job.status === DATA_ENRICHMENT_JOB_STATUSES.DEPLOYED)) ||
               (userIsPublisher &&
-                (job.status === 'STATUS_06_EXPORTED' ||
-                  job.status === 'STATUS_08_DEPLOYED'))) && (
+                (job.status === DATA_ENRICHMENT_JOB_STATUSES.EXPORTED ||
+                  job.status === DATA_ENRICHMENT_JOB_STATUSES.DEPLOYED))
+            ) && (
               <Tooltip title="View Details" arrow placement="top">
                 <EyeIcon
                   className="w-4 h-4 mr-2  cursor-pointer"
@@ -624,8 +627,8 @@ export const JobList: React.FC<JobListProps> = (props) => {
             {/* Edit - Only for Editors and only for in-progress or rejected jobs */}
             {userIsEditor &&
               onEdit &&
-              (job.status === 'STATUS_01_IN_PROGRESS' ||
-                job.status === 'STATUS_05_REJECTED') && (
+              (job.status === DATA_ENRICHMENT_JOB_STATUSES.IN_PROGRESS ||
+                job.status === DATA_ENRICHMENT_JOB_STATUSES.REJECTED) && (
                 <Tooltip title="Edit Job" arrow placement="top">
                   <EditIcon
                     className="w-4 h-4 mr-2 text-yellow-600 hover:text-yellow-700 cursor-pointer"
@@ -636,7 +639,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
                   />
                 </Tooltip>
               )}
-            {userIsEditor && job.status === 'STATUS_01_IN_PROGRESS' && (
+            {userIsEditor && job.status === DATA_ENRICHMENT_JOB_STATUSES.IN_PROGRESS && (
               <Tooltip title="Pause" arrow placement="top">
                 <Pause
                   className="w-4 h-4 mr-2 text-orange-600 hover:text-orange-700 cursor-pointer"
@@ -646,7 +649,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
                 />
               </Tooltip>
             )}
-            {userIsEditor && job.status === 'STATUS_02_ON_HOLD' && (
+            {userIsEditor && job.status === DATA_ENRICHMENT_JOB_STATUSES.ON_HOLD && (
               <Tooltip title="Resume" arrow placement="top">
                 <Play
                   className="w-4 h-4 mr-2 text-green-600 hover:text-green-700 cursor-pointer"
@@ -750,7 +753,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
                     if (showPauseConfirmDialog.job) {
                       await handleUpdateJobStatus(
                         showPauseConfirmDialog.job,
-                        'STATUS_02_ON_HOLD',
+                        DATA_ENRICHMENT_JOB_STATUSES.ON_HOLD,
                       );
                     }
                     setShowPauseConfirmDialog({ open: false, job: null });
@@ -858,7 +861,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
                     if (showResumeConfirmDialog.job) {
                       await handleUpdateJobStatus(
                         showResumeConfirmDialog.job,
-                        'STATUS_01_IN_PROGRESS',
+                        DATA_ENRICHMENT_JOB_STATUSES.IN_PROGRESS,
                       );
                     }
                     setShowResumeConfirmDialog({ open: false, job: null });
