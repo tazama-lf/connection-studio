@@ -29,11 +29,18 @@ import {
   TextInputField,
   URLInputField,
   VersionInputField,
-} from '../../../shared/components/FormFields';
-import ValidationError from '../../../shared/components/ValidationError';
-import { useToast } from '../../../shared/providers/ToastProvider';
-import { dataEnrichmentApi } from '../services';
-import type { ScheduleResponse } from '../types';
+} from '../../../../shared/components/FormFields';
+import ValidationError from '../../../../shared/components/ValidationError';
+import { useToast } from '../../../../shared/providers/ToastProvider';
+import { saveDataEnrichmentJob } from '../../handlers';
+import { loadSchedules as loadCronSchedules } from '../../../cron/handlers';
+import {
+  handleUpdateConfirm as confirmUpdate,
+  handleEditSendForApprovalConfirm,
+} from '../../handlers';
+import { scrollToFirstError } from '../../utils';
+import type { ScheduleResponse } from '../../types';
+import { getJobType } from '../../utils';
 import {
   authenticationTypeOptions,
   defaultValues,
@@ -43,28 +50,8 @@ import {
   pullValidationSchema,
   pushValidationSchema,
   sourceTypeOptions,
-} from './validationSchema';
-
-// TYPES
-interface DataEnrichmentEditModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onCloseWithRefresh?: () => void;
-  onSave?: (formData: any) => void;
-  editMode?: boolean;
-  selectedJob?: any;
-}
-
-const getJobType = (job) => {
-  if (
-    job?.type?.toLowerCase() === 'push' ||
-    job?.type?.toLowerCase() === 'pull'
-  ) {
-    return job.type.toLowerCase();
-  }
-  // Fallback: if job has path but no source_type, it's PUSH; otherwise it's PULL
-  return job?.path && !job?.source_type ? 'push' : 'pull';
-};
+} from '../validationSchema';
+import type { DataEnrichmentEditModalProps } from '../../types';
 
 export const DataEnrichmentEditModal: React.FC<
   DataEnrichmentEditModalProps
@@ -120,27 +107,6 @@ export const DataEnrichmentEditModal: React.FC<
     shouldScrollToErrorRef.current = true;
   };
 
-  // Helper function to generate endpoint URL
-  const generateEndpointUrl = (version?: string, endpointPath?: string) => {
-    // Clean version (remove 'v' prefix and slashes)
-    const cleanVersion =
-      version?.replace(/^v?\/*/g, '').replace(/\/+$/g, '') || '';
-
-    // Clean endpoint path (ensure it starts with /)
-    const cleanPath = endpointPath?.startsWith('/')
-      ? endpointPath
-      : `/${endpointPath || ''}`;
-
-    if (!version && !endpointPath) {
-      return `/${tenantId}/enrichment/{version}{path}`;
-    }
-
-    const versionPart = cleanVersion ? `/${cleanVersion}` : '/{version}';
-    const pathPart = endpointPath ? cleanPath : '/{path}';
-
-    return `/${tenantId}/enrichment${versionPart}${pathPart}`;
-  };
-
   // Watch for errors and scroll when needed
   useEffect(() => {
     if (shouldScrollToErrorRef.current && Object.keys(errors).length > 0) {
@@ -158,247 +124,89 @@ export const DataEnrichmentEditModal: React.FC<
     }
   }, [fileFormat, trigger, getValues]);
 
-  // Helper function to perform the actual scrolling
-  const scrollToFirstError = (fieldName: string) => {
-    const errorElement = document.querySelector(
-      `[name="${fieldName}"]`,
-    ) as HTMLElement;
-    if (errorElement) {
-      // Find the modal's scrollable container
-      const modalContent =
-        errorElement.closest('.MuiDialog-paper') ||
-        errorElement.closest('.MuiModal-root') ||
-        errorElement.closest('[role="dialog"]') ||
-        document.querySelector('.MuiDialog-paper');
 
-      if (modalContent) {
-        // Scroll within the modal container
-        errorElement.scrollIntoView({
-          behavior: 'smooth',
-          block: 'center',
-          inline: 'nearest',
-        });
-      } else {
-        // Fallback to window scroll if modal container not found
-        errorElement.scrollIntoView({
-          behavior: 'smooth',
-          block: 'center',
-        });
-      }
-
-      // Focus the field after scroll completes
-      setTimeout(() => {
-        errorElement.focus();
-      }, 300);
-    }
-  };
 
   const handleSave = async () => {
-    setIsCreating(true);
     try {
-      const formValues = getValues();
-      let payload: any;
-
-      if (configurationType === 'push') {
-        payload = {
-          endpoint_name: formValues.name || null,
-          path: formValues.endpointPath || null,
-          description: formValues.description || null,
-          table_name: formValues.targetTable || null,
-          mode: formValues.ingestMode as 'append' | 'replace',
-          version:
-            formValues.version?.replace(/^v?\/*/g, '').replace(/\/+$/g, '') ||
-            null,
-        };
-      } else {
-        // Pull configuration payload
-        const basePayload = {
-          endpoint_name: formValues.name || null,
-          source_type: formValues.sourceType.toUpperCase() as 'HTTPS' | 'SFTP',
-          description: formValues.description || null,
-          table_name: formValues.targetTable || null,
-          mode: formValues.ingestMode as 'append' | 'replace',
-          version: formValues.version || null,
-          schedule_id: formValues.schedule || null,
-        };
-
-        if (formValues.sourceType === 'http') {
-          // HTTPS Pull configuration
-          payload = {
-            ...basePayload,
-            source_type: 'HTTP',
-            connection: {
-              url: formValues?.url,
-              headers: formValues?.headers
-                ? JSON.parse(formValues?.headers || {})
-                : {},
-            },
-          };
-        } else {
-          // SFTP Pull configuration
-          payload = {
-            ...basePayload,
-            source_type: 'SFTP',
-            connection: {
-              host: formValues.host,
-              port: parseInt(formValues.port) || null,
-              auth_type:
-                formValues.authType === 'key'
-                  ? ('PRIVATE_KEY' as const)
-                  : ('USERNAME_PASSWORD' as const),
-              user_name: formValues.username,
-              ...(formValues.authType === 'password'
-                ? { password: formValues.password }
-                : { private_key: formValues.password.replace(/\\n/g, '\n') }), // Using password field for private key
-            },
-            file: {
-              path: (formValues.pathPattern || '/data.csv').replace(/^\/+/, ''),
-              file_type: formValues.fileFormat.toUpperCase() as
-                | 'CSV'
-                | 'JSON'
-                | 'TSV',
-              delimiter: formValues.delimiter || ',',
-            },
-          };
-        }
-      }
-
-      let response;
-      if (editMode && selectedJob?.id) {
-        response =
-          configurationType === 'pull'
-            ? await dataEnrichmentApi.updatePullJob(selectedJob.id, payload)
-            : await dataEnrichmentApi.updatePushJob(selectedJob.id, payload);
-        // If selectedJob.status is rejected, show Send for Approval button, else close modal and fetch data
-        if (selectedJob?.status === 'STATUS_05_REJECTED') {
-          setShowSendForApproval(true);
-        } else {
-          if (onSave) onSave(response);
-          if (onCloseWithRefresh) onCloseWithRefresh();
-          else if (onClose) onClose();
-          return;
-        }
-      } else {
-        response =
-          configurationType === 'pull'
-            ? await dataEnrichmentApi.createPullJob(payload)
-            : await dataEnrichmentApi.createPushJob(payload);
-      }
-
-      // Use backend message if available, otherwise use default
-      const backendMessage = (response as any)?.message;
-      const successMessage =( backendMessage || 'Job created successfully' ) || (editMode
-        ? `Data enrichment endpoint "${formValues.name}" updated successfully!`
-        : `Data enrichment endpoint "${formValues.name}" created successfully! You can now send it for approval.`);
-
-      showSuccess('Success', successMessage);
-      // Only call onSave if not already called above
-      if (!response?.status || selectedJob?.status === 'STATUS_05_REJECTED') {
-        if (onSave) onSave(response);
-      }
-
-      // Do not close modal after update
-      // setTimeout(() => {
-      //   onClose();
-      // }, 200);
+      await saveDataEnrichmentJob({
+        formValues: getValues(),
+        configurationType,
+        editMode,
+        selectedJob,
+        onSave,
+        onCloseWithRefresh,
+        onClose,
+        showSuccess,
+        setShowSendForApproval,
+        setIsCreating,
+      });
     } catch (error) {
-      console.error('=== CREATE ENDPOINT ERROR ===', error);
-
-      // Extract backend error message directly from Error object
       let errorMessage = 'Failed to create endpoint';
-
       if (error instanceof Error) {
-        // The apiRequest function already extracts errorData.message and throws it
         errorMessage = error.message;
       } else if (error && typeof error === 'object') {
-        // Fallback for non-Error objects
         const apiError = error as any;
         errorMessage = apiError.message || apiError.error || 'Unknown error occurred';
       }
-
       showError('Error', errorMessage);
-    } finally {
-      setIsCreating(false);
     }
   };
 
-  // Handle update confirmation
   const handleUpdateConfirm = () => {
-    setShowUpdateConfirmDialog(false);
-    handleSave();
+    confirmUpdate(() => handleSave(), setShowUpdateConfirmDialog);
   };
 
-  const auth = useAuth();
-  const user = auth?.user;
-
-  // Handler for send for approval (calls API)
   const handleSendForApprovalConfirm = async () => {
-    if (selectedJob && selectedJob.id) {
-      const jobType = getJobType(selectedJob) === 'push' ? 'PUSH' : 'PULL';
-      setIsCreating(true);
-      try {
-        await dataEnrichmentApi.updateJobStatus(
-          selectedJob.id,
-          'STATUS_03_UNDER_REVIEW',
-          jobType,
-        );
-        showSuccess('Success', 'Job sent for approval successfully!');
-        setShowApprovalConfirmDialog(false);
+    await handleEditSendForApprovalConfirm(
+      selectedJob,
+      (msg) => showSuccess('Success', msg),
+      (msg) => showError('Error', msg),
+      () => {
         if (onCloseWithRefresh) onCloseWithRefresh();
         else if (onClose) onClose();
-      } catch (error) {
-        let msg = 'Failed to send for approval';
-        if (error instanceof Error) msg = error.message;
-        showError('Error', msg);
-      } finally {
-        setIsCreating(false);
-      }
-    }
+      },
+      setShowApprovalConfirmDialog
+    );
   };
 
-  // Form submission handler for React Hook Form
   const onSubmit = () => {
     handleSave();
   };
 
-  // --------------------REACT HOOKS FORM SETUP
-
-  // Load available schedules when modal opens
   useEffect(() => {
     const loadSchedules = async () => {
       if (!isOpen) return;
 
       try {
-        const schedules = await dataEnrichmentApi.getAllSchedules();
-        const schedule_data = schedules?.data;
+        // You may want to adjust these values as needed
+        const pageNumber = 1;
+        const itemsPerPage = 50;
+        const userRole = 'ASSOCIATE'; // Or get from context/auth if dynamic
+        const searchingFilters = {};
+        const result = await loadCronSchedules(pageNumber, itemsPerPage, userRole, searchingFilters);
+        const schedules = result?.schedules || result?.data || [];
 
         // Filter schedules to only show approved, exported, and deployed schedules
-        const filteredSchedules = schedule_data?.filter(
+        const filteredSchedules = schedules?.filter(
           (schedule: any) =>
             schedule.status === 'STATUS_04_APPROVED' ||
             schedule.status === 'STATUS_06_EXPORTED',
         );
 
-        console.log('filteredSchedules', schedules);
-        setAvailableSchedules(filteredSchedules);
+        setAvailableSchedules(filteredSchedules || []);
       } catch (error) {
         console.error('Failed to load schedules:', error);
-        // Keep empty array as fallback
         setAvailableSchedules([]);
-      } finally {
-        console.log('Setting schedules loading to false');
       }
     };
 
     loadSchedules();
   }, [isOpen]);
 
-  // Set initial form values from selectedJob
   useEffect(() => {
     if (isOpen && selectedJob && editMode) {
       const jobType = getJobType(selectedJob);
 
-      // Base values common to both push and pull jobs
       const initialValues: any = {
         name: selectedJob.endpoint_name || '',
         description: selectedJob.description || '',
@@ -955,11 +763,6 @@ export const DataEnrichmentEditModal: React.FC<
   );
 
   if (!isOpen) return null;
-
-  // When modal opens, reset canSendForApproval to false
-  // useEffect(() => {
-  //   if (isOpen) setCanSendForApproval(false);
-  // }, [isOpen]);
 
   return (
     <div

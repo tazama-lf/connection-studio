@@ -35,7 +35,7 @@ jest.mock('./Button', () => ({
   ),
 }));
 
-import { dataEnrichmentApi } from '../../features/data-enrichment/services';
+import { dataEnrichmentJobApi } from '../../features/data-enrichment/handlers';
 
 const mockDataEnrichmentApi = dataEnrichmentApi as jest.Mocked<
   typeof dataEnrichmentApi

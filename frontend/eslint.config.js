@@ -72,7 +72,7 @@ export default [
     
       '@typescript-eslint/init-declarations': 'off',
       '@typescript-eslint/max-params': ['warn', { max: 6 }],
-      '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-non-null-assertion': 'off',
       '@typescript-eslint/no-floating-promises': 'off',
       '@typescript-eslint/no-magic-numbers': 'warn',

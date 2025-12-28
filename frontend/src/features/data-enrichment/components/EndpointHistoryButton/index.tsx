@@ -2,20 +2,16 @@ import React from 'react';
 import { useNavigate } from 'react-router';
 import { Button } from '@shared';
 import { EyeIcon } from 'lucide-react';
-import { ROUTES } from '../../../shared/config/routes.config';
+import { ROUTES } from '../../../../shared/config/routes.config';
+import { handleNavigateToHistory } from '../../handlers';
 
-interface Props {
-  jobId?: string;
-}
+import type { EndpointHistoryButtonProps } from '../../types';
 
-export const EndpointHistoryButton: React.FC<Props> = ({ jobId }) => {
+export const EndpointHistoryButton: React.FC<EndpointHistoryButtonProps> = ({ jobId }) => {
   const navigate = useNavigate();
 
   const handleClick = () => {
-    const url = jobId
-      ? `${ROUTES.DATA_ENRICHMENT_HISTORY}?jobId=${encodeURIComponent(jobId)}`
-      : ROUTES.DATA_ENRICHMENT_HISTORY;
-    navigate(url);
+    handleNavigateToHistory(navigate, jobId, ROUTES.DATA_ENRICHMENT_HISTORY);
   };
 
   return (

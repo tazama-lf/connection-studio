@@ -3,11 +3,12 @@ import {
   Box,
   Button as MuiButton,
   Dialog,
-  DialogTitle,
   DialogContent,
   DialogContentText,
   DialogActions,
 } from '@mui/material';
+import { formatDateStructured } from '../../utils';
+
 import {
   Calendar,
   Check,
@@ -27,79 +28,27 @@ import {
   X as XIcon,
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
-import { JobRejectionDialog } from '../../../shared/components/JobRejectionDialog';
+import { JobRejectionDialog } from '../../../../shared/components/JobRejectionDialog';
 import {
   getStatusColor as getCentralizedStatusColor,
   getJobTypeColor,
   getStatusLabel,
-} from '../../../shared/utils/statusColors';
-import { isApprover, isEditor, isExporter } from '../../../utils/common/roleUtils';
-import { useAuth } from '../../auth/contexts/AuthContext';
-import type { DataEnrichmentJobResponse } from '../types';
+} from '../../../../shared/utils/statusColors';
+import { isApprover, isEditor, isExporter } from '../../../../utils/common/roleUtils';
+import { useAuth } from '../../../auth/contexts/AuthContext';
+import type { DataEnrichmentJobResponse } from '../../types';
+import {
+  handleRejectionConfirm as handleRejection,
+  handleSendForApprovalConfirm as handleSendApproval,
+  handleApproveConfirm as handleApprove,
+  handleInputChange as handleInput,
+  handleSaveJob,
+  handleExportConfirm as handleExport,
+  handleApproveWithComment as handleApproveComment,
+} from '../../handlers';
+import { getJobType, getConnectionType } from '../../utils';
 
-interface JobDetailsModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  job: DataEnrichmentJobResponse | null;
-  isLoading?: boolean;
-  editMode?: boolean;
-  cloneMode?: boolean;
-  onSave?: (updatedJob: Partial<DataEnrichmentJobResponse>) => Promise<void>;
-  onClone?: (job: DataEnrichmentJobResponse) => Promise<void>;
-  onSendForApproval?: (jobId: string, jobType: 'PULL' | 'PUSH') => void;
-  onApprove?: (
-    jobId: string,
-    jobType: 'PULL' | 'PUSH',
-    reason?: string,
-  ) => void;
-  onReject?: (jobId: string, jobType: 'PULL' | 'PUSH', reason: string) => void;
-  onExport?: (jobId: string, jobType: 'PULL' | 'PUSH') => Promise<void>;
-}
-
-// Helper function to determine job type
-const getJobType = (job: DataEnrichmentJobResponse): 'push' | 'pull' => {
-  if (
-    job.type?.toLowerCase() === 'push' ||
-    job.type?.toLowerCase() === 'pull'
-  ) {
-    return job.type.toLowerCase() as 'push' | 'pull';
-  }
-  // Fallback: if job has path but no source_type, it's PUSH; otherwise it's PULL
-  return job.path && !job.source_type ? 'push' : 'pull';
-};
-
-// Helper function to determine connection type from connection object
-const getConnectionType = (
-  job: DataEnrichmentJobResponse,
-): 'HTTP' | 'SFTP' | null => {
-  // First check explicit source_type
-  if (job.source_type) {
-    return job.source_type as 'HTTP' | 'SFTP';
-  }
-
-  // Auto-detect from connection object structure
-  if (job.connection && typeof job.connection === 'object') {
-    // Handle case where connection might be a string (JSON string)
-    let connectionObj = job.connection;
-    if (typeof job.connection === 'string') {
-      try {
-        connectionObj = JSON.parse(job.connection);
-      } catch (e) {
-        return null;
-      }
-    }
-
-    if (connectionObj && typeof connectionObj === 'object') {
-      if ('host' in connectionObj && connectionObj.host) {
-        return 'SFTP';
-      } else if ('url' in connectionObj && connectionObj.url) {
-        return 'HTTP';
-      }
-    }
-  }
-
-  return null;
-};
+import type { JobDetailsModalProps } from '../../types';
 
 const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
   isOpen,
@@ -140,33 +89,13 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
     useState(false);
 
   // Handle rejection with reason
-  const handleRejectionConfirm = (reason: string) => {
-    if (onReject && job) {
-      const jobType = getJobType(job) === 'push' ? 'PUSH' : 'PULL';
-      onReject(job.id, jobType, reason);
-      onClose();
-    }
-  };
+  const handleRejectionConfirm = (reason: string) => handleRejection(reason, job, onReject, onClose);
 
   // Handle send for approval confirmation
-  const handleSendForApprovalConfirm = () => {
-    if (onSendForApproval && job) {
-      const jobType = getJobType(job) === 'push' ? 'PUSH' : 'PULL';
-      onSendForApproval(job.id, jobType);
-      onClose();
-    }
-    setShowApprovalConfirmDialog(false);
-  };
+  const handleSendForApprovalConfirm = () => handleSendApproval(job, onSendForApproval, onClose, setShowApprovalConfirmDialog);
 
   // Handle approve confirmation
-  const handleApproveConfirm = () => {
-    if (onApprove && job) {
-      const jobType = getJobType(job) === 'push' ? 'PUSH' : 'PULL';
-      onApprove(job.id, jobType);
-      onClose();
-    }
-    setShowApproveConfirmDialog(false);
-  };
+  const handleApproveConfirm = () => handleApprove(job, onApprove, onClose, setShowApproveConfirmDialog);
 
   // State for edit mode
   const [editedJob, setEditedJob] = useState<
@@ -202,58 +131,12 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
     }
   }, [job, editMode, cloneMode]);
 
-  const handleInputChange = (
-    field: keyof DataEnrichmentJobResponse,
-    value: any,
-  ) => {
-    setEditedJob((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
+  const handleInputChange = (field: keyof DataEnrichmentJobResponse, value: any) => 
+    handleInput(field, value, setEditedJob);
 
-  const handleSave = async () => {
-    if (!onSave || !job) return;
+  const handleSave = async () => handleSaveJob(job, editedJob, onSave, onClose, setIsSaving);
 
-    try {
-      setIsSaving(true);
-      // Filter out schedule_id for push jobs since they don't use schedules
-      const jobType = getJobType(job);
-      const dataToSave = { ...editedJob };
 
-      // Remove type field - we don't allow changing job type
-      delete dataToSave.type;
-
-      // Note: table_name is intentionally excluded from this update
-      // The parent component will handle versioning if needed
-      delete dataToSave.table_name;
-
-      if (jobType === 'push') {
-        delete dataToSave.schedule_id;
-        delete dataToSave.source_type;
-        delete dataToSave.connection;
-        delete dataToSave.file;
-      }
-
-      await onSave(dataToSave);
-      onClose();
-    } catch (error) {
-      console.error('Failed to save job:', error);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const formatDate = (dateString: string | undefined) => {
-    if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
 
   const getConfigTypeColor = (type: string | undefined) => {
     return getJobTypeColor(type);
@@ -262,18 +145,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
   // State for export confirmation dialog
 
   // Handle export confirmation
-  const handleExportConfirm = async () => {
-    if (onExport && job) {
-      setIsSaving(true);
-      try {
-        const jobType = getJobType(job) === 'push' ? 'PUSH' : 'PULL';
-        await onExport(job.id, jobType);
-        setShowExportConfirmDialog(false);
-      } finally {
-        setIsSaving(false);
-      }
-    }
-  };
+  const handleExportConfirm = async () => handleExport(job, onExport, setShowExportConfirmDialog, setIsSaving);
 
   // State for approve comment
   const [approveComment, setApproveComment] = useState('');
@@ -284,21 +156,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
   }, [showApproveConfirmDialog]);
 
   // Approve handler with comment
-  const handleApproveWithComment = async () => {
-    if (onApprove && job) {
-      setIsSaving(true);
-      try {
-        await onApprove(
-          job.id,
-          getJobType(job).toUpperCase() as 'PULL' | 'PUSH',
-          approveComment,
-        );
-        setShowApproveConfirmDialog(false);
-      } finally {
-        setIsSaving(false);
-      }
-    }
-  };
+  const handleApproveWithComment = async () => handleApproveComment(job, approveComment, onApprove, setShowApproveConfirmDialog, setIsSaving);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -786,7 +644,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                             Created
                           </span>
                           <span className="text-sm text-gray-900 block break-words">
-                            {formatDate(job.created_at)}
+                            {formatDateStructured(job.created_at)}
                           </span>
                         </div>
                       </div>
@@ -801,7 +659,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                             Updated
                           </span>
                           <span className="text-sm text-gray-900 block break-words">
-                            {formatDate(job.updated_at)}
+                            {formatDateStructured(job.updated_at)}
                           </span>
                         </div>
                       </div>
@@ -1407,7 +1265,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
               border: '1px solid #DCEEFF',
               borderRadius: '8px',
               padding: '12px 16px',
-              marginTop: '16px',
+              marginBottom: '16px',
             }}
           >
             <DialogContentText
@@ -1540,7 +1398,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
               border: '1px solid #DCEEFF',
               borderRadius: '8px',
               padding: '12px 16px',
-              marginTop: '16px',
+              marginBottom: '16px',
             }}
           >
             <DialogContentText
@@ -1636,7 +1494,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
               backgroundColor: '#DCEEFF',
               borderRadius: '8px',
               padding: '12px 16px',
-              marginTop: '16px',
+              marginBottom: '16px',
             }}
           >
             <DialogContentText

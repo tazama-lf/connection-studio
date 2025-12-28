@@ -34,10 +34,15 @@ import {
   TextInputField,
   URLInputField,
   VersionInputField,
-} from '../../../shared/components/FormFields';
-import ValidationError from '../../../shared/components/ValidationError';
-import { dataEnrichmentApi } from '../services';
-import type { ScheduleResponse } from '../types';
+} from '../../../../shared/components/FormFields';
+import ValidationError from '../../../../shared/components/ValidationError';
+import { dataEnrichmentJobApi as dataEnrichmentApi } from '../../handlers';
+import {
+  handleFormInputChange,
+  handleContinue as continueForm,
+  handleSaveForm,
+} from '../../handlers';
+import type { ScheduleResponse } from '../../types';
 import {
   authenticationTypeOptions,
   defaultValues,
@@ -47,17 +52,9 @@ import {
   pullValidationSchema,
   pushValidationSchema,
   sourceTypeOptions,
-} from './validationSchema';
+} from '../validationSchema';
 
-// TYPES
-interface DataEnrichmentFormModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSave: (formData: any) => void;
-  editMode?: boolean;
-  jobId?: string;
-  jobType?: 'pull' | 'push';
-}
+import type { DataEnrichmentFormModalProps } from '../../types';
 
 // Helper function for pluralization
 const getIterationText = (count: number) => {
@@ -1176,8 +1173,7 @@ export const DataEnrichmentFormModal: React.FC<
       HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
     >,
   ) => {
-    const { name, value, type } = e.target;
-    const checked = (e.target as HTMLInputElement).checked;
+    const { name, value } = e.target;
 
     if (name === 'configurationType') {
       setConfigurationType(value as 'pull' | 'push');
@@ -1206,16 +1202,11 @@ export const DataEnrichmentFormModal: React.FC<
       updatedFormData[name] = value;
       setFormData(updatedFormData);
     } else {
-      setFormData({
-        ...formData,
-        [name]: type === 'checkbox' ? checked : value,
-      });
+      handleFormInputChange(name, value, setFormData);
     }
   };
 
-  const handleContinue = () => {
-    setShowConfigForm(true);
-  };
+  const handleContinue = () => continueForm(setShowConfigForm);
 
   const handleSave = async () => {
     try {

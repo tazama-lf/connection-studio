@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router';
 import { useToast } from '../../../shared/providers/ToastProvider';
 import JobDetailsModal from '../../data-enrichment/components/JobDetailsModal';
 import { JobList } from '../../data-enrichment/components/JobList';
-import { dataEnrichmentApi } from '../../data-enrichment/services/dataEnrichmentApi';
+import { loadJobs } from '../../data-enrichment/handlers';
 import type { DataEnrichmentJobResponse } from '../../data-enrichment/types';
 
 const ApproverDEJobsPage: React.FC = () => {
@@ -43,13 +43,10 @@ const ApproverDEJobsPage: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      const limit: number = itemsPerPage;
-      const offset: number = pageNumber - 1;
-
-      const params = { limit, offset, userRole: userRole as string };
-
-      const response = await dataEnrichmentApi.getAllJobs(
-        params,
+      const response = await loadJobs(
+        pageNumber,
+        itemsPerPage,
+        userRole as string,
         searchingFilters,
       );
 

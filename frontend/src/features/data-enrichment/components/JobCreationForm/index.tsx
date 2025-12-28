@@ -9,15 +9,11 @@ import type {
   AuthType,
   FileType,
   ScheduleResponse,
-} from '../types';
-import { Button } from '../../../shared/components/Button';
-import { dataEnrichmentApi } from '../services/dataEnrichmentApi';
+} from '../../types';
+import { Button } from '../../../../shared/components/Button';
+import { dataEnrichmentJobApi as dataEnrichmentApi } from '../../handlers';
 
-interface JobFormProps {
-  onSubmit: (jobData: CreateDataEnrichmentJobRequest) => void;
-  onCancel: () => void;
-  isLoading?: boolean;
-}
+import type { JobFormProps } from '../../types';
 
 export const JobCreationForm: React.FC<JobFormProps> = ({
   onSubmit,

@@ -10,6 +10,8 @@ import {
   Pagination,
   Tooltip,
 } from '@mui/material';
+import { formatDate } from '../../utils';
+
 import { handleInputFilter, handleSelectFilter } from '@shared/helpers';
 import { getDemsStatusLov } from '@shared/lovs';
 import {
@@ -21,36 +23,25 @@ import {
   ShieldX,
 } from 'lucide-react';
 import React, { useState } from 'react';
-import { Button } from '../../../shared/components/Button';
-import { useToast } from '../../../shared/providers/ToastProvider';
-import { getStatusLabel } from '../../../shared/utils/statusColors';
+import { Button } from '../../../../shared/components/Button';
+import { useToast } from '../../../../shared/providers/ToastProvider';
+import { getStatusLabel } from '../../../../shared/utils/statusColors';
 import {
   isApprover,
   isEditor,
   isExporter,
   isPublisher,
-} from '../../../utils/common/roleUtils';
-import { useAuth } from '../../auth/contexts/AuthContext';
-import { dataEnrichmentApi } from '../services';
-import type { DataEnrichmentJobResponse } from '../types';
+} from '../../../../utils/common/roleUtils';
+import { useAuth } from '../../../auth/contexts/AuthContext';
+import { dataEnrichmentJobApi as dataEnrichmentApi } from '../../handlers';
+import {
+  handleResumeJob as resumeJob,
+  handleUpdateJobStatus as updateJobStatus,
+  handleTogglePublishingStatus as togglePublishing,
+} from '../../handlers';
+import type { DataEnrichmentJobResponse } from '../../types';
 
-interface JobListProps {
-  jobs: DataEnrichmentJobResponse[];
-  isLoading?: boolean;
-  onViewLogs?: (jobId: string) => void;
-  onEdit?: (job: DataEnrichmentJobResponse) => void;
-  onClone?: (job: DataEnrichmentJobResponse) => void;
-  onRefresh?: () => void;
-  page?: number;
-  setPage?: (page: number) => void;
-  totalPages?: number;
-  totalRecords?: number;
-  itemsPerPage?: number;
-  searchingFilters?: any;
-  setSearchingFilters?: any;
-  error?: string | null;
-  loading?: boolean;
-}
+import type { JobListProps } from '../../types';
 
 export const JobList: React.FC<JobListProps> = (props) => {
   const [openLoader, setOpenLoader] = useState(false);
@@ -143,50 +134,37 @@ export const JobList: React.FC<JobListProps> = (props) => {
   }, [statusDropdownOpen, dropdownOpen]);
 
   const handleResumeJob = async (job: DataEnrichmentJobResponse) => {
-    try {
-      setUpdatingStatus(job.id);
-      await dataEnrichmentApi.updateJobStatus(
-        job.id,
-        'STATUS_01_IN_PROGRESS',
-        job.type?.toUpperCase() as 'PULL' | 'PUSH',
-      );
-      showSuccess(`Job ${job.endpoint_name || job.id} resumed successfully`);
-      if (props.onRefresh) {
-        props.onRefresh();
+    setUpdatingStatus(job.id);
+    await resumeJob(
+      job,
+      showSuccess,
+      showError,
+      () => {
+        if (props.onRefresh) props.onRefresh();
+        setUpdatingStatus(null);
+        setDropdownOpen(null);
       }
-    } catch (error) {
-      console.error('Failed to resume job:', error);
-      showError('Failed to resume job');
-    } finally {
-      setUpdatingStatus(null);
-      setDropdownOpen(null);
-    }
+    );
   };
 
   const handleUpdateJobStatus = async (
     job: DataEnrichmentJobResponse,
     status: string,
   ) => {
-    try {
-      setUpdatingStatus(job.id);
-      await dataEnrichmentApi.updateStatus(
-        job.id,
-        status,
-        job.type?.toUpperCase() as 'PULL' | 'PUSH',
-      );
-      showSuccess(
-        `Job status updated to ${getStatusLabel(status)} successfully`,
-      );
-      if (props.onRefresh) {
-        props.onRefresh();
+    setUpdatingStatus(job.id);
+    const jobType = job.type?.toUpperCase() as 'PULL' | 'PUSH';
+    await updateJobStatus(
+      job.id,
+      jobType,
+      status,
+      showSuccess,
+      showError,
+      () => {
+        if (props.onRefresh) props.onRefresh();
+        setUpdatingStatus(null);
+        setDropdownOpen(null);
       }
-    } catch (error) {
-      console.error('Failed to update job status:', error);
-      showError('Failed to update job status');
-    } finally {
-      setUpdatingStatus(null);
-      setDropdownOpen(null);
-    }
+    );
   };
 
   const handleTogglePublishingStatus = async (
@@ -203,31 +181,18 @@ export const JobList: React.FC<JobListProps> = (props) => {
       job: null,
     });
 
-    try {
-      const data = await dataEnrichmentApi.updatePublishingStatus(
-        job.id,
-        newStatus,
-        job.type?.toUpperCase() as 'PULL' | 'PUSH',
-      );
-
-      if (data?.success) {
-        const statusLabel =
-          newStatus === 'active' ? 'activated' : 'deactivated';
-        showSuccess(
-          `Job ${job.endpoint_name || job.id} has been ${statusLabel} successfully`,
-        );
-        // Refresh the job list
+    await togglePublishing(
+      job,
+      showSuccess,
+      showError,
+      () => {
         if (props.onRefresh) {
           props.onRefresh();
         }
+        setDropdownOpen(null);
+        setOpenLoader(false);
       }
-    } catch (error) {
-      console.error('Error toggling job publishing status:', error);
-      showError('Failed to update publishing status. Please try again.');
-    } finally {
-      setDropdownOpen(null);
-      setOpenLoader(false);
-    }
+    );
   };
 
   if (isLoading) {
@@ -310,16 +275,6 @@ export const JobList: React.FC<JobListProps> = (props) => {
   //   }
   // };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'numeric',
-      day: 'numeric',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-    });
-  };
 
   const getStatusBadge = (status: string) => {
     const normalizedStatus = status.toLowerCase();

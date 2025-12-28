@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, Database, SearchIcon } from 'lucide-react';
-import { dataEnrichmentApi } from '../../data-enrichment/services/dataEnrichmentApi';
+import { dataEnrichmentJobApi as dataEnrichmentApi } from '../../data-enrichment/handlers';
 import { useToast } from '../../../shared/providers/ToastProvider';
 import type { DataEnrichmentJobResponse } from '../../data-enrichment/types';
 import PublisherDEJobList from '../components/PublisherDEJobList';
@@ -8,7 +8,7 @@ import PublisherDEJobDetailsModal from '../components/PublisherDEJobDetailsModal
 import { useAuth } from '@features/auth';
 import { getPrimaryRole } from '@utils/common/roleUtils';
 import { UI_CONFIG } from '@shared/config/app.config';
-import { JobList } from '@features/data-enrichment';
+import JobList from '@features/data-enrichment/components/JobList';
 import { Button } from '@shared';
 import { useNavigate } from 'react-router';
 import JobDetailsModal from '@features/data-enrichment/components/JobDetailsModal';

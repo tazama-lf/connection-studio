@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Button } from '../../../shared/components/Button';
+import { Button } from '../../../../shared/components/Button';
 import { Plus, Clock, CheckCircle, XCircle, Send } from 'lucide-react';
-import { dataEnrichmentApi } from '../services/dataEnrichmentApi';
-import type { ScheduleResponse } from '../types';
-import { useToast } from '../../../shared/providers/ToastProvider';
-import { useAuth } from '../../auth/contexts/AuthContext';
-import { isEditor, isApprover } from '../../../utils/common/roleUtils';
-import { getStatusColor, getStatusLabel } from '../../../shared/utils/statusColors';
+import { scheduleApi } from '../../handlers';
+import type { ScheduleResponse, CronJobManagementProps } from '../../types';
+import { useToast } from '../../../../shared/providers/ToastProvider';
+import { useAuth } from '../../../auth/contexts/AuthContext';
+import { isEditor, isApprover } from '../../../../utils/common/roleUtils';
+import { getStatusColor, getStatusLabel } from '../../../../shared/utils/statusColors';
+import {
+  handleSubmitForApproval as handleSubmit,
+  handleApproveSchedule,
+  handleRejectSchedule,
+} from '../../handlers';
 
-interface CronJobManagementProps {
-  onCreateSchedule?: () => void;
-}
 
 const CronJobManagement: React.FC<CronJobManagementProps> = ({ onCreateSchedule }) => {
   const { showSuccess, showError } = useToast();
@@ -30,7 +32,7 @@ const CronJobManagement: React.FC<CronJobManagementProps> = ({ onCreateSchedule 
   const loadSchedules = async () => {
     try {
       setLoading(true);
-      const response = await dataEnrichmentApi.getAllSchedules();
+      const response = await scheduleApi.getAll();
       setSchedules(response);
     } catch (error) {
       console.error('Failed to load schedules:', error);
@@ -41,45 +43,21 @@ const CronJobManagement: React.FC<CronJobManagementProps> = ({ onCreateSchedule 
   };
 
   const handleSubmitForApproval = async (scheduleId: string) => {
-    try {
-      setActionLoading(scheduleId);
-      await dataEnrichmentApi.updateScheduleStatus(scheduleId, 'under-review');
-      showSuccess('Cron job submitted for approval');
-      await loadSchedules();
-    } catch (error) {
-      console.error('Failed to submit for approval:', error);
-      showError('Failed to submit cron job for approval');
-    } finally {
-      setActionLoading(null);
-    }
+    setActionLoading(scheduleId);
+    await handleSubmit(scheduleId, showSuccess, showError, loadSchedules);
+    setActionLoading(null);
   };
 
   const handleApprove = async (scheduleId: string) => {
-    try {
-      setActionLoading(scheduleId);
-      await dataEnrichmentApi.updateScheduleStatus(scheduleId, 'approved');
-      showSuccess('Cron job approved successfully');
-      await loadSchedules();
-    } catch (error) {
-      console.error('Failed to approve:', error);
-      showError('Failed to approve cron job');
-    } finally {
-      setActionLoading(null);
-    }
+    setActionLoading(scheduleId);
+    await handleApproveSchedule(scheduleId, showSuccess, showError, loadSchedules);
+    setActionLoading(null);
   };
 
   const handleReject = async (scheduleId: string) => {
-    try {
-      setActionLoading(scheduleId);
-      await dataEnrichmentApi.updateScheduleStatus(scheduleId, 'rejected');
-      showSuccess('Cron job rejected');
-      await loadSchedules();
-    } catch (error) {
-      console.error('Failed to reject:', error);
-      showError('Failed to reject cron job');
-    } finally {
-      setActionLoading(null);
-    }
+    setActionLoading(scheduleId);
+    await handleRejectSchedule(scheduleId, showSuccess, showError, loadSchedules);
+    setActionLoading(null);
   };
 
   const getStatusBadge = (status?: string) => {
@@ -90,16 +68,16 @@ const CronJobManagement: React.FC<CronJobManagementProps> = ({ onCreateSchedule 
     // Get icon based on status
     let icon = null;
     switch (status) {
-      case 'in-progress':
+      case 'STATUS_01_IN_PROGRESS':
         icon = <Clock size={12} className="mr-1" />;
         break;
-      case 'under-review':
+      case 'STATUS_03_UNDER_REVIEW':
         icon = <Send size={12} className="mr-1" />;
         break;
-      case 'approved':
+      case 'STATUS_04_APPROVED':
         icon = <CheckCircle size={12} className="mr-1" />;
         break;
-      case 'rejected':
+      case 'STATUS_05_REJECTED':
         icon = <XCircle size={12} className="mr-1" />;
         break;
     }
@@ -115,7 +93,7 @@ const CronJobManagement: React.FC<CronJobManagementProps> = ({ onCreateSchedule 
   const getFilteredSchedules = () => {
     if (userIsApprover) {
       // Approvers see all "under-review" schedules
-      return schedules.filter(schedule => schedule.status === 'under-review');
+      return schedules.filter(schedule => schedule.status === 'STATUS_03_UNDER_REVIEW');
     } else if (userIsEditor) {
       // Editors see their own schedules in any status
       return schedules; // In a real app, you'd filter by creator/owner
@@ -183,7 +161,7 @@ const CronJobManagement: React.FC<CronJobManagementProps> = ({ onCreateSchedule 
                 </div>
 
                 <div className="flex items-center space-x-2">
-                  {userIsEditor && schedule.status === 'in-progress' && (
+                  {userIsEditor && schedule.status === 'STATUS_01_IN_PROGRESS' && (
                     <Button
                       variant="secondary"
                       size="sm"
@@ -195,7 +173,7 @@ const CronJobManagement: React.FC<CronJobManagementProps> = ({ onCreateSchedule 
                     </Button>
                   )}
 
-                  {userIsApprover && schedule.status === 'under-review' && (
+                  {userIsApprover && schedule.status === 'STATUS_03_UNDER_REVIEW' && (
                     <>
                       <Button
                         variant="primary"

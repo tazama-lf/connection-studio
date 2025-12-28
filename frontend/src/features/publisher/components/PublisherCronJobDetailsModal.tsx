@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X, Upload, Clock, Calendar, RefreshCw, AlertCircle, CheckCircle } from 'lucide-react';
 import type { ScheduleResponse } from '../../data-enrichment/types';
-import { dataEnrichmentApi } from '../../data-enrichment/services/dataEnrichmentApi';
+import { dataEnrichmentJobApi as dataEnrichmentApi } from '../../data-enrichment/handlers';
 import { getStatusColor, getStatusLabel } from '../../../shared/utils/statusColors';
 
 interface PublisherCronJobDetailsModalProps {

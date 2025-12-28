@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router';
 import CustomTable from '@common/Tables/CustomTable';
-import { dataEnrichmentApi } from '../services/dataEnrichmentApi';
+import { dataEnrichmentJobApi as dataEnrichmentApi } from '../handlers';
 import {
   Box,
   Dialog,
