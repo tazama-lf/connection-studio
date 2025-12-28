@@ -20,7 +20,7 @@ import {
 import React, { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import {
-  AlphaNumericInputField,
+  
   ApiPathInputField,
   DatabaseTableInputField,
   DelimiterInputField,
@@ -40,10 +40,11 @@ import { dataEnrichmentJobApi as dataEnrichmentApi, scheduleApi } from '../../ha
 import {
   handleFormInputChange,
   handleContinue as continueForm,
-  handleSaveForm,
 } from '../../handlers';
 import type { ScheduleResponse } from '../../types';
-import {
+// @ts-ignore - JS module without types
+import * as validationSchema from '../validationSchema';
+const {
   authenticationTypeOptions,
   defaultValues,
   fileFormatOptions,
@@ -52,21 +53,15 @@ import {
   pullValidationSchema,
   pushValidationSchema,
   sourceTypeOptions,
-} from '../validationSchema';
+} = (validationSchema as any) || {};
 import { DATA_ENRICHMENT_JOB_STATUSES } from '../../constants';
-
 import type { DataEnrichmentFormModalProps } from '../../types';
-
-// Helper function for pluralization
-const getIterationText = (count: number) => {
-  return count === 1 ? '1 iteration' : `${count} iterations`;
-};
 
 export const DataEnrichmentFormModal: React.FC<
   DataEnrichmentFormModalProps
-  // ----------PROPS
+  
 > = ({ isOpen, onClose, onSave, editMode = false, jobId, jobType }) => {
-  // ----------STATES
+  
   const [currentStep, setCurrentStep] = useState<
     'config' | 'preview' | 'summary'
   >('config');
@@ -79,33 +74,14 @@ export const DataEnrichmentFormModal: React.FC<
     ScheduleResponse[]
   >([]);
   const [schedulesLoading, setSchedulesLoading] = useState(false);
-  const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(
-    null,
-  );
-  const [showCreateSchedule, setShowCreateSchedule] = useState(false);
-  const [isCreatingSchedule, setIsCreatingSchedule] = useState(false);
-  const [newSchedule, setNewSchedule] = useState({
-    name: '',
-    cron: '',
-    iterations: 1,
-  });
+  
   const [isCreating, setIsCreating] = useState(false);
-  const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [createSuccess, setCreateSuccess] = useState<string | null>(null);
-  const [showPassword, setShowPassword] = useState(false);
-  const [previewData, setPreviewData] = useState({
-    totalRows: 0,
-    validRows: 0,
-    invalidRows: 0,
-    previewRows: [],
-    validationErrors: [],
-    isDemo: false,
-    message: '',
-  });
+  
 
   const tenantId = useAuth()?.user?.tenantId || 'tenantId';
-  // --------------------REACT HOOKS FORM SETUP
+  
   const loadSchema =
     configurationType === 'pull' ? pullValidationSchema : pushValidationSchema;
   const {
@@ -116,31 +92,29 @@ export const DataEnrichmentFormModal: React.FC<
     getValues,
     reset,
     trigger,
-    formState: { errors, isValid },
+    formState: { errors },
   } = useForm({
     resolver: yupResolver(loadSchema),
     defaultValues,
     mode: 'onChange',
   });
 
-  console.log('errors', errors);
-  // Ref to track if we should scroll to error on next render
   const shouldScrollToErrorRef = useRef(false);
-  // Ref for error message container to scroll to
+  
   const errorMessageRef = useRef<HTMLDivElement>(null);
 
-  // Function called when form submission fails validation
+  
   const onError = () => {
     shouldScrollToErrorRef.current = true;
   };
 
-  // Helper function to generate endpoint URL
+  
   const generateEndpointUrl = (version?: string, endpointPath?: string) => {
-    // Clean version (remove 'v' prefix and slashes)
+    
     const cleanVersion =
       version?.replace(/^v?\/*/g, '').replace(/\/+$/g, '') || '';
 
-    // Clean endpoint path (ensure it starts with /)
+    
     const cleanPath = endpointPath?.startsWith('/')
       ? endpointPath
       : `/${endpointPath || ''}`;
@@ -155,7 +129,7 @@ export const DataEnrichmentFormModal: React.FC<
     return `/${tenantId}/enrichment${versionPart}${pathPart}`;
   };
 
-  // Watch for errors and scroll when needed
+  
   useEffect(() => {
     if (shouldScrollToErrorRef.current && Object.keys(errors).length > 0) {
       shouldScrollToErrorRef.current = false;
@@ -163,7 +137,7 @@ export const DataEnrichmentFormModal: React.FC<
     }
   }, [errors]);
 
-  // Auto-scroll to error messages when they appear
+  
   useEffect(() => {
     if (createError && errorMessageRef.current) {
       errorMessageRef.current.scrollIntoView({
@@ -174,7 +148,7 @@ export const DataEnrichmentFormModal: React.FC<
     }
   }, [createError]);
 
-  // Watch for fileFormat changes and re-validate pathPattern
+  
   const fileFormat = watch('fileFormat');
   useEffect(() => {
     const pathPattern = getValues('pathPattern');
@@ -183,13 +157,13 @@ export const DataEnrichmentFormModal: React.FC<
     }
   }, [fileFormat, trigger, getValues]);
 
-  // Helper function to perform the actual scrolling
+  
   const scrollToFirstError = (fieldName: string) => {
     const errorElement = document.querySelector(
       `[name="${fieldName}"]`,
     ) as HTMLElement;
     if (errorElement) {
-      // Find the modal's scrollable container
+      
       const modalContent =
         errorElement.closest('.MuiDialog-paper') ||
         errorElement.closest('.MuiModal-root') ||
@@ -197,37 +171,35 @@ export const DataEnrichmentFormModal: React.FC<
         document.querySelector('.MuiDialog-paper');
 
       if (modalContent) {
-        // Scroll within the modal container
+        
         errorElement.scrollIntoView({
           behavior: 'smooth',
           block: 'center',
           inline: 'nearest',
         });
       } else {
-        // Fallback to window scroll if modal container not found
+        
         errorElement.scrollIntoView({
           behavior: 'smooth',
           block: 'center',
         });
       }
 
-      // Focus the field after scroll completes
+      
       setTimeout(() => {
         errorElement.focus();
       }, 300);
     }
   };
 
-  // Form submission handler for React Hook Form
-  const onSubmit = (data: any) => {
-    console.log('Form Data:', data);
-    // Navigate to review/summary page after successful form validation
+  
+  const onSubmit = () => {
     setCurrentStep('summary');
   };
 
-  // --------------------REACT HOOKS FORM SETUP
+  
 
-  // Keep existing formData state for backward compatibility
+  
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -251,39 +223,39 @@ export const DataEnrichmentFormModal: React.FC<
     targetCollection: '',
   });
 
-  // Reset form state when modal opens/closes
+  
   useEffect(() => {
     if (!isOpen) {
       setShowConfigForm(false);
     }
   }, [isOpen]);
 
-  // Prevent body scroll and scrollbar jitter when modal is open
+  
   useEffect(() => {
     if (isOpen) {
-      // Store original body styles before modifying
+      
       const originalOverflow = document.body.style.overflow;
       const originalPaddingRight = document.body.style.paddingRight;
       const scrollbarWidth =
         window.innerWidth - document.documentElement.clientWidth;
 
-      // Prevent body scroll and reserve scrollbar space
+      
       document.body.style.overflow = 'hidden';
       document.body.style.paddingRight = `${scrollbarWidth}px`;
 
-      // Cleanup function to restore original styles
+      
       return () => {
         document.body.style.overflow = originalOverflow;
         document.body.style.paddingRight = originalPaddingRight;
       };
     } else {
-      // Ensure body scroll is restored when modal closes
+      
       document.body.style.overflow = '';
       document.body.style.paddingRight = '';
     }
   }, [isOpen]);
 
-  // Load available schedules when modal opens
+  
   useEffect(() => {
     const loadSchedules = async () => {
       if (!isOpen) return;
@@ -293,19 +265,15 @@ export const DataEnrichmentFormModal: React.FC<
         const schedulesResp = await scheduleApi.getAll();
         const schedule_data: any[] = Array.isArray(schedulesResp)
           ? schedulesResp
-          : schedulesResp?.data || schedulesResp?.results || schedulesResp?.items || [];
+          : (schedulesResp as any)?.data || (schedulesResp as any)?.results || (schedulesResp as any)?.items || [];
 
-        // Filter schedules to only show approved/exported statuses
         const filteredSchedules = (schedule_data || []).filter((schedule: any) =>
           schedule?.status === DATA_ENRICHMENT_JOB_STATUSES.APPROVED ||
           schedule?.status === DATA_ENRICHMENT_JOB_STATUSES.EXPORTED,
         );
 
-        console.log('filteredSchedules', filteredSchedules);
         setAvailableSchedules(filteredSchedules || []);
       } catch (error) {
-        console.error('Failed to load schedules:', error);
-        // Keep empty array as fallback
         setAvailableSchedules([]);
       } finally {
         setSchedulesLoading(false);
@@ -315,7 +283,7 @@ export const DataEnrichmentFormModal: React.FC<
     loadSchedules();
   }, [isOpen]);
 
-  // Load job data when in edit mode
+  
   useEffect(() => {
     const loadJobData = async () => {
       if (!isOpen || !editMode || !jobId) {
@@ -326,18 +294,18 @@ export const DataEnrichmentFormModal: React.FC<
         setIsLoadingJob(true);
         setCreateError(null);
 
-        const job = await dataEnrichmentApi.getJob(
+        const job = await dataEnrichmentApi.getById(
           jobId,
           jobType?.toUpperCase() as 'PULL' | 'PUSH',
         );
 
-        // Populate form with job data
-        // Use jobType prop first (most reliable), then fallback to job data
+        
+        
         const detectedConfigType =
           jobType ||
           ((job.config_type || job.type)?.toLowerCase() as 'pull' | 'push');
 
-        // Push jobs can be identified by having a 'path' field and no 'source_type'
+        
         const isPushJob = job.path && !job.source_type;
         const finalConfigType = isPushJob ? 'push' : detectedConfigType;
 
@@ -347,17 +315,16 @@ export const DataEnrichmentFormModal: React.FC<
           description: job.description || '',
           configurationType: finalConfigType,
           sourceType: job.source_type?.toLowerCase() || 'sftp',
-          // Populate other fields based on job type and source type
+          
           targetTable: job.table_name || '',
         }));
 
         if (job.schedule_id) {
-          setSelectedScheduleId(job.schedule_id);
+          // schedule id exists on job; we track schedules in availableSchedules
         }
 
         setConfigurationType(finalConfigType);
       } catch (error) {
-        console.error('Failed to load job data:', error);
         setCreateError('Failed to load job data. Please try again.');
       } finally {
         setIsLoadingJob(false);
@@ -367,7 +334,7 @@ export const DataEnrichmentFormModal: React.FC<
     loadJobData();
   }, [isOpen, editMode, jobId, jobType]);
 
-  // Set configuration type for new job creation
+  
   useEffect(() => {
     if (isOpen && !editMode && jobType) {
       setConfigurationType(jobType);
@@ -387,10 +354,9 @@ export const DataEnrichmentFormModal: React.FC<
                 Connector Name <span className="text-red-500">*</span>
               </>
             }
-            type="text"
             placeholder="only a-z, 0-9, _, - are allowed"
           />
-          {errors?.name && <ValidationError message={errors?.name?.message} />}
+          {errors?.name && <ValidationError message={String(errors?.name?.message || '')} />}
         </Grid>
         <Grid size={{ xs: 12, md: 4 }}>
           <VersionInputField
@@ -404,7 +370,7 @@ export const DataEnrichmentFormModal: React.FC<
             placeholder="Format: 1.0.0 or v1.0.0"
           />
           {errors?.version && (
-            <ValidationError message={errors?.version?.message} />
+            <ValidationError message={String(errors?.version?.message || '')} />
           )}
         </Grid>
         <Grid size={{ xs: 12, md: 4 }}>
@@ -419,7 +385,7 @@ export const DataEnrichmentFormModal: React.FC<
             options={sourceTypeOptions || []}
           />
           {errors?.sourceType && (
-            <ValidationError message={errors?.sourceType?.message} />
+            <ValidationError message={String(errors?.sourceType?.message || '')} />
           )}
         </Grid>
         <Grid size={{ xs: 12 }}>
@@ -435,7 +401,7 @@ export const DataEnrichmentFormModal: React.FC<
             rows={2}
           />
           {errors?.description && (
-            <ValidationError message={errors?.description?.message} />
+            <ValidationError message={String(errors?.description?.message || '')} />
           )}
         </Grid>
         <Grid size={{ xs: 12 }}>
@@ -450,7 +416,7 @@ export const DataEnrichmentFormModal: React.FC<
             options={getAssociatedScheduleOptions(availableSchedules) || []}
           />
           {errors?.schedule && (
-            <ValidationError message={errors?.schedule?.message} />
+            <ValidationError message={String(errors?.schedule?.message || '')} />
           )}
         </Grid>
       </Grid>
@@ -472,7 +438,7 @@ export const DataEnrichmentFormModal: React.FC<
               placeholder=""
             />
             {errors?.host && (
-              <ValidationError message={errors?.host?.message} />
+              <ValidationError message={String(errors?.host?.message || '')} />
             )}
           </Grid>
           <Grid size={{ xs: 12, md: 6 }}>
@@ -488,7 +454,7 @@ export const DataEnrichmentFormModal: React.FC<
               maxLength={5}
             />
             {errors?.port && (
-              <ValidationError message={errors?.port?.message} />
+              <ValidationError message={String(errors?.port?.message || '')} />
             )}
           </Grid>
           <Grid size={{ xs: 12, md: 6 }}>
@@ -503,7 +469,7 @@ export const DataEnrichmentFormModal: React.FC<
               options={authenticationTypeOptions || []}
             />
             {errors?.authType && (
-              <ValidationError message={errors?.authType?.message} />
+              <ValidationError message={String(errors?.authType?.message || '')} />
             )}
           </Grid>
           <Grid size={{ xs: 12, md: 6 }}>
@@ -519,7 +485,7 @@ export const DataEnrichmentFormModal: React.FC<
               placeholder="Enter Username"
             />
             {errors?.username && (
-              <ValidationError message={errors?.username?.message} />
+              <ValidationError message={String(errors?.username?.message || '')} />
             )}
           </Grid>
           <Grid size={{ xs: 12, md: 6 }}>
@@ -545,12 +511,11 @@ export const DataEnrichmentFormModal: React.FC<
                     Password <span className="text-red-500">*</span>
                   </>
                 }
-                type="text"
                 placeholder="Enter Password"
               />
             )}
             {errors?.password && (
-              <ValidationError message={errors?.password?.message} />
+              <ValidationError message={String(errors?.password?.message || '')} />
             )}
           </Grid>
         </Grid>
@@ -565,10 +530,9 @@ export const DataEnrichmentFormModal: React.FC<
                   URL <span className="text-red-500">*</span>
                 </>
               }
-              type="text"
               placeholder="https://dummyjson.com/users"
             />
-            {errors?.url && <ValidationError message={errors?.url?.message} />}
+            {errors?.url && <ValidationError message={String(errors?.url?.message || '')} />}
           </Grid>
           <Grid size={{ xs: 12 }}>
             <MultiLineTextInputField
@@ -579,7 +543,7 @@ export const DataEnrichmentFormModal: React.FC<
               rows={2}
             />
             {errors?.headers && (
-              <ValidationError message={errors?.headers?.message} />
+              <ValidationError message={String(errors?.headers?.message || '')} />
             )}
           </Grid>
         </Grid>
@@ -603,7 +567,7 @@ export const DataEnrichmentFormModal: React.FC<
                 placeholder="/inbound/data_*.csv"
               />
               {errors?.pathPattern && (
-                <ValidationError message={errors?.pathPattern?.message} />
+                <ValidationError message={String(errors?.pathPattern?.message || '')} />
               )}
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
@@ -618,7 +582,7 @@ export const DataEnrichmentFormModal: React.FC<
                 options={fileFormatOptions || []}
               />
               {errors?.fileFormat && (
-                <ValidationError message={errors?.fileFormat?.message} />
+                <ValidationError message={String(errors?.fileFormat?.message || '')} />
               )}
             </Grid>
             {watch('fileFormat') === 'csv' ? (
@@ -631,12 +595,10 @@ export const DataEnrichmentFormModal: React.FC<
                       Delimiter <span className="text-red-500">*</span>
                     </>
                   }
-                  type="text"
                   placeholder=","
-                  maxLength={1}
                 />
                 {errors?.delimiter && (
-                  <ValidationError message={errors?.delimiter?.message} />
+                  <ValidationError message={String(errors?.delimiter?.message || '')} />
                 )}
               </Grid>
             ) : null}
@@ -652,18 +614,15 @@ export const DataEnrichmentFormModal: React.FC<
           <DatabaseTableInputField
             name="targetTable"
             control={control}
-            fullWidth={true}
-            maxWidth={65}
             label={
               <>
                 Table Name <span className="text-red-500">*</span>
               </>
             }
-            type="text"
             placeholder="e.g: customers_2025"
           />
           {errors?.targetTable && (
-            <ValidationError message={errors?.targetTable?.message} />
+            <ValidationError message={String(errors?.targetTable?.message || '')} />
           )}
         </Grid>
       </Grid>
@@ -689,7 +648,7 @@ export const DataEnrichmentFormModal: React.FC<
               : 'Replace mode archives the current dataset and creates a new version with the uploaded data.'}
           </Box>
           {errors?.ingestMode && (
-            <ValidationError message={errors?.ingestMode?.message} />
+            <ValidationError message={String(errors?.ingestMode?.message || '')} />
           )}
         </Grid>
       </Grid>
@@ -708,10 +667,9 @@ export const DataEnrichmentFormModal: React.FC<
                 Connector Name <span className="text-red-500">*</span>
               </>
             }
-            type="text"
             placeholder="only a-z, 0-9, _, - are allowed"
           />
-          {errors?.name && <ValidationError message={errors?.name?.message} />}
+          {errors?.name && <ValidationError message={String(errors?.name?.message || '')} />}
         </Grid>
 
         <Grid size={{ xs: 12, md: 4 }}>
@@ -726,7 +684,7 @@ export const DataEnrichmentFormModal: React.FC<
             placeholder="Format: 1.0.0 or v1.0.0"
           />
           {errors?.version && (
-            <ValidationError message={errors?.version?.message} />
+            <ValidationError message={String(errors?.version?.message || '')} />
           )}
         </Grid>
 
@@ -741,7 +699,7 @@ export const DataEnrichmentFormModal: React.FC<
             }
           />
           {errors?.endpointPath && (
-            <ValidationError message={errors?.endpointPath?.message} />
+            <ValidationError message={String(errors?.endpointPath?.message || '')} />
           )}
         </Grid>
 
@@ -754,11 +712,11 @@ export const DataEnrichmentFormModal: React.FC<
               const version = watch('version');
               const endpointPath = watch('endpointPath');
 
-              // Clean version (remove 'v' prefix and slashes)
+              
               const cleanVersion =
                 version?.replace(/^v?\/*/g, '').replace(/\/+$/g, '') || '';
 
-              // Clean endpoint path (ensure it starts with /)
+              
               const cleanPath = endpointPath?.startsWith('/')
                 ? endpointPath
                 : `/${endpointPath || ''}`;
@@ -793,7 +751,7 @@ export const DataEnrichmentFormModal: React.FC<
             rows={2}
           />
           {errors?.description && (
-            <ValidationError message={errors?.description?.message} />
+            <ValidationError message={String(errors?.description?.message || '')} />
           )}
         </Grid>
       </Grid>
@@ -806,18 +764,15 @@ export const DataEnrichmentFormModal: React.FC<
           <DatabaseTableInputField
             name="targetTable"
             control={control}
-            fullWidth={true}
-            maxWidth={65}
             label={
               <>
                 Table Name <span className="text-red-500">*</span>
               </>
             }
-            type="text"
             placeholder="e.g: customers_2025"
           />
           {errors?.targetTable && (
-            <ValidationError message={errors?.targetTable?.message} />
+            <ValidationError message={String(errors?.targetTable?.message || '')} />
           )}
         </Grid>
       </Grid>
@@ -843,7 +798,7 @@ export const DataEnrichmentFormModal: React.FC<
               : 'Replace mode archives the current dataset and creates a new version with the uploaded data.'}
           </Box>
           {errors?.ingestMode && (
-            <ValidationError message={errors?.ingestMode?.message} />
+            <ValidationError message={String(errors?.ingestMode?.message || '')} />
           )}
         </Grid>
       </Grid>
@@ -851,7 +806,7 @@ export const DataEnrichmentFormModal: React.FC<
   );
 
   const renderSummaryStep = () => {
-    const formValues = getValues(); // Get all current form values
+    const formValues = getValues(); 
     return (
       <div className="space-y-6" data-id="element-818">
         <div
@@ -887,7 +842,7 @@ export const DataEnrichmentFormModal: React.FC<
             Endpoint Summary
           </Box>
           <div className="space-y-3" data-id="element-998">
-            {/* TYPE */}
+            
             <div className="grid grid-cols-3 gap-4" data-id="element-999">
               <div
                 className="col-span-1 text-sm font-medium text-gray-500"
@@ -920,7 +875,7 @@ export const DataEnrichmentFormModal: React.FC<
                 )}
               </div>
             </div>
-            {/* Connector Name */}
+            
             <div className="grid grid-cols-3 gap-4" data-id="element-1004">
               <div
                 className="col-span-1 text-sm font-medium text-gray-500"
@@ -935,7 +890,7 @@ export const DataEnrichmentFormModal: React.FC<
                 {formValues.name}
               </div>
             </div>
-            {/* Version */}
+            
             <div className="grid grid-cols-3 gap-4" data-id="element-1004">
               <div
                 className="col-span-1 text-sm font-medium text-gray-500"
@@ -950,7 +905,7 @@ export const DataEnrichmentFormModal: React.FC<
                 {formValues.version}
               </div>
             </div>
-            {/* Description */}
+            
             <div className="grid grid-cols-3 gap-4" data-id="element-1004">
               <div
                 className="col-span-1 text-sm font-medium text-gray-500"
@@ -983,7 +938,7 @@ export const DataEnrichmentFormModal: React.FC<
                   </div>
                 </div>
 
-                {/* SFTP Configuration Fields */}
+                
                 {formValues.sourceType === 'sftp' ? (
                   <>
                     <div
@@ -1039,7 +994,7 @@ export const DataEnrichmentFormModal: React.FC<
                     </div>
                   </>
                 ) : (
-                  /* HTTPS Configuration Fields */
+                  
                   <>
                     <div
                       className="grid grid-cols-3 gap-4"
@@ -1093,9 +1048,9 @@ export const DataEnrichmentFormModal: React.FC<
                 </div>
               </>
             ) : (
-              // PUSH Configuration Summary
+              
               <>
-                {/*API Endpoint*/}
+                
                 <div className="grid grid-cols-3 gap-4" data-id="element-1022">
                   <div
                     className="col-span-1 text-sm font-medium text-gray-500"
@@ -1113,7 +1068,7 @@ export const DataEnrichmentFormModal: React.FC<
                     )}
                   </div>
                 </div>
-                {/* Table Name */}
+                
                 <div className="grid grid-cols-3 gap-4" data-id="element-1028">
                   <div
                     className="col-span-1 text-sm font-medium text-gray-500"
@@ -1130,7 +1085,7 @@ export const DataEnrichmentFormModal: React.FC<
                 </div>
               </>
             )}
-            {/* Ingest Mode */}
+            
             <div className="grid grid-cols-3 gap-4" data-id="element-1025">
               <div
                 className="col-span-1 text-sm font-medium text-gray-500"
@@ -1181,12 +1136,12 @@ export const DataEnrichmentFormModal: React.FC<
       setConfigurationType(value as 'pull' | 'push');
     }
 
-    // If switching source type, clear irrelevant fields
+    
     if (name === 'sourceType') {
       const updatedFormData = { ...formData };
 
       if (value === 'http') {
-        // Clear SFTP-specific fields when switching to HTTP
+        
         updatedFormData.port = '';
         updatedFormData.username = '';
         updatedFormData.password = '';
@@ -1196,8 +1151,8 @@ export const DataEnrichmentFormModal: React.FC<
         updatedFormData.fileFormat = 'csv';
         updatedFormData.delimiter = ',';
       } else if (value === 'sftp') {
-        // Clear HTTP-specific fields when switching to SFTP (none currently)
-        // Set default auth type for SFTP
+        
+        
         updatedFormData.authType = 'password';
       }
 
@@ -1230,7 +1185,7 @@ export const DataEnrichmentFormModal: React.FC<
             null,
         };
       } else {
-        // Pull configuration payload
+        
         const basePayload = {
           endpoint_name: formValues.name || null,
           source_type: formValues.sourceType.toUpperCase() as 'HTTPS' | 'SFTP',
@@ -1242,7 +1197,7 @@ export const DataEnrichmentFormModal: React.FC<
         };
 
         if (formValues.sourceType === 'http') {
-          // HTTPS Pull configuration
+          
           payload = {
             ...basePayload,
             source_type: 'HTTP',
@@ -1254,7 +1209,7 @@ export const DataEnrichmentFormModal: React.FC<
             },
           };
         } else {
-          // SFTP Pull configuration
+          
           payload = {
             ...basePayload,
             source_type: 'SFTP',
@@ -1268,7 +1223,7 @@ export const DataEnrichmentFormModal: React.FC<
               user_name: formValues.username,
               ...(formValues.authType === 'password'
                 ? { password: formValues.password }
-                : { private_key: formValues.password.replace(/\\n/g, '\n') }), // Using password field for private key
+                : { private_key: formValues.password.replace(/\\n/g, '\n') }), 
             },
             file: {
               path: (formValues.pathPattern || '/data.csv').replace(/^\/+/, ''),
@@ -1282,7 +1237,7 @@ export const DataEnrichmentFormModal: React.FC<
         }
       }
 
-      // Call appropriate API based on mode and configuration type
+      
       let response;
       if (editMode && jobId) {
         response =
@@ -1296,7 +1251,7 @@ export const DataEnrichmentFormModal: React.FC<
             : await dataEnrichmentApi.createPushJob(payload);
       }
 
-      // Use backend message if available, otherwise use default
+      
       const backendMessage = (response as any)?.message;
       const successMessage = backendMessage || (editMode
         ? `Data enrichment endpoint "${formValues.name}" updated successfully!`
@@ -1305,21 +1260,18 @@ export const DataEnrichmentFormModal: React.FC<
       setCreateSuccess(successMessage);
       onSave(response);
 
-      // Close modal after showing success message
+      
       setTimeout(() => {
         onClose();
       }, 200);
     } catch (error) {
-      console.error('=== CREATE ENDPOINT ERROR ===', error);
-
-      // Extract backend error message directly from Error object or response
       let errorMessage = 'Failed to create endpoint';
 
       if (error instanceof Error) {
-        // The apiRequest function already extracts errorData.message and throws it
+        
         errorMessage = error.message;
       } else if (error && typeof error === 'object') {
-        // Fallback for non-Error objects
+        
         const apiError = error as any;
         errorMessage = apiError.message || apiError.error || 'Unknown error occurred';
       }
@@ -1349,7 +1301,7 @@ export const DataEnrichmentFormModal: React.FC<
           className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden relative z-10 shadow-2xl"
           data-id="element-1047"
         >
-          {/* Header with close button */}
+          
           <div
             className="flex justify-between items-center px-6 py-4 border-b border-gray-200"
             data-id="element-1048"
@@ -1369,7 +1321,7 @@ export const DataEnrichmentFormModal: React.FC<
           </div>
 
           {!showConfigForm ? (
-            /* PUSH PULL SELECTION */
+            
             <Box
               sx={{
                 display: 'flex',
@@ -1413,7 +1365,7 @@ export const DataEnrichmentFormModal: React.FC<
                   zIndex: 1,
                 }}
               >
-                {/* Pull Box */}
+                
                 <Box
                   sx={{
                     display: 'flex',
@@ -1443,7 +1395,7 @@ export const DataEnrichmentFormModal: React.FC<
                     });
                   }}
                 >
-                  {/* Hidden radio input */}
+                  
                   <input
                     type="radio"
                     name="configurationType"
@@ -1453,7 +1405,7 @@ export const DataEnrichmentFormModal: React.FC<
                     style={{ display: 'none' }}
                   />
 
-                  {/* Selection circle */}
+                  
                   <Box
                     sx={{
                       position: 'absolute',
@@ -1493,7 +1445,7 @@ export const DataEnrichmentFormModal: React.FC<
                   </Box>
                 </Box>
 
-                {/* Push Box */}
+                
                 <Box
                   sx={{
                     display: 'flex',
@@ -1523,7 +1475,7 @@ export const DataEnrichmentFormModal: React.FC<
                     });
                   }}
                 >
-                  {/* Hidden radio input */}
+                  
                   <input
                     type="radio"
                     name="configurationType"
@@ -1533,7 +1485,7 @@ export const DataEnrichmentFormModal: React.FC<
                     style={{ display: 'none' }}
                   />
 
-                  {/* Selection circle */}
+                  
                   <Box
                     sx={{
                       position: 'absolute',
@@ -1574,7 +1526,7 @@ export const DataEnrichmentFormModal: React.FC<
                 </Box>
               </Box>
 
-              {/* Footer with Continue Button */}
+              
               <Box
                 sx={{
                   display: 'flex',
@@ -1595,10 +1547,10 @@ export const DataEnrichmentFormModal: React.FC<
             </Box>
           ) : (
             <>
-              {/* REACT HOOK FORM */}
+              
               {currentStep === 'config' ? (
                 <>
-                  {/* Configuration Type Header */}
+                  
                   <Box
                     sx={{
                       padding: '16px 24px',
@@ -1681,7 +1633,7 @@ export const DataEnrichmentFormModal: React.FC<
                         >
                           Save and Next
                         </Button>
-                        {/* )} */}
+                        
                       </div>
                     </div>
                   </form>
@@ -1732,123 +1684,12 @@ export const DataEnrichmentFormModal: React.FC<
             </>
           )}
 
-          {/* <div
-            className="flex justify-between items-center px-6 py-4 border-b border-gray-200"
-            data-id="element-1048"
-          >
-            <h2
-              className="text-xl font-semibold text-gray-800"
-              data-id="element-1049"
-            >
-              Define New Data Enrichment Endpoint
-            </h2>
-            <button
-              onClick={onClose}
-              className="text-gray-500 hover:text-gray-700"
-              data-id="element-1050"
-            >
-              <XIcon size={24} data-id="element-1051" />
-            </button>
-          </div>
-          <div
-            className="p-6 overflow-y-auto max-h-[calc(90vh-180px)]"
-            data-id="element-1052"
-          >
-            {isLoadingJob ? (
-              <div className="flex justify-center items-center py-12">
-                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
-                <span className="ml-3 text-gray-600">Loading job data...</span>
-              </div>
-            ) : (
-              <>
-                {currentStep === 'config' && renderConfigStep()}
-                {currentStep === 'preview' && renderPreviewStep()}
-                {currentStep === 'summary' && renderSummaryStep()}
-              </>
-            )}
-          </div> */}
-          {/* FOOTER */}
-          {/* <div
-            className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4 flex justify-between items-center"
-            data-id="sticky-footer"
-          >
-            <Button
-              variant="secondary"
-              onClick={onClose}
-              data-id="cancel-button"
-            >
-              Cancel
-            </Button>
-
-            <div className="flex space-x-3" data-id="right-buttons">
-              {currentStep === 'config' && (
-                <>
-                  {!isFormValid() ? (
-                    <div title="Please fill all required fields">
-                      <Button
-                        variant="primary"
-                        onClick={handleTestRun}
-                        disabled={true}
-                      >
-                        {isTestingConnection
-                          ? 'Testing Connection...'
-                          : 'Save and Next'}
-                      </Button>
-                    </div>
-                  ) : (
-                    <Button
-                      variant="primary"
-                      onClick={handleTestRun}
-                      disabled={isTestingConnection}
-                    >
-                      {isTestingConnection
-                        ? 'Testing Connection...'
-                        : 'Save and Next'}
-                    </Button>
-                  )}
-                </>
-              )}
-
-              {currentStep === 'preview' && (
-                <>
-                  <Button
-                    variant="secondary"
-                    onClick={() => setCurrentStep('config')}
-                  >
-                    Back to Configuration
-                  </Button>
-                  <Button
-                    variant="primary"
-                    onClick={() => setCurrentStep('summary')}
-                  >
-                    Continue
-                  </Button>
-                </>
-              )}
-
-              {currentStep === 'summary' && (
-                <>
-                  <Button
-                    variant="secondary"
-                    onClick={() => setCurrentStep('config')}
-                    disabled={isCreating}
-                  >
-                    Back
-                  </Button>
-                  <Button
-                    variant="primary"
-                    onClick={handleSave}
-                    disabled={isCreating}
-                  >
-                    {isCreating ? 'Saving...' : editMode ? 'Save' : 'Save'}
-                  </Button>
-                </>
-              )}
-            </div>
-          </div> */}
+          
+          
+          
         </div>
 
-        {/* Loading Backdrop */}
+        
         {(isCreating || isLoadingJob || schedulesLoading) && (
           <Backdrop
             sx={(theme) => ({

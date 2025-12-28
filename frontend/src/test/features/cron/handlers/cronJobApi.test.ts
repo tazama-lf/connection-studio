@@ -158,7 +158,9 @@ describe('Cron Job Handlers', () => {
         expect.stringContaining('/scheduler/all'),
         expect.objectContaining({
           method: 'POST',
-          body: expect.stringContaining('STATUS_04_APPROVED,STATUS_06_EXPORTED'),
+          body: expect.stringContaining(
+            'STATUS_04_APPROVED,STATUS_06_EXPORTED',
+          ),
         }),
       );
       expect(result).toEqual(mockSchedules);
@@ -329,7 +331,10 @@ describe('Cron Job Handlers', () => {
       const mockResponse = { success: true, message: 'Schedule rejected' };
       mockApiRequest.mockResolvedValue(mockResponse);
 
-      const result = await rejectSchedule('schedule-123', 'Does not meet requirements');
+      const result = await rejectSchedule(
+        'schedule-123',
+        'Does not meet requirements',
+      );
 
       expect(mockApiRequest).toHaveBeenCalledWith(
         expect.stringContaining('status=STATUS_05_REJECTED'),

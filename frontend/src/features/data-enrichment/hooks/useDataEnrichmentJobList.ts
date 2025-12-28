@@ -55,17 +55,22 @@ export const useDataEnrichmentJobList = () => {
 
   const itemsPerPage = UI_CONFIG.pagination.defaultPageSize;
 
-  const { userIsEditor, userIsApprover, userIsExporter, userIsPublisher, userRole } =
-    useMemo(() => {
-      const claims = user?.claims ?? [];
-      return {
-        userIsEditor: isEditor(claims),
-        userIsApprover: isApprover(claims),
-        userIsExporter: isExporter(claims),
-        userIsPublisher: isPublisher(claims),
-        userRole: getPrimaryRole(claims),
-      };
-    }, [user]);
+  const {
+    userIsEditor,
+    userIsApprover,
+    userIsExporter,
+    userIsPublisher,
+    userRole,
+  } = useMemo(() => {
+    const claims = user?.claims ?? [];
+    return {
+      userIsEditor: isEditor(claims),
+      userIsApprover: isApprover(claims),
+      userIsExporter: isExporter(claims),
+      userIsPublisher: isPublisher(claims),
+      userRole: getPrimaryRole(claims),
+    };
+  }, [user]);
 
   const loadJobs = useCallback(
     async (pageNumber = pagination.page) => {
@@ -89,8 +94,12 @@ export const useDataEnrichmentJobList = () => {
       } catch (err) {
         let message = 'Failed to fetch jobs.';
         if (err instanceof Error) {
-          if (err.message.includes('500') || err.message.includes('HTTP error')) {
-            message = 'Server error: Unable to load jobs. Please try again later.';
+          if (
+            err.message.includes('500') ||
+            err.message.includes('HTTP error')
+          ) {
+            message =
+              'Server error: Unable to load jobs. Please try again later.';
           } else {
             message = err.message;
           }
@@ -114,10 +123,11 @@ export const useDataEnrichmentJobList = () => {
         const job = jobs.find((j: DataEnrichmentJobResponse) => j.id === jobId);
         const jobType = job?.type?.toUpperCase() as 'PULL' | 'PUSH' | undefined;
 
-        const jobDetails = await dataEnrichmentHandlers.dataEnrichmentJobApi.getById(
-          jobId,
-          jobType,
-        );
+        const jobDetails =
+          await dataEnrichmentHandlers.dataEnrichmentJobApi.getById(
+            jobId,
+            jobType,
+          );
         setSelectedJob(jobDetails);
         setEditMode(false);
       } catch (err) {
@@ -133,7 +143,9 @@ export const useDataEnrichmentJobList = () => {
     async (job: DataEnrichmentJobResponse) => {
       const jobStatus = job.status || DATA_ENRICHMENT_JOB_STATUSES.IN_PROGRESS;
       if (jobStatus === DATA_ENRICHMENT_JOB_STATUSES.APPROVED) {
-        showError('Approved jobs cannot be edited. Please create a new job instead.');
+        showError(
+          'Approved jobs cannot be edited. Please create a new job instead.',
+        );
         return;
       }
 
@@ -149,10 +161,11 @@ export const useDataEnrichmentJobList = () => {
         setLoadingState((s) => ({ ...s, page: true as boolean }));
         const jobType = job?.type?.toUpperCase() as 'PULL' | 'PUSH' | undefined;
 
-        const jobDetails = await dataEnrichmentHandlers.dataEnrichmentJobApi.getById(
-          job.id,
-          jobType,
-        );
+        const jobDetails =
+          await dataEnrichmentHandlers.dataEnrichmentJobApi.getById(
+            job.id,
+            jobType,
+          );
         setSelectedJob(jobDetails);
         setEditMode(true);
       } catch (err) {
@@ -175,7 +188,6 @@ export const useDataEnrichmentJobList = () => {
           | 'pull'
           | 'push';
 
-        // For now, create a new version instead of updating
         if (jobType === 'push') {
           const pushData = {
             endpoint_name:
@@ -184,30 +196,32 @@ export const useDataEnrichmentJobList = () => {
             version: updatedJob.version || selectedJob.version || 'v1',
             path: updatedJob.path || selectedJob.path || '',
             table_name: updatedJob.table_name || selectedJob.table_name || '',
-            mode: (updatedJob.mode || selectedJob.mode || 'append') as
-              | 'append'
-              | 'replace',
+            mode: (updatedJob.mode || selectedJob.mode || 'append'),
           };
           await dataEnrichmentHandlers.submitPushJob(pushData);
         } else {
           const pullData = {
             endpoint_name:
               updatedJob.endpoint_name || selectedJob.endpoint_name || '',
-            description: updatedJob.description || selectedJob.description || '',
+            description:
+              updatedJob.description || selectedJob.description || '',
             version: updatedJob.version || selectedJob.version || 'v1',
-            source_type: updatedJob.source_type || selectedJob.source_type || 'HTTP',
+            source_type:
+              updatedJob.source_type || selectedJob.source_type || 'HTTP',
             table_name: updatedJob.table_name || selectedJob.table_name || '',
-            mode: (updatedJob.mode || selectedJob.mode || 'append') as
-              | 'append'
-              | 'replace',
-            connection: updatedJob.connection || selectedJob.connection || { url: '', headers: {} },
-            schedule_id: updatedJob.schedule_id || selectedJob.schedule_id || '',
+            mode: (updatedJob.mode || selectedJob.mode || 'append'),
+            connection: updatedJob.connection ||
+              selectedJob.connection || { url: '', headers: {} },
+            schedule_id:
+              updatedJob.schedule_id || selectedJob.schedule_id || '',
             file: updatedJob.file || selectedJob.file,
           };
           await dataEnrichmentHandlers.submitPullJob(pullData);
         }
 
-        showSuccess(dataEnrichmentHandlers.DATA_ENRICHMENT_SUCCESS_MESSAGES.UPDATED);
+        showSuccess(
+          dataEnrichmentHandlers.DATA_ENRICHMENT_SUCCESS_MESSAGES.UPDATED,
+        );
         loadJobs();
       } catch (err) {
         showError('Failed to update job');
@@ -348,7 +362,7 @@ export const useDataEnrichmentJobList = () => {
     userRole,
 
     setPage: (newPage: number) =>
-      setPagination((p) => ({ ...p, page: newPage })),
+      { setPagination((p) => ({ ...p, page: newPage })); },
     setSearchingFilters,
     setSelectedJob,
     setEditMode,

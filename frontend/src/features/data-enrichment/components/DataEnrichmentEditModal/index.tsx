@@ -56,7 +56,7 @@ import { DATA_ENRICHMENT_JOB_STATUSES } from '../../constants';
 
 export const DataEnrichmentEditModal: React.FC<
   DataEnrichmentEditModalProps
-  // ----------PROPS
+  
 > = ({
   isOpen,
   onClose,
@@ -65,7 +65,7 @@ export const DataEnrichmentEditModal: React.FC<
   editMode = false,
   selectedJob,
 }) => {
-  // ----------STATES
+  
   const [availableSchedules, setAvailableSchedules] = useState<
     ScheduleResponse[]
   >([]);
@@ -74,7 +74,7 @@ export const DataEnrichmentEditModal: React.FC<
   const [showUpdateConfirmDialog, setShowUpdateConfirmDialog] = useState(false);
   const [showApprovalConfirmDialog, setShowApprovalConfirmDialog] =
     useState(false);
-  // Button state: show Update or Send for Approval
+  
   const [showSendForApproval, setShowSendForApproval] = useState(false);
 
   const tenantId = useAuth()?.user?.tenantId || 'tenantId';
@@ -83,7 +83,7 @@ export const DataEnrichmentEditModal: React.FC<
   const currentJobType = getJobType(selectedJob);
   const configurationType = currentJobType as 'pull' | 'push';
 
-  // --------------------REACT HOOKS FORM SETUP
+  
   const loadSchema =
     configurationType === 'pull' ? pullValidationSchema : pushValidationSchema;
   const {
@@ -100,15 +100,15 @@ export const DataEnrichmentEditModal: React.FC<
     mode: 'onChange',
   });
 
-  // Ref to track if we should scroll to error on next render
+  
   const shouldScrollToErrorRef = useRef(false);
 
-  // Function called when form submission fails validation
+  
   const onError = () => {
     shouldScrollToErrorRef.current = true;
   };
 
-  // Watch for errors and scroll when needed
+  
   useEffect(() => {
     if (shouldScrollToErrorRef.current && Object.keys(errors).length > 0) {
       shouldScrollToErrorRef.current = false;
@@ -116,7 +116,7 @@ export const DataEnrichmentEditModal: React.FC<
     }
   }, [errors]);
 
-  // Watch for fileFormat changes and re-validate pathPattern
+  
   const fileFormat = watch('fileFormat');
   useEffect(() => {
     const pathPattern = getValues('pathPattern');
@@ -179,15 +179,15 @@ export const DataEnrichmentEditModal: React.FC<
       if (!isOpen) return;
 
       try {
-        // You may want to adjust these values as needed
+        
         const pageNumber = 1;
         const itemsPerPage = 50;
-        const userRole = 'ASSOCIATE'; // Or get from context/auth if dynamic
+        const userRole = 'ASSOCIATE'; 
         const searchingFilters = {};
         const result = await loadCronSchedules(pageNumber, itemsPerPage, userRole, searchingFilters);
         const schedules = result?.schedules || result?.data || [];
 
-        // Filter schedules to only show approved, exported, and deployed schedules
+        
         const filteredSchedules = schedules?.filter(
           (schedule: any) =>
             schedule.status === DATA_ENRICHMENT_JOB_STATUSES.APPROVED ||
@@ -196,7 +196,6 @@ export const DataEnrichmentEditModal: React.FC<
 
         setAvailableSchedules(filteredSchedules || []);
       } catch (error) {
-        console.error('Failed to load schedules:', error);
         setAvailableSchedules([]);
       }
     };
@@ -217,24 +216,24 @@ export const DataEnrichmentEditModal: React.FC<
       };
 
       if (jobType === 'push') {
-        // Push job specific fields
+        
         let endpointPath = selectedJob.path;
 
-        // Ensure API path starts with a slash
+        
         if (endpointPath && !endpointPath.startsWith('/')) {
           endpointPath = '/' + endpointPath;
         }
         initialValues.endpointPath = endpointPath;
       } else {
-        // Pull job specific fields
+        
         initialValues.sourceType =
-          selectedJob.source_type?.toLowerCase() || 'sftp'; // Convert SFTP -> sftp, HTTPS -> https
+          selectedJob.source_type?.toLowerCase() || 'sftp'; 
         initialValues.schedule = selectedJob.schedule_id || '';
 
-        // Connection settings for pull jobs
+        
         if (selectedJob.connection) {
           if (selectedJob.source_type === 'SFTP') {
-            // SFTP connection settings
+            
             initialValues.host = selectedJob.connection.host || '';
             initialValues.port = selectedJob.connection.port?.toString() || '';
             initialValues.authType =
@@ -242,9 +241,9 @@ export const DataEnrichmentEditModal: React.FC<
                 ? 'key'
                 : 'password';
             initialValues.username = selectedJob.connection.user_name || '';
-            // Note: We don't set password/private key for security reasons
+            
           } else if (selectedJob.source_type === 'HTTP') {
-            // HTTPS connection settings
+            
             initialValues.url = selectedJob.connection.url || '';
             initialValues.headers = selectedJob.connection.headers
               ? JSON.stringify(selectedJob.connection.headers, null, 2)
@@ -252,28 +251,27 @@ export const DataEnrichmentEditModal: React.FC<
           }
         }
 
-        // File settings for pull jobs
+        
         if (selectedJob.file) {
           let pathPattern = selectedJob.file.path || '';
 
-          // Ensure file path starts with a slash
+          
           if (pathPattern && !pathPattern.startsWith('/')) {
             pathPattern = '/' + pathPattern;
           }
           initialValues.pathPattern = pathPattern;
           initialValues.fileFormat =
-            selectedJob.file.file_type?.toLowerCase() || 'csv'; // Convert CSV -> csv
+            selectedJob.file.file_type?.toLowerCase() || 'csv'; 
           initialValues.delimiter = selectedJob.file.delimiter || ',';
         }
       }
 
-      // Set the form values
+      
       Object.entries(initialValues).forEach(([key, value]) => {
         setValue(key, value);
       });
 
-      console.log('Set initial form values:', initialValues);
-    }
+      }
   }, [isOpen, selectedJob, editMode, setValue]);
 
   const RenderPullConfigForm = () => (
@@ -659,18 +657,18 @@ export const DataEnrichmentEditModal: React.FC<
               const version = watch('version');
               let endpointPath = watch('endpointPath') || '';
 
-              // Clean version (remove 'v' prefix and slashes)
+              
               const cleanVersion =
                 version?.replace(/^v?\/*/g, '').replace(/\/+$/g, '') || '';
 
-              // Remove tenant/enrichment/version prefix if present in endpointPath
+              
               const prefixRegex = new RegExp(
                 `^/?${tenantId}/enrichment(/v?${cleanVersion.replace(/\./g, '\\.')})?`,
                 'i',
               );
               endpointPath = endpointPath.replace(prefixRegex, '');
 
-              // Clean endpoint path (ensure it starts with /)
+              
               const cleanPath = endpointPath.startsWith('/')
                 ? endpointPath
                 : `/${endpointPath}`;
@@ -782,7 +780,7 @@ export const DataEnrichmentEditModal: React.FC<
           className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden relative z-10 shadow-2xl"
           data-id="element-1047"
         >
-          {/* Header with close button */}
+          
           <div
             className="flex justify-between items-center px-6 py-4 border-b border-gray-200"
             data-id="element-1048"
@@ -802,7 +800,7 @@ export const DataEnrichmentEditModal: React.FC<
           </div>
 
           <>
-            {/* Configuration Type Header */}
+            
             <Box
               sx={{
                 padding: '16px 24px',
@@ -832,7 +830,7 @@ export const DataEnrichmentEditModal: React.FC<
               </p>
             </Box>
 
-            {/* Success and Error Messages are now handled by Toast notifications */}
+            
 
             <form
               onSubmit={handleSubmit(onSubmit, onError)}
@@ -901,7 +899,7 @@ export const DataEnrichmentEditModal: React.FC<
         </div>
       </Backdrop>
 
-      {/* Loading Backdrop */}
+      
       {isCreating && (
         <Backdrop
           sx={(theme) => ({
@@ -920,7 +918,7 @@ export const DataEnrichmentEditModal: React.FC<
         </Backdrop>
       )}
 
-      {/* Update Confirmation Dialog */}
+      
       <Dialog
         open={showUpdateConfirmDialog}
         onClose={() => setShowUpdateConfirmDialog(false)}
@@ -1010,7 +1008,7 @@ export const DataEnrichmentEditModal: React.FC<
         </DialogActions>
       </Dialog>
 
-      {/* Send for Approval Confirmation Dialog */}
+      
       <Dialog
         open={showApprovalConfirmDialog}
         onClose={() => setShowApprovalConfirmDialog(false)}

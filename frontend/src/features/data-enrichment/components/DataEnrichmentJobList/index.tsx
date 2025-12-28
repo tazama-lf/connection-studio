@@ -16,8 +16,8 @@ export const DataEnrichmentJobList: React.FC<DataEnrichmentJobListProps> = () =>
     handleEdit,
   } = useDataEnrichmentJobList();
 
-  // For now, use the existing JobList component
-  // In full refactor, this would be reorganized to match CronJobList pattern
+  
+  
   return (
     <JobList
       jobs={jobs}

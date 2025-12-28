@@ -12,7 +12,9 @@ jest.mock('../../../../features/cron/handlers');
 
 const mockShowSuccess = jest.fn();
 const mockShowError = jest.fn();
-const mockLoadSchedules = cronHandlers.loadSchedules as jest.MockedFunction<typeof cronHandlers.loadSchedules>;
+const mockLoadSchedules = cronHandlers.loadSchedules as jest.MockedFunction<
+  typeof cronHandlers.loadSchedules
+>;
 
 describe('useCronJobList', () => {
   const mockSchedule: ScheduleResponse = {
@@ -27,7 +29,7 @@ describe('useCronJobList', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    
+
     (useToast as jest.Mock).mockReturnValue({
       showSuccess: mockShowSuccess,
       showError: mockShowError,
@@ -131,7 +133,9 @@ describe('useCronJobList', () => {
         comments: '',
       };
 
-      (cronHandlers.prepareScheduleForEdit as jest.Mock).mockReturnValue(mockPreparedData);
+      (cronHandlers.prepareScheduleForEdit as jest.Mock).mockReturnValue(
+        mockPreparedData,
+      );
 
       const { result } = renderHook(() => useCronJobList());
 
@@ -162,7 +166,9 @@ describe('useCronJobList', () => {
         comments: '',
       };
 
-      (cronHandlers.prepareScheduleForEdit as jest.Mock).mockReturnValue(mockPreparedData);
+      (cronHandlers.prepareScheduleForEdit as jest.Mock).mockReturnValue(
+        mockPreparedData,
+      );
 
       const { result } = renderHook(() => useCronJobList());
 
@@ -226,7 +232,9 @@ describe('useCronJobList', () => {
     });
 
     it('should handle save error', async () => {
-      (cronHandlers.updateScheduleData as jest.Mock).mockRejectedValue(new Error('Save failed'));
+      (cronHandlers.updateScheduleData as jest.Mock).mockRejectedValue(
+        new Error('Save failed'),
+      );
       (cronHandlers.prepareScheduleForEdit as jest.Mock).mockReturnValue({
         id: mockSchedule.id,
         name: mockSchedule.name,
@@ -299,7 +307,9 @@ describe('useCronJobList', () => {
     });
 
     it('should handle export error', async () => {
-      (cronHandlers.exportSchedule as jest.Mock).mockRejectedValue(new Error('Export failed'));
+      (cronHandlers.exportSchedule as jest.Mock).mockRejectedValue(
+        new Error('Export failed'),
+      );
 
       const { result } = renderHook(() => useCronJobList());
 
@@ -381,7 +391,9 @@ describe('useCronJobList', () => {
         await result.current.handleApprovalConfirm();
       });
 
-      expect(cronHandlers.sendForApproval).toHaveBeenCalledWith(mockSchedule.id);
+      expect(cronHandlers.sendForApproval).toHaveBeenCalledWith(
+        mockSchedule.id,
+      );
       expect(mockShowSuccess).toHaveBeenCalled();
       expect(result.current.confirmDialog.open).toBe(false);
     });
@@ -418,7 +430,10 @@ describe('useCronJobList', () => {
         await result.current.handleRejectionConfirm(reason);
       });
 
-      expect(cronHandlers.rejectSchedule).toHaveBeenCalledWith(mockSchedule.id, reason);
+      expect(cronHandlers.rejectSchedule).toHaveBeenCalledWith(
+        mockSchedule.id,
+        reason,
+      );
       expect(mockShowSuccess).toHaveBeenCalled();
     });
   });

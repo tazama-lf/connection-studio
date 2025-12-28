@@ -30,7 +30,6 @@ export const getStatusBadge = (status: string) => {
     }
   }
 
-  // Handle legacy status formats
   switch (normalizedStatus) {
     case 'active':
     case 'ready for approval':

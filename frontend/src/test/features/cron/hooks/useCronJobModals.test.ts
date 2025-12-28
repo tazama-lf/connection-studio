@@ -211,8 +211,12 @@ describe('useCronJobModals', () => {
       expect(result.current.closeViewModal).toBe(firstCallbacks.closeViewModal);
       expect(result.current.openEditModal).toBe(firstCallbacks.openEditModal);
       expect(result.current.closeEditModal).toBe(firstCallbacks.closeEditModal);
-      expect(result.current.openRejectionDialog).toBe(firstCallbacks.openRejectionDialog);
-      expect(result.current.closeRejectionDialog).toBe(firstCallbacks.closeRejectionDialog);
+      expect(result.current.openRejectionDialog).toBe(
+        firstCallbacks.openRejectionDialog,
+      );
+      expect(result.current.closeRejectionDialog).toBe(
+        firstCallbacks.closeRejectionDialog,
+      );
     });
   });
 });

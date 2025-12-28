@@ -26,8 +26,7 @@ export const cronJobApi = {
     if (!status) {
       const userRole = params.userRole as keyof typeof getDemsStatusLov;
       statusFilter =
-        getDemsStatusLov[userRole]?.map((item) => item.value)?.join(',') ??
-        '';
+        getDemsStatusLov[userRole]?.map((item) => item.value)?.join(',') ?? '';
     }
 
     const requestBody = {
@@ -69,9 +68,7 @@ export const cronJobApi = {
   },
 
   getById: async (id: string): Promise<ScheduleResponse> =>
-    await apiRequest<ScheduleResponse>(
-      `${API_BASE_URL}/scheduler/${id}`,
-    ),
+    await apiRequest<ScheduleResponse>(`${API_BASE_URL}/scheduler/${id}`),
 
   update: async (
     id: string,

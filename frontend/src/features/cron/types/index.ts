@@ -12,7 +12,9 @@ export interface ScheduleRequest {
 
 export interface CronJobTableColumnsProps {
   searchingFilters: Record<string, unknown>;
-  setSearchingFilters: React.Dispatch<React.SetStateAction<Record<string, unknown>>>;
+  setSearchingFilters: React.Dispatch<
+    React.SetStateAction<Record<string, unknown>>
+  >;
   setPage: (page: number) => void;
   userRole: string;
   userIsEditor: boolean;

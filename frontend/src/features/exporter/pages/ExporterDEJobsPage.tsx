@@ -57,7 +57,7 @@ export const ExporterDEJobsPage: React.FC = () => {
 
       const params = { limit, offset, userRole: userRole as string };
 
-      const response = await dataEnrichmentApi.getAllJobs(
+      const response = await dataEnrichmentApi.getList(
         params,
         searchingFilters,
       );
@@ -89,7 +89,7 @@ export const ExporterDEJobsPage: React.FC = () => {
       const jobType = job?.type?.toUpperCase() as 'PULL' | 'PUSH' | undefined;
 
       // Fetch job details from the API
-      const jobDetails = await dataEnrichmentApi.getJob(jobId, jobType);
+      const jobDetails = await dataEnrichmentApi.getById(jobId, jobType);
       setSelectedJob(jobDetails);
     } catch (error) {
       console.error('Failed to load job details:', error);
@@ -107,7 +107,7 @@ export const ExporterDEJobsPage: React.FC = () => {
   const handleExportJob = async (jobId: string, jobType: 'PULL' | 'PUSH') => {
     console.log('Exporter exporting job:', jobId, jobType);
     try {
-      await dataEnrichmentApi.updateJobStatus(
+      await dataEnrichmentApi.updateStatus(
         jobId,
         'STATUS_06_EXPORTED',
         jobType,

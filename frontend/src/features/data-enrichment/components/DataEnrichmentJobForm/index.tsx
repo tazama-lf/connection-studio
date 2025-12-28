@@ -20,8 +20,8 @@ export const DataEnrichmentJobForm: React.FC<DataEnrichmentJobFormProps> = ({
     onCancel?.();
   };
 
-  // Use the existing DataEnrichmentFormModal component
-  // This wraps the legacy 1883-line component to match CRON pattern
+  
+  
   return (
     <DataEnrichmentFormModal
       isOpen={isFormOpen}

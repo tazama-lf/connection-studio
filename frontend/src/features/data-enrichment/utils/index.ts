@@ -1,6 +1,16 @@
-// =====================
-// buildPushPayload
-// =====================
+import * as yup from 'yup';
+import type {
+  DataEnrichmentJobResponse,
+  CreatePullJobDto,
+  CreatePushJobDto,
+  FileType,
+ ErrorWithResponse } from '../types';
+import {
+  DATA_ENRICHMENT_ERROR_MESSAGES,
+  FILE_EXTENSION_FORMAT_MAP,
+  SUPPORTED_FILE_EXTENSIONS,
+} from '../constants';
+
 export const buildPushPayload = (formValues: any) => ({
   endpoint_name: formValues.name || null,
   path: formValues.endpointPath || null,
@@ -11,9 +21,6 @@ export const buildPushPayload = (formValues: any) => ({
     formValues.version?.replace(/^v?\/*/g, '').replace(/\/+$/g, '') || null,
 });
 
-// =====================
-// buildPullPayload
-// =====================
 export const buildPullPayload = (formValues: any) => {
   const base = {
     endpoint_name: formValues.name || null,
@@ -57,8 +64,6 @@ export const buildPullPayload = (formValues: any) => {
   };
 };
 
-
-
 export const generateEndpointUrl = (
   tenantId: string,
   version?: string,
@@ -81,16 +86,11 @@ export const generateEndpointUrl = (
   return `/${tenantId}/enrichment${versionPart}${pathPart}`;
 };
 
-// =====================
-// jobHelpers (empty)
-// =====================
-// Scroll to first error field in modal
 export const scrollToFirstError = (fieldName: string) => {
   const errorElement = document.querySelector(
     `[name="${fieldName}"]`,
-  ) as HTMLElement;
+  )!;
   if (errorElement) {
-    // Find the modal's scrollable container
     const modalContent =
       errorElement.closest('.MuiDialog-paper') ||
       errorElement.closest('.MuiModal-root') ||
@@ -98,107 +98,76 @@ export const scrollToFirstError = (fieldName: string) => {
       document.querySelector('.MuiDialog-paper');
 
     if (modalContent) {
-      // Scroll within the modal container
       errorElement.scrollIntoView({
         behavior: 'smooth',
         block: 'center',
         inline: 'nearest',
       });
     } else {
-      // Fallback to window scroll if modal container not found
       errorElement.scrollIntoView({
         behavior: 'smooth',
         block: 'center',
       });
     }
 
-    // Focus the field after scroll completes
     setTimeout(() => {
       errorElement.focus();
     }, 300);
   }
 };
-import * as yup from 'yup';
-import type {
-  DataEnrichmentJobResponse,
-  CreatePullJobDto,
-  CreatePushJobDto,
-  FileType,
-} from '../types';
-import {
-  DATA_ENRICHMENT_ERROR_MESSAGES,
-  FILE_EXTENSION_FORMAT_MAP,
-  SUPPORTED_FILE_EXTENSIONS,
-} from '../constants';
 
-// Removed dead imports for deleted utils files
-
-import type { ErrorWithResponse } from '../types';
-// export const getJobType = (job: any): 'push' | 'pull' => {
-//   if (
-//     job.type?.toLowerCase() === 'push' ||
-//     job.type?.toLowerCase() === 'pull'
-//   ) {
-//     return job.type.toLowerCase() as 'push' | 'pull';
-//   }
-//   return job.path && !job.source_type ? 'push' : 'pull';
-// };
 export const getJobType = (job: DataEnrichmentJobResponse): 'push' | 'pull' => {
-  if (job.type?.toLowerCase() === 'push' || job.type?.toLowerCase() === 'pull') {
+  if (
+    job.type?.toLowerCase() === 'push' ||
+    job.type?.toLowerCase() === 'pull'
+  ) {
     return job.type.toLowerCase() as 'push' | 'pull';
   }
-  return (job.path && !job.source_type) ? 'push' : 'pull';
+  return job.path && !job.source_type ? 'push' : 'pull';
 };
-export  const formatDateStructured = (dateString: string | undefined) => {
-    if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-  export const formatDate = (dateString: string | undefined): string => {
+export const formatDateStructured = (dateString: string | undefined) => {
+  if (!dateString) return 'N/A';
+  return new Date(dateString).toLocaleString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+};
+export const formatDate = (dateString: string | undefined): string => {
   if (!dateString) return 'N/A';
   return new Date(dateString).toLocaleString();
 };
-export const determineSourceType = (job: DataEnrichmentJobResponse): 'HTTP' | 'SFTP' => {
-  // First check explicit source_type
+export const determineSourceType = (
+  job: DataEnrichmentJobResponse,
+): 'HTTP' | 'SFTP' => {
   if (job.source_type) {
-    console.log('🔍 Using explicit source_type:', job.source_type);
     return job.source_type as 'HTTP' | 'SFTP';
   }
 
   if (job.connection) {
     let connectionObj = job.connection;
-    
-    // If connection is a string, try to parse it
+
     if (typeof job.connection === 'string') {
       try {
         connectionObj = JSON.parse(job.connection);
       } catch (e) {
-        return 'HTTP'; // Default fallback
+        return 'HTTP';
       }
     }
-    
-    // Check parsed or direct object
+
     if (connectionObj && typeof connectionObj === 'object') {
       if ('host' in connectionObj && connectionObj.host) {
-        console.log('🔍 Auto-detected SFTP from connection.host:', connectionObj.host);
         return 'SFTP';
       } else if ('url' in connectionObj && connectionObj.url) {
-        console.log('🔍 Auto-detected HTTP from connection.url:', connectionObj.url);
         return 'HTTP';
       }
     }
   }
-  
-  // Default fallback
-  console.log('🔍 Defaulting to HTTP - no clear indicators');
+
   return 'HTTP';
 };
-
 
 export const getDataEnrichmentErrorMessage = (error: unknown): string => {
   const err = error as ErrorWithResponse;
@@ -223,13 +192,12 @@ export const getDataEnrichmentErrorMessage = (error: unknown): string => {
     return DATA_ENRICHMENT_ERROR_MESSAGES.NETWORK_ERROR;
   }
 
-  // Check for schedule-related errors
   if (err?.message?.includes('not found or is not approved yet')) {
     return DATA_ENRICHMENT_ERROR_MESSAGES.SCHEDULE_DEPLOYED;
   }
 
   if (err?.response?.data?.message) {
-    const message = err.response.data.message;
+    const {message} = err.response.data;
     if (Array.isArray(message)) {
       return message.join(', ');
     }
@@ -313,7 +281,10 @@ export const validateFileFormat = (
       fileExtension as keyof typeof FILE_EXTENSION_FORMAT_MAP
     ];
 
-  if (!allowedFormats || !(allowedFormats as readonly string[]).includes(fileType)) {
+  if (
+    !allowedFormats ||
+    !(allowedFormats as readonly string[]).includes(fileType)
+  ) {
     return {
       isValid: false,
       error: `File format mismatch: .${fileExtension} files must use ${allowedFormats?.join(' or ') ?? 'supported'} format, not ${fileType}`,
@@ -348,10 +319,7 @@ export const baseJobValidationSchema = yup.object().shape({
 export const httpJobValidationSchema = baseJobValidationSchema.shape({
   source_type: yup.string().oneOf(['HTTP']).required(),
   connection: yup.object().shape({
-    url: yup
-      .string()
-      .required('URL is required')
-      .url('Must be a valid URL'),
+    url: yup.string().required('URL is required').url('Must be a valid URL'),
     headers: yup.object(),
   }),
 });
@@ -372,12 +340,14 @@ export const sftpJobValidationSchema = baseJobValidationSchema.shape({
     user_name: yup.string().required('Username is required'),
     password: yup.string().when('auth_type', {
       is: 'USERNAME_PASSWORD',
-      then: (schema: yup.StringSchema) => schema.required('Password is required'),
+      then: (schema: yup.StringSchema) =>
+        schema.required('Password is required'),
       otherwise: (schema: yup.StringSchema) => schema.optional(),
     }),
     private_key: yup.string().when('auth_type', {
       is: 'PRIVATE_KEY',
-      then: (schema: yup.StringSchema) => schema.required('Private key is required'),
+      then: (schema: yup.StringSchema) =>
+        schema.required('Private key is required'),
       otherwise: (schema: yup.StringSchema) => schema.optional(),
     }),
   }),
@@ -413,9 +383,7 @@ export const pushJobValidationSchema = yup.object().shape({
   version: yup.string().required('Version is required'),
 });
 
-export const getIterationText = (count: number): string => {
-  return count === 1 ? '1 iteration' : `${count} iterations`;
-};
+export const getIterationText = (count: number): string => count === 1 ? '1 iteration' : `${count} iterations`;
 
 export const generateVersionedTableName = (
   originalTableName: string,
@@ -424,10 +392,7 @@ export const generateVersionedTableName = (
   return `${originalTableName}${versionSuffix}`;
 };
 
-
-export const getConnectionType = (
-  job: any,
-): 'HTTP' | 'SFTP' | null => {
+export const getConnectionType = (job: any): 'HTTP' | 'SFTP' | null => {
   if (job.source_type) {
     return job.source_type as 'HTTP' | 'SFTP';
   }
@@ -454,8 +419,6 @@ export const getConnectionType = (
   return null;
 };
 
-
-
 export const formatJSON = (obj: any): string => {
   try {
     if (typeof obj === 'string') {
@@ -472,8 +435,6 @@ export const copyToClipboard = async (text: string): Promise<boolean> => {
     await navigator.clipboard.writeText(text);
     return true;
   } catch (err) {
-    console.error('Failed to copy to clipboard:', err);
     return false;
   }
 };
-

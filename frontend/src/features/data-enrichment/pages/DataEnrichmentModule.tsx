@@ -17,7 +17,7 @@ const DataEnrichmentModule: React.FC = () => {
   const navigate = useNavigate();
   const { showSuccess, showError } = useToast();
 
-  // Use the custom hook for job list management
+  
   const {
     jobs,
     pagination,
@@ -44,7 +44,7 @@ const DataEnrichmentModule: React.FC = () => {
   const [showJobForm, setShowJobForm] = useState(false);
   const [showJobDetails, setShowJobDetails] = useState(false);
 
-  // Helper function to preserve scroll position during refresh
+  
   const fetchJobsWithScrollPreservation = (pageNumber?: number) => {
     const scrollPosition = window.scrollY;
     loadJobs(pageNumber)
@@ -59,7 +59,6 @@ const DataEnrichmentModule: React.FC = () => {
         }, 100);
       })
       .catch((error) => {
-        console.warn('Error during loadJobs, but preserving scroll:', error);
         setTimeout(() => {
           if (
             scrollPosition > 0 &&
@@ -73,7 +72,6 @@ const DataEnrichmentModule: React.FC = () => {
 
   const handleCreateJob = async (jobResponse: any) => {
     try {
-      console.log('Job created successfully:', jobResponse);
       fetchJobsWithScrollPreservation();
 
       const backendMessage = jobResponse?.message;
@@ -83,7 +81,6 @@ const DataEnrichmentModule: React.FC = () => {
         `${jobName} has been saved successfully! You can now send it for approval.`;
       showSuccess(successMessage);
     } catch (error) {
-      console.error('Failed to handle job creation:', error);
       showError('Failed to handle job creation');
     }
   };
@@ -109,7 +106,7 @@ const DataEnrichmentModule: React.FC = () => {
       await handleSaveEdit(updatedJob);
       handleCloseJobDetails();
     } catch (error) {
-      // Error already handled in hook
+      
       throw error;
     }
   };
@@ -134,7 +131,7 @@ const DataEnrichmentModule: React.FC = () => {
           <ChevronLeft size={20} /> <span>Go Back</span>
         </Button>
 
-        {/* Header */}
+        
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center my-8 gap-4">
           <div className="flex items-center space-x-4">
             <h1
@@ -156,7 +153,7 @@ const DataEnrichmentModule: React.FC = () => {
           )}
         </div>
 
-        {/* Approver Section */}
+        
         {userIsApprover && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
             <div className="flex items-center justify-between">
@@ -205,7 +202,7 @@ const DataEnrichmentModule: React.FC = () => {
           </div>
         )}
 
-        {/* Job List */}
+        
         <JobList
           jobs={jobs}
           isLoading={loading}
@@ -223,7 +220,7 @@ const DataEnrichmentModule: React.FC = () => {
           loading={loading}
         />
 
-        {/* Create Job Modal */}
+        
         {showJobForm && (
           <DataEnrichmentFormModal
             isOpen={showJobForm}
@@ -233,7 +230,7 @@ const DataEnrichmentModule: React.FC = () => {
           />
         )}
 
-        {/* View Job Details Modal */}
+        
         {showJobDetails && !editMode && (
           <JobDetailsModal
             isOpen={showJobDetails && !editMode}
@@ -247,7 +244,7 @@ const DataEnrichmentModule: React.FC = () => {
         )}
         
 
-        {/* Edit Job Details Modal */}
+        
         {editMode && (
           <DataEnrichmentEditModal
             isOpen={editMode}

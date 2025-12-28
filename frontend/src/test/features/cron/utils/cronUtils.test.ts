@@ -2,7 +2,10 @@ import {
   getCronJobErrorMessage,
   formatScheduleForEdit,
 } from '../../../../features/cron/utils';
-import type { ScheduleResponse, ErrorWithResponse } from '../../../../features/cron/types';
+import type {
+  ScheduleResponse,
+  ErrorWithResponse,
+} from '../../../../features/cron/types';
 import { CRON_JOB_ERROR_MESSAGES } from '../../../../features/cron/constants';
 
 describe('Cron Job Utils', () => {

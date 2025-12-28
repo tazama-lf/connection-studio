@@ -6,14 +6,14 @@ export const defaultValues = {
     sourceType: 'sftp',
     description: '',
     schedule: '',
-    // connection settings
+    
     host: '',
     port: '',
     authType: 'password',
     username: '',
     password: '',
     privateKey: '',
-    // FILE SETTINGS
+    
     pathPattern: '',
     fileFormat: 'csv',
     delimiter: '',
@@ -56,7 +56,7 @@ export const pullValidationSchema = yup.object({
             'Version must follow semantic versioning format (e.g: 1.0.0 or v1.0.0)'
         )
         .transform(value => {
-            // Ensure version always starts with 'v' for consistency
+            
             if (value && !value.startsWith('v')) {
                 return `v${value}`;
             }
@@ -126,48 +126,48 @@ export const pullValidationSchema = yup.object({
             is: 'http',
             then: (schema) => schema
                 .test('valid-json', 'Headers must be valid JSON format', function (value) {
-                    if (!value || value.trim() === '') return true; // Allow empty headers
+                    if (!value || value.trim() === '') return true; 
 
                     let trimmedValue = value.trim();
 
-                    // Helper function to normalize JSON input for flexible parsing
+                    
                     const normalizeJSON = (str) => {
                         let normalized = str.trim();
 
-                        // First, protect already escaped quotes
+                        
                         normalized = normalized.replace(/\\'/g, '___ESCAPED_SINGLE___').replace(/\\"/g, '___ESCAPED_DOUBLE___');
 
-                        // Handle unquoted keys and values - add quotes around them
-                        // This regex finds unquoted words (keys and values) and wraps them in quotes
-                        normalized = normalized.replace(/(\w+)\s*:/g, '"$1":'); // Quote unquoted keys
-                        normalized = normalized.replace(/:\s*([^",\{\}\[\]\s][^",\{\}\[\]]*?)(\s*[,\}])/g, ': "$1"$2'); // Quote unquoted values
+                        
+                        
+                        normalized = normalized.replace(/(\w+)\s*:/g, '"$1":'); 
+                        normalized = normalized.replace(/:\s*([^",\{\}\[\]\s][^",\{\}\[\]]*?)(\s*[,\}])/g, ': "$1"$2'); 
 
-                        // Convert single quotes to double quotes for JSON compatibility
+                        
                         normalized = normalized.replace(/'/g, '"');
 
-                        // Restore escaped quotes
+                        
                         normalized = normalized.replace(/___ESCAPED_SINGLE___/g, "\\'").replace(/___ESCAPED_DOUBLE___/g, '\\"');
 
                         return normalized;
                     };
 
                     try {
-                        // Try parsing as-is first (for proper JSON)
+                        
                         let parsed;
                         try {
                             parsed = JSON.parse(trimmedValue);
                         } catch (initialError) {
-                            // If it fails, try normalizing the JSON (handle unquoted keys/values and single quotes)
+                            
                             const normalizedValue = normalizeJSON(trimmedValue);
                             parsed = JSON.parse(normalizedValue);
                         }
 
-                        // Must be an object (not array, string, number, etc.)
+                        
                         if (typeof parsed !== 'object' || Array.isArray(parsed) || parsed === null) {
                             return this.createError({ message: 'Headers must be a valid JSON object, not an array or primitive value' });
                         }
 
-                        // Check if all keys and values are strings
+                        
                         for (const [key, val] of Object.entries(parsed)) {
                             if (typeof key !== 'string' || typeof val !== 'string') {
                                 return this.createError({ message: 'All header keys and values must be strings' });
@@ -176,7 +176,7 @@ export const pullValidationSchema = yup.object({
 
                         return true;
                     } catch (error) {
-                        // Provide more specific error messages based on common JSON errors
+                        
                         if (error.message.includes('Unexpected end of JSON input')) {
                             return this.createError({ message: 'Incomplete JSON - missing closing brackets or quotes' });
                         } else if (error.message.includes('Unexpected token')) {
@@ -203,23 +203,23 @@ export const pullValidationSchema = yup.object({
                     try {
                         const url = new URL(trimmedValue);
 
-                        // Check if protocol is http or https
+                        
                         if (!['http:', 'https:'].includes(url.protocol)) {
                             return this.createError({ message: 'URL must use HTTP or HTTPS protocol' });
                         }
 
-                        // Check if hostname exists
+                        
                         if (!url.hostname) {
                             return this.createError({ message: 'URL must have a valid hostname' });
                         }
 
                         return true;
                     } catch (error) {
-                        // Provide more helpful error messages
+                        
                         const errorMsg = error.message.toLowerCase();
 
                         if (errorMsg.includes('invalid url')) {
-                            // Check if it looks like an IP address with invalid octets
+                            
                             const ipPattern = /^https?:\/\/(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/;
                             const ipMatch = trimmedValue.match(ipPattern);
 
@@ -253,18 +253,18 @@ export const pullValidationSchema = yup.object({
 
                     const trimmedValue = value.trim();
 
-                    // Check if path starts with /
+                    
                     if (!trimmedValue.startsWith('/')) {
                         return this.createError({ message: 'File path must start with "/" (e.g: /inbound/data_*.csv)' });
                     }
 
-                    // Check for valid path characters (allow alphanumeric, /, _, -, ., *)
+                    
                     const validPathPattern = /^[\/a-zA-Z0-9_\-\.\*]+$/;
                     if (!validPathPattern.test(trimmedValue)) {
                         return this.createError({ message: 'File path contains invalid characters. Only letters, numbers, /, _, -, ., * are allowed' });
                     }
 
-                    // Extract filename (part after last /)
+                    
                     const pathParts = trimmedValue.split('/');
                     const fileName = pathParts[pathParts.length - 1];
 
@@ -272,7 +272,7 @@ export const pullValidationSchema = yup.object({
                         return this.createError({ message: 'File path must include a filename (e.g: /inbound/data_*.csv)' });
                     }
 
-                    // Check file extension (case-insensitive and more robust)
+                    
                     const lowerFileName = fileName.toLowerCase();
                     const validExtensions = ['.csv', '.tsv', '.json'];
                     const hasValidExtension = validExtensions.some(ext => lowerFileName.endsWith(ext));
@@ -285,19 +285,19 @@ export const pullValidationSchema = yup.object({
                 })
                 .when('fileFormat', (fileFormat, schema) =>
                     schema.test('extension-format-match', 'File extension must match selected format', function (value) {
-                        if (!value) return true; // Skip if no value (required validation will catch this)
+                        if (!value) return true; 
 
-                        if (!fileFormat) return true; // Skip if no format selected yet
+                        if (!fileFormat) return true; 
 
                         const trimmedValue = value.trim();
                         const pathParts = trimmedValue.split('/');
                         const fileName = pathParts[pathParts.length - 1];
 
-                        if (!fileName || !fileName.includes('.')) return true; // Will be caught by other validation
+                        if (!fileName || !fileName.includes('.')) return true; 
 
                         const fileExtension = fileName.split('.').pop()?.toLowerCase();
 
-                        // Define extension-to-format mapping
+                        
                         const extensionFormatMap = {
                             'csv': ['csv'],
                             'tsv': ['tsv'],
@@ -306,7 +306,7 @@ export const pullValidationSchema = yup.object({
 
                         const allowedFormatsForExtension = extensionFormatMap[fileExtension];
 
-                        // Handle both string and array formats
+                        
                         const formatValue = Array.isArray(fileFormat) ? fileFormat[0] : fileFormat;
 
                         if (allowedFormatsForExtension && !allowedFormatsForExtension.includes(formatValue?.toLowerCase())) {
@@ -335,14 +335,14 @@ export const pullValidationSchema = yup.object({
 
                     const trimmedValue = value.trim();
 
-                    // Check for valid IP address format
+                    
                     const ipPattern = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
 
                     if (!ipPattern.test(trimmedValue)) {
                         return this.createError({ message: 'Host must be a valid IP address (e.g: 192.168.1.1)' });
                     }
 
-                    // Validate IP address octets
+                    
                     const octets = trimmedValue.split('.').map(Number);
                     const invalidOctets = octets.filter(octet => octet > 255);
 
@@ -405,7 +405,7 @@ export const pullValidationSchema = yup.object({
         }),
 });
 
-// Push configuration validation schema
+
 export const pushValidationSchema = yup.object({
     name: yup
         .string()
@@ -434,7 +434,7 @@ export const pushValidationSchema = yup.object({
             'Version must follow semantic versioning format (e.g: 1.0.0 or v1.0.0)'
         )
         .transform(value => {
-            // Ensure version always starts with 'v' for consistency
+            
             if (value && !value.startsWith('v')) {
                 return `v${value}`;
             }
@@ -478,28 +478,28 @@ export const pushValidationSchema = yup.object({
 
             const trimmedValue = value.trim();
 
-            // Check if path starts with /
+            
             if (!trimmedValue.startsWith('/')) {
                 return this.createError({ message: 'API path must start with "/" (e.g: /customer/data_2025)' });
             }
 
-            // Check for valid API path characters (allow alphanumeric, /, _, -, ., but no spaces or special chars)
+            
             const validPathPattern = /^[\/a-zA-Z0-9_.-]+$/;
             if (!validPathPattern.test(trimmedValue)) {
                 return this.createError({ message: 'API path contains invalid characters. Only letters, numbers, /, _, -, . are allowed (no spaces)' });
             }
 
-            // Prevent double slashes
+            
             if (trimmedValue.includes('//')) {
                 return this.createError({ message: 'API path cannot contain double slashes (//)' });
             }
 
-            // Ensure it doesn't end with slash (except root)
+            
             if (trimmedValue.length > 1 && trimmedValue.endsWith('/')) {
                 return this.createError({ message: 'API path cannot end with "/" (e.g: use /customer/data instead of /customer/data/)' });
             }
 
-            // Check path segments are valid
+            
             const segments = trimmedValue.split('/').filter(segment => segment !== '');
             for (const segment of segments) {
                 if (segment.length === 0) {
@@ -516,7 +516,7 @@ export const pushValidationSchema = yup.object({
 });
 
 
-// LOVS
+
 export const sourceTypeOptions = [
     { label: 'SFTP', value: 'sftp' },
     { label: 'HTTPS', value: 'http' },

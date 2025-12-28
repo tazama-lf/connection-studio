@@ -1,17 +1,5 @@
-import { buildPushPayload, buildPullPayload } from '../utils';
-import type { SaveJobOptions } from '../types';
-
-
-import { ENV } from '@shared/config/environment.config';
-import { getDemsStatusLov } from '@shared/lovs';
-import { apiRequest } from '@utils/common/apiHelper';
-import type { NavigateFunction } from 'react-router';
-
-import {
-  getDataEnrichmentErrorMessage,
-  formatJobForEdit,
-} from '../utils';
-import type {
+import { buildPushPayload, buildPullPayload , getDataEnrichmentErrorMessage, formatJobForEdit , getJobType } from '../utils';
+import type { SaveJobOptions ,
   CreatePullJobDto,
   CreatePushJobDto,
   UpdatePullJobDto,
@@ -20,49 +8,40 @@ import type {
   ScheduleResponse,
   ScheduleCreateResponse,
   ScheduleRequest,
-} from '../types';
+ PaginatedJobResponse, PaginationParams } from '../types';
+
+import { ENV } from '@shared/config/environment.config';
+import { getDemsStatusLov } from '@shared/lovs';
+import { apiRequest } from '@utils/common/apiHelper';
+import type { NavigateFunction } from 'react-router';
+
 import {
   DATA_ENRICHMENT_SUCCESS_MESSAGES,
   DATA_ENRICHMENT_JOB_STATUSES,
 } from '../constants';
-import { DATA_ENRICHMENT_JOB_STATUSES as STATUS } from '../constants';
-import { getJobType } from '../utils';
 
 const { API_BASE_URL } = ENV;
 
-import type { PaginatedJobResponse, PaginationParams } from '../types';
-
-// ============================================================================
-// API LAYER
-// ============================================================================
-
 export const dataEnrichmentJobApi = {
-  // Job CRUD operations
   createPullJob: async (
     data: CreatePullJobDto,
-  ): Promise<DataEnrichmentJobResponse> => {
-    console.log('Creating pull job with data:', JSON.stringify(data, null, 2));
-    return await apiRequest<DataEnrichmentJobResponse>(
+  ): Promise<DataEnrichmentJobResponse> => await apiRequest<DataEnrichmentJobResponse>(
       `${API_BASE_URL}/job/create/pull`,
       {
         method: 'POST',
         body: JSON.stringify(data),
       },
-    );
-  },
+    ),
 
   createPushJob: async (
     data: CreatePushJobDto,
-  ): Promise<DataEnrichmentJobResponse> => {
-    console.log('Creating push job with data:', JSON.stringify(data, null, 2));
-    return await apiRequest<DataEnrichmentJobResponse>(
+  ): Promise<DataEnrichmentJobResponse> => await apiRequest<DataEnrichmentJobResponse>(
       `${API_BASE_URL}/job/create/push`,
       {
         method: 'POST',
         body: JSON.stringify(data),
       },
-    );
-  },
+    ),
 
   getList: async (
     params: PaginationParams,
@@ -100,31 +79,51 @@ export const dataEnrichmentJobApi = {
     );
   },
 
+  getJobHistory: async (
+    jobId: string | undefined,
+    offset = 0,
+    limit = 10,
+    searchingFilters?: Record<string, unknown>,
+  ): Promise<{ data: any[]; total: number; limit: number; offset: number }> => {
+    const queryParams = new URLSearchParams();
+    queryParams.append('offset', offset.toString());
+    queryParams.append('limit', limit.toString());
+
+    const body: Record<string, unknown> = searchingFilters ? { ...(searchingFilters as Record<string, unknown>) } : {};
+    if (jobId) {
+      body.jobId = jobId;
+    }
+
+    return await apiRequest<any>(
+      `${API_BASE_URL}/job/get/history?${queryParams.toString()}`,
+      {
+        method: 'POST',
+        body: JSON.stringify(body),
+      },
+    );
+  },
+
   updatePullJob: async (
     id: string,
     updates: UpdatePullJobDto,
-  ): Promise<DataEnrichmentJobResponse> => {
-    return await apiRequest<DataEnrichmentJobResponse>(
+  ): Promise<DataEnrichmentJobResponse> => await apiRequest<DataEnrichmentJobResponse>(
       `${API_BASE_URL}/job/update/${id}?type=pull`,
       {
         method: 'PATCH',
         body: JSON.stringify(updates),
       },
-    );
-  },
+    ),
 
   updatePushJob: async (
     id: string,
     updates: UpdatePushJobDto,
-  ): Promise<DataEnrichmentJobResponse> => {
-    return await apiRequest<DataEnrichmentJobResponse>(
+  ): Promise<DataEnrichmentJobResponse> => await apiRequest<DataEnrichmentJobResponse>(
       `${API_BASE_URL}/job/update/${id}?type=push`,
       {
         method: 'PATCH',
         body: JSON.stringify(updates),
       },
-    );
-  },
+    ),
 
   updateStatus: async (
     id: string,
@@ -165,26 +164,22 @@ export const dataEnrichmentJobApi = {
   deleteJob: async (
     id: string,
     type: 'pull' | 'push',
-  ): Promise<{ success: boolean; message: string }> => {
-    return await apiRequest<{ success: boolean; message: string }>(
+  ): Promise<{ success: boolean; message: string }> => await apiRequest<{ success: boolean; message: string }>(
       `${API_BASE_URL}/job/${id}?type=${type.toLowerCase()}`,
       {
         method: 'DELETE',
       },
-    );
-  },
+    ),
 };
 
 export const scheduleApi = {
-  create: async (data: ScheduleRequest): Promise<ScheduleCreateResponse> => {
-    return await apiRequest<ScheduleCreateResponse>(
+  create: async (data: ScheduleRequest): Promise<ScheduleCreateResponse> => await apiRequest<ScheduleCreateResponse>(
       `${API_BASE_URL}/scheduler/create`,
       {
         method: 'POST',
         body: JSON.stringify(data),
       },
-    );
-  },
+    ),
 
   getAll: async (offset = 0, limit = 50): Promise<ScheduleResponse[]> => {
     const queryParams = new URLSearchParams();
@@ -204,17 +199,14 @@ export const scheduleApi = {
     );
   },
 
-  getById: async (id: string): Promise<ScheduleResponse> => {
-    return await apiRequest<ScheduleResponse>(
+  getById: async (id: string): Promise<ScheduleResponse> => await apiRequest<ScheduleResponse>(
       `${API_BASE_URL}/scheduler/${id}`,
-    );
-  },
+    ),
 
   update: async (
     id: string,
     updates: Partial<ScheduleRequest>,
-  ): Promise<{ success: boolean; message: string }> => {
-    return await apiRequest<{ success: boolean; message: string }>(
+  ): Promise<{ success: boolean; message: string }> => await apiRequest<{ success: boolean; message: string }>(
       `${API_BASE_URL}/scheduler/update/${id}`,
       {
         method: 'PATCH',
@@ -225,8 +217,7 @@ export const scheduleApi = {
           cron: updates?.cron,
         }),
       },
-    );
-  },
+    ),
 
   updateStatus: async (
     id: string,
@@ -248,15 +239,13 @@ export const scheduleApi = {
   },
 };
 
-// ============================================================================
-// JOB DETAILS HANDLERS
-// ============================================================================
-
 export const handleRejectionConfirm = (
   reason: string,
   job: DataEnrichmentJobResponse | null,
-  onReject: ((jobId: string, jobType: 'PULL' | 'PUSH', reason: string) => void) | undefined,
-  onClose: () => void
+  onReject:
+    | ((jobId: string, jobType: 'PULL' | 'PUSH', reason: string) => void)
+    | undefined,
+  onClose: () => void,
 ) => {
   if (onReject && job) {
     const jobType = getJobType(job) === 'push' ? 'PUSH' : 'PULL';
@@ -267,9 +256,11 @@ export const handleRejectionConfirm = (
 
 export const handleSendForApprovalConfirm = (
   job: DataEnrichmentJobResponse | null,
-  onSendForApproval: ((jobId: string, jobType: 'PULL' | 'PUSH') => void) | undefined,
+  onSendForApproval:
+    | ((jobId: string, jobType: 'PULL' | 'PUSH') => void)
+    | undefined,
   onClose: () => void,
-  setShowApprovalConfirmDialog: (show: boolean) => void
+  setShowApprovalConfirmDialog: (show: boolean) => void,
 ) => {
   if (onSendForApproval && job) {
     const jobType = getJobType(job) === 'push' ? 'PUSH' : 'PULL';
@@ -281,9 +272,11 @@ export const handleSendForApprovalConfirm = (
 
 export const handleApproveConfirm = (
   job: DataEnrichmentJobResponse | null,
-  onApprove: ((jobId: string, jobType: 'PULL' | 'PUSH', comment?: string) => void) | undefined,
+  onApprove:
+    | ((jobId: string, jobType: 'PULL' | 'PUSH', comment?: string) => void)
+    | undefined,
   onClose: () => void,
-  setShowApproveConfirmDialog: (show: boolean) => void
+  setShowApproveConfirmDialog: (show: boolean) => void,
 ) => {
   if (onApprove && job) {
     const jobType = getJobType(job) === 'push' ? 'PUSH' : 'PULL';
@@ -296,7 +289,9 @@ export const handleApproveConfirm = (
 export const handleInputChange = (
   field: keyof DataEnrichmentJobResponse,
   value: any,
-  setEditedJob: React.Dispatch<React.SetStateAction<Partial<DataEnrichmentJobResponse>>>
+  setEditedJob: React.Dispatch<
+    React.SetStateAction<Partial<DataEnrichmentJobResponse>>
+  >,
 ) => {
   setEditedJob((prev) => ({
     ...prev,
@@ -307,23 +302,22 @@ export const handleInputChange = (
 export const handleSaveJob = async (
   job: DataEnrichmentJobResponse | null,
   editedJob: Partial<DataEnrichmentJobResponse>,
-  onSave: ((data: Partial<DataEnrichmentJobResponse>) => Promise<void>) | undefined,
+  onSave:
+    | ((data: Partial<DataEnrichmentJobResponse>) => Promise<void>)
+    | undefined,
   onClose: () => void,
-  setIsSaving: (saving: boolean) => void
+  setIsSaving: (saving: boolean) => void,
 ) => {
   if (!onSave || !job) return;
 
   try {
     setIsSaving(true);
-    // Filter out schedule_id for push jobs since they don't use schedules
+
     const jobType = getJobType(job);
     const dataToSave = { ...editedJob };
 
-    // Remove type field - we don't allow changing job type
     delete dataToSave.type;
 
-    // Note: table_name is intentionally excluded from this update
-    // The parent component will handle versioning if needed
     delete dataToSave.table_name;
 
     if (jobType === 'push') {
@@ -336,7 +330,6 @@ export const handleSaveJob = async (
     await onSave(dataToSave);
     onClose();
   } catch (error) {
-    console.error('Failed to save job:', error);
   } finally {
     setIsSaving(false);
   }
@@ -344,9 +337,11 @@ export const handleSaveJob = async (
 
 export const handleExportConfirm = async (
   job: DataEnrichmentJobResponse | null,
-  onExport: ((jobId: string, jobType: 'PULL' | 'PUSH') => Promise<void>) | undefined,
+  onExport:
+    | ((jobId: string, jobType: 'PULL' | 'PUSH') => Promise<void>)
+    | undefined,
   setShowExportConfirmDialog: (show: boolean) => void,
-  setIsSaving: (saving: boolean) => void
+  setIsSaving: (saving: boolean) => void,
 ) => {
   if (onExport && job) {
     setIsSaving(true);
@@ -363,9 +358,15 @@ export const handleExportConfirm = async (
 export const handleApproveWithComment = async (
   job: DataEnrichmentJobResponse | null,
   approveComment: string,
-  onApprove: ((jobId: string, jobType: 'PULL' | 'PUSH', comment?: string) => Promise<void>) | undefined,
+  onApprove:
+    | ((
+        jobId: string,
+        jobType: 'PULL' | 'PUSH',
+        comment?: string,
+      ) => Promise<void>)
+    | undefined,
   setShowApproveConfirmDialog: (show: boolean) => void,
-  setIsSaving: (saving: boolean) => void
+  setIsSaving: (saving: boolean) => void,
 ) => {
   if (onApprove && job) {
     setIsSaving(true);
@@ -382,44 +383,33 @@ export const handleApproveWithComment = async (
   }
 };
 
-// ============================================================================
-// CLONE JOB HANDLERS
-// ============================================================================
-
-// Helper function to determine source type from job data
-export const determineSourceType = (job: DataEnrichmentJobResponse): 'HTTP' | 'SFTP' => {
-  // First check explicit source_type
+export const determineSourceType = (
+  job: DataEnrichmentJobResponse,
+): 'HTTP' | 'SFTP' => {
   if (job.source_type) {
-    console.log('🔍 Using explicit source_type:', job.source_type);
     return job.source_type as 'HTTP' | 'SFTP';
   }
 
   if (job.connection) {
     let connectionObj = job.connection;
-    
-    // If connection is a string, try to parse it
+
     if (typeof job.connection === 'string') {
       try {
         connectionObj = JSON.parse(job.connection);
       } catch (e) {
-        return 'HTTP'; // Default fallback
+        return 'HTTP';
       }
     }
-    
-    // Check parsed or direct object
+
     if (connectionObj && typeof connectionObj === 'object') {
       if ('host' in connectionObj && connectionObj.host) {
-        console.log('🔍 Auto-detected SFTP from connection.host:', connectionObj.host);
         return 'SFTP';
       } else if ('url' in connectionObj && connectionObj.url) {
-        console.log('🔍 Auto-detected HTTP from connection.url:', connectionObj.url);
         return 'HTTP';
       }
     }
   }
-  
-  // Default fallback
-  console.log('🔍 Defaulting to HTTP - no clear indicators');
+
   return 'HTTP';
 };
 
@@ -431,14 +421,13 @@ export const handleCloneJob = async (
   showSuccess: (message: string) => void,
   showError: (message: string) => void,
   onSuccess: (() => void) | undefined,
-  onClose: () => void
+  onClose: () => void,
 ) => {
   if (!job || !newVersion.trim()) {
     showError('Version is required');
     return;
   }
 
-  // For pull jobs, connector name is required
   if (job.type === 'pull' && !newEndpointName.trim()) {
     showError('Connector name is required for pull jobs');
     return;
@@ -447,79 +436,82 @@ export const handleCloneJob = async (
   setIsCloning(true);
   try {
     let result;
-    
-    if (job.type === 'pull') {
-      // Clone pull job with version and endpoint name
-      const sourceType = determineSourceType(job);
-      console.log('🔍 Final determined source_type for cloning:', sourceType);
 
-      // Handle connection data - create default if missing
+    if (job.type === 'pull') {
+      const sourceType = determineSourceType(job);
       let connectionData = job.connection;
       if (!connectionData) {
-        console.log('No connection data found, creating default based on source type...');
         if (sourceType === 'SFTP') {
           connectionData = {
             host: '',
             port: 22,
             user_name: '',
             auth_type: 'USERNAME_PASSWORD' as const,
-            password: ''
+            password: '',
           };
-          showError('This pull job is missing connection information. Please check the original job and ensure it has proper SFTP connection details.');
+          showError(
+            'This pull job is missing connection information. Please check the original job and ensure it has proper SFTP connection details.',
+          );
           setIsCloning(false);
           return;
         } else {
           connectionData = {
             url: '',
-            headers: {}
+            headers: {},
           };
-          showError('This pull job is missing connection information. Please check the original job and ensure it has proper HTTP connection details.');
+          showError(
+            'This pull job is missing connection information. Please check the original job and ensure it has proper HTTP connection details.',
+          );
           setIsCloning(false);
           return;
         }
       }
 
-      // Handle schedule_id - either use existing or get available schedules
       let scheduleId = job.schedule_id;
-      
+
       if (!scheduleId) {
-        console.log('No schedule_id found on job, attempting to get available schedules...');
         showSuccess('Finding or creating schedule for cloned job...');
         try {
           const schedules = await scheduleApi.getAll();
-          const approvedSchedules = schedules.filter((schedule: any) => 
-            schedule.status === 'approved' || schedule.status === 'exported' || schedule.status === 'deployed'
+          const approvedSchedules = schedules.filter(
+            (schedule: any) =>
+              schedule.status === 'approved' ||
+              schedule.status === 'exported' ||
+              schedule.status === 'deployed',
           );
-          
+
           if (approvedSchedules.length > 0) {
             scheduleId = approvedSchedules[0].id;
-            console.log('Using first available approved schedule:', scheduleId);
           } else {
-            console.log('No approved schedules found, creating a default schedule...');
             const defaultSchedule = await scheduleApi.create({
               name: `Schedule for ${newEndpointName} (Cloned)`,
               cron: '0 */6 * * *',
               iterations: -1,
-              status: 'approved'
+              status: 'approved',
             });
-            
+
             if (defaultSchedule.success) {
               const createdSchedules = await scheduleApi.getAll();
-              const newSchedule = createdSchedules.find((s: any) => s.name === `Schedule for ${newEndpointName} (Cloned)`);
+              const newSchedule = createdSchedules.find(
+                (s: any) =>
+                  s.name === `Schedule for ${newEndpointName} (Cloned)`,
+              );
               scheduleId = newSchedule?.id;
-              console.log('Created new schedule with ID:', scheduleId);
             }
           }
         } catch (scheduleError) {
-          console.error('Failed to handle schedule:', scheduleError);
-          showError('Failed to create or find a schedule for the cloned job. Please try again.');
+          showError(
+            'Failed to create or find a schedule for the cloned job. Please try again.',
+          );
           setIsCloning(false);
           return;
         }
       }
 
       if (!scheduleId) {
-        showError('Could not determine a valid schedule for the cloned job. Please contact support.');
+        showError(
+          'Could not determine a valid schedule for the cloned job. Please contact support.',
+        );
         setIsCloning(false);
         return;
       }
@@ -528,65 +520,62 @@ export const handleCloneJob = async (
         endpoint_name: newEndpointName.trim(),
         version: newVersion.trim(),
         schedule_id: scheduleId,
-        source_type: sourceType as 'HTTP' | 'SFTP',
-        description: job.description ? `${job.description}` : 'Cloned job',
+        source_type: sourceType,
+        description: job.description ? job.description : 'Cloned job',
         connection: connectionData,
         table_name: job.table_name || '',
-        mode: job.mode || 'append' as 'append' | 'replace',
-        ...(job.file && { file: job.file })
+        mode: job.mode || ('append' as 'append' | 'replace'),
+        ...(job.file && { file: job.file }),
       };
 
-      console.log('🔄 Cloning pull job with data:', JSON.stringify(pullJobData, null, 2));
       result = await dataEnrichmentJobApi.createPullJob(pullJobData);
-      
     } else {
-      // Clone push job with only version
       const pushJobData = {
         endpoint_name: job.endpoint_name,
         version: newVersion.trim(),
         path: job.path || '',
-        description: job.description ? `${job.description}` : 'Cloned job',
+        description: job.description ? job.description : 'Cloned job',
         table_name: job.table_name || '',
-        mode: job.mode || 'append' as 'append' | 'replace'
+        mode: job.mode || ('append' as 'append' | 'replace'),
       };
 
-      console.log('🔄 Cloning push job with data:', pushJobData);
       result = await dataEnrichmentJobApi.createPushJob(pushJobData);
     }
-    
+
     if (result && result.id) {
-      showSuccess(`${job.type === 'pull' ? 'Pull' : 'Push'} job cloned successfully as version ${newVersion}`);
+      showSuccess(
+        `${job.type === 'pull' ? 'Pull' : 'Push'} job cloned successfully as version ${newVersion}`,
+      );
       onSuccess?.();
       onClose();
     } else {
       showError('Failed to clone job - no ID returned');
     }
   } catch (error) {
-    console.error('❌ Clone failed:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Failed to clone job';
+    const errorMessage =
+      error instanceof Error ? error.message : 'Failed to clone job';
     showError(errorMessage);
   } finally {
     setIsCloning(false);
   }
 };
 
-// ============================================================================
-// JOB LIST HANDLERS
-// ============================================================================
-
 export const handleResumeJob = async (
   job: DataEnrichmentJobResponse,
   showSuccess: (message: string) => void,
   showError: (message: string) => void,
-  onJobUpdate: () => void
+  onJobUpdate: () => void,
 ) => {
   try {
     const jobType = job.type === 'push' ? 'PUSH' : 'PULL';
-    await dataEnrichmentJobApi.updateStatus(job.id, DATA_ENRICHMENT_JOB_STATUSES.IN_PROGRESS, jobType);
+    await dataEnrichmentJobApi.updateStatus(
+      job.id,
+      DATA_ENRICHMENT_JOB_STATUSES.IN_PROGRESS,
+      jobType,
+    );
     showSuccess('Job resumed successfully');
     onJobUpdate();
   } catch (error) {
-    console.error('Failed to resume job:', error);
     showError('Failed to resume job');
   }
 };
@@ -597,27 +586,26 @@ export const handleUpdateJobStatus = async (
   newStatus: string,
   showSuccess: (message: string) => void,
   showError: (message: string) => void,
-  onJobUpdate: () => void
+  onJobUpdate: () => void,
 ) => {
   try {
     await dataEnrichmentJobApi.updateStatus(jobId, newStatus, jobType);
-    
-    const statusLabels: Record<string, string> = {
-      STATUS_01_IN_PROGRESS: 'in-progress',
-      STATUS_02_ON_HOLD: 'on-hold',
-      STATUS_03_UNDER_REVIEW: 'under review',
-      STATUS_04_APPROVED: 'approved',
-      STATUS_05_REJECTED: 'rejected',
-      STATUS_06_EXPORTED: 'exported',
-      STATUS_07_READY_FOR_DEPLOYMENT: 'ready for deployment',
-      STATUS_08_DEPLOYED: 'deployed',
+
+    const statusLabelMap: Record<string, string> = {
+      [DATA_ENRICHMENT_JOB_STATUSES.IN_PROGRESS]: 'in-progress',
+      [DATA_ENRICHMENT_JOB_STATUSES.ON_HOLD]: 'on-hold',
+      [DATA_ENRICHMENT_JOB_STATUSES.UNDER_REVIEW]: 'under review',
+      [DATA_ENRICHMENT_JOB_STATUSES.APPROVED]: 'approved',
+      [DATA_ENRICHMENT_JOB_STATUSES.REJECTED]: 'rejected',
+      [DATA_ENRICHMENT_JOB_STATUSES.EXPORTED]: 'exported',
+      [DATA_ENRICHMENT_JOB_STATUSES.READY_FOR_DEPLOYMENT]: 'ready for deployment',
+      [DATA_ENRICHMENT_JOB_STATUSES.DEPLOYED]: 'deployed',
     };
-    
-    const statusLabel = statusLabels[newStatus] || newStatus;
+
+    const statusLabel = statusLabelMap[newStatus] || newStatus;
     showSuccess(`Job status updated to ${statusLabel}`);
     onJobUpdate();
   } catch (error) {
-    console.error('Failed to update job status:', error);
     showError('Failed to update job status');
   }
 };
@@ -626,39 +614,41 @@ export const handleTogglePublishingStatus = async (
   job: DataEnrichmentJobResponse,
   showSuccess: (message: string) => void,
   showError: (message: string) => void,
-  onJobUpdate: () => void
+  onJobUpdate: () => void,
 ) => {
   try {
-    const newStatus = job.publishing_status === 'active' ? 'in-active' : 'active';
+    const newStatus =
+      job.publishing_status === 'active' ? 'in-active' : 'active';
     const jobType = job.type === 'push' ? 'PUSH' : 'PULL';
-    
-    await dataEnrichmentJobApi.updatePublishingStatus(job.id, newStatus, jobType);
-    
+
+    await dataEnrichmentJobApi.updatePublishingStatus(
+      job.id,
+      newStatus,
+      jobType,
+    );
+
     const actionWord = newStatus === 'active' ? 'activated' : 'deactivated';
     showSuccess(`Job ${actionWord} successfully`);
     onJobUpdate();
   } catch (error) {
-    console.error('Failed to toggle publishing status:', error);
     showError('Failed to update publishing status');
   }
 };
-
-// ============================================================================
-// CRON JOB HANDLERS
-// ============================================================================
 
 export const handleSubmitForApproval = async (
   scheduleId: string,
   showSuccess: (message: string) => void,
   showError: (message: string) => void,
-  onUpdate: () => void
+  onUpdate: () => void,
 ) => {
   try {
-    await scheduleApi.updateStatus(scheduleId, DATA_ENRICHMENT_JOB_STATUSES.UNDER_REVIEW);
+    await scheduleApi.updateStatus(
+      scheduleId,
+      DATA_ENRICHMENT_JOB_STATUSES.UNDER_REVIEW,
+    );
     showSuccess('Schedule submitted for approval');
     onUpdate();
   } catch (error) {
-    console.error('Failed to submit schedule for approval:', error);
     showError('Failed to submit schedule for approval');
   }
 };
@@ -667,14 +657,16 @@ export const handleApproveSchedule = async (
   scheduleId: string,
   showSuccess: (message: string) => void,
   showError: (message: string) => void,
-  onUpdate: () => void
+  onUpdate: () => void,
 ) => {
   try {
-    await scheduleApi.updateStatus(scheduleId, DATA_ENRICHMENT_JOB_STATUSES.APPROVED);
+    await scheduleApi.updateStatus(
+      scheduleId,
+      DATA_ENRICHMENT_JOB_STATUSES.APPROVED,
+    );
     showSuccess('Schedule approved successfully');
     onUpdate();
   } catch (error) {
-    console.error('Failed to approve schedule:', error);
     showError('Failed to approve schedule');
   }
 };
@@ -683,26 +675,24 @@ export const handleRejectSchedule = async (
   scheduleId: string,
   showSuccess: (message: string) => void,
   showError: (message: string) => void,
-  onUpdate: () => void
+  onUpdate: () => void,
 ) => {
   try {
-    await scheduleApi.updateStatus(scheduleId, DATA_ENRICHMENT_JOB_STATUSES.REJECTED);
+    await scheduleApi.updateStatus(
+      scheduleId,
+      DATA_ENRICHMENT_JOB_STATUSES.REJECTED,
+    );
     showSuccess('Schedule rejected');
     onUpdate();
   } catch (error) {
-    console.error('Failed to reject schedule:', error);
     showError('Failed to reject schedule');
   }
 };
 
-// ============================================================================
-// DATA ENRICHMENT FORM HANDLERS
-// ============================================================================
-
 export const handleFormInputChange = (
   field: string,
   value: any,
-  setFormData: React.Dispatch<React.SetStateAction<any>>
+  setFormData: React.Dispatch<React.SetStateAction<any>>,
 ) => {
   setFormData((prev: any) => ({
     ...prev,
@@ -711,7 +701,7 @@ export const handleFormInputChange = (
 };
 
 export const handleContinue = (
-  setShowConfigForm: React.Dispatch<React.SetStateAction<boolean>>
+  setShowConfigForm: React.Dispatch<React.SetStateAction<boolean>>,
 ) => {
   setShowConfigForm(true);
 };
@@ -721,7 +711,7 @@ export const handleSaveForm = async (
   onSave: ((data: any) => Promise<void>) | undefined,
   setIsSaving: (saving: boolean) => void,
   showSuccess: (message: string) => void,
-  showError: (message: string) => void
+  showError: (message: string) => void,
 ) => {
   if (!onSave) return;
 
@@ -730,16 +720,11 @@ export const handleSaveForm = async (
     await onSave(formData);
     showSuccess('Form saved successfully');
   } catch (error) {
-    console.error('Failed to save form:', error);
     showError('Failed to save form');
   } finally {
     setIsSaving(false);
   }
 };
-
-// ============================================================================
-// DATA ENRICHMENT EDIT HANDLERS
-// ============================================================================
 
 export const handleSaveEdit = async (
   job: DataEnrichmentJobResponse | null,
@@ -748,30 +733,28 @@ export const handleSaveEdit = async (
   showSuccess: (message: string) => void,
   showError: (message: string) => void,
   onSuccess: (() => void) | undefined,
-  onClose: () => void
+  onClose: () => void,
 ) => {
   if (!job) return;
 
   try {
     setIsSaving(true);
     const jobType = job.type === 'push' ? 'PUSH' : 'PULL';
-    
-    // Remove null values from editedData before sending
+
     const cleanedData = Object.fromEntries(
-      Object.entries(editedData).filter(([_, value]) => value !== null)
+      Object.entries(editedData).filter(([_, value]) => value !== null),
     );
-    
+
     if (jobType === 'PUSH') {
       await dataEnrichmentJobApi.updatePushJob(job.id, cleanedData as any);
     } else {
       await dataEnrichmentJobApi.updatePullJob(job.id, cleanedData as any);
     }
-    
+
     showSuccess('Job updated successfully');
     onSuccess?.();
     onClose();
   } catch (error) {
-    console.error('Failed to save job:', error);
     showError('Failed to save job');
   } finally {
     setIsSaving(false);
@@ -780,7 +763,7 @@ export const handleSaveEdit = async (
 
 export const handleUpdateConfirm = (
   onUpdate: (() => void) | undefined,
-  setShowUpdateDialog: (show: boolean) => void
+  setShowUpdateDialog: (show: boolean) => void,
 ) => {
   onUpdate?.();
   setShowUpdateDialog(false);
@@ -791,51 +774,42 @@ export const handleEditSendForApprovalConfirm = async (
   showSuccess: (message: string) => void,
   showError: (message: string) => void,
   onSuccess: (() => void) | undefined,
-  setShowApprovalDialog: (show: boolean) => void
+  setShowApprovalDialog: (show: boolean) => void,
 ) => {
   if (!job) return;
 
   try {
     const jobType = job.type === 'push' ? 'PUSH' : 'PULL';
-    await dataEnrichmentJobApi.updateStatus(job.id, DATA_ENRICHMENT_JOB_STATUSES.UNDER_REVIEW, jobType);
+    await dataEnrichmentJobApi.updateStatus(
+      job.id,
+      DATA_ENRICHMENT_JOB_STATUSES.UNDER_REVIEW,
+      jobType,
+    );
     showSuccess('Job sent for approval');
     onSuccess?.();
     setShowApprovalDialog(false);
   } catch (error) {
-    console.error('Failed to send for approval:', error);
     showError('Failed to send job for approval');
   }
 };
 
-// ============================================================================
-// NAVIGATION HANDLERS
-// ============================================================================
-
 export const handleNavigateToHistory = (
   navigate: NavigateFunction,
   jobId?: string,
-  historyRoute?: string
+  historyRoute?: string,
 ) => {
   const url = jobId
     ? `${historyRoute}?jobId=${encodeURIComponent(jobId)}`
     : historyRoute;
-  
+
   if (url) {
     navigate(url);
   }
 };
 
-// ============================================================================
-// HIGH-LEVEL JOB OPERATIONS
-// ============================================================================
+export const submitPullJob = async (data: CreatePullJobDto) => await dataEnrichmentJobApi.createPullJob(data);
 
-export const submitPullJob = async (data: CreatePullJobDto) => {
-  return await dataEnrichmentJobApi.createPullJob(data);
-};
-
-export const submitPushJob = async (data: CreatePushJobDto) => {
-  return await dataEnrichmentJobApi.createPushJob(data);
-};
+export const submitPushJob = async (data: CreatePushJobDto) => await dataEnrichmentJobApi.createPushJob(data);
 
 export const rejectJob = async (
   jobId: string,
@@ -863,7 +837,10 @@ export const exportJob = async (jobId: string, jobType: 'PULL' | 'PUSH') =>
     jobType,
   );
 
-export const sendForApproval = async (jobId: string, jobType: 'PULL' | 'PUSH') =>
+export const sendForApproval = async (
+  jobId: string,
+  jobType: 'PULL' | 'PUSH',
+) =>
   await dataEnrichmentJobApi.updateStatus(
     jobId,
     DATA_ENRICHMENT_JOB_STATUSES.UNDER_REVIEW,
@@ -917,9 +894,7 @@ export const loadJobs = async (
   return await dataEnrichmentJobApi.getList(params, searchingFilters);
 };
 
-export const loadSchedules = async (): Promise<ScheduleResponse[]> => {
-  return await scheduleApi.getAll();
-};
+export const loadSchedules = async (): Promise<ScheduleResponse[]> => await scheduleApi.getAll();
 export const saveDataEnrichmentJob = async (options: SaveJobOptions) => {
   const {
     formValues,
@@ -947,8 +922,8 @@ export const saveDataEnrichmentJob = async (options: SaveJobOptions) => {
     if (editMode && selectedJob?.id) {
       response =
         configurationType === 'pull'
-            ? await dataEnrichmentJobApi.updatePullJob(selectedJob.id, payload)
-            : await dataEnrichmentJobApi.updatePushJob(selectedJob.id, payload);
+          ? await dataEnrichmentJobApi.updatePullJob(selectedJob.id, payload)
+          : await dataEnrichmentJobApi.updatePushJob(selectedJob.id, payload);
       if (selectedJob?.status === DATA_ENRICHMENT_JOB_STATUSES.REJECTED) {
         setShowSendForApproval(true);
       } else {
@@ -972,11 +947,13 @@ export const saveDataEnrichmentJob = async (options: SaveJobOptions) => {
         : `Data enrichment endpoint "${formValues.name}" created successfully! You can now send it for approval.`);
 
     showSuccess('Success', successMessage);
-    if (!response?.status || selectedJob?.status === DATA_ENRICHMENT_JOB_STATUSES.REJECTED) {
+    if (
+      !response?.status ||
+      selectedJob?.status === DATA_ENRICHMENT_JOB_STATUSES.REJECTED
+    ) {
       if (onSave) onSave(response);
     }
   } catch (error) {
-    console.error('=== CREATE ENDPOINT ERROR ===', error);
     throw error;
   } finally {
     setIsCreating(false);

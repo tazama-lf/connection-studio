@@ -33,13 +33,21 @@ const CronJobManagement: React.FC<CronJobManagementProps> = ({ onCreateSchedule 
   const loadSchedules = async () => {
     try {
       setLoading(true);
-      const schedulesResp = await scheduleApi.getAll();
-      const normalized: any[] = Array.isArray(schedulesResp)
-        ? schedulesResp
-        : schedulesResp?.data || schedulesResp?.results || schedulesResp?.items || [];
+      const schedulesResp = await scheduleApi.getAll() as unknown;
+      let normalized: ScheduleResponse[] = [];
+      if (Array.isArray(schedulesResp)) {
+        normalized = schedulesResp as ScheduleResponse[];
+      } else if (schedulesResp && typeof schedulesResp === 'object') {
+        if ('data' in schedulesResp && Array.isArray((schedulesResp as any).data)) {
+          normalized = (schedulesResp as any).data;
+        } else if ('results' in schedulesResp && Array.isArray((schedulesResp as any).results)) {
+          normalized = (schedulesResp as any).results;
+        } else if ('items' in schedulesResp && Array.isArray((schedulesResp as any).items)) {
+          normalized = (schedulesResp as any).items;
+        }
+      }
       setSchedules(normalized || []);
     } catch (error) {
-      console.error('Failed to load schedules:', error);
       showError('Failed to load cron jobs');
     } finally {
       setLoading(false);
@@ -69,7 +77,7 @@ const CronJobManagement: React.FC<CronJobManagementProps> = ({ onCreateSchedule 
     const colorClasses = getStatusColor(statusValue);
     const label = getStatusLabel(statusValue);
     
-    // Get icon based on status
+    
     let icon = null;
     switch (status) {
       case DATA_ENRICHMENT_JOB_STATUSES.IN_PROGRESS:
@@ -96,11 +104,11 @@ const CronJobManagement: React.FC<CronJobManagementProps> = ({ onCreateSchedule 
 
   const getFilteredSchedules = () => {
     if (userIsApprover) {
-      // Approvers see all "under-review" schedules
+      
       return schedules.filter(schedule => schedule.status === DATA_ENRICHMENT_JOB_STATUSES.UNDER_REVIEW);
     } else if (userIsEditor) {
-      // Editors see their own schedules in any status
-      return schedules; // In a real app, you'd filter by creator/owner
+      
+      return schedules; 
     }
     return [];
   };

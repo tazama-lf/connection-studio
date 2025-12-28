@@ -10,6 +10,7 @@ import JobDetailsModal from '../../data-enrichment/components/JobDetailsModal';
 import { JobList } from '../../data-enrichment/components/JobList';
 import { loadJobs } from '../../data-enrichment/handlers';
 import type { DataEnrichmentJobResponse } from '../../data-enrichment/types';
+import { dataEnrichmentJobApi as dataEnrichmentApi} from '../../data-enrichment/handlers/index';
 
 const ApproverDEJobsPage: React.FC = () => {
   // Data Enrichment Job state
@@ -80,7 +81,7 @@ const ApproverDEJobsPage: React.FC = () => {
     reason?: string,
   ) => {
     try {
-      await dataEnrichmentApi.updateJobStatus(
+      await dataEnrichmentApi.updateStatus(
         jobId,
         'STATUS_04_APPROVED',
         jobType,
@@ -102,7 +103,7 @@ const ApproverDEJobsPage: React.FC = () => {
     reason: string,
   ) => {
     try {
-      await dataEnrichmentApi.updateJobStatus(
+      await dataEnrichmentApi.updateStatus(
         jobId,
         'STATUS_05_REJECTED',
         jobType,
@@ -127,7 +128,7 @@ const ApproverDEJobsPage: React.FC = () => {
       const jobType = job?.type?.toUpperCase() as 'PULL' | 'PUSH' | undefined;
 
       // Fetch job details from the API
-      const jobDetails = await dataEnrichmentApi.getJob(jobId, jobType);
+      const jobDetails = await dataEnrichmentApi.getById(jobId, jobType);
       setSelectedJob(jobDetails);
     } catch (error) {
       console.error('Failed to load job details:', error);

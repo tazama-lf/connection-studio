@@ -32,7 +32,6 @@ import { JobRejectionDialog } from '../../../../shared/components/JobRejectionDi
 import {
   getStatusColor as getCentralizedStatusColor,
   getJobTypeColor,
-  getStatusLabel,
 } from '../../../../shared/utils/statusColors';
 import { isApprover, isEditor, isExporter } from '../../../../utils/common/roleUtils';
 import { useAuth } from '../../../auth/contexts/AuthContext';
@@ -40,15 +39,14 @@ import type { DataEnrichmentJobResponse } from '../../types';
 import {
   handleRejectionConfirm as handleRejection,
   handleSendForApprovalConfirm as handleSendApproval,
-  handleApproveConfirm as handleApprove,
   handleInputChange as handleInput,
   handleSaveJob,
   handleExportConfirm as handleExport,
   handleApproveWithComment as handleApproveComment,
 } from '../../handlers';
 import { getJobType, getConnectionType } from '../../utils';
-
 import type { JobDetailsModalProps } from '../../types';
+import ensurePromise from '../../../../utils/common/helper';
 import { DATA_ENRICHMENT_JOB_STATUSES } from '../../constants';
 
 const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
@@ -65,46 +63,43 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
   onReject,
   onExport,
 }) => {
-  if (!isOpen) {
-    return null;
-  }
 
   const { user } = useAuth();
 
-  // User role helpers
+  
   const userIsApprover = user?.claims ? isApprover(user.claims) : false;
   const userIsExporter = user?.claims ? isExporter(user.claims) : false;
   const userIsEditor = user?.claims ? isEditor(user.claims) : false;
 
   const [showExportConfirmDialog, setShowExportConfirmDialog] = useState(false);
 
-  // State for rejection dialog
+  
   const [showRejectionDialog, setShowRejectionDialog] = useState(false);
 
-  // State for send for approval confirmation dialog
+  
   const [showApprovalConfirmDialog, setShowApprovalConfirmDialog] =
     useState(false);
 
-  // State for approve confirmation dialog
+  
   const [showApproveConfirmDialog, setShowApproveConfirmDialog] =
     useState(false);
 
-  // Handle rejection with reason
+  
   const handleRejectionConfirm = (reason: string) => handleRejection(reason, job, onReject, onClose);
 
-  // Handle send for approval confirmation
+  
   const handleSendForApprovalConfirm = () => handleSendApproval(job, onSendForApproval, onClose, setShowApprovalConfirmDialog);
 
-  // Handle approve confirmation
-  const handleApproveConfirm = () => handleApprove(job, onApprove, onClose, setShowApproveConfirmDialog);
+  
 
-  // State for edit mode
+
+  
   const [editedJob, setEditedJob] = useState<
     Partial<DataEnrichmentJobResponse>
   >({});
   const [isSaving, setIsSaving] = useState(false);
 
-  // Initialize edited job data when job changes or editMode/cloneMode is enabled
+  
   useEffect(() => {
     if (job && (editMode || cloneMode)) {
       const jobType = getJobType(job);
@@ -143,21 +138,27 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
     return getJobTypeColor(type);
   };
 
-  // State for export confirmation dialog
+  
 
-  // Handle export confirmation
+  
   const handleExportConfirm = async () => handleExport(job, onExport, setShowExportConfirmDialog, setIsSaving);
 
-  // State for approve comment
+  
   const [approveComment, setApproveComment] = useState('');
 
-  // Ensure comment is cleared when dialog closes
+  
   useEffect(() => {
     if (!showApproveConfirmDialog) setApproveComment('');
   }, [showApproveConfirmDialog]);
 
-  // Approve handler with comment
-  const handleApproveWithComment = async () => handleApproveComment(job, approveComment, onApprove, setShowApproveConfirmDialog, setIsSaving);
+  
+  const handleApproveWithComment = async () => {
+    // Ensure onApprove is always a Promise-returning function
+    const asyncOnApprove = onApprove ? ensurePromise(onApprove) : undefined;
+    await handleApproveComment(job, approveComment, asyncOnApprove, setShowApproveConfirmDialog, setIsSaving);
+  };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -169,7 +170,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
         open={true}
       >
         <div className="bg-white rounded-lg shadow-2xl relative z-10 w-full max-w-4xl max-h-[90vh] flex flex-col">
-          {/* Header with close button */}
+          
           <div
             className="flex justify-between items-center px-6 py-4 border-b border-gray-200"
             data-id="element-1048"
@@ -188,7 +189,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
               <XIcon size={24} data-id="element-1051" />
             </button>
           </div>
-          {/* Scrollable Content */}
+          
           <div className="flex-1 overflow-y-auto px-6 py-4">
             {isLoading ? (
               <div className="flex justify-center items-center py-8">
@@ -199,7 +200,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
               </div>
             ) : job ? (
               <div className="space-y-6">
-                {/* Configuration Type */}
+                
                 <Box>
                   <Box
                     sx={{
@@ -248,7 +249,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                   </p>
                 </Box>
 
-                {/* Basic Information */}
+                
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label className="block text-sm font-bold text-gray-800 mb-2  px-0 py-0 rounded">
@@ -287,7 +288,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                     />
                   </div>
 
-                  {/* Determine job type using helper function */}
+                  
                   {getJobType(job) === 'push' ? (
                     <div>
                       <label className="block text-sm font-bold text-gray-800 mb-2  px-0 py-0 rounded">
@@ -339,7 +340,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                           !cloneMode &&
                           handleInputChange('source_type', e.target.value)
                         }
-                        disabled={true} // Source type cannot be changed during editing or cloning
+                        disabled={true} 
                         className={`w-full px-3 py-2 border border-gray-300 rounded-lg text-lg font-medium h-[60px]  text-gray-900`}
                         style={{
                           border: '1px solid silver',
@@ -418,7 +419,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                   )}
                 </div>
 
-                {/* Description */}
+                
                 <div>
                   <label className="block text-sm font-bold text-gray-800 mb-2  px-0 py-0 rounded">
                     Description
@@ -452,7 +453,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                   />
                 </div>
 
-                {/* Ingest Settings */}
+                
                 <div className="border border-gray-200 rounded-lg p-4">
                   <Box
                     sx={{
@@ -546,7 +547,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                   </div>
                 </div>
 
-                {/* Technical Details */}
+                
                 <div className="border border-gray-200 rounded-lg p-4">
                   <Box
                     sx={{
@@ -683,7 +684,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                   </div>
                 </div>
 
-                {/* Connection Details for PULL Jobs */}
+                
                 {(() => {
                   const jobType = getJobType(job);
                   const hasConnection = !!job.connection;
@@ -706,7 +707,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                       const connectionType = getConnectionType(job);
                       let connectionObj = job.connection;
 
-                      // Handle case where connection might be a string
+                      
                       if (typeof job.connection === 'string') {
                         try {
                           connectionObj = JSON.parse(job.connection);
@@ -799,7 +800,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                       const connectionType = getConnectionType(job);
                       let connectionObj = job.connection;
 
-                      // Handle case where connection might be a string
+                      
                       if (typeof job.connection === 'string') {
                         try {
                           connectionObj = JSON.parse(job.connection);
@@ -930,7 +931,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                       </div>
                     )}
 
-                    {/* File Settings for SFTP */}
+                    
                     {getConnectionType(job) === 'SFTP' && job.file && (
                       <div className="mt-4 pt-4 border-t border-blue-200">
                         <Box
@@ -1210,7 +1211,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
         </div>
       </Backdrop>
 
-      {/* Export Confirmation Dialog */}
+      
       <Dialog
         open={showExportConfirmDialog}
         onClose={() => setShowExportConfirmDialog(false)}
@@ -1334,7 +1335,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
         </DialogActions>
       </Dialog>
 
-      {/* Rejection Dialog */}
+      
       <JobRejectionDialog
         isOpen={showRejectionDialog}
         onClose={() => setShowRejectionDialog(false)}
@@ -1343,7 +1344,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
         jobType="Data Enrichment Job"
       />
 
-      {/* Send for Approval Confirmation Dialog */}
+      
       <Dialog
         open={showApprovalConfirmDialog}
         onClose={() => setShowApprovalConfirmDialog(false)}
@@ -1440,7 +1441,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
         </DialogActions>
       </Dialog>
 
-      {/* Approve Confirmation Dialog */}
+      
       <Dialog
         open={showApproveConfirmDialog}
         onClose={() => setShowApproveConfirmDialog(false)}

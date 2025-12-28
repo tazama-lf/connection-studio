@@ -18,8 +18,8 @@ export const DataEnrichmentJobModal: React.FC<DataEnrichmentJobModalProps> = ({
     onClose?.();
   };
 
-  // The DataEnrichmentJobForm renders its own modal (DataEnrichmentFormModal)
-  // This component just orchestrates the callbacks
+  
+  
   return (
     <DataEnrichmentJobForm
       onJobCreated={handleJobCreated}

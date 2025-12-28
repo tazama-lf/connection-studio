@@ -14,15 +14,16 @@ import { loadSchedules as apiLoadSchedules } from '../handlers';
 
 export const useCronJobList = () => {
   const [schedules, setSchedules] = useState<ScheduleResponse[]>([]);
-  
+
   const [pagination, setPagination] = useState({
     page: 1,
     totalPages: 0,
     totalRecords: 0,
   });
-  
-  const [searchingFilters, setSearchingFilters] =
-    useState<Record<string, unknown>>({});
+
+  const [searchingFilters, setSearchingFilters] = useState<
+    Record<string, unknown>
+  >({});
 
   const [error, setError] = useState<string | null>(null);
 
@@ -207,7 +208,8 @@ export const useCronJobList = () => {
     userIsExporter,
     userRole,
 
-    setPage: (newPage: number) => setPagination((p) => ({ ...p, page: newPage })),
+    setPage: (newPage: number) =>
+      setPagination((p) => ({ ...p, page: newPage })),
     setSearchingFilters,
     setSelectedSchedule,
     setEditForm,

@@ -67,11 +67,10 @@ export interface JobDetailsModalProps {
   onReject?: (jobId: string, jobType: 'PULL' | 'PUSH', reason: string) => void;
   onExport?: (jobId: string, jobType: 'PULL' | 'PUSH') => Promise<void>;
 }
-// Data Enrichment Job Types - Aligned with Backend
 
 export type ConfigType = 'Pull' | 'Push';
 export type SourceType = 'HTTP' | 'SFTP';
-export type JobStatus = 
+export type JobStatus =
   | 'STATUS_01_IN_PROGRESS'
   | 'STATUS_02_ON_HOLD'
   | 'STATUS_03_UNDER_REVIEW'
@@ -102,9 +101,7 @@ export interface DataEnrichmentEditModalProps {
   selectedJob?: any;
 }
 
-export interface DataEnrichmentJobListProps {
-  // No props needed - uses hooks internally
-}
+export interface DataEnrichmentJobListProps {}
 
 export interface DataEnrichmentJobFormProps {
   onJobCreated?: () => void;
@@ -114,7 +111,11 @@ export interface DataEnrichmentJobFormProps {
   setEditFormData?: (data: any) => void;
   handleSendForApproval?: (jobId: string, jobType: 'PULL' | 'PUSH') => void;
   handleSaveEdit?: (data: any) => void;
-  onApprove?: (jobId: string, jobType: 'PULL' | 'PUSH', reason?: string) => void;
+  onApprove?: (
+    jobId: string,
+    jobType: 'PULL' | 'PUSH',
+    reason?: string,
+  ) => void;
   onReject?: (jobId: string, jobType: 'PULL' | 'PUSH', reason: string) => void;
 }
 
@@ -151,30 +152,26 @@ export interface PaginationProps {
   onItemsPerPageChange: (itemsPerPage: number) => void;
 }
 
-// HTTP Connection Configuration
 export interface HttpConnection {
   url: string;
   headers: Record<string, string>;
 }
 
-// SFTP Connection Configuration
 export interface SftpConnection {
   host: string;
   port: number;
   auth_type: AuthType;
   user_name: string;
-  password?: string; // Only for USERNAME_PASSWORD auth
-  private_key?: string; // Only for PRIVATE_KEY auth
+  password?: string;
+  private_key?: string;
 }
 
-// File Configuration for SFTP - Matching backend FileSettingDto
 export interface FileConfig {
   path: string;
   file_type: FileType;
   delimiter: string;
 }
 
-// Schedule types
 export interface ScheduleRequest {
   name: string;
   cron: string;
@@ -182,7 +179,7 @@ export interface ScheduleRequest {
   start_date?: string;
   end_date?: string;
   schedule_status?: string;
-  status?: string; // Approval status: pending, approved, rejected
+  status?: string;
 }
 
 export interface ScheduleCreateResponse {
@@ -191,108 +188,99 @@ export interface ScheduleCreateResponse {
 }
 
 export interface ScheduleResponse {
-  id: string; // UUID string from backend
+  id: string;
   name: string;
   cron: string;
   iterations: number;
   schedule_status: string;
-  status?: JobStatus; // Updated to use JobStatus type: inprogress, under review, approved, suspended, rejected, exported, published
-  source_type?: SourceType; // SFTP or HTTP source type
+  status?: JobStatus;
+  source_type?: SourceType;
   next_time?: string | null;
   created_at?: string;
   start_date?: string;
   end_date?: string | null;
 }
 
-// Base Data Enrichment Job
 export interface DataEnrichmentJobBase {
   config_type: ConfigType;
   endpoint_name: string;
-  schedule_id: string; // UUID string from backend
+  schedule_id: string;
   source_type: SourceType;
   description: string;
   table_name: string;
   job_status?: JobStatus;
 }
 
-// HTTP-based Data Enrichment Job
 export interface HttpDataEnrichmentJob extends DataEnrichmentJobBase {
   source_type: 'HTTP';
   connection: HttpConnection;
 }
 
-// SFTP-based Data Enrichment Job
 export interface SftpDataEnrichmentJob extends DataEnrichmentJobBase {
   source_type: 'SFTP';
   connection: SftpConnection;
   file: FileConfig;
 }
 
-// Union type for all job types
 export type DataEnrichmentJob = HttpDataEnrichmentJob | SftpDataEnrichmentJob;
 
-// Backend DTO types (matching actual API structure)
 export interface CreatePullJobDto {
-  id?: string; // Optional for upsert operations
+  id?: string;
   endpoint_name: string;
-  schedule_id: string; // UUID string from backend
+  schedule_id: string;
   source_type: SourceType;
   description: string;
   connection: HttpConnection | SftpConnection;
-  file?: FileConfig; // Only required for SFTP
+  file?: FileConfig;
   table_name: string;
   mode?: 'append' | 'replace';
   version: string;
 }
 
 export interface CreatePushJobDto {
-  id?: string; // Optional for upsert operations
+  id?: string;
   endpoint_name: string;
-  path: string; // Push jobs use path instead of connection/source_type
+  path: string;
   description: string;
   table_name: string;
   mode?: 'append' | 'replace';
   version: string;
 }
 
-// Update DTOs - Partial versions for updating existing jobs
 export type UpdatePullJobDto = Partial<CreatePullJobDto>;
 export type UpdatePushJobDto = Partial<CreatePushJobDto>;
 
-// Job creation request (without id and status) - Legacy for compatibility
 export type CreateDataEnrichmentJobRequest =
   | CreatePullJobDto
   | CreatePushJobDto;
 
-// Job update request
 export type UpdateDataEnrichmentJobRequest =
   | UpdatePullJobDto
   | UpdatePushJobDto;
 
-// Job response with ID and metadata - matching actual backend response
 export interface DataEnrichmentJobResponse {
+  schedule_name: string;
+  comments: string;
   id: string;
   endpoint_name: string;
-  path?: string | null; // For push jobs
+  path?: string | null;
   mode: 'append' | 'replace';
   table_name: string;
   description: string;
   version: string;
-  status?: JobStatus | null; // Note: backend returns 'status' not 'job_status'
-   publishing_status?: 'active' | 'in-active' | null; // Activation status
+  status?: JobStatus | null;
+  publishing_status?: 'active' | 'in-active' | null;
   created_at?: string;
   updated_at?: string;
-  type: 'push' | 'pull'; // Backend returns lowercase type
-  // Additional fields for type discrimination
-  config_type?: ConfigType; // For compatibility
-  job_status?: JobStatus; // Alias for status
+  type: 'push' | 'pull';
+  config_type?: ConfigType;
+  job_status?: JobStatus;
   schedule_id?: string;
   source_type?: SourceType;
   connection?: HttpConnection | SftpConnection;
   file?: FileConfig;
 }
 
-// Pagination for job listing
 export interface JobListResponse {
   jobs: DataEnrichmentJobResponse[];
   page: number;
@@ -301,7 +289,6 @@ export interface JobListResponse {
   totalPages: number;
 }
 
-// Job execution log
 export interface JobExecutionLog {
   id: number;
   job_id: number;
@@ -313,7 +300,6 @@ export interface JobExecutionLog {
   duration?: number;
 }
 
-// Component Props - Following CRON module pattern
 export interface DataEnrichmentJobModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -337,11 +323,19 @@ export interface DataEnrichmentJobEditModalProps {
   handleSaveEdit?: () => void;
 }
 
-export type ActionType = '' | 'export' | 'approval' | 'edit' | 'activate' | 'deactivate';
+export type ActionType =
+  | ''
+  | 'export'
+  | 'approval'
+  | 'edit'
+  | 'activate'
+  | 'deactivate';
 
 export interface DataEnrichmentJobTableColumnsProps {
   searchingFilters: Record<string, unknown>;
-  setSearchingFilters: React.Dispatch<React.SetStateAction<Record<string, unknown>>>;
+  setSearchingFilters: React.Dispatch<
+    React.SetStateAction<Record<string, unknown>>
+  >;
   setPage: (page: number) => void;
   userRole: string;
   userIsEditor: boolean;
@@ -352,10 +346,6 @@ export interface DataEnrichmentJobTableColumnsProps {
   onEdit: (job: DataEnrichmentJobResponse) => void;
   onExport: (jobId: string, jobType: 'PULL' | 'PUSH') => void;
 }
-
-// ============================================================================
-// Component Props Types - DataEnrichmentFormModal Components
-// ============================================================================
 
 export interface SourceConfigurationFieldsProps {
   control: any;
@@ -399,10 +389,6 @@ export interface SummaryRowProps {
   label: string;
   value: any;
 }
-
-// ============================================================================
-// Component Props Types - JobDetailsModal Components
-// ============================================================================
 
 export interface JobMetadataProps {
   job: DataEnrichmentJobResponse;

@@ -10,20 +10,20 @@ export const DropdownMenuWithAutoDirection: React.FC<DropdownMenuWithAutoDirecti
   const [position, setPosition] = useState<'top' | 'bottom'>('bottom');
 
   useEffect(() => {
-    // If forceDirection is specified and not 'auto', use it directly
+    
     if (forceDirection !== 'auto') {
       setPosition(forceDirection);
       return;
     }
 
-    // Check available space and set position
+    
     if (menuRef.current) {
       const rect = menuRef.current.getBoundingClientRect();
       const viewportHeight = window.innerHeight;
       const spaceBelow = viewportHeight - rect.bottom;
       const spaceAbove = rect.top;
       
-      // If there's less than 200px below but more space above, position above
+      
       if (spaceBelow < 200 && spaceAbove > spaceBelow) {
         setPosition('top');
       } else {

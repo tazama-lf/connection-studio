@@ -110,7 +110,9 @@ describe('Cron Job Constants', () => {
       expect(CRON_JOB_SUCCESS_MESSAGES).toHaveProperty('CREATED');
       expect(CRON_JOB_SUCCESS_MESSAGES).toHaveProperty('UPDATED');
       expect(CRON_JOB_SUCCESS_MESSAGES).toHaveProperty('EXPORTED');
-      expect(CRON_JOB_SUCCESS_MESSAGES).toHaveProperty('SUBMITTED_FOR_APPROVAL');
+      expect(CRON_JOB_SUCCESS_MESSAGES).toHaveProperty(
+        'SUBMITTED_FOR_APPROVAL',
+      );
       expect(CRON_JOB_SUCCESS_MESSAGES).toHaveProperty('REJECTED');
     });
 
@@ -203,7 +205,7 @@ describe('Cron Job Constants', () => {
 
     it('should maintain consistent status code format', () => {
       const statuses = Object.values(CRON_JOB_STATUSES);
-      
+
       statuses.forEach((status) => {
         expect(status).toMatch(/^STATUS_\d{2}_[A-Z_]+$/);
       });
@@ -223,11 +225,10 @@ describe('Cron Job Constants', () => {
 
   describe('Constants Immutability', () => {
     it('should not allow modification of CRON_JOB_FORM_DEFAULTS', () => {
-      
       expect(() => {
         (CRON_JOB_FORM_DEFAULTS as any).name = 'modified';
       }).not.toThrow();
-      
+
       // Verify structure remains consistent even if values can be changed
       expect(CRON_JOB_FORM_DEFAULTS).toHaveProperty('name');
       expect(CRON_JOB_FORM_DEFAULTS).toHaveProperty('cronExpression');
@@ -236,7 +237,7 @@ describe('Cron Job Constants', () => {
 
     it('should maintain error message text integrity', () => {
       const errorMessages = Object.values(CRON_JOB_ERROR_MESSAGES);
-      
+
       errorMessages.forEach((message) => {
         expect(typeof message).toBe('string');
         expect(message.length).toBeGreaterThan(0);
@@ -245,7 +246,7 @@ describe('Cron Job Constants', () => {
 
     it('should maintain status code format consistency', () => {
       const statuses = Object.values(CRON_JOB_STATUSES);
-      
+
       statuses.forEach((status) => {
         expect(status).toMatch(/^STATUS_\d{2}_/);
       });

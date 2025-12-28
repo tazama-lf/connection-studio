@@ -7,7 +7,6 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions,
   Tooltip,
   IconButton,
   Pagination,
@@ -110,7 +109,7 @@ const EndpointHistoryPage: React.FC = () => {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Pagination state
+  
   const [page, setPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(0);
   const [totalRecords, setTotalRecords] = useState<number>(0);
@@ -145,12 +144,12 @@ const EndpointHistoryPage: React.FC = () => {
     load(page);
   }, [jobId, page, itemsPerPage, searchingFilters]);
 
-  // Reset to first page when jobId changes
+  
   useEffect(() => {
     setPage(1);
   }, [jobId]);
 
-  // Reset to first page when search filters change
+  
   useEffect(() => {
     setPage(1);
   }, [searchingFilters]);
@@ -211,7 +210,7 @@ const EndpointHistoryPage: React.FC = () => {
                 ? 140
                 : 120,
       flex: key === 'endpoint_name' ? 0 : 0,
-      // Render header for each column to ensure centered header text. For endpoint_name include the search input.
+      
       renderHeader:
         key === 'endpoint_name'
           ? () => (
@@ -274,7 +273,7 @@ const EndpointHistoryPage: React.FC = () => {
       headerName: 'Actions',
       headerAlign: 'center',
       align: 'center',
-      // Make Actions column wider and flexible so it consumes leftover space and removes the white gap
+      
       minWidth: 240,
       flex: 1,
       sortable: false,
@@ -709,10 +708,10 @@ const EndpointHistoryPage: React.FC = () => {
             <div>No data</div>
           )}
         </DialogContent>
-        {/* No DialogActions/Close button at bottom; close icon is in title */}
+        
       </Dialog>
 
-      {/* loading handled above the table */}
+      
     </>
   );
 };

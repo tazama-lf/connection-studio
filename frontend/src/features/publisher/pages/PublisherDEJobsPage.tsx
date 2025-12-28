@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, Database, SearchIcon } from 'lucide-react';
+import { ChevronLeft, Database } from 'lucide-react';
 import { dataEnrichmentJobApi as dataEnrichmentApi } from '../../data-enrichment/handlers';
 import { useToast } from '../../../shared/providers/ToastProvider';
 import type { DataEnrichmentJobResponse } from '../../data-enrichment/types';
-import PublisherDEJobList from '../components/PublisherDEJobList';
-import PublisherDEJobDetailsModal from '../components/PublisherDEJobDetailsModal';
+
 import { useAuth } from '@features/auth';
 import { getPrimaryRole } from '@utils/common/roleUtils';
 import { UI_CONFIG } from '@shared/config/app.config';
@@ -51,7 +50,7 @@ const PublisherDEJobsPage: React.FC = () => {
 
       const params = { limit, offset, userRole: userRole as string };
 
-      const response = await dataEnrichmentApi.getAllJobs(
+      const response = await dataEnrichmentApi.getList(
         params,
         searchingFilters,
       );
@@ -83,7 +82,7 @@ const PublisherDEJobsPage: React.FC = () => {
       const jobType = job?.type?.toUpperCase() as 'PULL' | 'PUSH' | undefined;
 
       // Fetch job details from the API
-      const jobDetails = await dataEnrichmentApi.getJob(jobId, jobType);
+      const jobDetails = await dataEnrichmentApi.getById(jobId, jobType);
       setSelectedJob(jobDetails);
     } catch (error) {
       console.error('Failed to load job details:', error);
