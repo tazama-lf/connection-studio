@@ -130,6 +130,7 @@ export class ConfigService {
         endpointPath,
         version,
         contentType: dto.contentType ?? ContentType.JSON,
+        payload: dto.payload as unknown as JSONSchema ,
         schema: dto.schema as unknown as JSONSchema,
         mapping: dto.mapping,
         functions: dto.functions,
@@ -142,6 +143,7 @@ export class ConfigService {
         configData,
         token,
       );
+
 
       const config = await this.configRepository.findConfigById(
         configId,
