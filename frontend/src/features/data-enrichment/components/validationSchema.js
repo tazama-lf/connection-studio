@@ -6,14 +6,12 @@ export const defaultValues = {
     sourceType: 'sftp',
     description: '',
     schedule: '',
-    
     host: '',
     port: '',
     authType: 'password',
     username: '',
     password: '',
     privateKey: '',
-    
     pathPattern: '',
     fileFormat: 'csv',
     delimiter: '',
@@ -129,7 +127,6 @@ export const pullValidationSchema = yup.object({
                     if (!value || value.trim() === '') return true; 
 
                     let trimmedValue = value.trim();
-
                     
                     const normalizeJSON = (str) => {
                         let normalized = str.trim();

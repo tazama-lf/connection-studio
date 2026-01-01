@@ -26,7 +26,7 @@ export interface SimulationResult {
   status: 'PASSED' | 'FAILED';
   errors: SimulationError[];
   stages: ValidationStage[];
-  tcsResult: any | null; // TCS mapping result from tcs-lib
+  tcsResult: any | null;
   transformedPayload: Record<string, unknown>;
   summary: {
     endpointId: number;

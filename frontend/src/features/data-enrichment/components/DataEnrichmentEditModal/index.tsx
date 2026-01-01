@@ -1,4 +1,3 @@
-import { useAuth } from '@features/auth';
 import { yupResolver } from '@hookform/resolvers/yup';
 import {
   Button,
@@ -7,30 +6,12 @@ import {
   DialogActions,
   DialogContent,
   DialogContentText,
-  Grid,
 } from '@mui/material';
-import Alert from '@mui/material/Alert';
 import Backdrop from '@mui/material/Backdrop';
 import Box from '@mui/material/Box';
 import { DownloadIcon, Loader2, Save, UploadIcon, XIcon } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import {
-  ApiPathInputField,
-  DatabaseTableInputField,
-  DelimiterInputField,
-  EndpointNameInputField,
-  FilePathInputField,
-  HostInputField,
-  MultiLineTextInputField,
-  NumberInputField,
-  PasswordInputField,
-  SelectField,
-  TextInputField,
-  URLInputField,
-  VersionInputField,
-} from '../../../../shared/components/FormFields';
-import ValidationError from '../../../../shared/components/ValidationError';
 import { useToast } from '../../../../shared/providers/ToastProvider';
 import { saveDataEnrichmentJob } from '../../handlers';
 import { loadSchedules as loadCronSchedules } from '../../../cron/handlers';
@@ -41,22 +22,20 @@ import {
 import { scrollToFirstError } from '../../utils';
 import type { ScheduleResponse } from '../../types';
 import { getJobType } from '../../utils';
-import {
-  authenticationTypeOptions,
+// @ts-ignore - JS module without types
+import * as validationSchema from '../validationSchema';
+const {
   defaultValues,
-  fileFormatOptions,
-  getAssociatedScheduleOptions,
-  ingestModeOptions,
   pullValidationSchema,
   pushValidationSchema,
-  sourceTypeOptions,
-} from '../validationSchema';
+} = (validationSchema as any) || {};
+import PullConfigForm from '../PullConfigForm';
+import PushConfigForm from '../PushConfigForm';
 import type { DataEnrichmentEditModalProps } from '../../types';
 import { DATA_ENRICHMENT_JOB_STATUSES } from '../../constants';
 
 export const DataEnrichmentEditModal: React.FC<
   DataEnrichmentEditModalProps
-  
 > = ({
   isOpen,
   onClose,
@@ -76,14 +55,10 @@ export const DataEnrichmentEditModal: React.FC<
     useState(false);
   
   const [showSendForApproval, setShowSendForApproval] = useState(false);
-
-  const tenantId = useAuth()?.user?.tenantId || 'tenantId';
   const { showSuccess, showError } = useToast();
 
   const currentJobType = getJobType(selectedJob);
   const configurationType = currentJobType as 'pull' | 'push';
-
-  
   const loadSchema =
     configurationType === 'pull' ? pullValidationSchema : pushValidationSchema;
   const {
@@ -100,7 +75,7 @@ export const DataEnrichmentEditModal: React.FC<
     mode: 'onChange',
   });
 
-  
+
   const shouldScrollToErrorRef = useRef(false);
 
   
@@ -275,490 +250,11 @@ export const DataEnrichmentEditModal: React.FC<
   }, [isOpen, selectedJob, editMode, setValue]);
 
   const RenderPullConfigForm = () => (
-    <div className="space-y-6" data-id="element-818">
-      <Grid container spacing={2}>
-        <Grid size={{ xs: 12, md: 4 }}>
-          <EndpointNameInputField
-            name="name"
-            control={control}
-            disabled={true}
-            label={
-              <>
-                Connector Name <span className="text-red-500">*</span>
-              </>
-            }
-            type="text"
-            placeholder="only a-z, 0-9, _, - are allowed"
-          />
-          {errors?.name && <ValidationError message={errors?.name?.message} />}
-        </Grid>
-        <Grid size={{ xs: 12, md: 4 }}>
-          <VersionInputField
-            name={'version'}
-            control={control}
-            disabled={true}
-            label={
-              <>
-                Version <span className="text-red-500">*</span>
-              </>
-            }
-            placeholder="Format: 1.0.0 or v1.0.0"
-          />
-          {errors?.version && (
-            <ValidationError message={errors?.version?.message} />
-          )}
-        </Grid>
-        <Grid size={{ xs: 12, md: 4 }}>
-          <SelectField
-            name={'sourceType'}
-            control={control}
-            label={
-              <>
-                Source Type <span className="text-red-500">*</span>
-              </>
-            }
-            options={sourceTypeOptions || []}
-          />
-          {errors?.sourceType && (
-            <ValidationError message={errors?.sourceType?.message} />
-          )}
-        </Grid>
-        <Grid size={{ xs: 12 }}>
-          <MultiLineTextInputField
-            name={'description'}
-            control={control}
-            label={
-              <>
-                Description <span className="text-red-500">*</span>
-              </>
-            }
-            placeholder="Enter Endpoint description"
-            rows={2}
-          />
-          {errors?.description && (
-            <ValidationError message={errors?.description?.message} />
-          )}
-        </Grid>
-        <Grid size={{ xs: 12 }}>
-          <SelectField
-            name={'schedule'}
-            control={control}
-            label={
-              <>
-                Associated Schedule <span className="text-red-500">*</span>
-              </>
-            }
-            options={getAssociatedScheduleOptions(availableSchedules) || []}
-          />
-          {errors?.schedule && (
-            <ValidationError message={errors?.schedule?.message} />
-          )}
-        </Grid>
-      </Grid>
-
-      <Box sx={{ fontSize: '18px', fontWeight: 'bold', color: '#3b3b3b' }}>
-        Connection Settings
-      </Box>
-      {watch('sourceType') === 'sftp' ? (
-        <Grid container spacing={2}>
-          <Grid size={{ xs: 12, md: 6 }}>
-            <HostInputField
-              name={'host'}
-              control={control}
-              label={
-                <>
-                  Host <span className="text-red-500">*</span>
-                </>
-              }
-              placeholder="10.10.80.37"
-            />
-            {errors?.host && (
-              <ValidationError message={errors?.host?.message} />
-            )}
-          </Grid>
-          <Grid size={{ xs: 12, md: 6 }}>
-            <NumberInputField
-              name={'port'}
-              control={control}
-              label={
-                <>
-                  Port <span className="text-red-500">*</span>
-                </>
-              }
-              placeholder="2222"
-              maxLength={5}
-            />
-            {errors?.port && (
-              <ValidationError message={errors?.port?.message} />
-            )}
-          </Grid>
-          <Grid size={{ xs: 12, md: 6 }}>
-            <SelectField
-              name={'authType'}
-              control={control}
-              label={
-                <>
-                  Authentication Type <span className="text-red-500">*</span>
-                </>
-              }
-              options={authenticationTypeOptions || []}
-            />
-            {errors?.authType && (
-              <ValidationError message={errors?.authType?.message} />
-            )}
-          </Grid>
-          <Grid size={{ xs: 12, md: 6 }}>
-            <TextInputField
-              name="username"
-              control={control}
-              label={
-                <>
-                  Username <span className="text-red-500">*</span>
-                </>
-              }
-              type="text"
-              placeholder="Enter Username"
-            />
-            {errors?.username && (
-              <ValidationError message={errors?.username?.message} />
-            )}
-          </Grid>
-          <Grid size={{ xs: 12, md: 6 }}>
-            {watch('authType') === 'key' ? (
-              <MultiLineTextInputField
-                name="password"
-                control={control}
-                label={
-                  <>
-                    Private Key <span className="text-red-500">*</span>
-                  </>
-                }
-                placeholder="Enter Private Key"
-                rows={4}
-              />
-            ) : (
-              <PasswordInputField
-                name="password"
-                control={control}
-                label={
-                  <>
-                    Password <span className="text-red-500">*</span>
-                  </>
-                }
-                type="text"
-                placeholder="Enter Password"
-              />
-            )}
-            {errors?.password && (
-              <ValidationError message={errors?.password?.message} />
-            )}
-          </Grid>
-        </Grid>
-      ) : (
-        <Grid container spacing={2}>
-          <Grid size={{ xs: 12, md: 6 }}>
-            <URLInputField
-              name="url"
-              control={control}
-              label={
-                <>
-                  URL <span className="text-red-500">*</span>
-                </>
-              }
-              type="text"
-              placeholder="https://dummyjson.com/users"
-            />
-            {errors?.url && <ValidationError message={errors?.url?.message} />}
-          </Grid>
-          <Grid size={{ xs: 12 }}>
-            <MultiLineTextInputField
-              name={'headers'}
-              control={control}
-              label={<>Headers (Optional)</>}
-              placeholder='e.g: {accept: "application/json", agent: "DataEnrichment/1.0"}'
-              rows={2}
-            />
-            {errors?.headers && (
-              <ValidationError message={errors?.headers?.message} />
-            )}
-          </Grid>
-        </Grid>
-      )}
-
-      {watch('sourceType') === 'sftp' ? (
-        <>
-          <Box sx={{ fontSize: '18px', fontWeight: 'bold', color: '#3b3b3b' }}>
-            File Settings
-          </Box>
-          <Grid container spacing={2}>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <FilePathInputField
-                name="pathPattern"
-                control={control}
-                label={
-                  <>
-                    File Path <span className="text-red-500">*</span>
-                  </>
-                }
-                placeholder="/inbound/data_*.csv"
-              />
-              {errors?.pathPattern && (
-                <ValidationError message={errors?.pathPattern?.message} />
-              )}
-            </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <SelectField
-                name={'fileFormat'}
-                control={control}
-                label={
-                  <>
-                    File Format <span className="text-red-500">*</span>
-                  </>
-                }
-                options={fileFormatOptions || []}
-              />
-              {errors?.fileFormat && (
-                <ValidationError message={errors?.fileFormat?.message} />
-              )}
-            </Grid>
-            {watch('fileFormat') === 'csv' ? (
-              <Grid size={{ xs: 12, md: 6 }}>
-                <DelimiterInputField
-                  name="delimiter"
-                  control={control}
-                  label={
-                    <>
-                      Delimiter <span className="text-red-500">*</span>
-                    </>
-                  }
-                  type="text"
-                  placeholder=","
-                  maxLength={1}
-                />
-                {errors?.delimiter && (
-                  <ValidationError message={errors?.delimiter?.message} />
-                )}
-              </Grid>
-            ) : null}
-          </Grid>
-        </>
-      ) : null}
-
-      <Box sx={{ fontSize: '18px', fontWeight: 'bold', color: '#3b3b3b' }}>
-        Target PostgreSQL Settings
-      </Box>
-      <Grid container spacing={2}>
-        <Grid size={{ xs: 12 }}>
-          <DatabaseTableInputField
-            name="targetTable"
-            control={control}
-            fullWidth={true}
-            maxWidth={65}
-            disabled={true}
-            label={
-              <>
-                Table Name <span className="text-red-500">*</span>
-              </>
-            }
-            type="text"
-            placeholder="e.g: customers_2025"
-          />
-          {errors?.targetTable && (
-            <ValidationError message={errors?.targetTable?.message} />
-          )}
-        </Grid>
-      </Grid>
-
-      <Box sx={{ fontSize: '18px', fontWeight: 'bold', color: '#3b3b3b' }}>
-        Ingest Settings
-      </Box>
-      <Grid container spacing={2}>
-        <Grid size={{ xs: 12 }}>
-          <SelectField
-            name={'ingestMode'}
-            control={control}
-            label={
-              <>
-                Ingest Mode <span className="text-red-500">*</span>
-              </>
-            }
-            options={ingestModeOptions || []}
-          />
-          <Box sx={{ fontSize: '10px', color: 'gray', mt: 1 }}>
-            {watch('ingestMode') === 'append'
-              ? 'Append mode adds new records to the existing dataset.'
-              : 'Replace mode archives the current dataset and creates a new version with the uploaded data.'}
-          </Box>
-          {errors?.ingestMode && (
-            <ValidationError message={errors?.ingestMode?.message} />
-          )}
-        </Grid>
-      </Grid>
-    </div>
+    <PullConfigForm control={control} watch={watch} errors={errors} availableSchedules={availableSchedules} />
   );
 
   const renderPushConfigForm = () => (
-    <div className="space-y-6" data-id="element-818">
-      <Grid container spacing={2}>
-        <Grid size={{ xs: 12, md: 4 }}>
-          <EndpointNameInputField
-            name="name"
-            control={control}
-            label={
-              <>
-                Connector Name <span className="text-red-500">*</span>
-              </>
-            }
-            type="text"
-            placeholder="only a-z, 0-9, _, - are allowed"
-          />
-          {errors?.name && <ValidationError message={errors?.name?.message} />}
-        </Grid>
-
-        <Grid size={{ xs: 12, md: 4 }}>
-          <VersionInputField
-            name={'version'}
-            control={control}
-            disabled={true}
-            label={
-              <>
-                Version <span className="text-red-500">*</span>
-              </>
-            }
-            placeholder="Format: 1.0.0 or v1.0.0"
-          />
-          {errors?.version && (
-            <ValidationError message={errors?.version?.message} />
-          )}
-        </Grid>
-
-        <Grid size={{ xs: 12, md: 4 }}>
-          <ApiPathInputField
-            name={'endpointPath'}
-            control={control}
-            disabled={true}
-            label={
-              <>
-                API Path <span className="text-red-500">*</span>
-              </>
-            }
-          />
-          {errors?.endpointPath && (
-            <ValidationError message={errors?.endpointPath?.message} />
-          )}
-        </Grid>
-
-        <Alert severity="info" sx={{ width: '100%', borderRadius: '5px' }}>
-          <Box sx={{ fontWeight: 'bold' }}>Endpoint Path Preview</Box>
-          <Box
-            sx={{ color: 'gray', fontFamily: 'monospace', fontSize: '14px' }}
-          >
-            {(() => {
-              const version = watch('version');
-              let endpointPath = watch('endpointPath') || '';
-
-              
-              const cleanVersion =
-                version?.replace(/^v?\/*/g, '').replace(/\/+$/g, '') || '';
-
-              
-              const prefixRegex = new RegExp(
-                `^/?${tenantId}/enrichment(/v?${cleanVersion.replace(/\./g, '\\.')})?`,
-                'i',
-              );
-              endpointPath = endpointPath.replace(prefixRegex, '');
-
-              
-              const cleanPath = endpointPath.startsWith('/')
-                ? endpointPath
-                : `/${endpointPath}`;
-
-              if (!version && !endpointPath.trim()) {
-                return `/${tenantId}/enrichment/{version}{path}`;
-              }
-
-              const versionPart = cleanVersion
-                ? `/${cleanVersion}`
-                : '/{version}';
-              const pathPart = endpointPath.trim() ? cleanPath : '/{path}';
-
-              return `/${tenantId}/enrichment${versionPart}${pathPart}`;
-            })()}
-          </Box>
-          <Box sx={{ fontSize: '12px', color: '#666', mt: 1 }}>
-            Example: /{tenantId}/enrichment/v1.0.0/customer/data
-          </Box>
-        </Alert>
-
-        <Grid size={{ xs: 12 }}>
-          <MultiLineTextInputField
-            name={'description'}
-            control={control}
-            label={
-              <>
-                Description <span className="text-red-500">*</span>
-              </>
-            }
-            placeholder="Enter Endpoint description"
-            rows={2}
-          />
-          {errors?.description && (
-            <ValidationError message={errors?.description?.message} />
-          )}
-        </Grid>
-      </Grid>
-
-      <Box sx={{ fontSize: '18px', fontWeight: 'bold', color: '#3b3b3b' }}>
-        Target PostgreSQL Settings
-      </Box>
-      <Grid container spacing={2}>
-        <Grid size={{ xs: 12 }}>
-          <DatabaseTableInputField
-            name="targetTable"
-            control={control}
-            fullWidth={true}
-            maxWidth={65}
-            disabled={true}
-            label={
-              <>
-                Table Name <span className="text-red-500">*</span>
-              </>
-            }
-            type="text"
-            placeholder="e.g: customers_2025"
-          />
-          {errors?.targetTable && (
-            <ValidationError message={errors?.targetTable?.message} />
-          )}
-        </Grid>
-      </Grid>
-
-      <Box sx={{ fontSize: '18px', fontWeight: 'bold', color: '#3b3b3b' }}>
-        Ingest Settings
-      </Box>
-      <Grid container spacing={2}>
-        <Grid size={{ xs: 12 }}>
-          <SelectField
-            name={'ingestMode'}
-            control={control}
-            label={
-              <>
-                Ingest Mode <span className="text-red-500">*</span>
-              </>
-            }
-            options={ingestModeOptions || []}
-          />
-          <Box sx={{ fontSize: '10px', color: 'gray', mt: 1 }}>
-            {watch('ingestMode') === 'append'
-              ? 'Append mode adds new records to the existing dataset.'
-              : 'Replace mode archives the current dataset and creates a new version with the uploaded data.'}
-          </Box>
-          {errors?.ingestMode && (
-            <ValidationError message={errors?.ingestMode?.message} />
-          )}
-        </Grid>
-      </Grid>
-    </div>
+    <PushConfigForm control={control} watch={watch} errors={errors} />
   );
 
   if (!isOpen) return null;

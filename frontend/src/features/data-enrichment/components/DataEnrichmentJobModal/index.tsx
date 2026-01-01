@@ -18,8 +18,6 @@ export const DataEnrichmentJobModal: React.FC<DataEnrichmentJobModalProps> = ({
     onClose?.();
   };
 
-  
-  
   return (
     <DataEnrichmentJobForm
       onJobCreated={handleJobCreated}

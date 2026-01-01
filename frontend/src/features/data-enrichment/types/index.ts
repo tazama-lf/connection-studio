@@ -34,6 +34,22 @@ export interface PaginatedJobResponse {
   pages: number;
 }
 
+export type Props = {
+  control: any;
+  watch: any;
+  errors: any;
+  setValue?: any;
+  getValues?: any;
+  trigger?: any;
+  availableSchedules: ScheduleResponse[];
+};
+
+export type PropsPush = {
+  control: any;
+  watch: any;
+  errors: any;
+};
+
 export interface PaginationParams {
   limit: number;
   offset: number;

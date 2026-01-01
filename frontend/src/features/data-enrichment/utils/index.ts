@@ -111,7 +111,7 @@ export const scrollToFirstError = (fieldName: string) => {
     }
 
     setTimeout(() => {
-      errorElement.focus();
+     (errorElement as HTMLElement).focus();
     }, 300);
   }
 };

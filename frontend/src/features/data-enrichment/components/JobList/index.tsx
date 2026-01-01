@@ -32,7 +32,6 @@ import {
 } from '../../../../utils/common/roleUtils';
 import { useAuth } from '../../../auth/contexts/AuthContext';
 import {
-  handleResumeJob as resumeJob,
   handleUpdateJobStatus as updateJobStatus,
   handleTogglePublishingStatus as togglePublishing,
 } from '../../handlers';
@@ -85,7 +84,6 @@ export const JobList: React.FC<JobListProps> = (props) => {
     setOpenLoader(false);
   };
 
-
   const userRole = userIsPublisher
     ? 'publisher'
     : userIsExporter
@@ -96,15 +94,11 @@ export const JobList: React.FC<JobListProps> = (props) => {
 
   const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
   const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
-  const [typeDropdownOpen, setTypeDropdownOpen] = useState(false);
-  const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
   const { showSuccess, showError } = useToast();
 
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
-
-
       if (
         target.closest('.filter-dropdown') ||
         target.closest('.dropdown-menu') ||
@@ -112,9 +106,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
       ) {
         return;
       }
-
       setStatusDropdownOpen(false);
-      setTypeDropdownOpen(false);
       setDropdownOpen(null);
     };
 
@@ -124,25 +116,10 @@ export const JobList: React.FC<JobListProps> = (props) => {
     }
   }, [statusDropdownOpen, dropdownOpen]);
 
-  const handleResumeJob = async (job: DataEnrichmentJobResponse) => {
-    setUpdatingStatus(job.id);
-    await resumeJob(
-      job,
-      showSuccess,
-      showError,
-      () => {
-        if (props.onRefresh) props.onRefresh();
-        setUpdatingStatus(null);
-        setDropdownOpen(null);
-      }
-    );
-  };
-
   const handleUpdateJobStatus = async (
     job: DataEnrichmentJobResponse,
     status: string,
   ) => {
-    setUpdatingStatus(job.id);
     const jobType = job.type?.toUpperCase() as 'PULL' | 'PUSH';
     await updateJobStatus(
       job.id,
@@ -152,7 +129,6 @@ export const JobList: React.FC<JobListProps> = (props) => {
       showError,
       () => {
         if (props.onRefresh) props.onRefresh();
-        setUpdatingStatus(null);
         setDropdownOpen(null);
       }
     );
@@ -160,7 +136,6 @@ export const JobList: React.FC<JobListProps> = (props) => {
 
   const handleTogglePublishingStatus = async (
     job: DataEnrichmentJobResponse,
-    newStatus: 'active' | 'in-active',
   ) => {
     setOpenLoader(true);
     setShowActivateConfirmDialog({
@@ -194,77 +169,6 @@ export const JobList: React.FC<JobListProps> = (props) => {
       </div>
     );
   }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
- 
-
-
-
 
   const columns = [
     {
@@ -897,7 +801,6 @@ export const JobList: React.FC<JobListProps> = (props) => {
                     if (showActivateConfirmDialog.job) {
                       await handleTogglePublishingStatus(
                         showActivateConfirmDialog.job,
-                        'active',
                       );
                     }
                   }}
@@ -1007,7 +910,6 @@ export const JobList: React.FC<JobListProps> = (props) => {
                     if (showDeactivateConfirmDialog.job) {
                       await handleTogglePublishingStatus(
                         showDeactivateConfirmDialog.job,
-                        'in-active',
                       );
                     }
                   }}

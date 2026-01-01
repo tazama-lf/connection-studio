@@ -15,8 +15,6 @@ export const DataEnrichmentJobList: React.FC<DataEnrichmentJobListProps> = () =>
     handleView,
     handleEdit,
   } = useDataEnrichmentJobList();
-
-  
   
   return (
     <JobList

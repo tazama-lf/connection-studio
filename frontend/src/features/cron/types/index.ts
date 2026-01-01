@@ -10,6 +10,15 @@ export interface ScheduleRequest {
   status?: string;
 }
 
+export interface CronJobConfirmationDialogProps {
+  open: boolean;
+  type: 'export' | 'approval' | 'approve' | '';
+  jobName: string;
+  actionLoading: '' | 'export' | 'approval' | 'approve';
+  onClose: () => void;
+  onConfirm: (type: 'export' | 'approval' | 'approve') => void;
+}
+
 export interface CronJobTableColumnsProps {
   searchingFilters: Record<string, unknown>;
   setSearchingFilters: React.Dispatch<
@@ -19,6 +28,8 @@ export interface CronJobTableColumnsProps {
   userRole: string;
   userIsEditor: boolean;
   userIsExporter: boolean;
+  userIsApprover: boolean;
+  userIsPublisher: boolean;
   onView: (schedule: ScheduleResponse) => void;
   onEdit: (schedule: ScheduleResponse) => void;
   onExport: (schedule: ScheduleResponse) => void;
@@ -51,6 +62,7 @@ export interface PaginationParams {
 }
 
 export interface PaginatedScheduleResponse {
+  schedules: ScheduleResponse[];
   success?: boolean;
   data: ScheduleResponse[];
   total: number;
@@ -71,7 +83,7 @@ export interface ErrorWithResponse {
 
 export type TabType = 'create' | 'manage';
 
-export type ActionType = '' | 'export' | 'approval' | 'edit';
+export type ActionType = '' | 'export' | 'approval' | 'edit' | 'approve' | 'reject';
 
 export interface CronTabNavigationProps {
   activeTab: TabType;
@@ -87,10 +99,20 @@ export interface CronJobViewModalProps {
   onReject?: (scheduleId: string) => void;
 }
 
+export type CronJobModalMode = 'create' | 'edit' | 'view';
+
 export interface CronJobModalProps {
   isOpen: boolean;
   onClose: () => void;
+  mode?: CronJobModalMode;
   onJobCreated?: () => void;
+  viewFormData?: ScheduleResponse;
+  editFormData?: ScheduleResponse;
+  setEditFormData?: (data: ScheduleResponse) => void;
+  handleSendForApproval?: () => void;
+  handleSaveEdit?: () => void;
+  onApprove?: (scheduleId: string) => void;
+  onReject?: (scheduleId: string) => void;
 }
 
 export interface CronJobListProps {

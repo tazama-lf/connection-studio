@@ -4,11 +4,14 @@ import { useNavigate } from 'react-router';
 import { Button } from '../../../shared/components/Button';
 import { CronJobList } from '../components/CronJobList';
 import { CronJobModal } from '../components/CronJobModal';
+import { useAuth } from '../../auth/contexts/AuthContext';
+import { isEditor } from '../../../utils/common/roleUtils';
 
 const CRONModule: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isEditorRole = user?.claims ? isEditor(user.claims) : false;
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [searchTerm] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
 
   const handleCreateNew = () => {
@@ -35,6 +38,7 @@ const CRONModule: React.FC = () => {
         >
           <ChevronLeft size={20} /> <span>Go Back</span>
         </Button>
+        
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center my-8 gap-4">
           <div className="flex items-center space-x-4">
             <h1
@@ -46,21 +50,25 @@ const CRONModule: React.FC = () => {
             </h1>
           </div>
 
-          <Button onClick={handleCreateNew} icon={<PlusIcon size={16} />}>
-            Create New Cron Job
-          </Button>
+          {isEditorRole && (
+            <Button onClick={handleCreateNew} icon={<PlusIcon size={16} />}>
+              Create New Cron Job
+            </Button>
+          )}
         </div>
 
         <div className="bg-white rounded-lg shadow">
-          <CronJobList key={refreshKey} searchTerm={searchTerm} />
+          <CronJobList key={refreshKey} />
         </div>
       </div>
 
-      <CronJobModal
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-        onJobCreated={handleJobCreated}
-      />
+      {isEditorRole && (
+        <CronJobModal
+          isOpen={isModalOpen}
+          onClose={handleCloseModal}
+          onJobCreated={handleJobCreated}
+        />
+      )}
     </div>
   );
 };

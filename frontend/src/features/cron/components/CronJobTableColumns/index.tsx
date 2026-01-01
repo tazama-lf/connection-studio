@@ -6,6 +6,7 @@ import { handleInputFilter, handleSelectFilter } from '@shared/helpers';
 import { formatDate } from '@utils/common/helper';
 import { getStatusBadge } from '@utils/common/functions';
 import type { CronJobTableColumnsProps, ScheduleResponse } from '../../types';
+import { CRON_JOB_STATUSES } from '@features/cron/constants';
 
 export const CronJobTableColumns = ({
   searchingFilters,
@@ -191,8 +192,8 @@ export const CronJobTableColumns = ({
               />
             </Tooltip>
             {userIsEditor &&
-              (schedule.status === 'STATUS_01_IN_PROGRESS' ||
-                schedule.status === 'STATUS_05_REJECTED') && (
+              (schedule.status === CRON_JOB_STATUSES.IN_PROGRESS ||
+                schedule.status === CRON_JOB_STATUSES.REJECTED) && (
                 <Tooltip title="Edit Cron Job" arrow placement="top">
                   <EditIcon
                     className="w-4 h-4 mr-2 text-yellow-600 hover:text-yellow-700 cursor-pointer"
@@ -200,7 +201,7 @@ export const CronJobTableColumns = ({
                   />
                 </Tooltip>
               )}
-            {userIsExporter && schedule.status === 'STATUS_04_APPROVED' && (
+            {userIsExporter && schedule.status === CRON_JOB_STATUSES.APPROVED && (
               <Tooltip title="Export Configuration" arrow placement="top">
                 <Upload
                   className="w-4 h-4 mr-2 text-cyan-600 hover:text-cyan-700 cursor-pointer"

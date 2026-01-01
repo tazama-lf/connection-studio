@@ -7,12 +7,9 @@ import Dashboard from '../features/dashboard/pages/Dashboard';
 import DEMSModule from '@pages/dems';
 import ApproverConfigsPage from '../features/approver/pages/ApproverConfigsPage';
 import ApproverDEJobsPage from '../features/approver/pages/ApproverDEJobsPage';
-import ApproverCronJobsPage from '../features/approver/pages/ApproverCronJobsPage';
 import ExporterConfigsPage from '../features/exporter/pages/ExporterConfigsPage';
 import ExporterDEJobsPage from '../features/exporter/pages/ExporterDEJobsPage';
-import ExporterCronJobsPage from '../features/exporter/pages/ExporterCronJobsPage';
 import PublisherModule from '../features/publisher/pages/PublisherModule';
-import PublisherCronJobsPage from '../features/publisher/pages/PublisherCronJobsPage';
 import PublisherDEJobsPage from '../features/publisher/pages/PublisherDEJobsPage';
 import PublisherConfigsPage from '../features/publisher/pages/PublisherConfigsPage';
 import PublisherExportedItemsPage from '../features/publisher/pages/PublisherExportedItemsPage';
@@ -131,11 +128,8 @@ export const AppRoutes: React.FC = () => {
             <ApproverDEJobsPage />
           </ApproverRoute>
         } />
-        <Route path="/approver/cron-jobs" element={
-          <ApproverRoute>
-            <ApproverCronJobsPage />
-          </ApproverRoute>
-        } />
+        {/* Redirect old cron routes to new unified route */}
+        <Route path="/approver/cron-jobs" element={<Navigate to={ROUTES.CRON} replace />} />
         <Route path="/exporter/configs" element={
           <ExporterRoute>
             <ExporterConfigsPage />
@@ -146,24 +140,19 @@ export const AppRoutes: React.FC = () => {
             <ExporterDEJobsPage />
           </ExporterRoute>
         } />
-        <Route path="/exporter/cron-jobs" element={
-          <ExporterRoute>
-            <ExporterCronJobsPage />
-          </ExporterRoute>
-        } />
+        {/* Redirect old cron routes to new unified route */}
+        <Route path="/exporter/cron-jobs" element={<Navigate to={ROUTES.CRON} replace />} />
         <Route path={ROUTES.PUBLISHER} element={
           <PublisherRoute>
             <PublisherModule />
           </PublisherRoute>
         } />
+        <Route path="/publisher/cron-jobs" element={<Navigate to={ROUTES.CRON} replace />} />
         <Route path="/publisher/configs" element={
           <PublisherRoute>
             <PublisherConfigsPage />
-          </PublisherRoute>
-        } />
-        <Route path="/publisher/cron-jobs" element={
-          <PublisherRoute>
-            <PublisherCronJobsPage />
+        {/* Redirect old cron routes to new unified route */}
+        <Route path="/publisher/cron-jobs" element={<Navigate to={ROUTES.CRON} replace />} />
           </PublisherRoute>
         } />
         <Route path="/publisher/de-jobs" element={
@@ -187,9 +176,9 @@ export const AppRoutes: React.FC = () => {
           </PublisherRoute>
         } />
         <Route path={ROUTES.CRON} element={
-          <EditorRoute>
+          <ProtectedRoute>
             <CRONModule />
-          </EditorRoute>
+          </ProtectedRoute>
         } />
       </Route>
       <Route path="*" element={<NotFoundPage />} />

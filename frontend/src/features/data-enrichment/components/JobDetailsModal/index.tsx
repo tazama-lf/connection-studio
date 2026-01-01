@@ -8,7 +8,6 @@ import {
   DialogActions,
 } from '@mui/material';
 import { formatDateStructured } from '../../utils';
-
 import {
   Calendar,
   Check,
@@ -63,43 +62,26 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
   onReject,
   onExport,
 }) => {
-
   const { user } = useAuth();
-
-  
   const userIsApprover = user?.claims ? isApprover(user.claims) : false;
   const userIsExporter = user?.claims ? isExporter(user.claims) : false;
   const userIsEditor = user?.claims ? isEditor(user.claims) : false;
-
   const [showExportConfirmDialog, setShowExportConfirmDialog] = useState(false);
-
-  
   const [showRejectionDialog, setShowRejectionDialog] = useState(false);
-
-  
   const [showApprovalConfirmDialog, setShowApprovalConfirmDialog] =
     useState(false);
-
-  
   const [showApproveConfirmDialog, setShowApproveConfirmDialog] =
     useState(false);
 
-  
   const handleRejectionConfirm = (reason: string) => handleRejection(reason, job, onReject, onClose);
 
-  
   const handleSendForApprovalConfirm = () => handleSendApproval(job, onSendForApproval, onClose, setShowApprovalConfirmDialog);
-
-  
-
-
   
   const [editedJob, setEditedJob] = useState<
     Partial<DataEnrichmentJobResponse>
   >({});
   const [isSaving, setIsSaving] = useState(false);
 
-  
   useEffect(() => {
     if (job && (editMode || cloneMode)) {
       const jobType = getJobType(job);
@@ -132,28 +114,19 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
 
   const handleSave = async () => handleSaveJob(job, editedJob, onSave, onClose, setIsSaving);
 
-
-
   const getConfigTypeColor = (type: string | undefined) => {
     return getJobTypeColor(type);
   };
 
-  
-
-  
   const handleExportConfirm = async () => handleExport(job, onExport, setShowExportConfirmDialog, setIsSaving);
 
-  
   const [approveComment, setApproveComment] = useState('');
-
   
   useEffect(() => {
     if (!showApproveConfirmDialog) setApproveComment('');
   }, [showApproveConfirmDialog]);
 
-  
   const handleApproveWithComment = async () => {
-    // Ensure onApprove is always a Promise-returning function
     const asyncOnApprove = onApprove ? ensurePromise(onApprove) : undefined;
     await handleApproveComment(job, approveComment, asyncOnApprove, setShowApproveConfirmDialog, setIsSaving);
   };
@@ -170,7 +143,6 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
         open={true}
       >
         <div className="bg-white rounded-lg shadow-2xl relative z-10 w-full max-w-4xl max-h-[90vh] flex flex-col">
-          
           <div
             className="flex justify-between items-center px-6 py-4 border-b border-gray-200"
             data-id="element-1048"
@@ -200,7 +172,6 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
               </div>
             ) : job ? (
               <div className="space-y-6">
-                
                 <Box>
                   <Box
                     sx={{
@@ -249,7 +220,6 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                   </p>
                 </Box>
 
-                
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label className="block text-sm font-bold text-gray-800 mb-2  px-0 py-0 rounded">
@@ -288,7 +258,6 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                     />
                   </div>
 
-                  
                   {getJobType(job) === 'push' ? (
                     <div>
                       <label className="block text-sm font-bold text-gray-800 mb-2  px-0 py-0 rounded">

@@ -11,9 +11,8 @@ import type {
   ScheduleResponse,
 } from '../../types';
 import { Button } from '../../../../shared/components/Button';
-import { dataEnrichmentJobApi as dataEnrichmentApi, scheduleApi } from '../../handlers';
+import { scheduleApi } from '../../handlers';
 import { DATA_ENRICHMENT_JOB_STATUSES } from '../../constants';
-
 import type { JobFormProps } from '../../types';
 
 export const JobCreationForm: React.FC<JobFormProps> = ({
@@ -21,30 +20,38 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
   onCancel,
   isLoading = false,
 }) => {
-  const [configType] = useState<ConfigType>('Pull'); 
+  const [configType] = useState<ConfigType>('Pull');
   const [sourceType, setSourceType] = useState<SourceType>('HTTP');
   const [endpointName, setEndpointName] = useState('');
   const [description, setDescription] = useState('');
   const [tableName, setTableName] = useState('');
   const [mode, setMode] = useState<'append' | 'replace'>('append');
   const [version, setVersion] = useState('1.0.0');
-
-  
   const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(null);
   const [availableSchedules, setAvailableSchedules] = useState<ScheduleResponse[]>([]);
   const [schedulesLoading, setSchedulesLoading] = useState(false);
+  const [sftpHost, setSftpHost] = useState('');
+  const [sftpPort, setSftpPort] = useState(22);
+  const [sftpAuthType, setSftpAuthType] = useState<AuthType>('USERNAME_PASSWORD');
+  const [sftpUsername, setSftpUsername] = useState('');
+  const [sftpPassword, setSftpPassword] = useState('');
+  const [sftpPrivateKey, setSftpPrivateKey] = useState('');
+  const [filePath, setFilePath] = useState('');
+  const [fileType, setFileType] = useState<FileType>('CSV');
+  const [fileDelimiter, setFileDelimiter] = useState(',');
+  const [fileHasHeader, setFileHasHeader] = useState(true);
+  const [httpUrl, setHttpUrl] = useState('');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  
   useEffect(() => {
     const loadSchedules = async () => {
       try {
         setSchedulesLoading(true);
         setErrorMessage(null);
-        const schedulesResp = await scheduleApi.getAll();
+        const schedulesResp: any = await scheduleApi.getAll();
         const schedule_data: any[] = Array.isArray(schedulesResp)
           ? schedulesResp
           : schedulesResp?.data || schedulesResp?.results || schedulesResp?.items || [];
-        
         const filteredSchedules = (schedule_data || []).filter((schedule: any) =>
           schedule?.status === DATA_ENRICHMENT_JOB_STATUSES.APPROVED || schedule?.status === DATA_ENRICHMENT_JOB_STATUSES.EXPORTED
         );
@@ -55,39 +62,17 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
         setSchedulesLoading(false);
       }
     };
-
     loadSchedules();
   }, []);
 
-  
-  const [httpUrl, setHttpUrl] = useState('');
   const httpHeaders = {
     'content-type': 'application/json',
   };
 
-  
-  const [sftpHost, setSftpHost] = useState('');
-  const [sftpPort, setSftpPort] = useState(22);
-  const [sftpAuthType, setSftpAuthType] = useState<AuthType>('USERNAME_PASSWORD');
-  const [sftpUsername, setSftpUsername] = useState('');
-  const [sftpPassword, setSftpPassword] = useState('');
-  const [sftpPrivateKey, setSftpPrivateKey] = useState('');
-
-  
-  const [filePath, setFilePath] = useState('');
-  const [fileType, setFileType] = useState<FileType>('CSV');
-  const [fileDelimiter, setFileDelimiter] = useState(',');
-  const [fileHasHeader, setFileHasHeader] = useState(true);
-
-  
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  
   const getIterationText = (count: number) => {
     return count === 1 ? '1 iteration' : `${count} iterations`;
   };
 
-  
   const validateFileFormat = () => {
     if (sourceType !== 'SFTP' || !filePath.trim()) {
       return { isValid: true, error: '' };
@@ -100,12 +85,11 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
       return { isValid: false, error: 'Please specify a file with a valid extension (e.g., .csv, .tsv, .json)' };
     }
 
-    
     const extensionFormatMap: { [key: string]: FileType[] } = {
       'csv': ['CSV'],
       'tsv': ['TSV'],
       'json': ['JSON'],
-      'txt': ['CSV', 'TSV'] 
+      'txt': ['CSV', 'TSV']
     };
 
     const allowedFormats = extensionFormatMap[fileExtension];
@@ -122,18 +106,14 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
     return { isValid: true, error: '' };
   };
 
-  
   const isFormValid = () => {
-    
     if (!endpointName.trim() || !description.trim() || !tableName.trim() || !selectedScheduleId || !version.trim()) {
       return false;
     }
 
-    
     if (sourceType === 'HTTP') {
       return httpUrl.trim() !== '';
     } else if (sourceType === 'SFTP') {
-      
       if (!sftpHost.trim() || !sftpUsername.trim() || !filePath.trim()) {
         return false;
       }
@@ -146,7 +126,6 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
         return false;
       }
 
-      
       const formatValidation = validateFileFormat();
       if (!formatValidation.isValid) {
         return false;
@@ -165,7 +144,6 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
       return;
     }
 
-    
     if (sourceType === 'SFTP') {
       const formatValidation = validateFileFormat();
       if (!formatValidation.isValid) {
@@ -175,7 +153,6 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
     }
     
     try {
-      
       const baseJobData = {
         config_type: configType,
         endpoint_name: endpointName,
@@ -208,7 +185,6 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
           user_name: sftpUsername,
         };
 
-        
         if (sftpAuthType === 'USERNAME_PASSWORD') {
           (sftpConnection as any).password = sftpPassword;
         } else {
@@ -241,8 +217,7 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
                         : JSON.stringify(error.response.data));
       } else if (error?.message) {
         errorMessage = error.message;
-      }
-      
+      }      
       setErrorMessage(errorMessage);
     }
   };
@@ -250,9 +225,7 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
   return (
     <div className="max-w-4xl mx-auto p-6 bg-white rounded-lg shadow-md">
       <h2 className="text-2xl font-bold mb-6">Create Data Enrichment Job</h2>
-      
-      
-      {errorMessage && (
+            {errorMessage && (
         <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-md">
           <div className="flex">
             <div className="flex-shrink-0">
@@ -282,10 +255,8 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
       )}
       
       <form onSubmit={handleSubmit} className="space-y-6">
-        
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">Basic Information</h3>
-          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -375,10 +346,8 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
           </div>
         </div>
 
-        
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">Schedule Selection</h3>
-          
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Select Schedule <span className="text-red-500">*</span>
@@ -413,11 +382,9 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
           </div>
         </div>
 
-        
         {sourceType === 'HTTP' && (
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">HTTP Configuration</h3>
-            
             <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -438,7 +405,6 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
           </div>
         )}
 
-        
         {sourceType === 'SFTP' && (
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">SFTP Configuration</h3>
@@ -530,8 +496,6 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
                 </div>
               )}
             </div>
-
-            
             <div className="space-y-4 pt-4 border-t">
               <h4 className="text-md font-semibold">File Configuration</h4>
               
@@ -604,7 +568,6 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
           </div>
         )}
 
-        
         <div className="flex justify-end space-x-4 pt-6 border-t">
           <Button
             type="button"

@@ -1,15 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Box, Pagination } from '@mui/material';
 import type { GridColDef } from '@mui/x-data-grid';
 import CustomTable from '@common/Tables/CustomTable';
 import { JobRejectionDialog } from '../../../../shared/components/JobRejectionDialog';
-import CronJobEditModal from '../CronJobEditModal';
-import CronJobViewModal from '../CronJobViewModal';
+import CronJobModal from '../CronJobModal';
 import CronJobConfirmationDialog from '../ConfirmationDialog';
 import { CronJobTableColumns } from '../CronJobTableColumns';
 import { useCronJobList } from '../../hooks/useCronJobList';
-import { useCronJobModals } from '../../hooks/useCronJobModals';
-import type { CronJobListProps, ScheduleResponse } from '../../types';
+import type { CronJobListProps, ScheduleResponse, CronJobModalMode } from '../../types';
 
 export const CronJobList: React.FC<CronJobListProps> = () => {
   const {
@@ -22,6 +20,8 @@ export const CronJobList: React.FC<CronJobListProps> = () => {
     actionLoading,
     userIsEditor,
     userIsExporter,
+    userIsApprover,
+    userIsPublisher,
     userRole,
     pagination,
     searchingFilters,
@@ -37,16 +37,13 @@ export const CronJobList: React.FC<CronJobListProps> = () => {
     handleSaveEdit,
     handleSendForApproval,
     handleApprovalConfirm,
+    handleApproveClick,
+    handleApproveConfirm,
   } = useCronJobList();
 
-  const {
-    viewModalOpen,
-    editModalOpen,
-    showRejectionDialog,
-    setViewModalOpen,
-    setEditModalOpen,
-    setShowRejectionDialog,
-  } = useCronJobModals();
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<CronJobModalMode>('view');
+  const [showRejectionDialog, setShowRejectionDialog] = useState(false);
 
   const columns = CronJobTableColumns({
     searchingFilters,
@@ -55,13 +52,17 @@ export const CronJobList: React.FC<CronJobListProps> = () => {
     userRole: userRole as string,
     userIsEditor,
     userIsExporter,
+    userIsApprover,
+    userIsPublisher,
     onView: (schedule) => {
       handleView(schedule);
-      setViewModalOpen(true);
+      setModalMode('view');
+      setModalOpen(true);
     },
     onEdit: (schedule) => {
       handleEdit(schedule);
-      setEditModalOpen(true);
+      setModalMode('edit');
+      setModalOpen(true);
     },
     onExport: (schedule) => {
       setConfirmDialog({
@@ -72,9 +73,21 @@ export const CronJobList: React.FC<CronJobListProps> = () => {
     },
   });
 
-  const handleConfirmAction = (type: 'export' | 'approval') => {
-    if (type === 'export') handleExportConfirm();
-    else if (type === 'approval') handleApprovalConfirm();
+  const handleConfirmAction = async (type: 'export' | 'approval' | 'approve') => {
+    if (type === 'export') {
+      await handleExportConfirm();
+    } else if (type === 'approval') {
+      await handleApprovalConfirm();
+    } else if (type === 'approve') {
+      await handleApproveConfirm();
+      setModalOpen(false);
+    }
+  };
+
+  const handleRejectionConfirmWithClose = async (reason: string) => {
+    await handleRejectionConfirm(reason);
+    setModalOpen(false);
+    setShowRejectionDialog(false);
   };
 
   return (
@@ -135,20 +148,13 @@ export const CronJobList: React.FC<CronJobListProps> = () => {
             />
         )}
 
-        {selectedSchedule && (
-          <CronJobViewModal
-            isOpen={viewModalOpen}
-            onClose={() => setViewModalOpen(false)}
-            viewFormData={selectedSchedule}
-            handleSendForApproval={handleSendForApproval}
-          />
-        )}
-
-        <CronJobEditModal
-          isOpen={editModalOpen}
-          onClose={() => setEditModalOpen(false)}
-          editFormData={editForm as unknown as ScheduleResponse}
-          setEditFormData={(data: ScheduleResponse) => setEditForm({
+        <CronJobModal
+          isOpen={modalOpen}
+          onClose={() => setModalOpen(false)}
+          mode={modalMode}
+          viewFormData={modalMode === 'view' && selectedSchedule ? selectedSchedule : undefined}
+          editFormData={modalMode === 'edit' ? (editForm as unknown as ScheduleResponse) : undefined}
+          setEditFormData={modalMode === 'edit' ? (data: ScheduleResponse) => setEditForm({
             id: data.id,
             name: data.name,
             cronExpression: data.cronExpression ?? '',
@@ -158,23 +164,28 @@ export const CronJobList: React.FC<CronJobListProps> = () => {
             status: data.status ?? '',
             schedule_status: data.schedule_status ?? '',
             comments: data.comments ?? '',
-          })}
-          handleSaveEdit={handleSaveEdit}
+          }) : undefined}
+          handleSendForApproval={modalMode === 'view' ? handleSendForApproval : undefined}
+          handleSaveEdit={modalMode === 'edit' ? handleSaveEdit : undefined}
+          onApprove={modalMode === 'view' ? handleApproveClick : undefined}
+          onReject={modalMode === 'view' ? () => {
+            setShowRejectionDialog(true);
+          } : undefined}
         />
 
         <JobRejectionDialog
           isOpen={showRejectionDialog}
           onClose={() => setShowRejectionDialog(false)}
-          onConfirm={handleRejectionConfirm}
+          onConfirm={handleRejectionConfirmWithClose}
           jobName={selectedSchedule?.name ?? 'Unknown Schedule'}
           jobType="Cron Job"
         />
 
         <CronJobConfirmationDialog
           open={confirmDialog.open}
-          type={confirmDialog.type as 'export' | 'approval' | ''}
+          type={confirmDialog.type as 'export' | 'approval' | 'approve' | ''}
           jobName={confirmDialog.schedule?.name ?? 'this cron job'}
-          actionLoading={actionLoading === 'export' || actionLoading === 'approval' ? actionLoading : ''}
+          actionLoading={actionLoading === 'export' || actionLoading === 'approval' || actionLoading === 'approve' ? actionLoading : ''}
           onClose={() =>
             setConfirmDialog({ open: false, type: '', schedule: null })
           }

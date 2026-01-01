@@ -8,17 +8,42 @@ import type { CronJobModalProps } from '../../types';
 export const CronJobModal: React.FC<CronJobModalProps> = ({
   isOpen,
   onClose,
+  mode = 'create',
   onJobCreated,
+  viewFormData,
+  editFormData,
+  setEditFormData,
+  handleSendForApproval,
+  handleSaveEdit,
+  onApprove,
+  onReject,
 }) => {
   if (!isOpen) return null;
 
   const handleJobCreated = () => {
-    onJobCreated?.();
+    if (mode === 'create') {
+      onJobCreated?.();
+    } else if (mode === 'edit') {
+      handleSaveEdit?.();
+    } else if (mode === 'view') {
+      handleSendForApproval?.();
+    }
     onClose?.();
   };
 
   const handleCancel = () => {
     onClose?.();
+  };
+
+  const getModalTitle = () => {
+    switch (mode) {
+      case 'create':
+        return 'Create New Cron Job';
+      case 'edit':
+        return 'Edit Cron Job';
+      case 'view':
+        return 'View Cron Job';
+    }
   };
 
   return (
@@ -38,7 +63,7 @@ export const CronJobModal: React.FC<CronJobModalProps> = ({
             <Box
               sx={{ fontSize: '20px', fontWeight: 'bold', color: '#2b7fff' }}
             >
-              Create New Cron Job
+              {getModalTitle()}
             </Box>
             <button
               onClick={onClose}
@@ -49,8 +74,15 @@ export const CronJobModal: React.FC<CronJobModalProps> = ({
           </div>
           <div className="mt-4">
             <CronJobForm
-              onJobCreated={handleJobCreated}
+              onJobCreated={mode === 'create' ? handleJobCreated : undefined}
               onCancel={handleCancel}
+              viewFormData={mode === 'view' ? viewFormData : undefined}
+              editFormData={mode === 'edit' ? editFormData : undefined}
+              setEditFormData={mode === 'edit' ? setEditFormData : undefined}
+              handleSendForApproval={mode === 'view' ? handleJobCreated : undefined}
+              handleSaveEdit={mode === 'edit' ? handleJobCreated : undefined}
+              onApprove={mode === 'view' ? onApprove : undefined}
+              onReject={mode === 'view' ? onReject : undefined}
             />
           </div>
         </div>

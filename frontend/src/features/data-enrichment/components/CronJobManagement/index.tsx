@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '../../../../shared/components/Button';
 import { Plus, Clock, CheckCircle, XCircle, Send } from 'lucide-react';
-import { scheduleApi } from '../../handlers';
+import { loadSchedules as loadSchedulesApi } from '../../handlers';
 import { DATA_ENRICHMENT_JOB_STATUSES } from '../../constants';
 import type { ScheduleResponse, CronJobManagementProps } from '../../types';
 import { useToast } from '../../../../shared/providers/ToastProvider';
@@ -33,7 +33,7 @@ const CronJobManagement: React.FC<CronJobManagementProps> = ({ onCreateSchedule 
   const loadSchedules = async () => {
     try {
       setLoading(true);
-      const schedulesResp = await scheduleApi.getAll() as unknown;
+      const schedulesResp = await loadSchedulesApi();
       let normalized: ScheduleResponse[] = [];
       if (Array.isArray(schedulesResp)) {
         normalized = schedulesResp as ScheduleResponse[];
@@ -76,8 +76,6 @@ const CronJobManagement: React.FC<CronJobManagementProps> = ({ onCreateSchedule 
     const statusValue = status || 'unknown';
     const colorClasses = getStatusColor(statusValue);
     const label = getStatusLabel(statusValue);
-    
-    
     let icon = null;
     switch (status) {
       case DATA_ENRICHMENT_JOB_STATUSES.IN_PROGRESS:

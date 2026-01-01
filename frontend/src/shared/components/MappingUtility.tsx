@@ -4,9 +4,7 @@ import {
   PlusIcon,
   XIcon,
   ChevronRightIcon,
-  FolderIcon,
   DatabaseIcon,
-  ServerIcon,
   Shuffle,
   FileText,
 } from 'lucide-react';

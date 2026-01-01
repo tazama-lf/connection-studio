@@ -1,5 +1,6 @@
-import { buildPushPayload, buildPullPayload , getDataEnrichmentErrorMessage, formatJobForEdit , getJobType } from '../utils';
-import type { SaveJobOptions ,
+import { buildPushPayload, buildPullPayload, getDataEnrichmentErrorMessage, formatJobForEdit, getJobType } from '../utils';
+import type {
+  SaveJobOptions,
   CreatePullJobDto,
   CreatePushJobDto,
   UpdatePullJobDto,
@@ -8,7 +9,8 @@ import type { SaveJobOptions ,
   ScheduleResponse,
   ScheduleCreateResponse,
   ScheduleRequest,
- PaginatedJobResponse, PaginationParams } from '../types';
+  PaginatedJobResponse, PaginationParams
+} from '../types';
 
 import { ENV } from '@shared/config/environment.config';
 import { getDemsStatusLov } from '@shared/lovs';
@@ -26,22 +28,22 @@ export const dataEnrichmentJobApi = {
   createPullJob: async (
     data: CreatePullJobDto,
   ): Promise<DataEnrichmentJobResponse> => await apiRequest<DataEnrichmentJobResponse>(
-      `${API_BASE_URL}/job/create/pull`,
-      {
-        method: 'POST',
-        body: JSON.stringify(data),
-      },
-    ),
+    `${API_BASE_URL}/job/create/pull`,
+    {
+      method: 'POST',
+      body: JSON.stringify(data),
+    },
+  ),
 
   createPushJob: async (
     data: CreatePushJobDto,
   ): Promise<DataEnrichmentJobResponse> => await apiRequest<DataEnrichmentJobResponse>(
-      `${API_BASE_URL}/job/create/push`,
-      {
-        method: 'POST',
-        body: JSON.stringify(data),
-      },
-    ),
+    `${API_BASE_URL}/job/create/push`,
+    {
+      method: 'POST',
+      body: JSON.stringify(data),
+    },
+  ),
 
   getList: async (
     params: PaginationParams,
@@ -107,23 +109,23 @@ export const dataEnrichmentJobApi = {
     id: string,
     updates: UpdatePullJobDto,
   ): Promise<DataEnrichmentJobResponse> => await apiRequest<DataEnrichmentJobResponse>(
-      `${API_BASE_URL}/job/update/${id}?type=pull`,
-      {
-        method: 'PATCH',
-        body: JSON.stringify(updates),
-      },
-    ),
+    `${API_BASE_URL}/job/update/${id}?type=pull`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify(updates),
+    },
+  ),
 
   updatePushJob: async (
     id: string,
     updates: UpdatePushJobDto,
   ): Promise<DataEnrichmentJobResponse> => await apiRequest<DataEnrichmentJobResponse>(
-      `${API_BASE_URL}/job/update/${id}?type=push`,
-      {
-        method: 'PATCH',
-        body: JSON.stringify(updates),
-      },
-    ),
+    `${API_BASE_URL}/job/update/${id}?type=push`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify(updates),
+    },
+  ),
 
   updateStatus: async (
     id: string,
@@ -165,21 +167,21 @@ export const dataEnrichmentJobApi = {
     id: string,
     type: 'pull' | 'push',
   ): Promise<{ success: boolean; message: string }> => await apiRequest<{ success: boolean; message: string }>(
-      `${API_BASE_URL}/job/${id}?type=${type.toLowerCase()}`,
-      {
-        method: 'DELETE',
-      },
-    ),
+    `${API_BASE_URL}/job/${id}?type=${type.toLowerCase()}`,
+    {
+      method: 'DELETE',
+    },
+  ),
 };
 
 export const scheduleApi = {
   create: async (data: ScheduleRequest): Promise<ScheduleCreateResponse> => await apiRequest<ScheduleCreateResponse>(
-      `${API_BASE_URL}/scheduler/create`,
-      {
-        method: 'POST',
-        body: JSON.stringify(data),
-      },
-    ),
+    `${API_BASE_URL}/scheduler/create`,
+    {
+      method: 'POST',
+      body: JSON.stringify(data),
+    },
+  ),
 
   getAll: async (offset = 0, limit = 50): Promise<ScheduleResponse[]> => {
     const queryParams = new URLSearchParams();
@@ -200,24 +202,24 @@ export const scheduleApi = {
   },
 
   getById: async (id: string): Promise<ScheduleResponse> => await apiRequest<ScheduleResponse>(
-      `${API_BASE_URL}/scheduler/${id}`,
-    ),
+    `${API_BASE_URL}/scheduler/${id}`,
+  ),
 
   update: async (
     id: string,
     updates: Partial<ScheduleRequest>,
   ): Promise<{ success: boolean; message: string }> => await apiRequest<{ success: boolean; message: string }>(
-      `${API_BASE_URL}/scheduler/update/${id}`,
-      {
-        method: 'PATCH',
-        body: JSON.stringify({
-          name: updates?.name,
-          start_date: updates?.start_date,
-          iterations: Number(updates?.iterations),
-          cron: updates?.cron,
-        }),
-      },
-    ),
+    `${API_BASE_URL}/scheduler/update/${id}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({
+        name: updates?.name,
+        start_date: updates?.start_date,
+        iterations: Number(updates?.iterations),
+        cron: updates?.cron,
+      }),
+    },
+  ),
 
   updateStatus: async (
     id: string,
@@ -360,10 +362,10 @@ export const handleApproveWithComment = async (
   approveComment: string,
   onApprove:
     | ((
-        jobId: string,
-        jobType: 'PULL' | 'PUSH',
-        comment?: string,
-      ) => Promise<void>)
+      jobId: string,
+      jobType: 'PULL' | 'PUSH',
+      comment?: string,
+    ) => Promise<void>)
     | undefined,
   setShowApproveConfirmDialog: (show: boolean) => void,
   setIsSaving: (saving: boolean) => void,
@@ -866,7 +868,7 @@ export const updateJobData = async (
 };
 
 export const activateJob = async (jobId: string, jobType: 'PULL' | 'PUSH') =>
-  await dataEnrichmentJobApi.updatePublishingStatus(jobId, 'active', jobType);
+await dataEnrichmentJobApi.updatePublishingStatus(jobId, 'active', jobType);
 
 export const deactivateJob = async (jobId: string, jobType: 'PULL' | 'PUSH') =>
   await dataEnrichmentJobApi.updatePublishingStatus(
@@ -895,6 +897,7 @@ export const loadJobs = async (
 };
 
 export const loadSchedules = async (): Promise<ScheduleResponse[]> => await scheduleApi.getAll();
+
 export const saveDataEnrichmentJob = async (options: SaveJobOptions) => {
   const {
     formValues,

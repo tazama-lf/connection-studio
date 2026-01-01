@@ -7,15 +7,7 @@ import {
   DialogActions,
 } from '@mui/material';
 import { Button } from '../../../../shared/components/Button';
-
-interface CronJobConfirmationDialogProps {
-  open: boolean;
-  type: 'export' | 'approval' | '';
-  jobName: string;
-  actionLoading: '' | 'export' | 'approval';
-  onClose: () => void;
-  onConfirm: (type: 'export' | 'approval') => void;
-}
+import type { CronJobConfirmationDialogProps } from '../../types';
 
 export const CronJobConfirmationDialog: React.FC<CronJobConfirmationDialogProps> = ({
   open,
@@ -30,12 +22,14 @@ export const CronJobConfirmationDialog: React.FC<CronJobConfirmationDialogProps>
   const getTitle = () => {
     if (type === 'export') return 'Export Confirmation Required!';
     if (type === 'approval') return 'Approval Confirmation Required!';
+    if (type === 'approve') return 'Approve Cron Job?';
     return '';
   };
 
   const getAction = () => {
     if (type === 'export') return 'export';
     if (type === 'approval') return 'submit for approval';
+    if (type === 'approve') return 'approve';
     return '';
   };
 
@@ -44,14 +38,21 @@ export const CronJobConfirmationDialog: React.FC<CronJobConfirmationDialogProps>
       return '⚠️ Important: This will update the cron job status to EXPORTED.';
     if (type === 'approval')
       return '⚠️ Important: This will submit the cron job for approval and update its status to UNDER REVIEW.';
+    if (type === 'approve')
+      return '⚠️ Important: This will update the cron job status to APPROVED.';
     return '';
   };
 
   const getButtonText = () => {
     if (actionLoading === type) {
-      return type === 'export' ? 'Exporting...' : 'Submitting...';
+      if (type === 'export') return 'Exporting...';
+      if (type === 'approval') return 'Submitting...';
+      if (type === 'approve') return 'Approving...';
     }
-    return type === 'export' ? 'Yes, Export Cron Job' : 'Yes, Submit for Approval';
+    if (type === 'export') return 'Yes, Export Cron Job';
+    if (type === 'approval') return 'Yes, Submit for Approval';
+    if (type === 'approve') return 'Yes, Approve Cron Job';
+    return '';
   };
 
   return (
@@ -130,7 +131,7 @@ export const CronJobConfirmationDialog: React.FC<CronJobConfirmationDialogProps>
         </Button>
         <Button
           onClick={() => {
-            if (type === 'export' || type === 'approval') {
+            if (type === 'export' || type === 'approval' || type === 'approve') {
               onConfirm(type);
             }
           }}

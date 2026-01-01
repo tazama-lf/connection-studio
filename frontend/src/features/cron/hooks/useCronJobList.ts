@@ -6,27 +6,27 @@ import { useAuth } from '../../auth/contexts/AuthContext';
 import {
   isEditor,
   isExporter,
+  isApprover,
+  isPublisher,
   getPrimaryRole,
 } from '../../../utils/common/roleUtils';
 import { CRON_JOB_EDIT_FORM_DEFAULTS } from '../constants';
 import * as cronHandlers from '../handlers';
-import { loadSchedules as apiLoadSchedules } from '../handlers';
+import { loadSchedules as apiLoadSchedules, CRON_JOB_STATUSES } from '../handlers';
 
 export const useCronJobList = () => {
   const [schedules, setSchedules] = useState<ScheduleResponse[]>([]);
-
+  const { showSuccess, showError } = useToast();
+  const { user } = useAuth();
   const [pagination, setPagination] = useState({
     page: 1,
     totalPages: 0,
     totalRecords: 0,
   });
-
   const [searchingFilters, setSearchingFilters] = useState<
     Record<string, unknown>
   >({});
-
   const [error, setError] = useState<string | null>(null);
-
   const [loadingState, setLoadingState] = useState<{
     page: boolean;
     action: ActionType;
@@ -34,12 +34,10 @@ export const useCronJobList = () => {
     page: true,
     action: '',
   });
-
   const [selectedSchedule, setSelectedSchedule] =
     useState<ScheduleResponse | null>(null);
   const [editForm, setEditForm] = useState(CRON_JOB_EDIT_FORM_DEFAULTS);
   const [isEditJobSaved, setIsEditJobSaved] = useState(false);
-
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean;
     type: ActionType;
@@ -50,16 +48,15 @@ export const useCronJobList = () => {
     schedule: null,
   });
 
-  const { showSuccess, showError } = useToast();
-  const { user } = useAuth();
-
   const itemsPerPage = UI_CONFIG.pagination.defaultPageSize;
 
-  const { userIsEditor, userIsExporter, userRole } = useMemo(() => {
+  const { userIsEditor, userIsExporter, userIsApprover, userIsPublisher, userRole } = useMemo(() => {
     const claims = user?.claims ?? [];
     return {
       userIsEditor: isEditor(claims),
       userIsExporter: isExporter(claims),
+      userIsApprover: isApprover(claims),
+      userIsPublisher: isPublisher(claims),
       userRole: getPrimaryRole(claims),
     };
   }, [user]);
@@ -120,7 +117,6 @@ export const useCronJobList = () => {
         cron: editForm.cronExpression,
         iterations: editForm.iterations,
       });
-
       showSuccess(cronHandlers.CRON_JOB_SUCCESS_MESSAGES.UPDATED);
       setIsEditJobSaved(true);
       loadSchedules();
@@ -134,7 +130,6 @@ export const useCronJobList = () => {
   const handleRejectionConfirm = useCallback(
     async (reason: string) => {
       if (!selectedSchedule) return;
-
       try {
         setLoadingState((s) => ({ ...s, action: 'edit' }));
         await cronHandlers.rejectSchedule(selectedSchedule.id, reason);
@@ -192,6 +187,51 @@ export const useCronJobList = () => {
     }
   }, [confirmDialog.schedule, loadSchedules, showSuccess, showError]);
 
+  const handleApproveClick = useCallback((scheduleId: string) => {
+    const schedule = schedules.find(s => s.id === scheduleId);
+    if (!schedule) return;
+    setConfirmDialog({
+      open: true,
+      type: 'approve',
+      schedule,
+    });
+  }, [schedules]);
+
+  const handleApproveConfirm = useCallback(
+    async () => {
+      if (!confirmDialog.schedule) return;
+
+      try {
+        setLoadingState((s) => ({ ...s, action: 'approve' }));
+        await cronHandlers.cronJobApi.updateStatus(confirmDialog.schedule.id, CRON_JOB_STATUSES.APPROVED, '');
+        showSuccess('Cron job approved successfully');
+        loadSchedules();
+        setConfirmDialog({ open: false, type: '', schedule: null });
+      } catch {
+        showError('Failed to approve cron job');
+      } finally {
+        setLoadingState((s) => ({ ...s, action: '' }));
+      }
+    },
+    [confirmDialog.schedule, loadSchedules, showSuccess, showError],
+  );
+
+  const handleReject = useCallback(
+    async (scheduleId: string, reason: string) => {
+      try {
+        setLoadingState((s) => ({ ...s, action: 'reject' }));
+        await cronHandlers.cronJobApi.updateStatus(scheduleId, CRON_JOB_STATUSES.REJECTED, reason);
+        showSuccess('Cron job rejected successfully');
+        loadSchedules();
+      } catch {
+        showError('Failed to reject cron job');
+      } finally {
+        setLoadingState((s) => ({ ...s, action: '' }));
+      }
+    },
+    [loadSchedules, showSuccess, showError],
+  );
+
   return {
     schedules,
     pagination,
@@ -206,15 +246,15 @@ export const useCronJobList = () => {
     itemsPerPage,
     userIsEditor,
     userIsExporter,
+    userIsApprover,
+    userIsPublisher,
     userRole,
-
     setPage: (newPage: number) =>
       setPagination((p) => ({ ...p, page: newPage })),
     setSearchingFilters,
     setSelectedSchedule,
     setEditForm,
     setConfirmDialog,
-
     loadSchedules,
     handleView,
     handleEdit,
@@ -223,5 +263,8 @@ export const useCronJobList = () => {
     handleExportConfirm,
     handleSendForApproval,
     handleApprovalConfirm,
+    handleApproveClick,
+    handleApproveConfirm,
+    handleReject,
   };
 };

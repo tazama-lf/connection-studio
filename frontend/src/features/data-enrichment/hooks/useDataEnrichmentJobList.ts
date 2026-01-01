@@ -360,14 +360,12 @@ export const useDataEnrichmentJobList = () => {
     userIsExporter,
     userIsPublisher,
     userRole,
-
     setPage: (newPage: number) =>
       { setPagination((p) => ({ ...p, page: newPage })); },
     setSearchingFilters,
     setSelectedJob,
     setEditMode,
     setConfirmDialog,
-
     loadJobs,
     handleView,
     handleEdit,

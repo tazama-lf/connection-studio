@@ -1683,13 +1683,8 @@ export const DataEnrichmentFormModal: React.FC<
               ) : null}
             </>
           )}
-
-          
-          
-          
         </div>
 
-        
         {(isCreating || isLoadingJob || schedulesLoading) && (
           <Backdrop
             sx={(theme) => ({

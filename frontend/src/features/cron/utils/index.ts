@@ -42,8 +42,8 @@ export const formatScheduleForEdit = (schedule: ScheduleResponse) => ({
   cronExpression: schedule.cron,
   iterations: schedule.iterations,
   schedule_status: schedule.schedule_status,
-  startDate: schedule.start_date ?? '2025-11-18',
-  endDate: schedule.end_date ?? '2025-12-31',
+  startDate: schedule.start_date ?? '',
+  endDate: schedule.end_date ?? '',
   status: schedule.status ?? '',
   comments: schedule.comments ?? '',
 });

@@ -10,14 +10,9 @@ import { useDataEnrichmentJobList } from '../hooks/useDataEnrichmentJobList';
 import { useToast } from '../../../shared/providers/ToastProvider';
 import { DATA_ENRICHMENT_JOB_STATUSES } from '../constants';
 
-
 const DataEnrichmentModule: React.FC = () => {
-
-
   const navigate = useNavigate();
   const { showSuccess, showError } = useToast();
-
-  
   const {
     jobs,
     pagination,
@@ -43,7 +38,6 @@ const DataEnrichmentModule: React.FC = () => {
 
   const [showJobForm, setShowJobForm] = useState(false);
   const [showJobDetails, setShowJobDetails] = useState(false);
-
   
   const fetchJobsWithScrollPreservation = (pageNumber?: number) => {
     const scrollPosition = window.scrollY;

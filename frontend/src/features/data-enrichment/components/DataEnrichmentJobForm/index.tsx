@@ -19,9 +19,6 @@ export const DataEnrichmentJobForm: React.FC<DataEnrichmentJobFormProps> = ({
   const handleClose = () => {
     onCancel?.();
   };
-
-  
-  
   return (
     <DataEnrichmentFormModal
       isOpen={isFormOpen}

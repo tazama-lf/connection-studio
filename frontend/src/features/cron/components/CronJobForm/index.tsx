@@ -7,7 +7,7 @@ import 'react-js-cron/dist/styles.css';
 import {
   NumberInputField,
   AlphaNumericInputFieldWithSpaces,
-} from '../../../../shared/components/FormFields.jsx'; 
+} from '../../../../shared/components/FormFields.jsx';
 import ValidationError from '../../../../shared/components/ValidationError';
 import { useToast } from '../../../../shared/providers/ToastProvider';
 import { isApprover } from '@utils/common/roleUtils';
@@ -17,7 +17,7 @@ import { Check, XCircle } from 'lucide-react';
 import type { CronJobFormProps, ScheduleRequest, ScheduleResponse } from '../../types';
 import { validationSchema } from '../../utils';
 import { submitCronJob, getErrorMessage, CRON_JOB_SUCCESS_MESSAGES } from '../../handlers';
-import { CRON_JOB_FORM_DEFAULTS } from '@features/cron/constants';
+import { CRON_JOB_FORM_DEFAULTS, CRON_JOB_STATUSES } from '@features/cron/constants';
 
 const defaultValues = CRON_JOB_FORM_DEFAULTS;
 
@@ -66,7 +66,6 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({
       });
     }
   }, [editFormData, viewFormData, reset]);
-
 
   useEffect(() => {
     if (editFormData && setEditFormData && !isInitializing.current) {
@@ -252,7 +251,8 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({
               >
                 Cancel
               </Button>
-              {viewFormData?.status === 'STATUS_03_UNDER_REVIEW' &&
+
+              {viewFormData?.status === CRON_JOB_STATUSES.UNDER_REVIEW &&
                 userIsApprover &&
                 (onApprove ?? onReject) && (
                   <div className="flex gap-3">
@@ -262,31 +262,29 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({
                         variant="contained"
                         sx={{ marginRight: '10px', backgroundColor: '#ff474d' }}
                         startIcon={<XCircle size={16} />}
-                        onClick={() => {
-                          onReject(viewFormData?.id);
-                        }}
+                        onClick={() => onReject(viewFormData.id)}
                       >
                         Reject
                       </Button>
                     )}
+
                     {onApprove && (
                       <Button
                         type="button"
                         variant="contained"
                         sx={{ backgroundColor: '#33ad74' }}
                         startIcon={<Check size={16} />}
-                        onClick={() => {
-                          onApprove(viewFormData?.id);
-                        }}
+                        onClick={() => onApprove(viewFormData.id)}
                       >
                         Approve
                       </Button>
                     )}
                   </div>
                 )}
+
               {viewFormData &&
-                (viewFormData?.status === 'STATUS_01_IN_PROGRESS' ||
-                  viewFormData?.status === 'STATUS_05_REJECTED') && (
+                (viewFormData?.status === CRON_JOB_STATUSES.IN_PROGRESS ||
+                  viewFormData?.status === CRON_JOB_STATUSES.REJECTED) && (
                   <Button
                     type="button"
                     variant="contained"
@@ -304,6 +302,7 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({
                     Send for Approval
                   </Button>
                 )}
+
               {editFormData && (
                 <Button
                   type="button"
