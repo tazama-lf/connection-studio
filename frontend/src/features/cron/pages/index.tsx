@@ -32,6 +32,7 @@ const CRONModule: React.FC = () => {
         <Button
           variant="primary"
           className="py-1 pl-2"
+          data-testid="button-go-back"
           onClick={() => {
             navigate(-1);
           }}
@@ -51,7 +52,7 @@ const CRONModule: React.FC = () => {
           </div>
 
           {isEditorRole && (
-            <Button onClick={handleCreateNew} icon={<PlusIcon size={16} />}>
+            <Button onClick={handleCreateNew} icon={<PlusIcon size={16} />} data-testid="button-create-new">
               Create New Cron Job
             </Button>
           )}

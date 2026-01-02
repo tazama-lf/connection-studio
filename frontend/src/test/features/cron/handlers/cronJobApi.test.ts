@@ -7,6 +7,7 @@ import {
   sendForApproval,
   prepareScheduleForEdit,
   loadSchedules,
+  getErrorMessage,
   CRON_JOB_SUCCESS_MESSAGES,
   CRON_JOB_STATUSES,
 } from '../../../../features/cron/handlers';
@@ -51,6 +52,18 @@ describe('Cron Job Handlers', () => {
             created_at: '2025-01-01',
           },
         ],
+        schedules: [
+          {
+            id: '1',
+            name: 'Test Schedule',
+            cron: '0 0 * * *',
+            cronExpression: '0 0 * * *',
+            iterations: 5,
+            schedule_status: 'active',
+            status: 'STATUS_04_APPROVED',
+            created_at: '2025-01-01',
+          },
+        ],
         total: 1,
         limit: 10,
         offset: 0,
@@ -77,6 +90,7 @@ describe('Cron Job Handlers', () => {
     it('should use default status filter when no status provided', async () => {
       const mockResponse: PaginatedScheduleResponse = {
         data: [],
+        schedules: [],
         total: 0,
         limit: 10,
         offset: 0,
@@ -452,8 +466,8 @@ describe('Cron Job Handlers', () => {
 
       const result = prepareScheduleForEdit(schedule);
 
-      expect(result.startDate).toBe('2025-11-18');
-      expect(result.endDate).toBe('2025-12-31');
+      expect(result.startDate).toBe('');
+      expect(result.endDate).toBe('');
       expect(result.status).toBe('STATUS_01_IN_PROGRESS');
       expect(result.comments).toBe('');
     });
@@ -463,6 +477,7 @@ describe('Cron Job Handlers', () => {
     it('should load schedules with correct parameters', async () => {
       const mockResponse: PaginatedScheduleResponse = {
         data: [],
+        schedules: [],
         total: 0,
         limit: 10,
         offset: 0,
@@ -485,6 +500,7 @@ describe('Cron Job Handlers', () => {
     it('should calculate offset from page number correctly', async () => {
       mockApiRequest.mockResolvedValue({
         data: [],
+        schedules: [],
         total: 0,
         limit: 10,
         offset: 0,
@@ -514,6 +530,12 @@ describe('Cron Job Handlers', () => {
       expect(CRON_JOB_STATUSES.IN_PROGRESS).toBe('STATUS_01_IN_PROGRESS');
       expect(CRON_JOB_STATUSES.APPROVED).toBe('STATUS_04_APPROVED');
       expect(CRON_JOB_STATUSES.REJECTED).toBe('STATUS_05_REJECTED');
+    });
+
+    it('should export getErrorMessage function', () => {
+      const error = new Error('Test error');
+      const result = getErrorMessage(error);
+      expect(typeof result).toBe('string');
     });
   });
 });

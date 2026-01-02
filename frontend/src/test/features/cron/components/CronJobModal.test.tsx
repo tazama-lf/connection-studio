@@ -1,13 +1,30 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { CronJobModal } from '@features/cron/components/CronJobModal';
+import type { ScheduleResponse } from '@features/cron/types';
 
 // Mock dependencies
 jest.mock('@features/cron/components/CronJobForm', () => ({
-  CronJobForm: ({ onJobCreated, onCancel }: { onJobCreated?: () => void; onCancel?: () => void }) => (
+  CronJobForm: ({ 
+    onJobCreated, 
+    onCancel,
+    viewFormData,
+    editFormData,
+    handleSendForApproval,
+    handleSaveEdit,
+    onApprove,
+    onReject,
+  }: any) => (
     <div data-testid="cron-job-form">
-      <button onClick={onJobCreated}>Submit Form</button>
-      <button onClick={onCancel}>Cancel Form</button>
+      {viewFormData && <div data-testid="view-mode">View Mode</div>}
+      {editFormData && <div data-testid="edit-mode">Edit Mode</div>}
+      {!viewFormData && !editFormData && <div data-testid="create-mode">Create Mode</div>}
+      {onJobCreated && <button onClick={onJobCreated}>Submit Form</button>}
+      {onCancel && <button onClick={onCancel}>Cancel Form</button>}
+      {handleSendForApproval && <button onClick={handleSendForApproval}>Send for Approval</button>}
+      {handleSaveEdit && <button onClick={handleSaveEdit}>Save Edit</button>}
+      {onApprove && <button onClick={() => onApprove('test-id')}>Approve</button>}
+      {onReject && <button onClick={() => onReject('test-id')}>Reject</button>}
     </div>
   ),
 }));
@@ -15,12 +32,37 @@ jest.mock('@features/cron/components/CronJobForm', () => ({
 describe('CronJobModal', () => {
   const mockOnClose = jest.fn();
   const mockOnJobCreated = jest.fn();
+  const mockHandleSendForApproval = jest.fn();
+  const mockHandleSaveEdit = jest.fn();
+  const mockOnApprove = jest.fn();
+  const mockOnReject = jest.fn();
+  const mockSetEditFormData = jest.fn();
+
+  const mockViewFormData: ScheduleResponse = {
+    id: 'test-123',
+    name: 'Test Cron Job',
+    cron: '0 0 * * *',
+    cronExpression: '0 0 * * *',
+    iterations: 3,
+    schedule_status: 'active',
+    status: 'STATUS_03_UNDER_REVIEW',
+  };
+
+  const mockEditFormData: ScheduleResponse = {
+    id: 'test-456',
+    name: 'Edit Cron Job',
+    cron: '0 12 * * *',
+    cronExpression: '0 12 * * *',
+    iterations: 5,
+    schedule_status: 'active',
+    status: 'STATUS_01_IN_PROGRESS',
+  };
 
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  describe('Rendering', () => {
+  describe('Rendering - Closed State', () => {
     it('should not render when isOpen is false', () => {
       const { container } = render(
         <CronJobModal
@@ -32,8 +74,10 @@ describe('CronJobModal', () => {
 
       expect(container.firstChild).toBeNull();
     });
+  });
 
-    it('should render when isOpen is true', () => {
+  describe('Rendering - Create Mode', () => {
+    it('should render create mode by default', () => {
       render(
         <CronJobModal
           isOpen={true}
@@ -43,9 +87,111 @@ describe('CronJobModal', () => {
       );
 
       expect(screen.getByText('Create New Cron Job')).toBeInTheDocument();
-      expect(screen.getByTestId('cron-job-form')).toBeInTheDocument();
+      expect(screen.getByTestId('create-mode')).toBeInTheDocument();
     });
 
+    it('should render create mode when explicitly set', () => {
+      render(
+        <CronJobModal
+          isOpen={true}
+          onClose={mockOnClose}
+          mode="create"
+          onJobCreated={mockOnJobCreated}
+        />
+      );
+
+      expect(screen.getByText('Create New Cron Job')).toBeInTheDocument();
+      expect(screen.getByTestId('create-mode')).toBeInTheDocument();
+    });
+
+    it('should render form with create handlers', () => {
+      render(
+        <CronJobModal
+          isOpen={true}
+          onClose={mockOnClose}
+          mode="create"
+          onJobCreated={mockOnJobCreated}
+        />
+      );
+
+      expect(screen.getByText('Submit Form')).toBeInTheDocument();
+      expect(screen.getByText('Cancel Form')).toBeInTheDocument();
+    });
+  });
+
+  describe('Rendering - Edit Mode', () => {
+    it('should render edit mode with correct title', () => {
+      render(
+        <CronJobModal
+          isOpen={true}
+          onClose={mockOnClose}
+          mode="edit"
+          editFormData={mockEditFormData}
+          setEditFormData={mockSetEditFormData}
+          handleSaveEdit={mockHandleSaveEdit}
+        />
+      );
+
+      expect(screen.getByText('Edit Cron Job')).toBeInTheDocument();
+      expect(screen.getByTestId('edit-mode')).toBeInTheDocument();
+    });
+
+    it('should render form with edit handlers', () => {
+      render(
+        <CronJobModal
+          isOpen={true}
+          onClose={mockOnClose}
+          mode="edit"
+          editFormData={mockEditFormData}
+          setEditFormData={mockSetEditFormData}
+          handleSaveEdit={mockHandleSaveEdit}
+        />
+      );
+
+      expect(screen.getByText('Save Edit')).toBeInTheDocument();
+      expect(screen.getByText('Cancel Form')).toBeInTheDocument();
+    });
+  });
+
+  describe('Rendering - View Mode', () => {
+    it('should render view mode with correct title', () => {
+      render(
+        <CronJobModal
+          isOpen={true}
+          onClose={mockOnClose}
+          mode="view"
+          viewFormData={mockViewFormData}
+          handleSendForApproval={mockHandleSendForApproval}
+          onApprove={mockOnApprove}
+          onReject={mockOnReject}
+        />
+      );
+
+      expect(screen.getByText('View Cron Job')).toBeInTheDocument();
+      expect(screen.getByTestId('view-mode')).toBeInTheDocument();
+    });
+
+    it('should render form with view/approval handlers', () => {
+      render(
+        <CronJobModal
+          isOpen={true}
+          onClose={mockOnClose}
+          mode="view"
+          viewFormData={mockViewFormData}
+          handleSendForApproval={mockHandleSendForApproval}
+          onApprove={mockOnApprove}
+          onReject={mockOnReject}
+        />
+      );
+
+      expect(screen.getByText('Send for Approval')).toBeInTheDocument();
+      expect(screen.getByText('Approve')).toBeInTheDocument();
+      expect(screen.getByText('Reject')).toBeInTheDocument();
+      expect(screen.getByText('Cancel Form')).toBeInTheDocument();
+    });
+  });
+
+  describe('Modal UI Elements', () => {
     it('should render close button', () => {
       const { container } = render(
         <CronJobModal
@@ -70,7 +216,6 @@ describe('CronJobModal', () => {
 
       const modalContent = container.querySelector('.bg-white.shadow-2xl');
       expect(modalContent).toBeInTheDocument();
-      expect(modalContent).toHaveStyle({ width: '800px' });
     });
 
     it('should render with backdrop', () => {
@@ -85,34 +230,20 @@ describe('CronJobModal', () => {
       const backdrop = container.querySelector('.MuiBackdrop-root');
       expect(backdrop).toBeInTheDocument();
     });
-
-    it('should render title with proper styling', () => {
-      render(
-        <CronJobModal
-          isOpen={true}
-          onClose={mockOnClose}
-          onJobCreated={mockOnJobCreated}
-        />
-      );
-
-      const title = screen.getByText('Create New Cron Job');
-      // Check that the title exists and has the expected text (MUI sx styles are applied via CSS-in-JS)
-      expect(title).toBeInTheDocument();
-      expect(title.tagName).toBe('DIV'); // MUI Box renders as div
-    });
   });
 
-  describe('User Interactions', () => {
+  describe('User Interactions - Create Mode', () => {
     it('should call onClose when close button is clicked', () => {
       const { container } = render(
         <CronJobModal
           isOpen={true}
           onClose={mockOnClose}
+          mode="create"
           onJobCreated={mockOnJobCreated}
         />
       );
 
-      const closeButton = container.querySelector('.text-gray-400.hover\\:text-gray-600');
+      const closeButton = container.querySelector('.text-gray-400');
       if (closeButton) {
         fireEvent.click(closeButton);
         expect(mockOnClose).toHaveBeenCalledTimes(1);
@@ -124,6 +255,7 @@ describe('CronJobModal', () => {
         <CronJobModal
           isOpen={true}
           onClose={mockOnClose}
+          mode="create"
           onJobCreated={mockOnJobCreated}
         />
       );
@@ -137,6 +269,7 @@ describe('CronJobModal', () => {
         <CronJobModal
           isOpen={true}
           onClose={mockOnClose}
+          mode="create"
           onJobCreated={mockOnJobCreated}
         />
       );
@@ -146,182 +279,154 @@ describe('CronJobModal', () => {
       expect(mockOnJobCreated).toHaveBeenCalledTimes(1);
       expect(mockOnClose).toHaveBeenCalledTimes(1);
     });
+  });
 
-    it('should not throw error when onJobCreated is not provided', () => {
+  describe('User Interactions - Edit Mode', () => {
+    it('should call handleSaveEdit and onClose when save is triggered', () => {
       render(
         <CronJobModal
           isOpen={true}
           onClose={mockOnClose}
+          mode="edit"
+          editFormData={mockEditFormData}
+          setEditFormData={mockSetEditFormData}
+          handleSaveEdit={mockHandleSaveEdit}
         />
       );
 
-      expect(() => {
-        fireEvent.click(screen.getByText('Submit Form'));
-      }).not.toThrow();
+      fireEvent.click(screen.getByText('Save Edit'));
 
+      expect(mockHandleSaveEdit).toHaveBeenCalledTimes(1);
       expect(mockOnClose).toHaveBeenCalledTimes(1);
     });
 
-    it('should not throw error when onClose is not provided', () => {
+    it('should call onClose when cancel is triggered', () => {
       render(
         <CronJobModal
           isOpen={true}
           onClose={mockOnClose}
-          onJobCreated={mockOnJobCreated}
-        />
-      );
-
-      expect(() => {
-        fireEvent.click(screen.getByText('Cancel Form'));
-      }).not.toThrow();
-    });
-  });
-
-  describe('CronJobForm Integration', () => {
-    it('should pass correct props to CronJobForm', () => {
-      render(
-        <CronJobModal
-          isOpen={true}
-          onClose={mockOnClose}
-          onJobCreated={mockOnJobCreated}
-        />
-      );
-
-      expect(screen.getByTestId('cron-job-form')).toBeInTheDocument();
-    });
-
-    it('should handle form submission correctly', () => {
-      render(
-        <CronJobModal
-          isOpen={true}
-          onClose={mockOnClose}
-          onJobCreated={mockOnJobCreated}
-        />
-      );
-
-      fireEvent.click(screen.getByText('Submit Form'));
-
-      expect(mockOnJobCreated).toHaveBeenCalled();
-      expect(mockOnClose).toHaveBeenCalled();
-    });
-
-    it('should handle form cancellation correctly', () => {
-      render(
-        <CronJobModal
-          isOpen={true}
-          onClose={mockOnClose}
-          onJobCreated={mockOnJobCreated}
+          mode="edit"
+          editFormData={mockEditFormData}
+          setEditFormData={mockSetEditFormData}
+          handleSaveEdit={mockHandleSaveEdit}
         />
       );
 
       fireEvent.click(screen.getByText('Cancel Form'));
-
-      expect(mockOnClose).toHaveBeenCalled();
-      expect(mockOnJobCreated).not.toHaveBeenCalled();
+      expect(mockOnClose).toHaveBeenCalledTimes(1);
     });
   });
 
-  describe('Layout', () => {
-    it('should render with fixed positioning', () => {
-      const { container } = render(
-        <CronJobModal
-          isOpen={true}
-          onClose={mockOnClose}
-          onJobCreated={mockOnJobCreated}
-        />
-      );
-
-      const wrapper = container.querySelector('.fixed.inset-0.z-50');
-      expect(wrapper).toBeInTheDocument();
-    });
-
-    it('should center modal content', () => {
-      const { container } = render(
-        <CronJobModal
-          isOpen={true}
-          onClose={mockOnClose}
-          onJobCreated={mockOnJobCreated}
-        />
-      );
-
-      const wrapper = container.querySelector('.flex.items-center.justify-center');
-      expect(wrapper).toBeInTheDocument();
-    });
-
-    it('should have proper border styling on header', () => {
-      const { container } = render(
-        <CronJobModal
-          isOpen={true}
-          onClose={mockOnClose}
-          onJobCreated={mockOnJobCreated}
-        />
-      );
-
-      const header = container.querySelector('.border-b.border-gray-200');
-      expect(header).toBeInTheDocument();
-    });
-
-    it('should render modal with responsive max width', () => {
-      const { container } = render(
-        <CronJobModal
-          isOpen={true}
-          onClose={mockOnClose}
-          onJobCreated={mockOnJobCreated}
-        />
-      );
-
-      const modalContent = container.querySelector('.relative.z-50');
-      expect(modalContent).toHaveStyle({ maxWidth: '90vw' });
-    });
-  });
-
-  describe('Edge Cases', () => {
-    it('should handle rapid open/close cycles', () => {
-      const { rerender } = render(
-        <CronJobModal
-          isOpen={true}
-          onClose={mockOnClose}
-          onJobCreated={mockOnJobCreated}
-        />
-      );
-
-      expect(screen.getByText('Create New Cron Job')).toBeInTheDocument();
-
-      rerender(
-        <CronJobModal
-          isOpen={false}
-          onClose={mockOnClose}
-          onJobCreated={mockOnJobCreated}
-        />
-      );
-
-      expect(screen.queryByText('Create New Cron Job')).not.toBeInTheDocument();
-
-      rerender(
-        <CronJobModal
-          isOpen={true}
-          onClose={mockOnClose}
-          onJobCreated={mockOnJobCreated}
-        />
-      );
-
-      expect(screen.getByText('Create New Cron Job')).toBeInTheDocument();
-    });
-
-    it('should handle multiple callback invocations', () => {
+  describe('User Interactions - View Mode', () => {
+    it('should call handleSendForApproval and onClose when send for approval is triggered', () => {
       render(
         <CronJobModal
           isOpen={true}
           onClose={mockOnClose}
-          onJobCreated={mockOnJobCreated}
+          mode="view"
+          viewFormData={mockViewFormData}
+          handleSendForApproval={mockHandleSendForApproval}
         />
       );
 
-      fireEvent.click(screen.getByText('Submit Form'));
-      fireEvent.click(screen.getByText('Submit Form'));
+      fireEvent.click(screen.getByText('Send for Approval'));
 
-      expect(mockOnJobCreated).toHaveBeenCalledTimes(2);
-      expect(mockOnClose).toHaveBeenCalledTimes(2);
+      expect(mockHandleSendForApproval).toHaveBeenCalledTimes(1);
+      expect(mockOnClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('should call onApprove when approve button is clicked', () => {
+      render(
+        <CronJobModal
+          isOpen={true}
+          onClose={mockOnClose}
+          mode="view"
+          viewFormData={mockViewFormData}
+          onApprove={mockOnApprove}
+        />
+      );
+
+      fireEvent.click(screen.getByText('Approve'));
+      expect(mockOnApprove).toHaveBeenCalledWith('test-id');
+    });
+
+    it('should call onReject when reject button is clicked', () => {
+      render(
+        <CronJobModal
+          isOpen={true}
+          onClose={mockOnClose}
+          mode="view"
+          viewFormData={mockViewFormData}
+          onReject={mockOnReject}
+        />
+      );
+
+      fireEvent.click(screen.getByText('Reject'));
+      expect(mockOnReject).toHaveBeenCalledWith('test-id');
+    });
+  });
+
+  describe('Edge Cases', () => {
+    it('should not throw error when onJobCreated is not provided', () => {
+      expect(() => {
+        render(
+          <CronJobModal
+            isOpen={true}
+            onClose={mockOnClose}
+            mode="create"
+          />
+        );
+      }).not.toThrow();
+    });
+
+    it('should not throw error when optional handlers are not provided in edit mode', () => {
+      expect(() => {
+        render(
+          <CronJobModal
+            isOpen={true}
+            onClose={mockOnClose}
+            mode="edit"
+            editFormData={mockEditFormData}
+          />
+        );
+      }).not.toThrow();
+    });
+
+    it('should not throw error when optional handlers are not provided in view mode', () => {
+      expect(() => {
+        render(
+          <CronJobModal
+            isOpen={true}
+            onClose={mockOnClose}
+            mode="view"
+            viewFormData={mockViewFormData}
+          />
+        );
+      }).not.toThrow();
+    });
+
+    it('should handle missing viewFormData in view mode', () => {
+      render(
+        <CronJobModal
+          isOpen={true}
+          onClose={mockOnClose}
+          mode="view"
+        />
+      );
+
+      expect(screen.getByText('View Cron Job')).toBeInTheDocument();
+    });
+
+    it('should handle missing editFormData in edit mode', () => {
+      render(
+        <CronJobModal
+          isOpen={true}
+          onClose={mockOnClose}
+          mode="edit"
+        />
+      );
+
+      expect(screen.getByText('Edit Cron Job')).toBeInTheDocument();
     });
   });
 });

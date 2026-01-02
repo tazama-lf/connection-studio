@@ -80,6 +80,24 @@ describe('CronJobConfirmationDialog', () => {
       expect(screen.getByText(/⚠️ Important: This will submit the cron job for approval and update its status to UNDER REVIEW/i)).toBeInTheDocument();
     });
 
+    it('should render approve confirmation dialog', () => {
+      render(
+        <CronJobConfirmationDialog
+          open={true}
+          type="approve"
+          jobName="test-approve-job"
+          actionLoading=""
+          onClose={mockOnClose}
+          onConfirm={mockOnConfirm}
+        />
+      );
+
+      expect(screen.getByText('Approve Cron Job?')).toBeInTheDocument();
+      expect(screen.getByText(/Are you sure you want to approve/i)).toBeInTheDocument();
+      expect(screen.getByText('"test-approve-job"')).toBeInTheDocument();
+      expect(screen.getByText(/⚠️ Important: This will update the cron job status to APPROVED/i)).toBeInTheDocument();
+    });
+
     it('should display correct button text for export type', () => {
       render(
         <CronJobConfirmationDialog
@@ -108,6 +126,21 @@ describe('CronJobConfirmationDialog', () => {
       );
 
       expect(screen.getByRole('button', { name: /Yes, Submit for Approval/i })).toBeInTheDocument();
+    });
+
+    it('should display correct button text for approve type', () => {
+      render(
+        <CronJobConfirmationDialog
+          open={true}
+          type="approve"
+          jobName="test-job"
+          actionLoading=""
+          onClose={mockOnClose}
+          onConfirm={mockOnConfirm}
+        />
+      );
+
+      expect(screen.getByRole('button', { name: /Yes, Approve Cron Job/i })).toBeInTheDocument();
     });
 
     it('should render cancel button', () => {
@@ -189,6 +222,37 @@ describe('CronJobConfirmationDialog', () => {
       expect(confirmButton).toBeDisabled();
     });
 
+    it('should show "Approving..." when approve action is loading', () => {
+      render(
+        <CronJobConfirmationDialog
+          open={true}
+          type="approve"
+          jobName="test-job"
+          actionLoading="approve"
+          onClose={mockOnClose}
+          onConfirm={mockOnConfirm}
+        />
+      );
+
+      expect(screen.getByText(/Approving.../i)).toBeInTheDocument();
+    });
+
+    it('should disable confirm button when action is loading for approve', () => {
+      render(
+        <CronJobConfirmationDialog
+          open={true}
+          type="approve"
+          jobName="test-job"
+          actionLoading="approve"
+          onClose={mockOnClose}
+          onConfirm={mockOnConfirm}
+        />
+      );
+
+      const confirmButton = screen.getByRole('button', { name: /Approving.../i });
+      expect(confirmButton).toBeDisabled();
+    });
+
     it('should show loading spinner when export action is loading', () => {
       // Skip this test as MUI Dialog components may not render properly in test environment
       // The core functionality (button disabled state) is already tested above
@@ -256,6 +320,25 @@ describe('CronJobConfirmationDialog', () => {
       fireEvent.click(confirmButton);
 
       expect(mockOnConfirm).toHaveBeenCalledWith('approval');
+      expect(mockOnConfirm).toHaveBeenCalledTimes(1);
+    });
+
+    it('should call onConfirm with "approve" when approve confirm button is clicked', () => {
+      render(
+        <CronJobConfirmationDialog
+          open={true}
+          type="approve"
+          jobName="test-job"
+          actionLoading=""
+          onClose={mockOnClose}
+          onConfirm={mockOnConfirm}
+        />
+      );
+
+      const confirmButton = screen.getByRole('button', { name: /Yes, Approve Cron Job/i });
+      fireEvent.click(confirmButton);
+
+      expect(mockOnConfirm).toHaveBeenCalledWith('approve');
       expect(mockOnConfirm).toHaveBeenCalledTimes(1);
     });
 
@@ -472,5 +555,216 @@ describe('CronJobConfirmationDialog', () => {
 
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
+
+    it('should return null when type is empty', () => {
+      const { container } = render(
+        <CronJobConfirmationDialog
+          open={true}
+          type=""
+          jobName="test-job"
+          actionLoading=""
+          onClose={mockOnClose}
+          onConfirm={mockOnConfirm}
+        />
+      );
+
+      expect(container.firstChild).toBeNull();
+    });
+
+    it('should handle actionLoading matching type for export', () => {
+      render(
+        <CronJobConfirmationDialog
+          open={true}
+          type="export"
+          jobName="test-job"
+          actionLoading="export"
+          onClose={mockOnClose}
+          onConfirm={mockOnConfirm}
+        />
+      );
+
+      expect(screen.getByRole('button', { name: /Exporting.../i })).toBeDisabled();
+    });
+
+    it('should handle actionLoading matching type for approval', () => {
+      render(
+        <CronJobConfirmationDialog
+          open={true}
+          type="approval"
+          jobName="test-job"
+          actionLoading="approval"
+          onClose={mockOnClose}
+          onConfirm={mockOnConfirm}
+        />
+      );
+
+      expect(screen.getByRole('button', { name: /Submitting.../i })).toBeDisabled();
+    });
+
+    it('should handle actionLoading matching type for approve', () => {
+      render(
+        <CronJobConfirmationDialog
+          open={true}
+          type="approve"
+          jobName="test-job"
+          actionLoading="approve"
+          onClose={mockOnClose}
+          onConfirm={mockOnConfirm}
+        />
+      );
+
+      expect(screen.getByRole('button', { name: /Approving.../i })).toBeDisabled();
+    });
+
+    it('should handle actionLoading not matching type', () => {
+      render(
+        <CronJobConfirmationDialog
+          open={true}
+          type="export"
+          jobName="test-job"
+          actionLoading="approval"
+          onClose={mockOnClose}
+          onConfirm={mockOnConfirm}
+        />
+      );
+
+      const confirmButton = screen.getByRole('button', { name: /Yes, Export/i });
+      expect(confirmButton).not.toBeDisabled();
+    });
+
+    it('should call onConfirm with correct type for export', () => {
+      render(
+        <CronJobConfirmationDialog
+          open={true}
+          type="export"
+          jobName="test-job"
+          actionLoading=""
+          onClose={mockOnClose}
+          onConfirm={mockOnConfirm}
+        />
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: /Yes, Export/i }));
+      expect(mockOnConfirm).toHaveBeenCalledWith('export');
+    });
+
+    it('should call onConfirm with correct type for approval', () => {
+      render(
+        <CronJobConfirmationDialog
+          open={true}
+          type="approval"
+          jobName="test-job"
+          actionLoading=""
+          onClose={mockOnClose}
+          onConfirm={mockOnConfirm}
+        />
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: /Yes, Submit for Approval/i }));
+      expect(mockOnConfirm).toHaveBeenCalledWith('approval');
+    });
+
+    it('should call onConfirm with correct type for approve', () => {
+      render(
+        <CronJobConfirmationDialog
+          open={true}
+          type="approve"
+          jobName="test-job"
+          actionLoading=""
+          onClose={mockOnClose}
+          onConfirm={mockOnConfirm}
+        />
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: /Yes, Approve Cron Job/i }));
+      expect(mockOnConfirm).toHaveBeenCalledWith('approve');
+    });
+
+    it('should display all text elements for export', () => {
+      render(
+        <CronJobConfirmationDialog
+          open={true}
+          type="export"
+          jobName="my-job"
+          actionLoading=""
+          onClose={mockOnClose}
+          onConfirm={mockOnConfirm}
+        />
+      );
+
+      expect(screen.getByText('Export Confirmation Required!')).toBeInTheDocument();
+      expect(screen.getByText(/Are you sure you want to export/i)).toBeInTheDocument();
+      expect(screen.getByText(/"my-job"/i)).toBeInTheDocument();
+      expect(screen.getByText(/⚠️ Important: This will update the cron job status to EXPORTED/i)).toBeInTheDocument();
+    });
+
+    it('should display all text elements for approval', () => {
+      render(
+        <CronJobConfirmationDialog
+          open={true}
+          type="approval"
+          jobName="approval-job"
+          actionLoading=""
+          onClose={mockOnClose}
+          onConfirm={mockOnConfirm}
+        />
+      );
+
+      expect(screen.getByText('Approval Confirmation Required!')).toBeInTheDocument();
+      expect(screen.getAllByText(/submit for approval/i).length).toBeGreaterThan(0);
+      expect(screen.getByText(/"approval-job"/i)).toBeInTheDocument();
+      expect(screen.getByText(/UNDER REVIEW/i)).toBeInTheDocument();
+    });
+
+    it('should display all text elements for approve', () => {
+      render(
+        <CronJobConfirmationDialog
+          open={true}
+          type="approve"
+          jobName="approve-job"
+          actionLoading=""
+          onClose={mockOnClose}
+          onConfirm={mockOnConfirm}
+        />
+      );
+
+      expect(screen.getByText('Approve Cron Job?')).toBeInTheDocument();
+      expect(screen.getAllByText(/approve/i).length).toBeGreaterThan(0);
+      expect(screen.getByText(/"approve-job"/i)).toBeInTheDocument();
+      expect(screen.getByText(/APPROVED/i)).toBeInTheDocument();
+    });
+
+    it('should handle invalid type and return early', () => {
+      render(
+        <CronJobConfirmationDialog
+          open={true}
+          type={'' as any}
+          jobName="test-job"
+          actionLoading=""
+          onClose={mockOnClose}
+          onConfirm={mockOnConfirm}
+        />
+      );
+
+      // Should return null and not render anything
+      expect(screen.queryByTestId('confirmation-dialog')).not.toBeInTheDocument();
+    });
+
+    it('should not render with unknown type', () => {
+      render(
+        <CronJobConfirmationDialog
+          open={true}
+          type={'unknown' as any}
+          jobName="test-job"
+          actionLoading=""
+          onClose={mockOnClose}
+          onConfirm={mockOnConfirm}
+        />
+      );
+
+      // Dialog should not render with unknown type (returns null)
+      expect(screen.queryByTestId('confirmation-dialog')).not.toBeInTheDocument();
+    });
   });
 });
+

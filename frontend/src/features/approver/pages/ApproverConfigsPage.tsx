@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Backdrop, CircularProgress } from '@mui/material';
-import { ActivityIcon, ChevronLeft, SearchIcon } from 'lucide-react';
+import { ActivityIcon, ChevronLeft } from 'lucide-react';
 import { ConfigList } from '../../config/components/ConfigList';
 import type { Config } from '../../config/index';
 import { configApi } from '../../config/services/configApi';
@@ -22,7 +22,6 @@ import {
 
 const ApproverConfigsPage: React.FC = () => {
   const navigate = useNavigate();
-  // Config-related state
   const [editingEndpointId, setEditingEndpointId] = useState<number | null>(
     null,
   );

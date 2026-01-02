@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { BrowserRouter } from 'react-router-dom';
 import CRONModule from '@features/cron/pages';
+import { useAuth } from '@features/auth/contexts/AuthContext';
 
 // Mock dependencies
 const mockNavigate = jest.fn();
@@ -12,26 +13,29 @@ jest.mock('react-router', () => ({
   useNavigate: () => mockNavigate,
 }));
 
+jest.mock('@features/auth/contexts/AuthContext', () => ({
+  useAuth: jest.fn(() => ({
+    user: {
+      claims: ['editor'],
+    },
+  })),
+}));
+
 jest.mock('@shared/components/Button', () => ({
-  Button: ({ children, onClick, icon, className, variant }: {
+  Button: ({ children, onClick, icon, className, variant, 'data-testid': dataTestId }: {
     children: React.ReactNode;
     onClick?: () => void;
     icon?: React.ReactNode;
     className?: string;
     variant?: string;
+    'data-testid'?: string;
   }) => {
-    // Determine test ID based on props
-    let testId = 'button-create-new';
-    if (className === 'py-1 pl-2') {
-      testId = 'button-go-back';
-    }
-    
     return (
       <button 
         onClick={onClick} 
         className={className}
         data-variant={variant}
-        data-testid={testId}
+        data-testid={dataTestId}
       >
         {icon}
         {children}
@@ -390,6 +394,17 @@ describe('CRONModule Page', () => {
       // List should be re-rendered (React key changed)
       const updatedList = screen.getByTestId('cron-job-list');
       expect(updatedList).toBeInTheDocument();
+    });
+
+    it('should handle user without claims', () => {
+      (useAuth as jest.Mock).mockReturnValue({
+        user: { claims: undefined },
+      });
+
+      renderWithRouter(<CRONModule />);
+
+      // Should still render but without editor privileges
+      expect(screen.getByText('Cron Job Module')).toBeInTheDocument();
     });
   });
 });

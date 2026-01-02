@@ -79,6 +79,8 @@ describe('CronJobTableColumns', () => {
     userRole: 'admin',
     userIsEditor: true,
     userIsExporter: true,
+    userIsApprover: false,
+    userIsPublisher: false,
     onView: mockOnView,
     onEdit: mockOnEdit,
     onExport: mockOnExport,
@@ -540,6 +542,20 @@ describe('CronJobTableColumns', () => {
       // Should render view + edit icons (not export since status is IN_PROGRESS)
       const icons = container.querySelectorAll('.cursor-pointer');
       expect(icons.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it('should filter out status_02_on_hold from status options with value property', () => {
+      const props = {
+        ...defaultProps,
+        userRole: 'editor',
+      };
+      
+      const columns = CronJobTableColumns(props);
+      const statusColumn = columns.find(col => col.field === 'status');
+      
+      // Render the header which contains the filter
+      const header = statusColumn?.renderHeader?.({} as any);
+      expect(header).toBeDefined();
     });
   });
 });

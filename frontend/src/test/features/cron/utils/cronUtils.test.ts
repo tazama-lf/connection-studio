@@ -1,6 +1,7 @@
 import {
   getCronJobErrorMessage,
   formatScheduleForEdit,
+  validationSchema,
 } from '../../../../features/cron/utils';
 import type {
   ScheduleResponse,
@@ -195,7 +196,7 @@ describe('Cron Job Utils', () => {
       });
     });
 
-    it('should use default start date when not provided', () => {
+    it('should use empty string for missing start date', () => {
       const schedule: ScheduleResponse = {
         id: 'schedule-123',
         name: 'Test',
@@ -209,10 +210,10 @@ describe('Cron Job Utils', () => {
 
       const result = formatScheduleForEdit(schedule);
 
-      expect(result.startDate).toBe('2025-11-18');
+      expect(result.startDate).toBe('');
     });
 
-    it('should use default end date when not provided', () => {
+    it('should use empty string for missing end date', () => {
       const schedule: ScheduleResponse = {
         id: 'schedule-123',
         name: 'Test',
@@ -226,7 +227,7 @@ describe('Cron Job Utils', () => {
 
       const result = formatScheduleForEdit(schedule);
 
-      expect(result.endDate).toBe('2025-12-31');
+      expect(result.endDate).toBe('');
     });
 
     it('should use empty string for missing status', () => {
@@ -316,11 +317,43 @@ describe('Cron Job Utils', () => {
         cronExpression: '0 0 * * *',
         iterations: 1,
         schedule_status: 'active',
-        startDate: '2025-11-18',
-        endDate: '2025-12-31',
+        startDate: '',
+        endDate: '',
         status: '',
         comments: '',
       });
+    });
+  });
+
+  describe('validationSchema', () => {
+    it('should handle null iterations value in transform', async () => {
+      const dataWithNull = {
+        name: 'Test Job',
+        cronExpression: '0 0 * * *',
+        iterations: null,
+      };
+
+      await expect(validationSchema.validate(dataWithNull)).rejects.toThrow('Iterations is required');
+    });
+
+    it('should handle undefined iterations value in transform', async () => {
+      const dataWithUndefined = {
+        name: 'Test Job',
+        cronExpression: '0 0 * * *',
+        iterations: undefined,
+      };
+
+      await expect(validationSchema.validate(dataWithUndefined)).rejects.toThrow();
+    });
+
+    it('should handle empty string iterations in transform', async () => {
+      const dataWithEmptyString = {
+        name: 'Test Job',
+        cronExpression: '0 0 * * *',
+        iterations: '',
+      };
+
+      await expect(validationSchema.validate(dataWithEmptyString)).rejects.toThrow();
     });
   });
 });

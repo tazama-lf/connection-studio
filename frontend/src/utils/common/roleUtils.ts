@@ -35,7 +35,7 @@ export const isExporter = (userClaims: string[]): boolean =>
   hasRole(userClaims, 'exporter');
 
 /**
- * Get the primary role for display purposes (in order of precedence)
+ * Get the primary role for display purposes
  */
 export const getPrimaryRole = (userClaims: string[]): UserRole | null => {
   if (isPublisher(userClaims)) return 'publisher';

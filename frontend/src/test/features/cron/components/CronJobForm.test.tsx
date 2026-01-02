@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { CronJobForm } from '@features/cron/components/CronJobForm';
 import type { ScheduleResponse } from '@features/cron/types';
@@ -1831,4 +1831,344 @@ describe('CronJobForm', () => {
       });
     });
   });
+
+  describe('Edge Cases and Conditional Branches', () => {
+    it('should handle onJobCreated being undefined', () => {
+      const props = { ...defaultProps, onJobCreated: undefined };
+      render(<CronJobForm {...props} />);
+      
+      fireEvent.change(screen.getByTestId('input-name'), { target: { value: 'Test Job' } });
+      fireEvent.change(screen.getByTestId('input-iterations'), { target: { value: '5' } });
+      fireEvent.click(screen.getByText('Set Daily'));
+      
+      fireEvent.click(screen.getByText('Create Cron Job'));
+      expect(screen.getByText('Create Cron Job')).toBeInTheDocument();
+    });
+
+    it('should render with editFormData when setEditFormData is undefined', () => {
+      const editData: ScheduleResponse = {
+        id: '1',
+        name: 'Edit Test',
+        cron: '0 0 * * *',
+        cronExpression: '0 0 * * *',
+        iterations: 3,
+        start_date: '2024-01-01',
+        end_date: '2024-12-31',
+        status: 'STATUS_01_IN_PROGRESS',
+        schedule_status: 'active',
+        comments: 'Test comments',
+        created_at: '2024-01-01T00:00:00Z',
+      };
+      
+      const props = { ...defaultProps, editFormData: editData, setEditFormData: undefined };
+      render(<CronJobForm {...props} />);
+      
+      expect(screen.getByText('Update')).toBeInTheDocument();
+    });
+
+    it('should handle viewFormData without cron field', () => {
+      const viewData = {
+        id: '1',
+        name: 'No Cron',
+        cronExpression: '0 0 * * *',
+        iterations: 5,
+        schedule_status: 'active',
+        status: 'STATUS_01_IN_PROGRESS',
+        created_at: '2024-01-01T00:00:00Z',
+      } as ScheduleResponse;
+      
+      render(<CronJobForm {...defaultProps} viewFormData={viewData} />);
+      expect(screen.getByText('Cancel')).toBeInTheDocument();
+    });
+
+    it('should handle empty name in schedule data', () => {
+      render(<CronJobForm {...defaultProps} />);
+      
+      fireEvent.change(screen.getByTestId('input-name'), { target: { value: '  ' } });
+      fireEvent.change(screen.getByTestId('input-iterations'), { target: { value: '5' } });
+      fireEvent.click(screen.getByText('Set Daily'));
+      
+      // Should still submit with trimmed empty name (defaults to 'Schedule')
+      expect(screen.getByText('Create Cron Job')).toBeInTheDocument();
+    });
+
+    it('should handle setEditFormData with identical values', () => {
+      const editData: ScheduleResponse = {
+        id: '1',
+        name: 'Same Values',
+        cron: '0 0 * * *',
+        cronExpression: '0 0 * * *',
+        iterations: 3,
+        start_date: '2024-01-01',
+        end_date: '2024-12-31',
+        status: 'STATUS_01_IN_PROGRESS',
+        schedule_status: 'active',
+        comments: '',
+        created_at: '2024-01-01T00:00:00Z',
+      };
+      
+      const mockSetEditFormData = jest.fn();
+      render(<CronJobForm {...defaultProps} editFormData={editData} setEditFormData={mockSetEditFormData} />);
+      
+      // No changes, so setEditFormData should not be called
+      expect(mockSetEditFormData).not.toHaveBeenCalled();
+    });
+
+    it('should handle all mode combinations', () => {
+      const modes = [
+        { editFormData: undefined, viewFormData: undefined },
+        { 
+          editFormData: {
+            id: '1',
+            name: 'Edit',
+            cron: '0 0 * * *',
+            cronExpression: '0 0 * * *',
+            iterations: 3,
+            schedule_status: 'active',
+            status: 'STATUS_01_IN_PROGRESS',
+            created_at: '2024-01-01T00:00:00Z',
+          } as ScheduleResponse,
+          viewFormData: undefined 
+        },
+        { 
+          editFormData: undefined,
+          viewFormData: {
+            id: '1',
+            name: 'View',
+            cron: '0 0 * * *',
+            cronExpression: '0 0 * * *',
+            iterations: 3,
+            schedule_status: 'active',
+            status: 'STATUS_01_IN_PROGRESS',
+            created_at: '2024-01-01T00:00:00Z',
+          } as ScheduleResponse
+        },
+      ];
+
+      modes.forEach(({ editFormData, viewFormData }) => {
+        const { unmount } = render(
+          <CronJobForm 
+            {...defaultProps} 
+            editFormData={editFormData} 
+            viewFormData={viewFormData} 
+          />
+        );
+        expect(screen.getByText('Cancel')).toBeInTheDocument();
+        unmount();
+      });
+    });
+
+    it('should provide setEditFormData callback when both editFormData and setEditFormData are present', () => {
+      const editData: ScheduleResponse = {
+        id: '1',
+        name: 'Initial',
+        cron: '0 0 * * *',
+        cronExpression: '0 0 * * *',
+        iterations: 3,
+        start_date: '2024-01-01',
+        end_date: '2024-12-31',
+        status: 'STATUS_01_IN_PROGRESS',
+        schedule_status: 'active',
+        comments: '',
+        created_at: '2024-01-01T00:00:00Z',
+      };
+      
+      const mockSetEditFormData = jest.fn();
+      render(
+        <CronJobForm {...defaultProps} editFormData={editData} setEditFormData={mockSetEditFormData} />
+      );
+      
+      expect(screen.getByText('Update')).toBeInTheDocument();
+    });
+
+    it('should handle cronExpression being undefined', () => {
+      render(<CronJobForm {...defaultProps} />);
+      
+      // Initially cronExpression is undefined, so no "Generated Expression:" text
+      expect(screen.queryByText('Generated Expression:')).not.toBeInTheDocument();
+      
+      // Set a value
+      fireEvent.click(screen.getByText('Set Daily'));
+      
+      // Now it should display
+      expect(screen.getByText(/Generated Expression:/)).toBeInTheDocument();
+      expect(screen.getByText('Mock description for 0 0 * * *')).toBeInTheDocument();
+    });
+
+    it('should handle cronExpression updates correctly', () => {
+      render(<CronJobForm {...defaultProps} />);
+      
+      // Set cron expression
+      fireEvent.click(screen.getByText('Set Daily'));
+      
+      expect(screen.getByText('Mock description for 0 0 * * *')).toBeInTheDocument();
+    });
+  });
+
+  describe('Approval and Rejection Buttons', () => {
+    it('should show approve and reject buttons for approver with UNDER_REVIEW status', () => {
+      const mockUseAuth = jest.mocked(useAuth);
+      mockUseAuth.mockReturnValue({
+        user: { id: '1', username: 'approver', claims: ['approver'] },
+        isAuthenticated: true,
+        loading: false,
+        login: jest.fn(),
+        logout: jest.fn(),
+      });
+
+      const mockOnApprove = jest.fn();
+      const mockOnReject = jest.fn();
+      const viewData: ScheduleResponse = {
+        id: '1',
+        name: 'Test Job',
+        cron: '0 0 * * *',
+        cronExpression: '0 0 * * *',
+        iterations: 3,
+        start_date: '2024-01-01',
+        end_date: '2024-12-31',
+        status: 'STATUS_03_UNDER_REVIEW',
+        schedule_status: 'active',
+        comments: 'Test',
+        created_at: '2024-01-01T00:00:00Z',
+      };
+
+      render(<CronJobForm {...defaultProps} viewFormData={viewData} onApprove={mockOnApprove} onReject={mockOnReject} />);
+      
+      expect(screen.getByText('Approve')).toBeInTheDocument();
+      expect(screen.getByText('Reject')).toBeInTheDocument();
+      
+      fireEvent.click(screen.getByText('Approve'));
+      expect(mockOnApprove).toHaveBeenCalledWith('1');
+      
+      fireEvent.click(screen.getByText('Reject'));
+      expect(mockOnReject).toHaveBeenCalledWith('1');
+    });
+
+    it('should show only approve button when onReject is undefined', () => {
+      const mockUseAuth = jest.mocked(useAuth);
+      mockUseAuth.mockReturnValue({
+        user: { id: '1', username: 'approver', claims: ['approver'] },
+        isAuthenticated: true,
+        loading: false,
+        login: jest.fn(),
+        logout: jest.fn(),
+      });
+
+      const mockOnApprove = jest.fn();
+      const viewData: ScheduleResponse = {
+        id: '1',
+        name: 'Test Job',
+        cron: '0 0 * * *',
+        cronExpression: '0 0 * * *',
+        iterations: 3,
+        start_date: '2024-01-01',
+        end_date: '2024-12-31',
+        status: 'STATUS_03_UNDER_REVIEW',
+        schedule_status: 'active',
+        comments: 'Test',
+        created_at: '2024-01-01T00:00:00Z',
+      };
+
+      render(<CronJobForm {...defaultProps} viewFormData={viewData} onApprove={mockOnApprove} />);
+      
+      expect(screen.getByText('Approve')).toBeInTheDocument();
+      expect(screen.queryByText('Reject')).not.toBeInTheDocument();
+    });
+
+    it('should show only reject button when onApprove is undefined', () => {
+      const mockUseAuth = jest.mocked(useAuth);
+      mockUseAuth.mockReturnValue({
+        user: { id: '1', username: 'approver', claims: ['approver'] },
+        isAuthenticated: true,
+        loading: false,
+        login: jest.fn(),
+        logout: jest.fn(),
+      });
+
+      const mockOnReject = jest.fn();
+      const viewData: ScheduleResponse = {
+        id: '1',
+        name: 'Test Job',
+        cron: '0 0 * * *',
+        cronExpression: '0 0 * * *',
+        iterations: 3,
+        start_date: '2024-01-01',
+        end_date: '2024-12-31',
+        status: 'STATUS_03_UNDER_REVIEW',
+        schedule_status: 'active',
+        comments: 'Test',
+        created_at: '2024-01-01T00:00:00Z',
+      };
+
+      render(<CronJobForm {...defaultProps} viewFormData={viewData} onReject={mockOnReject} />);
+      
+      expect(screen.getByText('Reject')).toBeInTheDocument();
+      expect(screen.queryByText('Approve')).not.toBeInTheDocument();
+    });
+
+    it('should not show approval buttons for non-approver', () => {
+      const mockUseAuth = jest.mocked(useAuth);
+      mockUseAuth.mockReturnValue({
+        user: { id: '1', username: 'editor', claims: ['editor'] },
+        isAuthenticated: true,
+        loading: false,
+        login: jest.fn(),
+        logout: jest.fn(),
+      });
+
+      const mockOnApprove = jest.fn();
+      const mockOnReject = jest.fn();
+      const viewData: ScheduleResponse = {
+        id: '1',
+        name: 'Test Job',
+        cron: '0 0 * * *',
+        cronExpression: '0 0 * * *',
+        iterations: 3,
+        start_date: '2024-01-01',
+        end_date: '2024-12-31',
+        status: 'STATUS_03_UNDER_REVIEW',
+        schedule_status: 'active',
+        comments: 'Test',
+        created_at: '2024-01-01T00:00:00Z',
+      };
+
+      render(<CronJobForm {...defaultProps} viewFormData={viewData} onApprove={mockOnApprove} onReject={mockOnReject} />);
+      
+      expect(screen.queryByText('Approve')).not.toBeInTheDocument();
+      expect(screen.queryByText('Reject')).not.toBeInTheDocument();
+    });
+
+    it('should not show approval buttons when status is not UNDER_REVIEW', () => {
+      const mockUseAuth = jest.mocked(useAuth);
+      mockUseAuth.mockReturnValue({
+        user: { id: '1', username: 'approver', claims: ['approver'] },
+        isAuthenticated: true,
+        loading: false,
+        login: jest.fn(),
+        logout: jest.fn(),
+      });
+
+      const mockOnApprove = jest.fn();
+      const mockOnReject = jest.fn();
+      const viewData: ScheduleResponse = {
+        id: '1',
+        name: 'Test Job',
+        cron: '0 0 * * *',
+        cronExpression: '0 0 * * *',
+        iterations: 3,
+        start_date: '2024-01-01',
+        end_date: '2024-12-31',
+        status: 'STATUS_01_IN_PROGRESS',
+        schedule_status: 'active',
+        comments: 'Test',
+        created_at: '2024-01-01T00:00:00Z',
+      };
+
+      render(<CronJobForm {...defaultProps} viewFormData={viewData} onApprove={mockOnApprove} onReject={mockOnReject} />);
+      
+      expect(screen.queryByText('Approve')).not.toBeInTheDocument();
+      expect(screen.queryByText('Reject')).not.toBeInTheDocument();
+    });
+  });
+
 });
