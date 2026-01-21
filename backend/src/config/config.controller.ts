@@ -81,9 +81,7 @@ export class ConfigController {
   ): Promise<ConfigResponseDto> {
     const result = await this.configService.createConfig(
       dto,
-      user.tenantId,
-      user.userId,
-      user.token.tokenString,
+      user,
     );
 
     if (!result.success) {
