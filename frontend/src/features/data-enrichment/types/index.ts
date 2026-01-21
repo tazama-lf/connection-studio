@@ -117,7 +117,7 @@ export interface DataEnrichmentEditModalProps {
   selectedJob?: any;
 }
 
-export interface DataEnrichmentJobListProps {}
+export interface DataEnrichmentJobListProps { }
 
 export interface DataEnrichmentJobFormProps {
   onJobCreated?: () => void;
@@ -148,9 +148,12 @@ export interface JobListProps {
   onEdit?: (job: DataEnrichmentJobResponse) => void;
   onClone?: (job: DataEnrichmentJobResponse) => void;
   onRefresh?: () => void;
-  page?: number;
-  setPage?: (page: number) => void;
-  totalPages?: number;
+  pagination: {
+    page: number;
+    limit: number;
+    totalRecords: number;
+    setPage: (page: number) => void;
+  };
   totalRecords?: number;
   itemsPerPage?: number;
   searchingFilters?: any;

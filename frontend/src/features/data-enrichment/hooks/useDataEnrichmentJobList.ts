@@ -1,26 +1,36 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import type { DataEnrichmentJobResponse } from '../types';
-import { DATA_ENRICHMENT_JOB_STATUSES } from '../constants';
+import useFilters from '@shared/hooks/useFilters';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useToast } from '../../../shared/providers/ToastProvider';
-import { UI_CONFIG } from '../../../shared/config/app.config';
-import { useAuth } from '../../auth/contexts/AuthContext';
 import {
+  getPrimaryRole,
+  isApprover,
   isEditor,
   isExporter,
-  isApprover,
   isPublisher,
-  getPrimaryRole,
 } from '../../../utils/common/roleUtils';
+import { useAuth } from '../../auth/contexts/AuthContext';
+import { DATA_ENRICHMENT_JOB_STATUSES } from '../constants';
 import * as dataEnrichmentHandlers from '../handlers';
+import type { DataEnrichmentJobResponse } from '../types';
 
 export const useDataEnrichmentJobList = () => {
   const [jobs, setJobs] = useState<DataEnrichmentJobResponse[]>([]);
+  const [total, setTotal] = useState(0)
 
-  const [pagination, setPagination] = useState({
-    page: 1,
-    totalPages: 0,
-    totalRecords: 0,
-  });
+  const {
+    offset,
+    limit,
+    setOffset,
+  } = useFilters();
+
+  const pagination = useMemo(() => {
+    return {
+      page: offset,
+      limit,
+      totalRecords: total,
+      setPage: (page: number) => setOffset(page - 1),
+    };
+  }, [offset, limit, total])
 
   const [searchingFilters, setSearchingFilters] = useState<
     Record<string, unknown>
@@ -53,8 +63,6 @@ export const useDataEnrichmentJobList = () => {
   const { showSuccess, showError } = useToast();
   const { user } = useAuth();
 
-  const itemsPerPage = UI_CONFIG.pagination.defaultPageSize;
-
   const {
     userIsEditor,
     userIsApprover,
@@ -73,24 +81,20 @@ export const useDataEnrichmentJobList = () => {
   }, [user]);
 
   const loadJobs = useCallback(
-    async (pageNumber = pagination.page) => {
+    async () => {
       try {
         setLoadingState((s) => ({ ...s, page: true as boolean }));
         setError(null);
 
         const response = await dataEnrichmentHandlers.loadJobs(
-          pageNumber,
-          itemsPerPage,
+          pagination.page,
+          pagination.limit,
           userRole as string,
           searchingFilters,
         );
 
         setJobs(response?.jobs || []);
-        setPagination({
-          page: pageNumber,
-          totalPages: response.pages,
-          totalRecords: response.total,
-        });
+        setTotal(response.total)
       } catch (err) {
         let message = 'Failed to fetch jobs.';
         if (err instanceof Error) {
@@ -109,7 +113,7 @@ export const useDataEnrichmentJobList = () => {
         setLoadingState((s) => ({ ...s, page: false as boolean }));
       }
     },
-    [itemsPerPage, userRole, searchingFilters, pagination.page],
+    [userRole, searchingFilters, pagination],
   );
 
   useEffect(() => {
@@ -354,14 +358,11 @@ export const useDataEnrichmentJobList = () => {
     error,
     loading: loadingState.page,
     actionLoading: loadingState.action,
-    itemsPerPage,
     userIsEditor,
     userIsApprover,
     userIsExporter,
     userIsPublisher,
     userRole,
-    setPage: (newPage: number) =>
-      { setPagination((p) => ({ ...p, page: newPage })); },
     setSearchingFilters,
     setSelectedJob,
     setEditMode,

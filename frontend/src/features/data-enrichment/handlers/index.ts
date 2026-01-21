@@ -868,7 +868,7 @@ export const updateJobData = async (
 };
 
 export const activateJob = async (jobId: string, jobType: 'PULL' | 'PUSH') =>
-await dataEnrichmentJobApi.updatePublishingStatus(jobId, 'active', jobType);
+  await dataEnrichmentJobApi.updatePublishingStatus(jobId, 'active', jobType);
 
 export const deactivateJob = async (jobId: string, jobType: 'PULL' | 'PUSH') =>
   await dataEnrichmentJobApi.updatePublishingStatus(
@@ -890,7 +890,7 @@ export const loadJobs = async (
   searchingFilters: Record<string, unknown>,
 ): Promise<PaginatedJobResponse> => {
   const limit: number = itemsPerPage;
-  const offset: number = pageNumber - 1;
+  const offset: number = pageNumber;
   const params = { limit, offset, userRole };
 
   return await dataEnrichmentJobApi.getList(params, searchingFilters);

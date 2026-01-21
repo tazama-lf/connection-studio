@@ -1,13 +1,10 @@
-import Toolbar from '@mui/material/Toolbar';
-import IconButton from '@mui/material/IconButton';
-import MenuIcon from '@mui/icons-material/Menu';
 import CloseIcon from '@mui/icons-material/Close';
-import Typography from '@mui/material/Typography';
+import MenuIcon from '@mui/icons-material/Menu';
 import Box from '@mui/material/Box';
+import IconButton from '@mui/material/IconButton';
+import Toolbar from '@mui/material/Toolbar';
+import Typography from '@mui/material/Typography';
 import UserCard from './UserCard';
-import { useNavigate, useLocation } from 'react-router-dom';
-import Breadcrumbs from '@mui/material/Breadcrumbs';
-import Link from '@mui/material/Link';
 
 interface TopBarProps {
   open: boolean;
@@ -15,14 +12,6 @@ interface TopBarProps {
 }
 
 export default function TopBar({ open, onToggle }: TopBarProps) {
-  const navigate = useNavigate();
-  const location = useLocation();
-
-  const pathSegments = location.pathname.split('/').filter(Boolean);
-  const crumbs = pathSegments.map((seg, idx) => ({
-    label: seg.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
-    path: '/' + pathSegments.slice(0, idx + 1).join('/'),
-  }));
 
   return (
     <Toolbar

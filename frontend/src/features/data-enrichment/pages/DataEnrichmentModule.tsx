@@ -22,10 +22,8 @@ const DataEnrichmentModule: React.FC = () => {
     error,
     loading,
     actionLoading,
-    itemsPerPage,
     userIsEditor,
     userIsApprover,
-    setPage,
     setSearchingFilters,
     setSelectedJob,
     setEditMode,
@@ -38,10 +36,10 @@ const DataEnrichmentModule: React.FC = () => {
 
   const [showJobForm, setShowJobForm] = useState(false);
   const [showJobDetails, setShowJobDetails] = useState(false);
-  
-  const fetchJobsWithScrollPreservation = (pageNumber?: number) => {
+
+  const fetchJobsWithScrollPreservation = () => {
     const scrollPosition = window.scrollY;
-    loadJobs(pageNumber)
+    loadJobs()
       .then(() => {
         setTimeout(() => {
           if (
@@ -100,7 +98,7 @@ const DataEnrichmentModule: React.FC = () => {
       await handleSaveEdit(updatedJob);
       handleCloseJobDetails();
     } catch (error) {
-      
+
       throw error;
     }
   };
@@ -125,7 +123,7 @@ const DataEnrichmentModule: React.FC = () => {
           <ChevronLeft size={20} /> <span>Go Back</span>
         </Button>
 
-        
+
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center my-8 gap-4">
           <div className="flex items-center space-x-4">
             <h1
@@ -147,7 +145,7 @@ const DataEnrichmentModule: React.FC = () => {
           )}
         </div>
 
-        
+
         {userIsApprover && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
             <div className="flex items-center justify-between">
@@ -196,17 +194,14 @@ const DataEnrichmentModule: React.FC = () => {
           </div>
         )}
 
-        
+
         <JobList
           jobs={jobs}
           isLoading={loading}
           onViewLogs={handleViewJobDetails}
           onEdit={handleEditJob}
-          onRefresh={() => fetchJobsWithScrollPreservation(pagination.page)}
-          page={pagination.page}
-          setPage={setPage}
-          itemsPerPage={itemsPerPage}
-          totalPages={pagination.totalPages}
+          onRefresh={fetchJobsWithScrollPreservation}
+          pagination={pagination}
           totalRecords={pagination.totalRecords}
           searchingFilters={searchingFilters}
           setSearchingFilters={setSearchingFilters}
@@ -214,7 +209,7 @@ const DataEnrichmentModule: React.FC = () => {
           loading={loading}
         />
 
-        
+
         {showJobForm && (
           <DataEnrichmentFormModal
             isOpen={showJobForm}
@@ -224,7 +219,7 @@ const DataEnrichmentModule: React.FC = () => {
           />
         )}
 
-        
+
         {showJobDetails && !editMode && (
           <JobDetailsModal
             isOpen={showJobDetails && !editMode}
@@ -236,16 +231,16 @@ const DataEnrichmentModule: React.FC = () => {
             onSendForApproval={handleSendJobForApproval}
           />
         )}
-        
 
-        
+
+
         {editMode && (
           <DataEnrichmentEditModal
             isOpen={editMode}
             onClose={handleCloseJobDetails}
             onCloseWithRefresh={() => {
               handleCloseJobDetails();
-              fetchJobsWithScrollPreservation(pagination.page);
+              fetchJobsWithScrollPreservation();
             }}
             editMode={true}
             selectedJob={selectedJob}

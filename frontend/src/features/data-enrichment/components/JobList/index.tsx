@@ -7,10 +7,9 @@ import {
   DialogActions,
   DialogContent,
   DialogContentText,
-  Pagination,
-  Tooltip,
+  Tooltip
 } from '@mui/material';
-import { formatDate } from '../../utils';
+import Loader from '@shared/components/ui/Loader';
 import { handleInputFilter, handleSelectFilter } from '@shared/helpers';
 import { getDemsStatusLov } from '@shared/lovs';
 import {
@@ -24,6 +23,7 @@ import {
 import React, { useState } from 'react';
 import { Button } from '../../../../shared/components/Button';
 import { useToast } from '../../../../shared/providers/ToastProvider';
+import { getStatusBadge } from '../../../../utils/common/functions';
 import {
   isApprover,
   isEditor,
@@ -31,14 +31,14 @@ import {
   isPublisher,
 } from '../../../../utils/common/roleUtils';
 import { useAuth } from '../../../auth/contexts/AuthContext';
-import {
-  handleUpdateJobStatus as updateJobStatus,
-  handleTogglePublishingStatus as togglePublishing,
-} from '../../handlers';
 import { DATA_ENRICHMENT_JOB_STATUSES } from '../../constants';
-import type { DataEnrichmentJobResponse } from '../../types';
-import type { JobListProps } from '../../types';
-import { getStatusBadge } from '../../../../utils/common/functions';
+import {
+  handleTogglePublishingStatus as togglePublishing,
+  handleUpdateJobStatus as updateJobStatus,
+} from '../../handlers';
+import type { DataEnrichmentJobResponse, JobListProps } from '../../types';
+import { formatDate } from '../../utils';
+import type { GridColDef } from '@mui/x-data-grid';
 
 export const JobList: React.FC<JobListProps> = (props) => {
   const [openLoader, setOpenLoader] = useState(false);
@@ -64,9 +64,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
     isLoading = false,
     onViewLogs,
     onEdit,
-    page = 1,
-    setPage,
-    totalPages = 0,
+    pagination,
     totalRecords = 0,
     itemsPerPage = 10,
     searchingFilters,
@@ -161,15 +159,6 @@ export const JobList: React.FC<JobListProps> = (props) => {
     );
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex justify-center items-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        <span className="ml-2 text-gray-600">Loading jobs...</span>
-      </div>
-    );
-  }
-
   const columns = [
     {
       field: 'endpoint_name',
@@ -228,7 +217,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
               getDemsStatusLov[userRole as keyof typeof getDemsStatusLov] || [],
             searchingFilters,
             setSearchingFilters,
-            setPage: setPage
+            setPage: pagination.setPage
           })}
         </Box>
       ),
@@ -935,63 +924,17 @@ export const JobList: React.FC<JobListProps> = (props) => {
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center p-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <span className="ml-2 text-gray-600">Loading configurations...</span>
-        </div>
+        <Loader />
       ) : (
         <>
           <CustomTable
-            columns={columns as any}
+            columns={columns as GridColDef[]}
             rows={jobs}
-            search={true}
-            pageSize={itemsPerPage}
-            pageSizeOptions={[10, 20, 50]}
-
             disableRowSelection={true}
-            pagination={
-              jobs.length > 0 && (
-                <div className="px-6 py-4 border-t border-gray-200 bg-white rounded-b-lg flex items-center justify-between">
-                  <div className="text-sm text-gray-700 font-medium">
-                    Showing{' '}
-                    <span className="font-bold">
-                      {(page - 1) * itemsPerPage + 1}
-                    </span>{' '}
-                    to{' '}
-                    <span className="font-bold">
-                      {Math.min(page * itemsPerPage, totalRecords)}
-                    </span>{' '}
-                    of <span className="font-bold">{totalRecords}</span> results
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <Box>
-                      <Pagination
-                        page={page}
-                        count={totalPages}
-                        onChange={(_, newPage: number) => setPage?.(newPage)}
-                        variant="outlined"
-                        sx={{
-                          '& .MuiPaginationItem-page.Mui-selected': {
-                            backgroundColor: '#fbf9fa',
-                          },
-                        }}
-                      />
-                    </Box>
-                  </div>
-                </div>
-              )
-            }
+            pagination={pagination}
           />
         </>
       )}
-
-      <Backdrop
-        sx={(theme) => ({ color: '#fff', zIndex: theme.zIndex.drawer + 100 })}
-        open={openLoader}
-        onClick={closeLoader}
-      >
-        <CircularProgress color="inherit" />
-      </Backdrop>
     </>
   );
 };

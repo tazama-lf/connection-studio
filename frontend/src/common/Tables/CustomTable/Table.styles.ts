@@ -2,7 +2,6 @@ import { Box } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { DataGrid } from '@mui/x-data-grid';
 
-/* Container */
 export const TableOuter = styled(Box)<{ paddingValue: string }>(({ paddingValue }) => ({
   padding: paddingValue,
 }));
@@ -14,7 +13,6 @@ export const TableWrapper = styled(Box)(({ theme }) => ({
   borderRadius: 8,
 }));
 
-/* DataGrid */
 export const StyledDataGrid = styled(DataGrid, {
   shouldForwardProp: (prop) =>
     !['multilineHeader', 'horizontalScroll', 'horizontalScrollTextAlign'].includes(
@@ -82,9 +80,9 @@ export const StyledDataGrid = styled(DataGrid, {
   },
 
   '& .MuiDataGrid-columnHeader:focus-within, & .MuiDataGrid-cell:focus, & .MuiDataGrid-cell:focus-within':
-    {
-      outline: 'none',
-    },
+  {
+    outline: 'none',
+  },
 
   '& .MuiDataGrid-row': {
     cursor: 'pointer',
@@ -100,7 +98,6 @@ export const StyledDataGrid = styled(DataGrid, {
   },
 }));
 
-/* Pagination footer */
 export const PaginationContainer = styled(Box)(() => ({
   display: 'flex',
   alignItems: 'center',
