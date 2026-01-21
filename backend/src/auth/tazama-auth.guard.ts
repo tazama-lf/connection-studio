@@ -54,12 +54,41 @@ export class TazamaAuthGuard implements CanActivate {
     }
 
     const decoded = this.extractTokenPayload(token);
+    
+    let innerDecoded: any = decoded;
+    try {
+      const innerToken = (decoded as any).tokenString || token;
+      const innerParsed = jwt.decode(innerToken);
+      if (innerParsed && typeof innerParsed === 'object') {
+        innerDecoded = innerParsed;
+      }
+    } catch (error) {
+      this.logger.debug('Failed to decode inner token, using outer token');
+    }
+    
+    const actorEmail = innerDecoded.preferred_username;
+    
+    const actorName = innerDecoded.preferred_username ;
+    
+    const realmRoles = innerDecoded.realm_access?.roles ;
+    const actorRole = realmRoles.find((role: string) => 
+      ['editor', 'approver', 'publisher', 'exporter'].includes(role.toLowerCase())
+    ) || valid[0];
+    
+    const sourceIP = request.ip || 
+                     (request.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || 
+                     request.socket?.remoteAddress;
+    
     const authenticatedUser: AuthenticatedUser = {
       token: { ...decoded, tokenString: token },
       validated,
       validClaims: valid,
       tenantId: decoded.tenantId,
       userId: decoded.clientId,
+      actorName,
+      actorRole,
+      actorEmail,
+      sourceIP,
     };
 
     request.user = authenticatedUser;

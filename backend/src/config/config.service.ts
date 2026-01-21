@@ -4,6 +4,7 @@ import {
   BadRequestException,
   NotFoundException,
   ForbiddenException,
+  Inject,
 } from '@nestjs/common';
 import { ConfigRepository } from './config.repository';
 import { JSONSchema } from '@tazama-lf/tcs-lib';
@@ -23,6 +24,7 @@ import {
 import { WorkflowActionDto, SftpConfigDataDto } from './dto';
 import { EventType } from '../enums/events.enum';
 import { AuthenticatedUser } from '../auth/auth.types';
+import { AuditLogger } from '@tazama-lf/frms-coe-lib';
 
 @Injectable()
 export class ConfigService {
@@ -35,6 +37,9 @@ export class ConfigService {
     private readonly sftpService: SftpService,
     private readonly notifyService: NotifyService,
     private readonly notificationService: NotificationService,
+    @Inject('AUDIT_LOGGER')
+    private readonly auditLoggerService: AuditLogger,
+
   ) {}
   private async getConfigOrThrow(
     id: number,
@@ -88,10 +93,13 @@ export class ConfigService {
 
   async createConfig(
     dto: CreateConfigDto,
-    tenantId: string,
-    userId: string,
-    token: string,
+    user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
+    const { tenantId, userId, token } = { 
+      tenantId: user.tenantId, 
+      userId: user.userId, 
+      token: user.token.tokenString 
+    };
     try {
       const { version } = dto;
       const msgFam = dto.msgFam ?? 'unknown';
@@ -155,6 +163,20 @@ export class ConfigService {
           `Config ${configId} was created but could not be retrieved`,
         );
       }
+        this.auditLoggerService.log({
+         eventType: 'Config created',
+         actorId: user.userId,
+         actorRole: user.actorRole ,
+         actorName: user.actorName ,
+         actorEmail: user.actorEmail ,
+         description: `Config created for ${dto.transactionType} v${dto.version}`,
+         sourceIp: user.sourceIP ,
+         status: 'success',
+         resourceType: 'Config',
+         resourceId: String(configId),
+         outcome: { success: true, configId },
+         tenantId: user.tenantId,
+     })
       return {
         success: true,
         message: 'Config created successfully',
@@ -259,6 +281,48 @@ export class ConfigService {
 
         if (updatedConfig) {
           const config = updatedConfig;
+
+          const { transactionType } = config;
+
+          if (transactionType) {
+            await this.configRepository.createTransactionTypeTable(
+              transactionType,
+              token,
+            );
+          }
+
+          const functions = config.functions as any ?? null;
+
+          if (Array.isArray(functions)) {
+            const datamodelFunctions = functions.filter(
+              (fn: any) => fn.functionName === 'addDataModelTable',
+            );
+
+            const tableCreationPromises = datamodelFunctions.map(
+              async (datamodelFn: any) => {
+                if (datamodelFn.tableName) {
+                  await this.configRepository.createTazamaDataModelTable(
+                    datamodelFn.tableName,
+                    token,
+                  );
+                } else {
+                  this.logger.warn(
+                    'Skipping addDataModelTable function without tableName',
+                  );
+                }
+              },
+            );
+
+            await Promise.all(tableCreationPromises);
+          } else if (functions?.functionName === 'addDataModelTable') {
+            if (functions.tableName) {
+              await this.configRepository.createTazamaDataModelTable(
+                functions.tableName,
+                token,
+              );
+            }
+          }
+
           await this.notificationService.sendWorkflowNotification(
             EventType.ApproverApprove,
             user,

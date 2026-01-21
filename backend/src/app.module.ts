@@ -13,6 +13,7 @@ import { NotifyModule } from './notify/notify.module';
 import { SchedulerModule } from './scheduler/scheduler.module';
 import { JobModule } from './job/job.module';
 import { NotificationModule } from './notification/notification.module';
+import { AuditLogModule } from './audit-log/audit-log.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { NotificationModule } from './notification/notification.module';
     SchedulerModule,
     JobModule,
     NotificationModule,
+    AuditLogModule
   ],
   controllers: [AppController],
   providers: [AppService],
