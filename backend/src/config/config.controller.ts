@@ -272,10 +272,20 @@ export class ConfigController {
     @User() user: AuthenticatedUser,
     @Body() filters?: Record<string, any>,
   ): Promise<Config[]> {
+    const updatedFilters = filters ?? {};
+    
+    if (!updatedFilters.status || 
+        updatedFilters.status === '' || 
+        (Array.isArray(updatedFilters.status) && updatedFilters.status.length === 0)) {
+      const allowedStatuses = await this.configService.getRulesStatusbyRole(user);
+      if (allowedStatuses.length > 0) {
+        updatedFilters.status = allowedStatuses.join(',');
+      }
+    }
     return await this.configService.getAllConfigs(
       parseInt(offset, 10),
       parseInt(limit, 10),
-      filters ?? {},
+      updatedFilters,
       user.token.tokenString,
     );
   }
