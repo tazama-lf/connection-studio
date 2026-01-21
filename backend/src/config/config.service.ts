@@ -13,6 +13,7 @@ import { NotificationService } from '../notification/notification.service';
 import { ConfigWorkflowService } from './config-workflow.service';
 import { ConfigUtilsService } from './config-utils.service';
 import { SftpService } from '../sftp/sftp.service';
+import * as jwt from 'jsonwebtoken';
 import {
   Config,
   CreateConfigDto,
@@ -638,6 +639,15 @@ export class ConfigService {
       message: 'Config retrieved successfully',
       config,
     };
+  }
+  async getRulesStatusbyRole(user: AuthenticatedUser): Promise<string[]> {
+    if (!user.allowedStatuses || user.allowedStatuses.length === 0) {
+      this.logger.warn('User does not have allowedStatuses in token');
+      return [];
+    }
+    
+    this.logger.log(`User has ${user.allowedStatuses.length} allowed statuses: ${user.allowedStatuses.join(', ')}`);
+    return user.allowedStatuses;
   }
 
   async getAllConfigs(

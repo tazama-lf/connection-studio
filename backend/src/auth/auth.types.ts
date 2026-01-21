@@ -11,6 +11,7 @@ export interface AuthenticatedUser {
   actorRole?: string;
   actorEmail?: string;
   sourceIP?: string;
+  allowedStatuses?: string[];
 }
 
 export interface AuthenticatedRequest extends Request {

@@ -45,7 +45,17 @@ import {
 @UseGuards(TazamaAuthGuard)
 export class ConfigController {
   constructor(private readonly configService: ConfigService) {}
-
+   @Get('/api/status')
+  @RequireAnyClaims(
+    TazamaClaims.EDITOR,
+    TazamaClaims.APPROVER,
+    TazamaClaims.PUBLISHER,
+  )
+  async getRulesStatus(
+    @User() user: AuthenticatedUser,
+  ): Promise<string[]> {
+    return await this.configService.getRulesStatusbyRole(user);
+  }
   @Post('/:id/mapping')
   @RequireClaims(TazamaClaims.EDITOR)
   async addMapping(

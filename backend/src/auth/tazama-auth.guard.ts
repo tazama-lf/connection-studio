@@ -79,6 +79,10 @@ export class TazamaAuthGuard implements CanActivate {
                      (request.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || 
                      request.socket?.remoteAddress;
     
+    const allowedStatuses = innerDecoded.status
+      ? (innerDecoded.status as string).split(',').map((s) => s.trim()).filter((s) => s.length > 0)
+      : undefined;
+    
     const authenticatedUser: AuthenticatedUser = {
       token: { ...decoded, tokenString: token },
       validated,
@@ -89,6 +93,7 @@ export class TazamaAuthGuard implements CanActivate {
       actorRole,
       actorEmail,
       sourceIP,
+      allowedStatuses,
     };
 
     request.user = authenticatedUser;
