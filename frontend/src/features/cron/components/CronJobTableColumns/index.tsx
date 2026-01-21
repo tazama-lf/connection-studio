@@ -1,5 +1,5 @@
-import { Box, Tooltip } from '@mui/material';
-import type { GridColDef, GridRenderCellParams } from '@mui/x-data-grid';
+import { Tooltip } from '@mui/material';
+import type { GridColDef } from '@mui/x-data-grid';
 import { EditIcon, EyeIcon, Upload } from 'lucide-react';
 import { getDemsStatusLov } from '@shared/lovs';
 import { handleInputFilter, handleSelectFilter } from '@shared/helpers';
@@ -7,6 +7,20 @@ import { formatDate } from '@utils/common/helper';
 import { getStatusBadge } from '@utils/common/functions';
 import type { CronJobTableColumnsProps, ScheduleResponse } from '../../types';
 import { CRON_JOB_STATUSES } from '@features/cron/constants';
+
+import {
+  HeaderWrapper,
+  HeaderTitle,
+  CellText,
+  ActionsContainer,
+  ViewIconStyle,
+  EditIconStyle,
+  ExportIconStyle,
+  DateContainer,
+  DateIcon,
+} from './Columns.styles';
+
+const STATUS_ON_HOLD = 'status_02_on_hold';
 
 export const CronJobTableColumns = ({
   searchingFilters,
@@ -18,52 +32,38 @@ export const CronJobTableColumns = ({
   onView,
   onEdit,
   onExport,
-}: CronJobTableColumnsProps): Array<GridColDef<ScheduleResponse>> => {
-
-  const handleViewClick = (schedule: ScheduleResponse) => {
-    onView(schedule);
-  };
-
-  const handleEditClick = (schedule: ScheduleResponse) => {
-    onEdit(schedule);
-  };
-
-  const handleExportClick = (schedule: ScheduleResponse) => {
-    onExport(schedule);
-  };
+}: CronJobTableColumnsProps): GridColDef<ScheduleResponse>[] => {
+  const statusOptions =
+    (getDemsStatusLov[userRole as keyof typeof getDemsStatusLov] ?? []).filter(
+      (opt) =>
+        ![opt?.value, opt?.label, opt]
+          .filter(Boolean)
+          .some(
+            (v) => typeof v === 'string' && v.toLowerCase() === STATUS_ON_HOLD
+          )
+    );
 
   return [
     {
       field: 'name',
       headerName: 'Name',
-      flex: 1,
       minWidth: 400,
+      flex: 1,
       sortable: false,
       align: 'center',
       disableColumnMenu: true,
       renderHeader: () => (
-        <Box
-          sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '8px',
-            width: '100%',
-            py: '12px',
-          }}
-        >
-          <Box sx={{ fontSize: '14px', fontWeight: '600' }}>Name</Box>
+        <HeaderWrapper>
+          <HeaderTitle>Name</HeaderTitle>
           {handleInputFilter({
             fieldName: 'name',
             searchingFilters,
             setSearchingFilters,
             setPage,
           })}
-        </Box>
+        </HeaderWrapper>
       ),
-      renderCell: (params: GridRenderCellParams<ScheduleResponse>) => (
-        <Box sx={{ fontSize: '13px' }}>{params.row.name}</Box>
-      ),
+      renderCell: ({ row }) => <CellText>{row.name}</CellText>,
     },
     {
       field: 'status',
@@ -74,45 +74,25 @@ export const CronJobTableColumns = ({
       align: 'center',
       disableColumnMenu: true,
       renderHeader: () => (
-        <Box
-          sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '8px',
-            width: '100%',
-            py: '12px',
-          }}
-        >
-          <Box sx={{ fontSize: '14px', fontWeight: '600' }}>Status</Box>
+        <HeaderWrapper>
+          <HeaderTitle>Status</HeaderTitle>
           {handleSelectFilter({
             fieldName: 'status',
-            options: (
-              getDemsStatusLov[userRole as keyof typeof getDemsStatusLov] ?? []
-            ).filter((opt: unknown) => {
-              const target = 'status_02_on_hold';
-              if (typeof opt === 'string') {
-                return opt.toLowerCase() !== target;
-              } else if (opt && typeof opt === 'object' && 'value' in opt && typeof opt.value === 'string') {
-                if (opt.value.toLowerCase() === target) return false;
-              }
-              if (opt && typeof opt === 'object' && 'label' in opt && typeof opt.label === 'string') {
-                if (opt.label.toLowerCase() === target) return false;
-              }
-              return true;
-            }),
+            options: statusOptions,
             searchingFilters,
             setSearchingFilters,
             setPage,
           })}
-        </Box>
+        </HeaderWrapper>
       ),
-      renderCell: (params: GridRenderCellParams<ScheduleResponse>) => (
+      renderCell: ({ row }) => (
         <span
-          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${getStatusBadge(params.row.status ?? '')}`}
+          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${getStatusBadge(
+            row.status ?? ''
+          )}`}
         >
-          <span className="w-2 h-2 rounded-full bg-current mr-2"></span>
-          {params.row.status}
+          <span className="w-2 h-2 rounded-full bg-current mr-2" />
+          {row.status}
         </span>
       ),
     },
@@ -122,38 +102,24 @@ export const CronJobTableColumns = ({
       minWidth: 260,
       flex: 1,
       sortable: false,
-      disableColumnMenu: true,
       align: 'center',
+      disableColumnMenu: true,
       renderHeader: () => (
-        <Box
-          sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '8px',
-            width: '100%',
-            height: '100%',
-            py: '12px',
-          }}
-        >
-          <Box sx={{ fontSize: '14px', fontWeight: '600' }}>Created At</Box>
-        </Box>
+        <HeaderWrapper>
+          <HeaderTitle>Created At</HeaderTitle>
+        </HeaderWrapper>
       ),
-      renderCell: (params: GridRenderCellParams<ScheduleResponse>) => (
-        <div className="flex items-center justify-center w-full text-[13px]">
-          <svg
-            className="w-4 h-4 mr-1 text-gray-400"
-            fill="currentColor"
-            viewBox="0 0 20 20"
-          >
+      renderCell: ({ row }) => (
+        <DateContainer>
+          <DateIcon fill="currentColor" viewBox="0 0 20 20">
             <path
               fillRule="evenodd"
-              d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z"
               clipRule="evenodd"
+              d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z"
             />
-          </svg>
-          {formatDate(params.row.created_at)}
-        </div>
+          </DateIcon>
+          {formatDate(row.created_at)}
+        </DateContainer>
       ),
     },
     {
@@ -162,56 +128,42 @@ export const CronJobTableColumns = ({
       minWidth: 280,
       flex: 1,
       sortable: false,
-      disableColumnMenu: true,
       align: 'center',
+      disableColumnMenu: true,
       renderHeader: () => (
-        <Box
-          sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '8px',
-            width: '100%',
-            height: '100%',
-            py: '12px',
-          }}
-        >
-          <Box sx={{ fontSize: '14px', fontWeight: '600' }}>Actions</Box>
-        </Box>
+        <HeaderWrapper>
+          <HeaderTitle>Actions</HeaderTitle>
+        </HeaderWrapper>
       ),
-      renderCell: (params: GridRenderCellParams<ScheduleResponse>) => {
-        const schedule = params.row;
+      renderCell: ({ row }) => (
+        <ActionsContainer>
+          <Tooltip title="View Details" arrow>
+            <ViewIconStyle>
+              <EyeIcon size={16} onClick={() => onView(row)} />
+            </ViewIconStyle>
+          </Tooltip>
 
-        return (
-          <div className=" flex items-center justify-center gap-2 h-full">
-            <Tooltip title="View Details" arrow placement="top">
-              <EyeIcon
-                className="w-4 h-4 mr-2 cursor-pointer"
-                style={{ color: '#2b7fff' }}
-                onClick={() => handleViewClick(schedule)}
-              />
-            </Tooltip>
-            {userIsEditor &&
-              (schedule.status === CRON_JOB_STATUSES.IN_PROGRESS ||
-                schedule.status === CRON_JOB_STATUSES.REJECTED) && (
-                <Tooltip title="Edit Cron Job" arrow placement="top">
-                  <EditIcon
-                    className="w-4 h-4 mr-2 text-yellow-600 hover:text-yellow-700 cursor-pointer"
-                    onClick={() => handleEditClick(schedule)}
-                  />
-                </Tooltip>
-              )}
-            {userIsExporter && schedule.status === CRON_JOB_STATUSES.APPROVED && (
-              <Tooltip title="Export Configuration" arrow placement="top">
-                <Upload
-                  className="w-4 h-4 mr-2 text-cyan-600 hover:text-cyan-700 cursor-pointer"
-                  onClick={() => handleExportClick(schedule)}
-                />
+          {userIsEditor &&
+            [CRON_JOB_STATUSES.IN_PROGRESS, CRON_JOB_STATUSES.REJECTED].includes(
+              row.status
+            ) && (
+              <Tooltip title="Edit Cron Job" arrow>
+                <EditIconStyle>
+                  <EditIcon size={16} onClick={() => onEdit(row)} />
+                </EditIconStyle>
               </Tooltip>
             )}
-          </div>
-        );
-      },
+
+          {userIsExporter &&
+            row.status === CRON_JOB_STATUSES.APPROVED && (
+              <Tooltip title="Export Configuration" arrow>
+                <ExportIconStyle>
+                  <Upload size={16} onClick={() => onExport(row)} />
+                </ExportIconStyle>
+              </Tooltip>
+            )}
+        </ActionsContainer>
+      ),
     },
   ];
 };

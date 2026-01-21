@@ -1,31 +1,43 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import type { ScheduleResponse, ActionType } from '../types';
+import useFilters from '@shared/hooks/useFilters';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useToast } from '../../../shared/providers/ToastProvider';
-import { UI_CONFIG } from '../../../shared/config/app.config';
-import { useAuth } from '../../auth/contexts/AuthContext';
 import {
+  getPrimaryRole,
+  isApprover,
   isEditor,
   isExporter,
-  isApprover,
   isPublisher,
-  getPrimaryRole,
 } from '../../../utils/common/roleUtils';
+import { useAuth } from '../../auth/contexts/AuthContext';
 import { CRON_JOB_EDIT_FORM_DEFAULTS } from '../constants';
 import * as cronHandlers from '../handlers';
 import { loadSchedules as apiLoadSchedules, CRON_JOB_STATUSES } from '../handlers';
+import type { ActionType, ScheduleResponse } from '../types';
 
 export const useCronJobList = () => {
   const [schedules, setSchedules] = useState<ScheduleResponse[]>([]);
   const { showSuccess, showError } = useToast();
   const { user } = useAuth();
-  const [pagination, setPagination] = useState({
-    page: 1,
-    totalPages: 0,
-    totalRecords: 0,
-  });
+  const [total, setTotal] = useState(0);
   const [searchingFilters, setSearchingFilters] = useState<
     Record<string, unknown>
   >({});
+
+  const {
+    offset,
+    limit,
+    setOffset,
+  } = useFilters();
+
+  const pagination = useMemo(() => {
+    return {
+      page: offset,
+      limit,
+      totalRecords: total,
+      setPage: (page: number) => setOffset(page - 1),
+    };
+  }, [offset, limit, total])  
+
   const [error, setError] = useState<string | null>(null);
   const [loadingState, setLoadingState] = useState<{
     page: boolean;
@@ -48,8 +60,6 @@ export const useCronJobList = () => {
     schedule: null,
   });
 
-  const itemsPerPage = UI_CONFIG.pagination.defaultPageSize;
-
   const { userIsEditor, userIsExporter, userIsApprover, userIsPublisher, userRole } = useMemo(() => {
     const claims = user?.claims ?? [];
     return {
@@ -59,27 +69,23 @@ export const useCronJobList = () => {
       userIsPublisher: isPublisher(claims),
       userRole: getPrimaryRole(claims),
     };
-  }, [user]);
+  }, [user?.claims]);
 
   const loadSchedules = useCallback(
-    async (pageNumber = pagination.page) => {
+    async () => {
       try {
         setLoadingState((s) => ({ ...s, page: true }));
         setError(null);
 
         const response = await apiLoadSchedules(
-          pageNumber,
-          itemsPerPage,
+          pagination.page,
+          pagination.limit,
           userRole as string,
           searchingFilters,
         );
 
         setSchedules(response?.data || []);
-        setPagination({
-          page: pageNumber,
-          totalPages: response.pages,
-          totalRecords: response.total,
-        });
+        setTotal(response.total)
       } catch (err) {
         setError(
           err instanceof Error ? err.message : 'Failed to fetch schedules',
@@ -88,7 +94,7 @@ export const useCronJobList = () => {
         setLoadingState((s) => ({ ...s, page: false }));
       }
     },
-    [itemsPerPage, userRole, searchingFilters, pagination.page],
+    [pagination, userRole, searchingFilters],
   );
 
   useEffect(() => {
@@ -243,14 +249,11 @@ export const useCronJobList = () => {
     error,
     loading: loadingState.page,
     actionLoading: loadingState.action,
-    itemsPerPage,
     userIsEditor,
     userIsExporter,
     userIsApprover,
     userIsPublisher,
     userRole,
-    setPage: (newPage: number) =>
-      setPagination((p) => ({ ...p, page: newPage })),
     setSearchingFilters,
     setSelectedSchedule,
     setEditForm,

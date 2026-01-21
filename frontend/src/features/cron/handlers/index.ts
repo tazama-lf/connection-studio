@@ -145,7 +145,7 @@ export const loadSchedules = async (
   searchingFilters: Record<string, unknown>,
 ): Promise<PaginatedScheduleResponse> => {
   const limit: number = itemsPerPage;
-  const offset: number = pageNumber - 1;
+  const offset: number = pageNumber;
   const params = { limit, offset, userRole };
 
   return await cronJobApi.getList(params, searchingFilters);
