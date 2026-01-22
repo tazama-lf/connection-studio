@@ -117,15 +117,15 @@ export const DescriptionText = styled(DialogContentText)({
   marginBottom: 16,
 });
 
-export const HighlightText = styled(Box)({
+export const HighlightText = styled(Box)<{ color?: string }>(({ color }) => ({
   display: 'inline-block',
   fontWeight: 700,
-  color: '#33AD74',
+  color: color ?? '#33AD74',
   backgroundColor: '#F0FDF4',
   padding: '2px 8px',
   borderRadius: 4,
   fontSize: 15,
-});
+}));
 
 export const InfoBox = styled(Box)<{ bg?: string, border?: string }>(({ bg, border }) => ({
   backgroundColor: bg ?? '#F0FDF4',
@@ -135,12 +135,12 @@ export const InfoBox = styled(Box)<{ bg?: string, border?: string }>(({ bg, bord
   marginTop: 16,
 }));
 
-export const InfoText = styled(DialogContentText)({
+export const InfoText = styled(DialogContentText)<{ color?: string }>(({ color }) => ({
   fontSize: 16,
-  color: '#33AD74',
+  color: color ?? '#33AD74',
   margin: 0,
   fontWeight: 500,
-});
+}));
 
 
 export const PauseDialog = styled(Dialog)({

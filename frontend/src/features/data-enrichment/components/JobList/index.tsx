@@ -488,7 +488,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
         aria-describedby="activate-confirmation-dialog-description"
         slotProps={{
           backdrop: {
-            sx: { backgroundColor: 'rgba(0,0,0,0.15)' },
+            sx: { backgroundColor: 'rgba(0,0,0,0.8)' },
           },
         }}
       >
@@ -547,7 +547,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
         aria-labelledby="deactivate-confirmation-dialog-title"
         aria-describedby="deactivate-confirmation-dialog-description"
         slotProps={{
-          backdrop: { sx: { backgroundColor: 'rgba(0,0,0,0.15)' } },
+          backdrop: { sx: { backgroundColor: 'rgba(0,0,0,0.8)' } },
         }}
       >
         <DialogHeader>
