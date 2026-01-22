@@ -1,17 +1,5 @@
 import CustomTable from '@common/Tables/CustomTable';
-import {
-  Backdrop,
-  Box,
-  CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
-  Tooltip
-} from '@mui/material';
-import Loader from '@shared/components/ui/Loader';
-import { handleInputFilter, handleSelectFilter } from '@shared/helpers';
-import { getDemsStatusLov } from '@shared/lovs';
+import type { GridColDef } from '@mui/x-data-grid';
 import {
   EditIcon,
   EyeIcon,
@@ -20,9 +8,43 @@ import {
   ShieldCheck,
   ShieldX,
 } from 'lucide-react';
-import React, { useState } from 'react';
-import { Button } from '../../../../shared/components/Button';
-import { useToast } from '../../../../shared/providers/ToastProvider';
+import React, { useMemo, useState } from 'react';
+
+import {
+  ActionIcon,
+  ActionsWrapper,
+  CellText,
+  ConfirmActions,
+  ConfirmContent,
+  ConfirmDialog,
+  ConfirmText,
+  DateCell,
+  DateIcon,
+  DescriptionText,
+  DialogBody,
+  DialogHeader,
+  HeaderTitle,
+  HeaderWrapper,
+  HighlightText,
+  InfoBox,
+  InfoText,
+  PauseDescription,
+  PauseDialog,
+  PauseDialogActions,
+  PauseDialogContent,
+  PauseDialogHeader,
+  PauseHighlight,
+  PauseWarningBox,
+  PauseWarningText,
+  StyledDialog,
+  TypeCell
+} from './JobList.styles';
+
+
+
+import Loader from '@shared/components/ui/Loader';
+import { handleInputFilter, handleSelectFilter, } from '@shared/helpers';
+import { getDemsStatusLov } from '@shared/lovs';
 import { getStatusBadge } from '../../../../utils/common/functions';
 import {
   isApprover,
@@ -32,87 +54,59 @@ import {
 } from '../../../../utils/common/roleUtils';
 import { useAuth } from '../../../auth/contexts/AuthContext';
 import { DATA_ENRICHMENT_JOB_STATUSES } from '../../constants';
+import type { DataEnrichmentJobResponse, JobListProps } from '../../types';
+import { formatDate } from '../../utils';
+import { Button } from '@shared';
 import {
   handleTogglePublishingStatus as togglePublishing,
   handleUpdateJobStatus as updateJobStatus,
 } from '../../handlers';
-import type { DataEnrichmentJobResponse, JobListProps } from '../../types';
-import { formatDate } from '../../utils';
-import type { GridColDef } from '@mui/x-data-grid';
+import { useToast } from '@shared/providers/ToastProvider';
+import { DialogActions, Tooltip } from '@mui/material';
 
 export const JobList: React.FC<JobListProps> = (props) => {
-  const [openLoader, setOpenLoader] = useState(false);
+  const {
+    jobs,
+    loading,
+    error,
+    pagination,
+    searchingFilters,
+    setSearchingFilters,
+    onViewLogs,
+    onEdit,
+  } = props;
+
+  const { user } = useAuth();
+
   const [showPauseConfirmDialog, setShowPauseConfirmDialog] = useState<{
     open: boolean;
     job: DataEnrichmentJobResponse | null;
   }>({ open: false, job: null });
+
   const [showResumeConfirmDialog, setShowResumeConfirmDialog] = useState<{
     open: boolean;
     job: DataEnrichmentJobResponse | null;
   }>({ open: false, job: null });
+
   const [showActivateConfirmDialog, setShowActivateConfirmDialog] = useState<{
     open: boolean;
     job: DataEnrichmentJobResponse | null;
   }>({ open: false, job: null });
+
   const [showDeactivateConfirmDialog, setShowDeactivateConfirmDialog] =
     useState<{ open: boolean; job: DataEnrichmentJobResponse | null }>({
       open: false,
       job: null,
     });
-  const {
-    jobs,
-    isLoading = false,
-    onViewLogs,
-    onEdit,
-    pagination,
-    totalRecords = 0,
-    itemsPerPage = 10,
-    searchingFilters,
-    setSearchingFilters,
-    error,
-    loading,
-  } = props;
-  const { user } = useAuth();
-  const userIsEditor = user?.claims ? isEditor(user.claims) : false;
-  const userIsApprover = user?.claims ? isApprover(user.claims) : false;
-  const userIsExporter = user?.claims ? isExporter(user.claims) : false;
-  const userIsPublisher = user?.claims ? isPublisher(user.claims) : false;
 
-  const closeLoader = () => {
-    setOpenLoader(false);
+  const roles = {
+    editor: user?.claims && isEditor(user.claims),
+    approver: user?.claims && isApprover(user.claims),
+    exporter: user?.claims && isExporter(user.claims),
+    publisher: user?.claims && isPublisher(user.claims),
   };
 
-  const userRole = userIsPublisher
-    ? 'publisher'
-    : userIsExporter
-      ? 'exporter'
-      : userIsApprover
-        ? 'approver'
-        : 'editor';
-
-  const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
-  const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
   const { showSuccess, showError } = useToast();
-
-  React.useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-      if (
-        target.closest('.filter-dropdown') ||
-        target.closest('.dropdown-menu') ||
-        target.closest('.actions-dropdown')
-      ) {
-        return;
-      }
-      setStatusDropdownOpen(false);
-      setDropdownOpen(null);
-    };
-
-    if (statusDropdownOpen || dropdownOpen) {
-      document.addEventListener('click', handleClickOutside);
-      return () => document.removeEventListener('click', handleClickOutside);
-    }
-  }, [statusDropdownOpen, dropdownOpen]);
 
   const handleUpdateJobStatus = async (
     job: DataEnrichmentJobResponse,
@@ -127,7 +121,6 @@ export const JobList: React.FC<JobListProps> = (props) => {
       showError,
       () => {
         if (props.onRefresh) props.onRefresh();
-        setDropdownOpen(null);
       }
     );
   };
@@ -135,7 +128,6 @@ export const JobList: React.FC<JobListProps> = (props) => {
   const handleTogglePublishingStatus = async (
     job: DataEnrichmentJobResponse,
   ) => {
-    setOpenLoader(true);
     setShowActivateConfirmDialog({
       open: false,
       job: null,
@@ -153,80 +145,64 @@ export const JobList: React.FC<JobListProps> = (props) => {
         if (props.onRefresh) {
           props.onRefresh();
         }
-        setDropdownOpen(null);
-        setOpenLoader(false);
       }
     );
   };
 
-  const columns = [
+
+  const userRole =
+    roles.publisher ? 'publisher' :
+      roles.exporter ? 'exporter' :
+        roles.approver ? 'approver' :
+          'editor';
+
+  const columns: GridColDef[] = useMemo(() => [
     {
       field: 'endpoint_name',
-      headerName: 'Endpoint Path',
+      headerName: 'Connector Name',
       flex: 1.5,
-      minWidth: 280,
       sortable: false,
       align: 'center',
       disableColumnMenu: true,
       renderHeader: () => (
-        <Box
-          sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '8px',
-            width: '100%',
-            py: '12px',
-          }}
-        >
-          <Box sx={{ fontSize: '14px', fontWeight: '600' }}>Connector Name</Box>
+        <HeaderWrapper>
+          <HeaderTitle>Connector Name</HeaderTitle>
           {handleInputFilter({
             fieldName: 'endpointName',
             searchingFilters,
             setSearchingFilters,
           })}
-        </Box>
+        </HeaderWrapper>
       ),
-      renderCell: (params: any) => (
-        <Box sx={{ fontSize: '13px' }}>{params.row.endpoint_name}</Box>
-      ),
+      renderCell: ({ row }) => <CellText>{row.endpoint_name}</CellText>,
     },
     {
       field: 'status',
       headerName: 'Status',
-      minWidth: 260,
       flex: 1,
       sortable: false,
       align: 'center',
       disableColumnMenu: true,
       renderHeader: () => (
-        <Box
-          sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '8px',
-            width: '100%',
-            py: '12px',
-          }}
-        >
-          <Box sx={{ fontSize: '14px', fontWeight: '600' }}>Status</Box>
+        <HeaderWrapper>
+          <HeaderTitle>Status</HeaderTitle>
           {handleSelectFilter({
             fieldName: 'status',
-            options:
-              getDemsStatusLov[userRole as keyof typeof getDemsStatusLov] || [],
+            options: getDemsStatusLov[userRole] || [],
             searchingFilters,
             setSearchingFilters,
-            setPage: pagination.setPage
+            setPage: pagination.setPage,
           })}
-        </Box>
+        </HeaderWrapper>
       ),
-      renderCell: (_params: any) => (
+      renderCell: ({ row }) => (
         <span
-          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${getStatusBadge(_params.row.status)}`}
+          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${getStatusBadge(
+            row.status ?? ''
+          )}`}
         >
-          <span className="w-2 h-2 rounded-full bg-current mr-2"></span>
-          {_params.row.status}
+          <span className="w-2 h-2 rounded-full bg-current mr-2" />
+          {row.status}
         </span>
       ),
     },
@@ -239,681 +215,126 @@ export const JobList: React.FC<JobListProps> = (props) => {
       disableColumnMenu: true,
       align: 'center',
       renderHeader: () => (
-        <Box
-          sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '8px',
-            width: '100%',
-            height: '100%',
-            py: '12px',
-          }}
-        >
-          <Box sx={{ fontSize: '14px', fontWeight: '600' }}>Cron Job Name</Box>
-        </Box>
+        <HeaderWrapper>
+          <HeaderTitle>Cron Job Name</HeaderTitle>
+        </HeaderWrapper>
       ),
     },
     {
       field: 'created_at',
-      headerName: 'Created Time',
-      minWidth: 200,
+      headerName: 'Created At',
       flex: 1,
       sortable: false,
-      disableColumnMenu: true,
       align: 'center',
+      disableColumnMenu: true,
       renderHeader: () => (
-        <Box
-          sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '8px',
-            width: '100%',
-            height: '100%',
-            py: '12px',
-          }}
-        >
-          <Box sx={{ fontSize: '14px', fontWeight: '600' }}>Created At</Box>
-        </Box>
+        <HeaderWrapper>
+          <HeaderTitle>Created At</HeaderTitle>
+        </HeaderWrapper>
       ),
-      renderCell: (_params: any) => (
-        <div className="flex items-center justify-center w-full text-[13px]">
-          <svg
-            className="w-4 h-4 mr-1 text-gray-400"
-            fill="currentColor"
-            viewBox="0 0 20 20"
-          >
-            <path
-              fillRule="evenodd"
-              d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z"
-              clipRule="evenodd"
-            />
-          </svg>
-          {formatDate(_params.row.created_at)}
-        </div>
+      renderCell: ({ row }) => (
+        <DateCell>
+          <DateIcon viewBox="0 0 20 20" fill="currentColor">
+            <path d="M6 2a1 1 0 00-1 1v1H4..." />
+          </DateIcon>
+          {formatDate(row.created_at)}
+        </DateCell>
       ),
     },
     {
       field: 'type',
       headerName: 'Type',
-      minWidth: 140,
       flex: 0.5,
+      align: 'center',
       sortable: false,
       disableColumnMenu: true,
-      align: 'center',
       renderHeader: () => (
-        <Box
-          sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '8px',
-            width: '100%',
-            height: '100%',
-            py: '12px',
-          }}
-        >
-          <Box sx={{ fontSize: '14px', fontWeight: '600' }}>Type</Box>
-        </Box>
+        <HeaderWrapper>
+          <HeaderTitle>Type</HeaderTitle>
+        </HeaderWrapper>
       ),
-      renderCell: (params: any) => {
-        const jobType = params.row.type || (params.row.path ? 'PUSH' : 'PULL');
-        const isPull = jobType?.toUpperCase() === 'PULL';
-        return (
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '6px',
-              fontSize: '12px',
-              fontWeight: '600',
-              color: isPull ? '#2563eb' : '#7c3aed',
-            }}
-          >
-            {isPull ? (
-              <>
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
-                >
-                  <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
-                </svg>
-                PULL
-              </>
-            ) : (
-              <>
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
-                >
-                  <path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z" />
-                </svg>
-                PUSH
-              </>
-            )}
-          </Box>
-        );
+      renderCell: ({ row }) => {
+        const pull = (row.type ?? 'PULL').toUpperCase() === 'PULL';
+        return <TypeCell pull={pull}>{pull ? 'PULL' : 'PUSH'}</TypeCell>;
       },
     },
     {
       field: 'actions',
       headerName: 'Actions',
-      minWidth: 140,
       flex: 1.2,
+      align: 'center',
       sortable: false,
       disableColumnMenu: true,
-      align: 'center',
       renderHeader: () => (
-        <Box
-          sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '8px',
-            width: '100%',
-            height: '100%',
-            py: '12px',
-          }}
-        >
-          <Box sx={{ fontSize: '14px', fontWeight: '600' }}>Actions</Box>
-        </Box>
+        <HeaderWrapper>
+          <HeaderTitle>Actions</HeaderTitle>
+        </HeaderWrapper>
       ),
-      renderCell: (_params: any) => {
-        const job = _params.row;
+      renderCell: ({ row }) => (
+        <ActionsWrapper>
+          <Tooltip title="View">
+            <ActionIcon color="#2b7fff">
+              <EyeIcon size={16} onClick={() => onViewLogs?.(row.id)} />
+            </ActionIcon>
+          </Tooltip>
 
-        return (
-          <div className="flex items-center justify-center gap-2 h-full">
-
-            {(
-              (userIsEditor && onViewLogs) ||
-              userIsApprover ||
-              (userIsExporter &&
-                (job.status === DATA_ENRICHMENT_JOB_STATUSES.APPROVED ||
-                  job.status === DATA_ENRICHMENT_JOB_STATUSES.EXPORTED ||
-                  job.status === DATA_ENRICHMENT_JOB_STATUSES.DEPLOYED)) ||
-              (userIsPublisher &&
-                (job.status === DATA_ENRICHMENT_JOB_STATUSES.EXPORTED ||
-                  job.status === DATA_ENRICHMENT_JOB_STATUSES.DEPLOYED))
-            ) && (
-                <Tooltip title="View Details" arrow placement="top">
-                  <EyeIcon
-                    className="w-4 h-4 mr-2  cursor-pointer"
-                    style={{ color: '#2b7fff' }}
-                    onClick={() => {
-                      if (onViewLogs) {
-                        onViewLogs(job.id);
-                      } else {
-
-                        alert('Opening job details...');
-                      }
-                      setDropdownOpen(null);
-                    }}
-                  />
-                </Tooltip>
-              )}
-
-
-            {userIsEditor &&
-              onEdit &&
-              (job.status === DATA_ENRICHMENT_JOB_STATUSES.IN_PROGRESS ||
-                job.status === DATA_ENRICHMENT_JOB_STATUSES.REJECTED) && (
-                <Tooltip title="Edit Job" arrow placement="top">
-                  <EditIcon
-                    className="w-4 h-4 mr-2 text-yellow-600 hover:text-yellow-700 cursor-pointer"
-                    onClick={() => {
-                      onEdit(job);
-                      setDropdownOpen(null);
-                    }}
-                  />
-                </Tooltip>
-              )}
-            {userIsEditor && job.status === DATA_ENRICHMENT_JOB_STATUSES.IN_PROGRESS && (
-              <Tooltip title="Pause" arrow placement="top">
-                <Pause
-                  className="w-4 h-4 mr-2 text-orange-600 hover:text-orange-700 cursor-pointer"
+          {roles.editor &&
+            onEdit &&
+            (row.status === DATA_ENRICHMENT_JOB_STATUSES.IN_PROGRESS ||
+              row.status === DATA_ENRICHMENT_JOB_STATUSES.REJECTED) && (
+              <Tooltip title="Edit Job" arrow placement="top">
+                <EditIcon
+                  className="w-4 h-4 mr-2 text-yellow-600 hover:text-yellow-700 cursor-pointer"
                   onClick={() => {
-                    setShowPauseConfirmDialog({ open: true, job });
-                  }}
-                />
-              </Tooltip>
-            )}
-            {userIsEditor && job.status === DATA_ENRICHMENT_JOB_STATUSES.ON_HOLD && (
-              <Tooltip title="Resume" arrow placement="top">
-                <Play
-                  className="w-4 h-4 mr-2 text-green-600 hover:text-green-700 cursor-pointer"
-                  onClick={() => {
-                    setShowResumeConfirmDialog({ open: true, job });
+                    onEdit(row);
                   }}
                 />
               </Tooltip>
             )}
 
-            <Dialog
-              open={showPauseConfirmDialog.open}
-              onClose={() =>
-                setShowPauseConfirmDialog({ open: false, job: null })
-              }
-              aria-labelledby="pause-confirmation-dialog-title"
-              aria-describedby="pause-confirmation-dialog-description"
-              sx={{
-                '& .MuiPaper-root': {
-                  borderRadius: '6px',
-                  minWidth: 400,
-                },
-              }}
-              PaperProps={{ sx: { boxShadow: 'none' } }}
-              slotProps={{
-                backdrop: {
-                  sx: { backgroundColor: 'rgba(0,0,0,0.15)' },
-                },
-              }}
-            >
-              <Box
-                sx={{
-                  color: '#3B3B3B',
-                  fontSize: '20px',
-                  fontWeight: 'bold',
-                  padding: '16px 20px',
-                  borderBottom: '1px solid #CECECE',
-                }}
-              >
-                Pause Confirmation Required!
-              </Box>
-              <DialogContent sx={{ padding: '20px 20px' }}>
-                <DialogContentText
-                  id="pause-confirmation-dialog-description"
-                  sx={{
-                    fontSize: '16px',
-                    lineHeight: '1.6',
-                    color: '#374151',
-                    marginBottom: '16px',
-                  }}
-                >
-                  Are you sure you want to pause{' '}
-                  <Box
-                    component="span"
-                    sx={{
-                      fontWeight: 'bold',
-                      color: '#FF9800',
-                      backgroundColor: '#FFF7ED',
-                      padding: '2px 8px',
-                      borderRadius: '4px',
-                      fontSize: '15px',
-                    }}
-                  >
-                    "{showPauseConfirmDialog.job?.endpoint_name || 'this job'}"
-                  </Box>
-                  ?
-                </DialogContentText>
-                <Box
-                  sx={{
-                    backgroundColor: '#FFF7ED',
-                    border: '1px solid #FFE0B2',
-                    borderRadius: '8px',
-                    padding: '12px 16px',
-                    marginTop: '16px',
-                  }}
-                >
-                  <DialogContentText
-                    sx={{
-                      fontSize: '16px',
-                      color: '#FF9800',
-                      margin: 0,
-                      fontWeight: '500',
-                    }}
-                  >
-                    ⚠️ This will put the job on hold.
-                  </DialogContentText>
-                </Box>
-              </DialogContent>
-              <DialogActions sx={{ padding: '12px 20px 16px 20px' }}>
-                <Button
-                  onClick={() =>
-                    setShowPauseConfirmDialog({ open: false, job: null })
-                  }
-                  variant="secondary"
-                  className="!pb-[6px] !pt-[5px]"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={async () => {
-                    if (showPauseConfirmDialog.job) {
-                      await handleUpdateJobStatus(
-                        showPauseConfirmDialog.job,
-                        DATA_ENRICHMENT_JOB_STATUSES.ON_HOLD,
-                      );
-                    }
-                    setShowPauseConfirmDialog({ open: false, job: null });
-                  }}
-                  variant="primary"
-                  className="!pb-[6px] !pt-[5px]"
-                >
-                  Yes, Pause Job
-                </Button>
-              </DialogActions>
-            </Dialog>
+          {roles.editor && row.status === DATA_ENRICHMENT_JOB_STATUSES.IN_PROGRESS && (
+            <Tooltip title="Pause">
+              <ActionIcon color="#f97316">
+                <Pause size={16} onClick={() => setShowPauseConfirmDialog({ open: true, job: row })} />
+              </ActionIcon>
+            </Tooltip>
+          )}
 
+          {roles.editor && row.status === DATA_ENRICHMENT_JOB_STATUSES.ON_HOLD && (
+            <Tooltip title="Resume">
+              <ActionIcon color="#22c55e">
+                <Play size={16} onClick={() => setShowResumeConfirmDialog({ open: true, job: row })} />
+              </ActionIcon>
+            </Tooltip>
+          )}
 
-            <Dialog
-              open={showResumeConfirmDialog.open}
-              onClose={() =>
-                setShowResumeConfirmDialog({ open: false, job: null })
-              }
-              aria-labelledby="resume-confirmation-dialog-title"
-              aria-describedby="resume-confirmation-dialog-description"
-              sx={{
-                '& .MuiPaper-root': {
-                  borderRadius: '6px',
-                  minWidth: 400,
-                },
-              }}
-              PaperProps={{ sx: { boxShadow: 'none' } }}
-              slotProps={{
-                backdrop: {
-                  sx: { backgroundColor: 'rgba(0,0,0,0.15)' },
-                },
-              }}
-            >
-              <Box
-                sx={{
-                  color: '#3B3B3B',
-                  fontSize: '20px',
-                  fontWeight: 'bold',
-                  padding: '16px 20px',
-                  borderBottom: '1px solid #CECECE',
-                }}
-              >
-                Resume Confirmation Required!
-              </Box>
-              <DialogContent sx={{ padding: '20px 20px' }}>
-                <DialogContentText
-                  id="resume-confirmation-dialog-description"
-                  sx={{
-                    fontSize: '16px',
-                    lineHeight: '1.6',
-                    color: '#374151',
-                    marginBottom: '16px',
-                  }}
-                >
-                  Are you sure you want to resume{' '}
-                  <Box
-                    component="span"
-                    sx={{
-                      fontWeight: 'bold',
-                      color: '#33AD74',
-                      backgroundColor: '#F0FDF4',
-                      padding: '2px 8px',
-                      borderRadius: '4px',
-                      fontSize: '15px',
+          {roles.publisher && (
+            <>
+              {row.publishing_status === 'active' ? (
+                <Tooltip title="Deactivate" arrow placement="top">
+                  <ShieldX
+                    className="w-4 h-4 mr-1 text-red-600 hover:text-red-700 cursor-pointer"
+                    onClick={() => {
+                      setShowDeactivateConfirmDialog({ open: true, job: row });
                     }}
-                  >
-                    "{showResumeConfirmDialog.job?.endpoint_name || 'this job'}"
-                  </Box>
-                  ?
-                </DialogContentText>
-                <Box
-                  sx={{
-                    backgroundColor: '#F0FDF4',
-                    border: '1px solid #BBF7D0',
-                    borderRadius: '8px',
-                    padding: '12px 16px',
-                    marginTop: '16px',
-                  }}
-                >
-                  <DialogContentText
-                    sx={{
-                      fontSize: '16px',
-                      color: '#33AD74',
-                      margin: 0,
-                      fontWeight: '500',
+                  />
+                </Tooltip>
+              ) : (
+                <Tooltip title="Activate" arrow placement="top">
+                  <ShieldCheck
+                    className="w-4 h-4 mr-1 text-green-600 hover:text-green-700 cursor-pointer"
+                    onClick={() => {
+                      setShowActivateConfirmDialog({ open: true, job: row });
                     }}
-                  >
-                    ✅ This will resume the job and set it to in-progress.
-                  </DialogContentText>
-                </Box>
-              </DialogContent>
-              <DialogActions sx={{ padding: '12px 20px 16px 20px' }}>
-                <Button
-                  onClick={() =>
-                    setShowResumeConfirmDialog({ open: false, job: null })
-                  }
-                  variant="secondary"
-                  className="!pb-[6px] !pt-[5px]"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={async () => {
-                    if (showResumeConfirmDialog.job) {
-                      await handleUpdateJobStatus(
-                        showResumeConfirmDialog.job,
-                        DATA_ENRICHMENT_JOB_STATUSES.IN_PROGRESS,
-                      );
-                    }
-                    setShowResumeConfirmDialog({ open: false, job: null });
-                  }}
-                  variant="primary"
-                  className="!pb-[6px] !pt-[5px]"
-                >
-                  Yes, Resume Job
-                </Button>
-              </DialogActions>
-            </Dialog>
-
-
-            {userIsPublisher && (
-              <>
-                {job.publishing_status === 'active' ? (
-                  <Tooltip title="Deactivate" arrow placement="top">
-                    <ShieldX
-                      className="w-4 h-4 mr-1 text-red-600 hover:text-red-700 cursor-pointer"
-                      onClick={() => {
-                        setShowDeactivateConfirmDialog({ open: true, job });
-                        setDropdownOpen(null);
-                      }}
-                    />
-                  </Tooltip>
-                ) : (
-                  <Tooltip title="Activate" arrow placement="top">
-                    <ShieldCheck
-                      className="w-4 h-4 mr-1 text-green-600 hover:text-green-700 cursor-pointer"
-                      onClick={() => {
-                        setShowActivateConfirmDialog({ open: true, job });
-                        setDropdownOpen(null);
-                      }}
-                    />
-                  </Tooltip>
-                )}
-              </>
-            )}
-
-            <Dialog
-              open={showActivateConfirmDialog.open}
-              onClose={() =>
-                setShowActivateConfirmDialog({ open: false, job: null })
-              }
-              aria-labelledby="activate-confirmation-dialog-title"
-              aria-describedby="activate-confirmation-dialog-description"
-              sx={{
-                '& .MuiPaper-root': {
-                  borderRadius: '12px',
-                  minWidth: 400,
-                },
-              }}
-              PaperProps={{ sx: { boxShadow: 'none' } }}
-              slotProps={{
-                backdrop: {
-                  sx: { backgroundColor: 'rgba(0,0,0,0.15)' },
-                },
-              }}
-            >
-              <Box
-                sx={{
-                  color: '#3B3B3B',
-                  fontSize: '20px',
-                  fontWeight: 'bold',
-                  padding: '16px 20px',
-                  borderBottom: '1px solid #CECECE',
-                }}
-              >
-                Activate Confirmation Required!
-              </Box>
-              <DialogContent sx={{ padding: '20px 20px' }}>
-                <DialogContentText
-                  id="activate-confirmation-dialog-description"
-                  sx={{
-                    fontSize: '16px',
-                    lineHeight: '1.6',
-                    color: '#374151',
-                    marginBottom: '16px',
-                  }}
-                >
-                  Are you sure you want to activate{' '}
-                  <Box
-                    component="span"
-                    sx={{
-                      fontWeight: 'bold',
-                      color: '#33AD74',
-                      backgroundColor: '#F0FDF4',
-                      padding: '2px 8px',
-                      borderRadius: '4px',
-                      fontSize: '15px',
-                    }}
-                  >
-                    "
-                    {showActivateConfirmDialog.job?.endpoint_name || 'this job'}
-                    "
-                  </Box>
-                  ?
-                </DialogContentText>
-                <Box
-                  sx={{
-                    backgroundColor: '#F0FDF4',
-                    border: '1px solid #BBF7D0',
-                    borderRadius: '8px',
-                    padding: '12px 16px',
-                    marginTop: '16px',
-                  }}
-                >
-                  <DialogContentText
-                    sx={{
-                      fontSize: '16px',
-                      color: '#15803D',
-                      margin: 0,
-                      fontWeight: '500',
-                    }}
-                  >
-                    ✅ Once activated, this job will be available for
-                    deployment.
-                  </DialogContentText>
-                </Box>
-              </DialogContent>
-              <DialogActions sx={{ padding: '12px 20px 16px 20px' }}>
-                <Button
-                  onClick={() =>
-                    setShowActivateConfirmDialog({ open: false, job: null })
-                  }
-                  variant="secondary"
-                  className="!pb-[6px] !pt-[5px]"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={async () => {
-                    if (showActivateConfirmDialog.job) {
-                      await handleTogglePublishingStatus(
-                        showActivateConfirmDialog.job,
-                      );
-                    }
-                  }}
-                  variant="primary"
-                  className="!pb-[6px] !pt-[5px]"
-                >
-                  Yes, Activate Job
-                </Button>
-              </DialogActions>
-            </Dialog>
-
-
-            <Dialog
-              open={showDeactivateConfirmDialog.open}
-              onClose={() =>
-                setShowDeactivateConfirmDialog({ open: false, job: null })
-              }
-              aria-labelledby="deactivate-confirmation-dialog-title"
-              aria-describedby="deactivate-confirmation-dialog-description"
-              sx={{
-                '& .MuiPaper-root': {
-                  borderRadius: '12px',
-                  minWidth: 400,
-                },
-              }}
-              PaperProps={{ sx: { boxShadow: 'none' } }}
-              slotProps={{
-                backdrop: {
-                  sx: { backgroundColor: 'rgba(0,0,0,0.15)' },
-                },
-              }}
-            >
-              <Box
-                sx={{
-                  color: '#3B3B3B',
-                  fontSize: '20px',
-                  fontWeight: 'bold',
-                  padding: '16px 20px',
-                  borderBottom: '1px solid #CECECE',
-                }}
-              >
-                Deactivate Confirmation Required!
-              </Box>
-              <DialogContent sx={{ padding: '20px 20px' }}>
-                <DialogContentText
-                  id="deactivate-confirmation-dialog-description"
-                  sx={{
-                    fontSize: '16px',
-                    lineHeight: '1.6',
-                    color: '#374151',
-                    marginBottom: '16px',
-                  }}
-                >
-                  Are you sure you want to deactivate{' '}
-                  <Box
-                    component="span"
-                    sx={{
-                      fontWeight: 'bold',
-                      color: '#FF474D',
-                      backgroundColor: '#FFF1F2',
-                      padding: '2px 8px',
-                      borderRadius: '4px',
-                      fontSize: '15px',
-                    }}
-                  >
-                    "
-                    {showDeactivateConfirmDialog.job?.endpoint_name ||
-                      'this job'}
-                    "
-                  </Box>
-                  ?
-                </DialogContentText>
-                <Box
-                  sx={{
-                    backgroundColor: '#FFF1F2',
-                    border: '1px solid #FFCDD2',
-                    borderRadius: '8px',
-                    padding: '12px 16px',
-                    marginTop: '16px',
-                  }}
-                >
-                  <DialogContentText
-                    sx={{
-                      fontSize: '16px',
-                      color: '#FF474D',
-                      margin: 0,
-                      fontWeight: '500',
-                    }}
-                  >
-                    ⚠️ Once deactivated, this job will not be available for
-                    deployment.
-                  </DialogContentText>
-                </Box>
-              </DialogContent>
-              <DialogActions sx={{ padding: '12px 20px 16px 20px' }}>
-                <Button
-                  onClick={() =>
-                    setShowDeactivateConfirmDialog({ open: false, job: null })
-                  }
-                  variant="secondary"
-                  className="!pb-[6px] !pt-[5px]"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={async () => {
-                    if (showDeactivateConfirmDialog.job) {
-                      await handleTogglePublishingStatus(
-                        showDeactivateConfirmDialog.job,
-                      );
-                    }
-                  }}
-                  variant="primary"
-                  className="!pb-[6px] !pt-[5px]"
-                >
-                  Yes, Deactivate Job
-                </Button>
-              </DialogActions>
-            </Dialog>
-          </div>
-        );
-      },
+                  />
+                </Tooltip>
+              )}
+            </>
+          )}
+        </ActionsWrapper>
+      ),
     },
-  ];
+  ], [roles, searchingFilters, pagination]);
 
   return (
     <>
@@ -935,7 +356,249 @@ export const JobList: React.FC<JobListProps> = (props) => {
           />
         </>
       )}
+
+      <PauseDialog
+        open={showPauseConfirmDialog.open}
+        onClose={() =>
+          setShowPauseConfirmDialog({ open: false, job: null })
+        }
+        aria-labelledby="pause-confirmation-dialog-title"
+        aria-describedby="pause-confirmation-dialog-description"
+        slotProps={{
+          backdrop: {
+            sx: { backgroundColor: 'rgba(0,0,0,0.8)' },
+          },
+        }}
+      >
+        <PauseDialogHeader>
+          Pause Confirmation Required!
+        </PauseDialogHeader>
+
+        <PauseDialogContent>
+          <PauseDescription id="pause-confirmation-dialog-description">
+            Are you sure you want to pause{' '}
+            <PauseHighlight>
+              "{showPauseConfirmDialog.job?.endpoint_name || 'this job'}"
+            </PauseHighlight>
+            ?
+          </PauseDescription>
+
+          <PauseWarningBox>
+            <PauseWarningText>
+              ⚠️ This will put the job on hold.
+            </PauseWarningText>
+          </PauseWarningBox>
+        </PauseDialogContent>
+
+        <PauseDialogActions>
+          <Button
+            onClick={() =>
+              setShowPauseConfirmDialog({ open: false, job: null })
+            }
+            variant="secondary"
+            className="!pb-[6px] !pt-[5px]"
+          >
+            Cancel
+          </Button>
+
+          <Button
+            onClick={async () => {
+              if (showPauseConfirmDialog.job) {
+                await handleUpdateJobStatus(
+                  showPauseConfirmDialog.job,
+                  DATA_ENRICHMENT_JOB_STATUSES.ON_HOLD
+                );
+              }
+              setShowPauseConfirmDialog({ open: false, job: null });
+            }}
+            variant="primary"
+            className="!pb-[6px] !pt-[5px]"
+          >
+            Yes, Pause Job
+          </Button>
+        </PauseDialogActions>
+      </PauseDialog>
+
+      <StyledDialog
+        open={showResumeConfirmDialog.open}
+        onClose={() =>
+          setShowResumeConfirmDialog({ open: false, job: null })
+        }
+        aria-labelledby="resume-confirmation-dialog-title"
+        aria-describedby="resume-confirmation-dialog-description"
+        slotProps={{
+          backdrop: {
+            sx: { backgroundColor: 'rgba(0,0,0,0.8)' },
+          },
+        }}
+      >
+        <DialogHeader>
+          Resume Confirmation Required!
+        </DialogHeader>
+
+        <DialogBody>
+          <DescriptionText id="resume-confirmation-dialog-description">
+            Are you sure you want to resume{' '}
+            <HighlightText>
+              "{showResumeConfirmDialog.job?.endpoint_name || 'this job'}"
+            </HighlightText>
+            ?
+          </DescriptionText>
+
+          <InfoBox>
+            <InfoText>
+              ✅ This will resume the job and set it to in-progress.
+            </InfoText>
+          </InfoBox>
+        </DialogBody>
+
+        <DialogActions sx={{ padding: '12px 20px 16px' }}>
+          <Button
+            variant="secondary"
+            onClick={() =>
+              setShowResumeConfirmDialog({ open: false, job: null })
+            }
+          >
+            Cancel
+          </Button>
+
+          <Button
+            variant="primary"
+            onClick={async () => {
+              if (showResumeConfirmDialog.job) {
+                await handleUpdateJobStatus(
+                  showResumeConfirmDialog.job,
+                  DATA_ENRICHMENT_JOB_STATUSES.IN_PROGRESS
+                );
+              }
+              setShowResumeConfirmDialog({ open: false, job: null });
+            }}
+          >
+            Yes, Resume Job
+          </Button>
+        </DialogActions>
+      </StyledDialog>
+
+      <ConfirmDialog
+        open={showActivateConfirmDialog.open}
+        onClose={() =>
+          setShowActivateConfirmDialog({ open: false, job: null })
+        }
+        aria-labelledby="activate-confirmation-dialog-title"
+        aria-describedby="activate-confirmation-dialog-description"
+        slotProps={{
+          backdrop: {
+            sx: { backgroundColor: 'rgba(0,0,0,0.15)' },
+          },
+        }}
+      >
+        <DialogHeader>
+          Activate Confirmation Required!
+        </DialogHeader>
+
+        <ConfirmContent>
+          <ConfirmText id="activate-confirmation-dialog-description">
+            Are you sure you want to activate{' '}
+            <HighlightText color="#33AD74">
+              "{showActivateConfirmDialog.job?.endpoint_name || 'this job'}"
+            </HighlightText>
+            ?
+          </ConfirmText>
+
+          <InfoBox bg="#F0FDF4" border="1px solid #BBF7D0">
+            <InfoText color="#15803D">
+              ✅ Once activated, this job will be available for deployment.
+            </InfoText>
+          </InfoBox>
+        </ConfirmContent>
+
+        <ConfirmActions>
+          <Button
+            onClick={() =>
+              setShowActivateConfirmDialog({ open: false, job: null })
+            }
+            variant="secondary"
+            className="!pb-[6px] !pt-[5px]"
+          >
+            Cancel
+          </Button>
+
+          <Button
+            onClick={async () => {
+              if (showActivateConfirmDialog.job) {
+                await handleTogglePublishingStatus(
+                  showActivateConfirmDialog.job
+                );
+              }
+            }}
+            variant="primary"
+            className="!pb-[6px] !pt-[5px]"
+          >
+            Yes, Activate Job
+          </Button>
+        </ConfirmActions>
+      </ConfirmDialog>
+
+      <ConfirmDialog
+        open={showDeactivateConfirmDialog.open}
+        onClose={() =>
+          setShowDeactivateConfirmDialog({ open: false, job: null })
+        }
+        aria-labelledby="deactivate-confirmation-dialog-title"
+        aria-describedby="deactivate-confirmation-dialog-description"
+        slotProps={{
+          backdrop: { sx: { backgroundColor: 'rgba(0,0,0,0.15)' } },
+        }}
+      >
+        <DialogHeader>
+          Deactivate Confirmation Required!
+        </DialogHeader>
+
+        <ConfirmContent>
+          <ConfirmText id="deactivate-confirmation-dialog-description">
+            Are you sure you want to deactivate{' '}
+            <HighlightText color="#FF474D">
+              "{showDeactivateConfirmDialog.job?.endpoint_name || 'this job'}"
+            </HighlightText>
+            ?
+          </ConfirmText>
+
+          <InfoBox bg="#FFF1F2" border="1px solid #FFCDD2">
+            <InfoText color="#FF474D">
+              ⚠️ Once deactivated, this job will not be available for deployment.
+            </InfoText>
+          </InfoBox>
+        </ConfirmContent>
+
+        <ConfirmActions>
+          <Button
+            onClick={() =>
+              setShowDeactivateConfirmDialog({ open: false, job: null })
+            }
+            variant="secondary"
+            className="!pb-[6px] !pt-[5px]"
+          >
+            Cancel
+          </Button>
+
+          <Button
+            onClick={async () => {
+              if (showDeactivateConfirmDialog.job) {
+                await handleTogglePublishingStatus(
+                  showDeactivateConfirmDialog.job
+                );
+              }
+            }}
+            variant="primary"
+            className="!pb-[6px] !pt-[5px]"
+          >
+            Yes, Deactivate Job
+          </Button>
+        </ConfirmActions>
+      </ConfirmDialog>
+
     </>
   );
 };
+
 export default JobList;
