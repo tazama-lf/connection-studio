@@ -1,22 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { Settings2, List, FileText, Terminal } from 'lucide-react';
-import { Code2 } from 'lucide-react';
 import { XMLParser } from 'fast-xml-parser';
-import * as yup from 'yup';
-import { Button } from './Button';
-import {
-  SparklesIcon,
-  LoaderCircle,
-  MinusCircle,
-  XCircle,
-  FilePlus,
-  ArrowDownToLine,
-} from 'lucide-react';
-import {
-  type SchemaField,
-  type FieldAdjustment,
-} from '../../features/config/services/configApi';
+import { ArrowDownToLine, Code2, FilePlus, FileText, List, Settings2, SparklesIcon, Terminal, XCircle } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
 import ReactJson from 'react-json-view';
+import * as yup from 'yup';
+import {
+  type FieldAdjustment,
+  type SchemaField,
+} from '../../features/config/services/configApi';
+import { Button } from './Button';
 interface PayloadEditorProps {
   value: string;
   onChange: (value: string) => void;
@@ -126,13 +117,13 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
       /^v?\d+\.\d+\.\d+$/,
       'Version must follow semantic versioning format (e.g: 1.0.0 or v1.0.0)',
     );
-const transactionTypeSchema = yup
-  .string()
-  .required('Transaction Type is required')
-  .matches(
-    /^[a-z_][a-z0-9_]*$/,
-    'Transaction Type must start with a lowercase letter or underscore and contain only lowercase letters, numbers, or underscores'
-  );
+  const transactionTypeSchema = yup
+    .string()
+    .required('Transaction Type is required')
+    .matches(
+      /^[a-z_][a-z0-9_]*$/,
+      'Transaction Type must start with a lowercase letter or underscore and contain only lowercase letters, numbers, or underscores'
+    );
 
   const eventTypeSchema = yup
     .string()
@@ -211,12 +202,9 @@ const transactionTypeSchema = yup
   const validatePayloadContent = (
     payloadValue: string,
     contentType: string,
-    checkRequired: boolean = false,
   ): { isValid: boolean; message: string; error: string } => {
-    if (checkRequired && (!payloadValue || !payloadValue.trim())) {
-      return { isValid: false, message: '', error: 'Payload is required' };
-    }
-    if (!payloadValue || !payloadValue.trim()) {
+
+    if (!payloadValue) {
       return { isValid: true, message: '', error: '' };
     }
     if (contentType === 'application/json') {
@@ -481,6 +469,9 @@ const transactionTypeSchema = yup
     setPayloadValidationMessage(validation.message);
     setFieldErrors((prev) => ({ ...prev, payload: validation.error }));
   };
+
+  console.log('payload==================================', typeof value, JSON.stringify(value, null, 2))
+
   useEffect(() => {
     validatePayload(value, endpointData.contentType);
   }, [value, endpointData.contentType]);
@@ -857,14 +848,14 @@ const transactionTypeSchema = yup
   };
   return (
     <div className="space-y-4">
-      {}
+      { }
       <div className="">
         <h3 className="text-base font-semibold flex items-center gap-1 text-blue-900 mb-4">
           <Settings2 className="text-blue-500" size={16} /> Endpoint
           Configuration
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {}
+          { }
           <div>
             <label
               htmlFor="version"
@@ -893,13 +884,12 @@ const transactionTypeSchema = yup
                     }
                   }}
                   placeholder="1.0.0"
-                  className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white  ${
-                    isReadOnly
-                      ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
-                      : fieldErrors.version
-                        ? 'bg-white border-red-300 text-red-900 placeholder-red-300 focus:ring-red-500 focus:border-red-500'
-                        : 'bg-white border-gray-300'
-                  }`}
+                  className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white  ${isReadOnly
+                    ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
+                    : fieldErrors.version
+                      ? 'bg-white border-red-300 text-red-900 placeholder-red-300 focus:ring-red-500 focus:border-red-500'
+                      : 'bg-white border-gray-300'
+                    }`}
                   readOnly={isReadOnly}
                 />
               );
@@ -908,7 +898,7 @@ const transactionTypeSchema = yup
               <p className="mt-1 text-sm text-red-600">{fieldErrors.version}</p>
             )}
           </div>
-          {}
+          { }
           <div>
             <label
               htmlFor="msgFam"
@@ -933,13 +923,12 @@ const transactionTypeSchema = yup
                     }
                   }}
                   placeholder="iso-20022"
-                  className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white ${
-                    isReadOnly
-                      ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
-                      : fieldErrors.eventType
-                        ? 'bg-white border-red-300 text-red-900 placeholder-red-300 focus:ring-red-500 focus:border-red-500'
-                        : 'bg-white border-gray-300'
-                  }`}
+                  className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white ${isReadOnly
+                    ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
+                    : fieldErrors.eventType
+                      ? 'bg-white border-red-300 text-red-900 placeholder-red-300 focus:ring-red-500 focus:border-red-500'
+                      : 'bg-white border-gray-300'
+                    }`}
                   readOnly={isReadOnly}
                 />
               );
@@ -950,7 +939,7 @@ const transactionTypeSchema = yup
               </p>
             )}
           </div>
-          {}
+          { }
           <div>
             <label
               htmlFor="transaction-type"
@@ -975,13 +964,12 @@ const transactionTypeSchema = yup
                     }
                   }}
                   placeholder="e.g., pacs.008, pain.001"
-                  className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white ${
-                    isReadOnly
-                      ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
-                      : fieldErrors.transactionType
-                        ? 'bg-white border-red-300 text-red-900 placeholder-red-300 focus:ring-red-500 focus:border-red-500'
-                        : 'bg-white border-gray-300'
-                  }`}
+                  className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white ${isReadOnly
+                    ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
+                    : fieldErrors.transactionType
+                      ? 'bg-white border-red-300 text-red-900 placeholder-red-300 focus:ring-red-500 focus:border-red-500'
+                      : 'bg-white border-gray-300'
+                    }`}
                   readOnly={isReadOnly}
                 />
               );
@@ -992,7 +980,7 @@ const transactionTypeSchema = yup
               </p>
             )}
           </div>
-          {}
+          { }
           <div>
             <label
               htmlFor="content-type"
@@ -1009,11 +997,10 @@ const transactionTypeSchema = yup
                   onChange={(e) =>
                     handleEndpointDataChange('contentType', e.target.value)
                   }
-                  className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white ${
-                    isReadOnly
-                      ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
-                      : 'bg-white border-gray-300'
-                  }`}
+                  className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white ${isReadOnly
+                    ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
+                    : 'bg-white border-gray-300'
+                    }`}
                   disabled={isReadOnly}
                 >
                   <option value="application/json">application/json</option>
@@ -1023,9 +1010,9 @@ const transactionTypeSchema = yup
             })()}
           </div>
         </div>
-        {}
-        {}
-        {}
+        { }
+        { }
+        { }
         {endpointData.transactionType && (
           <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <div className="flex items-start gap-3">
@@ -1048,7 +1035,7 @@ const transactionTypeSchema = yup
                 <h4 className="text-sm font-medium text-blue-900 mb-2">
                   Endpoint Path Preview
                 </h4>
-                {}
+                { }
                 <div className="bg-white border border-blue-200 rounded px-3 py-2 font-mono text-sm text-gray-900">
                   /{tenantId}/{endpointData.version || 'v1'}/
                   {endpointData.msgFam ? `${endpointData.msgFam}/` : ''}
@@ -1186,27 +1173,25 @@ const transactionTypeSchema = yup
                 </div>
               </div>
             )}
-          {}
+          { }
           {!readOnly &&
             !isEditMode &&
             (payloadValidationMessage || fieldErrors.payload) && (
               <div
-                className={`p-3 border rounded-md mb-3 mt-5 ${
-                  fieldErrors.payload
-                    ? 'bg-red-50 border-red-200'
-                    : isPayloadValid
-                      ? 'bg-green-50 border-green-200'
-                      : 'bg-yellow-50 border-yellow-200'
-                }`}
+                className={`p-3 border rounded-md mb-3 mt-5 ${fieldErrors.payload
+                  ? 'bg-red-50 border-red-200'
+                  : isPayloadValid
+                    ? 'bg-green-50 border-green-200'
+                    : 'bg-yellow-50 border-yellow-200'
+                  }`}
               >
                 <p
-                  className={`text-sm ${
-                    fieldErrors.payload
-                      ? 'text-red-700'
-                      : isPayloadValid
-                        ? 'text-green-700'
-                        : 'text-yellow-700'
-                  }`}
+                  className={`text-sm ${fieldErrors.payload
+                    ? 'text-red-700'
+                    : isPayloadValid
+                      ? 'text-green-700'
+                      : 'text-yellow-700'
+                    }`}
                 >
                   {fieldErrors.payload || payloadValidationMessage}
                 </p>
@@ -1214,11 +1199,11 @@ const transactionTypeSchema = yup
             )}
         </div>
       )}
-      {}
+      { }
       {!isEditMode && (shouldCreateNew || isCloning) && (
         <>
           <div className="flex gap-5 w-full">
-            {}
+            { }
             <div className="flex-1">
               <h4 className="text-sm font-bold flex items-center gap-1 text-gray-700 mb-2">
                 <Terminal className="text-blue-500" size={16} /> Raw Input
@@ -1234,7 +1219,7 @@ const transactionTypeSchema = yup
                 />
               </div>
             </div>
-            {}
+            { }
             {endpointData.contentType === 'application/json' && (
               <div className="flex-1">
                 <h4 className="text-sm font-bold flex items-center gap-1 text-gray-700 mb-2">
@@ -1247,14 +1232,14 @@ const transactionTypeSchema = yup
               </div>
             )}
           </div>
-          {}
+          { }
           <div className="my-6">
             {fieldGenerationError && (
               <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-700 text-center">
                 {fieldGenerationError}
               </div>
             )}
-            {}
+            { }
             {value && isPayloadValid && (
               <div className="text-center mb-4">
                 <Button
@@ -1282,7 +1267,7 @@ const transactionTypeSchema = yup
           </div>
         </>
       )}
-      {}
+      { }
       {isEditMode && !readOnly && (
         <div className="my-5 mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
           <div className="flex items-start gap-3">
@@ -1313,7 +1298,7 @@ const transactionTypeSchema = yup
           </div>
         </div>
       )}
-      {}
+      { }
       {showInferredFields && (
         <div className="mt-6 space-y-4">
           {(isEditMode || readOnly || inferredFields.length > 0) && (
@@ -1334,12 +1319,12 @@ const transactionTypeSchema = yup
               </div>
             </div>
           )}
-          {}
+          { }
           {inferredFields.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
-              {}
-              {}
-              {}
+              { }
+              { }
+              { }
               {isEditMode && !readOnly && (
                 <div className="mt-4">
                   {!showAddFieldForm ? (
@@ -1368,7 +1353,7 @@ const transactionTypeSchema = yup
                         Add Your First Field
                       </h4>
                       <div className="space-y-3">
-                        {}
+                        { }
                         <div>
                           <label
                             htmlFor="empty-field-path"
@@ -1393,7 +1378,7 @@ const transactionTypeSchema = yup
                             Use dots for nested fields (parent.child)
                           </p>
                         </div>
-                        {}
+                        { }
                         <div>
                           <label
                             htmlFor="empty-field-type"
@@ -1419,7 +1404,7 @@ const transactionTypeSchema = yup
                             <option value="Array">Array</option>
                           </select>
                         </div>
-                        {}
+                        { }
                         <div className="flex items-center">
                           <input
                             id="empty-field-required"
@@ -1440,7 +1425,7 @@ const transactionTypeSchema = yup
                             Required field
                           </label>
                         </div>
-                        {}
+                        { }
                         <div className="flex justify-center space-x-2 mt-4">
                           <button
                             onClick={() => {
@@ -1471,7 +1456,7 @@ const transactionTypeSchema = yup
             </div>
           ) : (
             <>
-              {}
+              { }
               <div className="mb-3 p-2 bg-slate-50 rounded border border-slate-200">
                 <div className="flex items-center justify-between text-xs">
                   <div className="flex items-center gap-3">
@@ -1488,7 +1473,7 @@ const transactionTypeSchema = yup
                   </div>
                 </div>
               </div>
-              {}
+              { }
               {isEditMode && !readOnly && (
                 <div className="mb-4">
                   {!showAddFieldForm ? (
@@ -1514,7 +1499,7 @@ const transactionTypeSchema = yup
                   ) : (
                     <div className="p-3 border border-gray-200 rounded bg-gray-50">
                       <div className="grid grid-cols-12 gap-2 items-center">
-                        {}
+                        { }
                         <div className="col-span-5">
                           <input
                             type="text"
@@ -1529,7 +1514,7 @@ const transactionTypeSchema = yup
                             className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           />
                         </div>
-                        {}
+                        { }
                         <div className="col-span-2">
                           <select
                             value={newField.type}
@@ -1548,7 +1533,7 @@ const transactionTypeSchema = yup
                             <option value="Array">Array</option>
                           </select>
                         </div>
-                        {}
+                        { }
                         <div className="col-span-2 flex items-center">
                           <input
                             type="checkbox"
@@ -1565,7 +1550,7 @@ const transactionTypeSchema = yup
                             Required
                           </label>
                         </div>
-                        {}
+                        { }
                         <div className="col-span-3 flex justify-end gap-1">
                           <button
                             onClick={() => {
@@ -1593,7 +1578,7 @@ const transactionTypeSchema = yup
                   )}
                 </div>
               )}
-              {}
+              { }
               <div className="border border-gray-200 rounded-lg">
                 <div
                   className="space-y-2 p-2"
@@ -1609,7 +1594,7 @@ const transactionTypeSchema = yup
                       <div className="flex gap-3 items-center w-full">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center">
-                            {}
+                            { }
                             <div
                               className="flex items-center w-full"
                               style={{ paddingLeft: `${field.level * 24}px` }}
@@ -1685,8 +1670,8 @@ const transactionTypeSchema = yup
               </div>
             </>
           )}
-          {}
-          {}
+          { }
+          { }
         </div>
       )}
     </div>
