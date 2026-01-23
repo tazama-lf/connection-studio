@@ -1686,7 +1686,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
         contentType: endpointData.contentType as
           | 'application/json'
           | 'application/xml',
-        payload: payload,
+        payload: JSON.parse(payload),
       };
 
       // CRITICAL: Use the current schema from PayloadEditor (includes user edits)

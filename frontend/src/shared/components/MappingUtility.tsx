@@ -990,6 +990,53 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       return;
     }
 
+    // Helper to get destination type
+    const getDestinationType = (fieldPath: string): string | undefined => {
+      const parts = fieldPath.split('.');
+      if (parts.length === 0) return undefined;
+
+      const findType = (
+        nodes: TreeNode[],
+        pathParts: string[],
+        depth: number = 0,
+      ): string | undefined => {
+        if (pathParts.length === 0) return undefined;
+
+        const [first, ...rest] = pathParts;
+        const node = nodes.find(
+          (n) => n.name.toLowerCase() === first.toLowerCase(),
+        );
+
+        if (!node) return undefined;
+        if (rest.length === 0) {
+          return node.type;
+        }
+        if (node.children) return findType(node.children, rest, depth + 1);
+
+        return undefined;
+      };
+
+      const result = findType(destinationTree, parts);
+      return result;
+    };
+
+    // Determine if destination is number type
+    const destPath = selectedTransformation === 'split' 
+      ? selectedDestinations[0] 
+      : selectedDestinations[0];
+    const destType = destPath ? getDestinationType(destPath) : undefined;
+    const isNumberType = destType && (
+      destType === 'number' || 
+      destType === 'integer' || 
+      destType === 'double' || 
+      destType === 'float'
+    );
+
+    // Convert constant value to number if needed
+    const constantValue = selectedTransformation === 'constant' 
+      ? (isNumberType ? Number(selectedSources[0]) : selectedSources[0])
+      : undefined;
+
     // Create AddMappingRequest object for API
     const mappingRequest = {
       source:
@@ -1006,9 +1053,9 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
         selectedTransformation === 'split' || selectedTransformation === 'concatenate'
           ? delimiter || ' '
           : undefined,
-      constantValue:
-        selectedTransformation === 'constant' ? selectedSources[0] : undefined,
+      constantValue: constantValue,
       prefix: prefix.trim() || undefined,
+      type: isNumberType ? 'number' : undefined,
     };
 
     // Call API to save mapping directly
@@ -1041,13 +1088,11 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
             selectedTransformation === 'concatenate'
               ? delimiter || ' '
               : undefined,
-          constantValue:
-            selectedTransformation === 'constant'
-              ? selectedSources[0]
-              : undefined,
+          constantValue: constantValue,
           transformation: selectedTransformation.toUpperCase(),
           operator: selectedTransformation === 'sum' ? 'SUM' : undefined,
           prefix: prefix.trim() || undefined,
+          type: isNumberType ? 'number' : undefined,
         };
 
         // Update local state only after successful API call
@@ -1629,13 +1674,12 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                   )}
                   <span className="text-sm text-gray-600">
                     {mapping.transformation === 'CONSTANT'
-                      ? `"${mapping.constantValue}"`
+                      ? typeof mapping.constantValue === 'number'
+                        ? mapping.constantValue
+                        : `"${mapping.constantValue}"`
                       : Array.isArray(mapping.source)
                         ? mapping.source.join(' + ')
                         : mapping.source}
-                    {!mapping.transformation &&
-                      mapping?.constantValue &&
-                      `"${mapping.constantValue}"`}
                     <ArrowRightIcon size={16} className="inline mx-2" />
                     {mapping.prefix ? `"${mapping.prefix}" + ` : ''}
                     {Array.isArray(mapping.destination)

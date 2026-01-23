@@ -330,7 +330,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
       await configApi.exportConfig(config.id, 'Exported for deployment');
       showSuccess(
         'Success',
-        `Config "${config.msgFam}" has been exported to SFTP and status updated to EXPORTED.`,
+        `Config "${config.transactionType}" has been exported to SFTP and status updated to EXPORTED.`,
       );
 
       // Refetch configs to update the UI

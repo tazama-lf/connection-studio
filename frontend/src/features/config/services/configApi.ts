@@ -31,6 +31,7 @@ export interface FieldMapping {
   constantValue?: any;
   operator?: string;
   prefix?: string;
+  type?: string;
 }
 
 export interface ConfigResponse {

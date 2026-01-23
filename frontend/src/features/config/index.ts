@@ -41,6 +41,7 @@ export interface FieldMapping {
   destination: string;
   separator?: string;
   prefix?: string;
+  type?: string;
 }
 
 export interface JsonSchema {
