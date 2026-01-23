@@ -1,4 +1,14 @@
 import { HttpService } from '@nestjs/axios';
+import {
+  CONFIG_URL,
+  CONFIG_WRITE_URL,
+  CONFIG_STATUS_URL,
+  DATA_MODEL_COLLECTIONS_URL,
+  DESTINATION_TYPES_URL,
+  TRANSACTION_TYPE_TABLE_URL,
+  DATA_MODEL_TABLE_URL,
+  DEV_BASE_URL,
+} from '../constants/constant';
 import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
@@ -29,10 +39,14 @@ export class AdminServiceClient {
     private readonly configService: ConfigService,
   ) {
     this.adminServiceUrl =
-      this.configService.get<string>('ADMIN_SERVICE_URL') ??
-      'http://localhost:3100';
+      this.configService.get<string>('ADMIN_SERVICE_URL') ?? DEV_BASE_URL
   }
 
+  private getAuthHeaders(token: string): Record<string, string> {
+    return {
+      Authorization: token.startsWith('Bearer ') ? token : `Bearer ${token}`,
+    };
+  }
   /**
    *
    * @param method - HTTP method (GET, POST, PUT, DELETE, PATCH)
@@ -41,42 +55,88 @@ export class AdminServiceClient {
    * @param headers - Additional headers to include
    * @returns Response from admin-service
    */
-
-  async updateConfigStatus(
-    id: number,
-    status: string,
+  private async executeHttpRequest<T = unknown>(
+    method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH',
+    path: string,
     token: string,
-  ): Promise<{ success: boolean; message: string }> {
-    const url = `${this.adminServiceUrl}/v1/admin/tcs/tcs/config/status/${id}`;
+    body?: unknown,
+  ): Promise<T> {
+    const url = `${this.adminServiceUrl}${path}`;
+    const headers = this.getAuthHeaders(token);
+
+    this.logger.log(`Making ${method} request to: ${url}`);
+    if (body) {
+      this.logger.debug(`Request body: ${JSON.stringify(body).substring(0, 200)}...`);
+    }
 
     try {
-      const response = await firstValueFrom(
-        this.httpService.put(
-          url,
-          { status },
-          {
-            headers: {
-              Authorization: token.startsWith('Bearer ')
-                ? token
-                : `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-          },
-        ),
+      let response;
+      switch (method) {
+        case 'GET':
+          response = await firstValueFrom(this.httpService.get(url, { headers }));
+          break;
+        case 'POST':
+          response = await firstValueFrom(this.httpService.post(url, body, { headers }));
+          break;
+        case 'PUT':
+          response = await firstValueFrom(this.httpService.put(url, body, { headers }));
+          break;
+        case 'DELETE':
+          response = await firstValueFrom(this.httpService.delete(url, { headers, data: body }));
+          break;
+        case 'PATCH':
+          response = await firstValueFrom(this.httpService.patch(url, body, { headers }));
+          break;
+      }
+
+      this.logger.log(`${method} ${path} - Success (${response.status})`);
+      this.logger.debug(`Response data: ${JSON.stringify(response.data).substring(0, 200)}...`);
+
+      return response.data as T;
+    } catch (error) {
+      return this.handleError(error, `${method} ${path}`);
+    }
+  }
+
+
+  private handleError(error: unknown, operation: string): never {
+    const err = error as {
+      response?: { status: number; data: unknown };
+      request?: unknown;
+      message: string;
+    };
+    if (err.response) {
+      const { status, data } = err.response;
+      this.logger.error(
+        `${operation} failed with status ${status}: ${JSON.stringify(data)}`,
       );
 
-      return response.data;
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.message ?? error.message;
+      const message =
+        data &&
+        typeof data === 'object' &&
+        'message' in data &&
+        typeof data.message === 'string'
+          ? data.message
+          : 'Admin service returned an error response';
+
+      throw new HttpException(message, status ?? HttpStatus.BAD_GATEWAY);
+    } else if (err.request) {
       this.logger.error(
-        `Failed to update config ${id} status: ${errorMessage}`,
+        `${operation} - No response from admin-service: ${err.message}`,
       );
       throw new HttpException(
-        errorMessage ?? 'Failed to update config status',
-        error.response?.status ?? HttpStatus.INTERNAL_SERVER_ERROR,
+        'Admin service is unavailable',
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
+    } else {
+      this.logger.error(`${operation} - Error: ${err.message}`);
+      throw new HttpException(
+        'Internal server error',
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
+
 
   async forwardRequest(
     method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH',
@@ -621,29 +681,31 @@ export class AdminServiceClient {
   // ==================== TCS OPERATIONS ====================
 
   async getConfigById(id: number, token: string): Promise<any> {
-    try {
-      const response = await firstValueFrom(
-        this.httpService.get(
-          `${this.adminServiceUrl}/v1/admin/tcs/config/${id}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          },
-        ),
-      );
+    const response = await this.executeHttpRequest<{ config?: any }>(
+      'GET',
+      `${CONFIG_URL}/${id}`,
+      token,
+    );
 
-      if (!response.data?.config) {
-        this.logger.warn(`Config ${id} not found in admin-service response`);
-        return null;
-      }
-
-      return response.data.config;
-    } catch (error) {
-      return this.handleError(error, 'getConfigById');
+    if (!response.config) {
+      this.logger.warn(`Config ${id} not found in admin-service response`);
+      return null;
     }
-  }
 
+    return response.config;
+  }
+  async updateConfigStatus(
+    id: number,
+    status: string,
+    token: string,
+  ): Promise<{ success: boolean; message: string }> {
+    return await this.executeHttpRequest<{ success: boolean; message: string }>(
+      'PUT',
+      `${CONFIG_STATUS_URL}/${id}`,
+      token,
+      { status },
+    );
+  }
   async getAllConfigs(
     token: string,
     limit = 10,
@@ -652,52 +714,36 @@ export class AdminServiceClient {
     configs: any[];
     pagination: { total: number; limit: number; offset: number; pages: number };
   }> {
-    try {
-      const response = await firstValueFrom(
-        this.httpService.post(
-          `${this.adminServiceUrl}/v1/admin/tcs/config/${offset}/${limit}`,
-          {},
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          },
-        ),
-      );
+    const response = await this.executeHttpRequest<{
+      configs: any[];
+      pagination: { total: number; limit: number; offset: number; pages: number };
+    }>(
+      'POST',
+      `${CONFIG_URL}/${offset}/${limit}`,
+      token,
+      {},
+    );
 
-      return {
-        configs: response.data.configs ?? [],
-        pagination: response.data.pagination ?? {
-          total: 0,
-          limit,
-          offset,
-          pages: 0,
-        },
-      };
-    } catch (error) {
-      return this.handleError(error, 'getAllConfigs');
-    }
+    return {
+      configs: response.configs ?? [],
+      pagination: response.pagination ?? {
+        total: 0,
+        limit,
+        offset,
+        pages: 0,
+      },
+    };
   }
 
   async writeConfig(configData: any, token: string): Promise<any> {
-    try {
-      const response = await firstValueFrom(
-        this.httpService.post(
-          `${this.adminServiceUrl}/v1/admin/tcs/config/write`,
-          configData,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-          },
-        ),
-      );
+    const response = await this.executeHttpRequest<{ config: any }>(
+      'POST',
+      CONFIG_WRITE_URL,
+      token,
+      configData,
+    );
 
-      return response.data.config;
-    } catch (error) {
-      return this.handleError(error, 'writeConfig');
-    }
+    return response.config;
   }
 
   async writeConfigUpdate(
@@ -705,41 +751,20 @@ export class AdminServiceClient {
     updateData: any,
     token: string,
   ): Promise<any> {
-    try {
-      const response = await firstValueFrom(
-        this.httpService.put(
-          `${this.adminServiceUrl}/v1/admin/tcs/config/${id}/write`,
-          updateData,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-          },
-        ),
-      );
-
-      return response.data;
-    } catch (error) {
-      return this.handleError(error, 'writeConfigUpdate');
-    }
+    return await this.executeHttpRequest(
+      'PUT',
+      `${CONFIG_URL}/${id}/write`,
+      token,
+      updateData,
+    );
   }
 
   async writeConfigDelete(id: number, token: string): Promise<void> {
-    try {
-      await firstValueFrom(
-        this.httpService.delete(
-          `${this.adminServiceUrl}/v1/admin/tcs/config/${id}/write`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          },
-        ),
-      );
-    } catch (error) {
-      this.handleError(error, 'writeConfigDelete');
-    }
+    await this.executeHttpRequest(
+      'DELETE',
+      `${CONFIG_URL}/${id}/write`,
+      token,
+    );
   }
 
   async updateConfigByStatus(
@@ -748,28 +773,19 @@ export class AdminServiceClient {
     token: string,
     comment?: string,
   ): Promise<Config | null> {
-    try {
-      const body: any = { status };
-      if (comment !== undefined) {
-        body.comments = comment;
-      }
-      const response = await firstValueFrom(
-        this.httpService.put(
-          `${this.adminServiceUrl}/v1/admin/tcs/config/${id}/write`,
-          body,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-          },
-        ),
-      );
-
-      return response.data.config;
-    } catch (error) {
-      return this.handleError(error, 'updateConfigByStatus');
+    const body: any = { status };
+    if (comment !== undefined) {
+      body.comments = comment;
     }
+
+    const response = await this.executeHttpRequest<{ config: Config }>(
+      'PUT',
+      `${CONFIG_URL}/${id}/write`,
+      token,
+      body,
+    );
+
+    return response.config;
   }
   async findConfigsByStatus(
     filters: {
@@ -787,34 +803,27 @@ export class AdminServiceClient {
     configs: any[];
     pagination: { total: number; limit: number; offset: number; pages: number };
   }> {
-    try {
-      const { limit = 10, offset = 0, ...filterPayload } = filters;
+    const { limit = 10, offset = 0, ...filterPayload } = filters;
 
-      const response = await firstValueFrom(
-        this.httpService.post(
-          `${this.adminServiceUrl}/v1/admin/tcs/config/${offset}/${limit}`,
-          filterPayload,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-          },
-        ),
-      );
+    const response = await this.executeHttpRequest<{
+      configs: any[];
+      pagination: { total: number; limit: number; offset: number; pages: number };
+    }>(
+      'POST',
+      `${CONFIG_URL}/${offset}/${limit}`,
+      token,
+      filterPayload,
+    );
 
-      return {
-        configs: response.data.configs ?? [],
-        pagination: response.data.pagination ?? {
-          total: 0,
-          limit,
-          offset,
-          pages: 0,
-        },
-      };
-    } catch (error) {
-      return this.handleError(error, 'findConfigsByStatus');
-    }
+    return {
+      configs: response.configs ?? [],
+      pagination: response.pagination ?? {
+        total: 0,
+        limit,
+        offset,
+        pages: 0,
+      },
+    };
   }
 
   async updatePublishingStatus(
@@ -822,24 +831,12 @@ export class AdminServiceClient {
     publishingStatus: 'active' | 'inactive',
     token: string,
   ): Promise<any> {
-    try {
-      const response = await firstValueFrom(
-        this.httpService.patch(
-          `${this.adminServiceUrl}/v1/admin/tcs/config/${id}/publishing-status`,
-          { publishing_status: publishingStatus },
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-          },
-        ),
-      );
-
-      return response.data;
-    } catch (error) {
-      return this.handleError(error, 'updatePublishingStatus');
-    }
+    return await this.executeHttpRequest(
+      'PATCH',
+      `${CONFIG_URL}/${id}/publishing-status`, 
+      token,
+      { publishing_status: publishingStatus },
+    );
   }
 
   async getAllConfigsWithFilters(
@@ -848,35 +845,28 @@ export class AdminServiceClient {
     filters: Record<string, any>,
     token: string,
   ): Promise<Config[]> {
-    return await this.forwardRequest(
+    return await this.executeHttpRequest<Config[]>(
       'POST',
-      `/v1/admin/tcs/config/${offset}/${limit}`,
+      `${CONFIG_URL}/${offset}/${limit}`,
+      token,
       filters,
-      {
-        Authorization: token.startsWith('Bearer ') ? token : `Bearer ${token}`,
-      },
     );
   }
 
   async addMapping(id: number, mappingData: any, token: string): Promise<any> {
-    return await this.forwardRequest(
+    return await this.executeHttpRequest(
       'POST',
-      `/v1/admin/tcs/config/${id}/mapping`,
+      `${CONFIG_URL}/${id}/mapping`,
+      token,
       mappingData,
-      {
-        Authorization: token.startsWith('Bearer ') ? token : `Bearer ${token}`,
-      },
     );
   }
 
   async removeMapping(id: number, index: number, token: string): Promise<any> {
-    return await this.forwardRequest(
+    return await this.executeHttpRequest(
       'DELETE',
-      `/v1/admin/tcs/config/${id}/mapping/${index}`,
-      undefined,
-      {
-        Authorization: token.startsWith('Bearer ') ? token : `Bearer ${token}`,
-      },
+      `${CONFIG_URL}/${id}/mapping/${index}`,
+      token,
     );
   }
 
@@ -885,55 +875,28 @@ export class AdminServiceClient {
     functionData: any,
     token: string,
   ): Promise<any> {
-    return await this.forwardRequest(
+    return await this.executeHttpRequest(
       'POST',
-      `/v1/admin/tcs/config/${id}/function`,
+      `${CONFIG_URL}/${id}/function`,
+      token,
       functionData,
-      {
-        Authorization: token.startsWith('Bearer ') ? token : `Bearer ${token}`,
-      },
     );
   }
 
   async removeFunction(id: number, index: number, token: string): Promise<any> {
-    return await this.forwardRequest(
+    return await this.executeHttpRequest(
       'DELETE',
-      `/v1/admin/tcs/config/${id}/function/${index}`,
-      undefined,
-      {
-        Authorization: token.startsWith('Bearer ') ? token : `Bearer ${token}`,
-      },
+      `${CONFIG_URL}/${id}/function/${index}`,
+      token,
     );
   }
 
   async getAllCollections(tenantId: string, token: string): Promise<any> {
-    this.logger.debug(
-      `Token received: ${token ? `${token.substring(0, 20)}...` : 'EMPTY'}`,
+    return await this.executeHttpRequest(
+      'GET',
+      `${DATA_MODEL_COLLECTIONS_URL}/${tenantId}`,
+      token,
     );
-
-    try {
-      const authHeader = token.startsWith('Bearer ')
-        ? token
-        : `Bearer ${token}`;
-      this.logger.debug(
-        `Authorization header: ${authHeader.substring(0, 30)}...`,
-      );
-      const response = await firstValueFrom(
-        this.httpService.get(
-          `${this.adminServiceUrl}/v1/admin/tcs/data-model/collections/${tenantId}`,
-          {
-            headers: {
-              Authorization: authHeader,
-              'Content-Type': 'application/json',
-            },
-          },
-        ),
-      );
-
-      return response.data;
-    } catch (error) {
-      return this.handleError(error, 'getAllCollections');
-    }
   }
 
   async createDestinationType(
@@ -945,53 +908,23 @@ export class AdminServiceClient {
     },
     token: string,
   ): Promise<any> {
-    try {
-      const authHeader = token.startsWith('Bearer ')
-        ? token
-        : `Bearer ${token}`;
-      const response = await firstValueFrom(
-        this.httpService.post(
-          `${this.adminServiceUrl}/v1/admin/tcs/data-model/destination-types`,
-          dto,
-          {
-            headers: {
-              Authorization: authHeader,
-              'Content-Type': 'application/json',
-            },
-          },
-        ),
-      );
-
-      return response.data;
-    } catch (error) {
-      return this.handleError(error, 'createDestinationType');
-    }
+    return await this.executeHttpRequest(
+      'POST',
+      DESTINATION_TYPES_URL,
+      token,
+      dto,
+    );
   }
 
   async destinationTypeExists(
     destinationTypeId: number,
     token: string,
   ): Promise<any> {
-    try {
-      const authHeader = token.startsWith('Bearer ')
-        ? token
-        : `Bearer ${token}`;
-      const response = await firstValueFrom(
-        this.httpService.get(
-          `${this.adminServiceUrl}/v1/admin/tcs/data-model/destination-types/${destinationTypeId}/exists`,
-          {
-            headers: {
-              Authorization: authHeader,
-              'Content-Type': 'application/json',
-            },
-          },
-        ),
-      );
-
-      return response.data;
-    } catch (error) {
-      return this.handleError(error, 'destinationTypeExists');
-    }
+    return await this.executeHttpRequest(
+      'GET',
+      `${DESTINATION_TYPES_URL}/${destinationTypeId}/exists`,
+      token,
+    );
   }
 
   async addFieldToDestinationType(
@@ -1005,40 +938,23 @@ export class AdminServiceClient {
     },
     token: string,
   ): Promise<any> {
-    try {
-      const authHeader = token.startsWith('Bearer ')
-        ? token
-        : `Bearer ${token}`;
-      const response = await firstValueFrom(
-        this.httpService.post(
-          `${this.adminServiceUrl}/v1/admin/tcs/data-model/destination-types/${destinationTypeId}/fields`,
-          dto,
-          {
-            headers: {
-              Authorization: authHeader,
-              'Content-Type': 'application/json',
-            },
-          },
-        ),
-      );
-
-      return response.data;
-    } catch (error) {
-      return this.handleError(error, 'addFieldToDestinationType');
-    }
+    return await this.executeHttpRequest(
+      'POST',
+      `${DESTINATION_TYPES_URL}/${destinationTypeId}/fields`,
+      token,
+      dto,
+    );
   }
 
   async createTransactionTypeTable(
     transactionType: string,
     token: string,
   ): Promise<void> {
-    return await this.forwardRequest(
+    await this.executeHttpRequest(
       'POST',
-      '/v1/admin/tcs/deploy/transaction-type-table',
+      TRANSACTION_TYPE_TABLE_URL,
+      token,
       { transactionType },
-      {
-        Authorization: token.startsWith('Bearer ') ? token : `Bearer ${token}`,
-      },
     );
   }
 
@@ -1046,41 +962,13 @@ export class AdminServiceClient {
     tableName: string,
     token: string,
   ): Promise<void> {
-    return await this.forwardRequest(
+    await this.executeHttpRequest(
       'POST',
-      '/v1/admin/tcs/data-model/table',
+      DATA_MODEL_TABLE_URL,
+      token,
       { tableName },
-      {
-        Authorization: token.startsWith('Bearer ') ? token : `Bearer ${token}`,
-      },
     );
   }
 
-  private handleError(error: any, operation: string): any {
-    if (error.response) {
-      const { status, data } = error.response;
-      this.logger.error(
-        `${operation} failed with status ${status}: ${JSON.stringify(data)}`,
-      );
 
-      throw new HttpException(
-        data?.message ?? 'Admin service returned an error response',
-        status ?? HttpStatus.BAD_GATEWAY,
-      );
-    } else if (error.request) {
-      this.logger.error(
-        `${operation} - No response from admin-service: ${error.message}`,
-      );
-      throw new HttpException(
-        'Admin service is unavailable',
-        HttpStatus.SERVICE_UNAVAILABLE,
-      );
-    } else {
-      this.logger.error(`${operation} - Error: ${error.message}`);
-      throw new HttpException(
-        'Internal server error',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-  }
 }
