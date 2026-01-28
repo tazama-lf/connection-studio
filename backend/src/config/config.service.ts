@@ -184,7 +184,7 @@ export class ConfigService {
         endpointPath,
         version,
         contentType: dto.contentType ?? ContentType.JSON,
-        payload: dto.payload as unknown as JSONSchema ,
+        payload: dto.payload as string | Record<string, unknown>,
         schema: dto.schema as unknown as JSONSchema,
         mapping: dto.mapping,
         functions: dto.functions,
