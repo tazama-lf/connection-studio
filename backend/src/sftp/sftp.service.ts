@@ -267,7 +267,6 @@ export class SftpService implements OnModuleInit, OnModuleDestroy {
     tenantId: string,
   ): Promise<SftpFile[]> {
     try {
-
       const safeTenantId = utils.escapeRegex(tenantId);
 
       const regex = new RegExp(

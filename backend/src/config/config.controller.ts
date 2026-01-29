@@ -45,16 +45,14 @@ import {
 @UseGuards(TazamaAuthGuard)
 export class ConfigController {
   constructor(private readonly configService: ConfigService) {}
-   @Get('/api/status')
+  @Get('/api/status')
   @RequireAnyClaims(
     TazamaClaims.EDITOR,
     TazamaClaims.APPROVER,
     TazamaClaims.PUBLISHER,
   )
-  async getRulesStatus(
-    @User() user: AuthenticatedUser,
-  ): Promise<string[]> {
-    return await this.configService.getRulesStatusbyRole(user);
+  getRulesStatus(@User() user: AuthenticatedUser): string[] {
+    return this.configService.getRulesStatusbyRole(user);
   }
   @Post('/:id/mapping')
   @RequireClaims(TazamaClaims.EDITOR)
@@ -89,10 +87,7 @@ export class ConfigController {
     @Body() dto: CreateConfigDto,
     @User() user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
-    const result = await this.configService.createConfig(
-      dto,
-      user,
-    );
+    const result = await this.configService.createConfig(dto, user);
 
     if (!result.success) {
       throw new BadRequestException(
@@ -273,11 +268,15 @@ export class ConfigController {
     @Body() filters?: Record<string, any>,
   ): Promise<Config[]> {
     const updatedFilters = filters ?? {};
-    
-    if (!updatedFilters.status || 
-        updatedFilters.status === '' || 
-        (Array.isArray(updatedFilters.status) && updatedFilters.status.length === 0)) {
-      const allowedStatuses = await this.configService.getRulesStatusbyRole(user);
+
+    if (
+      !updatedFilters.status ||
+      updatedFilters.status === '' ||
+      (Array.isArray(updatedFilters.status) &&
+        updatedFilters.status.length === 0)
+    ) {
+      const allowedStatuses =
+        this.configService.getRulesStatusbyRole(user);
       if (allowedStatuses.length > 0) {
         updatedFilters.status = allowedStatuses.join(',');
       }

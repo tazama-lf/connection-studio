@@ -13,7 +13,6 @@ interface DecodedUserInfo {
   tenantDetails: string[];
 }
 
-
 const { ENCRYPTION_KEY, IV_LENGTH } = process.env;
 
 const key = Buffer.from(ENCRYPTION_KEY!, 'utf8');
@@ -60,7 +59,6 @@ export function decrypt(text: string): string {
 export function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
-
 
 export function validateCronExpression(expression: string): void {
   try {

@@ -39,12 +39,20 @@ export class ConfigService {
     private readonly notificationService: NotificationService,
     @Inject('AUDIT_LOGGER')
     private readonly auditLoggerService: AuditLogger,
-
   ) {}
 
   private logAudit(
     eventType: string,
-    user: AuthenticatedUser | { userId: string; actorRole?: string; actorName?: string; actorEmail?: string; sourceIP?: string; tenantId: string },
+    user:
+      | AuthenticatedUser
+      | {
+          userId: string;
+          actorRole?: string;
+          actorName?: string;
+          actorEmail?: string;
+          sourceIP?: string;
+          tenantId: string;
+        },
     description: string,
     resourceId: string,
     status: 'success' | 'failure',
@@ -53,11 +61,11 @@ export class ConfigService {
     this.auditLoggerService.log({
       eventType,
       actorId: user.userId,
-      actorRole: user.actorRole || 'system',
-      actorName: user.actorName || 'System',
-      actorEmail: user.actorEmail || 'N/A',
+      actorRole: user.actorRole ?? 'system',
+      actorName: user.actorName ?? 'System',
+      actorEmail: user.actorEmail ?? 'N/A',
       description,
-      sourceIp: user.sourceIP || 'N/A',
+      sourceIp: user.sourceIP ?? 'N/A',
       status,
       resourceType: 'Config',
       resourceId,
@@ -141,10 +149,10 @@ export class ConfigService {
     dto: CreateConfigDto,
     user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
-    const { tenantId, userId, token } = { 
-      tenantId: user.tenantId, 
-      userId: user.userId, 
-      token: user.token.tokenString 
+    const { tenantId, userId, token } = {
+      tenantId: user.tenantId,
+      userId: user.userId,
+      token: user.token.tokenString,
     };
     try {
       const { version } = dto;
@@ -184,7 +192,7 @@ export class ConfigService {
         endpointPath,
         version,
         contentType: dto.contentType ?? ContentType.JSON,
-        payload: dto.payload as string | Record<string, unknown>,
+        payload: dto.payload,
         schema: dto.schema as unknown as JSONSchema,
         mapping: dto.mapping,
         functions: dto.functions,
@@ -197,7 +205,6 @@ export class ConfigService {
         configData,
         token,
       );
-
 
       const config = await this.configRepository.findConfigById(
         configId,
@@ -313,7 +320,7 @@ export class ConfigService {
     user: AuthenticatedUser,
     token: string,
   ): Promise<ConfigResponseDto> {
-    const {action} = actionDto;
+    const { action } = actionDto;
     switch (action) {
       case 'submit': {
         try {
@@ -339,10 +346,14 @@ export class ConfigService {
           this.logAudit(
             'Config submitted for review',
             user,
-            `Config ${id} submitted for approval. Comment: ${submitDto.comment || 'none'}`,
+            `Config ${id} submitted for approval. Comment: ${submitDto.comment ?? 'none'}`,
             String(id),
             'success',
-            { success: true, newStatus: ConfigStatus.UNDER_REVIEW, comment: submitDto.comment },
+            {
+              success: true,
+              newStatus: ConfigStatus.UNDER_REVIEW,
+              comment: submitDto.comment,
+            },
           );
 
           return {
@@ -385,7 +396,7 @@ export class ConfigService {
               );
             }
 
-            const functions = config.functions as any ?? null;
+            const functions = (config.functions as any) ?? null;
 
             if (Array.isArray(functions)) {
               const datamodelFunctions = functions.filter(
@@ -429,10 +440,14 @@ export class ConfigService {
           this.logAudit(
             'Config approved',
             user,
-            `Config ${id} approved. Comment: ${approvalDto.comment || 'none'}`,
+            `Config ${id} approved. Comment: ${approvalDto.comment ?? 'none'}`,
             String(id),
             'success',
-            { success: true, newStatus: ConfigStatus.APPROVED, comment: approvalDto.comment },
+            {
+              success: true,
+              newStatus: ConfigStatus.APPROVED,
+              comment: approvalDto.comment,
+            },
           );
 
           return {
@@ -481,7 +496,11 @@ export class ConfigService {
             `Config ${id} rejected. Comment: ${rejectionDto.comment || 'none'}`,
             String(id),
             'success',
-            { success: true, newStatus: ConfigStatus.REJECTED, comment: rejectionDto.comment },
+            {
+              success: true,
+              newStatus: ConfigStatus.REJECTED,
+              comment: rejectionDto.comment,
+            },
           );
 
           return {
@@ -543,10 +562,15 @@ export class ConfigService {
           this.logAudit(
             'Config exported',
             user,
-            `Config ${id} exported to SFTP. Comment: ${exportDto.comment || 'none'}`,
+            `Config ${id} exported to SFTP. Comment: ${exportDto.comment ?? 'none'}`,
             String(id),
             'success',
-            { success: true, newStatus: ConfigStatus.EXPORTED, fileName, comment: exportDto.comment },
+            {
+              success: true,
+              newStatus: ConfigStatus.EXPORTED,
+              fileName,
+              comment: exportDto.comment,
+            },
           );
 
           return {
@@ -556,7 +580,7 @@ export class ConfigService {
           };
         } catch (error) {
           this.logger.error(`Failed to export config: ${error.message}`);
-          
+
           this.logAudit(
             'Config export failed',
             user,
@@ -565,7 +589,7 @@ export class ConfigService {
             'failure',
             { success: false, error: error.message },
           );
-          
+
           throw new BadRequestException(
             `Failed to export config: ${error.message}`,
           );
@@ -677,10 +701,14 @@ export class ConfigService {
           this.logAudit(
             'Config deployed',
             user,
-            `Config ${id} deployed successfully. Comment: ${deployDto.comment || 'none'}`,
+            `Config ${id} deployed successfully. Comment: ${deployDto.comment ?? 'none'}`,
             String(id),
             'success',
-            { success: true, newStatus: ConfigStatus.DEPLOYED, comment: deployDto.comment },
+            {
+              success: true,
+              newStatus: ConfigStatus.DEPLOYED,
+              comment: deployDto.comment,
+            },
           );
 
           return {
@@ -690,7 +718,7 @@ export class ConfigService {
           };
         } catch (error) {
           this.logger.error(`Failed to deploy config: ${error.message}`);
-          
+
           this.logAudit(
             'Config deployment failed',
             user,
@@ -699,7 +727,7 @@ export class ConfigService {
             'failure',
             { success: false, error: error.message },
           );
-          
+
           throw new BadRequestException(
             `Failed to deploy configuration: ${error.message}`,
           );
@@ -818,7 +846,11 @@ export class ConfigService {
     token: string,
   ): Promise<any> {
     try {
-      const result = await this.configRepository.addMapping(id, mappingData, token);
+      const result = await this.configRepository.addMapping(
+        id,
+        mappingData,
+        token,
+      );
 
       this.logAudit(
         'Config mapping added',
@@ -849,7 +881,11 @@ export class ConfigService {
     token: string,
   ): Promise<any> {
     try {
-      const result = await this.configRepository.removeMapping(id, index, token);
+      const result = await this.configRepository.removeMapping(
+        id,
+        index,
+        token,
+      );
 
       this.logAudit(
         'Config mapping removed',
@@ -880,7 +916,11 @@ export class ConfigService {
     token: string,
   ): Promise<any> {
     try {
-      const result = await this.configRepository.addFunction(id, functionData, token);
+      const result = await this.configRepository.addFunction(
+        id,
+        functionData,
+        token,
+      );
 
       this.logAudit(
         'Config function added',
@@ -911,7 +951,11 @@ export class ConfigService {
     token: string,
   ): Promise<any> {
     try {
-      const result = await this.configRepository.removeFunction(id, index, token);
+      const result = await this.configRepository.removeFunction(
+        id,
+        index,
+        token,
+      );
 
       this.logAudit(
         'Config function removed',
@@ -948,13 +992,15 @@ export class ConfigService {
       config,
     };
   }
-  async getRulesStatusbyRole(user: AuthenticatedUser): Promise<string[]> {
+  getRulesStatusbyRole(user: AuthenticatedUser): string[] {
     if (!user.allowedStatuses || user.allowedStatuses.length === 0) {
       this.logger.warn('User does not have allowedStatuses in token');
       return [];
     }
-    
-    this.logger.log(`User has ${user.allowedStatuses.length} allowed statuses: ${user.allowedStatuses.join(', ')}`);
+
+    this.logger.log(
+      `User has ${user.allowedStatuses.length} allowed statuses: ${user.allowedStatuses.join(', ')}`,
+    );
     return user.allowedStatuses;
   }
 

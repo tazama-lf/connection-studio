@@ -338,8 +338,6 @@ describe('TazamaDataModelService', () => {
       ).rejects.toThrow('Destination type with ID 999 not found');
     });
 
-   
-
     it('should sanitize serial_no when it is an empty string', async () => {
       jest.spyOn(repository, 'destinationTypeExists').mockResolvedValue(true);
       jest

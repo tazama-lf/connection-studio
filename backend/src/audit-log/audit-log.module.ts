@@ -5,7 +5,7 @@ import { createAuditProvider } from '@tazama-lf/frms-coe-lib';
 @Module({
   providers: [
     // Provide the service name here
-    createAuditProvider('connection-studio'), 
+    createAuditProvider('connection-studio'),
   ],
   exports: [
     'AUDIT_LOGGER', // Export the provider by its token

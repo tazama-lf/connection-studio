@@ -32,7 +32,7 @@ import { AuditLogModule } from './audit-log/audit-log.module';
     SchedulerModule,
     JobModule,
     NotificationModule,
-    AuditLogModule
+    AuditLogModule,
   ],
   controllers: [AppController],
   providers: [AppService],

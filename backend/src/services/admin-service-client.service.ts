@@ -39,7 +39,7 @@ export class AdminServiceClient {
     private readonly configService: ConfigService,
   ) {
     this.adminServiceUrl =
-      this.configService.get<string>('ADMIN_SERVICE_URL') ?? DEV_BASE_URL
+      this.configService.get<string>('ADMIN_SERVICE_URL') ?? DEV_BASE_URL;
   }
 
   private getAuthHeaders(token: string): Record<string, string> {
@@ -66,38 +66,51 @@ export class AdminServiceClient {
 
     this.logger.log(`Making ${method} request to: ${url}`);
     if (body) {
-      this.logger.debug(`Request body: ${JSON.stringify(body).substring(0, 200)}...`);
+      this.logger.debug(
+        `Request body: ${JSON.stringify(body).substring(0, 200)}...`,
+      );
     }
 
     try {
       let response;
       switch (method) {
         case 'GET':
-          response = await firstValueFrom(this.httpService.get(url, { headers }));
+          response = await firstValueFrom(
+            this.httpService.get(url, { headers }),
+          );
           break;
         case 'POST':
-          response = await firstValueFrom(this.httpService.post(url, body, { headers }));
+          response = await firstValueFrom(
+            this.httpService.post(url, body, { headers }),
+          );
           break;
         case 'PUT':
-          response = await firstValueFrom(this.httpService.put(url, body, { headers }));
+          response = await firstValueFrom(
+            this.httpService.put(url, body, { headers }),
+          );
           break;
         case 'DELETE':
-          response = await firstValueFrom(this.httpService.delete(url, { headers, data: body }));
+          response = await firstValueFrom(
+            this.httpService.delete(url, { headers, data: body }),
+          );
           break;
         case 'PATCH':
-          response = await firstValueFrom(this.httpService.patch(url, body, { headers }));
+          response = await firstValueFrom(
+            this.httpService.patch(url, body, { headers }),
+          );
           break;
       }
 
       this.logger.log(`${method} ${path} - Success (${response.status})`);
-      this.logger.debug(`Response data: ${JSON.stringify(response.data).substring(0, 200)}...`);
+      this.logger.debug(
+        `Response data: ${JSON.stringify(response.data).substring(0, 200)}...`,
+      );
 
       return response.data as T;
     } catch (error) {
       return this.handleError(error, `${method} ${path}`);
     }
   }
-
 
   private handleError(error: unknown, operation: string): never {
     const err = error as {
@@ -119,7 +132,7 @@ export class AdminServiceClient {
           ? data.message
           : 'Admin service returned an error response';
 
-      throw new HttpException(message, status ?? HttpStatus.BAD_GATEWAY);
+      throw new HttpException(message, HttpStatus.BAD_GATEWAY);
     } else if (err.request) {
       this.logger.error(
         `${operation} - No response from admin-service: ${err.message}`,
@@ -136,7 +149,6 @@ export class AdminServiceClient {
       );
     }
   }
-
 
   async forwardRequest(
     method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH',
@@ -715,14 +727,14 @@ export class AdminServiceClient {
     pagination: { total: number; limit: number; offset: number; pages: number };
   }> {
     const response = await this.executeHttpRequest<{
-      configs: any[];
-      pagination: { total: number; limit: number; offset: number; pages: number };
-    }>(
-      'POST',
-      `${CONFIG_URL}/${offset}/${limit}`,
-      token,
-      {},
-    );
+      configs?: any[];
+      pagination?: {
+        total: number;
+        limit: number;
+        offset: number;
+        pages: number;
+      };
+    }>('POST', `${CONFIG_URL}/${offset}/${limit}`, token, {});
 
     return {
       configs: response.configs ?? [],
@@ -760,11 +772,7 @@ export class AdminServiceClient {
   }
 
   async writeConfigDelete(id: number, token: string): Promise<void> {
-    await this.executeHttpRequest(
-      'DELETE',
-      `${CONFIG_URL}/${id}/write`,
-      token,
-    );
+    await this.executeHttpRequest('DELETE', `${CONFIG_URL}/${id}/write`, token);
   }
 
   async updateConfigByStatus(
@@ -806,14 +814,14 @@ export class AdminServiceClient {
     const { limit = 10, offset = 0, ...filterPayload } = filters;
 
     const response = await this.executeHttpRequest<{
-      configs: any[];
-      pagination: { total: number; limit: number; offset: number; pages: number };
-    }>(
-      'POST',
-      `${CONFIG_URL}/${offset}/${limit}`,
-      token,
-      filterPayload,
-    );
+      configs?: any[];
+      pagination?: {
+        total: number;
+        limit: number;
+        offset: number;
+        pages: number;
+      };
+    }>('POST', `${CONFIG_URL}/${offset}/${limit}`, token, filterPayload);
 
     return {
       configs: response.configs ?? [],
@@ -833,7 +841,7 @@ export class AdminServiceClient {
   ): Promise<any> {
     return await this.executeHttpRequest(
       'PATCH',
-      `${CONFIG_URL}/${id}/publishing-status`, 
+      `${CONFIG_URL}/${id}/publishing-status`,
       token,
       { publishing_status: publishingStatus },
     );
@@ -950,25 +958,17 @@ export class AdminServiceClient {
     transactionType: string,
     token: string,
   ): Promise<void> {
-    await this.executeHttpRequest(
-      'POST',
-      TRANSACTION_TYPE_TABLE_URL,
-      token,
-      { transactionType },
-    );
+    await this.executeHttpRequest('POST', TRANSACTION_TYPE_TABLE_URL, token, {
+      transactionType,
+    });
   }
 
   async createTazamaDataModelTable(
     tableName: string,
     token: string,
   ): Promise<void> {
-    await this.executeHttpRequest(
-      'POST',
-      DATA_MODEL_TABLE_URL,
-      token,
-      { tableName },
-    );
+    await this.executeHttpRequest('POST', DATA_MODEL_TABLE_URL, token, {
+      tableName,
+    });
   }
-
-
 }
