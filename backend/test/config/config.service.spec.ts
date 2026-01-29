@@ -59,11 +59,21 @@ describe('ConfigService', () => {
     sendWorkflowNotification: jest.fn(),
   };
 
+  const mockAuditLogger = {
+    log: jest.fn(),
+    error: jest.fn(),
+    warn: jest.fn(),
+    info: jest.fn(),
+  };
+
   const user = {
     tenantId: 'tenant_001',
     userId: 'user_1',
     validClaims: ['editor'],
-  };
+    token: {
+      tokenString: 'jwt-token',
+    },
+  } as any;
 
   const token = 'jwt-token';
 
@@ -77,6 +87,7 @@ describe('ConfigService', () => {
         { provide: SftpService, useValue: mockSftp },
         { provide: NotifyService, useValue: mockNotify },
         { provide: NotificationService, useValue: mockNotification },
+        { provide: 'AUDIT_LOGGER', useValue: mockAuditLogger },
       ],
     }).compile();
 
@@ -115,9 +126,7 @@ describe('ConfigService', () => {
         schema: {},
         contentType: ContentType.JSON,
       } as any,
-      'tenant',
-      'user',
-      token,
+      user,
     );
 
     expect(res.success).toBe(true);
@@ -133,9 +142,7 @@ describe('ConfigService', () => {
         transactionType: 'pacs',
         version: '1',
       } as any,
-      'tenant',
-      'user',
-      token,
+      user,
     );
 
     expect(res.success).toBe(false);
@@ -350,9 +357,7 @@ describe('ConfigService', () => {
 
     const result = await service.createConfig(
       dto as any,
-      'tenant_001',
-      'user_1',
-      token,
+      user,
     );
     expect(mockUtils.buildUserErrorMessage).toHaveBeenCalledWith(
       expect.any(Error),
