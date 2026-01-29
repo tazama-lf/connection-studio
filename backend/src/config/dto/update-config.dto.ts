@@ -30,7 +30,7 @@ export class UpdateConfigDto {
   @IsOptional()
   schema?: Record<string, any>;
 
-  @IsString()
+  @IsObject()
   @IsOptional()
-  payload?: string;
+  payload?: Record<string, unknown>;
 }
