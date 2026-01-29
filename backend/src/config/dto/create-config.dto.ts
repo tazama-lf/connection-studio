@@ -5,6 +5,7 @@ import {
   IsNotEmpty,
   IsObject,
   IsArray,
+  ValidateIf,
 } from 'class-validator';
 import { ContentType } from '@tazama-lf/tcs-lib';
 
@@ -37,9 +38,12 @@ export class CreateConfigDto {
   @IsOptional()
   schema?: Record<string, any>;
 
+  @ValidateIf((o) => typeof o.payload === 'string')
+  @IsString()
+  @ValidateIf((o) => typeof o.payload === 'object')
   @IsObject()
   @IsNotEmpty()
-  payload: Record<string, unknown>;
+  payload: string | Record<string, unknown>;
 
   @IsString()
   @IsOptional()
