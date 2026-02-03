@@ -199,7 +199,7 @@ export class JobService {
         user.token.tokenString,
       );
 
-      if (status === JobStatus.DEPLOYED || status === JobStatus.APPROVED) {
+      if (status === JobStatus.DEPLOYED) {
         await this.notifyService.notifyEnrichment(newId, ConfigType.PULL);
       }
 
@@ -402,6 +402,9 @@ export class JobService {
         case JobStatus.APPROVED: {
           const updatedJob = structuredClone(existingJob)!;
           updatedJob.status = JobStatus.APPROVED;
+
+          await this.notifyService.notifyEnrichment(existingJob!.id, ConfigType.PULL);
+
           await this.notificationService.sendWorkflowNotification(
             EventType.ApproverApprove,
             user,
