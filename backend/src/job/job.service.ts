@@ -47,7 +47,7 @@ export class JobService {
     private readonly adminServiceClient: AdminServiceClient,
     private readonly schedulerService: SchedulerService,
     private readonly notificationService: NotificationService,
-  ) {}
+  ) { }
 
   private handleError(err: unknown): never {
     const message = err instanceof Error ? err.message : String(err);
@@ -199,7 +199,7 @@ export class JobService {
         user.token.tokenString,
       );
 
-      if (status === JobStatus.DEPLOYED) {
+      if (status === JobStatus.DEPLOYED || status === JobStatus.APPROVED) {
         await this.notifyService.notifyEnrichment(newId, ConfigType.PULL);
       }
 
