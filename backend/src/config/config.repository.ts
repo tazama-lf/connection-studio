@@ -53,7 +53,7 @@ export class ConfigRepository {
         c.version === version &&
         c.transactionType === transactionType,
     );
-    return match ?? null;
+    return match??null;
   }
   async getupdateConfigByStatus(
     id: number,

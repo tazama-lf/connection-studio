@@ -765,7 +765,7 @@ export class AdminServiceClient {
   ): Promise<any> {
     return await this.executeHttpRequest(
       'PUT',
-      `${CONFIG_URL}/${id}/write`,
+      `${CONFIG_URL}/write/${id}`,
       token,
       updateData,
     );
