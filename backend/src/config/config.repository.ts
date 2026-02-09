@@ -51,9 +51,10 @@ export class ConfigRepository {
       (c) =>
         c.msgFam === msgFam &&
         c.version === version &&
-        c.transactionType === transactionType,
+        c.transactionType === transactionType &&
+        (c.tenantId === tenantId || (!c.tenantId && !tenantId)),
     );
-    return match??null;
+    return match ?? null;
   }
   async getupdateConfigByStatus(
     id: number,
