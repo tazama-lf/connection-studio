@@ -643,28 +643,29 @@ export const JobList: React.FC<JobListProps> = (props) => {
                   job.status === 'STATUS_08_DEPLOYED')) ||
               (userIsPublisher &&
                 (job.status === 'STATUS_06_EXPORTED' ||
+                  job.status === 'STATUS_04_APPROVED' ||
                   job.status === 'STATUS_08_DEPLOYED'))) && (
-              <Tooltip title="View Details" arrow placement="top">
-                <EyeIcon
-                  className="w-4 h-4 mr-2  cursor-pointer"
-                  style={{ color: '#2b7fff' }}
-                  onClick={() => {
-                    if (onViewLogs) {
-                      onViewLogs(job.id);
-                    } else {
-                      // Fallback for approvers/exporters without handler
-                      console.log('Opening job details for user with roles:', {
-                        userIsEditor,
-                        userIsApprover,
-                        userIsExporter,
-                      });
-                      alert('Opening job details...');
-                    }
-                    setDropdownOpen(null);
-                  }}
-                />
-              </Tooltip>
-            )}
+                <Tooltip title="View Details" arrow placement="top">
+                  <EyeIcon
+                    className="w-4 h-4 mr-2  cursor-pointer"
+                    style={{ color: '#2b7fff' }}
+                    onClick={() => {
+                      if (onViewLogs) {
+                        onViewLogs(job.id);
+                      } else {
+                        // Fallback for approvers/exporters without handler
+                        console.log('Opening job details for user with roles:', {
+                          userIsEditor,
+                          userIsApprover,
+                          userIsExporter,
+                        });
+                        alert('Opening job details...');
+                      }
+                      setDropdownOpen(null);
+                    }}
+                  />
+                </Tooltip>
+              )}
 
             {/* Edit - Only for Editors and only for in-progress or rejected jobs */}
             {userIsEditor &&
