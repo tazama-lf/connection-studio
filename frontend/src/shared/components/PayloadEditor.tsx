@@ -469,9 +469,7 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
     setPayloadValidationMessage(validation.message);
     setFieldErrors((prev) => ({ ...prev, payload: validation.error }));
   };
-
-  console.log('payload==================================', typeof value, JSON.stringify(value, null, 2))
-
+  
   useEffect(() => {
     validatePayload(value, endpointData.contentType);
   }, [value, endpointData.contentType]);

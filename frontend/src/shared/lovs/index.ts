@@ -28,6 +28,7 @@ export const getDemsStatusLov = {
     { label: 'STATUS_08_DEPLOYED', value: 'STATUS_08_DEPLOYED' },
   ],
   publisher: [
+    { label: 'STATUS_04_APPROVED', value: 'STATUS_04_APPROVED' },
     { label: 'STATUS_06_EXPORTED', value: 'STATUS_06_EXPORTED' },
     { label: 'STATUS_08_DEPLOYED', value: 'STATUS_08_DEPLOYED' },
   ],

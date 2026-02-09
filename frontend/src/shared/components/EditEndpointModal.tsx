@@ -334,7 +334,6 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
       let jsonKeyparsed: any = {};
       try {
         jsonKeyparsed = JSON.parse(dataModelForm?.jsonKey || '{}');
-        console.log('jsonKeyparsed', jsonKeyparsed);
       } catch (error) {
         console.error('❌ Invalid JSON in jsonKey:', dataModelForm?.jsonKey);
         jsonKeyparsed = {}; // fallback
@@ -360,7 +359,6 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
         functionName: 'addDataModelTable',
       };
 
-      console.log('Final addDataModel Function Data:', payload);
       onAddFunction(payload, selectedFunction);
       return;
     }
@@ -378,13 +376,6 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
       .map((p) => p.trim())
       .filter((p) => p.length > 0);
     const allParams = [...requiredParams, ...selectedOptionalParams];
-    console.log(':wrench: Function form - handleAddFunction:');
-    console.log('Selected Function:', selectedFunction);
-    console.log('Selected Configuration:', selectedConfiguration);
-    console.log('Config Parameters String:', config.parameters);
-    console.log('Required Params:', requiredParams);
-    console.log('Optional Params:', selectedOptionalParams);
-    console.log('All Params:', allParams);
     // Add prefixes to parameters: 'transactionDetails.' for tenantId, 'redis.' for others
     const prefixedParams = allParams.map((param) => {
       const trimmed = param.trim();
@@ -394,21 +385,15 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
         return `transactionDetails.${trimmed}`;
       }
       if (lowerParam === 'tenantid' || lowerParam === 'tenant_id') {
-        console.log(
-          `:wrench: Adding 'transactionDetails.' prefix to: ${trimmed}`,
-        );
         return `transactionDetails.${trimmed}`;
       } else {
-        console.log(`:wrench: Adding 'redis.' prefix to: ${trimmed}`);
         return `redis.${trimmed}`;
       }
     });
-    console.log('Prefixed Params:', prefixedParams);
     const functionData = {
       functionName: selectedFunction,
       params: prefixedParams,
     };
-    console.log('Final Function Data:', functionData);
     onAddFunction(functionData);
   };
   const handleOptionalParamToggle = (paramName: string) => {
@@ -451,7 +436,7 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
         </select>
       </div>
       {functionConfig?.dataModelConfiguration &&
-      selectedFunction === 'addDataModel' ? (
+        selectedFunction === 'addDataModel' ? (
         <div className="space-y-4 pt-1 border-gray-200">
           <h3 className="text-sm font-medium text-gray-700">
             Data Model Configuration
@@ -471,7 +456,7 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
                   ...dataModelForm,
                   tableName: value,
                 });
-                
+
                 // Validate table name
                 const tableNameSchema = yup
                   .string()
@@ -480,7 +465,7 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
                     /^[a-z_][a-z0-9_]*$/,
                     'Table name must start with a lowercase letter or underscore and contain only lowercase letters, numbers, and underscores'
                   );
-                
+
                 try {
                   tableNameSchema.validateSync(value);
                   setTableNameError('');
@@ -498,9 +483,8 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
                 }
               }}
               placeholder="Enter table name"
-              className={`w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                tableNameError ? 'border-red-300 bg-red-50' : 'border-gray-300'
-              }`}
+              className={`w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${tableNameError ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                }`}
             />
             {tableNameError && (
               <p className="mt-1 text-sm text-red-600">{tableNameError}</p>
@@ -589,11 +573,10 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
               {functionConfig.configurations.map((config) => (
                 <div
                   key={config.name}
-                  className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                    selectedConfiguration === config.name
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-300 hover:border-gray-400'
-                  }`}
+                  className={`p-4 border rounded-lg cursor-pointer transition-colors ${selectedConfiguration === config.name
+                    ? 'border-blue-500 bg-blue-50'
+                    : 'border-gray-300 hover:border-gray-400'
+                    }`}
                   onClick={() => setSelectedConfiguration(config.name)}
                 >
                   <div className="flex items-center space-x-2">
@@ -627,11 +610,10 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
                   {functionConfig.optionalParameters.map((param) => (
                     <div
                       key={param.name}
-                      className={`p-3 border rounded-lg cursor-pointer transition-colors ${
-                        selectedOptionalParams.includes(param.name)
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-gray-300 hover:border-gray-400'
-                      }`}
+                      className={`p-3 border rounded-lg cursor-pointer transition-colors ${selectedOptionalParams.includes(param.name)
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-300 hover:border-gray-400'
+                        }`}
                       onClick={() => handleOptionalParamToggle(param.name)}
                     >
                       <div className="flex items-center space-x-2">
@@ -754,21 +736,17 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
   const shouldCreateNew = !createdEndpoint && !existingConfig && isNewEndpoint;
 
   const [currentMappings, setCurrentMappings] = useState<any[]>([]); // Current mappings from MappingUtility
-  console.log('Cur map:', currentMappings);
   // Function to update current mappings and sync with createdEndpoint
   const updateCurrentMappings = (newMappings: any[]) => {
-    console.log('🔄 updateCurrentMappings called with:', newMappings);
     setCurrentMappings(newMappings);
 
     // Also update the createdEndpoint to include the new mappings
     if (createdEndpoint) {
-      console.log('🔄 Updating createdEndpoint with new mappings');
       setCreatedEndpoint({
         ...createdEndpoint,
         mapping: newMappings,
       });
     } else if (existingConfig) {
-      console.log('🔄 Updating existingConfig with new mappings');
       setExistingConfig({
         ...existingConfig,
         mapping: newMappings,
@@ -815,13 +793,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
         try {
           setLoading(true);
 
-          console.log('Loading existing config for editing:', endpointId);
-
           const response = await configApi.getConfig(endpointId);
-          console.log('Full API response:', response);
-          console.log('Response type:', typeof response);
-          console.log('Response.success:', response.success);
-          console.log('Response.config:', response.config);
 
           // Handle both possible response formats
           let config: any = null;
@@ -834,14 +806,6 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
           }
 
           if (config) {
-            console.log('🔍 Loaded existing config - mapping analysis:');
-            console.log('  - config.mapping:', config.mapping);
-            console.log('  - typeof mapping:', typeof config.mapping);
-            console.log('  - isArray:', Array.isArray(config.mapping));
-            console.log('  - mapping length:', config.mapping?.length);
-            console.log('  - config.status:', config.status);
-            console.log('  - config.comment:', config.comment);
-
             setExistingConfig(config);
 
             // Pre-populate form data with existing config
@@ -871,11 +835,6 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
             // Initialize currentMappings with existing mappings for consistency
             if (config.mapping && Array.isArray(config.mapping)) {
               setCurrentMappings(config.mapping);
-              console.log(
-                '🔄 Initialized currentMappings with existing mappings:',
-                config.mapping.length,
-                'mappings',
-              );
             }
 
             // Set the existing config as the "created" endpoint for all subsequent steps
@@ -886,10 +845,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
             if (config.functions && Array.isArray(config.functions)) {
               setSelectedFunctions(config.functions);
             }
-
-            console.log('Loaded existing config:', config);
           } else {
-            console.log('No valid config found in response:', response);
             showError(
               'Configuration Error',
               'No configuration data found for this endpoint',
@@ -920,10 +876,6 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
 
   // Navigation-only functions (don't save, just move between steps)
   const handleNextStep = () => {
-    console.log('🚀 handleNextStep called for step:', currentStep);
-    console.log('🚀 createdEndpoint:', createdEndpoint);
-    console.log('🚀 isNewEndpoint:', isNewEndpoint);
-
     // Clear any previous step-specific errors when navigating
     setError(null);
 
@@ -934,7 +886,6 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
           showError('Please save the payload first before proceeding');
           return;
         }
-        console.log('✅ Moving from payload to mapping');
         setError(null); // Clear any previous errors before moving to next step
         setCurrentStep('mapping');
         break;
@@ -963,277 +914,6 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
     }
   };
 
-  // Step 1: Create or Update Endpoint with Payload
-  const handleCreateEndpoint = async () => {
-    // Validate all required fields before saving
-    const validationErrors: string[] = [];
-
-    if (!endpointData.transactionType.trim()) {
-      validationErrors.push('Transaction Type is required');
-    }
-
-    if (!endpointData.version.trim()) {
-      validationErrors.push('Version is required');
-    }
-
-    if (!payload.trim()) {
-      validationErrors.push('Payload is required');
-    }
-
-    // If there are validation errors, show them and scroll to top
-    if (validationErrors.length > 0) {
-      const errorMessage = validationErrors.join('. ');
-      setError(errorMessage);
-
-      // Scroll to the error message at the top
-      setTimeout(() => {
-        const errorElement = document.querySelector(
-          '.bg-red-50.border-red-200',
-        );
-        if (errorElement) {
-          errorElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-      }, 100);
-
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      // Create configuration request using user-entered data
-      const createRequest: CreateConfigRequest = {
-        msgFam: endpointData.msgFam?.trim() || undefined, // Use user-provided msgFam or leave undefined
-        transactionType: endpointData.transactionType,
-        version: endpointData.version,
-        contentType: endpointData.contentType as
-          | 'application/json'
-          | 'application/xml',
-        payload: payload,
-      };
-
-      console.log('🔍 Config request details for endpoint path generation:');
-      console.log('  - msgFam:', createRequest.msgFam);
-      console.log('  - transactionType:', createRequest.transactionType);
-      console.log('  - version:', createRequest.version);
-      console.log(
-        '  - Expected endpoint format: /tenantId/version/msgFam/transactionType',
-      );
-      console.log(
-        '  - Will generate: /[tenantId]/' +
-          createRequest.version +
-          '/' +
-          (createRequest.msgFam || '') +
-          '/' +
-          createRequest.transactionType,
-      );
-
-      // MAPPING PERSISTENCE STRATEGY: Include mappings from MappingUtility or existing config
-      console.log('🔍 Mapping persistence debugging:');
-      console.log('  - currentMappings from MappingUtility:', currentMappings);
-      console.log('  - currentMappings type:', typeof currentMappings);
-      console.log('  - currentMappings length:', currentMappings?.length);
-      console.log('  - existingConfig.mapping:', existingConfig?.mapping);
-      console.log(
-        '  - existingConfig.mapping length:',
-        existingConfig?.mapping?.length,
-      );
-
-      // Strategy: Use current mappings if available, otherwise use existing config mappings
-      let mappingsToInclude = null;
-
-      if (
-        currentMappings &&
-        Array.isArray(currentMappings) &&
-        currentMappings.length > 0
-      ) {
-        mappingsToInclude = currentMappings;
-        console.log(
-          '✅ Using current mappings from MappingUtility:',
-          mappingsToInclude.length,
-          'mappings',
-        );
-      } else if (
-        !isNewEndpoint &&
-        existingConfig?.mapping &&
-        Array.isArray(existingConfig.mapping) &&
-        existingConfig.mapping.length > 0
-      ) {
-        mappingsToInclude = existingConfig.mapping;
-        console.log(
-          '🔄 Using existing config mappings as fallback:',
-          mappingsToInclude.length,
-          'mappings',
-        );
-      } else {
-        console.log('� No mappings found - creating config without mappings');
-      }
-
-      if (mappingsToInclude) {
-        createRequest.mapping = mappingsToInclude;
-        console.log(
-          '� Including mappings in config request:',
-          mappingsToInclude,
-        );
-      }
-
-      let response: ConfigResponse;
-
-      if (shouldCreateNew) {
-        console.log(
-          isCloning
-            ? 'Cloning config with data:'
-            : 'Creating new config with data:',
-          createRequest,
-        );
-        response = await configApi.createConfig(createRequest);
-      } else {
-        // EDITING EXISTING CONFIG: Always create new config to preserve original and update endpoint path
-        console.log(
-          '🔄 Editing existing config - will create new config for version/endpoint path update',
-        );
-
-        // Use the version entered by the user (from endpointData.version)
-        const finalVersion =
-          endpointData.version || existingConfig?.version || '1.0';
-
-        const newConfigRequest = {
-          ...createRequest,
-          version: finalVersion,
-        };
-
-        console.log('🆕 Creating new config (preserving original):');
-        console.log('  - Original config ID:', endpointId);
-        console.log('  - Original version:', existingConfig?.version);
-        console.log(
-          '  - Original endpoint path:',
-          existingConfig?.endpointPath,
-        );
-        console.log('  - New version:', finalVersion);
-        console.log('  - New request:', newConfigRequest);
-        console.log(
-          '  - Backend will generate new endpoint path based on new version',
-        );
-
-        // ALWAYS call createConfig for edits to ensure endpoint path regeneration
-        response = await configApi.createConfig(newConfigRequest);
-
-        console.log('🎉 New config created:');
-        console.log('  - Response success:', response.success);
-        if (response.success && response.config) {
-          console.log('  - New config ID:', response.config.id);
-          console.log('  - New endpoint path:', response.config.endpointPath);
-          console.log(
-            '  - Endpoint path updated:',
-            existingConfig?.endpointPath !== response.config.endpointPath,
-          );
-        }
-      }
-
-      console.log('API Response from handleCreateEndpoint:', response);
-
-      if (!response.success) {
-        const action = shouldCreateNew ? 'create' : 'update';
-        setError(response.message || `Failed to ${action} configuration`);
-        if (response.validation?.errors) {
-          console.error('Validation errors:', response.validation.errors);
-        }
-        return;
-      }
-
-      if (response.config) {
-        setCreatedEndpoint(response.config);
-        setInferredSchema(response.config.schema);
-        const action = shouldCreateNew ? 'created' : 'updated';
-        console.log(`Configuration ${action} successfully:`, response.config);
-        console.log('Schema inferred:', response.config.schema);
-
-        // Call success callback to refresh parent data
-        if (onSuccess) {
-          onSuccess();
-        }
-
-        // Show success message to user
-        const actionWord = isNewEndpoint ? 'created' : 'updated';
-        console.log(
-          `✅ Configuration ${actionWord} successfully! Changes reflected in database.`,
-        );
-
-        // Move to next step
-        setError(null); // Clear any previous errors before moving to next step
-        setCurrentStep('mapping');
-      } else {
-        const action = isNewEndpoint ? 'created' : 'updated';
-        setError(`Configuration ${action} but no config data returned`);
-      }
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : 'Unknown error occurred';
-      const action = isNewEndpoint ? 'create' : 'update';
-      setError(`Failed to ${action} endpoint: ${errorMessage}`);
-      console.error(`Error ${action}ing endpoint:`, err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Step 2: Create Mapping - Navigate to next step
-  const handleCreateMapping = async () => {
-    if (!createdEndpoint || !inferredSchema) {
-      setError('Endpoint must be created first');
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      // Get current mappings from the database (no clearing - MappingUtility manages all mapping operations)
-      const currentConfig = await configApi.getConfig(createdEndpoint.id);
-      const existingMappings =
-        currentConfig.success && currentConfig.config
-          ? currentConfig.config.mapping || []
-          : [];
-
-      console.log('🔍 Checking existing mappings for navigation:');
-      console.log('Existing mappings in DB:', existingMappings);
-
-      // MappingUtility handles all mapping CRUD operations directly - we just need to validate and proceed
-      console.log(
-        '✅ Mappings are handled directly by MappingUtility component',
-      );
-      console.log('📋 Proceeding with existing mappings from database');
-      setIsMappingValid(true);
-
-      // Update the endpoint with latest mapping data
-      if (currentConfig.success && currentConfig.config) {
-        setCreatedEndpoint(currentConfig.config);
-
-        console.log('📋 Current mapping data in database:');
-        console.log(
-          'Total mappings stored:',
-          currentConfig.config.mapping?.length || 0,
-        );
-        console.log('All mappings:', currentConfig.config.mapping);
-      }
-
-      setIsMappingValid(true);
-      console.log('✅ Ready to proceed to functions step');
-
-      // Move to next step
-      setError(null); // Clear any previous errors before moving to next step
-      setCurrentStep('functions');
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : 'Unknown error occurred';
-      setError(`Failed to create mapping: ${errorMessage}`);
-      console.error('Error creating mapping:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // Functions step handlers
   const handleAddFunction = async (
     functionData: any,
@@ -1243,7 +923,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
       showError('No configuration ID available to add function');
       return;
     }
-    
+
     // Check if saveTransactionDetails already exists - only allow once
     if (functionData.functionName === 'saveTransactionDetails') {
       const existingSaveTransaction = selectedFunctions.find(
@@ -1256,7 +936,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
         return;
       }
     }
-    
+
     if (selectedFunction !== 'addDataModel') {
       // Check for duplicate functions in local state first
       const isDuplicate = selectedFunctions.some((existingFunction) => {
@@ -1292,9 +972,6 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
         functionData,
       );
       if (response.success) {
-        console.log(
-          ':white_check_mark: Function added successfully to backend',
-        );
         // Add to local state only after successful API call
         const newFunction: FunctionDefinition = {
           functionName: functionData.functionName,
@@ -1306,7 +983,6 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
           setSelectedFunctions([...selectedFunctions, newFunction]);
         }
         setShowAddFunctionModal(false);
-        console.log('Function added successfully');
       } else {
         console.error(':x: Failed to add function:', response.message);
         showError(`Failed to add function: ${response.message}`);
@@ -1349,7 +1025,6 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
             functions: updatedFunctions,
           });
         }
-        console.log(':white_check_mark: Function removed successfully');
       } else {
         showError(`Failed to remove function: ${response.message}`);
       }
@@ -1364,11 +1039,6 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
   };
 
   const handleProceedFromFunctions = () => {
-    console.log(
-      '✅ Proceeding to simulation step with functions:',
-      selectedFunctions,
-    );
-
     // Only validate if not in readOnly mode (i.e., only for editors, not approvers/viewers)
     if (!readOnly) {
       const validationErrors = validateFunctionParameters();
@@ -1422,12 +1092,6 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
       }
     });
 
-    console.log(
-      '🔍 Mapped destinations (lowercase, with prefixes):',
-      Array.from(mappedDestinations),
-    );
-    console.log('🔍 Runtime context fields (lowercase):', runtimeContextFields);
-
     // Check each function's parameters
     selectedFunctions.forEach((func, funcIndex) => {
       const functionConfig = FUNCTION_CONFIGS[func.functionName];
@@ -1452,9 +1116,6 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
 
         // Skip runtime context fields - they're provided at execution time
         if (runtimeContextFields.includes(paramWithoutPrefixLower)) {
-          console.log(
-            `✓ Parameter "${param}" is a runtime context field (will be provided at execution time)`,
-          );
           return;
         }
 
@@ -1462,12 +1123,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
         if (!mappedDestinations.has(paramLower)) {
           errors.push(
             `❌ Function "${functionConfig.displayName}": Parameter "${param}" is not mapped. ` +
-              `Please create a mapping with destination "${param}" in the Mapping step.`,
-          );
-        } else {
-          const mappedAs = mappedDestinationsOriginal.get(paramLower);
-          console.log(
-            `✓ Parameter "${param}" is mapped (as "${mappedAs}")`,
+            `Please create a mapping with destination "${param}" in the Mapping step.`,
           );
         }
       });
@@ -1490,22 +1146,16 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
 
   // Step 4: Submit for Approval
   const handleDeploy = async () => {
-    console.log('🚀 handleDeploy called');
-    console.log('createdEndpoint:', createdEndpoint);
-
     if (!createdEndpoint?.id) {
-      console.log('❌ No endpoint created');
       setError('Endpoint must be created first');
       return;
     }
 
     // Check if mappings exist in the database
     try {
-      console.log('🔍 Checking for existing mappings in database...');
       const configResponse = await configApi.getConfig(createdEndpoint.id);
 
       if (!configResponse.success) {
-        console.log('❌ No mapping found in database');
         return;
       }
     } catch (error) {
@@ -1514,25 +1164,16 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
       return;
     }
 
-    console.log('✅ Starting submission process');
     setLoading(true);
     setError(null);
 
     try {
       // Submit the configuration for approval or deployment based on user role
-      console.log(
-        'Submitting configuration for approval with ID:',
-        createdEndpoint.id,
-      );
-      console.log('User:', user);
-
       let response: ConfigResponse;
       const isUserApprover = isApprover(user?.claims || []);
 
       if (isUserApprover) {
         // Approvers send for deployment
-        console.log('User is approver - checking config status');
-
         // Check current config status
         const configResponse = await configApi.getConfig(createdEndpoint.id);
         if (!configResponse.success || !configResponse.config) {
@@ -1540,20 +1181,15 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
         }
 
         const currentStatus = configResponse.config.status;
-        console.log('Current config status:', currentStatus);
-
         // If config is under_review, just approve it (set to approved)
         if (currentStatus === 'STATUS_03_UNDER_REVIEW') {
-          console.log('Config is under_review - approving it');
           response = await configApi.approveConfig(createdEndpoint.id);
         } else {
           // For other statuses, deploy if possible
-          console.log('Config status allows deployment');
           response = await configApi.deployConfig(createdEndpoint.id);
         }
       } else {
         // Editors submit for approval
-        console.log('User is editor - calling submitForApproval');
         response = await configApi.submitForApproval(
           createdEndpoint.id,
           user?.id || 'unknown',
@@ -1561,10 +1197,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
         );
       }
 
-      console.log('API response:', response);
-
       if (response.success) {
-        console.log('Configuration submitted successfully');
         const successMessage = isUserApprover
           ? 'Configuration sent for deployment successfully!'
           : 'Configuration submitted for approval successfully!';
@@ -1576,11 +1209,9 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
           onSuccess();
         }
       } else {
-        console.log('❌ API returned success=false:', response.message);
         setError(`Failed to submit: ${response.message}`);
       }
     } catch (err) {
-      console.log('❌ Exception caught:', err);
       setError(`Submission failed: ${err}`);
       console.error('Error submitting for approval:', err);
     } finally {
@@ -1589,20 +1220,14 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
   };
 
   const handleSaveAndNext = async () => {
-    console.log('🎯 handleSaveAndNext called for step:', currentStep);
-
-    // For deploy step, just call handleDeploy (no save needed)
     if (currentStep === 'deploy') {
-      console.log('Deploy step - calling handleDeploy');
       await handleDeploy();
       return;
     }
 
-    // Trigger validation in PayloadEditor component (this will show field-level errors)
     const isValid = (window as any).__validatePayloadEditorFields?.();
 
-    // If field validation failed, don't proceed (errors are shown below fields)
-    if (isValid === false) {
+    if (!isValid) {
       setTimeout(() => {
         const errorElement = document.querySelector('#payloadFields');
         if (errorElement) {
@@ -1613,33 +1238,28 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
       return;
     }
 
-    // Validate all required fields before saving (only for payload errors shown at top)
-    const validationErrors: string[] = [];
 
-    if (!payload.trim()) {
+
+    const validationErrors: string[] = [];
+    let parsedPayload: any = null;
+
+    if (!payload) {
       validationErrors.push('Payload is required');
     }
 
-    // Validate JSON format if content type is JSON
-    if (endpointData.contentType === 'application/json' && payload.trim()) {
+    if (endpointData.contentType === 'application/json') {
       try {
-        JSON.parse(payload);
-        console.log('✅ JSON payload is valid');
+        if (typeof payload === 'string') {
+          const trimmedPayload = payload.trim();
+          parsedPayload = JSON.parse(trimmedPayload);
+        } else {
+          parsedPayload = payload;
+        }
       } catch (e) {
         const error = e as Error;
-        console.error('❌ JSON validation failed:', error.message);
         validationErrors.push(`Invalid JSON format: ${error.message}`);
       }
     }
-
-    // Check if fields have been generated from payload
-    // currentSchema can be either InferredField[] array or JSON Schema object
-    console.log('🔍 Validation - currentSchema:', currentSchema);
-    console.log('🔍 Validation - isArray:', Array.isArray(currentSchema));
-    console.log(
-      '🔍 Validation - array length:',
-      Array.isArray(currentSchema) ? currentSchema.length : 'N/A',
-    );
 
     const hasGeneratedFields =
       currentSchema &&
@@ -1647,20 +1267,18 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
         (currentSchema.properties &&
           Object.keys(currentSchema.properties).length > 0)); // JSON Schema object
 
-    console.log('🔍 Validation - hasGeneratedFields:', hasGeneratedFields);
-
     if (!hasGeneratedFields) {
       validationErrors.push(
         'Please generate fields from your payload before saving',
       );
     }
 
-    // If there are validation errors, show them and scroll to top
+    console.log("PAYLOADDDD", validationErrors)
+
     if (validationErrors.length > 0) {
       const errorMessage = validationErrors.join('. ');
       setError(errorMessage);
 
-      // Scroll to the error message at the top
       setTimeout(() => {
         const errorElement = document.querySelector('#payloadFields');
         if (errorElement) {
@@ -1674,11 +1292,11 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
     setLoading(true);
     setError(null);
 
+
     try {
-      // First, save the configuration to the database
       let saveResponse: ConfigResponse;
 
-      // Create configuration request using user-entered data
+
       const createRequest: CreateConfigRequest = {
         msgFam: endpointData.msgFam?.trim() || undefined,
         transactionType: endpointData.transactionType,
@@ -1686,44 +1304,16 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
         contentType: endpointData.contentType as
           | 'application/json'
           | 'application/xml',
-        payload: JSON.parse(payload),
+        payload: endpointData.contentType === 'application/json' ? parsedPayload : payload,
       };
 
-      // CRITICAL: Use the current schema from PayloadEditor (includes user edits)
-      // If currentSchema is an InferredField[] array, convert it to JSON Schema format
       let finalSchema = currentSchema;
 
-      console.log('🔍 BEFORE conversion - currentSchema:', currentSchema);
-      console.log(
-        '🔍 BEFORE conversion - isArray:',
-        Array.isArray(currentSchema),
-      );
-      console.log(
-        '🔍 BEFORE conversion - length:',
-        Array.isArray(currentSchema) ? currentSchema.length : 'N/A',
-      );
-
-      // Convert InferredField[] array to JSON Schema if needed
       if (finalSchema && Array.isArray(finalSchema)) {
-        console.log(
-          '🔄 Converting InferredField[] array to JSON Schema format...',
-        );
-        console.log('🔍 InferredField array length:', finalSchema.length);
-        console.log(
-          '🔍 First few fields:',
-          finalSchema
-            .slice(0, 5)
-            .map((f: any) => ({ path: f.path, type: f.type })),
-        );
 
-        // CRITICAL: Don't convert if array is empty!
+
+
         if (finalSchema.length === 0) {
-          console.error(
-            '❌ Cannot convert empty InferredField[] array to JSON Schema',
-          );
-          console.error(
-            '❌ This indicates fields were cleared during navigation',
-          );
           setError(
             'Schema fields were lost. Please go back to step 1, regenerate fields from your payload, and try again.',
           );
@@ -1731,27 +1321,12 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
           return;
         }
 
-        // Use the existing utility function to convert
         finalSchema = convertInferredFieldsToJsonSchema(
           finalSchema as InferredField[],
         );
-
-        if (finalSchema) {
-          console.log('✅ Converted to JSON Schema successfully');
-          console.log(
-            '📊 Schema properties:',
-            Object.keys(finalSchema.properties || {}),
-          );
-        } else {
-          console.error('❌ Conversion returned null');
-        }
       }
 
-      // If no currentSchema but we have a payload, regenerate schema from payload
       if (!existingConfig?.schema && payload.trim()) {
-        console.log(
-          '🔄 No current schema from PayloadEditor, regenerating from payload...',
-        );
         try {
           // Import the schema generation logic (simplified version)
           // const generateSchemaFromPayload = (payloadText: string, contentType: string) => {
@@ -1869,81 +1444,20 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
           //   console.log('✅ Regenerated schema from payload:', JSON.stringify(finalSchema, null, 2));
           // }
         } catch (error) {
-          console.warn('⚠️ Failed to regenerate schema from payload:', error);
-          // Fall back to existing schema
+
           finalSchema = existingConfig?.schema;
         }
       }
 
       if (!finalSchema && existingConfig?.schema) {
         finalSchema = existingConfig.schema;
-        console.log(
-          '🔒 Using existing schema (no current edits):',
-          existingConfig.schema,
-        );
       }
 
-      // Validate schema before sending to backend
       if (finalSchema) {
-        console.log('🔍 Validating schema before send:', finalSchema);
-        console.log(
-          '🔍 Schema type check - isArray:',
-          Array.isArray(finalSchema),
-        );
-        console.log(
-          '🔍 Schema type check - hasProperties:',
-          finalSchema.properties ? true : false,
-        );
-        console.log(
-          '🔍 Schema properties keys:',
-          finalSchema.properties ? Object.keys(finalSchema.properties) : 'N/A',
-        );
-        console.log(
-          '🔍 Schema properties count:',
-          finalSchema.properties
-            ? Object.keys(finalSchema.properties).length
-            : 0,
-        );
-
-        // After conversion, finalSchema should be a JSON Schema object with properties
-        // Check if it's a valid schema structure
-        const hasValidProperties =
-          finalSchema.properties &&
-          typeof finalSchema.properties === 'object' &&
-          Object.keys(finalSchema.properties).length > 0;
-
-        // if (!hasValidProperties) {
-        //   console.error('❌ Schema validation failed: Schema has no valid properties');
-        //   console.error('❌ Schema structure:', JSON.stringify(finalSchema, null, 2));
-        //   console.error('❌ Payload:', payload);
-        //   console.error('❌ Content Type:', endpointData.contentType);
-        //   setError('Invalid schema: No fields were generated from your payload. Please check your JSON/XML format and try again.');
-        //   setLoading(false);
-        //   return;
-        // }
-
         createRequest.schema = finalSchema;
-        console.log('✅ Schema validation passed - sending to backend');
-        console.log('📊 Schema to send:', JSON.stringify(finalSchema, null, 2));
-      } else {
-        console.log(
-          '⚠️ No schema provided - backend will generate from payload',
-        );
       }
 
-      console.log(
-        '🔥 EditEndpointModal.handleSaveAndNext - Saving configuration:',
-      );
-      console.log(
-        '📦 Create request data:',
-        JSON.stringify(createRequest, null, 2),
-      );
-      console.log('📊 Full endpoint data:', endpointData);
-      console.log('📄 Payload length:', payload.length);
-      console.log('🆕 Is new endpoint?', isNewEndpoint);
-      console.log('🆔 Endpoint ID:', endpointId);
 
-      // Determine actual config ID to use
       const actualConfigId =
         createdEndpoint?.id || existingConfig?.id || endpointId;
       const shouldCreate = !createdEndpoint && !existingConfig && isNewEndpoint;
@@ -1951,35 +1465,23 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
       const action = shouldCreate || isCloningOperation ? 'create' : 'update';
 
       if (shouldCreate || isCloningOperation || isCloneMode) {
-        console.log(
-          isCloningOperation
-            ? 'Cloning config - creating new config...'
-            : 'Creating NEW config...',
-        );
         saveResponse = await configApi.createConfig({
           ...createRequest,
           mapping: existingConfig?.mapping,
           functions: existingConfig?.functions,
         });
       } else {
-        console.log('Updating EXISTING config with ID:', actualConfigId);
         saveResponse = await configApi.updateConfig(
           actualConfigId,
           createRequest,
         );
       }
 
-      console.log('Save API Response:', saveResponse);
-      console.log('🔍 Response success status:', saveResponse.success);
-      console.log('🔍 Response message:', saveResponse.message);
-
       if (saveResponse?.statusCode === 400) {
         showError(saveResponse.message);
       }
 
       if (!saveResponse.success) {
-        console.log('❌ Save failed - response.success is false');
-
         // Check for specific error messages that need user-friendly handling
         let errorMessage =
           saveResponse.message || `Failed to ${action} configuration`;
@@ -1991,22 +1493,11 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
         return;
       }
 
-      console.log('✅ Save successful');
-
       if (saveResponse.config) {
         setIsInCloneMode(false);
-        console.log(
-          '🎯 Setting createdEndpoint with config:',
-          saveResponse.config,
-        );
         setCreatedEndpoint(saveResponse.config);
         setInferredSchema(saveResponse.config.schema);
         const action = isNewEndpoint ? 'saved' : 'updated';
-        console.log(
-          `Configuration ${action} successfully:`,
-          saveResponse.config,
-        );
-        console.log('Schema inferred:', saveResponse.config.schema);
 
         // Determine whether to move to next step or stay on current step
         // "Save and Next" should always advance to next step, except for deploy step which has special logic
@@ -2014,14 +1505,11 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
 
         if (shouldAdvanceToNextStep) {
           // Always move to next step for non-deploy steps
-          console.log('🚀 Save and Next - moving to next step');
-
           // Clear any previous errors before moving to next step
           setError(null);
 
           switch (currentStep) {
             case 'payload':
-              console.log('✅ Moving from payload to mapping');
               setCurrentStep('mapping');
               break;
             case 'mapping':
@@ -2029,11 +1517,9 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                 showError('Please complete the mapping before proceeding');
                 return;
               }
-              console.log('✅ Moving from mapping to functions');
               setCurrentStep('functions');
               break;
             case 'functions':
-              console.log('✅ Moving from functions to simulation');
               setCurrentStep('simulation');
               break;
             case 'simulation':
@@ -2041,7 +1527,6 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                 showError('Please run and pass simulation before proceeding');
                 return;
               }
-              console.log('✅ Moving from simulation to deploy');
               setCurrentStep('deploy');
               break;
             default:
@@ -2051,7 +1536,6 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
           showSuccess('Configuration saved successfully!');
         } else {
           // Deploy step - stay on current step (deploy step has special logic)
-          console.log('💾 Deploy step - staying on current step');
           showSuccess('Configuration updated successfully!');
         }
 
@@ -2062,9 +1546,6 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
 
         // Show success message to user
         const actionWord = isNewEndpoint ? 'created' : 'updated';
-        console.log(
-          `✅ Configuration ${actionWord} successfully! Changes reflected in database.`,
-        );
       } else {
         const action = isNewEndpoint ? 'saved' : 'updated';
         setError(`Configuration ${action} but no config data returned`);
@@ -2273,74 +1754,21 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                     payloadError={error}
                     setPayloadError={setError}
                     existingSchemaFields={(() => {
-                      console.log(
-                        '🔍🔍🔍 COMPUTING existingSchemaFields FOR PayloadEditor 🔍🔍🔍',
-                      );
-                      console.log('🔍 currentSchema:', currentSchema);
-                      console.log(
-                        '🔍 currentSchema type:',
-                        Array.isArray(currentSchema)
-                          ? 'Array'
-                          : typeof currentSchema,
-                      );
-                      console.log(
-                        '🔍 currentSchema length:',
-                        Array.isArray(currentSchema)
-                          ? currentSchema.length
-                          : 'N/A',
-                      );
-                      console.log(
-                        '🔍 createdEndpoint?.schema:',
-                        createdEndpoint?.schema,
-                      );
-                      console.log('🔍 inferredSchema:', inferredSchema);
-                      console.log(
-                        '🔍 existingConfig?.schema:',
-                        existingConfig?.schema,
-                      );
 
-                      // PRIORITY 1: Use currentSchema if available (this is what user generated)
                       if (currentSchema) {
-                        console.log(
-                          '🔍 EditEndpointModal - Using currentSchema (user-generated fields)',
-                        );
-
-                        // If currentSchema is already InferredField[] array, return it directly
                         if (Array.isArray(currentSchema)) {
-                          console.log(
-                            '✅ currentSchema is InferredField[] array, using directly',
-                          );
-                          console.log(
-                            '✅ Passing',
-                            currentSchema.length,
-                            'fields to PayloadEditor',
-                          );
                           return currentSchema;
                         }
-
-                        // If currentSchema is JSON Schema object, we don't need to convert it here
-                        // Let the PayloadEditor handle it
-                        console.log('⚠️ currentSchema is JSON Schema object');
                       }
 
-                      // PRIORITY 2: Get schema from multiple sources: newly created endpoint, inferred schema, or existing config
                       const schemaToUse =
                         createdEndpoint?.schema ||
                         inferredSchema ||
                         existingConfig?.schema;
 
                       if (!schemaToUse) {
-                        console.log(
-                          '⚠️ No schema available - returning undefined',
-                        );
                         return undefined;
                       }
-
-                      console.log(
-                        '🔍 Using schemaToUse from createdEndpoint/inferredSchema/existingConfig',
-                      );
-
-                      // Convert AJV schema to SchemaField array for editing
                       const convertAjvToSchemaFields = (
                         ajvSchema: any,
                         parentPath = '',
@@ -2430,18 +1858,6 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
 
                       const convertedFields =
                         convertAjvToSchemaFields(schemaToUse);
-                      console.log(
-                        '🔍 EditEndpointModal - Converted schema fields for PayloadEditor:',
-                        convertedFields,
-                      );
-                      console.log(
-                        '🔍 First few fields:',
-                        convertedFields.slice(0, 5).map((f) => ({
-                          name: f.name,
-                          path: f.path,
-                          type: f.type,
-                        })),
-                      );
                       return convertedFields;
                     })()}
                     data-id="element-740"
@@ -2460,18 +1876,6 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                     />{' '}
                     Field Mappings
                   </h3>
-                  {console.log(
-                    'EditEndpointModal - inferredSchema:',
-                    inferredSchema,
-                  )}
-                  {console.log(
-                    'EditEndpointModal - createdEndpoint:',
-                    createdEndpoint,
-                  )}
-                  {console.log(
-                    'EditEndpointModal - currentSchema for mapping:',
-                    currentSchema,
-                  )}
                   <MappingUtility
                     onMappingChange={setIsMappingValid}
                     onCurrentMappingsChange={updateCurrentMappings}
@@ -2600,29 +2004,28 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                           const unmappedParams =
                             func.params && func.params.length > 0
                               ? func.params.filter((param: string) => {
-                                  // Compare full parameter name (with prefix) for exact matching
-                                  const paramLower = param.toLowerCase();
-                                  // Also check without prefix for the parameter name itself (for runtime context)
-                                  const paramWithoutPrefix = param.replace(
-                                    /^(redis\.|transactionDetails\.|dataCache\.|transaction\.|cache\.)/i,
-                                    '',
-                                  ).toLowerCase();
-                                  return (
-                                    !runtimeContextFields.includes(
-                                      paramWithoutPrefix,
-                                    ) && !mappedDestinations.has(paramLower)
-                                  );
-                                })
+                                // Compare full parameter name (with prefix) for exact matching
+                                const paramLower = param.toLowerCase();
+                                // Also check without prefix for the parameter name itself (for runtime context)
+                                const paramWithoutPrefix = param.replace(
+                                  /^(redis\.|transactionDetails\.|dataCache\.|transaction\.|cache\.)/i,
+                                  '',
+                                ).toLowerCase();
+                                return (
+                                  !runtimeContextFields.includes(
+                                    paramWithoutPrefix,
+                                  ) && !mappedDestinations.has(paramLower)
+                                );
+                              })
                               : [];
 
                           return (
                             <div
                               key={index}
-                              className={`p-4 rounded-lg border flex justify-between items-center ${
-                                unmappedParams?.length > 0
-                                  ? 'bg-red-50 border-red-200'
-                                  : 'bg-gray-50 border-gray-200'
-                              }`}
+                              className={`p-4 rounded-lg border flex justify-between items-center ${unmappedParams?.length > 0
+                                ? 'bg-red-50 border-red-200'
+                                : 'bg-gray-50 border-gray-200'
+                                }`}
                             >
                               <div className="flex-1">
                                 <div className="flex items-center gap-2">
@@ -2644,60 +2047,60 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                                   Parameters:{' '}
                                   {func?.params && func.params.length > 0
                                     ? func.params
-                                        .map((param: string) => {
-                                          // Check with full parameter name (including prefix)
-                                          const paramLower = param.toLowerCase();
-                                          const paramWithoutPrefix =
-                                            param.replace(
-                                              /^(redis\.|transactionDetails\.|dataCache\.|transaction\.|cache\.)/i,
-                                              '',
-                                            ).toLowerCase();
-                                          const isMapped =
-                                            runtimeContextFields.includes(
-                                              paramWithoutPrefix,
-                                            ) ||
-                                            mappedDestinations.has(paramLower);
-                                          const isRuntime =
-                                            runtimeContextFields.includes(
-                                              paramWithoutPrefix,
-                                            );
-                                          return (
-                                            <span
-                                              key={param}
-                                              className={
-                                                isRuntime
-                                                  ? 'text-blue-600'
-                                                  : isMapped
-                                                    ? 'text-green-600'
-                                                    : 'text-red-600 font-medium'
-                                              }
-                                              title={
-                                                isRuntime
-                                                  ? 'Runtime context field'
-                                                  : isMapped
-                                                    ? 'Mapped'
-                                                    : 'Not mapped - please create a mapping for this parameter'
-                                              }
-                                            >
-                                              {param}
-                                            </span>
+                                      .map((param: string) => {
+                                        // Check with full parameter name (including prefix)
+                                        const paramLower = param.toLowerCase();
+                                        const paramWithoutPrefix =
+                                          param.replace(
+                                            /^(redis\.|transactionDetails\.|dataCache\.|transaction\.|cache\.)/i,
+                                            '',
+                                          ).toLowerCase();
+                                        const isMapped =
+                                          runtimeContextFields.includes(
+                                            paramWithoutPrefix,
+                                          ) ||
+                                          mappedDestinations.has(paramLower);
+                                        const isRuntime =
+                                          runtimeContextFields.includes(
+                                            paramWithoutPrefix,
                                           );
-                                        })
-                                        .reduce(
-                                          (prev: any, curr: any) =>
-                                            [prev, ', ', curr] as any,
-                                        )
+                                        return (
+                                          <span
+                                            key={param}
+                                            className={
+                                              isRuntime
+                                                ? 'text-blue-600'
+                                                : isMapped
+                                                  ? 'text-green-600'
+                                                  : 'text-red-600 font-medium'
+                                            }
+                                            title={
+                                              isRuntime
+                                                ? 'Runtime context field'
+                                                : isMapped
+                                                  ? 'Mapped'
+                                                  : 'Not mapped - please create a mapping for this parameter'
+                                            }
+                                          >
+                                            {param}
+                                          </span>
+                                        );
+                                      })
+                                      .reduce(
+                                        (prev: any, curr: any) =>
+                                          [prev, ', ', curr] as any,
+                                      )
                                     : func?.columns && func.columns.length > 0
                                       ? func.columns
-                                          .map((column) => (
-                                            <span className="text-green-600">
-                                              {column.param}
-                                            </span>
-                                          ))
-                                          .reduce(
-                                            (prev, curr) =>
-                                              [prev, ', ', curr] as any,
-                                          )
+                                        .map((column) => (
+                                          <span className="text-green-600">
+                                            {column.param}
+                                          </span>
+                                        ))
+                                        .reduce(
+                                          (prev, curr) =>
+                                            [prev, ', ', curr] as any,
+                                        )
                                       : 'No parameters'}
                                 </p>
                                 {unmappedParams?.length > 0 && (
@@ -2781,8 +2184,8 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                     endpointId={createdEndpoint?.id || existingConfig?.id}
                     contentType={
                       endpointData.contentType as
-                        | 'application/json'
-                        | 'application/xml'
+                      | 'application/json'
+                      | 'application/xml'
                     }
                     onSimulationComplete={setIsSimulationSuccess}
                     readOnly={readOnly}
@@ -2798,12 +2201,6 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                     existingConfig?.endpointPath ||
                     '/transactions/acmt.023';
                   const configData = createdEndpoint || existingConfig;
-                  console.log('🎯 Rendering DeploymentConfirmation with:', {
-                    configId,
-                    endpointPath,
-                    transactionType: endpointData.transactionType,
-                    hasConfigData: !!configData,
-                  });
                   return (
                     <DeploymentConfirmation
                       configId={configId}
@@ -2837,102 +2234,96 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
               !isExporter(user?.claims || []) &&
               !isPublisher(user?.claims || [])
             ) && (
-              <div
-                className="flex items-center space-x-4"
-                data-id="element-746"
-              >
-                {currentStep !== 'payload' && (
-                  <MuiButton
-                    variant="outlined"
-                    sx={{ marginRight: '10px' }}
-                    onClick={() => {
-                      const currentIndex = steps.findIndex(
-                        (s) => s.id === currentStep,
-                      );
-                      if (currentIndex > 0) {
-                        // Clear any previous step-specific errors when navigating backward
-                        setError(null);
-                        setCurrentStep(steps[currentIndex - 1].id as any);
-                      }
-                    }}
-                    data-id="element-745"
-                  >
-                    Back
-                  </MuiButton>
-                )}
-                {!readOnly && (
-                  <MuiButton
-                    variant="contained"
-                    sx={{ background: '#2b7fff' }}
-                    onClick={async () => {
-                      console.log(
-                        '🎯 Save and Next button clicked, currentStep:',
-                        currentStep,
-                      );
-                      console.log('createdEndpoint:', createdEndpoint);
-                      console.log('existingConfig:', existingConfig);
-                      await handleSaveAndNext();
-                    }}
-                    disabled={
-                      loading ||
-                      (currentStep === 'mapping' && !isMappingValid) ||
-                      (currentStep === 'simulation' &&
-                        !isSimulationSuccess &&
-                        !readOnly) ||
-                      (currentStep !== 'payload' &&
-                        !createdEndpoint &&
-                        !existingConfig) ||
-                      (currentStep === 'deploy' &&
-                        !isApprover(user?.claims || []) &&
-                        !isExporter(user?.claims || []) &&
-                        (isStatus(
-                          createdEndpoint?.status,
-                          'STATUS_03_UNDER_REVIEW',
-                        ) ||
-                          isStatus(
+                <div
+                  className="flex items-center space-x-4"
+                  data-id="element-746"
+                >
+                  {currentStep !== 'payload' && (
+                    <MuiButton
+                      variant="outlined"
+                      sx={{ marginRight: '10px' }}
+                      onClick={() => {
+                        const currentIndex = steps.findIndex(
+                          (s) => s.id === currentStep,
+                        );
+                        if (currentIndex > 0) {
+                          // Clear any previous step-specific errors when navigating backward
+                          setError(null);
+                          setCurrentStep(steps[currentIndex - 1].id as any);
+                        }
+                      }}
+                      data-id="element-745"
+                    >
+                      Back
+                    </MuiButton>
+                  )}
+                  {!readOnly && (
+                    <MuiButton
+                      variant="contained"
+                      sx={{ background: '#2b7fff' }}
+                      onClick={async () => {
+                        await handleSaveAndNext();
+                      }}
+                      disabled={
+                        loading ||
+                        (currentStep === 'mapping' && !isMappingValid) ||
+                        (currentStep === 'simulation' &&
+                          !isSimulationSuccess &&
+                          !readOnly) ||
+                        (currentStep !== 'payload' &&
+                          !createdEndpoint &&
+                          !existingConfig) ||
+                        (currentStep === 'deploy' &&
+                          !isApprover(user?.claims || []) &&
+                          !isExporter(user?.claims || []) &&
+                          (isStatus(
                             createdEndpoint?.status,
-                            'STATUS_04_APPROVED',
-                          ) ||
-                          isStatus(
-                            existingConfig?.status,
                             'STATUS_03_UNDER_REVIEW',
                           ) ||
-                          isStatus(
-                            existingConfig?.status,
-                            'STATUS_04_APPROVED',
-                          )) &&
-                        !isCloneCheck) ||
-                      (currentStep === 'deploy' &&
-                        isApprover(user?.claims || []) &&
-                        (isStatus(createdEndpoint?.status, '') ||
-                          isStatus(
-                            existingConfig?.status,
-                            'STATUS_04_APPROVED',
-                          ))) ||
-                      (currentStep === 'deploy' &&
-                        isExporter(user?.claims || []) &&
-                        !isStatus(
-                          createdEndpoint?.status,
-                          'STATUS_04_APPROVED',
-                        ) &&
-                        !isStatus(existingConfig?.status, 'STATUS_04_APPROVED'))
-                    }
-                    data-id="element-749"
-                  >
-                    {loading
-                      ? 'Processing...'
-                      : currentStep === 'deploy'
-                        ? isApprover(user?.claims || []) &&
+                            isStatus(
+                              createdEndpoint?.status,
+                              'STATUS_04_APPROVED',
+                            ) ||
+                            isStatus(
+                              existingConfig?.status,
+                              'STATUS_03_UNDER_REVIEW',
+                            ) ||
+                            isStatus(
+                              existingConfig?.status,
+                              'STATUS_04_APPROVED',
+                            )) &&
+                          !isCloneCheck) ||
+                        (currentStep === 'deploy' &&
+                          isApprover(user?.claims || []) &&
+                          (isStatus(createdEndpoint?.status, '') ||
+                            isStatus(
+                              existingConfig?.status,
+                              'STATUS_04_APPROVED',
+                            ))) ||
+                        (currentStep === 'deploy' &&
+                          isExporter(user?.claims || []) &&
                           !isStatus(
                             createdEndpoint?.status,
                             'STATUS_04_APPROVED',
                           ) &&
-                          !isStatus(
-                            existingConfig?.status,
-                            'STATUS_04_APPROVED',
-                          )
-                          ? 'Send for Deployment'
-                          : isExporter(user?.claims || []) &&
+                          !isStatus(existingConfig?.status, 'STATUS_04_APPROVED'))
+                      }
+                      data-id="element-749"
+                    >
+                      {loading
+                        ? 'Processing...'
+                        : currentStep === 'deploy'
+                          ? isApprover(user?.claims || []) &&
+                            !isStatus(
+                              createdEndpoint?.status,
+                              'STATUS_04_APPROVED',
+                            ) &&
+                            !isStatus(
+                              existingConfig?.status,
+                              'STATUS_04_APPROVED',
+                            )
+                            ? 'Send for Deployment'
+                            : isExporter(user?.claims || []) &&
                               (isStatus(
                                 createdEndpoint?.status,
                                 'STATUS_04_APPROVED',
@@ -2941,85 +2332,85 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                                   existingConfig?.status,
                                   'STATUS_04_APPROVED',
                                 ))
-                            ? 'Export'
-                            : !isApprover(user?.claims || []) &&
+                              ? 'Export'
+                              : !isApprover(user?.claims || []) &&
                                 !isExporter(user?.claims || [])
-                              ? 'Send for Approval'
-                              : 'Configuration Approved'
-                        : 'Save and Next'}
-                  </MuiButton>
-                )}
-                {/* Show Next button for approvers, editors, and exporters in read-only mode on all steps */}
-                {readOnly &&
-                  (isApprover(user?.claims || []) ||
-                    isEditor(user?.claims || []) ||
-                    isExporter(user?.claims || []) ||
-                    isPublisher(user?.claims || [])) && (
-                    <>
-                      {(() => {
-                        const currentIndex = steps.findIndex(
-                          (s) => s.id === currentStep,
-                        );
-                        return (
-                          <>
-                            {currentIndex < steps.length - 1 && (
-                              <MuiButton
-                                variant="contained"
-                                onClick={handleNext}
-                                sx={{ background: '#2b7fff' }}
-                              >
-                                Next
-                              </MuiButton>
-                            )}
-                            {/* Show approver action buttons on the last step (deployment) */}
-                            {isApprover(user?.claims || []) &&
-                              currentStep === 'deploy' && (
-                                <>
-                                  {onRevertToEditor &&
-                                    !isStatus(
-                                      createdEndpoint?.status,
-                                      'STATUS_04_APPROVED',
-                                    ) &&
-                                    !isStatus(
-                                      existingConfig?.status,
-                                      'STATUS_06_EXPORTED',
-                                    ) && (
-                                      <MuiButton
-                                        type="button"
-                                        variant="contained"
-                                        sx={{
-                                          marginRight: '10px',
-                                          backgroundColor: '#ff474d',
-                                        }}
-                                        startIcon={<XCircle size={16} />}
-                                        onClick={onRevertToEditor}
-                                      >
-                                        Reject
-                                      </MuiButton>
-                                    )}
-                                  {onSendForDeployment &&
-                                    !isStatus(
-                                      createdEndpoint?.status,
-                                      'STATUS_04_APPROVED',
-                                    ) &&
-                                    !isStatus(
-                                      existingConfig?.status,
-                                      'STATUS_06_EXPORTED',
-                                    ) && (
-                                      <MuiButton
-                                        onClick={onSendForDeployment}
-                                        type="button"
-                                        variant="contained"
-                                        sx={{ backgroundColor: '#33ad74' }}
-                                        startIcon={<Check size={16} />}
-                                      >
-                                        Approve
-                                      </MuiButton>
-                                    )}
-                                </>
+                                ? 'Send for Approval'
+                                : 'Configuration Approved'
+                          : 'Save and Next'}
+                    </MuiButton>
+                  )}
+                  {/* Show Next button for approvers, editors, and exporters in read-only mode on all steps */}
+                  {readOnly &&
+                    (isApprover(user?.claims || []) ||
+                      isEditor(user?.claims || []) ||
+                      isExporter(user?.claims || []) ||
+                      isPublisher(user?.claims || [])) && (
+                      <>
+                        {(() => {
+                          const currentIndex = steps.findIndex(
+                            (s) => s.id === currentStep,
+                          );
+                          return (
+                            <>
+                              {currentIndex < steps.length - 1 && (
+                                <MuiButton
+                                  variant="contained"
+                                  onClick={handleNext}
+                                  sx={{ background: '#2b7fff' }}
+                                >
+                                  Next
+                                </MuiButton>
                               )}
-                            {/* Show export button for exporters on the last step */}
-                            {/* {isExporter(user?.claims || []) && currentStep === 'deploy' && (
+                              {/* Show approver action buttons on the last step (deployment) */}
+                              {isApprover(user?.claims || []) &&
+                                currentStep === 'deploy' && (
+                                  <>
+                                    {onRevertToEditor &&
+                                      !isStatus(
+                                        createdEndpoint?.status,
+                                        'STATUS_04_APPROVED',
+                                      ) &&
+                                      !isStatus(
+                                        existingConfig?.status,
+                                        'STATUS_06_EXPORTED',
+                                      ) && (
+                                        <MuiButton
+                                          type="button"
+                                          variant="contained"
+                                          sx={{
+                                            marginRight: '10px',
+                                            backgroundColor: '#ff474d',
+                                          }}
+                                          startIcon={<XCircle size={16} />}
+                                          onClick={onRevertToEditor}
+                                        >
+                                          Reject
+                                        </MuiButton>
+                                      )}
+                                    {onSendForDeployment &&
+                                      !isStatus(
+                                        createdEndpoint?.status,
+                                        'STATUS_04_APPROVED',
+                                      ) &&
+                                      !isStatus(
+                                        existingConfig?.status,
+                                        'STATUS_06_EXPORTED',
+                                      ) && (
+                                        <MuiButton
+                                          onClick={onSendForDeployment}
+                                          type="button"
+                                          variant="contained"
+                                          sx={{ backgroundColor: '#33ad74' }}
+                                          startIcon={<Check size={16} />}
+                                        >
+                                          Approve
+                                        </MuiButton>
+                                      )}
+                                  </>
+                                )}
+                              {/* Show export button for exporters on the last step */}
+                              {/* {isExporter(user?.claims || []) && currentStep === 'deploy' && (
                           <>
                             {onSendForDeployment && (isStatus(createdEndpoint?.status, 'STATUS_04_APPROVED') || isStatus(existingConfig?.status, 'STATUS_08_DEPLOYED')) && (
                               <Button
@@ -3032,51 +2423,51 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                             )}
                           </>
                         )} */}
-                            {/* Show submit for approval button for editors on the last step */}
-                            {isEditor(user?.claims || []) &&
-                              currentStep === 'deploy' && (
-                                <>
-                                  {/* Show Submit for Approval button for draft configs or when config is ready for submission */}
-                                  {((!isStatus(
-                                    createdEndpoint?.status,
-                                    'STATUS_03_UNDER_REVIEW',
-                                  ) &&
-                                    !isStatus(
+                              {/* Show submit for approval button for editors on the last step */}
+                              {isEditor(user?.claims || []) &&
+                                currentStep === 'deploy' && (
+                                  <>
+                                    {/* Show Submit for Approval button for draft configs or when config is ready for submission */}
+                                    {((!isStatus(
                                       createdEndpoint?.status,
-                                      'STATUS_04_APPROVED',
-                                    )) ||
-                                    (!isStatus(
-                                      existingConfig?.status,
                                       'STATUS_03_UNDER_REVIEW',
                                     ) &&
                                       !isStatus(
-                                        existingConfig?.status,
+                                        createdEndpoint?.status,
                                         'STATUS_04_APPROVED',
                                       )) ||
-                                    (!createdEndpoint?.status &&
-                                      !existingConfig?.status)) && (
-                                    <Button
-                                      variant="primary"
-                                      onClick={async () =>
-                                        await handleSaveAndNext()
-                                      }
-                                      disabled={loading}
-                                      className="!pb-[6px] !pt-[5px] bg-[#2b7fff] text-white"
-                                    >
-                                      {loading
-                                        ? 'Processing...'
-                                        : 'Submit for Approval'}
-                                    </Button>
-                                  )}
-                                </>
-                              )}
-                          </>
-                        );
-                      })()}
-                    </>
-                  )}
-              </div>
-            )}
+                                      (!isStatus(
+                                        existingConfig?.status,
+                                        'STATUS_03_UNDER_REVIEW',
+                                      ) &&
+                                        !isStatus(
+                                          existingConfig?.status,
+                                          'STATUS_04_APPROVED',
+                                        )) ||
+                                      (!createdEndpoint?.status &&
+                                        !existingConfig?.status)) && (
+                                        <Button
+                                          variant="primary"
+                                          onClick={async () =>
+                                            await handleSaveAndNext()
+                                          }
+                                          disabled={loading}
+                                          className="!pb-[6px] !pt-[5px] bg-[#2b7fff] text-white"
+                                        >
+                                          {loading
+                                            ? 'Processing...'
+                                            : 'Submit for Approval'}
+                                        </Button>
+                                      )}
+                                  </>
+                                )}
+                            </>
+                          );
+                        })()}
+                      </>
+                    )}
+                </div>
+              )}
           </div>
         </div>
       </Backdrop>
