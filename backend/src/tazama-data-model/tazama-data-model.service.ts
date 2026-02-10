@@ -12,13 +12,13 @@ interface FieldOption {
   value: string;
   label: string;
   collection: string;
-  field?: string;
-  type?: string;
+  field: string | null;
+  type: string | null;
   required: boolean;
   parent_id: number | null;
   serial_no: number;
   collection_id: number;
-  properties?: FieldProperty[];
+  properties: FieldProperty[];
 }
 
 interface FieldProperty {
@@ -36,13 +36,13 @@ interface FieldSelectOption {
   value: string;
   label: string;
   collection: string;
-  field?: string;
-  type?: TazamaFieldType;
+  field: string | null;
+  type: TazamaFieldType | null;
   required: boolean;
   parent_id: number | null;
   serial_no: number;
   collection_id: number;
-  properties?: FieldProperty[];
+  properties: FieldProperty[];
 }
 
 @Injectable()
@@ -82,6 +82,7 @@ export class TazamaDataModelService {
         parent_id: field.parent_id ?? null,
         serial_no: field.serial_no ?? 0,
         collection_id: field.collection_id ?? 0,
+        properties: [],
       };
 
       if (field.type === 'object' && field.properties?.length) {
@@ -105,13 +106,13 @@ export class TazamaDataModelService {
           value: schema.name,
           label: schema.name,
           collection: schema.name,
-          field: undefined,
-          type: undefined,
+          field: null,
+          type: null,
           required: false,
           parent_id: null,
           serial_no: 0,
           collection_id: schema.collection_id ?? 0,
-          properties: undefined,
+          properties: [],
         });
         continue;
       }
@@ -126,13 +127,13 @@ export class TazamaDataModelService {
       value: opt.value,
       label: opt.label,
       collection: opt.collection,
-      field: opt.field,
-      type: opt.type ? (opt.type as TazamaFieldType) : undefined,
+      field: opt.field ?? null,
+      type: opt.type ? (opt.type as TazamaFieldType) : null,
       required: opt.required,
       parent_id: opt.parent_id,
       serial_no: opt.serial_no,
       collection_id: opt.collection_id,
-      properties: opt.properties,
+      properties: opt.properties ?? [],
     }));
     return resultOptions.sort((a, b) => a.label.localeCompare(b.label));
   }

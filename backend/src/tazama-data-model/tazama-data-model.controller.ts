@@ -29,13 +29,13 @@ interface DestinationOption {
   value: TazamaDestinationPath;
   label: string;
   collection: string;
-  field?: string;
-  type?: TazamaFieldType;
+  field: string | null;
+  type: TazamaFieldType | null;
   required: boolean;
   parent_id: number | null;
   serial_no: number;
   collection_id: number;
-  properties?: unknown[];
+  properties: unknown[];
 }
 
 @Controller('tazama-data-model')
