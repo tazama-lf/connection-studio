@@ -29,7 +29,7 @@ interface DestinationOption {
   value: TazamaDestinationPath;
   label: string;
   collection: string;
-  field: string | null;
+  field: string;
   type: TazamaFieldType | null;
   required: boolean;
   parent_id: number | null;
