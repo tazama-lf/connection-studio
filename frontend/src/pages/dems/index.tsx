@@ -241,7 +241,7 @@ const DEMSModule: React.FC = () => {
       const requestParentChildPayload: any = {
         name: data.destination_name,
         field_type: data.field_type,
-        parent_id: data?.parent_destination || '',
+        parent_id: data?.parent_destination || null,
       };
 
       // Call the API
@@ -312,6 +312,8 @@ const DEMSModule: React.FC = () => {
       },
     );
 
+    console.log("SORTEDDDDDDDDD======================+++++++++", sortedCollections)
+
     // Build nested tree
     const buildNestedTree = (
       collectionName: string,
@@ -324,12 +326,12 @@ const DEMSModule: React.FC = () => {
       >();
 
       fields.forEach((field) => {
-        const parts = field.field.split('.');
+        const parts = field.field ? field.field.split('.') : '';
         let currentLevel = rootMap;
         let currentPath: string[] = [collectionName];
 
-        parts.forEach((part, index) => {
-          const isLeaf = index === parts.length - 1;
+        parts && parts.forEach((part, index) => {
+          const isLeaf = index === parts.length - 1 && field.type;
           currentPath = [...currentPath, part];
           const pathKey = parts.slice(0, index + 1).join('.');
           const fullPath = `${collectionName}.${pathKey}`;
@@ -387,9 +389,9 @@ const DEMSModule: React.FC = () => {
       const response = await dataModelApi.getDestinationOptions();
       // Backend returns {success: true, data: [...]}
       if (response.success && response.data) {
-        console.log('response', response.data);
 
         const treeNodes = convertDestinationOptionsToTree(response.data);
+        console.log('response+++++++++++++++++++++++++++++++++++++++++++', treeNodes);
         setDestinationTree(treeNodes);
       } else {
         throw new Error(
