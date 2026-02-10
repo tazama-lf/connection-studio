@@ -106,7 +106,7 @@ export class TazamaDataModelService {
           value: schema.name,
           label: schema.name,
           collection: schema.name,
-          field: schema.name,
+          field: '',
           type: null,
           required: false,
           parent_id: null,
