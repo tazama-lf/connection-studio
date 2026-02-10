@@ -101,6 +101,18 @@ export class TazamaDataModelService {
 
     for (const schema of schemas) {
       if (schema.fields.length === 0) {
+        options.push({
+          value: schema.name,
+          label: schema.name,
+          collection: schema.name,
+          field: undefined,
+          type: undefined,
+          required: false,
+          parent_id: null,
+          serial_no: 0,
+          collection_id: schema.collection_id ?? 0,
+          properties: undefined,
+        });
         continue;
       }
 
@@ -122,7 +134,6 @@ export class TazamaDataModelService {
       collection_id: opt.collection_id,
       properties: opt.properties,
     }));
-
     return resultOptions.sort((a, b) => a.label.localeCompare(b.label));
   }
 
