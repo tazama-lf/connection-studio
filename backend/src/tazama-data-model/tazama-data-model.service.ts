@@ -12,7 +12,7 @@ interface FieldOption {
   value: string;
   label: string;
   collection: string;
-  field: string;
+  field: string | null;
   type: string | null;
   required: boolean;
   parent_id: number | null;
@@ -36,7 +36,7 @@ interface FieldSelectOption {
   value: string;
   label: string;
   collection: string;
-  field: string;
+  field: string | null;
   type: TazamaFieldType | null;
   required: boolean;
   parent_id: number | null;
@@ -106,7 +106,7 @@ export class TazamaDataModelService {
           value: schema.name,
           label: schema.name,
           collection: schema.name,
-          field: '',
+          field: null,
           type: null,
           required: false,
           parent_id: null,
