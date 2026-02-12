@@ -9,7 +9,7 @@ import {
   XCircle,
   XIcon,
 } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import * as yup from 'yup';
 import { useAuth } from '../../features/auth';
 import {
@@ -40,7 +40,7 @@ import { isStatus } from '../utils/statusColors';
 import { Button } from './Button';
 import { DeploymentConfirmation } from './DeploymentConfirmation';
 import { MappingUtility } from './MappingUtility';
-import { PayloadEditor } from './PayloadEditor';
+import { PayloadEditor, type PayloadEditorRef } from './PayloadEditor';
 import { SimulationPanel } from './SimulationPanel';
 
 import { Backdrop } from '@mui/material';
@@ -706,6 +706,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
   const { showSuccess, showError } = useToast();
   const { user } = useAuth();
   const tenantId = user?.tenantId || 'tenant-id';
+  const payloadEditorRef = useRef<PayloadEditorRef>(null);
   const [currentStep, setCurrentStep] = useState<
     'payload' | 'mapping' | 'functions' | 'simulation' | 'deploy'
   >('payload');
@@ -1220,12 +1221,44 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
   };
 
   const handleSaveAndNext = async () => {
+    // Handle deploy step separately
     if (currentStep === 'deploy') {
       await handleDeploy();
       return;
     }
 
-    const isValid = (window as any).__validatePayloadEditorFields?.();
+    // For non-payload steps, just validate and navigate (data is saved separately)
+    if (currentStep !== 'payload') {
+      // Clear any previous errors
+      setError(null);
+
+      switch (currentStep) {
+        case 'mapping':
+          if (!isMappingValid) {
+            showError('Please complete the mapping before proceeding');
+            return;
+          }
+          setCurrentStep('functions');
+          break;
+        case 'functions':
+          setCurrentStep('simulation');
+          break;
+        case 'simulation':
+          if (!isSimulationSuccess && !readOnly) {
+            showError('Please run and pass simulation before proceeding');
+            return;
+          }
+          setCurrentStep('deploy');
+          break;
+        default:
+          break;
+      }
+      return;
+    }
+
+    // From here on, we're handling the payload step
+    // Only validate payload editor fields when on the payload step
+    const isValid = payloadEditorRef.current?.validateAllFields();
 
     if (!isValid) {
       setTimeout(() => {
@@ -1238,14 +1271,14 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
       return;
     }
 
-
-
     const validationErrors: string[] = [];
     let parsedPayload: any = null;
 
     if (!payload) {
       validationErrors.push('Payload is required');
     }
+
+
 
     if (endpointData.contentType === 'application/json') {
       try {
@@ -1273,7 +1306,6 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
       );
     }
 
-    console.log("PAYLOADDDD", validationErrors)
 
     if (validationErrors.length > 0) {
       const errorMessage = validationErrors.join('. ');
@@ -1497,55 +1529,16 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
         setIsInCloneMode(false);
         setCreatedEndpoint(saveResponse.config);
         setInferredSchema(saveResponse.config.schema);
-        const action = isNewEndpoint ? 'saved' : 'updated';
 
-        // Determine whether to move to next step or stay on current step
-        // "Save and Next" should always advance to next step, except for deploy step which has special logic
-        const shouldAdvanceToNextStep = (currentStep as string) !== 'deploy';
-
-        if (shouldAdvanceToNextStep) {
-          // Always move to next step for non-deploy steps
-          // Clear any previous errors before moving to next step
-          setError(null);
-
-          switch (currentStep) {
-            case 'payload':
-              setCurrentStep('mapping');
-              break;
-            case 'mapping':
-              if (!isMappingValid) {
-                showError('Please complete the mapping before proceeding');
-                return;
-              }
-              setCurrentStep('functions');
-              break;
-            case 'functions':
-              setCurrentStep('simulation');
-              break;
-            case 'simulation':
-              if (!isSimulationSuccess && !readOnly) {
-                showError('Please run and pass simulation before proceeding');
-                return;
-              }
-              setCurrentStep('deploy');
-              break;
-            default:
-              break;
-          }
-
-          showSuccess('Configuration saved successfully!');
-        } else {
-          // Deploy step - stay on current step (deploy step has special logic)
-          showSuccess('Configuration updated successfully!');
-        }
+        // Since we're only saving on payload step, advance to mapping
+        setError(null);
+        setCurrentStep('mapping');
+        showSuccess('Configuration saved successfully!');
 
         // Call success callback to refresh parent data (after UI updates)
         if (onSuccess) {
           onSuccess();
         }
-
-        // Show success message to user
-        const actionWord = isNewEndpoint ? 'created' : 'updated';
       } else {
         const action = isNewEndpoint ? 'saved' : 'updated';
         setError(`Configuration ${action} but no config data returned`);
@@ -1740,6 +1733,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                     Payload & Schema
                   </h3>
                   <PayloadEditor
+                    ref={payloadEditorRef}
                     value={payload}
                     onChange={setPayload}
                     endpointData={endpointData}

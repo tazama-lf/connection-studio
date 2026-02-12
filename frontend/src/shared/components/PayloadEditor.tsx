@@ -1,6 +1,6 @@
 import { XMLParser } from 'fast-xml-parser';
 import { ArrowDownToLine, Code2, FilePlus, FileText, List, Settings2, SparklesIcon, Terminal, XCircle } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, forwardRef, useImperativeHandle } from 'react';
 import ReactJson from 'react-json-view';
 import * as yup from 'yup';
 import {
@@ -43,7 +43,11 @@ interface InferredField {
   level: number;
   required: boolean;
 }
-export const PayloadEditor: React.FC<PayloadEditorProps> = ({
+export interface PayloadEditorRef {
+  validateAllFields: () => boolean;
+}
+
+export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(({
   value,
   onChange,
   endpointData: initialEndpointData,
@@ -60,7 +64,7 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
   onValidationErrorsChange,
   payloadError,
   setPayloadError,
-}) => {
+}, ref) => {
   const [endpointData, setEndpointData] = useState<EndpointFormData>(
     initialEndpointData || {
       version: '',
@@ -193,12 +197,10 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
     }
     return !versionError && !transactionTypeError && !eventTypeError;
   };
-  useEffect(() => {
-    (window as any).__validatePayloadEditorFields = validateAllFields;
-    return () => {
-      delete (window as any).__validatePayloadEditorFields;
-    };
-  }, [endpointData.version, endpointData.transactionType, endpointData.msgFam]);
+  // Expose validation function through ref
+  useImperativeHandle(ref, () => ({
+    validateAllFields,
+  }), [endpointData.version, endpointData.transactionType, endpointData.msgFam]);
   const validatePayloadContent = (
     payloadValue: string,
     contentType: string,
@@ -1674,4 +1676,6 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
       )}
     </div>
   );
-};
+});
+
+PayloadEditor.displayName = 'PayloadEditor';
