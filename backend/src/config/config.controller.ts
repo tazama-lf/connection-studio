@@ -236,7 +236,8 @@ export class ConfigController {
   }
 
   @Patch(':id/publishing-status')
-  @RequireAnyClaims(TazamaClaims.PUBLISHER)
+  @RequireAnyClaims(TazamaClaims.PUBLISHER,TazamaClaims.APPROVER)
+  
   async updatePublishingStatus(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: { publishing_status: 'active' | 'inactive' },
