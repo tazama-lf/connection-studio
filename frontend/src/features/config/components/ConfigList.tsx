@@ -21,6 +21,7 @@ import { DropdownMenuWithAutoDirection } from '../../../shared/components/Dropdo
 import { useAuth } from '../../../features/auth/contexts/AuthContext';
 import {
   getPrimaryRole,
+  isApprover,
   isEditor,
   isExporter,
   isPublisher,
@@ -123,6 +124,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
   const userIsEditor = user?.claims ? isEditor(user.claims) : false;
   const userIsExporter = user?.claims ? isExporter(user.claims) : false;
   const userIsPublisher = user?.claims ? isPublisher(user.claims) : false;
+  const userIsApprover = user?.claims ? isApprover(user.claims) : false;
   const { showSuccess, showError } = useToast();
 
   const userRole = getPrimaryRole(user?.claims as string[]);
@@ -139,7 +141,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
 
         // Debug: Log each config's status
         if (response.configs && Array.isArray(response.configs)) {
-          response.configs.forEach((config: any, index: number) => {});
+          response.configs.forEach((config: any, index: number) => { });
         }
       } else if (showApprovedConfigs) {
         // Fetch both approved and exported configs
@@ -703,37 +705,38 @@ export const ConfigList: React.FC<ConfigListProps> = ({
                   />
                 </Tooltip>
               )}
-            {userIsPublisher && (
-              <>
-                {config.publishing_status === 'active' ? (
-                  <Tooltip title="Deactivate" arrow placement="top">
-                    <ShieldX
-                      className="w-4 h-4 mr-1 text-red-600 hover:text-red-700 cursor-pointer"
-                      onClick={() => {
-                        setConfirmDialog({
-                          open: true,
-                          type: 'deactivate',
-                          config: config,
-                        });
-                      }}
-                    />
-                  </Tooltip>
-                ) : (
-                  <Tooltip title="Activate" arrow placement="top">
-                    <ShieldCheck
-                      className="w-4 h-4 mr-1 text-green-600 hover:text-green-700 cursor-pointer"
-                      onClick={() => {
-                        setConfirmDialog({
-                          open: true,
-                          type: 'activate',
-                          config: config,
-                        });
-                      }}
-                    />
-                  </Tooltip>
-                )}
-              </>
-            )}
+            {(userIsApprover || userIsPublisher) &&
+              ['STATUS_04_APPROVED', 'STATUS_06_EXPORTED', 'approved', 'exported'].includes(config.status) && (
+                <>
+                  {config.publishing_status === 'active' ? (
+                    <Tooltip title="Deactivate" arrow placement="top">
+                      <ShieldX
+                        className="w-4 h-4 mr-1 text-red-600 hover:text-red-700 cursor-pointer"
+                        onClick={() => {
+                          setConfirmDialog({
+                            open: true,
+                            type: 'deactivate',
+                            config: config,
+                          });
+                        }}
+                      />
+                    </Tooltip>
+                  ) : (
+                    <Tooltip title="Activate" arrow placement="top">
+                      <ShieldCheck
+                        className="w-4 h-4 mr-1 text-green-600 hover:text-green-700 cursor-pointer"
+                        onClick={() => {
+                          setConfirmDialog({
+                            open: true,
+                            type: 'activate',
+                            config: config,
+                          });
+                        }}
+                      />
+                    </Tooltip>
+                  )}
+                </>
+              )}
           </div>
         );
       },
@@ -983,17 +986,17 @@ export const ConfigList: React.FC<ConfigListProps> = ({
                     )}
                     {actionLoading === type
                       ? (type === 'export' && 'Exporting...') ||
-                        (type === 'pause' && 'Pausing...') ||
-                        (type === 'resume' && 'Resuming...') ||
-                        (type === 'activate' && 'Activating...') ||
-                        (type === 'deactivate' && 'Deactivating...')
+                      (type === 'pause' && 'Pausing...') ||
+                      (type === 'resume' && 'Resuming...') ||
+                      (type === 'activate' && 'Activating...') ||
+                      (type === 'deactivate' && 'Deactivating...')
                       : (type === 'export' && 'Yes, Export Configuration') ||
-                        (type === 'pause' && 'Yes, Pause Configuration') ||
-                        (type === 'resume' && 'Yes, Resume Configuration') ||
-                        (type === 'activate' &&
-                          'Yes, Activate Configuration') ||
-                        (type === 'deactivate' &&
-                          'Yes, Deactivate Configuration')}
+                      (type === 'pause' && 'Yes, Pause Configuration') ||
+                      (type === 'resume' && 'Yes, Resume Configuration') ||
+                      (type === 'activate' &&
+                        'Yes, Activate Configuration') ||
+                      (type === 'deactivate' &&
+                        'Yes, Deactivate Configuration')}
                   </>
                 ),
             )}
