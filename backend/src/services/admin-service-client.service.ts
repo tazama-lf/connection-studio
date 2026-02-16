@@ -750,7 +750,7 @@ export class AdminServiceClient {
   async writeConfig(configData: any, token: string): Promise<any> {
     const response = await this.executeHttpRequest<{ config: any }>(
       'POST',
-      CONFIG_URL,
+      CONFIG_WRITE_URL,
       token,
       configData,
     );
