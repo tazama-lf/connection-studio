@@ -28,6 +28,7 @@ import { AuthenticatedUser } from '../auth/auth.types';
 import { UpdatePullJobDto } from '../job/dto/update-pull-job.dto';
 import { UpdatePushJobDto } from '../job/dto/update-push-job.dto';
 import { UpdateScheduleJobDto } from '../scheduler/dto/update-schedule-dto';
+import { LoggerService } from '@tazama-lf/frms-coe-lib';
 
 @Injectable()
 export class AdminServiceClient {
@@ -735,6 +736,7 @@ export class AdminServiceClient {
         pages: number;
       };
     }>('POST', `${CONFIG_URL}/${offset}/${limit}`, token, {});
+  console.log(`ADMINSERVICE CLIENT  - Found ${response.configs?.length ?? 0} configs`, 'tcs.config.repository');
 
     return {
       configs: response.configs ?? [],
