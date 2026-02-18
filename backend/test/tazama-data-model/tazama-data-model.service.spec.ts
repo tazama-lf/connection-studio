@@ -441,8 +441,21 @@ describe('TazamaDataModelService', () => {
 
       const result = await service.getDestinationOptions('tenant1', 'token');
 
-      // Service should handle empty collections gracefully and return empty array
-      expect(result).toEqual([]);
+      // Service should handle empty collections gracefully and include the collection with null field
+      expect(result).toEqual([
+        {
+          value: 'EmptyCollection',
+          label: 'EmptyCollection',
+          collection: 'EmptyCollection',
+          field: null,
+          type: null,
+          required: false,
+          parent_id: null,
+          serial_no: 0,
+          collection_id: 1,
+          properties: [],
+        },
+      ]);
 
       // Restore the mock after this test
       loggerSpy.mockRestore();
