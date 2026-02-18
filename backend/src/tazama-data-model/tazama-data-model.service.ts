@@ -133,7 +133,7 @@ export class TazamaDataModelService {
       parent_id: opt.parent_id,
       serial_no: opt.serial_no,
       collection_id: opt.collection_id,
-      properties: opt.properties ?? [],
+      properties: opt.properties,
     }));
     return resultOptions.sort((a, b) => a.label.localeCompare(b.label));
   }
