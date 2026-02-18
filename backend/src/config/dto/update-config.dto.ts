@@ -1,4 +1,10 @@
-import { IsString, IsOptional, IsEnum, IsObject, ValidateIf } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsEnum,
+  IsObject,
+  ValidateIf,
+} from 'class-validator';
 import { ContentType } from '@tazama-lf/tcs-lib';
 
 export class UpdateConfigDto {
@@ -28,7 +34,7 @@ export class UpdateConfigDto {
 
   @IsObject()
   @IsOptional()
-  schema?: Record<string, any>;
+  schema?: Record<string, unknown>;
 
   @ValidateIf((o) => typeof o.payload === 'string')
   @IsString()

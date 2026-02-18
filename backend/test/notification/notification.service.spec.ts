@@ -6,6 +6,7 @@ import { ServiceUnavailableException } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 import { of, throwError } from 'rxjs';
 import { EventType } from '../../src/enums/events.enum';
+import { Config } from '@tazama-lf/tcs-lib';
 
 jest.mock('nodemailer');
 
@@ -575,7 +576,7 @@ describe('NotificationService', () => {
     it('should handle Job actionEntity (source_type)', async () => {
       jest
         .spyOn(service, 'fetchRecipientEmails')
-        .mockResolvedValue(['user@test.com']);
+        .mockResolvedValue(['user@test.com'] as string[]);
       jest.spyOn(service, 'sendEmail').mockResolvedValue(true);
 
       const jobEntity = {
@@ -601,7 +602,7 @@ describe('NotificationService', () => {
     it('should handle Schedule actionEntity (cron)', async () => {
       jest
         .spyOn(service, 'fetchRecipientEmails')
-        .mockResolvedValue(['user@test.com']);
+        .mockResolvedValue(['user@test.com'] as string[]);
       jest.spyOn(service, 'sendEmail').mockResolvedValue(true);
 
       const scheduleEntity = {
@@ -648,7 +649,7 @@ describe('NotificationService', () => {
     it('should handle sendEmail failure (SMTP not configured)', async () => {
       jest
         .spyOn(service, 'fetchRecipientEmails')
-        .mockResolvedValue(['user@test.com']);
+        .mockResolvedValue(['user@test.com'] as string[]);
       jest.spyOn(service, 'sendEmail').mockResolvedValue(false);
 
       const configEntity = {
@@ -800,7 +801,10 @@ describe('NotificationService', () => {
 
       const result = await service.sendPublishingStatusNotification({
         configId: 1,
-        config: { transactionType: 'Test', version: '1.0' },
+        config: {
+          transactionType: 'Test',
+          version: '1.0',
+        } as unknown as Config,
         tenantId: 'tenant1',
         publishingStatus: 'active',
         actorEmail: 'actor@test.com',
@@ -826,7 +830,10 @@ describe('NotificationService', () => {
 
       const result = await service.sendPublishingStatusNotification({
         configId: 1,
-        config: { transactionType: 'Test', version: '1.0' },
+        config: {
+          transactionType: 'Test',
+          version: '1.0',
+        } as unknown as Config,
         tenantId: 'tenant1',
         publishingStatus: 'active',
         actorEmail: 'actor@test.com',
@@ -853,7 +860,10 @@ describe('NotificationService', () => {
 
       const result = await service.sendPublishingStatusNotification({
         configId: 1,
-        config: { transactionType: 'Test', version: '1.0' },
+        config: {
+          transactionType: 'Test',
+          version: '1.0',
+        } as unknown as Config,
         tenantId: 'tenant1',
         publishingStatus: 'active',
         actorEmail: 'actor@test.com',
@@ -875,7 +885,10 @@ describe('NotificationService', () => {
 
       const result = await service.sendPublishingStatusNotification({
         configId: 1,
-        config: { transactionType: 'Test', version: '1.0' },
+        config: {
+          transactionType: 'Test',
+          version: '1.0',
+        } as unknown as Config,
         tenantId: 'tenant1',
         publishingStatus: 'active',
         actorEmail: 'actor@test.com',
@@ -897,7 +910,10 @@ describe('NotificationService', () => {
 
       const result = await service.sendPublishingStatusNotification({
         configId: 1,
-        config: { transactionType: 'Test', version: '1.0' },
+        config: {
+          transactionType: 'Test',
+          version: '1.0',
+        } as unknown as Config,
         tenantId: 'tenant1',
         publishingStatus: 'active',
         actorEmail: 'actor@test.com',
@@ -914,7 +930,9 @@ describe('NotificationService', () => {
   describe('Additional coverage tests', () => {
     it('should handle no recipients found in sendGenericWorkflowNotification', async () => {
       const loggerWarnSpy = jest.spyOn(service['logger'], 'warn');
-      jest.spyOn(service, 'fetchRecipientEmails').mockResolvedValue([]);
+      jest
+        .spyOn(service, 'fetchRecipientEmails')
+        .mockResolvedValue([] as string[]);
 
       const result = await service.sendGenericWorkflowNotification({
         event: EventType.EditorSubmit,
@@ -938,7 +956,7 @@ describe('NotificationService', () => {
       const loggerLogSpy = jest.spyOn(service['logger'], 'log');
       jest
         .spyOn(service, 'fetchRecipientEmails')
-        .mockResolvedValue(['user@test.com']);
+        .mockResolvedValue(['user@test.com'] as string[]);
       jest.spyOn(service, 'sendEmail').mockResolvedValue(true);
 
       await service.sendGenericWorkflowNotification({

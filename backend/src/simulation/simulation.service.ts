@@ -17,6 +17,8 @@ import type {
   SimulationResult,
 } from './dto/simulation.dto';
 
+export type { SimulatePayloadDto };
+
 @Injectable()
 export class SimulationService {
   private readonly logger = new Logger(SimulationService.name);
@@ -596,18 +598,20 @@ export class SimulationService {
       return schema;
     }
 
-    const cleanedSchema = { ...schema } as any;
+    const cleanedSchema: Record<string, unknown> = { ...schema };
 
     if (cleanedSchema.required && Array.isArray(cleanedSchema.required)) {
-      const originalRequired = cleanedSchema.required;
-      cleanedSchema.required = cleanedSchema.required.filter(
+      const originalRequired = cleanedSchema.required as string[];
+      cleanedSchema.required = (cleanedSchema.required as string[]).filter(
         (field: string) =>
           !field.startsWith('xmlns') && field !== '$' && field !== '@',
       );
 
-      if (originalRequired.length !== cleanedSchema.required.length) {
+      if (
+        originalRequired.length !== (cleanedSchema.required as string[]).length
+      ) {
         this.logger.debug(
-          `Removed ${originalRequired.length - cleanedSchema.required.length} XML attributes from required fields`,
+          `Removed ${originalRequired.length - (cleanedSchema.required as string[]).length} XML attributes from required fields`,
         );
       }
     }
@@ -615,7 +619,7 @@ export class SimulationService {
       cleanedSchema.properties &&
       typeof cleanedSchema.properties === 'object'
     ) {
-      const cleanedProperties: any = {};
+      const cleanedProperties: Record<string, unknown> = {};
       for (const [key, value] of Object.entries(cleanedSchema.properties)) {
         if (key.startsWith('xmlns') || key.startsWith('@') || key === '$') {
           this.logger.debug(`Skipping XML attribute property: ${key}`);
@@ -633,7 +637,7 @@ export class SimulationService {
     return cleanedSchema;
   }
 
-  private isXmlParsedObject(obj: any): boolean {
+  private isXmlParsedObject(obj: unknown): boolean {
     if (!obj || typeof obj !== 'object') {
       return false;
     }
@@ -667,7 +671,7 @@ export class SimulationService {
       );
     }
 
-    const normalized: any = {};
+    const normalized: Record<string, unknown> = {};
 
     for (const [key, value] of Object.entries(obj)) {
       if (key.startsWith('@') || key.startsWith('xmlns') || key === '$') {
@@ -707,12 +711,13 @@ export class SimulationService {
           fieldSchema?.type === 'string' &&
           typeof normalizedValue === 'object' &&
           normalizedValue !== null &&
-          ((normalizedValue as any).textContent !== undefined ||
-            (normalizedValue as any)['#text'] !== undefined)
+          ((normalizedValue as Record<string, unknown>).textContent !==
+            undefined ||
+            (normalizedValue as Record<string, unknown>)['#text'] !== undefined)
         ) {
           normalized[key] =
-            (normalizedValue as any).textContent ??
-            (normalizedValue as any)['#text'];
+            (normalizedValue as Record<string, unknown>).textContent ??
+            (normalizedValue as Record<string, unknown>)['#text'];
         } else {
           normalized[key] = normalizedValue;
         }
@@ -724,32 +729,40 @@ export class SimulationService {
     return normalized;
   }
 
-  private getSchemaTypeAtPath(schema: any, path: string): string | null {
+  private getSchemaTypeAtPath(schema: unknown, path: string): string | null {
     if (!schema || !path) return null;
 
     const parts = path.split('.');
-    let current = schema;
+    let current = schema as Record<string, unknown>;
 
     for (const part of parts) {
-      if (current?.properties?.[part]) {
-        current = current.properties[part];
+      const props = current.properties as Record<string, unknown> | undefined;
+      if (props?.[part]) {
+        current = props[part] as Record<string, unknown>;
       } else {
         return null;
       }
     }
 
-    return current?.type ?? null;
+    if (current.type === null || current.type === undefined) {
+      return null;
+    }
+    return current.type as string;
   }
 
-  private getSchemaAtPath(schema: any, path: string): any {
+  private getSchemaAtPath(
+    schema: unknown,
+    path: string,
+  ): Record<string, unknown> | null {
     if (!schema || !path) return null;
 
     const parts = path.split('.');
-    let current = schema;
+    let current = schema as Record<string, unknown>;
 
     for (const part of parts) {
-      if (current?.properties?.[part]) {
-        current = current.properties[part];
+      const props = current.properties as Record<string, unknown> | undefined;
+      if (props?.[part]) {
+        current = props[part] as Record<string, unknown>;
       } else {
         return null;
       }
@@ -758,7 +771,7 @@ export class SimulationService {
     return current;
   }
 
-  private normalizeXmlParsedObject(obj: any): any {
+  private normalizeXmlParsedObject(obj: unknown): unknown {
     if (!obj || typeof obj !== 'object') {
       return obj;
     }
@@ -767,7 +780,7 @@ export class SimulationService {
       return obj.map((item) => this.normalizeXmlParsedObject(item));
     }
 
-    const normalized: any = {};
+    const normalized: Record<string, unknown> = {};
 
     for (const [key, value] of Object.entries(obj)) {
       if (key.startsWith('@') || key.startsWith('xmlns') || key === '$') {
@@ -792,8 +805,8 @@ export class SimulationService {
   }
 
   private validatePayloadAgainstSchema(
-    payload: any,
-    schema: any,
+    payload: unknown,
+    schema: unknown,
     config?: Config,
   ): SimulationError[] {
     const errors: SimulationError[] = [];
@@ -808,7 +821,7 @@ export class SimulationService {
 
     try {
       const normalizedPayload = this.normalizePayloadForValidation(
-        payload,
+        payload as Record<string, unknown>,
         config,
       );
 
@@ -825,7 +838,7 @@ export class SimulationService {
 
       const schemaWithStrict = this.enforceStrictSchema(schema, config);
 
-      const validate = ajv.compile(schemaWithStrict);
+      const validate = ajv.compile(schemaWithStrict as Record<string, unknown>);
 
       const valid = validate(normalizedPayload);
 
@@ -901,7 +914,7 @@ export class SimulationService {
     const runtimeContextFields = ['tenantId', 'tenant_id', 'userId', 'user_id'];
 
     for (let i = 0; i < mappings.length; i += 1) {
-      const mapping = mappings[i] as any; // Type assertion for complex mapping validation
+      const mapping = mappings[i] as Record<string, unknown>; // Type assertion for complex mapping validation
       let sources: string[] = [];
       const { sources: mappingSources, source } = mapping;
       if (mappingSources && Array.isArray(mappingSources)) {
@@ -984,7 +997,7 @@ export class SimulationService {
     return errors;
   }
 
-  private isArrayPath(obj: any, path: string): boolean {
+  private isArrayPath(obj: unknown, path: string): boolean {
     if (!path) return false;
     const normalizedPath = path.replace(/^\//, '').replace(/\//g, '.');
     const pathParts = normalizedPath.split('.');
@@ -1008,7 +1021,7 @@ export class SimulationService {
     return Array.isArray(current);
   }
 
-  private getFieldValue(obj: any, path: string): any {
+  private getFieldValue(obj: unknown, path: string): unknown {
     if (!path) return undefined;
 
     const normalizedPath = path.replace(/\[(\d+)\]/g, '.$1');
@@ -1016,20 +1029,22 @@ export class SimulationService {
     return _.get(obj, normalizedPath);
   }
 
-  private enforceStrictSchema(schema: any, config?: Config): any {
+  private enforceStrictSchema(schema: unknown, config?: Config): unknown {
     if (!schema || typeof schema !== 'object') {
       return schema;
     }
 
-    const strictSchema = { ...schema };
+    const strictSchema: Record<string, unknown> = {
+      ...(schema as Record<string, unknown>),
+    };
 
     const runtimeContextFields = ['tenantId', 'tenant_id', 'userId', 'user_id'];
 
     if (strictSchema.required && Array.isArray(strictSchema.required)) {
-      strictSchema.required = strictSchema.required.filter(
+      strictSchema.required = (strictSchema.required as string[]).filter(
         (field: string) => !runtimeContextFields.includes(field),
       );
-      if (strictSchema.required.length === 0) {
+      if ((strictSchema.required as string[]).length === 0) {
         delete strictSchema.required;
       }
     }
@@ -1042,8 +1057,9 @@ export class SimulationService {
             config,
           );
 
-          if (strictSchema.items.type === 'object') {
-            strictSchema.items.additionalProperties = true;
+          const items = strictSchema.items as Record<string, unknown>;
+          if (items.type === 'object') {
+            items.additionalProperties = true;
           }
         }
       }
@@ -1055,11 +1071,11 @@ export class SimulationService {
     }
 
     strictSchema.properties &&= Object.keys(
-      strictSchema.properties,
-    ).reduce<any>((acc, key) => {
+      strictSchema.properties as Record<string, unknown>,
+    ).reduce<Record<string, unknown>>((acc, key) => {
       const updatedAcc = { ...acc };
       updatedAcc[key] = this.enforceStrictSchema(
-        strictSchema.properties[key],
+        (strictSchema.properties as Record<string, unknown>)[key],
         config,
       );
       return updatedAcc;
@@ -1068,13 +1084,13 @@ export class SimulationService {
     if (strictSchema.items && strictSchema.type !== 'array') {
       strictSchema.items = this.enforceStrictSchema(strictSchema.items, config);
     }
-    strictSchema.oneOf &&= strictSchema.oneOf.map((s: any) =>
+    strictSchema.oneOf &&= (strictSchema.oneOf as unknown[]).map((s: unknown) =>
       this.enforceStrictSchema(s, config),
     );
-    strictSchema.anyOf &&= strictSchema.anyOf.map((s: any) =>
+    strictSchema.anyOf &&= (strictSchema.anyOf as unknown[]).map((s: unknown) =>
       this.enforceStrictSchema(s, config),
     );
-    strictSchema.allOf &&= strictSchema.allOf.map((s: any) =>
+    strictSchema.allOf &&= (strictSchema.allOf as unknown[]).map((s: unknown) =>
       this.enforceStrictSchema(s, config),
     );
 

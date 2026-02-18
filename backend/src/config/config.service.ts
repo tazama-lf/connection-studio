@@ -56,7 +56,7 @@ export class ConfigService {
     description: string,
     resourceId: string,
     status: 'success' | 'failure',
-    outcome: Record<string, any>,
+    outcome: Record<string, unknown>,
   ): void {
     this.auditLoggerService.log({
       eventType,
@@ -396,15 +396,22 @@ export class ConfigService {
               );
             }
 
-            const functions = (config.functions as any) ?? null;
+            const functions = config.functions as unknown as Array<{
+              functionName: string;
+              tableName?: string;
+            }>;
 
             if (Array.isArray(functions)) {
               const datamodelFunctions = functions.filter(
-                (fn: any) => fn.functionName === 'addDataModelTable',
+                (fn: { functionName: string; tableName?: string }) =>
+                  fn.functionName === 'addDataModelTable',
               );
 
               const tableCreationPromises = datamodelFunctions.map(
-                async (datamodelFn: any) => {
+                async (datamodelFn: {
+                  functionName: string;
+                  tableName?: string;
+                }) => {
                   if (datamodelFn.tableName) {
                     await this.configRepository.createTazamaDataModelTable(
                       datamodelFn.tableName,
@@ -419,13 +426,6 @@ export class ConfigService {
               );
 
               await Promise.all(tableCreationPromises);
-            } else if (functions?.functionName === 'addDataModelTable') {
-              if (functions.tableName) {
-                await this.configRepository.createTazamaDataModelTable(
-                  functions.tableName,
-                  token,
-                );
-              }
             }
 
             await this.notificationService.sendWorkflowNotification(
@@ -658,7 +658,8 @@ export class ConfigService {
           const functions = configData.functions ?? null;
 
           if (Array.isArray(functions)) {
-            const datamodelFunctions = functions.filter(
+            const typedFunctions = functions;
+            const datamodelFunctions = typedFunctions.filter(
               (fn) => fn.functionName === 'addDataModelTable',
             );
 
@@ -666,7 +667,7 @@ export class ConfigService {
               async (datamodelFn) => {
                 if (datamodelFn.tableName) {
                   await this.configRepository.createTazamaDataModelTable(
-                    datamodelFn.tableName,
+                    datamodelFn.tableName as string,
                     token,
                   );
                 } else {
@@ -678,10 +679,14 @@ export class ConfigService {
             );
 
             await Promise.all(tableCreationPromises);
-          } else if (functions?.functionName === 'addDataModelTable') {
-            if (functions.tableName) {
+          } else if (functions) {
+            const singleFn = functions;
+            if (
+              singleFn.functionName === 'addDataModelTable' &&
+              singleFn.tableName
+            ) {
               await this.configRepository.createTazamaDataModelTable(
-                functions.tableName,
+                singleFn.tableName as string,
                 token,
               );
             }
@@ -689,7 +694,7 @@ export class ConfigService {
 
           await this.sftpService.deleteFile(fileName);
 
-          const deployedConfig = configData as Config;
+          const deployedConfig = configData as unknown as Config;
           await this.notificationService.sendWorkflowNotification(
             EventType.PublisherDeploy,
             user,
@@ -714,22 +719,23 @@ export class ConfigService {
           return {
             success: true,
             message: `Configuration ${id} deployed successfully`,
-            config: configData as Config | undefined,
+            config: configData as unknown as Config | undefined,
           };
         } catch (error) {
-          this.logger.error(`Failed to deploy config: ${error.message}`);
+          const errMsg = error instanceof Error ? error.message : String(error);
+          this.logger.error(`Failed to deploy config: ${errMsg}`);
 
           this.logAudit(
             'Config deployment failed',
             user,
-            `Failed to deploy config ${id}: ${error.message}`,
+            `Failed to deploy config ${id}: ${errMsg}`,
             String(id),
             'failure',
-            { success: false, error: error.message },
+            { success: false, error: errMsg },
           );
 
           throw new BadRequestException(
-            `Failed to deploy configuration: ${error.message}`,
+            `Failed to deploy configuration: ${errMsg}`,
           );
         }
       }
@@ -744,11 +750,11 @@ export class ConfigService {
     token: string,
   ): Promise<ConfigResponseDto> {
     try {
-      const result = await this.configRepository.updatePublishingStatus(
+      const result = (await this.configRepository.updatePublishingStatus(
         id,
         publishingStatus,
         token,
-      );
+      )) as { success: boolean; message?: string; config?: Config };
 
       if (!result.success) {
         throw new NotFoundException(
@@ -759,15 +765,14 @@ export class ConfigService {
       try {
         await this.notifyService.notifyDems(id.toString(), tenantId);
       } catch (error) {
+        const errMsg = error instanceof Error ? error.message : String(error);
         this.logger.error(
-          `Failed to send NATS notification for config ${id}: ${error.message}`,
+          `Failed to send NATS notification for config ${id}: ${errMsg}`,
         );
-        throw new BadRequestException(
-          `Failed to activate config: ${error.message}`,
-        );
+        throw new BadRequestException(`Failed to activate config: ${errMsg}`);
       }
-      if (result?.success && result.config) {
-        const config = result.config as Config;
+      if (result.config) {
+        const {config} = result;
         await this.notificationService.sendWorkflowNotification(
           publishingStatus === 'active'
             ? EventType.PublisherActivate
@@ -807,9 +812,9 @@ export class ConfigService {
   }
   async updateConfigViaWrite(
     id: number,
-    updateData: any,
+    updateData: Record<string, unknown>,
     token: string,
-  ): Promise<any> {
+  ): Promise<unknown> {
     try {
       const result = await this.configRepository.updateConfigViaWrite(
         id,
@@ -842,9 +847,9 @@ export class ConfigService {
 
   async addMappingViaService(
     id: number,
-    mappingData: any,
+    mappingData: Record<string, unknown>,
     token: string,
-  ): Promise<any> {
+  ): Promise<unknown> {
     try {
       const result = await this.configRepository.addMapping(
         id,
@@ -879,7 +884,7 @@ export class ConfigService {
     id: number,
     index: number,
     token: string,
-  ): Promise<any> {
+  ): Promise<unknown> {
     try {
       const result = await this.configRepository.removeMapping(
         id,
@@ -912,9 +917,9 @@ export class ConfigService {
 
   async addFunctionViaService(
     id: number,
-    functionData: any,
+    functionData: Record<string, unknown>,
     token: string,
-  ): Promise<any> {
+  ): Promise<unknown> {
     try {
       const result = await this.configRepository.addFunction(
         id,
@@ -949,7 +954,7 @@ export class ConfigService {
     id: number,
     index: number,
     token: string,
-  ): Promise<any> {
+  ): Promise<unknown> {
     try {
       const result = await this.configRepository.removeFunction(
         id,
@@ -1007,7 +1012,7 @@ export class ConfigService {
   async getAllConfigs(
     offset: number,
     limit: number,
-    filters: Record<string, any>,
+    filters: Record<string, unknown>,
     token: string,
   ): Promise<Config[]> {
     return await this.configRepository.getAllConfigsWithFilters(

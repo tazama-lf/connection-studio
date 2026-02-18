@@ -47,7 +47,7 @@ export class JobService {
     private readonly adminServiceClient: AdminServiceClient,
     private readonly schedulerService: SchedulerService,
     private readonly notificationService: NotificationService,
-  ) { }
+  ) {}
 
   private handleError(err: unknown): never {
     const message = err instanceof Error ? err.message : String(err);
@@ -403,7 +403,10 @@ export class JobService {
           const updatedJob = structuredClone(existingJob)!;
           updatedJob.status = JobStatus.APPROVED;
 
-          await this.notifyService.notifyEnrichment(existingJob!.id, ConfigType.PULL);
+          await this.notifyService.notifyEnrichment(
+            existingJob!.id,
+            ConfigType.PULL,
+          );
 
           await this.notificationService.sendWorkflowNotification(
             EventType.ApproverApprove,

@@ -36,7 +36,7 @@ export class CreateConfigDto {
 
   @IsObject()
   @IsOptional()
-  schema?: Record<string, any>;
+  schema?: Record<string, unknown>;
 
   @ValidateIf((o) => typeof o.payload === 'string')
   @IsString()
@@ -51,9 +51,9 @@ export class CreateConfigDto {
 
   @IsArray()
   @IsOptional()
-  mapping?: any[];
+  mapping?: Array<Record<string, unknown>>;
 
   @IsArray()
   @IsOptional()
-  functions?: any[];
+  functions?: Array<Record<string, unknown>>;
 }

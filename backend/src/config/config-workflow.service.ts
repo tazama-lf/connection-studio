@@ -10,7 +10,7 @@ export class ConfigWorkflowService {
   validateStatusTransition(
     fromStatus: string,
     toStatus: string,
-    _action: any,
+    _action: string,
   ): StatusTransitionValidation {
     const normalizedFromStatus = fromStatus;
     const normalizedToStatus = toStatus;
@@ -32,26 +32,26 @@ export class ConfigWorkflowService {
     if (allowedTransitions === undefined) {
       return {
         isValid: false,
-        currentStatus: normalizedFromStatus as any,
-        targetStatus: normalizedToStatus as any,
-        allowedNextStatuses: [] as any,
+        currentStatus: normalizedFromStatus as ConfigStatus,
+        targetStatus: normalizedToStatus as ConfigStatus,
+        allowedNextStatuses: [] as ConfigStatus[],
         reason: `Unknown status: ${normalizedFromStatus}`,
       };
     }
     if (!allowedTransitions.includes(normalizedToStatus)) {
       return {
         isValid: false,
-        currentStatus: normalizedFromStatus as any,
-        targetStatus: normalizedToStatus as any,
-        allowedNextStatuses: allowedTransitions as any,
+        currentStatus: normalizedFromStatus as ConfigStatus,
+        targetStatus: normalizedToStatus as ConfigStatus,
+        allowedNextStatuses: allowedTransitions as ConfigStatus[],
         reason: `Invalid transition from ${normalizedFromStatus} to ${normalizedToStatus}`,
       };
     }
     return {
       isValid: true,
-      currentStatus: fromStatus as any,
-      targetStatus: toStatus as any,
-      allowedNextStatuses: allowedTransitions as any,
+      currentStatus: fromStatus as ConfigStatus,
+      targetStatus: toStatus as ConfigStatus,
+      allowedNextStatuses: allowedTransitions as ConfigStatus[],
     };
   }
   validateUserPermissions(
@@ -77,10 +77,8 @@ export class ConfigWorkflowService {
       result.canEdit = [
         ConfigStatus.IN_PROGRESS,
         ConfigStatus.REJECTED,
-      ].includes(currentStatus as any);
-      result.canSubmit = [ConfigStatus.IN_PROGRESS].includes(
-        currentStatus as any,
-      );
+      ].includes(currentStatus);
+      result.canSubmit = [ConfigStatus.IN_PROGRESS].includes(currentStatus);
     }
     if (hasApproverRole) {
       const canApproverAct = currentStatus === ConfigStatus.UNDER_REVIEW;
@@ -96,11 +94,11 @@ export class ConfigWorkflowService {
         ConfigStatus.APPROVED,
         ConfigStatus.EXPORTED,
         ConfigStatus.READY_FOR_DEPLOYMENT,
-      ].includes(currentStatus as any);
+      ].includes(currentStatus);
     }
     return result;
   }
-  getTargetStatus(action: any): string {
+  getTargetStatus(action: string): string {
     const actionToStatusMap: Record<string, string> = {
       submit_for_approval: ConfigStatus.UNDER_REVIEW,
       approve: ConfigStatus.APPROVED,
@@ -111,19 +109,19 @@ export class ConfigWorkflowService {
     };
     const targetStatus = actionToStatusMap[action];
     if (!targetStatus) {
-      return undefined as any;
+      return undefined as unknown as string;
     }
     return targetStatus;
   }
   canPerformAction(
     userClaims: string[],
     currentStatus: ConfigStatus | string,
-    action: any,
+    action: string,
   ): { canPerform: boolean; message?: string } {
     const permissions = this.validateUserPermissions(
       userClaims,
       currentStatus as ConfigStatus,
-      action,
+      action as WorkflowAction,
     );
     const targetStatus = this.getTargetStatus(action);
     const transition = this.validateStatusTransition(
@@ -174,7 +172,7 @@ export class ConfigWorkflowService {
       case 'return_to_progress': {
         const canReturn =
           userClaims.includes('editor') &&
-          [ConfigStatus.REJECTED].includes(currentStatus as any);
+          [ConfigStatus.REJECTED].includes(currentStatus as ConfigStatus);
         if (!canReturn) {
           return {
             canPerform: false,
@@ -187,7 +185,7 @@ export class ConfigWorkflowService {
       case 'export': {
         const canExport =
           userClaims.includes('exporter') &&
-          [ConfigStatus.APPROVED].includes(currentStatus as any);
+          [ConfigStatus.APPROVED].includes(currentStatus as ConfigStatus);
         if (!canExport) {
           return {
             canPerform: false,

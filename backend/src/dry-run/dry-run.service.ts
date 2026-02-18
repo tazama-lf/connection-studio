@@ -124,8 +124,10 @@ export class DryRunService {
         });
       }
       return sftp;
-    } catch (err: any) {
-      throw new Error(`SFTP connection failed: ${err.message}`, { cause: err });
+    } catch (err: unknown) {
+      throw new Error(`SFTP connection failed: ${(err as Error).message}`, {
+        cause: err,
+      });
     }
   }
 
@@ -165,9 +167,11 @@ export class DryRunService {
       } else {
         await this.dryRunSftpJob(job);
       }
-    } catch (error: any) {
-      this.loggerService.error(`Dry run failed, ${error.message}`);
-      throw new Error(`Dry run failed, ${error.message}`, { cause: error });
+    } catch (error: unknown) {
+      this.loggerService.error(`Dry run failed, ${(error as Error).message}`);
+      throw new Error(`Dry run failed, ${(error as Error).message}`, {
+        cause: error,
+      });
     }
   }
 }
