@@ -105,7 +105,6 @@ export class ConfigService {
         throw new BadRequestException('Config status is not set');
       }
       const userRole = user.actorRole.toLowerCase() as 'editor' | 'approver' | 'publisher' | 'exporter';
-      // RBAC Tier 2: Check if role can act on current status
       const tier2Check = this.rbacService.checkTier2({
         role: userRole,
         endpointKey: 'Patch update/status/:id',
@@ -116,7 +115,6 @@ export class ConfigService {
         throw new ForbiddenException(tier2Check.reason ?? 'Permission denied');
       }
 
-      // RBAC Tier 3: Check if this status transition is allowed
       const tier3Check = this.rbacService.checkTier3({
         role: userRole,
         endpointKey: 'Patch update/status/:id',
@@ -128,7 +126,6 @@ export class ConfigService {
         throw new ForbiddenException(tier3Check.reason ?? 'Status transition not allowed');
       }
 
-      // Perform the update
       await this.configRepository.updateConfigStatus(id, status, token);
 
       this.logAudit(
