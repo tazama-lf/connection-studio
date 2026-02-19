@@ -92,6 +92,48 @@
             "allowedCurrentStatuses": ["STATUS_07_READY_FOR_DEPLOYMENT","STATUS_08_DEPLOYED"]          }
         }
       }
+    },
+    "Post :id/workflow": {
+      "tier2": {
+        "description": "Controls which current resource statuses each role may act upon for workflow actions",
+        "rolePermissions": {
+          "editor": {
+            "allowedCurrentStatuses": ["STATUS_01_IN_PROGRESS", "STATUS_02_ON_HOLD", "STATUS_05_REJECTED"],
+            "deniedCurrentStatuses": ["STATUS_03_UNDER_REVIEW", "STATUS_04_APPROVED", "STATUS_06_EXPORTED", "STATUS_07_READY_FOR_DEPLOYMENT", "STATUS_08_DEPLOYED"]
+          },
+          "approver": {
+            "allowedCurrentStatuses": ["STATUS_03_UNDER_REVIEW"],
+            "deniedCurrentStatuses": ["STATUS_01_IN_PROGRESS", "STATUS_02_ON_HOLD", "STATUS_04_APPROVED", "STATUS_05_REJECTED", "STATUS_06_EXPORTED", "STATUS_07_READY_FOR_DEPLOYMENT", "STATUS_08_DEPLOYED"]
+          },
+          "exporter": {
+            "allowedCurrentStatuses": ["STATUS_04_APPROVED"],
+            "deniedCurrentStatuses": ["STATUS_01_IN_PROGRESS", "STATUS_02_ON_HOLD", "STATUS_03_UNDER_REVIEW", "STATUS_05_REJECTED", "STATUS_06_EXPORTED", "STATUS_07_READY_FOR_DEPLOYMENT", "STATUS_08_DEPLOYED"]
+          },
+          "publisher": {
+            "allowedCurrentStatuses": ["STATUS_07_READY_FOR_DEPLOYMENT", "STATUS_08_DEPLOYED"],
+            "deniedCurrentStatuses": ["STATUS_01_IN_PROGRESS", "STATUS_02_ON_HOLD", "STATUS_03_UNDER_REVIEW", "STATUS_04_APPROVED", "STATUS_05_REJECTED", "STATUS_06_EXPORTED"]
+          }
+        }
+      },
+      "tier3": {
+        "description": "Allowed workflow transitions per role and action",
+        "transitions": {
+          "editor": {
+            "STATUS_01_IN_PROGRESS": ["STATUS_02_ON_HOLD", "STATUS_03_UNDER_REVIEW"],
+            "STATUS_02_ON_HOLD": ["STATUS_01_IN_PROGRESS"],
+            "STATUS_05_REJECTED": ["STATUS_01_IN_PROGRESS", "STATUS_03_UNDER_REVIEW"]
+          },
+          "approver": {
+            "STATUS_03_UNDER_REVIEW": ["STATUS_04_APPROVED", "STATUS_05_REJECTED"]
+          },
+          "exporter": {
+            "STATUS_04_APPROVED": ["STATUS_06_EXPORTED"]
+          },
+          "publisher": {
+            "STATUS_07_READY_FOR_DEPLOYMENT": ["STATUS_08_DEPLOYED"]
+          }
+        }
+      }
     }
   }
 }

@@ -350,6 +350,62 @@ export class ConfigService {
     token: string,
   ): Promise<ConfigResponseDto> {
     const { action } = actionDto;
+    
+    const config = await this.getConfigOrThrow(id, user.tenantId, token);
+    
+    if (!config.status) {
+      throw new BadRequestException(`Config ${id} has no status defined`);
+    }
+
+    const userRole = user.actorRole?.toLowerCase();
+    if (
+      !userRole ||
+      !['editor', 'approver', 'publisher', 'exporter'].includes(userRole)
+    ) {
+      throw new ForbiddenException('Invalid user role');
+    }
+
+    const typedRole = userRole as 'editor' | 'approver' | 'publisher' | 'exporter';
+    
+    const actionStatusMap: Record<string, string> = {
+      submit: ConfigStatus.UNDER_REVIEW,
+      approve: ConfigStatus.APPROVED,
+      reject: ConfigStatus.REJECTED,
+      export: ConfigStatus.EXPORTED,
+      deploy: ConfigStatus.DEPLOYED,
+    };
+
+    const targetStatus = actionStatusMap[action];
+    if (!targetStatus) {
+      throw new BadRequestException(`Unknown workflow action: ${action}`);
+    }
+
+    const tier2Check = this.rbacService.checkTier2({
+      role: typedRole,
+      endpointKey: 'Post :id/workflow',
+      currentStatus: config.status,
+    });
+
+    if (!tier2Check.allowed) {
+      throw new ForbiddenException(
+        tier2Check.reason ?? `Role "${userRole}" cannot act on config in status "${config.status}"`,
+      );
+    }
+
+    const tier3Check = this.rbacService.checkTier3({
+      role: typedRole,
+      endpointKey: 'Post :id/workflow',
+      currentStatus: config.status,
+      targetStatus,
+    });
+
+    if (!tier3Check.allowed) {
+      throw new ForbiddenException(
+        tier3Check.reason ??
+        `Role "${userRole}" cannot transition from "${config.status}" to "${targetStatus}"`,
+      );
+    }
+
     switch (action) {
       case 'submit': {
         try {
@@ -551,8 +607,7 @@ export class ConfigService {
 
       case 'export': {
         const exportDto = actionDto.data;
-        const config = await this.getConfigOrThrow(id, user.tenantId, token);
-
+        // Config already fetched at the beginning of handleWorkflowAction
         const currentStatus = config.status!;
         const action: WorkflowAction = 'export';
         this.validateWorkflowAction(user.validClaims, currentStatus, action);
