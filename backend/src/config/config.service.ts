@@ -1051,7 +1051,6 @@ export class ConfigService {
         }
       }
     }
-
     return await this.configRepository.getAllConfigsWithFilters(
       offset,
       limit,
