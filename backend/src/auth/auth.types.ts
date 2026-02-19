@@ -8,7 +8,7 @@ export interface AuthenticatedUser {
   tenantId: string;
   userId: string;
   actorName?: string;
-  actorRole?: string;
+  actorRole: string;
   actorEmail?: string;
   sourceIP?: string;
   allowedStatuses?: string[];

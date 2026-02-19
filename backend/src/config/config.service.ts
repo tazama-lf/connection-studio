@@ -13,6 +13,7 @@ import { NotificationService } from '../notification/notification.service';
 import { ConfigWorkflowService } from './config-workflow.service';
 import { ConfigUtilsService } from './config-utils.service';
 import { SftpService } from '../sftp/sftp.service';
+import { RbacService } from '../utils/rbac/rbacHelper';
 import {
   Config,
   CreateConfigDto,
@@ -29,6 +30,7 @@ import { AuditLogger } from '@tazama-lf/frms-coe-lib';
 @Injectable()
 export class ConfigService {
   private readonly logger = new Logger(ConfigService.name);
+  private readonly rbacService = new RbacService();
 
   constructor(
     private readonly configRepository: ConfigRepository,
@@ -93,18 +95,45 @@ export class ConfigService {
   async updateConfigStatus(
     id: number,
     status: string,
-    tenantId: string,
-    userId: string,
+    user: AuthenticatedUser,
     token: string,
   ): Promise<ConfigResponseDto> {
     try {
-      await this.getConfigOrThrow(id, tenantId, token);
+      const config = await this.getConfigOrThrow(id, user.tenantId, token);
 
+      if (!config.status) {
+        throw new BadRequestException('Config status is not set');
+      }
+      const userRole = user.actorRole.toLowerCase() as 'editor' | 'approver' | 'publisher' | 'exporter';
+      // RBAC Tier 2: Check if role can act on current status
+      const tier2Check = this.rbacService.checkTier2({
+        role: userRole,
+        endpointKey: 'Patch update/status/:id',
+        currentStatus: config.status,
+      });
+
+      if (!tier2Check.allowed) {
+        throw new ForbiddenException(tier2Check.reason ?? 'Permission denied');
+      }
+
+      // RBAC Tier 3: Check if this status transition is allowed
+      const tier3Check = this.rbacService.checkTier3({
+        role: userRole,
+        endpointKey: 'Patch update/status/:id',
+        currentStatus: config.status,
+        targetStatus: status,
+      });
+
+      if (!tier3Check.allowed) {
+        throw new ForbiddenException(tier3Check.reason ?? 'Status transition not allowed');
+      }
+
+      // Perform the update
       await this.configRepository.updateConfigStatus(id, status, token);
 
       this.logAudit(
         'Config status updated',
-        { userId, tenantId },
+        user,
         `Config ${id} status updated to ${status}`,
         String(id),
         'success',
@@ -118,7 +147,7 @@ export class ConfigService {
     } catch (error) {
       this.logAudit(
         'Config status update failed',
-        { userId, tenantId },
+        user,
         `Failed to update config ${id} status to ${status}: ${error.message}`,
         String(id),
         'failure',
@@ -997,29 +1026,37 @@ export class ConfigService {
       config,
     };
   }
-  getRulesStatusbyRole(user: AuthenticatedUser): string[] {
-    if (!user.allowedStatuses || user.allowedStatuses.length === 0) {
-      this.logger.warn('User does not have allowedStatuses in token');
-      return [];
-    }
-
-    this.logger.log(
-      `User has ${user.allowedStatuses.length} allowed statuses: ${user.allowedStatuses.join(', ')}`,
-    );
-    return user.allowedStatuses;
-  }
-
   async getAllConfigs(
     offset: number,
     limit: number,
     filters: Record<string, unknown>,
-    token: string,
+    user: AuthenticatedUser,
   ): Promise<Config[]> {
+    const updatedFilters = { ...filters };
+
+    // Apply RBAC Tier 2: Auto-filter by role's allowed statuses if no status provided
+    if (!updatedFilters.status) {
+      const userRole = user.actorRole?.toLowerCase();
+      if (
+        userRole &&
+        ['editor', 'approver', 'publisher', 'exporter'].includes(userRole)
+      ) {
+        const { allowedStatuses } = this.rbacService.getTier2({
+          role: userRole as 'editor' | 'approver' | 'publisher' | 'exporter',
+          endpointKey: 'Post /:offset/:limit',
+        });
+
+        if (allowedStatuses?.length) {
+          updatedFilters.status = allowedStatuses.join(',');
+        }
+      }
+    }
+
     return await this.configRepository.getAllConfigsWithFilters(
       offset,
       limit,
-      filters,
-      token,
+      updatedFilters,
+      user.token.tokenString,
     );
   }
 }

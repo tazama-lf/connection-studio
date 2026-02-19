@@ -46,15 +46,6 @@ import type { CreateConfigDto as TcsLibCreateConfigDto } from '@tazama-lf/tcs-li
 @UseGuards(TazamaAuthGuard)
 export class ConfigController {
   constructor(private readonly configService: ConfigService) {}
-  @Get('/api/status')
-  @RequireAnyClaims(
-    TazamaClaims.EDITOR,
-    TazamaClaims.APPROVER,
-    TazamaClaims.PUBLISHER,
-  )
-  getRulesStatus(@User() user: AuthenticatedUser): string[] {
-    return this.configService.getRulesStatusbyRole(user);
-  }
   @Post('/:id/mapping')
   @RequireClaims(TazamaClaims.EDITOR)
   async addMapping(
@@ -230,11 +221,11 @@ export class ConfigController {
     if (!status) {
       throw new BadRequestException('Status is required as query parameter');
     }
+
     return await this.configService.updateConfigStatus(
       id,
       status,
-      user.tenantId,
-      user.userId,
+      user,
       token,
     );
   }
@@ -271,24 +262,11 @@ export class ConfigController {
     @User() user: AuthenticatedUser,
     @Body() filters?: Record<string, unknown>,
   ): Promise<Config[]> {
-    const updatedFilters = filters ?? {};
-
-    if (
-      !updatedFilters.status ||
-      updatedFilters.status === '' ||
-      (Array.isArray(updatedFilters.status) &&
-        updatedFilters.status.length === 0)
-    ) {
-      const allowedStatuses = this.configService.getRulesStatusbyRole(user);
-      if (allowedStatuses.length > 0) {
-        updatedFilters.status = allowedStatuses.join(',');
-      }
-    }
     return await this.configService.getAllConfigs(
       parseInt(offset, 10),
       parseInt(limit, 10),
-      updatedFilters,
-      user.token.tokenString,
+      filters ?? {},
+      user,
     );
   }
 }
