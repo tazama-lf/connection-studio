@@ -897,18 +897,67 @@ export class ConfigService {
   async updateConfigViaWrite(
     id: number,
     updateData: Record<string, unknown>,
-    token: string,
+    user: AuthenticatedUser,
   ): Promise<unknown> {
+    if (updateData.status && typeof updateData.status === 'string') {
+      const config = await this.getConfigOrThrow(
+        id,
+        user.tenantId,
+        user.token.tokenString,
+      );
+
+      if (!config.status) {
+        throw new BadRequestException(`Config ${id} has no current status defined`);
+      }
+
+      const userRole = user.actorRole?.toLowerCase();
+      if (
+        !userRole ||
+        !['editor'].includes(userRole)
+      ) {
+        throw new ForbiddenException('Invalid user role');
+      }
+
+      const typedRole = userRole as 'editor';
+
+      const tier2Check = this.rbacService.checkTier2({
+        role: typedRole,
+        endpointKey: 'Put :id',
+        currentStatus: config.status,
+      });
+
+      if (!tier2Check.allowed) {
+        throw new ForbiddenException(
+          tier2Check.reason ||
+            `Role "${userRole}" cannot act on config in status "${config.status}"`,
+        );
+      }
+
+      const tier3Check = this.rbacService.checkTier3({
+        role: typedRole,
+        endpointKey: 'Put :id',
+        currentStatus: config.status,
+        targetStatus: updateData.status,
+      });
+
+      if (!tier3Check.allowed) {
+        throw new ForbiddenException(
+          tier3Check.reason ||
+            `Role "${userRole}" cannot transition from "${config.status}" to "${updateData.status}"`,
+        );
+      }
+    }
+
     try {
       const result = await this.configRepository.updateConfigViaWrite(
         id,
         updateData,
-        token,
+        user.token.tokenString,
       );
 
       this.logAudit(
         'Config updated',
-        { userId: 'system', tenantId: 'system' },
+        user,
         `Config ${id} updated via write`,
         String(id),
         'success',
@@ -919,7 +968,7 @@ export class ConfigService {
     } catch (error) {
       this.logAudit(
         'Config update failed',
-        { userId: 'system', tenantId: 'system' },
+        user,
         `Failed to update config ${id} via write: ${error.message}`,
         String(id),
         'failure',

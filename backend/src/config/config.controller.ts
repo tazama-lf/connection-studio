@@ -130,7 +130,7 @@ export class ConfigController {
     return (await this.configService.updateConfigViaWrite(
       id,
       dto as unknown as Record<string, unknown>,
-      user.token.tokenString,
+      user,
     )) as ConfigResponseDto;
   }
 
