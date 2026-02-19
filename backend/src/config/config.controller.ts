@@ -46,6 +46,15 @@ import type { CreateConfigDto as TcsLibCreateConfigDto } from '@tazama-lf/tcs-li
 @UseGuards(TazamaAuthGuard)
 export class ConfigController {
   constructor(private readonly configService: ConfigService) {}
+  @Get('/api/status')
+  @RequireAnyClaims(
+    TazamaClaims.EDITOR,
+    TazamaClaims.APPROVER,
+    TazamaClaims.PUBLISHER,
+  )
+  getConfigStatus(@User() user: AuthenticatedUser): string[] {
+    return this.configService.getConfigStatus(user);
+  }
   @Post('/:id/mapping')
   @RequireClaims(TazamaClaims.EDITOR)
   async addMapping(

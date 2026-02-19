@@ -1026,6 +1026,24 @@ export class ConfigService {
       config,
     };
   }
+  getConfigStatus(user: AuthenticatedUser): string[] {
+    const userRole = user.actorRole?.toLowerCase();
+
+    if (
+      !userRole ||
+      !['editor', 'approver', 'publisher', 'exporter'].includes(userRole)
+    ) {
+      return [];
+    }
+
+    const { allowedStatuses } = this.rbacService.getTier2({
+      role: userRole as 'editor' | 'approver' | 'publisher' | 'exporter',
+      endpointKey: 'Post /:offset/:limit',
+    });
+
+    return allowedStatuses || [];
+  }
+
   async getAllConfigs(
     offset: number,
     limit: number,
