@@ -58,8 +58,37 @@ export class SchedulerService {
     }
   }
 
-  async findOne(id: string, token: string): Promise<Schedule | null> {
-    return await this.adminServiceClient.findScheduleById(id, token);
+  async findOne(id: string, user: AuthenticatedUser): Promise<Schedule | null> {
+    const schedule = await this.adminServiceClient.findScheduleById(id, user.token.tokenString);
+
+    if (!schedule) {
+      return null;
+    }
+
+    if (!schedule.status) {
+      return schedule;
+    }
+
+    const userRole = user.actorRole?.toLowerCase();
+    if (
+      !userRole ||
+      !['editor', 'approver', 'publisher', 'exporter'].includes(userRole)
+    ) {
+      throw new ForbiddenException('Invalid user role');
+    }
+
+    const { allowedStatuses } = this.rbacService.getTier2({
+      role: userRole as 'editor' | 'approver' | 'publisher' | 'exporter',
+      endpointKey: 'Get :id',
+    });
+
+    if (!allowedStatuses?.includes(schedule.status)) {
+      throw new ForbiddenException(
+        `Role '${userRole}' cannot act on resources in status '${schedule.status}'`,
+      );
+    }
+
+    return schedule;
   }
 
   async findAll(
@@ -100,7 +129,7 @@ export class SchedulerService {
     user: AuthenticatedUser,
   ): Promise<ISuccess> {
     try {
-      const existingSchedule = await this.findOne(id, user.token.tokenString);
+      const existingSchedule = await this.findOne(id, user);
 
       if (!existingSchedule) {
         throw new BadRequestException('Schedule not found');
@@ -166,7 +195,7 @@ export class SchedulerService {
 
       if (!allowedStatuses?.includes(status)) {
         throw new ForbiddenException(
-          `Role '${userRole}' is not authorized to view schedules with status '${status}'`,
+          `Role '${userRole}' cannot act on resources in status '${status}'`,
         );
       }
 
@@ -194,7 +223,7 @@ export class SchedulerService {
   ): Promise<ISuccess> {
     try {
       // Get existing schedule for RBAC validation
-      const existingSchedule = await this.findOne(id, user.token.tokenString);
+      const existingSchedule = await this.findOne(id, user);
 
       if (!existingSchedule) {
         throw new BadRequestException('Schedule not found');

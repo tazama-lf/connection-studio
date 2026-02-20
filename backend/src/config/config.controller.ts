@@ -113,11 +113,7 @@ export class ConfigController {
     @Param('id', ParseIntPipe) id: number,
     @User() user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
-    return await this.configService.getConfigById(
-      id,
-      user.tenantId,
-      user.token.tokenString,
-    );
+    return await this.configService.getConfigById(id, user);
   }
 
   @Put(':id')

@@ -1117,10 +1117,38 @@ export class ConfigService {
 
   async getConfigById(
     id: number,
-    tenantId: string,
-    token: string,
+    user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
-    const config = await this.getConfigOrThrow(id, tenantId, token);
+    const config = await this.getConfigOrThrow(id, user.tenantId, user.token.tokenString);
+
+    if (!config.status) {
+      return {
+        success: true,
+        message: 'Config retrieved successfully',
+        config,
+      };
+    }
+
+    const userRole = user.actorRole?.toLowerCase();
+    if (
+      !userRole ||
+      !['editor', 'approver', 'publisher', 'exporter'].includes(userRole)
+    ) {
+      throw new ForbiddenException('Invalid user role');
+    }
+
+    // Validate user can view config with this status
+    const { allowedStatuses } = this.rbacService.getTier2({
+      role: userRole as 'editor' | 'approver' | 'publisher' | 'exporter',
+      endpointKey: 'Get :id',
+    });
+
+    if (!allowedStatuses?.includes(config.status)) {
+      throw new ForbiddenException(
+        `Role '${userRole}' cannot act on resources in status '${config.status}'`,
+      );
+    }
+
     return {
       success: true,
       message: 'Config retrieved successfully',

@@ -114,6 +114,21 @@
         }
       }
     },
+    "Get :id": {
+      "tier2": {
+        "description": "Controls which config statuses each role may view (for getting single config by ID)",
+        "rolePermissions": {
+          "editor": {
+            "allowedCurrentStatuses": ["STATUS_01_IN_PROGRESS", "STATUS_02_ON_HOLD", "STATUS_03_UNDER_REVIEW", "STATUS_04_APPROVED","STATUS_05_REJECTED",  "STATUS_06_EXPORTED", "STATUS_07_READY_FOR_DEPLOYMENT", "STATUS_08_DEPLOYED"]},
+        "approver": {
+            "allowedCurrentStatuses": ["STATUS_03_UNDER_REVIEW","STATUS_04_APPROVED", "STATUS_05_REJECTED","STATUS_06_EXPORTED", "STATUS_07_READY_FOR_DEPLOYMENT","STATUS_08_DEPLOYED"]          },
+          "exporter": {
+            "allowedCurrentStatuses": ["STATUS_04_APPROVED", "STATUS_05_REJECTED","STATUS_06_EXPORTED", "STATUS_07_READY_FOR_DEPLOYMENT","STATUS_08_DEPLOYED"]          },
+          "publisher": {
+            "allowedCurrentStatuses": ["STATUS_07_READY_FOR_DEPLOYMENT","STATUS_08_DEPLOYED"]          }
+        }
+      }
+    },
     "Post :id/workflow": {
       "tier2": {
         "description": "Controls which current resource statuses each role may act upon for workflow actions",

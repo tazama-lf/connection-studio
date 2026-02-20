@@ -78,7 +78,7 @@ export class JobService {
     type: ConfigType,
     user: AuthenticatedUser,
   ): Promise<ISuccess> {
-    const existingJob = await this.findOne(id, type, user.token.tokenString);
+    const existingJob = await this.findOne(id, type, user);
 
     if (
       existingJob.status !== JobStatus.INPROGRESS &&
@@ -253,7 +253,7 @@ export class JobService {
   async findOne(
     id: string,
     type: ConfigType,
-    token: string,
+    user: AuthenticatedUser,
   ): Promise<Job & { schedule_name?: string }> {
     try {
       if (!id) {
@@ -265,7 +265,7 @@ export class JobService {
       const record = await this.adminServiceClient.findJobById(
         id,
         tableName,
-        token,
+        user.token.tokenString,
       );
 
       if (!record) {
@@ -281,7 +281,7 @@ export class JobService {
 
       const schedule = await this.schedulerService.findOne(
         record.schedule_id,
-        token,
+        user,
       );
 
       return schedule ? { ...record, schedule_name: schedule.name } : record;
@@ -384,7 +384,7 @@ export class JobService {
       let existingJob: Job | null = null;
 
       if (requiresExistingJob) {
-        existingJob = await this.findOne(id, type, user.token.tokenString);
+        existingJob = await this.findOne(id, type, user);
       }
 
       switch (status) {

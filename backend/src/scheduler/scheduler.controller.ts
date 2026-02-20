@@ -79,7 +79,7 @@ export class SchedulerController {
     @Param('id') id: string,
     @User() user: AuthenticatedUser,
   ): Promise<Schedule | null> {
-    return await this.schedulerService.findOne(id, user.token.tokenString);
+    return await this.schedulerService.findOne(id, user);
   }
 
   @Get('/get/status')
