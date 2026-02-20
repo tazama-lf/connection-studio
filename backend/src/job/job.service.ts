@@ -95,7 +95,6 @@ export class JobService {
       throw new ForbiddenException('Invalid user role');
     }
 
-    // Tier 2: Check if role can act on current status
     const tier2Result = this.rbacService.checkTier2({
       role: userRole as 'editor' | 'approver' | 'publisher' | 'exporter',
       endpointKey: 'Patch /update/:id',
@@ -332,8 +331,7 @@ export class JobService {
     status: JobStatus,
     page: number,
     limit: number,
-    tenantId: string,
-    token: string,
+    user: AuthenticatedUser,
   ): Promise<JobSummary[]> {
     try {
       if (page < 1 || limit < 1) {
@@ -342,12 +340,31 @@ export class JobService {
         );
       }
 
+      const userRole = user.actorRole?.toLowerCase();
+      if (
+        !userRole ||
+        !['editor', 'approver', 'publisher', 'exporter'].includes(userRole)
+      ) {
+        throw new ForbiddenException('Invalid user role');
+      }
+
+      const { allowedStatuses } = this.rbacService.getTier2({
+        role: userRole as 'editor' | 'approver' | 'publisher' | 'exporter',
+        endpointKey: 'Get /get/status',
+      });
+
+      if (!allowedStatuses?.includes(status)) {
+        throw new ForbiddenException(
+          `Role '${userRole}' cannot act on resources in status '${status}'`,
+        );
+      }
+
       return await this.adminServiceClient.findJobByStatus(
-        tenantId,
+        user.tenantId,
         status,
         page,
         limit,
-        token,
+        user.token.tokenString,
       );
     } catch (err: unknown) {
       return this.handleError(err);
@@ -398,6 +415,45 @@ export class JobService {
     reason?: string,
   ): Promise<ISuccess> {
     try {
+      const existingJob = await this.findOne(id, type, user);
+
+      if (!existingJob.status) {
+        throw new BadRequestException('Job has no status');
+      }
+
+      const userRole = user.actorRole?.toLowerCase();
+      if (
+        !userRole ||
+        !['editor'].includes(userRole)
+      ) {
+        throw new ForbiddenException('Invalid user role');
+      }
+
+      const tier2Result = this.rbacService.checkTier2({
+        role: userRole as 'editor',
+        endpointKey: 'Patch /update/status/:id',
+        currentStatus: existingJob.status,
+      });
+
+      if (!tier2Result.allowed) {
+        throw new ForbiddenException(
+          tier2Result.reason || 'Not authorized to update this job status',
+        );
+      }
+
+      const tier3Result = this.rbacService.checkTier3({
+        role: userRole as 'editor',
+        endpointKey: 'Patch /update/status/:id',
+        currentStatus: existingJob.status,
+        targetStatus: status,
+      });
+
+      if (!tier3Result.allowed) {
+        throw new ForbiddenException(
+          tier3Result.reason || 'Not authorized to perform this status transition',
+        );
+      }
+
       let result: ISuccess | null = null;
       if (status !== JobStatus.DEPLOYED) {
         result = await this.adminServiceClient.updateJobByStatus(
@@ -419,15 +475,15 @@ export class JobService {
         status === JobStatus.REJECTED ||
         status === JobStatus.EXPORTED;
 
-      let existingJob: Job | null = null;
+      let existingJobForSwitch: Job | null = null;
 
       if (requiresExistingJob) {
-        existingJob = await this.findOne(id, type, user);
+        existingJobForSwitch = existingJob;
       }
 
       switch (status) {
         case JobStatus.REVIEW: {
-          const updatedJob = structuredClone(existingJob)!;
+          const updatedJob = structuredClone(existingJobForSwitch)!;
           updatedJob.status = JobStatus.REVIEW;
           await this.notificationService.sendWorkflowNotification(
             EventType.EditorSubmit,
@@ -438,11 +494,11 @@ export class JobService {
           break;
         }
         case JobStatus.APPROVED: {
-          const updatedJob = structuredClone(existingJob)!;
+          const updatedJob = structuredClone(existingJobForSwitch)!;
           updatedJob.status = JobStatus.APPROVED;
 
           await this.notifyService.notifyEnrichment(
-            existingJob!.id,
+            existingJobForSwitch!.id,
             ConfigType.PULL,
           );
 
@@ -461,7 +517,7 @@ export class JobService {
             );
           }
 
-          const updatedJob = structuredClone(existingJob)!;
+          const updatedJob = structuredClone(existingJobForSwitch)!;
           updatedJob.status = JobStatus.REJECTED;
           await this.notificationService.sendWorkflowNotification(
             EventType.ApproverReject,
@@ -473,12 +529,12 @@ export class JobService {
         }
 
         case JobStatus.EXPORTED: {
-          const exportPayload = structuredClone(existingJob!);
+          const exportPayload = structuredClone(existingJobForSwitch!);
           exportPayload.status = JobStatus.READY;
 
           await this.sftpService.createFile(fileName, exportPayload);
 
-          const updatedJob = structuredClone(existingJob!);
+          const updatedJob = structuredClone(existingJobForSwitch!);
           updatedJob.status = JobStatus.EXPORTED;
 
           await this.notificationService.sendWorkflowNotification(

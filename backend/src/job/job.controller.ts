@@ -141,8 +141,7 @@ export class JobController {
       status,
       page,
       limit,
-      user.tenantId,
-      user.token.tokenString,
+      user,
     );
   }
 
