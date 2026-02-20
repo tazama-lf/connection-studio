@@ -26,6 +26,7 @@ import { NotifyService } from '../notify/notify.service';
 import { SchedulerService } from '../scheduler/scheduler.service';
 import { AdminServiceClient } from '../services/admin-service-client.service';
 import { SftpService } from '../sftp/sftp.service';
+import { RbacService } from '../utils/rbac/rbacHelper';
 import {
   decrypt,
   encrypt,
@@ -39,6 +40,8 @@ import { UpdatePushJobDto } from './dto/update-push-job.dto';
 
 @Injectable()
 export class JobService {
+  private readonly rbacService = new RbacService();
+
   constructor(
     private readonly loggerService: LoggerService,
     private readonly dryRunService: DryRunService,
@@ -80,12 +83,28 @@ export class JobService {
   ): Promise<ISuccess> {
     const existingJob = await this.findOne(id, type, user);
 
+    if (!existingJob.status) {
+      throw new BadRequestException('Job has no status');
+    }
+
+    const userRole = user.actorRole?.toLowerCase();
     if (
-      existingJob.status !== JobStatus.INPROGRESS &&
-      existingJob.status !== JobStatus.REJECTED
+      !userRole ||
+      !['editor', 'approver', 'publisher', 'exporter'].includes(userRole)
     ) {
+      throw new ForbiddenException('Invalid user role');
+    }
+
+    // Tier 2: Check if role can act on current status
+    const tier2Result = this.rbacService.checkTier2({
+      role: userRole as 'editor' | 'approver' | 'publisher' | 'exporter',
+      endpointKey: 'Patch /update/:id',
+      currentStatus: existingJob.status,
+    });
+
+    if (!tier2Result.allowed) {
       throw new ForbiddenException(
-        'Only In-Progress/Rejected jobs can be edited',
+        tier2Result.reason || 'Not authorized to update this job',
       );
     }
 
@@ -221,11 +240,30 @@ export class JobService {
     filters?: Record<string, unknown>,
   ): Promise<PaginatedResult<Job>> {
     try {
+      const updatedFilters = { ...filters };
+
+      if (!updatedFilters.status) {
+        const userRole = user.actorRole?.toLowerCase();
+        if (
+          userRole &&
+          ['editor', 'approver', 'publisher', 'exporter'].includes(userRole)
+        ) {
+          const { allowedStatuses } = this.rbacService.getTier2({
+            role: userRole as 'editor' | 'approver' | 'publisher' | 'exporter',
+            endpointKey: 'Post /all',
+          });
+
+          if (allowedStatuses?.length) {
+            updatedFilters.status = allowedStatuses.join(',');
+          }
+        }
+      }
+
       return await this.adminServiceClient.getAllJobs(
         offset,
         limit,
         user,
-        filters,
+        updatedFilters,
       );
     } catch (error: unknown) {
       return this.handleError(error);
