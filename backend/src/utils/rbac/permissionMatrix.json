@@ -21,7 +21,7 @@
   },
 
   "endpoints": {
-    "Patch update/status/:id": {
+    "Patch /update/status/:id": {
       "tier2": {
         "description": "Controls which current resource statuses each role may act upon",
         "rolePermissions": {

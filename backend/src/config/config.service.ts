@@ -107,7 +107,7 @@ export class ConfigService {
       const userRole = user.actorRole.toLowerCase() as 'editor' | 'approver' | 'publisher' | 'exporter';
       const tier2Check = this.rbacService.checkTier2({
         role: userRole,
-        endpointKey: 'Patch update/status/:id',
+        endpointKey: 'Patch /update/status/:id',
         currentStatus: config.status,
       });
 
@@ -117,7 +117,7 @@ export class ConfigService {
 
       const tier3Check = this.rbacService.checkTier3({
         role: userRole,
-        endpointKey: 'Patch update/status/:id',
+        endpointKey: 'Patch /update/status/:id',
         currentStatus: config.status,
         targetStatus: status,
       });

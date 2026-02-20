@@ -193,6 +193,50 @@ export class SchedulerService {
     reason?: string,
   ): Promise<ISuccess> {
     try {
+      // Get existing schedule for RBAC validation
+      const existingSchedule = await this.findOne(id, user.token.tokenString);
+
+      if (!existingSchedule) {
+        throw new BadRequestException('Schedule not found');
+      }
+
+      if (!existingSchedule.status) {
+        throw new BadRequestException('Schedule has no status');
+      }
+
+      const userRole = user.actorRole?.toLowerCase();
+      if (
+        !userRole ||
+        !['editor', 'approver', 'publisher', 'exporter'].includes(userRole)
+      ) {
+        throw new ForbiddenException('Invalid user role');
+      }
+
+      const tier2Result = this.rbacService.checkTier2({
+        role: userRole as 'editor' | 'approver' | 'publisher' | 'exporter',
+        endpointKey: 'Patch /update/status/:id',
+        currentStatus: existingSchedule.status,
+      });
+
+      if (!tier2Result.allowed) {
+        throw new ForbiddenException(
+          tier2Result.reason || 'Not authorized to update this schedule status',
+        );
+      }
+
+      const tier3Result = this.rbacService.checkTier3({
+        role: userRole as 'editor' | 'approver' | 'publisher' | 'exporter',
+        endpointKey: 'Patch /update/status/:id',
+        currentStatus: existingSchedule.status,
+        targetStatus: status,
+      });
+
+      if (!tier3Result.allowed) {
+        throw new ForbiddenException(
+          tier3Result.reason || 'Not authorized to perform this status transition',
+        );
+      }
+
       let result: ISuccess | null = null;
       if (status !== JobStatus.DEPLOYED) {
         result = await this.adminServiceClient.updateScheduleByStatus(
@@ -213,7 +257,7 @@ export class SchedulerService {
       let existing: Schedule | null = null;
 
       if (requiresExistingJob) {
-        existing = await this.findOne(id, user.token.tokenString);
+        existing = existingSchedule;
       }
 
       const fileName = `cron_${tenantId}_${id}`;
