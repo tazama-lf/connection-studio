@@ -155,6 +155,21 @@
           }
         }
       }
+    },
+    "Post /all": {
+      "tier2": {
+        "description": "Controls which scheduler statuses each role may view/access (for listing configs)",
+        "rolePermissions": {
+          "editor": {
+            "allowedCurrentStatuses": ["STATUS_01_IN_PROGRESS", "STATUS_02_ON_HOLD", "STATUS_03_UNDER_REVIEW", "STATUS_04_APPROVED","STATUS_05_REJECTED",  "STATUS_06_EXPORTED", "STATUS_07_READY_FOR_DEPLOYMENT", "STATUS_08_DEPLOYED"]},
+        "approver": {
+            "allowedCurrentStatuses": ["STATUS_03_UNDER_REVIEW","STATUS_04_APPROVED", "STATUS_05_REJECTED","STATUS_06_EXPORTED", "STATUS_07_READY_FOR_DEPLOYMENT","STATUS_08_DEPLOYED"]          },
+          "exporter": {
+            "allowedCurrentStatuses": ["STATUS_04_APPROVED", "STATUS_05_REJECTED","STATUS_06_EXPORTED", "STATUS_07_READY_FOR_DEPLOYMENT","STATUS_08_DEPLOYED"]          },
+          "publisher": {
+            "allowedCurrentStatuses": ["STATUS_07_READY_FOR_DEPLOYMENT","STATUS_08_DEPLOYED"]          }
+        }
+      }
     }
   }
 }

@@ -19,9 +19,12 @@ import { CreateScheduleJobDto } from './dto/create-schedule.dto';
 import { UpdateScheduleJobDto } from './dto/update-schedule-dto';
 import { EventType } from '../enums/events.enum';
 import { NotificationService } from '../notification/notification.service';
+import { RbacService } from '../utils/rbac/rbacHelper';
 
 @Injectable()
 export class SchedulerService {
+  private readonly rbacService = new RbacService();
+
   constructor(
     private readonly loggerService: LoggerService,
     private readonly sftpService: SftpService,
@@ -65,11 +68,29 @@ export class SchedulerService {
     user: AuthenticatedUser,
     filters?: Record<string, unknown>,
   ): Promise<PaginatedResult<Schedule>> {
+    const updatedFilters = { ...filters };
+
+    if (!updatedFilters.status) {
+      const userRole = user.actorRole?.toLowerCase();
+      if (
+        userRole &&
+        ['editor', 'approver', 'publisher', 'exporter'].includes(userRole)
+      ) {
+        const { allowedStatuses } = this.rbacService.getTier2({
+          role: userRole as 'editor' | 'approver' | 'publisher' | 'exporter',
+          endpointKey: 'Post /all',
+        });
+
+        if (allowedStatuses?.length) {
+          updatedFilters.status = allowedStatuses.join(',');
+        }
+      }
+    }
     return await this.adminServiceClient.getAllSchedule(
       offset,
       limit,
       user,
-      filters,
+      updatedFilters,
     );
   }
 
