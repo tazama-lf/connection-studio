@@ -170,6 +170,17 @@
             "allowedCurrentStatuses": ["STATUS_07_READY_FOR_DEPLOYMENT","STATUS_08_DEPLOYED"]          }
         }
       }
+    },
+    "Patch /update/:id": {
+      "tier2": {
+        "description": "Controls which current schedule statuses each role may act upon when updating scheduler (no status updates via this endpoint)",
+        "rolePermissions": {
+          "editor": {
+            "allowedCurrentStatuses": ["STATUS_01_IN_PROGRESS", "STATUS_02_ON_HOLD", "STATUS_05_REJECTED"],
+            "deniedCurrentStatuses":  ["STATUS_03_UNDER_REVIEW", "STATUS_04_APPROVED","STATUS_06_EXPORTED", "STATUS_07_READY_FOR_DEPLOYMENT","STATUS_08_DEPLOYED"]
+          }
+        }
+      }
     }
   }
 }

@@ -65,7 +65,7 @@ export class SchedulerController {
     @Body() body: UpdateScheduleJobDto,
     @User() user: AuthenticatedUser,
   ): Promise<ISuccess> {
-    return await this.schedulerService.update(id, body, user.token.tokenString);
+    return await this.schedulerService.update(id, body, user);
   }
 
   @Get('/:id')

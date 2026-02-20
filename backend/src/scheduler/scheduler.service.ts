@@ -97,21 +97,41 @@ export class SchedulerService {
   async update(
     id: string,
     attr: UpdateScheduleJobDto,
-    token: string,
+    user: AuthenticatedUser,
   ): Promise<ISuccess> {
     try {
-      const existingSchedule = await this.findOne(id, token);
+      const existingSchedule = await this.findOne(id, user.token.tokenString);
 
+      if (!existingSchedule) {
+        throw new BadRequestException('Schedule not found');
+      }
+
+      if (!existingSchedule.status) {
+        throw new BadRequestException('Schedule has no status');
+      }
+
+      const userRole = user.actorRole?.toLowerCase();
       if (
-        existingSchedule?.status !== JobStatus.INPROGRESS &&
-        existingSchedule?.status !== JobStatus.REJECTED
+        !userRole ||
+        !['editor'].includes(userRole)
       ) {
+        throw new ForbiddenException('Invalid user role');
+      }
+
+      // Tier 2: Check if role can act on current status
+      const tier2Result = this.rbacService.checkTier2({
+        role: userRole as 'editor' ,
+        endpointKey: 'Patch /update/:id',
+        currentStatus: existingSchedule.status,
+      });
+
+      if (!tier2Result.allowed) {
         throw new ForbiddenException(
-          'Only In-Progress Cron jobs can be edited',
+          tier2Result.reason || 'Not authorized to update this schedule',
         );
       }
 
-      return await this.adminServiceClient.updateSchedule(id, attr, token);
+      return await this.adminServiceClient.updateSchedule(id, attr, user.token.tokenString);
     } catch (err) {
       this.loggerService.error(`Error updating schedule: ${err.message}`);
       throw err;
