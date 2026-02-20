@@ -99,8 +99,7 @@ export class SchedulerController {
       status,
       page,
       limit,
-      user.tenantId,
-      user.token.tokenString,
+      user,
     );
   }
 

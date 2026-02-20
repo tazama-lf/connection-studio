@@ -142,8 +142,7 @@ export class SchedulerService {
     status: JobStatus,
     page: number,
     limit: number,
-    tenantId: string,
-    token: string,
+    user: AuthenticatedUser,
   ): Promise<Schedule[]> {
     try {
       if (page < 1 || limit < 1) {
@@ -152,12 +151,31 @@ export class SchedulerService {
         );
       }
 
+      const userRole = user.actorRole?.toLowerCase();
+      if (
+        !userRole ||
+        !['editor', 'approver', 'publisher', 'exporter'].includes(userRole)
+      ) {
+        throw new ForbiddenException('Invalid user role');
+      }
+
+      const { allowedStatuses } = this.rbacService.getTier2({
+        role: userRole as 'editor' | 'approver' | 'publisher' | 'exporter',
+        endpointKey: 'Get /get/status',
+      });
+
+      if (!allowedStatuses?.includes(status)) {
+        throw new ForbiddenException(
+          `Role '${userRole}' is not authorized to view schedules with status '${status}'`,
+        );
+      }
+
       return await this.adminServiceClient.getScheduleByStatus(
         status,
         page,
         limit,
-        tenantId,
-        token,
+        user.tenantId,
+        user.token.tokenString,
       );
     } catch (err) {
       this.loggerService.error(
