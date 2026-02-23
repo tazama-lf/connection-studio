@@ -354,7 +354,7 @@ export class ConfigService {
       throw new BadRequestException(`Config ${id} has no status defined`);
     }
 
-    const userRole = user.actorRole?.toLowerCase();
+    const userRole = user.actorRole.toLowerCase();
     if (
       !userRole ||
       !['editor', 'approver', 'publisher', 'exporter'].includes(userRole)
@@ -605,7 +605,7 @@ export class ConfigService {
       case 'export': {
         const exportDto = actionDto.data;
         // Config already fetched at the beginning of handleWorkflowAction
-        const currentStatus = config.status!;
+        const currentStatus = config.status;
         const action: WorkflowAction = 'export';
         this.validateWorkflowAction(user.validClaims, currentStatus, action);
 
@@ -907,7 +907,7 @@ export class ConfigService {
         throw new BadRequestException(`Config ${id} has no current status defined`);
       }
 
-      const userRole = user.actorRole?.toLowerCase();
+      const userRole = user.actorRole.toLowerCase();
       if (
         !userRole ||
         !['editor'].includes(userRole)
@@ -925,7 +925,7 @@ export class ConfigService {
 
       if (!tier2Check.allowed) {
         throw new ForbiddenException(
-          tier2Check.reason ||
+          tier2Check.reason ??
             `Role "${userRole}" cannot act on config in status "${config.status}"`,
         );
       }
@@ -939,7 +939,7 @@ export class ConfigService {
 
       if (!tier3Check.allowed) {
         throw new ForbiddenException(
-          tier3Check.reason ||
+          tier3Check.reason ??
             `Role "${userRole}" cannot transition from "${config.status}" to "${updateData.status}"`,
         );
       }
@@ -1129,7 +1129,7 @@ export class ConfigService {
       };
     }
 
-    const userRole = user.actorRole?.toLowerCase();
+    const userRole = user.actorRole.toLowerCase();
     if (
       !userRole ||
       !['editor', 'approver', 'publisher', 'exporter'].includes(userRole)
@@ -1143,7 +1143,7 @@ export class ConfigService {
       endpointKey: 'Get :id',
     });
 
-    if (!allowedStatuses?.includes(config.status)) {
+    if (!allowedStatuses || !allowedStatuses.includes(config.status)) {
       throw new ForbiddenException(
         `Role '${userRole}' cannot act on resources in status '${config.status}'`,
       );
@@ -1156,7 +1156,7 @@ export class ConfigService {
     };
   }
   getConfigStatus(user: AuthenticatedUser): string[] {
-    const userRole = user.actorRole?.toLowerCase();
+    const userRole = user.actorRole.toLowerCase();
 
     if (
       !userRole ||
@@ -1170,7 +1170,7 @@ export class ConfigService {
       endpointKey: 'Post /:offset/:limit',
     });
 
-    return allowedStatuses || [];
+    return allowedStatuses ?? [];
   }
 
   async getAllConfigs(
@@ -1183,7 +1183,7 @@ export class ConfigService {
 
     // Apply RBAC Tier 2: Auto-filter by role's allowed statuses if no status provided
     if (!updatedFilters.status) {
-      const userRole = user.actorRole?.toLowerCase();
+      const userRole = user.actorRole.toLowerCase();
       if (
         userRole &&
         ['editor', 'approver', 'publisher', 'exporter'].includes(userRole)

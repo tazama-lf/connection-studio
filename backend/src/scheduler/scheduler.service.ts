@@ -65,11 +65,7 @@ export class SchedulerService {
       return null;
     }
 
-    if (!schedule.status) {
-      return schedule;
-    }
-
-    const userRole = user.actorRole?.toLowerCase();
+    const userRole = user.actorRole.toLowerCase();
     if (
       !userRole ||
       !['editor', 'approver', 'publisher', 'exporter'].includes(userRole)
@@ -100,7 +96,7 @@ export class SchedulerService {
     const updatedFilters = { ...filters };
 
     if (!updatedFilters.status) {
-      const userRole = user.actorRole?.toLowerCase();
+      const userRole = user.actorRole.toLowerCase();
       if (
         userRole &&
         ['editor', 'approver', 'publisher', 'exporter'].includes(userRole)
@@ -135,11 +131,7 @@ export class SchedulerService {
         throw new BadRequestException('Schedule not found');
       }
 
-      if (!existingSchedule.status) {
-        throw new BadRequestException('Schedule has no status');
-      }
-
-      const userRole = user.actorRole?.toLowerCase();
+      const userRole = user.actorRole.toLowerCase();
       if (
         !userRole ||
         !['editor'].includes(userRole)
@@ -156,7 +148,7 @@ export class SchedulerService {
 
       if (!tier2Result.allowed) {
         throw new ForbiddenException(
-          tier2Result.reason || 'Not authorized to update this schedule',
+          tier2Result.reason ?? 'Not authorized to update this schedule',
         );
       }
 
@@ -180,7 +172,7 @@ export class SchedulerService {
         );
       }
 
-      const userRole = user.actorRole?.toLowerCase();
+      const userRole = user.actorRole.toLowerCase();
       if (
         !userRole ||
         !['editor', 'approver', 'publisher', 'exporter'].includes(userRole)
@@ -229,11 +221,7 @@ export class SchedulerService {
         throw new BadRequestException('Schedule not found');
       }
 
-      if (!existingSchedule.status) {
-        throw new BadRequestException('Schedule has no status');
-      }
-
-      const userRole = user.actorRole?.toLowerCase();
+      const userRole = user.actorRole.toLowerCase();
       if (
         !userRole ||
         !['editor', 'approver', 'publisher', 'exporter'].includes(userRole)
@@ -249,7 +237,7 @@ export class SchedulerService {
 
       if (!tier2Result.allowed) {
         throw new ForbiddenException(
-          tier2Result.reason || 'Not authorized to update this schedule status',
+          tier2Result.reason ?? 'Not authorized to update this schedule status',
         );
       }
 
@@ -262,7 +250,7 @@ export class SchedulerService {
 
       if (!tier3Result.allowed) {
         throw new ForbiddenException(
-          tier3Result.reason || 'Not authorized to perform this status transition',
+          tier3Result.reason ?? 'Not authorized to perform this status transition',
         );
       }
 

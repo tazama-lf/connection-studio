@@ -83,11 +83,7 @@ export class JobService {
   ): Promise<ISuccess> {
     const existingJob = await this.findOne(id, type, user);
 
-    if (!existingJob.status) {
-      throw new BadRequestException('Job has no status');
-    }
-
-    const userRole = user.actorRole?.toLowerCase();
+    const userRole = user.actorRole.toLowerCase();
     if (
       !userRole ||
       !['editor', 'approver', 'publisher', 'exporter'].includes(userRole)
@@ -103,7 +99,7 @@ export class JobService {
 
     if (!tier2Result.allowed) {
       throw new ForbiddenException(
-        tier2Result.reason || 'Not authorized to update this job',
+        tier2Result.reason ?? 'Not authorized to update this job',
       );
     }
 
@@ -242,7 +238,7 @@ export class JobService {
       const updatedFilters = { ...filters };
 
       if (!updatedFilters.status) {
-        const userRole = user.actorRole?.toLowerCase();
+        const userRole = user.actorRole.toLowerCase();
         if (
           userRole &&
           ['editor', 'approver', 'publisher', 'exporter'].includes(userRole)
@@ -340,7 +336,7 @@ export class JobService {
         );
       }
 
-      const userRole = user.actorRole?.toLowerCase();
+      const userRole = user.actorRole.toLowerCase();
       if (
         !userRole ||
         !['editor', 'approver', 'publisher', 'exporter'].includes(userRole)
@@ -417,11 +413,7 @@ export class JobService {
     try {
       const existingJob = await this.findOne(id, type, user);
 
-      if (!existingJob.status) {
-        throw new BadRequestException('Job has no status');
-      }
-
-      const userRole = user.actorRole?.toLowerCase();
+      const userRole = user.actorRole.toLowerCase();
       if (
         !userRole ||
         !['editor'].includes(userRole)
@@ -437,7 +429,7 @@ export class JobService {
 
       if (!tier2Result.allowed) {
         throw new ForbiddenException(
-          tier2Result.reason || 'Not authorized to update this job status',
+          tier2Result.reason ?? 'Not authorized to update this job status',
         );
       }
 
@@ -450,7 +442,7 @@ export class JobService {
 
       if (!tier3Result.allowed) {
         throw new ForbiddenException(
-          tier3Result.reason || 'Not authorized to perform this status transition',
+          tier3Result.reason ?? 'Not authorized to perform this status transition',
         );
       }
 
