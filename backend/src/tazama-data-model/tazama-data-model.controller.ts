@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Put,
   Body,
   Param,
   ParseIntPipe,
@@ -45,7 +46,10 @@ export class TazamaDataModelController {
 
   constructor(
     private readonly tazamaDataModelService: TazamaDataModelService,
-  ) {}
+  ) { }
+
+
+
   @Get('destination-options')
   @RequireAnyClaims(
     TazamaClaims.EDITOR,
@@ -159,6 +163,75 @@ export class TazamaDataModelController {
       return {
         success: true,
         message: 'Field added successfully',
+        data,
+      };
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      return {
+        success: false,
+        message: errorMessage,
+        data: null,
+      };
+    }
+  }
+
+  @Get('json')
+  @RequireAnyClaims(
+    TazamaClaims.EDITOR,
+    TazamaClaims.APPROVER,
+    TazamaClaims.PUBLISHER,
+    TazamaClaims.EXPORTER,
+  )
+  async getDataModelJson(@User() user: AuthenticatedUser): Promise<{
+    success: boolean;
+    data: Record<string, unknown> | null;
+    message?: string;
+  }> {
+    try {
+      const data = await this.tazamaDataModelService.getDataModelJson(
+        user.tenantId,
+        user.token.tokenString,
+      );
+      return {
+        success: true,
+        data,
+      };
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      return {
+        success: false,
+        data: null,
+        message: errorMessage,
+      };
+    }
+  }
+
+  @Put('json')
+  @RequireAnyClaims(
+    TazamaClaims.EDITOR,
+    TazamaClaims.APPROVER,
+    TazamaClaims.PUBLISHER,
+    TazamaClaims.EXPORTER,
+  )
+  async putDataModelJson(
+    @Body() body: { data_model_json: Record<string, unknown> },
+    @User() user: AuthenticatedUser,
+  ): Promise<{
+    success: boolean;
+    message: string;
+    data: { tenant_id: string; updated_at: string } | null;
+  }> {
+    try {
+      const data = await this.tazamaDataModelService.putDataModelJson(
+        user.tenantId,
+        body.data_model_json,
+        user.token.tokenString,
+      );
+      return {
+        success: true,
+        message: `Data model JSON saved for tenant: ${user.tenantId}`,
         data,
       };
     } catch (error: unknown) {

@@ -10,7 +10,7 @@ import {
 
 @Injectable()
 export class TazamaDataModelRepository {
-  constructor(private readonly adminServiceClient: AdminServiceClient) {}
+  constructor(private readonly adminServiceClient: AdminServiceClient) { }
 
   async getAllCollections(
     tenantId: string,
@@ -58,6 +58,30 @@ export class TazamaDataModelRepository {
     const response = await this.adminServiceClient.addFieldToDestinationType(
       destinationTypeId,
       fieldDto,
+      token,
+    );
+    return response.data;
+  }
+
+  async getDataModelJson(
+    tenantId: string,
+    token: string,
+  ): Promise<Record<string, unknown> | null> {
+    const response = await this.adminServiceClient.getDataModelJson(
+      tenantId,
+      token,
+    );
+    return response.data ?? null;
+  }
+
+  async putDataModelJson(
+    tenantId: string,
+    dataModelJson: Record<string, unknown>,
+    token: string,
+  ): Promise<{ tenant_id: string; updated_at: string }> {
+    const response = await this.adminServiceClient.putDataModelJson(
+      tenantId,
+      dataModelJson,
       token,
     );
     return response.data;
