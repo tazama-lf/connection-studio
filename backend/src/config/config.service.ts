@@ -13,6 +13,7 @@ import { NotificationService } from '../notification/notification.service';
 import { ConfigWorkflowService } from './config-workflow.service';
 import { ConfigUtilsService } from './config-utils.service';
 import { SftpService } from '../sftp/sftp.service';
+import { RbacService } from '../utils/rbac/rbacHelper';
 import {
   Config,
   CreateConfigDto,
@@ -29,6 +30,7 @@ import { AuditLogger } from '@tazama-lf/frms-coe-lib';
 @Injectable()
 export class ConfigService {
   private readonly logger = new Logger(ConfigService.name);
+  private readonly rbacService = new RbacService();
 
   constructor(
     private readonly configRepository: ConfigRepository,
@@ -56,7 +58,7 @@ export class ConfigService {
     description: string,
     resourceId: string,
     status: 'success' | 'failure',
-    outcome: Record<string, any>,
+    outcome: Record<string, unknown>,
   ): void {
     this.auditLoggerService.log({
       eventType,
@@ -93,18 +95,42 @@ export class ConfigService {
   async updateConfigStatus(
     id: number,
     status: string,
-    tenantId: string,
-    userId: string,
+    user: AuthenticatedUser,
     token: string,
   ): Promise<ConfigResponseDto> {
     try {
-      await this.getConfigOrThrow(id, tenantId, token);
+      const config = await this.getConfigOrThrow(id, user.tenantId, token);
+
+      if (!config.status) {
+        throw new BadRequestException('Config status is not set');
+      }
+      const userRole = user.actorRole.toLowerCase() as 'editor' | 'approver' | 'publisher' | 'exporter';
+      const tier2Check = this.rbacService.checkTier2({
+        role: userRole,
+        endpointKey: 'Patch /update/status/:id',
+        currentStatus: config.status,
+      });
+
+      if (!tier2Check.allowed) {
+        throw new ForbiddenException(tier2Check.reason ?? 'Permission denied');
+      }
+
+      const tier3Check = this.rbacService.checkTier3({
+        role: userRole,
+        endpointKey: 'Patch /update/status/:id',
+        currentStatus: config.status,
+        targetStatus: status,
+      });
+
+      if (!tier3Check.allowed) {
+        throw new ForbiddenException(tier3Check.reason ?? 'Status transition not allowed');
+      }
 
       await this.configRepository.updateConfigStatus(id, status, token);
 
       this.logAudit(
         'Config status updated',
-        { userId, tenantId },
+        user,
         `Config ${id} status updated to ${status}`,
         String(id),
         'success',
@@ -118,7 +144,7 @@ export class ConfigService {
     } catch (error) {
       this.logAudit(
         'Config status update failed',
-        { userId, tenantId },
+        user,
         `Failed to update config ${id} status to ${status}: ${error.message}`,
         String(id),
         'failure',
@@ -321,6 +347,62 @@ export class ConfigService {
     token: string,
   ): Promise<ConfigResponseDto> {
     const { action } = actionDto;
+    
+    const config = await this.getConfigOrThrow(id, user.tenantId, token);
+    
+    if (!config.status) {
+      throw new BadRequestException(`Config ${id} has no status defined`);
+    }
+
+    const userRole = user.actorRole.toLowerCase();
+    if (
+      !userRole ||
+      !['editor', 'approver', 'publisher', 'exporter'].includes(userRole)
+    ) {
+      throw new ForbiddenException('Invalid user role');
+    }
+
+    const typedRole = userRole as 'editor' | 'approver' | 'publisher' | 'exporter';
+    
+    const actionStatusMap: Record<string, string> = {
+      submit: ConfigStatus.UNDER_REVIEW,
+      approve: ConfigStatus.APPROVED,
+      reject: ConfigStatus.REJECTED,
+      export: ConfigStatus.EXPORTED,
+      deploy: ConfigStatus.DEPLOYED,
+    };
+
+    const targetStatus = actionStatusMap[action];
+    if (!targetStatus) {
+      throw new BadRequestException(`Unknown workflow action: ${action}`);
+    }
+
+    const tier2Check = this.rbacService.checkTier2({
+      role: typedRole,
+      endpointKey: 'Post :id/workflow',
+      currentStatus: config.status,
+    });
+
+    if (!tier2Check.allowed) {
+      throw new ForbiddenException(
+        tier2Check.reason ?? `Role "${userRole}" cannot act on config in status "${config.status}"`,
+      );
+    }
+
+    const tier3Check = this.rbacService.checkTier3({
+      role: typedRole,
+      endpointKey: 'Post :id/workflow',
+      currentStatus: config.status,
+      targetStatus,
+    });
+
+    if (!tier3Check.allowed) {
+      throw new ForbiddenException(
+        tier3Check.reason ??
+        `Role "${userRole}" cannot transition from "${config.status}" to "${targetStatus}"`,
+      );
+    }
+
     switch (action) {
       case 'submit': {
         try {
@@ -396,15 +478,22 @@ export class ConfigService {
               );
             }
 
-            const functions = (config.functions as any) ?? null;
+            const functions = config.functions as unknown as Array<{
+              functionName: string;
+              tableName?: string;
+            }>;
 
             if (Array.isArray(functions)) {
               const datamodelFunctions = functions.filter(
-                (fn: any) => fn.functionName === 'addDataModelTable',
+                (fn: { functionName: string; tableName?: string }) =>
+                  fn.functionName === 'addDataModelTable',
               );
 
               const tableCreationPromises = datamodelFunctions.map(
-                async (datamodelFn: any) => {
+                async (datamodelFn: {
+                  functionName: string;
+                  tableName?: string;
+                }) => {
                   if (datamodelFn.tableName) {
                     await this.configRepository.createTazamaDataModelTable(
                       datamodelFn.tableName,
@@ -419,13 +508,6 @@ export class ConfigService {
               );
 
               await Promise.all(tableCreationPromises);
-            } else if (functions?.functionName === 'addDataModelTable') {
-              if (functions.tableName) {
-                await this.configRepository.createTazamaDataModelTable(
-                  functions.tableName,
-                  token,
-                );
-              }
             }
 
             await this.notificationService.sendWorkflowNotification(
@@ -522,9 +604,8 @@ export class ConfigService {
 
       case 'export': {
         const exportDto = actionDto.data;
-        const config = await this.getConfigOrThrow(id, user.tenantId, token);
-
-        const currentStatus = config.status!;
+        // Config already fetched at the beginning of handleWorkflowAction
+        const currentStatus = config.status;
         const action: WorkflowAction = 'export';
         this.validateWorkflowAction(user.validClaims, currentStatus, action);
 
@@ -658,7 +739,8 @@ export class ConfigService {
           const functions = configData.functions ?? null;
 
           if (Array.isArray(functions)) {
-            const datamodelFunctions = functions.filter(
+            const typedFunctions = functions;
+            const datamodelFunctions = typedFunctions.filter(
               (fn) => fn.functionName === 'addDataModelTable',
             );
 
@@ -666,7 +748,7 @@ export class ConfigService {
               async (datamodelFn) => {
                 if (datamodelFn.tableName) {
                   await this.configRepository.createTazamaDataModelTable(
-                    datamodelFn.tableName,
+                    datamodelFn.tableName as string,
                     token,
                   );
                 } else {
@@ -678,10 +760,14 @@ export class ConfigService {
             );
 
             await Promise.all(tableCreationPromises);
-          } else if (functions?.functionName === 'addDataModelTable') {
-            if (functions.tableName) {
+          } else if (functions) {
+            const singleFn = functions;
+            if (
+              singleFn.functionName === 'addDataModelTable' &&
+              singleFn.tableName
+            ) {
               await this.configRepository.createTazamaDataModelTable(
-                functions.tableName,
+                singleFn.tableName as string,
                 token,
               );
             }
@@ -689,7 +775,7 @@ export class ConfigService {
 
           await this.sftpService.deleteFile(fileName);
 
-          const deployedConfig = configData as Config;
+          const deployedConfig = configData as unknown as Config;
           await this.notificationService.sendWorkflowNotification(
             EventType.PublisherDeploy,
             user,
@@ -714,22 +800,23 @@ export class ConfigService {
           return {
             success: true,
             message: `Configuration ${id} deployed successfully`,
-            config: configData as Config | undefined,
+            config: configData as unknown as Config | undefined,
           };
         } catch (error) {
-          this.logger.error(`Failed to deploy config: ${error.message}`);
+          const errMsg = error instanceof Error ? error.message : String(error);
+          this.logger.error(`Failed to deploy config: ${errMsg}`);
 
           this.logAudit(
             'Config deployment failed',
             user,
-            `Failed to deploy config ${id}: ${error.message}`,
+            `Failed to deploy config ${id}: ${errMsg}`,
             String(id),
             'failure',
-            { success: false, error: error.message },
+            { success: false, error: errMsg },
           );
 
           throw new BadRequestException(
-            `Failed to deploy configuration: ${error.message}`,
+            `Failed to deploy configuration: ${errMsg}`,
           );
         }
       }
@@ -744,11 +831,11 @@ export class ConfigService {
     token: string,
   ): Promise<ConfigResponseDto> {
     try {
-      const result = await this.configRepository.updatePublishingStatus(
+      const result = (await this.configRepository.updatePublishingStatus(
         id,
         publishingStatus,
         token,
-      );
+      )) as { success: boolean; message?: string; config?: Config };
 
       if (!result.success) {
         throw new NotFoundException(
@@ -759,15 +846,14 @@ export class ConfigService {
       try {
         await this.notifyService.notifyDems(id.toString(), tenantId);
       } catch (error) {
+        const errMsg = error instanceof Error ? error.message : String(error);
         this.logger.error(
-          `Failed to send NATS notification for config ${id}: ${error.message}`,
+          `Failed to send NATS notification for config ${id}: ${errMsg}`,
         );
-        throw new BadRequestException(
-          `Failed to activate config: ${error.message}`,
-        );
+        throw new BadRequestException(`Failed to activate config: ${errMsg}`);
       }
-      if (result?.success && result.config) {
-        const config = result.config as Config;
+      if (result.config) {
+        const {config} = result;
         await this.notificationService.sendWorkflowNotification(
           publishingStatus === 'active'
             ? EventType.PublisherActivate
@@ -807,19 +893,68 @@ export class ConfigService {
   }
   async updateConfigViaWrite(
     id: number,
-    updateData: any,
-    token: string,
-  ): Promise<any> {
+    updateData: Record<string, unknown>,
+    user: AuthenticatedUser,
+  ): Promise<unknown> {
+    if (updateData.status && typeof updateData.status === 'string') {
+      const config = await this.getConfigOrThrow(
+        id,
+        user.tenantId,
+        user.token.tokenString,
+      );
+
+      if (!config.status) {
+        throw new BadRequestException(`Config ${id} has no current status defined`);
+      }
+
+      const userRole = user.actorRole.toLowerCase();
+      if (
+        !userRole ||
+        !['editor'].includes(userRole)
+      ) {
+        throw new ForbiddenException('Invalid user role');
+      }
+
+      const typedRole = userRole as 'editor';
+
+      const tier2Check = this.rbacService.checkTier2({
+        role: typedRole,
+        endpointKey: 'Put :id',
+        currentStatus: config.status,
+      });
+
+      if (!tier2Check.allowed) {
+        throw new ForbiddenException(
+          tier2Check.reason ??
+            `Role "${userRole}" cannot act on config in status "${config.status}"`,
+        );
+      }
+
+      const tier3Check = this.rbacService.checkTier3({
+        role: typedRole,
+        endpointKey: 'Put :id',
+        currentStatus: config.status,
+        targetStatus: updateData.status,
+      });
+
+      if (!tier3Check.allowed) {
+        throw new ForbiddenException(
+          tier3Check.reason ??
+            `Role "${userRole}" cannot transition from "${config.status}" to "${updateData.status}"`,
+        );
+      }
+    }
+
     try {
       const result = await this.configRepository.updateConfigViaWrite(
         id,
         updateData,
-        token,
+        user.token.tokenString,
       );
 
       this.logAudit(
         'Config updated',
-        { userId: 'system', tenantId: 'system' },
+        user,
         `Config ${id} updated via write`,
         String(id),
         'success',
@@ -830,7 +965,7 @@ export class ConfigService {
     } catch (error) {
       this.logAudit(
         'Config update failed',
-        { userId: 'system', tenantId: 'system' },
+        user,
         `Failed to update config ${id} via write: ${error.message}`,
         String(id),
         'failure',
@@ -842,9 +977,9 @@ export class ConfigService {
 
   async addMappingViaService(
     id: number,
-    mappingData: any,
+    mappingData: Record<string, unknown>,
     token: string,
-  ): Promise<any> {
+  ): Promise<unknown> {
     try {
       const result = await this.configRepository.addMapping(
         id,
@@ -879,7 +1014,7 @@ export class ConfigService {
     id: number,
     index: number,
     token: string,
-  ): Promise<any> {
+  ): Promise<unknown> {
     try {
       const result = await this.configRepository.removeMapping(
         id,
@@ -912,9 +1047,9 @@ export class ConfigService {
 
   async addFunctionViaService(
     id: number,
-    functionData: any,
+    functionData: Record<string, unknown>,
     token: string,
-  ): Promise<any> {
+  ): Promise<unknown> {
     try {
       const result = await this.configRepository.addFunction(
         id,
@@ -949,7 +1084,7 @@ export class ConfigService {
     id: number,
     index: number,
     token: string,
-  ): Promise<any> {
+  ): Promise<unknown> {
     try {
       const result = await this.configRepository.removeFunction(
         id,
@@ -982,39 +1117,92 @@ export class ConfigService {
 
   async getConfigById(
     id: number,
-    tenantId: string,
-    token: string,
+    user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
-    const config = await this.getConfigOrThrow(id, tenantId, token);
+    const config = await this.getConfigOrThrow(id, user.tenantId, user.token.tokenString);
+
+    if (!config.status) {
+      return {
+        success: true,
+        message: 'Config retrieved successfully',
+        config,
+      };
+    }
+
+    const userRole = user.actorRole.toLowerCase();
+    if (
+      !userRole ||
+      !['editor', 'approver', 'publisher', 'exporter'].includes(userRole)
+    ) {
+      throw new ForbiddenException('Invalid user role');
+    }
+
+    // Validate user can view config with this status
+    const { allowedStatuses } = this.rbacService.getTier2({
+      role: userRole as 'editor' | 'approver' | 'publisher' | 'exporter',
+      endpointKey: 'Get :id',
+    });
+
+    if (!allowedStatuses || !allowedStatuses.includes(config.status)) {
+      throw new ForbiddenException(
+        `Role '${userRole}' cannot act on resources in status '${config.status}'`,
+      );
+    }
+
     return {
       success: true,
       message: 'Config retrieved successfully',
       config,
     };
   }
-  getRulesStatusbyRole(user: AuthenticatedUser): string[] {
-    if (!user.allowedStatuses || user.allowedStatuses.length === 0) {
-      this.logger.warn('User does not have allowedStatuses in token');
+  getConfigStatus(user: AuthenticatedUser): string[] {
+    const userRole = user.actorRole.toLowerCase();
+
+    if (
+      !userRole ||
+      !['editor', 'approver', 'publisher', 'exporter'].includes(userRole)
+    ) {
       return [];
     }
 
-    this.logger.log(
-      `User has ${user.allowedStatuses.length} allowed statuses: ${user.allowedStatuses.join(', ')}`,
-    );
-    return user.allowedStatuses;
+    const { allowedStatuses } = this.rbacService.getTier2({
+      role: userRole as 'editor' | 'approver' | 'publisher' | 'exporter',
+      endpointKey: 'Post /:offset/:limit',
+    });
+
+    return allowedStatuses ?? [];
   }
 
   async getAllConfigs(
     offset: number,
     limit: number,
-    filters: Record<string, any>,
-    token: string,
+    filters: Record<string, unknown>,
+    user: AuthenticatedUser,
   ): Promise<Config[]> {
+    const updatedFilters = { ...filters };
+
+    // Apply RBAC Tier 2: Auto-filter by role's allowed statuses if no status provided
+    if (!updatedFilters.status) {
+      const userRole = user.actorRole.toLowerCase();
+      if (
+        userRole &&
+        ['editor', 'approver', 'publisher', 'exporter'].includes(userRole)
+      ) {
+        const { allowedStatuses } = this.rbacService.getTier2({
+          role: userRole as 'editor' | 'approver' | 'publisher' | 'exporter',
+          endpointKey: 'Post /:offset/:limit',
+        });
+
+        if (allowedStatuses?.length) {
+          updatedFilters.status = allowedStatuses.join(',');
+        }
+      }
+    }
     return await this.configRepository.getAllConfigsWithFilters(
       offset,
       limit,
-      filters,
-      token,
+      updatedFilters,
+      user.token.tokenString,
     );
   }
 }

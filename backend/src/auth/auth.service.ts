@@ -74,21 +74,23 @@ export class AuthService {
 
   public isTokenExpired(token: string): boolean {
     try {
-      const decoded = jwt.decode(token) as any;
+      const decoded = jwt.decode(token) as { exp?: number } | null;
       if (decoded?.exp) {
         const currentTime = Math.floor(Date.now() / 1000);
         return decoded.exp < currentTime;
       }
       return true;
     } catch (error) {
-      this.loggerService.warn(`Failed to check token expiry: ${error.message}`);
+      this.loggerService.warn(
+        `Failed to check token expiry: ${(error as Error).message}`,
+      );
       return true;
     }
   }
 
   public getTokenTimeToExpiry(token: string): number {
     try {
-      const decoded = jwt.decode(token) as any;
+      const decoded = jwt.decode(token) as { exp?: number } | null;
       if (decoded?.exp) {
         const currentTime = Math.floor(Date.now() / 1000);
         return Math.max(0, decoded.exp - currentTime);

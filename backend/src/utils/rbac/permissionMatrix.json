@@ -1,0 +1,216 @@
+{
+  "_meta": {
+    "version": "0.1.2",
+    "description": "Tier 2 & 3 RBAC permission matrix. Tier 1 (endpoint + HTTP method role gating) is enforced at the controller level and is not represented here.",
+    "statusCodes": {
+      "IN_PROGRESS":    "STATUS_01_IN_PROGRESS",
+      "ON_HOLD":        "STATUS_02_ON_HOLD",
+      "UNDER_REVIEW":   "STATUS_03_UNDER_REVIEW",
+      "APPROVED":       "STATUS_04_APPROVED",
+      "REJECTED":       "STATUS_05_REJECTED",
+      "EXPORTED":       "STATUS_06_EXPORTED",
+      "READY_FOR_DEPLOYMENT": "STATUS_07_READY_FOR_DEPLOYMENT",
+      "DEPLOYED":       "STATUS_08_DEPLOYED"
+    },
+    "roles": {
+      "editor":    { "bypassAllTiers": false },
+      "approver":  { "bypassAllTiers": false },
+      "publisher": { "bypassAllTiers": false },
+      "exporter":  { "bypassAllTiers": false }
+    }
+  },
+
+  "endpoints": {
+    "Patch /update/status/:id": {
+      "tier2": {
+        "description": "Controls which current resource statuses each role may act upon",
+        "rolePermissions": {
+          "editor": {
+            "allowedCurrentStatuses": ["STATUS_01_IN_PROGRESS", "STATUS_02_ON_HOLD", "STATUS_05_REJECTED"],
+            "deniedCurrentStatuses":  ["STATUS_03_UNDER_REVIEW", "STATUS_04_APPROVED","STATUS_06_EXPORTED", "STATUS_07_READY_FOR_DEPLOYMENT","STATUS_08_DEPLOYED"]
+          },
+          "approver": {
+            "allowedCurrentStatuses": ["STATUS_03_UNDER_REVIEW"],
+            "deniedCurrentStatuses":  ["STATUS_01_IN_PROGRESS", "STATUS_02_ON_HOLD", "STATUS_04_APPROVED", "STATUS_05_REJECTED","STATUS_06_EXPORTED", "STATUS_07_READY_FOR_DEPLOYMENT","STATUS_08_DEPLOYED"]
+          },
+          "exporter": {
+            "allowedCurrentStatuses": ["STATUS_04_APPROVED"],
+            "deniedCurrentStatuses":  ["STATUS_01_IN_PROGRESS", "STATUS_02_ON_HOLD", "STATUS_03_UNDER_REVIEW", "STATUS_05_REJECTED","STATUS_06_EXPORTED", "STATUS_07_READY_FOR_DEPLOYMENT","STATUS_08_DEPLOYED"]
+          },
+          "publisher": {
+            "allowedCurrentStatuses": ["STATUS_07_READY_FOR_DEPLOYMENT","STATUS_08_DEPLOYED"],
+            "deniedCurrentStatuses":  ["STATUS_01_IN_PROGRESS", "STATUS_02_ON_HOLD", "STATUS_03_UNDER_REVIEW", "STATUS_05_REJECTED","STATUS_06_EXPORTED"]
+          }
+        }
+      },
+      "tier3": {
+        "description": "Allowed status transitions per role, keyed by currentStatus → [targetStatusCode]",
+        "transitions": {
+          "editor": {
+            "STATUS_01_IN_PROGRESS": ["STATUS_02_ON_HOLD", "STATUS_03_UNDER_REVIEW"],
+            "STATUS_02_ON_HOLD":     ["STATUS_01_IN_PROGRESS"],
+            "STATUS_05_REJECTED":    ["STATUS_01_IN_PROGRESS"]
+          },
+          "approver": {
+            "STATUS_03_UNDER_REVIEW": ["STATUS_04_APPROVED", "STATUS_05_REJECTED"]
+          },
+          "exporter": {
+            "STATUS_04_APPROVED": ["STATUS_06_EXPORTED"]
+          },
+          "publisher": {
+            "STATUS_07_READY_FOR_DEPLOYMENT": ["STATUS_08_DEPLOYED"]
+          }
+        }
+      }
+    },
+    "Put :id": {
+      "tier2": {
+        "description": "Controls which current resource statuses each role may act upon when updating config",
+        "rolePermissions": {
+          "editor": {
+            "allowedCurrentStatuses": ["STATUS_01_IN_PROGRESS", "STATUS_02_ON_HOLD", "STATUS_05_REJECTED"],
+            "deniedCurrentStatuses":  ["STATUS_03_UNDER_REVIEW", "STATUS_04_APPROVED","STATUS_06_EXPORTED", "STATUS_07_READY_FOR_DEPLOYMENT","STATUS_08_DEPLOYED"]
+          }
+        }
+      },
+      "tier3": {
+        "description": "Allowed status transitions per role when updating via PUT",
+        "transitions": {
+          "editor": {
+            "STATUS_01_IN_PROGRESS": ["STATUS_02_ON_HOLD", "STATUS_03_UNDER_REVIEW"],
+            "STATUS_02_ON_HOLD":     ["STATUS_01_IN_PROGRESS"],
+            "STATUS_05_REJECTED":    ["STATUS_01_IN_PROGRESS"]
+          }
+        }
+      }
+    },
+    "Post /:offset/:limit": {
+      "tier2": {
+        "description": "Controls which config statuses each role may view/access (for listing configs)",
+        "rolePermissions": {
+          "editor": {
+            "allowedCurrentStatuses": ["STATUS_01_IN_PROGRESS", "STATUS_02_ON_HOLD", "STATUS_03_UNDER_REVIEW", "STATUS_04_APPROVED","STATUS_05_REJECTED",  "STATUS_06_EXPORTED", "STATUS_07_READY_FOR_DEPLOYMENT", "STATUS_08_DEPLOYED"]},
+        "approver": {
+            "allowedCurrentStatuses": ["STATUS_03_UNDER_REVIEW","STATUS_04_APPROVED", "STATUS_05_REJECTED","STATUS_06_EXPORTED", "STATUS_07_READY_FOR_DEPLOYMENT","STATUS_08_DEPLOYED"]          },
+          "exporter": {
+            "allowedCurrentStatuses": ["STATUS_04_APPROVED", "STATUS_05_REJECTED","STATUS_06_EXPORTED", "STATUS_07_READY_FOR_DEPLOYMENT","STATUS_08_DEPLOYED"]          },
+          "publisher": {
+            "allowedCurrentStatuses": ["STATUS_07_READY_FOR_DEPLOYMENT","STATUS_08_DEPLOYED"]          }
+        }
+      }
+    },
+    "Get /api/status": {
+      "tier2": {
+        "description": "Returns allowed statuses for the user's role (metadata endpoint)",
+        "rolePermissions": {
+          "editor": {
+            "allowedCurrentStatuses": ["STATUS_01_IN_PROGRESS", "STATUS_02_ON_HOLD", "STATUS_03_UNDER_REVIEW", "STATUS_04_APPROVED","STATUS_05_REJECTED",  "STATUS_06_EXPORTED", "STATUS_07_READY_FOR_DEPLOYMENT", "STATUS_08_DEPLOYED"]},
+        "approver": {
+            "allowedCurrentStatuses": ["STATUS_03_UNDER_REVIEW","STATUS_04_APPROVED", "STATUS_05_REJECTED","STATUS_06_EXPORTED", "STATUS_07_READY_FOR_DEPLOYMENT","STATUS_08_DEPLOYED"]          },
+          "exporter": {
+            "allowedCurrentStatuses": ["STATUS_04_APPROVED", "STATUS_05_REJECTED","STATUS_06_EXPORTED", "STATUS_07_READY_FOR_DEPLOYMENT","STATUS_08_DEPLOYED"]          },
+          "publisher": {
+            "allowedCurrentStatuses": ["STATUS_07_READY_FOR_DEPLOYMENT","STATUS_08_DEPLOYED"]          }
+        }
+      }
+    },
+    "Get :id": {
+      "tier2": {
+        "description": "Controls which config statuses each role may view (for getting single config by ID)",
+        "rolePermissions": {
+          "editor": {
+            "allowedCurrentStatuses": ["STATUS_01_IN_PROGRESS", "STATUS_02_ON_HOLD", "STATUS_03_UNDER_REVIEW", "STATUS_04_APPROVED","STATUS_05_REJECTED",  "STATUS_06_EXPORTED", "STATUS_07_READY_FOR_DEPLOYMENT", "STATUS_08_DEPLOYED"]},
+        "approver": {
+            "allowedCurrentStatuses": ["STATUS_03_UNDER_REVIEW","STATUS_04_APPROVED", "STATUS_05_REJECTED","STATUS_06_EXPORTED", "STATUS_07_READY_FOR_DEPLOYMENT","STATUS_08_DEPLOYED"]          },
+          "exporter": {
+            "allowedCurrentStatuses": ["STATUS_04_APPROVED", "STATUS_05_REJECTED","STATUS_06_EXPORTED", "STATUS_07_READY_FOR_DEPLOYMENT","STATUS_08_DEPLOYED"]          },
+          "publisher": {
+            "allowedCurrentStatuses": ["STATUS_07_READY_FOR_DEPLOYMENT","STATUS_08_DEPLOYED"]          }
+        }
+      }
+    },
+    "Post :id/workflow": {
+      "tier2": {
+        "description": "Controls which current resource statuses each role may act upon for workflow actions",
+        "rolePermissions": {
+          "editor": {
+            "allowedCurrentStatuses": ["STATUS_01_IN_PROGRESS", "STATUS_02_ON_HOLD", "STATUS_05_REJECTED"],
+            "deniedCurrentStatuses": ["STATUS_03_UNDER_REVIEW", "STATUS_04_APPROVED", "STATUS_06_EXPORTED", "STATUS_07_READY_FOR_DEPLOYMENT", "STATUS_08_DEPLOYED"]
+          },
+          "approver": {
+            "allowedCurrentStatuses": ["STATUS_03_UNDER_REVIEW"],
+            "deniedCurrentStatuses": ["STATUS_01_IN_PROGRESS", "STATUS_02_ON_HOLD", "STATUS_04_APPROVED", "STATUS_05_REJECTED", "STATUS_06_EXPORTED", "STATUS_07_READY_FOR_DEPLOYMENT", "STATUS_08_DEPLOYED"]
+          },
+          "exporter": {
+            "allowedCurrentStatuses": ["STATUS_04_APPROVED"],
+            "deniedCurrentStatuses": ["STATUS_01_IN_PROGRESS", "STATUS_02_ON_HOLD", "STATUS_03_UNDER_REVIEW", "STATUS_05_REJECTED", "STATUS_06_EXPORTED", "STATUS_07_READY_FOR_DEPLOYMENT", "STATUS_08_DEPLOYED"]
+          },
+          "publisher": {
+            "allowedCurrentStatuses": ["STATUS_07_READY_FOR_DEPLOYMENT", "STATUS_08_DEPLOYED"],
+            "deniedCurrentStatuses": ["STATUS_01_IN_PROGRESS", "STATUS_02_ON_HOLD", "STATUS_03_UNDER_REVIEW", "STATUS_04_APPROVED", "STATUS_05_REJECTED", "STATUS_06_EXPORTED"]
+          }
+        }
+      },
+      "tier3": {
+        "description": "Allowed workflow transitions per role and action",
+        "transitions": {
+          "editor": {
+            "STATUS_01_IN_PROGRESS": ["STATUS_02_ON_HOLD", "STATUS_03_UNDER_REVIEW"],
+            "STATUS_02_ON_HOLD": ["STATUS_01_IN_PROGRESS"],
+            "STATUS_05_REJECTED": ["STATUS_01_IN_PROGRESS", "STATUS_03_UNDER_REVIEW"]
+          },
+          "approver": {
+            "STATUS_03_UNDER_REVIEW": ["STATUS_04_APPROVED", "STATUS_05_REJECTED"]
+          },
+          "exporter": {
+            "STATUS_04_APPROVED": ["STATUS_06_EXPORTED"]
+          },
+          "publisher": {
+            "STATUS_07_READY_FOR_DEPLOYMENT": ["STATUS_08_DEPLOYED"]
+          }
+        }
+      }
+    },
+    "Post /all": {
+      "tier2": {
+        "description": "Controls which scheduler statuses each role may view/access (for listing configs)",
+        "rolePermissions": {
+          "editor": {
+            "allowedCurrentStatuses": ["STATUS_01_IN_PROGRESS", "STATUS_02_ON_HOLD", "STATUS_03_UNDER_REVIEW", "STATUS_04_APPROVED","STATUS_05_REJECTED",  "STATUS_06_EXPORTED", "STATUS_07_READY_FOR_DEPLOYMENT", "STATUS_08_DEPLOYED"]},
+        "approver": {
+            "allowedCurrentStatuses": ["STATUS_03_UNDER_REVIEW","STATUS_04_APPROVED", "STATUS_05_REJECTED","STATUS_06_EXPORTED", "STATUS_07_READY_FOR_DEPLOYMENT","STATUS_08_DEPLOYED"]          },
+          "exporter": {
+            "allowedCurrentStatuses": ["STATUS_04_APPROVED", "STATUS_05_REJECTED","STATUS_06_EXPORTED", "STATUS_07_READY_FOR_DEPLOYMENT","STATUS_08_DEPLOYED"]          },
+          "publisher": {
+            "allowedCurrentStatuses": ["STATUS_07_READY_FOR_DEPLOYMENT","STATUS_08_DEPLOYED"]          }
+        }
+      }
+    },
+    "Patch /update/:id": {
+      "tier2": {
+        "description": "Controls which current schedule statuses each role may act upon when updating scheduler (no status updates via this endpoint)",
+        "rolePermissions": {
+          "editor": {
+            "allowedCurrentStatuses": ["STATUS_01_IN_PROGRESS", "STATUS_02_ON_HOLD", "STATUS_05_REJECTED"],
+            "deniedCurrentStatuses":  ["STATUS_03_UNDER_REVIEW", "STATUS_04_APPROVED","STATUS_06_EXPORTED", "STATUS_07_READY_FOR_DEPLOYMENT","STATUS_08_DEPLOYED"]
+          }
+        }
+      }
+    },
+    "Get /get/status": {
+      "tier2": {
+        "description": "Controls which scheduler statuses each role may filter/view (for getting schedules by status)",
+        "rolePermissions": {
+          "editor": {
+            "allowedCurrentStatuses": ["STATUS_01_IN_PROGRESS", "STATUS_02_ON_HOLD", "STATUS_03_UNDER_REVIEW", "STATUS_04_APPROVED","STATUS_05_REJECTED",  "STATUS_06_EXPORTED", "STATUS_07_READY_FOR_DEPLOYMENT", "STATUS_08_DEPLOYED"]},
+        "approver": {
+            "allowedCurrentStatuses": ["STATUS_03_UNDER_REVIEW","STATUS_04_APPROVED", "STATUS_05_REJECTED","STATUS_06_EXPORTED", "STATUS_07_READY_FOR_DEPLOYMENT","STATUS_08_DEPLOYED"]          },
+          "exporter": {
+            "allowedCurrentStatuses": ["STATUS_04_APPROVED", "STATUS_05_REJECTED","STATUS_06_EXPORTED", "STATUS_07_READY_FOR_DEPLOYMENT","STATUS_08_DEPLOYED"]          },
+          "publisher": {
+            "allowedCurrentStatuses": ["STATUS_07_READY_FOR_DEPLOYMENT","STATUS_08_DEPLOYED"]          }
+        }
+      }
+    }
+  }
+}

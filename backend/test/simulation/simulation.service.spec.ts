@@ -38,7 +38,10 @@ describe('SimulationService', () => {
   const adminServiceClientMock = {
     getConfigById: jest.fn(),
     forwardRequest: jest.fn(),
-  } as unknown as jest.Mocked<AdminServiceClient>;
+  } as unknown as AdminServiceClient & {
+    getConfigById: jest.Mock;
+    forwardRequest: jest.Mock;
+  };
 
   beforeEach(async () => {
     // Reset all mocks before each test

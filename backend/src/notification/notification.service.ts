@@ -291,7 +291,7 @@ export class NotificationService implements OnModuleInit {
     tenantId: string,
     authToken: string,
     groupName: string,
-  ): Promise<any> {
+  ): Promise<string[]> {
     try {
       let role: string | null = null;
       let fetchAll = false;
@@ -372,12 +372,12 @@ export class NotificationService implements OnModuleInit {
         comment,
       } = data;
 
-      const recipientEmails = (await this.fetchRecipientEmails(
+      const recipientEmails = await this.fetchRecipientEmails(
         event,
         tenantId,
         authToken,
         groupName,
-      )) as string[];
+      );
 
       if (recipientEmails.length === 0) {
         this.logger.warn(
@@ -492,7 +492,7 @@ export class NotificationService implements OnModuleInit {
 
   async sendPublishingStatusNotification(data: {
     configId: number;
-    config: any;
+    config: Config;
     tenantId: string;
     publishingStatus: 'active' | 'inactive';
     actorEmail: string;
@@ -545,7 +545,7 @@ export class NotificationService implements OnModuleInit {
     }
 
     const isActivation = publishingStatus === 'active';
-    const subject = `Configuration ${isActivation ? 'Activated' : 'Deactivated'}: ${config.transactionType ?? 'Configuration'} v${config.version ?? '1.0'}`;
+    const subject = `Configuration ${isActivation ? 'Activated' : 'Deactivated'}: ${config.transactionType} v${config.version}`;
 
     const text = generatePublishingStatusEmailText(
       configId,

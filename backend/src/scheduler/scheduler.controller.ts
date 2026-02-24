@@ -65,7 +65,7 @@ export class SchedulerController {
     @Body() body: UpdateScheduleJobDto,
     @User() user: AuthenticatedUser,
   ): Promise<ISuccess> {
-    return await this.schedulerService.update(id, body, user.token.tokenString);
+    return await this.schedulerService.update(id, body, user);
   }
 
   @Get('/:id')
@@ -79,7 +79,7 @@ export class SchedulerController {
     @Param('id') id: string,
     @User() user: AuthenticatedUser,
   ): Promise<Schedule | null> {
-    return await this.schedulerService.findOne(id, user.token.tokenString);
+    return await this.schedulerService.findOne(id, user);
   }
 
   @Get('/get/status')
@@ -99,8 +99,7 @@ export class SchedulerController {
       status,
       page,
       limit,
-      user.tenantId,
-      user.token.tokenString,
+      user,
     );
   }
 

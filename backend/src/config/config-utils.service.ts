@@ -24,7 +24,7 @@ export class ConfigUtilsService {
   }
 
   buildUserErrorMessage(
-    error: any,
+    error: unknown,
     msgFam: string,
     transactionType: string,
     version: string,
@@ -32,20 +32,22 @@ export class ConfigUtilsService {
     let userMessage =
       'Failed to create configuration. Please check your input and try again.';
 
-    const isDuplicateKey =
-      error.message?.includes('duplicate key value') ?? false;
-    const isUniqueConstraint =
-      error.message?.includes('unique constraint') ?? false;
+    const errorMessage = error instanceof Error ? error.message : undefined;
 
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- logical OR needed for boolean values
+    const isDuplicateKey =
+      errorMessage?.includes('duplicate key value') ?? false;
+    const isUniqueConstraint =
+      errorMessage?.includes('unique constraint') ?? false;
+
+     
     if (isDuplicateKey || isUniqueConstraint) {
       userMessage = `A configuration with Message Family '${msgFam}', Transaction Type '${transactionType}', and Version '${version}' already exists. Please use different values.`;
-    } else if (error.message?.includes('validation')) {
-      userMessage = `Validation error: ${error.message}`;
-    } else if (error.message?.includes('schema')) {
-      userMessage = `Schema error: ${error.message}`;
-    } else if (error.message) {
-      userMessage = error.message;
+    } else if (errorMessage?.includes('validation')) {
+      userMessage = `Validation error: ${errorMessage}`;
+    } else if (errorMessage?.includes('schema')) {
+      userMessage = `Schema error: ${errorMessage}`;
+    } else if (errorMessage) {
+      userMessage = errorMessage;
     }
 
     return userMessage;

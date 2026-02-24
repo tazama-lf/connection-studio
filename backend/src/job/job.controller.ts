@@ -113,7 +113,7 @@ export class JobController {
     const record = await this.jobService.findOne(
       id,
       type,
-      user.token.tokenString,
+      user,
     );
     if (type === ConfigType.PULL) {
       return plainToInstance(PullJobResponseDto, record, {
@@ -141,8 +141,7 @@ export class JobController {
       status,
       page,
       limit,
-      user.tenantId,
-      user.token.tokenString,
+      user,
     );
   }
 

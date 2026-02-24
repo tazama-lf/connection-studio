@@ -16,10 +16,10 @@ export class TazamaDataModelRepository {
     tenantId: string,
     token: string,
   ): Promise<TazamaCollectionSchema[]> {
-    const response = await this.adminServiceClient.getAllCollections(
+    const response = (await this.adminServiceClient.getAllCollections(
       tenantId,
       token,
-    );
+    )) as { data?: TazamaCollectionSchema[] };
     return response.data ?? [];
   }
 
@@ -27,10 +27,10 @@ export class TazamaDataModelRepository {
     dto: CreateDestinationTypeDto,
     token: string,
   ): Promise<DestinationTypeResponse> {
-    const response = await this.adminServiceClient.createDestinationType(
+    const response = (await this.adminServiceClient.createDestinationType(
       dto,
       token,
-    );
+    )) as { data: DestinationTypeResponse };
     return response.data;
   }
 
@@ -38,10 +38,10 @@ export class TazamaDataModelRepository {
     destinationTypeId: number,
     token: string,
   ): Promise<boolean> {
-    const response = await this.adminServiceClient.destinationTypeExists(
+    const response = (await this.adminServiceClient.destinationTypeExists(
       destinationTypeId,
       token,
-    );
+    )) as { exists?: boolean };
     return response.exists ?? false;
   }
 
@@ -55,11 +55,11 @@ export class TazamaDataModelRepository {
       ...dto,
       serial_no: serialNo,
     };
-    const response = await this.adminServiceClient.addFieldToDestinationType(
+    const response = (await this.adminServiceClient.addFieldToDestinationType(
       destinationTypeId,
       fieldDto,
       token,
-    );
+    )) as { data: FieldResponse };
     return response.data;
   }
 
