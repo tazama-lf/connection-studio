@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+  import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   ArrowRightIcon,
   PlusIcon,
@@ -9,7 +9,9 @@ import {
   ServerIcon,
   Shuffle,
   FileText,
+  Edit3,
 } from 'lucide-react';
+import ReactJson from 'react-json-view';
 import { Button } from './Button';
 import {
   configApi,
@@ -18,6 +20,7 @@ import {
 import {
   dataModelApi,
   type DestinationOption,
+  type DestinationFieldsData,
 } from '../../features/data-model';
 import { Backdrop } from '@mui/material';
 
@@ -69,6 +72,12 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
   existingMappings = [],
   readOnly = false,
 }) => {
+  // Generate unique component instance ID for debugging
+  const componentId = useMemo(() => `MappingUtility-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, []);
+
+  // Ref to track if API fetch is in progress (prevent race conditions)
+  const isFetchingRef = useRef(false);
+
   // State for managing mappings
   const [mappingError, setMappingError] = useState<string | null>(null);
   const [currentMappings, setCurrentMappings] =
@@ -79,49 +88,28 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
   const [loadingDestinations, setLoadingDestinations] = useState(true);
   const [destinationError, setDestinationError] = useState<string | null>(null);
 
+  const [showEditFieldsModal, setShowEditFieldsModal] = useState(false);
+  const [editableDestinationJson, setEditableDestinationJson] = useState<DestinationFieldsData | null>(null);
+  const [tempEditedJson, setTempEditedJson] = useState<DestinationFieldsData | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const [savingDestinationJson, setSavingDestinationJson] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
   // Load existing mappings on component mount
   useEffect(() => {
-    console.log(
-      '🔄 MappingUtility - existingMappings changed:',
-      existingMappings,
-    );
-    console.log(
-      '🔄 MappingUtility - existingMappings length:',
-      existingMappings.length,
-    );
-    console.log(
-      '🔄 MappingUtility - About to set currentMappings to existingMappings',
-    );
     setCurrentMappings(existingMappings);
     validateMappings(existingMappings);
-    console.log('🔄 MappingUtility - currentMappings set to existingMappings');
   }, [existingMappings]);
 
   // Fetch current mappings from backend on component mount if configId is available
   useEffect(() => {
-    console.log('🔄 MappingUtility - configId changed:', configId);
     if (configId) {
-      console.log(
-        '🔄 MappingUtility - configId is available, fetching mappings...',
-      );
       fetchCurrentMappings();
-    } else {
-      console.log(
-        '🔄 MappingUtility - configId not available yet, skipping fetch',
-      );
     }
   }, [configId]);
 
   // Expose current mappings to parent component whenever they change
   useEffect(() => {
-    console.log(
-      '📤 MappingUtility - Sending current mappings to parent:',
-      currentMappings,
-    );
-    console.log(
-      '📤 MappingUtility - Current mappings length:',
-      currentMappings.length,
-    );
     if (onCurrentMappingsChange) {
       onCurrentMappingsChange(currentMappings);
     }
@@ -137,19 +125,10 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
     }
 
     try {
-      console.log(
-        '🔄 MappingUtility - Fetching current config and mappings for configId:',
-        configId,
-      );
       const response = await configApi.getConfig(configId);
 
       if (response.success && response.config) {
         const mappings = response.config.mapping || [];
-        console.log(
-          '✅ MappingUtility - Fetched mappings from backend:',
-          mappings,
-        );
-        console.log('✅ MappingUtility - Mappings count:', mappings.length);
 
         // Ensure all mappings have transformation field set
         const mappingsWithTransformation = mappings.map((mapping: FieldMapping) => {
@@ -183,15 +162,8 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
           };
         });
 
-        console.log(
-          '✅ MappingUtility - About to call setCurrentMappings with:',
-          mappingsWithTransformation,
-        );
         setCurrentMappings(mappingsWithTransformation);
         validateMappings(mappingsWithTransformation);
-        console.log(
-          '✅ MappingUtility - setCurrentMappings and validateMappings called successfully',
-        );
       } else {
         console.error(
           '❌ MappingUtility - Failed to fetch config:',
@@ -203,59 +175,191 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
     }
   };
 
-  // Function to fetch destination options (can be reused)
+  const convertJsonToTreeNodes = (
+    json: any,
+    parentPath: string[] = []
+  ): TreeNode[] => {
+    const dataModelNodes: TreeNode[] = [];
+    const dataCacheNodes: TreeNode[] = [];
+
+    Object.entries(json).forEach(([key, value]) => {
+      const path = [...parentPath, key];
+      const id = path.join('.');
+
+      let nodeType: string;
+      let children: TreeNode[] | undefined;
+
+      if (value === null) {
+        nodeType = 'string';
+      } else if (typeof value === 'string') {
+        nodeType = 'string';
+      } else if (typeof value === 'number') {
+        nodeType = 'number';
+      } else if (typeof value === 'boolean') {
+        nodeType = 'boolean';
+      } else if (typeof value === 'object' && value !== null) {
+
+        if (Object.keys(value).length === 0) {
+          nodeType = 'object';
+        } else {
+          nodeType = 'object';
+          children = convertJsonToTreeNodesRecursive(value, path);
+        }
+      } else {
+        nodeType = 'string';
+      }
+
+      const node: TreeNode = {
+        id,
+        name: key,
+        path,
+        type: nodeType,
+      };
+
+      if (children && children.length > 0) {
+        node.children = children;
+      }
+
+      if (key === 'redis') {
+        dataCacheNodes.push(node);
+      } else {
+        dataModelNodes.push(node);
+      }
+    });
+
+    const sections: TreeNode[] = [];
+
+    if (dataModelNodes.length > 0) {
+      sections.push({
+        id: 'dataModel',
+        name: 'Data Model',
+        path: ['dataModel'],
+        type: 'section',
+        children: dataModelNodes,
+      });
+    }
+
+    if (dataCacheNodes.length > 0) {
+      sections.push({
+        id: 'dataCache',
+        name: 'Data Cache',
+        path: ['dataCache'],
+        type: 'section',
+        children: dataCacheNodes,
+      });
+    }
+
+    return sections;
+  };
+
+  const convertJsonToTreeNodesRecursive = (
+    json: any,
+    parentPath: string[] = []
+  ): TreeNode[] => {
+    const nodes: TreeNode[] = [];
+
+    Object.entries(json).forEach(([key, value]) => {
+      const path = [...parentPath, key];
+      const id = path.join('.');
+
+      let nodeType: string;
+      let children: TreeNode[] | undefined;
+
+      if (value === null) {
+        nodeType = 'string';
+      } else if (typeof value === 'string') {
+        nodeType = 'string';
+      } else if (typeof value === 'number') {
+        nodeType = 'number';
+      } else if (typeof value === 'boolean') {
+        nodeType = 'boolean';
+      } else if (typeof value === 'object' && value !== null) {
+        if (Object.keys(value).length === 0) {
+          nodeType = 'object';
+        } else {
+          nodeType = 'object';
+          children = convertJsonToTreeNodesRecursive(value, path);
+        }
+      } else {
+        nodeType = 'string';
+      }
+
+      const node: TreeNode = {
+        id,
+        name: key,
+        path,
+        type: nodeType,
+      };
+
+      if (children && children.length > 0) {
+        node.children = children;
+      }
+
+      nodes.push(node);
+    });
+
+    return nodes;
+  };
+
   const fetchDestinationOptions = async () => {
+    if (isFetchingRef.current) {
+      return;
+    }
+    
     try {
+      isFetchingRef.current = true;
       setLoadingDestinations(true);
       setDestinationError(null);
 
-      const response = await dataModelApi.getDestinationOptions();
-      // Backend returns {success: true, data: [...]}
+      const response = await dataModelApi.getDestinationFieldsJson();
+      
       if (response.success && response.data) {
-        const treeNodes = convertDestinationOptionsToTree(response.data);
-        setDestinationTree(treeNodes);
+        setEditableDestinationJson(response.data);
       } else {
         throw new Error(
-          response.message || 'Failed to fetch destination options',
+          response.message || 'Failed to fetch destination fields',
         );
       }
     } catch (error) {
-      console.error('Error fetching destination options:', error);
+      console.error('Error loading destination options:', error);
       setDestinationError(
         'Failed to load destination fields. Please try again.',
       );
-      // Fallback to empty array on error
       setDestinationTree([]);
+      setEditableDestinationJson(null);
     } finally {
       setLoadingDestinations(false);
+      isFetchingRef.current = false;
     }
   };
 
-  // Load destination options from API on mount
   useEffect(() => {
     fetchDestinationOptions();
   }, []);
 
-  // Function to remove mapping from backend
+  useEffect(() => {
+    if (editableDestinationJson) {
+      try {
+        const treeNodes = convertJsonToTreeNodes(editableDestinationJson);
+        setDestinationTree(treeNodes);
+      } catch (error) {
+        console.error(`❌ [${componentId}] Error during tree conversion:`, error);
+      }
+    }
+  }, [editableDestinationJson, componentId]);
+
   const removeMappingFromBackend = async (index: number) => {
     try {
-      console.log('🗑️ Removing mapping from backend:', index);
       const response = await configApi.removeMapping(configId!, index);
 
       if (response.success) {
-        console.log('✅ Mapping removed successfully from backend');
-
-        // Update local state only after successful API call
         const updatedMappings = currentMappings.filter((_, i) => i !== index);
         setCurrentMappings(updatedMappings);
         validateMappings(updatedMappings);
 
-        // Notify parent component
         if (onCurrentMappingsChange) {
           onCurrentMappingsChange(updatedMappings);
         }
-
-        console.log('Mapping removed successfully');
       } else {
         console.error('❌ Failed to remove mapping:', response.message);
         setMappingError(`Failed to remove mapping: ${response.message}`);
@@ -266,7 +370,6 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
     }
   };
 
-  // Convert JSON schema to hierarchical tree structure
   const buildSourceTreeFromSchema = (
     schema: any,
     parentPath: string[] = [],
@@ -289,7 +392,6 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
             type: value.type || 'string',
           };
 
-          // If the property has nested properties, create children
           if (value.properties) {
             node.children = buildSourceTreeFromSchema(value, path);
           } else if (value.items && value.items.properties) {
@@ -312,8 +414,6 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
     const nodeMap = new Map<string, TreeNode>();
     const rootNodes: TreeNode[] = [];
 
-    console.log('🏗️ Building source tree from', schemaArray.length, 'fields');
-
     // First pass: create all nodes AND their parent nodes
     schemaArray.forEach((field) => {
       const originalPath = field.path || field.name || 'unknown';
@@ -321,15 +421,6 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       // Remove [0] notation to get clean path, but remember which paths are arrays
       const cleanPath = originalPath.replace(/\[0\]/g, '');
       const pathParts = cleanPath.split('.').filter((p: string) => p); // Remove empty parts
-
-      console.log(
-        '🔍 Processing field:',
-        originalPath,
-        '-> Clean path:',
-        cleanPath,
-        '-> Parts:',
-        pathParts,
-      );
 
       // Track which parts of the path represent arrays
       const arrayPaths = new Set<string>();
@@ -343,8 +434,6 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
           tempPath = tempPath ? `${tempPath}.${part}` : part;
         }
       });
-
-      console.log('📋 Array paths detected:', Array.from(arrayPaths));
 
       // Create all parent nodes in the path if they don't exist
       let currentPath = '';
@@ -372,16 +461,6 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
         };
 
         nodeMap.set(currentPath, node);
-        console.log(
-          '📝 Created node:',
-          currentPath,
-          'Type:',
-          fieldType,
-          'Name:',
-          nodeName,
-          'Is Array?',
-          isArrayContainer,
-        );
       });
     });
 
@@ -395,15 +474,9 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
         children: [],
       };
       nodeMap.set('TenantId', tenantIdNode);
-      console.log('📌 Added hardcoded TenantId field to source tree');
-    } else {
-      console.log(
-        '📌 TenantId already exists at root level, skipping hardcoded addition',
-      );
     }
 
     // Second pass: build parent-child relationships
-    console.log('📊 All nodes in map:', Array.from(nodeMap.keys()));
 
     nodeMap.forEach((node, nodeId) => {
       let parentPath = '';
@@ -414,67 +487,25 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
         parentPath = nodeId.substring(0, lastDotIndex);
       }
 
-      console.log(
-        '🔗 Node:',
-        nodeId,
-        '-> Looking for parent:',
-        parentPath || '(root)',
-        'Exists?',
-        nodeMap.has(parentPath),
-      );
-
       if (parentPath && nodeMap.has(parentPath)) {
         const parentNode = nodeMap.get(parentPath)!;
         if (!parentNode.children) {
           parentNode.children = [];
         }
         parentNode.children.push(node);
-        console.log(
-          '  ✅ Added to parent. Parent now has',
-          parentNode.children.length,
-          'children',
-        );
       } else {
         // Root node - only add if not already in rootNodes
         const alreadyInRoot = rootNodes.some((n) => n.id === nodeId);
         if (!alreadyInRoot) {
           rootNodes.push(node);
-          console.log('  📍 Added to root');
-        } else {
-          console.log('  ⏭️ Already in root, skipping');
         }
-      }
-    });
-
-    console.log(
-      '🌳 Tree built. Root nodes:',
-      rootNodes.map((n) => n.id).join(', '),
-    );
-
-    // Log nodes with children
-    nodeMap.forEach((node, nodeId) => {
-      if (node.children && node.children.length > 0) {
-        console.log(
-          '👨‍👧‍👦 Node with children:',
-          nodeId,
-          'has',
-          node.children.length,
-          'children:',
-          node.children.map((c) => c.name).join(', '),
-        );
       }
     });
 
     return rootNodes;
   }; // Generate source tree from the provided schema (memoized to prevent recalculation)
   const sourceTree: TreeNode[] = useMemo(() => {
-    console.log('🔄 Recalculating sourceTree');
-    console.log('MappingUtility sourceSchema:', sourceSchema);
-    console.log('MappingUtility sourceSchema type:', typeof sourceSchema);
-    console.log('MappingUtility configId:', configId);
-
     if (!sourceSchema) {
-      console.log('No sourceSchema provided');
       return [
         {
           id: 'payload',
@@ -494,18 +525,15 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
 
     // If sourceSchema is an array (from our interface)
     if (Array.isArray(sourceSchema)) {
-      console.log('Processing array sourceSchema:', sourceSchema);
       return buildSourceTreeFromArray(sourceSchema);
     }
 
     // If sourceSchema is a JSON schema object
     if (sourceSchema.properties || sourceSchema.type === 'object') {
-      console.log('Processing JSON schema object:', sourceSchema);
       return buildSourceTreeFromSchema(sourceSchema);
     }
 
     // Fallback
-    console.log('Using fallback schema processing for:', sourceSchema);
     return [
       {
         id: 'schema',
@@ -814,9 +842,6 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
     // For fields that are inside arrays, we need to reconstruct the original path with [0]
     const pathStr = path[0] || path.join('.');
 
-    console.log('🎯 Source field selected - RAW path array:', path);
-    console.log('🎯 Source field selected - FINAL pathStr:', pathStr);
-
     // Check if this path needs [0] notation by looking at the original schema
     let finalPath = pathStr;
     if (Array.isArray(sourceSchema)) {
@@ -832,12 +857,8 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       ) {
         // Use the original path with [0] notation
         finalPath = matchingField.path.replace(/\[0\]/g, '.0');
-        console.log('🎯 Found original path with [0]:', finalPath);
       }
     }
-
-    console.log('🎯 Final path to use:', finalPath.replace(/\[0\]/g, '.0'));
-    console.log('🎯 Contains [0] notation?', finalPath.includes('[0]'));
 
     if (selectedSources.includes(finalPath)) {
       setSelectedSources(selectedSources.filter((p) => p !== finalPath));
@@ -851,11 +872,9 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
   ) => {
     // Toggle selection for destinations
     const pathStr = path.join('.');
-    console.log('Destination field selected:', pathStr, 'Type:', type);
+    
     if (selectedDestinations.includes(pathStr)) {
-      setSelectedDestinations(
-        selectedDestinations.filter((p) => p !== pathStr),
-      );
+      setSelectedDestinations(selectedDestinations.filter((p) => p !== pathStr));
     } else {
       setSelectedDestinations([...selectedDestinations, pathStr]);
     }
@@ -1062,14 +1081,9 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
 
     // Call API to save mapping directly
     try {
-      console.log('💾 Saving mapping to backend:', mappingRequest);
-      console.log('💾 Selected sources array:', selectedSources);
-      console.log('💾 Source to be saved:', mappingRequest.source);
-      console.log('💾 Contains [0]?', mappingRequest.source?.includes('[0]'));
       const response = await configApi.addMapping(configId!, mappingRequest);
 
       if (response.success) {
-        console.log('✅ Mapping saved successfully to backend');
 
         // Create FieldMapping object for local state (includes transformation info)
 
@@ -1109,7 +1123,6 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
 
         // Close modal
         setShowAddMapping(false);
-        console.log('Mapping added successfully');
       } else {
         console.error('❌ Failed to save mapping:', response.message);
         setMappingError(`Failed to save mapping: ${response.message}`);
@@ -1137,18 +1150,39 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
     return (
       <div className="space-y-1" data-id="element-176">
         {nodes.map((node, index) => {
-          console.log('TREE', nodes, expanded, selectedPaths, type, depth);
-
           const hasChildren = node.children && node.children.length > 0;
           const isExpanded = expanded.includes(node.id);
-          const isSelected = selectedPaths
+          const isSection = node.type === 'section';
+          
+          const fieldPath = isSection ? node.path : node.path;
+          const isSelected = !isSection && selectedPaths
             .map((path) => path.replace(/\.0\./g, '.'))
             .includes(node.path.join('.'));
 
-          // Determine the actual type for this node - redis nodes should be purple
           const nodeType = node.id.startsWith('redis') ? 'redis' : type;
           const isRedis = node.id === 'redis';
           const isTenantId = node.id === 'TenantId' && depth === 0;
+
+          if (isSection) {
+            return (
+              <div key={node.id} data-id="element-section">
+                <div className={`mb-2 ${index > 0 ? 'mt-4' : ''}`}>
+                  <div className="text-sm font-semibold text-gray-700 bg-gray-100 px-2 py-1 rounded">
+                    {node.name}
+                  </div>
+                </div>
+                {hasChildren && renderTree(
+                  node.children ?? [],
+                  expanded,
+                  toggleFn,
+                  onSelect,
+                  selectedPaths,
+                  node.id === 'dataCache' ? 'redis' : type,
+                  0,
+                )}
+              </div>
+            );
+          }
 
           return (
             <div key={node.id} data-id="element-177">
@@ -1156,12 +1190,6 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
               {isTenantId && (
                 <div className="mb-2 mt-4">
                   <div className="text-sm text-gray-600">System Reserved</div>
-                </div>
-              )}
-              {/* Add spacing and heading before redis section */}
-              {isRedis && index > 0 && (
-                <div className="mt-4 mb-2">
-                  <div className="text-sm text-gray-500">Data Cache</div>
                 </div>
               )}
               <div
@@ -1184,9 +1212,6 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                 ) : (
                   <span className="w-6" data-id="element-181"></span>
                 )}
-                {/* {nodeType === 'source' && <FolderIcon size={16} className="mr-2 text-blue-500" data-id="element-182" />}
-            {nodeType === 'destination' && <DatabaseIcon size={16} className="mr-2 text-green-500" data-id="element-183" />}
-            {nodeType === 'redis' && <ServerIcon size={16} className="mr-2 text-purple-500" data-id="element-184" />} */}
                 {/* Only allow selection for leaf nodes (no children, not object/array) */}
                 {!hasChildren &&
                   node.type !== 'object' &&
@@ -1530,23 +1555,33 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
               </div>
               {/* Destination Selection */}
               <div className="space-y-4" data-id="element-229">
-                <h4
-                  className="font-medium text-gray-700 flex items-center gap-2"
-                  data-id="element-230"
-                >
-                  <DatabaseIcon size={18} style={{ color: '#2b7fff' }} />
-                  Destination
-                </h4>
+                <div className="flex items-center justify-between">
+                  <h4
+                    className="font-medium text-gray-700 flex items-center gap-2"
+                    data-id="element-230"
+                  >
+                    <DatabaseIcon size={18} style={{ color: '#2b7fff' }} />
+                    Destination
+                  </h4>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      setTempEditedJson(editableDestinationJson);
+                      setValidationError(null);
+                      setShowEditFieldsModal(true);
+                    }}
+                    icon={<Edit3 size={14} />}
+                    className="!py-1 !px-2 text-xs"
+                    disabled={readOnly}
+                  >
+                    Edit Fields
+                  </Button>
+                </div>
                 <div
                   className="border border-gray-200 rounded-md p-3 h-96 overflow-auto"
                   data-id="element-231"
                 >
-                  <div
-                    className="mb-2 text-sm text-gray-500"
-                    data-id="element-232"
-                  >
-                    Data Model
-                  </div>
                   {loadingDestinations ? (
                     <div className="text-sm text-gray-500 py-4">
                       Loading destination fields...
@@ -1617,6 +1652,299 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
     );
   };
 
+  const hasNestedObjects = (obj: any): boolean => {
+    if (!obj || typeof obj !== 'object' || Array.isArray(obj)) {
+      return false;
+    }
+
+    const keys = Object.keys(obj);
+    for (const key of keys) {
+      const value = obj[key];
+      if (value && typeof value === 'object' && !Array.isArray(value)) {
+        if (Object.keys(value).length > 0) {
+          return true;
+        }
+      }
+    }
+    return false;
+  };
+
+  const getMaxNestingDepth = (obj: any, currentDepth: number = 0): number => {
+    if (!obj || typeof obj !== 'object' || Array.isArray(obj)) {
+      return currentDepth;
+    }
+
+    const keys = Object.keys(obj);
+    if (keys.length === 0) {
+      return currentDepth;
+    }
+
+    let maxDepth = currentDepth;
+    keys.forEach(key => {
+      const value = obj[key];
+      if (value && typeof value === 'object' && !Array.isArray(value)) {
+        if (Object.keys(value).length > 0) {
+          const nestedDepth = getMaxNestingDepth(value, currentDepth + 1);
+          maxDepth = Math.max(maxDepth, nestedDepth);
+        } else {
+          maxDepth = Math.max(maxDepth, currentDepth + 1);
+        }
+      }
+    });
+
+    return maxDepth;
+  };
+
+  const validateDestinationJson = (json: any): { valid: boolean; error?: string } => {
+    if (!json || typeof json !== 'object') {
+      return { valid: false, error: 'Invalid JSON structure' };
+    }
+
+    const rootKeys = Object.keys(json);
+
+    if (!rootKeys.includes('transactionDetails')) {
+      return { 
+        valid: false, 
+        error: 'Required field "transactionDetails" must exist in the Data Model section and cannot be deleted.' 
+      };
+    }
+
+    if (!rootKeys.includes('redis')) {
+      return { 
+        valid: false, 
+        error: 'Required field "redis" must exist in the Data Cache section and cannot be deleted.' 
+      };
+    }
+
+    const redisCount = rootKeys.filter(key => key.toLowerCase() === 'redis').length;
+    if (redisCount > 1) {
+      return { 
+        valid: false, 
+        error: 'Data Cache section can only have one parent object "redis". Multiple redis objects are not allowed.' 
+      };
+    }
+
+    if (json.transactionDetails && hasNestedObjects(json.transactionDetails)) {
+      return {
+        valid: false,
+        error: 'Object "transactionDetails" cannot contain nested objects. Only primitive values (string, number, boolean) are allowed.'
+      };
+    }
+
+    if (json.redis) {
+      const redisDepth = getMaxNestingDepth(json.redis, 0);
+      if (redisDepth > 1) {
+        return {
+          valid: false,
+          error: `Object "redis" has ${redisDepth} levels of nesting. Maximum allowed nesting depth for redis is 1 level (e.g., redis → instdAmt → amount).`
+        };
+      }
+    }
+    const MAX_NESTING_DEPTH = 1;
+    for (const key of rootKeys) {
+
+      if (key === 'transactionDetails' || key === 'redis') {
+        continue;
+      }
+      
+      const depth = getMaxNestingDepth(json[key], 0);
+      if (depth > MAX_NESTING_DEPTH) {
+        return {
+          valid: false,
+          error: `Object "${key}" has ${depth} levels of nesting. Maximum allowed nesting depth is ${MAX_NESTING_DEPTH} level. Please reduce the nesting depth.`
+        };
+      }
+    }
+
+    return { valid: true };
+  };
+
+  const renderEditFieldsModal = () => {
+    if (!showEditFieldsModal) return null;
+
+    const handleJsonChange = (e: any) => {
+      const updatedJson = e.updated_src;
+      setTempEditedJson(updatedJson);
+
+      const validation = validateDestinationJson(updatedJson);
+      if (!validation.valid) {
+        setValidationError(validation.error || 'Invalid JSON structure');
+      } else {
+        setValidationError(null);
+      }
+    };
+    
+    const handleSaveChanges = async () => {
+      const validation = validateDestinationJson(tempEditedJson);
+      
+      if (!validation.valid) {
+        setValidationError(validation.error || 'Invalid JSON structure');
+        return;
+      }
+
+      setValidationError(null);
+      setSaveError(null);
+
+      if (!tempEditedJson) {
+        setValidationError('Cannot save: JSON data is missing');
+        return;
+      }
+
+      const reorderedJson: any = {};
+      const keys = Object.keys(tempEditedJson);
+
+      keys.forEach(key => {
+        if (key !== 'redis') {
+          reorderedJson[key] = tempEditedJson[key];
+        }
+      });
+
+      if (tempEditedJson.redis) {
+        reorderedJson.redis = tempEditedJson.redis;
+      }
+      
+      try {
+        setSavingDestinationJson(true);
+        const response = await dataModelApi.updateDestinationFieldsJson(reorderedJson);
+        
+        if (response.success) {
+          setEditableDestinationJson(reorderedJson);
+          setShowEditFieldsModal(false);
+          setTempEditedJson(null);
+        } else {
+          throw new Error(response.message || 'Failed to save destination fields');
+        }
+      } catch (error) {
+        console.error('Error saving destination fields:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Failed to save changes. Please try again.';
+        setSaveError(errorMessage);
+        setValidationError(errorMessage);
+      } finally {
+        setSavingDestinationJson(false);
+      }
+    };
+    
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <Backdrop
+          sx={(theme) => ({
+            zIndex: theme.zIndex.drawer + 1,
+            overflow: 'hidden',
+          })}
+          open={true}
+        >
+          <div className="bg-white rounded-lg w-full max-w-4xl p-6 max-h-[90vh] overflow-auto relative z-10">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-lg font-medium text-gray-900 flex items-center gap-2">
+                <Edit3 size={20} />
+                Edit Destination Fields
+              </h3>
+              <button
+                onClick={() => {
+                  setShowEditFieldsModal(false);
+                  setTempEditedJson(null);
+                  setValidationError(null);
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <XIcon size={20} />
+              </button>
+            </div>
+
+            <div className="mb-4 text-sm text-gray-600">
+              <p className="mb-2">
+                Edit the destination fields JSON structure. Add, remove, or modify fields as needed.
+              </p>
+              <div className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded p-2 mt-2">
+                <strong>Important Structure Rules:</strong>
+                <ul className="list-disc ml-4 mt-1 space-y-1">
+                  <li>
+                    <strong>transactionDetails</strong> - Required root object in Data Model section. 
+                    <span className="text-red-600 font-semibold"> Can only contain primitive values</span> (string, number, boolean). 
+                    No nested objects allowed.
+                    <br />
+                    <span className="text-gray-500 italic">Example: ✓ Amt: 0, Ccy: "" | ✗ nested: {"{'field: 1'}"}</span>
+                  </li>
+                  <li>
+                    <strong>redis</strong> - Required root object in Data Cache section (must be the only object in Data Cache). 
+                    <span className="text-red-600 font-semibold"> Maximum 1 level of nesting</span> allowed.
+                    <br />
+                    <span className="text-gray-500 italic">Example: ✓ redis → instdAmt → amount | ✗ redis → instdAmt → info → amount</span>
+                  </li>
+                  <li>
+                    <strong>Other root objects</strong> - Custom objects in Data Model section. 
+                    <span className="text-red-600 font-semibold"> Maximum 1 level of nesting</span> allowed.
+                    <br />
+                    <span className="text-gray-500 italic">Example: ✓ myObj → nested → field | ✗ myObj → nested → deeper → field</span>
+                  </li>
+                  <li><strong>Data Model</strong> - Can have unlimited root objects (transactionDetails + any custom objects)</li>
+                  <li><strong>Data Cache</strong> - Can only contain the "redis" object (no other root objects allowed)</li>
+                </ul>
+              </div>
+            </div>
+
+            {/* JSON Editor */}
+            <div className="border border-gray-200 rounded-md p-4 bg-gray-50 mb-4" style={{ maxHeight: '500px', overflow: 'auto' }}>
+              {tempEditedJson && (
+                <ReactJson
+                  src={tempEditedJson}
+                  onEdit={handleJsonChange}
+                  onAdd={handleJsonChange}
+                  onDelete={handleJsonChange}
+                  theme="rjv-default"
+                  name={false}
+                  displayDataTypes={true}
+                  displayObjectSize={true}
+                  enableClipboard={true}
+                  collapsed={1}
+                  style={{ fontSize: '13px', backgroundColor: 'transparent' }}
+                />
+              )}
+            </div>
+
+            {/* Validation Error Display */}
+            {validationError && (
+              <div className="bg-red-50 border border-red-200 rounded-md p-3 mb-4 relative">
+                <button
+                  onClick={() => setValidationError(null)}
+                  className="cursor-pointer absolute top-1/2 -translate-y-1/2 right-2 text-red-600 hover:text-red-800"
+                >
+                  <XIcon size={16} />
+                </button>
+                <div className="text-red-800 text-sm pr-6">{validationError}</div>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex justify-end space-x-3">
+              <Button
+                variant="secondary"
+                className="!pb-[6px] !pt-[4px]"
+                onClick={() => {
+                  setShowEditFieldsModal(false);
+                  setTempEditedJson(null);
+                  setValidationError(null);
+                  setSaveError(null);
+                }}
+                disabled={savingDestinationJson}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                className="!pb-[6px] !pt-[4px]"
+                onClick={handleSaveChanges}
+                disabled={!!validationError || savingDestinationJson}
+              >
+                {savingDestinationJson ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </div>
+          </div>
+        </Backdrop>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6" data-id="element-271">
       {/* Error Display */}
@@ -1635,30 +1963,12 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
         </Button>
       </div>
       {/* Current Mappings Display */}
-      {(() => {
-        console.log(
-          '🎨 MappingUtility RENDER - currentMappings:',
-          currentMappings,
-        );
-        console.log(
-          '🎨 MappingUtility RENDER - currentMappings.length:',
-          currentMappings.length,
-        );
-        return null;
-      })()}
       {currentMappings.length > 0 && (
         <div className="bg-green-50 border border-green-200 rounded-md p-4">
           <h4 className="text-sm font-medium text-green-800 mb-2">
             Current Mappings ({currentMappings.length})
           </h4>
           <div className="space-y-2">
-            {(() => {
-              console.log(
-                '🎨 RENDERING Current Mappings section, currentMappings:',
-                currentMappings,
-              );
-              return null;
-            })()}
             {currentMappings.map((mapping, index) => (
               <div
                 key={index}
@@ -1746,9 +2056,8 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
           )}
         </div>
       ) : null}
-
-      {/* Add Mapping Modal */}
-      {renderAddMappingModal()}
+      {renderAddMappingModal()}  
+      {renderEditFieldsModal()}
     </div>
   );
 };

@@ -11,4 +11,8 @@ export type {
   CreateDataModelExtensionRequest,
   UpdateDataModelExtensionRequest,
   DataModelApiResponse,
+  DestinationNestedObject,
+  DestinationFieldValue,
+  DestinationCollection,
+  DestinationFieldsData,
 } from './services/dataModelApi';
