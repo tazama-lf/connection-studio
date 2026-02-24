@@ -127,9 +127,9 @@ export class AdminServiceClient {
 
       const message =
         data &&
-          typeof data === 'object' &&
-          'message' in data &&
-          typeof data.message === 'string'
+        typeof data === 'object' &&
+        'message' in data &&
+        typeof data.message === 'string'
           ? data.message
           : 'Admin service returned an error response';
 
@@ -219,9 +219,9 @@ export class AdminServiceClient {
 
         const message =
           data &&
-            typeof data === 'object' &&
-            'message' in data &&
-            typeof data.message === 'string'
+          typeof data === 'object' &&
+          'message' in data &&
+          typeof data.message === 'string'
             ? data.message
             : typeof data === 'string'
               ? data
@@ -991,7 +991,11 @@ export class AdminServiceClient {
   async getDataModelJson(
     tenantId: string,
     token: string,
-  ): Promise<{ success: boolean; data: Record<string, unknown> | null; message?: string }> {
+  ): Promise<{
+    success: boolean;
+    data: Record<string, unknown> | null;
+    message?: string;
+  }> {
     return await this.executeHttpRequest(
       'GET',
       `${DATA_MODEL_JSON_URL}/${tenantId}`,
@@ -1003,7 +1007,11 @@ export class AdminServiceClient {
     tenantId: string,
     dataModelJson: Record<string, unknown>,
     token: string,
-  ): Promise<{ success: boolean; message: string; data: { tenant_id: string; updated_at: string } }> {
+  ): Promise<{
+    success: boolean;
+    message: string;
+    data: { tenant_id: string; updated_at: string };
+  }> {
     return await this.executeHttpRequest(
       'PUT',
       `${DATA_MODEL_JSON_URL}/${tenantId}`,

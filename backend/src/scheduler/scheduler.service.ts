@@ -59,7 +59,10 @@ export class SchedulerService {
   }
 
   async findOne(id: string, user: AuthenticatedUser): Promise<Schedule | null> {
-    const schedule = await this.adminServiceClient.findScheduleById(id, user.token.tokenString);
+    const schedule = await this.adminServiceClient.findScheduleById(
+      id,
+      user.token.tokenString,
+    );
 
     if (!schedule) {
       return null;
@@ -132,16 +135,13 @@ export class SchedulerService {
       }
 
       const userRole = user.actorRole.toLowerCase();
-      if (
-        !userRole ||
-        !['editor'].includes(userRole)
-      ) {
+      if (!userRole || !['editor'].includes(userRole)) {
         throw new ForbiddenException('Invalid user role');
       }
 
       // Tier 2: Check if role can act on current status
       const tier2Result = this.rbacService.checkTier2({
-        role: userRole as 'editor' ,
+        role: userRole as 'editor',
         endpointKey: 'Patch /update/:id',
         currentStatus: existingSchedule.status,
       });
@@ -152,7 +152,11 @@ export class SchedulerService {
         );
       }
 
-      return await this.adminServiceClient.updateSchedule(id, attr, user.token.tokenString);
+      return await this.adminServiceClient.updateSchedule(
+        id,
+        attr,
+        user.token.tokenString,
+      );
     } catch (err) {
       this.loggerService.error(`Error updating schedule: ${err.message}`);
       throw err;
@@ -250,7 +254,8 @@ export class SchedulerService {
 
       if (!tier3Result.allowed) {
         throw new ForbiddenException(
-          tier3Result.reason ?? 'Not authorized to perform this status transition',
+          tier3Result.reason ??
+            'Not authorized to perform this status transition',
         );
       }
 

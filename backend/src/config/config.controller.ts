@@ -227,12 +227,7 @@ export class ConfigController {
       throw new BadRequestException('Status is required as query parameter');
     }
 
-    return await this.configService.updateConfigStatus(
-      id,
-      status,
-      user,
-      token,
-    );
+    return await this.configService.updateConfigStatus(id, status, user, token);
   }
 
   @Patch(':id/publishing-status')

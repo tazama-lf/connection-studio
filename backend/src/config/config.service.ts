@@ -104,7 +104,11 @@ export class ConfigService {
       if (!config.status) {
         throw new BadRequestException('Config status is not set');
       }
-      const userRole = user.actorRole.toLowerCase() as 'editor' | 'approver' | 'publisher' | 'exporter';
+      const userRole = user.actorRole.toLowerCase() as
+        | 'editor'
+        | 'approver'
+        | 'publisher'
+        | 'exporter';
       const tier2Check = this.rbacService.checkTier2({
         role: userRole,
         endpointKey: 'Patch /update/status/:id',
@@ -123,7 +127,9 @@ export class ConfigService {
       });
 
       if (!tier3Check.allowed) {
-        throw new ForbiddenException(tier3Check.reason ?? 'Status transition not allowed');
+        throw new ForbiddenException(
+          tier3Check.reason ?? 'Status transition not allowed',
+        );
       }
 
       await this.configRepository.updateConfigStatus(id, status, token);
@@ -347,9 +353,9 @@ export class ConfigService {
     token: string,
   ): Promise<ConfigResponseDto> {
     const { action } = actionDto;
-    
+
     const config = await this.getConfigOrThrow(id, user.tenantId, token);
-    
+
     if (!config.status) {
       throw new BadRequestException(`Config ${id} has no status defined`);
     }
@@ -362,8 +368,12 @@ export class ConfigService {
       throw new ForbiddenException('Invalid user role');
     }
 
-    const typedRole = userRole as 'editor' | 'approver' | 'publisher' | 'exporter';
-    
+    const typedRole = userRole as
+      | 'editor'
+      | 'approver'
+      | 'publisher'
+      | 'exporter';
+
     const actionStatusMap: Record<string, string> = {
       submit: ConfigStatus.UNDER_REVIEW,
       approve: ConfigStatus.APPROVED,
@@ -385,7 +395,8 @@ export class ConfigService {
 
     if (!tier2Check.allowed) {
       throw new ForbiddenException(
-        tier2Check.reason ?? `Role "${userRole}" cannot act on config in status "${config.status}"`,
+        tier2Check.reason ??
+          `Role "${userRole}" cannot act on config in status "${config.status}"`,
       );
     }
 
@@ -399,7 +410,7 @@ export class ConfigService {
     if (!tier3Check.allowed) {
       throw new ForbiddenException(
         tier3Check.reason ??
-        `Role "${userRole}" cannot transition from "${config.status}" to "${targetStatus}"`,
+          `Role "${userRole}" cannot transition from "${config.status}" to "${targetStatus}"`,
       );
     }
 
@@ -853,7 +864,7 @@ export class ConfigService {
         throw new BadRequestException(`Failed to activate config: ${errMsg}`);
       }
       if (result.config) {
-        const {config} = result;
+        const { config } = result;
         await this.notificationService.sendWorkflowNotification(
           publishingStatus === 'active'
             ? EventType.PublisherActivate
@@ -904,14 +915,13 @@ export class ConfigService {
       );
 
       if (!config.status) {
-        throw new BadRequestException(`Config ${id} has no current status defined`);
+        throw new BadRequestException(
+          `Config ${id} has no current status defined`,
+        );
       }
 
       const userRole = user.actorRole.toLowerCase();
-      if (
-        !userRole ||
-        !['editor'].includes(userRole)
-      ) {
+      if (!userRole || !['editor'].includes(userRole)) {
         throw new ForbiddenException('Invalid user role');
       }
 
@@ -1119,7 +1129,11 @@ export class ConfigService {
     id: number,
     user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
-    const config = await this.getConfigOrThrow(id, user.tenantId, user.token.tokenString);
+    const config = await this.getConfigOrThrow(
+      id,
+      user.tenantId,
+      user.token.tokenString,
+    );
 
     if (!config.status) {
       return {
@@ -1143,7 +1157,7 @@ export class ConfigService {
       endpointKey: 'Get :id',
     });
 
-    if (!allowedStatuses || !allowedStatuses.includes(config.status)) {
+    if (!allowedStatuses?.includes(config.status)) {
       throw new ForbiddenException(
         `Role '${userRole}' cannot act on resources in status '${config.status}'`,
       );

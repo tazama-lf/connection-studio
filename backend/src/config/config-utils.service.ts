@@ -39,7 +39,6 @@ export class ConfigUtilsService {
     const isUniqueConstraint =
       errorMessage?.includes('unique constraint') ?? false;
 
-     
     if (isDuplicateKey || isUniqueConstraint) {
       userMessage = `A configuration with Message Family '${msgFam}', Transaction Type '${transactionType}', and Version '${version}' already exists. Please use different values.`;
     } else if (errorMessage?.includes('validation')) {

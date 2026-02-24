@@ -46,9 +46,7 @@ export class TazamaDataModelController {
 
   constructor(
     private readonly tazamaDataModelService: TazamaDataModelService,
-  ) { }
-
-
+  ) {}
 
   @Get('destination-options')
   @RequireAnyClaims(

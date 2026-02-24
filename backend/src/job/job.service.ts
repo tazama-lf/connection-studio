@@ -414,10 +414,7 @@ export class JobService {
       const existingJob = await this.findOne(id, type, user);
 
       const userRole = user.actorRole.toLowerCase();
-      if (
-        !userRole ||
-        !['editor'].includes(userRole)
-      ) {
+      if (!userRole || !['editor'].includes(userRole)) {
         throw new ForbiddenException('Invalid user role');
       }
 
@@ -442,7 +439,8 @@ export class JobService {
 
       if (!tier3Result.allowed) {
         throw new ForbiddenException(
-          tier3Result.reason ?? 'Not authorized to perform this status transition',
+          tier3Result.reason ??
+            'Not authorized to perform this status transition',
         );
       }
 

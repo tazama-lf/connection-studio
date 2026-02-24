@@ -10,7 +10,7 @@ import {
 
 @Injectable()
 export class TazamaDataModelRepository {
-  constructor(private readonly adminServiceClient: AdminServiceClient) { }
+  constructor(private readonly adminServiceClient: AdminServiceClient) {}
 
   async getAllCollections(
     tenantId: string,

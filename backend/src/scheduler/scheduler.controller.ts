@@ -95,12 +95,7 @@ export class SchedulerController {
     @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
     @User() user: AuthenticatedUser,
   ): Promise<Schedule[]> {
-    return await this.schedulerService.findByStatus(
-      status,
-      page,
-      limit,
-      user,
-    );
+    return await this.schedulerService.findByStatus(status, page, limit, user);
   }
 
   @Patch('/update/status/:id')

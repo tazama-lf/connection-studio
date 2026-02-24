@@ -49,10 +49,7 @@ interface FieldSelectOption {
 export class TazamaDataModelService {
   private readonly logger = new Logger(TazamaDataModelService.name);
 
-  constructor(private readonly repository: TazamaDataModelRepository) { }
-
-
-
+  constructor(private readonly repository: TazamaDataModelRepository) {}
 
   async getDestinationOptions(
     tenantId = 'default',
@@ -207,7 +204,9 @@ export class TazamaDataModelService {
     try {
       this.logger.log(`Getting data model JSON for tenant: ${tenantId}`);
       const result = await this.repository.getDataModelJson(tenantId, token);
-      this.logger.log(`Successfully retrieved data model JSON for tenant: ${tenantId}`);
+      this.logger.log(
+        `Successfully retrieved data model JSON for tenant: ${tenantId}`,
+      );
       return result;
     } catch (error: unknown) {
       const errorWithMessage = error as ErrorWithMessage;
@@ -231,7 +230,9 @@ export class TazamaDataModelService {
         dataModelJson,
         token,
       );
-      this.logger.log(`Successfully saved data model JSON for tenant: ${tenantId}`);
+      this.logger.log(
+        `Successfully saved data model JSON for tenant: ${tenantId}`,
+      );
       return result;
     } catch (error: unknown) {
       const errorWithMessage = error as ErrorWithMessage;
