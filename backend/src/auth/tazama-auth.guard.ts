@@ -55,9 +55,15 @@ export class TazamaAuthGuard implements CanActivate {
 
     const decoded = this.extractTokenPayload(token);
 
-    let innerDecoded: any = decoded;
+    let innerDecoded: Record<string, unknown> = decoded as Record<
+      string,
+      unknown
+    >;
     try {
-      const innerToken = (decoded as any).tokenString ?? token;
+      const innerToken =
+        ((decoded as Record<string, unknown>).tokenString as
+          | string
+          | undefined) ?? token;
       const innerParsed = jwt.decode(innerToken);
       if (innerParsed && typeof innerParsed === 'object') {
         innerDecoded = innerParsed;
@@ -66,13 +72,16 @@ export class TazamaAuthGuard implements CanActivate {
       this.logger.debug('Failed to decode inner token, using outer token');
     }
 
-    const actorEmail = innerDecoded.preferred_username;
+    const actorEmail = innerDecoded.preferred_username as string | undefined;
 
-    const actorName = innerDecoded.preferred_username;
+    const actorName = innerDecoded.preferred_username as string | undefined;
 
-    const realmRoles = innerDecoded.realm_access?.roles;
+    const realmAccess = innerDecoded.realm_access as
+      | { roles?: string[] }
+      | undefined;
+    const realmRoles = realmAccess?.roles;
     const actorRole =
-      realmRoles.find((role: string) =>
+      realmRoles?.find((role: string) =>
         ['editor', 'approver', 'publisher', 'exporter'].includes(
           role.toLowerCase(),
         ),
@@ -80,7 +89,9 @@ export class TazamaAuthGuard implements CanActivate {
 
     const sourceIP =
       request.ip ??
-      (request.headers['x-forwarded-for'] as string | undefined)?.split(',')[0].trim() ??
+      (request.headers['x-forwarded-for'] as string | undefined)
+        ?.split(',')[0]
+        .trim() ??
       request.socket.remoteAddress;
 
     const allowedStatuses = innerDecoded.status

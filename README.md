@@ -6,7 +6,7 @@ Tazama Connection Studio (TCS) is a design-time configuration management platfor
 
 **What TCS is:**
 
-- A design-time configuration tool for creating FRMS monitoring rules
+- A design-time configuration tool for creating FRMS monitoring rule
 - A visual schema and mapping editor with validation
 - A lifecycle management system for configuration artifacts
 - A deployment orchestrator that exports packages to DEMS (Data Execution Management Service)

@@ -19,9 +19,12 @@ import { CreateScheduleJobDto } from './dto/create-schedule.dto';
 import { UpdateScheduleJobDto } from './dto/update-schedule-dto';
 import { EventType } from '../enums/events.enum';
 import { NotificationService } from '../notification/notification.service';
+import { RbacService } from '../utils/rbac/rbacHelper';
 
 @Injectable()
 export class SchedulerService {
+  private readonly rbacService = new RbacService();
+
   constructor(
     private readonly loggerService: LoggerService,
     private readonly sftpService: SftpService,
@@ -55,8 +58,36 @@ export class SchedulerService {
     }
   }
 
-  async findOne(id: string, token: string): Promise<Schedule | null> {
-    return await this.adminServiceClient.findScheduleById(id, token);
+  async findOne(id: string, user: AuthenticatedUser): Promise<Schedule | null> {
+    const schedule = await this.adminServiceClient.findScheduleById(
+      id,
+      user.token.tokenString,
+    );
+
+    if (!schedule) {
+      return null;
+    }
+
+    const userRole = user.actorRole.toLowerCase();
+    if (
+      !userRole ||
+      !['editor', 'approver', 'publisher', 'exporter'].includes(userRole)
+    ) {
+      throw new ForbiddenException('Invalid user role');
+    }
+
+    const { allowedStatuses } = this.rbacService.getTier2({
+      role: userRole as 'editor' | 'approver' | 'publisher' | 'exporter',
+      endpointKey: 'Get :id',
+    });
+
+    if (!allowedStatuses?.includes(schedule.status)) {
+      throw new ForbiddenException(
+        `Role '${userRole}' cannot act on resources in status '${schedule.status}'`,
+      );
+    }
+
+    return schedule;
   }
 
   async findAll(
@@ -65,32 +96,67 @@ export class SchedulerService {
     user: AuthenticatedUser,
     filters?: Record<string, unknown>,
   ): Promise<PaginatedResult<Schedule>> {
+    const updatedFilters = { ...filters };
+
+    if (!updatedFilters.status) {
+      const userRole = user.actorRole.toLowerCase();
+      if (
+        userRole &&
+        ['editor', 'approver', 'publisher', 'exporter'].includes(userRole)
+      ) {
+        const { allowedStatuses } = this.rbacService.getTier2({
+          role: userRole as 'editor' | 'approver' | 'publisher' | 'exporter',
+          endpointKey: 'Post /all',
+        });
+
+        if (allowedStatuses?.length) {
+          updatedFilters.status = allowedStatuses.join(',');
+        }
+      }
+    }
     return await this.adminServiceClient.getAllSchedule(
       offset,
       limit,
       user,
-      filters,
+      updatedFilters,
     );
   }
 
   async update(
     id: string,
     attr: UpdateScheduleJobDto,
-    token: string,
+    user: AuthenticatedUser,
   ): Promise<ISuccess> {
     try {
-      const existingSchedule = await this.findOne(id, token);
+      const existingSchedule = await this.findOne(id, user);
 
-      if (
-        existingSchedule?.status !== JobStatus.INPROGRESS &&
-        existingSchedule?.status !== JobStatus.REJECTED
-      ) {
+      if (!existingSchedule) {
+        throw new BadRequestException('Schedule not found');
+      }
+
+      const userRole = user.actorRole.toLowerCase();
+      if (!userRole || !['editor'].includes(userRole)) {
+        throw new ForbiddenException('Invalid user role');
+      }
+
+      // Tier 2: Check if role can act on current status
+      const tier2Result = this.rbacService.checkTier2({
+        role: userRole as 'editor',
+        endpointKey: 'Patch /update/:id',
+        currentStatus: existingSchedule.status,
+      });
+
+      if (!tier2Result.allowed) {
         throw new ForbiddenException(
-          'Only In-Progress Cron jobs can be edited',
+          tier2Result.reason ?? 'Not authorized to update this schedule',
         );
       }
 
-      return await this.adminServiceClient.updateSchedule(id, attr, token);
+      return await this.adminServiceClient.updateSchedule(
+        id,
+        attr,
+        user.token.tokenString,
+      );
     } catch (err) {
       this.loggerService.error(`Error updating schedule: ${err.message}`);
       throw err;
@@ -101,8 +167,7 @@ export class SchedulerService {
     status: JobStatus,
     page: number,
     limit: number,
-    tenantId: string,
-    token: string,
+    user: AuthenticatedUser,
   ): Promise<Schedule[]> {
     try {
       if (page < 1 || limit < 1) {
@@ -111,12 +176,31 @@ export class SchedulerService {
         );
       }
 
+      const userRole = user.actorRole.toLowerCase();
+      if (
+        !userRole ||
+        !['editor', 'approver', 'publisher', 'exporter'].includes(userRole)
+      ) {
+        throw new ForbiddenException('Invalid user role');
+      }
+
+      const { allowedStatuses } = this.rbacService.getTier2({
+        role: userRole as 'editor' | 'approver' | 'publisher' | 'exporter',
+        endpointKey: 'Get /get/status',
+      });
+
+      if (!allowedStatuses?.includes(status)) {
+        throw new ForbiddenException(
+          `Role '${userRole}' cannot act on resources in status '${status}'`,
+        );
+      }
+
       return await this.adminServiceClient.getScheduleByStatus(
         status,
         page,
         limit,
-        tenantId,
-        token,
+        user.tenantId,
+        user.token.tokenString,
       );
     } catch (err) {
       this.loggerService.error(
@@ -134,6 +218,47 @@ export class SchedulerService {
     reason?: string,
   ): Promise<ISuccess> {
     try {
+      // Get existing schedule for RBAC validation
+      const existingSchedule = await this.findOne(id, user);
+
+      if (!existingSchedule) {
+        throw new BadRequestException('Schedule not found');
+      }
+
+      const userRole = user.actorRole.toLowerCase();
+      if (
+        !userRole ||
+        !['editor', 'approver', 'publisher', 'exporter'].includes(userRole)
+      ) {
+        throw new ForbiddenException('Invalid user role');
+      }
+
+      const tier2Result = this.rbacService.checkTier2({
+        role: userRole as 'editor' | 'approver' | 'publisher' | 'exporter',
+        endpointKey: 'Patch /update/status/:id',
+        currentStatus: existingSchedule.status,
+      });
+
+      if (!tier2Result.allowed) {
+        throw new ForbiddenException(
+          tier2Result.reason ?? 'Not authorized to update this schedule status',
+        );
+      }
+
+      const tier3Result = this.rbacService.checkTier3({
+        role: userRole as 'editor' | 'approver' | 'publisher' | 'exporter',
+        endpointKey: 'Patch /update/status/:id',
+        currentStatus: existingSchedule.status,
+        targetStatus: status,
+      });
+
+      if (!tier3Result.allowed) {
+        throw new ForbiddenException(
+          tier3Result.reason ??
+            'Not authorized to perform this status transition',
+        );
+      }
+
       let result: ISuccess | null = null;
       if (status !== JobStatus.DEPLOYED) {
         result = await this.adminServiceClient.updateScheduleByStatus(
@@ -154,7 +279,7 @@ export class SchedulerService {
       let existing: Schedule | null = null;
 
       if (requiresExistingJob) {
-        existing = await this.findOne(id, user.token.tokenString);
+        existing = existingSchedule;
       }
 
       const fileName = `cron_${tenantId}_${id}`;

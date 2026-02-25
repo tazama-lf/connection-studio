@@ -110,11 +110,7 @@ export class JobController {
     @Query('type') type: ConfigType,
     @User() user: AuthenticatedUser,
   ): Promise<PullJobResponseDto | PushJob> {
-    const record = await this.jobService.findOne(
-      id,
-      type,
-      user.token.tokenString,
-    );
+    const record = await this.jobService.findOne(id, type, user);
     if (type === ConfigType.PULL) {
       return plainToInstance(PullJobResponseDto, record, {
         excludeExtraneousValues: true,
@@ -137,13 +133,7 @@ export class JobController {
     @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
     @User() user: AuthenticatedUser,
   ): Promise<JobSummary[]> {
-    return await this.jobService.findByStatus(
-      status,
-      page,
-      limit,
-      user.tenantId,
-      user.token.tokenString,
-    );
+    return await this.jobService.findByStatus(status, page, limit, user);
   }
 
   @Patch('/update/status/:id')

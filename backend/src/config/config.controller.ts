@@ -40,6 +40,7 @@ import {
   TazamaClaims,
   RequireAnyClaims,
 } from '../auth/auth.decorator';
+import type { CreateConfigDto as TcsLibCreateConfigDto } from '@tazama-lf/tcs-lib';
 
 @Controller('config')
 @UseGuards(TazamaAuthGuard)
@@ -51,8 +52,8 @@ export class ConfigController {
     TazamaClaims.APPROVER,
     TazamaClaims.PUBLISHER,
   )
-  getRulesStatus(@User() user: AuthenticatedUser): string[] {
-    return this.configService.getRulesStatusbyRole(user);
+  getConfigStatus(@User() user: AuthenticatedUser): string[] {
+    return this.configService.getConfigStatus(user);
   }
   @Post('/:id/mapping')
   @RequireClaims(TazamaClaims.EDITOR)
@@ -61,11 +62,11 @@ export class ConfigController {
     @Body() dto: AddMappingDto,
     @User() user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
-    return await this.configService.addMappingViaService(
+    return (await this.configService.addMappingViaService(
       id,
-      dto,
+      dto as unknown as Record<string, unknown>,
       user.token.tokenString,
-    );
+    )) as ConfigResponseDto;
   }
   @Delete(':id/mapping/:index')
   @RequireClaims(TazamaClaims.EDITOR)
@@ -74,11 +75,11 @@ export class ConfigController {
     @Param('index', ParseIntPipe) index: number,
     @User() user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
-    return await this.configService.removeMappingViaService(
+    return (await this.configService.removeMappingViaService(
       id,
       index,
       user.token.tokenString,
-    );
+    )) as ConfigResponseDto;
   }
   @Post()
   @RequireClaims(TazamaClaims.EDITOR)
@@ -87,7 +88,10 @@ export class ConfigController {
     @Body() dto: CreateConfigDto,
     @User() user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
-    const result = await this.configService.createConfig(dto, user);
+    const result = await this.configService.createConfig(
+      dto as unknown as TcsLibCreateConfigDto,
+      user,
+    );
 
     if (!result.success) {
       throw new BadRequestException(
@@ -109,11 +113,7 @@ export class ConfigController {
     @Param('id', ParseIntPipe) id: number,
     @User() user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
-    return await this.configService.getConfigById(
-      id,
-      user.tenantId,
-      user.token.tokenString,
-    );
+    return await this.configService.getConfigById(id, user);
   }
 
   @Put(':id')
@@ -123,11 +123,11 @@ export class ConfigController {
     @Body() dto: UpdateConfigDto,
     @User() user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
-    return await this.configService.updateConfigViaWrite(
+    return (await this.configService.updateConfigViaWrite(
       id,
-      dto,
-      user.token.tokenString,
-    );
+      dto as unknown as Record<string, unknown>,
+      user,
+    )) as ConfigResponseDto;
   }
 
   @Post(':id/function')
@@ -137,11 +137,11 @@ export class ConfigController {
     @Body() dto: AddFunctionDto,
     @User() user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
-    return await this.configService.addFunctionViaService(
+    return (await this.configService.addFunctionViaService(
       id,
-      dto,
+      dto as unknown as Record<string, unknown>,
       user.token.tokenString,
-    );
+    )) as ConfigResponseDto;
   }
 
   @Delete(':id/function/:index')
@@ -151,11 +151,11 @@ export class ConfigController {
     @Param('index', ParseIntPipe) index: number,
     @User() user: AuthenticatedUser,
   ): Promise<ConfigResponseDto> {
-    return await this.configService.removeFunctionViaService(
+    return (await this.configService.removeFunctionViaService(
       id,
       index,
       user.token.tokenString,
-    );
+    )) as ConfigResponseDto;
   }
   @Post(':id/workflow')
   @RequireAnyClaims(
@@ -226,18 +226,12 @@ export class ConfigController {
     if (!status) {
       throw new BadRequestException('Status is required as query parameter');
     }
-    return await this.configService.updateConfigStatus(
-      id,
-      status,
-      user.tenantId,
-      user.userId,
-      token,
-    );
+
+    return await this.configService.updateConfigStatus(id, status, user, token);
   }
 
   @Patch(':id/publishing-status')
-  @RequireAnyClaims(TazamaClaims.PUBLISHER,TazamaClaims.APPROVER)
-  
+  @RequireAnyClaims(TazamaClaims.PUBLISHER, TazamaClaims.APPROVER)
   async updatePublishingStatus(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: { publishing_status: 'active' | 'inactive' },
@@ -266,27 +260,13 @@ export class ConfigController {
     @Param('offset') offset: string,
     @Param('limit') limit: string,
     @User() user: AuthenticatedUser,
-    @Body() filters?: Record<string, any>,
+    @Body() filters?: Record<string, unknown>,
   ): Promise<Config[]> {
-    const updatedFilters = filters ?? {};
-
-    if (
-      !updatedFilters.status ||
-      updatedFilters.status === '' ||
-      (Array.isArray(updatedFilters.status) &&
-        updatedFilters.status.length === 0)
-    ) {
-      const allowedStatuses =
-        this.configService.getRulesStatusbyRole(user);
-      if (allowedStatuses.length > 0) {
-        updatedFilters.status = allowedStatuses.join(',');
-      }
-    }
     return await this.configService.getAllConfigs(
       parseInt(offset, 10),
       parseInt(limit, 10),
-      updatedFilters,
-      user.token.tokenString,
+      filters ?? {},
+      user,
     );
   }
 }

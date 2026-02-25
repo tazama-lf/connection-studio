@@ -1,63 +1,31 @@
 import { Injectable } from '@nestjs/common';
 import { AdminServiceClient } from '../services/admin-service-client.service';
-import { TazamaCollectionSchema } from './tazama-data-model.interfaces';
-import {
-  CreateDestinationTypeDto,
-  CreateFieldDto,
-  DestinationTypeResponse,
-  FieldResponse,
-} from './tazama-data-model.dto';
+
 
 @Injectable()
 export class TazamaDataModelRepository {
-  constructor(private readonly adminServiceClient: AdminServiceClient) {}
+  constructor(private readonly adminServiceClient: AdminServiceClient) { }
 
-  async getAllCollections(
+
+  async getDataModelJson(
     tenantId: string,
     token: string,
-  ): Promise<TazamaCollectionSchema[]> {
-    const response = await this.adminServiceClient.getAllCollections(
+  ): Promise<Record<string, unknown> | null> {
+    const response = await this.adminServiceClient.getDataModelJson(
       tenantId,
       token,
     );
-    return response.data ?? [];
+    return response.data ?? null;
   }
 
-  async createDestinationType(
-    dto: CreateDestinationTypeDto,
+  async putDataModelJson(
+    tenantId: string,
+    dataModelJson: Record<string, unknown>,
     token: string,
-  ): Promise<DestinationTypeResponse> {
-    const response = await this.adminServiceClient.createDestinationType(
-      dto,
-      token,
-    );
-    return response.data;
-  }
-
-  async destinationTypeExists(
-    destinationTypeId: number,
-    token: string,
-  ): Promise<boolean> {
-    const response = await this.adminServiceClient.destinationTypeExists(
-      destinationTypeId,
-      token,
-    );
-    return response.exists ?? false;
-  }
-
-  async addFieldToDestinationType(
-    destinationTypeId: number,
-    dto: CreateFieldDto,
-    token: string,
-    serialNo?: number,
-  ): Promise<FieldResponse> {
-    const fieldDto = {
-      ...dto,
-      serial_no: serialNo,
-    };
-    const response = await this.adminServiceClient.addFieldToDestinationType(
-      destinationTypeId,
-      fieldDto,
+  ): Promise<{ tenant_id: string; updated_at: string }> {
+    const response = await this.adminServiceClient.putDataModelJson(
+      tenantId,
+      dataModelJson,
       token,
     );
     return response.data;
