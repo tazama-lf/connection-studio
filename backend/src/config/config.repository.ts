@@ -14,10 +14,10 @@ export class ConfigRepository {
     token: string,
   ): Promise<number> {
     const result = await this.adminServiceClient.writeConfig(
-      configData as any,
+      configData as Record<string, unknown>,
       token,
     );
-    if (!result?.id) {
+    if (!result.id) {
       throw new Error('Failed to create config: no ID returned');
     }
     return result.id;
@@ -73,7 +73,7 @@ export class ConfigRepository {
     id: number,
     publishingStatus: 'active' | 'inactive',
     token: string,
-  ): Promise<any> {
+  ): Promise<unknown> {
     return await this.adminServiceClient.updatePublishingStatus(
       id,
       publishingStatus,
@@ -81,9 +81,12 @@ export class ConfigRepository {
     );
   }
 
-  async createDeployedConfig(configData: any, token: string): Promise<number> {
+  async createDeployedConfig(
+    configData: Record<string, unknown>,
+    token: string,
+  ): Promise<number> {
     const result = await this.adminServiceClient.writeConfig(configData, token);
-    if (!result?.id) {
+    if (!result.id) {
       throw new Error('Failed to create deployed config: no ID returned');
     }
     return result.id;
@@ -115,7 +118,7 @@ export class ConfigRepository {
   async getAllConfigsWithFilters(
     offset: number,
     limit: number,
-    filters: Record<string, any>,
+    filters: Record<string, unknown>,
     token: string,
   ): Promise<Config[]> {
     return await this.adminServiceClient.getAllConfigsWithFilters(
@@ -126,31 +129,43 @@ export class ConfigRepository {
     );
   }
 
-  async addMapping(id: number, mappingData: any, token: string): Promise<any> {
+  async addMapping(
+    id: number,
+    mappingData: Record<string, unknown>,
+    token: string,
+  ): Promise<unknown> {
     return await this.adminServiceClient.addMapping(id, mappingData, token);
   }
 
-  async removeMapping(id: number, index: number, token: string): Promise<any> {
+  async removeMapping(
+    id: number,
+    index: number,
+    token: string,
+  ): Promise<unknown> {
     return await this.adminServiceClient.removeMapping(id, index, token);
   }
 
   async addFunction(
     id: number,
-    functionData: any,
+    functionData: Record<string, unknown>,
     token: string,
-  ): Promise<any> {
+  ): Promise<unknown> {
     return await this.adminServiceClient.addFunction(id, functionData, token);
   }
 
-  async removeFunction(id: number, index: number, token: string): Promise<any> {
+  async removeFunction(
+    id: number,
+    index: number,
+    token: string,
+  ): Promise<unknown> {
     return await this.adminServiceClient.removeFunction(id, index, token);
   }
 
   async updateConfigViaWrite(
     id: number,
-    updateData: any,
+    updateData: Record<string, unknown>,
     token: string,
-  ): Promise<any> {
+  ): Promise<unknown> {
     return await this.adminServiceClient.writeConfigUpdate(
       id,
       updateData,

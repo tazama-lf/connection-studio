@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { BadRequestException } from '@nestjs/common';
 import { TazamaDataModelService } from '../../src/tazama-data-model/tazama-data-model.service';
 import { TazamaDataModelRepository } from '../../src/tazama-data-model/tazama-data-model.repository';
 
@@ -13,17 +14,8 @@ describe('TazamaDataModelService', () => {
         {
           provide: TazamaDataModelRepository,
           useValue: {
-            getAllCollections: jest.fn().mockResolvedValue([]),
-            createDestinationType: jest.fn().mockResolvedValue({}),
-            addFieldToDestinationType: jest.fn().mockResolvedValue({}),
-            destinationTypeExists: jest.fn().mockResolvedValue(true),
-            getDestinationTypes: jest.fn().mockResolvedValue([]),
-            updateDestinationType: jest.fn().mockResolvedValue({}),
-            deleteDestinationType: jest.fn().mockResolvedValue({}),
-            getFieldProperties: jest.fn().mockResolvedValue([]),
-            createField: jest.fn().mockResolvedValue({}),
-            updateField: jest.fn().mockResolvedValue({}),
-            deleteField: jest.fn().mockResolvedValue({}),
+            getDataModelJson: jest.fn(),
+            putDataModelJson: jest.fn(),
           },
         },
       ],
@@ -47,418 +39,90 @@ describe('TazamaDataModelService', () => {
     expect(service).toBeDefined();
   });
 
-  describe('getDestinationOptions', () => {
-    it('should return empty array when no collections', async () => {
-      const result = await service.getDestinationOptions('default', 'token');
-      expect(result).toEqual([]);
-      expect(repository.getAllCollections).toHaveBeenCalledWith(
-        'default',
-        'token',
-      );
+  describe('getDataModelJson', () => {
+    it('should successfully get data model JSON', async () => {
+      const mockData = { model: 'test' };
+      const tenantId = 'tenant123';
+      const token = 'token123';
+
+      jest.spyOn(repository, 'getDataModelJson').mockResolvedValue(mockData);
+
+      const result = await service.getDataModelJson(tenantId, token);
+
+      expect(result).toEqual(mockData);
+      expect(repository.getDataModelJson).toHaveBeenCalledWith(tenantId, token);
+      expect(service['logger'].log).toHaveBeenCalledWith(`Getting data model JSON for tenant: ${tenantId}`);
+      expect(service['logger'].log).toHaveBeenCalledWith(`Successfully retrieved data model JSON for tenant: ${tenantId}`);
     });
 
-    it('should handle repository errors', async () => {
-      jest
-        .spyOn(repository, 'getAllCollections')
-        .mockRejectedValue(new Error('Repository error'));
-      await expect(
-        service.getDestinationOptions('default', 'token'),
-      ).rejects.toThrow('Repository error');
-    });
-  });
+    it('should handle errors and throw BadRequestException', async () => {
+      const tenantId = 'tenant123';
+      const token = 'token123';
+      const errorMessage = 'Database error';
 
-  describe('createDestinationType', () => {
-    it('should call repository createDestinationType', async () => {
-      const result = await service.createDestinationType({} as any, 'token');
-      expect(repository.createDestinationType).toHaveBeenCalled();
+      jest.spyOn(repository, 'getDataModelJson').mockRejectedValue(new Error(errorMessage));
+
+      await expect(service.getDataModelJson(tenantId, token))
+        .rejects.toThrow(BadRequestException);
+
+      expect(service['logger'].error).toHaveBeenCalledWith(`Failed to get data model JSON: ${errorMessage}`);
     });
 
-    it('should handle repository errors and throw BadRequestException', async () => {
-      jest
-        .spyOn(repository, 'createDestinationType')
-        .mockRejectedValue(new Error('Database error occurred'));
+    it('should handle unknown error without message', async () => {
+      const tenantId = 'tenant123';
+      const token = 'token123';
 
-      await expect(
-        service.createDestinationType({ name: 'test' } as any, 'token'),
-      ).rejects.toThrow(
-        'Failed to create destination type: Database error occurred',
-      );
-    });
+      jest.spyOn(repository, 'getDataModelJson').mockRejectedValue({});
 
-    it('should handle unknown errors without message', async () => {
-      jest
-        .spyOn(repository, 'createDestinationType')
-        .mockRejectedValue({ someUnknownError: true });
+      await expect(service.getDataModelJson(tenantId, token))
+        .rejects.toThrow('Failed to get data model JSON: Unknown error');
 
-      await expect(
-        service.createDestinationType({ name: 'test' } as any, 'token'),
-      ).rejects.toThrow('Failed to create destination type: Unknown error');
-    });
-
-    it('should log successful creation', async () => {
-      const loggerSpy = jest
-        .spyOn(service['logger'], 'log')
-        .mockImplementation();
-      const mockResult = {
-        destination_type_id: 123,
-        name: 'Test Type',
-        collection_type: 'test',
-        destination_id: 1,
-        created_at: new Date(),
-      };
-      jest
-        .spyOn(repository, 'createDestinationType')
-        .mockResolvedValue(mockResult as any);
-
-      await service.createDestinationType(
-        { name: 'Test Type' } as any,
-        'token',
-      );
-
-      expect(loggerSpy).toHaveBeenCalledWith(
-        'Created destination type: Test Type with ID: 123',
-      );
-
-      // Restore the mock after this test
-      loggerSpy.mockRestore();
+      expect(service['logger'].error).toHaveBeenCalledWith('Failed to get data model JSON: Unknown error');
     });
   });
 
-  describe('addFieldToDestinationType', () => {
-    it('should call repository addFieldToDestinationType', async () => {
-      const result = await service.addFieldToDestinationType(
-        1,
-        {} as any,
-        'token',
-      );
-      expect(repository.addFieldToDestinationType).toHaveBeenCalled();
+  describe('putDataModelJson', () => {
+    it('should successfully save data model JSON', async () => {
+      const tenantId = 'tenant123';
+      const dataModelJson = { model: 'test' };
+      const token = 'token123';
+      const mockResult = { tenant_id: tenantId, updated_at: '2023-01-01T00:00:00Z' };
+
+      jest.spyOn(repository, 'putDataModelJson').mockResolvedValue(mockResult);
+
+      const result = await service.putDataModelJson(tenantId, dataModelJson, token);
+
+      expect(result).toEqual(mockResult);
+      expect(repository.putDataModelJson).toHaveBeenCalledWith(tenantId, dataModelJson, token);
+      expect(service['logger'].log).toHaveBeenCalledWith(`Saving data model JSON for tenant: ${tenantId}`);
+      expect(service['logger'].log).toHaveBeenCalledWith(`Successfully saved data model JSON for tenant: ${tenantId}`);
     });
 
-    it('should throw BadRequestException if destination type does not exist', async () => {
-      jest.spyOn(repository, 'destinationTypeExists').mockResolvedValue(false);
+    it('should handle errors and throw BadRequestException', async () => {
+      const tenantId = 'tenant123';
+      const dataModelJson = { model: 'test' };
+      const token = 'token123';
+      const errorMessage = 'Save failed';
 
-      await expect(
-        service.addFieldToDestinationType(999, {} as any, 'token'),
-      ).rejects.toThrow('Destination type with ID 999 not found');
+      jest.spyOn(repository, 'putDataModelJson').mockRejectedValue(new Error(errorMessage));
+
+      await expect(service.putDataModelJson(tenantId, dataModelJson, token))
+        .rejects.toThrow(BadRequestException);
+
+      expect(service['logger'].error).toHaveBeenCalledWith(`Failed to save data model JSON: ${errorMessage}`);
     });
 
-    it('should handle repository errors and throw BadRequestException', async () => {
-      jest.spyOn(repository, 'destinationTypeExists').mockResolvedValue(true);
-      jest
-        .spyOn(repository, 'addFieldToDestinationType')
-        .mockRejectedValue(new Error('Database connection failed'));
+    it('should handle unknown error without message', async () => {
+      const tenantId = 'tenant123';
+      const dataModelJson = { model: 'test' };
+      const token = 'token123';
 
-      await expect(
-        service.addFieldToDestinationType(1, { name: 'test' } as any, 'token'),
-      ).rejects.toThrow('Failed to add field: Database connection failed');
-    });
+      jest.spyOn(repository, 'putDataModelJson').mockRejectedValue({});
 
-    it('should handle unknown errors without message', async () => {
-      jest.spyOn(repository, 'destinationTypeExists').mockResolvedValue(true);
-      jest
-        .spyOn(repository, 'addFieldToDestinationType')
-        .mockRejectedValue({ unknownError: true });
+      await expect(service.putDataModelJson(tenantId, dataModelJson, token))
+        .rejects.toThrow('Failed to save data model JSON: Unknown error');
 
-      await expect(
-        service.addFieldToDestinationType(1, { name: 'test' } as any, 'token'),
-      ).rejects.toThrow('Failed to add field: Unknown error');
-    });
-
-    it('should log successful field addition', async () => {
-      const loggerSpy = jest
-        .spyOn(service['logger'], 'log')
-        .mockImplementation();
-      jest.spyOn(repository, 'destinationTypeExists').mockResolvedValue(true);
-      jest
-        .spyOn(repository, 'addFieldToDestinationType')
-        .mockResolvedValue({ id: 1, name: 'Test Field' } as any);
-
-      await service.addFieldToDestinationType(
-        1,
-        { name: 'Test Field' } as any,
-        'token',
-      );
-
-      expect(loggerSpy).toHaveBeenCalledWith(
-        'Added field: Test Field to destination type: 1',
-      );
-
-      // Restore the mock after this test
-      loggerSpy.mockRestore();
-    });
-  });
-
-  describe('getDestinationOptions with collections', () => {
-    it('should process collections with nested properties', async () => {
-      const mockCollections = [
-        {
-          name: 'TestCollection',
-          type: 'node' as const,
-          description: 'Test collection',
-          fields: [
-            {
-              name: 'field1',
-              type: 'string',
-              required: true,
-              parent_id: null,
-              serial_no: 1,
-              collection_id: 1,
-              properties: [],
-            },
-          ],
-        },
-      ];
-
-      jest
-        .spyOn(repository, 'getAllCollections')
-        .mockResolvedValue(mockCollections as any);
-
-      const result = await service.getDestinationOptions('tenant1', 'token');
-
-      expect(result).toBeDefined();
-      expect(Array.isArray(result)).toBe(true);
-    });
-
-    it('should handle different field types', async () => {
-      const mockCollections = [
-        {
-          name: 'ComplexCollection',
-          type: 'node' as const,
-          description: 'Complex test collection',
-          fields: [
-            {
-              name: 'arrayField',
-              type: 'array',
-              required: true,
-              parent_id: null,
-              serial_no: 1,
-              collection_id: 1,
-              properties: [],
-            },
-          ],
-        },
-      ];
-
-      jest
-        .spyOn(repository, 'getAllCollections')
-        .mockResolvedValue(mockCollections as any);
-
-      const result = await service.getDestinationOptions('tenant1', 'token');
-
-      expect(result).toBeDefined();
-      expect(result.length).toBeGreaterThanOrEqual(0);
-    });
-
-    it('should handle empty collections gracefully', async () => {
-      const mockCollections = [
-        {
-          name: 'EmptyCollection',
-          type: 'node' as const,
-          description: 'Empty collection',
-          fields: [],
-        },
-      ];
-
-      jest
-        .spyOn(repository, 'getAllCollections')
-        .mockResolvedValue(mockCollections as any);
-
-      const result = await service.getDestinationOptions('tenant1', 'token');
-
-      expect(result).toBeDefined();
-      expect(Array.isArray(result)).toBe(true);
-    });
-
-    it('should process object fields with properties', async () => {
-      const mockCollections = [
-        {
-          name: 'TestCollection',
-          type: 'node' as const,
-          description: 'Test collection',
-          fields: [
-            {
-              name: 'objectField',
-              type: 'object',
-              required: false,
-              parent_id: null,
-              serial_no: 1,
-              collection_id: 1,
-              properties: [
-                {
-                  name: 'nestedProp1',
-                  type: 'string',
-                  required: true,
-                },
-                {
-                  name: 'nestedProp2',
-                  type: 'number',
-                  required: false,
-                },
-              ],
-            },
-          ],
-        },
-      ];
-
-      jest
-        .spyOn(repository, 'getAllCollections')
-        .mockResolvedValue(mockCollections as any);
-
-      const result = await service.getDestinationOptions('tenant1', 'token');
-
-      expect(result).toBeDefined();
-      expect(Array.isArray(result)).toBe(true);
-
-      // Should have the object field and its nested properties
-      const objectField = result.find((r) => r.field === 'objectField');
-      expect(objectField).toBeDefined();
-      expect(objectField?.properties).toBeDefined();
-      expect(objectField?.properties?.length).toBe(2);
-
-      // Should also have nested field entries
-      const nestedField1 = result.find(
-        (r) => r.field === 'objectField.nestedProp1',
-      );
-      const nestedField2 = result.find(
-        (r) => r.field === 'objectField.nestedProp2',
-      );
-      expect(nestedField1).toBeDefined();
-      expect(nestedField2).toBeDefined();
-    });
-  });
-
-  describe('edge cases and error handling', () => {
-    it('should handle missing destinationType for addField', async () => {
-      jest.spyOn(repository, 'destinationTypeExists').mockResolvedValue(false);
-
-      const dto = { name: 'test field', type: 'string' };
-
-      await expect(
-        service.addFieldToDestinationType(999, dto as any, 'token'),
-      ).rejects.toThrow('Destination type with ID 999 not found');
-    });
-
-    it('should sanitize serial_no when it is an empty string', async () => {
-      jest.spyOn(repository, 'destinationTypeExists').mockResolvedValue(true);
-      jest
-        .spyOn(repository, 'addFieldToDestinationType')
-        .mockResolvedValue({ id: 1, name: 'test' } as any);
-
-      const dto = {
-        name: 'test field',
-        type: 'string',
-        parent_id: 1,
-        serial_no: '', // Empty string
-      };
-
-      await service.addFieldToDestinationType(1, dto as any, 'token');
-
-      expect(repository.addFieldToDestinationType).toHaveBeenCalledWith(
-        1,
-        expect.objectContaining({
-          name: 'test field',
-          type: 'string',
-          parent_id: 1,
-          serial_no: '', // Empty string passed as-is
-        }),
-        'token',
-        '',
-      );
-    });
-
-    it('should handle both parent_id and serial_no as empty strings', async () => {
-      jest.spyOn(repository, 'destinationTypeExists').mockResolvedValue(true);
-      jest
-        .spyOn(repository, 'addFieldToDestinationType')
-        .mockResolvedValue({ id: 1, name: 'test' } as any);
-
-      const dto = {
-        name: 'test field',
-        type: 'string',
-        parent_id: '', // Empty string
-        serial_no: '   ', // Empty string with whitespace
-      };
-
-      await service.addFieldToDestinationType(1, dto as any, 'token');
-
-      expect(repository.addFieldToDestinationType).toHaveBeenCalledWith(
-        1,
-        expect.objectContaining({
-          name: 'test field',
-          type: 'string',
-          parent_id: '', // Empty string passed as-is
-          serial_no: '   ', // Whitespace string passed as-is
-        }),
-        'token',
-        '   ',
-      );
-    });
-
-    it('should handle fields with null/undefined properties for nullish coalescing', async () => {
-      const mockCollections = [
-        {
-          name: 'NullTestCollection',
-          collection_id: undefined,
-          fields: [
-            {
-              name: 'nullField',
-              type: 'string',
-              required: false,
-              parent_id: undefined,
-              serial_no: undefined,
-              collection_id: undefined,
-            },
-          ],
-        },
-      ];
-
-      jest
-        .spyOn(repository, 'getAllCollections')
-        .mockResolvedValue(mockCollections as any);
-
-      const result = await service.getDestinationOptions('tenant1', 'token');
-
-      expect(result.length).toBeGreaterThan(0);
-      const field = result.find((r) => r.label.includes('nullField'));
-      expect(field).toBeDefined();
-    });
-
-    it('should handle logger call in empty collection case', async () => {
-      const loggerSpy = jest
-        .spyOn(service['logger'], 'log')
-        .mockImplementation();
-      const mockCollections = [
-        {
-          name: 'EmptyCollection',
-          collection_id: 1,
-          fields: [], // Empty fields array
-        },
-      ];
-
-      jest
-        .spyOn(repository, 'getAllCollections')
-        .mockResolvedValue(mockCollections as any);
-
-      const result = await service.getDestinationOptions('tenant1', 'token');
-
-      // Service should handle empty collections gracefully and include the collection with null field
-      expect(result).toEqual([
-        {
-          value: 'EmptyCollection',
-          label: 'EmptyCollection',
-          collection: 'EmptyCollection',
-          field: null,
-          type: null,
-          required: false,
-          parent_id: null,
-          serial_no: 0,
-          collection_id: 1,
-          properties: [],
-        },
-      ]);
-
-      // Restore the mock after this test
-      loggerSpy.mockRestore();
+      expect(service['logger'].error).toHaveBeenCalledWith('Failed to save data model JSON: Unknown error');
     });
   });
 });

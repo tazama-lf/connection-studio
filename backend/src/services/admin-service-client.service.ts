@@ -7,6 +7,7 @@ import {
   DESTINATION_TYPES_URL,
   TRANSACTION_TYPE_TABLE_URL,
   DATA_MODEL_TABLE_URL,
+  DATA_MODEL_JSON_URL,
   DEV_BASE_URL,
 } from '../constants/constant';
 import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
@@ -153,9 +154,9 @@ export class AdminServiceClient {
   async forwardRequest(
     method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH',
     path: string,
-    body?: any,
+    body?: Record<string, unknown>,
     headers?: Record<string, string>,
-  ): Promise<any> {
+  ): Promise<unknown> {
     const url = `${this.adminServiceUrl}${path}`;
     if (body) {
       this.logger.debug(
@@ -692,8 +693,8 @@ export class AdminServiceClient {
 
   // ==================== TCS OPERATIONS ====================
 
-  async getConfigById(id: number, token: string): Promise<any> {
-    const response = await this.executeHttpRequest<{ config?: any }>(
+  async getConfigById(id: number, token: string): Promise<Config | null> {
+    const response = await this.executeHttpRequest<{ config?: Config }>(
       'GET',
       `${CONFIG_URL}/${id}`,
       token,
@@ -723,11 +724,11 @@ export class AdminServiceClient {
     limit = 10,
     offset = 0,
   ): Promise<{
-    configs: any[];
+    configs: Config[];
     pagination: { total: number; limit: number; offset: number; pages: number };
   }> {
     const response = await this.executeHttpRequest<{
-      configs?: any[];
+      configs?: Config[];
       pagination?: {
         total: number;
         limit: number;
@@ -747,8 +748,11 @@ export class AdminServiceClient {
     };
   }
 
-  async writeConfig(configData: any, token: string): Promise<any> {
-    const response = await this.executeHttpRequest<{ config: any }>(
+  async writeConfig(
+    configData: Record<string, unknown>,
+    token: string,
+  ): Promise<Config> {
+    const response = await this.executeHttpRequest<{ config: Config }>(
       'POST',
       CONFIG_WRITE_URL,
       token,
@@ -760,9 +764,9 @@ export class AdminServiceClient {
 
   async writeConfigUpdate(
     id: number,
-    updateData: any,
+    updateData: Record<string, unknown>,
     token: string,
-  ): Promise<any> {
+  ): Promise<unknown> {
     return await this.executeHttpRequest(
       'PUT',
       `${CONFIG_URL}/${id}/write`,
@@ -781,7 +785,7 @@ export class AdminServiceClient {
     token: string,
     comment?: string,
   ): Promise<Config | null> {
-    const body: any = { status };
+    const body: Record<string, unknown> = { status };
     if (comment !== undefined) {
       body.comments = comment;
     }
@@ -808,13 +812,13 @@ export class AdminServiceClient {
     },
     token: string,
   ): Promise<{
-    configs: any[];
+    configs: Config[];
     pagination: { total: number; limit: number; offset: number; pages: number };
   }> {
     const { limit = 10, offset = 0, ...filterPayload } = filters;
 
     const response = await this.executeHttpRequest<{
-      configs?: any[];
+      configs?: Config[];
       pagination?: {
         total: number;
         limit: number;
@@ -838,7 +842,7 @@ export class AdminServiceClient {
     id: number,
     publishingStatus: 'active' | 'inactive',
     token: string,
-  ): Promise<any> {
+  ): Promise<unknown> {
     return await this.executeHttpRequest(
       'PATCH',
       `${CONFIG_URL}/${id}/publishing-status`,
@@ -850,7 +854,7 @@ export class AdminServiceClient {
   async getAllConfigsWithFilters(
     offset: number,
     limit: number,
-    filters: Record<string, any>,
+    filters: Record<string, unknown>,
     token: string,
   ): Promise<Config[]> {
     return await this.executeHttpRequest<Config[]>(
@@ -861,7 +865,11 @@ export class AdminServiceClient {
     );
   }
 
-  async addMapping(id: number, mappingData: any, token: string): Promise<any> {
+  async addMapping(
+    id: number,
+    mappingData: Record<string, unknown>,
+    token: string,
+  ): Promise<unknown> {
     return await this.executeHttpRequest(
       'POST',
       `${CONFIG_URL}/${id}/mapping`,
@@ -870,7 +878,11 @@ export class AdminServiceClient {
     );
   }
 
-  async removeMapping(id: number, index: number, token: string): Promise<any> {
+  async removeMapping(
+    id: number,
+    index: number,
+    token: string,
+  ): Promise<unknown> {
     return await this.executeHttpRequest(
       'DELETE',
       `${CONFIG_URL}/${id}/mapping/${index}`,
@@ -880,9 +892,9 @@ export class AdminServiceClient {
 
   async addFunction(
     id: number,
-    functionData: any,
+    functionData: Record<string, unknown>,
     token: string,
-  ): Promise<any> {
+  ): Promise<unknown> {
     return await this.executeHttpRequest(
       'POST',
       `${CONFIG_URL}/${id}/function`,
@@ -891,7 +903,11 @@ export class AdminServiceClient {
     );
   }
 
-  async removeFunction(id: number, index: number, token: string): Promise<any> {
+  async removeFunction(
+    id: number,
+    index: number,
+    token: string,
+  ): Promise<unknown> {
     return await this.executeHttpRequest(
       'DELETE',
       `${CONFIG_URL}/${id}/function/${index}`,
@@ -899,7 +915,7 @@ export class AdminServiceClient {
     );
   }
 
-  async getAllCollections(tenantId: string, token: string): Promise<any> {
+  async getAllCollections(tenantId: string, token: string): Promise<unknown> {
     return await this.executeHttpRequest(
       'GET',
       `${DATA_MODEL_COLLECTIONS_URL}/${tenantId}`,
@@ -915,7 +931,7 @@ export class AdminServiceClient {
       destination_id: number;
     },
     token: string,
-  ): Promise<any> {
+  ): Promise<unknown> {
     return await this.executeHttpRequest(
       'POST',
       DESTINATION_TYPES_URL,
@@ -927,7 +943,7 @@ export class AdminServiceClient {
   async destinationTypeExists(
     destinationTypeId: number,
     token: string,
-  ): Promise<any> {
+  ): Promise<unknown> {
     return await this.executeHttpRequest(
       'GET',
       `${DESTINATION_TYPES_URL}/${destinationTypeId}/exists`,
@@ -945,7 +961,7 @@ export class AdminServiceClient {
       serial_no?: number;
     },
     token: string,
-  ): Promise<any> {
+  ): Promise<unknown> {
     return await this.executeHttpRequest(
       'POST',
       `${DESTINATION_TYPES_URL}/${destinationTypeId}/fields`,
@@ -970,5 +986,37 @@ export class AdminServiceClient {
     await this.executeHttpRequest('POST', DATA_MODEL_TABLE_URL, token, {
       tableName,
     });
+  }
+
+  async getDataModelJson(
+    tenantId: string,
+    token: string,
+  ): Promise<{
+    success: boolean;
+    data: Record<string, unknown> | null;
+    message?: string;
+  }> {
+    return await this.executeHttpRequest(
+      'GET',
+      `${DATA_MODEL_JSON_URL}/${tenantId}`,
+      token,
+    );
+  }
+
+  async putDataModelJson(
+    tenantId: string,
+    dataModelJson: Record<string, unknown>,
+    token: string,
+  ): Promise<{
+    success: boolean;
+    message: string;
+    data: { tenant_id: string; updated_at: string };
+  }> {
+    return await this.executeHttpRequest(
+      'PUT',
+      `${DATA_MODEL_JSON_URL}/${tenantId}`,
+      token,
+      { data_model_json: dataModelJson },
+    );
   }
 }

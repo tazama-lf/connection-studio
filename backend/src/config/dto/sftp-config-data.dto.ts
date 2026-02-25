@@ -9,9 +9,9 @@ export interface SftpConfigDataDto {
   publishingStatus?: 'active' | 'inactive';
   version: string;
   schema: JSONSchema | null;
-  mapping: any[] | null;
-  functions: any;
-  credentials?: any;
+  mapping: Array<Record<string, unknown>> | null;
+  functions: Record<string, unknown> | Array<Record<string, unknown>> | null;
+  credentials?: Record<string, unknown>;
   createdBy?: string;
   createdAt?: Date;
 }

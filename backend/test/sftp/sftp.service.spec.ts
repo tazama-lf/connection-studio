@@ -9,6 +9,7 @@ import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import SFTPClient from 'ssh2-sftp-client';
 import * as utils from '../../src/utils/helpers';
 import { SftpService } from '../../src/sftp/sftp.service';
+import { Config } from '@tazama-lf/tcs-lib';
 
 jest.mock('ssh2-sftp-client');
 jest.mock('../../src/utils/helpers');
@@ -22,7 +23,7 @@ describe('SftpService', () => {
 
   const mockFileName = 'test-file';
   const mockTenantId = 'tenant-123';
-  const mockData = { id: '123', name: 'Test Data' };
+  const mockData = { id: '123', name: 'Test Data' } as unknown as Config;
   const mockBuffer = Buffer.from(JSON.stringify(mockData, null, 2));
   const mockHash = 'mock-sha256-hash';
 

@@ -10,3 +10,4 @@ export const DESTINATION_TYPES_URL =
 export const TRANSACTION_TYPE_TABLE_URL =
   '/v1/admin/tcs/deploy/transaction-type-table';
 export const DATA_MODEL_TABLE_URL = '/v1/admin/tcs/data-model/table';
+export const DATA_MODEL_JSON_URL = '/v1/admin/tcs/data-model/json';

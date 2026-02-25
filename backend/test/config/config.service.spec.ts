@@ -355,10 +355,7 @@ describe('ConfigService', () => {
       schema: {},
     };
 
-    const result = await service.createConfig(
-      dto as any,
-      user,
-    );
+    const result = await service.createConfig(dto as any, user);
     expect(mockUtils.buildUserErrorMessage).toHaveBeenCalledWith(
       expect.any(Error),
       'iso',
