@@ -260,7 +260,7 @@ export class JobService {
         throw new BadRequestException('id is required.');
       }
 
-      const tableName = type === ConfigType.PUSH ? 'push_jobs' : 'pull_jobs';
+      const tableName = type === ConfigType.PUSH ? 'tcs_push_jobs' : 'tcs_pull_jobs';
 
       const record = await this.adminServiceClient.findJobById(
         id,
