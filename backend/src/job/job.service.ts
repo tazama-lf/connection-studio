@@ -414,12 +414,15 @@ export class JobService {
       const existingJob = await this.findOne(id, type, user);
 
       const userRole = user.actorRole.toLowerCase();
-      if (!userRole || !['editor'].includes(userRole)) {
+      if (
+        !userRole ||
+        !['editor', 'approver', 'publisher', 'exporter'].includes(userRole)
+      ) {
         throw new ForbiddenException('Invalid user role');
       }
 
       const tier2Result = this.rbacService.checkTier2({
-        role: userRole as 'editor',
+        role: userRole as 'editor' | 'approver' | 'publisher' | 'exporter',
         endpointKey: 'Patch /update/status/:id',
         currentStatus: existingJob.status,
       });
@@ -431,7 +434,7 @@ export class JobService {
       }
 
       const tier3Result = this.rbacService.checkTier3({
-        role: userRole as 'editor',
+        role: userRole as 'editor' | 'approver' | 'publisher' | 'exporter',
         endpointKey: 'Patch /update/status/:id',
         currentStatus: existingJob.status,
         targetStatus: status,
