@@ -18,7 +18,7 @@ const API_BASE_URL = ENV.API_BASE_URL;
 
 interface PaginatedJobResponse {
   success: boolean;
-  jobs: DataEnrichmentJobResponse[];
+  data: DataEnrichmentJobResponse[];
   total: number;
   limit: number;
   offset: number;
@@ -272,14 +272,14 @@ export const dataEnrichmentApi = {
     id: string,
     updates: Partial<{
       job_status:
-        | 'STATUS_01_IN_PROGRESS'
-        | 'STATUS_02_ON_HOLD'
-        | 'STATUS_03_UNDER_REVIEW'
-        | 'STATUS_04_APPROVED'
-        | 'STATUS_05_REJECTED'
-        | 'STATUS_06_EXPORTED'
-        | 'STATUS_07_READY_FOR_DEPLOYMENT'
-        | 'STATUS_08_DEPLOYED';
+      | 'STATUS_01_IN_PROGRESS'
+      | 'STATUS_02_ON_HOLD'
+      | 'STATUS_03_UNDER_REVIEW'
+      | 'STATUS_04_APPROVED'
+      | 'STATUS_05_REJECTED'
+      | 'STATUS_06_EXPORTED'
+      | 'STATUS_07_READY_FOR_DEPLOYMENT'
+      | 'STATUS_08_DEPLOYED';
     }>,
   ): Promise<{ success: boolean; message: string }> => {
     try {
@@ -348,7 +348,7 @@ export const dataEnrichmentApi = {
       queryParams.append('status', status);
       queryParams.append('type', type.toLowerCase()); // Convert to lowercase to match backend ConfigType enum
 
-      const requestBody: { reason?: string } = {};
+      const requestBody: { reason?: string, type: 'PULL' | 'PUSH', status: string } = { type, status };
       if (reason) {
         requestBody.reason = reason;
       }
