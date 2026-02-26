@@ -121,7 +121,7 @@ export const CloneConfigModal: React.FC<CloneConfigModalProps> = ({
               <input
                 type="text"
                 value={newVersion}
-                onChange={(e) => setNewVersion(e.target.value)}
+                onChange={(e) => { setNewVersion(e.target.value); }}
                 placeholder="Enter new version"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 disabled={isCloning}
@@ -137,7 +137,7 @@ export const CloneConfigModal: React.FC<CloneConfigModalProps> = ({
                 <input
                   type="text"
                   value={newEndpointName}
-                  onChange={(e) => setNewEndpointName(e.target.value)}
+                  onChange={(e) => { setNewEndpointName(e.target.value); }}
                   placeholder="Enter new endpoint name"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   disabled={isCloning}

@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { ActivityIcon, ArrowLeft, SearchIcon } from 'lucide-react';
 import { ConfigList } from '../../config/components/ConfigList';
 import { configApi } from '../../config/services/configApi';

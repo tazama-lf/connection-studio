@@ -59,7 +59,7 @@ export const ExporterConfigsPage: React.FC = () => {
       console.log(
         `🔄 ExporterConfigsPage - Starting export to SFTP for config ID: ${configId}`,
       );
-      console.log(`👤 ExporterConfigsPage - User info:`, {
+      console.log('👤 ExporterConfigsPage - User info:', {
         userId: user?.id,
         email: user?.email,
       });
@@ -67,7 +67,7 @@ export const ExporterConfigsPage: React.FC = () => {
         configId,
         'Exported for deployment',
       );
-      console.log(`✅ ExporterConfigsPage - Export completed:`, result);
+      console.log('✅ ExporterConfigsPage - Export completed:', result);
       showSuccess(
         'Configuration exported to SFTP and status updated to EXPORTED successfully',
       );
@@ -108,7 +108,7 @@ export const ExporterConfigsPage: React.FC = () => {
         <Button
           variant="primary"
           className="py-1 pl-2"
-          onClick={() => navigate(-1)}
+          onClick={async () => { await navigate(-1); }}
         >
           <ChevronLeft size={20} /> <span>Go Back</span>
         </Button>
@@ -146,7 +146,7 @@ export const ExporterConfigsPage: React.FC = () => {
           endpointId={editingEndpointId}
           onSuccess={handleConfigSuccess}
           readOnly={true}
-          onSendForDeployment={() => handleExportConfig(editingEndpointId)}
+          onSendForDeployment={async () => { await handleExportConfig(editingEndpointId); }}
         />
       )}
     </div>

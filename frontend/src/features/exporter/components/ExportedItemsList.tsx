@@ -160,7 +160,7 @@ export const ExportedItemsList: React.FC<ExportedItemsListProps> = (props) => {
 
     if (dropdownOpen) {
       document.addEventListener('click', handleClickOutside);
-      return () => document.removeEventListener('click', handleClickOutside);
+      return () => { document.removeEventListener('click', handleClickOutside); };
     }
   }, [dropdownOpen]);
 
@@ -172,8 +172,7 @@ export const ExportedItemsList: React.FC<ExportedItemsListProps> = (props) => {
   };
 
   // Format date from timestamp
-  const formatDate = (timestamp: number): string => {
-    return new Date(timestamp).toLocaleString('en-US', {
+  const formatDate = (timestamp: number): string => new Date(timestamp).toLocaleString('en-US', {
       month: 'numeric',
       day: 'numeric',
       year: 'numeric',
@@ -181,7 +180,6 @@ export const ExportedItemsList: React.FC<ExportedItemsListProps> = (props) => {
       minute: '2-digit',
       hour12: true,
     });
-  };
 
   if (isLoading) {
     return (

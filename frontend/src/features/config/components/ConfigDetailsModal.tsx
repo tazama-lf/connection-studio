@@ -297,7 +297,7 @@ const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
                   <h4 className="text-sm font-medium text-gray-900 mb-3">Export Notes</h4>
                   <textarea
                     value={exportNotes}
-                    onChange={(e) => setExportNotes(e.target.value)}
+                    onChange={(e) => { setExportNotes(e.target.value); }}
                     placeholder="Add notes about the export process (optional)"
                     rows={3}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -311,7 +311,7 @@ const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
                   <h4 className="text-sm font-medium text-gray-900 mb-3">Deployment Notes</h4>
                   <textarea
                     value={deployNotes}
-                    onChange={(e) => setDeployNotes(e.target.value)}
+                    onChange={(e) => { setDeployNotes(e.target.value); }}
                     placeholder="Add notes about the deployment process (optional)"
                     rows={3}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md resize-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"

@@ -9,11 +9,11 @@ import type {
   AuthType,
   FileType,
   ScheduleResponse,
-} from '../../types';
+ JobFormProps } from '../../types';
 import { Button } from '../../../../shared/components/Button';
 import { scheduleApi } from '../../handlers';
 import { DATA_ENRICHMENT_JOB_STATUSES } from '../../constants';
-import type { JobFormProps } from '../../types';
+
 
 export const JobCreationForm: React.FC<JobFormProps> = ({
   onSubmit,
@@ -69,9 +69,7 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
     'content-type': 'application/json',
   };
 
-  const getIterationText = (count: number) => {
-    return count === 1 ? '1 iteration' : `${count} iterations`;
-  };
+  const getIterationText = (count: number) => count === 1 ? '1 iteration' : `${count} iterations`;
 
   const validateFileFormat = () => {
     if (sourceType !== 'SFTP' || !filePath.trim()) {
@@ -85,7 +83,7 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
       return { isValid: false, error: 'Please specify a file with a valid extension (e.g., .csv, .tsv, .json)' };
     }
 
-    const extensionFormatMap: { [key: string]: FileType[] } = {
+    const extensionFormatMap: Record<string, FileType[]> = {
       'csv': ['CSV'],
       'tsv': ['TSV'],
       'json': ['JSON'],
@@ -240,7 +238,7 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
               <div className="-mx-1.5 -my-1.5">
                 <button
                   type="button"
-                  onClick={() => setErrorMessage(null)}
+                  onClick={() => { setErrorMessage(null); }}
                   className="inline-flex bg-red-50 rounded-md p-1.5 text-red-500 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-red-50 focus:ring-red-600"
                 >
                   <span className="sr-only">Dismiss</span>
@@ -265,7 +263,7 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
               <input
                 type="text"
                 value={endpointName}
-                onChange={(e) => setEndpointName(e.target.value)}
+                onChange={(e) => { setEndpointName(e.target.value); }}
                 required
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="e.g., Dummy"
@@ -279,7 +277,7 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
               <input
                 type="text"
                 value={tableName}
-                onChange={(e) => setTableName(e.target.value)}
+                onChange={(e) => { setTableName(e.target.value); }}
                 required
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="e.g., job_table_1"
@@ -293,7 +291,7 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
             </label>
             <textarea
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={(e) => { setDescription(e.target.value); }}
               rows={3}
               required
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -308,7 +306,7 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
               </label>
               <select
                 value={mode}
-                onChange={(e) => setMode(e.target.value as 'append' | 'replace')}
+                onChange={(e) => { setMode(e.target.value as 'append' | 'replace'); }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="append">Append (Add new records)</option>
@@ -323,7 +321,7 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
               <input
                 type="text"
                 value={version}
-                onChange={(e) => setVersion(e.target.value)}
+                onChange={(e) => { setVersion(e.target.value); }}
                 required
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="e.g., 1.0.0"
@@ -337,7 +335,7 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
             </label>
             <select
               value={sourceType}
-              onChange={(e) => setSourceType(e.target.value as SourceType)}
+              onChange={(e) => { setSourceType(e.target.value as SourceType); }}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="HTTP">HTTP</option>
@@ -359,7 +357,7 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
             ) : (
               <select
                 value={selectedScheduleId || ''}
-                onChange={(e) => setSelectedScheduleId(e.target.value || null)}
+                onChange={(e) => { setSelectedScheduleId(e.target.value || null); }}
                 required
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
@@ -393,7 +391,7 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
                 <input
                   type="text"
                   value={httpUrl}
-                  onChange={(e) => setHttpUrl(e.target.value)}
+                  onChange={(e) => { setHttpUrl(e.target.value); }}
                   required
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="/v1/enrich/ACM102/customerdata"
@@ -417,7 +415,7 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
                 <input
                   type="text"
                   value={sftpHost}
-                  onChange={(e) => setSftpHost(e.target.value)}
+                  onChange={(e) => { setSftpHost(e.target.value); }}
                   required
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="sftp.example.com"
@@ -431,7 +429,7 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
                 <input
                   type="number"
                   value={sftpPort}
-                  onChange={(e) => setSftpPort(parseInt(e.target.value))}
+                  onChange={(e) => { setSftpPort(parseInt(e.target.value)); }}
                   required
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="22"
@@ -445,7 +443,7 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
               </label>
               <select
                 value={sftpAuthType}
-                onChange={(e) => setSftpAuthType(e.target.value as AuthType)}
+                onChange={(e) => { setSftpAuthType(e.target.value as AuthType); }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="USERNAME_PASSWORD">Username & Password</option>
@@ -461,7 +459,7 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
                 <input
                   type="text"
                   value={sftpUsername}
-                  onChange={(e) => setSftpUsername(e.target.value)}
+                  onChange={(e) => { setSftpUsername(e.target.value); }}
                   required
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
@@ -475,7 +473,7 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
                   <input
                     type="password"
                     value={sftpPassword}
-                    onChange={(e) => setSftpPassword(e.target.value)}
+                    onChange={(e) => { setSftpPassword(e.target.value); }}
                     required
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
@@ -487,7 +485,7 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
                   </label>
                   <textarea
                     value={sftpPrivateKey}
-                    onChange={(e) => setSftpPrivateKey(e.target.value)}
+                    onChange={(e) => { setSftpPrivateKey(e.target.value); }}
                     required
                     rows={3}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -507,7 +505,7 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
                   <input
                     type="text"
                     value={filePath}
-                    onChange={(e) => setFilePath(e.target.value)}
+                    onChange={(e) => { setFilePath(e.target.value); }}
                     required
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="/path/to/file.csv"
@@ -520,7 +518,7 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
                   </label>
                   <select
                     value={fileType}
-                    onChange={(e) => setFileType(e.target.value as FileType)}
+                    onChange={(e) => { setFileType(e.target.value as FileType); }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="CSV">CSV</option>
@@ -545,7 +543,7 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
                     <input
                       type="text"
                       value={fileDelimiter}
-                      onChange={(e) => setFileDelimiter(e.target.value)}
+                      onChange={(e) => { setFileDelimiter(e.target.value); }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder=","
                     />
@@ -556,7 +554,7 @@ export const JobCreationForm: React.FC<JobFormProps> = ({
                       <input
                         type="checkbox"
                         checked={fileHasHeader}
-                        onChange={(e) => setFileHasHeader(e.target.checked)}
+                        onChange={(e) => { setFileHasHeader(e.target.checked); }}
                         className="mr-2"
                       />
                       <span className="text-sm text-gray-700">Has Header Row</span>

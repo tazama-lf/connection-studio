@@ -45,7 +45,7 @@ export const PublisherDEJobList: React.FC<PublisherDEJobListProps> = (props) => 
 
     if (dropdownOpen) {
       document.addEventListener('click', handleClickOutside);
-      return () => document.removeEventListener('click', handleClickOutside);
+      return () => { document.removeEventListener('click', handleClickOutside); };
     }
   }, [dropdownOpen]);
 
@@ -188,7 +188,7 @@ export const PublisherDEJobList: React.FC<PublisherDEJobListProps> = (props) => 
                         {dropdownOpen === job.id && (
                           <DropdownMenuWithAutoDirection 
                             forceDirection={forceDirection}
-                            onClose={() => setDropdownOpen(null)}
+                            onClose={() => { setDropdownOpen(null); }}
                           >
                             <div className="py-1">
                               <button

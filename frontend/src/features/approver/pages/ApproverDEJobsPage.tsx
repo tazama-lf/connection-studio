@@ -1,7 +1,7 @@
 import { useAuth } from '@features/auth';
-import { Button } from "@shared";
-import { UI_CONFIG } from "@shared/config/app.config";
-import { getPrimaryRole } from "@utils/common/roleUtils";
+import { Button } from '@shared';
+import { UI_CONFIG } from '@shared/config/app.config';
+import { getPrimaryRole } from '@utils/common/roleUtils';
 import { ChevronLeft, Database } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
@@ -20,7 +20,7 @@ const ApproverDEJobsPage: React.FC = () => {
   const [jobSearchTerm, setJobSearchTerm] = useState('');
 
   const { user } = useAuth();
-  const userRole = getPrimaryRole(user?.claims as string[]);
+  const userRole = getPrimaryRole(user?.claims!);
 
   const [itemsPerPage] = useState(UI_CONFIG.pagination.defaultPageSize);
 
@@ -39,7 +39,7 @@ const ApproverDEJobsPage: React.FC = () => {
 
   const { showSuccess, showError } = useToast();
 
-  const fetchDeJobs = async (pageNumber: number = 1): Promise<void> => {
+  const fetchDeJobs = async (pageNumber = 1): Promise<void> => {
     try {
       setLoading(true);
       setError(null);
@@ -149,7 +149,7 @@ const ApproverDEJobsPage: React.FC = () => {
         <Button
           variant="primary"
           className="py-1 pl-2"
-          onClick={() => navigate(-1)}
+          onClick={async () => { await navigate(-1); }}
         >
           <ChevronLeft size={20} /> <span>Go Back</span>
         </Button>

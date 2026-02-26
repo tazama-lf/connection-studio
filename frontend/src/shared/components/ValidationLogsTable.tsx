@@ -39,8 +39,8 @@ const ValidationLogsTable: React.FC<ValidationLogsTableProps> = ({ logs = [] }) 
         { message: 'Missing required field: currency', type: 'error' }
       ],
       payload: {
-        "transactionId": "123",
-        "amount": -100
+        'transactionId': '123',
+        'amount': -100
       }
     },
     {
@@ -54,9 +54,9 @@ const ValidationLogsTable: React.FC<ValidationLogsTableProps> = ({ logs = [] }) 
         { message: 'Deprecated field usage detected', type: 'warning' }
       ],
       payload: {
-        "accountId": "ACC123",
-        "balance": 95000,
-        "currency": "USD"
+        'accountId': 'ACC123',
+        'balance': 95000,
+        'currency': 'USD'
       }
     }
   ];
@@ -114,7 +114,7 @@ const ValidationLogsTable: React.FC<ValidationLogsTableProps> = ({ logs = [] }) 
             type="text"
             placeholder="Search endpoints or errors..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => { setSearchTerm(e.target.value); }}
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
           <div className="absolute left-3 top-2.5">
@@ -129,7 +129,7 @@ const ValidationLogsTable: React.FC<ValidationLogsTableProps> = ({ logs = [] }) 
             {timeFilterButtons.map((filter) => (
               <button
                 key={filter}
-                onClick={() => setTimeFilter(filter)}
+                onClick={() => { setTimeFilter(filter); }}
                 className={`px-3 py-1 text-sm font-medium rounded transition-colors ${
                   timeFilter === filter
                     ? 'bg-blue-600 text-white'
@@ -181,7 +181,7 @@ const ValidationLogsTable: React.FC<ValidationLogsTableProps> = ({ logs = [] }) 
                   <td className="px-6 py-4">
                     {log.errorCount && log.errorCount > 0 && (
                       <button
-                        onClick={() => toggleRowExpansion(log.id)}
+                        onClick={() => { toggleRowExpansion(log.id); }}
                         className="inline-flex items-center text-blue-600 hover:text-blue-800 text-sm font-medium"
                       >
                         {log.errorCount} error{log.errorCount > 1 ? 's' : ''}

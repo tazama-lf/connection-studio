@@ -26,8 +26,7 @@ const {
   ingestModeOptions
 } = (validationSchema as any) || {};
 
-const PullConfigForm: React.FC<Props> = ({ control, watch, errors, availableSchedules }) => {
-  return (
+const PullConfigForm: React.FC<Props> = ({ control, watch, errors, availableSchedules }) => (
     <div className="space-y-6" data-id="element-818">
       <Grid container spacing={2}>
         <Grid size={{ xs: 12, md: 4 }}>
@@ -181,6 +180,5 @@ const PullConfigForm: React.FC<Props> = ({ control, watch, errors, availableSche
       </Grid>
     </div>
   );
-};
 
 export default PullConfigForm;

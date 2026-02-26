@@ -45,7 +45,7 @@ export const DropdownMenuWithAutoDirection: React.FC<DropdownMenuWithAutoDirecti
       }
     };
     document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
+    return () => { document.removeEventListener('mousedown', handleClick); };
   }, [onClose]);
 
   return (

@@ -194,12 +194,12 @@ interface EndpointTableProps {
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500" data-id="element-782">
                   <div className="flex items-center space-x-2" data-id="element-783">
                     {showActionsColumn && <div className="relative" data-id="element-786">
-                        <Button variant="danger" size="sm" onClick={() => setActiveDropdown(activeDropdown === endpoint.id ? null : endpoint.id)} icon={<MoreVerticalIcon size={14} data-id="element-788" />} data-id="element-787">
+                        <Button variant="danger" size="sm" onClick={() => { setActiveDropdown(activeDropdown === endpoint.id ? null : endpoint.id); }} icon={<MoreVerticalIcon size={14} data-id="element-788" />} data-id="element-787">
                           Actions
                         </Button>
                         {activeDropdown === endpoint.id && <div className="absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10" data-id="element-789">
                             <div className="py-1" role="menu" data-id="element-790">
-                              <button onClick={() => handleAction('view', endpoint)} className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" data-id="element-791">
+                              <button onClick={async () => { await handleAction('view', endpoint); }} className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" data-id="element-791">
                                 <EyeIcon size={14} className="mr-2" data-id="element-792" />
                                 View Configuration
                               </button>
@@ -207,13 +207,13 @@ interface EndpointTableProps {
                               {/* Edit and Clone - Only available for non-suspended items */}
                               {endpoint.status?.toLowerCase() !== 'suspended' && (
                                 <>
-                                  <button onClick={() => handleAction('edit', endpoint)} className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" data-id="element-793">
+                                  <button onClick={async () => { await handleAction('edit', endpoint); }} className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" data-id="element-793">
                                     <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                     </svg>
                                     Edit Configuration
                                   </button>
-                                  <button onClick={() => handleAction('clone', endpoint)} className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" data-id="element-799">
+                                  <button onClick={async () => { await handleAction('clone', endpoint); }} className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" data-id="element-799">
                                     <CopyIcon size={14} className="mr-2" data-id="element-800" />
                                     Clone Configuration
                                   </button>
@@ -222,7 +222,7 @@ interface EndpointTableProps {
                               {/* Suspend/Resume buttons */}
                               {endpoint.status?.toLowerCase() === 'suspended' ? (
                                 <button 
-                                  onClick={() => handleAction('resume', endpoint)} 
+                                  onClick={async () => { await handleAction('resume', endpoint); }} 
                                   disabled={isUpdatingStatus === endpoint.id}
                                   className={`flex items-center w-full px-4 py-2 text-sm hover:bg-gray-100 ${
                                     isUpdatingStatus === endpoint.id ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700'
@@ -234,7 +234,7 @@ interface EndpointTableProps {
                                 </button>
                               ) : (
                                 <button 
-                                  onClick={() => handleAction('suspend', endpoint)}
+                                  onClick={async () => { await handleAction('suspend', endpoint); }}
                                   disabled={isUpdatingStatus === endpoint.id}
                                   className={`flex items-center w-full px-4 py-2 text-sm hover:bg-gray-100 ${
                                     isUpdatingStatus === endpoint.id ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700'
@@ -247,7 +247,7 @@ interface EndpointTableProps {
                               )}
                               {(endpoint.status?.toLowerCase() === 'in-progress' || endpoint.status?.toLowerCase() === 'in_progress') && (
                                 <button 
-                                  onClick={() => handleAction('approve', endpoint)} 
+                                  onClick={async () => { await handleAction('approve', endpoint); }} 
                                   className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" 
                                   data-id="element-797"
                                 >
@@ -267,7 +267,7 @@ interface EndpointTableProps {
             </tr>}
         </tbody>
       </table>
-      {showHistory !== null && <EndpointHistoryModal endpointId={showHistory} onClose={() => setShowHistory(null)} data-id="element-803" />}
+      {showHistory !== null && <EndpointHistoryModal endpointId={showHistory} onClose={() => { setShowHistory(null); }} data-id="element-803" />}
     </div>;
 };
 export default EndpointTable;

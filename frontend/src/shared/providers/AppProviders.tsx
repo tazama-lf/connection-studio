@@ -7,8 +7,7 @@ interface AppProvidersProps {
   children: React.ReactNode;
 }
 
-export const AppProviders: React.FC<AppProvidersProps> = ({ children }) => {
-  return (
+export const AppProviders: React.FC<AppProvidersProps> = ({ children }) => (
     <BrowserRouter>
       <ToastProvider>
         <AuthProvider>
@@ -17,4 +16,3 @@ export const AppProviders: React.FC<AppProvidersProps> = ({ children }) => {
       </ToastProvider>
     </BrowserRouter>
   );
-};

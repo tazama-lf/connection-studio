@@ -20,7 +20,7 @@ export const ExporterDEJobsPage: React.FC = () => {
 
   // Role check
   const userIsExporter = user?.claims ? isExporter(user.claims) : false;
-  const userRole = getPrimaryRole(user?.claims as string[]);
+  const userRole = getPrimaryRole(user?.claims!);
 
   // State
   const [jobs, setJobs] = useState<DataEnrichmentJobResponse[]>([]);
@@ -47,7 +47,7 @@ export const ExporterDEJobsPage: React.FC = () => {
     }
   }, [isAuthenticated, user, userIsExporter, showError]);
 
-  const fetchDeJobs = async (pageNumber: number = 1): Promise<void> => {
+  const fetchDeJobs = async (pageNumber = 1): Promise<void> => {
     try {
       setLoading(true);
       setError(null);
@@ -145,7 +145,7 @@ export const ExporterDEJobsPage: React.FC = () => {
         <Button
           variant="primary"
           className="py-1 pl-2"
-          onClick={() => navigate(-1)}
+          onClick={async () => { await navigate(-1); }}
         >
           <ChevronLeft size={20} /> <span>Go Back</span>
         </Button>
@@ -167,7 +167,7 @@ export const ExporterDEJobsPage: React.FC = () => {
         <JobList
           jobs={jobs}
           isLoading={jobsLoading}
-          onRefresh={() => fetchDeJobs(page)}
+          onRefresh={async () => { await fetchDeJobs(page); }}
           onViewLogs={handleViewJobDetails}
           page={page}
           setPage={setPage}

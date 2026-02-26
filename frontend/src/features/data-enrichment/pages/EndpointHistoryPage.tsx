@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useLocation } from 'react-router';
+import { useLocation , useNavigate } from 'react-router';
 import CustomTable from '@common/Tables/CustomTable';
 import { dataEnrichmentJobApi as dataEnrichmentApi } from '../handlers';
 import {
@@ -28,9 +28,9 @@ import {
   AlertTriangle,
   FileCheck2,
   FileOutput as FileOutputLucide,
-} from 'lucide-react';
-import { useNavigate } from 'react-router';
-import { EyeIcon, Copy } from 'lucide-react';
+ EyeIcon, Copy } from 'lucide-react';
+
+
 import { handleInputFilter } from '@shared/helpers';
 import { UI_CONFIG } from '@shared/config/app.config';
 
@@ -118,7 +118,7 @@ const EndpointHistoryPage: React.FC = () => {
     {},
   );
   useEffect(() => {
-    const load = async (pageNumber: number = 1) => {
+    const load = async (pageNumber = 1) => {
       setLoading(true);
       setError(null);
       try {
@@ -305,7 +305,7 @@ const EndpointHistoryPage: React.FC = () => {
           <Tooltip title="View Details" arrow placement="top">
             <IconButton
               aria-label={`view-details-${params.row?.job_id ?? ''}`}
-              onClick={() => handleView(params.row)}
+              onClick={() => { handleView(params.row); }}
               size="small"
               sx={{ alignSelf: 'center' }}
             >
@@ -326,7 +326,7 @@ const EndpointHistoryPage: React.FC = () => {
           <Button
             variant="primary"
             className="py-1 pl-2"
-            onClick={() => navigate(-1)}
+            onClick={async () => { await navigate(-1); }}
           >
             <ChevronLeft size={20} /> <span>Go Back</span>
           </Button>
@@ -373,7 +373,7 @@ const EndpointHistoryPage: React.FC = () => {
                         <Pagination
                           page={page}
                           count={totalPages}
-                          onChange={(_, newPage: number) => setPage(newPage)}
+                          onChange={(_, newPage: number) => { setPage(newPage); }}
                           variant="outlined"
                           sx={{
                             '& .MuiPaginationItem-page.Mui-selected': {
@@ -393,7 +393,7 @@ const EndpointHistoryPage: React.FC = () => {
 
       <Dialog
         open={modalOpen}
-        onClose={() => setModalOpen(false)}
+        onClose={() => { setModalOpen(false); }}
         maxWidth="md"
         fullWidth
       >
@@ -409,7 +409,7 @@ const EndpointHistoryPage: React.FC = () => {
           <span>Endpoint Run Details</span>
           <IconButton
             aria-label="close"
-            onClick={() => setModalOpen(false)}
+            onClick={() => { setModalOpen(false); }}
             size="small"
             sx={{ ml: 2 }}
           >
@@ -459,7 +459,7 @@ const EndpointHistoryPage: React.FC = () => {
                             String(activeRecord.job_id ?? ''),
                           );
                           setCopied(true);
-                          setTimeout(() => setCopied(false), 1500);
+                          setTimeout(() => { setCopied(false); }, 1500);
                         } catch (e) {}
                       }}
                       aria-label="copy-job-id"

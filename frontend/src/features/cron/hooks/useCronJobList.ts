@@ -29,14 +29,12 @@ export const useCronJobList = () => {
     setOffset,
   } = useFilters();
 
-  const pagination = useMemo(() => {
-    return {
+  const pagination = useMemo(() => ({
       page: offset,
       limit,
       totalRecords: total,
       setPage: (page: number) => setOffset(page - 1),
-    };
-  }, [offset, limit, total])  
+    }), [offset, limit, total])  
 
   const [error, setError] = useState<string | null>(null);
   const [loadingState, setLoadingState] = useState<{

@@ -93,7 +93,7 @@ const CustomTable: React.FC<CustomTableProps> = ({
             <Pagination
               page={pagination.page + 1}
               count={totalPages}
-              onChange={(_, newPage) => pagination.setPage(newPage)}
+              onChange={(_, newPage) => { pagination.setPage(newPage); }}
               variant="outlined"
             />
           </PaginationContainer>

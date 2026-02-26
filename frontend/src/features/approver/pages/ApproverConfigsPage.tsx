@@ -1,5 +1,11 @@
 import React, { useState } from 'react';
-import { Backdrop, CircularProgress } from '@mui/material';
+import { Backdrop, CircularProgress ,
+  Dialog,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  Box,
+} from '@mui/material';
 import { ActivityIcon, ChevronLeft } from 'lucide-react';
 import { ConfigList } from '../../config/components/ConfigList';
 import type { Config } from '../../config/index';
@@ -12,13 +18,7 @@ import EditEndpointModal from '../../../shared/components/EditEndpointModal';
 import { useAuth } from '../../auth/contexts/AuthContext';
 import { Button } from '@shared';
 import { useNavigate } from 'react-router';
-import {
-  Dialog,
-  DialogContent,
-  DialogContentText,
-  DialogActions,
-  Box,
-} from '@mui/material';
+
 
 const ApproverConfigsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -214,8 +214,7 @@ const ApproverConfigsPage: React.FC = () => {
         handleCloseModal();
         setShowApprovalDialog(false);
         setConfigToApprove(null);
-      } else {
-        if (response.config) {
+      } else if (response.config) {
           showSuccess('Configuration approved successfully');
           setRefreshKey((prev) => prev + 1);
           handleCloseModal();
@@ -226,7 +225,6 @@ const ApproverConfigsPage: React.FC = () => {
           setShowApprovalDialog(false);
           setConfigToApprove(null);
         }
-      }
     } catch (error) {
       showError('Failed to approve configuration');
       setShowApprovalDialog(false);
@@ -242,7 +240,7 @@ const ApproverConfigsPage: React.FC = () => {
         <Button
           variant="primary"
           className="py-1 pl-2"
-          onClick={() => navigate(-1)}
+          onClick={async () => { await navigate(-1); }}
         >
           <ChevronLeft size={20} /> <span>Go Back</span>
         </Button>
@@ -333,8 +331,8 @@ const ApproverConfigsPage: React.FC = () => {
             setSelectedConfig(null);
           }}
           config={selectedConfig}
-          onApprove={() => handleApprove(selectedConfig.id)}
-          onReject={() => handleRejectClick(selectedConfig)}
+          onApprove={async () => { await handleApprove(selectedConfig.id); }}
+          onReject={() => { handleRejectClick(selectedConfig); }}
         />
       )}
 
@@ -431,7 +429,7 @@ const ApproverConfigsPage: React.FC = () => {
             <textarea
               id="approval-comment"
               value={approvalComment}
-              onChange={(e) => setApprovalComment(e.target.value)}
+              onChange={(e) => { setApprovalComment(e.target.value); }}
               placeholder="Add a comment for this approval (optional)"
               rows={3}
               style={{

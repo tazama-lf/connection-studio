@@ -7,7 +7,7 @@ import {
   DialogContentText,
   DialogActions,
 } from '@mui/material';
-import { formatDateStructured } from '../../utils';
+import { formatDateStructured , getJobType, getConnectionType } from '../../utils';
 import {
   Calendar,
   Check,
@@ -34,7 +34,7 @@ import {
 } from '../../../../shared/utils/statusColors';
 import { isApprover, isEditor, isExporter } from '../../../../utils/common/roleUtils';
 import { useAuth } from '../../../auth/contexts/AuthContext';
-import type { DataEnrichmentJobResponse } from '../../types';
+import type { DataEnrichmentJobResponse , JobDetailsModalProps } from '../../types';
 import {
   handleRejectionConfirm as handleRejection,
   handleSendForApprovalConfirm as handleSendApproval,
@@ -43,8 +43,8 @@ import {
   handleExportConfirm as handleExport,
   handleApproveWithComment as handleApproveComment,
 } from '../../handlers';
-import { getJobType, getConnectionType } from '../../utils';
-import type { JobDetailsModalProps } from '../../types';
+
+
 import ensurePromise from '../../../../utils/common/helper';
 import { DATA_ENRICHMENT_JOB_STATUSES } from '../../constants';
 
@@ -73,9 +73,9 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
   const [showApproveConfirmDialog, setShowApproveConfirmDialog] =
     useState(false);
 
-  const handleRejectionConfirm = (reason: string) => handleRejection(reason, job, onReject, onClose);
+  const handleRejectionConfirm = (reason: string) => { handleRejection(reason, job, onReject, onClose); };
 
-  const handleSendForApprovalConfirm = () => handleSendApproval(job, onSendForApproval, onClose, setShowApprovalConfirmDialog);
+  const handleSendForApprovalConfirm = () => { handleSendApproval(job, onSendForApproval, onClose, setShowApprovalConfirmDialog); };
   
   const [editedJob, setEditedJob] = useState<
     Partial<DataEnrichmentJobResponse>
@@ -110,15 +110,13 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
   }, [job, editMode, cloneMode]);
 
   const handleInputChange = (field: keyof DataEnrichmentJobResponse, value: any) => 
-    handleInput(field, value, setEditedJob);
+    { handleInput(field, value, setEditedJob); };
 
-  const handleSave = async () => handleSaveJob(job, editedJob, onSave, onClose, setIsSaving);
+  const handleSave = async () => { await handleSaveJob(job, editedJob, onSave, onClose, setIsSaving); };
 
-  const getConfigTypeColor = (type: string | undefined) => {
-    return getJobTypeColor(type);
-  };
+  const getConfigTypeColor = (type: string | undefined) => getJobTypeColor(type);
 
-  const handleExportConfirm = async () => handleExport(job, onExport, setShowExportConfirmDialog, setIsSaving);
+  const handleExportConfirm = async () => { await handleExport(job, onExport, setShowExportConfirmDialog, setIsSaving); };
 
   const [approveComment, setApproveComment] = useState('');
   
@@ -310,7 +308,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                           handleInputChange('source_type', e.target.value)
                         }
                         disabled={true} 
-                        className={`w-full px-3 py-2 border border-gray-300 rounded-lg text-lg font-medium h-[60px]  text-gray-900`}
+                        className={'w-full px-3 py-2 border border-gray-300 rounded-lg text-lg font-medium h-[60px]  text-gray-900'}
                         style={{
                           border: '1px solid silver',
                           borderRadius: '7px',
@@ -1068,7 +1066,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                   type="button"
                   variant="contained"
                   sx={{ backgroundColor: '#2b7fff' }}
-                  onClick={() => setShowApprovalConfirmDialog(true)}
+                  onClick={() => { setShowApprovalConfirmDialog(true); }}
                   startIcon={<Send size={16} />}
                 >
                   Send for Approval
@@ -1101,7 +1099,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                         type="button"
                         variant="contained"
                         sx={{ marginRight: '10px', backgroundColor: '#ff474d' }}
-                        onClick={() => setShowRejectionDialog(true)}
+                        onClick={() => { setShowRejectionDialog(true); }}
                         startIcon={<XCircle size={16} />}
                       >
                         Reject
@@ -1112,7 +1110,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                         type="button"
                         variant="contained"
                         sx={{ backgroundColor: '#33ad74' }}
-                        onClick={() => setShowApproveConfirmDialog(true)}
+                        onClick={() => { setShowApproveConfirmDialog(true); }}
                         startIcon={<Check size={16} />}
                       >
                         Approve
@@ -1143,7 +1141,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                   type="button"
                   variant="contained"
                   sx={{ backgroundColor: '#2b7fff' }}
-                  onClick={() => setShowExportConfirmDialog(true)}
+                  onClick={() => { setShowExportConfirmDialog(true); }}
                   startIcon={<Download size={16} />}
                 >
                   Export
@@ -1183,7 +1181,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
       
       <Dialog
         open={showExportConfirmDialog}
-        onClose={() => setShowExportConfirmDialog(false)}
+        onClose={() => { setShowExportConfirmDialog(false); }}
         aria-labelledby="export-confirmation-dialog-title"
         aria-describedby="export-confirmation-dialog-description"
         sx={{
@@ -1253,7 +1251,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
         </DialogContent>
         <DialogActions sx={{ padding: '12px 20px 16px 20px' }}>
           <MuiButton
-            onClick={() => setShowExportConfirmDialog(false)}
+            onClick={() => { setShowExportConfirmDialog(false); }}
             variant="outlined"
             color="inherit"
             size="small"
@@ -1307,7 +1305,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
       
       <JobRejectionDialog
         isOpen={showRejectionDialog}
-        onClose={() => setShowRejectionDialog(false)}
+        onClose={() => { setShowRejectionDialog(false); }}
         onConfirm={handleRejectionConfirm}
         jobName={job?.endpoint_name || job?.id || 'Unknown Job'}
         jobType="Data Enrichment Job"
@@ -1316,7 +1314,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
       
       <Dialog
         open={showApprovalConfirmDialog}
-        onClose={() => setShowApprovalConfirmDialog(false)}
+        onClose={() => { setShowApprovalConfirmDialog(false); }}
         aria-labelledby="approval-confirmation-dialog-title"
         aria-describedby="approval-confirmation-dialog-description"
         sx={{
@@ -1388,7 +1386,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
         </DialogContent>
         <DialogActions sx={{ padding: '12px 20px 16px 20px' }}>
           <MuiButton
-            onClick={() => setShowApprovalConfirmDialog(false)}
+            onClick={() => { setShowApprovalConfirmDialog(false); }}
             variant="outlined"
             color="inherit"
             size="small"
@@ -1413,7 +1411,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
       
       <Dialog
         open={showApproveConfirmDialog}
-        onClose={() => setShowApproveConfirmDialog(false)}
+        onClose={() => { setShowApproveConfirmDialog(false); }}
         aria-labelledby="approve-confirmation-dialog-title"
         aria-describedby="approve-confirmation-dialog-description"
         sx={{
@@ -1495,7 +1493,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
             <textarea
               id="approve-comment"
               value={approveComment}
-              onChange={(e) => setApproveComment(e.target.value)}
+              onChange={(e) => { setApproveComment(e.target.value); }}
               rows={3}
               style={{
                 width: '100%',
@@ -1511,7 +1509,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
         </DialogContent>
         <DialogActions sx={{ padding: '12px 20px 16px 20px' }}>
           <MuiButton
-            onClick={() => setShowApproveConfirmDialog(false)}
+            onClick={() => { setShowApproveConfirmDialog(false); }}
             variant="outlined"
             color="inherit"
             size="small"

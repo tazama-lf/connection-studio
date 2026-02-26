@@ -125,7 +125,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
   const userIsPublisher = user?.claims ? isPublisher(user.claims) : false;
   const { showSuccess, showError } = useToast();
 
-  const userRole = getPrimaryRole(user?.claims as string[]);
+  const userRole = getPrimaryRole(user?.claims!);
 
   // Fetch configs based on flags
   const fetchConfigs = async () => {
@@ -176,8 +176,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+  const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('en-US', {
       month: 'numeric',
       day: 'numeric',
       year: 'numeric',
@@ -185,7 +184,6 @@ export const ConfigList: React.FC<ConfigListProps> = ({
       minute: '2-digit',
       hour12: true,
     });
-  };
 
   const getStatusBadge = (status: string) => {
     const normalizedStatus = status.toLowerCase();
@@ -313,7 +311,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
     };
 
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    return () => { document.removeEventListener('mousedown', handleClickOutside); };
   }, [showStatusFilter]);
 
   const handleViewConfig = (config: Config) => {
@@ -545,7 +543,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
           {handleSelectFilter({
             fieldName: 'status',
             options:
-              getDemsStatusLov[userRole as keyof typeof getDemsStatusLov] || [],
+              getDemsStatusLov[userRole!] || [],
             searchingFilters,
             setSearchingFilters,
           })}
@@ -667,7 +665,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
                     setConfirmDialog({
                       open: true,
                       type: 'pause',
-                      config: config,
+                      config,
                     });
                   }}
                 />
@@ -681,7 +679,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
                     setConfirmDialog({
                       open: true,
                       type: 'resume',
-                      config: config,
+                      config,
                     });
                   }}
                 />
@@ -697,7 +695,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
                       setConfirmDialog({
                         open: true,
                         type: 'export',
-                        config: config,
+                        config,
                       });
                     }}
                   />
@@ -713,7 +711,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
                         setConfirmDialog({
                           open: true,
                           type: 'deactivate',
-                          config: config,
+                          config,
                         });
                       }}
                     />
@@ -726,7 +724,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
                         setConfirmDialog({
                           open: true,
                           type: 'activate',
-                          config: config,
+                          config,
                         });
                       }}
                     />
@@ -740,7 +738,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
     },
   ];
 
-  const fetchConfigsTemp = async (pageNumber: number = 1): Promise<void> => {
+  const fetchConfigsTemp = async (pageNumber = 1): Promise<void> => {
     try {
       setLoading(true);
       setError(null);
@@ -823,7 +821,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
                     <Pagination
                       page={page}
                       count={totalPages}
-                      onChange={(_, newPage: number) => setPage(newPage)}
+                      onChange={(_, newPage: number) => { setPage(newPage); }}
                       variant="outlined"
                       sx={{
                         '& .MuiPaginationItem-page.Mui-selected': {
@@ -843,7 +841,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
       <Dialog
         open={confirmDialog.open}
         onClose={() =>
-          setConfirmDialog({ open: false, type: '', config: null })
+          { setConfirmDialog({ open: false, type: '', config: null }); }
         }
         aria-labelledby="confirmation-dialog-title"
         aria-describedby="confirmation-dialog-description"
@@ -930,7 +928,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
         <DialogActions sx={{ padding: '12px 20px 16px 20px' }}>
           <Button
             onClick={() =>
-              setConfirmDialog({ open: false, type: '', config: null })
+              { setConfirmDialog({ open: false, type: '', config: null }); }
             }
             variant="secondary"
             className="!pb-[6px] !pt-[5px]"
@@ -943,9 +941,9 @@ export const ConfigList: React.FC<ConfigListProps> = ({
               else if (confirmDialog.type === 'pause') handlePauseConfirm();
               else if (confirmDialog.type === 'resume') handleResumeConfirm();
               else if (confirmDialog.type === 'activate')
-                handleActivateConfirm();
+                {handleActivateConfirm();}
               else if (confirmDialog.type === 'deactivate')
-                handleDeactivateConfirm();
+                {handleDeactivateConfirm();}
             }}
             variant="primary"
             className="!pb-[6px] !pt-[5px]"

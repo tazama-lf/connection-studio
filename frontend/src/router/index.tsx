@@ -92,7 +92,7 @@ export const AppRoutes: React.FC = () => {
 
 
  useEffect(() => {
-    setupFetch401Interceptor(() => navigate("/login"));
+    setupFetch401Interceptor(async () => { await navigate('/login'); });
   }, [navigate]);
 
   if (loading) {

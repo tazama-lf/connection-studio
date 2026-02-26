@@ -1,6 +1,6 @@
-import { useEffect } from "react"
-import { usePagination } from "./usePagination"
-import useDebouncedSearch from "./useDebouncedSearch"
+import { useEffect } from 'react'
+import { usePagination } from './usePagination'
+import useDebouncedSearch from './useDebouncedSearch'
 
 interface UseFiltersOptions {
     default_offset?: number
@@ -13,7 +13,7 @@ const useFilters = ({
     default_offset = 0,
     default_limit = 10,
     search_delay = 500,
-    initial_search = "",
+    initial_search = '',
 }: UseFiltersOptions = {}) => {
     const {
         offset,

@@ -143,7 +143,7 @@ const ExportedDEJobList: React.FC<ExportedDEJobListProps> = ({
                   <div className="flex items-center justify-center space-x-2">
                     <div className="relative actions-dropdown">
                       <button
-                        onClick={() => setOpenDropdown(openDropdown === job.id ? null : job.id)}
+                        onClick={() => { setOpenDropdown(openDropdown === job.id ? null : job.id); }}
                         className="p-1 hover:bg-gray-100 rounded-full transition-colors"
                         title="Actions"
                       >
@@ -153,7 +153,7 @@ const ExportedDEJobList: React.FC<ExportedDEJobListProps> = ({
                       {openDropdown === job.id && (
                         <DropdownMenuWithAutoDirection
                           forceDirection={forceDirection}
-                          onClose={() => setOpenDropdown(null)}
+                          onClose={() => { setOpenDropdown(null); }}
                         >
                           <button
                             onClick={() => {

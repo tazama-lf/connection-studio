@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback } from 'react'
 
 type UseDebouncedSearchReturn = [
   string,
@@ -7,8 +7,8 @@ type UseDebouncedSearchReturn = [
 ]
 
 const useDebouncedSearch = (
-  initialValue: string = "",
-  delay: number = 500
+  initialValue = '',
+  delay = 500
 ): UseDebouncedSearchReturn => {
   const [value, setValue] = useState<string>(initialValue)
   const [debouncedValue, setDebouncedValue] = useState<string>(initialValue)
@@ -18,7 +18,7 @@ const useDebouncedSearch = (
       setDebouncedValue(value)
     }, delay)
 
-    return () => clearTimeout(handler)
+    return () => { clearTimeout(handler); }
   }, [value, delay])
 
   const onChange = useCallback((value: string) => {

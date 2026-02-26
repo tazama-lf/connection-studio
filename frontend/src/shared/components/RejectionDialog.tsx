@@ -14,8 +14,7 @@ export const RejectionDialog: React.FC<RejectionDialogProps> = ({
   onClose,
   onConfirm,
   configName,
-}) => {
-  return (
+}) => (
     <JobRejectionDialog
       isOpen={isOpen}
       onClose={onClose}
@@ -24,4 +23,3 @@ export const RejectionDialog: React.FC<RejectionDialogProps> = ({
       jobType="Data Enrichment Job"
     />
   );
-};

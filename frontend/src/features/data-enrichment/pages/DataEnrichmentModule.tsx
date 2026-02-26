@@ -118,7 +118,7 @@ const DataEnrichmentModule: React.FC = () => {
         <Button
           variant="primary"
           className="py-1 pl-2"
-          onClick={() => navigate(-1)}
+          onClick={async () => { await navigate(-1); }}
         >
           <ChevronLeft size={20} /> <span>Go Back</span>
         </Button>
@@ -138,7 +138,7 @@ const DataEnrichmentModule: React.FC = () => {
             <Button
               variant="primary"
               icon={<Plus size={16} />}
-              onClick={() => setShowJobForm(true)}
+              onClick={() => { setShowJobForm(true); }}
             >
               Create New Enrichment Job
             </Button>
@@ -213,7 +213,7 @@ const DataEnrichmentModule: React.FC = () => {
         {showJobForm && (
           <DataEnrichmentFormModal
             isOpen={showJobForm}
-            onClose={() => setShowJobForm(false)}
+            onClose={() => { setShowJobForm(false); }}
             onSave={handleCreateJob}
             editMode={false}
           />

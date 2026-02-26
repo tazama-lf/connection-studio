@@ -67,7 +67,7 @@ export const Login: React.FC = () => {
     resolver: yupResolver(schema),
   });
 
-  const handleClickShowPassword = () => setShowPassword((prev) => !prev);
+  const handleClickShowPassword = () => { setShowPassword((prev) => !prev); };
   const handleMouseDownPassword = (
     event: React.MouseEvent<HTMLButtonElement>,
   ) => {

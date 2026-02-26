@@ -118,9 +118,7 @@ const DEMSModule: React.FC = () => {
   const [destinationTree, setDestinationTree] = useState<TreeNode[]>([]);
   const [addDestinationStep, setAddDestinationStep] = React.useState<number>(0);
   const [showAddDestination, setShowAddDestination] = React.useState(false);
-  const [destinationForm, setDestinationForm] = React.useState<{
-    [key: string]: any;
-  }>({});
+  const [destinationForm, setDestinationForm] = React.useState<Record<string, any>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { showSuccess, showError } = useToast();
@@ -341,7 +339,7 @@ const DEMSModule: React.FC = () => {
                 name: part,
                 path: [...currentPath],
                 type: isLeaf ? field.type.toLowerCase() : 'object',
-                collection_id: collection_id, // <-- ADD COLLECTION ID
+                collection_id, // <-- ADD COLLECTION ID
                 serial_no: isLeaf ? field.serial_no : null, // <-- ADD SERIAL ID
               },
               children: new Map(),
@@ -358,12 +356,10 @@ const DEMSModule: React.FC = () => {
         });
       });
 
-      const convertMapToNodes = (map: Map<string, any>): TreeNode[] => {
-        return Array.from(map.values()).map(({ node, children }) => ({
+      const convertMapToNodes = (map: Map<string, any>): TreeNode[] => Array.from(map.values()).map(({ node, children }) => ({
           ...node,
           children: children.size > 0 ? convertMapToNodes(children) : undefined,
         }));
-      };
 
       return convertMapToNodes(rootMap);
     };
@@ -375,7 +371,7 @@ const DEMSModule: React.FC = () => {
         id: collectionName,
         name: collectionName.charAt(0).toUpperCase() + collectionName.slice(1),
         path: [collectionName],
-        collection_id: collection_id, // <-- ADD COLLECTION ID on root
+        collection_id, // <-- ADD COLLECTION ID on root
         serial_no: null, // root never has serial_no
         children: buildNestedTree(collectionName, fields, collection_id),
       };
@@ -411,8 +407,7 @@ const DEMSModule: React.FC = () => {
   }, []);
 
   // Generate unique collection options from destination tree
-  const getImmediateParentOptions = () => {
-    return destinationTree
+  const getImmediateParentOptions = () => destinationTree
       .filter((collection) => {
         if (destinationForm?.destination === 'data-cache') {
           return collection.collection_id === 2;
@@ -427,14 +422,13 @@ const DEMSModule: React.FC = () => {
         value: collection.collection_id,
         label: collection.name,
       }));
-  };
 
   const getParentDestinationOptions = () => {
     const collection = destinationTree.find(
       (col) => col.collection_id === Number(selectedImmediateParent),
     );
 
-    if (!collection || !collection.children) return [];
+    if (!collection?.children) return [];
 
     return collection.children
       .filter((child) => child?.type === 'object')
@@ -502,7 +496,7 @@ const DEMSModule: React.FC = () => {
         <Button
           variant="primary"
           className="py-1 pl-2"
-          onClick={() => navigate(-1)}
+          onClick={async () => { await navigate(-1); }}
         >
           <ChevronLeft size={20} /> <span>Go Back</span>
         </Button>
@@ -624,7 +618,7 @@ const DEMSModule: React.FC = () => {
                   )}
                 </Box>
                 <button
-                  onClick={() => setShowAddDestination(false)}
+                  onClick={() => { setShowAddDestination(false); }}
                   className="text-gray-500 hover:text-gray-700"
                   data-id="element-1050"
                 >

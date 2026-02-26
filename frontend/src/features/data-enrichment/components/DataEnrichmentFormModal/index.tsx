@@ -36,14 +36,16 @@ import {
   VersionInputField,
 } from '../../../../shared/components/FormFields';
 import ValidationError from '../../../../shared/components/ValidationError';
-import { dataEnrichmentJobApi as dataEnrichmentApi, scheduleApi } from '../../handlers';
-import {
+import { dataEnrichmentJobApi as dataEnrichmentApi, scheduleApi ,
   handleFormInputChange,
   handleContinue as continueForm,
 } from '../../handlers';
-import type { ScheduleResponse } from '../../types';
+
+import type { ScheduleResponse , DataEnrichmentFormModalProps } from '../../types';
 // @ts-ignore - JS module without types
 import * as validationSchema from '../validationSchema';
+import { DATA_ENRICHMENT_JOB_STATUSES } from '../../constants';
+
 const {
   authenticationTypeOptions,
   defaultValues,
@@ -54,8 +56,6 @@ const {
   pushValidationSchema,
   sourceTypeOptions,
 } = (validationSchema as any) || {};
-import { DATA_ENRICHMENT_JOB_STATUSES } from '../../constants';
-import type { DataEnrichmentFormModalProps } from '../../types';
 
 export const DataEnrichmentFormModal: React.FC<
   DataEnrichmentFormModalProps
@@ -161,7 +161,7 @@ export const DataEnrichmentFormModal: React.FC<
   const scrollToFirstError = (fieldName: string) => {
     const errorElement = document.querySelector(
       `[name="${fieldName}"]`,
-    ) as HTMLElement;
+    )!;
     if (errorElement) {
       
       const modalContent =
@@ -1163,7 +1163,7 @@ export const DataEnrichmentFormModal: React.FC<
     }
   };
 
-  const handleContinue = () => continueForm(setShowConfigForm);
+  const handleContinue = () => { continueForm(setShowConfigForm); };
 
   const handleSave = async () => {
     try {

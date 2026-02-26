@@ -23,14 +23,12 @@ export const useDataEnrichmentJobList = () => {
     setOffset,
   } = useFilters();
 
-  const pagination = useMemo(() => {
-    return {
+  const pagination = useMemo(() => ({
       page: offset,
       limit,
       totalRecords: total,
-      setPage: (page: number) => setOffset(page - 1),
-    };
-  }, [offset, limit, total])
+      setPage: (page: number) => { setOffset(page - 1); },
+    }), [offset, limit, total])
 
   const [searchingFilters, setSearchingFilters] = useState<
     Record<string, unknown>

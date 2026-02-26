@@ -13,8 +13,7 @@ export const FileCorruptionError: React.FC<FileCorruptionErrorProps> = ({
   onRetry,
   onClose,
   className = ''
-}) => {
-  return (
+}) => (
     <div className={`bg-red-50 border border-red-200 rounded-lg p-4 ${className}`}>
       <div className="flex items-start space-x-3">
         <div className="flex-shrink-0">
@@ -68,6 +67,5 @@ export const FileCorruptionError: React.FC<FileCorruptionErrorProps> = ({
       </div>
     </div>
   );
-};
 
 export default FileCorruptionError;

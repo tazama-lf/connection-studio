@@ -3,9 +3,9 @@ import { ArrowDownToLine, Code2, FilePlus, FileText, List, Settings2, SparklesIc
 import React, { useEffect, useState } from 'react';
 import ReactJson from 'react-json-view';
 import * as yup from 'yup';
-import {
-  type FieldAdjustment,
-  type SchemaField,
+import type {
+  FieldAdjustment,
+  SchemaField,
 } from '../../features/config/services/configApi';
 import { Button } from './Button';
 interface PayloadEditorProps {
@@ -97,9 +97,7 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
     payload: '',
   });
   const [showValidationErrors, setShowValidationErrors] = useState(false);
-  const capitalizeFirstLetter = (string: string): string => {
-    return string.charAt(0).toUpperCase() + string.slice(1).toLowerCase();
-  };
+  const capitalizeFirstLetter = (string: string): string => string.charAt(0).toUpperCase() + string.slice(1).toLowerCase();
   const safeJsonParse = (
     jsonString: string,
   ): { success: boolean; data?: any; error?: string } => {
@@ -131,7 +129,7 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
     .test(
       'format',
       'Event Type must be alphanumeric and can only contain _, -, / in the middle (not at start or end)',
-      function (value) {
+      (value) => {
         if (!value || value.trim() === '') {
           return true;
         }
@@ -653,7 +651,7 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
     if (childElements.length > 0) {
       const elementGroups = new Map<string, Element[]>();
       childElements.forEach((child) => {
-        const tagName = child.tagName;
+        const {tagName} = child;
         if (!elementGroups.has(tagName)) {
           elementGroups.set(tagName, []);
         }
@@ -809,9 +807,9 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
       return (
         <ReactJson
           src={parseResult.data}
-          onEdit={(e) => onChange(JSON.stringify(e.updated_src, null, 2))}
-          onAdd={(e) => onChange(JSON.stringify(e.updated_src, null, 2))}
-          onDelete={(e) => onChange(JSON.stringify(e.updated_src, null, 2))}
+          onEdit={(e) => { onChange(JSON.stringify(e.updated_src, null, 2)); }}
+          onAdd={(e) => { onChange(JSON.stringify(e.updated_src, null, 2)); }}
+          onDelete={(e) => { onChange(JSON.stringify(e.updated_src, null, 2)); }}
           theme="rjv-default"
           name={false}
           displayDataTypes={false}
@@ -869,7 +867,7 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
                   type="text"
                   value={endpointData.version}
                   onChange={(e) =>
-                    handleEndpointDataChange('version', e.target.value)
+                    { handleEndpointDataChange('version', e.target.value); }
                   }
                   onKeyPress={(e) => {
                     const char = e.key;
@@ -912,7 +910,7 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
                   type="text"
                   value={endpointData.msgFam || ''}
                   onChange={(e) =>
-                    handleEndpointDataChange('msgFam', e.target.value)
+                    { handleEndpointDataChange('msgFam', e.target.value); }
                   }
                   onKeyPress={(e) => {
                     const char = e.key;
@@ -953,7 +951,7 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
                   type="text"
                   value={endpointData.transactionType || ''}
                   onChange={(e) =>
-                    handleEndpointDataChange('transactionType', e.target.value.toLowerCase())
+                    { handleEndpointDataChange('transactionType', e.target.value.toLowerCase()); }
                   }
                   onKeyPress={(e) => {
                     const char = e.key;
@@ -993,7 +991,7 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
                   id="content-type"
                   value={endpointData.contentType}
                   onChange={(e) =>
-                    handleEndpointDataChange('contentType', e.target.value)
+                    { handleEndpointDataChange('contentType', e.target.value); }
                   }
                   className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white ${isReadOnly
                     ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
@@ -1070,11 +1068,11 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
                     style={{ backgroundColor: '#2b7fff', color: 'white' }}
                     icon={<FilePlus size={16} />}
                     onClick={() =>
-                      onChange(
+                      { onChange(
                         endpointData.contentType === 'application/json'
                           ? sampleJsonPayload
                           : sampleXmlPayload,
-                      )
+                      ); }
                     }
                   >
                     Load{' '}
@@ -1092,7 +1090,7 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
                   style={{ background: '#ff474d', color: 'white' }}
                   icon={<XCircle size={16} />}
                   className="cursor-pointer"
-                  onClick={() => onChange('')}
+                  onClick={() => { onChange(''); }}
                 >
                   Clear
                 </Button>
@@ -1209,7 +1207,7 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
               <div className=" rounded-md relative bg-white">
                 <textarea
                   value={value}
-                  onChange={(e) => onChange(e.target.value)}
+                  onChange={(e) => { onChange(e.target.value); }}
                   className="w-full h-[400px] p-4 font-mono text-sm bg-white focus:outline-none border rounded-md resize-none scrollbar-hide"
                   spellCheck={false}
                   placeholder={`Enter your ${endpointData.contentType === 'application/json' ? 'JSON' : 'XML'} payload here...`}
@@ -1327,7 +1325,7 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
                 <div className="mt-4">
                   {!showAddFieldForm ? (
                     <button
-                      onClick={() => setShowAddFieldForm(true)}
+                      onClick={() => { setShowAddFieldForm(true); }}
                       className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                     >
                       <svg
@@ -1364,10 +1362,10 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
                             type="text"
                             value={newField.path}
                             onChange={(e) =>
-                              setNewField((prev) => ({
+                              { setNewField((prev) => ({
                                 ...prev,
                                 path: e.target.value,
-                              }))
+                              })); }
                             }
                             placeholder="e.g., user.name or address.street"
                             className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm"
@@ -1388,10 +1386,10 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
                             id="empty-field-type"
                             value={newField.type}
                             onChange={(e) =>
-                              setNewField((prev) => ({
+                              { setNewField((prev) => ({
                                 ...prev,
                                 type: e.target.value as InferredField['type'],
-                              }))
+                              })); }
                             }
                             className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm"
                           >
@@ -1409,10 +1407,10 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
                             type="checkbox"
                             checked={newField.required}
                             onChange={(e) =>
-                              setNewField((prev) => ({
+                              { setNewField((prev) => ({
                                 ...prev,
                                 required: e.target.checked,
-                              }))
+                              })); }
                             }
                             className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                           />
@@ -1476,7 +1474,7 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
                 <div className="mb-4">
                   {!showAddFieldForm ? (
                     <button
-                      onClick={() => setShowAddFieldForm(true)}
+                      onClick={() => { setShowAddFieldForm(true); }}
                       className="inline-flex items-center px-3 py-1 border border-dashed border-gray-300 rounded text-sm text-gray-600 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       <svg
@@ -1503,10 +1501,10 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
                             type="text"
                             value={newField.path}
                             onChange={(e) =>
-                              setNewField((prev) => ({
+                              { setNewField((prev) => ({
                                 ...prev,
                                 path: e.target.value,
-                              }))
+                              })); }
                             }
                             placeholder="Field path (e.g., user.name)"
                             className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -1517,10 +1515,10 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
                           <select
                             value={newField.type}
                             onChange={(e) =>
-                              setNewField((prev) => ({
+                              { setNewField((prev) => ({
                                 ...prev,
                                 type: e.target.value as InferredField['type'],
-                              }))
+                              })); }
                             }
                             className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           >
@@ -1537,10 +1535,10 @@ export const PayloadEditor: React.FC<PayloadEditorProps> = ({
                             type="checkbox"
                             checked={newField.required}
                             onChange={(e) =>
-                              setNewField((prev) => ({
+                              { setNewField((prev) => ({
                                 ...prev,
                                 required: e.target.checked,
-                              }))
+                              })); }
                             }
                             className="h-3.5 w-3.5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                           />

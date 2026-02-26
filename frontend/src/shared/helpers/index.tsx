@@ -58,7 +58,7 @@ export const handleInputFilter = ({
           }
         }}
         onChange={(event) => {
-          const value = event.target.value;
+          const {value} = event.target;
           setLocalValue(value);
 
           if (value.length <= 0) {

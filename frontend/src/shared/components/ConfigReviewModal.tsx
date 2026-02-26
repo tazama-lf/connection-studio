@@ -43,9 +43,9 @@ export const ConfigReviewModal: React.FC<ConfigReviewModalProps> = ({
       // TODO: Load simulation results if available
       // For now, we'll show a placeholder
       setSimulationResults({
-        input: { transactionId: "12345", amount: 100.50, currency: "USD" },
-        output: { id: "12345", value: 100.50, currencyCode: "USD" },
-        status: "success"
+        input: { transactionId: '12345', amount: 100.50, currency: 'USD' },
+        output: { id: '12345', value: 100.50, currencyCode: 'USD' },
+        status: 'success'
       });
     } catch (error) {
       console.error('Failed to load config details:', error);
@@ -235,14 +235,14 @@ export const ConfigReviewModal: React.FC<ConfigReviewModalProps> = ({
                 </Button>
                 <Button
                   variant="danger"
-                  onClick={() => onReject(config)}
+                  onClick={() => { onReject(config); }}
                 >
                   <XCircleIcon className="h-4 w-4 mr-1" />
                   Reject
                 </Button>
                 <Button
                   variant="primary"
-                  onClick={() => onApprove(config.id)}
+                  onClick={() => { onApprove(config.id); }}
                 >
                   <CheckCircleIcon className="h-4 w-4 mr-1" />
                   Approve

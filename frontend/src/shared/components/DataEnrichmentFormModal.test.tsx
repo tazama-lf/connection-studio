@@ -8,6 +8,8 @@ import {
 } from '@testing-library/react';
 import { DataEnrichmentFormModal } from '../../features/data-enrichment/components/DataEnrichmentFormModal';
 
+import { dataEnrichmentJobApi } from '../../features/data-enrichment/handlers';
+
 // Mock the dataEnrichmentApi
 jest.mock('../../features/data-enrichment/services', () => ({
   dataEnrichmentApi: {
@@ -35,11 +37,7 @@ jest.mock('./Button', () => ({
   ),
 }));
 
-import { dataEnrichmentJobApi } from '../../features/data-enrichment/handlers';
-
-const mockDataEnrichmentApi = dataEnrichmentApi as jest.Mocked<
-  typeof dataEnrichmentApi
->;
+const mockDataEnrichmentApi = dataEnrichmentApi;
 
 describe('DataEnrichmentFormModal', () => {
   const defaultProps = {

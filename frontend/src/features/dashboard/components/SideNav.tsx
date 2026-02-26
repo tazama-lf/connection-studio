@@ -187,7 +187,7 @@ export default function SideNav({ open, onClose }: SideNavProps) {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    border: `1px solid #ef444433`,
+                    border: '1px solid #ef444433',
                     bgcolor: '#fbf9fa'
                   }}>
                     <LogOutIcon size={18} color="#ef4444" />

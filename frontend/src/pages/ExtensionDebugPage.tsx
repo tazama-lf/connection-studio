@@ -35,17 +35,17 @@ export const ExtensionDebugPage: React.FC = () => {
       console.log('🧪 Test response:', response);
       
       if (response.success) {
-        setResult(`✅ SUCCESS: Extension created successfully!\n\n` +
+        setResult('✅ SUCCESS: Extension created successfully!\n\n' +
                   `Response: ${JSON.stringify(response, null, 2)}`);
       } else {
-        setResult(`❌ FAILED: Extension creation failed!\n\n` +
+        setResult('❌ FAILED: Extension creation failed!\n\n' +
                   `Error: ${response.message}\n\n` +
                   `Response: ${JSON.stringify(response, null, 2)}`);
       }
       
     } catch (error) {
       console.error('🧪 Test error:', error);
-      setResult(`💥 ERROR: Exception during extension creation!\n\n` +
+      setResult('💥 ERROR: Exception during extension creation!\n\n' +
                 `Error: ${error instanceof Error ? error.message : String(error)}\n\n` +
                 `Stack: ${error instanceof Error ? error.stack : 'No stack trace'}`);
     } finally {
@@ -66,18 +66,18 @@ export const ExtensionDebugPage: React.FC = () => {
       console.log('🔌 Connection test response:', response);
       
       if (response.success) {
-        setResult(`✅ API CONNECTION OK\n\n` +
+        setResult('✅ API CONNECTION OK\n\n' +
                   `Found ${response.extensions?.length || 0} existing extensions\n\n` +
                   `Response: ${JSON.stringify(response, null, 2)}`);
       } else {
-        setResult(`❌ API CONNECTION ISSUE\n\n` +
+        setResult('❌ API CONNECTION ISSUE\n\n' +
                   `Error: ${response.message}\n\n` +
                   `Response: ${JSON.stringify(response, null, 2)}`);
       }
       
     } catch (error) {
       console.error('🔌 Connection test error:', error);
-      setResult(`💥 CONNECTION ERROR\n\n` +
+      setResult('💥 CONNECTION ERROR\n\n' +
                 `Error: ${error instanceof Error ? error.message : String(error)}\n\n` +
                 `Stack: ${error instanceof Error ? error.stack : 'No stack trace'}`);
     } finally {

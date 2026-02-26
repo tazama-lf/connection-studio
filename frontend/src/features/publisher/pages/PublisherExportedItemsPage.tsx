@@ -256,7 +256,7 @@ const PublisherExportedItemsPage: React.FC = () => {
             {tabs.map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => { setActiveTab(tab.id); }}
                 className={`
                   flex items-center gap-3 px-5 py-3 rounded-t-lg font-semibold text-base transition-all duration-200 cursor-pointer
                   ${
@@ -282,7 +282,7 @@ const PublisherExportedItemsPage: React.FC = () => {
               type="text"
               placeholder={`Search ${tabs.find((t) => t.id === activeTab)?.name}...`}
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => { setSearchTerm(e.target.value); }}
               className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
@@ -304,7 +304,7 @@ const PublisherExportedItemsPage: React.FC = () => {
       {/* Exported Item Details Modal */}
       <ExportedItemDetailsModal
         isOpen={showExportedItemDetails}
-        onClose={() => setShowExportedItemDetails(false)}
+        onClose={() => { setShowExportedItemDetails(false); }}
         content={selectedExportedItem}
         isLoading={exportedItemDetailsLoading}
         onPublish={handlePublishExportedItem}

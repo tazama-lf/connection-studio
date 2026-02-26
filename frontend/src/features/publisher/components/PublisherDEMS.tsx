@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 
 interface PublisherDEMSProps {
@@ -51,7 +51,7 @@ const PublisherDEMS: React.FC<PublisherDEMSProps> = ({ onBack }) => {
                     <div className="space-x-2">
                      
                       <button
-                        onClick={() => handleDeploy(endpoint)}
+                        onClick={() => { handleDeploy(endpoint); }}
                         className="px-3 py-1 text-sm bg-green-100 text-green-800 rounded hover:bg-green-200"
                       >
                         Deploy

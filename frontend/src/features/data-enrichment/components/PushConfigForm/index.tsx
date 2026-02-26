@@ -18,8 +18,7 @@ const {
   ingestModeOptions,
 } = (validationSchema as any) || {};
 
-const PushConfigForm: React.FC<PropsPush> = ({ control, errors }) => {
-  return (
+const PushConfigForm: React.FC<PropsPush> = ({ control, errors }) => (
     <div className="space-y-6">
       <Grid container spacing={2}>
         <Grid size = {{xs:12, md:4}}>
@@ -40,7 +39,7 @@ const PushConfigForm: React.FC<PropsPush> = ({ control, errors }) => {
         <Alert severity="info" sx={{ width: '100%', borderRadius: '5px' }}>
           <Box sx={{ fontWeight: 'bold' }}>Endpoint Path Preview</Box>
           <Box sx={{ color: 'gray', fontFamily: 'monospace', fontSize: '14px' }}>{/* preview logic */}</Box>
-          <Box sx={{ fontSize: '12px', color: '#666', mt: 1 }}>Example: /{`tenantId`}/enrichment/v1.0.0/customer/data</Box>
+          <Box sx={{ fontSize: '12px', color: '#666', mt: 1 }}>Example: /{'tenantId'}/enrichment/v1.0.0/customer/data</Box>
         </Alert>
 
         <Grid size = {{xs:12}}>
@@ -66,6 +65,5 @@ const PushConfigForm: React.FC<PropsPush> = ({ control, errors }) => {
       </Grid>
     </div>
   );
-};
 
 export default PushConfigForm;

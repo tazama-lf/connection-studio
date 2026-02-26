@@ -51,7 +51,7 @@ const PublisherModule: React.FC = () => {
             <div
               key={module.id}
               className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 cursor-pointer hover:shadow-md hover:border-blue-300 transition-all duration-200"
-              onClick={() => navigate(module.path)}
+              onClick={async () => { await navigate(module.path); }}
             >
               <div className="flex items-start">
                 <div className={`p-3 rounded-lg ${module.color}`}>

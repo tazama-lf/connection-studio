@@ -91,7 +91,7 @@ export const dataEnrichmentJobApi = {
     queryParams.append('offset', offset.toString());
     queryParams.append('limit', limit.toString());
 
-    const body: Record<string, unknown> = searchingFilters ? { ...(searchingFilters as Record<string, unknown>) } : {};
+    const body: Record<string, unknown> = searchingFilters ? { ...(searchingFilters) } : {};
     if (jobId) {
       body.jobId = jobId;
     }

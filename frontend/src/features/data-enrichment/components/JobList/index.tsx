@@ -295,7 +295,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
           {roles.editor && row.status === DATA_ENRICHMENT_JOB_STATUSES.IN_PROGRESS && (
             <Tooltip title="Pause">
               <ActionIcon color="#f97316">
-                <Pause size={16} onClick={() => setShowPauseConfirmDialog({ open: true, job: row })} />
+                <Pause size={16} onClick={() => { setShowPauseConfirmDialog({ open: true, job: row }); }} />
               </ActionIcon>
             </Tooltip>
           )}
@@ -303,7 +303,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
           {roles.editor && row.status === DATA_ENRICHMENT_JOB_STATUSES.ON_HOLD && (
             <Tooltip title="Resume">
               <ActionIcon color="#22c55e">
-                <Play size={16} onClick={() => setShowResumeConfirmDialog({ open: true, job: row })} />
+                <Play size={16} onClick={() => { setShowResumeConfirmDialog({ open: true, job: row }); }} />
               </ActionIcon>
             </Tooltip>
           )}
@@ -349,7 +349,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
       ) : (
         <>
           <CustomTable
-            columns={columns as GridColDef[]}
+            columns={columns}
             rows={jobs}
             disableRowSelection={true}
             pagination={pagination}
@@ -360,7 +360,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
       <PauseDialog
         open={showPauseConfirmDialog.open}
         onClose={() =>
-          setShowPauseConfirmDialog({ open: false, job: null })
+          { setShowPauseConfirmDialog({ open: false, job: null }); }
         }
         aria-labelledby="pause-confirmation-dialog-title"
         aria-describedby="pause-confirmation-dialog-description"
@@ -393,7 +393,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
         <PauseDialogActions>
           <Button
             onClick={() =>
-              setShowPauseConfirmDialog({ open: false, job: null })
+              { setShowPauseConfirmDialog({ open: false, job: null }); }
             }
             variant="secondary"
             className="!pb-[6px] !pt-[5px]"
@@ -422,7 +422,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
       <StyledDialog
         open={showResumeConfirmDialog.open}
         onClose={() =>
-          setShowResumeConfirmDialog({ open: false, job: null })
+          { setShowResumeConfirmDialog({ open: false, job: null }); }
         }
         aria-labelledby="resume-confirmation-dialog-title"
         aria-describedby="resume-confirmation-dialog-description"
@@ -456,7 +456,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
           <Button
             variant="secondary"
             onClick={() =>
-              setShowResumeConfirmDialog({ open: false, job: null })
+              { setShowResumeConfirmDialog({ open: false, job: null }); }
             }
           >
             Cancel
@@ -482,7 +482,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
       <ConfirmDialog
         open={showActivateConfirmDialog.open}
         onClose={() =>
-          setShowActivateConfirmDialog({ open: false, job: null })
+          { setShowActivateConfirmDialog({ open: false, job: null }); }
         }
         aria-labelledby="activate-confirmation-dialog-title"
         aria-describedby="activate-confirmation-dialog-description"
@@ -515,7 +515,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
         <ConfirmActions>
           <Button
             onClick={() =>
-              setShowActivateConfirmDialog({ open: false, job: null })
+              { setShowActivateConfirmDialog({ open: false, job: null }); }
             }
             variant="secondary"
             className="!pb-[6px] !pt-[5px]"
@@ -542,7 +542,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
       <ConfirmDialog
         open={showDeactivateConfirmDialog.open}
         onClose={() =>
-          setShowDeactivateConfirmDialog({ open: false, job: null })
+          { setShowDeactivateConfirmDialog({ open: false, job: null }); }
         }
         aria-labelledby="deactivate-confirmation-dialog-title"
         aria-describedby="deactivate-confirmation-dialog-description"
@@ -573,7 +573,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
         <ConfirmActions>
           <Button
             onClick={() =>
-              setShowDeactivateConfirmDialog({ open: false, job: null })
+              { setShowDeactivateConfirmDialog({ open: false, job: null }); }
             }
             variant="secondary"
             className="!pb-[6px] !pt-[5px]"

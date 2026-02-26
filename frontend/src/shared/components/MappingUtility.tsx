@@ -49,7 +49,7 @@ interface MappingData {
     isRequired: boolean;
   }>;
   transformation: 'NONE' | 'CONCAT' | 'SUM' | 'SPLIT';
-  constants: { [key: string]: any };
+  constants: Record<string, any>;
 }
 interface TreeNode {
   id: string;
@@ -290,7 +290,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
           // If the property has nested properties, create children
           if (value.properties) {
             node.children = buildSourceTreeFromSchema(value, path);
-          } else if (value.items && value.items.properties) {
+          } else if (value.items?.properties) {
             // Handle array items with properties
             node.children = buildSourceTreeFromSchema(value.items, path);
           }
@@ -423,9 +423,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
 
       if (parentPath && nodeMap.has(parentPath)) {
         const parentNode = nodeMap.get(parentPath)!;
-        if (!parentNode.children) {
-          parentNode.children = [];
-        }
+        parentNode.children ||= [];
         parentNode.children.push(node);
         console.log(
           '  ✅ Added to parent. Parent now has',
@@ -604,8 +602,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       });
 
       // Convert map structure to TreeNode array with children
-      const convertMapToNodes = (map: Map<string, any>): TreeNode[] => {
-        return Array.from(map.values()).map(({ node, children }) => {
+      const convertMapToNodes = (map: Map<string, any>): TreeNode[] => Array.from(map.values()).map(({ node, children }) => {
           if (children.size > 0) {
             return {
               ...node,
@@ -614,7 +611,6 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
           }
           return node;
         });
-      };
 
       return convertMapToNodes(rootMap);
     };
@@ -662,7 +658,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       const findType = (
         nodes: TreeNode[],
         pathParts: string[],
-        depth: number = 0,
+        depth = 0,
       ): string | undefined => {
         if (pathParts.length === 0) return undefined;
 
@@ -697,7 +693,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
           type === 'double' ||
           type === 'float'
         )
-          return 'number';
+          {return 'number';}
         if (type === 'text' || type === 'varchar') return 'string';
         return type;
       };
@@ -824,9 +820,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       });
 
       if (
-        matchingField &&
-        matchingField.path &&
-        matchingField.path.includes('[0]')
+        matchingField?.path?.includes('[0]')
       ) {
         // Use the original path with [0] notation
         finalPath = matchingField.path.replace(/\[0\]/g, '.0');
@@ -978,12 +972,10 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       } else if (selectedDestinations.length !== 1) {
         validationError = 'Direct mapping requires exactly 1 destination field';
       }
-    } else {
-      if (selectedSources.length === 0 || selectedDestinations.length === 0) {
+    } else if (selectedSources.length === 0 || selectedDestinations.length === 0) {
         validationError =
           'Please select at least one source and one destination field';
       }
-    }
 
     if (validationError) {
       setMappingError(validationError);
@@ -998,7 +990,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       const findType = (
         nodes: TreeNode[],
         pathParts: string[],
-        depth: number = 0,
+        depth = 0,
       ): string | undefined => {
         if (pathParts.length === 0) return undefined;
 
@@ -1053,7 +1045,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
         selectedTransformation === 'split' || selectedTransformation === 'concatenate'
           ? delimiter || ' '
           : undefined,
-      constantValue: constantValue,
+      constantValue,
       prefix: prefix.trim() || undefined,
       type: isNumberType ? 'number' : undefined,
     };
@@ -1088,7 +1080,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
             selectedTransformation === 'concatenate'
               ? delimiter || ' '
               : undefined,
-          constantValue: constantValue,
+          constantValue,
           transformation: selectedTransformation.toUpperCase(),
           operator: selectedTransformation === 'sum' ? 'SUM' : undefined,
           prefix: prefix.trim() || undefined,
@@ -1130,9 +1122,8 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
     ) => void,
     selectedPaths: string[] = [],
     type: 'source' | 'destination' | 'redis' = 'source',
-    depth: number = 0,
-  ) => {
-    return (
+    depth = 0,
+  ) => (
       <div className="space-y-1" data-id="element-176">
         {nodes.map((node, index) => {
           console.log('TREE', nodes, expanded, selectedPaths, type, depth);
@@ -1169,7 +1160,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
               >
                 {hasChildren ? (
                   <button
-                    onClick={() => toggleFn(node.id)}
+                    onClick={() => { toggleFn(node.id); }}
                     className="p-1 text-gray-500 hover:text-gray-700"
                     data-id="element-179"
                   >
@@ -1191,12 +1182,12 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                 node.type !== 'array' ? (
                   <button
                     onClick={() =>
-                      onSelect(
+                      { onSelect(
                         node.path,
                         nodeType === 'redis' ? 'redis' : 'database',
                         expanded,
                         selectedPaths,
-                      )
+                      ); }
                     }
                     className="text-left flex-1 text-sm hover:text-blue-700"
                     data-id="element-185"
@@ -1245,7 +1236,6 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
         })}
       </div>
     );
-  };
   const renderAddMappingModal = () => {
     if (!showAddMapping) return null;
     return (
@@ -1277,7 +1267,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                 Add New Mapping
               </h3>
               <button
-                onClick={() => setShowAddMapping(false)}
+                onClick={() => { setShowAddMapping(false); }}
                 className="text-gray-500 hover:text-gray-700"
                 data-id="element-192"
               >
@@ -1343,7 +1333,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                     <input
                       type="text"
                       value={selectedSources[0] || ''}
-                      onChange={(e) => setSelectedSources([e.target.value])}
+                      onChange={(e) => { setSelectedSources([e.target.value]); }}
                       placeholder="Enter a constant value (string, number, etc.)"
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
@@ -1381,14 +1371,14 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                     <select
                       value={selectedTransformation}
                       onChange={(e) =>
-                        setSelectedTransformation(
+                        { setSelectedTransformation(
                           e.target.value as
                             | 'concatenate'
                             | 'sum'
                             | 'split'
                             | 'none'
                             | 'constant',
-                        )
+                        ); }
                       }
                       className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                       data-id="element-205"
@@ -1422,7 +1412,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                         type="text"
                         value={delimiter}
                         onChange={(e) =>
-                          setDelimiter(e.target.value.slice(0, 1))
+                          { setDelimiter(e.target.value.slice(0, 1)); }
                         }
                         placeholder=""
                         className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
@@ -1559,10 +1549,10 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                       expandedDestNodes,
                       toggleDestNode,
                       (path, type) =>
-                        handleDestinationSelect(
+                        { handleDestinationSelect(
                           path,
                           type as 'database' | 'redis' | 'model',
-                        ),
+                        ); },
                       selectedDestinations,
                       'destination',
                     )
@@ -1578,7 +1568,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
             {mappingError && (
               <div className="bg-red-50 border border-red-200 rounded-md p-3 mt-4 relative">
                 <button
-                  onClick={() => setMappingError(null)}
+                  onClick={() => { setMappingError(null); }}
                   className="cursor-pointer absolute top-1/2 -translate-y-1/2 right-2 text-red-600 hover:text-red-800"
                 >
                   <XIcon size={16} />
@@ -1594,7 +1584,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
               <Button
                 variant="secondary"
                 className="!pb-[6px] !pt-[4px]"
-                onClick={() => setShowAddMapping(false)}
+                onClick={() => { setShowAddMapping(false); }}
                 data-id="element-236"
               >
                 Cancel
@@ -1700,7 +1690,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                 <Button
                   variant="secondary"
                   size="sm"
-                  onClick={() => removeMappingFromBackend(index)}
+                  onClick={async () => { await removeMappingFromBackend(index); }}
                   disabled={readOnly}
                   className="text-red-500 hover:bg-red-500 hover:text-white"
                 >

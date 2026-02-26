@@ -1,7 +1,6 @@
 import React from 'react';
 
-const LoadingPage: React.FC = () => {
-  return (
+const LoadingPage: React.FC = () => (
     <div className="min-h-screen bg-white flex flex-col justify-center items-center">
       <div className="text-center">
         <div className="flex justify-center mb-6">
@@ -17,6 +16,5 @@ const LoadingPage: React.FC = () => {
       </div>
     </div>
   );
-};
 
 export default LoadingPage;

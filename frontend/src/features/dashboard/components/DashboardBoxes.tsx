@@ -37,7 +37,7 @@ const BoxCard: React.FC<{
         textAlign: 'center',
         position: 'relative',
         backgroundColor: (theme: any) => theme.palette.background.paper,
-        border: `1px solid rgba(0,0,0,0.06)`,
+        border: '1px solid rgba(0,0,0,0.06)',
         transition: 'transform 200ms cubic-bezier(.2,.8,.2,1), box-shadow 200ms ease, background-color 200ms ease',
         '&:hover': {
           transform: 'translateY(-8px)',
@@ -132,12 +132,12 @@ const DashboardBoxes: React.FC = () => {
   const location = useLocation();
 
   useEffect(() => {
-    const t = setTimeout(() => setMounted(true), 40);
-    return () => clearTimeout(t);
+    const t = setTimeout(() => { setMounted(true); }, 40);
+    return () => { clearTimeout(t); };
   }, []);
 
   return (
-    <Box sx={(theme: any) => ({ px: "48px" , mb: 2, backgroundColor: theme.palette.background.default, borderRadius: 2, py: 2, pt: "56px !important" })}>
+    <Box sx={(theme: any) => ({ px: '48px' , mb: 2, backgroundColor: theme.palette.background.default, borderRadius: 2, py: 2, pt: '56px !important' })}>
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr', lg: 'repeat(3, 1fr)' }, gap: 3 }}>
         {items.map((it, idx) => (
           <Box
@@ -153,7 +153,7 @@ const DashboardBoxes: React.FC = () => {
               subtitle={it.subtitle}
               icon={it.icon}
               color={it.color}
-              onClick={() => navigate(it.path)}
+              onClick={async () => { await navigate(it.path); }}
               selected={location.pathname === it.path || location.pathname.startsWith(it.path)}
             />
           </Box>

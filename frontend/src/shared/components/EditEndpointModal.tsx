@@ -43,19 +43,19 @@ import { MappingUtility } from './MappingUtility';
 import { PayloadEditor } from './PayloadEditor';
 import { SimulationPanel } from './SimulationPanel';
 
-import { Backdrop } from '@mui/material';
+import { Backdrop , Button as MuiButton } from '@mui/material';
 import Box from '@mui/material/Box';
 import Step from '@mui/material/Step';
 import type { StepIconProps } from '@mui/material/StepIcon';
 import StepLabel from '@mui/material/StepLabel';
 import Stepper from '@mui/material/Stepper';
-import { Button as MuiButton } from '@mui/material';
+
 
 // Custom Step Icon Component
 const CustomStepIcon = (props: StepIconProps) => {
   const { active, completed, icon } = props;
 
-  const icons: { [index: string]: React.ReactElement } = {
+  const icons: Record<string, React.ReactElement> = {
     1: <FileJson size={24} />,
     2: <GitBranch size={24} />,
     3: <Cog size={24} />,
@@ -164,7 +164,7 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
                 name: part,
                 path: [...currentPath],
                 type: isLeaf ? field.type.toLowerCase() : 'object',
-                collection_id: collection_id,
+                collection_id,
                 serial_no: isLeaf ? field.serial_no : null,
               },
               children: new Map(),
@@ -181,12 +181,10 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
         });
       });
 
-      const convertMapToNodes = (map: Map<string, any>): any[] => {
-        return Array.from(map.values()).map(({ node, children }) => ({
+      const convertMapToNodes = (map: Map<string, any>): any[] => Array.from(map.values()).map(({ node, children }) => ({
           ...node,
           children: children.size > 0 ? convertMapToNodes(children) : undefined,
         }));
-      };
 
       return convertMapToNodes(rootMap);
     };
@@ -198,7 +196,7 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
         id: collectionName,
         name: collectionName.charAt(0).toUpperCase() + collectionName.slice(1),
         path: [collectionName],
-        collection_id: collection_id,
+        collection_id,
         serial_no: null,
         children: buildNestedTree(collectionName, fields, collection_id),
       };
@@ -230,7 +228,7 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
     }
     // Handle JSON schema format
     else if (schema.properties && typeof schema.properties === 'object') {
-      const traverseSchema = (props: any, parentPath: string = '') => {
+      const traverseSchema = (props: any, parentPath = '') => {
         Object.entries(props).forEach(([key, value]: [string, any]) => {
           const path = parentPath ? `${parentPath}.${key}` : key;
 
@@ -248,7 +246,7 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
             traverseSchema(value.properties, path);
           }
           // Handle arrays with object items
-          else if (value.items && value.items.properties) {
+          else if (value.items?.properties) {
             traverseSchema(value.items.properties, path);
           }
         });
@@ -289,7 +287,7 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
     // Traverse destination tree
     destinationTree.forEach((n) => {
       if (n?.collection_id !== 1 && n?.collection_id !== 2)
-        buildPrimaryKeyOptions(n);
+        {buildPrimaryKeyOptions(n);}
     });
 
     return result;
@@ -321,7 +319,7 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
 
     destinationTree.forEach((n) => {
       if (n?.collection_id !== 1 && n?.collection_id !== 2)
-        traverseDestinations(n);
+        {traverseDestinations(n);}
     });
 
     return result;
@@ -410,7 +408,7 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
       dataModelForm?.primaryKey &&
       dataModelForm?.jsonKey
     )
-      return true;
+      {return true;}
   };
 
   return (
@@ -499,10 +497,10 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
             <select
               value={dataModelForm?.primaryKey || ''}
               onChange={(e) =>
-                setDataModelForm({
+                { setDataModelForm({
                   ...dataModelForm,
                   primaryKey: e.target.value,
-                })
+                }); }
               }
               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
             >
@@ -533,7 +531,7 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
             <select
               value={dataModelForm?.jsonKey || ''}
               onChange={(e) =>
-                setDataModelForm({ ...dataModelForm, jsonKey: e.target.value })
+                { setDataModelForm({ ...dataModelForm, jsonKey: e.target.value }); }
               }
               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
             >
@@ -577,7 +575,7 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
                     ? 'border-blue-500 bg-blue-50'
                     : 'border-gray-300 hover:border-gray-400'
                     }`}
-                  onClick={() => setSelectedConfiguration(config.name)}
+                  onClick={() => { setSelectedConfiguration(config.name); }}
                 >
                   <div className="flex items-center space-x-2">
                     <input
@@ -585,7 +583,7 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
                       name="configuration"
                       value={config.name}
                       checked={selectedConfiguration === config.name}
-                      onChange={() => setSelectedConfiguration(config.name)}
+                      onChange={() => { setSelectedConfiguration(config.name); }}
                       className="text-blue-600"
                     />
                     <div>
@@ -614,13 +612,13 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
                         ? 'border-blue-500 bg-blue-50'
                         : 'border-gray-300 hover:border-gray-400'
                         }`}
-                      onClick={() => handleOptionalParamToggle(param.name)}
+                      onClick={() => { handleOptionalParamToggle(param.name); }}
                     >
                       <div className="flex items-center space-x-2">
                         <input
                           type="checkbox"
                           checked={selectedOptionalParams.includes(param.name)}
-                          onChange={() => handleOptionalParamToggle(param.name)}
+                          onChange={() => { handleOptionalParamToggle(param.name); }}
                           className="text-blue-600 rounded"
                         />
                         <div>
@@ -865,14 +863,12 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
     loadExistingConfig();
   }, [endpointId, isNewEndpoint, isOpen]);
 
-  const isPayloadStepValid = () => {
-    return (
+  const isPayloadStepValid = () => (
       payload &&
       endpointData.version &&
       endpointData.transactionType &&
       endpointData.contentType
     );
-  };
 
   // Navigation-only functions (don't save, just move between steps)
   const handleNextStep = () => {
@@ -1084,7 +1080,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
         // Handle both single destination and array of destinations
         if (Array.isArray(mapping.destination)) {
           mapping.destination.forEach((dest: string) =>
-            processDestination(dest),
+            { processDestination(dest); },
           );
         } else {
           processDestination(mapping.destination);
@@ -1273,7 +1269,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
       );
     }
 
-    console.log("PAYLOADDDD", validationErrors)
+    console.log('PAYLOADDDD', validationErrors)
 
     if (validationErrors.length > 0) {
       const errorMessage = validationErrors.join('. ');
@@ -1483,7 +1479,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
 
       if (!saveResponse.success) {
         // Check for specific error messages that need user-friendly handling
-        let errorMessage =
+        const errorMessage =
           saveResponse.message || `Failed to ${action} configuration`;
 
         setError(errorMessage);
@@ -1774,7 +1770,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                         parentPath = '',
                       ): any[] => {
                         if (!ajvSchema || typeof ajvSchema !== 'object')
-                          return [];
+                          {return [];}
 
                         const schemaFields: any[] = [];
 
@@ -1785,7 +1781,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                                 ? `${parentPath}.${fieldName}`
                                 : fieldName;
 
-                              let fieldType: string = 'string';
+                              let fieldType = 'string';
                               if (fieldSchema.type) {
                                 switch (fieldSchema.type) {
                                   case 'string':
@@ -1950,7 +1946,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                     {!readOnly && (
                       <div className="flex justify-end">
                         <Button
-                          onClick={() => setShowAddFunctionModal(true)}
+                          onClick={() => { setShowAddFunctionModal(true); }}
                           variant="secondary"
                           size="sm"
                           icon={<PlusIcon size={16} />}
@@ -1993,7 +1989,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                             if (mapping.destination) {
                               if (Array.isArray(mapping.destination)) {
                                 mapping.destination.forEach((dest: string) =>
-                                  processDestination(dest),
+                                  { processDestination(dest); },
                                 );
                               } else {
                                 processDestination(mapping.destination);
@@ -2115,7 +2111,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                                 <Button
                                   variant="secondary"
                                   size="sm"
-                                  onClick={() => handleRemoveFunction(index)}
+                                  onClick={async () => { await handleRemoveFunction(index); }}
                                   className="text-red-500 hover:bg-red-500 hover:text-white"
                                 >
                                   Remove
@@ -2150,7 +2146,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                               Add Function
                             </h3>
                             <button
-                              onClick={() => setShowAddFunctionModal(false)}
+                              onClick={() => { setShowAddFunctionModal(false); }}
                               className="text-gray-500 hover:text-gray-700"
                             >
                               <XIcon className="w-5 h-5" />
@@ -2159,7 +2155,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
 
                           <FunctionSelectionForm
                             onAddFunction={handleAddFunction}
-                            onClose={() => setShowAddFunctionModal(false)}
+                            onClose={() => { setShowAddFunctionModal(false); }}
                             currentSchema={currentSchema}
                           />
                         </div>
@@ -2449,7 +2445,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                                         <Button
                                           variant="primary"
                                           onClick={async () =>
-                                            await handleSaveAndNext()
+                                            { await handleSaveAndNext(); }
                                           }
                                           disabled={loading}
                                           className="!pb-[6px] !pt-[5px] bg-[#2b7fff] text-white"

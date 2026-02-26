@@ -45,7 +45,7 @@ export const ExporterJobList: React.FC<ExporterJobListProps> = (props) => {
 
     if (dropdownOpen) {
       document.addEventListener('click', handleClickOutside);
-      return () => document.removeEventListener('click', handleClickOutside);
+      return () => { document.removeEventListener('click', handleClickOutside); };
     }
   }, [dropdownOpen]);
 

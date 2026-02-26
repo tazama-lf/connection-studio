@@ -105,7 +105,7 @@ export const ExportedItemDetailsModal: React.FC<
             // Sometimes type might be lowercase
             const typeStr = content.type?.toString().toUpperCase();
             if (typeStr === 'PUSH' || typeStr === 'PULL') {
-              jobType = typeStr as 'PULL' | 'PUSH';
+              jobType = typeStr;
             }
           }
         }
@@ -271,7 +271,7 @@ export const ExportedItemDetailsModal: React.FC<
                           Status
                         </div>
                         <div
-                          className={`inline-flex items-center px-4 py-2 rounded-lg text-sm font-semibold shadow bg-blue-100 text-blue-800`}
+                          className={'inline-flex items-center px-4 py-2 rounded-lg text-sm font-semibold shadow bg-blue-100 text-blue-800'}
                           style={{ minWidth: 180 }}
                         >
                           <span className="w-2 h-2 rounded-full bg-current mr-2 animate-pulse"></span>
@@ -587,7 +587,7 @@ export const ExportedItemDetailsModal: React.FC<
                 Cancel
               </Button>
               <Button
-                onClick={() => setShowDeployConfirmDialog(true)}
+                onClick={() => { setShowDeployConfirmDialog(true); }}
                 variant="primary"
                 // disabled={isPublishing || isDeployed || isLoading || !canPublish}
                 className="flex items-center space-x-2"
@@ -603,7 +603,7 @@ export const ExportedItemDetailsModal: React.FC<
       {/* Deploy Confirmation Dialog */}
       <Dialog
         open={showDeployConfirmDialog}
-        onClose={() => setShowDeployConfirmDialog(false)}
+        onClose={() => { setShowDeployConfirmDialog(false); }}
         aria-labelledby="deploy-confirmation-dialog-title"
         aria-describedby="deploy-confirmation-dialog-description"
       >
@@ -666,7 +666,7 @@ export const ExportedItemDetailsModal: React.FC<
         <DialogActions>
           <Button
             variant="secondary"
-            onClick={() => setShowDeployConfirmDialog(false)}
+            onClick={() => { setShowDeployConfirmDialog(false); }}
             disabled={isPublishing}
           >
             Cancel

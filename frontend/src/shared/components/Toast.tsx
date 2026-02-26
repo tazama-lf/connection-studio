@@ -78,7 +78,7 @@ const ToastComponent: React.FC<ToastComponentProps> = ({ toast, onRemove }) => {
       handleRemove();
     }, duration);
 
-    return () => clearTimeout(timer);
+    return () => { clearTimeout(timer); };
   }, []);
 
   const handleRemove = () => {

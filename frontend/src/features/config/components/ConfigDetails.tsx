@@ -148,15 +148,13 @@ export const ConfigDetails: React.FC<ConfigDetailsProps> = ({
     }));
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+  const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
     });
-  };
 
   const formatJSON = (obj: any) => {
     try {
@@ -227,7 +225,7 @@ export const ConfigDetails: React.FC<ConfigDetailsProps> = ({
                       <input
                         type="text"
                         value={editForm.msgFam || ''}
-                        onChange={(e) => handleFormChange('msgFam', e.target.value)}
+                        onChange={(e) => { handleFormChange('msgFam', e.target.value); }}
                         className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                         placeholder="Event Type"
                       />
@@ -241,7 +239,7 @@ export const ConfigDetails: React.FC<ConfigDetailsProps> = ({
                       <input
                         type="text"
                         value={editForm.transactionType || ''}
-                        onChange={(e) => handleFormChange('transactionType', e.target.value)}
+                        onChange={(e) => { handleFormChange('transactionType', e.target.value); }}
                         className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                         placeholder="Transaction Type"
                       />
@@ -259,7 +257,7 @@ export const ConfigDetails: React.FC<ConfigDetailsProps> = ({
                       <input
                         type="text"
                         value={editForm.version || ''}
-                        onChange={(e) => handleFormChange('version', e.target.value)}
+                        onChange={(e) => { handleFormChange('version', e.target.value); }}
                         className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                         placeholder="Version"
                       />
@@ -272,7 +270,7 @@ export const ConfigDetails: React.FC<ConfigDetailsProps> = ({
                     {isEditMode ? (
                       <select
                         value={editForm.contentType || ''}
-                        onChange={(e) => handleFormChange('contentType', e.target.value)}
+                        onChange={(e) => { handleFormChange('contentType', e.target.value); }}
                         className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                       >
                         <option value="application/json">application/json</option>
@@ -287,7 +285,7 @@ export const ConfigDetails: React.FC<ConfigDetailsProps> = ({
                     {isEditMode ? (
                       <select
                         value={editForm.status || ''}
-                        onChange={(e) => handleFormChange('status', e.target.value)}
+                        onChange={(e) => { handleFormChange('status', e.target.value); }}
                         className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                       >
                         <option value="draft">Draft</option>
@@ -325,7 +323,7 @@ export const ConfigDetails: React.FC<ConfigDetailsProps> = ({
                     <input
                       type="text"
                       value={editForm.endpointPath || ''}
-                      onChange={(e) => handleFormChange('endpointPath', e.target.value)}
+                      onChange={(e) => { handleFormChange('endpointPath', e.target.value); }}
                       className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm font-mono"
                       placeholder="/api/endpoint/path"
                     />

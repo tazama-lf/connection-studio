@@ -48,7 +48,7 @@ export const ExtensionManagement: React.FC<ExtensionManagementProps> = ({
   });
   const [submitting, setSubmitting] = useState(false);
 
-  const collections: { value: TazamaCollectionName; label: string }[] = [
+  const collections: Array<{ value: TazamaCollectionName; label: string }> = [
     { value: 'entities', label: 'Entities' },
     { value: 'accounts', label: 'Accounts' },
     { value: 'account_holder', label: 'Account Holders' },
@@ -56,7 +56,7 @@ export const ExtensionManagement: React.FC<ExtensionManagementProps> = ({
     { value: 'transactionHistory', label: 'Transaction History' }
   ];
 
-  const fieldTypes: { value: TazamaFieldType; label: string }[] = [
+  const fieldTypes: Array<{ value: TazamaFieldType; label: string }> = [
     { value: 'STRING', label: 'String' },
     { value: 'NUMBER', label: 'Number' },
     { value: 'BOOLEAN', label: 'Boolean' },
@@ -252,7 +252,7 @@ export const ExtensionManagement: React.FC<ExtensionManagementProps> = ({
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-gray-900">Data Model Extensions</h3>
         <Button
-          onClick={() => setShowCreateForm(true)}
+          onClick={() => { setShowCreateForm(true); }}
           className="flex items-center gap-2"
         >
           <Plus className="w-4 h-4" />
@@ -333,7 +333,7 @@ export const ExtensionManagement: React.FC<ExtensionManagementProps> = ({
                   />
                   <div className="flex gap-2 mt-4">
                     <Button
-                      onClick={() => handleUpdateExtension(extension.id)}
+                      onClick={async () => { await handleUpdateExtension(extension.id); }}
                       disabled={submitting}
                     >
                       <Save className="w-4 h-4 mr-2" />
@@ -371,13 +371,13 @@ export const ExtensionManagement: React.FC<ExtensionManagementProps> = ({
                   </div>
                   <div className="flex gap-2">
                     <button
-                      onClick={() => startEditExtension(extension)}
+                      onClick={() => { startEditExtension(extension); }}
                       className="p-2 text-gray-400 hover:text-blue-600"
                     >
                       <Edit className="w-4 h-4" />
                     </button>
                     <button
-                      onClick={() => handleDeleteExtension(extension.id)}
+                      onClick={async () => { await handleDeleteExtension(extension.id); }}
                       className="p-2 text-gray-400 hover:text-red-600"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -396,8 +396,8 @@ export const ExtensionManagement: React.FC<ExtensionManagementProps> = ({
 // Form component for creating/editing extensions
 interface ExtensionFormProps {
   formData: ExtensionFormData;
-  collections: { value: TazamaCollectionName; label: string }[];
-  fieldTypes: { value: TazamaFieldType; label: string }[];
+  collections: Array<{ value: TazamaCollectionName; label: string }>;
+  fieldTypes: Array<{ value: TazamaFieldType; label: string }>;
   onFormChange: (field: keyof ExtensionFormData, value: any) => void;
   onValidationChange: (field: string, value: any) => void;
   isEditing: boolean;
@@ -410,8 +410,7 @@ const ExtensionForm: React.FC<ExtensionFormProps> = ({
   onFormChange,
   onValidationChange,
   isEditing
-}) => {
-  return (
+}) => (
     <div className="grid grid-cols-2 gap-4">
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -419,7 +418,7 @@ const ExtensionForm: React.FC<ExtensionFormProps> = ({
         </label>
         <select
           value={formData.collection}
-          onChange={(e) => onFormChange('collection', e.target.value)}
+          onChange={(e) => { onFormChange('collection', e.target.value); }}
           disabled={isEditing} // Can't change collection when editing
           className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
         >
@@ -438,7 +437,7 @@ const ExtensionForm: React.FC<ExtensionFormProps> = ({
         <input
           type="text"
           value={formData.fieldName}
-          onChange={(e) => onFormChange('fieldName', e.target.value)}
+          onChange={(e) => { onFormChange('fieldName', e.target.value); }}
           disabled={isEditing} // Can't change field name when editing
           placeholder="e.g., creditScore"
           className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
@@ -451,7 +450,7 @@ const ExtensionForm: React.FC<ExtensionFormProps> = ({
         </label>
         <select
           value={formData.fieldType}
-          onChange={(e) => onFormChange('fieldType', e.target.value)}
+          onChange={(e) => { onFormChange('fieldType', e.target.value); }}
           disabled={isEditing} // Can't change field type when editing
           className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
         >
@@ -470,7 +469,7 @@ const ExtensionForm: React.FC<ExtensionFormProps> = ({
         <input
           type="text"
           value={formData.defaultValue}
-          onChange={(e) => onFormChange('defaultValue', e.target.value)}
+          onChange={(e) => { onFormChange('defaultValue', e.target.value); }}
           placeholder="Optional"
           className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
@@ -482,7 +481,7 @@ const ExtensionForm: React.FC<ExtensionFormProps> = ({
         </label>
         <textarea
           value={formData.description}
-          onChange={(e) => onFormChange('description', e.target.value)}
+          onChange={(e) => { onFormChange('description', e.target.value); }}
           placeholder="Describe what this field is for"
           rows={2}
           className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -494,7 +493,7 @@ const ExtensionForm: React.FC<ExtensionFormProps> = ({
           <input
             type="checkbox"
             checked={formData.isRequired}
-            onChange={(e) => onFormChange('isRequired', e.target.checked)}
+            onChange={(e) => { onFormChange('isRequired', e.target.checked); }}
             className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
           />
           <span className="text-sm font-medium text-gray-700">Required field</span>
@@ -512,7 +511,7 @@ const ExtensionForm: React.FC<ExtensionFormProps> = ({
               <input
                 type="number"
                 value={formData.validation.min || ''}
-                onChange={(e) => onValidationChange('min', e.target.value ? Number(e.target.value) : undefined)}
+                onChange={(e) => { onValidationChange('min', e.target.value ? Number(e.target.value) : undefined); }}
                 placeholder="Min value"
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
@@ -521,7 +520,7 @@ const ExtensionForm: React.FC<ExtensionFormProps> = ({
               <input
                 type="number"
                 value={formData.validation.max || ''}
-                onChange={(e) => onValidationChange('max', e.target.value ? Number(e.target.value) : undefined)}
+                onChange={(e) => { onValidationChange('max', e.target.value ? Number(e.target.value) : undefined); }}
                 placeholder="Max value"
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
@@ -539,7 +538,7 @@ const ExtensionForm: React.FC<ExtensionFormProps> = ({
           <input
             type="text"
             value={formData.validation.pattern || ''}
-            onChange={(e) => onValidationChange('pattern', e.target.value || undefined)}
+            onChange={(e) => { onValidationChange('pattern', e.target.value || undefined); }}
             placeholder="e.g., ^[A-Z0-9]{10}$"
             className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
@@ -547,4 +546,3 @@ const ExtensionForm: React.FC<ExtensionFormProps> = ({
       )}
     </div>
   );
-};

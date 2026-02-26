@@ -9,8 +9,7 @@ interface ErrorBoundaryPageProps {
 const ErrorBoundaryPage: React.FC<ErrorBoundaryPageProps> = ({ 
   error, 
   resetError 
-}) => {
-  return (
+}) => (
     <div className="min-h-screen bg-white flex flex-col justify-center items-center px-4">
       <div className="max-w-md w-full text-center">
         <div className="text-6xl font-bold text-red-400 mb-4">⚠️</div>
@@ -48,6 +47,5 @@ const ErrorBoundaryPage: React.FC<ErrorBoundaryPageProps> = ({
       </div>
     </div>
   );
-};
 
 export default ErrorBoundaryPage;

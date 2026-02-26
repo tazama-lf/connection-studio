@@ -13,26 +13,26 @@ import { DownloadIcon, Loader2, Save, UploadIcon, XIcon } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useToast } from '../../../../shared/providers/ToastProvider';
-import { saveDataEnrichmentJob } from '../../handlers';
-import { loadSchedules as loadCronSchedules } from '../../../cron/handlers';
-import {
+import { saveDataEnrichmentJob ,
   handleUpdateConfirm as confirmUpdate,
   handleEditSendForApprovalConfirm,
 } from '../../handlers';
-import { scrollToFirstError } from '../../utils';
-import type { ScheduleResponse } from '../../types';
-import { getJobType } from '../../utils';
+import { loadSchedules as loadCronSchedules } from '../../../cron/handlers';
+
+import { scrollToFirstError , getJobType } from '../../utils';
+import type { ScheduleResponse , DataEnrichmentEditModalProps } from '../../types';
+
 // @ts-ignore - JS module without types
 import * as validationSchema from '../validationSchema';
+import PullConfigForm from '../PullConfigForm';
+import PushConfigForm from '../PushConfigForm';
+
+import { DATA_ENRICHMENT_JOB_STATUSES } from '../../constants';
 const {
   defaultValues,
   pullValidationSchema,
   pushValidationSchema,
 } = (validationSchema as any) || {};
-import PullConfigForm from '../PullConfigForm';
-import PushConfigForm from '../PushConfigForm';
-import type { DataEnrichmentEditModalProps } from '../../types';
-import { DATA_ENRICHMENT_JOB_STATUSES } from '../../constants';
 
 export const DataEnrichmentEditModal: React.FC<
   DataEnrichmentEditModalProps
@@ -58,7 +58,7 @@ export const DataEnrichmentEditModal: React.FC<
   const { showSuccess, showError } = useToast();
 
   const currentJobType = getJobType(selectedJob);
-  const configurationType = currentJobType as 'pull' | 'push';
+  const configurationType = currentJobType;
   const loadSchema =
     configurationType === 'pull' ? pullValidationSchema : pushValidationSchema;
   const {
@@ -129,14 +129,14 @@ export const DataEnrichmentEditModal: React.FC<
   };
 
   const handleUpdateConfirm = () => {
-    confirmUpdate(() => handleSave(), setShowUpdateConfirmDialog);
+    confirmUpdate(async () => { await handleSave(); }, setShowUpdateConfirmDialog);
   };
 
   const handleSendForApprovalConfirm = async () => {
     await handleEditSendForApprovalConfirm(
       selectedJob,
-      (msg) => showSuccess('Success', msg),
-      (msg) => showError('Error', msg),
+      (msg) => { showSuccess('Success', msg); },
+      (msg) => { showError('Error', msg); },
       () => {
         if (onCloseWithRefresh) onCloseWithRefresh();
         else if (onClose) onClose();
@@ -381,7 +381,7 @@ export const DataEnrichmentEditModal: React.FC<
                       type="button"
                       variant="contained"
                       sx={{ backgroundColor: '#2b7fff', ml: 2 }}
-                      onClick={() => setShowApprovalConfirmDialog(true)}
+                      onClick={() => { setShowApprovalConfirmDialog(true); }}
                       startIcon={<UploadIcon size={16} />}
                       disabled={false}
                     >
@@ -417,7 +417,7 @@ export const DataEnrichmentEditModal: React.FC<
       
       <Dialog
         open={showUpdateConfirmDialog}
-        onClose={() => setShowUpdateConfirmDialog(false)}
+        onClose={() => { setShowUpdateConfirmDialog(false); }}
         aria-labelledby="update-confirmation-dialog-title"
         aria-describedby="update-confirmation-dialog-description"
         sx={{ borderRadius: '6px' }}
@@ -484,7 +484,7 @@ export const DataEnrichmentEditModal: React.FC<
         </DialogContent>
         <DialogActions sx={{ padding: '12px 20px 16px 20px' }}>
           <Button
-            onClick={() => setShowUpdateConfirmDialog(false)}
+            onClick={() => { setShowUpdateConfirmDialog(false); }}
             variant="outlined"
             className="pb-1.5! pt-[5px]!"
             size="small"
@@ -507,7 +507,7 @@ export const DataEnrichmentEditModal: React.FC<
       
       <Dialog
         open={showApprovalConfirmDialog}
-        onClose={() => setShowApprovalConfirmDialog(false)}
+        onClose={() => { setShowApprovalConfirmDialog(false); }}
         aria-labelledby="approval-confirmation-dialog-title"
         aria-describedby="approval-confirmation-dialog-description"
         sx={{ borderRadius: '6px' }}
@@ -574,7 +574,7 @@ export const DataEnrichmentEditModal: React.FC<
         </DialogContent>
         <DialogActions sx={{ padding: '12px 20px 16px 20px' }}>
           <Button
-            onClick={() => setShowApprovalConfirmDialog(false)}
+            onClick={() => { setShowApprovalConfirmDialog(false); }}
             variant="outlined"
             className="pb-1.5! pt-[5px]!"
             disabled={isCreating}

@@ -149,7 +149,7 @@ export const SimulationPanel: React.FC<SimulationPanelProps> = ({
         <div className=" rounded-md relative bg-white" data-id="element-710">
           <textarea
             value={testPayload}
-            onChange={(e) => setTestPayload(e.target.value)}
+            onChange={(e) => { setTestPayload(e.target.value); }}
             className="w-full h-[400px] p-4 font-mono text-sm bg-white focus:outline-none border rounded-md resize-none scrollbar-hide"
             spellCheck="false"
             placeholder="Enter or upload a test payload to simulate the transformation..."

@@ -135,14 +135,14 @@ const StatsCards: React.FC = () => {
           <Box
             key={it.id}
             sx={{
-              animation: `fadeUp 420ms ease forwards`,
+              animation: 'fadeUp 420ms ease forwards',
               animationDelay: `${idx * 120}ms`,
               opacity: 0,
               cursor: it.path ? 'pointer' : 'default'
             }}
             role={it.path ? 'button' : undefined}
             tabIndex={it.path ? 0 : undefined}
-            onClick={() => it.path && navigate(it.path)}
+            onClick={async () => await (it.path && navigate(it.path))}
             onKeyDown={(e: React.KeyboardEvent) => {
               if (it.path && (e.key === 'Enter' || e.key === ' ')) {
                 navigate(it.path);

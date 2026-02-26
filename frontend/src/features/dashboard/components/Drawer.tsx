@@ -47,12 +47,12 @@ const Drawer = styled(MuiDrawer, { shouldForwardProp: (prop) => prop !== 'open' 
     boxSizing: 'border-box',
     ...(open
       ? {
-          ...openedMixin(theme as Theme),
-          '& .MuiDrawer-paper': openedMixin(theme as Theme),
+          ...openedMixin(theme),
+          '& .MuiDrawer-paper': openedMixin(theme),
         }
       : {
-          ...closedMixin(theme as Theme),
-          '& .MuiDrawer-paper': closedMixin(theme as Theme),
+          ...closedMixin(theme),
+          '& .MuiDrawer-paper': closedMixin(theme),
         }),
   })
 );

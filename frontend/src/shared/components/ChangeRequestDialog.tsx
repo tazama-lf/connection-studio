@@ -14,8 +14,7 @@ export const ChangeRequestDialog: React.FC<ChangeRequestDialogProps> = ({
   onClose,
   onConfirm,
   configName,
-}) => {
-  return (
+}) => (
     <JobRejectionDialog
       isOpen={isOpen}
       onClose={onClose}
@@ -24,4 +23,3 @@ export const ChangeRequestDialog: React.FC<ChangeRequestDialogProps> = ({
       jobType="Data Enrichment Job"
     />
   );
-};

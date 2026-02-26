@@ -32,7 +32,7 @@ export const CronJobTableColumns = ({
   onView,
   onEdit,
   onExport,
-}: CronJobTableColumnsProps): GridColDef<ScheduleResponse>[] => {
+}: CronJobTableColumnsProps): Array<GridColDef<ScheduleResponse>> => {
   const statusOptions =
     (getDemsStatusLov[userRole as keyof typeof getDemsStatusLov] ?? []).filter(
       (opt) =>

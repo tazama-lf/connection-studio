@@ -17,7 +17,7 @@ import EndpointHistoryButton from '@features/data-enrichment/components/Endpoint
 const PublisherDEJobsPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const userRole = getPrimaryRole(user?.claims as string[]);
+  const userRole = getPrimaryRole(user?.claims!);
 
   const [itemsPerPage] = useState(UI_CONFIG.pagination.defaultPageSize);
   const [jobs, setJobs] = useState<DataEnrichmentJobResponse[]>([]);
@@ -40,7 +40,7 @@ const PublisherDEJobsPage: React.FC = () => {
 
   const { showError } = useToast();
 
-  const fetchDeJobs = async (pageNumber: number = 1): Promise<void> => {
+  const fetchDeJobs = async (pageNumber = 1): Promise<void> => {
     try {
       setLoading(true);
       setError(null);
@@ -107,7 +107,7 @@ const PublisherDEJobsPage: React.FC = () => {
         <Button
           variant="primary"
           className="py-1 pl-2"
-          onClick={() => navigate(-1)}
+          onClick={async () => { await navigate(-1); }}
         >
           <ChevronLeft size={20} /> <span>Go Back</span>
         </Button>
@@ -153,7 +153,7 @@ const PublisherDEJobsPage: React.FC = () => {
         <JobList
           jobs={jobs}
           isLoading={jobsLoading}
-          onRefresh={() => fetchDeJobs(page)}
+          onRefresh={async () => { await fetchDeJobs(page); }}
           onViewLogs={handleViewJobDetails}
           page={page}
           setPage={setPage}
