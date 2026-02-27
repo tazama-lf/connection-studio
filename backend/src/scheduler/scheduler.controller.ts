@@ -23,6 +23,7 @@ import { User } from 'src/auth/user.decorator';
 import { CreateScheduleJobDto } from './dto/create-schedule.dto';
 import { UpdateScheduleJobDto } from './dto/update-schedule-dto';
 import { SchedulerService } from './scheduler.service';
+import { Audit } from 'src/decorators/audit.decorator';
 
 @Controller('scheduler')
 @UseGuards(TazamaAuthGuard)
@@ -31,6 +32,7 @@ export class SchedulerController {
 
   @Post('/create')
   @RequireAnyClaims(TazamaClaims.EDITOR)
+  @Audit()
   async createSchedule(
     @Body() schedule: CreateScheduleJobDto,
     @User() user: AuthenticatedUser,
@@ -60,12 +62,13 @@ export class SchedulerController {
 
   @Patch('/update/:id')
   @RequireAnyClaims(TazamaClaims.EDITOR)
+  @Audit()
   async updateSchedule(
     @Param('id') id: string,
     @Body() body: UpdateScheduleJobDto,
     @User() user: AuthenticatedUser,
   ): Promise<ISuccess> {
-    return await this.schedulerService.update(id, body, user);
+    return await this.schedulerService.updateSchedule(id, body, user);
   }
 
   @Get('/:id')
@@ -99,6 +102,7 @@ export class SchedulerController {
   }
 
   @Patch('/update/status/:id')
+  
   @RequireAnyClaims(
     TazamaClaims.EDITOR,
     TazamaClaims.APPROVER,

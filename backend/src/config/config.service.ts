@@ -39,42 +39,7 @@ export class ConfigService {
     private readonly sftpService: SftpService,
     private readonly notifyService: NotifyService,
     private readonly notificationService: NotificationService,
-    @Inject('AUDIT_LOGGER')
-    private readonly auditLoggerService: AuditLogger,
   ) {}
-
-  private logAudit(
-    eventType: string,
-    user:
-      | AuthenticatedUser
-      | {
-          userId: string;
-          actorRole?: string;
-          actorName?: string;
-          actorEmail?: string;
-          sourceIP?: string;
-          tenantId: string;
-        },
-    description: string,
-    resourceId: string,
-    status: 'success' | 'failure',
-    outcome: Record<string, unknown>,
-  ): void {
-    this.auditLoggerService.log({
-      eventType,
-      actorId: user.userId,
-      actorRole: user.actorRole ?? 'system',
-      actorName: user.actorName ?? 'System',
-      actorEmail: user.actorEmail ?? 'N/A',
-      description,
-      sourceIp: user.sourceIP ?? 'N/A',
-      status,
-      resourceType: 'Config',
-      resourceId,
-      outcome,
-      tenantId: user.tenantId,
-    });
-  }
 
   private async getConfigOrThrow(
     id: number,
@@ -134,28 +99,11 @@ export class ConfigService {
 
       await this.configRepository.updateConfigStatus(id, status, token);
 
-      this.logAudit(
-        'Config status updated',
-        user,
-        `Config ${id} status updated to ${status}`,
-        String(id),
-        'success',
-        { success: true, newStatus: status },
-      );
-
       return {
         success: true,
         message: `Config status updated to ${status}`,
       };
     } catch (error) {
-      this.logAudit(
-        'Config status update failed',
-        user,
-        `Failed to update config ${id} status to ${status}: ${error.message}`,
-        String(id),
-        'failure',
-        { success: false, error: error.message },
-      );
       throw error;
     }
   }
@@ -249,15 +197,6 @@ export class ConfigService {
         );
       }
 
-      this.logAudit(
-        'Config created',
-        user,
-        `Config created for ${dto.transactionType} v${dto.version}`,
-        String(configId),
-        'success',
-        { success: true, configId },
-      );
-
       return {
         success: true,
         message: 'Config created successfully',
@@ -278,15 +217,6 @@ export class ConfigService {
         msgFam,
         transactionType,
         version,
-      );
-
-      this.logAudit(
-        'Config creation failed',
-        user,
-        `Failed to create config for ${transactionType} v${version}: ${error.message}`,
-        'N/A',
-        'failure',
-        { success: false, error: error.message },
       );
 
       return {
@@ -320,28 +250,11 @@ export class ConfigService {
         );
       }
 
-      this.logAudit(
-        'Config submitted for review',
-        user,
-        `Config ${id} submitted for approval`,
-        String(id),
-        'success',
-        { success: true, newStatus: ConfigStatus.UNDER_REVIEW },
-      );
-
       return {
         success: true,
         message: `Configuration ${id} submitted for approval successfully`,
       };
     } catch (error) {
-      this.logAudit(
-        'Config submission failed',
-        user,
-        `Failed to submit config ${id} for approval: ${error.message}`,
-        String(id),
-        'failure',
-        { success: false, error: error.message },
-      );
       throw error;
     }
   }
@@ -436,32 +349,11 @@ export class ConfigService {
             );
           }
 
-          this.logAudit(
-            'Config submitted for review',
-            user,
-            `Config ${id} submitted for approval. Comment: ${submitDto.comment ?? 'none'}`,
-            String(id),
-            'success',
-            {
-              success: true,
-              newStatus: ConfigStatus.UNDER_REVIEW,
-              comment: submitDto.comment,
-            },
-          );
-
           return {
             success: true,
             message: `Configuration ${id} submitted for approval successfully`,
           };
         } catch (error) {
-          this.logAudit(
-            'Config submission failed',
-            user,
-            `Failed to submit config ${id} for approval: ${error.message}`,
-            String(id),
-            'failure',
-            { success: false, error: error.message },
-          );
           throw error;
         }
       }
@@ -530,32 +422,11 @@ export class ConfigService {
             );
           }
 
-          this.logAudit(
-            'Config approved',
-            user,
-            `Config ${id} approved. Comment: ${approvalDto.comment ?? 'none'}`,
-            String(id),
-            'success',
-            {
-              success: true,
-              newStatus: ConfigStatus.APPROVED,
-              comment: approvalDto.comment,
-            },
-          );
-
           return {
             success: true,
             message: `Configuration ${id} has been approved successfully`,
           };
         } catch (error) {
-          this.logAudit(
-            'Config approval failed',
-            user,
-            `Failed to approve config ${id}: ${error.message}`,
-            String(id),
-            'failure',
-            { success: false, error: error.message },
-          );
           throw error;
         }
       }
@@ -583,32 +454,11 @@ export class ConfigService {
             );
           }
 
-          this.logAudit(
-            'Config rejected',
-            user,
-            `Config ${id} rejected. Comment: ${rejectionDto.comment || 'none'}`,
-            String(id),
-            'success',
-            {
-              success: true,
-              newStatus: ConfigStatus.REJECTED,
-              comment: rejectionDto.comment,
-            },
-          );
-
           return {
             success: true,
             message: `Configuration ${id} has been rejected successfully`,
           };
         } catch (error) {
-          this.logAudit(
-            'Config rejection failed',
-            user,
-            `Failed to reject config ${id}: ${error.message}`,
-            String(id),
-            'failure',
-            { success: false, error: error.message },
-          );
           throw error;
         }
       }
@@ -651,20 +501,6 @@ export class ConfigService {
             );
           }
 
-          this.logAudit(
-            'Config exported',
-            user,
-            `Config ${id} exported to SFTP. Comment: ${exportDto.comment ?? 'none'}`,
-            String(id),
-            'success',
-            {
-              success: true,
-              newStatus: ConfigStatus.EXPORTED,
-              fileName,
-              comment: exportDto.comment,
-            },
-          );
-
           return {
             success: true,
             message: `Configuration ${id} exported successfully`,
@@ -672,15 +508,6 @@ export class ConfigService {
           };
         } catch (error) {
           this.logger.error(`Failed to export config: ${error.message}`);
-
-          this.logAudit(
-            'Config export failed',
-            user,
-            `Failed to export config ${id}: ${error.message}`,
-            String(id),
-            'failure',
-            { success: false, error: error.message },
-          );
 
           throw new BadRequestException(
             `Failed to export config: ${error.message}`,
@@ -795,19 +622,6 @@ export class ConfigService {
             deployDto.comment,
           );
 
-          this.logAudit(
-            'Config deployed',
-            user,
-            `Config ${id} deployed successfully. Comment: ${deployDto.comment ?? 'none'}`,
-            String(id),
-            'success',
-            {
-              success: true,
-              newStatus: ConfigStatus.DEPLOYED,
-              comment: deployDto.comment,
-            },
-          );
-
           return {
             success: true,
             message: `Configuration ${id} deployed successfully`,
@@ -816,15 +630,6 @@ export class ConfigService {
         } catch (error) {
           const errMsg = error instanceof Error ? error.message : String(error);
           this.logger.error(`Failed to deploy config: ${errMsg}`);
-
-          this.logAudit(
-            'Config deployment failed',
-            user,
-            `Failed to deploy config ${id}: ${errMsg}`,
-            String(id),
-            'failure',
-            { success: false, error: errMsg },
-          );
 
           throw new BadRequestException(
             `Failed to deploy configuration: ${errMsg}`,
@@ -876,29 +681,12 @@ export class ConfigService {
         );
       }
 
-      this.logAudit(
-        'Config publishing status updated',
-        user,
-        `Config ${id} publishing status changed to ${publishingStatus}`,
-        String(id),
-        'success',
-        { success: true, publishingStatus },
-      );
-
       return {
         success: true,
         message: `Publishing status updated to ${publishingStatus}`,
         config: result.config,
       };
     } catch (error) {
-      this.logAudit(
-        'Config publishing status update failed',
-        user,
-        `Failed to update config ${id} publishing status to ${publishingStatus}: ${error.message}`,
-        String(id),
-        'failure',
-        { success: false, error: error.message },
-      );
       throw error;
     }
   }
@@ -962,25 +750,8 @@ export class ConfigService {
         user.token.tokenString,
       );
 
-      this.logAudit(
-        'Config updated',
-        user,
-        `Config ${id} updated via write`,
-        String(id),
-        'success',
-        { success: true, updateData },
-      );
-
       return result;
     } catch (error) {
-      this.logAudit(
-        'Config update failed',
-        user,
-        `Failed to update config ${id} via write: ${error.message}`,
-        String(id),
-        'failure',
-        { success: false, error: error.message },
-      );
       throw error;
     }
   }
@@ -997,25 +768,8 @@ export class ConfigService {
         token,
       );
 
-      this.logAudit(
-        'Config mapping added',
-        { userId: 'system', tenantId: 'system' },
-        `Mapping added to config ${id}`,
-        String(id),
-        'success',
-        { success: true, mappingData },
-      );
-
       return result;
     } catch (error) {
-      this.logAudit(
-        'Config mapping addition failed',
-        { userId: 'system', tenantId: 'system' },
-        `Failed to add mapping to config ${id}: ${error.message}`,
-        String(id),
-        'failure',
-        { success: false, error: error.message },
-      );
       throw error;
     }
   }
@@ -1032,25 +786,8 @@ export class ConfigService {
         token,
       );
 
-      this.logAudit(
-        'Config mapping removed',
-        { userId: 'system', tenantId: 'system' },
-        `Mapping at index ${index} removed from config ${id}`,
-        String(id),
-        'success',
-        { success: true, removedIndex: index },
-      );
-
       return result;
     } catch (error) {
-      this.logAudit(
-        'Config mapping removal failed',
-        { userId: 'system', tenantId: 'system' },
-        `Failed to remove mapping at index ${index} from config ${id}: ${error.message}`,
-        String(id),
-        'failure',
-        { success: false, error: error.message },
-      );
       throw error;
     }
   }
@@ -1067,25 +804,8 @@ export class ConfigService {
         token,
       );
 
-      this.logAudit(
-        'Config function added',
-        { userId: 'system', tenantId: 'system' },
-        `Function added to config ${id}`,
-        String(id),
-        'success',
-        { success: true, functionData },
-      );
-
       return result;
     } catch (error) {
-      this.logAudit(
-        'Config function addition failed',
-        { userId: 'system', tenantId: 'system' },
-        `Failed to add function to config ${id}: ${error.message}`,
-        String(id),
-        'failure',
-        { success: false, error: error.message },
-      );
       throw error;
     }
   }
@@ -1102,25 +822,8 @@ export class ConfigService {
         token,
       );
 
-      this.logAudit(
-        'Config function removed',
-        { userId: 'system', tenantId: 'system' },
-        `Function at index ${index} removed from config ${id}`,
-        String(id),
-        'success',
-        { success: true, removedIndex: index },
-      );
-
       return result;
     } catch (error) {
-      this.logAudit(
-        'Config function removal failed',
-        { userId: 'system', tenantId: 'system' },
-        `Failed to remove function at index ${index} from config ${id}: ${error.message}`,
-        String(id),
-        'failure',
-        { success: false, error: error.message },
-      );
       throw error;
     }
   }
