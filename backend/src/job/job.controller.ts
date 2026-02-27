@@ -78,7 +78,7 @@ export class JobController {
     TazamaClaims.EXPORTER,
     TazamaClaims.PUBLISHER,
   )
-  async getAll(
+  async getAllJobs(
     @Query('offset') offset: string,
     @Query('limit') limit: string,
     @User() user: AuthenticatedUser,
@@ -105,7 +105,7 @@ export class JobController {
     TazamaClaims.EXPORTER,
     TazamaClaims.PUBLISHER,
   )
-  async getById(
+  async getJobById(
     @Param('id') id: string,
     @Query('type') type: ConfigType,
     @User() user: AuthenticatedUser,
@@ -127,7 +127,7 @@ export class JobController {
     TazamaClaims.EXPORTER,
     TazamaClaims.PUBLISHER,
   )
-  async getByStatus(
+  async getJobByStatus(
     @Query('status') status: JobStatus,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
@@ -143,7 +143,7 @@ export class JobController {
     TazamaClaims.EXPORTER,
     TazamaClaims.PUBLISHER,
   )
-  async updateStatus(
+  async updateJobStatus(
     @Param('id') id: string,
     @Query('status') status: JobStatus,
     @Query('type') type: ConfigType,
@@ -155,7 +155,7 @@ export class JobController {
 
   @Patch('/update/activation/:id')
   @RequireAnyClaims(TazamaClaims.PUBLISHER)
-  async update(
+  async updateJobActivation(
     @Param('id') id: string,
     @Query('status') status: ScheduleStatus,
     @Query('type') type: ConfigType,

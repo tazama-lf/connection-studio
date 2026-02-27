@@ -27,11 +27,11 @@ import { SchedulerService } from './scheduler.service';
 @Controller('scheduler')
 @UseGuards(TazamaAuthGuard)
 export class SchedulerController {
-  constructor(private readonly schedulerService: SchedulerService) {}
+  constructor(private readonly schedulerService: SchedulerService) { }
 
   @Post('/create')
   @RequireAnyClaims(TazamaClaims.EDITOR)
-  async createJob(
+  async createSchedule(
     @Body() schedule: CreateScheduleJobDto,
     @User() user: AuthenticatedUser,
   ): Promise<ISuccess> {
@@ -49,7 +49,7 @@ export class SchedulerController {
     TazamaClaims.EXPORTER,
     TazamaClaims.PUBLISHER,
   )
-  async getAll(
+  async getAllSchedule(
     @Query('offset') offset: string,
     @Query('limit') limit: string,
     @User() user: AuthenticatedUser,
@@ -60,7 +60,7 @@ export class SchedulerController {
 
   @Patch('/update/:id')
   @RequireAnyClaims(TazamaClaims.EDITOR)
-  async update(
+  async updateSchedule(
     @Param('id') id: string,
     @Body() body: UpdateScheduleJobDto,
     @User() user: AuthenticatedUser,
@@ -75,7 +75,7 @@ export class SchedulerController {
     TazamaClaims.EXPORTER,
     TazamaClaims.PUBLISHER,
   )
-  async getById(
+  async getScheduleById(
     @Param('id') id: string,
     @User() user: AuthenticatedUser,
   ): Promise<Schedule | null> {
@@ -89,7 +89,7 @@ export class SchedulerController {
     TazamaClaims.EXPORTER,
     TazamaClaims.PUBLISHER,
   )
-  async getByStatus(
+  async getScheduleByStatus(
     @Query('status') status: JobStatus,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
@@ -105,7 +105,7 @@ export class SchedulerController {
     TazamaClaims.EXPORTER,
     TazamaClaims.PUBLISHER,
   )
-  async updateStatus(
+  async updateScheduleStatus(
     @Param('id') id: string,
     @Query('status') status: JobStatus,
     @User() user: AuthenticatedUser,
