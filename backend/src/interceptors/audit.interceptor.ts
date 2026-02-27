@@ -5,9 +5,6 @@ import { tap, catchError } from 'rxjs/operators';
 import type { Request } from 'express';
 import { type IAuditService, IAuditLogInput, EventPhase } from '@tazama-lf/audit-lib';
 import type { AuthenticatedUser } from '../auth/auth.types';
-import { JobController } from 'src/job/job.controller';
-import { SftpController } from 'src/sftp/sftp.controller';
-import { TazamaDataModelController } from 'src/tazama-data-model/tazama-data-model.controller';
 
 /**
  * Audit interceptor for logging critical user actions
@@ -271,17 +268,17 @@ export class AuditInterceptor implements NestInterceptor {
                 eventType: 'JOB_UPDATED',
             },
 
-            updateStatus:{
+            updateJobStatus:{
                 description: 'Updated job status',
                 eventType: 'JOB_STATUS_UPDATED',
             },
 
-            updateActivation:{
+            updateJobActivation:{
                 description: 'Updated job activation status',
                 eventType: 'JOB_ACTIVATION_STATUS_UPDATED',
             },
 
-            createJob:{
+            createSchedule:{
                 description: 'Created a new scheduled job',
                 eventType: 'SCHEDULED_JOB_CREATED',
             },
@@ -289,9 +286,22 @@ export class AuditInterceptor implements NestInterceptor {
             updateSchedule:{
                 description: 'Updated an existing scheduled job',
                 eventType: 'SCHEDULED_JOB_UPDATED',
-            }
+            },
 
-            
+            updateScheduleStatus:{
+                description: 'Updated scheduled job status',
+                eventType: 'SCHEDULED_JOB_STATUS_UPDATED',
+            },
+
+            simulateMapping:{
+                description: 'Simulated a mapping with test payload',
+                eventType: 'MAPPING_SIMULATION_RUN',
+            },
+
+            putDataModelJson:{
+                description: 'Updated the Tazama data model JSON',
+                eventType: 'DATA_MODEL_UPDATED',
+            },
 
         } as const satisfies Record<string, EventMetadata>;
 

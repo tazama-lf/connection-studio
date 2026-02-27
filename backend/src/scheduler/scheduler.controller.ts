@@ -102,13 +102,13 @@ export class SchedulerController {
   }
 
   @Patch('/update/status/:id')
-  
   @RequireAnyClaims(
     TazamaClaims.EDITOR,
     TazamaClaims.APPROVER,
     TazamaClaims.EXPORTER,
     TazamaClaims.PUBLISHER,
   )
+  @Audit()
   async updateScheduleStatus(
     @Param('id') id: string,
     @Query('status') status: JobStatus,

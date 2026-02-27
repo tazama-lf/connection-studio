@@ -12,6 +12,7 @@ import { User } from '../auth/user.decorator';
 import type { AuthenticatedUser } from '../auth/auth.types';
 
 import { TazamaDataModelService } from './tazama-data-model.service';
+import { Audit } from 'src/decorators/audit.decorator';
 
 
 @Controller('tazama-data-model')
@@ -61,6 +62,7 @@ export class TazamaDataModelController {
     TazamaClaims.PUBLISHER,
     TazamaClaims.EXPORTER,
   )
+  @Audit()
   async putDataModelJson(
     @Body() body: { data_model_json: Record<string, unknown> },
     @User() user: AuthenticatedUser,

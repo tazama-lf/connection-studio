@@ -160,6 +160,7 @@ export class JobController {
 
   @Patch('/update/activation/:id')
   @RequireAnyClaims(TazamaClaims.PUBLISHER)
+  @Audit()
   async updateJobActivation(
     @Param('id') id: string,
     @Query('status') status: ScheduleStatus,
