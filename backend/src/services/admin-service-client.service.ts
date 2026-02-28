@@ -306,17 +306,13 @@ export class AdminServiceClient {
 
       const response = await firstValueFrom(
         this.httpService.post(
-          `${this.adminServiceUrl}/v1/admin/tcs/job/get/all`,
+          `${this.adminServiceUrl}/v1/admin/tcs/job/get/all/${offset}/${limit}`,
           {
             ...filters,
           },
           {
             headers: {
               Authorization: `Bearer ${user.token.tokenString}`,
-            },
-            params: {
-              offset,
-              limit,
             },
           },
         ),
@@ -336,17 +332,13 @@ export class AdminServiceClient {
     try {
       const response = await firstValueFrom(
         this.httpService.post(
-          `${this.adminServiceUrl}/v1/admin/tcs/job/get/history`,
+          `${this.adminServiceUrl}/v1/admin/tcs/job/get/history/${offset}/${limit}`,
           {
             ...filters,
           },
           {
             headers: {
               Authorization: `Bearer ${user.token.tokenString}`,
-            },
-            params: {
-              offset,
-              limit,
             },
           },
         ),
@@ -604,17 +596,13 @@ export class AdminServiceClient {
     try {
       const response = await firstValueFrom(
         this.httpService.post(
-          `${this.adminServiceUrl}/v1/admin/tcs/schedule/get/all`,
+          `${this.adminServiceUrl}/v1/admin/tcs/schedule/get/all/${offset}/${limit}`,
           {
             ...filters,
           },
           {
             headers: {
               Authorization: `Bearer ${user.token.tokenString}`,
-            },
-            params: {
-              offset,
-              limit,
             },
           },
         ),
