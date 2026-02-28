@@ -157,7 +157,7 @@ export class AuditInterceptor implements NestInterceptor {
      * Extracts resource ID from response data
      * @private
      */
-    private extractResourceIdFromResponse(response: Response): string | undefined {
+    private extractResourceIdFromResponse(response: any): string | undefined {
         const responseData = response.body;
         if (!responseData || typeof responseData !== 'object') return undefined;
         return responseData.id ?? responseData.endpointId ?? responseData.tenantId ?? responseData.tenant_id ?? responseData.schedule_id ?? responseData.job_id ?? responseData.jobId ?? responseData.config_id ?? responseData.configId ?? responseData.schedule_id;
