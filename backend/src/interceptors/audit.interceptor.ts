@@ -24,7 +24,7 @@ export class AuditInterceptor implements NestInterceptor {
     /**
      * Intercepts HTTP requests to critical endpoints and logs audit information
      */
-    intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
+    intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
         this.logger.log('AuditInterceptor triggered');
         const request = context.switchToHttp().getRequest<Request & { user?: AuthenticatedUser }>();
         const response = context.switchToHttp().getResponse<Response>();
@@ -328,7 +328,7 @@ export class AuditInterceptor implements NestInterceptor {
      * Removes sensitive information from request body
      * @private
      */
-    private sanitizeData(body: unknown): unknown {
+    private sanitizeData(body: any): any {
         if (!body || typeof body !== 'object') {
             return body;
         }
@@ -349,17 +349,17 @@ export class AuditInterceptor implements NestInterceptor {
      */
     private logAuditAsync(auditData: Omit<IAuditLogInput, 'correlationId' | 'eventPhase'>, eventPhase: EventPhase, correlationId: string,): void {
         const auditInput: IAuditLogInput = { ...auditData, correlationId, eventPhase, };
+        this.logger.log(`Audit log input: ${JSON.stringify(auditInput, null, 2)}`);
 
         this.auditService.log(auditInput).catch((error: unknown) => {
-            const errorMessage = error instanceof Error ? error.message : String(error);
-
-            this.logger.error(`Audit logging failed for ${auditData.eventType} by ${auditData.actorName}`,
-                {
-                    error: errorMessage,
-                    eventPhase,
-                    correlationId,
-                },
-            );
+            const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
+            this.logger.error(`Audit logging failed for ${auditData.eventType} by ${auditData.actorName}`, {
+                error: errorMessage,
+                eventPhase,
+                correlationId,
+            });
+            // Log full error stack or additional details
+            this.logger.error('Full error details:', error);
         });
     }
 }

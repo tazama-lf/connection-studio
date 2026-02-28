@@ -4,7 +4,6 @@ import {
   BadRequestException,
   NotFoundException,
   ForbiddenException,
-  Inject,
 } from '@nestjs/common';
 import { ConfigRepository } from './config.repository';
 import { JSONSchema } from '@tazama-lf/tcs-lib';
@@ -25,7 +24,6 @@ import {
 import { WorkflowActionDto, SftpConfigDataDto } from './dto';
 import { EventType } from '../enums/events.enum';
 import { AuthenticatedUser } from '../auth/auth.types';
-import { AuditLogger } from '@tazama-lf/frms-coe-lib';
 
 @Injectable()
 export class ConfigService {
@@ -39,7 +37,7 @@ export class ConfigService {
     private readonly sftpService: SftpService,
     private readonly notifyService: NotifyService,
     private readonly notificationService: NotificationService,
-  ) {}
+  ) { }
 
   private async getConfigOrThrow(
     id: number,
@@ -63,49 +61,46 @@ export class ConfigService {
     user: AuthenticatedUser,
     token: string,
   ): Promise<ConfigResponseDto> {
-    try {
-      const config = await this.getConfigOrThrow(id, user.tenantId, token);
 
-      if (!config.status) {
-        throw new BadRequestException('Config status is not set');
-      }
-      const userRole = user.actorRole.toLowerCase() as
-        | 'editor'
-        | 'approver'
-        | 'publisher'
-        | 'exporter';
-      const tier2Check = this.rbacService.checkTier2({
-        role: userRole,
-        endpointKey: 'Patch /update/status/:id',
-        currentStatus: config.status,
-      });
+    const config = await this.getConfigOrThrow(id, user.tenantId, token);
 
-      if (!tier2Check.allowed) {
-        throw new ForbiddenException(tier2Check.reason ?? 'Permission denied');
-      }
-
-      const tier3Check = this.rbacService.checkTier3({
-        role: userRole,
-        endpointKey: 'Patch /update/status/:id',
-        currentStatus: config.status,
-        targetStatus: status,
-      });
-
-      if (!tier3Check.allowed) {
-        throw new ForbiddenException(
-          tier3Check.reason ?? 'Status transition not allowed',
-        );
-      }
-
-      await this.configRepository.updateConfigStatus(id, status, token);
-
-      return {
-        success: true,
-        message: `Config status updated to ${status}`,
-      };
-    } catch (error) {
-      throw error;
+    if (!config.status) {
+      throw new BadRequestException('Config status is not set');
     }
+    const userRole = user.actorRole.toLowerCase() as
+      | 'editor'
+      | 'approver'
+      | 'publisher'
+      | 'exporter';
+    const tier2Check = this.rbacService.checkTier2({
+      role: userRole,
+      endpointKey: 'Patch /update/status/:id',
+      currentStatus: config.status,
+    });
+
+    if (!tier2Check.allowed) {
+      throw new ForbiddenException(tier2Check.reason ?? 'Permission denied');
+    }
+
+    const tier3Check = this.rbacService.checkTier3({
+      role: userRole,
+      endpointKey: 'Patch /update/status/:id',
+      currentStatus: config.status,
+      targetStatus: status,
+    });
+
+    if (!tier3Check.allowed) {
+      throw new ForbiddenException(
+        tier3Check.reason ?? 'Status transition not allowed',
+      );
+    }
+
+    await this.configRepository.updateConfigStatus(id, status, token);
+
+    return {
+      success: true,
+      message: `Config status updated to ${status}`,
+    };
   }
 
   private validateWorkflowAction(
@@ -231,32 +226,28 @@ export class ConfigService {
     user: AuthenticatedUser,
     token: string,
   ): Promise<ConfigResponseDto> {
-    try {
-      await this.getConfigOrThrow(id, user.tenantId, token);
+    await this.getConfigOrThrow(id, user.tenantId, token);
 
-      const updatedConfig = await this.configRepository.getupdateConfigByStatus(
-        id,
-        ConfigStatus.UNDER_REVIEW,
+    const updatedConfig = await this.configRepository.getupdateConfigByStatus(
+      id,
+      ConfigStatus.UNDER_REVIEW,
+      token,
+    );
+
+    if (updatedConfig) {
+      const config = updatedConfig;
+      await this.notificationService.sendWorkflowNotification(
+        EventType.EditorSubmit,
+        user,
+        config,
         token,
       );
-
-      if (updatedConfig) {
-        const config = updatedConfig;
-        await this.notificationService.sendWorkflowNotification(
-          EventType.EditorSubmit,
-          user,
-          config,
-          token,
-        );
-      }
-
-      return {
-        success: true,
-        message: `Configuration ${id} submitted for approval successfully`,
-      };
-    } catch (error) {
-      throw error;
     }
+
+    return {
+      success: true,
+      message: `Configuration ${id} submitted for approval successfully`,
+    };
   }
 
   async handleWorkflowAction(
@@ -309,7 +300,7 @@ export class ConfigService {
     if (!tier2Check.allowed) {
       throw new ForbiddenException(
         tier2Check.reason ??
-          `Role "${userRole}" cannot act on config in status "${config.status}"`,
+        `Role "${userRole}" cannot act on config in status "${config.status}"`,
       );
     }
 
@@ -323,144 +314,133 @@ export class ConfigService {
     if (!tier3Check.allowed) {
       throw new ForbiddenException(
         tier3Check.reason ??
-          `Role "${userRole}" cannot transition from "${config.status}" to "${targetStatus}"`,
+        `Role "${userRole}" cannot transition from "${config.status}" to "${targetStatus}"`,
       );
     }
 
     switch (action) {
       case 'submit': {
-        try {
-          const submitDto = actionDto.data;
-          const updatedConfig =
-            await this.configRepository.getupdateConfigByStatus(
-              id,
-              ConfigStatus.UNDER_REVIEW,
-              token,
-            );
+        const submitDto = actionDto.data;
+        const updatedConfig =
+          await this.configRepository.getupdateConfigByStatus(
+            id,
+            ConfigStatus.UNDER_REVIEW,
+            token,
+          );
 
-          if (updatedConfig) {
-            const config = updatedConfig;
-            await this.notificationService.sendWorkflowNotification(
-              EventType.EditorSubmit,
-              user,
-              config,
-              token,
-              submitDto.comment,
-            );
-          }
-
-          return {
-            success: true,
-            message: `Configuration ${id} submitted for approval successfully`,
-          };
-        } catch (error) {
-          throw error;
+        if (updatedConfig) {
+          const config = updatedConfig;
+          await this.notificationService.sendWorkflowNotification(
+            EventType.EditorSubmit,
+            user,
+            config,
+            token,
+            submitDto.comment,
+          );
         }
+
+        return {
+          success: true,
+          message: `Configuration ${id} submitted for approval successfully`,
+        };
       }
 
       case 'approve': {
-        try {
-          const approvalDto = actionDto.data;
-          const updatedConfig =
-            await this.configRepository.getupdateConfigByStatus(
-              id,
-              ConfigStatus.APPROVED,
+
+        const approvalDto = actionDto.data;
+        const updatedConfig =
+          await this.configRepository.getupdateConfigByStatus(
+            id,
+            ConfigStatus.APPROVED,
+            token,
+            approvalDto.comment,
+          );
+
+        if (updatedConfig) {
+          const config = updatedConfig;
+
+          const { transactionType } = config;
+
+          if (transactionType) {
+            await this.configRepository.createTransactionTypeTable(
+              transactionType,
               token,
-              approvalDto.comment,
-            );
-
-          if (updatedConfig) {
-            const config = updatedConfig;
-
-            const { transactionType } = config;
-
-            if (transactionType) {
-              await this.configRepository.createTransactionTypeTable(
-                transactionType,
-                token,
-              );
-            }
-
-            const functions = config.functions as unknown as Array<{
-              functionName: string;
-              tableName?: string;
-            }>;
-
-            if (Array.isArray(functions)) {
-              const datamodelFunctions = functions.filter(
-                (fn: { functionName: string; tableName?: string }) =>
-                  fn.functionName === 'addDataModelTable',
-              );
-
-              const tableCreationPromises = datamodelFunctions.map(
-                async (datamodelFn: {
-                  functionName: string;
-                  tableName?: string;
-                }) => {
-                  if (datamodelFn.tableName) {
-                    await this.configRepository.createTazamaDataModelTable(
-                      datamodelFn.tableName,
-                      token,
-                    );
-                  } else {
-                    this.logger.warn(
-                      'Skipping addDataModelTable function without tableName',
-                    );
-                  }
-                },
-              );
-
-              await Promise.all(tableCreationPromises);
-            }
-
-            await this.notificationService.sendWorkflowNotification(
-              EventType.ApproverApprove,
-              user,
-              config,
-              token,
-              approvalDto.comment,
             );
           }
 
-          return {
-            success: true,
-            message: `Configuration ${id} has been approved successfully`,
-          };
-        } catch (error) {
-          throw error;
+          const functions = config.functions as unknown as Array<{
+            functionName: string;
+            tableName?: string;
+          }>;
+
+          if (Array.isArray(functions)) {
+            const datamodelFunctions = functions.filter(
+              (fn: { functionName: string; tableName?: string }) =>
+                fn.functionName === 'addDataModelTable',
+            );
+
+            const tableCreationPromises = datamodelFunctions.map(
+              async (datamodelFn: {
+                functionName: string;
+                tableName?: string;
+              }) => {
+                if (datamodelFn.tableName) {
+                  await this.configRepository.createTazamaDataModelTable(
+                    datamodelFn.tableName,
+                    token,
+                  );
+                } else {
+                  this.logger.warn(
+                    'Skipping addDataModelTable function without tableName',
+                  );
+                }
+              },
+            );
+
+            await Promise.all(tableCreationPromises);
+          }
+
+          await this.notificationService.sendWorkflowNotification(
+            EventType.ApproverApprove,
+            user,
+            config,
+            token,
+            approvalDto.comment,
+          );
         }
+
+        return {
+          success: true,
+          message: `Configuration ${id} has been approved successfully`,
+        };
       }
 
       case 'reject': {
-        try {
-          const rejectionDto = actionDto.data;
+        const rejectionDto = actionDto.data;
 
-          const updatedConfig =
-            await this.configRepository.getupdateConfigByStatus(
-              id,
-              ConfigStatus.REJECTED,
-              token,
-              rejectionDto.comment,
-            );
+        const updatedConfig =
+          await this.configRepository.getupdateConfigByStatus(
+            id,
+            ConfigStatus.REJECTED,
+            token,
+            rejectionDto.comment,
+          );
 
-          if (updatedConfig) {
-            const config = updatedConfig;
-            await this.notificationService.sendWorkflowNotification(
-              EventType.ApproverReject,
-              user,
-              config,
-              token,
-              rejectionDto.comment,
-            );
-          }
-
-          return {
-            success: true,
-            message: `Configuration ${id} has been rejected successfully`,
-          };
-        } catch (error) {
-          throw error;
+        if (updatedConfig) {
+          const config = updatedConfig;
+          await this.notificationService.sendWorkflowNotification(
+            EventType.ApproverReject,
+            user,
+            config,
+            token,
+            rejectionDto.comment,
+          );
         }
+
+        return {
+          success: true,
+          message: `Configuration ${id} has been rejected successfully`,
+        };
       }
 
       case 'export': {
@@ -646,49 +626,46 @@ export class ConfigService {
     user: AuthenticatedUser,
     token: string,
   ): Promise<ConfigResponseDto> {
-    try {
-      const result = (await this.configRepository.updatePublishingStatus(
-        id,
-        publishingStatus,
-        token,
-      )) as { success: boolean; message?: string; config?: Config };
 
-      if (!result.success) {
-        throw new NotFoundException(
-          result.message ?? `Config with ID ${id} not found`,
-        );
-      }
+    const result = (await this.configRepository.updatePublishingStatus(
+      id,
+      publishingStatus,
+      token,
+    )) as { success: boolean; message?: string; config?: Config };
 
-      try {
-        await this.notifyService.notifyDems(id.toString(), tenantId);
-      } catch (error) {
-        const errMsg = error instanceof Error ? error.message : String(error);
-        this.logger.error(
-          `Failed to send NATS notification for config ${id}: ${errMsg}`,
-        );
-        throw new BadRequestException(`Failed to activate config: ${errMsg}`);
-      }
-      if (result.config) {
-        const { config } = result;
-        await this.notificationService.sendWorkflowNotification(
-          publishingStatus === 'active'
-            ? EventType.PublisherActivate
-            : EventType.PublisherDeactivate,
-          user,
-          config,
-          token,
-          `Publishing status changed to ${publishingStatus}`,
-        );
-      }
-
-      return {
-        success: true,
-        message: `Publishing status updated to ${publishingStatus}`,
-        config: result.config,
-      };
-    } catch (error) {
-      throw error;
+    if (!result.success) {
+      throw new NotFoundException(
+        result.message ?? `Config with ID ${id} not found`,
+      );
     }
+
+    try {
+      await this.notifyService.notifyDems(id.toString(), tenantId);
+    } catch (error) {
+      const errMsg = error instanceof Error ? error.message : String(error);
+      this.logger.error(
+        `Failed to send NATS notification for config ${id}: ${errMsg}`,
+      );
+      throw new BadRequestException(`Failed to activate config: ${errMsg}`);
+    }
+    if (result.config) {
+      const { config } = result;
+      await this.notificationService.sendWorkflowNotification(
+        publishingStatus === 'active'
+          ? EventType.PublisherActivate
+          : EventType.PublisherDeactivate,
+        user,
+        config,
+        token,
+        `Publishing status changed to ${publishingStatus}`,
+      );
+    }
+
+    return {
+      success: true,
+      message: `Publishing status updated to ${publishingStatus}`,
+      config: result.config,
+    };
   }
   async updateConfigViaWrite(
     id: number,
@@ -724,7 +701,7 @@ export class ConfigService {
       if (!tier2Check.allowed) {
         throw new ForbiddenException(
           tier2Check.reason ??
-            `Role "${userRole}" cannot act on config in status "${config.status}"`,
+          `Role "${userRole}" cannot act on config in status "${config.status}"`,
         );
       }
 
@@ -738,22 +715,18 @@ export class ConfigService {
       if (!tier3Check.allowed) {
         throw new ForbiddenException(
           tier3Check.reason ??
-            `Role "${userRole}" cannot transition from "${config.status}" to "${updateData.status}"`,
+          `Role "${userRole}" cannot transition from "${config.status}" to "${updateData.status}"`,
         );
       }
     }
 
-    try {
-      const result = await this.configRepository.updateConfigViaWrite(
-        id,
-        updateData,
-        user.token.tokenString,
-      );
+    const result = await this.configRepository.updateConfigViaWrite(
+      id,
+      updateData,
+      user.token.tokenString,
+    );
 
-      return result;
-    } catch (error) {
-      throw error;
-    }
+    return result;
   }
 
   async addMappingViaService(
@@ -761,17 +734,13 @@ export class ConfigService {
     mappingData: Record<string, unknown>,
     token: string,
   ): Promise<unknown> {
-    try {
-      const result = await this.configRepository.addMapping(
-        id,
-        mappingData,
-        token,
-      );
+    const result = await this.configRepository.addMapping(
+      id,
+      mappingData,
+      token,
+    );
 
-      return result;
-    } catch (error) {
-      throw error;
-    }
+    return result;
   }
 
   async removeMappingViaService(
@@ -779,17 +748,13 @@ export class ConfigService {
     index: number,
     token: string,
   ): Promise<unknown> {
-    try {
-      const result = await this.configRepository.removeMapping(
-        id,
-        index,
-        token,
-      );
+    const result = await this.configRepository.removeMapping(
+      id,
+      index,
+      token,
+    );
 
-      return result;
-    } catch (error) {
-      throw error;
-    }
+    return result;
   }
 
   async addFunctionViaService(
@@ -797,17 +762,13 @@ export class ConfigService {
     functionData: Record<string, unknown>,
     token: string,
   ): Promise<unknown> {
-    try {
-      const result = await this.configRepository.addFunction(
-        id,
-        functionData,
-        token,
-      );
+    const result = await this.configRepository.addFunction(
+      id,
+      functionData,
+      token,
+    );
 
-      return result;
-    } catch (error) {
-      throw error;
-    }
+    return result;
   }
 
   async removeFunctionViaService(
@@ -815,17 +776,13 @@ export class ConfigService {
     index: number,
     token: string,
   ): Promise<unknown> {
-    try {
-      const result = await this.configRepository.removeFunction(
-        id,
-        index,
-        token,
-      );
+    const result = await this.configRepository.removeFunction(
+      id,
+      index,
+      token,
+    );
 
-      return result;
-    } catch (error) {
-      throw error;
-    }
+    return result;
   }
 
   async getConfigById(
