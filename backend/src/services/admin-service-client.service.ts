@@ -127,9 +127,9 @@ export class AdminServiceClient {
 
       const message =
         data &&
-        typeof data === 'object' &&
-        'message' in data &&
-        typeof data.message === 'string'
+          typeof data === 'object' &&
+          'message' in data &&
+          typeof data.message === 'string'
           ? data.message
           : 'Admin service returned an error response';
 
@@ -219,9 +219,9 @@ export class AdminServiceClient {
 
         const message =
           data &&
-          typeof data === 'object' &&
-          'message' in data &&
-          typeof data.message === 'string'
+            typeof data === 'object' &&
+            'message' in data &&
+            typeof data.message === 'string'
             ? data.message
             : typeof data === 'string'
               ? data
@@ -301,6 +301,9 @@ export class AdminServiceClient {
     filters?: Record<string, unknown>,
   ): Promise<PaginatedResult<Job>> {
     try {
+
+      this.logger.log(`Getting all jobs request with limit ${limit} and offset ${offset}`)
+
       const response = await firstValueFrom(
         this.httpService.post(
           `${this.adminServiceUrl}/v1/admin/tcs/job/get/all`,
