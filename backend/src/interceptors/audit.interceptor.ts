@@ -2,7 +2,7 @@ import { Injectable, NestInterceptor, ExecutionContext, CallHandler, Inject, Log
 import { randomUUID } from 'node:crypto';
 import { Observable } from 'rxjs';
 import { tap, catchError } from 'rxjs/operators';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 import { type IAuditService, IAuditLogInput, EventPhase } from '@tazama-lf/audit-lib';
 import type { AuthenticatedUser } from '../auth/auth.types';
 
@@ -24,16 +24,16 @@ export class AuditInterceptor implements NestInterceptor {
     /**
      * Intercepts HTTP requests to critical endpoints and logs audit information
      */
-    intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+    intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
         this.logger.log('AuditInterceptor triggered');
         const request = context.switchToHttp().getRequest<Request & { user?: AuthenticatedUser }>();
-        const response = context.switchToHttp().getResponse<{ statusCode: number }>();
+        const response = context.switchToHttp().getResponse<Response>();
         const { user } = request;
         const startTime = Date.now();
 
         const correlationId = randomUUID();
 
-        const baseAuditData = this.buildBaseAuditData(context, request, user);
+        const baseAuditData = this.buildBaseAuditData(context, request, response, user);
 
         this.logAuditAsync(baseAuditData, EventPhase.INTENT, correlationId);
 
@@ -45,6 +45,7 @@ export class AuditInterceptor implements NestInterceptor {
                         statusCode: response.statusCode,
                         executionTimeMs: Date.now() - startTime,
                         responseSize: JSON.stringify(responseData ?? {}).length,
+                        responseData: this.sanitizeData(responseData),
                     },
                 };
 
@@ -74,6 +75,7 @@ export class AuditInterceptor implements NestInterceptor {
     private buildBaseAuditData(
         context: ExecutionContext,
         request: Request,
+        response: Response,
         user?: AuthenticatedUser,
     ): Omit<IAuditLogInput, 'correlationId' | 'eventPhase' | 'outcome'> {
         const { method, url, body, params, query, headers } = request;
@@ -88,7 +90,7 @@ export class AuditInterceptor implements NestInterceptor {
             actorRole: this.extractUserRole(user),
 
             // Resource information
-            resourceId: this.extractResourceId(request),
+            resourceId: this.extractResourceIdFromRequest(request) ?? this.extractResourceIdFromResponse(response),
             resourceType: this.mapControllerToResourceType(controller),
 
             // Request metadata
@@ -104,7 +106,7 @@ export class AuditInterceptor implements NestInterceptor {
                 handler,
                 controller,
                 userAgent: headers['user-agent'],
-                requestBody: this.sanitizeRequestBody(body),
+                requestBody: this.sanitizeData(body),
                 pathParameters: params,
                 queryParameters: query,
                 timestamp: new Date().toISOString(),
@@ -144,11 +146,21 @@ export class AuditInterceptor implements NestInterceptor {
      * Extracts resource ID from request parameters
      * @private
      */
-    private extractResourceId(request: Request): string | undefined {
+    private extractResourceIdFromRequest(request: Request): string | undefined {
         const params = request.params as Record<string, string>;
 
         // Common resource ID parameter names
-        return params.ruleId || params.nodeId || params.id || params.resourceId;
+        return params.id || params.endpointId || params.tenantId || params.tenant_id || params.schedule_id || params.job_id || params.jobId || params.config_id || params.configId || params.schedule_id;
+    }
+
+    /**
+     * Extracts resource ID from response data
+     * @private
+     */
+    private extractResourceIdFromResponse(response: Response): string | undefined {
+        const responseData = response.body;
+        if (!responseData || typeof responseData !== 'object') return undefined;
+        return responseData.id ?? responseData.endpointId ?? responseData.tenantId ?? responseData.tenant_id ?? responseData.schedule_id ?? responseData.job_id ?? responseData.jobId ?? responseData.config_id ?? responseData.configId ?? responseData.schedule_id;
     }
 
     /**
@@ -213,92 +225,92 @@ export class AuditInterceptor implements NestInterceptor {
                 eventType: 'MAPPING_DELETED',
             },
 
-            createConfig:{
+            createConfig: {
                 description: 'Created a new configuration',
                 eventType: 'CONFIGURATION_CREATED',
             },
 
-            updateConfig:{
+            updateConfig: {
                 description: 'Updated an existing configuration',
                 eventType: 'CONFIGURATION_UPDATED',
             },
 
-            addFunction:{
+            addFunction: {
                 description: 'Added a new function to configuration',
                 eventType: 'FUNCTION_CREATED',
             },
 
-            removeFunction:{
+            removeFunction: {
                 description: 'Removed a function from configuration',
                 eventType: 'FUNCTION_DELETED',
             },
 
-            workflow:{
+            workflow: {
                 description: 'Performed a workflow action on configuration',
                 eventType: 'WORKFLOW_ACTION',
             },
 
-            updateConfigStatus:{
+            updateConfigStatus: {
                 description: 'Updated configuration status',
                 eventType: 'CONFIGURATION_STATUS_UPDATED',
             },
 
-            updatePublishingStatus:{
+            updatePublishingStatus: {
                 description: 'Updated configuration publishing status',
                 eventType: 'CONFIGURATION_PUBLISHING_STATUS_UPDATED',
             },
 
-            getAllConfigs:{
+            getAllConfigs: {
                 description: 'Retrieved all configurations',
                 eventType: 'CONFIGURATION_LISTED',
             },
 
-            createPushJob:{
+            createPushJob: {
                 description: 'Created a new push job',
                 eventType: 'PUSH_JOB_CREATED',
             },
 
-            createPullJob:{
+            createPullJob: {
                 description: 'Created a new pull job',
                 eventType: 'PULL_JOB_CREATED',
             },
 
-            updateJob:{
+            updateJob: {
                 description: 'Updated an existing job',
                 eventType: 'JOB_UPDATED',
             },
 
-            updateJobStatus:{
+            updateJobStatus: {
                 description: 'Updated job status',
                 eventType: 'JOB_STATUS_UPDATED',
             },
 
-            updateJobActivation:{
+            updateJobActivation: {
                 description: 'Updated job activation status',
                 eventType: 'JOB_ACTIVATION_STATUS_UPDATED',
             },
 
-            createSchedule:{
+            createSchedule: {
                 description: 'Created a new scheduled job',
                 eventType: 'SCHEDULED_JOB_CREATED',
             },
 
-            updateSchedule:{
+            updateSchedule: {
                 description: 'Updated an existing scheduled job',
                 eventType: 'SCHEDULED_JOB_UPDATED',
             },
 
-            updateScheduleStatus:{
+            updateScheduleStatus: {
                 description: 'Updated scheduled job status',
                 eventType: 'SCHEDULED_JOB_STATUS_UPDATED',
             },
 
-            simulateMapping:{
+            simulateMapping: {
                 description: 'Simulated a mapping with test payload',
                 eventType: 'MAPPING_SIMULATION_RUN',
             },
 
-            putDataModelJson:{
+            putDataModelJson: {
                 description: 'Updated the Tazama data model JSON',
                 eventType: 'DATA_MODEL_UPDATED',
             },
@@ -316,7 +328,7 @@ export class AuditInterceptor implements NestInterceptor {
      * Removes sensitive information from request body
      * @private
      */
-    private sanitizeRequestBody(body: any): any {
+    private sanitizeData(body: unknown): unknown {
         if (!body || typeof body !== 'object') {
             return body;
         }
