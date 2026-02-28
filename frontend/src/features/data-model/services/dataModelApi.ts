@@ -65,13 +65,12 @@ export interface DataModelExtension {
   version: number;
 }
 
-export interface DataModelExtension {
-  id: number;
+export interface CreateDataModelExtensionRequest {
   collection: TazamaCollectionName;
   fieldName: string;
   fieldType: TazamaFieldType;
   description?: string;
-  isRequired: boolean;
+  isRequired?: boolean;
   defaultValue?: any;
   validation?: {
     pattern?: string;
@@ -79,38 +78,34 @@ export interface DataModelExtension {
     max?: number;
     enum?: any[];
   };
-  tenantId: string;
-  createdBy: string;
-  createdAt: Date | string;
-  version: number;
-}
-
-export interface CreateDataModelExtensionRequest {
-  collection: TazamaCollectionName;
-  fieldName: string;
-  fieldType: TazamaFieldType;
-  description?: string;
-  isRequired?: boolean;
-  defaultValue?: unknown;
-  validation?: {
-    pattern?: string;
-    min?: number;
-    max?: number;
-    enum?: unknown[];
-  };
 }
 
 export interface UpdateDataModelExtensionRequest {
   description?: string;
   isRequired?: boolean;
-  defaultValue?: unknown;
+  defaultValue?: any;
   validation?: {
     pattern?: string;
     min?: number;
     max?: number;
-    enum?: unknown[];
+    enum?: any[];
   };
 }
+
+export interface DestinationNestedObject {
+  [key: string]: DestinationFieldValue;
+}
+
+export type DestinationFieldValue =
+  | string
+  | number
+  | boolean
+  | null
+  | DestinationNestedObject;
+
+export type DestinationCollection = Record<string, DestinationFieldValue>;
+
+export type DestinationFieldsData = Record<string, DestinationCollection>;
 
 export interface DataModelApiResponse<T = unknown> {
   success: boolean;
@@ -456,6 +451,45 @@ class DataModelApiService {
         '❌ DataModelApi - Error creating destination field:',
         error,
       );
+      throw error;
+    }
+  }
+
+  async getDestinationFieldsJson(): Promise<
+    DataModelApiResponse & { data?: DestinationFieldsData }
+  > {
+    try {
+      const response = await fetch(
+        `${this.baseURL}/tazama-data-model/json`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+      );
+      return await this.handleResponse<
+        DataModelApiResponse & { data?: DestinationFieldsData }
+      >(response);
+    } catch (error) {
+      console.error('Error fetching destination fields JSON:', error);
+      throw error;
+    }
+  }
+
+  async updateDestinationFieldsJson(
+    data: DestinationFieldsData,
+  ): Promise<DataModelApiResponse> {
+    try {
+      const response = await fetch(
+        `${this.baseURL}/tazama-data-model/json`,
+        {
+          method: 'PUT',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify({ data_model_json: data }),
+        },
+      );
+      return await this.handleResponse<DataModelApiResponse>(response);
+    } catch (error) {
+      console.error('Error updating destination fields JSON:', error);
       throw error;
     }
   }

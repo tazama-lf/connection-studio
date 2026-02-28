@@ -33,7 +33,7 @@ const DataEnrichmentModule: React.FC = () => {
     handleSaveEdit,
     handleSendForApproval,
   } = useDataEnrichmentJobList();
-
+  
   const [showJobForm, setShowJobForm] = useState(false);
   const [showJobDetails, setShowJobDetails] = useState(false);
 

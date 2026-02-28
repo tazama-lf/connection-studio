@@ -7,8 +7,7 @@ import {
   DialogActions,
   DialogContent,
   DialogContentText,
-  Pagination,
-  Tooltip,
+  Tooltip
 } from '@mui/material';
 import { handleInputFilter, handleSelectFilter } from '@shared/helpers';
 import { getDemsStatusLov } from '@shared/lovs';
@@ -31,7 +30,7 @@ import {
   isPublisher,
 } from '../../../utils/common/roleUtils';
 import { useAuth } from '../../auth/contexts/AuthContext';
-import { dataEnrichmentApi } from '../services';
+import { dataEnrichmentApi } from '../services/dataEnrichmentApi';
 import type { DataEnrichmentJobResponse } from '../types';
 
 interface JobListProps {
@@ -41,6 +40,12 @@ interface JobListProps {
   onEdit?: (job: DataEnrichmentJobResponse) => void;
   onClone?: (job: DataEnrichmentJobResponse) => void;
   onRefresh?: () => void;
+  pagination: {
+    page: number;
+    limit: number;
+    totalRecords: number;
+    setPage: (page: number) => void;
+  };
   page?: number;
   setPage?: (page: number) => void;
   totalPages?: number;
@@ -54,7 +59,7 @@ interface JobListProps {
 
 export const JobList: React.FC<JobListProps> = (props) => {
   const [openLoader, setOpenLoader] = useState(false);
-  // State for Pause/Resume confirmation dialogs (must be inside component)
+
   const [showPauseConfirmDialog, setShowPauseConfirmDialog] = useState<{
     open: boolean;
     job: DataEnrichmentJobResponse | null;
@@ -63,7 +68,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
     open: boolean;
     job: DataEnrichmentJobResponse | null;
   }>({ open: false, job: null });
-  // State for Activate/Deactivate confirmation dialogs (must be inside component)
+
   const [showActivateConfirmDialog, setShowActivateConfirmDialog] = useState<{
     open: boolean;
     job: DataEnrichmentJobResponse | null;
@@ -73,23 +78,29 @@ export const JobList: React.FC<JobListProps> = (props) => {
       open: false,
       job: null,
     });
-  // Destructure after logging
+
   const {
     jobs,
     isLoading = false,
     onViewLogs,
     onEdit,
-    onRefresh,
-    page = 1,
-    setPage,
-    totalPages = 0,
-    totalRecords = 0,
-    itemsPerPage = 10,
+    pagination,
+    page: pageProp,
+    setPage: setPageProp,
+    totalPages: totalPagesProp,
+    totalRecords: totalRecordsProp = 0,
+    itemsPerPage: itemsPerPageProp = 10,
     searchingFilters,
     setSearchingFilters,
     error,
     loading,
   } = props;
+
+  const page = pagination?.page ?? pageProp ?? 1;
+  const setPage = pagination?.setPage ?? setPageProp;
+  const totalRecords = pagination?.totalRecords ?? totalRecordsProp ?? 0;
+  const itemsPerPage = pagination?.limit ?? itemsPerPageProp ?? 10;
+  const totalPages = Math.ceil(totalRecords / itemsPerPage) || 0;
   const { user } = useAuth();
   const userIsEditor = user?.claims ? isEditor(user.claims) : false;
   const userIsApprover = user?.claims ? isApprover(user.claims) : false;
@@ -100,7 +111,6 @@ export const JobList: React.FC<JobListProps> = (props) => {
     setOpenLoader(false);
   };
 
-  // Determine user role for status filter
   const userRole = userIsPublisher
     ? 'publisher'
     : userIsExporter
@@ -111,18 +121,12 @@ export const JobList: React.FC<JobListProps> = (props) => {
 
   const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
   const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
-  const [typeDropdownOpen, setTypeDropdownOpen] = useState(false);
-  const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
-
-  // Toast hook
   const { showSuccess, showError } = useToast();
 
-  // Close dropdowns when clicking outside
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
 
-      // Don't close if clicking on dropdown buttons or dropdown content
       if (
         target.closest('.filter-dropdown') ||
         target.closest('.dropdown-menu') ||
@@ -132,7 +136,6 @@ export const JobList: React.FC<JobListProps> = (props) => {
       }
 
       setStatusDropdownOpen(false);
-      setTypeDropdownOpen(false);
       setDropdownOpen(null);
     };
 
@@ -142,33 +145,12 @@ export const JobList: React.FC<JobListProps> = (props) => {
     }
   }, [statusDropdownOpen, dropdownOpen]);
 
-  const handleResumeJob = async (job: DataEnrichmentJobResponse) => {
-    try {
-      setUpdatingStatus(job.id);
-      await dataEnrichmentApi.updateJobStatus(
-        job.id,
-        'STATUS_01_IN_PROGRESS',
-        job.type?.toUpperCase() as 'PULL' | 'PUSH',
-      );
-      showSuccess(`Job ${job.endpoint_name || job.id} resumed successfully`);
-      if (props.onRefresh) {
-        props.onRefresh();
-      }
-    } catch (error) {
-      console.error('Failed to resume job:', error);
-      showError('Failed to resume job');
-    } finally {
-      setUpdatingStatus(null);
-      setDropdownOpen(null);
-    }
-  };
 
   const handleUpdateJobStatus = async (
     job: DataEnrichmentJobResponse,
     status: string,
   ) => {
     try {
-      setUpdatingStatus(job.id);
       await dataEnrichmentApi.updateStatus(
         job.id,
         status,
@@ -184,7 +166,6 @@ export const JobList: React.FC<JobListProps> = (props) => {
       console.error('Failed to update job status:', error);
       showError('Failed to update job status');
     } finally {
-      setUpdatingStatus(null);
       setDropdownOpen(null);
     }
   };
@@ -216,7 +197,6 @@ export const JobList: React.FC<JobListProps> = (props) => {
         showSuccess(
           `Job ${job.endpoint_name || job.id} has been ${statusLabel} successfully`,
         );
-        // Refresh the job list
         if (props.onRefresh) {
           props.onRefresh();
         }
@@ -231,7 +211,6 @@ export const JobList: React.FC<JobListProps> = (props) => {
   };
 
   if (isLoading) {
-    console.log('🔄 Rendering LOADING state');
     return (
       <div className="flex justify-center items-center py-8">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -240,89 +219,18 @@ export const JobList: React.FC<JobListProps> = (props) => {
     );
   }
 
-  // const getStatusText = (status: string) => {
-  //   const normalizedStatus = status.toLowerCase();
-
-  //   // Handle STATUS_XX_NAME format from database
-  //   if (normalizedStatus.startsWith('status_')) {
-  //     // Extract the name part after the number (e.g., STATUS_03_UNDER_REVIEW -> UNDER_REVIEW)
-  //     const parts = normalizedStatus.split('_');
-  //     if (parts.length >= 3) {
-  //       const statusName = parts.slice(2).join('_'); // Get everything after STATUS_XX_
-  //       switch (statusName) {
-  //         case 'in_progress':
-  //           return 'IN-PROGRESS';
-  //         case 'under_review':
-  //           return 'UNDER REVIEW';
-  //         case 'approved':
-  //           return 'APPROVED';
-  //         case 'rejected':
-  //           return 'REJECTED';
-  //         case 'changes_requested':
-  //           return 'CHANGES REQUESTED';
-  //         case 'exported':
-  //           return 'EXPORTED';
-  //         case 'ready_for_deployment':
-  //           return 'READY FOR DEPLOYMENT';
-  //         case 'deployed':
-  //           return 'DEPLOYED';
-  //         case 'suspended':
-  //           return 'SUSPENDED';
-  //         default:
-  //           return statusName.toUpperCase().replace(/_/g, ' ');
-  //       }
-  //     }
-  //   }
-
-  //   // Handle legacy status formats
-  //   switch (normalizedStatus) {
-  //     case 'active':
-  //       return 'READY FOR APPROVAL';
-  //     case 'draft':
-  //     case 'in-progress':
-  //     case 'in_progress':
-  //       return 'IN-PROGRESS';
-  //     case 'suspended':
-  //       return 'SUSPENDED';
-  //     case 'status_01_in_progress':
-  //       return 'IN-PROGRESS';
-  //     case 'cloned':
-  //       return 'CLONED';
-  //     case 'approved':
-  //       return 'APPROVED';
-  //     case 'under review':
-  //     case 'under_review':
-  //       return 'UNDER REVIEW';
-  //     case 'deployed':
-  //       return 'DEPLOYED';
-  //     case 'rejected':
-  //       return 'REJECTED';
-  //     case 'changes_requested':
-  //     case 'changes requested':
-  //       return 'CHANGES REQUESTED';
-  //     case 'exported':
-  //       return 'EXPORTED';
-  //     case 'ready_for_deployment':
-  //     case 'ready for deployment':
-  //       return 'READY FOR DEPLOYMENT';
-  //     default:
-  //       return status.toUpperCase().replace(/_/g, ' ');
-  //   }
-  // };
-
   const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('en-US', {
-      month: 'numeric',
-      day: 'numeric',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-    });
+    month: 'numeric',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
 
   const getStatusBadge = (status: string) => {
     const normalizedStatus = status.toLowerCase();
 
-    // Handle STATUS_XX_NAME format from database
     if (normalizedStatus.startsWith('status_')) {
       const parts = normalizedStatus.split('_');
       if (parts.length >= 3) {
@@ -352,7 +260,6 @@ export const JobList: React.FC<JobListProps> = (props) => {
       }
     }
 
-    // Handle legacy status formats
     switch (normalizedStatus) {
       case 'active':
       case 'ready for approval':
@@ -386,22 +293,6 @@ export const JobList: React.FC<JobListProps> = (props) => {
     }
   };
 
-  // Helper function to normalize status for comparisons
-  const normalizeStatus = (status: string): string => {
-    const normalizedStatus = status.toLowerCase();
-
-    // Handle STATUS_XX_NAME format from database
-    if (normalizedStatus.startsWith('status_')) {
-      const parts = normalizedStatus.split('_');
-      if (parts.length >= 3) {
-        return parts.slice(2).join('_'); // Get everything after STATUS_XX_
-      }
-    }
-
-    return normalizedStatus;
-  };
-
-  // CustomTable columns configuration
   const columns = [
     {
       field: 'endpoint_name',
@@ -632,7 +523,6 @@ export const JobList: React.FC<JobListProps> = (props) => {
 
         return (
           <div className="flex items-center justify-center gap-2 h-full">
-            {/* View Details - Available to all roles that have view permissions */}
             {((userIsEditor && onViewLogs) ||
               userIsApprover ||
               (userIsExporter &&
@@ -651,12 +541,6 @@ export const JobList: React.FC<JobListProps> = (props) => {
                       if (onViewLogs) {
                         onViewLogs(job.id);
                       } else {
-                        // Fallback for approvers/exporters without handler
-                        console.log('Opening job details for user with roles:', {
-                          userIsEditor,
-                          userIsApprover,
-                          userIsExporter,
-                        });
                         alert('Opening job details...');
                       }
                       setDropdownOpen(null);
@@ -665,7 +549,6 @@ export const JobList: React.FC<JobListProps> = (props) => {
                 </Tooltip>
               )}
 
-            {/* Edit - Only for Editors and only for in-progress or rejected jobs */}
             {userIsEditor &&
               onEdit &&
               (job.status === 'STATUS_01_IN_PROGRESS' ||
@@ -700,11 +583,10 @@ export const JobList: React.FC<JobListProps> = (props) => {
                 />
               </Tooltip>
             )}
-            {/* Pause Confirmation Dialog */}
+
             <Dialog
               open={showPauseConfirmDialog.open}
-              onClose={() =>
-                { setShowPauseConfirmDialog({ open: false, job: null }); }
+              onClose={() => { setShowPauseConfirmDialog({ open: false, job: null }); }
               }
               aria-labelledby="pause-confirmation-dialog-title"
               aria-describedby="pause-confirmation-dialog-description"
@@ -781,8 +663,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
               </DialogContent>
               <DialogActions sx={{ padding: '12px 20px 16px 20px' }}>
                 <Button
-                  onClick={() =>
-                    { setShowPauseConfirmDialog({ open: false, job: null }); }
+                  onClick={() => { setShowPauseConfirmDialog({ open: false, job: null }); }
                   }
                   variant="secondary"
                   className="!pb-[6px] !pt-[5px]"
@@ -808,11 +689,9 @@ export const JobList: React.FC<JobListProps> = (props) => {
               </DialogActions>
             </Dialog>
 
-            {/* Resume Confirmation Dialog */}
             <Dialog
               open={showResumeConfirmDialog.open}
-              onClose={() =>
-                { setShowResumeConfirmDialog({ open: false, job: null }); }
+              onClose={() => { setShowResumeConfirmDialog({ open: false, job: null }); }
               }
               aria-labelledby="resume-confirmation-dialog-title"
               aria-describedby="resume-confirmation-dialog-description"
@@ -889,8 +768,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
               </DialogContent>
               <DialogActions sx={{ padding: '12px 20px 16px 20px' }}>
                 <Button
-                  onClick={() =>
-                    { setShowResumeConfirmDialog({ open: false, job: null }); }
+                  onClick={() => { setShowResumeConfirmDialog({ open: false, job: null }); }
                   }
                   variant="secondary"
                   className="!pb-[6px] !pt-[5px]"
@@ -916,7 +794,6 @@ export const JobList: React.FC<JobListProps> = (props) => {
               </DialogActions>
             </Dialog>
 
-            {/* Active/Inactive - Available to Publishers only for deployed jobs */}
             {userIsPublisher && (
               <>
                 {job.publishing_status === 'active' ? (
@@ -942,11 +819,9 @@ export const JobList: React.FC<JobListProps> = (props) => {
                 )}
               </>
             )}
-            {/* Activate Confirmation Dialog */}
             <Dialog
               open={showActivateConfirmDialog.open}
-              onClose={() =>
-                { setShowActivateConfirmDialog({ open: false, job: null }); }
+              onClose={() => { setShowActivateConfirmDialog({ open: false, job: null }); }
               }
               aria-labelledby="activate-confirmation-dialog-title"
               aria-describedby="activate-confirmation-dialog-description"
@@ -1026,8 +901,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
               </DialogContent>
               <DialogActions sx={{ padding: '12px 20px 16px 20px' }}>
                 <Button
-                  onClick={() =>
-                    { setShowActivateConfirmDialog({ open: false, job: null }); }
+                  onClick={() => { setShowActivateConfirmDialog({ open: false, job: null }); }
                   }
                   variant="secondary"
                   className="!pb-[6px] !pt-[5px]"
@@ -1051,11 +925,9 @@ export const JobList: React.FC<JobListProps> = (props) => {
               </DialogActions>
             </Dialog>
 
-            {/* Deactivate Confirmation Dialog */}
             <Dialog
               open={showDeactivateConfirmDialog.open}
-              onClose={() =>
-                { setShowDeactivateConfirmDialog({ open: false, job: null }); }
+              onClose={() => { setShowDeactivateConfirmDialog({ open: false, job: null }); }
               }
               aria-labelledby="deactivate-confirmation-dialog-title"
               aria-describedby="deactivate-confirmation-dialog-description"
@@ -1136,8 +1008,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
               </DialogContent>
               <DialogActions sx={{ padding: '12px 20px 16px 20px' }}>
                 <Button
-                  onClick={() =>
-                    { setShowDeactivateConfirmDialog({ open: false, job: null }); }
+                  onClick={() => { setShowDeactivateConfirmDialog({ open: false, job: null }); }
                   }
                   variant="secondary"
                   className="!pb-[6px] !pt-[5px]"
@@ -1184,43 +1055,8 @@ export const JobList: React.FC<JobListProps> = (props) => {
           <CustomTable
             columns={columns as any}
             rows={jobs}
-            search={true}
-            pageSize={itemsPerPage}
-            pageSizeOptions={[10, 20, 50]}
-            // onRowClick={(params) => handleViewConfig(params.row)}
             disableRowSelection={true}
-            pagination={
-              jobs.length > 0 && (
-                <div className="px-6 py-4 border-t border-gray-200 bg-white rounded-b-lg flex items-center justify-between">
-                  <div className="text-sm text-gray-700 font-medium">
-                    Showing{' '}
-                    <span className="font-bold">
-                      {(page - 1) * itemsPerPage + 1}
-                    </span>{' '}
-                    to{' '}
-                    <span className="font-bold">
-                      {Math.min(page * itemsPerPage, totalRecords)}
-                    </span>{' '}
-                    of <span className="font-bold">{totalRecords}</span> results
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <Box>
-                      <Pagination
-                        page={page}
-                        count={totalPages}
-                        onChange={(_, newPage: number) => setPage?.(newPage)}
-                        variant="outlined"
-                        sx={{
-                          '& .MuiPaginationItem-page.Mui-selected': {
-                            backgroundColor: '#fbf9fa',
-                          },
-                        }}
-                      />
-                    </Box>
-                  </div>
-                </div>
-              )
-            }
+            pagination={pagination}
           />
         </>
       )}

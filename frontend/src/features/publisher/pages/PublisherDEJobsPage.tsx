@@ -55,7 +55,7 @@ const PublisherDEJobsPage: React.FC = () => {
         searchingFilters,
       );
 
-      setJobs(response.jobs);
+      setJobs(response.data);
       setTotalPages(response.pages);
       setTotalRecords(response.total);
     } catch (err: unknown) {

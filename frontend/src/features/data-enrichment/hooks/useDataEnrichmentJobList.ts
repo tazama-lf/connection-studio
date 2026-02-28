@@ -91,8 +91,8 @@ export const useDataEnrichmentJobList = () => {
           searchingFilters,
         );
 
-        setJobs(response?.jobs || []);
-        setTotal(response.total)
+        setJobs(response?.data || []);
+        setTotal(response?.total ?? 0)
       } catch (err) {
         let message = 'Failed to fetch jobs.';
         if (err instanceof Error) {

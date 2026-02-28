@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   EyeIcon,
   MoreVerticalIcon,
@@ -21,6 +21,7 @@ import { DropdownMenuWithAutoDirection } from '../../../shared/components/Dropdo
 import { useAuth } from '../../../features/auth/contexts/AuthContext';
 import {
   getPrimaryRole,
+  isApprover,
   isEditor,
   isExporter,
   isPublisher,
@@ -40,6 +41,7 @@ import {
 import { handleInputFilter, handleSelectFilter } from '@shared/helpers';
 import { getDemsStatusLov } from '@shared/lovs';
 import { Button } from '@shared';
+import useFilters from '@shared/hooks/useFilters';
 
 interface Config {
   id: number;
@@ -93,14 +95,9 @@ export const ConfigList: React.FC<ConfigListProps> = ({
   onConfigEdit,
   onConfigClone,
   onViewDetails,
-  onViewHistory,
   onRefresh,
   searchTerm: externalSearchTerm,
   showPendingApprovals = false,
-  showApprovedConfigs = false,
-  onApprove,
-  onReject,
-  onSendForDeployment,
 }) => {
   const [actionLoading, setActionLoading] = useState<
     '' | 'export' | 'pause' | 'resume' | 'activate' | 'deactivate'
@@ -109,81 +106,26 @@ export const ConfigList: React.FC<ConfigListProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [itemsPerPage] = useState(UI_CONFIG.pagination.defaultPageSize);
-  const [openDropdown, setOpenDropdown] = useState<number | null>(null);
 
-  // Status filtering state
-  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [showStatusFilter, setShowStatusFilter] = useState(false);
 
-  // Use external search term if provided, otherwise use empty string
-  const searchTerm = externalSearchTerm || '';
-
-  // Auth context for role-based filtering
   const { user } = useAuth();
   const userIsEditor = user?.claims ? isEditor(user.claims) : false;
   const userIsExporter = user?.claims ? isExporter(user.claims) : false;
   const userIsPublisher = user?.claims ? isPublisher(user.claims) : false;
+  const userIsApprover = user?.claims ? isApprover(user.claims) : false;
   const { showSuccess, showError } = useToast();
 
   const userRole = getPrimaryRole(user?.claims!);
 
-  // Fetch configs based on flags
-  const fetchConfigs = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      let response;
-      if (showPendingApprovals) {
-        response = await configApi.getPendingApprovals();
-
-        // Debug: Log each config's status
-        if (response.configs && Array.isArray(response.configs)) {
-          response.configs.forEach((config: any, index: number) => {});
-        }
-      } else if (showApprovedConfigs) {
-        // Fetch both approved and exported configs
-        const [approvedResponse, exportedResponse] = await Promise.all([
-          configApi.getConfigsByStatus('approved'),
-          configApi.getConfigsByStatus('exported'),
-        ]);
-
-        // Combine both arrays
-        const combinedConfigs = [
-          ...(Array.isArray(approvedResponse.configs)
-            ? approvedResponse.configs
-            : []),
-          ...(Array.isArray(exportedResponse.configs)
-            ? exportedResponse.configs
-            : []),
-        ];
-
-        response = { configs: combinedConfigs };
-      } else {
-        response = await configApi.getAllConfigs();
-      }
-
-      const configsArray = Array.isArray(response.configs)
-        ? response.configs
-        : [];
-      setConfigs(configsArray);
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : 'Failed to fetch configurations';
-      setError(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('en-US', {
-      month: 'numeric',
-      day: 'numeric',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-    });
+    month: 'numeric',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
 
   const getStatusBadge = (status: string) => {
     const normalizedStatus = status.toLowerCase();
@@ -252,54 +194,6 @@ export const ConfigList: React.FC<ConfigListProps> = ({
     }
   };
 
-  // Helper function to normalize status for comparisons
-  const normalizeStatus = (status: string): string => {
-    const normalizedStatus = status.toLowerCase();
-
-    // Handle STATUS_XX_NAME format from database
-    if (normalizedStatus.startsWith('status_')) {
-      const parts = normalizedStatus.split('_');
-      if (parts.length >= 3) {
-        return parts.slice(2).join('_'); // Get everything after STATUS_XX_
-      }
-    }
-
-    return normalizedStatus;
-  };
-
-  // Filter configs by search term and status
-  const filteredConfigs = (Array.isArray(configs) ? configs : []).filter(
-    (config) => {
-      const matchesSearch =
-        searchTerm === '' ||
-        config.transactionType
-          .toLowerCase()
-          .includes(searchTerm.toLowerCase()) ||
-        config.endpointPath.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (config.msgFam &&
-          config.msgFam.toLowerCase().includes(searchTerm.toLowerCase()));
-
-      const matchesStatus =
-        statusFilter === 'all' || config.status === statusFilter;
-
-      // Role-based filtering: exporters can only see approved and deployed configs
-      let matchesRole = true;
-      if (userIsExporter) {
-        const allowedStatuses = ['approved', 'deployed'];
-        const normalizedConfigStatus = normalizeStatus(config.status);
-        matchesRole = allowedStatuses.includes(normalizedConfigStatus);
-      }
-
-      return matchesSearch && matchesStatus && matchesRole;
-    },
-  );
-
-  // Load configs when component mounts
-  // useEffect(() => {
-  // fetchConfigs();
-  // }, []);
-
-  // Close status filter dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -331,10 +225,8 @@ export const ConfigList: React.FC<ConfigListProps> = ({
         `Config "${config.transactionType}" has been exported to SFTP and status updated to EXPORTED.`,
       );
 
-      // Refetch configs to update the UI
       await fetchConfigsTemp();
 
-      // Trigger parent refresh if available
       if (onRefresh) {
         onRefresh();
       }
@@ -344,7 +236,6 @@ export const ConfigList: React.FC<ConfigListProps> = ({
     }
   };
 
-  // Confirmation handlers
   const handleExportConfirm = async () => {
     if (confirmDialog.config) {
       setActionLoading('export');
@@ -411,24 +302,6 @@ export const ConfigList: React.FC<ConfigListProps> = ({
     }
   };
 
-  const handlePublishConfig = async (config: Config) => {
-    try {
-      await sftpApi.publishItem(config.msgFam, 'dems');
-      await configApi.updateConfigStatus(config.id, 'deployed');
-      showSuccess(
-        'Success',
-        `Config "${config.msgFam}" has been published successfully.`,
-      );
-      // Trigger refresh if available
-      if (onRefresh) {
-        onRefresh();
-      }
-    } catch (error) {
-      console.error('Error publishing config:', error);
-      showError('Error', 'Failed to publish config. Please try again.');
-    }
-  };
-
   const handleUpdateConfigStatus = async (config: Config, status: string) => {
     try {
       await configApi.updateConfigStatus(config.id, status);
@@ -479,6 +352,19 @@ export const ConfigList: React.FC<ConfigListProps> = ({
   const [totalPages, setTotalPages] = useState<number>(0);
   const [totalRecords, setTotalRecords] = useState<number>(0);
   const [searchingFilters, setSearchingFilters] = useState({});
+
+  const {
+    offset,
+    limit,
+    setOffset,
+  } = useFilters();
+
+  const pagination = useMemo(() => ({
+    page: offset,
+    limit,
+    totalRecords,
+    setPage: (page: number) => { setOffset(page - 1); },
+  }), [offset, limit, totalRecords])
 
   // Confirmation dialog states
   const [confirmDialog, setConfirmDialog] = useState({
@@ -701,50 +587,48 @@ export const ConfigList: React.FC<ConfigListProps> = ({
                   />
                 </Tooltip>
               )}
-            {userIsPublisher && (
-              <>
-                {config.publishing_status === 'active' ? (
-                  <Tooltip title="Deactivate" arrow placement="top">
-                    <ShieldX
-                      className="w-4 h-4 mr-1 text-red-600 hover:text-red-700 cursor-pointer"
-                      onClick={() => {
-                        setConfirmDialog({
-                          open: true,
-                          type: 'deactivate',
-                          config,
-                        });
-                      }}
-                    />
-                  </Tooltip>
-                ) : (
-                  <Tooltip title="Activate" arrow placement="top">
-                    <ShieldCheck
-                      className="w-4 h-4 mr-1 text-green-600 hover:text-green-700 cursor-pointer"
-                      onClick={() => {
-                        setConfirmDialog({
-                          open: true,
-                          type: 'activate',
-                          config,
-                        });
-                      }}
-                    />
-                  </Tooltip>
-                )}
-              </>
-            )}
+            {(userIsApprover || userIsPublisher) &&
+              ['STATUS_04_APPROVED', 'STATUS_06_EXPORTED', 'approved', 'exported'].includes(config.status) && (
+                <>
+                  {config.publishing_status === 'active' ? (
+                    <Tooltip title="Deactivate" arrow placement="top">
+                      <ShieldX
+                        className="w-4 h-4 mr-1 text-red-600 hover:text-red-700 cursor-pointer"
+                        onClick={() => {
+                          setConfirmDialog({
+                            open: true,
+                            type: 'deactivate',
+                            config: config,
+                          });
+                        }}
+                      />
+                    </Tooltip>
+                  ) : (
+                    <Tooltip title="Activate" arrow placement="top">
+                      <ShieldCheck
+                        className="w-4 h-4 mr-1 text-green-600 hover:text-green-700 cursor-pointer"
+                        onClick={() => {
+                          setConfirmDialog({
+                            open: true,
+                            type: 'activate',
+                            config: config,
+                          });
+                        }}
+                      />
+                    </Tooltip>
+                  )}
+                </>
+              )}
           </div>
         );
       },
     },
   ];
 
-  const fetchConfigsTemp = async (pageNumber = 1): Promise<void> => {
+  const fetchConfigsTemp = useCallback(async (): Promise<void> => {
     try {
       setLoading(true);
       setError(null);
-
-      const limit: number = itemsPerPage;
-      const offset: number = pageNumber - 1;
 
       const params: PaginationParams = {
         limit,
@@ -765,11 +649,11 @@ export const ConfigList: React.FC<ConfigListProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [userRole, pagination, searchingFilters])
 
   useEffect(() => {
-    fetchConfigsTemp(page);
-  }, [page, searchingFilters]);
+    fetchConfigsTemp();
+  }, [pagination, searchingFilters]);
 
   if (loading) {
     return (
@@ -797,51 +681,15 @@ export const ConfigList: React.FC<ConfigListProps> = ({
         <CustomTable
           columns={columns as any}
           rows={configs}
-          search={true}
-          pageSize={itemsPerPage}
-          pageSizeOptions={[10, 20, 50]}
-          // onRowClick={(params) => handleViewConfig(params.row)}
           disableRowSelection={true}
-          pagination={
-            configs.length > 0 && (
-              <div className="px-6 py-4 border-t border-gray-200 bg-white rounded-b-lg flex items-center justify-between">
-                <div className="text-sm text-gray-700 font-medium">
-                  Showing{' '}
-                  <span className="font-bold">
-                    {(page - 1) * itemsPerPage + 1}
-                  </span>{' '}
-                  to{' '}
-                  <span className="font-bold">
-                    {Math.min(page * itemsPerPage, totalRecords)}
-                  </span>{' '}
-                  of <span className="font-bold">{totalRecords}</span> results
-                </div>
-                <div className="flex items-center space-x-3">
-                  <Box>
-                    <Pagination
-                      page={page}
-                      count={totalPages}
-                      onChange={(_, newPage: number) => { setPage(newPage); }}
-                      variant="outlined"
-                      sx={{
-                        '& .MuiPaginationItem-page.Mui-selected': {
-                          backgroundColor: '#fbf9fa',
-                        },
-                      }}
-                    />
-                  </Box>
-                </div>
-              </div>
-            )
-          }
+          pagination={pagination}
         />
       )}
 
       {/* Reusable Confirmation Dialog */}
       <Dialog
         open={confirmDialog.open}
-        onClose={() =>
-          { setConfirmDialog({ open: false, type: '', config: null }); }
+        onClose={() => { setConfirmDialog({ open: false, type: '', config: null }); }
         }
         aria-labelledby="confirmation-dialog-title"
         aria-describedby="confirmation-dialog-description"
@@ -927,8 +775,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
         </DialogContent>
         <DialogActions sx={{ padding: '12px 20px 16px 20px' }}>
           <Button
-            onClick={() =>
-              { setConfirmDialog({ open: false, type: '', config: null }); }
+            onClick={() => { setConfirmDialog({ open: false, type: '', config: null }); }
             }
             variant="secondary"
             className="!pb-[6px] !pt-[5px]"
@@ -940,10 +787,8 @@ export const ConfigList: React.FC<ConfigListProps> = ({
               if (confirmDialog.type === 'export') handleExportConfirm();
               else if (confirmDialog.type === 'pause') handlePauseConfirm();
               else if (confirmDialog.type === 'resume') handleResumeConfirm();
-              else if (confirmDialog.type === 'activate')
-                {handleActivateConfirm();}
-              else if (confirmDialog.type === 'deactivate')
-                {handleDeactivateConfirm();}
+              else if (confirmDialog.type === 'activate') { handleActivateConfirm(); }
+              else if (confirmDialog.type === 'deactivate') { handleDeactivateConfirm(); }
             }}
             variant="primary"
             className="!pb-[6px] !pt-[5px]"
@@ -981,17 +826,17 @@ export const ConfigList: React.FC<ConfigListProps> = ({
                     )}
                     {actionLoading === type
                       ? (type === 'export' && 'Exporting...') ||
-                        (type === 'pause' && 'Pausing...') ||
-                        (type === 'resume' && 'Resuming...') ||
-                        (type === 'activate' && 'Activating...') ||
-                        (type === 'deactivate' && 'Deactivating...')
+                      (type === 'pause' && 'Pausing...') ||
+                      (type === 'resume' && 'Resuming...') ||
+                      (type === 'activate' && 'Activating...') ||
+                      (type === 'deactivate' && 'Deactivating...')
                       : (type === 'export' && 'Yes, Export Configuration') ||
-                        (type === 'pause' && 'Yes, Pause Configuration') ||
-                        (type === 'resume' && 'Yes, Resume Configuration') ||
-                        (type === 'activate' &&
-                          'Yes, Activate Configuration') ||
-                        (type === 'deactivate' &&
-                          'Yes, Deactivate Configuration')}
+                      (type === 'pause' && 'Yes, Pause Configuration') ||
+                      (type === 'resume' && 'Yes, Resume Configuration') ||
+                      (type === 'activate' &&
+                        'Yes, Activate Configuration') ||
+                      (type === 'deactivate' &&
+                        'Yes, Deactivate Configuration')}
                   </>
                 ),
             )}

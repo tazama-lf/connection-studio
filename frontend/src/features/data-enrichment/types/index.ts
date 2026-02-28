@@ -27,7 +27,7 @@ export interface DropdownMenuWithAutoDirectionProps {
 }
 export interface PaginatedJobResponse {
   success: boolean;
-  jobs: DataEnrichmentJobResponse[];
+  data: DataEnrichmentJobResponse[];
   total: number;
   limit: number;
   offset: number;

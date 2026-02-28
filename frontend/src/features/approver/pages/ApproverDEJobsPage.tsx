@@ -51,8 +51,7 @@ const ApproverDEJobsPage: React.FC = () => {
         searchingFilters,
       );
 
-      setJobs(response.jobs);
-      console.log('Fetched DE jobs:', response.jobs);
+      setJobs(response.data);
       setTotalPages(response.pages);
       setTotalRecords(response.total);
     } catch (err: unknown) {
