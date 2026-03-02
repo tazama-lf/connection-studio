@@ -106,7 +106,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(({
     jsonString: string,
   ): { success: boolean; data?: any; error?: string } => {
     try {
-      const parsed = JSON.parse(jsonString || '{}');
+      const parsed = JSON.parse(jsonString ?? '{}');
       return { success: true, data: parsed };
     } catch (error) {
       return { success: false, error: 'Invalid JSON format' };
@@ -178,7 +178,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(({
     const transactionTypeError = validateTransactionType(
       endpointData.transactionType,
     );
-    const eventTypeError = validateEventType(endpointData.msgFam || '');
+    const eventTypeError = validateEventType(endpointData.msgFam ?? '');
     const errors = {
       version: versionError,
       transactionType: transactionTypeError,
@@ -457,7 +457,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(({
       }));
     }
     if (field === 'contentType') {
-      const payloadValidation = validatePayloadContent(value || '', newValue);
+      const payloadValidation = validatePayloadContent(value ?? '', newValue);
       setIsPayloadValid(payloadValidation.isValid);
       setPayloadValidationMessage(payloadValidation.message);
       setFieldErrors((prev) => ({ ...prev, payload: payloadValidation.error }));

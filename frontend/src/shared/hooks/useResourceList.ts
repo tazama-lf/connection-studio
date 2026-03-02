@@ -247,7 +247,7 @@ export function useResourceList<TResource extends { id: string; status?: string;
         );
 
         // Handle different response structures
-        const resourceData = response.data || response.jobs || response.items || [];
+        const resourceData = response.data ?? response.jobs ?? response.items ?? [];
         
         setResources(resourceData);
         setPagination({
@@ -258,7 +258,7 @@ export function useResourceList<TResource extends { id: string; status?: string;
       } catch (err) {
         const message = err instanceof Error 
           ? err.message 
-          : errorMessages.load || 'Failed to load resources';
+          : errorMessages.load ?? 'Failed to load resources';
         setError(message);
       } finally {
         setLoadingState((s) => ({ ...s, page: false }));
@@ -287,7 +287,6 @@ export function useResourceList<TResource extends { id: string; status?: string;
   const handleView = useCallback(
     async (resourceId: string, type?: string) => {
       if (!apiHandlers.getById) {
-        console.warn('getById handler not provided');
         return;
       }
 

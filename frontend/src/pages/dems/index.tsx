@@ -1,36 +1,35 @@
-import React, { useEffect, useState } from 'react';
 import { ConfigList } from '@features/config/components/ConfigList';
 import VersionHistoryModal from '@features/config/components/VersionHistoryModal';
-import { Button } from '@shared/components/Button';
-import * as yup from 'yup';
-import {
-  PlusIcon,
-  ChevronLeft,
-  ActivityIcon,
-  XIcon,
-  LassoSelect,
-  Circle,
-  CheckCircleIcon,
-  XCircle,
-  DatabaseIcon,
-  ServerIcon,
-  FolderTreeIcon,
-  FolderIcon,
-  FileIcon,
-} from 'lucide-react';
-import EditEndpointModal from '@shared/components/EditEndpointModal';
-import ValidationLogsTable from '@shared/components/ValidationLogsTable';
 import type { Config } from '@features/config/index';
-import { useNavigate } from 'react-router';
-import { Backdrop, Box, Grid, Button as MuiButton, CircularProgress } from '@mui/material';
-import { dataModelApi, type DestinationOption } from '@features/data-model';
-import { useToast } from '@shared/providers/ToastProvider';
-import { useForm } from 'react-hook-form';
+import { dataModelApi } from '@features/data-model';
+import { Backdrop, Box, CircularProgress, Grid, Button as MuiButton } from '@mui/material';
+import { Button } from '@shared/components/Button';
+import EditEndpointModal from '@shared/components/EditEndpointModal';
 import {
   AlphaNumericInputField,
   SelectField,
-  // @ts-ignore - FormFields is a .jsx file without TypeScript declarations
 } from '@shared/components/FormFields';
+import ValidationLogsTable from '@shared/components/ValidationLogsTable';
+import { useToast } from '@shared/providers/ToastProvider';
+import {
+  ActivityIcon,
+  CheckCircleIcon,
+  ChevronLeft,
+  Circle,
+  DatabaseIcon,
+  FileIcon,
+  FolderIcon,
+  FolderTreeIcon,
+  LassoSelect,
+  PlusIcon,
+  ServerIcon,
+  XCircle,
+  XIcon,
+} from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { useNavigate } from 'react-router';
+import * as yup from 'yup';
 
 interface TreeNode {
   id: string;
@@ -254,20 +253,15 @@ const DEMSModule: React.FC = () => {
           );
 
       if (response?.success) {
-        // Refresh destination tree
-        await fetchDestinationOptions();
         // Close modal
         handleCloseAddDestinationModal();
         // Show success message
         showSuccess('Success', 'Destination added successfully');
       } else {
-        console.error('❌ Failed to add destination:', response.message);
         // Show error message
         showError('Error', response.message || 'Failed to add destination');
       }
     } catch (error: any) {
-      console.error('❌ Error adding destination:', error);
-
       // Handle validation errors
       if (error.inner) {
         error.inner.forEach((err: any) => {
@@ -289,141 +283,21 @@ const DEMSModule: React.FC = () => {
     clearErrors();
   };
 
-  const convertDestinationOptionsToTree = (
-    options: DestinationOption[],
-  ): TreeNode[] => {
-    // Group options by collection
-    const collections = new Map<string, DestinationOption[]>();
-
-    options.forEach((option) => {
-      const existing = collections.get(option.collection) || [];
-      existing.push(option);
-      collections.set(option.collection, existing);
-    });
-
-    // Sort so redis goes at the end
-    const sortedCollections = Array.from(collections.entries()).sort(
-      ([a], [b]) => {
-        if (a === 'redis') return 1;
-        if (b === 'redis') return -1;
-        return a.localeCompare(b);
-      },
-    );
-
-    console.log("SORTEDDDDDDDDD======================+++++++++", sortedCollections)
-
-    // Build nested tree
-    const buildNestedTree = (
-      collectionName: string,
-      fields: DestinationOption[],
-      collection_id: number | null,
-    ): TreeNode[] => {
-      const rootMap = new Map<
-        string,
-        { node: TreeNode; children: Map<string, any> }
-      >();
-
-      fields.forEach((field) => {
-        const parts = field.field ? field.field.split('.') : '';
-        let currentLevel = rootMap;
-        let currentPath: string[] = [collectionName];
-
-        parts && parts.forEach((part, index) => {
-          const isLeaf = index === parts.length - 1 && field.type;
-          currentPath = [...currentPath, part];
-          const pathKey = parts.slice(0, index + 1).join('.');
-          const fullPath = `${collectionName}.${pathKey}`;
-
-          if (!currentLevel.has(part)) {
-            currentLevel.set(part, {
-              node: {
-                id: isLeaf ? field.value : fullPath,
-                name: part,
-                path: [...currentPath],
-                type: isLeaf ? field.type.toLowerCase() : 'object',
-                collection_id, // <-- ADD COLLECTION ID
-                serial_no: isLeaf ? field.serial_no : null, // <-- ADD SERIAL ID
-              },
-              children: new Map(),
-            });
-          } else if (isLeaf) {
-            const existing = currentLevel.get(part)!;
-            existing.node.id = field.value;
-            existing.node.type = field.type.toLowerCase();
-            existing.node.serial_no = field.serial_no; // update serial_no for leaf
-          }
-
-          const entry = currentLevel.get(part)!;
-          currentLevel = entry.children;
-        });
-      });
-
-      const convertMapToNodes = (map: Map<string, any>): TreeNode[] => Array.from(map.values()).map(({ node, children }) => ({
-          ...node,
-          children: children.size > 0 ? convertMapToNodes(children) : undefined,
-        }));
-
-      return convertMapToNodes(rootMap);
-    };
-
-    return sortedCollections.map(([collectionName, fields]) => {
-      const collection_id = fields[0]?.collection_id ?? null;
-
-      return {
-        id: collectionName,
-        name: collectionName.charAt(0).toUpperCase() + collectionName.slice(1),
-        path: [collectionName],
-        collection_id, // <-- ADD COLLECTION ID on root
-        serial_no: null, // root never has serial_no
-        children: buildNestedTree(collectionName, fields, collection_id),
-      };
-    });
-  };
-
-  const fetchDestinationOptions = async () => {
-    try {
-      const response = await dataModelApi.getDestinationOptions();
-      // Backend returns {success: true, data: [...]}
-      if (response.success && response.data) {
-
-        const treeNodes = convertDestinationOptionsToTree(response.data);
-        console.log('response+++++++++++++++++++++++++++++++++++++++++++', treeNodes);
-        setDestinationTree(treeNodes);
-      } else {
-        throw new Error(
-          response.message || 'Failed to fetch destination options',
-        );
-      }
-    } catch (error) {
-      console.error('Error fetching destination options:', error);
-
-      // Fallback to empty array on error
-      setDestinationTree([]);
-    } finally {
-    }
-  };
-
-  // Load destination options from API on mount
-  useEffect(() => {
-    fetchDestinationOptions();
-  }, []);
-
-  // Generate unique collection options from destination tree
   const getImmediateParentOptions = () => destinationTree
-      .filter((collection) => {
-        if (destinationForm?.destination === 'data-cache') {
-          return collection.collection_id === 2;
-        }
-        if (destinationForm?.destination === 'data-model') {
-          return collection.collection_id !== 2;
-        }
+    .filter((collection) => {
+      if (destinationForm?.destination === 'data-cache') {
+        return collection.collection_id === 2;
+      }
+      if (destinationForm?.destination === 'data-model') {
+        return collection.collection_id !== 2;
+      }
 
-        return false;
-      })
-      .map((collection) => ({
-        value: collection.collection_id,
-        label: collection.name,
-      }));
+      return false;
+    })
+    .map((collection) => ({
+      value: collection.collection_id,
+      label: collection.name,
+    }));
 
   const getParentDestinationOptions = () => {
     const collection = destinationTree.find(
@@ -446,20 +320,17 @@ const DEMSModule: React.FC = () => {
 
   const handleCloseModal = () => {
     setEditingEndpointId(null);
-    setIsInCloneMode(false); // Reset clone mode
-    setIsCloneCheck(false); // Reset clone check
-    setIsReadOnly(false); // Reset read-only mode
-    // Refresh the config list when modal closes
+    setIsInCloneMode(false);
+    setIsCloneCheck(false);
+    setIsReadOnly(false);
     setRefreshKey((prev) => prev + 1);
   };
 
   const handleConfigSuccess = () => {
-    // Refresh immediately when config is saved/updated
     setRefreshKey((prev) => prev + 1);
   };
 
   const handleViewDetails = (config: Config) => {
-    // Open EditEndpointModal in read-only mode for viewing
     setEditingEndpointId(config.id);
     setIsReadOnly(true);
   };
@@ -532,7 +403,6 @@ const DEMSModule: React.FC = () => {
         ) : (
           <ConfigList
             key={refreshKey}
-            searchTerm={searchTerm}
             onViewDetails={handleViewDetails}
             onConfigEdit={handleEditConfig}
             onConfigClone={handleCloneConfig}

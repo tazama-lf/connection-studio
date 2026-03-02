@@ -48,7 +48,7 @@ export const ConfigReviewModal: React.FC<ConfigReviewModalProps> = ({
         status: 'success'
       });
     } catch (error) {
-      console.error('Failed to load config details:', error);
+      // Failed to load config details
     } finally {
       setLoading(false);
     }
@@ -90,7 +90,7 @@ export const ConfigReviewModal: React.FC<ConfigReviewModalProps> = ({
                     <span className="font-medium text-gray-700">Transaction Type:</span> {configDetails.transactionType}
                   </div>
                   <div>
-                    <span className="font-medium text-gray-700">Event Type:</span> {configDetails.msgFam || 'N/A'}
+                    <span className="font-medium text-gray-700">Event Type:</span> {configDetails.msgFam ?? 'N/A'}
                   </div>
                   <div>
                     <span className="font-medium text-gray-700">Version:</span> {configDetails.version}
@@ -112,7 +112,7 @@ export const ConfigReviewModal: React.FC<ConfigReviewModalProps> = ({
                 </div>
                 <div className="bg-gray-50 p-3 rounded font-mono text-sm">
                   <div className="text-green-600">POST {configDetails.endpointPath}</div>
-                  <div className="text-gray-600 mt-1">Content-Type: {configDetails.contentType || 'application/json'}</div>
+                  <div className="text-gray-600 mt-1">Content-Type: {configDetails.contentType ?? 'application/json'}</div>
                 </div>
               </div>
 
@@ -141,15 +141,15 @@ export const ConfigReviewModal: React.FC<ConfigReviewModalProps> = ({
                       <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded border">
                         <div className="flex items-center space-x-3">
                           <span className="text-xs font-medium text-blue-600 bg-blue-100 px-2 py-1 rounded">
-                            {mapping.transformation || 'DIRECT'}
+                            {mapping.transformation ?? 'DIRECT'}
                           </span>
                           <div className="text-sm">
                             <span className="font-medium text-gray-900">
-                              {Array.isArray(mapping.source) ? mapping.source.join(', ') : mapping?.source || 'N/A'}
+                              {Array.isArray(mapping.source) ? mapping.source.join(', ') : mapping?.source ?? 'N/A'}
                             </span>
                             <span className="text-gray-500 mx-2">→</span>
                             <span className="font-medium text-gray-900">
-                              {Array.isArray(mapping.destination) ? mapping.destination.join(', ') : mapping?.destination || 'N/A'}
+                              {Array.isArray(mapping.destination) ? mapping.destination.join(', ') : mapping?.destination ?? 'N/A'}
                             </span>
                           </div>
                         </div>
@@ -182,7 +182,7 @@ export const ConfigReviewModal: React.FC<ConfigReviewModalProps> = ({
                             {func.columns && func.columns.length > 0 ? (
                               <span>Columns: {func.columns.map((col: any) => col.param).join(', ')}</span>
                             ) : (
-                              <span>Parameters: {func.params?.join(', ') || 'None'}</span>
+                              <span>Parameters: {func.params?.join(', ') ?? 'None'}</span>
                             )}
                           </div>
                         </div>

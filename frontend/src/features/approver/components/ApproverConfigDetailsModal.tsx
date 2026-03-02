@@ -22,18 +22,14 @@ export const ApproverConfigDetailsModal: React.FC<ApproverConfigDetailsModalProp
   const [isApproving, setIsApproving] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
 
-  console.log('ApproverConfigDetailsModal render:', { isOpen, hasConfig: !!config });
-
   if (!isOpen || !config) return null;
 
   const handleApprove = async () => {
-    console.log('Approve clicked for config:', config.id);
     setIsApproving(true);
     try {
       await onApprove(config.id);
       onClose();
     } catch (error) {
-      console.error('Approve error:', error);
       // Error handling is done in parent component
     } finally {
       setIsApproving(false);
@@ -41,13 +37,11 @@ export const ApproverConfigDetailsModal: React.FC<ApproverConfigDetailsModalProp
   };
 
   const handleReject = async () => {
-    console.log('Reject clicked for config:', config.id);
     setIsRejecting(true);
     try {
       await onReject(config);
       onClose();
     } catch (error) {
-      console.error('Reject error:', error);
       // Error handling is done in parent component
     } finally {
       setIsRejecting(false);
@@ -199,7 +193,6 @@ export const ApproverConfigDetailsModal: React.FC<ApproverConfigDetailsModalProp
           <div className="flex items-center justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50">
             <Button
               onClick={() => {
-                console.log('Close button clicked');
                 onClose();
               }}
               variant="secondary"
@@ -209,7 +202,6 @@ export const ApproverConfigDetailsModal: React.FC<ApproverConfigDetailsModalProp
             </Button>
             <Button
               onClick={() => {
-                console.log('Reject button clicked');
                 handleReject();
               }}
               variant="danger"
@@ -221,7 +213,6 @@ export const ApproverConfigDetailsModal: React.FC<ApproverConfigDetailsModalProp
             </Button>
             <Button
               onClick={() => {
-                console.log('Approve button clicked');
                 handleApprove();
               }}
               variant="primary"

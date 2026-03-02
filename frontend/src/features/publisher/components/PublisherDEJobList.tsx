@@ -122,15 +122,15 @@ export const PublisherDEJobList: React.FC<PublisherDEJobListProps> = (props) => 
               const forceDirection = isFirstRow ? 'bottom' : isLastRow ? 'top' : 'auto';
               
               // Get job type - normalize to uppercase
-              const rawJobType = job.type || job.config_type?.toLowerCase() || 'pull';
+              const rawJobType = job.type ?? job.config_type?.toLowerCase() ?? 'pull';
               const jobType: 'PULL' | 'PUSH' = rawJobType?.toLowerCase() === 'push' ? 'PUSH' : 'PULL';
               
               // Build the endpoint path based on job type
               const getEndpointPath = () => {
                 if (rawJobType === 'push') {
-                  return job.path || `/tenant-${job.endpoint_name?.substring(0, 6)}/${job.table_name || 'data'}`;
+                  return job.path ?? `/tenant-${job.endpoint_name?.substring(0, 6)}/${job.table_name ?? 'data'}`;
                 } else {
-                  return `/tenant-${job.endpoint_name?.substring(0, 6) || '001'}/${job.table_name || job.endpoint_name}`;
+                  return `/tenant-${job.endpoint_name?.substring(0, 6) ?? '001'}/${job.table_name ?? job.endpoint_name}`;
                 }
               };
               
@@ -152,7 +152,7 @@ export const PublisherDEJobList: React.FC<PublisherDEJobListProps> = (props) => 
                   </td>
                   <td className="px-6 py-4">
                     <div className="text-sm text-gray-600">
-                      {job.table_name || 'N/A'}
+                      {job.table_name ?? 'N/A'}
                     </div>
                   </td>
                   <td className="px-6 py-4">
@@ -168,8 +168,8 @@ export const PublisherDEJobList: React.FC<PublisherDEJobListProps> = (props) => 
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <span className={getStatusColor(job.status || 'in-progress')}>
-                      {getStatusLabel(job.status || 'in-progress')}
+                    <span className={getStatusColor(job.status ?? 'in-progress')}>
+                      {getStatusLabel(job.status ?? 'in-progress')}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-center">

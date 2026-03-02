@@ -1,4 +1,3 @@
-// Data Model feature exports
 export { dataModelApi } from './services/dataModelApi';
 export { ExtensionManagement } from './components/ExtensionManagement';
 export type {

@@ -1,38 +1,40 @@
-import React, { useEffect, useState } from 'react';
-import { useLocation , useNavigate } from 'react-router';
 import CustomTable from '@common/Tables/CustomTable';
-import { dataEnrichmentJobApi as dataEnrichmentApi } from '../handlers';
 import {
   Box,
   Dialog,
-  DialogTitle,
   DialogContent,
-  Tooltip,
+  DialogTitle,
   IconButton,
-  Pagination,
+  Tooltip,
 } from '@mui/material';
 import { Button } from '@shared';
 import {
-  ChevronLeft,
-  History,
-  X,
-  User,
-  Hash,
-  Database,
-  Table,
-  ListOrdered,
-  CheckCircle,
-  Clock,
-  FileText,
-  Info,
   AlertTriangle,
+  CheckCircle,
+  ChevronLeft,
+  Clock,
+  Copy,
+  Database,
+  EyeIcon,
   FileCheck2,
   FileOutput as FileOutputLucide,
- EyeIcon, Copy } from 'lucide-react';
+  FileText,
+  Hash,
+  History,
+  Info,
+  ListOrdered,
+  Table,
+  User,
+  X
+} from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router';
+import { dataEnrichmentJobApi as dataEnrichmentApi } from '../handlers';
 
 
-import { handleInputFilter } from '@shared/helpers';
 import { UI_CONFIG } from '@shared/config/app.config';
+import { handleInputFilter } from '@shared/helpers';
+import useFilters from '@shared/hooks/useFilters';
 
 const getStatusBadge = (status?: string) => {
   if (!status) return 'bg-gray-50 text-gray-600 border border-gray-200';
@@ -109,7 +111,7 @@ const EndpointHistoryPage: React.FC = () => {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   const [page, setPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(0);
   const [totalRecords, setTotalRecords] = useState<number>(0);
@@ -117,23 +119,35 @@ const EndpointHistoryPage: React.FC = () => {
   const [searchingFilters, setSearchingFilters] = useState<Record<string, any>>(
     {},
   );
+
+  const {
+    offset,
+    limit,
+    setOffset,
+  } = useFilters();
+
+  const pagination = useMemo(() => ({
+    page: offset,
+    limit,
+    totalRecords,
+    setPage: (page: number) => { setOffset(page - 1); },
+  }), [offset, limit, totalRecords])
+
   useEffect(() => {
-    const load = async (pageNumber = 1) => {
+    const load = async () => {
       setLoading(true);
       setError(null);
       try {
-        const offset = Math.max(pageNumber - 1, 0);
         const res = await dataEnrichmentApi.getJobHistory(
           jobId,
           offset,
-          itemsPerPage,
+          limit,
           searchingFilters,
         );
 
         setData(res.data || []);
         const total = res.total ?? (res.data ? res.data.length : 0);
         setTotalRecords(total);
-        setTotalPages(Math.max(1, Math.ceil(total / itemsPerPage)));
       } catch (err: any) {
         setError(err?.message || 'Failed to load history');
       } finally {
@@ -141,15 +155,15 @@ const EndpointHistoryPage: React.FC = () => {
       }
     };
 
-    load(page);
-  }, [jobId, page, itemsPerPage, searchingFilters]);
+    load();
+  }, [jobId, page, itemsPerPage, searchingFilters, pagination]);
 
-  
+
   useEffect(() => {
     setPage(1);
   }, [jobId]);
 
-  
+
   useEffect(() => {
     setPage(1);
   }, [searchingFilters]);
@@ -210,50 +224,50 @@ const EndpointHistoryPage: React.FC = () => {
                 ? 140
                 : 120,
       flex: key === 'endpoint_name' ? 0 : 0,
-      
+
       renderHeader:
         key === 'endpoint_name'
           ? () => (
-              <Box
-                sx={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: '8px',
-                  width: '100%',
-                  py: '12px',
-                }}
-              >
-                <Box sx={{ fontSize: '14px', fontWeight: '600' }}>
-                  Endpoint Name
-                </Box>
-                {handleInputFilter({
-                  fieldName: 'endpointName',
-                  searchingFilters,
-                  setSearchingFilters,
-                })}
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '8px',
+                width: '100%',
+                py: '12px',
+              }}
+            >
+              <Box sx={{ fontSize: '14px', fontWeight: '600' }}>
+                Endpoint Name
               </Box>
-            )
+              {handleInputFilter({
+                fieldName: 'endpointName',
+                searchingFilters,
+                setSearchingFilters,
+              })}
+            </Box>
+          )
           : () => (
-              <Box
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: '100%',
-                  height: '100%',
-                  py: '12px',
-                }}
-              >
-                <Box sx={{ fontSize: '14px', fontWeight: '600' }}>
-                  {prettifyHeader(key === 'processed_counts' ? 'processed' : key)}
-                </Box>
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '100%',
+                height: '100%',
+                py: '12px',
+              }}
+            >
+              <Box sx={{ fontSize: '14px', fontWeight: '600' }}>
+                {prettifyHeader(key === 'processed_counts' ? 'processed' : key)}
               </Box>
-            ),
+            </Box>
+          ),
       renderCell: (params: any) =>
         key === 'exception' ? (
           <span
-          
+
           >
             <span className=""></span>
             {params.value ? 'Yes' : 'No'}
@@ -273,7 +287,7 @@ const EndpointHistoryPage: React.FC = () => {
       headerName: 'Actions',
       headerAlign: 'center',
       align: 'center',
-      
+
       minWidth: 240,
       flex: 1,
       sortable: false,
@@ -349,43 +363,8 @@ const EndpointHistoryPage: React.FC = () => {
             <CustomTable
               columns={columns as any}
               rows={data}
-              pageSize={itemsPerPage}
-              pageSizeOptions={UI_CONFIG?.pagination?.pageSizeOptions as any}
-              search={true}
               disableRowSelection={true}
-              pagination={
-                data.length > 0 && (
-                  <div className="px-6 py-4 border-t border-gray-200 bg-white rounded-b-lg flex items-center justify-between">
-                    <div className="text-sm text-gray-700 font-medium">
-                      Showing{' '}
-                      <span className="font-bold">
-                        {(page - 1) * itemsPerPage + 1}
-                      </span>{' '}
-                      to{' '}
-                      <span className="font-bold">
-                        {Math.min(page * itemsPerPage, totalRecords)}
-                      </span>{' '}
-                      of <span className="font-bold">{totalRecords}</span>{' '}
-                      results
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <Box>
-                        <Pagination
-                          page={page}
-                          count={totalPages}
-                          onChange={(_, newPage: number) => { setPage(newPage); }}
-                          variant="outlined"
-                          sx={{
-                            '& .MuiPaginationItem-page.Mui-selected': {
-                              backgroundColor: '#fbf9fa',
-                            },
-                          }}
-                        />
-                      </Box>
-                    </div>
-                  </div>
-                )
-              }
+              pagination={pagination}
             />
           )}
         </Box>
@@ -460,7 +439,7 @@ const EndpointHistoryPage: React.FC = () => {
                           );
                           setCopied(true);
                           setTimeout(() => { setCopied(false); }, 1500);
-                        } catch (e) {}
+                        } catch (e) { }
                       }}
                       aria-label="copy-job-id"
                     >
@@ -638,12 +617,11 @@ const EndpointHistoryPage: React.FC = () => {
                   <Box sx={{ mt: 0.5 }}>
                     <span
                       className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold
-                        ${
-                          activeRecord.publishing_status === 'active'
-                            ? 'bg-green-50 text-green-600 border border-green-200'
-                            : activeRecord.publishing_status === 'in-active'
-                              ? 'bg-red-50 text-red-600 border border-red-200'
-                              : getStatusBadge(activeRecord.publishing_status)
+                        ${activeRecord.publishing_status === 'active'
+                          ? 'bg-green-50 text-green-600 border border-green-200'
+                          : activeRecord.publishing_status === 'in-active'
+                            ? 'bg-red-50 text-red-600 border border-red-200'
+                            : getStatusBadge(activeRecord.publishing_status)
                         }
                       `}
                     >
@@ -708,10 +686,10 @@ const EndpointHistoryPage: React.FC = () => {
             <div>No data</div>
           )}
         </DialogContent>
-        
+
       </Dialog>
 
-      
+
     </>
   );
 };

@@ -3,21 +3,21 @@ import { Button } from '@shared';
 import { UI_CONFIG } from '@shared/config/app.config';
 import { getPrimaryRole } from '@utils/common/roleUtils';
 import { ChevronLeft, Database } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useToast } from '../../../shared/providers/ToastProvider';
 import JobDetailsModal from '../../data-enrichment/components/JobDetailsModal';
 import { JobList } from '../../data-enrichment/components/JobList';
 import { loadJobs } from '../../data-enrichment/handlers';
 import type { DataEnrichmentJobResponse } from '../../data-enrichment/types';
-import { dataEnrichmentJobApi as dataEnrichmentApi} from '../../data-enrichment/handlers/index';
+import { dataEnrichmentJobApi as dataEnrichmentApi } from '../../data-enrichment/handlers/index';
+import useFilters from '@shared/hooks/useFilters';
 
 const ApproverDEJobsPage: React.FC = () => {
   // Data Enrichment Job state
   const navigate = useNavigate();
   const [jobs, setJobs] = useState<DataEnrichmentJobResponse[]>([]);
   const [jobsLoading, setJobsLoading] = useState(false);
-  const [jobSearchTerm, setJobSearchTerm] = useState('');
 
   const { user } = useAuth();
   const userRole = getPrimaryRole(user?.claims!);
@@ -31,28 +31,39 @@ const ApproverDEJobsPage: React.FC = () => {
   const [jobDetailsLoading, setJobDetailsLoading] = useState(false);
 
   const [page, setPage] = useState<number>(1);
-  const [totalPages, setTotalPages] = useState<number>(0);
   const [totalRecords, setTotalRecords] = useState<number>(0);
   const [searchingFilters, setSearchingFilters] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const {
+    offset,
+    limit,
+    setOffset,
+  } = useFilters();
+
+  const pagination = useMemo(() => ({
+    page: offset,
+    limit,
+    totalRecords,
+    setPage: (page: number) => { setOffset(page - 1); },
+  }), [offset, limit, totalRecords])
+
   const { showSuccess, showError } = useToast();
 
-  const fetchDeJobs = async (pageNumber = 1): Promise<void> => {
+  const fetchDeJobs = async (): Promise<void> => {
     try {
       setLoading(true);
       setError(null);
 
       const response = await loadJobs(
-        pageNumber,
-        itemsPerPage,
+        pagination.page,
+        pagination.limit,
         userRole as string,
         searchingFilters,
       );
 
       setJobs(response.data);
-      setTotalPages(response.pages);
       setTotalRecords(response.total);
     } catch (err: unknown) {
       const errorMessage =
@@ -64,14 +75,11 @@ const ApproverDEJobsPage: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchDeJobs(page);
-  }, [page, searchingFilters]);
+    fetchDeJobs();
+  }, [pagination, searchingFilters]);
 
   const handleJobRefresh = () => {
-    console.log(
-      'ApproverDEJobsPage: handleJobRefresh called - triggering loadJobs',
-    );
-    fetchDeJobs(page);
+    fetchDeJobs();
   };
 
   const handleApproveJob = async (
@@ -91,7 +99,6 @@ const ApproverDEJobsPage: React.FC = () => {
       setShowJobDetails(false);
       setSelectedJob(null);
     } catch (error) {
-      console.error('Failed to approve job:', error);
       showError('Failed to approve job');
     }
   };
@@ -111,13 +118,11 @@ const ApproverDEJobsPage: React.FC = () => {
       showSuccess(`Job rejected successfully. Reason: ${reason}`);
       handleJobRefresh();
     } catch (error) {
-      console.error('Failed to reject job:', error);
       showError('Failed to reject job');
     }
   };
 
   const handleViewJobDetails = async (jobId: string) => {
-    console.log('ApproverDEJobsPage: View job details clicked for:', jobId);
     try {
       setJobDetailsLoading(true);
       setShowJobDetails(true);
@@ -130,7 +135,6 @@ const ApproverDEJobsPage: React.FC = () => {
       const jobDetails = await dataEnrichmentApi.getById(jobId, jobType);
       setSelectedJob(jobDetails);
     } catch (error) {
-      console.error('Failed to load job details:', error);
       showError('Failed to load job details');
     } finally {
       setJobDetailsLoading(false);
@@ -173,11 +177,7 @@ const ApproverDEJobsPage: React.FC = () => {
             isLoading={jobsLoading}
             onViewLogs={handleViewJobDetails}
             onRefresh={handleJobRefresh}
-            page={page}
-            setPage={setPage}
-            totalPages={totalPages}
-            totalRecords={totalRecords}
-            itemsPerPage={itemsPerPage}
+            pagination={pagination}
             searchingFilters={searchingFilters}
             setSearchingFilters={setSearchingFilters}
             error={error}

@@ -97,7 +97,7 @@ export const dataEnrichmentJobApi = {
     }
 
     return await apiRequest<any>(
-      `${API_BASE_URL}/job/get/history?${queryParams.toString()}`,
+      `${API_BASE_URL}/job/history?${queryParams.toString()}`,
       {
         method: 'POST',
         body: JSON.stringify(body),

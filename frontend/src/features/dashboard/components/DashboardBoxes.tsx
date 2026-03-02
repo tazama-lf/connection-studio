@@ -78,7 +78,7 @@ const DashboardBoxes: React.FC = () => {
   const { user } = useAuth();
 
   const claims: string[] = user?.claims ?? [];
-  const claimsLower = claims.map((c) => (c || '').toString().toLowerCase());
+  const claimsLower = claims.map((c) => (c ?? '').toString().toLowerCase());
   const hasClaim = (role: string) => claimsLower.some((c) => c === role || c.includes(role));
   const isApprover = hasClaim('approver');
   const isPublisher = hasClaim('publisher');

@@ -119,7 +119,7 @@ export const ExporterJobList: React.FC<ExporterJobListProps> = (props) => {
               const isFirstRow = index === 0;
               const isLastRow = index === filteredJobs.length - 1;
               const forceDirection = isFirstRow ? 'bottom' : isLastRow ? 'top' : 'auto';
-              const jobType = job.type?.toUpperCase() || 'PULL';
+              const jobType = job.type?.toUpperCase() ?? 'PULL';
               
               return (
                 <tr key={job.id} className={`hover:bg-gray-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>

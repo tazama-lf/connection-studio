@@ -116,9 +116,6 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
   // Function to fetch current config and refresh mappings
   const fetchCurrentMappings = async () => {
     if (!configId) {
-      console.warn(
-        '🔄 MappingUtility - No configId provided, cannot fetch mappings',
-      );
       return;
     }
 
@@ -162,14 +159,9 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
 
         setCurrentMappings(mappingsWithTransformation);
         validateMappings(mappingsWithTransformation);
-      } else {
-        console.error(
-          '❌ MappingUtility - Failed to fetch config:',
-          response.message,
-        );
       }
     } catch (error) {
-      console.error('❌ MappingUtility - Error fetching config:', error);
+      // Error fetching config
     }
   };
 
@@ -315,11 +307,10 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
         setEditableDestinationJson(response.data);
       } else {
         throw new Error(
-          response.message || 'Failed to fetch destination fields',
+          response.message ?? 'Failed to fetch destination fields',
         );
       }
     } catch (error) {
-      console.error('Error loading destination options:', error);
       setDestinationError(
         'Failed to load destination fields. Please try again.',
       );
@@ -341,7 +332,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
         const treeNodes = convertJsonToTreeNodes(editableDestinationJson);
         setDestinationTree(treeNodes);
       } catch (error) {
-        console.error(`❌ [${componentId}] Error during tree conversion:`, error);
+        // Error during tree conversion
       }
     }
   }, [editableDestinationJson, componentId]);
@@ -359,11 +350,9 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
           onCurrentMappingsChange(updatedMappings);
         }
       } else {
-        console.error('❌ Failed to remove mapping:', response.message);
         setMappingError(`Failed to remove mapping: ${response.message}`);
       }
     } catch (error) {
-      console.error('❌ Error removing mapping:', error);
       setMappingError('Failed to remove mapping. Please try again.');
     }
   };
@@ -387,7 +376,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
             id,
             name: key,
             path,
-            type: value.type || 'string',
+            type: value.type ?? 'string',
           };
 
           if (value.properties) {
@@ -414,7 +403,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
 
     // First pass: create all nodes AND their parent nodes
     schemaArray.forEach((field) => {
-      const originalPath = field.path || field.name || 'unknown';
+      const originalPath = field.path ?? field.name ?? 'unknown';
 
       // Remove [0] notation to get clean path, but remember which paths are arrays
       const cleanPath = originalPath.replace(/\[0\]/g, '');
@@ -447,7 +436,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
         const fieldType = isArrayContainer
           ? 'array'
           : isLastPart
-            ? field.type?.toLowerCase() || 'object'
+            ? field.type?.toLowerCase() ?? 'object'
             : 'object';
 
         const node: TreeNode = {
@@ -668,7 +657,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
     const getFieldType = (fieldPath: string): string | undefined => {
       if (Array.isArray(sourceSchema)) {
         const field = sourceSchema.find((f) => {
-          const cleanPath = (f.path || f.name || '').replace(
+          const cleanPath = (f.path ?? f.name ?? '').replace(
             /\[(\d+)\]/g,
             '.$1',
           );
@@ -840,7 +829,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
     let finalPath = pathStr;
     if (Array.isArray(sourceSchema)) {
       const matchingField = sourceSchema.find((f) => {
-        const cleanFieldPath = (f.path || f.name || '').replace(/\[0\]/g, '');
+        const cleanFieldPath = (f.path ?? f.name ?? '').replace(/\[0\]/g, '');
         return cleanFieldPath === pathStr;
       });
 
@@ -1062,7 +1051,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
           : selectedDestinations[0], // Single destination
       delimiter:
         selectedTransformation === 'split' || selectedTransformation === 'concatenate'
-          ? delimiter || ' '
+          ? delimiter ?? ' '
           : undefined,
       constantValue,
       prefix: prefix.trim() || undefined,
@@ -1089,10 +1078,10 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
               ? selectedDestinations // Array for SPLIT
               : selectedDestinations[0], // Single destination
           delimiter:
-            selectedTransformation === 'split' ? delimiter || ' ' : undefined,
+            selectedTransformation === 'split' ? delimiter ?? ' ' : undefined,
           separator:
             selectedTransformation === 'concatenate'
-              ? delimiter || ' '
+              ? delimiter ?? ' '
               : undefined,
           constantValue,
           transformation: selectedTransformation.toUpperCase(),
@@ -1114,11 +1103,9 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
         // Close modal
         setShowAddMapping(false);
       } else {
-        console.error('❌ Failed to save mapping:', response.message);
         setMappingError(`Failed to save mapping: ${response.message}`);
       }
     } catch (error) {
-      console.error('❌ Error saving mapping:', error);
       setMappingError('Failed to save mapping. Please try again.');
     }
   };
@@ -1331,7 +1318,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                   </div>
                   <div className="text-sm text-gray-600" data-id="element-199">
                     <span className="font-bold">Selected:</span>{' '}
-                    {selectedSources.join(', ') || 'None'}
+                    {selectedSources.join(', ') ?? 'None'}
                   </div>
                 </div>
               )}
@@ -1357,7 +1344,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                     </label>
                     <input
                       type="text"
-                      value={selectedSources[0] || ''}
+                      value={selectedSources[0] ?? ''}
                       onChange={(e) => { setSelectedSources([e.target.value]); }}
                       placeholder="Enter a constant value (string, number, etc.)"
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -1437,7 +1424,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                           type="text"
                           value={delimiter}
                           onChange={(e) =>
-                            setDelimiter(e.target.value.slice(0, 1))
+                            { setDelimiter(e.target.value.slice(0, 1)); }
                           }
                           placeholder=""
                           className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
@@ -1595,7 +1582,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                 </div>
                 <div className="text-sm text-gray-600" data-id="element-234">
                   <span className="font-bold">Selected:</span>{' '}
-                  {selectedDestinations.join(', ') || 'None'}
+                  {selectedDestinations.join(', ') ?? 'None'}
                 </div>
               </div>
             </div>
@@ -1657,7 +1644,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
     return false;
   };
 
-  const getMaxNestingDepth = (obj: any, currentDepth: number = 0): number => {
+  const getMaxNestingDepth = (obj: any, currentDepth = 0): number => {
     if (!obj || typeof obj !== 'object' || Array.isArray(obj)) {
       return currentDepth;
     }
@@ -1756,7 +1743,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
 
       const validation = validateDestinationJson(updatedJson);
       if (!validation.valid) {
-        setValidationError(validation.error || 'Invalid JSON structure');
+        setValidationError(validation.error ?? 'Invalid JSON structure');
       } else {
         setValidationError(null);
       }
@@ -1766,7 +1753,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       const validation = validateDestinationJson(tempEditedJson);
       
       if (!validation.valid) {
-        setValidationError(validation.error || 'Invalid JSON structure');
+        setValidationError(validation.error ?? 'Invalid JSON structure');
         return;
       }
 
@@ -1800,10 +1787,9 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
           setShowEditFieldsModal(false);
           setTempEditedJson(null);
         } else {
-          throw new Error(response.message || 'Failed to save destination fields');
+          throw new Error(response.message ?? 'Failed to save destination fields');
         }
       } catch (error) {
-        console.error('Error saving destination fields:', error);
         const errorMessage = error instanceof Error ? error.message : 'Failed to save changes. Please try again.';
         setSaveError(errorMessage);
         setValidationError(errorMessage);
@@ -1851,7 +1837,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                     <span className="text-red-600 font-semibold"> Can only contain primitive values</span> (string, number, boolean). 
                     No nested objects allowed.
                     <br />
-                    <span className="text-gray-500 italic">Example: ✓ Amt: 0, Ccy: "" | ✗ nested: {"{'field: 1'}"}</span>
+                    <span className="text-gray-500 italic">Example: ✓ Amt: 0, Ccy: "" | ✗ nested: {'{\'field: 1\'}'}</span>
                   </li>
                   <li>
                     <strong>redis</strong> - Required root object in Data Cache section (must be the only object in Data Cache). 
@@ -1894,7 +1880,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
             {validationError && (
               <div className="bg-red-50 border border-red-200 rounded-md p-3 mb-4 relative">
                 <button
-                  onClick={() => setValidationError(null)}
+                  onClick={() => { setValidationError(null); }}
                   className="cursor-pointer absolute top-1/2 -translate-y-1/2 right-2 text-red-600 hover:text-red-800"
                 >
                   <XIcon size={16} />

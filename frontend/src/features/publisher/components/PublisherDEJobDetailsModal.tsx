@@ -1,8 +1,8 @@
+import { AlertCircle, Calendar, CheckCircle, Database, Globe, X } from 'lucide-react';
 import React, { useState } from 'react';
-import { X, Upload, Database, Globe, AlertCircle, CheckCircle, Calendar } from 'lucide-react';
-import type { DataEnrichmentJobResponse } from '../../data-enrichment/types';
-import { dataEnrichmentJobApi as dataEnrichmentApi } from '../../data-enrichment/handlers';
 import { getStatusColor, getStatusLabel } from '../../../shared/utils/statusColors';
+import { dataEnrichmentJobApi as dataEnrichmentApi } from '../../data-enrichment/handlers';
+import type { DataEnrichmentJobResponse } from '../../data-enrichment/types';
 
 interface PublisherDEJobDetailsModalProps {
   isOpen: boolean;

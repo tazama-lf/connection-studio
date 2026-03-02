@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Backdrop, CircularProgress ,
+import {
+  Backdrop, CircularProgress,
   Dialog,
   DialogContent,
   DialogContentText,
@@ -28,7 +29,6 @@ const ApproverConfigsPage: React.FC = () => {
   const [editingConfig, setEditingConfig] = useState<Config | null>(null);
   const [selectedConfig, setSelectedConfig] = useState<Config | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [searchTerm, setSearchTerm] = useState('');
   const [showRejectionDialog, setShowRejectionDialog] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [showChangeRequestDialog, setShowChangeRequestDialog] = useState(false);
@@ -36,17 +36,13 @@ const ApproverConfigsPage: React.FC = () => {
   const [configToRequestChanges, setConfigToRequestChanges] =
     useState<Config | null>(null);
 
-  // Approval confirmation dialog state
   const [showApprovalDialog, setShowApprovalDialog] = useState(false);
   const [configToApprove, setConfigToApprove] = useState<{
     id: number;
     name: string;
   } | null>(null);
-  // Optional comment for approval
   const [approvalComment, setApprovalComment] = useState('');
-  // Loader for approval
   const [approvalLoading, setApprovalLoading] = useState(false);
-  // Loader for rejection
   const [rejectionLoading, setRejectionLoading] = useState(false);
 
   const { user } = useAuth();
@@ -55,17 +51,14 @@ const ApproverConfigsPage: React.FC = () => {
   const handleCloseModal = () => {
     setEditingEndpointId(null);
     setEditingConfig(null);
-    // Refresh the config list when modal closes
     setRefreshKey((prev) => prev + 1);
   };
 
   const handleConfigSuccess = () => {
-    // Refresh immediately when config is saved/updated
     setRefreshKey((prev) => prev + 1);
   };
 
   const handleViewDetails = (config: Config) => {
-    // Open EditEndpointModal for viewing - same workflow as DEMS
     setEditingEndpointId(config.id);
     setEditingConfig(config);
   };
@@ -76,25 +69,13 @@ const ApproverConfigsPage: React.FC = () => {
       if (response.success) {
         showSuccess('Configuration approved successfully');
         setRefreshKey((prev) => prev + 1);
-      } else {
-        console.log(
-          '❌ handleApprove - Response success is false, but checking if operation actually succeeded...',
-        );
-        console.log('❌ handleApprove - Config in response:', response.config);
-
-        // Even if success is false, if we have a config object, the operation likely succeeded
-        if (response.config) {
-          console.log(
-            '✅ handleApprove - Config object found, treating as successful despite success: false',
-          );
+      } else if (response.config) {
           showSuccess('Configuration approved successfully');
           setRefreshKey((prev) => prev + 1);
         } else {
-          showError(response.message || 'Failed to approve configuration');
+          showError(response.message ?? 'Failed to approve configuration');
         }
-      }
     } catch (error) {
-      console.error('Failed to approve config:', error);
       showError('Failed to approve configuration');
     }
   };
@@ -108,7 +89,7 @@ const ApproverConfigsPage: React.FC = () => {
     if (!configToReject) return;
     setRejectionLoading(true);
     try {
-      const userId = user?.email || user?.username || 'system';
+      const userId = user?.email ?? user?.username ?? 'system';
       const response = await configApi.rejectConfig(
         configToReject.id,
         userId,
@@ -117,22 +98,13 @@ const ApproverConfigsPage: React.FC = () => {
       if (response.success) {
         showSuccess('Configuration rejected successfully');
         setRefreshKey((prev) => prev + 1);
-      } else {
-        console.log(
-          '❌ handleRejectConfirm - Response success is false, but checking if operation actually succeeded...',
-        );
-        if (response.config) {
-          console.log(
-            '✅ handleRejectConfirm - Config object found, treating as successful despite success: false',
-          );
+      } else if (response.config) {
           showSuccess('Configuration rejected successfully');
           setRefreshKey((prev) => prev + 1);
         } else {
-          showError(response.message || 'Failed to reject configuration');
+          showError(response.message ?? 'Failed to reject configuration');
         }
-      }
     } catch (error) {
-      console.error('Failed to reject config:', error);
       showError('Failed to reject configuration');
     } finally {
       setRejectionLoading(false);
@@ -143,7 +115,7 @@ const ApproverConfigsPage: React.FC = () => {
     if (!configToRequestChanges) return;
 
     try {
-      const userId = user?.email || user?.username || 'system';
+      const userId = user?.email ?? user?.username ?? 'system';
       const response = await configApi.rejectConfig(
         configToRequestChanges.id,
         userId,
@@ -152,25 +124,15 @@ const ApproverConfigsPage: React.FC = () => {
       if (response.success) {
         showSuccess('Change request sent to editor successfully');
         setRefreshKey((prev) => prev + 1);
-        // Close the modal after successful change request
         handleCloseModal();
-      } else {
-        console.log(
-          '❌ handleChangeRequestConfirm - Response success is false, but checking if operation actually succeeded...',
-        );
-        if (response.config) {
-          console.log(
-            '✅ handleChangeRequestConfirm - Config object found, treating as successful despite success: false',
-          );
+      } else if (response.config) {
           showSuccess('Change request sent to editor successfully');
           setRefreshKey((prev) => prev + 1);
           handleCloseModal();
         } else {
-          showError(response.message || 'Failed to send change request');
+          showError(response.message ?? 'Failed to send change request');
         }
-      }
     } catch (error) {
-      console.error('Failed to request changes:', error);
       showError('Failed to send change request to editor');
     }
   };
@@ -188,21 +150,18 @@ const ApproverConfigsPage: React.FC = () => {
     configId: number,
     configName?: string,
   ) => {
-    // Show confirmation dialog first
     setConfigToApprove({
       id: configId,
-      name: configName || `Config #${configId}`,
+      name: configName ?? `Config #${configId}`,
     });
-    setApprovalComment(''); // Reset comment field
+    setApprovalComment('');
     setShowApprovalDialog(true);
   };
 
-  // Handle actual approval after confirmation
   const handleApprovalConfirm = async () => {
     if (!configToApprove) return;
     setApprovalLoading(true);
     try {
-      // Pass approvalComment to the API if supported
       const response = await configApi.approveConfig(
         configToApprove.id,
         approvalComment,
@@ -210,21 +169,20 @@ const ApproverConfigsPage: React.FC = () => {
       if (response.success) {
         showSuccess('Configuration approved successfully');
         setRefreshKey((prev) => prev + 1);
-        // Close the modal after successful approval
         handleCloseModal();
         setShowApprovalDialog(false);
         setConfigToApprove(null);
       } else if (response.config) {
-          showSuccess('Configuration approved successfully');
-          setRefreshKey((prev) => prev + 1);
-          handleCloseModal();
-          setShowApprovalDialog(false);
-          setConfigToApprove(null);
-        } else {
-          showError(response.message || 'Failed to approve configuration');
-          setShowApprovalDialog(false);
-          setConfigToApprove(null);
-        }
+        showSuccess('Configuration approved successfully');
+        setRefreshKey((prev) => prev + 1);
+        handleCloseModal();
+        setShowApprovalDialog(false);
+        setConfigToApprove(null);
+      } else {
+        showError(response.message ?? 'Failed to approve configuration');
+        setShowApprovalDialog(false);
+        setConfigToApprove(null);
+      }
     } catch (error) {
       showError('Failed to approve configuration');
       setShowApprovalDialog(false);
@@ -245,10 +203,8 @@ const ApproverConfigsPage: React.FC = () => {
           <ChevronLeft size={20} /> <span>Go Back</span>
         </Button>
 
-        {/* Search Bar */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center my-8 gap-4">
           <div className="flex items-center space-x-4">
-            {/* Search Bar */}
             <h1
               className="text-3xl font-bold flex items-center gap-2"
               style={{ color: '#3b3b3b' }}
@@ -259,11 +215,9 @@ const ApproverConfigsPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Content */}
         <div className="bg-white rounded-lg shadow">
           <ConfigList
             key={refreshKey}
-            searchTerm={searchTerm}
             onViewDetails={handleViewDetails}
             onRefresh={handleRefresh}
             showPendingApprovals={true}
@@ -290,8 +244,8 @@ const ApproverConfigsPage: React.FC = () => {
               setConfigToApprove({
                 id: editingEndpointId,
                 name:
-                  editingConfig.endpointPath ||
-                  editingConfig.msgFam ||
+                  editingConfig.endpointPath ??
+                  editingConfig.msgFam ??
                   `Config #${editingEndpointId}`,
               });
               setShowApprovalDialog(true);
@@ -311,7 +265,6 @@ const ApproverConfigsPage: React.FC = () => {
             }}
             onConfirm={handleRejectConfirm}
             configName={configToReject.endpointPath}
-            loading={rejectionLoading}
           />
           <Backdrop
             sx={(theme) => ({ color: '#fff', zIndex: theme.zIndex.drawer + 100 })}
@@ -393,7 +346,7 @@ const ApproverConfigsPage: React.FC = () => {
                 fontSize: '15px',
               }}
             >
-              "{configToApprove?.name || 'this configuration'}"
+              "{configToApprove?.name ?? 'this configuration'}"
             </Box>
             ?
           </DialogContentText>

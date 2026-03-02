@@ -152,7 +152,7 @@ export const getUserFriendlyErrorMessage = (
  * @returns An object with error details for logging
  */
 export const getErrorDetails = (error: any) => ({
-  message: error?.message || 'Unknown error',
+  message: error?.message ?? 'Unknown error',
   status: error?.response?.status,
   statusText: error?.response?.statusText,
   data: error?.response?.data,

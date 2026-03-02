@@ -34,7 +34,7 @@ export const ConfigDetails: React.FC<ConfigDetailsProps> = ({
   onClose,
   onEdit
 }) => {
-  const [config, setConfig] = useState<Config | null>(initialConfig || null);
+  const [config, setConfig] = useState<Config | null>(initialConfig ?? null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -49,10 +49,8 @@ export const ConfigDetails: React.FC<ConfigDetailsProps> = ({
         try {
           setLoading(true);
           setError(null);
-          console.log('Fetching config details for ID:', configId);
           
           const response = await configApi.getConfig(configId);
-          console.log('Config details response:', response);
           
           if (response.success && response.config) {
             setConfig(response.config);
@@ -60,7 +58,6 @@ export const ConfigDetails: React.FC<ConfigDetailsProps> = ({
             setError('Failed to load configuration details');
           }
         } catch (error) {
-          console.error('Error fetching config details:', error);
           setError('Error loading configuration details');
         } finally {
           setLoading(false);
@@ -109,14 +106,12 @@ export const ConfigDetails: React.FC<ConfigDetailsProps> = ({
         mapping: config.mapping,
       };
       
-      console.log('Updating config:', config.id, updatePayload);
       const response = await configApi.updateConfig(config.id, updatePayload);
       
       if (response.success && response.config) {
         setConfig(response.config);
         setIsEditMode(false);
         setSuccessMessage('Configuration updated successfully!');
-        console.log('Config updated successfully');
         
         // Clear success message and close modal after a brief delay
         setTimeout(() => {
@@ -127,7 +122,6 @@ export const ConfigDetails: React.FC<ConfigDetailsProps> = ({
         setError('Failed to update configuration');
       }
     } catch (error) {
-      console.error('Error updating config:', error);
       setError('Failed to update configuration');
     } finally {
       setSaving(false);
@@ -224,13 +218,13 @@ export const ConfigDetails: React.FC<ConfigDetailsProps> = ({
                     {isEditMode ? (
                       <input
                         type="text"
-                        value={editForm.msgFam || ''}
+                        value={editForm.msgFam ?? ''}
                         onChange={(e) => { handleFormChange('msgFam', e.target.value); }}
                         className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                         placeholder="Event Type"
                       />
                     ) : (
-                      <p className="mt-1 text-sm text-gray-900">{config.msgFam || 'Not specified'}</p>
+                      <p className="mt-1 text-sm text-gray-900">{config.msgFam ?? 'Not specified'}</p>
                     )}
                   </div>
                   <div>
@@ -238,7 +232,7 @@ export const ConfigDetails: React.FC<ConfigDetailsProps> = ({
                     {isEditMode ? (
                       <input
                         type="text"
-                        value={editForm.transactionType || ''}
+                        value={editForm.transactionType ?? ''}
                         onChange={(e) => { handleFormChange('transactionType', e.target.value); }}
                         className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                         placeholder="Transaction Type"
@@ -256,7 +250,7 @@ export const ConfigDetails: React.FC<ConfigDetailsProps> = ({
                     {isEditMode ? (
                       <input
                         type="text"
-                        value={editForm.version || ''}
+                        value={editForm.version ?? ''}
                         onChange={(e) => { handleFormChange('version', e.target.value); }}
                         className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                         placeholder="Version"
@@ -269,7 +263,7 @@ export const ConfigDetails: React.FC<ConfigDetailsProps> = ({
                     <label className="block text-sm font-medium text-gray-700">Content Type</label>
                     {isEditMode ? (
                       <select
-                        value={editForm.contentType || ''}
+                        value={editForm.contentType ?? ''}
                         onChange={(e) => { handleFormChange('contentType', e.target.value); }}
                         className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                       >
@@ -284,7 +278,7 @@ export const ConfigDetails: React.FC<ConfigDetailsProps> = ({
                     <label className="block text-sm font-medium text-gray-700">Status</label>
                     {isEditMode ? (
                       <select
-                        value={editForm.status || ''}
+                        value={editForm.status ?? ''}
                         onChange={(e) => { handleFormChange('status', e.target.value); }}
                         className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                       >
@@ -322,7 +316,7 @@ export const ConfigDetails: React.FC<ConfigDetailsProps> = ({
                   {isEditMode ? (
                     <input
                       type="text"
-                      value={editForm.endpointPath || ''}
+                      value={editForm.endpointPath ?? ''}
                       onChange={(e) => { handleFormChange('endpointPath', e.target.value); }}
                       className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm font-mono"
                       placeholder="/api/endpoint/path"

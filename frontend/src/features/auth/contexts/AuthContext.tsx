@@ -34,36 +34,25 @@ const AuthProvider: React.FC<{
       const storedToken = localStorage.getItem('authToken');
       const storedUser = localStorage.getItem('user');
       
-      console.log('=== AUTH INITIALIZATION ===');
-      console.log('Stored token exists:', !!storedToken);
-      console.log('Stored user exists:', !!storedUser);
-      
       if (storedToken && storedUser) {
         try {
           // Validate the token by decoding it
           const tokenUserData = authApi.decodeToken(storedToken);
-          console.log('Token validation result:', !!tokenUserData);
           
           if (tokenUserData) {
             const userData = JSON.parse(storedUser);
-            console.log('Setting user authenticated:', userData.username);
             setUser(userData);
             setIsAuthenticated(true);
           } else {
-            console.log('Token invalid, clearing storage');
             localStorage.removeItem('authToken');
             localStorage.removeItem('user');
           }
         } catch (error) {
-          console.warn('Failed to validate stored auth data, removing from localStorage:', error);
           localStorage.removeItem('authToken');
           localStorage.removeItem('user');
         }
-      } else {
-        console.log('No stored auth data found');
       }
       setLoading(false);
-      console.log('=== AUTH INITIALIZATION COMPLETE ===');
     };
 
     initializeAuth();
@@ -72,7 +61,6 @@ const AuthProvider: React.FC<{
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
       setLoading(true);
-      console.log('Attempting login for username:', username);
       
       // Clear any existing auth state before login
       localStorage.removeItem('authToken');
@@ -81,30 +69,24 @@ const AuthProvider: React.FC<{
       setIsAuthenticated(false);
       
       const response = await authApi.login({ username, password });
-      console.log('Login response:', response);
       
       if (response.token) {
         // Store the token
         localStorage.setItem('authToken', response.token);
-        console.log('Token stored:', response.token.substring(0, 50) + '...');
         
         // Decode the token to get user information
         const userData = authApi.decodeToken(response.token);
-        console.log('Decoded user data:', userData);
         
         if (userData) {
           setUser(userData);
           setIsAuthenticated(true);
           localStorage.setItem('user', JSON.stringify(userData));
-          console.log('Final user set in context:', userData);
           return true;
         }
       }
       
-      console.log('Login failed: No token in response');
       return false;
     } catch (error) {
-      console.error('Login failed with error:', error);
       // Re-throw the error so Login component can catch it and display appropriate message
       throw error;
     } finally {
@@ -113,7 +95,6 @@ const AuthProvider: React.FC<{
   };
 
   const logout = () => {
-    console.log('=== LOGOUT ===');
     setUser(null);
     setIsAuthenticated(false);
     localStorage.removeItem('authToken');

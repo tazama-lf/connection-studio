@@ -1,24 +1,29 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import CustomTable from '@common/Tables/CustomTable';
 import {
-  EyeIcon,
-  MoreVerticalIcon,
-  EditIcon,
+  Box,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  Tooltip
+} from '@mui/material';
+import { Button } from '@shared';
+import { handleInputFilter, handleSelectFilter } from '@shared/helpers';
+import useFilters from '@shared/hooks/useFilters';
+import { getDemsStatusLov } from '@shared/lovs';
+import {
   CopyIcon,
-  HistoryIcon,
-  ChevronUpIcon,
-  ChevronDownIcon,
-  FilterIcon,
-  Upload,
-  ShieldCheck,
-  ShieldX,
+  EditIcon,
+  EyeIcon,
   Pause,
   Play,
+  ShieldCheck,
+  ShieldX,
+  Upload
 } from 'lucide-react';
-import { configApi } from '../services/configApi';
-import { sftpApi } from '../../../features/exporter/services/sftpApi';
-import { UI_CONFIG } from '../../../shared/config/app.config';
-import { DropdownMenuWithAutoDirection } from '../../../shared/components/DropdownMenuWithAutoDirection';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../../features/auth/contexts/AuthContext';
+import { useToast } from '../../../shared/providers/ToastProvider';
 import {
   getPrimaryRole,
   isApprover,
@@ -26,22 +31,7 @@ import {
   isExporter,
   isPublisher,
 } from '../../../utils/common/roleUtils';
-import { useToast } from '../../../shared/providers/ToastProvider';
-import CustomTable from '@common/Tables/CustomTable';
-import {
-  Box,
-  Pagination,
-  Tooltip,
-  Dialog,
-  DialogContent,
-  DialogContentText,
-  DialogActions,
-  Button as MuiButton,
-} from '@mui/material';
-import { handleInputFilter, handleSelectFilter } from '@shared/helpers';
-import { getDemsStatusLov } from '@shared/lovs';
-import { Button } from '@shared';
-import useFilters from '@shared/hooks/useFilters';
+import { configApi } from '../services/configApi';
 
 interface Config {
   id: number;
@@ -67,7 +57,6 @@ interface ConfigListProps {
   onViewDetails?: (config: Config) => void;
   onViewHistory?: (config: Config) => void;
   onRefresh?: () => void;
-  searchTerm?: string;
   showPendingApprovals?: boolean;
   showApprovedConfigs?: boolean;
   onApprove?: (configId: number) => void;
@@ -96,7 +85,6 @@ export const ConfigList: React.FC<ConfigListProps> = ({
   onConfigClone,
   onViewDetails,
   onRefresh,
-  searchTerm: externalSearchTerm,
   showPendingApprovals = false,
 }) => {
   const [actionLoading, setActionLoading] = useState<
@@ -105,7 +93,6 @@ export const ConfigList: React.FC<ConfigListProps> = ({
   const [configs, setConfigs] = useState<Config[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [itemsPerPage] = useState(UI_CONFIG.pagination.defaultPageSize);
 
   const [showStatusFilter, setShowStatusFilter] = useState(false);
 
@@ -209,7 +196,6 @@ export const ConfigList: React.FC<ConfigListProps> = ({
   }, [showStatusFilter]);
 
   const handleViewConfig = (config: Config) => {
-    console.log('Viewing config:', config);
     if (onViewDetails) {
       onViewDetails(config);
     } else if (onConfigSelect) {
@@ -231,7 +217,6 @@ export const ConfigList: React.FC<ConfigListProps> = ({
         onRefresh();
       }
     } catch (error) {
-      console.error('Error exporting config:', error);
       showError('Error', 'Failed to export config. Please try again.');
     }
   };
@@ -309,12 +294,10 @@ export const ConfigList: React.FC<ConfigListProps> = ({
         'Success',
         `Config status has been updated to ${status} successfully.`,
       );
-      // Trigger refresh if available
       if (onRefresh) {
         onRefresh();
       }
     } catch (error) {
-      console.error('Error publishing config:', error);
       showError('Error', 'Failed to publish config. Please try again.');
     }
   };
@@ -332,15 +315,12 @@ export const ConfigList: React.FC<ConfigListProps> = ({
         `Config "${config.msgFam}" has been ${statusLabel} successfully.`,
       );
 
-      // Refresh the configs list
-      fetchConfigsTemp(page);
+      fetchConfigsTemp();
 
-      // Trigger parent refresh if available
       if (onRefresh) {
         onRefresh();
       }
     } catch (error) {
-      console.error('Error toggling publishing status:', error);
       showError(
         'Error',
         'Failed to update publishing status. Please try again.',
@@ -348,8 +328,6 @@ export const ConfigList: React.FC<ConfigListProps> = ({
     }
   };
 
-  const [page, setPage] = useState<number>(1);
-  const [totalPages, setTotalPages] = useState<number>(0);
   const [totalRecords, setTotalRecords] = useState<number>(0);
   const [searchingFilters, setSearchingFilters] = useState({});
 
@@ -366,14 +344,12 @@ export const ConfigList: React.FC<ConfigListProps> = ({
     setPage: (page: number) => { setOffset(page - 1); },
   }), [offset, limit, totalRecords])
 
-  // Confirmation dialog states
   const [confirmDialog, setConfirmDialog] = useState({
     open: false,
     type: '' as 'export' | 'pause' | 'resume' | 'activate' | 'deactivate' | '',
     config: null as Config | null,
   });
 
-  // CustomTable columns configuration
   const columns = [
     {
       field: 'endpointPath',
@@ -598,7 +574,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
                           setConfirmDialog({
                             open: true,
                             type: 'deactivate',
-                            config: config,
+                            config,
                           });
                         }}
                       />
@@ -611,7 +587,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
                           setConfirmDialog({
                             open: true,
                             type: 'activate',
-                            config: config,
+                            config,
                           });
                         }}
                       />
@@ -640,7 +616,6 @@ export const ConfigList: React.FC<ConfigListProps> = ({
         await configApi.getConfigsPaginated(params, searchingFilters);
 
       setConfigs(response.configs);
-      setTotalPages(response.pages);
       setTotalRecords(response.total);
     } catch (err: unknown) {
       const errorMessage =
@@ -686,7 +661,6 @@ export const ConfigList: React.FC<ConfigListProps> = ({
         />
       )}
 
-      {/* Reusable Confirmation Dialog */}
       <Dialog
         open={confirmDialog.open}
         onClose={() => { setConfirmDialog({ open: false, type: '', config: null }); }
@@ -739,7 +713,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
                 fontSize: '15px',
               }}
             >
-              "{confirmDialog.config?.msgFam || 'this configuration'}"
+              "{confirmDialog.config?.msgFam ?? 'this configuration'}"
             </Box>
             {confirmDialog.type === 'export' && ' to SFTP'}?
           </DialogContentText>

@@ -1,4 +1,4 @@
-export const getStatusBadge = (status: string) => {
+export const getStatusBadge = (status: string): string => {
   const normalizedStatus = status.toLowerCase();
 
   if (normalizedStatus.startsWith('status_')) {

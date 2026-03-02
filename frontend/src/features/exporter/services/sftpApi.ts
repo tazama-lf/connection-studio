@@ -1,6 +1,5 @@
 import { API_CONFIG } from '../../../shared/config/api.config';
 
-// Custom error types for SFTP operations
 export class SftpError extends Error {
   errorType: 'CORRUPTED_FILE' | 'NOT_FOUND' | 'UNAUTHORIZED' | 'GENERAL';
   originalError?: any;
@@ -45,15 +44,12 @@ export interface SftpFileContent {
   end_date?: string;
   created_at: string;
   updated_at: string;
-  // For DE jobs
   type?: 'PULL' | 'PUSH';
-  // Add other fields that might be in DE format
   [key: string]: any;
 }
 
 export type SftpFormat = 'de' | 'cron' | 'dems';
 
-// SFTP API service
 export class SftpApiService {
   private readonly baseURL: string;
 
@@ -90,7 +86,7 @@ export class SftpApiService {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       throw new Error(
-        errorData.message || `HTTP error! status: ${response.status}`,
+        errorData.message ?? `HTTP error! status: ${response.status}`,
       );
     }
 
@@ -106,7 +102,6 @@ export class SftpApiService {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
 
-      // Handle specific SFTP errors with user-friendly messages
       if (
         errorData.message === 'File or its integrity file not found' ||
         errorData.message?.includes('File or its integrity file not found')
@@ -132,13 +127,8 @@ export class SftpApiService {
     return await response.json();
   }
 
-  /**
-   * Get all SFTP files by format (de or cron)
-   * @param format - Filter files by format: 'de' for data enrichment, 'cron' for cron jobs
-   */
   async getAllFiles(format: SftpFormat): Promise<SftpFileInfo[]> {
     try {
-      console.log('Fetching SFTP files with format:', format);
       const response = await fetch(
         `${this.baseURL}/sftp/all?format=${format}`,
         {
@@ -148,23 +138,14 @@ export class SftpApiService {
       );
 
       const files = await this.handleResponse<SftpFileInfo[]>(response);
-      console.log('SFTP files retrieved:', files.length);
       return files;
     } catch (error) {
-      console.error('Failed to fetch SFTP files:', error);
       throw error;
     }
   }
 
-  /**
-   * Read a specific SFTP file by name
-   * @param name - The filename (without .json extension if it's in the response)
-   */
   async readFile(name: string): Promise<SftpFileContent> {
     try {
-      console.log('Reading SFTP file:', name);
-
-      // Remove .json extension if present
       const fileName = name.endsWith('.json') ? name.slice(0, -5) : name;
 
       const response = await fetch(
@@ -176,26 +157,17 @@ export class SftpApiService {
       );
 
       const content = await this.handleResponse<SftpFileContent>(response);
-      console.log('SFTP file content retrieved:', content);
       return content;
     } catch (error) {
-      console.error('Failed to read SFTP file:', error);
       throw error;
     }
   }
 
-  /**
-   * Extract ID from filename
-   * Format: dev_cron_1234_<UUID>.json or dev_de_1234_<UUID>.json
-   */
   extractIdFromFilename(filename: string): string | null {
     const match = /_([\w-]{36})\.json$/.exec(filename);
     return match ? match[1] : null;
   }
 
-  /**
-   * Extract format type from filename
-   */
   extractFormatFromFilename(filename: string): SftpFormat | null {
     if (filename.includes('_cron_')) return 'cron';
     if (filename.includes('_de_')) return 'de';
@@ -203,23 +175,13 @@ export class SftpApiService {
     return null;
   }
 
-  /**
-   * Publish (deploy) an exported item
-   * This will update the status to 'deployed' in the respective service
-   * For 'cron' format: updates schedule status via /api/scheduler/update/status/:id
-   * For 'de' format: updates job status via /api/job/update/status/:id
-   * For 'dems' format: triggers workflow deploy via /api/config/:id/workflow?action=deploy
-   */
   async publishItem(
     id: string,
     format: SftpFormat,
     type?: 'PULL' | 'PUSH' | string,
   ): Promise<void> {
     try {
-      console.log('Publishing item:', { id, format, type });
-
       if (format === 'cron') {
-        // Update schedule status using the scheduler API endpoint
         const queryParams = new URLSearchParams();
         queryParams.append('status', 'STATUS_08_DEPLOYED');
 
@@ -230,25 +192,20 @@ export class SftpApiService {
           },
         );
       } else if (format === 'dems') {
-        // Update config status using the workflow deploy endpoint
-        // This will change status to 'deployed' AND execute CREATE TABLE query
         await this.apiRequest<{ success: boolean; message: string }>(
           `${this.baseURL}/config/${id}/workflow?action=deploy`,
           {
             method: 'POST',
             body: JSON.stringify({
-              configId: parseInt(id), // Required by DeploymentDto
-              userId: 'publisher', // This should ideally come from auth context
+              configId: parseInt(id),
+              userId: 'publisher',
               deploymentNotes: 'Published via SFTP',
               deploymentEnvironment: 'production',
             }),
           },
         );
       } else {
-        // Update job status - requires type parameter (for 'de' format)
         let jobType: string | undefined = type;
-
-        // Normalize the type to uppercase
         if (jobType) {
           jobType = jobType.toUpperCase();
           if (jobType !== 'PULL' && jobType !== 'PUSH') {
@@ -273,10 +230,7 @@ export class SftpApiService {
           },
         );
       }
-
-      console.log('Item published successfully:', id);
     } catch (error) {
-      console.error('Failed to publish item:', error);
       throw error;
     }
   }

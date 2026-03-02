@@ -91,7 +91,7 @@ export const AppRoutes: React.FC = () => {
   const { loading } = useAuth();
 
 
- useEffect(() => {
+  useEffect(() => {
     setupFetch401Interceptor(async () => { await navigate('/login'); });
   }, [navigate]);
 
@@ -151,8 +151,6 @@ export const AppRoutes: React.FC = () => {
         <Route path="/publisher/configs" element={
           <PublisherRoute>
             <PublisherConfigsPage />
-        {/* Redirect old cron routes to new unified route */}
-        <Route path="/publisher/cron-jobs" element={<Navigate to={ROUTES.CRON} replace />} />
           </PublisherRoute>
         } />
         <Route path="/publisher/de-jobs" element={

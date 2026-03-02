@@ -25,11 +25,6 @@ export class FunctionsApiService {
       const headers = this.getAuthHeaders();
       const body = JSON.stringify(functionData);
 
-      console.log('🌐 FunctionsApiService.addFunction:');
-      console.log('URL:', url);
-      console.log('Headers:', headers);
-      console.log('Body:', body);
-
       const response = await fetch(url, {
         method: 'POST',
         headers,
@@ -38,21 +33,14 @@ export class FunctionsApiService {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('❌ HTTP Error Response:', {
-          status: response.status,
-          statusText: response.statusText,
-          body: errorText,
-        });
         throw new Error(
           `HTTP error! status: ${response.status}, body: ${errorText}`,
         );
       }
 
       const result = await response.json();
-      console.log('✅ Success Response:', result);
       return result;
     } catch (error) {
-      console.error('Failed to add function:', error);
       throw error;
     }
   }
@@ -83,7 +71,6 @@ export class FunctionsApiService {
 
       return await response.json();
     } catch (error) {
-      console.error('Failed to update function:', error);
       throw error;
     }
   }
@@ -112,7 +99,6 @@ export class FunctionsApiService {
 
       return await response.json();
     } catch (error) {
-      console.error('Failed to delete function:', error);
       throw error;
     }
   }
@@ -134,7 +120,6 @@ export class FunctionsApiService {
 
       return await response.json();
     } catch (error) {
-      console.error('Failed to get config with functions:', error);
       throw error;
     }
   }

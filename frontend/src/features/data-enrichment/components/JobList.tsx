@@ -46,11 +46,6 @@ interface JobListProps {
     totalRecords: number;
     setPage: (page: number) => void;
   };
-  page?: number;
-  setPage?: (page: number) => void;
-  totalPages?: number;
-  totalRecords?: number;
-  itemsPerPage?: number;
   searchingFilters?: any;
   setSearchingFilters?: any;
   error?: string | null;
@@ -85,22 +80,12 @@ export const JobList: React.FC<JobListProps> = (props) => {
     onViewLogs,
     onEdit,
     pagination,
-    page: pageProp,
-    setPage: setPageProp,
-    totalPages: totalPagesProp,
-    totalRecords: totalRecordsProp = 0,
-    itemsPerPage: itemsPerPageProp = 10,
     searchingFilters,
     setSearchingFilters,
     error,
     loading,
   } = props;
 
-  const page = pagination?.page ?? pageProp ?? 1;
-  const setPage = pagination?.setPage ?? setPageProp;
-  const totalRecords = pagination?.totalRecords ?? totalRecordsProp ?? 0;
-  const itemsPerPage = pagination?.limit ?? itemsPerPageProp ?? 10;
-  const totalPages = Math.ceil(totalRecords / itemsPerPage) || 0;
   const { user } = useAuth();
   const userIsEditor = user?.claims ? isEditor(user.claims) : false;
   const userIsApprover = user?.claims ? isApprover(user.claims) : false;
@@ -163,7 +148,6 @@ export const JobList: React.FC<JobListProps> = (props) => {
         props.onRefresh();
       }
     } catch (error) {
-      console.error('Failed to update job status:', error);
       showError('Failed to update job status');
     } finally {
       setDropdownOpen(null);
@@ -202,7 +186,6 @@ export const JobList: React.FC<JobListProps> = (props) => {
         }
       }
     } catch (error) {
-      console.error('Error toggling job publishing status:', error);
       showError('Failed to update publishing status. Please try again.');
     } finally {
       setDropdownOpen(null);
@@ -351,7 +334,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
               getDemsStatusLov[userRole] || [],
             searchingFilters,
             setSearchingFilters,
-            setPage
+            setPage: pagination.setPage
           })}
         </Box>
       ),
@@ -682,7 +665,6 @@ export const JobList: React.FC<JobListProps> = (props) => {
                   }}
                   variant="primary"
                   className="!pb-[6px] !pt-[5px]"
-                  autoFocus
                 >
                   Yes, Pause Job
                 </Button>
@@ -787,7 +769,6 @@ export const JobList: React.FC<JobListProps> = (props) => {
                   }}
                   variant="primary"
                   className="!pb-[6px] !pt-[5px]"
-                  autoFocus
                 >
                   Yes, Resume Job
                 </Button>

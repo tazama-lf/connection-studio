@@ -25,7 +25,7 @@ export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({
   if (!isOpen) return null;
 
   // Mock version data - in real app this would come from API
-  const versions = config?.versions || [
+  const versions = config?.versions ?? [
     {
       version: 'v2',
       status: 'DEVELOPMENT' as const,

@@ -88,13 +88,10 @@ export const SimulationPanel: React.FC<SimulationPanelProps> = ({
       setSimulationResult(result);
       setHasRun(true);
       onSimulationComplete(result.status === 'PASSED');
-
-      console.log('Simulation completed:', result);
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown simulation error';
       setSimulationError(errorMessage);
-      console.error('Simulation failed:', error);
     } finally {
       setIsRunning(false);
     }

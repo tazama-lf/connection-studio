@@ -19,19 +19,15 @@ export const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
 }) => {
   const [isExporting, setIsExporting] = useState(false);
 
-  console.log('ConfigDetailsModal render:', { isOpen, hasConfig: !!config, hasOnExport: !!onExport });
-
   if (!isOpen || !config) return null;
 
   const handleExport = async () => {
-    console.log('Export clicked for config:', config.id);
     setIsExporting(true);
     try {
       await onExport(config.id);
       onClose();
     } catch (error) {
-      console.error('Export error:', error);
-      // Error handling is done in parent component
+      setIsExporting(false);
     } finally {
       setIsExporting(false);
     }
@@ -40,15 +36,12 @@ export const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex min-h-screen items-center justify-center p-4">
-        {/* Backdrop */}
         <div
           className="fixed inset-0 bg-black bg-opacity-30 transition-opacity"
           onClick={onClose}
         ></div>
 
-        {/* Modal */}
         <div className="relative w-full max-w-3xl bg-white rounded-lg shadow-xl">
-          {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
             <h2 className="text-xl font-semibold text-gray-900">
               Configuration Details
@@ -61,17 +54,14 @@ export const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
             </button>
           </div>
 
-          {/* Content */}
           <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
-            {/* Status Badge */}
             <div className="flex items-center space-x-2">
               <span className="text-sm font-medium text-gray-700">Status:</span>
-              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(config.status || 'approved')}`}>
-                {getStatusLabel(config.status || 'approved')}
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(config.status ?? 'approved')}`}>
+                {getStatusLabel(config.status ?? 'approved')}
               </span>
             </div>
 
-            {/* Basic Information */}
             <div className="grid grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -87,12 +77,11 @@ export const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
                   Transaction Type
                 </label>
                 <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded border border-gray-200">
-                  {config.transactionType || 'N/A'}
+                  {config.transactionType ?? 'N/A'}
                 </p>
               </div>
             </div>
 
-            {/* Config Details */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Configuration
@@ -102,19 +91,19 @@ export const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <span className="text-xs font-medium text-gray-600">Message Family:</span>
-                      <p className="text-sm text-gray-900">{config.msgFam || 'N/A'}</p>
+                      <p className="text-sm text-gray-900">{config.msgFam ?? 'N/A'}</p>
                     </div>
                     <div>
                       <span className="text-xs font-medium text-gray-600">Version:</span>
-                      <p className="text-sm text-gray-900">{config.version || 'N/A'}</p>
+                      <p className="text-sm text-gray-900">{config.version ?? 'N/A'}</p>
                     </div>
                     <div>
                       <span className="text-xs font-medium text-gray-600">Endpoint Path:</span>
-                      <p className="text-sm text-gray-900 font-mono">{config.endpointPath || 'N/A'}</p>
+                      <p className="text-sm text-gray-900 font-mono">{config.endpointPath ?? 'N/A'}</p>
                     </div>
                     <div>
                       <span className="text-xs font-medium text-gray-600">Content Type:</span>
-                      <p className="text-sm text-gray-900">{config.contentType || 'N/A'}</p>
+                      <p className="text-sm text-gray-900">{config.contentType ?? 'N/A'}</p>
                     </div>
                   </div>
                   {config.mapping && config.mapping.length > 0 && (
@@ -137,7 +126,6 @@ export const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
               </div>
             </div>
 
-            {/* Metadata */}
             <div className="grid grid-cols-2 gap-6 pt-4 border-t border-gray-200">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -146,13 +134,13 @@ export const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
                 <p className="text-sm text-gray-900">
                   {config.createdAt
                     ? new Date(config.createdAt).toLocaleString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                        hour: 'numeric',
-                        minute: '2-digit',
-                        hour12: true,
-                      })
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                      hour: 'numeric',
+                      minute: '2-digit',
+                      hour12: true,
+                    })
                     : 'N/A'}
                 </p>
               </div>
@@ -164,36 +152,29 @@ export const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
                 <p className="text-sm text-gray-900">
                   {config.updatedAt
                     ? new Date(config.updatedAt).toLocaleString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                        hour: 'numeric',
-                        minute: '2-digit',
-                        hour12: true,
-                      })
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                      hour: 'numeric',
+                      minute: '2-digit',
+                      hour12: true,
+                    })
                     : 'N/A'}
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Footer */}
-          <div className="flex items-center justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50">
+         <div className="flex items-center justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50">
             <Button
-              onClick={() => {
-                console.log('Close button clicked');
-                onClose();
-              }}
+              onClick={onClose}
               variant="secondary"
               disabled={isExporting}
             >
               Close
             </Button>
             <Button
-              onClick={() => {
-                console.log('Export button clicked');
-                handleExport();
-              }}
+              onClick={handleExport}
               variant="primary"
               disabled={isExporting}
               className="flex items-center space-x-2"

@@ -67,9 +67,9 @@ const DataEnrichmentModule: React.FC = () => {
       fetchJobsWithScrollPreservation();
 
       const backendMessage = jobResponse?.message;
-      const jobName = jobResponse?.endpoint_name || 'New endpoint';
+      const jobName = jobResponse?.endpoint_name ?? 'New endpoint';
       const successMessage =
-        backendMessage ||
+        backendMessage ??
         `${jobName} has been saved successfully! You can now send it for approval.`;
       showSuccess(successMessage);
     } catch (error) {
@@ -202,7 +202,6 @@ const DataEnrichmentModule: React.FC = () => {
           onEdit={handleEditJob}
           onRefresh={fetchJobsWithScrollPreservation}
           pagination={pagination}
-          totalRecords={pagination.totalRecords}
           searchingFilters={searchingFilters}
           setSearchingFilters={setSearchingFilters}
           error={error}

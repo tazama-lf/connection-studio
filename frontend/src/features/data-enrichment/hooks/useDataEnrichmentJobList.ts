@@ -24,11 +24,11 @@ export const useDataEnrichmentJobList = () => {
   } = useFilters();
 
   const pagination = useMemo(() => ({
-      page: offset,
-      limit,
-      totalRecords: total,
-      setPage: (page: number) => { setOffset(page - 1); },
-    }), [offset, limit, total])
+    page: offset,
+    limit,
+    totalRecords: total,
+    setPage: (page: number) => { setOffset(page - 1); },
+  }), [offset, limit, total])
 
   const [searchingFilters, setSearchingFilters] = useState<
     Record<string, unknown>
@@ -116,7 +116,7 @@ export const useDataEnrichmentJobList = () => {
 
   useEffect(() => {
     loadJobs();
-  }, [loadJobs]);
+  }, [loadJobs, pagination, searchingFilters]);
 
   const handleView = useCallback(
     async (jobId: string) => {

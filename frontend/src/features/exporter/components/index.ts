@@ -1,4 +1,3 @@
-// Exporter component exports
 export { ExporterConfigList } from './ExporterConfigList';
 export { ExporterJobList } from './ExporterJobList';
 export { ConfigDetailsModal } from './ConfigDetailsModal';

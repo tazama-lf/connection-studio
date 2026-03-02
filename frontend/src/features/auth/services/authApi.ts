@@ -48,20 +48,14 @@ export class AuthApiService {
 
     try {
       const response = await fetch(url, {
-        method: config.method || 'GET',
+        method: config.method ?? 'GET',
         headers,
         body: config.body ? JSON.stringify(config.body) : undefined,
       });
 
       if (response.status === 401) {
-        console.log('=== 401 UNAUTHORIZED RESPONSE ===');
-        console.log('URL:', url);
-        console.log('Method:', config.method || 'GET');
-        console.log('Endpoint:', endpoint);
-
         // For 401 responses on non-login endpoints, clear tokens
         if (endpoint !== API_CONFIG.ENDPOINTS.AUTH.LOGIN) {
-          console.log('Clearing expired tokens');
           localStorage.removeItem('authToken');
           localStorage.removeItem('user');
         }
@@ -75,7 +69,6 @@ export class AuthApiService {
 
       return await response.json();
     } catch (error) {
-      console.error('Auth API request failed:', error);
       // Re-throw with more specific error messages for common cases
       if (error instanceof TypeError && error.message.includes('fetch')) {
         throw new Error('Network error');
@@ -120,14 +113,13 @@ export class AuthApiService {
         {
           method: 'POST',
           body: {
-            userId: decodedToken.id || userData.id,
-            tenantId: decodedToken.tenantId || userData.tenantId,
+            userId: decodedToken.id ?? userData.id,
+            tenantId: decodedToken.tenantId ?? userData.tenantId,
             tokenString: token,
           },
         },
       );
     } catch (error) {
-      console.error('Failed to decode token for session refresh:', error);
       throw error;
     }
   }
@@ -149,7 +141,6 @@ export class AuthApiService {
       );
 
       const payload = JSON.parse(jsonPayload);
-      console.log('Decoded JWT payload:', payload); // Debug log
 
       // If there's a tokenString field, decode that token too
       let innerPayload = payload;
@@ -167,31 +158,26 @@ export class AuthApiService {
               .join(''),
           );
           innerPayload = JSON.parse(innerJsonPayload);
-          console.log('Decoded inner JWT payload:', innerPayload);
         } catch (innerError) {
-          console.warn(
-            'Failed to decode inner token, using outer payload:',
-            innerError,
-          );
+          // Failed to decode inner token, using outer payload
         }
       }
 
       return {
-        id: innerPayload.sub || payload.sub || payload.clientId || 'unknown',
+        id: innerPayload.sub ?? payload.sub ?? payload.clientId ?? 'unknown',
         username:
-          innerPayload.preferred_username ||
-          innerPayload.username ||
-          payload.preferred_username ||
-          payload.username ||
-          innerPayload.sub ||
-          payload.sub ||
+          innerPayload.preferred_username ??
+          innerPayload.username ??
+          payload.preferred_username ??
+          payload.username ??
+          innerPayload.sub ??
+          payload.sub ??
           'user',
-        email: innerPayload.email || payload.email,
-        claims: payload.claims || innerPayload.realm_access?.roles || [],
-        tenantId: payload.tenantId || innerPayload.tenantId,
+        email: innerPayload.email ?? payload.email,
+        claims: payload.claims ?? innerPayload.realm_access?.roles ?? [],
+        tenantId: payload.tenantId ?? innerPayload.tenantId,
       };
     } catch (error) {
-      console.error('Failed to decode token:', error);
       return null;
     }
   }

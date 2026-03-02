@@ -49,7 +49,14 @@ export const getPrimaryRole = (userClaims: string[]): UserRole | null => {
 /**
  * Get role display information
  */
-export const getRoleDisplayInfo = (role: UserRole) => {
+
+interface RoleDisplayInfo {
+  label: string;
+  color: string;
+  description: string;
+}
+
+export const getRoleDisplayInfo = (role: UserRole): RoleDisplayInfo => {
   const roleConfig = {
     approver: {
       label: 'Approver',

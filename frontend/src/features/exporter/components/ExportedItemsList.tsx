@@ -46,9 +46,6 @@ export const ExportedItemsList: React.FC<ExportedItemsListProps> = (props) => {
     Record<string, DemsFileData>
   >({});
 
-  console.log('format, files', format, files);
-
-  // Load DEMS file content when format is 'dems'
   useEffect(() => {
     if (format === 'dems' && files.length > 0) {
       const loadDemsData = async () => {
@@ -64,8 +61,6 @@ export const ExportedItemsList: React.FC<ExportedItemsListProps> = (props) => {
               transactionType: content.transactionType,
             };
           } catch (error) {
-            console.error(`Failed to load DEMS data for ${file.name}:`, error);
-            // Use fallback data based on filename
             newDemsData[file.name] = {
               endpointPath: file.name.replace('.json', ''),
               status: 'ready',
@@ -110,13 +105,11 @@ export const ExportedItemsList: React.FC<ExportedItemsListProps> = (props) => {
       return descOrder(a.modifyTime.toString(), b.modifyTime.toString());
     });
 
-  // Load DEMS file content to get endpoint paths and statuses
   useEffect(() => {
     if (format === 'dems' && files.length > 0) {
       const loadDemsData = async () => {
         const dataMap: Record<string, DemsFileData> = {};
 
-        // Load file content for each DEMS file
         await Promise.all(
           files.map(async (file) => {
             try {
@@ -128,8 +121,6 @@ export const ExportedItemsList: React.FC<ExportedItemsListProps> = (props) => {
                 transactionType: content.transactionType,
               };
             } catch (error) {
-              console.error(`Failed to load content for ${file.name}:`, error);
-              // Keep default values
               dataMap[file.name] = {
                 endpointPath: file.name,
                 status: 'unknown',
@@ -171,7 +162,6 @@ export const ExportedItemsList: React.FC<ExportedItemsListProps> = (props) => {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
-  // Format date from timestamp
   const formatDate = (timestamp: number): string => new Date(timestamp).toLocaleString('en-US', {
       month: 'numeric',
       day: 'numeric',

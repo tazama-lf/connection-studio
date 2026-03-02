@@ -1,52 +1,56 @@
-import React, { useState, useEffect } from 'react';
 import { ChevronLeft, Database } from 'lucide-react';
-import { dataEnrichmentJobApi as dataEnrichmentApi } from '../../data-enrichment/handlers';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useToast } from '../../../shared/providers/ToastProvider';
+import { dataEnrichmentJobApi as dataEnrichmentApi } from '../../data-enrichment/handlers';
 import type { DataEnrichmentJobResponse } from '../../data-enrichment/types';
 
 import { useAuth } from '@features/auth';
-import { getPrimaryRole } from '@utils/common/roleUtils';
-import { UI_CONFIG } from '@shared/config/app.config';
-import JobList from '@features/data-enrichment/components/JobList';
-import { Button } from '@shared';
-import { useNavigate } from 'react-router';
-import JobDetailsModal from '@features/data-enrichment/components/JobDetailsModal';
-import { Tooltip } from '@mui/material';
 import EndpointHistoryButton from '@features/data-enrichment/components/EndpointHistoryButton';
+import JobDetailsModal from '@features/data-enrichment/components/JobDetailsModal';
+import JobList from '@features/data-enrichment/components/JobList';
+import { Tooltip } from '@mui/material';
+import { Button } from '@shared';
+import useFilters from '@shared/hooks/useFilters';
+import { getPrimaryRole } from '@utils/common/roleUtils';
+import { useNavigate } from 'react-router';
 
 const PublisherDEJobsPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const userRole = getPrimaryRole(user?.claims!);
 
-  const [itemsPerPage] = useState(UI_CONFIG.pagination.defaultPageSize);
   const [jobs, setJobs] = useState<DataEnrichmentJobResponse[]>([]);
-  const [jobsLoading, setJobsLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Job details modal state
   const [showJobDetails, setShowJobDetails] = useState(false);
   const [selectedJob, setSelectedJob] =
     useState<DataEnrichmentJobResponse | null>(null);
   const [jobDetailsLoading, setJobDetailsLoading] = useState(false);
 
-  const [page, setPage] = useState<number>(1);
-  const [totalPages, setTotalPages] = useState<number>(0);
   const [totalRecords, setTotalRecords] = useState<number>(0);
   const [searchingFilters, setSearchingFilters] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+
+  const {
+    offset,
+    limit,
+    setOffset,
+  } = useFilters();
+
+  const pagination = useMemo(() => ({
+    page: offset,
+    limit,
+    totalRecords,
+    setPage: (page: number) => { setOffset(page - 1); },
+  }), [offset, limit, totalRecords])
+
   const { showError } = useToast();
 
-  const fetchDeJobs = async (pageNumber = 1): Promise<void> => {
+  const fetchDeJobs = async (): Promise<void> => {
     try {
       setLoading(true);
       setError(null);
-
-      const limit: number = itemsPerPage;
-      const offset: number = pageNumber - 1;
 
       const params = { limit, offset, userRole: userRole as string };
 
@@ -56,7 +60,6 @@ const PublisherDEJobsPage: React.FC = () => {
       );
 
       setJobs(response.data);
-      setTotalPages(response.pages);
       setTotalRecords(response.total);
     } catch (err: unknown) {
       const errorMessage =
@@ -68,8 +71,8 @@ const PublisherDEJobsPage: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchDeJobs(page);
-  }, [page, searchingFilters]);
+    fetchDeJobs();
+  }, [pagination, searchingFilters]);
 
   const handleViewJobDetails = async (jobId: string) => {
     console.log('Exporter viewing job details:', jobId);
@@ -77,11 +80,9 @@ const PublisherDEJobsPage: React.FC = () => {
       setJobDetailsLoading(true);
       setShowJobDetails(true);
 
-      // Find the job in the current list to determine its type
       const job = jobs.find((j) => j.id === jobId);
       const jobType = job?.type?.toUpperCase() as 'PULL' | 'PUSH' | undefined;
 
-      // Fetch job details from the API
       const jobDetails = await dataEnrichmentApi.getById(jobId, jobType);
       setSelectedJob(jobDetails);
     } catch (error) {
@@ -95,10 +96,6 @@ const PublisherDEJobsPage: React.FC = () => {
   const handleCloseJobDetails = () => {
     setShowJobDetails(false);
     setSelectedJob(null);
-  };
-
-  const handlePublishSuccess = () => {
-    fetchDeJobs(page); // Refresh the list after successful publish
   };
 
   return (
@@ -132,34 +129,11 @@ const PublisherDEJobsPage: React.FC = () => {
           </div>
         </div>
 
-        {/* DE Jobs Table */}
-        {/* <PublisherDEJobList
-          jobs={jobs}
-          isLoading={jobsLoading}
-          onViewDetails={handleViewDetails}
-          onRefresh={() => fetchDeJobs(page)}
-          page={page}
-          setPage={setPage}
-          totalPages={totalPages}
-          totalRecords={totalRecords}
-          itemsPerPage={itemsPerPage}
-          searchingFilters={searchingFilters}
-          setSearchingFilters={setSearchingFilters}
-          error={error}
-          loading={loading}
-        /> */}
-
-        {/* DE Jobs Table */}
         <JobList
           jobs={jobs}
-          isLoading={jobsLoading}
-          onRefresh={async () => { await fetchDeJobs(page); }}
+          onRefresh={async () => { await fetchDeJobs(); }}
           onViewLogs={handleViewJobDetails}
-          page={page}
-          setPage={setPage}
-          totalPages={totalPages}
-          totalRecords={totalRecords}
-          itemsPerPage={itemsPerPage}
+          pagination={pagination}
           searchingFilters={searchingFilters}
           setSearchingFilters={setSearchingFilters}
           error={error}
@@ -181,7 +155,7 @@ const PublisherDEJobsPage: React.FC = () => {
         onClose={handleCloseJobDetails}
         job={selectedJob}
         isLoading={jobDetailsLoading}
-        // onExport={handleExportJob}
+      // onExport={handleExportJob}
       />
     </div>
   );

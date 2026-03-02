@@ -32,7 +32,7 @@ const {
   defaultValues,
   pullValidationSchema,
   pushValidationSchema,
-} = (validationSchema as any) || {};
+} = (validationSchema as any) ?? {};
 
 export const DataEnrichmentEditModal: React.FC<
   DataEnrichmentEditModalProps
@@ -122,7 +122,7 @@ export const DataEnrichmentEditModal: React.FC<
         errorMessage = error.message;
       } else if (error && typeof error === 'object') {
         const apiError = error as any;
-        errorMessage = apiError.message || apiError.error || 'Unknown error occurred';
+        errorMessage = apiError.message ?? apiError.error ?? 'Unknown error occurred';
       }
       showError('Error', errorMessage);
     }
@@ -160,7 +160,7 @@ export const DataEnrichmentEditModal: React.FC<
         const userRole = 'ASSOCIATE'; 
         const searchingFilters = {};
         const result = await loadCronSchedules(pageNumber, itemsPerPage, userRole, searchingFilters);
-        const schedules = result?.schedules || result?.data || [];
+        const schedules = result?.schedules ?? result?.data ?? [];
 
         
         const filteredSchedules = schedules?.filter(
@@ -169,7 +169,7 @@ export const DataEnrichmentEditModal: React.FC<
             schedule.status === DATA_ENRICHMENT_JOB_STATUSES.EXPORTED,
         );
 
-        setAvailableSchedules(filteredSchedules || []);
+        setAvailableSchedules(filteredSchedules ?? []);
       } catch (error) {
         setAvailableSchedules([]);
       }
@@ -183,11 +183,11 @@ export const DataEnrichmentEditModal: React.FC<
       const jobType = getJobType(selectedJob);
 
       const initialValues: any = {
-        name: selectedJob.endpoint_name || '',
-        description: selectedJob.description || '',
-        version: selectedJob.version || '',
-        targetTable: selectedJob.table_name || '',
-        ingestMode: selectedJob.mode || 'append',
+        name: selectedJob.endpoint_name ?? '',
+        description: selectedJob.description ?? '',
+        version: selectedJob.version ?? '',
+        targetTable: selectedJob.table_name ?? '',
+        ingestMode: selectedJob.mode ?? 'append',
       };
 
       if (jobType === 'push') {
@@ -202,24 +202,24 @@ export const DataEnrichmentEditModal: React.FC<
       } else {
         
         initialValues.sourceType =
-          selectedJob.source_type?.toLowerCase() || 'sftp'; 
-        initialValues.schedule = selectedJob.schedule_id || '';
+          selectedJob.source_type?.toLowerCase() ?? 'sftp'; 
+        initialValues.schedule = selectedJob.schedule_id ?? '';
 
         
         if (selectedJob.connection) {
           if (selectedJob.source_type === 'SFTP') {
             
-            initialValues.host = selectedJob.connection.host || '';
-            initialValues.port = selectedJob.connection.port?.toString() || '';
+            initialValues.host = selectedJob.connection.host ?? '';
+            initialValues.port = selectedJob.connection.port?.toString() ?? '';
             initialValues.authType =
               selectedJob.connection.auth_type === 'PRIVATE_KEY'
                 ? 'key'
                 : 'password';
-            initialValues.username = selectedJob.connection.user_name || '';
+            initialValues.username = selectedJob.connection.user_name ?? '';
             
           } else if (selectedJob.source_type === 'HTTP') {
             
-            initialValues.url = selectedJob.connection.url || '';
+            initialValues.url = selectedJob.connection.url ?? '';
             initialValues.headers = selectedJob.connection.headers
               ? JSON.stringify(selectedJob.connection.headers, null, 2)
               : '';
@@ -228,7 +228,7 @@ export const DataEnrichmentEditModal: React.FC<
 
         
         if (selectedJob.file) {
-          let pathPattern = selectedJob.file.path || '';
+          let pathPattern = selectedJob.file.path ?? '';
 
           
           if (pathPattern && !pathPattern.startsWith('/')) {
@@ -236,8 +236,8 @@ export const DataEnrichmentEditModal: React.FC<
           }
           initialValues.pathPattern = pathPattern;
           initialValues.fileFormat =
-            selectedJob.file.file_type?.toLowerCase() || 'csv'; 
-          initialValues.delimiter = selectedJob.file.delimiter || ',';
+            selectedJob.file.file_type?.toLowerCase() ?? 'csv'; 
+          initialValues.delimiter = selectedJob.file.delimiter ?? ',';
         }
       }
 
@@ -455,7 +455,7 @@ export const DataEnrichmentEditModal: React.FC<
                 fontSize: '15px',
               }}
             >
-              "{watch('name') || selectedJob?.endpoint_name || 'this endpoint'}"
+              "{watch('name') ?? selectedJob?.endpoint_name ?? 'this endpoint'}"
             </Box>
             ?
           </DialogContentText>
@@ -545,7 +545,7 @@ export const DataEnrichmentEditModal: React.FC<
                 fontSize: '15px',
               }}
             >
-              "{selectedJob?.endpoint_name || 'this job'}"
+              "{selectedJob?.endpoint_name ?? 'this job'}"
             </Box>
             for approval?
           </DialogContentText>

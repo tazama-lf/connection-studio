@@ -24,9 +24,6 @@ interface AuthHeaderProps {
     navigate(-1);
   };
 
-  // Debug logging
-  console.log('AuthHeader - Current user:', user);
-
   return <header className="bg-white shadow" data-id="element-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4" data-id="element-21">
         <div className="flex justify-between items-center" data-id="element-22">
@@ -47,7 +44,6 @@ interface AuthHeaderProps {
                 <span className="font-medium">{user.username}</span>
                 {user.claims && user.claims.length > 0 && (
                   <>
-                    {console.log('AuthHeader - User claims:', user.claims)}
                     <span className="mx-1">-</span>
                     <span>
                       {(() => {

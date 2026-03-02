@@ -92,7 +92,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
         table_name: job.table_name,
         mode: job.mode,
         path: job.path,
-        type: job.type || jobType,
+        type: job.type ?? jobType,
       };
 
       if (jobType === 'push') {
@@ -227,10 +227,10 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                       type="text"
                       value={
                         editMode
-                          ? editedJob.endpoint_name || ''
+                          ? editedJob.endpoint_name ?? ''
                           : cloneMode
-                            ? editedJob.endpoint_name || job.endpoint_name || ''
-                            : job.endpoint_name || 'N/A'
+                            ? editedJob.endpoint_name ?? job.endpoint_name ?? ''
+                            : job.endpoint_name ?? 'N/A'
                       }
                       onChange={(e) =>
                         (editMode ||
@@ -265,10 +265,10 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                         type="text"
                         value={
                           editMode
-                            ? editedJob.path || ''
+                            ? editedJob.path ?? ''
                             : cloneMode
-                              ? job.path || 'Path not set'
-                              : job.path || 'Path not set'
+                              ? job.path ?? 'Path not set'
+                              : job.path ?? 'Path not set'
                         }
                         onChange={(e) =>
                           editMode &&
@@ -297,10 +297,10 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                       <select
                         value={
                           editMode
-                            ? editedJob.source_type || ''
+                            ? editedJob.source_type ?? ''
                             : cloneMode
-                              ? job.source_type || ''
-                              : job.source_type || ''
+                              ? job.source_type ?? ''
+                              : job.source_type ?? ''
                         }
                         onChange={(e) =>
                           editMode &&
@@ -336,10 +336,10 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                       type="text"
                       value={
                         editMode
-                          ? editedJob.version || ''
+                          ? editedJob.version ?? ''
                           : cloneMode
-                            ? editedJob.version || job.version || 'v1'
-                            : job.version || 'v1'
+                            ? editedJob.version ?? job.version ?? 'v1'
+                            : job.version ?? 'v1'
                       }
                       onChange={(e) =>
                         (editMode ||
@@ -372,7 +372,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                       </label>
                       <input
                         type="text"
-                        value={job?.schedule_name || 'N/A'}
+                        value={job?.schedule_name ?? 'N/A'}
                         readOnly
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg text-lg font-medium h-[60px]  text-gray-900"
                         style={{
@@ -394,10 +394,10 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                   <textarea
                     value={
                       editMode
-                        ? editedJob.description || ''
+                        ? editedJob.description ?? ''
                         : cloneMode
-                          ? job.description || 'No description provided'
-                          : job.description || 'No description provided'
+                          ? job.description ?? 'No description provided'
+                          : job.description ?? 'No description provided'
                     }
                     onChange={(e) =>
                       editMode &&
@@ -441,10 +441,10 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                       <select
                         value={
                           editMode
-                            ? editedJob.mode?.toLowerCase() || 'append'
+                            ? editedJob.mode?.toLowerCase() ?? 'append'
                             : cloneMode
-                              ? job.mode?.toLowerCase() || 'append'
-                              : job.mode?.toLowerCase() || 'append'
+                              ? job.mode?.toLowerCase() ?? 'append'
+                              : job.mode?.toLowerCase() ?? 'append'
                         }
                         onChange={(e) =>
                           editMode &&
@@ -487,10 +487,10 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                         type="text"
                         value={
                           editMode
-                            ? editedJob.table_name || ''
+                            ? editedJob.table_name ?? ''
                             : cloneMode
-                              ? job.table_name || ''
-                              : job.table_name || ''
+                              ? job.table_name ?? ''
+                              : job.table_name ?? ''
                         }
                         onChange={(e) =>
                           editMode &&
@@ -545,7 +545,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                             <span className="text-sm text-gray-900 block">
                               {(() => {
                                 const sourceType = getConnectionType(job);
-                                return sourceType || 'Unknown';
+                                return sourceType ?? 'Unknown';
                               })()}
                             </span>
                           </div>
@@ -579,10 +579,10 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                             Status
                           </span>
                           <span
-                            className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${getCentralizedStatusColor(job.status || 'in-progress')}`}
+                            className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${getCentralizedStatusColor(job.status ?? 'in-progress')}`}
                           >
                             <span className="w-2 h-2 rounded-full bg-current mr-2"></span>
-                            {job?.status || 'N/A'}
+                            {job?.status ?? 'N/A'}
                           </span>
                         </div>
                       </div>
@@ -597,7 +597,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                             Comments
                           </span>
                           <span className="text-sm text-gray-900 block break-words">
-                            {job?.comments || 'No comments available'}
+                            {job?.comments ?? 'No comments available'}
                           </span>
                         </div>
                       </div>
@@ -667,7 +667,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                         marginBottom: '16px',
                       }}
                     >
-                      Connection Details ({getConnectionType(job) || 'Unknown'})
+                      Connection Details ({getConnectionType(job) ?? 'Unknown'})
                     </Box>
 
                     {(() => {
@@ -706,7 +706,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                                   return 'Error parsing connection';
                                 }
                               }
-                              return (connectionObj as any)?.url || 'N/A';
+                              return (connectionObj as any)?.url ?? 'N/A';
                             })()}
                             readOnly
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-lg font-medium h-[60px] bg-white text-gray-900"
@@ -799,7 +799,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                                   return 'Error parsing connection';
                                 }
                               }
-                              return (connectionObj as any)?.host || 'N/A';
+                              return (connectionObj as any)?.host ?? 'N/A';
                             })()}
                             readOnly
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-lg font-medium h-[60px] bg-white text-gray-900"
@@ -856,7 +856,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                                   return 'Error parsing connection';
                                 }
                               }
-                              return (connectionObj as any)?.user_name || 'N/A';
+                              return (connectionObj as any)?.user_name ?? 'N/A';
                             })()}
                             readOnly
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-lg font-medium h-[60px] bg-white text-gray-900"
@@ -883,7 +883,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                                   return 'Error parsing connection';
                                 }
                               }
-                              return (connectionObj as any)?.auth_type || 'N/A';
+                              return (connectionObj as any)?.auth_type ?? 'N/A';
                             })()}
                             readOnly
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-lg font-medium h-[60px] bg-white text-gray-900"
@@ -918,7 +918,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                             </label>
                             <input
                               type="text"
-                              value={job.file.path || 'N/A'}
+                              value={job.file.path ?? 'N/A'}
                               readOnly
                               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-lg font-medium h-[60px] bg-white text-gray-900"
                               style={{
@@ -935,7 +935,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                             </label>
                             <input
                               type="text"
-                              value={job.file.file_type || 'N/A'}
+                              value={job.file.file_type ?? 'N/A'}
                               readOnly
                               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-lg font-medium h-[60px] bg-white text-gray-900"
                               style={{
@@ -952,7 +952,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                             </label>
                             <input
                               type="text"
-                              value={job.file.delimiter || 'N/A'}
+                              value={job.file.delimiter ?? 'N/A'}
                               readOnly
                               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-lg font-medium h-[60px] bg-white text-gray-900"
                               style={{
@@ -1031,8 +1031,8 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                     const cloneData = {
                       ...job,
                       endpoint_name:
-                        editedJob.endpoint_name || job.endpoint_name,
-                      version: editedJob.version || job.version,
+                        editedJob.endpoint_name ?? job.endpoint_name,
+                      version: editedJob.version ?? job.version,
                     };
 
                     onClone(cloneData);
@@ -1307,7 +1307,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
         isOpen={showRejectionDialog}
         onClose={() => { setShowRejectionDialog(false); }}
         onConfirm={handleRejectionConfirm}
-        jobName={job?.endpoint_name || job?.id || 'Unknown Job'}
+        jobName={job?.endpoint_name ?? job?.id ?? 'Unknown Job'}
         jobType="Data Enrichment Job"
       />
 
@@ -1357,7 +1357,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                 fontSize: '15px',
               }}
             >
-              "{job?.endpoint_name || 'this job'}"
+              "{job?.endpoint_name ?? 'this job'}"
             </Box>{' '}
             for approval?
           </DialogContentText>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ActivityIcon, ArrowLeft, SearchIcon } from 'lucide-react';
+import { ActivityIcon, ArrowLeft } from 'lucide-react';
 import { ConfigList } from '../../config/components/ConfigList';
 import { configApi } from '../../config/services/configApi';
 import { useToast } from '../../../shared/providers/ToastProvider';
@@ -12,7 +12,6 @@ interface ApproverDEMSProps {
 }
 
 const ApproverDEMS: React.FC<ApproverDEMSProps> = ({ onBack }) => {
-  const [searchTerm, setSearchTerm] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
   const [selectedConfig, setSelectedConfig] = useState<Config | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
@@ -21,7 +20,6 @@ const ApproverDEMS: React.FC<ApproverDEMSProps> = ({ onBack }) => {
 
   const handleApprove = async (configId: number) => {
     try {
-      console.log('Approving config:', configId);
       const result = await configApi.approveConfig(configId);
 
       if (result.success) {
@@ -30,10 +28,9 @@ const ApproverDEMS: React.FC<ApproverDEMSProps> = ({ onBack }) => {
         );
         setRefreshKey((prev) => prev + 1); // Refresh the list
       } else {
-        showError(result.message || 'Failed to approve configuration');
+        showError(result.message ?? 'Failed to approve configuration');
       }
     } catch (error) {
-      console.error('Approval failed:', error);
       showError('Failed to approve configuration. Please try again.');
     }
   };
@@ -45,12 +42,11 @@ const ApproverDEMS: React.FC<ApproverDEMSProps> = ({ onBack }) => {
       );
       // Allow empty reason, don't cancel on empty string
 
-      console.log('Rejecting config:', config.id, 'with reason:', reason);
-      const userId = user?.email || user?.username || 'system';
+      const userId = user?.email ?? user?.username ?? 'system';
       const result = await configApi.rejectConfig(
         config.id,
         userId,
-        reason || 'Configuration rejected by approver',
+        reason ?? 'Configuration rejected by approver',
       );
 
       if (result.success) {
@@ -59,10 +55,9 @@ const ApproverDEMS: React.FC<ApproverDEMSProps> = ({ onBack }) => {
         );
         setRefreshKey((prev) => prev + 1); // Refresh the list
       } else {
-        showError(result.message || 'Failed to reject configuration');
+        showError(result.message ?? 'Failed to reject configuration');
       }
     } catch (error) {
-      console.error('Rejection failed:', error);
       showError('Failed to reject configuration. Please try again.');
     }
   };
@@ -75,10 +70,6 @@ const ApproverDEMS: React.FC<ApproverDEMSProps> = ({ onBack }) => {
   const handleCloseViewModal = () => {
     setShowViewModal(false);
     setSelectedConfig(null);
-  };
-
-  const handleRefresh = () => {
-    setRefreshKey((prev) => prev + 1);
   };
 
   return (
@@ -138,7 +129,6 @@ const ApproverDEMS: React.FC<ApproverDEMSProps> = ({ onBack }) => {
 
           <ConfigList
             key={refreshKey}
-            searchTerm={searchTerm}
             showPendingApprovals={true}
             onViewDetails={handleViewDetails}
             onApprove={handleApprove}

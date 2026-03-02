@@ -75,7 +75,7 @@ export class FlowableApiService {
         return errorData as T;
       }
       throw new Error(
-        errorData.message || `HTTP error! status: ${response.status}`,
+        errorData.message ?? `HTTP error! status: ${response.status}`,
       );
     }
 
@@ -87,20 +87,14 @@ export class FlowableApiService {
    */
   async getTasksForRole(role: string): Promise<TaskResponse> {
     try {
-      console.log(`🚀 FlowableApiService - Getting tasks for role: ${role}`);
       const response = await fetch(`${this.baseURL}/flowable/tasks/${role}`, {
         method: 'GET',
         headers: this.getAuthHeaders(),
       });
 
       const result = await this.handleResponse<TaskResponse>(response);
-      console.log(`✅ FlowableApiService - Tasks for role ${role}:`, result);
       return result;
     } catch (error) {
-      console.error(
-        `❌ FlowableApiService - Failed to get tasks for role ${role}:`,
-        error,
-      );
       throw error;
     }
   }
@@ -110,7 +104,6 @@ export class FlowableApiService {
    */
   async completeTask(request: CompleteTaskRequest): Promise<TaskResponse> {
     try {
-      console.log(`🚀 FlowableApiService - Completing task: ${request.taskId}`);
       const response = await fetch(`${this.baseURL}/flowable/tasks/complete`, {
         method: 'POST',
         headers: this.getAuthHeaders(),
@@ -118,13 +111,8 @@ export class FlowableApiService {
       });
 
       const result = await this.handleResponse<TaskResponse>(response);
-      console.log('✅ FlowableApiService - Task completed:', result);
       return result;
     } catch (error) {
-      console.error(
-        `❌ FlowableApiService - Failed to complete task ${request.taskId}:`,
-        error,
-      );
       throw error;
     }
   }
@@ -134,17 +122,14 @@ export class FlowableApiService {
    */
   async getMyTasks(): Promise<TaskResponse> {
     try {
-      console.log('🚀 FlowableApiService - Getting my tasks');
       const response = await fetch(`${this.baseURL}/flowable/tasks/my`, {
         method: 'GET',
         headers: this.getAuthHeaders(),
       });
 
       const result = await this.handleResponse<TaskResponse>(response);
-      console.log('✅ FlowableApiService - My tasks:', result);
       return result;
     } catch (error) {
-      console.error('❌ FlowableApiService - Failed to get my tasks:', error);
       throw error;
     }
   }

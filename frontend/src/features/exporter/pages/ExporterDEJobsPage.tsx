@@ -1,59 +1,59 @@
-import React, { useState, useEffect } from 'react';
-import { useToast } from '../../../shared/providers/ToastProvider';
-import { useAuth } from '../../auth/contexts/AuthContext';
-import { dataEnrichmentJobApi as dataEnrichmentApi } from '../../data-enrichment/handlers';
-import { JobList } from '../../data-enrichment/components/JobList';
-import JobDetailsModal from '../../data-enrichment/components/JobDetailsModal';
-import type { DataEnrichmentJobResponse } from '../../data-enrichment/types';
-import { getPrimaryRole, isExporter } from '../../../utils/common/roleUtils';
-import { UI_CONFIG } from '@shared/config/app.config';
 import { Button } from '@shared';
+import useFilters from '@shared/hooks/useFilters';
 import { ChevronLeft, Database } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
+import { useToast } from '../../../shared/providers/ToastProvider';
+import { getPrimaryRole, isExporter } from '../../../utils/common/roleUtils';
+import { useAuth } from '../../auth/contexts/AuthContext';
+import JobDetailsModal from '../../data-enrichment/components/JobDetailsModal';
+import { JobList } from '../../data-enrichment/components/JobList';
+import { dataEnrichmentJobApi as dataEnrichmentApi } from '../../data-enrichment/handlers';
+import type { DataEnrichmentJobResponse } from '../../data-enrichment/types';
 
 export const ExporterDEJobsPage: React.FC = () => {
   const navigate = useNavigate();
   const { showSuccess, showError } = useToast();
   const { user, isAuthenticated } = useAuth();
 
-  const [itemsPerPage] = useState(UI_CONFIG.pagination.defaultPageSize);
-
-  // Role check
   const userIsExporter = user?.claims ? isExporter(user.claims) : false;
   const userRole = getPrimaryRole(user?.claims!);
 
-  // State
   const [jobs, setJobs] = useState<DataEnrichmentJobResponse[]>([]);
-  const [jobsLoading, setJobsLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
 
-  // Job details modal state
   const [showJobDetails, setShowJobDetails] = useState(false);
   const [selectedJob, setSelectedJob] =
     useState<DataEnrichmentJobResponse | null>(null);
   const [jobDetailsLoading, setJobDetailsLoading] = useState(false);
 
-  const [page, setPage] = useState<number>(1);
-  const [totalPages, setTotalPages] = useState<number>(0);
   const [totalRecords, setTotalRecords] = useState<number>(0);
   const [searchingFilters, setSearchingFilters] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Role-based access check
+  const {
+    offset,
+    limit,
+    setOffset,
+  } = useFilters();
+
+  const pagination = useMemo(() => ({
+    page: offset,
+    limit,
+    totalRecords,
+    setPage: (page: number) => { setOffset(page - 1); },
+  }), [offset, limit, totalRecords])
+
   useEffect(() => {
     if (isAuthenticated && user?.claims && !userIsExporter) {
       showError('You do not have permission to access this page');
     }
   }, [isAuthenticated, user, userIsExporter, showError]);
 
-  const fetchDeJobs = async (pageNumber = 1): Promise<void> => {
+  const fetchDeJobs = async (): Promise<void> => {
     try {
       setLoading(true);
       setError(null);
-
-      const limit: number = itemsPerPage;
-      const offset: number = pageNumber - 1;
 
       const params = { limit, offset, userRole: userRole as string };
 
@@ -62,8 +62,7 @@ export const ExporterDEJobsPage: React.FC = () => {
         searchingFilters,
       );
 
-      setJobs(response.jobs);
-      setTotalPages(response.pages);
+      setJobs(response.data);
       setTotalRecords(response.total);
     } catch (err: unknown) {
       const errorMessage =
@@ -75,24 +74,20 @@ export const ExporterDEJobsPage: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchDeJobs(page);
-  }, [page, searchingFilters]);
+    fetchDeJobs();
+  }, [searchingFilters]);
 
   const handleViewJobDetails = async (jobId: string) => {
-    console.log('Exporter viewing job details:', jobId);
     try {
       setJobDetailsLoading(true);
       setShowJobDetails(true);
 
-      // Find the job in the current list to determine its type
       const job = jobs.find((j) => j.id === jobId);
       const jobType = job?.type?.toUpperCase() as 'PULL' | 'PUSH' | undefined;
 
-      // Fetch job details from the API
       const jobDetails = await dataEnrichmentApi.getById(jobId, jobType);
       setSelectedJob(jobDetails);
     } catch (error) {
-      console.error('Failed to load job details:', error);
       showError('Failed to load job details');
     } finally {
       setJobDetailsLoading(false);
@@ -105,7 +100,6 @@ export const ExporterDEJobsPage: React.FC = () => {
   };
 
   const handleExportJob = async (jobId: string, jobType: 'PULL' | 'PUSH') => {
-    console.log('Exporter exporting job:', jobId, jobType);
     try {
       await dataEnrichmentApi.updateStatus(
         jobId,
@@ -114,13 +108,10 @@ export const ExporterDEJobsPage: React.FC = () => {
       );
       showSuccess('Job exported successfully!');
 
-      // Refresh the jobs list
-      fetchDeJobs(page);
+      fetchDeJobs();
 
-      // Close the modal
       handleCloseJobDetails();
     } catch (error) {
-      console.error('Failed to export job:', error);
       showError('Failed to export job. Please try again.');
     }
   };
@@ -166,18 +157,13 @@ export const ExporterDEJobsPage: React.FC = () => {
         {/* DE Jobs Table */}
         <JobList
           jobs={jobs}
-          isLoading={jobsLoading}
-          onRefresh={async () => { await fetchDeJobs(page); }}
+          onRefresh={async () => { await fetchDeJobs(); }}
           onViewLogs={handleViewJobDetails}
-          page={page}
-          setPage={setPage}
-          totalPages={totalPages}
-          totalRecords={totalRecords}
-          itemsPerPage={itemsPerPage}
           searchingFilters={searchingFilters}
           setSearchingFilters={setSearchingFilters}
           error={error}
           loading={loading}
+          pagination={pagination}
         />
       </div>
 

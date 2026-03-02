@@ -27,11 +27,11 @@ export const CloneConfigModal: React.FC<CloneConfigModalProps> = ({
   useEffect(() => {
     if (isOpen && config) {
       // Initialize with suggested values
-      const currentVersion = config.version || '1';
+      const currentVersion = config.version ?? '1';
       const versionNumber = parseInt(currentVersion);
       const nextVersion = isNaN(versionNumber) ? '2' : (versionNumber + 1).toString();
       setNewVersion(nextVersion);
-      setNewEndpointName(config.endpointPath || '');
+      setNewEndpointName(config.endpointPath ?? '');
     } else {
       setNewVersion('');
       setNewEndpointName('');
@@ -53,7 +53,6 @@ export const CloneConfigModal: React.FC<CloneConfigModalProps> = ({
         newMsgFam: config.msgFam
       };
 
-      console.log('🔄 Cloning config with data:', cloneData);
       const result = await configApi.cloneConfig(cloneData);
       
       if (result.success) {
@@ -61,10 +60,9 @@ export const CloneConfigModal: React.FC<CloneConfigModalProps> = ({
         onSuccess?.();
         onClose();
       } else {
-        showError(result.message || 'Failed to clone configuration');
+        showError(result.message ?? 'Failed to clone configuration');
       }
     } catch (error) {
-      console.error('❌ Clone failed:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to clone configuration';
       showError(errorMessage);
     } finally {

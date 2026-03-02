@@ -120,7 +120,7 @@ export class ConfigApiService {
       const errorData = await response
         .json()
         .catch(() => ({ success: false, message: 'Invalid credentials' }));
-      throw new Error(errorData.message || 'Invalid credentials');
+      throw new Error(errorData.message ?? 'Invalid credentials');
     }
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -128,7 +128,7 @@ export class ConfigApiService {
         return errorData as T;
       }
       throw new Error(
-        errorData.message || `HTTP error! status: ${response.status}`,
+        errorData.message ?? `HTTP error! status: ${response.status}`,
       );
     }
     return await response.json();
@@ -253,12 +253,12 @@ export class ConfigApiService {
     params: PaginationParams,
     searchingFilters?: Record<any, any>,
   ): Promise<PaginatedConfigResponse> {
-    const { status, ...otherFilters } = searchingFilters || {};
+    const { status, ...otherFilters } = searchingFilters ?? {};
     let statusFilter;
     if (!status) {
       const userRole = params.userRole as keyof typeof getDemsStatusLov;
       statusFilter =
-        getDemsStatusLov[userRole]?.map((item) => item.value)?.join(',') || '';
+        getDemsStatusLov[userRole]?.map((item) => item.value)?.join(',') ?? '';
     }
 
     const res = await fetch(
@@ -268,7 +268,7 @@ export class ConfigApiService {
         headers: this.getAuthHeaders(),
         body: JSON.stringify({
           ...otherFilters,
-          status: status || statusFilter,
+          status: status ?? statusFilter,
         }),
       },
     );
@@ -294,7 +294,7 @@ export class ConfigApiService {
         typeof responseData === 'object' &&
         'configs' in responseData
       ) {
-        return { configs: responseData.configs || [] };
+        return { configs: responseData.configs ?? [] };
       } else if (Array.isArray(responseData)) {
         return { configs: responseData };
       } else {
@@ -463,7 +463,7 @@ export class ConfigApiService {
       const response = await fetch(url, {
         method: 'POST',
         headers,
-        body: JSON.stringify(payload || {}),
+        body: JSON.stringify(payload ?? {}),
       });
       const result = await this.handleResponse<ConfigResponse>(response);
       return result;
@@ -495,13 +495,13 @@ export class ConfigApiService {
     reason?: string,
   ): Promise<ConfigResponse> {
     return await this.updateWorkflow(id, 'reject', {
-      comment: reason || 'Configuration rejected by approver',
+      comment: reason ?? 'Configuration rejected by approver',
     });
   }
 
   async exportConfig(id: number, notes?: string): Promise<ConfigResponse> {
     return await this.updateWorkflow(id, 'export', {
-      comment: notes || 'Exported for deployment',
+      comment: notes ?? 'Exported for deployment',
       userId: 'system',
       userRole: 'exporter',
     });
@@ -509,7 +509,7 @@ export class ConfigApiService {
 
   async deployConfig(id: number, notes?: string): Promise<ConfigResponse> {
     return await this.updateWorkflow(id, 'deploy', {
-      notes: notes || 'Deployed to production',
+      notes: notes ?? 'Deployed to production',
       actionBy: 'publisher',
     });
   }
@@ -573,7 +573,7 @@ export class ConfigApiService {
   ): Promise<ConfigResponse> {
     try {
       const requestBody = {
-        comment: comment || 'Status updated to exported',
+        comment: comment ?? 'Status updated to exported',
         userId: 'system',
       };
       const response = await fetch(
@@ -615,7 +615,7 @@ export class ConfigApiService {
           : [];
       }
       const filteredConfigs = configsArray.filter((config) => {
-        const configStatus = config.status?.toLowerCase() || '';
+        const configStatus = config.status?.toLowerCase() ?? '';
         const targetStatus = status.toLowerCase();
         let matches = false;
         if (targetStatus === 'approved') {

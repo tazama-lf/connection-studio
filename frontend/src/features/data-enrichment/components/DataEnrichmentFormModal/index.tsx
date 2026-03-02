@@ -80,7 +80,7 @@ export const DataEnrichmentFormModal: React.FC<
   const [createSuccess, setCreateSuccess] = useState<string | null>(null);
   
 
-  const tenantId = useAuth()?.user?.tenantId || 'tenantId';
+  const tenantId = useAuth()?.user?.tenantId ?? 'tenantId';
   
   const loadSchema =
     configurationType === 'pull' ? pullValidationSchema : pushValidationSchema;
@@ -1273,7 +1273,7 @@ export const DataEnrichmentFormModal: React.FC<
       } else if (error && typeof error === 'object') {
         
         const apiError = error as any;
-        errorMessage = apiError.message || apiError.error || 'Unknown error occurred';
+        errorMessage = apiError.message ?? apiError.error ?? 'Unknown error occurred';
       }
 
       setCreateError(errorMessage);

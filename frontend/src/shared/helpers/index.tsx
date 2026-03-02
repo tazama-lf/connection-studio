@@ -38,7 +38,7 @@ export const handleInputFilter = ({
   setPage,
 }: InputFilterProps) => {
   const [localValue, setLocalValue] = React.useState(
-    searchingFilters[fieldName] || '',
+    searchingFilters[fieldName] ?? '',
   );
 
   return (
@@ -72,7 +72,7 @@ export const handleInputFilter = ({
         }}
         className=" w-full rounded-sm border border-gray-300 bg-white px-10 py-[6px] text-sm text-gray-900 placeholder:text-gray-400 shadow-sm focus:outline-none"
         disabled={isDisable}
-        type={type || 'text'}
+        type={type ?? 'text'}
         // inputProps={{ maxLength: maxLength || 25 }}
         placeholder="search..."
       />
@@ -103,7 +103,7 @@ export const handleSelectFilter = ({
   setSearchingFilters,
 }: SelectFilterProps) => {
   const [localValue, setLocalValue] = React.useState(
-    searchingFilters?.[fieldName] || '',
+    searchingFilters?.[fieldName] ?? '',
   );
 
   return (

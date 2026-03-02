@@ -57,9 +57,9 @@ export const buildPullPayload = (formValues: any) => {
         : { private_key: formValues.password.replace(/\\n/g, '\n') }),
     },
     file: {
-      path: (formValues.pathPattern || '/data.csv').replace(/^\/+/g, ''),
-      file_type: formValues.fileFormat?.toUpperCase() || null,
-      delimiter: formValues.delimiter || ',',
+      path: (formValues.pathPattern ?? '/data.csv').replace(/^\/+/g, ''),
+      file_type: formValues.fileFormat?.toUpperCase() ?? null,
+      delimiter: formValues.delimiter ?? ',',
     },
   };
 };
@@ -70,11 +70,11 @@ export const generateEndpointUrl = (
   endpointPath?: string,
 ): string => {
   const cleanVersion =
-    version?.replace(/^v?\/*/g, '').replace(/\/+$/g, '') || '';
+    version?.replace(/^v?\/*/g, '').replace(/\/+$/g, '') ?? '';
 
   const cleanPath = endpointPath?.startsWith('/')
     ? endpointPath
-    : `/${endpointPath || ''}`;
+    : `/${endpointPath ?? ''}`;
 
   if (!version && !endpointPath) {
     return `/${tenantId}/enrichment/{version}{path}`;
@@ -230,13 +230,13 @@ export const formatJobForEdit = (
   if (job.type === 'push' || job.config_type === 'Push') {
     return {
       ...baseData,
-      path: job.path || '',
+      path: job.path ?? '',
     } as Partial<CreatePushJobDto>;
   } else {
     return {
       ...baseData,
       source_type: job.source_type,
-      schedule_id: job.schedule_id || '',
+      schedule_id: job.schedule_id ?? '',
       connection: job.connection,
       file: job.file,
     } as Partial<CreatePullJobDto>;

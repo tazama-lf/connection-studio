@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '../../../shared/components/Button';
 import { Plus, Edit, Trash2, Save, X } from 'lucide-react';
-import { 
-  dataModelApi, 
-  type DataModelExtension, 
+import {
+  dataModelApi,
+  type DataModelExtension,
   type CreateDataModelExtensionRequest,
   type UpdateDataModelExtensionRequest,
   type TazamaCollectionName,
-  type TazamaFieldType 
+  type TazamaFieldType
 } from '../services/dataModelApi';
 
 interface ExtensionFormData {
@@ -65,7 +65,6 @@ export const ExtensionManagement: React.FC<ExtensionManagementProps> = ({
     { value: 'ARRAY', label: 'Array' }
   ];
 
-  // Load extensions on mount
   useEffect(() => {
     loadExtensions();
   }, []);
@@ -82,7 +81,6 @@ export const ExtensionManagement: React.FC<ExtensionManagementProps> = ({
       }
     } catch (err) {
       setError('Error loading extensions');
-      console.error('Error loading extensions:', err);
     } finally {
       setLoading(false);
     }
@@ -120,26 +118,19 @@ export const ExtensionManagement: React.FC<ExtensionManagementProps> = ({
         validation: Object.keys(formData.validation).length > 0 ? formData.validation : undefined
       };
 
-      console.log('Creating extension with request:', JSON.stringify(request, null, 2));
-      
       const response = await dataModelApi.createExtension(request);
-      console.log('Extension creation response:', response);
-      
+
       if (response.success) {
-        console.log('✅ Extension created successfully');
-        await loadExtensions(); // Refresh the list
+        await loadExtensions();
         setShowCreateForm(false);
         resetForm();
         if (onExtensionChange) {
-          onExtensionChange(); // Notify parent component
+          onExtensionChange();
         }
       } else {
-        console.error('❌ Extension creation failed:', response.message);
         setError(response.message || 'Failed to create extension');
       }
     } catch (err) {
-      console.error('❌ Extension creation error:', err);
-      // Get more detailed error information
       if (err instanceof Error) {
         setError(`Error creating extension: ${err.message}`);
       } else {
@@ -164,18 +155,17 @@ export const ExtensionManagement: React.FC<ExtensionManagementProps> = ({
 
       const response = await dataModelApi.updateExtension(id, request);
       if (response.success) {
-        await loadExtensions(); // Refresh the list
+        await loadExtensions();
         setEditingExtension(null);
         resetForm();
         if (onExtensionChange) {
-          onExtensionChange(); // Notify parent component
+          onExtensionChange();
         }
       } else {
         setError(response.message || 'Failed to update extension');
       }
     } catch (err) {
       setError('Error updating extension');
-      console.error('Error updating extension:', err);
     } finally {
       setSubmitting(false);
     }
@@ -190,16 +180,15 @@ export const ExtensionManagement: React.FC<ExtensionManagementProps> = ({
       setError(null);
       const response = await dataModelApi.deleteExtension(id);
       if (response.success) {
-        await loadExtensions(); // Refresh the list
+        await loadExtensions();
         if (onExtensionChange) {
-          onExtensionChange(); // Notify parent component
+          onExtensionChange();
         }
       } else {
         setError(response.message || 'Failed to delete extension');
       }
     } catch (err) {
       setError('Error deleting extension');
-      console.error('Error deleting extension:', err);
     }
   };
 
@@ -266,7 +255,6 @@ export const ExtensionManagement: React.FC<ExtensionManagementProps> = ({
         </div>
       )}
 
-      {/* Create Form */}
       {showCreateForm && (
         <div className="bg-gray-50 border rounded-lg p-6">
           <div className="flex items-center justify-between mb-4">
@@ -311,7 +299,6 @@ export const ExtensionManagement: React.FC<ExtensionManagementProps> = ({
         </div>
       )}
 
-      {/* Extensions List */}
       <div className="space-y-4">
         {extensions.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
@@ -411,138 +398,138 @@ const ExtensionForm: React.FC<ExtensionFormProps> = ({
   onValidationChange,
   isEditing
 }) => (
-    <div className="grid grid-cols-2 gap-4">
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Collection
-        </label>
-        <select
-          value={formData.collection}
-          onChange={(e) => { onFormChange('collection', e.target.value); }}
-          disabled={isEditing} // Can't change collection when editing
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
-        >
-          {collections.map((collection) => (
-            <option key={collection.value} value={collection.value}>
-              {collection.label}
-            </option>
-          ))}
-        </select>
-      </div>
+  <div className="grid grid-cols-2 gap-4">
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">
+        Collection
+      </label>
+      <select
+        value={formData.collection}
+        onChange={(e) => { onFormChange('collection', e.target.value); }}
+        disabled={isEditing} // Can't change collection when editing
+        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+      >
+        {collections.map((collection) => (
+          <option key={collection.value} value={collection.value}>
+            {collection.label}
+          </option>
+        ))}
+      </select>
+    </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Field Name
-        </label>
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">
+        Field Name
+      </label>
+      <input
+        type="text"
+        value={formData.fieldName}
+        onChange={(e) => { onFormChange('fieldName', e.target.value); }}
+        disabled={isEditing} // Can't change field name when editing
+        placeholder="e.g., creditScore"
+        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+      />
+    </div>
+
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">
+        Field Type
+      </label>
+      <select
+        value={formData.fieldType}
+        onChange={(e) => { onFormChange('fieldType', e.target.value); }}
+        disabled={isEditing} // Can't change field type when editing
+        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+      >
+        {fieldTypes.map((type) => (
+          <option key={type.value} value={type.value}>
+            {type.label}
+          </option>
+        ))}
+      </select>
+    </div>
+
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">
+        Default Value
+      </label>
+      <input
+        type="text"
+        value={formData.defaultValue}
+        onChange={(e) => { onFormChange('defaultValue', e.target.value); }}
+        placeholder="Optional"
+        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
+    </div>
+
+    <div className="col-span-2">
+      <label className="block text-sm font-medium text-gray-700 mb-1">
+        Description
+      </label>
+      <textarea
+        value={formData.description}
+        onChange={(e) => { onFormChange('description', e.target.value); }}
+        placeholder="Describe what this field is for"
+        rows={2}
+        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
+    </div>
+
+    <div className="col-span-2">
+      <label className="flex items-center gap-2">
         <input
-          type="text"
-          value={formData.fieldName}
-          onChange={(e) => { onFormChange('fieldName', e.target.value); }}
-          disabled={isEditing} // Can't change field name when editing
-          placeholder="e.g., creditScore"
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+          type="checkbox"
+          checked={formData.isRequired}
+          onChange={(e) => { onFormChange('isRequired', e.target.checked); }}
+          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
         />
-      </div>
+        <span className="text-sm font-medium text-gray-700">Required field</span>
+      </label>
+    </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Field Type
-        </label>
-        <select
-          value={formData.fieldType}
-          onChange={(e) => { onFormChange('fieldType', e.target.value); }}
-          disabled={isEditing} // Can't change field type when editing
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
-        >
-          {fieldTypes.map((type) => (
-            <option key={type.value} value={type.value}>
-              {type.label}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Default Value
-        </label>
-        <input
-          type="text"
-          value={formData.defaultValue}
-          onChange={(e) => { onFormChange('defaultValue', e.target.value); }}
-          placeholder="Optional"
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-      </div>
-
+    {/* Validation Rules for Number fields */}
+    {formData.fieldType === 'NUMBER' && (
       <div className="col-span-2">
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Description
+          Validation Rules
         </label>
-        <textarea
-          value={formData.description}
-          onChange={(e) => { onFormChange('description', e.target.value); }}
-          placeholder="Describe what this field is for"
-          rows={2}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-      </div>
-
-      <div className="col-span-2">
-        <label className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={formData.isRequired}
-            onChange={(e) => { onFormChange('isRequired', e.target.checked); }}
-            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-          />
-          <span className="text-sm font-medium text-gray-700">Required field</span>
-        </label>
-      </div>
-
-      {/* Validation Rules for Number fields */}
-      {formData.fieldType === 'NUMBER' && (
-        <div className="col-span-2">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Validation Rules
-          </label>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <input
-                type="number"
-                value={formData.validation.min || ''}
-                onChange={(e) => { onValidationChange('min', e.target.value ? Number(e.target.value) : undefined); }}
-                placeholder="Min value"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <input
-                type="number"
-                value={formData.validation.max || ''}
-                onChange={(e) => { onValidationChange('max', e.target.value ? Number(e.target.value) : undefined); }}
-                placeholder="Max value"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <input
+              type="number"
+              value={formData.validation.min || ''}
+              onChange={(e) => { onValidationChange('min', e.target.value ? Number(e.target.value) : undefined); }}
+              placeholder="Min value"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div>
+            <input
+              type="number"
+              value={formData.validation.max || ''}
+              onChange={(e) => { onValidationChange('max', e.target.value ? Number(e.target.value) : undefined); }}
+              placeholder="Max value"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
           </div>
         </div>
-      )}
+      </div>
+    )}
 
-      {/* Validation Rules for String fields */}
-      {formData.fieldType === 'STRING' && (
-        <div className="col-span-2">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Pattern Validation (Regex)
-          </label>
-          <input
-            type="text"
-            value={formData.validation.pattern || ''}
-            onChange={(e) => { onValidationChange('pattern', e.target.value || undefined); }}
-            placeholder="e.g., ^[A-Z0-9]{10}$"
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-      )}
-    </div>
-  );
+    {/* Validation Rules for String fields */}
+    {formData.fieldType === 'STRING' && (
+      <div className="col-span-2">
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Pattern Validation (Regex)
+        </label>
+        <input
+          type="text"
+          value={formData.validation.pattern || ''}
+          onChange={(e) => { onValidationChange('pattern', e.target.value || undefined); }}
+          placeholder="e.g., ^[A-Z0-9]{10}$"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+    )}
+  </div>
+);

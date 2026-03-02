@@ -97,7 +97,6 @@ interface EndpointTableProps {
           setShowHistory(endpoint.id);
           break;
         case 'approve':
-          console.log('Approve endpoint', endpoint.id);
           break;
         case 'suspend':
           setIsUpdatingStatus(endpoint.id);
@@ -121,10 +120,9 @@ interface EndpointTableProps {
           }
           break;
         default:
-          console.log('Action:', action, 'Endpoint:', endpoint.id);
+          break;
       }
     } catch (error) {
-      console.error('Action failed:', error);
       showError(`Failed to ${action} configuration`);
     } finally {
       setIsUpdatingStatus(null);
@@ -167,7 +165,7 @@ interface EndpointTableProps {
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500" data-id="element-771">
                   <div className="flex items-center" data-id="element-772">
                     <span className="font-medium" data-id="element-773">
-                      {endpoint.tenantId || 'default'}
+                      {endpoint.tenantId ?? 'default'}
                     </span>
                   </div>
                 </td>
@@ -175,7 +173,7 @@ interface EndpointTableProps {
                     <div className="flex items-center" data-id="element-775">
                       {getTypeIcon(endpoint.type)}
                       <span className="font-medium" data-id="element-776">
-                        {endpoint.type || 'N/A'}
+                        {endpoint.type ?? 'N/A'}
                       </span>
                     </div>
                   </td>}

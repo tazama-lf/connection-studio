@@ -37,42 +37,22 @@ export const DeploymentConfirmation: React.FC<DeploymentConfirmationProps> = ({
         setLoading(true);
         setError(null);
 
-        console.log(
-          '🔄 Fetching complete config data for deployment confirmation:',
-          configId,
-        );
-        console.log(
-          '🔍 ConfigId type:',
-          typeof configId,
-          'ConfigId value:',
-          configId,
-        );
-
         // If we have fallback data and no configId, use the fallback
         if (!configId && fallbackConfigData) {
-          console.log('✅ Using fallback config data:', fallbackConfigData);
           setConfigData(fallbackConfigData);
           return;
         }
 
         if (!configId) {
-          console.error('❌ No configId provided to DeploymentConfirmation');
           setError('No configuration ID provided');
           return;
         }
 
         const response = await configApi.getConfig(configId);
-        console.log('🔍 API Response:', response);
-        console.log('🔍 Response success:', response.success);
-        console.log('🔍 Response config:', response.config);
 
         if (response.success && response.config) {
-          console.log('✅ Config data fetched successfully:', response.config);
           setConfigData(response.config);
         } else {
-          console.error('❌ Failed to fetch config data:', response.message);
-          console.error('❌ Full response:', response);
-
           // Check if it's an authentication error and we have fallback data
           if (
             (response.message?.includes('401') ||
@@ -80,7 +60,6 @@ export const DeploymentConfirmation: React.FC<DeploymentConfirmationProps> = ({
               response.message?.includes('authentication')) &&
             fallbackConfigData
           ) {
-            console.log('⚠️ Authentication failed, using fallback data');
             setConfigData(fallbackConfigData);
             setError(null); // Clear error since we have fallback
           } else if (
@@ -90,15 +69,12 @@ export const DeploymentConfirmation: React.FC<DeploymentConfirmationProps> = ({
           ) {
             setError('Authentication required. Please log in again.');
           } else {
-            setError(response.message || 'Failed to load configuration data');
+            setError(response.message ?? 'Failed to load configuration data');
           }
         }
       } catch (err) {
-        console.error('❌ Error fetching config data:', err);
-
         // If API call fails and we have fallback data, use it
         if (fallbackConfigData) {
-          console.log('⚠️ API call failed, using fallback data');
           setConfigData(fallbackConfigData);
           setError(null); // Clear error since we have fallback
         } else {
@@ -187,7 +163,7 @@ export const DeploymentConfirmation: React.FC<DeploymentConfirmationProps> = ({
                   <Link2 size={14} /> Endpoint Path
                 </span>
                 <p className="text-sm text-gray-900 font-mono bg-gray-50 p-2 rounded border border-gray-200">
-                  {configData.endpointPath || endpointPath}
+                  {configData.endpointPath ?? endpointPath}
                 </p>
               </div>
               <div className="space-y-1.5">
@@ -195,7 +171,7 @@ export const DeploymentConfirmation: React.FC<DeploymentConfirmationProps> = ({
                   <Layers size={14} /> Transaction Type
                 </span>
                 <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded border border-gray-200">
-                  {configData.transactionType || transactionType}
+                  {configData.transactionType ?? transactionType}
                 </p>
               </div>
               <div className="space-y-1.5">
@@ -203,7 +179,7 @@ export const DeploymentConfirmation: React.FC<DeploymentConfirmationProps> = ({
                   <Hash size={14} /> Version
                 </span>
                 <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded border border-gray-200">
-                  {configData.version || '1.0'}
+                  {configData.version ?? '1.0'}
                 </p>
               </div>
               <div className="space-y-1.5">
@@ -211,7 +187,7 @@ export const DeploymentConfirmation: React.FC<DeploymentConfirmationProps> = ({
                   <FileType size={14} /> Content Type
                 </span>
                 <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded border border-gray-200">
-                  {configData.contentType || 'application/json'}
+                  {configData.contentType ?? 'application/json'}
                 </p>
               </div>
             </div>
@@ -241,7 +217,7 @@ export const DeploymentConfirmation: React.FC<DeploymentConfirmationProps> = ({
               {(configData.schema || configData.payload) && (
                 <div className="bg-white h-[400px] overflow-auto">
                   <ReactJson
-                    src={configData?.schema || configData?.payload || {}}
+                    src={configData?.schema ?? configData?.payload ?? {}}
                     theme="rjv-default"
                     name={false}
                     displayDataTypes={false}
@@ -275,19 +251,19 @@ export const DeploymentConfirmation: React.FC<DeploymentConfirmationProps> = ({
                   >
                     <div className="flex items-center space-x-3">
                       <span className="text-xs font-medium text-blue-600 bg-blue-100 px-2 py-1 rounded">
-                        {mapping.transformation || 'DIRECT'}
+                        {mapping.transformation ?? 'DIRECT'}
                       </span>
                       <div className="text-sm">
                         <span className="font-medium text-gray-900">
                           {Array.isArray(mapping.source)
                             ? mapping.source.join(', ')
-                            : mapping.source || 'N/A'}
+                            : mapping.source ?? 'N/A'}
                         </span>
                         <span className="text-gray-500 mx-2">→</span>
                         <span className="font-medium text-gray-900">
                           {Array.isArray(mapping.destination)
                             ? mapping.destination.join(', ')
-                            : mapping.destination || 'N/A'}
+                            : mapping.destination ?? 'N/A'}
                         </span>
                       </div>
                     </div>
@@ -328,7 +304,7 @@ export const DeploymentConfirmation: React.FC<DeploymentConfirmationProps> = ({
                       <div className="text-sm text-gray-700">
                         {func.columns && func.columns.length > 0
                           ? `Columns: ${func.columns.map((col: any) => col.param).join(', ')}`
-                          : `Parameters: ${func.params?.join(', ') || 'None'}`}
+                          : `Parameters: ${func.params?.join(', ') ?? 'None'}`}
                       </div>
                     </div>
                   </div>
@@ -361,15 +337,15 @@ export const DeploymentConfirmation: React.FC<DeploymentConfirmationProps> = ({
                 <li>
                   • Endpoint:{' '}
                   <code className="bg-blue-100 px-1 rounded text-xs">
-                    {configData.endpointPath || endpointPath}
+                    {configData.endpointPath ?? endpointPath}
                   </code>
                 </li>
                 {/* <li>• Payload/Schema: {configData.payload ? '✅ Included' : '⚠️ Schema only'}</li> */}
                 <li>
-                  • Mappings: {configData.mapping?.length || 0} field mappings
+                  • Mappings: {configData.mapping?.length ?? 0} field mappings
                 </li>
                 <li>
-                  • Functions: {configData.functions?.length || 0} runtime
+                  • Functions: {configData.functions?.length ?? 0} runtime
                   functions
                 </li>
               </ul>

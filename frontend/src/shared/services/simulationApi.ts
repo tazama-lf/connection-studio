@@ -76,7 +76,7 @@ export class SimulationApiService {
       }
       // For server errors (5xx), still throw
       throw new Error(
-        errorData.message || `HTTP error! status: ${response.status}`,
+        errorData.message ?? `HTTP error! status: ${response.status}`,
       );
     }
 
@@ -88,10 +88,6 @@ export class SimulationApiService {
    */
   async runSimulation(data: SimulatePayloadRequest): Promise<SimulationResult> {
     try {
-      console.log('Running simulation for config:', data.configId);
-      console.log('Payload type:', data.payloadType);
-      console.log('Test payload:', data.testPayload);
-
       const response = await fetch(`${this.baseURL}/simulation/run`, {
         method: 'POST',
         headers: this.getAuthHeaders(),
@@ -99,10 +95,8 @@ export class SimulationApiService {
       });
 
       const result = await this.handleResponse<SimulationResult>(response);
-      console.log('Simulation result:', result);
       return result;
     } catch (error) {
-      console.error('Simulation failed:', error);
       throw error;
     }
   }
@@ -115,11 +109,6 @@ export class SimulationApiService {
     data: SimulatePayloadRequest,
   ): Promise<ValidationResult> {
     try {
-      console.log(
-        'Validating payload against schema for config:',
-        data.configId,
-      );
-
       const response = await fetch(`${this.baseURL}/simulation/validate`, {
         method: 'POST',
         headers: this.getAuthHeaders(),
@@ -127,10 +116,8 @@ export class SimulationApiService {
       });
 
       const result = await this.handleResponse<ValidationResult>(response);
-      console.log('Validation result:', result);
       return result;
     } catch (error) {
-      console.error('Validation failed:', error);
       throw error;
     }
   }

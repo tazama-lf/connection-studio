@@ -1,4 +1,4 @@
-export function setupFetch401Interceptor(naviateToLogin: () => void) {
+export function setupFetch401Interceptor(naviateToLogin: () => void): void {
   const originalFetch = window.fetch;
 
   window.fetch = async (input, init = {}) => {

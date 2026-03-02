@@ -70,10 +70,10 @@ const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
     
     try {
       setIsExporting(true);
-      await onExport(config.id, exportNotes || 'Exported for deployment');
+      await onExport(config.id, exportNotes ?? 'Exported for deployment');
       onClose();
     } catch (error) {
-      console.error('Export failed:', error);
+      // Error handled by parent component
     } finally {
       setIsExporting(false);
     }
@@ -84,10 +84,10 @@ const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
     
     try {
       setIsDeploying(true);
-      await onDeploy(config.id, deployNotes || 'Deployed to production');
+      await onDeploy(config.id, deployNotes ?? 'Deployed to production');
       onClose();
     } catch (error) {
-      console.error('Deploy failed:', error);
+      // Error handled by parent component
     } finally {
       setIsDeploying(false);
     }
@@ -103,7 +103,7 @@ const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h3 className="text-lg leading-6 font-medium text-gray-900">
-            Configuration Details: {config?.endpointPath || 'Loading...'}
+            Configuration Details: {config?.endpointPath ?? 'Loading...'}
           </h3>
           <div className="flex items-center space-x-2">
             <button
@@ -132,7 +132,7 @@ const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
                   </label>
                   <input
                     type="text"
-                    value={config.endpointPath || 'N/A'}
+                    value={config.endpointPath ?? 'N/A'}
                     readOnly
                     className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900"
                   />
@@ -144,7 +144,7 @@ const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
                   </label>
                   <input
                     type="text"
-                    value={config.transactionType || 'N/A'}
+                    value={config.transactionType ?? 'N/A'}
                     readOnly
                     className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900"
                   />
@@ -156,7 +156,7 @@ const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
                   </label>
                   <input
                     type="text"
-                    value={config.msgFam || 'N/A'}
+                    value={config.msgFam ?? 'N/A'}
                     readOnly
                     className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900"
                   />
@@ -168,7 +168,7 @@ const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
                   </label>
                   <input
                     type="text"
-                    value={config.version || 'v1'}
+                    value={config.version ?? 'v1'}
                     readOnly
                     className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900"
                   />
@@ -189,7 +189,7 @@ const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
                     </label>
                     <input
                       type="text"
-                      value={config.contentType || 'application/json'}
+                      value={config.contentType ?? 'application/json'}
                       readOnly
                       className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900"
                     />
@@ -201,7 +201,7 @@ const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
                     </label>
                     <input
                       type="text"
-                      value={config.tenantId || 'default'}
+                      value={config.tenantId ?? 'default'}
                       readOnly
                       className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900"
                     />
@@ -227,7 +227,7 @@ const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
                       <div className="flex-1 min-w-0">
                         <span className="text-sm font-medium text-gray-700 block">Status:</span>
                         <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${getConfigTypeColor(config.status)}`}>
-                          {getStatusLabel(config.status || 'in-progress').toUpperCase()}
+                          {getStatusLabel(config.status ?? 'in-progress').toUpperCase()}
                         </span>
                       </div>
                     </div>
@@ -236,7 +236,7 @@ const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
                       <Settings size={18} className="text-gray-400 mt-0.5 flex-shrink-0" />
                       <div className="flex-1 min-w-0">
                         <span className="text-sm font-medium text-gray-700 block">Created By:</span>
-                        <span className="text-sm text-gray-900 block">{config.createdBy || 'System'}</span>
+                        <span className="text-sm text-gray-900 block">{config.createdBy ?? 'System'}</span>
                       </div>
                     </div>
                   </div>

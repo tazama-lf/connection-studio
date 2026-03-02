@@ -9,7 +9,7 @@ import {
   XCircle,
   XIcon,
 } from 'lucide-react';
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import * as yup from 'yup';
 import { useAuth } from '../../features/auth';
 import {
@@ -18,10 +18,6 @@ import {
   type CreateConfigRequest,
 } from '../../features/config/services/configApi';
 import FunctionsApiService from '../../features/functions/services/functionsApi';
-import {
-  dataModelApi,
-  type DestinationOption,
-} from '../../features/data-model';
 import {
   isApprover,
   isEditor,
@@ -43,7 +39,7 @@ import { MappingUtility } from './MappingUtility';
 import { PayloadEditor, type PayloadEditorRef } from './PayloadEditor';
 import { SimulationPanel } from './SimulationPanel';
 
-import { Backdrop , Button as MuiButton } from '@mui/material';
+import { Backdrop, Button as MuiButton } from '@mui/material';
 import Box from '@mui/material/Box';
 import Step from '@mui/material/Step';
 import type { StepIconProps } from '@mui/material/StepIcon';
@@ -89,7 +85,7 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
   onClose,
   currentSchema,
 }) => {
-  const tenantId = useAuth().user?.tenantId || '';
+  const tenantId = useAuth().user?.tenantId ?? '';
   const [selectedFunction, setSelectedFunction] =
     useState<AllowedFunctionName>('addAccount');
   const [selectedConfiguration, setSelectedConfiguration] = useState('');
@@ -99,140 +95,31 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
   const [dataModelForm, setDataModelForm] = useState<any>({});
   const [tableNameError, setTableNameError] = useState<string>('');
 
-  // State for destination tree from API
-  const [destinationTree, setDestinationTree] = useState<any[]>([]);
-
-  // Fetch destination options from API
-  useEffect(() => {
-    const fetchDestinationOptions = async () => {
-      try {
-        const response = await dataModelApi.getDestinationOptions();
-        if (response.success && response.data) {
-          const treeNodes = convertDestinationOptionsToTree(response.data);
-          setDestinationTree(treeNodes);
-        }
-      } catch (error) {
-        console.error('Error fetching destination options:', error);
-      }
-    };
-    fetchDestinationOptions();
-  }, []);
-
-  // Convert destination options to tree structure
-  const convertDestinationOptionsToTree = (options: DestinationOption[]) => {
-    const collections = new Map<string, DestinationOption[]>();
-
-    options.forEach((option) => {
-      const existing = collections.get(option.collection) || [];
-      existing.push(option);
-      collections.set(option.collection, existing);
-    });
-
-    const sortedCollections = Array.from(collections.entries()).sort(
-      ([a], [b]) => {
-        if (a === 'redis') return 1;
-        if (b === 'redis') return -1;
-        return a.localeCompare(b);
-      },
-    );
-
-    const buildNestedTree = (
-      collectionName: string,
-      fields: DestinationOption[],
-      collection_id: number | null,
-    ) => {
-      const rootMap = new Map<
-        string,
-        { node: any; children: Map<string, any> }
-      >();
-
-      fields.forEach((field) => {
-        const parts = field.field.split('.');
-        let currentLevel = rootMap;
-        let currentPath: string[] = [collectionName];
-
-        parts.forEach((part, index) => {
-          const isLeaf = index === parts.length - 1;
-          currentPath = [...currentPath, part];
-          const pathKey = parts.slice(0, index + 1).join('.');
-          const fullPath = `${collectionName}.${pathKey}`;
-
-          if (!currentLevel.has(part)) {
-            currentLevel.set(part, {
-              node: {
-                id: isLeaf ? field.value : fullPath,
-                name: part,
-                path: [...currentPath],
-                type: isLeaf ? field.type.toLowerCase() : 'object',
-                collection_id,
-                serial_no: isLeaf ? field.serial_no : null,
-              },
-              children: new Map(),
-            });
-          } else if (isLeaf) {
-            const existing = currentLevel.get(part)!;
-            existing.node.id = field.value;
-            existing.node.type = field.type.toLowerCase();
-            existing.node.serial_no = field.serial_no;
-          }
-
-          const entry = currentLevel.get(part)!;
-          currentLevel = entry.children;
-        });
-      });
-
-      const convertMapToNodes = (map: Map<string, any>): any[] => Array.from(map.values()).map(({ node, children }) => ({
-          ...node,
-          children: children.size > 0 ? convertMapToNodes(children) : undefined,
-        }));
-
-      return convertMapToNodes(rootMap);
-    };
-
-    return sortedCollections.map(([collectionName, fields]) => {
-      const collection_id = fields[0]?.collection_id ?? null;
-
-      return {
-        id: collectionName,
-        name: collectionName.charAt(0).toUpperCase() + collectionName.slice(1),
-        path: [collectionName],
-        collection_id,
-        serial_no: null,
-        children: buildNestedTree(collectionName, fields, collection_id),
-      };
-    });
-  };
-
-  // Build source tree from currentSchema (similar to MappingUtility)
   const buildSourceOptions = (schema: any): any[] => {
     const options: any[] = [];
 
     if (!schema) return options;
 
-    // Handle array format (InferredField[])
     if (Array.isArray(schema)) {
       schema.forEach((field) => {
-        // Only include fields with type 'object'
         if (field.type && field.type.toLowerCase() === 'object') {
-          const cleanPath = (field.path || field.name || '').replace(
+          const cleanPath = (field.path ?? field.name ?? '').replace(
             /\[0\]/g,
             '.0',
           );
           options.push({
-            label: field.name || cleanPath,
+            label: field.name ?? cleanPath,
             value: cleanPath,
             group: 'Payload',
           });
         }
       });
     }
-    // Handle JSON schema format
     else if (schema.properties && typeof schema.properties === 'object') {
       const traverseSchema = (props: any, parentPath = '') => {
         Object.entries(props).forEach(([key, value]: [string, any]) => {
           const path = parentPath ? `${parentPath}.${key}` : key;
 
-          // Only include fields with type 'object'
           if (value.type && value.type.toLowerCase() === 'object') {
             options.push({
               label: key,
@@ -241,11 +128,9 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
             });
           }
 
-          // Recursively traverse nested objects
           if (value.properties && typeof value.properties === 'object') {
             traverseSchema(value.properties, path);
           }
-          // Handle arrays with object items
           else if (value.items?.properties) {
             traverseSchema(value.items.properties, path);
           }
@@ -258,71 +143,15 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
     return options;
   };
 
-  const getPrimaryKeyOptions = () => {
-    const result: any[] = [];
-
-    // Build options from destinationTree
-    // Object types become groups, their children become options
-    function buildPrimaryKeyOptions(node: any) {
-      // If node is of type 'object', it becomes a group
-      // if (node.type && node.type.toLowerCase() === 'object') {
-      // Add children as options under this group
-      if (Array.isArray(node.children) && node.children.length > 0) {
-        node.children.forEach((child: any) => {
-          result.push({
-            label: child.id,
-            value: child.id,
-            group: node.id, // Parent becomes the group name
-          });
-
-          // Recursively process if child has more children
-          if (child.children && child.children.length > 0) {
-            buildPrimaryKeyOptions(child);
-          }
-        });
-      }
-      // }
-    }
-
-    // Traverse destination tree
-    destinationTree.forEach((n) => {
-      if (n?.collection_id !== 1 && n?.collection_id !== 2)
-        {buildPrimaryKeyOptions(n);}
-    });
-
-    return result;
-  };
+  const getPrimaryKeyOptions = () =>
+    // Returns empty array - implement data source if needed
+    []
+    ;
 
   const jsonBOptions = () => {
-    const result: any[] = [];
-
     // Add Sources from currentSchema (only object types)
     const sourceOptions = buildSourceOptions(currentSchema);
-    result.push(...sourceOptions);
-
-    // Add Destinations from destinationTree (only object types)
-    function traverseDestinations(node: any) {
-      result.push({
-        label: node.id || '',
-        value: node.id,
-        group: 'Extended Data Model',
-      });
-
-      if (Array.isArray(node.children)) {
-        node.children.forEach((child: any) => {
-          if (child.type && child.type.toLowerCase() === 'object') {
-            traverseDestinations(child);
-          }
-        });
-      }
-    }
-
-    destinationTree.forEach((n) => {
-      if (n?.collection_id !== 1 && n?.collection_id !== 2)
-        {traverseDestinations(n);}
-    });
-
-    return result;
+    return sourceOptions;
   };
 
   const functionConfig = FUNCTION_CONFIGS[selectedFunction];
@@ -331,9 +160,8 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
     if (selectedFunction === 'addDataModel') {
       let jsonKeyparsed: any = {};
       try {
-        jsonKeyparsed = JSON.parse(dataModelForm?.jsonKey || '{}');
+        jsonKeyparsed = JSON.parse(dataModelForm?.jsonKey ?? '{}');
       } catch (error) {
-        console.error('❌ Invalid JSON in jsonKey:', dataModelForm?.jsonKey);
         jsonKeyparsed = {}; // fallback
       }
       // Build payload from dataModelForm
@@ -348,12 +176,12 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
           {
             name: 'data',
             type: 'jsonb',
-            param: jsonKeyparsed?.value || '',
+            param: jsonKeyparsed?.value ?? '',
             datasource:
               jsonKeyparsed?.group === 'Payload' ? 'payload' : 'dataModel',
           },
         ],
-        tableName: tenantId + '_' + (dataModelForm?.tableName || ''),
+        tableName: tenantId + '_' + (dataModelForm?.tableName ?? ''),
         functionName: 'addDataModelTable',
       };
 
@@ -365,7 +193,6 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
       (c) => c.name === selectedConfiguration,
     );
     if (!config) {
-      console.error('No configuration found for:', selectedConfiguration);
       return;
     }
     // Combine required parameters from configuration with selected optional parameters
@@ -407,8 +234,7 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
       dataModelForm?.tableName &&
       dataModelForm?.primaryKey &&
       dataModelForm?.jsonKey
-    )
-      {return true;}
+    ) { return true; }
   };
 
   return (
@@ -421,8 +247,8 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
           value={selectedFunction}
           onChange={(e) => {
             setSelectedFunction(e.target.value as AllowedFunctionName);
-            setSelectedConfiguration(''); // Reset configuration when function changes
-            setSelectedOptionalParams([]); // Reset optional params when function changes
+            setSelectedConfiguration('');
+            setSelectedOptionalParams([]);
           }}
           className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         >
@@ -447,7 +273,7 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
             </label>
             <input
               type="text"
-              value={dataModelForm?.tableName || ''}
+              value={dataModelForm?.tableName ?? ''}
               onChange={(e) => {
                 const value = e.target.value.toLowerCase();
                 setDataModelForm({
@@ -495,12 +321,13 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
               Primary Key
             </label>
             <select
-              value={dataModelForm?.primaryKey || ''}
-              onChange={(e) =>
-                { setDataModelForm({
+              value={dataModelForm?.primaryKey ?? ''}
+              onChange={(e) => {
+                setDataModelForm({
                   ...dataModelForm,
                   primaryKey: e.target.value,
-                }); }
+                });
+              }
               }
               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
             >
@@ -529,9 +356,8 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
               Data
             </label>
             <select
-              value={dataModelForm?.jsonKey || ''}
-              onChange={(e) =>
-                { setDataModelForm({ ...dataModelForm, jsonKey: e.target.value }); }
+              value={dataModelForm?.jsonKey ?? ''}
+              onChange={(e) => { setDataModelForm({ ...dataModelForm, jsonKey: e.target.value }); }
               }
               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
             >
@@ -703,7 +529,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
   const isCloning = isCloneMode && endpointId !== -1;
   const { showSuccess, showError } = useToast();
   const { user } = useAuth();
-  const tenantId = user?.tenantId || 'tenant-id';
+  const tenantId = user?.tenantId ?? 'tenant-id';
   const payloadEditorRef = useRef<PayloadEditorRef>(null);
   const [currentStep, setCurrentStep] = useState<
     'payload' | 'mapping' | 'functions' | 'simulation' | 'deploy'
@@ -851,7 +677,6 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
             );
           }
         } catch (error) {
-          console.error('Error loading config:', error);
           const errorMessage =
             error instanceof Error ? error.message : 'Unknown error';
           showError('Failed to Load Configuration', errorMessage);
@@ -865,11 +690,11 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
   }, [endpointId, isNewEndpoint, isOpen]);
 
   const isPayloadStepValid = () => (
-      payload &&
-      endpointData.version &&
-      endpointData.transactionType &&
-      endpointData.contentType
-    );
+    payload &&
+    endpointData.version &&
+    endpointData.transactionType &&
+    endpointData.contentType
+  );
 
   // Navigation-only functions (don't save, just move between steps)
   const handleNextStep = () => {
@@ -981,11 +806,9 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
         }
         setShowAddFunctionModal(false);
       } else {
-        console.error(':x: Failed to add function:', response.message);
         showError(`Failed to add function: ${response.message}`);
       }
     } catch (error) {
-      console.error(':x: Error adding function:', error);
       showError('Failed to add function. Please try again.');
     } finally {
       setLoading(false);
@@ -1029,7 +852,6 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
       const errorMessage =
         err instanceof Error ? err.message : 'Unknown error occurred';
       showError(`Failed to remove function: ${errorMessage}`);
-      console.error('Error removing function:', err);
     } finally {
       setLoading(false);
     }
@@ -1080,8 +902,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
       if (mapping.destination) {
         // Handle both single destination and array of destinations
         if (Array.isArray(mapping.destination)) {
-          mapping.destination.forEach((dest: string) =>
-            { processDestination(dest); },
+          mapping.destination.forEach((dest: string) => { processDestination(dest); },
           );
         } else {
           processDestination(mapping.destination);
@@ -1156,7 +977,6 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
         return;
       }
     } catch (error) {
-      console.error('❌ Error checking mappings:', error);
       setError('Failed to validate mappings. Please try again.');
       return;
     }
@@ -1210,7 +1030,6 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
       }
     } catch (err) {
       setError(`Submission failed: ${err}`);
-      console.error('Error submitting for approval:', err);
     } finally {
       setLoading(false);
     }
@@ -1366,7 +1185,6 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
           //         if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
           //           Object.entries(obj).forEach(([key, value]) => {
           //             const fieldPath = path ? `${path}.${key}` : key;
-          //             console.log('objjjj', obj);
           //             let fieldType: string;
           //             if (Array.isArray(value)) {
           //               fieldType = 'array';
@@ -1406,7 +1224,6 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
           //   return null;
           // };
           // const schemaFields = generateSchemaFromPayload(payload, endpointData.contentType);
-          // console.log('🔍 Generated schema fields from payload:', schemaFields);
           // if (schemaFields) {
           //   // Convert to JSON schema format - FIXED: proper recursive handling
           //   const convertToJSONSchema = (fields: any[]): any => {
@@ -1469,7 +1286,6 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
           //     return schema;
           //   };
           //   finalSchema = convertToJSONSchema(schemaFields);
-          //   console.log('✅ Regenerated schema from payload:', JSON.stringify(finalSchema, null, 2));
           // }
         } catch (error) {
 
@@ -1515,9 +1331,6 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
           saveResponse.message || `Failed to ${action} configuration`;
 
         setError(errorMessage);
-        if (saveResponse.validation?.errors) {
-          console.error('Validation errors:', saveResponse.validation.errors);
-        }
         return;
       }
 
@@ -1544,12 +1357,6 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
         err instanceof Error ? err.message : 'Unknown error occurred';
       const action = isNewEndpoint ? 'save' : 'update';
       setError(`Failed to ${action} configuration: ${errorMessage}`);
-      console.error('Error saving configuration:', err);
-      console.error('Error details:', {
-        name: err instanceof Error ? err.name : 'Unknown',
-        message: err instanceof Error ? err.message : String(err),
-        stack: err instanceof Error ? err.stack : undefined,
-      });
     } finally {
       setLoading(false);
     }
@@ -1763,8 +1570,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                         ajvSchema: any,
                         parentPath = '',
                       ): any[] => {
-                        if (!ajvSchema || typeof ajvSchema !== 'object')
-                          {return [];}
+                        if (!ajvSchema || typeof ajvSchema !== 'object') { return []; }
 
                         const schemaFields: any[] = [];
 
@@ -1982,8 +1788,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
 
                             if (mapping.destination) {
                               if (Array.isArray(mapping.destination)) {
-                                mapping.destination.forEach((dest: string) =>
-                                  { processDestination(dest); },
+                                mapping.destination.forEach((dest: string) => { processDestination(dest); },
                                 );
                               } else {
                                 processDestination(mapping.destination);
@@ -2438,8 +2243,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                                         !existingConfig?.status)) && (
                                         <Button
                                           variant="primary"
-                                          onClick={async () =>
-                                            { await handleSaveAndNext(); }
+                                          onClick={async () => { await handleSaveAndNext(); }
                                           }
                                           disabled={loading}
                                           className="!pb-[6px] !pt-[5px] bg-[#2b7fff] text-white"

@@ -23,7 +23,7 @@ export default function SideNav({ open, onClose }: SideNavProps) {
   const { user } = useAuth();
 
   const claims: string[] = user?.claims ?? [];
-  const claimsLower = claims.map((c) => (c || '').toString().toLowerCase());
+  const claimsLower = claims.map((c) => (c ?? '').toString().toLowerCase());
   const hasClaim = (role: string) => claimsLower.some((c) => c === role || c.includes(role));
   const isPublisher = hasClaim('publisher');
   const isApprover = hasClaim('approver');
@@ -97,7 +97,7 @@ export default function SideNav({ open, onClose }: SideNavProps) {
       >
         <List>
           {items.map((item) => {
-            const path = item.path || '';
+            const path = item.path ?? '';
             // Consider active if current location equals path or starts with path + '/'
             const isActive = path && (location.pathname === path || location.pathname.startsWith(path + '/'));
             return (

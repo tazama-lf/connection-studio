@@ -9,8 +9,6 @@ export interface InferredField {
 export const convertInferredFieldsToJsonSchema = (
   fields: InferredField[],
 ): any => {
-  console.log('🔄 Converting inferred fields to JSON Schema:', fields);
-
   if (fields.length === 0) {
     return null;
   }
@@ -126,6 +124,5 @@ export const convertInferredFieldsToJsonSchema = (
   };
 
   const result = buildSchema(fields, '');
-  console.log('✅ Generated JSON Schema:', JSON.stringify(result, null, 2));
   return result;
 };

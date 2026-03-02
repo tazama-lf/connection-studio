@@ -14,7 +14,7 @@ import type {
 } from '../types';
 
 const DATA_ENRICHMENT_BASE_URL = ENV.DATA_ENRICHMENT_SERVICE_URL;
-const API_BASE_URL = ENV.API_BASE_URL;
+const {API_BASE_URL} = ENV;
 
 interface PaginatedJobResponse {
   success: boolean;
@@ -82,7 +82,6 @@ export const dataEnrichmentApi = {
   createPullJob: async (
     data: CreatePullJobDto,
   ): Promise<DataEnrichmentJobResponse> => {
-    console.log('Creating pull job with data:', JSON.stringify(data, null, 2));
     try {
       return await apiRequest<DataEnrichmentJobResponse>(
         `${API_BASE_URL}/job/create/pull`,
@@ -92,7 +91,6 @@ export const dataEnrichmentApi = {
         },
       );
     } catch (error) {
-      console.error('Create pull job error:', error);
       throw error;
     }
   },
@@ -100,7 +98,6 @@ export const dataEnrichmentApi = {
   createPushJob: async (
     data: CreatePushJobDto,
   ): Promise<DataEnrichmentJobResponse> => {
-    console.log('Creating push job with data:', JSON.stringify(data, null, 2));
     try {
       return await apiRequest<DataEnrichmentJobResponse>(
         `${API_BASE_URL}/job/create/push`,
@@ -110,7 +107,6 @@ export const dataEnrichmentApi = {
         },
       );
     } catch (error) {
-      console.error('Create push job error:', error);
       throw error;
     }
   },
@@ -153,14 +149,10 @@ export const dataEnrichmentApi = {
     try {
       // Backend expects lowercase 'push' or 'pull' matching ConfigType enum
       const queryParams = type ? `?type=${type.toLowerCase()}` : '';
-      console.log(
-        `Fetching job ${id} with type=${type?.toLowerCase() || 'not specified'}`,
-      );
       return await apiRequest<DataEnrichmentJobResponse>(
         `${API_BASE_URL}/job/${id}${queryParams}`,
       );
     } catch (error) {
-      console.error(`Failed to fetch job ${id}:`, error);
       throw error;
     }
   },
@@ -182,12 +174,9 @@ export const dataEnrichmentApi = {
 
       // Backend returns flat array, transform to paginated format
       if (Array.isArray(result)) {
-        console.log(
-          '⚠️ Backend returned flat array for status filter, transforming...',
-        );
-        const jobs = result as DataEnrichmentJobResponse[];
+        const jobs = result;
         return {
-          jobs: jobs,
+          jobs,
           page: page || 1,
           limit: limit || 10,
           total: jobs.length,
@@ -195,9 +184,8 @@ export const dataEnrichmentApi = {
         };
       }
 
-      return result as JobListResponse;
+      return result;
     } catch (error) {
-      console.error(`Failed to fetch jobs by status ${status}:`, error);
       throw error;
     }
   },
@@ -207,10 +195,6 @@ export const dataEnrichmentApi = {
     id: string,
     updates: UpdatePullJobDto,
   ): Promise<DataEnrichmentJobResponse> => {
-    console.log(
-      'Updating pull job with data:',
-      JSON.stringify(updates, null, 2),
-    );
     try {
       return await apiRequest<DataEnrichmentJobResponse>(
         `${API_BASE_URL}/job/update/${id}?type=pull`,
@@ -220,7 +204,6 @@ export const dataEnrichmentApi = {
         },
       );
     } catch (error) {
-      console.error(`Failed to update pull job ${id}:`, error);
       throw error;
     }
   },
@@ -230,10 +213,6 @@ export const dataEnrichmentApi = {
     id: string,
     updates: UpdatePushJobDto,
   ): Promise<DataEnrichmentJobResponse> => {
-    console.log(
-      'Updating push job with data:',
-      JSON.stringify(updates, null, 2),
-    );
     try {
       return await apiRequest<DataEnrichmentJobResponse>(
         `${API_BASE_URL}/job/update/${id}?type=push`,
@@ -243,7 +222,6 @@ export const dataEnrichmentApi = {
         },
       );
     } catch (error) {
-      console.error(`Failed to update push job ${id}:`, error);
       throw error;
     }
   },
@@ -262,7 +240,6 @@ export const dataEnrichmentApi = {
         },
       );
     } catch (error) {
-      console.error(`Failed to delete job ${id}:`, error);
       throw error;
     }
   },
@@ -291,7 +268,6 @@ export const dataEnrichmentApi = {
         },
       );
     } catch (error) {
-      console.error(`Failed to update job ${id}:`, error);
       throw error;
     }
   },
@@ -320,10 +296,6 @@ export const dataEnrichmentApi = {
         requestBody.reason = reason;
       }
 
-      console.log(
-        `Updating job ${id} status to ${status} for type ${type} (sent as ${type.toLowerCase()})${reason ? ` with reason: ${reason}` : ''}`,
-      );
-
       return await apiRequest<{ success: boolean; message: string }>(
         `${API_BASE_URL}/job/update/status/${id}?${queryParams.toString()}`,
         {
@@ -332,7 +304,6 @@ export const dataEnrichmentApi = {
         },
       );
     } catch (error) {
-      console.error(`Failed to update job status ${id}:`, error);
       throw error;
     }
   },
@@ -353,10 +324,6 @@ export const dataEnrichmentApi = {
         requestBody.reason = reason;
       }
 
-      console.log(
-        `Updating job ${id} status to ${status} for type ${type} (sent as ${type.toLowerCase()})${reason ? ` with reason: ${reason}` : ''}`,
-      );
-
       return await apiRequest<{ success: boolean; message: string }>(
         `${API_BASE_URL}/job/update/status/${id}?${queryParams.toString()}`,
         {
@@ -365,7 +332,6 @@ export const dataEnrichmentApi = {
         },
       );
     } catch (error) {
-      console.error(`Failed to update job status ${id}:`, error);
       throw error;
     }
   },
@@ -380,10 +346,6 @@ export const dataEnrichmentApi = {
       queryParams.append('status', isActive ? 'active' : 'in-active');
       queryParams.append('type', type.toLowerCase()); // Convert to lowercase to match backend ConfigType enum
 
-      console.log(
-        `Updating job ${id} activation to ${isActive ? 'active' : 'inactive'} for type ${type} (sent as ${type.toLowerCase()})`,
-      );
-
       return await apiRequest<{ success: boolean; message: string }>(
         `${API_BASE_URL}/job/update/activation/${id}?${queryParams.toString()}`,
         {
@@ -391,7 +353,6 @@ export const dataEnrichmentApi = {
         },
       );
     } catch (error) {
-      console.error(`Failed to update job activation ${id}:`, error);
       throw error;
     }
   },
@@ -411,10 +372,8 @@ export const dataEnrichmentApi = {
         },
       );
 
-      console.log('✅ Job publishing status updated:', response);
       return response;
     } catch (error) {
-      console.error('💥 Job publishing status update failed:', error);
       throw error;
     }
   },
@@ -432,7 +391,6 @@ export const dataEnrichmentApi = {
         },
       );
     } catch (error) {
-      console.error('Create schedule error:', error);
       throw error;
     }
   },
@@ -458,7 +416,6 @@ export const dataEnrichmentApi = {
         },
       );
     } catch (error) {
-      console.error('Get all schedules error:', error);
       throw error;
     }
   },
@@ -490,7 +447,7 @@ export const dataEnrichmentApi = {
         throw new Error('Failed to fetch job history');
       }
 
-      const json = (await res.json()) as any;
+      const json = (await res.json());
       // Ensure we return a consistent shape
       return {
         success: json.success ?? true,
@@ -499,7 +456,6 @@ export const dataEnrichmentApi = {
         pages: json.pages ?? json.totalPages ?? undefined,
       };
     } catch (error) {
-      console.error('Failed to fetch job history:', error);
       throw error;
     }
   },
@@ -510,7 +466,6 @@ export const dataEnrichmentApi = {
         `${API_BASE_URL}/scheduler/${id}`,
       );
     } catch (error) {
-      console.error(`Failed to fetch schedule ${id}:`, error);
       throw error;
     }
   },
@@ -533,7 +488,6 @@ export const dataEnrichmentApi = {
         },
       );
     } catch (error) {
-      console.error(`Failed to update schedule ${id}:`, error);
       throw error;
     }
   },
@@ -547,8 +501,6 @@ export const dataEnrichmentApi = {
       const queryParams = new URLSearchParams();
       queryParams.append('status', status);
 
-      console.log(`Updating schedule ${id} status to ${status}`);
-
       return await apiRequest<{ success: boolean; message: string }>(
         `${API_BASE_URL}/scheduler/update/status/${id}?${queryParams.toString()}`,
         {
@@ -559,7 +511,6 @@ export const dataEnrichmentApi = {
         },
       );
     } catch (error) {
-      console.error(`Failed to update schedule status ${id}:`, error);
       throw error;
     }
   },
@@ -577,7 +528,6 @@ export const dataEnrichmentApi = {
         },
       );
     } catch (error) {
-      console.error('Connection test failed:', error);
       throw error;
     }
   },
@@ -588,7 +538,7 @@ export const dataEnrichmentApi = {
     totalRows: number;
     validRows: number;
     invalidRows: number;
-    previewRows: Record<string, any>[];
+    previewRows: Array<Record<string, any>>;
     validationErrors: Array<{ row: number; field: string; error: string }>;
   }> => {
     try {
@@ -596,14 +546,13 @@ export const dataEnrichmentApi = {
         totalRows: number;
         validRows: number;
         invalidRows: number;
-        previewRows: Record<string, any>[];
+        previewRows: Array<Record<string, any>>;
         validationErrors: Array<{ row: number; field: string; error: string }>;
       }>(`${DATA_ENRICHMENT_BASE_URL}/job/preview/data`, {
         method: 'POST',
         body: JSON.stringify(connectionData),
       });
     } catch (error) {
-      console.error('Data preview failed:', error);
       throw error;
     }
   },

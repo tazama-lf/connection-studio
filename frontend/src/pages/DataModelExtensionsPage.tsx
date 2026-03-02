@@ -19,7 +19,7 @@ import { ExtensionManagement } from '../features/data-model';
  */
 export const DataModelExtensionsPage: React.FC = () => {
   const handleExtensionChange = () => {
-    console.log('Extensions updated! Destination options should be refreshed.');
+    // Extensions updated
   };
 
   return (

@@ -94,7 +94,7 @@ export const Login: React.FC = () => {
         setError('Invalid credentials. Please try again.');
       }
     } catch (error: any) {
-      const msg = error?.message || '';
+      const msg = error?.message ?? '';
       if (
         msg.toLowerCase().includes('unauthorized') ||
         msg.toLowerCase().includes('invalid credentials')
@@ -103,7 +103,6 @@ export const Login: React.FC = () => {
       } else {
         setError('Login failed. Please check your connection and try again.');
       }
-      console.error('Login error:', error);
     } finally {
       setIsLoading(false);
     }
