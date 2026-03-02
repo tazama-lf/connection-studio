@@ -451,7 +451,10 @@ export class AdminServiceClient {
     this.logger.log(`Validating job update with id : ${id}`);
 
     try {
-      const body: Record<string, unknown> = {};
+      const body: Record<string, unknown> = {
+        type,
+        status,
+      };
       if (reason) body.reason = reason;
       const response = await firstValueFrom(
         this.httpService.put(
@@ -464,8 +467,6 @@ export class AdminServiceClient {
             },
             params: {
               tenantId,
-              type,
-              status,
             },
           },
         ),
@@ -474,7 +475,7 @@ export class AdminServiceClient {
       this.logger.log(`Validation response: ${JSON.stringify(response.data)}`);
       return response.data;
     } catch (error) {
-      return this.handleError(error, 'updateScheduleStatus');
+      return this.handleError(error, 'updateJobStatus');
     }
   }
 
