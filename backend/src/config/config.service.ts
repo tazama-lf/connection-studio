@@ -353,19 +353,38 @@ export class ConfigService {
     token: string,
   ): Promise<ConfigResponseDto> {
     const { action } = actionDto;
-
-    const config = await this.getConfigOrThrow(id, user.tenantId, token);
-
-    if (!config.status) {
-      throw new BadRequestException(`Config ${id} has no status defined`);
-    }
-
+    
     const userRole = user.actorRole.toLowerCase();
     if (
       !userRole ||
       !['editor', 'approver', 'publisher', 'exporter'].includes(userRole)
     ) {
       throw new ForbiddenException('Invalid user role');
+    }
+
+    let config: Config;
+
+    if (userRole === 'publisher' && action === 'deploy') {
+      const { tenantId } = user;
+      const fileName = `dems_${tenantId}_${id}`;
+      
+      try {
+        const configData = (await this.sftpService.readFile(
+          fileName,
+        )) as unknown as SftpConfigDataDto;
+        
+        config = configData as unknown as Config;
+      } catch (error) {
+        throw new BadRequestException(
+          `Cannot read config ${id} from SFTP: ${error.message}`,
+        );
+      }
+    } else {
+      config = await this.getConfigOrThrow(id, user.tenantId, token);
+    }
+
+    if (!config.status) {
+      throw new BadRequestException(`Config ${id} has no status defined`);
     }
 
     const typedRole = userRole as
@@ -615,7 +634,7 @@ export class ConfigService {
 
       case 'export': {
         const exportDto = actionDto.data;
-        // Config already fetched at the beginning of handleWorkflowAction
+        // Config already fetched for non-publisher roles
         const currentStatus = config.status;
         const action: WorkflowAction = 'export';
         this.validateWorkflowAction(user.validClaims, currentStatus, action);
@@ -626,9 +645,9 @@ export class ConfigService {
         try {
           const configToExport = {
             ...config,
-            // Status is set to DEPLOYED here (not EXPORTED) so the file is ready
+            // Status is set to READY_FOR_DEPLOYMENT here (not EXPORTED) so the file is ready
             // for deployment without requiring a status update during the deploy phase
-            status: ConfigStatus.DEPLOYED,
+            status: ConfigStatus.READY_FOR_DEPLOYMENT,
             msg_fam: config.msgFam,
             tenant_id: config.tenantId,
           };
@@ -694,14 +713,19 @@ export class ConfigService {
         const fileName = `dems_${tenantId}_${id}`;
         let configData: SftpConfigDataDto;
 
-        try {
-          configData = (await this.sftpService.readFile(
-            fileName,
-          )) as unknown as SftpConfigDataDto;
-        } catch (error) {
-          throw new BadRequestException(
-            `Cannot deploy config ${id}: status is undefined and SFTP read failed. Error: ${error.message}`,
-          );
+        // Config already read from SFTP for publisher role
+        if (userRole === 'publisher') {
+          configData = config as unknown as SftpConfigDataDto;
+        } else {
+          try {
+            configData = (await this.sftpService.readFile(
+              fileName,
+            )) as unknown as SftpConfigDataDto;
+          } catch (error) {
+            throw new BadRequestException(
+              `Cannot deploy config ${id}: status is undefined and SFTP read failed. Error: ${error.message}`,
+            );
+          }
         }
 
         const newStatus = ConfigStatus.DEPLOYED;
