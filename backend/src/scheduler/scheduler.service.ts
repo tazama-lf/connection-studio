@@ -218,45 +218,48 @@ export class SchedulerService {
     reason?: string,
   ): Promise<ISuccess> {
     try {
-      // Get existing schedule for RBAC validation
-      const existingSchedule = await this.findOne(id, user);
+      let existingSchedule: Schedule | null = null;
+      
+      if (user.actorRole.toLowerCase() !== 'publisher') {
+        existingSchedule = await this.findOne(id, user);
 
-      if (!existingSchedule) {
-        throw new BadRequestException('Schedule not found');
-      }
+        if (!existingSchedule) {
+          throw new BadRequestException('Schedule not found');
+        }
 
-      const userRole = user.actorRole.toLowerCase();
-      if (
-        !userRole ||
-        !['editor', 'approver', 'publisher', 'exporter'].includes(userRole)
-      ) {
-        throw new ForbiddenException('Invalid user role');
-      }
+        const userRole = user.actorRole.toLowerCase();
+        if (
+          !userRole ||
+          !['editor', 'approver', 'publisher', 'exporter'].includes(userRole)
+        ) {
+          throw new ForbiddenException('Invalid user role');
+        }
 
-      const tier2Result = this.rbacService.checkTier2({
-        role: userRole as 'editor' | 'approver' | 'publisher' | 'exporter',
-        endpointKey: 'Patch /update/status/:id',
-        currentStatus: existingSchedule.status,
-      });
+        const tier2Result = this.rbacService.checkTier2({
+          role: userRole as 'editor' | 'approver' | 'publisher' | 'exporter',
+          endpointKey: 'Patch /update/status/:id',
+          currentStatus: existingSchedule.status,
+        });
 
-      if (!tier2Result.allowed) {
-        throw new ForbiddenException(
-          tier2Result.reason ?? 'Not authorized to update this schedule status',
-        );
-      }
+        if (!tier2Result.allowed) {
+          throw new ForbiddenException(
+            tier2Result.reason ?? 'Not authorized to update this schedule status',
+          );
+        }
 
-      const tier3Result = this.rbacService.checkTier3({
-        role: userRole as 'editor' | 'approver' | 'publisher' | 'exporter',
-        endpointKey: 'Patch /update/status/:id',
-        currentStatus: existingSchedule.status,
-        targetStatus: status,
-      });
+        const tier3Result = this.rbacService.checkTier3({
+          role: userRole as 'editor' | 'approver' | 'publisher' | 'exporter',
+          endpointKey: 'Patch /update/status/:id',
+          currentStatus: existingSchedule.status,
+          targetStatus: status,
+        });
 
-      if (!tier3Result.allowed) {
-        throw new ForbiddenException(
-          tier3Result.reason ??
-            'Not authorized to perform this status transition',
-        );
+        if (!tier3Result.allowed) {
+          throw new ForbiddenException(
+            tier3Result.reason ??
+              'Not authorized to perform this status transition',
+          );
+        }
       }
 
       let result: ISuccess | null = null;
@@ -345,6 +348,7 @@ export class SchedulerService {
           break;
         }
         case JobStatus.DEPLOYED: {
+          const fileName = `cron_${tenantId}_${id}`;
           const fileData = (await this.sftpService.readFile(
             fileName,
           )) as Schedule;
