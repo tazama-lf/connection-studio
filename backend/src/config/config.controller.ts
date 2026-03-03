@@ -41,11 +41,12 @@ import {
   RequireAnyClaims,
 } from '../auth/auth.decorator';
 import type { CreateConfigDto as TcsLibCreateConfigDto } from '@tazama-lf/tcs-lib';
+import { Audit } from 'src/decorators/audit.decorator';
 
 @Controller('config')
 @UseGuards(TazamaAuthGuard)
 export class ConfigController {
-  constructor(private readonly configService: ConfigService) {}
+  constructor(private readonly configService: ConfigService) { }
   @Get('/api/status')
   @RequireAnyClaims(
     TazamaClaims.EDITOR,
@@ -57,6 +58,7 @@ export class ConfigController {
   }
   @Post('/:id/mapping')
   @RequireClaims(TazamaClaims.EDITOR)
+  @Audit()
   async addMapping(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: AddMappingDto,
@@ -70,6 +72,7 @@ export class ConfigController {
   }
   @Delete(':id/mapping/:index')
   @RequireClaims(TazamaClaims.EDITOR)
+  @Audit()
   async removeMapping(
     @Param('id', ParseIntPipe) id: number,
     @Param('index', ParseIntPipe) index: number,
@@ -83,6 +86,7 @@ export class ConfigController {
   }
   @Post()
   @RequireClaims(TazamaClaims.EDITOR)
+  @Audit()
   @HttpCode(HttpStatus.CREATED)
   async createConfig(
     @Body() dto: CreateConfigDto,
@@ -118,6 +122,7 @@ export class ConfigController {
 
   @Put(':id')
   @RequireClaims(TazamaClaims.EDITOR)
+  @Audit()
   async updateConfig(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateConfigDto,
@@ -132,6 +137,7 @@ export class ConfigController {
 
   @Post(':id/function')
   @RequireClaims(TazamaClaims.EDITOR)
+  @Audit()
   async addFunction(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: AddFunctionDto,
@@ -146,6 +152,7 @@ export class ConfigController {
 
   @Delete(':id/function/:index')
   @RequireClaims(TazamaClaims.EDITOR)
+  @Audit()
   async removeFunction(
     @Param('id', ParseIntPipe) id: number,
     @Param('index', ParseIntPipe) index: number,
@@ -164,6 +171,7 @@ export class ConfigController {
     TazamaClaims.PUBLISHER,
     TazamaClaims.EXPORTER,
   )
+  @Audit()
   async workflow(
     @Param('id', ParseIntPipe) id: number,
     @Query('action') action: string,
@@ -216,6 +224,7 @@ export class ConfigController {
     TazamaClaims.APPROVER,
     TazamaClaims.PUBLISHER,
   )
+  @Audit()
   async updateConfigStatus(
     @Param('id', ParseIntPipe) id: number,
     @Query('status') status: string,
@@ -232,6 +241,7 @@ export class ConfigController {
 
   @Patch(':id/publishing-status')
   @RequireAnyClaims(TazamaClaims.PUBLISHER, TazamaClaims.APPROVER)
+  @Audit()
   async updatePublishingStatus(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: { publishing_status: 'active' | 'inactive' },
@@ -256,6 +266,7 @@ export class ConfigController {
     TazamaClaims.PUBLISHER,
     TazamaClaims.EXPORTER,
   )
+  @Audit()
   async getAllConfigs(
     @Param('offset') offset: string,
     @Param('limit') limit: string,

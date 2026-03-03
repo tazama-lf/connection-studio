@@ -1,5 +1,5 @@
 import { Module, Global } from '@nestjs/common';
-import { createAuditProvider } from '@tazama-lf/frms-coe-lib';
+import { createAuditProvider } from '@tazama-lf/audit-lib';
 
 @Global() // Makes the provider available everywhere
 @Module({

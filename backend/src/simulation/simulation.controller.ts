@@ -6,6 +6,7 @@ import { TazamaAuthGuard } from '../auth/tazama-auth.guard';
 import { RequireAnyClaims, TazamaClaims } from '../auth/auth.decorator';
 import { User } from '../auth/user.decorator';
 import type { AuthenticatedUser } from '../auth/auth.types';
+import { Audit } from 'src/decorators/audit.decorator';
 
 @Controller('simulation')
 @UseGuards(TazamaAuthGuard)
@@ -16,6 +17,7 @@ export class SimulationController {
   constructor(private readonly simulationService: SimulationService) {}
 
   @Post('run')
+  @Audit()
   async simulateMapping(
     @Body() dto: SimulatePayloadDto,
     @User() user: AuthenticatedUser,

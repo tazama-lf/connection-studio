@@ -4,7 +4,6 @@ import {
   BadRequestException,
   NotFoundException,
   ForbiddenException,
-  Inject,
 } from '@nestjs/common';
 import { ConfigRepository } from './config.repository';
 import { JSONSchema } from '@tazama-lf/tcs-lib';
@@ -25,7 +24,6 @@ import {
 import { WorkflowActionDto, SftpConfigDataDto } from './dto';
 import { EventType } from '../enums/events.enum';
 import { AuthenticatedUser } from '../auth/auth.types';
-import { AuditLogger } from '@tazama-lf/frms-coe-lib';
 
 @Injectable()
 export class ConfigService {
@@ -39,42 +37,7 @@ export class ConfigService {
     private readonly sftpService: SftpService,
     private readonly notifyService: NotifyService,
     private readonly notificationService: NotificationService,
-    @Inject('AUDIT_LOGGER')
-    private readonly auditLoggerService: AuditLogger,
-  ) {}
-
-  private logAudit(
-    eventType: string,
-    user:
-      | AuthenticatedUser
-      | {
-          userId: string;
-          actorRole?: string;
-          actorName?: string;
-          actorEmail?: string;
-          sourceIP?: string;
-          tenantId: string;
-        },
-    description: string,
-    resourceId: string,
-    status: 'success' | 'failure',
-    outcome: Record<string, unknown>,
-  ): void {
-    this.auditLoggerService.log({
-      eventType,
-      actorId: user.userId,
-      actorRole: user.actorRole ?? 'system',
-      actorName: user.actorName ?? 'System',
-      actorEmail: user.actorEmail ?? 'N/A',
-      description,
-      sourceIp: user.sourceIP ?? 'N/A',
-      status,
-      resourceType: 'Config',
-      resourceId,
-      outcome,
-      tenantId: user.tenantId,
-    });
-  }
+  ) { }
 
   private async getConfigOrThrow(
     id: number,
@@ -98,66 +61,46 @@ export class ConfigService {
     user: AuthenticatedUser,
     token: string,
   ): Promise<ConfigResponseDto> {
-    try {
-      const config = await this.getConfigOrThrow(id, user.tenantId, token);
 
-      if (!config.status) {
-        throw new BadRequestException('Config status is not set');
-      }
-      const userRole = user.actorRole.toLowerCase() as
-        | 'editor'
-        | 'approver'
-        | 'publisher'
-        | 'exporter';
-      const tier2Check = this.rbacService.checkTier2({
-        role: userRole,
-        endpointKey: 'Patch /update/status/:id',
-        currentStatus: config.status,
-      });
+    const config = await this.getConfigOrThrow(id, user.tenantId, token);
 
-      if (!tier2Check.allowed) {
-        throw new ForbiddenException(tier2Check.reason ?? 'Permission denied');
-      }
-
-      const tier3Check = this.rbacService.checkTier3({
-        role: userRole,
-        endpointKey: 'Patch /update/status/:id',
-        currentStatus: config.status,
-        targetStatus: status,
-      });
-
-      if (!tier3Check.allowed) {
-        throw new ForbiddenException(
-          tier3Check.reason ?? 'Status transition not allowed',
-        );
-      }
-
-      await this.configRepository.updateConfigStatus(id, status, token);
-
-      this.logAudit(
-        'Config status updated',
-        user,
-        `Config ${id} status updated to ${status}`,
-        String(id),
-        'success',
-        { success: true, newStatus: status },
-      );
-
-      return {
-        success: true,
-        message: `Config status updated to ${status}`,
-      };
-    } catch (error) {
-      this.logAudit(
-        'Config status update failed',
-        user,
-        `Failed to update config ${id} status to ${status}: ${error.message}`,
-        String(id),
-        'failure',
-        { success: false, error: error.message },
-      );
-      throw error;
+    if (!config.status) {
+      throw new BadRequestException('Config status is not set');
     }
+    const userRole = user.actorRole.toLowerCase() as
+      | 'editor'
+      | 'approver'
+      | 'publisher'
+      | 'exporter';
+    const tier2Check = this.rbacService.checkTier2({
+      role: userRole,
+      endpointKey: 'Patch /update/status/:id',
+      currentStatus: config.status,
+    });
+
+    if (!tier2Check.allowed) {
+      throw new ForbiddenException(tier2Check.reason ?? 'Permission denied');
+    }
+
+    const tier3Check = this.rbacService.checkTier3({
+      role: userRole,
+      endpointKey: 'Patch /update/status/:id',
+      currentStatus: config.status,
+      targetStatus: status,
+    });
+
+    if (!tier3Check.allowed) {
+      throw new ForbiddenException(
+        tier3Check.reason ?? 'Status transition not allowed',
+      );
+    }
+
+    await this.configRepository.updateConfigStatus(id, status, token);
+
+    return {
+      success: true,
+      message: `Config status updated to ${status}`,
+    };
   }
 
   private validateWorkflowAction(
@@ -249,15 +192,6 @@ export class ConfigService {
         );
       }
 
-      this.logAudit(
-        'Config created',
-        user,
-        `Config created for ${dto.transactionType} v${dto.version}`,
-        String(configId),
-        'success',
-        { success: true, configId },
-      );
-
       return {
         success: true,
         message: 'Config created successfully',
@@ -280,15 +214,6 @@ export class ConfigService {
         version,
       );
 
-      this.logAudit(
-        'Config creation failed',
-        user,
-        `Failed to create config for ${transactionType} v${version}: ${error.message}`,
-        'N/A',
-        'failure',
-        { success: false, error: error.message },
-      );
-
       return {
         success: false,
         message: userMessage,
@@ -301,49 +226,28 @@ export class ConfigService {
     user: AuthenticatedUser,
     token: string,
   ): Promise<ConfigResponseDto> {
-    try {
-      await this.getConfigOrThrow(id, user.tenantId, token);
+    await this.getConfigOrThrow(id, user.tenantId, token);
 
-      const updatedConfig = await this.configRepository.getupdateConfigByStatus(
-        id,
-        ConfigStatus.UNDER_REVIEW,
+    const updatedConfig = await this.configRepository.getupdateConfigByStatus(
+      id,
+      ConfigStatus.UNDER_REVIEW,
+      token,
+    );
+
+    if (updatedConfig) {
+      const config = updatedConfig;
+      await this.notificationService.sendWorkflowNotification(
+        EventType.EditorSubmit,
+        user,
+        config,
         token,
       );
-
-      if (updatedConfig) {
-        const config = updatedConfig;
-        await this.notificationService.sendWorkflowNotification(
-          EventType.EditorSubmit,
-          user,
-          config,
-          token,
-        );
-      }
-
-      this.logAudit(
-        'Config submitted for review',
-        user,
-        `Config ${id} submitted for approval`,
-        String(id),
-        'success',
-        { success: true, newStatus: ConfigStatus.UNDER_REVIEW },
-      );
-
-      return {
-        success: true,
-        message: `Configuration ${id} submitted for approval successfully`,
-      };
-    } catch (error) {
-      this.logAudit(
-        'Config submission failed',
-        user,
-        `Failed to submit config ${id} for approval: ${error.message}`,
-        String(id),
-        'failure',
-        { success: false, error: error.message },
-      );
-      throw error;
     }
+
+    return {
+      success: true,
+      message: `Configuration ${id} submitted for approval successfully`,
+    };
   }
 
   async handleWorkflowAction(
@@ -415,7 +319,7 @@ export class ConfigService {
     if (!tier2Check.allowed) {
       throw new ForbiddenException(
         tier2Check.reason ??
-          `Role "${userRole}" cannot act on config in status "${config.status}"`,
+        `Role "${userRole}" cannot act on config in status "${config.status}"`,
       );
     }
 
@@ -429,207 +333,133 @@ export class ConfigService {
     if (!tier3Check.allowed) {
       throw new ForbiddenException(
         tier3Check.reason ??
-          `Role "${userRole}" cannot transition from "${config.status}" to "${targetStatus}"`,
+        `Role "${userRole}" cannot transition from "${config.status}" to "${targetStatus}"`,
       );
     }
 
     switch (action) {
       case 'submit': {
-        try {
-          const submitDto = actionDto.data;
-          const updatedConfig =
-            await this.configRepository.getupdateConfigByStatus(
-              id,
-              ConfigStatus.UNDER_REVIEW,
-              token,
-            );
-
-          if (updatedConfig) {
-            const config = updatedConfig;
-            await this.notificationService.sendWorkflowNotification(
-              EventType.EditorSubmit,
-              user,
-              config,
-              token,
-              submitDto.comment,
-            );
-          }
-
-          this.logAudit(
-            'Config submitted for review',
-            user,
-            `Config ${id} submitted for approval. Comment: ${submitDto.comment ?? 'none'}`,
-            String(id),
-            'success',
-            {
-              success: true,
-              newStatus: ConfigStatus.UNDER_REVIEW,
-              comment: submitDto.comment,
-            },
+        const submitDto = actionDto.data;
+        const updatedConfig =
+          await this.configRepository.getupdateConfigByStatus(
+            id,
+            ConfigStatus.UNDER_REVIEW,
+            token,
           );
 
-          return {
-            success: true,
-            message: `Configuration ${id} submitted for approval successfully`,
-          };
-        } catch (error) {
-          this.logAudit(
-            'Config submission failed',
+        if (updatedConfig) {
+          const config = updatedConfig;
+          await this.notificationService.sendWorkflowNotification(
+            EventType.EditorSubmit,
             user,
-            `Failed to submit config ${id} for approval: ${error.message}`,
-            String(id),
-            'failure',
-            { success: false, error: error.message },
+            config,
+            token,
+            submitDto.comment,
           );
-          throw error;
         }
+
+        return {
+          success: true,
+          message: `Configuration ${id} submitted for approval successfully`,
+        };
       }
 
       case 'approve': {
-        try {
-          const approvalDto = actionDto.data;
-          const updatedConfig =
-            await this.configRepository.getupdateConfigByStatus(
-              id,
-              ConfigStatus.APPROVED,
+
+        const approvalDto = actionDto.data;
+        const updatedConfig =
+          await this.configRepository.getupdateConfigByStatus(
+            id,
+            ConfigStatus.APPROVED,
+            token,
+            approvalDto.comment,
+          );
+
+        if (updatedConfig) {
+          const config = updatedConfig;
+
+          const { transactionType } = config;
+
+          if (transactionType) {
+            await this.configRepository.createTransactionTypeTable(
+              transactionType,
               token,
-              approvalDto.comment,
-            );
-
-          if (updatedConfig) {
-            const config = updatedConfig;
-
-            const { transactionType } = config;
-
-            if (transactionType) {
-              await this.configRepository.createTransactionTypeTable(
-                transactionType,
-                token,
-              );
-            }
-
-            const functions = config.functions as unknown as Array<{
-              functionName: string;
-              tableName?: string;
-            }>;
-
-            if (Array.isArray(functions)) {
-              const datamodelFunctions = functions.filter(
-                (fn: { functionName: string; tableName?: string }) =>
-                  fn.functionName === 'addDataModelTable',
-              );
-
-              const tableCreationPromises = datamodelFunctions.map(
-                async (datamodelFn: {
-                  functionName: string;
-                  tableName?: string;
-                }) => {
-                  if (datamodelFn.tableName) {
-                    await this.configRepository.createTazamaDataModelTable(
-                      datamodelFn.tableName,
-                      token,
-                    );
-                  } else {
-                    this.logger.warn(
-                      'Skipping addDataModelTable function without tableName',
-                    );
-                  }
-                },
-              );
-
-              await Promise.all(tableCreationPromises);
-            }
-
-            await this.notificationService.sendWorkflowNotification(
-              EventType.ApproverApprove,
-              user,
-              config,
-              token,
-              approvalDto.comment,
             );
           }
 
-          this.logAudit(
-            'Config approved',
-            user,
-            `Config ${id} approved. Comment: ${approvalDto.comment ?? 'none'}`,
-            String(id),
-            'success',
-            {
-              success: true,
-              newStatus: ConfigStatus.APPROVED,
-              comment: approvalDto.comment,
-            },
-          );
+          const functions = config.functions as unknown as Array<{
+            functionName: string;
+            tableName?: string;
+          }>;
 
-          return {
-            success: true,
-            message: `Configuration ${id} has been approved successfully`,
-          };
-        } catch (error) {
-          this.logAudit(
-            'Config approval failed',
+          if (Array.isArray(functions)) {
+            const datamodelFunctions = functions.filter(
+              (fn: { functionName: string; tableName?: string }) =>
+                fn.functionName === 'addDataModelTable',
+            );
+
+            const tableCreationPromises = datamodelFunctions.map(
+              async (datamodelFn: {
+                functionName: string;
+                tableName?: string;
+              }) => {
+                if (datamodelFn.tableName) {
+                  await this.configRepository.createTazamaDataModelTable(
+                    datamodelFn.tableName,
+                    token,
+                  );
+                } else {
+                  this.logger.warn(
+                    'Skipping addDataModelTable function without tableName',
+                  );
+                }
+              },
+            );
+
+            await Promise.all(tableCreationPromises);
+          }
+
+          await this.notificationService.sendWorkflowNotification(
+            EventType.ApproverApprove,
             user,
-            `Failed to approve config ${id}: ${error.message}`,
-            String(id),
-            'failure',
-            { success: false, error: error.message },
+            config,
+            token,
+            approvalDto.comment,
           );
-          throw error;
         }
+
+        return {
+          success: true,
+          message: `Configuration ${id} has been approved successfully`,
+        };
       }
 
       case 'reject': {
-        try {
-          const rejectionDto = actionDto.data;
+        const rejectionDto = actionDto.data;
 
-          const updatedConfig =
-            await this.configRepository.getupdateConfigByStatus(
-              id,
-              ConfigStatus.REJECTED,
-              token,
-              rejectionDto.comment,
-            );
-
-          if (updatedConfig) {
-            const config = updatedConfig;
-            await this.notificationService.sendWorkflowNotification(
-              EventType.ApproverReject,
-              user,
-              config,
-              token,
-              rejectionDto.comment,
-            );
-          }
-
-          this.logAudit(
-            'Config rejected',
-            user,
-            `Config ${id} rejected. Comment: ${rejectionDto.comment || 'none'}`,
-            String(id),
-            'success',
-            {
-              success: true,
-              newStatus: ConfigStatus.REJECTED,
-              comment: rejectionDto.comment,
-            },
+        const updatedConfig =
+          await this.configRepository.getupdateConfigByStatus(
+            id,
+            ConfigStatus.REJECTED,
+            token,
+            rejectionDto.comment,
           );
 
-          return {
-            success: true,
-            message: `Configuration ${id} has been rejected successfully`,
-          };
-        } catch (error) {
-          this.logAudit(
-            'Config rejection failed',
+        if (updatedConfig) {
+          const config = updatedConfig;
+          await this.notificationService.sendWorkflowNotification(
+            EventType.ApproverReject,
             user,
-            `Failed to reject config ${id}: ${error.message}`,
-            String(id),
-            'failure',
-            { success: false, error: error.message },
+            config,
+            token,
+            rejectionDto.comment,
           );
-          throw error;
         }
+
+        return {
+          success: true,
+          message: `Configuration ${id} has been rejected successfully`,
+        };
       }
 
       case 'export': {
@@ -670,20 +500,6 @@ export class ConfigService {
             );
           }
 
-          this.logAudit(
-            'Config exported',
-            user,
-            `Config ${id} exported to SFTP. Comment: ${exportDto.comment ?? 'none'}`,
-            String(id),
-            'success',
-            {
-              success: true,
-              newStatus: ConfigStatus.EXPORTED,
-              fileName,
-              comment: exportDto.comment,
-            },
-          );
-
           return {
             success: true,
             message: `Configuration ${id} exported successfully`,
@@ -691,15 +507,6 @@ export class ConfigService {
           };
         } catch (error) {
           this.logger.error(`Failed to export config: ${error.message}`);
-
-          this.logAudit(
-            'Config export failed',
-            user,
-            `Failed to export config ${id}: ${error.message}`,
-            String(id),
-            'failure',
-            { success: false, error: error.message },
-          );
 
           throw new BadRequestException(
             `Failed to export config: ${error.message}`,
@@ -819,19 +626,6 @@ export class ConfigService {
             deployDto.comment,
           );
 
-          this.logAudit(
-            'Config deployed',
-            user,
-            `Config ${id} deployed successfully. Comment: ${deployDto.comment ?? 'none'}`,
-            String(id),
-            'success',
-            {
-              success: true,
-              newStatus: ConfigStatus.DEPLOYED,
-              comment: deployDto.comment,
-            },
-          );
-
           return {
             success: true,
             message: `Configuration ${id} deployed successfully`,
@@ -840,15 +634,6 @@ export class ConfigService {
         } catch (error) {
           const errMsg = error instanceof Error ? error.message : String(error);
           this.logger.error(`Failed to deploy config: ${errMsg}`);
-
-          this.logAudit(
-            'Config deployment failed',
-            user,
-            `Failed to deploy config ${id}: ${errMsg}`,
-            String(id),
-            'failure',
-            { success: false, error: errMsg },
-          );
 
           throw new BadRequestException(
             `Failed to deploy configuration: ${errMsg}`,
@@ -865,66 +650,46 @@ export class ConfigService {
     user: AuthenticatedUser,
     token: string,
   ): Promise<ConfigResponseDto> {
-    try {
-      const result = (await this.configRepository.updatePublishingStatus(
-        id,
-        publishingStatus,
-        token,
-      )) as { success: boolean; message?: string; config?: Config };
 
-      if (!result.success) {
-        throw new NotFoundException(
-          result.message ?? `Config with ID ${id} not found`,
-        );
-      }
+    const result = (await this.configRepository.updatePublishingStatus(
+      id,
+      publishingStatus,
+      token,
+    )) as { success: boolean; message?: string; config?: Config };
 
-      try {
-        await this.notifyService.notifyDems(id.toString(), tenantId);
-      } catch (error) {
-        const errMsg = error instanceof Error ? error.message : String(error);
-        this.logger.error(
-          `Failed to send NATS notification for config ${id}: ${errMsg}`,
-        );
-        throw new BadRequestException(`Failed to activate config: ${errMsg}`);
-      }
-      if (result.config) {
-        const { config } = result;
-        await this.notificationService.sendWorkflowNotification(
-          publishingStatus === 'active'
-            ? EventType.PublisherActivate
-            : EventType.PublisherDeactivate,
-          user,
-          config,
-          token,
-          `Publishing status changed to ${publishingStatus}`,
-        );
-      }
-
-      this.logAudit(
-        'Config publishing status updated',
-        user,
-        `Config ${id} publishing status changed to ${publishingStatus}`,
-        String(id),
-        'success',
-        { success: true, publishingStatus },
+    if (!result.success) {
+      throw new NotFoundException(
+        result.message ?? `Config with ID ${id} not found`,
       );
-
-      return {
-        success: true,
-        message: `Publishing status updated to ${publishingStatus}`,
-        config: result.config,
-      };
-    } catch (error) {
-      this.logAudit(
-        'Config publishing status update failed',
-        user,
-        `Failed to update config ${id} publishing status to ${publishingStatus}: ${error.message}`,
-        String(id),
-        'failure',
-        { success: false, error: error.message },
-      );
-      throw error;
     }
+
+    try {
+      await this.notifyService.notifyDems(id.toString(), tenantId);
+    } catch (error) {
+      const errMsg = error instanceof Error ? error.message : String(error);
+      this.logger.error(
+        `Failed to send NATS notification for config ${id}: ${errMsg}`,
+      );
+      throw new BadRequestException(`Failed to activate config: ${errMsg}`);
+    }
+    if (result.config) {
+      const { config } = result;
+      await this.notificationService.sendWorkflowNotification(
+        publishingStatus === 'active'
+          ? EventType.PublisherActivate
+          : EventType.PublisherDeactivate,
+        user,
+        config,
+        token,
+        `Publishing status changed to ${publishingStatus}`,
+      );
+    }
+
+    return {
+      success: true,
+      message: `Publishing status updated to ${publishingStatus}`,
+      config: result.config,
+    };
   }
   async updateConfigViaWrite(
     id: number,
@@ -960,7 +725,7 @@ export class ConfigService {
       if (!tier2Check.allowed) {
         throw new ForbiddenException(
           tier2Check.reason ??
-            `Role "${userRole}" cannot act on config in status "${config.status}"`,
+          `Role "${userRole}" cannot act on config in status "${config.status}"`,
         );
       }
 
@@ -974,39 +739,18 @@ export class ConfigService {
       if (!tier3Check.allowed) {
         throw new ForbiddenException(
           tier3Check.reason ??
-            `Role "${userRole}" cannot transition from "${config.status}" to "${updateData.status}"`,
+          `Role "${userRole}" cannot transition from "${config.status}" to "${updateData.status}"`,
         );
       }
     }
 
-    try {
-      const result = await this.configRepository.updateConfigViaWrite(
-        id,
-        updateData,
-        user.token.tokenString,
-      );
+    const result = await this.configRepository.updateConfigViaWrite(
+      id,
+      updateData,
+      user.token.tokenString,
+    );
 
-      this.logAudit(
-        'Config updated',
-        user,
-        `Config ${id} updated via write`,
-        String(id),
-        'success',
-        { success: true, updateData },
-      );
-
-      return result;
-    } catch (error) {
-      this.logAudit(
-        'Config update failed',
-        user,
-        `Failed to update config ${id} via write: ${error.message}`,
-        String(id),
-        'failure',
-        { success: false, error: error.message },
-      );
-      throw error;
-    }
+    return result;
   }
 
   async addMappingViaService(
@@ -1014,34 +758,13 @@ export class ConfigService {
     mappingData: Record<string, unknown>,
     token: string,
   ): Promise<unknown> {
-    try {
-      const result = await this.configRepository.addMapping(
-        id,
-        mappingData,
-        token,
-      );
+    const result = await this.configRepository.addMapping(
+      id,
+      mappingData,
+      token,
+    );
 
-      this.logAudit(
-        'Config mapping added',
-        { userId: 'system', tenantId: 'system' },
-        `Mapping added to config ${id}`,
-        String(id),
-        'success',
-        { success: true, mappingData },
-      );
-
-      return result;
-    } catch (error) {
-      this.logAudit(
-        'Config mapping addition failed',
-        { userId: 'system', tenantId: 'system' },
-        `Failed to add mapping to config ${id}: ${error.message}`,
-        String(id),
-        'failure',
-        { success: false, error: error.message },
-      );
-      throw error;
-    }
+    return result;
   }
 
   async removeMappingViaService(
@@ -1049,34 +772,13 @@ export class ConfigService {
     index: number,
     token: string,
   ): Promise<unknown> {
-    try {
-      const result = await this.configRepository.removeMapping(
-        id,
-        index,
-        token,
-      );
+    const result = await this.configRepository.removeMapping(
+      id,
+      index,
+      token,
+    );
 
-      this.logAudit(
-        'Config mapping removed',
-        { userId: 'system', tenantId: 'system' },
-        `Mapping at index ${index} removed from config ${id}`,
-        String(id),
-        'success',
-        { success: true, removedIndex: index },
-      );
-
-      return result;
-    } catch (error) {
-      this.logAudit(
-        'Config mapping removal failed',
-        { userId: 'system', tenantId: 'system' },
-        `Failed to remove mapping at index ${index} from config ${id}: ${error.message}`,
-        String(id),
-        'failure',
-        { success: false, error: error.message },
-      );
-      throw error;
-    }
+    return result;
   }
 
   async addFunctionViaService(
@@ -1084,34 +786,13 @@ export class ConfigService {
     functionData: Record<string, unknown>,
     token: string,
   ): Promise<unknown> {
-    try {
-      const result = await this.configRepository.addFunction(
-        id,
-        functionData,
-        token,
-      );
+    const result = await this.configRepository.addFunction(
+      id,
+      functionData,
+      token,
+    );
 
-      this.logAudit(
-        'Config function added',
-        { userId: 'system', tenantId: 'system' },
-        `Function added to config ${id}`,
-        String(id),
-        'success',
-        { success: true, functionData },
-      );
-
-      return result;
-    } catch (error) {
-      this.logAudit(
-        'Config function addition failed',
-        { userId: 'system', tenantId: 'system' },
-        `Failed to add function to config ${id}: ${error.message}`,
-        String(id),
-        'failure',
-        { success: false, error: error.message },
-      );
-      throw error;
-    }
+    return result;
   }
 
   async removeFunctionViaService(
@@ -1119,34 +800,13 @@ export class ConfigService {
     index: number,
     token: string,
   ): Promise<unknown> {
-    try {
-      const result = await this.configRepository.removeFunction(
-        id,
-        index,
-        token,
-      );
+    const result = await this.configRepository.removeFunction(
+      id,
+      index,
+      token,
+    );
 
-      this.logAudit(
-        'Config function removed',
-        { userId: 'system', tenantId: 'system' },
-        `Function at index ${index} removed from config ${id}`,
-        String(id),
-        'success',
-        { success: true, removedIndex: index },
-      );
-
-      return result;
-    } catch (error) {
-      this.logAudit(
-        'Config function removal failed',
-        { userId: 'system', tenantId: 'system' },
-        `Failed to remove function at index ${index} from config ${id}: ${error.message}`,
-        String(id),
-        'failure',
-        { success: false, error: error.message },
-      );
-      throw error;
-    }
+    return result;
   }
 
   async getConfigById(

@@ -122,7 +122,7 @@ export class SchedulerService {
     );
   }
 
-  async update(
+  async updateSchedule(
     id: string,
     attr: UpdateScheduleJobDto,
     user: AuthenticatedUser,

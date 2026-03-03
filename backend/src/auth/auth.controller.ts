@@ -11,6 +11,7 @@ import {
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
+import { Audit } from 'src/decorators/audit.decorator';
 
 @Controller('auth')
 export class AuthController {
@@ -19,6 +20,7 @@ export class AuthController {
     private readonly logger: LoggerService,
   ) {}
   @Post('login')
+  @Audit()
   @HttpCode(200)
   async login(
     @Body(new ValidationPipe({ whitelist: true, transform: true }))

@@ -36,6 +36,7 @@ import { PushJob } from './dto/push-job.dto';
 import { UpdatePullJobDto } from './dto/update-pull-job.dto';
 import { UpdatePushJobDto } from './dto/update-push-job.dto';
 import { JobService } from './job.service';
+import { Audit } from 'src/decorators/audit.decorator';
 
 @Controller('job')
 @UseGuards(TazamaAuthGuard)
@@ -44,6 +45,7 @@ export class JobController {
 
   @Post('/create/push')
   @RequireAnyClaims(TazamaClaims.EDITOR)
+  @Audit()
   async createPushJob(
     @Body() job: CreatePushJobDto,
     @User() user: AuthenticatedUser,
@@ -53,6 +55,7 @@ export class JobController {
 
   @Post('/create/pull')
   @RequireAnyClaims(TazamaClaims.EDITOR)
+  @Audit()
   async createPullJob(
     @Body() job: CreatePullJobDto,
     @User() user: AuthenticatedUser,
@@ -62,6 +65,7 @@ export class JobController {
 
   @Patch('/update/:id')
   @RequireEditorRole()
+  @Audit()
   async updateJob(
     @Param('id') id: string,
     @Body() job: UpdatePushJobDto | UpdatePullJobDto,
@@ -143,6 +147,7 @@ export class JobController {
     TazamaClaims.EXPORTER,
     TazamaClaims.PUBLISHER,
   )
+  @Audit()
   async updateJobStatus(
     @Param('id') id: string,
     @Query('status') status: JobStatus,
@@ -155,6 +160,7 @@ export class JobController {
 
   @Patch('/update/activation/:id')
   @RequireAnyClaims(TazamaClaims.PUBLISHER)
+  @Audit()
   async updateJobActivation(
     @Param('id') id: string,
     @Query('status') status: ScheduleStatus,
