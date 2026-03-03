@@ -21,31 +21,27 @@ import { AiOutlineEye, AiOutlineEyeInvisible } from 'react-icons/ai';
 import { MdEmail, MdLock } from 'react-icons/md';
 import { useNavigate } from 'react-router-dom'; // For commented-out API logic
 import * as yup from 'yup';
-import { isApprover } from '../../../utils/common/roleUtils';
 import { useAuth } from '../contexts/AuthContext';
 import { authApi } from '../services/authApi';
 
-// --- For commented-out API logic ---
-// const login = async (user: string, pass: string) => { console.log(user, pass); return true; };
-// const authApi = { decodeToken: (token: string) => ({ claims: 'mock' }) };
-// const isApprover = (claims: any) => false;
-// ---
-
 const themeColor = '#51BE99';
+const MAX_EMAIL_LENGTH = 100;
+const MIN_PASSWORD_LENGTH = 6;
+const MAX_PASSWORD_LENGTH = 50;
 
 const schema = yup
   .object({
     username: yup
       .string()
       .required('This Field is Required')
-      .max(100, 'Email must not exceed 100 characters')
+      .max(MAX_EMAIL_LENGTH, `Email must not exceed ${MAX_EMAIL_LENGTH} characters`)
       // .matches(/^([a-zA-Z0-9_\-\.]+)@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.)|(([a-zA-Z0-9\-]+\.)+))([a-zA-Z]{2,4}|[0-9]{1,3})(\]?)$/, 'A valid email address is required.')
       .email('A valid email address is required.'),
     password: yup
       .string()
       .required('This Field is Required')
-      .min(6, 'Must be at least 6 characters')
-      .max(50, 'Password must not exceed 50 characters'),
+      .min(MIN_PASSWORD_LENGTH, `Must be at least ${MIN_PASSWORD_LENGTH} characters`)
+      .max(MAX_PASSWORD_LENGTH, `Password must not exceed ${MAX_PASSWORD_LENGTH} characters`),
   })
   .required();
 
@@ -55,7 +51,6 @@ type FormData = yup.InferType<typeof schema>;
 export const Login: React.FC = () => {
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
-  const [isLoading, setIsLoading] = useState<boolean>(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -67,15 +62,14 @@ export const Login: React.FC = () => {
     resolver: yupResolver(schema),
   });
 
-  const handleClickShowPassword = () => { setShowPassword((prev) => !prev); };
+  const handleClickShowPassword = (): void => { setShowPassword((prev) => !prev); };
   const handleMouseDownPassword = (
     event: React.MouseEvent<HTMLButtonElement>,
-  ) => {
+  ): void => {
     event.preventDefault();
   };
-  const onSubmit = async (data: FormData) => {
+  const onSubmit = async (data: FormData): Promise<void> => {
     setError('');
-    setIsLoading(true);
 
     try {
       const success = await login(data.username, data.password);
@@ -83,9 +77,7 @@ export const Login: React.FC = () => {
         const token = localStorage.getItem('authToken');
         if (token) {
           const userData = authApi.decodeToken(token);
-          const isUserApprover = userData?.claims
-            ? isApprover(userData.claims)
-            : false;
+          void userData;
           navigate('/dashboard', { replace: true });
         } else {
           navigate('/dashboard', { replace: true });
@@ -93,18 +85,16 @@ export const Login: React.FC = () => {
       } else {
         setError('Invalid credentials. Please try again.');
       }
-    } catch (error: any) {
-      const msg = error?.message ?? '';
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : '';
       if (
-        msg.toLowerCase().includes('unauthorized') ||
-        msg.toLowerCase().includes('invalid credentials')
+        errorMessage.toLowerCase().includes('unauthorized') ||
+        errorMessage.toLowerCase().includes('invalid credentials')
       ) {
         setError('Invalid credentials. Please try again.');
       } else {
         setError('Login failed. Please check your connection and try again.');
       }
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -213,7 +203,7 @@ export const Login: React.FC = () => {
 
             <Box
               component="form"
-              onSubmit={handleSubmit(onSubmit)}
+              onSubmit={(e): void => { void handleSubmit(onSubmit)(e); }}
               noValidate
               sx={{
                 mt: 3,
@@ -221,11 +211,18 @@ export const Login: React.FC = () => {
                 backgroundColor: 'white',
               }}
             >
-              {/* {error && (
-                <Alert severity="error" sx={{ mb: 2, width: '100%' }}>
+              {error && (
+                <Box sx={{ 
+                  mb: 2, 
+                  p: 2, 
+                  bgcolor: '#fee', 
+                  color: '#c33',
+                  borderRadius: 1,
+                  fontSize: '14px'
+                }}>
                   {error}
-                </Alert>
-              )} */}
+                </Box>
+              )}
               <TextField
                 margin="normal"
                 required
@@ -235,25 +232,26 @@ export const Login: React.FC = () => {
                 label="Email Address"
                 autoComplete="email"
                 autoFocus
-                inputProps={{ maxLength: 50 }}
-                // disabled={isLoading}
+                slotProps={{
+                  htmlInput: { maxLength: 50 },
+                  input: {
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <MdEmail color="#666" />
+                      </InputAdornment>
+                    ),
+                  },
+                  formHelperText: {
+                    sx: {
+                      backgroundColor: 'transparent',
+                      margin: 0,
+                      paddingLeft: 0,
+                    },
+                  },
+                }}
                 {...register('username')}
                 error={!!errors.username}
                 helperText={errors.username?.message}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <MdEmail color="#666" />
-                    </InputAdornment>
-                  ),
-                }}
-                FormHelperTextProps={{
-                  sx: {
-                    backgroundColor: 'transparent',
-                    margin: 0,
-                    paddingLeft: 0,
-                  },
-                }}
               />
               <TextField
                 margin="normal"
@@ -263,27 +261,24 @@ export const Login: React.FC = () => {
                 type={showPassword ? 'text' : 'password'}
                 id="password"
                 autoComplete="current-password"
-                inputProps={{ maxLength: 50 }}
-                // disabled={isLoading}
-                {...register('password')}
-                error={!!errors.password}
-                helperText={errors.password?.message}
-                FormHelperTextProps={{
-                  sx: {
-                    backgroundColor: 'transparent',
-                    margin: 0,
-                    paddingLeft: 0,
+                slotProps={{
+                  htmlInput: { maxLength: 50 },
+                  formHelperText: {
+                    sx: {
+                      backgroundColor: 'transparent',
+                      margin: 0,
+                      paddingLeft: 0,
+                    },
                   },
-                }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <MdLock color="#666" />
-                    </InputAdornment>
-                  ),
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton
+                  input: {
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <MdLock color="#666" />
+                      </InputAdornment>
+                    ),
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
                         onClick={handleClickShowPassword}
                         onMouseDown={handleMouseDownPassword}
                         edge="end"
@@ -296,7 +291,11 @@ export const Login: React.FC = () => {
                       </IconButton>
                     </InputAdornment>
                   ),
+                  },
                 }}
+                {...register('password')}
+                error={!!errors.password}
+                helperText={errors.password?.message}
               />
 
               <Button

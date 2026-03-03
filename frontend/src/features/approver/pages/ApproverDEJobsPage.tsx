@@ -1,6 +1,6 @@
 import { useAuth } from '@features/auth';
 import { Button } from '@shared';
-import { UI_CONFIG } from '@shared/config/app.config';
+import useFilters from '@shared/hooks/useFilters';
 import { getPrimaryRole } from '@utils/common/roleUtils';
 import { ChevronLeft, Database } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -9,28 +9,24 @@ import { useToast } from '../../../shared/providers/ToastProvider';
 import JobDetailsModal from '../../data-enrichment/components/JobDetailsModal';
 import { JobList } from '../../data-enrichment/components/JobList';
 import { loadJobs } from '../../data-enrichment/handlers';
-import type { DataEnrichmentJobResponse } from '../../data-enrichment/types';
 import { dataEnrichmentJobApi as dataEnrichmentApi } from '../../data-enrichment/handlers/index';
-import useFilters from '@shared/hooks/useFilters';
+import type { DataEnrichmentJobResponse } from '../../data-enrichment/types';
+
+const INITIAL_PAGE = 1;
+const SORT_DESCENDING = -1;
 
 const ApproverDEJobsPage: React.FC = () => {
-  // Data Enrichment Job state
   const navigate = useNavigate();
   const [jobs, setJobs] = useState<DataEnrichmentJobResponse[]>([]);
-  const [jobsLoading, setJobsLoading] = useState(false);
 
   const { user } = useAuth();
-  const userRole = getPrimaryRole(user?.claims!);
+  const userRole = user?.claims ? getPrimaryRole(user.claims) : undefined;
 
-  const [itemsPerPage] = useState(UI_CONFIG.pagination.defaultPageSize);
-
-  // Job details modal state
   const [showJobDetails, setShowJobDetails] = useState(false);
   const [selectedJob, setSelectedJob] =
     useState<DataEnrichmentJobResponse | null>(null);
   const [jobDetailsLoading, setJobDetailsLoading] = useState(false);
 
-  const [page, setPage] = useState<number>(1);
   const [totalRecords, setTotalRecords] = useState<number>(0);
   const [searchingFilters, setSearchingFilters] = useState({});
   const [loading, setLoading] = useState(true);
@@ -46,8 +42,8 @@ const ApproverDEJobsPage: React.FC = () => {
     page: offset,
     limit,
     totalRecords,
-    setPage: (page: number) => { setOffset(page - 1); },
-  }), [offset, limit, totalRecords])
+    setPage: (page: number): void => { setOffset(page - INITIAL_PAGE); },
+  }), [offset, limit, totalRecords, setOffset])
 
   const { showSuccess, showError } = useToast();
 
@@ -75,18 +71,18 @@ const ApproverDEJobsPage: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchDeJobs();
-  }, [pagination, searchingFilters]);
+    void fetchDeJobs();
+  }, [fetchDeJobs, pagination, searchingFilters]);
 
-  const handleJobRefresh = () => {
-    fetchDeJobs();
+  const handleJobRefresh = (): void => {
+    void fetchDeJobs();
   };
 
   const handleApproveJob = async (
     jobId: string,
     jobType: 'PULL' | 'PUSH',
     reason?: string,
-  ) => {
+  ): Promise<void> => {
     try {
       await dataEnrichmentApi.updateStatus(
         jobId,
@@ -107,7 +103,7 @@ const ApproverDEJobsPage: React.FC = () => {
     jobId: string,
     jobType: 'PULL' | 'PUSH',
     reason: string,
-  ) => {
+  ): Promise<void> => {
     try {
       await dataEnrichmentApi.updateStatus(
         jobId,
@@ -122,16 +118,14 @@ const ApproverDEJobsPage: React.FC = () => {
     }
   };
 
-  const handleViewJobDetails = async (jobId: string) => {
+  const handleViewJobDetails = async (jobId: string): Promise<void> => {
     try {
       setJobDetailsLoading(true);
       setShowJobDetails(true);
 
-      // Find the job in the current list to determine its type
       const job = jobs.find((j) => j.id === jobId);
-      const jobType = job?.type?.toUpperCase() as 'PULL' | 'PUSH' | undefined;
+      const jobType = job?.type ? (job.type.toUpperCase() as 'PULL' | 'PUSH') : undefined;
 
-      // Fetch job details from the API
       const jobDetails = await dataEnrichmentApi.getById(jobId, jobType);
       setSelectedJob(jobDetails);
     } catch (error) {
@@ -141,7 +135,7 @@ const ApproverDEJobsPage: React.FC = () => {
     }
   };
 
-  const handleCloseJobDetails = () => {
+  const handleCloseJobDetails = (): void => {
     setShowJobDetails(false);
     setSelectedJob(null);
   };
@@ -152,8 +146,7 @@ const ApproverDEJobsPage: React.FC = () => {
         <Button
           variant="primary"
           className="py-1 pl-2"
-          onClick={async () => { await navigate(-1); }}
-        >
+          onClick={(): void => { navigate(SORT_DESCENDING); }}>
           <ChevronLeft size={20} /> <span>Go Back</span>
         </Button>
         {/* Search Bar */}
@@ -170,13 +163,11 @@ const ApproverDEJobsPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Content */}
         <div className="bg-white rounded-lg shadow">
           <JobList
             jobs={jobs}
-            isLoading={jobsLoading}
-            onViewLogs={handleViewJobDetails}
-            onRefresh={handleJobRefresh}
+            onViewLogs={(jobId: string): void => { void handleViewJobDetails(jobId); }}
+            onRefresh={(): void => { handleJobRefresh(); }}
             pagination={pagination}
             searchingFilters={searchingFilters}
             setSearchingFilters={setSearchingFilters}
@@ -190,12 +181,12 @@ const ApproverDEJobsPage: React.FC = () => {
       {showJobDetails && selectedJob && (
         <JobDetailsModal
           isOpen={showJobDetails}
-          onClose={handleCloseJobDetails}
+          onClose={(): void => { handleCloseJobDetails(); }}
           job={selectedJob}
           isLoading={jobDetailsLoading}
           editMode={false}
-          onApprove={handleApproveJob}
-          onReject={handleRejectJob}
+          onApprove={(jobId: string, jobType: 'PULL' | 'PUSH', reason?: string): void => { void handleApproveJob(jobId, jobType, reason); }}
+          onReject={(jobId: string, jobType: 'PULL' | 'PUSH', reason: string): void => { void handleRejectJob(jobId, jobType, reason); }}
         />
       )}
     </div>

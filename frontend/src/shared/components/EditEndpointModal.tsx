@@ -143,10 +143,9 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
     return options;
   };
 
-  const getPrimaryKeyOptions = () =>
-    // Returns empty array - implement data source if needed
-    []
-    ;
+  const getPrimaryKeyOptions = () => {
+    return [{ value: '_key', label: '_key', group: 'Default' }]
+  }
 
   const jsonBOptions = () => {
     // Add Sources from currentSchema (only object types)
@@ -333,7 +332,6 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
             >
               <option value="">Select Primary Key</option>
 
-              {/* Dynamically generate optgroups based on unique groups in getPrimaryKeyOptions */}
               {Array.from(
                 new Set(getPrimaryKeyOptions().map((opt: any) => opt.group)),
               ).map((groupName: any) => (

@@ -20,6 +20,10 @@ import { useAuth } from '../../auth/contexts/AuthContext';
 import { Button } from '@shared';
 import { useNavigate } from 'react-router';
 
+const INITIAL_OFFSET = 0;
+const INCREMENT = 1;
+const SORT_DESCENDING = -1;
+const MAX_COMMENT_LENGTH = 100;
 
 const ApproverConfigsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -28,7 +32,7 @@ const ApproverConfigsPage: React.FC = () => {
   );
   const [editingConfig, setEditingConfig] = useState<Config | null>(null);
   const [selectedConfig, setSelectedConfig] = useState<Config | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [refreshKey, setRefreshKey] = useState(INITIAL_OFFSET);
   const [showRejectionDialog, setShowRejectionDialog] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [showChangeRequestDialog, setShowChangeRequestDialog] = useState(false);
@@ -48,48 +52,50 @@ const ApproverConfigsPage: React.FC = () => {
   const { user } = useAuth();
   const { showSuccess, showError } = useToast();
 
-  const handleCloseModal = () => {
+  const handleCloseModal = (): void => {
     setEditingEndpointId(null);
     setEditingConfig(null);
-    setRefreshKey((prev) => prev + 1);
+    setRefreshKey((prev) => prev + INCREMENT);
   };
 
-  const handleConfigSuccess = () => {
-    setRefreshKey((prev) => prev + 1);
+  const handleConfigSuccess = (): void => {
+    setRefreshKey((prev) => prev + INCREMENT);
   };
 
-  const handleViewDetails = (config: Config) => {
+  const handleViewDetails = (config: Config): void => {
     setEditingEndpointId(config.id);
     setEditingConfig(config);
   };
 
-  const handleApprove = async (configId: number) => {
+  const handleApprove = async (configId: number): Promise<void> => {
     try {
       const response = await configApi.approveConfig(configId);
       if (response.success) {
         showSuccess('Configuration approved successfully');
-        setRefreshKey((prev) => prev + 1);
+        setRefreshKey((prev) => prev + INCREMENT);
       } else if (response.config) {
-          showSuccess('Configuration approved successfully');
-          setRefreshKey((prev) => prev + 1);
+        showSuccess('Configuration approved successfully');
+        setRefreshKey((prev) => prev + INCREMENT);
+      } else if (response.message) {
+          showError(response.message);
         } else {
-          showError(response.message ?? 'Failed to approve configuration');
+          showError('Failed to approve configuration');
         }
     } catch (error) {
       showError('Failed to approve configuration');
     }
   };
 
-  const handleRejectClick = (config: Config) => {
+  const handleRejectClick = (config: Config): void => {
     setConfigToReject(config);
     setShowRejectionDialog(true);
   };
 
-  const handleRejectConfirm = async (reason: string) => {
+  const handleRejectConfirm = async (reason: string): Promise<void> => {
     if (!configToReject) return;
     setRejectionLoading(true);
     try {
-      const userId = user?.email ?? user?.username ?? 'system';
+      const userId = (user?.email ?? user?.username) ?? 'system';
       const response = await configApi.rejectConfig(
         configToReject.id,
         userId,
@@ -97,12 +103,14 @@ const ApproverConfigsPage: React.FC = () => {
       );
       if (response.success) {
         showSuccess('Configuration rejected successfully');
-        setRefreshKey((prev) => prev + 1);
+        setRefreshKey((prev) => prev + INCREMENT);
       } else if (response.config) {
-          showSuccess('Configuration rejected successfully');
-          setRefreshKey((prev) => prev + 1);
+        showSuccess('Configuration rejected successfully');
+        setRefreshKey((prev) => prev + INCREMENT);
+      } else if (response.message) {
+          showError(response.message);
         } else {
-          showError(response.message ?? 'Failed to reject configuration');
+          showError('Failed to reject configuration');
         }
     } catch (error) {
       showError('Failed to reject configuration');
@@ -111,11 +119,11 @@ const ApproverConfigsPage: React.FC = () => {
     }
   };
 
-  const handleChangeRequestConfirm = async (requestedChanges: string) => {
+  const handleChangeRequestConfirm = async (requestedChanges: string): Promise<void> => {
     if (!configToRequestChanges) return;
 
     try {
-      const userId = user?.email ?? user?.username ?? 'system';
+      const userId = (user?.email ?? user?.username) ?? 'system';
       const response = await configApi.rejectConfig(
         configToRequestChanges.id,
         userId,
@@ -123,33 +131,35 @@ const ApproverConfigsPage: React.FC = () => {
       );
       if (response.success) {
         showSuccess('Change request sent to editor successfully');
-        setRefreshKey((prev) => prev + 1);
+        setRefreshKey((prev) => prev + INCREMENT);
         handleCloseModal();
       } else if (response.config) {
-          showSuccess('Change request sent to editor successfully');
-          setRefreshKey((prev) => prev + 1);
-          handleCloseModal();
+        showSuccess('Change request sent to editor successfully');
+        setRefreshKey((prev) => prev + INCREMENT);
+        handleCloseModal();
+      } else if (response.message) {
+          showError(response.message);
         } else {
-          showError(response.message ?? 'Failed to send change request');
+          showError('Failed to send change request to editor');
         }
     } catch (error) {
       showError('Failed to send change request to editor');
     }
   };
 
-  const handleRefresh = () => {
-    setRefreshKey((prev) => prev + 1);
+  const handleRefresh = (): void => {
+    setRefreshKey((prev) => prev + INCREMENT);
   };
 
-  const handleRevertToEditor = (config: Config) => {
+  const handleRevertToEditor = (config: Config): void => {
     setConfigToRequestChanges(config);
     setShowChangeRequestDialog(true);
   };
 
-  const handleSendForApproval = async (
+  const handleSendForApproval = (
     configId: number,
     configName?: string,
-  ) => {
+  ): void => {
     setConfigToApprove({
       id: configId,
       name: configName ?? `Config #${configId}`,
@@ -158,7 +168,7 @@ const ApproverConfigsPage: React.FC = () => {
     setShowApprovalDialog(true);
   };
 
-  const handleApprovalConfirm = async () => {
+  const handleApprovalConfirm = async (): Promise<void> => {
     if (!configToApprove) return;
     setApprovalLoading(true);
     try {
@@ -168,18 +178,22 @@ const ApproverConfigsPage: React.FC = () => {
       );
       if (response.success) {
         showSuccess('Configuration approved successfully');
-        setRefreshKey((prev) => prev + 1);
+        setRefreshKey((prev) => prev + INCREMENT);
         handleCloseModal();
         setShowApprovalDialog(false);
         setConfigToApprove(null);
       } else if (response.config) {
         showSuccess('Configuration approved successfully');
-        setRefreshKey((prev) => prev + 1);
+        setRefreshKey((prev) => prev + INCREMENT);
         handleCloseModal();
         setShowApprovalDialog(false);
         setConfigToApprove(null);
       } else {
-        showError(response.message ?? 'Failed to approve configuration');
+        if (response.message) {
+          showError(response.message);
+        } else {
+          showError('Failed to approve configuration');
+        }
         setShowApprovalDialog(false);
         setConfigToApprove(null);
       }
@@ -198,7 +212,7 @@ const ApproverConfigsPage: React.FC = () => {
         <Button
           variant="primary"
           className="py-1 pl-2"
-          onClick={async () => { await navigate(-1); }}
+          onClick={(): void => { navigate(SORT_DESCENDING); }}
         >
           <ChevronLeft size={20} /> <span>Go Back</span>
         </Button>
@@ -236,16 +250,18 @@ const ApproverConfigsPage: React.FC = () => {
           endpointId={editingEndpointId}
           onSuccess={handleConfigSuccess}
           readOnly={true}
-          onRevertToEditor={() =>
-            editingConfig && handleRevertToEditor(editingConfig)
-          }
-          onSendForDeployment={() => {
+          onRevertToEditor={(): void => {
+            if (editingConfig) {
+              handleRevertToEditor(editingConfig);
+            }
+          }}
+          onSendForDeployment={(): void => {
             if (editingConfig) {
               setConfigToApprove({
                 id: editingEndpointId,
                 name:
-                  editingConfig.endpointPath ??
-                  editingConfig.msgFam ??
+                  (editingConfig.endpointPath ??
+                  editingConfig.msgFam) ??
                   `Config #${editingEndpointId}`,
               });
               setShowApprovalDialog(true);
@@ -259,11 +275,11 @@ const ApproverConfigsPage: React.FC = () => {
         <>
           <RejectionDialog
             isOpen={showRejectionDialog}
-            onClose={() => {
+            onClose={(): void => {
               setShowRejectionDialog(false);
               setConfigToReject(null);
             }}
-            onConfirm={handleRejectConfirm}
+            onConfirm={(reason: string): void => { void handleRejectConfirm(reason); }}
             configName={configToReject.endpointPath}
           />
           <Backdrop
@@ -279,13 +295,13 @@ const ApproverConfigsPage: React.FC = () => {
       {selectedConfig && (
         <ConfigReviewModal
           isOpen={showReviewModal}
-          onClose={() => {
+          onClose={(): void => {
             setShowReviewModal(false);
             setSelectedConfig(null);
           }}
           config={selectedConfig}
-          onApprove={async () => { await handleApprove(selectedConfig.id); }}
-          onReject={() => { handleRejectClick(selectedConfig); }}
+          onApprove={(): void => { void handleApprove(selectedConfig.id); }}
+          onReject={(): void => { handleRejectClick(selectedConfig); }}
         />
       )}
 
@@ -293,11 +309,11 @@ const ApproverConfigsPage: React.FC = () => {
       {configToRequestChanges && (
         <ChangeRequestDialog
           isOpen={showChangeRequestDialog}
-          onClose={() => {
+          onClose={(): void => {
             setShowChangeRequestDialog(false);
             setConfigToRequestChanges(null);
           }}
-          onConfirm={handleChangeRequestConfirm}
+          onConfirm={(requestedChanges: string): void => { void handleChangeRequestConfirm(requestedChanges); }}
           configName={configToRequestChanges.endpointPath}
         />
       )}
@@ -305,7 +321,7 @@ const ApproverConfigsPage: React.FC = () => {
       {/* Approval Confirmation Dialog */}
       <Dialog
         open={showApprovalDialog}
-        onClose={() => {
+        onClose={(): void => {
           setShowApprovalDialog(false);
           setConfigToApprove(null);
         }}
@@ -382,8 +398,9 @@ const ApproverConfigsPage: React.FC = () => {
             <textarea
               id="approval-comment"
               value={approvalComment}
-              onChange={(e) => { setApprovalComment(e.target.value); }}
+              onChange={(e): void => { setApprovalComment(e.target.value); }}
               placeholder="Add a comment for this approval (optional)"
+              maxLength={MAX_COMMENT_LENGTH}
               rows={3}
               style={{
                 width: '100%',
@@ -401,7 +418,7 @@ const ApproverConfigsPage: React.FC = () => {
         </DialogContent>
         <DialogActions sx={{ padding: '12px 20px 16px 20px' }}>
           <Button
-            onClick={() => {
+            onClick={(): void => {
               setShowApprovalDialog(false);
               setConfigToApprove(null);
             }}
@@ -411,7 +428,7 @@ const ApproverConfigsPage: React.FC = () => {
             Cancel
           </Button>
           <Button
-            onClick={handleApprovalConfirm}
+            onClick={(): void => { void handleApprovalConfirm(); }}
             variant="primary"
             className="!pb-[6px] !pt-[5px] bg-[#2b7fff]"
             disabled={approvalLoading}

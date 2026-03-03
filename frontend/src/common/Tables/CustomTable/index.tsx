@@ -1,6 +1,6 @@
 import { Pagination, useMediaQuery } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
-import type { GridColDef, GridRowParams } from '@mui/x-data-grid';
+import type { GridColDef, GridRowId, GridRowParams } from '@mui/x-data-grid';
 import React from 'react';
 
 import {
@@ -64,7 +64,7 @@ const CustomTable: React.FC<CustomTableProps> = ({
     <TableOuter paddingValue={tablePadding}>
       <TableWrapper sx={{ height: downSm ? '65%' : '80%' }}>
         <StyledDataGrid
-          getRowId={(row) => row[uniqueId]}
+          getRowId={(row) => row[uniqueId] as GridRowId}
           rows={rows}
           columns={columns}
           onRowClick={onRowClick}

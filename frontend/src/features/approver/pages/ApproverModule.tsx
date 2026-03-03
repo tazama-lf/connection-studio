@@ -69,7 +69,7 @@ export const ApproverModule: React.FC = () => {
             <div
               key={module.id}
               className="bg-white rounded-lg shadow p-6 cursor-pointer hover:shadow-md transition-shadow duration-200"
-              onClick={async () => { await navigate(module.path); }}
+              onClick={() => { navigate(module.path); }}
             >
               <div className="flex items-start">
                 <div className={`p-3 rounded-lg ${module.color}`}>

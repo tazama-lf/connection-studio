@@ -13,11 +13,11 @@ const AuthContext = createContext<AuthContextType>({
   isAuthenticated: false,
   user: null,
   loading: false,
-  login: async () => false,
-  logout: () => {}
+  async login(): Promise<boolean> { return false; },
+  logout(): void { /* default implementation */ }
 });
 
-function useAuth() {
+function useAuth(): AuthContextType {
   return useContext(AuthContext);
 }
 
@@ -30,7 +30,7 @@ const AuthProvider: React.FC<{
 
   // Check if user is already logged in (from localStorage)
   useEffect(() => {
-    const initializeAuth = () => {
+    const initializeAuth = (): void => {
       const storedToken = localStorage.getItem('authToken');
       const storedUser = localStorage.getItem('user');
       
@@ -94,7 +94,7 @@ const AuthProvider: React.FC<{
     }
   };
 
-  const logout = () => {
+  const logout = (): void => {
     setUser(null);
     setIsAuthenticated(false);
     localStorage.removeItem('authToken');

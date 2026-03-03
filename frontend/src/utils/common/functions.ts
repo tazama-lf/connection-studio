@@ -1,10 +1,13 @@
+const STATUS_PREFIX_LENGTH = 3;
+const STATUS_NAME_START_INDEX = 2;
+
 export const getStatusBadge = (status: string): string => {
   const normalizedStatus = status.toLowerCase();
 
   if (normalizedStatus.startsWith('status_')) {
     const parts = normalizedStatus.split('_');
-    if (parts.length >= 3) {
-      const statusName = parts.slice(2).join('_');
+    if (parts.length >= STATUS_PREFIX_LENGTH) {
+      const statusName = parts.slice(STATUS_NAME_START_INDEX).join('_');
       switch (statusName) {
         case 'in_progress':
           return 'bg-yellow-50 text-yellow-600 border border-yellow-200';

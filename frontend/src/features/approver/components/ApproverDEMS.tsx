@@ -18,7 +18,7 @@ const ApproverDEMS: React.FC<ApproverDEMSProps> = ({ onBack }) => {
   const { showSuccess, showError } = useToast();
   const { user } = useAuth();
 
-  const handleApprove = async (configId: number) => {
+  const handleApprove = async (configId: number): Promise<void> => {
     try {
       const result = await configApi.approveConfig(configId);
 
@@ -27,20 +27,21 @@ const ApproverDEMS: React.FC<ApproverDEMSProps> = ({ onBack }) => {
           'Configuration approved successfully and sent for deployment',
         );
         setRefreshKey((prev) => prev + 1); // Refresh the list
+      } else if (result.message) {
+        showError(result.message);
       } else {
-        showError(result.message ?? 'Failed to approve configuration');
+        showError('Failed to approve configuration');
       }
     } catch (error) {
       showError('Failed to approve configuration. Please try again.');
     }
   };
 
-  const handleReject = async (config: Config) => {
+  const handleReject = async (config: Config): Promise<void> => {
     try {
       const reason = prompt(
         'Please provide a reason for rejection (optional):',
       );
-      // Allow empty reason, don't cancel on empty string
 
       const userId = user?.email ?? user?.username ?? 'system';
       const result = await configApi.rejectConfig(
@@ -54,20 +55,22 @@ const ApproverDEMS: React.FC<ApproverDEMSProps> = ({ onBack }) => {
           'Configuration rejected and returned to editor for changes',
         );
         setRefreshKey((prev) => prev + 1); // Refresh the list
+      } else if (result.message) {
+        showError(result.message);
       } else {
-        showError(result.message ?? 'Failed to reject configuration');
+        showError('Failed to reject configuration');
       }
     } catch (error) {
       showError('Failed to reject configuration. Please try again.');
     }
   };
 
-  const handleViewDetails = (config: Config) => {
+  const handleViewDetails = (config: Config): void => {
     setSelectedConfig(config);
     setShowViewModal(true);
   };
 
-  const handleCloseViewModal = () => {
+  const handleCloseViewModal = (): void => {
     setShowViewModal(false);
     setSelectedConfig(null);
   };

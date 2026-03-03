@@ -2,49 +2,67 @@
  * Common API utility functions for making authenticated HTTP requests
  */
 
+const HTTP_STATUS_UNAUTHORIZED = 401;
+
+interface ApiErrorResponse {
+  message?: string;
+}
+
 /**
  * Gets authentication headers for API requests
- * @returns Headers with authentication token if available
  */
-export const getAuthHeaders = (): HeadersInit => {
+export const getAuthHeaders = (): Record<string, string> => {
   const token = localStorage.getItem('authToken');
-  return {
+
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     Accept: 'application/json',
-    ...(token && { Authorization: `Bearer ${token}` }),
   };
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  return headers;
 };
 
 /**
  * Makes an authenticated API request with error handling
- * @param url - The API endpoint URL
- * @param options - Fetch request options
- * @returns Parsed JSON response
- * @throws Error if request fails or authentication is invalid
  */
 export const apiRequest = async <T>(
   url: string,
   options: RequestInit = {},
 ): Promise<T> => {
+  const mergedHeaders: HeadersInit = {
+    ...getAuthHeaders(),
+    ...(options.headers as Record<string, string> | undefined),
+  };
+
   const response = await fetch(url, {
     ...options,
-    headers: {
-      ...getAuthHeaders(),
-      ...options.headers,
-    },
+    headers: mergedHeaders,
   });
 
-  if (response.status === 401) {
+  if (response.status === HTTP_STATUS_UNAUTHORIZED) {
     localStorage.removeItem('authToken');
     throw new Error('Authentication failed');
   }
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(
-      errorData.message ?? `HTTP error! status: ${response.status}`,
-    );
+    let errorMessage = `HTTP error! status: ${response.status}`;
+
+    try {
+      const errorData = (await response.json()) as ApiErrorResponse;
+      if (typeof errorData.message === 'string') {
+        errorMessage = errorData.message;
+      }
+    } catch {
+      // ignore JSON parse errors
+    }
+
+    throw new Error(errorMessage);
   }
 
-  return await response.json();
+  const data: T = (await response.json()) as T;
+  return data;
 };
