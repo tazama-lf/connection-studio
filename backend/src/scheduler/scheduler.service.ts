@@ -218,48 +218,60 @@ export class SchedulerService {
     reason?: string,
   ): Promise<ISuccess> {
     try {
+      const userRole = user.actorRole.toLowerCase();
       let existingSchedule: Schedule | null = null;
       
-      if (user.actorRole.toLowerCase() !== 'publisher') {
+      if (userRole === 'publisher' && status === JobStatus.DEPLOYED) {
+        const fileName = `cron_${tenantId}_${id}`;
+        
+        try {
+          existingSchedule = (await this.sftpService.readFile(
+            fileName,
+          )) as Schedule;
+        } catch (error) {
+          throw new BadRequestException(
+            `Cannot read schedule ${id} from SFTP: ${error.message}`,
+          );
+        }
+      } else {
         existingSchedule = await this.findOne(id, user);
 
         if (!existingSchedule) {
           throw new BadRequestException('Schedule not found');
         }
+      }
 
-        const userRole = user.actorRole.toLowerCase();
-        if (
-          !userRole ||
-          !['editor', 'approver', 'publisher', 'exporter'].includes(userRole)
-        ) {
-          throw new ForbiddenException('Invalid user role');
-        }
+      if (
+        !userRole ||
+        !['editor', 'approver', 'publisher', 'exporter'].includes(userRole)
+      ) {
+        throw new ForbiddenException('Invalid user role');
+      }
 
-        const tier2Result = this.rbacService.checkTier2({
-          role: userRole as 'editor' | 'approver' | 'publisher' | 'exporter',
-          endpointKey: 'Patch /update/status/:id',
-          currentStatus: existingSchedule.status,
-        });
+      const tier2Result = this.rbacService.checkTier2({
+        role: userRole as 'editor' | 'approver' | 'publisher' | 'exporter',
+        endpointKey: 'Patch /update/status/:id',
+        currentStatus: existingSchedule.status,
+      });
 
-        if (!tier2Result.allowed) {
-          throw new ForbiddenException(
-            tier2Result.reason ?? 'Not authorized to update this schedule status',
-          );
-        }
+      if (!tier2Result.allowed) {
+        throw new ForbiddenException(
+          tier2Result.reason ?? 'Not authorized to update this schedule status',
+        );
+      }
 
-        const tier3Result = this.rbacService.checkTier3({
-          role: userRole as 'editor' | 'approver' | 'publisher' | 'exporter',
-          endpointKey: 'Patch /update/status/:id',
-          currentStatus: existingSchedule.status,
-          targetStatus: status,
-        });
+      const tier3Result = this.rbacService.checkTier3({
+        role: userRole as 'editor' | 'approver' | 'publisher' | 'exporter',
+        endpointKey: 'Patch /update/status/:id',
+        currentStatus: existingSchedule.status,
+        targetStatus: status,
+      });
 
-        if (!tier3Result.allowed) {
-          throw new ForbiddenException(
-            tier3Result.reason ??
-              'Not authorized to perform this status transition',
-          );
-        }
+      if (!tier3Result.allowed) {
+        throw new ForbiddenException(
+          tier3Result.reason ??
+            'Not authorized to perform this status transition',
+        );
       }
 
       let result: ISuccess | null = null;
@@ -348,16 +360,16 @@ export class SchedulerService {
           break;
         }
         case JobStatus.DEPLOYED: {
-          const fileName = `cron_${tenantId}_${id}`;
-          const fileData = (await this.sftpService.readFile(
-            fileName,
-          )) as Schedule;
+          const fileData = existingSchedule!;
+          
           await this.create(
             fileData,
             tenantId,
             user.token.tokenString,
             JobStatus.DEPLOYED,
           );
+          
+          const fileName = `cron_${tenantId}_${id}`;
           await this.sftpService.deleteFile(fileName);
 
           const updated = structuredClone(fileData);

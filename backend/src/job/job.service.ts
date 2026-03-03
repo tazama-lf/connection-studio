@@ -411,9 +411,24 @@ export class JobService {
     reason?: string,
   ): Promise<ISuccess> {
     try {
-      const existingJob = await this.findOne(id, type, user);
-
       const userRole = user.actorRole.toLowerCase();
+      const safeTenantId = escapeRegex(user.tenantId);
+      const fileName = `de_${safeTenantId}_${id}`;
+      
+      let existingJob: Job & { schedule_name?: string };
+
+      if (userRole === 'publisher' && status === JobStatus.DEPLOYED) {
+        try {
+          existingJob = (await this.sftpService.readFile(fileName)) as Job;
+        } catch (error) {
+          throw new BadRequestException(
+            `Cannot read job ${id} from SFTP: ${error instanceof Error ? error.message : String(error)}`,
+          );
+        }
+      } else {
+        existingJob = await this.findOne(id, type, user);
+      }
+
       if (
         !userRole ||
         !['editor', 'approver', 'publisher', 'exporter'].includes(userRole)
@@ -459,9 +474,6 @@ export class JobService {
         );
       }
 
-      const safeTenantId = escapeRegex(user.tenantId);
-
-      const fileName = `de_${safeTenantId}_${id}`;
       const requiresExistingJob =
         status === JobStatus.APPROVED ||
         status === JobStatus.REVIEW ||
@@ -541,7 +553,8 @@ export class JobService {
         }
 
         case JobStatus.DEPLOYED: {
-          const fileData = (await this.sftpService.readFile(fileName)) as Job;
+          // Job already read from SFTP for publisher role
+          const fileData = existingJob as Job;
 
           const deployPayload: any = structuredClone(fileData);
           deployPayload.publishing_status = ScheduleStatus.ACTIVE;
