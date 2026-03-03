@@ -10,7 +10,7 @@ const CheckboxField = ({ label, color, checked, handleChange, disabled, size = 2
             sx={{
                 '& .MuiSvgIcon-root': { fontSize: size },
                 '&.Mui-checked': {
-                    color: themeColor || color,
+                    color: themeColor ?? color,
                 },
                 padding: '2px',
             }}

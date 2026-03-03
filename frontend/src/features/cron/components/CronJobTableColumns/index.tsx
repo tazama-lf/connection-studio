@@ -139,7 +139,7 @@ export const CronJobTableColumns = ({
         <ActionsContainer>
           <Tooltip title="View Details" arrow>
             <ViewIconStyle>
-              <EyeIcon size={16} onClick={() => onView(row)} />
+              <EyeIcon size={16} onClick={() => { onView(row); }} />
             </ViewIconStyle>
           </Tooltip>
 
@@ -149,7 +149,7 @@ export const CronJobTableColumns = ({
             ) && (
               <Tooltip title="Edit Cron Job" arrow>
                 <EditIconStyle>
-                  <EditIcon size={16} onClick={() => onEdit(row)} />
+                  <EditIcon size={16} onClick={() => { onEdit(row); }} />
                 </EditIconStyle>
               </Tooltip>
             )}
@@ -158,7 +158,7 @@ export const CronJobTableColumns = ({
             row.status === CRON_JOB_STATUSES.APPROVED && (
               <Tooltip title="Export Configuration" arrow>
                 <ExportIconStyle>
-                  <Upload size={16} onClick={() => onExport(row)} />
+                  <Upload size={16} onClick={() => { onExport(row); }} />
                 </ExportIconStyle>
               </Tooltip>
             )}

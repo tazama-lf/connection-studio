@@ -3,47 +3,59 @@ import { usePagination } from './usePagination'
 import useDebouncedSearch from './useDebouncedSearch'
 
 interface UseFiltersOptions {
-    default_offset?: number
-    default_limit?: number
-    search_delay?: number
-    initial_search?: string
+  defaultOffset?: number
+  defaultLimit?: number
+  searchDelay?: number
+  initialSearch?: string
+}
+
+export interface UseFiltersReturn {
+  search: string
+  debouncedSearch: string
+  setSearch: (value: string) => void
+  offset: number
+  limit: number
+  setOffset: (offset: number) => void
+  setLimit: (limit: number) => void
+  getPaginationParams: () => { offset: number; limit: number }
+  resetPagination: () => void
 }
 
 const useFilters = ({
-    default_offset = 0,
-    default_limit = 10,
-    search_delay = 500,
-    initial_search = '',
-}: UseFiltersOptions = {}) => {
-    const {
-        offset,
-        limit,
-        setOffset,
-        setLimit,
-        getPaginationParams,
-        resetPagination,
-    } = usePagination({ default_offset, default_limit })
+  defaultOffset = 0,
+  defaultLimit = 10,
+  searchDelay = 500,
+  initialSearch = '',
+}: UseFiltersOptions = {}): UseFiltersReturn => {
+  const {
+    offset,
+    limit,
+    setOffset,
+    setLimit,
+    getPaginationParams,
+    resetPagination,
+  } = usePagination({ defaultOffset, defaultLimit })
 
-    const [search, debouncedSearch, setSearch] = useDebouncedSearch(
-        initial_search,
-        search_delay
-    )
+  const [search, debouncedSearch, setSearch] = useDebouncedSearch(
+    initialSearch,
+    searchDelay
+  )
 
-    useEffect(() => {
-        setOffset(default_offset)
-    }, [debouncedSearch, setOffset, default_offset])
+  useEffect(() => {
+    setOffset(defaultOffset)
+  }, [debouncedSearch, setOffset, defaultOffset])
 
-    return {
-        search,
-        debouncedSearch,
-        setSearch,
-        offset,
-        limit,
-        setOffset,
-        setLimit,
-        getPaginationParams,
-        resetPagination,
-    }
+  return {
+    search,
+    debouncedSearch,
+    setSearch,
+    offset,
+    limit,
+    setOffset,
+    setLimit,
+    getPaginationParams,
+    resetPagination,
+  }
 }
 
 export default useFilters

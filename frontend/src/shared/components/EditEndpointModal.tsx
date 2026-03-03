@@ -143,9 +143,7 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
     return options;
   };
 
-  const getPrimaryKeyOptions = () => {
-    return [{ value: '_key', label: '_key', group: 'Default' }]
-  }
+  const getPrimaryKeyOptions = () => [{ value: '_key', label: '_key', group: 'Default' }]
 
   const jsonBOptions = () => {
     // Add Sources from currentSchema (only object types)

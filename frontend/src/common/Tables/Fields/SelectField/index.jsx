@@ -45,7 +45,7 @@ const SelectField = ({ color, value, handleChange, options, disabled, placeholde
                 }
 
                 const selectedOption = options.find((opt) => opt.value === selected);
-                return selectedOption?.label || '';
+                return selectedOption?.label ?? '';
             }}
         >
             {options?.map((option) => (

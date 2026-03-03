@@ -77,7 +77,7 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({
         }
       });
 
-      return () => subscription.unsubscribe();
+      return () => { subscription.unsubscribe(); };
     }
   }, [editFormData, setEditFormData, watch]);
 
@@ -135,7 +135,7 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({
                   <Cron
                     value={cronExpression}
                     setValue={(value: string) =>
-                      setValue('cronExpression', value)
+                      { setValue('cronExpression', value); }
                     }
                     allowedDropdowns={[
                       'period',
@@ -262,7 +262,7 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({
                         variant="contained"
                         sx={{ marginRight: '10px', backgroundColor: '#ff474d' }}
                         startIcon={<XCircle size={16} />}
-                        onClick={() => onReject(viewFormData.id)}
+                        onClick={() => { onReject(viewFormData.id); }}
                       >
                         Reject
                       </Button>
@@ -274,7 +274,7 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({
                         variant="contained"
                         sx={{ backgroundColor: '#33ad74' }}
                         startIcon={<Check size={16} />}
-                        onClick={() => onApprove(viewFormData.id)}
+                        onClick={() => { onApprove(viewFormData.id); }}
                       >
                         Approve
                       </Button>

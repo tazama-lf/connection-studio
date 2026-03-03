@@ -77,10 +77,10 @@ const ApproverConfigsPage: React.FC = () => {
         showSuccess('Configuration approved successfully');
         setRefreshKey((prev) => prev + INCREMENT);
       } else if (response.message) {
-          showError(response.message);
-        } else {
-          showError('Failed to approve configuration');
-        }
+        showError(response.message);
+      } else {
+        showError('Failed to approve configuration');
+      }
     } catch (error) {
       showError('Failed to approve configuration');
     }
@@ -108,10 +108,10 @@ const ApproverConfigsPage: React.FC = () => {
         showSuccess('Configuration rejected successfully');
         setRefreshKey((prev) => prev + INCREMENT);
       } else if (response.message) {
-          showError(response.message);
-        } else {
-          showError('Failed to reject configuration');
-        }
+        showError(response.message);
+      } else {
+        showError('Failed to reject configuration');
+      }
     } catch (error) {
       showError('Failed to reject configuration');
     } finally {
@@ -138,10 +138,10 @@ const ApproverConfigsPage: React.FC = () => {
         setRefreshKey((prev) => prev + INCREMENT);
         handleCloseModal();
       } else if (response.message) {
-          showError(response.message);
-        } else {
-          showError('Failed to send change request to editor');
-        }
+        showError(response.message);
+      } else {
+        showError('Failed to send change request to editor');
+      }
     } catch (error) {
       showError('Failed to send change request to editor');
     }
@@ -259,10 +259,7 @@ const ApproverConfigsPage: React.FC = () => {
             if (editingConfig) {
               setConfigToApprove({
                 id: editingEndpointId,
-                name:
-                  (editingConfig.endpointPath ??
-                  editingConfig.msgFam) ??
-                  `Config #${editingEndpointId}`,
+                name: editingConfig.endpointPath ?? editingConfig.msgFam ?? `Config #${editingEndpointId}`,
               });
               setShowApprovalDialog(true);
             }

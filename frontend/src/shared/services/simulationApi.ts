@@ -1,6 +1,8 @@
 import { API_CONFIG } from '../config/api.config';
 
-// Types matching backend interfaces
+const HTTP_STATUS_BAD_REQUEST = 400;
+const HTTP_STATUS_UNAUTHORIZED = 401;
+const HTTP_STATUS_SERVER_ERROR = 500;
 export interface SimulatePayloadRequest {
   configId: number;
   payloadType: 'json' | 'xml';
@@ -19,14 +21,14 @@ export interface ValidationStage {
   status: 'PASSED' | 'FAILED' | 'SKIPPED';
   message: string;
   errors?: SimulationError[];
-  details?: any;
+  details?: unknown;
 }
 
 export interface SimulationResult {
   status: 'PASSED' | 'FAILED';
   errors: SimulationError[];
   stages: ValidationStage[];
-  tcsResult: any | null;
+  tcsResult: unknown;
   transformedPayload: Record<string, unknown>;
   summary: {
     endpointId: number;
@@ -40,6 +42,10 @@ export interface SimulationResult {
   };
 }
 
+interface ErrorResponse {
+  message?: string;
+}
+
 export interface ValidationResult {
   valid: boolean;
   errors: SimulationError[];
@@ -49,56 +55,47 @@ export class SimulationApiService {
   private readonly baseURL: string;
 
   constructor() {
-    this.baseURL = API_CONFIG.AUTH_BASE_URL; // Using same base URL as other services
+    this.baseURL = API_CONFIG.AUTH_BASE_URL;
   }
 
-  private getAuthHeaders(): Record<string, string> {
+  private readonly getAuthHeaders = (): Record<string, string> => {
     const token = localStorage.getItem('authToken');
     return {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     };
-  }
+  };
 
-  private async handleResponse<T>(response: Response): Promise<T> {
+  private readonly handleResponse = async <T>(response: Response): Promise<T> => {
     if (!response.ok) {
-      // Handle token expiration
-      if (response.status === 401) {
+      if (response.status === HTTP_STATUS_UNAUTHORIZED) {
         localStorage.removeItem('authToken');
         localStorage.removeItem('user');
         throw new Error('Unauthorized - Token expired');
       }
 
-      const errorData = await response.json().catch(() => ({}));
-      // For validation errors (4xx), return the error response instead of throwing
-      if (response.status >= 400 && response.status < 500) {
+      const errorData = await response.json().catch((): ErrorResponse => ({})) as ErrorResponse;
+      if (response.status >= HTTP_STATUS_BAD_REQUEST && response.status < HTTP_STATUS_SERVER_ERROR) {
         return errorData as T;
       }
-      // For server errors (5xx), still throw
-      throw new Error(
-        errorData.message ?? `HTTP error! status: ${response.status}`,
-      );
+      const message = errorData.message ?? `HTTP error! status: ${response.status}`;
+      throw new Error(message);
     }
 
-    return await response.json();
-  }
+    return await response.json() as T;
+  };
 
   /**
    * Run complete simulation including schema validation, mapping execution, and Tazama validation
    */
   async runSimulation(data: SimulatePayloadRequest): Promise<SimulationResult> {
-    try {
-      const response = await fetch(`${this.baseURL}/simulation/run`, {
-        method: 'POST',
-        headers: this.getAuthHeaders(),
-        body: JSON.stringify(data),
-      });
+    const response = await fetch(`${this.baseURL}/simulation/run`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
 
-      const result = await this.handleResponse<SimulationResult>(response);
-      return result;
-    } catch (error) {
-      throw error;
-    }
+    return await this.handleResponse<SimulationResult>(response);
   }
 
   /**
@@ -108,18 +105,13 @@ export class SimulationApiService {
   async validatePayload(
     data: SimulatePayloadRequest,
   ): Promise<ValidationResult> {
-    try {
-      const response = await fetch(`${this.baseURL}/simulation/validate`, {
-        method: 'POST',
-        headers: this.getAuthHeaders(),
-        body: JSON.stringify(data),
-      });
+    const response = await fetch(`${this.baseURL}/simulation/validate`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
 
-      const result = await this.handleResponse<ValidationResult>(response);
-      return result;
-    } catch (error) {
-      throw error;
-    }
+    return await this.handleResponse<ValidationResult>(response);
   }
 }
 

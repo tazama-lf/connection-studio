@@ -50,7 +50,7 @@ export interface RolePermissions {
 /**
  * API handlers for resource operations
  */
-export interface ResourceApiHandlers<TResource, TAction extends string = string> {
+export interface ResourceApiHandlers<TResource> {
   /**
    * Load paginated resources
    */
@@ -185,7 +185,6 @@ export function useResourceList<TResource extends { id: string; status?: string;
 ): UseResourceListReturn<TResource, TAction> {
   const {
     apiHandlers,
-    successMessages = {},
     errorMessages = {},
     initialFilters = {},
     itemsPerPage: customItemsPerPage,
@@ -211,7 +210,7 @@ export function useResourceList<TResource extends { id: string; status?: string;
     resource: null,
   });
 
-  const { showSuccess, showError } = useToast();
+  const { showError } = useToast();
   const { user } = useAuth();
 
   const itemsPerPage = customItemsPerPage ?? UI_CONFIG.pagination.defaultPageSize;
@@ -229,6 +228,12 @@ export function useResourceList<TResource extends { id: string; status?: string;
       userRole: getPrimaryRole(claims),
     };
   }, [user]);
+
+  function getErrorMessage(err: unknown, fallback = 'An error occurred'): string {
+    if (err instanceof Error) return err.message;
+    if (typeof err === 'string') return err;
+    return fallback;
+  }
 
   /**
    * Load resources with pagination and filters
@@ -248,7 +253,7 @@ export function useResourceList<TResource extends { id: string; status?: string;
 
         // Handle different response structures
         const resourceData = response.data ?? response.jobs ?? response.items ?? [];
-        
+
         setResources(resourceData);
         setPagination({
           page: pageNumber,
@@ -256,9 +261,7 @@ export function useResourceList<TResource extends { id: string; status?: string;
           totalRecords: response.total,
         });
       } catch (err) {
-        const message = err instanceof Error 
-          ? err.message 
-          : errorMessages.load ?? 'Failed to load resources';
+        const message = getErrorMessage(err, errorMessages?.load ?? 'Failed to load resources');
         setError(message);
       } finally {
         setLoadingState((s) => ({ ...s, page: false }));

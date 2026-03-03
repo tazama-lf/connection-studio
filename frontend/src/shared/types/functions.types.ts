@@ -7,16 +7,16 @@ export type AllowedFunctionName =
   | 'addDataModel'
   | 'addDataModelTable';
 export interface FunctionDefinition {
-  params?: any;
+  params?: unknown;
   functionName: AllowedFunctionName;
-  columns?: Array<Record<string, any>>;
+  columns?: Array<Record<string, unknown>>;
   tableName?: string;
 }
 
 export interface AddFunctionDto {
   params?: string[];
   functionName: AllowedFunctionName;
-  columns?: Array<Record<string, any>>;
+  columns?: Array<Record<string, unknown>>;
   tableName?: string;
 }
 
@@ -26,7 +26,7 @@ export interface FunctionResponseDto {
   config?: {
     id: number;
     functions?: FunctionDefinition[];
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }
 
@@ -52,7 +52,7 @@ export interface FunctionConfig {
     parameters: string;
     description: string;
   }>;
-  dataModelConfiguration?: any;
+  dataModelConfiguration?: unknown;
 }
 
 // Available function configurations

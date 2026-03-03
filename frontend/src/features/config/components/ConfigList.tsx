@@ -405,7 +405,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
           {handleSelectFilter({
             fieldName: 'status',
             options:
-              getDemsStatusLov[userRole!] || [],
+              getDemsStatusLov[userRole!] ?? [],
             searchingFilters,
             setSearchingFilters,
           })}

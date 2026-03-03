@@ -18,7 +18,7 @@ const ToastComponent: React.FC<ToastComponentProps> = ({ toast, onRemove }) => {
   const [isVisible, setIsVisible] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
 
-  const getIcon = () => {
+  const getIcon = (): React.JSX.Element => {
     switch (toast.type) {
       case 'success':
         return <CheckCircleIcon className="h-5 w-5 text-green-500" />;
@@ -31,7 +31,7 @@ const ToastComponent: React.FC<ToastComponentProps> = ({ toast, onRemove }) => {
     }
   };
 
-  const getBgColor = () => {
+  const getBgColor = () : string => {
     switch (toast.type) {
       case 'success':
         return 'bg-green-50 border-green-200';
@@ -44,7 +44,7 @@ const ToastComponent: React.FC<ToastComponentProps> = ({ toast, onRemove }) => {
     }
   };
 
-  const getTitleColor = () => {
+  const getTitleColor = () : string => {
     switch (toast.type) {
       case 'success':
         return 'text-green-800';
@@ -57,7 +57,7 @@ const ToastComponent: React.FC<ToastComponentProps> = ({ toast, onRemove }) => {
     }
   };
 
-  const getMessageColor = () => {
+  const getMessageColor = ()  : string=> {
     switch (toast.type) {
       case 'success':
         return 'text-green-700';
@@ -72,8 +72,8 @@ const ToastComponent: React.FC<ToastComponentProps> = ({ toast, onRemove }) => {
 
   useEffect(() => {
     setIsVisible(true);
-    
-    const duration = toast.duration || 5000;
+
+    const duration = toast.duration ?? 5000;
     const timer = setTimeout(() => {
       handleRemove();
     }, duration);
@@ -81,7 +81,7 @@ const ToastComponent: React.FC<ToastComponentProps> = ({ toast, onRemove }) => {
     return () => { clearTimeout(timer); };
   }, []);
 
-  const handleRemove = () => {
+  const handleRemove = () : void => {
     setIsExiting(true);
     setTimeout(() => {
       onRemove(toast.id);

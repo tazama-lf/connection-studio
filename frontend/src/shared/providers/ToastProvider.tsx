@@ -13,7 +13,7 @@ interface ToastContextType {
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
 
-export const useToast = () => {
+export const useToast = (): ToastContextType => {
   const context = useContext(ToastContext);
   if (!context) {
     throw new Error('useToast must be used within a ToastProvider');
@@ -66,7 +66,7 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => {
   return (
     <ToastContext.Provider value={value}>
       {children}
-      
+
       {/* Toast Container - Centered at top */}
       <div className="fixed top-0 left-1/2 transform -translate-x-1/2 z-[100] pt-6 space-y-4 pointer-events-none w-full max-w-md">
         {toasts.map((toast) => (

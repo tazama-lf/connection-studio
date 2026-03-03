@@ -75,7 +75,6 @@ export const ExportedItemDetailsModal: React.FC<
             } else if (content.source_type || content.connection) {
               jobType = 'PULL';
             } else if (content.config_type) {
-              // Sometimes it's stored as config_type
               const configType = content.config_type?.toString().toUpperCase();
               if (configType === 'PUSH' || configType === 'PULL') {
                 jobType = configType as 'PULL' | 'PUSH';

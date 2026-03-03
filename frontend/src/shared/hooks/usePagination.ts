@@ -1,38 +1,47 @@
-import { useState } from 'react'
+import { useState } from 'react';
 
 interface UsePaginationOptions {
-    default_offset?: number
-    default_limit?: number
+  defaultOffset?: number;
+  defaultLimit?: number;
 }
 
 interface PaginationParams {
-    offset: number
-    limit: number
+  offset: number;
+  limit: number;
+}
+
+interface UsePaginationReturn {
+  offset: number;
+  limit: number;
+  setOffset: React.Dispatch<React.SetStateAction<number>>;
+  setLimit: React.Dispatch<React.SetStateAction<number>>;
+  getPaginationParams: () => PaginationParams;
+  resetPagination: () => void;
 }
 
 export const usePagination = ({
-    default_offset = 0,
-    default_limit = 10,
-}: UsePaginationOptions = {}) => {
-    const [offset, setOffset] = useState<number>(default_offset)
-    const [limit, setLimit] = useState<number>(default_limit)
+  defaultOffset = 0,
+  defaultLimit = 10,
+}: UsePaginationOptions = {}): UsePaginationReturn => {
+  const [offset, setOffset] = useState<number>(defaultOffset);
+  const [limit, setLimit] = useState<number>(defaultLimit);
 
-    const getPaginationParams = (): PaginationParams => ({
-        offset,
-        limit,
-    })
+  const getPaginationParams = (): PaginationParams => ({
+    offset,
+    limit,
+  });
 
-    const resetPagination = (): void => {
-        setOffset(default_offset)
-        setLimit(default_limit)
-    }
+  const resetPagination = (): void => {
+    setOffset(defaultOffset);
+    setLimit(defaultLimit);
+  };
 
-    return {
-        offset,
-        limit,
-        setOffset,
-        setLimit,
-        getPaginationParams,
-        resetPagination,
-    }
-}
+  return {
+    offset,
+    limit,
+    setOffset,
+    setLimit,
+    getPaginationParams,
+    resetPagination,
+  };
+};

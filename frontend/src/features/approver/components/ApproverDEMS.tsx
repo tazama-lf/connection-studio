@@ -11,8 +11,11 @@ interface ApproverDEMSProps {
   onBack: () => void;
 }
 
+const INITIAL_REFRESH_KEY = 0;
+const INCREMENT = 1;
+
 const ApproverDEMS: React.FC<ApproverDEMSProps> = ({ onBack }) => {
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [refreshKey, setRefreshKey] = useState(INITIAL_REFRESH_KEY);
   const [selectedConfig, setSelectedConfig] = useState<Config | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const { showSuccess, showError } = useToast();
@@ -26,7 +29,7 @@ const ApproverDEMS: React.FC<ApproverDEMSProps> = ({ onBack }) => {
         showSuccess(
           'Configuration approved successfully and sent for deployment',
         );
-        setRefreshKey((prev) => prev + 1); // Refresh the list
+        setRefreshKey((prev): number => prev + INCREMENT);
       } else if (result.message) {
         showError(result.message);
       } else {
@@ -43,7 +46,7 @@ const ApproverDEMS: React.FC<ApproverDEMSProps> = ({ onBack }) => {
         'Please provide a reason for rejection (optional):',
       );
 
-      const userId = user?.email ?? user?.username ?? 'system';
+      const userId = (user?.email ?? user?.username) ?? 'system';
       const result = await configApi.rejectConfig(
         config.id,
         userId,
@@ -54,7 +57,7 @@ const ApproverDEMS: React.FC<ApproverDEMSProps> = ({ onBack }) => {
         showSuccess(
           'Configuration rejected and returned to editor for changes',
         );
-        setRefreshKey((prev) => prev + 1); // Refresh the list
+        setRefreshKey((prev): number => prev + INCREMENT);
       } else if (result.message) {
         showError(result.message);
       } else {
@@ -133,9 +136,9 @@ const ApproverDEMS: React.FC<ApproverDEMSProps> = ({ onBack }) => {
           <ConfigList
             key={refreshKey}
             showPendingApprovals={true}
-            onViewDetails={handleViewDetails}
-            onApprove={handleApprove}
-            onReject={handleReject}
+            onViewDetails={(config: Config): void => { handleViewDetails(config); }}
+            onApprove={async (configId: number): Promise<void> => { await handleApprove(configId); }}
+            onReject={async (config: Config): Promise<void> => { await handleReject(config); }}
           />
         </div>
       </div>
@@ -146,8 +149,8 @@ const ApproverDEMS: React.FC<ApproverDEMSProps> = ({ onBack }) => {
           isOpen={showViewModal}
           onClose={handleCloseViewModal}
           config={selectedConfig}
-          onApprove={handleApprove}
-          onReject={handleReject}
+          onApprove={async (configId): Promise<void> => { await handleApprove(configId); }}
+          onReject={async (config): Promise<void> => { await handleReject(config); }}
         />
       )}
     </div>

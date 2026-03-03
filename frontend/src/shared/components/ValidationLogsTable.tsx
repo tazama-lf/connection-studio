@@ -63,12 +63,12 @@ const ValidationLogsTable: React.FC<ValidationLogsTableProps> = ({ logs = [] }) 
 
   const displayLogs = logs.length > 0 ? logs : defaultLogs;
 
-  const filteredLogs = displayLogs.filter(log => 
+  const filteredLogs = displayLogs.filter(log =>
     log.endpoint.toLowerCase().includes(searchTerm.toLowerCase()) ||
     log.errors?.some(error => error.message.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string): string => {
     switch (status) {
       case 'ERROR':
         return 'bg-red-100 text-red-800 border border-red-200';
@@ -81,7 +81,7 @@ const ValidationLogsTable: React.FC<ValidationLogsTableProps> = ({ logs = [] }) 
     }
   };
 
-  const toggleRowExpansion = (id: number) => {
+  const toggleRowExpansion = (id: number): void => {
     const newExpanded = new Set(expandedRows);
     if (newExpanded.has(id)) {
       newExpanded.delete(id);
@@ -98,8 +98,8 @@ const ValidationLogsTable: React.FC<ValidationLogsTableProps> = ({ logs = [] }) 
       {/* Header */}
       <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
         <h2 className="text-xl font-semibold text-gray-900">Validation Logs</h2>
-        <Button 
-          variant="secondary" 
+        <Button
+          variant="secondary"
           icon={<DownloadIcon size={16} />}
           className="text-sm"
         >
@@ -130,11 +130,10 @@ const ValidationLogsTable: React.FC<ValidationLogsTableProps> = ({ logs = [] }) 
               <button
                 key={filter}
                 onClick={() => { setTimeFilter(filter); }}
-                className={`px-3 py-1 text-sm font-medium rounded transition-colors ${
-                  timeFilter === filter
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
+                className={`px-3 py-1 text-sm font-medium rounded transition-colors ${timeFilter === filter
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-600 hover:text-gray-900'
+                  }`}
               >
                 {filter}
               </button>
@@ -185,11 +184,10 @@ const ValidationLogsTable: React.FC<ValidationLogsTableProps> = ({ logs = [] }) 
                         className="inline-flex items-center text-blue-600 hover:text-blue-800 text-sm font-medium"
                       >
                         {log.errorCount} error{log.errorCount > 1 ? 's' : ''}
-                        <ChevronDownIcon 
-                          size={16} 
-                          className={`ml-1 transform transition-transform ${
-                            expandedRows.has(log.id) ? 'rotate-180' : ''
-                          }`} 
+                        <ChevronDownIcon
+                          size={16}
+                          className={`ml-1 transform transition-transform ${expandedRows.has(log.id) ? 'rotate-180' : ''
+                            }`}
                         />
                       </button>
                     )}

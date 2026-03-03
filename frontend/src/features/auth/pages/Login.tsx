@@ -88,7 +88,7 @@ export const Login: React.FC = () => {
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : '';
       if (
-        errorMessage.toLowerCase().includes('unauthorized') ||
+        errorMessage.toLowerCase().includes('unauthorized') ??
         errorMessage.toLowerCase().includes('invalid credentials')
       ) {
         setError('Invalid credentials. Please try again.');

@@ -8,10 +8,8 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import jsxA11y from 'eslint-plugin-jsx-a11y';
 import eslintStandard from 'eslint-config-love';
 import eslintConfigPrettier from 'eslint-config-prettier';
-
 export default [
   eslintConfigPrettier,
-
   {
     ignores: [
       '**/coverage/**',
@@ -22,10 +20,8 @@ export default [
       '**/test/**',
     ],
   },
-
   {
     files: ['**/*.ts', '**/*.tsx'],
-
     plugins: {
       ...eslintStandard.plugins,
       react,
@@ -35,7 +31,6 @@ export default [
       '@stylistic': stylistic,
       '@typescript-eslint': tsEslint,
     },
-
     languageOptions: {
       ...eslintStandard.languageOptions,
       parser: tsParser,
@@ -49,30 +44,22 @@ export default [
         tsconfigRootDir: import.meta.dirname,
       },
     },
-
     settings: {
       react: {
         version: 'detect',
       },
     },
-
     rules: {
       ...eslintStandard.rules,
       ...eslintPluginEslintComments.configs.recommended.rules,
-
-    
-      'react/react-in-jsx-scope': 'off', 
+      'react/react-in-jsx-scope': 'off',
       'react/jsx-uses-react': 'off',
       'react/prop-types': 'off',
-
-
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'warn',
-
-    
       '@typescript-eslint/init-declarations': 'off',
       '@typescript-eslint/max-params': ['warn', { max: 6 }],
-      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/no-non-null-assertion': 'off',
       '@typescript-eslint/no-floating-promises': 'off',
       '@typescript-eslint/no-magic-numbers': 'warn',
@@ -83,47 +70,21 @@ export default [
       '@typescript-eslint/prefer-optional-chain': 'warn',
       '@typescript-eslint/restrict-template-expressions': 'error',
       '@typescript-eslint/strict-boolean-expressions': 'off',
-
       '@stylistic/quotes': ['error', 'single'],
       complexity: ['warn', { max: 15 }],
       'no-console': 'error',
       'no-unneeded-ternary': 'off',
-
-     
       '@eslint-community/eslint-comments/require-description': [
         'error',
         { ignore: ['eslint-enable'] },
       ],
       '@eslint-community/eslint-comments/disable-enable-pair': 'error',
-
       'eslint-comments/require-description': 'off',
       'eslint-comments/disable-enable-pair': 'off',
       'eslint-comments/no-aggregating-enable': 'off',
       'eslint-comments/no-duplicate-disable': 'off',
       'eslint-comments/no-unlimited-disable': 'off',
       'eslint-comments/no-unused-enable': 'off',
-    },
-  },
-  {
-    files: ['src/features/cron/**/*.{ts,tsx}'],
-    rules: {
-      '@typescript-eslint/no-unsafe-assignment': 'off',
-      '@typescript-eslint/no-unsafe-member-access': 'off',
-      '@typescript-eslint/no-unsafe-call': 'off',
-      '@typescript-eslint/no-unsafe-argument': 'off',
-      '@typescript-eslint/explicit-function-return-type': 'off',
-      '@typescript-eslint/no-confusing-void-expression': 'off',
-      '@typescript-eslint/no-misused-promises': 'off',
-      '@typescript-eslint/no-unnecessary-condition': 'off',
-      '@typescript-eslint/no-magic-numbers': 'off',
-      '@typescript-eslint/naming-convention': 'off',
-      '@typescript-eslint/prefer-nullish-coalescing': 'error',
-      '@eslint-community/eslint-comments/disable-enable-pair': 'off',
-      '@eslint-community/eslint-comments/require-description': 'off',
-      'no-console': 'warn',
-      'no-negated-condition': 'off',
-      'complexity': 'off',
-      'curly': 'off',
     },
   },
 ];

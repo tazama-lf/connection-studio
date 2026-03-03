@@ -19,6 +19,4 @@ export const ENV = {
     'http://10.10.80.37:3000/api',
   APP_TITLE: import.meta.env.VITE_APP_TITLE ?? 'Tazama Connection Studio',
   APP_ENV: import.meta.env.VITE_APP_ENV ?? 'development',
-  IS_DEVELOPMENT: import.meta.env.DEV,
-  IS_PRODUCTION: import.meta.env.PROD,
 } as const;

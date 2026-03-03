@@ -32,11 +32,10 @@ export const handleInputFilter = ({
   fieldName,
   isDisable = false,
   type,
-  maxLength,
   searchingFilters,
   setSearchingFilters,
   setPage,
-}: InputFilterProps) => {
+}: InputFilterProps): React.JSX.Element => {
   const [localValue, setLocalValue] = React.useState(
     searchingFilters[fieldName] ?? '',
   );
@@ -58,7 +57,7 @@ export const handleInputFilter = ({
           }
         }}
         onChange={(event) => {
-          const {value} = event.target;
+          const { value } = event.target;
           setLocalValue(value);
 
           if (value.length <= 0) {
@@ -73,7 +72,6 @@ export const handleInputFilter = ({
         className=" w-full rounded-sm border border-gray-300 bg-white px-10 py-[6px] text-sm text-gray-900 placeholder:text-gray-400 shadow-sm focus:outline-none"
         disabled={isDisable}
         type={type ?? 'text'}
-        // inputProps={{ maxLength: maxLength || 25 }}
         placeholder="search..."
       />
       <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-gray-400">

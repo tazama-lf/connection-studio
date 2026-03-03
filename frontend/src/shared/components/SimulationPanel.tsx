@@ -20,16 +20,16 @@ export const SimulationPanel: React.FC<SimulationPanelProps> = ({
   contentType = 'application/json',
   onSimulationComplete,
   readOnly = false,
-}) => {
+}: SimulationPanelProps): React.JSX.Element => {
   const { user } = useAuth();
-  const isApproverUser = isApprover(user?.claims || []);
+  const isApproverUser = isApprover(user?.claims ?? []);
   const [hasRun, setHasRun] = useState(false);
   const [testPayload, setTestPayload] = useState('');
   const [isRunning, setIsRunning] = useState(false);
   const [simulationError, setSimulationError] = useState<string | null>(null);
   const [simulationResult, setSimulationResult] =
     useState<SimulationResult | null>(null);
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>): void => {
     const file = event.target.files?.[0];
     if (file) {
       const reader = new FileReader();
@@ -40,7 +40,7 @@ export const SimulationPanel: React.FC<SimulationPanelProps> = ({
       reader.readAsText(file);
     }
   };
-  const runSimulation = async () => {
+  const runSimulation = async (): Promise<void> => {
     if (!endpointId) {
       setSimulationError('No endpoint ID provided for simulation');
       return;
@@ -56,19 +56,16 @@ export const SimulationPanel: React.FC<SimulationPanelProps> = ({
     setSimulationResult(null);
 
     try {
-      // Validate payload format based on content type
       try {
         if (contentType === 'application/json') {
           JSON.parse(testPayload); // Just validate, don't store
         }
-        // For XML, we can add validation later if needed
-      } catch (parseError) {
+      } catch (parseError: unknown) {
         throw new Error(
-          `Invalid ${contentType} format: ${parseError instanceof Error ? parseError.message : 'Parse error'}`,
+          parseError instanceof Error ? parseError.message : 'Invalid JSON format'
         );
       }
 
-      // Convert content type to backend enum format
       const payloadType = contentType === 'application/json' ? 'json' : 'xml';
 
       const xmlparser = new XMLParser({
@@ -165,7 +162,7 @@ export const SimulationPanel: React.FC<SimulationPanelProps> = ({
           <Button
             variant="primary"
             size="sm"
-            onClick={runSimulation}
+            onClick={async (): Promise<void> => { await runSimulation(); }}
             disabled={
               !testPayload.trim() ||
               isRunning ||
@@ -219,19 +216,18 @@ export const SimulationPanel: React.FC<SimulationPanelProps> = ({
               <div className="flex items-center justify-between text-sm">
                 <span>Stages Failed:</span>
                 <span className="font-medium text-gray-700">
-                  {simulationResult.summary?.failedStages || 0}
+                  {simulationResult.summary.failedStages ?? 0}
                 </span>
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span>Mappings Applied:</span>
                 <span className="font-medium text-gray-700">
-                  {simulationResult.summary?.mappingsApplied || 0}
+                  {simulationResult.summary.mappingsApplied ?? 0}
                 </span>
               </div>
             </div>
 
-            {/* Detailed Stages */}
-            {simulationResult.stages && simulationResult.stages.length > 0 && (
+            {(simulationResult.stages && simulationResult.stages.length > 0) && (
               <div className="mt-3 space-y-2">
                 <h5 className="text-sm font-medium text-gray-700">
                   Validation Stages:
@@ -253,10 +249,10 @@ export const SimulationPanel: React.FC<SimulationPanelProps> = ({
             )}
 
             {/* Error Messages */}
-            {(simulationResult.errors?.length || 0) > 0 && (
+            {simulationResult.errors?.length > 0 && (
               <div className="mt-3 space-y-2" data-id="element-721">
                 <h5 className="text-sm font-medium text-red-700">Errors:</h5>
-                {simulationResult.errors?.map((error, index) => (
+                {simulationResult.errors.map((error, index) => (
                   <div
                     key={index}
                     className="text-sm text-red-600 bg-red-25 p-2 rounded"
@@ -292,7 +288,7 @@ export const SimulationPanel: React.FC<SimulationPanelProps> = ({
 
             <div className="bg-white p-3 rounded h-[400px] overflow-auto">
               <ReactJson
-                src={simulationResult.transformedPayload || {}}
+                src={simulationResult.transformedPayload ?? {}}
                 theme="rjv-default"
                 name={false}
                 displayDataTypes={false}

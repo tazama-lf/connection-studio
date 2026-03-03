@@ -66,7 +66,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(({
   setPayloadError,
 }, ref) => {
   const [endpointData, setEndpointData] = useState<EndpointFormData>(
-    initialEndpointData || {
+    initialEndpointData ?? {
       version: '',
       transactionType: '',
       description: '',
@@ -260,7 +260,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(({
     if (existsAlready) {
       return; // Don't add duplicates
     }
-    const level = (newField.path.match(/\./g) || []).length;
+    const level = (newField.path.match(/\./g) ?? []).length;
     const pathParts = newField.path.split('.');
     const parent =
       pathParts.length > 1 ? pathParts.slice(0, -1).join('.') : undefined;
@@ -287,7 +287,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(({
     const convertFields = (fields: SchemaField[]): InferredField[] => {
       const inferredFields: InferredField[] = [];
       fields.forEach((field) => {
-        const dotCount = (field.path.match(/\./g) || []).length;
+        const dotCount = (field.path.match(/\./g) ?? []).length;
         const level = dotCount;
         if (field.type === 'array' && field.children) {
         }
@@ -374,7 +374,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(({
       }
     }
   }, [inferredFields, onSchemaChange]);
-  const handleGenerateFields = async () => {
+  const handleGenerateFields = (): void => {
     if (!value.trim()) {
       setFieldGenerationError('Please enter a payload first.');
       return;
@@ -430,7 +430,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(({
   const handleEndpointDataChange = (
     field: keyof EndpointFormData,
     newValue: string,
-  ) => {
+  ): void => {
     let sanitizedValue = newValue;
     if (
       field === 'version' ||
@@ -463,13 +463,13 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(({
       setFieldErrors((prev) => ({ ...prev, payload: payloadValidation.error }));
     }
   };
-  const validatePayload = (payloadValue: string, contentType: string) => {
+  const validatePayload = (payloadValue: string, contentType: string): void => {
     const validation = validatePayloadContent(payloadValue, contentType);
     setIsPayloadValid(validation.isValid);
     setPayloadValidationMessage(validation.message);
     setFieldErrors((prev) => ({ ...prev, payload: validation.error }));
   };
-  
+
   useEffect(() => {
     validatePayload(value, endpointData.contentType);
   }, [value, endpointData.contentType]);
@@ -481,7 +481,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(({
       payload: '',
     });
   }, [endpointData.version, endpointData.transactionType, endpointData.msgFam]);
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>): void => {
     const file = event.target.files?.[0];
     if (file) {
       const fileName = file.name.toLowerCase();
@@ -653,7 +653,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(({
     if (childElements.length > 0) {
       const elementGroups = new Map<string, Element[]>();
       childElements.forEach((child) => {
-        const {tagName} = child;
+        const { tagName } = child;
         if (!elementGroups.has(tagName)) {
           elementGroups.set(tagName, []);
         }
@@ -700,7 +700,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(({
     const rootFields = fields.filter((f) => f.level === 0);
     rootFields.forEach((rootField) => {
       const schemaField: SchemaField = {
-        name: rootField.path.split('.').pop() || rootField.path,
+        name: rootField.path.split('.').pop() ?? rootField.path,
         path: rootField.path,
         type: rootField.type.toLowerCase() as
           | 'string'
@@ -803,7 +803,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(({
     </CdtTrfTxInf>
   </FIToFICstmrCdtTrf>
 </Document>`;
-  const FormattedJsonSection = () => {
+  const FormattedJsonSection = (): React.JSX.Element => {
     const parseResult = safeJsonParse(value);
     if (parseResult.success && parseResult.data) {
       return (
@@ -868,8 +868,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(({
                   id="version"
                   type="text"
                   value={endpointData.version}
-                  onChange={(e) =>
-                    { handleEndpointDataChange('version', e.target.value); }
+                  onChange={(e) => { handleEndpointDataChange('version', e.target.value); }
                   }
                   onKeyPress={(e) => {
                     const char = e.key;
@@ -910,9 +909,8 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(({
                 <input
                   id="msgFam"
                   type="text"
-                  value={endpointData.msgFam || ''}
-                  onChange={(e) =>
-                    { handleEndpointDataChange('msgFam', e.target.value); }
+                  value={endpointData.msgFam ?? ''}
+                  onChange={(e) => { handleEndpointDataChange('msgFam', e.target.value); }
                   }
                   onKeyPress={(e) => {
                     const char = e.key;
@@ -952,12 +950,11 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(({
                   id="transaction-type"
                   type="text"
                   value={endpointData.transactionType || ''}
-                  onChange={(e) =>
-                    { handleEndpointDataChange('transactionType', e.target.value.toLowerCase()); }
+                  onChange={(e) => { handleEndpointDataChange('transactionType', e.target.value.toLowerCase()); }
                   }
                   onKeyPress={(e) => {
                     const char = e.key;
-                    if (!/[a-zA-Z0-9_\-]/.test(char)) {
+                    if (!/[a-zA-Z0-9_-]/.test(char)) {
                       e.preventDefault();
                     }
                   }}
@@ -992,8 +989,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(({
                 <select
                   id="content-type"
                   value={endpointData.contentType}
-                  onChange={(e) =>
-                    { handleEndpointDataChange('contentType', e.target.value); }
+                  onChange={(e) => { handleEndpointDataChange('contentType', e.target.value); }
                   }
                   className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white ${isReadOnly
                     ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
@@ -1069,12 +1065,13 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(({
                     className=" cursor-pointer"
                     style={{ backgroundColor: '#2b7fff', color: 'white' }}
                     icon={<FilePlus size={16} />}
-                    onClick={() =>
-                      { onChange(
+                    onClick={() => {
+                      onChange(
                         endpointData.contentType === 'application/json'
                           ? sampleJsonPayload
                           : sampleXmlPayload,
-                      ); }
+                      );
+                    }
                     }
                   >
                     Load{' '}
@@ -1243,7 +1240,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(({
                 <Button
                   variant="primary"
                   className=" cursor-pointer"
-                  onClick={handleGenerateFields}
+                  onClick={() => { handleGenerateFields(); }}
                   disabled={isGeneratingFields || !value.trim() || readOnly}
                   icon={<SparklesIcon size={16} />}
                 >
@@ -1363,11 +1360,12 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(({
                             id="empty-field-path"
                             type="text"
                             value={newField.path}
-                            onChange={(e) =>
-                              { setNewField((prev) => ({
+                            onChange={(e) => {
+                              setNewField((prev) => ({
                                 ...prev,
                                 path: e.target.value,
-                              })); }
+                              }));
+                            }
                             }
                             placeholder="e.g., user.name or address.street"
                             className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm"
@@ -1387,11 +1385,12 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(({
                           <select
                             id="empty-field-type"
                             value={newField.type}
-                            onChange={(e) =>
-                              { setNewField((prev) => ({
+                            onChange={(e) => {
+                              setNewField((prev) => ({
                                 ...prev,
                                 type: e.target.value as InferredField['type'],
-                              })); }
+                              }));
+                            }
                             }
                             className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm"
                           >
@@ -1408,11 +1407,12 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(({
                             id="empty-field-required"
                             type="checkbox"
                             checked={newField.required}
-                            onChange={(e) =>
-                              { setNewField((prev) => ({
+                            onChange={(e) => {
+                              setNewField((prev) => ({
                                 ...prev,
                                 required: e.target.checked,
-                              })); }
+                              }));
+                            }
                             }
                             className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                           />
@@ -1502,11 +1502,12 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(({
                           <input
                             type="text"
                             value={newField.path}
-                            onChange={(e) =>
-                              { setNewField((prev) => ({
+                            onChange={(e) => {
+                              setNewField((prev) => ({
                                 ...prev,
                                 path: e.target.value,
-                              })); }
+                              }));
+                            }
                             }
                             placeholder="Field path (e.g., user.name)"
                             className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -1516,11 +1517,12 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(({
                         <div className="col-span-2">
                           <select
                             value={newField.type}
-                            onChange={(e) =>
-                              { setNewField((prev) => ({
+                            onChange={(e) => {
+                              setNewField((prev) => ({
                                 ...prev,
                                 type: e.target.value as InferredField['type'],
-                              })); }
+                              }));
+                            }
                             }
                             className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           >
@@ -1536,11 +1538,12 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(({
                           <input
                             type="checkbox"
                             checked={newField.required}
-                            onChange={(e) =>
-                              { setNewField((prev) => ({
+                            onChange={(e) => {
+                              setNewField((prev) => ({
                                 ...prev,
                                 required: e.target.checked,
-                              })); }
+                              }));
+                            }
                             }
                             className="h-3.5 w-3.5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                           />

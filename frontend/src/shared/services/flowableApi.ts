@@ -1,6 +1,9 @@
 import { API_CONFIG } from '../config/api.config';
 
-// Types for Flowable API
+const HTTP_STATUS_BAD_REQUEST = 400;
+const HTTP_STATUS_UNAUTHORIZED = 401;
+const HTTP_STATUS_SERVER_ERROR = 500;
+
 export interface FlowableTask {
   id: string;
   name: string;
@@ -19,8 +22,8 @@ export interface FlowableTask {
   formKey?: string;
   parentTaskId?: string;
   executionId: string;
-  variables?: Record<string, any>;
-  processVariables?: Record<string, any>;
+  variables?: Record<string, unknown>;
+  processVariables?: Record<string, unknown>;
 }
 
 export interface TaskResponse {
@@ -32,106 +35,85 @@ export interface TaskResponse {
 
 export interface CompleteTaskRequest {
   taskId: string;
-  variables?: Record<string, any>;
+  variables?: Record<string, unknown>;
   comment?: string;
 }
 
-// Flowable API service
 export class FlowableApiService {
   private readonly baseURL: string;
 
   constructor() {
-    this.baseURL = API_CONFIG.AUTH_BASE_URL; // Using same base URL as auth
+    this.baseURL = API_CONFIG.AUTH_BASE_URL;
   }
 
-  private getAuthHeaders(): Record<string, string> {
+  private readonly getAuthHeaders = (): Record<string, string> => {
     const token = localStorage.getItem('authToken');
     return {
       'Content-Type': 'application/json',
       Accept: 'application/json',
       ...(token && { Authorization: `Bearer ${token}` }),
     };
-  }
+  };
 
-  private async handleResponse<T>(response: Response): Promise<T> {
-    if (response.status === 401) {
+  private readonly handleResponse = async <T>(response: Response): Promise<T> => {
+    if (response.status === HTTP_STATUS_UNAUTHORIZED) {
       localStorage.removeItem('authToken');
-      if (
-        typeof window !== 'undefined' &&
-        window.location &&
-        !window.location.href.includes('localhost')
-      ) {
+      if (typeof window !== 'undefined') {
         window.location.href = '/login';
       }
-      const errorData = await response
+      const errorData = (await response
         .json()
-        .catch(() => ({ success: false, message: 'Unauthorized' }));
+        .catch(() => ({ success: false, message: 'Unauthorized' }))) as { success: boolean; message: string };
       return errorData as T;
     }
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      if (response.status >= 400 && response.status < 500) {
+      const errorData = (await response.json().catch(() => ({}))) as { message?: string };
+      if (response.status >= HTTP_STATUS_BAD_REQUEST && response.status < HTTP_STATUS_SERVER_ERROR) {
         return errorData as T;
       }
-      throw new Error(
-        errorData.message ?? `HTTP error! status: ${response.status}`,
-      );
+      const message = errorData.message ?? `HTTP error! status: ${response.status}`;
+      throw new Error(message);
     }
 
-    return await response.json();
-  }
+    return (await response.json()) as T;
+  };
 
   /**
    * Get tasks for a specific role (editor/approver)
    */
   async getTasksForRole(role: string): Promise<TaskResponse> {
-    try {
-      const response = await fetch(`${this.baseURL}/flowable/tasks/${role}`, {
-        method: 'GET',
-        headers: this.getAuthHeaders(),
-      });
+    const response = await fetch(`${this.baseURL}/flowable/tasks/${role}`, {
+      method: 'GET',
+      headers: this.getAuthHeaders(),
+    });
 
-      const result = await this.handleResponse<TaskResponse>(response);
-      return result;
-    } catch (error) {
-      throw error;
-    }
+    return await this.handleResponse<TaskResponse>(response);
   }
 
   /**
    * Complete a task and progress the workflow
    */
   async completeTask(request: CompleteTaskRequest): Promise<TaskResponse> {
-    try {
-      const response = await fetch(`${this.baseURL}/flowable/tasks/complete`, {
-        method: 'POST',
-        headers: this.getAuthHeaders(),
-        body: JSON.stringify(request),
-      });
+    const response = await fetch(`${this.baseURL}/flowable/tasks/complete`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(request),
+    });
 
-      const result = await this.handleResponse<TaskResponse>(response);
-      return result;
-    } catch (error) {
-      throw error;
-    }
+    return await this.handleResponse<TaskResponse>(response);
   }
 
   /**
    * Get tasks for the current user
    */
   async getMyTasks(): Promise<TaskResponse> {
-    try {
-      const response = await fetch(`${this.baseURL}/flowable/tasks/my`, {
-        method: 'GET',
-        headers: this.getAuthHeaders(),
-      });
+    const response = await fetch(`${this.baseURL}/flowable/tasks/my`, {
+      method: 'GET',
+      headers: this.getAuthHeaders(),
+    });
 
-      const result = await this.handleResponse<TaskResponse>(response);
-      return result;
-    } catch (error) {
-      throw error;
-    }
+    return await this.handleResponse<TaskResponse>(response);
   }
 }
 

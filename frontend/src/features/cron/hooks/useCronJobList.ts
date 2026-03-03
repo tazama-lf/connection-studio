@@ -33,7 +33,7 @@ export const useCronJobList = () => {
       page: offset,
       limit,
       totalRecords: total,
-      setPage: (page: number) => setOffset(page - 1),
+      setPage: (page: number) => { setOffset(page - 1); },
     }), [offset, limit, total])  
 
   const [error, setError] = useState<string | null>(null);
@@ -82,7 +82,7 @@ export const useCronJobList = () => {
           searchingFilters,
         );
 
-        setSchedules(response?.data || []);
+        setSchedules(response?.data ?? []);
         setTotal(response.total)
       } catch (err) {
         setError(

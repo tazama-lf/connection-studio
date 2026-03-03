@@ -24,7 +24,7 @@ export const ApproverConfigDetailsModal: React.FC<ApproverConfigDetailsModalProp
 
   if (!isOpen || !config) return null;
 
-  const handleApprove = async () => {
+  const handleApprove = async (): Promise<void> => {
     setIsApproving(true);
     try {
       await onApprove(config.id);
@@ -36,7 +36,7 @@ export const ApproverConfigDetailsModal: React.FC<ApproverConfigDetailsModalProp
     }
   };
 
-  const handleReject = async () => {
+  const handleReject = async (): Promise<void> => {
     setIsRejecting(true);
     try {
       await onReject(config);
@@ -77,9 +77,9 @@ export const ApproverConfigDetailsModal: React.FC<ApproverConfigDetailsModalProp
             {/* Status Badge */}
             <div className="flex items-center space-x-2">
               <span className="text-sm font-medium text-gray-700">Status:</span>
-              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(config.status || 'pending')}`}>
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(config.status ?? 'pending')}`}>
                 <span className="w-2 h-2 rounded-full bg-current mr-2"></span>
-                {getStatusLabel(config.status || 'pending')}
+                {getStatusLabel(config.status ?? 'pending')}
               </span>
             </div>
 
@@ -99,7 +99,7 @@ export const ApproverConfigDetailsModal: React.FC<ApproverConfigDetailsModalProp
                   Transaction Type
                 </label>
                 <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded border border-gray-200">
-                  {config.transactionType || 'N/A'}
+                  {config.transactionType ?? 'N/A'}
                 </p>
               </div>
             </div>
@@ -114,19 +114,19 @@ export const ApproverConfigDetailsModal: React.FC<ApproverConfigDetailsModalProp
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <span className="text-xs font-medium text-gray-600">Message Family:</span>
-                      <p className="text-sm text-gray-900">{config.msgFam || 'N/A'}</p>
+                      <p className="text-sm text-gray-900">{config.msgFam ?? 'N/A'}</p>
                     </div>
                     <div>
                       <span className="text-xs font-medium text-gray-600">Version:</span>
-                      <p className="text-sm text-gray-900">{config.version || 'N/A'}</p>
+                      <p className="text-sm text-gray-900">{config.version ?? 'N/A'}</p>
                     </div>
                     <div>
                       <span className="text-xs font-medium text-gray-600">Endpoint Path:</span>
-                      <p className="text-sm text-gray-900 font-mono">{config.endpointPath || 'N/A'}</p>
+                      <p className="text-sm text-gray-900 font-mono">{config.endpointPath ?? 'N/A'}</p>
                     </div>
                     <div>
                       <span className="text-xs font-medium text-gray-600">Content Type:</span>
-                      <p className="text-sm text-gray-900">{config.contentType || 'N/A'}</p>
+                      <p className="text-sm text-gray-900">{config.contentType ?? 'N/A'}</p>
                     </div>
                   </div>
                   {config.mapping && config.mapping.length > 0 && (
@@ -158,13 +158,13 @@ export const ApproverConfigDetailsModal: React.FC<ApproverConfigDetailsModalProp
                 <p className="text-sm text-gray-900">
                   {config.createdAt
                     ? new Date(config.createdAt).toLocaleString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                        hour: 'numeric',
-                        minute: '2-digit',
-                        hour12: true,
-                      })
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                      hour: 'numeric',
+                      minute: '2-digit',
+                      hour12: true,
+                    })
                     : 'N/A'}
                 </p>
               </div>
@@ -176,13 +176,13 @@ export const ApproverConfigDetailsModal: React.FC<ApproverConfigDetailsModalProp
                 <p className="text-sm text-gray-900">
                   {config.updatedAt
                     ? new Date(config.updatedAt).toLocaleString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                        hour: 'numeric',
-                        minute: '2-digit',
-                        hour12: true,
-                      })
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                      hour: 'numeric',
+                      minute: '2-digit',
+                      hour12: true,
+                    })
                     : 'N/A'}
                 </p>
               </div>
@@ -196,7 +196,7 @@ export const ApproverConfigDetailsModal: React.FC<ApproverConfigDetailsModalProp
                 onClose();
               }}
               variant="secondary"
-              disabled={isApproving || isRejecting}
+              disabled={isApproving ?? isRejecting}
             >
               Close
             </Button>
@@ -205,7 +205,7 @@ export const ApproverConfigDetailsModal: React.FC<ApproverConfigDetailsModalProp
                 handleReject();
               }}
               variant="danger"
-              disabled={isApproving || isRejecting}
+              disabled={isApproving ?? isRejecting}
               className="flex items-center space-x-2"
             >
               <XCircle className="w-4 h-4" />
@@ -216,7 +216,7 @@ export const ApproverConfigDetailsModal: React.FC<ApproverConfigDetailsModalProp
                 handleApprove();
               }}
               variant="primary"
-              disabled={isApproving || isRejecting}
+              disabled={isApproving ?? isRejecting}
               className="flex items-center space-x-2"
             >
               <CheckCircle className="w-4 h-4" />

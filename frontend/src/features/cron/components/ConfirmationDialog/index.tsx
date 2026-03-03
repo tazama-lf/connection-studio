@@ -35,11 +35,11 @@ export const CronJobConfirmationDialog: React.FC<CronJobConfirmationDialogProps>
 
   const getWarning = () => {
     if (type === 'export')
-      return '⚠️ Important: This will update the cron job status to EXPORTED.';
+      {return '⚠️ Important: This will update the cron job status to EXPORTED.';}
     if (type === 'approval')
-      return '⚠️ Important: This will submit the cron job for approval and update its status to UNDER REVIEW.';
+      {return '⚠️ Important: This will submit the cron job for approval and update its status to UNDER REVIEW.';}
     if (type === 'approve')
-      return '⚠️ Important: This will update the cron job status to APPROVED.';
+      {return '⚠️ Important: This will update the cron job status to APPROVED.';}
     return '';
   };
 

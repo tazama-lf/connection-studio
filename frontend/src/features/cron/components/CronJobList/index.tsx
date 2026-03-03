@@ -109,11 +109,11 @@ export const CronJobList: React.FC<CronJobListProps> = () => {
 
       <CronJobModal
         isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
+        onClose={() => { setModalOpen(false); }}
         mode={modalMode}
         viewFormData={modalMode === 'view' && selectedSchedule ? selectedSchedule : undefined}
         editFormData={modalMode === 'edit' ? (editForm as unknown as ScheduleResponse) : undefined}
-        setEditFormData={modalMode === 'edit' ? (data: ScheduleResponse) => setEditForm({
+        setEditFormData={modalMode === 'edit' ? (data: ScheduleResponse) => { setEditForm({
           id: data.id,
           name: data.name,
           cronExpression: data.cronExpression ?? '',
@@ -123,7 +123,7 @@ export const CronJobList: React.FC<CronJobListProps> = () => {
           status: data.status ?? '',
           schedule_status: data.schedule_status ?? '',
           comments: data.comments ?? '',
-        }) : undefined}
+        }); } : undefined}
         handleSendForApproval={modalMode === 'view' ? handleSendForApproval : undefined}
         handleSaveEdit={modalMode === 'edit' ? handleSaveEdit : undefined}
         onApprove={modalMode === 'view' ? handleApproveClick : undefined}
@@ -134,7 +134,7 @@ export const CronJobList: React.FC<CronJobListProps> = () => {
 
       <JobRejectionDialog
         isOpen={showRejectionDialog}
-        onClose={() => setShowRejectionDialog(false)}
+        onClose={() => { setShowRejectionDialog(false); }}
         onConfirm={handleRejectionConfirmWithClose}
         jobName={selectedSchedule?.name ?? 'Unknown Schedule'}
         jobType="Cron Job"
@@ -146,7 +146,7 @@ export const CronJobList: React.FC<CronJobListProps> = () => {
         jobName={confirmDialog.schedule?.name ?? 'this cron job'}
         actionLoading={actionLoading === 'export' || actionLoading === 'approval' || actionLoading === 'approve' ? actionLoading : ''}
         onClose={() =>
-          setConfirmDialog({ open: false, type: '', schedule: null })
+          { setConfirmDialog({ open: false, type: '', schedule: null }); }
         }
         onConfirm={handleConfirmAction}
       />
