@@ -3,7 +3,7 @@ import { Button } from '@shared';
 import useFilters from '@shared/hooks/useFilters';
 import { getPrimaryRole } from '@utils/common/roleUtils';
 import { ChevronLeft, Database } from 'lucide-react';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useToast } from '../../../shared/providers/ToastProvider';
 import JobDetailsModal from '../../data-enrichment/components/JobDetailsModal';
@@ -47,7 +47,7 @@ const ApproverDEJobsPage: React.FC = () => {
 
   const { showSuccess, showError } = useToast();
 
-  const fetchDeJobs = async (): Promise<void> => {
+  const fetchDeJobs = useCallback(async (): Promise<void> => {
     try {
       setLoading(true);
       setError(null);
@@ -68,7 +68,7 @@ const ApproverDEJobsPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [pagination, searchingFilters])
 
   useEffect(() => {
     void fetchDeJobs();

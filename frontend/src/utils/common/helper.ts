@@ -1,10 +1,10 @@
-export default function ensurePromise<T extends (...args: any[]) => any>(
+export default function ensurePromise<T extends (...args: unknown[]) => unknown>(
   fn: T
 ): (...args: Parameters<T>) => Promise<Awaited<ReturnType<T>>> {
   return async (...args: Parameters<T>): Promise<Awaited<ReturnType<T>>> => {
     try {
-      const result = fn(...args);
-      return await result;
+      const result = await fn(...args);
+      return result as Awaited<ReturnType<T>>;
     } catch (error) {
       if (error instanceof Error) {
         throw error;

@@ -362,6 +362,7 @@ export const dataEnrichmentApi = {
     publishingStatus: 'active' | 'in-active',
     type: 'PULL' | 'PUSH',
   ): Promise<{ success: boolean; message: string }> => {
+    console.log(`PUBLISHING STATUS FOR JOB id : ${id} type :${type} publishingStatus ${publishingStatus}`)
     try {
       const url = `${API_BASE_URL}/job/update/activation/${id}?status=${publishingStatus.toLowerCase()}&type=${type.toLowerCase()}`;
 

@@ -46,16 +46,15 @@ export class FlowableApiService {
     this.baseURL = API_CONFIG.AUTH_BASE_URL;
   }
 
-  private readonly getAuthHeaders = (): Record<string, string> => {
+  private static readonly getAuthHeaders = (): Record<string, string> => {
     const token = localStorage.getItem('authToken');
     return {
       'Content-Type': 'application/json',
-      Accept: 'application/json',
-      ...(token && { Authorization: `Bearer ${token}` }),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     };
-  };
+  }
 
-  private readonly handleResponse = async <T>(response: Response): Promise<T> => {
+  private static readonly handleResponse = async <T>(response: Response): Promise<T> => {
     if (response.status === HTTP_STATUS_UNAUTHORIZED) {
       localStorage.removeItem('authToken');
       if (typeof window !== 'undefined') {
@@ -85,10 +84,10 @@ export class FlowableApiService {
   async getTasksForRole(role: string): Promise<TaskResponse> {
     const response = await fetch(`${this.baseURL}/flowable/tasks/${role}`, {
       method: 'GET',
-      headers: this.getAuthHeaders(),
+      headers: FlowableApiService.getAuthHeaders(),
     });
 
-    return await this.handleResponse<TaskResponse>(response);
+    return await FlowableApiService.handleResponse<TaskResponse>(response);
   }
 
   /**
@@ -97,11 +96,11 @@ export class FlowableApiService {
   async completeTask(request: CompleteTaskRequest): Promise<TaskResponse> {
     const response = await fetch(`${this.baseURL}/flowable/tasks/complete`, {
       method: 'POST',
-      headers: this.getAuthHeaders(),
+      headers: FlowableApiService.getAuthHeaders(),
       body: JSON.stringify(request),
     });
 
-    return await this.handleResponse<TaskResponse>(response);
+    return await FlowableApiService.handleResponse<TaskResponse>(response);
   }
 
   /**
@@ -110,10 +109,10 @@ export class FlowableApiService {
   async getMyTasks(): Promise<TaskResponse> {
     const response = await fetch(`${this.baseURL}/flowable/tasks/my`, {
       method: 'GET',
-      headers: this.getAuthHeaders(),
+      headers: FlowableApiService.getAuthHeaders(),
     });
 
-    return await this.handleResponse<TaskResponse>(response);
+    return await FlowableApiService.handleResponse<TaskResponse>(response);
   }
 }
 

@@ -17,7 +17,10 @@ import {
   type ConfigResponse,
   type CreateConfigRequest,
 } from '../../features/config/services/configApi';
-import FunctionsApiService from '../../features/functions/services/functionsApi';
+import {
+  addFunction,
+  deleteFunction,
+} from '../../features/functions/services/functionsApi';
 import {
   isApprover,
   isEditor,
@@ -785,7 +788,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
     try {
       setLoading(true);
       const configId = createdEndpoint?.id || existingConfig?.id;
-      const response = await FunctionsApiService.addFunction(
+      const response = await addFunction(
         configId,
         functionData,
       );
@@ -819,7 +822,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
     try {
       setLoading(true);
       const configId = createdEndpoint?.id || existingConfig?.id;
-      const response = await FunctionsApiService.deleteFunction(
+      const response = await deleteFunction(
         configId,
         index,
       );

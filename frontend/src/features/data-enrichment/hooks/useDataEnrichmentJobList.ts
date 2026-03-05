@@ -7,15 +7,61 @@ import {
   isEditor,
   isExporter,
   isPublisher,
+  type UserRole,
 } from '../../../utils/common/roleUtils';
 import { useAuth } from '../../auth/contexts/AuthContext';
 import { DATA_ENRICHMENT_JOB_STATUSES } from '../constants';
 import * as dataEnrichmentHandlers from '../handlers';
 import type { DataEnrichmentJobResponse } from '../types';
 
-export const useDataEnrichmentJobList = () => {
+const INITIAL_TOTAL_RECORDS = 0;
+const PAGE_OFFSET_ADJUSTMENT = 1;
+
+export const useDataEnrichmentJobList = (): {
+  jobs: DataEnrichmentJobResponse[];
+  pagination: {
+    page: number;
+    limit: number;
+    totalRecords: number;
+    setPage: (page: number) => void;
+  };
+  searchingFilters: Record<string, unknown>;
+  selectedJob: DataEnrichmentJobResponse | null;
+  editMode: boolean;
+  confirmDialog: {
+    open: boolean;
+    type: 'export' | 'approval' | 'activate' | 'deactivate' | '';
+    job: DataEnrichmentJobResponse | null;
+  };
+  error: string | null;
+  loading: boolean;
+  actionLoading: 'export' | 'approval' | 'activate' | 'deactivate' | 'edit' | '';
+  userIsEditor: boolean;
+  userIsApprover: boolean;
+  userIsExporter: boolean;
+  userIsPublisher: boolean;
+  userRole: UserRole | null;
+  setSearchingFilters: React.Dispatch<React.SetStateAction<Record<string, unknown>>>;
+  setSelectedJob: React.Dispatch<React.SetStateAction<DataEnrichmentJobResponse | null>>;
+  setEditMode: React.Dispatch<React.SetStateAction<boolean>>;
+  setConfirmDialog: React.Dispatch<React.SetStateAction<{
+    open: boolean;
+    type: 'export' | 'approval' | 'activate' | 'deactivate' | '';
+    job: DataEnrichmentJobResponse | null;
+  }>>;
+  loadJobs: () => Promise<void>;
+  handleView: (jobId: string) => Promise<void>;
+  handleEdit: (job: DataEnrichmentJobResponse) => Promise<void>;
+  handleSaveEdit: (updatedJob: Partial<DataEnrichmentJobResponse>) => Promise<void>;
+  handleSendForApproval: (jobId: string, jobType: 'PULL' | 'PUSH') => Promise<void>;
+  handleApprove: (jobId: string, jobType: 'PULL' | 'PUSH') => Promise<void>;
+  handleReject: (jobId: string, jobType: 'PULL' | 'PUSH', reason?: string) => Promise<void>;
+  handleExport: (jobId: string, jobType: 'PULL' | 'PUSH') => Promise<void>;
+  handleActivate: (jobId: string, jobType: 'PULL' | 'PUSH') => Promise<void>;
+  handleDeactivate: (jobId: string, jobType: 'PULL' | 'PUSH') => Promise<void>;
+} => {
   const [jobs, setJobs] = useState<DataEnrichmentJobResponse[]>([]);
-  const [total, setTotal] = useState(0)
+  const [total, setTotal] = useState(INITIAL_TOTAL_RECORDS)
 
   const {
     offset,
@@ -27,8 +73,8 @@ export const useDataEnrichmentJobList = () => {
     page: offset,
     limit,
     totalRecords: total,
-    setPage: (page: number) => { setOffset(page - 1); },
-  }), [offset, limit, total])
+    setPage: (page: number) => { setOffset(page - PAGE_OFFSET_ADJUSTMENT); },
+  }), [offset, limit, total, setOffset])
 
   const [searchingFilters, setSearchingFilters] = useState<
     Record<string, unknown>
@@ -91,19 +137,20 @@ export const useDataEnrichmentJobList = () => {
           searchingFilters,
         );
 
-        setJobs(response?.data || []);
-        setTotal(response?.total ?? 0)
+        setJobs(response.data ?? []);
+        setTotal(response.total ?? INITIAL_TOTAL_RECORDS)
       } catch (err) {
         let message = 'Failed to fetch jobs.';
         if (err instanceof Error) {
+          const { message: errorMessage } = err;
           if (
-            err.message.includes('500') ||
-            err.message.includes('HTTP error')
+            errorMessage.includes('500') ||
+            errorMessage.includes('HTTP error')
           ) {
             message =
               'Server error: Unable to load jobs. Please try again later.';
           } else {
-            message = err.message;
+            message = errorMessage;
           }
         }
         setError(message);
@@ -123,7 +170,7 @@ export const useDataEnrichmentJobList = () => {
       try {
         setLoadingState((s) => ({ ...s, page: true as boolean }));
         const job = jobs.find((j: DataEnrichmentJobResponse) => j.id === jobId);
-        const jobType = job?.type?.toUpperCase() as 'PULL' | 'PUSH' | undefined;
+        const jobType = job?.type.toUpperCase() as 'PULL' | 'PUSH' | undefined;
 
         const jobDetails =
           await dataEnrichmentHandlers.dataEnrichmentJobApi.getById(
@@ -143,7 +190,7 @@ export const useDataEnrichmentJobList = () => {
 
   const handleEdit = useCallback(
     async (job: DataEnrichmentJobResponse) => {
-      const jobStatus = job.status || DATA_ENRICHMENT_JOB_STATUSES.IN_PROGRESS;
+      const jobStatus = job.status ?? DATA_ENRICHMENT_JOB_STATUSES.IN_PROGRESS;
       if (jobStatus === DATA_ENRICHMENT_JOB_STATUSES.APPROVED) {
         showError(
           'Approved jobs cannot be edited. Please create a new job instead.',
@@ -161,7 +208,7 @@ export const useDataEnrichmentJobList = () => {
 
       try {
         setLoadingState((s) => ({ ...s, page: true as boolean }));
-        const jobType = job?.type?.toUpperCase() as 'PULL' | 'PUSH' | undefined;
+        const jobType = job.type.toUpperCase() as 'PULL' | 'PUSH' | undefined;
 
         const jobDetails =
           await dataEnrichmentHandlers.dataEnrichmentJobApi.getById(
@@ -186,39 +233,37 @@ export const useDataEnrichmentJobList = () => {
       try {
         setLoadingState((s) => ({ ...s, action: 'edit' }));
 
-        const jobType = (updatedJob.type || selectedJob.type)?.toLowerCase() as
+        const jobType = (updatedJob.type ?? selectedJob.type).toLowerCase() as
           | 'pull'
           | 'push';
 
         if (jobType === 'push') {
-          const pushData = {
+          await dataEnrichmentHandlers.submitPushJob({
             endpoint_name:
-              updatedJob.endpoint_name || selectedJob.endpoint_name || '',
-            description: updatedJob.description || selectedJob.description,
-            version: updatedJob.version || selectedJob.version || 'v1',
-            path: updatedJob.path || selectedJob.path || '',
-            table_name: updatedJob.table_name || selectedJob.table_name || '',
-            mode: (updatedJob.mode || selectedJob.mode || 'append'),
-          };
-          await dataEnrichmentHandlers.submitPushJob(pushData);
+              updatedJob.endpoint_name ?? selectedJob.endpoint_name ?? '',
+            description: updatedJob.description ?? selectedJob.description,
+            version: updatedJob.version ?? selectedJob.version ?? 'v1',
+            path: updatedJob.path ?? selectedJob.path ?? '',
+            table_name: updatedJob.table_name ?? selectedJob.table_name ?? '',
+            mode: updatedJob.mode ?? selectedJob.mode ?? 'append',
+          });
         } else {
-          const pullData = {
+          await dataEnrichmentHandlers.submitPullJob({
             endpoint_name:
-              updatedJob.endpoint_name || selectedJob.endpoint_name || '',
+              updatedJob.endpoint_name ?? selectedJob.endpoint_name ?? '',
             description:
-              updatedJob.description || selectedJob.description || '',
-            version: updatedJob.version || selectedJob.version || 'v1',
+              updatedJob.description ?? selectedJob.description ?? '',
+            version: updatedJob.version ?? selectedJob.version ?? 'v1',
             source_type:
-              updatedJob.source_type || selectedJob.source_type || 'HTTP',
-            table_name: updatedJob.table_name || selectedJob.table_name || '',
-            mode: (updatedJob.mode || selectedJob.mode || 'append'),
-            connection: updatedJob.connection ||
-              selectedJob.connection || { url: '', headers: {} },
+              updatedJob.source_type ?? selectedJob.source_type ?? 'HTTP',
+            table_name: updatedJob.table_name ?? selectedJob.table_name ?? '',
+            mode: updatedJob.mode ?? selectedJob.mode ?? 'append',
+            connection: updatedJob.connection ??
+              selectedJob.connection ?? { url: '', headers: {} },
             schedule_id:
-              updatedJob.schedule_id || selectedJob.schedule_id || '',
-            file: updatedJob.file || selectedJob.file,
-          };
-          await dataEnrichmentHandlers.submitPullJob(pullData);
+              updatedJob.schedule_id ?? selectedJob.schedule_id ?? '',
+            file: updatedJob.file ?? selectedJob.file,
+          });
         }
 
         showSuccess(

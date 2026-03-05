@@ -58,15 +58,15 @@ export class SimulationApiService {
     this.baseURL = API_CONFIG.AUTH_BASE_URL;
   }
 
-  private readonly getAuthHeaders = (): Record<string, string> => {
+  private static readonly getAuthHeaders = (): Record<string, string> => {
     const token = localStorage.getItem('authToken');
     return {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     };
-  };
+  }
 
-  private readonly handleResponse = async <T>(response: Response): Promise<T> => {
+  private static async handleResponse<T>(response: Response): Promise<T> {
     if (!response.ok) {
       if (response.status === HTTP_STATUS_UNAUTHORIZED) {
         localStorage.removeItem('authToken');
@@ -83,7 +83,7 @@ export class SimulationApiService {
     }
 
     return await response.json() as T;
-  };
+  }
 
   /**
    * Run complete simulation including schema validation, mapping execution, and Tazama validation
@@ -91,11 +91,11 @@ export class SimulationApiService {
   async runSimulation(data: SimulatePayloadRequest): Promise<SimulationResult> {
     const response = await fetch(`${this.baseURL}/simulation/run`, {
       method: 'POST',
-      headers: this.getAuthHeaders(),
+      headers: SimulationApiService.getAuthHeaders(),
       body: JSON.stringify(data),
     });
 
-    return await this.handleResponse<SimulationResult>(response);
+    return await SimulationApiService.handleResponse<SimulationResult>(response);
   }
 
   /**
@@ -107,11 +107,11 @@ export class SimulationApiService {
   ): Promise<ValidationResult> {
     const response = await fetch(`${this.baseURL}/simulation/validate`, {
       method: 'POST',
-      headers: this.getAuthHeaders(),
+      headers: SimulationApiService.getAuthHeaders(),
       body: JSON.stringify(data),
     });
 
-    return await this.handleResponse<ValidationResult>(response);
+    return await SimulationApiService.handleResponse<ValidationResult>(response);
   }
 }
 

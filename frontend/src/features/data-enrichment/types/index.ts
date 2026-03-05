@@ -1,9 +1,9 @@
 export interface SaveJobOptions {
-  formValues: any;
+  formValues: Record<string, unknown>;
   configurationType: 'push' | 'pull';
   editMode: boolean;
-  selectedJob?: any;
-  onSave?: (response: any) => void;
+  selectedJob?: DataEnrichmentJobResponse;
+  onSave?: (response: unknown) => void;
   onCloseWithRefresh?: () => void;
   onClose?: () => void;
   showSuccess: (title: string, message: string) => void;
@@ -13,7 +13,7 @@ export interface SaveJobOptions {
 export interface DataEnrichmentFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (formData: any) => void;
+  onSave: (formData: Record<string, unknown>) => void;
   editMode?: boolean;
   jobId?: string;
   jobType?: 'pull' | 'push';
@@ -35,19 +35,19 @@ export interface PaginatedJobResponse {
 }
 
 export interface Props {
-  control: any;
-  watch: any;
-  errors: any;
-  setValue?: any;
-  getValues?: any;
-  trigger?: any;
+  control: unknown;
+  watch: unknown;
+  errors: unknown;
+  setValue?: unknown;
+  getValues?: unknown;
+  trigger?: unknown;
   availableSchedules: ScheduleResponse[];
 }
 
 export interface PropsPush {
-  control: any;
-  watch: any;
-  errors: any;
+  control: unknown;
+  watch: unknown;
+  errors: unknown;
 }
 
 export interface PaginationParams {
@@ -112,9 +112,9 @@ export interface DataEnrichmentEditModalProps {
   isOpen: boolean;
   onClose: () => void;
   onCloseWithRefresh?: () => void;
-  onSave?: (formData: any) => void;
+  onSave?: (formData: Record<string, unknown>) => void;
   editMode?: boolean;
-  selectedJob?: any;
+  selectedJob?: DataEnrichmentJobResponse;
 }
 
 export interface DataEnrichmentJobListProps { }
@@ -122,11 +122,11 @@ export interface DataEnrichmentJobListProps { }
 export interface DataEnrichmentJobFormProps {
   onJobCreated?: () => void;
   onCancel?: () => void;
-  viewFormData?: any;
-  editFormData?: any;
-  setEditFormData?: (data: any) => void;
+  viewFormData?: DataEnrichmentJobResponse;
+  editFormData?: DataEnrichmentJobResponse;
+  setEditFormData?: (data: DataEnrichmentJobResponse) => void;
   handleSendForApproval?: (jobId: string, jobType: 'PULL' | 'PUSH') => void;
-  handleSaveEdit?: (data: any) => void;
+  handleSaveEdit?: (data: DataEnrichmentJobResponse) => void;
   onApprove?: (
     jobId: string,
     jobType: 'PULL' | 'PUSH',
@@ -156,8 +156,8 @@ export interface JobListProps {
   };
   totalRecords?: number;
   itemsPerPage?: number;
-  searchingFilters?: any;
-  setSearchingFilters?: any;
+  searchingFilters?: Record<string, unknown>;
+  setSearchingFilters?: React.Dispatch<React.SetStateAction<Record<string, unknown>>>;
   error?: string | null;
   loading?: boolean;
 }
@@ -367,46 +367,46 @@ export interface DataEnrichmentJobTableColumnsProps {
 }
 
 export interface SourceConfigurationFieldsProps {
-  control: any;
-  errors: any;
+  control: unknown;
+  errors: unknown;
   configurationType: 'pull' | 'push';
 }
 
 export interface AuthenticationFieldsProps {
-  control: any;
-  errors: any;
+  control: unknown;
+  errors: unknown;
   configurationType: 'pull' | 'push';
 }
 
 export interface FileProcessingFieldsProps {
-  control: any;
-  errors: any;
-  watch: any;
+  control: unknown;
+  errors: unknown;
+  watch: unknown;
   configurationType: 'pull' | 'push';
 }
 
 export interface EndpointConfigurationFieldsProps {
-  control: any;
-  errors: any;
-  watch: any;
-  getValues: any;
+  control: unknown;
+  errors: unknown;
+  watch: unknown;
+  getValues: unknown;
   tenantId: string;
   generateEndpointUrl: (version?: string, endpointPath?: string) => string;
 }
 
 export interface DataIngestionFieldsProps {
-  control: any;
-  errors: any;
+  control: unknown;
+  errors: unknown;
 }
 
 export interface FormSummaryStepProps {
-  formValues: any;
+  formValues: Record<string, unknown>;
   configurationType: 'pull' | 'push';
 }
 
 export interface SummaryRowProps {
   label: string;
-  value: any;
+  value: unknown;
 }
 
 export interface JobMetadataProps {

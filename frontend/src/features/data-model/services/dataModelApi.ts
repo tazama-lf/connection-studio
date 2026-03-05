@@ -52,12 +52,12 @@ export interface DataModelExtension {
   fieldType: TazamaFieldType;
   description?: string;
   isRequired: boolean;
-  defaultValue?: any;
+  defaultValue?: unknown;
   validation?: {
     pattern?: string;
     min?: number;
     max?: number;
-    enum?: any[];
+    enum?: unknown[];
   };
   tenantId: string;
   createdBy: string;
@@ -71,24 +71,24 @@ export interface CreateDataModelExtensionRequest {
   fieldType: TazamaFieldType;
   description?: string;
   isRequired?: boolean;
-  defaultValue?: any;
+  defaultValue?: unknown;
   validation?: {
     pattern?: string;
     min?: number;
     max?: number;
-    enum?: any[];
+    enum?: unknown[];
   };
 }
 
 export interface UpdateDataModelExtensionRequest {
   description?: string;
   isRequired?: boolean;
-  defaultValue?: any;
+  defaultValue?: unknown;
   validation?: {
     pattern?: string;
     min?: number;
     max?: number;
-    enum?: any[];
+    enum?: unknown[];
   };
 }
 
@@ -125,27 +125,27 @@ class DataModelApiService {
     this.baseURL = API_CONFIG.AUTH_BASE_URL;
   }
 
-  private getAuthHeaders(): Record<string, string> {
+  private static getAuthHeaders(): Record<string, string> {
     const token = localStorage.getItem('authToken');
     return {
       'Content-Type': 'application/json',
       Accept: 'application/json',
-      ...(token && { Authorization: `Bearer ${token}` }),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     };
   }
 
-  private async handleResponse<T>(response: Response): Promise<T> {
+  private static async handleResponse<T>(response: Response): Promise<T> {
     if (response.status === 401) {
       localStorage.removeItem('authToken');
       localStorage.removeItem('user');
-      const errorData = await response
+      const errorData = (await response
         .json()
-        .catch(() => ({ success: false, message: 'Unauthorized' }));
-      return errorData as T;
+        .catch(() => ({ success: false, message: 'Unauthorized' }))) as T;
+      return errorData;
     }
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+      const errorData = (await response.json().catch(() => ({}))) as { message?: string };
       if (response.status >= 400 && response.status < 500) {
         return errorData as T;
       }
@@ -154,170 +154,133 @@ class DataModelApiService {
       );
     }
 
-    return await response.json();
+    return (await response.json()) as T;
   }
 
   async getSchema(): Promise<DataModelApiResponse<TazamaCollectionSchema[]>> {
-    try {
-      const response = await fetch(`${this.baseURL}/data-model/schema`, {
-        method: 'GET',
-        headers: this.getAuthHeaders(),
-      });
-      return this.handleResponse<
-        DataModelApiResponse<TazamaCollectionSchema[]>
-      >(response);
-    } catch (error) {
-      throw error;
-    }
+    const response = await fetch(`${this.baseURL}/data-model/schema`, {
+      method: 'GET',
+      headers: DataModelApiService.getAuthHeaders(),
+    });
+    return await DataModelApiService.handleResponse<
+      DataModelApiResponse<TazamaCollectionSchema[]>
+    >(response);
   }
+
   async getDestinationPaths(): Promise<DataModelApiResponse<string[]>> {
-    try {
-      const response = await fetch(
-        `${this.baseURL}/data-model/destination-paths`,
-        {
-          method: 'GET',
-          headers: this.getAuthHeaders(),
-        },
-      );
-      return this.handleResponse<DataModelApiResponse<string[]>>(response);
-    } catch (error) {
-      throw error;
-    }
+    const response = await fetch(
+      `${this.baseURL}/data-model/destination-paths`,
+      {
+        method: 'GET',
+        headers: DataModelApiService.getAuthHeaders(),
+      },
+    );
+    return await DataModelApiService.handleResponse<DataModelApiResponse<string[]>>(response);
   }
 
   async getAllExtensions(): Promise<
     DataModelApiResponse<DataModelExtension[]>
   > {
-    try {
-      const response = await fetch(`${this.baseURL}/data-model/extensions`, {
-        method: 'GET',
-        headers: this.getAuthHeaders(),
-      });
-      return this.handleResponse<DataModelApiResponse<DataModelExtension[]>>(
-        response,
-      );
-    } catch (error) {
-      throw error;
-    }
+    const response = await fetch(`${this.baseURL}/data-model/extensions`, {
+      method: 'GET',
+      headers: DataModelApiService.getAuthHeaders(),
+    });
+    return await DataModelApiService.handleResponse<DataModelApiResponse<DataModelExtension[]>>(
+      response,
+    );
   }
 
   async getExtensionsByCollection(
     collection: TazamaCollectionName,
   ): Promise<DataModelApiResponse<DataModelExtension[]>> {
-    try {
-      const response = await fetch(
-        `${this.baseURL}/data-model/extensions/collection/${collection}`,
-        {
-          method: 'GET',
-          headers: this.getAuthHeaders(),
-        },
-      );
-      return this.handleResponse<DataModelApiResponse<DataModelExtension[]>>(
-        response,
-      );
-    } catch (error) {
-      throw error;
-    }
+    const response = await fetch(
+      `${this.baseURL}/data-model/extensions/collection/${collection}`,
+      {
+        method: 'GET',
+        headers: DataModelApiService.getAuthHeaders(),
+      },
+    );
+    return await DataModelApiService.handleResponse<DataModelApiResponse<DataModelExtension[]>>(
+      response,
+    );
   }
+
   async getExtensionById(
     id: string,
   ): Promise<DataModelApiResponse<DataModelExtension>> {
-    try {
-      const response = await fetch(
-        `${this.baseURL}/data-model/extensions/${id}`,
-        {
-          method: 'GET',
-          headers: this.getAuthHeaders(),
-        },
-      );
-      return this.handleResponse<DataModelApiResponse<DataModelExtension>>(
-        response,
-      );
-    } catch (error) {
-      throw error;
-    }
+    const response = await fetch(
+      `${this.baseURL}/data-model/extensions/${id}`,
+      {
+        method: 'GET',
+        headers: DataModelApiService.getAuthHeaders(),
+      },
+    );
+    return await DataModelApiService.handleResponse<DataModelApiResponse<DataModelExtension>>(
+      response,
+    );
   }
 
   async createExtension(
     request: CreateDataModelExtensionRequest,
   ): Promise<DataModelApiResponse<DataModelExtension>> {
-    try {
+    const response = await fetch(`${this.baseURL}/data-model/extensions`, {
+      method: 'POST',
+      headers: DataModelApiService.getAuthHeaders(),
+      body: JSON.stringify(request),
+    });
 
-      const response = await fetch(`${this.baseURL}/data-model/extensions`, {
-        method: 'POST',
-        headers: this.getAuthHeaders(),
-        body: JSON.stringify(request),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`HTTP ${response.status}: ${errorText}`);
-      }
-
-      const result =
-        await this.handleResponse<DataModelApiResponse<DataModelExtension>>(
-          response,
-        );
-      return result;
-    } catch (error) {
-      throw error;
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
     }
+
+    return await DataModelApiService.handleResponse<DataModelApiResponse<DataModelExtension>>(
+      response,
+    );
   }
 
   async updateExtension(
     id: number,
     request: UpdateDataModelExtensionRequest,
   ): Promise<DataModelApiResponse<DataModelExtension>> {
-    try {
-      const response = await fetch(
-        `${this.baseURL}/data-model/extensions/${id}`,
-        {
-          method: 'PUT',
-          headers: this.getAuthHeaders(),
-          body: JSON.stringify(request),
-        },
-      );
-      return this.handleResponse<DataModelApiResponse<DataModelExtension>>(
-        response,
-      );
-    } catch (error) {
-      throw error;
-    }
+    const response = await fetch(
+      `${this.baseURL}/data-model/extensions/${id}`,
+      {
+        method: 'PUT',
+        headers: DataModelApiService.getAuthHeaders(),
+        body: JSON.stringify(request),
+      },
+    );
+    return await DataModelApiService.handleResponse<DataModelApiResponse<DataModelExtension>>(
+      response,
+    );
   }
 
   async deleteExtension(id: number): Promise<DataModelApiResponse> {
-    try {
-      const response = await fetch(
-        `${this.baseURL}/data-model/extensions/${id}`,
-        {
-          method: 'DELETE',
-          headers: this.getAuthHeaders(),
-        },
-      );
-      return this.handleResponse<DataModelApiResponse>(response);
-    } catch (error) {
-      throw error;
-    }
+    const response = await fetch(
+      `${this.baseURL}/data-model/extensions/${id}`,
+      {
+        method: 'DELETE',
+        headers: DataModelApiService.getAuthHeaders(),
+      },
+    );
+    return await DataModelApiService.handleResponse<DataModelApiResponse>(response);
   }
 
   async validateDestination(
     path: string,
   ): Promise<DataModelApiResponse<{ isValid: boolean; message?: string }>> {
-    try {
-      const response = await fetch(
-        `${this.baseURL}/data-model/validate-destination`,
-        {
-          method: 'POST',
-          headers: this.getAuthHeaders(),
-          body: JSON.stringify({ path }),
-        },
-      );
-      return this.handleResponse<
-        DataModelApiResponse<{ isValid: boolean; message?: string }>
-      >(response);
-    } catch (error) {
-      throw error;
-    }
+    const response = await fetch(
+      `${this.baseURL}/data-model/validate-destination`,
+      {
+        method: 'POST',
+        headers: DataModelApiService.getAuthHeaders(),
+        body: JSON.stringify({ path }),
+      },
+    );
+    return await DataModelApiService.handleResponse<
+      DataModelApiResponse<{ isValid: boolean; message?: string }>
+    >(response);
   }
 
   async createImmediateParent(request: {
@@ -326,19 +289,15 @@ class DataModelApiService {
     description: string;
     destination_id: number;
   }): Promise<DataModelApiResponse> {
-    try {
-      const response = await fetch(
-        `${this.baseURL}/tazama-data-model/destination-types`,
-        {
-          method: 'POST',
-          headers: this.getAuthHeaders(),
-          body: JSON.stringify(request),
-        },
-      );
-      return this.handleResponse<DataModelApiResponse>(response);
-    } catch (error) {
-      throw error;
-    }
+    const response = await fetch(
+      `${this.baseURL}/tazama-data-model/destination-types`,
+      {
+        method: 'POST',
+        headers: DataModelApiService.getAuthHeaders(),
+        body: JSON.stringify(request),
+      },
+    );
+    return await DataModelApiService.handleResponse<DataModelApiResponse>(response);
   }
 
   async createParentChildDestination(
@@ -349,56 +308,44 @@ class DataModelApiService {
       parent_id?: string | number | null;
     },
   ): Promise<DataModelApiResponse> {
-    try {
-      const response = await fetch(
-        `${this.baseURL}/tazama-data-model/destination-types/${destinationTypeId}/fields`,
-        {
-          method: 'POST',
-          headers: this.getAuthHeaders(),
-          body: JSON.stringify(request),
-        },
-      );
-      return this.handleResponse<DataModelApiResponse>(response);
-    } catch (error) {
-      throw error;
-    }
+    const response = await fetch(
+      `${this.baseURL}/tazama-data-model/destination-types/${destinationTypeId}/fields`,
+      {
+        method: 'POST',
+        headers: DataModelApiService.getAuthHeaders(),
+        body: JSON.stringify(request),
+      },
+    );
+    return await DataModelApiService.handleResponse<DataModelApiResponse>(response);
   }
 
   async getDestinationFieldsJson(): Promise<
     DataModelApiResponse & { data?: DestinationFieldsData }
   > {
-    try {
-      const response = await fetch(
-        `${this.baseURL}/tazama-data-model/json`,
-        {
-          method: 'GET',
-          headers: this.getAuthHeaders(),
-        },
-      );
-      return await this.handleResponse<
-        DataModelApiResponse & { data?: DestinationFieldsData }
-      >(response);
-    } catch (error) {
-      throw error;
-    }
+    const response = await fetch(
+      `${this.baseURL}/tazama-data-model/json`,
+      {
+        method: 'GET',
+        headers: DataModelApiService.getAuthHeaders(),
+      },
+    );
+    return await DataModelApiService.handleResponse<
+      DataModelApiResponse & { data?: DestinationFieldsData }
+    >(response);
   }
 
   async updateDestinationFieldsJson(
     data: DestinationFieldsData,
   ): Promise<DataModelApiResponse> {
-    try {
-      const response = await fetch(
-        `${this.baseURL}/tazama-data-model/json`,
-        {
-          method: 'PUT',
-          headers: this.getAuthHeaders(),
-          body: JSON.stringify({ data_model_json: data }),
-        },
-      );
-      return await this.handleResponse<DataModelApiResponse>(response);
-    } catch (error) {
-      throw error;
-    }
+    const response = await fetch(
+      `${this.baseURL}/tazama-data-model/json`,
+      {
+        method: 'PUT',
+        headers: DataModelApiService.getAuthHeaders(),
+        body: JSON.stringify({ data_model_json: data }),
+      },
+    );
+    return await DataModelApiService.handleResponse<DataModelApiResponse>(response);
   }
 }
 

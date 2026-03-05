@@ -1,1 +1,6 @@
-export { default as FunctionsApiService } from './functionsApi';
+export {
+  addFunction,
+  updateFunction,
+  deleteFunction,
+  getConfigWithFunctions,
+} from './functionsApi';

@@ -44,7 +44,7 @@ export interface RolePermissions {
   userIsExporter: boolean;
   userIsApprover: boolean;
   userIsPublisher: boolean;
-  userRole: string;
+  userRole: string | null;
 }
 
 /**
@@ -74,10 +74,6 @@ export interface ResourceApiHandlers<TResource> {
    * Update resource status
    */
   updateStatus?: (id: string, status: string, type?: string, reason?: string) => Promise<void>;
-  /**
-   * Additional action handlers
-   */
-  [key: string]: any;
 }
 
 /**
@@ -87,7 +83,7 @@ export interface UseResourceListOptions<TResource, TAction extends string = stri
   /**
    * API handlers for resource operations
    */
-  apiHandlers: ResourceApiHandlers<TResource, TAction>;
+  apiHandlers: ResourceApiHandlers<TResource>;
   /**
    * Success messages for different actions
    */
@@ -185,10 +181,11 @@ export function useResourceList<TResource extends { id: string; status?: string;
 ): UseResourceListReturn<TResource, TAction> {
   const {
     apiHandlers,
-    errorMessages = {},
     initialFilters = {},
     itemsPerPage: customItemsPerPage,
   } = options;
+
+  const errorMessages: Partial<Record<TAction | 'updated' | 'deleted' | 'load', string>> = options.errorMessages ?? {};
 
   const [resources, setResources] = useState<TResource[]>([]);
   const [pagination, setPagination] = useState<PaginationState>({
@@ -247,7 +244,7 @@ export function useResourceList<TResource extends { id: string; status?: string;
         const response = await apiHandlers.load(
           pageNumber,
           itemsPerPage,
-          permissions.userRole,
+          permissions.userRole ?? '',
           searchingFilters
         );
 
@@ -261,7 +258,7 @@ export function useResourceList<TResource extends { id: string; status?: string;
           totalRecords: response.total,
         });
       } catch (err) {
-        const message = getErrorMessage(err, errorMessages?.load ?? 'Failed to load resources');
+        const message = getErrorMessage(err, errorMessages.load ?? 'Failed to load resources');
         setError(message);
       } finally {
         setLoadingState((s) => ({ ...s, page: false }));

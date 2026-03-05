@@ -11,25 +11,25 @@ import {
   SUPPORTED_FILE_EXTENSIONS,
 } from '../constants';
 
-export const buildPushPayload = (formValues: any) => ({
-  endpoint_name: formValues.name || null,
-  path: formValues.endpointPath || null,
-  description: formValues.description || null,
-  table_name: formValues.targetTable || null,
+export const buildPushPayload = (formValues: Record<string, unknown>): Partial<CreatePushJobDto> => ({
+  endpoint_name: (formValues.name as string | undefined) ?? undefined,
+  path: (formValues.endpointPath as string | undefined) ?? undefined,
+  description: (formValues.description as string | undefined) ?? undefined,
+  table_name: (formValues.targetTable as string | undefined) ?? undefined,
   mode: formValues.ingestMode as 'append' | 'replace',
   version:
-    formValues.version?.replace(/^v?\/*/g, '').replace(/\/+$/g, '') || null,
+    (formValues.version as string | undefined)?.replace(/^v?\/*/g, '').replace(/\/+$/g, '') ?? undefined,
 });
 
 export const buildPullPayload = (formValues: any) => {
   const base = {
-    endpoint_name: formValues.name || null,
-    source_type: formValues.sourceType?.toUpperCase() || null,
-    description: formValues.description || null,
-    table_name: formValues.targetTable || null,
+    endpoint_name: (formValues.name as string | undefined) ?? undefined,
+    source_type: (formValues.sourceType as string | undefined)?.toUpperCase() ?? undefined,
+    description: (formValues.description as string | undefined) ?? undefined,
+    table_name: (formValues.targetTable as string | undefined) ?? undefined,
     mode: formValues.ingestMode as 'append' | 'replace',
-    version: formValues.version || null,
-    schedule_id: formValues.schedule || null,
+    version: (formValues.version as string | undefined) ?? undefined,
+    schedule_id: (formValues.schedule as string | undefined) ?? undefined,
   };
 
   if (formValues.sourceType === 'http') {
@@ -37,8 +37,8 @@ export const buildPullPayload = (formValues: any) => {
       ...base,
       source_type: 'HTTP',
       connection: {
-        url: formValues.url,
-        headers: formValues.headers ? JSON.parse(formValues.headers) : {},
+        url: formValues.url as string,
+        headers: formValues.headers ? (JSON.parse(formValues.headers as string) as Record<string, unknown>) : {},
       },
     };
   }
@@ -47,19 +47,19 @@ export const buildPullPayload = (formValues: any) => {
     ...base,
     source_type: 'SFTP',
     connection: {
-      host: formValues.host,
-      port: Number(formValues.port) || null,
+      host: formValues.host as string,
+      port: Number(formValues.port as string | number) || null,
       auth_type:
         formValues.authType === 'key' ? 'PRIVATE_KEY' : 'USERNAME_PASSWORD',
-      user_name: formValues.username,
+      user_name: formValues.username as string,
       ...(formValues.authType === 'password'
-        ? { password: formValues.password }
-        : { private_key: formValues.password.replace(/\\n/g, '\n') }),
+        ? { password: formValues.password as string }
+        : { private_key: (formValues.password as string).replace(/\\n/g, '\n') }),
     },
     file: {
-      path: (formValues.pathPattern ?? '/data.csv').replace(/^\/+/g, ''),
-      file_type: formValues.fileFormat?.toUpperCase() ?? null,
-      delimiter: formValues.delimiter ?? ',',
+      path: ((formValues.pathPattern as string | undefined) ?? '/data.csv').replace(/^\/+/g, ''),
+      file_type: (formValues.fileFormat as string | undefined)?.toUpperCase() ?? undefined,
+      delimiter: (formValues.delimiter as string | undefined) ?? ',',
     },
   };
 };
@@ -86,15 +86,15 @@ export const generateEndpointUrl = (
   return `/${tenantId}/enrichment${versionPart}${pathPart}`;
 };
 
-export const scrollToFirstError = (fieldName: string) => {
+export const scrollToFirstError = (fieldName: string): void => {
   const errorElement = document.querySelector(
     `[name="${fieldName}"]`,
-  )!;
+  );
   if (errorElement) {
     const modalContent =
-      errorElement.closest('.MuiDialog-paper') ||
-      errorElement.closest('.MuiModal-root') ||
-      errorElement.closest('[role="dialog"]') ||
+      errorElement.closest('.MuiDialog-paper') ??
+      errorElement.closest('.MuiModal-root') ??
+      errorElement.closest('[role="dialog"]') ??
       document.querySelector('.MuiDialog-paper');
 
     if (modalContent) {
@@ -118,14 +118,14 @@ export const scrollToFirstError = (fieldName: string) => {
 
 export const getJobType = (job: DataEnrichmentJobResponse): 'push' | 'pull' => {
   if (
-    job.type?.toLowerCase() === 'push' ||
-    job.type?.toLowerCase() === 'pull'
+    job.type.toLowerCase() === 'push' ||
+    job.type.toLowerCase() === 'pull'
   ) {
     return job.type.toLowerCase() as 'push' | 'pull';
   }
   return job.path && !job.source_type ? 'push' : 'pull';
 };
-export const formatDateStructured = (dateString: string | undefined) => {
+export const formatDateStructured = (dateString: string | undefined): string => {
   if (!dateString) return 'N/A';
   return new Date(dateString).toLocaleString('en-US', {
     year: 'numeric',
@@ -147,22 +147,22 @@ export const determineSourceType = (
   }
 
   if (job.connection) {
-    let connectionObj = job.connection;
+    let connectionObj: Record<string, unknown>;
 
     if (typeof job.connection === 'string') {
       try {
-        connectionObj = JSON.parse(job.connection);
+        connectionObj = JSON.parse(job.connection) as Record<string, unknown>;
       } catch (e) {
         return 'HTTP';
       }
+    } else {
+      connectionObj = job.connection as Record<string, unknown>;
     }
 
-    if (connectionObj && typeof connectionObj === 'object') {
-      if ('host' in connectionObj && connectionObj.host) {
-        return 'SFTP';
-      } else if ('url' in connectionObj && connectionObj.url) {
-        return 'HTTP';
-      }
+    if ('host' in connectionObj && connectionObj.host) {
+      return 'SFTP';
+    } else if ('url' in connectionObj && connectionObj.url) {
+      return 'HTTP';
     }
   }
 
@@ -172,31 +172,32 @@ export const determineSourceType = (
 export const getDataEnrichmentErrorMessage = (error: unknown): string => {
   const err = error as ErrorWithResponse;
 
-  if (err?.response?.status === 400) {
+  if (err.response?.status === 400) {
     return DATA_ENRICHMENT_ERROR_MESSAGES.INVALID_INPUT;
   }
 
-  if (err?.response?.status === 409) {
+  if (err.response?.status === 409) {
     return DATA_ENRICHMENT_ERROR_MESSAGES.DUPLICATE_NAME;
   }
 
-  if (err?.response?.status === 401 || err?.response?.status === 403) {
+  if (err.response?.status === 401 || err.response?.status === 403) {
     return DATA_ENRICHMENT_ERROR_MESSAGES.UNAUTHORIZED;
   }
 
-  if (err?.response?.status !== undefined && err.response.status >= 500) {
+  if (err.response?.status !== undefined && err.response.status >= 500) {
     return DATA_ENRICHMENT_ERROR_MESSAGES.SERVER_ERROR;
   }
 
-  if (err?.message?.includes('fetch') || err?.message?.includes('network')) {
+  const message = err.message ?? '';
+  if (message.includes('fetch') || message.includes('network')) {
     return DATA_ENRICHMENT_ERROR_MESSAGES.NETWORK_ERROR;
   }
 
-  if (err?.message?.includes('not found or is not approved yet')) {
+  if (err.message?.includes('not found or is not approved yet')) {
     return DATA_ENRICHMENT_ERROR_MESSAGES.SCHEDULE_DEPLOYED;
   }
 
-  if (err?.response?.data?.message) {
+  if (err.response?.data?.message) {
     const {message} = err.response.data;
     if (Array.isArray(message)) {
       return message.join(', ');
@@ -204,11 +205,11 @@ export const getDataEnrichmentErrorMessage = (error: unknown): string => {
     return message;
   }
 
-  if (err?.response?.data?.error) {
+  if (err.response?.data?.error) {
     return err.response.data.error;
   }
 
-  if (err?.message) {
+  if (err.message) {
     return err.message;
   }
 
@@ -218,7 +219,7 @@ export const getDataEnrichmentErrorMessage = (error: unknown): string => {
 export const formatJobForEdit = (
   job: DataEnrichmentJobResponse,
 ): Partial<CreatePullJobDto | CreatePushJobDto> => {
-  const baseData = {
+  const baseData: Partial<CreatePullJobDto | CreatePushJobDto> = {
     id: job.id,
     endpoint_name: job.endpoint_name,
     description: job.description,
@@ -228,18 +229,20 @@ export const formatJobForEdit = (
   };
 
   if (job.type === 'push' || job.config_type === 'Push') {
-    return {
+    const pushData: Partial<CreatePushJobDto> = {
       ...baseData,
       path: job.path ?? '',
-    } as Partial<CreatePushJobDto>;
+    };
+    return pushData;
   } else {
-    return {
+    const pullData: Partial<CreatePullJobDto> = {
       ...baseData,
       source_type: job.source_type,
       schedule_id: job.schedule_id ?? '',
       connection: job.connection,
       file: job.file,
-    } as Partial<CreatePullJobDto>;
+    };
+    return pullData;
   }
 };
 
@@ -281,13 +284,11 @@ export const validateFileFormat = (
       fileExtension as keyof typeof FILE_EXTENSION_FORMAT_MAP
     ];
 
-  if (
-    !allowedFormats ||
-    !(allowedFormats as readonly string[]).includes(fileType)
-  ) {
+  if (!(allowedFormats as readonly string[]).includes(fileType)) {
+    const formatList = (allowedFormats as readonly string[]).join(' or ');
     return {
       isValid: false,
-      error: `File format mismatch: .${fileExtension} files must use ${allowedFormats?.join(' or ') ?? 'supported'} format, not ${fileType}`,
+      error: `File format mismatch: .${fileExtension} files must use ${formatList} format, not ${fileType}`,
     };
   }
 
@@ -392,34 +393,34 @@ export const generateVersionedTableName = (
   return `${originalTableName}${versionSuffix}`;
 };
 
-export const getConnectionType = (job: any): 'HTTP' | 'SFTP' | null => {
+export const getConnectionType = (job: DataEnrichmentJobResponse): 'HTTP' | 'SFTP' | null => {
   if (job.source_type) {
     return job.source_type as 'HTTP' | 'SFTP';
   }
 
   if (job.connection && typeof job.connection === 'object') {
-    let connectionObj = job.connection;
+    let connectionObj: Record<string, unknown>;
     if (typeof job.connection === 'string') {
       try {
-        connectionObj = JSON.parse(job.connection);
+        connectionObj = JSON.parse(job.connection) as Record<string, unknown>;
       } catch (e) {
         return null;
       }
+    } else {
+      connectionObj = job.connection as Record<string, unknown>;
     }
 
-    if (connectionObj && typeof connectionObj === 'object') {
-      if ('host' in connectionObj && connectionObj.host) {
-        return 'SFTP';
-      } else if ('url' in connectionObj && connectionObj.url) {
-        return 'HTTP';
-      }
+    if ('host' in connectionObj && connectionObj.host) {
+      return 'SFTP';
+    } else if ('url' in connectionObj && connectionObj.url) {
+      return 'HTTP';
     }
   }
 
   return null;
 };
 
-export const formatJSON = (obj: any): string => {
+export const formatJSON = (obj: unknown): string => {
   try {
     if (typeof obj === 'string') {
       return JSON.stringify(JSON.parse(obj), null, 2);

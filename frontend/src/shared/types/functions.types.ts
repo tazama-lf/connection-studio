@@ -207,12 +207,14 @@ export const FUNCTION_CONFIGS: Record<AllowedFunctionName, FunctionConfig> = {
         name: 'source',
         displayName: 'source',
         type: 'string',
+        // eslint-disable-next-line no-template-curly-in-string -- Intentional example showing variable syntax
         description: 'Usually from DataCache, e.g., accounts/${debtorAcctId}',
       },
       {
         name: 'destination',
         displayName: 'destination',
         type: 'string',
+        // eslint-disable-next-line no-template-curly-in-string -- Intentional example showing variable syntax
         description: 'Usually from DataCache, e.g., accounts/${creditorAcctId}',
       },
       {

@@ -2,12 +2,12 @@ import { API_CONFIG } from '../../../shared/config/api.config';
 
 export class SftpError extends Error {
   errorType: 'CORRUPTED_FILE' | 'NOT_FOUND' | 'UNAUTHORIZED' | 'GENERAL';
-  originalError?: any;
+  originalError?: unknown;
 
   constructor(
     message: string,
     errorType: 'CORRUPTED_FILE' | 'NOT_FOUND' | 'UNAUTHORIZED' | 'GENERAL',
-    originalError?: any,
+    originalError?: unknown,
   ) {
     super(message);
     this.name = 'SftpError';
@@ -45,7 +45,7 @@ export interface SftpFileContent {
   created_at: string;
   updated_at: string;
   type?: 'PULL' | 'PUSH';
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export type SftpFormat = 'de' | 'cron' | 'dems';
@@ -57,25 +57,33 @@ export class SftpApiService {
     this.baseURL = API_CONFIG.AUTH_BASE_URL;
   }
 
-  private getAuthHeaders(): Record<string, string> {
+  private static getAuthHeaders(): Record<string, string> {
     const token = localStorage.getItem('authToken');
     return {
       'Content-Type': 'application/json',
       Accept: 'application/json',
-      ...(token && { Authorization: `Bearer ${token}` }),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     };
   }
 
-  private async apiRequest<T>(
+  private static async apiRequest<T>(
     url: string,
     options: RequestInit = {},
   ): Promise<T> {
+    const authHeaders = SftpApiService.getAuthHeaders();
+    const requestHeaders = new Headers(authHeaders);
+    
+    // Merge additional headers if provided
+    if (options.headers) {
+      const additionalHeaders = new Headers(options.headers);
+      additionalHeaders.forEach((value, key) => {
+        requestHeaders.set(key, value);
+      });
+    }
+
     const response = await fetch(url, {
       ...options,
-      headers: {
-        ...this.getAuthHeaders(),
-        ...options.headers,
-      },
+      headers: requestHeaders,
     });
 
     if (response.status === 401) {
@@ -84,23 +92,23 @@ export class SftpApiService {
     }
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+      const errorData = (await response.json().catch(() => ({}))) as { message?: string };
       throw new Error(
         errorData.message ?? `HTTP error! status: ${response.status}`,
       );
     }
 
-    return await response.json();
+    return (await response.json()) as T;
   }
 
-  private async handleResponse<T>(response: Response): Promise<T> {
+  private static async handleResponse<T>(response: Response): Promise<T> {
     if (response.status === 401) {
       localStorage.removeItem('authToken');
       throw new SftpError('Unauthorized - please log in again', 'UNAUTHORIZED');
     }
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+      const errorData = (await response.json().catch(() => ({}))) as { message?: string };
 
       if (
         errorData.message === 'File or its integrity file not found' ||
@@ -118,57 +126,50 @@ export class SftpApiService {
       }
 
       throw new SftpError(
-        errorData.message || `HTTP error! status: ${response.status}`,
+        errorData.message ?? `HTTP error! status: ${response.status}`,
         'GENERAL',
         errorData,
       );
     }
 
-    return await response.json();
+    return (await response.json()) as T;
   }
 
   async getAllFiles(format: SftpFormat): Promise<SftpFileInfo[]> {
-    try {
-      const response = await fetch(
-        `${this.baseURL}/sftp/all?format=${format}`,
-        {
-          method: 'GET',
-          headers: this.getAuthHeaders(),
-        },
-      );
+    const response = await fetch(
+      `${this.baseURL}/sftp/all?format=${format}`,
+      {
+        method: 'GET',
+        headers: SftpApiService.getAuthHeaders(),
+      },
+    );
 
-      const files = await this.handleResponse<SftpFileInfo[]>(response);
-      return files;
-    } catch (error) {
-      throw error;
-    }
+    const files = await SftpApiService.handleResponse<SftpFileInfo[]>(response);
+    return files;
   }
 
   async readFile(name: string): Promise<SftpFileContent> {
-    try {
-      const fileName = name.endsWith('.json') ? name.slice(0, -5) : name;
+    const fileName = name.endsWith('.json') ? name.slice(0, -5) : name;
 
-      const response = await fetch(
-        `${this.baseURL}/sftp/read?name=${encodeURIComponent(fileName)}`,
-        {
-          method: 'GET',
-          headers: this.getAuthHeaders(),
-        },
-      );
+    const response = await fetch(
+      `${this.baseURL}/sftp/read?name=${encodeURIComponent(fileName)}`,
+      {
+        method: 'GET',
+        headers: SftpApiService.getAuthHeaders(),
+      },
+    );
 
-      const content = await this.handleResponse<SftpFileContent>(response);
-      return content;
-    } catch (error) {
-      throw error;
-    }
+    const content = await SftpApiService.handleResponse<SftpFileContent>(response);
+    return content;
   }
 
-  extractIdFromFilename(filename: string): string | null {
-    const match = /_([\w-]{36})\.json$/.exec(filename);
-    return match ? match[1] : null;
+  static extractIdFromFilename(filename: string): string | null {
+    const UUID_PATTERN = /_(?<uuid>[\w-]{36})\.json$/;
+    const match = UUID_PATTERN.exec(filename);
+    return match?.[1] ?? null;
   }
 
-  extractFormatFromFilename(filename: string): SftpFormat | null {
+  static extractFormatFromFilename(filename: string): SftpFormat | null {
     if (filename.includes('_cron_')) return 'cron';
     if (filename.includes('_de_')) return 'de';
     if (filename.includes('_dems_')) return 'dems';
@@ -178,60 +179,48 @@ export class SftpApiService {
   async publishItem(
     id: string,
     format: SftpFormat,
-    type?: 'PULL' | 'PUSH' | string,
+    type?: 'PULL' | 'PUSH',
   ): Promise<void> {
-    try {
-      if (format === 'cron') {
-        const queryParams = new URLSearchParams();
-        queryParams.append('status', 'STATUS_08_DEPLOYED');
+    if (format === 'cron') {
+      const queryParams = new URLSearchParams();
+      queryParams.append('status', 'STATUS_08_DEPLOYED');
 
-        await this.apiRequest<{ success: boolean; message: string }>(
-          `${this.baseURL}/scheduler/update/status/${id}?${queryParams.toString()}`,
-          {
-            method: 'PATCH',
-          },
-        );
-      } else if (format === 'dems') {
-        await this.apiRequest<{ success: boolean; message: string }>(
-          `${this.baseURL}/config/${id}/workflow?action=deploy`,
-          {
-            method: 'POST',
-            body: JSON.stringify({
-              configId: parseInt(id),
-              userId: 'publisher',
-              deploymentNotes: 'Published via SFTP',
-              deploymentEnvironment: 'production',
-            }),
-          },
-        );
-      } else {
-        let jobType: string | undefined = type;
-        if (jobType) {
-          jobType = jobType.toUpperCase();
-          if (jobType !== 'PULL' && jobType !== 'PUSH') {
-            throw new Error(
-              `Invalid job type: ${jobType}. Must be PULL or PUSH.`,
-            );
-          }
-        } else {
-          throw new Error(
-            'Job type (PULL/PUSH) is required for data enrichment jobs',
-          );
-        }
-
-        const queryParams = new URLSearchParams();
-        queryParams.append('status', 'STATUS_08_DEPLOYED');
-        queryParams.append('type', jobType.toLowerCase());
-
-        await this.apiRequest<{ success: boolean; message: string }>(
-          `${this.baseURL}/job/update/status/${id}?${queryParams.toString()}`,
-          {
-            method: 'PATCH',
-          },
+      await SftpApiService.apiRequest<{ success: boolean; message: string }>(
+        `${this.baseURL}/scheduler/update/status/${id}?${queryParams.toString()}`,
+        {
+          method: 'PATCH',
+        },
+      );
+    } else if (format === 'dems') {
+      await SftpApiService.apiRequest<{ success: boolean; message: string }>(
+        `${this.baseURL}/config/${id}/workflow?action=deploy`,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            configId: Number.parseInt(id, 10),
+            userId: 'publisher',
+            deploymentNotes: 'Published via SFTP',
+            deploymentEnvironment: 'production',
+          }),
+        },
+      );
+    } else {
+      if (!type) {
+        throw new Error(
+          'Job type (PULL/PUSH) is required for data enrichment jobs',
         );
       }
-    } catch (error) {
-      throw error;
+
+      const queryParams = new URLSearchParams();
+      queryParams.append('status', 'STATUS_08_DEPLOYED');
+      queryParams.append('type', type.toLowerCase());
+
+      await SftpApiService.apiRequest<{ success: boolean; message: string }>(
+        `${this.baseURL}/job/update/status/${id}?${queryParams.toString()}`,
+        {
+          method: 'PATCH',
+        },
+      );
     }
   }
 }
