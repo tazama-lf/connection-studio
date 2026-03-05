@@ -75,7 +75,6 @@ const PublisherDEJobsPage: React.FC = () => {
   }, [pagination, searchingFilters]);
 
   const handleViewJobDetails = async (jobId: string) => {
-    console.log('Exporter viewing job details:', jobId);
     try {
       setJobDetailsLoading(true);
       setShowJobDetails(true);
@@ -86,7 +85,6 @@ const PublisherDEJobsPage: React.FC = () => {
       const jobDetails = await dataEnrichmentApi.getById(jobId, jobType);
       setSelectedJob(jobDetails);
     } catch (error) {
-      console.error('Failed to load job details:', error);
       showError('Failed to load job details');
     } finally {
       setJobDetailsLoading(false);

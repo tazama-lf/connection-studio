@@ -9,11 +9,10 @@ const PublisherDEMS: React.FC<PublisherDEMSProps> = ({ onBack }) => {
   const [endpoints] = useState([]);
 
   const handleDeploy = (endpoint: any) => {
-    console.log('Deploy endpoint:', endpoint);
     // TODO: Implement with new backend API
   };
 
- 
+
 
   return (
     <div className="min-h-screen bg-white">
@@ -49,7 +48,7 @@ const PublisherDEMS: React.FC<PublisherDEMSProps> = ({ onBack }) => {
                       </span>
                     </div>
                     <div className="space-x-2">
-                     
+
                       <button
                         onClick={() => { handleDeploy(endpoint); }}
                         className="px-3 py-1 text-sm bg-green-100 text-green-800 rounded hover:bg-green-200"

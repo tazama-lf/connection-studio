@@ -70,10 +70,6 @@ const PublisherExportedItemsPage: React.FC = () => {
   };
 
   const handleViewExportedItemDetails = async (filename: string) => {
-    console.log(
-      'PublisherExportedItemsPage: View exported item details clicked for:',
-      filename,
-    );
     try {
       setExportedItemDetailsLoading(true);
       setShowExportedItemDetails(true);

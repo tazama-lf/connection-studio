@@ -40,7 +40,7 @@ export const PublisherDEJobDetailsModal: React.FC<PublisherDEJobDetailsModalProp
       setPublishSuccess(false);
 
       const jobType = getJobType(job) === 'push' ? 'PUSH' : 'PULL';
-      
+
       // Update status to 'deployed'
       await dataEnrichmentApi.updateJobStatus(job.id, 'deployed', jobType);
 
@@ -53,7 +53,6 @@ export const PublisherDEJobDetailsModal: React.FC<PublisherDEJobDetailsModalProp
         setPublishSuccess(false);
       }, 1500);
     } catch (error) {
-      console.error('Failed to publish DE job:', error);
       setPublishError(error instanceof Error ? error.message : 'Failed to publish DE job');
     } finally {
       setIsPublishing(false);
@@ -76,7 +75,7 @@ export const PublisherDEJobDetailsModal: React.FC<PublisherDEJobDetailsModalProp
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
-      <div 
+      <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={handleClose}
       />
@@ -161,11 +160,10 @@ export const PublisherDEJobDetailsModal: React.FC<PublisherDEJobDetailsModalProp
                 Configuration Type
               </label>
               <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                <span className={`inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded ${
-                  jobType === 'push' 
-                    ? 'bg-purple-100 text-purple-700' 
+                <span className={`inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded ${jobType === 'push'
+                    ? 'bg-purple-100 text-purple-700'
                     : 'bg-blue-100 text-blue-700'
-                }`}>
+                  }`}>
                   {jobType.toUpperCase()}
                 </span>
               </div>
@@ -192,12 +190,12 @@ export const PublisherDEJobDetailsModal: React.FC<PublisherDEJobDetailsModalProp
                 <p className="text-gray-900">
                   {job.created_at
                     ? new Date(job.created_at).toLocaleString('en-US', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })
                     : 'N/A'
                   }
                 </p>

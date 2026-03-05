@@ -16,38 +16,32 @@ export const ExtensionDebugPage: React.FC = () => {
     setResult('');
 
     try {
-      console.log('🧪 Starting extension creation test...');
-      
-      // Test basic extension creation
+
       const testRequest = {
         collection: 'entities' as const,
-        fieldName: 'testField_' + Date.now(), // Unique name
+        fieldName: 'testField_' + Date.now(),
         fieldType: 'STRING' as const,
         description: 'Test field for debugging',
         isRequired: false,
         defaultValue: 'test_default'
       };
 
-      console.log('🧪 Test request:', testRequest);
-      
+
       const response = await dataModelApi.createExtension(testRequest);
-      
-      console.log('🧪 Test response:', response);
-      
+
       if (response.success) {
-        setResult('✅ SUCCESS: Extension created successfully!\n\n' +
-                  `Response: ${JSON.stringify(response, null, 2)}`);
+        setResult('SUCCESS: Extension created successfully!\n\n' +
+          `Response: ${JSON.stringify(response, null, 2)}`);
       } else {
-        setResult('❌ FAILED: Extension creation failed!\n\n' +
-                  `Error: ${response.message}\n\n` +
-                  `Response: ${JSON.stringify(response, null, 2)}`);
+        setResult('FAILED: Extension creation failed!\n\n' +
+          `Error: ${response.message}\n\n` +
+          `Response: ${JSON.stringify(response, null, 2)}`);
       }
-      
+
     } catch (error) {
-      console.error('🧪 Test error:', error);
-      setResult('💥 ERROR: Exception during extension creation!\n\n' +
-                `Error: ${error instanceof Error ? error.message : String(error)}\n\n` +
-                `Stack: ${error instanceof Error ? error.stack : 'No stack trace'}`);
+      setResult('ERROR: Exception during extension creation!\n\n' +
+        `Error: ${error instanceof Error ? error.message : String(error)}\n\n` +
+        `Stack: ${error instanceof Error ? error.stack : 'No stack trace'}`);
     } finally {
       setLoading(false);
     }
@@ -58,28 +52,22 @@ export const ExtensionDebugPage: React.FC = () => {
     setResult('');
 
     try {
-      console.log('🔌 Testing API connection...');
-      
-      // Test getting all extensions first
       const response = await dataModelApi.getAllExtensions();
-      
-      console.log('🔌 Connection test response:', response);
-      
+
       if (response.success) {
-        setResult('✅ API CONNECTION OK\n\n' +
-                  `Found ${response.extensions?.length || 0} existing extensions\n\n` +
-                  `Response: ${JSON.stringify(response, null, 2)}`);
+        setResult('API CONNECTION OK\n\n' +
+          `Found ${response.extensions?.length || 0} existing extensions\n\n` +
+          `Response: ${JSON.stringify(response, null, 2)}`);
       } else {
-        setResult('❌ API CONNECTION ISSUE\n\n' +
-                  `Error: ${response.message}\n\n` +
-                  `Response: ${JSON.stringify(response, null, 2)}`);
+        setResult('API CONNECTION ISSUE\n\n' +
+          `Error: ${response.message}\n\n` +
+          `Response: ${JSON.stringify(response, null, 2)}`);
       }
-      
+
     } catch (error) {
-      console.error('🔌 Connection test error:', error);
-      setResult('💥 CONNECTION ERROR\n\n' +
-                `Error: ${error instanceof Error ? error.message : String(error)}\n\n` +
-                `Stack: ${error instanceof Error ? error.stack : 'No stack trace'}`);
+      setResult('CONNECTION ERROR\n\n' +
+        `Error: ${error instanceof Error ? error.message : String(error)}\n\n` +
+        `Stack: ${error instanceof Error ? error.stack : 'No stack trace'}`);
     } finally {
       setLoading(false);
     }
@@ -88,10 +76,10 @@ export const ExtensionDebugPage: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto p-6">
       <h1 className="text-2xl font-bold mb-6">Extension Creation Debug Tool</h1>
-      
+
       <div className="bg-white rounded-lg shadow p-6 mb-6">
         <h2 className="text-lg font-semibold mb-4">Test Controls</h2>
-        
+
         <div className="space-x-4 mb-4">
           <button
             onClick={testApiConnection}
@@ -100,7 +88,7 @@ export const ExtensionDebugPage: React.FC = () => {
           >
             {loading ? 'Testing...' : 'Test API Connection'}
           </button>
-          
+
           <button
             onClick={testExtensionCreation}
             disabled={loading}
