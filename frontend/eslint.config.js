@@ -91,4 +91,10 @@ export default [
       'eslint-comments/no-unused-enable': 'off',
     },
   },
+  {
+    files: ['**/handlers/index.ts', '**/services/*Api.ts'],
+    rules: {
+      'max-lines': ['warn', { max: 1000 }],
+    },
+  },
 ];
