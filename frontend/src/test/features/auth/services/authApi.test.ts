@@ -1,4 +1,4 @@
-import { authApi } from '../../../../features/auth/services/authApi';
+import { authApi, AuthApiService } from '../../../../features/auth/services/authApi';
 
 // Mock fetch globally
 global.fetch = jest.fn();
@@ -135,7 +135,7 @@ describe('AuthApiService', () => {
       };
 
       const token = createMockToken(payload);
-      const result = authApi.decodeToken(token);
+      const result = AuthApiService.decodeToken(token);
 
       expect(result).toEqual({
         id: 'user-123',
@@ -164,7 +164,7 @@ describe('AuthApiService', () => {
       };
 
       const token = createMockToken(outerPayload);
-      const result = authApi.decodeToken(token);
+      const result = AuthApiService.decodeToken(token);
 
       expect(result).toEqual({
         id: 'user-456',
@@ -178,7 +178,7 @@ describe('AuthApiService', () => {
     it('should handle malformed tokens gracefully', () => {
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
 
-      const result = authApi.decodeToken('invalid.token');
+      const result = AuthApiService.decodeToken('invalid.token');
 
       expect(result).toBeNull();
       expect(consoleSpy).toHaveBeenCalledWith(
@@ -192,7 +192,7 @@ describe('AuthApiService', () => {
     it('should handle empty token', () => {
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
 
-      const result = authApi.decodeToken('');
+      const result = AuthApiService.decodeToken('');
 
       expect(result).toBeNull();
       expect(consoleSpy).toHaveBeenCalled();
@@ -210,7 +210,7 @@ describe('AuthApiService', () => {
 
       const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
       const token = createMockToken(outerPayload);
-      const result = authApi.decodeToken(token);
+      const result = AuthApiService.decodeToken(token);
 
       expect(result).toEqual({
         id: 'user-789',
@@ -232,7 +232,7 @@ describe('AuthApiService', () => {
       const payload = {}; // Empty payload
 
       const token = createMockToken(payload);
-      const result = authApi.decodeToken(token);
+      const result = AuthApiService.decodeToken(token);
 
       expect(result).toEqual({
         id: 'unknown',

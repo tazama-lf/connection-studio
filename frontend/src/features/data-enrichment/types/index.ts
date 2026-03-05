@@ -117,7 +117,7 @@ export interface DataEnrichmentEditModalProps {
   selectedJob?: DataEnrichmentJobResponse;
 }
 
-export interface DataEnrichmentJobListProps { }
+export type DataEnrichmentJobListProps = Record<string, never>;
 
 export interface DataEnrichmentJobFormProps {
   onJobCreated?: () => void;

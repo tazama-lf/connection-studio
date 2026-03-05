@@ -1,5 +1,5 @@
 import React, { useEffect, useState, createContext, useContext } from 'react';
-import { authApi, type User } from '../services/authApi';
+import { authApi, AuthApiService, type User } from '../services/authApi';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -37,7 +37,7 @@ const AuthProvider: React.FC<{
       if (storedToken && storedUser) {
         try {
           // Validate the token by decoding it
-          const tokenUserData = authApi.decodeToken(storedToken);
+          const tokenUserData = AuthApiService.decodeToken(storedToken);
           
           if (tokenUserData) {
             const userData = JSON.parse(storedUser);
@@ -75,7 +75,7 @@ const AuthProvider: React.FC<{
         localStorage.setItem('authToken', response.token);
         
         // Decode the token to get user information
-        const userData = authApi.decodeToken(response.token);
+        const userData = AuthApiService.decodeToken(response.token);
         
         if (userData) {
           setUser(userData);

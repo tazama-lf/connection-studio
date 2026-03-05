@@ -22,7 +22,7 @@ import { MdEmail, MdLock } from 'react-icons/md';
 import { useNavigate } from 'react-router-dom'; // For commented-out API logic
 import * as yup from 'yup';
 import { useAuth } from '../contexts/AuthContext';
-import { authApi } from '../services/authApi';
+import { AuthApiService } from '../services/authApi';
 
 const themeColor = '#51BE99';
 const MAX_EMAIL_LENGTH = 100;
@@ -76,7 +76,7 @@ export const Login: React.FC = () => {
       if (success) {
         const token = localStorage.getItem('authToken');
         if (token) {
-          const userData = authApi.decodeToken(token);
+          const userData = AuthApiService.decodeToken(token);
           void userData;
           navigate('/dashboard', { replace: true });
         } else {

@@ -1,6 +1,7 @@
 import { API_CONFIG } from '../../../shared/config/api.config';
 
-// Types for authentication
+const HTTP_UNAUTHORIZED = 401;
+
 export interface LoginCredentials {
   username: string;
   password: string;
@@ -19,7 +20,18 @@ export interface User {
   tenantId?: string;
 }
 
-// Authentication API service
+interface JWTPayload {
+  sub?: string;
+  clientId?: string;
+  preferred_username?: string;
+  username?: string;
+  email?: string;
+  claims?: string[];
+  realm_access?: { roles?: string[] };
+  tenantId?: string;
+  tokenString?: string;
+}
+
 export class AuthApiService {
   private readonly authBaseURL: string;
   private readonly defaultHeaders: Record<string, string>;
@@ -53,8 +65,7 @@ export class AuthApiService {
         body: config.body ? JSON.stringify(config.body) : undefined,
       });
 
-      if (response.status === 401) {
-        // For 401 responses on non-login endpoints, clear tokens
+      if (response.status === HTTP_UNAUTHORIZED) {
         if (endpoint !== API_CONFIG.ENDPOINTS.AUTH.LOGIN) {
           localStorage.removeItem('authToken');
           localStorage.removeItem('user');
@@ -67,17 +78,16 @@ export class AuthApiService {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      return await response.json();
+      return (await response.json()) as T;
     } catch (error) {
-      // Re-throw with more specific error messages for common cases
       if (error instanceof TypeError && error.message.includes('fetch')) {
-        throw new Error('Network error');
+        throw new Error('Network error', { cause: error });
       }
       if (
         error instanceof Error &&
         error.message.includes('Cannot read properties of undefined')
       ) {
-        throw new Error('Network error');
+        throw new Error('Network error', { cause: error });
       }
       throw error;
     }
@@ -92,46 +102,16 @@ export class AuthApiService {
     );
   }
 
-  async refreshSession(): Promise<{ success: boolean; message: string }> {
-    const token = localStorage.getItem('authToken');
-    const user = localStorage.getItem('user');
-
-    if (!token || !user) {
-      throw new Error('No authentication data found');
-    }
-
-    try {
-      const userData = JSON.parse(user);
-      const decodedToken = this.decodeToken(token);
-
-      if (!decodedToken) {
-        throw new Error('Invalid token');
-      }
-
-      return this.authRequest<{ success: boolean; message: string }>(
-        '/auth/session/refresh',
-        {
-          method: 'POST',
-          body: {
-            userId: decodedToken.id ?? userData.id,
-            tenantId: decodedToken.tenantId ?? userData.tenantId,
-            tokenString: token,
-          },
-        },
-      );
-    } catch (error) {
-      throw error;
-    }
-  }
-
   async getProfile(): Promise<User> {
     return await this.authRequest<User>(API_CONFIG.ENDPOINTS.AUTH.PROFILE);
   }
 
-  // Helper method to decode JWT token and extract user info
-  decodeToken(token: string): User | null {
+  static decodeToken(token: string): User | null {
     try {
       const base64Url = token.split('.')[1];
+      if (!base64Url) {
+        return null;
+      }
       const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
       const jsonPayload = decodeURIComponent(
         atob(base64)
@@ -140,26 +120,30 @@ export class AuthApiService {
           .join(''),
       );
 
-      const payload = JSON.parse(jsonPayload);
+      const payload = JSON.parse(jsonPayload) as JWTPayload;
 
-      // If there's a tokenString field, decode that token too
-      let innerPayload = payload;
+      let innerPayload: JWTPayload = payload;
       if (payload.tokenString) {
         try {
           const innerToken = payload.tokenString;
-          const innerBase64Url = innerToken.split('.')[1];
-          const innerBase64 = innerBase64Url
-            .replace(/-/g, '+')
-            .replace(/_/g, '/');
-          const innerJsonPayload = decodeURIComponent(
-            atob(innerBase64)
-              .split('')
-              .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-              .join(''),
-          );
-          innerPayload = JSON.parse(innerJsonPayload);
+          const tokenParts = innerToken.split('.');
+          const innerBase64Url = tokenParts[1];
+          if (innerBase64Url) {
+            const innerBase64 = innerBase64Url
+              .replace(/-/g, '+')
+              .replace(/_/g, '/');
+            const innerJsonPayload = decodeURIComponent(
+              atob(innerBase64)
+                .split('')
+                .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+                .join(''),
+            );
+            innerPayload = JSON.parse(innerJsonPayload) as JWTPayload;
+          } else {
+            innerPayload = payload;
+          }
         } catch (innerError) {
-          // Failed to decode inner token, using outer payload
+          innerPayload = payload;
         }
       }
 
