@@ -9,7 +9,10 @@ import type {
   ScheduleResponse,
   ScheduleCreateResponse,
   ScheduleRequest,
-  PaginatedJobResponse, PaginationParams
+  PaginatedJobResponse,
+  PaginationParams,
+  HttpConnection,
+  SftpConnection,
 } from '../types';
 
 import { ENV } from '@shared/config/environment.config';
@@ -23,6 +26,11 @@ import {
 } from '../constants';
 
 const { API_BASE_URL } = ENV;
+const DEFAULT_OFFSET = 0;
+const DEFAULT_HISTORY_LIMIT = 10;
+const DEFAULT_SCHEDULE_OFFSET = 0;
+const DEFAULT_SCHEDULE_LIMIT = 50;
+const FIRST_ITEM_INDEX = 0;
 
 export const dataEnrichmentJobApi = {
   createPullJob: async (
@@ -49,15 +57,15 @@ export const dataEnrichmentJobApi = {
     params: PaginationParams,
     searchingFilters?: Record<string, unknown>,
   ): Promise<PaginatedJobResponse> => {
-    const url = `${API_BASE_URL}/job/all?${params?.offset !== undefined ? `offset=${params.offset}&` : ''}${params?.limit !== undefined ? `limit=${params.limit}` : ''}`;
+    const url = `${API_BASE_URL}/job/all?offset=${params.offset}&limit=${params.limit}`;
 
     const { status, ...otherFilters } = searchingFilters ?? {};
     let statusFilter;
 
     if (!status) {
       const userRole = params.userRole as keyof typeof getDemsStatusLov;
-      statusFilter =
-        getDemsStatusLov[userRole]?.map((item) => item.value)?.join(',') ?? '';
+      const statusLov = getDemsStatusLov[userRole];
+      statusFilter = statusLov.map((item) => item.value).join(',');
     }
 
     const requestBody = {
@@ -83,10 +91,10 @@ export const dataEnrichmentJobApi = {
 
   getJobHistory: async (
     jobId: string | undefined,
-    offset = 0,
-    limit = 10,
+    offset = DEFAULT_OFFSET,
+    limit = DEFAULT_HISTORY_LIMIT,
     searchingFilters?: Record<string, unknown>,
-  ): Promise<{ data: any[]; total: number; limit: number; offset: number }> => {
+  ): Promise<{ data: unknown[]; total: number; limit: number; offset: number }> => {
     const queryParams = new URLSearchParams();
     queryParams.append('offset', offset.toString());
     queryParams.append('limit', limit.toString());
@@ -96,7 +104,7 @@ export const dataEnrichmentJobApi = {
       body.jobId = jobId;
     }
 
-    return await apiRequest<any>(
+    return await apiRequest<{ data: unknown[]; total: number; limit: number; offset: number }>(
       `${API_BASE_URL}/job/history?${queryParams.toString()}`,
       {
         method: 'POST',
@@ -183,12 +191,12 @@ export const scheduleApi = {
     },
   ),
 
-  getAll: async (offset = 0, limit = 50): Promise<ScheduleResponse[]> => {
+  getAll: async (offset = DEFAULT_SCHEDULE_OFFSET, limit = DEFAULT_SCHEDULE_LIMIT): Promise<ScheduleResponse[]> => {
     const queryParams = new URLSearchParams();
     queryParams.append('offset', offset.toString());
     queryParams.append('limit', limit.toString());
 
-    const scheduler_body = {
+    const schedulerBody = {
       status: `${DATA_ENRICHMENT_JOB_STATUSES.APPROVED},${DATA_ENRICHMENT_JOB_STATUSES.EXPORTED}`,
     };
 
@@ -196,7 +204,7 @@ export const scheduleApi = {
       `${API_BASE_URL}/scheduler/all?${queryParams.toString()}`,
       {
         method: 'POST',
-        body: JSON.stringify(scheduler_body),
+        body: JSON.stringify(schedulerBody),
       },
     );
   },
@@ -213,10 +221,10 @@ export const scheduleApi = {
     {
       method: 'PATCH',
       body: JSON.stringify({
-        name: updates?.name,
-        start_date: updates?.start_date,
-        iterations: Number(updates?.iterations),
-        cron: updates?.cron,
+        name: updates.name,
+        start_date: updates.start_date,
+        iterations: Number(updates.iterations),
+        cron: updates.cron,
       }),
     },
   ),
@@ -248,7 +256,7 @@ export const handleRejectionConfirm = (
     | ((jobId: string, jobType: 'PULL' | 'PUSH', reason: string) => void)
     | undefined,
   onClose: () => void,
-) => {
+): void => {
   if (onReject && job) {
     const jobType = getJobType(job) === 'push' ? 'PUSH' : 'PULL';
     onReject(job.id, jobType, reason);
@@ -263,7 +271,7 @@ export const handleSendForApprovalConfirm = (
     | undefined,
   onClose: () => void,
   setShowApprovalConfirmDialog: (show: boolean) => void,
-) => {
+): void => {
   if (onSendForApproval && job) {
     const jobType = getJobType(job) === 'push' ? 'PUSH' : 'PULL';
     onSendForApproval(job.id, jobType);
@@ -279,7 +287,7 @@ export const handleApproveConfirm = (
     | undefined,
   onClose: () => void,
   setShowApproveConfirmDialog: (show: boolean) => void,
-) => {
+): void => {
   if (onApprove && job) {
     const jobType = getJobType(job) === 'push' ? 'PUSH' : 'PULL';
     onApprove(job.id, jobType);
@@ -290,11 +298,11 @@ export const handleApproveConfirm = (
 
 export const handleInputChange = (
   field: keyof DataEnrichmentJobResponse,
-  value: any,
+  value: unknown,
   setEditedJob: React.Dispatch<
     React.SetStateAction<Partial<DataEnrichmentJobResponse>>
   >,
-) => {
+): void => {
   setEditedJob((prev) => ({
     ...prev,
     [field]: value,
@@ -309,7 +317,7 @@ export const handleSaveJob = async (
     | undefined,
   onClose: () => void,
   setIsSaving: (saving: boolean) => void,
-) => {
+): Promise<void> => {
   if (!onSave || !job) return;
 
   try {
@@ -344,7 +352,7 @@ export const handleExportConfirm = async (
     | undefined,
   setShowExportConfirmDialog: (show: boolean) => void,
   setIsSaving: (saving: boolean) => void,
-) => {
+): Promise<void> => {
   if (onExport && job) {
     setIsSaving(true);
     try {
@@ -369,7 +377,7 @@ export const handleApproveWithComment = async (
     | undefined,
   setShowApproveConfirmDialog: (show: boolean) => void,
   setIsSaving: (saving: boolean) => void,
-) => {
+): Promise<void> => {
   if (onApprove && job) {
     setIsSaving(true);
     try {
@@ -393,7 +401,7 @@ export const determineSourceType = (
   }
 
   if (job.connection) {
-    let connectionObj = job.connection;
+    let connectionObj: unknown = job.connection;
 
     if (typeof job.connection === 'string') {
       try {
@@ -403,10 +411,10 @@ export const determineSourceType = (
       }
     }
 
-    if (connectionObj && typeof connectionObj === 'object') {
-      if ('host' in connectionObj && connectionObj.host) {
+    if (typeof connectionObj === 'object' && connectionObj !== null) {
+      if ('host' in connectionObj && (connectionObj as Record<string, unknown>).host) {
         return 'SFTP';
-      } else if ('url' in connectionObj && connectionObj.url) {
+      } else if ('url' in connectionObj && (connectionObj as Record<string, unknown>).url) {
         return 'HTTP';
       }
     }
@@ -415,16 +423,171 @@ export const determineSourceType = (
   return 'HTTP';
 };
 
-export const handleCloneJob = async (
-  job: DataEnrichmentJobResponse | null,
-  newVersion: string,
+interface CloneJobOptions {
+  job: DataEnrichmentJobResponse | null;
+  newVersion: string;
+  newEndpointName: string;
+  setIsCloning: (cloning: boolean) => void;
+  showSuccess: (message: string) => void;
+  showError: (message: string) => void;
+  onSuccess: (() => void) | undefined;
+  onClose: () => void;
+}
+
+const findOrCreateSchedule = async (
   newEndpointName: string,
+  showSuccess: (message: string) => void,
+): Promise<string | undefined> => {
+  showSuccess('Finding or creating schedule for cloned job...');
+  const schedules = await scheduleApi.getAll();
+  const approvedSchedules = schedules.filter(
+    (schedule: ScheduleResponse) =>
+      schedule.schedule_status === 'approved' ||
+      schedule.schedule_status === 'exported' ||
+      schedule.schedule_status === 'deployed',
+  );
+
+  if (approvedSchedules.length > FIRST_ITEM_INDEX) {
+    return approvedSchedules[FIRST_ITEM_INDEX].id;
+  }
+
+  const defaultSchedule = await scheduleApi.create({
+    name: `Schedule for ${newEndpointName} (Cloned)`,
+    cron: '0 */6 * * *',
+    iterations: -1,
+    status: 'approved',
+  });
+
+  if (defaultSchedule.success) {
+    const createdSchedules = await scheduleApi.getAll();
+    const newSchedule = createdSchedules.find(
+      (s: ScheduleResponse) =>
+        s.name === `Schedule for ${newEndpointName} (Cloned)`,
+    );
+    return newSchedule?.id;
+  }
+
+  return undefined;
+};
+
+const validatePullJobConnection = (
+  job: DataEnrichmentJobResponse,
+  sourceType: 'HTTP' | 'SFTP',
+  showError: (message: string) => void,
   setIsCloning: (cloning: boolean) => void,
+): HttpConnection | SftpConnection | null => {
+  const connectionData = job.connection;
+  
+  if (!connectionData) {
+    if (sourceType === 'SFTP') {
+      showError(
+        'This pull job is missing connection information. Please check the original job and ensure it has proper SFTP connection details.',
+      );
+    } else {
+      showError(
+        'This pull job is missing connection information. Please check the original job and ensure it has proper HTTP connection details.',
+      );
+    }
+    setIsCloning(false);
+    return null;
+  }
+  
+  return connectionData;
+};
+
+const createPullJobData = (
+  job: DataEnrichmentJobResponse,
+  newEndpointName: string,
+  newVersion: string,
+  scheduleId: string,
+  sourceType: 'HTTP' | 'SFTP',
+  connectionData: HttpConnection | SftpConnection,
+): CreatePullJobDto => ({
+  endpoint_name: newEndpointName.trim(),
+  version: newVersion.trim(),
+  schedule_id: scheduleId,
+  source_type: sourceType,
+  description: job.description || 'Cloned job',
+  connection: connectionData,
+  table_name: job.table_name,
+  mode: job.mode,
+  ...(job.file && { file: job.file }),
+});
+
+const createPushJobData = (
+  job: DataEnrichmentJobResponse,
+  newVersion: string,
+): CreatePushJobDto => ({
+  endpoint_name: job.endpoint_name,
+  version: newVersion.trim(),
+  path: job.path ?? '',
+  description: job.description || 'Cloned job',
+  table_name: job.table_name,
+  mode: job.mode,
+});
+
+const clonePullJob = async (
+  job: DataEnrichmentJobResponse,
+  newEndpointName: string,
+  newVersion: string,
   showSuccess: (message: string) => void,
   showError: (message: string) => void,
-  onSuccess: (() => void) | undefined,
-  onClose: () => void,
-) => {
+  setIsCloning: (cloning: boolean) => void,
+): Promise<DataEnrichmentJobResponse | null> => {
+  const sourceType = determineSourceType(job);
+  const connectionData = validatePullJobConnection(job, sourceType, showError, setIsCloning);
+  
+  if (!connectionData) {
+    return null;
+  }
+
+  let scheduleId = job.schedule_id;
+
+  if (!scheduleId) {
+    try {
+      scheduleId = await findOrCreateSchedule(newEndpointName, showSuccess);
+    } catch (scheduleError) {
+      showError(
+        'Failed to create or find a schedule for the cloned job. Please try again.',
+      );
+      setIsCloning(false);
+      return null;
+    }
+  }
+
+  if (!scheduleId) {
+    showError(
+      'Could not determine a valid schedule for the cloned job. Please contact support.',
+    );
+    setIsCloning(false);
+    return null;
+  }
+
+  const pullJobData = createPullJobData(job, newEndpointName, newVersion, scheduleId, sourceType, connectionData);
+  return await dataEnrichmentJobApi.createPullJob(pullJobData);
+};
+
+const clonePushJob = async (
+  job: DataEnrichmentJobResponse,
+  newVersion: string,
+): Promise<DataEnrichmentJobResponse> => {
+  const pushJobData = createPushJobData(job, newVersion);
+  return await dataEnrichmentJobApi.createPushJob(pushJobData);
+};
+
+export const handleCloneJob = async (
+  options: CloneJobOptions,
+): Promise<void> => {
+  const {
+    job,
+    newVersion,
+    newEndpointName,
+    setIsCloning,
+    showSuccess,
+    showError,
+    onSuccess,
+    onClose,
+  } = options;
   if (!job || !newVersion.trim()) {
     showError('Version is required');
     return;
@@ -437,118 +600,21 @@ export const handleCloneJob = async (
 
   setIsCloning(true);
   try {
-    let result;
+    const result = job.type === 'pull'
+      ? await clonePullJob(job, newEndpointName, newVersion, showSuccess, showError, setIsCloning)
+      : await clonePushJob(job, newVersion);
 
-    if (job.type === 'pull') {
-      const sourceType = determineSourceType(job);
-      let connectionData = job.connection;
-      if (!connectionData) {
-        if (sourceType === 'SFTP') {
-          connectionData = {
-            host: '',
-            port: 22,
-            user_name: '',
-            auth_type: 'USERNAME_PASSWORD' as const,
-            password: '',
-          };
-          showError(
-            'This pull job is missing connection information. Please check the original job and ensure it has proper SFTP connection details.',
-          );
-          setIsCloning(false);
-          return;
-        } else {
-          connectionData = {
-            url: '',
-            headers: {},
-          };
-          showError(
-            'This pull job is missing connection information. Please check the original job and ensure it has proper HTTP connection details.',
-          );
-          setIsCloning(false);
-          return;
-        }
-      }
-
-      let scheduleId = job.schedule_id;
-
-      if (!scheduleId) {
-        showSuccess('Finding or creating schedule for cloned job...');
-        try {
-          const schedules = await scheduleApi.getAll();
-          const approvedSchedules = schedules.filter(
-            (schedule: any) =>
-              schedule.status === 'approved' ||
-              schedule.status === 'exported' ||
-              schedule.status === 'deployed',
-          );
-
-          if (approvedSchedules.length > 0) {
-            scheduleId = approvedSchedules[0].id;
-          } else {
-            const defaultSchedule = await scheduleApi.create({
-              name: `Schedule for ${newEndpointName} (Cloned)`,
-              cron: '0 */6 * * *',
-              iterations: -1,
-              status: 'approved',
-            });
-
-            if (defaultSchedule.success) {
-              const createdSchedules = await scheduleApi.getAll();
-              const newSchedule = createdSchedules.find(
-                (s: any) =>
-                  s.name === `Schedule for ${newEndpointName} (Cloned)`,
-              );
-              scheduleId = newSchedule?.id;
-            }
-          }
-        } catch (scheduleError) {
-          showError(
-            'Failed to create or find a schedule for the cloned job. Please try again.',
-          );
-          setIsCloning(false);
-          return;
-        }
-      }
-
-      if (!scheduleId) {
-        showError(
-          'Could not determine a valid schedule for the cloned job. Please contact support.',
-        );
-        setIsCloning(false);
-        return;
-      }
-
-      const pullJobData = {
-        endpoint_name: newEndpointName.trim(),
-        version: newVersion.trim(),
-        schedule_id: scheduleId,
-        source_type: sourceType,
-        description: job.description ? job.description : 'Cloned job',
-        connection: connectionData,
-        table_name: job.table_name || '',
-        mode: job.mode || ('append' as 'append' | 'replace'),
-        ...(job.file && { file: job.file }),
-      };
-
-      result = await dataEnrichmentJobApi.createPullJob(pullJobData);
-    } else {
-      const pushJobData = {
-        endpoint_name: job.endpoint_name,
-        version: newVersion.trim(),
-        path: job.path || '',
-        description: job.description ? job.description : 'Cloned job',
-        table_name: job.table_name || '',
-        mode: job.mode || ('append' as 'append' | 'replace'),
-      };
-
-      result = await dataEnrichmentJobApi.createPushJob(pushJobData);
+    if (!result) {
+      return;
     }
 
-    if (result && result.id) {
+    if (result.id) {
       showSuccess(
         `${job.type === 'pull' ? 'Pull' : 'Push'} job cloned successfully as version ${newVersion}`,
       );
-      onSuccess?.();
+      if (onSuccess) {
+        onSuccess();
+      }
       onClose();
     } else {
       showError('Failed to clone job - no ID returned');
@@ -567,7 +633,7 @@ export const handleResumeJob = async (
   showSuccess: (message: string) => void,
   showError: (message: string) => void,
   onJobUpdate: () => void,
-) => {
+): Promise<void> => {
   try {
     const jobType = job.type === 'push' ? 'PUSH' : 'PULL';
     await dataEnrichmentJobApi.updateStatus(
@@ -589,7 +655,7 @@ export const handleUpdateJobStatus = async (
   showSuccess: (message: string) => void,
   showError: (message: string) => void,
   onJobUpdate: () => void,
-) => {
+): Promise<void> => {
   try {
     await dataEnrichmentJobApi.updateStatus(jobId, newStatus, jobType);
 
@@ -617,7 +683,7 @@ export const handleTogglePublishingStatus = async (
   showSuccess: (message: string) => void,
   showError: (message: string) => void,
   onJobUpdate: () => void,
-) => {
+): Promise<void> => {
   try {
     const newStatus =
       job.publishing_status === 'active' ? 'in-active' : 'active';
@@ -642,7 +708,7 @@ export const handleSubmitForApproval = async (
   showSuccess: (message: string) => void,
   showError: (message: string) => void,
   onUpdate: () => void,
-) => {
+): Promise<void> => {
   try {
     await scheduleApi.updateStatus(
       scheduleId,
@@ -660,7 +726,7 @@ export const handleApproveSchedule = async (
   showSuccess: (message: string) => void,
   showError: (message: string) => void,
   onUpdate: () => void,
-) => {
+): Promise<void> => {
   try {
     await scheduleApi.updateStatus(
       scheduleId,
@@ -678,7 +744,7 @@ export const handleRejectSchedule = async (
   showSuccess: (message: string) => void,
   showError: (message: string) => void,
   onUpdate: () => void,
-) => {
+): Promise<void> => {
   try {
     await scheduleApi.updateStatus(
       scheduleId,
@@ -693,10 +759,10 @@ export const handleRejectSchedule = async (
 
 export const handleFormInputChange = (
   field: string,
-  value: any,
-  setFormData: React.Dispatch<React.SetStateAction<any>>,
-) => {
-  setFormData((prev: any) => ({
+  value: unknown,
+  setFormData: React.Dispatch<React.SetStateAction<Record<string, unknown>>>,
+): void => {
+  setFormData((prev: Record<string, unknown>) => ({
     ...prev,
     [field]: value,
   }));
@@ -704,17 +770,17 @@ export const handleFormInputChange = (
 
 export const handleContinue = (
   setShowConfigForm: React.Dispatch<React.SetStateAction<boolean>>,
-) => {
+): void => {
   setShowConfigForm(true);
 };
 
 export const handleSaveForm = async (
-  formData: any,
-  onSave: ((data: any) => Promise<void>) | undefined,
+  formData: Record<string, unknown>,
+  onSave: ((data: Record<string, unknown>) => Promise<void>) | undefined,
   setIsSaving: (saving: boolean) => void,
   showSuccess: (message: string) => void,
   showError: (message: string) => void,
-) => {
+): Promise<void> => {
   if (!onSave) return;
 
   try {
@@ -728,15 +794,29 @@ export const handleSaveForm = async (
   }
 };
 
+interface SaveEditOptions {
+  job: DataEnrichmentJobResponse | null;
+  editedData: Partial<DataEnrichmentJobResponse>;
+  setIsSaving: (saving: boolean) => void;
+  showSuccess: (message: string) => void;
+  showError: (message: string) => void;
+  onSuccess: (() => void) | undefined;
+  onClose: () => void;
+}
+
 export const handleSaveEdit = async (
-  job: DataEnrichmentJobResponse | null,
-  editedData: Partial<DataEnrichmentJobResponse>,
-  setIsSaving: (saving: boolean) => void,
-  showSuccess: (message: string) => void,
-  showError: (message: string) => void,
-  onSuccess: (() => void) | undefined,
-  onClose: () => void,
-) => {
+  options: SaveEditOptions,
+): Promise<void> => {
+  const {
+    job,
+    editedData,
+    setIsSaving,
+    showSuccess,
+    showError,
+    onSuccess,
+    onClose,
+  } = options;
+
   if (!job) return;
 
   try {
@@ -745,16 +825,18 @@ export const handleSaveEdit = async (
 
     const cleanedData = Object.fromEntries(
       Object.entries(editedData).filter(([_, value]) => value !== null),
-    );
+    ) as Partial<UpdatePushJobDto & UpdatePullJobDto>;
 
     if (jobType === 'PUSH') {
-      await dataEnrichmentJobApi.updatePushJob(job.id, cleanedData as any);
+      await dataEnrichmentJobApi.updatePushJob(job.id, cleanedData as UpdatePushJobDto);
     } else {
-      await dataEnrichmentJobApi.updatePullJob(job.id, cleanedData as any);
+      await dataEnrichmentJobApi.updatePullJob(job.id, cleanedData as UpdatePullJobDto);
     }
 
     showSuccess('Job updated successfully');
-    onSuccess?.();
+    if (onSuccess) {
+      onSuccess();
+    }
     onClose();
   } catch (error) {
     showError('Failed to save job');
@@ -766,8 +848,10 @@ export const handleSaveEdit = async (
 export const handleUpdateConfirm = (
   onUpdate: (() => void) | undefined,
   setShowUpdateDialog: (show: boolean) => void,
-) => {
-  onUpdate?.();
+): void => {
+  if (onUpdate) {
+    onUpdate();
+  }
   setShowUpdateDialog(false);
 };
 
@@ -777,7 +861,7 @@ export const handleEditSendForApprovalConfirm = async (
   showError: (message: string) => void,
   onSuccess: (() => void) | undefined,
   setShowApprovalDialog: (show: boolean) => void,
-) => {
+): Promise<void> => {
   if (!job) return;
 
   try {
@@ -799,7 +883,7 @@ export const handleNavigateToHistory = (
   navigate: NavigateFunction,
   jobId?: string,
   historyRoute?: string,
-) => {
+): void => {
   const url = jobId
     ? `${historyRoute}?jobId=${encodeURIComponent(jobId)}`
     : historyRoute;
@@ -809,15 +893,15 @@ export const handleNavigateToHistory = (
   }
 };
 
-export const submitPullJob = async (data: CreatePullJobDto) => await dataEnrichmentJobApi.createPullJob(data);
+export const submitPullJob = async (data: CreatePullJobDto): Promise<DataEnrichmentJobResponse> => await dataEnrichmentJobApi.createPullJob(data);
 
-export const submitPushJob = async (data: CreatePushJobDto) => await dataEnrichmentJobApi.createPushJob(data);
+export const submitPushJob = async (data: CreatePushJobDto): Promise<DataEnrichmentJobResponse> => await dataEnrichmentJobApi.createPushJob(data);
 
 export const rejectJob = async (
   jobId: string,
   jobType: 'PULL' | 'PUSH',
   reason?: string,
-) =>
+): Promise<{ success: boolean; message: string }> =>
   await dataEnrichmentJobApi.updateStatus(
     jobId,
     DATA_ENRICHMENT_JOB_STATUSES.REJECTED,
@@ -825,14 +909,14 @@ export const rejectJob = async (
     reason,
   );
 
-export const approveJob = async (jobId: string, jobType: 'PULL' | 'PUSH') =>
+export const approveJob = async (jobId: string, jobType: 'PULL' | 'PUSH'): Promise<{ success: boolean; message: string }> =>
   await dataEnrichmentJobApi.updateStatus(
     jobId,
     DATA_ENRICHMENT_JOB_STATUSES.APPROVED,
     jobType,
   );
 
-export const exportJob = async (jobId: string, jobType: 'PULL' | 'PUSH') =>
+export const exportJob = async (jobId: string, jobType: 'PULL' | 'PUSH'): Promise<{ success: boolean; message: string }> =>
   await dataEnrichmentJobApi.updateStatus(
     jobId,
     DATA_ENRICHMENT_JOB_STATUSES.EXPORTED,
@@ -842,7 +926,7 @@ export const exportJob = async (jobId: string, jobType: 'PULL' | 'PUSH') =>
 export const sendForApproval = async (
   jobId: string,
   jobType: 'PULL' | 'PUSH',
-) =>
+): Promise<{ success: boolean; message: string }> =>
   await dataEnrichmentJobApi.updateStatus(
     jobId,
     DATA_ENRICHMENT_JOB_STATUSES.UNDER_REVIEW,
@@ -853,7 +937,7 @@ export const updateJobData = async (
   jobId: string,
   jobType: 'PULL' | 'PUSH',
   payload: UpdatePullJobDto | UpdatePushJobDto,
-) => {
+): Promise<DataEnrichmentJobResponse> => {
   if (jobType === 'PUSH') {
     return await dataEnrichmentJobApi.updatePushJob(
       jobId,
@@ -867,20 +951,20 @@ export const updateJobData = async (
   }
 };
 
-export const activateJob = async (jobId: string, jobType: 'PULL' | 'PUSH') =>
+export const activateJob = async (jobId: string, jobType: 'PULL' | 'PUSH'): Promise<{ success: boolean; message: string }> =>
   await dataEnrichmentJobApi.updatePublishingStatus(jobId, 'active', jobType);
 
-export const deactivateJob = async (jobId: string, jobType: 'PULL' | 'PUSH') =>
+export const deactivateJob = async (jobId: string, jobType: 'PULL' | 'PUSH'): Promise<{ success: boolean; message: string }> =>
   await dataEnrichmentJobApi.updatePublishingStatus(
     jobId,
     'in-active',
     jobType,
   );
 
-export const prepareJobForEdit = (job: DataEnrichmentJobResponse) =>
+export const prepareJobForEdit = (job: DataEnrichmentJobResponse): Partial<DataEnrichmentJobResponse> =>
   formatJobForEdit(job);
 
-export const getErrorMessage = (error: unknown) =>
+export const getErrorMessage = (error: unknown): string =>
   getDataEnrichmentErrorMessage(error);
 
 export const loadJobs = async (
@@ -898,7 +982,38 @@ export const loadJobs = async (
 
 export const loadSchedules = async (): Promise<ScheduleResponse[]> => await scheduleApi.getAll();
 
-export const saveDataEnrichmentJob = async (options: SaveJobOptions) => {
+const buildJobPayload = (
+  configurationType: 'push' | 'pull',
+  formValues: Record<string, unknown>,
+): Partial<CreatePullJobDto> | Partial<CreatePushJobDto> => {
+  if (configurationType === 'push') {
+    return buildPushPayload(formValues);
+  }
+  return buildPullPayload(formValues);
+};
+
+const updateExistingJob = async (
+  configurationType: 'push' | 'pull',
+  selectedJobId: string,
+  payload: Partial<CreatePullJobDto> | Partial<CreatePushJobDto>,
+): Promise<DataEnrichmentJobResponse> => {
+  if (configurationType === 'pull') {
+    return await dataEnrichmentJobApi.updatePullJob(selectedJobId, payload as UpdatePullJobDto);
+  }
+  return await dataEnrichmentJobApi.updatePushJob(selectedJobId, payload as UpdatePushJobDto);
+};
+
+const createNewJob = async (
+  configurationType: 'push' | 'pull',
+  payload: Partial<CreatePullJobDto> | Partial<CreatePushJobDto>,
+): Promise<DataEnrichmentJobResponse> => {
+  if (configurationType === 'pull') {
+    return await dataEnrichmentJobApi.createPullJob(payload as CreatePullJobDto);
+  }
+  return await dataEnrichmentJobApi.createPushJob(payload as CreatePushJobDto);
+};
+
+export const saveDataEnrichmentJob = async (options: SaveJobOptions): Promise<void> => {
   const {
     formValues,
     configurationType,
@@ -914,50 +1029,45 @@ export const saveDataEnrichmentJob = async (options: SaveJobOptions) => {
 
   setIsCreating(true);
   try {
-    let payload: any;
-    if (configurationType === 'push') {
-      payload = buildPushPayload(formValues);
-    } else {
-      payload = buildPullPayload(formValues);
-    }
+    const payload = buildJobPayload(configurationType, formValues);
 
-    let response;
+    let response: DataEnrichmentJobResponse;
     if (editMode && selectedJob?.id) {
-      response =
-        configurationType === 'pull'
-          ? await dataEnrichmentJobApi.updatePullJob(selectedJob.id, payload)
-          : await dataEnrichmentJobApi.updatePushJob(selectedJob.id, payload);
-      if (selectedJob?.status === DATA_ENRICHMENT_JOB_STATUSES.REJECTED) {
+      response = await updateExistingJob(configurationType, selectedJob.id, payload);
+      if (selectedJob.status === DATA_ENRICHMENT_JOB_STATUSES.REJECTED) {
         setShowSendForApproval(true);
       } else {
-        if (onSave) onSave(response);
-        if (onCloseWithRefresh) onCloseWithRefresh();
-        else if (onClose) onClose();
+        if (onSave) {
+          onSave(response);
+        }
+        if (onCloseWithRefresh) {
+          onCloseWithRefresh();
+        } else if (onClose) {
+          onClose();
+        }
         return;
       }
     } else {
-      response =
-        configurationType === 'pull'
-          ? await dataEnrichmentJobApi.createPullJob(payload)
-          : await dataEnrichmentJobApi.createPushJob(payload);
+      response = await createNewJob(configurationType, payload);
     }
 
-    const backendMessage = (response as any)?.message;
+    const responseWithMessage = response as DataEnrichmentJobResponse & { message?: string };
+    const endpointName = typeof formValues.name === 'string' ? formValues.name : 'endpoint';
     const successMessage =
-      backendMessage ||
+      responseWithMessage.message ??
       (editMode
-        ? `Data enrichment endpoint "${formValues.name}" updated successfully!`
-        : `Data enrichment endpoint "${formValues.name}" created successfully! You can now send it for approval.`);
+        ? `Data enrichment endpoint "${endpointName}" updated successfully!`
+        : `Data enrichment endpoint "${endpointName}" created successfully! You can now send it for approval.`);
 
     showSuccess('Success', successMessage);
     if (
-      !response?.status ||
+      !responseWithMessage.status ||
       selectedJob?.status === DATA_ENRICHMENT_JOB_STATUSES.REJECTED
     ) {
-      if (onSave) onSave(response);
+      if (onSave) {
+        onSave(response);
+      }
     }
-  } catch (error) {
-    throw error;
   } finally {
     setIsCreating(false);
   }
