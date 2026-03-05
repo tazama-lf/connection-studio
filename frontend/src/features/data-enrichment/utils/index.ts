@@ -4,12 +4,19 @@ import type {
   CreatePullJobDto,
   CreatePushJobDto,
   FileType,
- ErrorWithResponse } from '../types';
+  HttpConnection,
+  SftpConnection,
+  FileConfig,
+  ErrorWithResponse
+} from '../types';
 import {
   DATA_ENRICHMENT_ERROR_MESSAGES,
   FILE_EXTENSION_FORMAT_MAP,
   SUPPORTED_FILE_EXTENSIONS,
 } from '../constants';
+
+const DEFAULT_SFTP_PORT = 22;
+const FOCUS_DELAY_MS = 300;
 
 export const buildPushPayload = (formValues: Record<string, unknown>): Partial<CreatePushJobDto> => ({
   endpoint_name: (formValues.name as string | undefined) ?? undefined,
@@ -21,7 +28,29 @@ export const buildPushPayload = (formValues: Record<string, unknown>): Partial<C
     (formValues.version as string | undefined)?.replace(/^v?\/*/g, '').replace(/\/+$/g, '') ?? undefined,
 });
 
-export const buildPullPayload = (formValues: any) => {
+const buildHttpConnection = (formValues: Record<string, unknown>): HttpConnection => ({
+  url: formValues.url as string,
+  headers: formValues.headers ? (JSON.parse(formValues.headers as string) as Record<string, string>) : {},
+});
+
+const buildSftpConnection = (formValues: Record<string, unknown>): SftpConnection => ({
+  host: formValues.host as string,
+  port: Number(formValues.port as string | number) || DEFAULT_SFTP_PORT,
+  auth_type:
+    formValues.authType === 'key' ? 'PRIVATE_KEY' : 'USERNAME_PASSWORD',
+  user_name: formValues.username as string,
+  ...(formValues.authType === 'password'
+    ? { password: formValues.password as string }
+    : { private_key: (formValues.password as string).replace(/\\n/g, '\n') }),
+});
+
+const buildFileConfig = (formValues: Record<string, unknown>): FileConfig => ({
+  path: ((formValues.pathPattern as string | undefined) ?? '/data.csv').replace(/^\/+/g, ''),
+  file_type: ((formValues.fileFormat as string | undefined)?.toUpperCase() ?? 'CSV') as FileType,
+  delimiter: (formValues.delimiter as string | undefined) ?? ',',
+});
+
+export const buildPullPayload = (formValues: Record<string, unknown>): Partial<CreatePullJobDto> => {
   const base = {
     endpoint_name: (formValues.name as string | undefined) ?? undefined,
     source_type: (formValues.sourceType as string | undefined)?.toUpperCase() ?? undefined,
@@ -36,31 +65,15 @@ export const buildPullPayload = (formValues: any) => {
     return {
       ...base,
       source_type: 'HTTP',
-      connection: {
-        url: formValues.url as string,
-        headers: formValues.headers ? (JSON.parse(formValues.headers as string) as Record<string, unknown>) : {},
-      },
+      connection: buildHttpConnection(formValues),
     };
   }
 
   return {
     ...base,
     source_type: 'SFTP',
-    connection: {
-      host: formValues.host as string,
-      port: Number(formValues.port as string | number) || null,
-      auth_type:
-        formValues.authType === 'key' ? 'PRIVATE_KEY' : 'USERNAME_PASSWORD',
-      user_name: formValues.username as string,
-      ...(formValues.authType === 'password'
-        ? { password: formValues.password as string }
-        : { private_key: (formValues.password as string).replace(/\\n/g, '\n') }),
-    },
-    file: {
-      path: ((formValues.pathPattern as string | undefined) ?? '/data.csv').replace(/^\/+/g, ''),
-      file_type: (formValues.fileFormat as string | undefined)?.toUpperCase() ?? undefined,
-      delimiter: (formValues.delimiter as string | undefined) ?? ',',
-    },
+    connection: buildSftpConnection(formValues),
+    file: buildFileConfig(formValues),
   };
 };
 
@@ -111,15 +124,16 @@ export const scrollToFirstError = (fieldName: string): void => {
     }
 
     setTimeout(() => {
-     (errorElement as HTMLElement).focus();
-    }, 300);
+      (errorElement as HTMLElement).focus();
+    }, FOCUS_DELAY_MS);
   }
 };
 
 export const getJobType = (job: DataEnrichmentJobResponse): 'push' | 'pull' => {
   if (
-    job.type.toLowerCase() === 'push' ||
-    job.type.toLowerCase() === 'pull'
+    job.type &&
+    (job.type.toLowerCase() === 'push' ||
+    job.type.toLowerCase() === 'pull')
   ) {
     return job.type.toLowerCase() as 'push' | 'pull';
   }
@@ -147,21 +161,20 @@ export const determineSourceType = (
   }
 
   if (job.connection) {
-    let connectionObj: Record<string, unknown>;
-
     if (typeof job.connection === 'string') {
       try {
-        connectionObj = JSON.parse(job.connection) as Record<string, unknown>;
+        const connectionObj = JSON.parse(job.connection) as Record<string, unknown>;
+        if ('host' in connectionObj && connectionObj.host) {
+          return 'SFTP';
+        } else if ('url' in connectionObj && connectionObj.url) {
+          return 'HTTP';
+        }
       } catch (e) {
         return 'HTTP';
       }
-    } else {
-      connectionObj = job.connection as Record<string, unknown>;
-    }
-
-    if ('host' in connectionObj && connectionObj.host) {
+    } else if ('host' in job.connection && job.connection.host) {
       return 'SFTP';
-    } else if ('url' in connectionObj && connectionObj.url) {
+    } else if ('url' in job.connection && job.connection.url) {
       return 'HTTP';
     }
   }
@@ -198,7 +211,7 @@ export const getDataEnrichmentErrorMessage = (error: unknown): string => {
   }
 
   if (err.response?.data?.message) {
-    const {message} = err.response.data;
+    const { message } = err.response.data;
     if (Array.isArray(message)) {
       return message.join(', ');
     }
@@ -281,7 +294,7 @@ export const validateFileFormat = (
 
   const allowedFormats =
     FILE_EXTENSION_FORMAT_MAP[
-      fileExtension as keyof typeof FILE_EXTENSION_FORMAT_MAP
+    fileExtension as keyof typeof FILE_EXTENSION_FORMAT_MAP
     ];
 
   if (!(allowedFormats as readonly string[]).includes(fileType)) {
@@ -399,20 +412,20 @@ export const getConnectionType = (job: DataEnrichmentJobResponse): 'HTTP' | 'SFT
   }
 
   if (job.connection && typeof job.connection === 'object') {
-    let connectionObj: Record<string, unknown>;
     if (typeof job.connection === 'string') {
       try {
-        connectionObj = JSON.parse(job.connection) as Record<string, unknown>;
+        const connectionObj = JSON.parse(job.connection) as Record<string, unknown>;
+        if ('host' in connectionObj && connectionObj.host) {
+          return 'SFTP';
+        } else if ('url' in connectionObj && connectionObj.url) {
+          return 'HTTP';
+        }
       } catch (e) {
         return null;
       }
-    } else {
-      connectionObj = job.connection as Record<string, unknown>;
-    }
-
-    if ('host' in connectionObj && connectionObj.host) {
+    } else if ('host' in job.connection && job.connection.host) {
       return 'SFTP';
-    } else if ('url' in connectionObj && connectionObj.url) {
+    } else if ('url' in job.connection && job.connection.url) {
       return 'HTTP';
     }
   }

@@ -291,7 +291,7 @@ export interface DataEnrichmentJobResponse {
   publishing_status?: 'active' | 'in-active' | null;
   created_at?: string;
   updated_at?: string;
-  type: 'push' | 'pull';
+  type?: 'push' | 'pull';
   config_type?: ConfigType;
   job_status?: JobStatus;
   schedule_id?: string;

@@ -170,7 +170,7 @@ export const useDataEnrichmentJobList = (): {
       try {
         setLoadingState((s) => ({ ...s, page: true as boolean }));
         const job = jobs.find((j: DataEnrichmentJobResponse) => j.id === jobId);
-        const jobType = job?.type.toUpperCase() as 'PULL' | 'PUSH' | undefined;
+        const jobType = job?.type?.toUpperCase() as 'PULL' | 'PUSH' | undefined;
 
         const jobDetails =
           await dataEnrichmentHandlers.dataEnrichmentJobApi.getById(
@@ -208,7 +208,7 @@ export const useDataEnrichmentJobList = (): {
 
       try {
         setLoadingState((s) => ({ ...s, page: true as boolean }));
-        const jobType = job.type.toUpperCase() as 'PULL' | 'PUSH' | undefined;
+        const jobType = job.type?.toUpperCase() as 'PULL' | 'PUSH' | undefined;
 
         const jobDetails =
           await dataEnrichmentHandlers.dataEnrichmentJobApi.getById(
@@ -260,7 +260,7 @@ export const useDataEnrichmentJobList = (): {
       try {
         setLoadingState((s) => ({ ...s, action: 'edit' }));
 
-        const jobType = (updatedJob.type ?? selectedJob.type).toLowerCase() as 'pull' | 'push';
+        const jobType = (updatedJob.type ?? selectedJob.type ?? 'pull').toLowerCase() as 'pull' | 'push';
 
         if (jobType === 'push') {
           const pushData = buildPushJobData(updatedJob, selectedJob);
