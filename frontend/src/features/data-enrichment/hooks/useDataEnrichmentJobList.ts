@@ -137,8 +137,8 @@ export const useDataEnrichmentJobList = (): {
           searchingFilters,
         );
 
-        setJobs(response.data ?? []);
-        setTotal(response.total ?? INITIAL_TOTAL_RECORDS)
+        setJobs(response.data);
+        setTotal(response.total)
       } catch (err) {
         let message = 'Failed to fetch jobs.';
         if (err instanceof Error) {
@@ -226,6 +226,33 @@ export const useDataEnrichmentJobList = (): {
     [showError],
   );
 
+  const buildPushJobData = useCallback(
+    (updatedJob: Partial<DataEnrichmentJobResponse>, selectedJob: DataEnrichmentJobResponse) => ({
+      endpoint_name: updatedJob.endpoint_name ?? selectedJob.endpoint_name,
+      description: updatedJob.description ?? selectedJob.description,
+      version: updatedJob.version ?? selectedJob.version,
+      path: updatedJob.path ?? selectedJob.path ?? '',
+      table_name: updatedJob.table_name ?? selectedJob.table_name,
+      mode: updatedJob.mode ?? selectedJob.mode,
+    }),
+    [],
+  );
+
+  const buildPullJobData = useCallback(
+    (updatedJob: Partial<DataEnrichmentJobResponse>, selectedJob: DataEnrichmentJobResponse) => ({
+      endpoint_name: updatedJob.endpoint_name ?? selectedJob.endpoint_name,
+      description: updatedJob.description ?? selectedJob.description,
+      version: updatedJob.version ?? selectedJob.version,
+      source_type: updatedJob.source_type ?? selectedJob.source_type ?? 'HTTP',
+      table_name: updatedJob.table_name ?? selectedJob.table_name,
+      mode: updatedJob.mode ?? selectedJob.mode,
+      connection: updatedJob.connection ?? selectedJob.connection ?? { url: '', headers: {} },
+      schedule_id: updatedJob.schedule_id ?? selectedJob.schedule_id ?? '',
+      file: updatedJob.file ?? selectedJob.file,
+    }),
+    [],
+  );
+
   const handleSaveEdit = useCallback(
     async (updatedJob: Partial<DataEnrichmentJobResponse>) => {
       if (!selectedJob) return;
@@ -233,42 +260,17 @@ export const useDataEnrichmentJobList = (): {
       try {
         setLoadingState((s) => ({ ...s, action: 'edit' }));
 
-        const jobType = (updatedJob.type ?? selectedJob.type).toLowerCase() as
-          | 'pull'
-          | 'push';
+        const jobType = (updatedJob.type ?? selectedJob.type).toLowerCase() as 'pull' | 'push';
 
         if (jobType === 'push') {
-          await dataEnrichmentHandlers.submitPushJob({
-            endpoint_name:
-              updatedJob.endpoint_name ?? selectedJob.endpoint_name ?? '',
-            description: updatedJob.description ?? selectedJob.description,
-            version: updatedJob.version ?? selectedJob.version ?? 'v1',
-            path: updatedJob.path ?? selectedJob.path ?? '',
-            table_name: updatedJob.table_name ?? selectedJob.table_name ?? '',
-            mode: updatedJob.mode ?? selectedJob.mode ?? 'append',
-          });
+          const pushData = buildPushJobData(updatedJob, selectedJob);
+          await dataEnrichmentHandlers.submitPushJob(pushData);
         } else {
-          await dataEnrichmentHandlers.submitPullJob({
-            endpoint_name:
-              updatedJob.endpoint_name ?? selectedJob.endpoint_name ?? '',
-            description:
-              updatedJob.description ?? selectedJob.description ?? '',
-            version: updatedJob.version ?? selectedJob.version ?? 'v1',
-            source_type:
-              updatedJob.source_type ?? selectedJob.source_type ?? 'HTTP',
-            table_name: updatedJob.table_name ?? selectedJob.table_name ?? '',
-            mode: updatedJob.mode ?? selectedJob.mode ?? 'append',
-            connection: updatedJob.connection ??
-              selectedJob.connection ?? { url: '', headers: {} },
-            schedule_id:
-              updatedJob.schedule_id ?? selectedJob.schedule_id ?? '',
-            file: updatedJob.file ?? selectedJob.file,
-          });
+          const pullData = buildPullJobData(updatedJob, selectedJob);
+          await dataEnrichmentHandlers.submitPullJob(pullData);
         }
 
-        showSuccess(
-          dataEnrichmentHandlers.DATA_ENRICHMENT_SUCCESS_MESSAGES.UPDATED,
-        );
+        showSuccess(dataEnrichmentHandlers.DATA_ENRICHMENT_SUCCESS_MESSAGES.UPDATED);
         loadJobs();
       } catch (err) {
         showError('Failed to update job');
@@ -276,7 +278,7 @@ export const useDataEnrichmentJobList = (): {
         setLoadingState((s) => ({ ...s, action: '' }));
       }
     },
-    [selectedJob, loadJobs, showSuccess, showError],
+    [selectedJob, loadJobs, showSuccess, showError, buildPushJobData, buildPullJobData],
   );
 
   const handleSendForApproval = useCallback(
