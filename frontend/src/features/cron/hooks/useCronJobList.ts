@@ -14,11 +14,58 @@ import * as cronHandlers from '../handlers';
 import { loadSchedules as apiLoadSchedules, CRON_JOB_STATUSES } from '../handlers';
 import type { ActionType, ScheduleResponse } from '../types';
 
-export const useCronJobList = () => {
+const INITIAL_TOTAL = 0;
+const PAGE_OFFSET_ADJUSTMENT = 1;
+
+export const useCronJobList = (): {
+  schedules: ScheduleResponse[];
+  pagination: {
+    page: number;
+    limit: number;
+    totalRecords: number;
+    setPage: (page: number) => void;
+  };
+  searchingFilters: Record<string, unknown>;
+  selectedSchedule: ScheduleResponse | null;
+  editForm: typeof CRON_JOB_EDIT_FORM_DEFAULTS;
+  isEditJobSaved: boolean;
+  confirmDialog: {
+    open: boolean;
+    type: ActionType;
+    schedule: ScheduleResponse | null;
+  };
+  error: string | null;
+  loading: boolean;
+  actionLoading: ActionType;
+  userIsEditor: boolean;
+  userIsExporter: boolean;
+  userIsApprover: boolean;
+  userIsPublisher: boolean;
+  userRole: string;
+  setSearchingFilters: React.Dispatch<React.SetStateAction<Record<string, unknown>>>;
+  setSelectedSchedule: React.Dispatch<React.SetStateAction<ScheduleResponse | null>>;
+  setEditForm: React.Dispatch<React.SetStateAction<typeof CRON_JOB_EDIT_FORM_DEFAULTS>>;
+  setConfirmDialog: React.Dispatch<React.SetStateAction<{
+    open: boolean;
+    type: ActionType;
+    schedule: ScheduleResponse | null;
+  }>>;
+  loadSchedules: () => Promise<void>;
+  handleView: (schedule: ScheduleResponse) => void;
+  handleEdit: (schedule: ScheduleResponse) => void;
+  handleSaveEdit: () => Promise<void>;
+  handleRejectionConfirm: (reason: string) => Promise<void>;
+  handleExportConfirm: () => Promise<void>;
+  handleSendForApproval: () => void;
+  handleApprovalConfirm: () => Promise<void>;
+  handleApproveClick: (scheduleId: string) => void;
+  handleApproveConfirm: () => Promise<void>;
+  handleReject: (scheduleId: string, reason: string) => Promise<void>;
+} => {
   const [schedules, setSchedules] = useState<ScheduleResponse[]>([]);
   const { showSuccess, showError } = useToast();
   const { user } = useAuth();
-  const [total, setTotal] = useState(0);
+  const [total, setTotal] = useState(INITIAL_TOTAL);
   const [searchingFilters, setSearchingFilters] = useState<
     Record<string, unknown>
   >({});
@@ -33,8 +80,8 @@ export const useCronJobList = () => {
       page: offset,
       limit,
       totalRecords: total,
-      setPage: (page: number) => { setOffset(page - 1); },
-    }), [offset, limit, total])  
+      setPage: (page: number) => { setOffset(page - PAGE_OFFSET_ADJUSTMENT); },
+    }), [offset, limit, total, setOffset])  
 
   const [error, setError] = useState<string | null>(null);
   const [loadingState, setLoadingState] = useState<{
@@ -82,7 +129,7 @@ export const useCronJobList = () => {
           searchingFilters,
         );
 
-        setSchedules(response?.data ?? []);
+        setSchedules(response.data);
         setTotal(response.total)
       } catch (err) {
         setError(

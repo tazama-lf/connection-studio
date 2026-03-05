@@ -12,21 +12,24 @@ import type {
 import { CRON_JOB_SUCCESS_MESSAGES, CRON_JOB_STATUSES } from '../constants';
 
 const { API_BASE_URL } = ENV;
+const DEFAULT_SCHEDULE_OFFSET = 0;
+const DEFAULT_SCHEDULE_LIMIT = 50;
+const DEFAULT_ITERATIONS = 0;
 
 export const cronJobApi = {
   getList: async (
     params: PaginationParams,
     searchingFilters?: Record<string, unknown>,
   ): Promise<PaginatedScheduleResponse> => {
-    const url = `${API_BASE_URL}/scheduler/all?${params?.offset !== undefined ? `offset=${params.offset}&` : ''}${params?.limit !== undefined ? `limit=${params.limit}` : ''}`;
+    const url = `${API_BASE_URL}/scheduler/all?offset=${params.offset}&limit=${params.limit}`;
 
     const { status, ...otherFilters } = searchingFilters ?? {};
     let statusFilter;
 
     if (!status) {
       const userRole = params.userRole as keyof typeof getDemsStatusLov;
-      statusFilter =
-        getDemsStatusLov[userRole]?.map((item) => item.value)?.join(',') ?? '';
+      const statusLov = getDemsStatusLov[userRole];
+      statusFilter = statusLov.map((item) => item.value).join(',');
     }
 
     const requestBody = {
@@ -49,12 +52,12 @@ export const cronJobApi = {
       },
     ),
 
-  getAll: async (offset = 0, limit = 50): Promise<ScheduleResponse[]> => {
+  getAll: async (offset = DEFAULT_SCHEDULE_OFFSET, limit = DEFAULT_SCHEDULE_LIMIT): Promise<ScheduleResponse[]> => {
     const queryParams = new URLSearchParams();
     queryParams.append('offset', offset.toString());
     queryParams.append('limit', limit.toString());
 
-    const scheduler_body = {
+    const schedulerBody = {
       status: 'STATUS_04_APPROVED,STATUS_06_EXPORTED',
     };
 
@@ -62,7 +65,7 @@ export const cronJobApi = {
       `${API_BASE_URL}/scheduler/all?${queryParams.toString()}`,
       {
         method: 'POST',
-        body: JSON.stringify(scheduler_body),
+        body: JSON.stringify(schedulerBody),
       },
     );
   },
@@ -79,10 +82,10 @@ export const cronJobApi = {
       {
         method: 'PATCH',
         body: JSON.stringify({
-          name: updates?.name,
-          start_date: updates?.start_date,
-          iterations: Number(updates?.iterations),
-          cron: updates?.cron,
+          name: updates.name,
+          start_date: updates.start_date,
+          iterations: Number(updates.iterations),
+          cron: updates.cron,
         }),
       },
     ),
@@ -107,35 +110,35 @@ export const cronJobApi = {
   },
 };
 
-export const submitCronJob = async (data: unknown) => {
+export const submitCronJob = async (data: unknown): Promise<ScheduleCreateResponse> => {
   const formData = data as ScheduleRequest & { cronExpression?: string };
   const scheduleData: ScheduleRequest = {
-    name: formData.name?.trim() ?? '',
-    cron: (formData.cron ?? formData.cronExpression ?? '').trim(),
-    iterations: formData.iterations ?? 0,
+    name: formData.name.trim(),
+    cron: ((formData.cron || formData.cronExpression) ?? '').trim(),
+    iterations: formData.iterations || DEFAULT_ITERATIONS,
   };
 
   return await cronJobApi.create(scheduleData);
 };
 
-export const rejectSchedule = async (scheduleId: string, reason?: string) =>
+export const rejectSchedule = async (scheduleId: string, reason?: string): Promise<{ success: boolean; message: string }> =>
   await cronJobApi.updateStatus(scheduleId, CRON_JOB_STATUSES.REJECTED, reason);
 
-export const exportSchedule = async (scheduleId: string) =>
+export const exportSchedule = async (scheduleId: string): Promise<{ success: boolean; message: string }> =>
   await cronJobApi.updateStatus(scheduleId, CRON_JOB_STATUSES.EXPORTED);
 
 export const updateScheduleData = async (
   scheduleId: string,
   payload: { name: string; cron: string; iterations: number },
-) => await cronJobApi.update(scheduleId, payload);
+): Promise<{ success: boolean; message: string }> => await cronJobApi.update(scheduleId, payload);
 
-export const sendForApproval = async (scheduleId: string) =>
+export const sendForApproval = async (scheduleId: string): Promise<{ success: boolean; message: string }> =>
   await cronJobApi.updateStatus(scheduleId, CRON_JOB_STATUSES.UNDER_REVIEW);
 
-export const prepareScheduleForEdit = (schedule: ScheduleResponse) =>
+export const prepareScheduleForEdit = (schedule: ScheduleResponse): ReturnType<typeof formatScheduleForEdit> =>
   formatScheduleForEdit(schedule);
 
-export const getErrorMessage = (error: unknown) =>
+export const getErrorMessage = (error: unknown): string =>
   getCronJobErrorMessage(error);
 
 export const loadSchedules = async (
