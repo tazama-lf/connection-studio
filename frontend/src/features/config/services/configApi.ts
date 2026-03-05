@@ -9,7 +9,7 @@ export interface CreateConfigRequest {
   version?: string;
   contentType?: 'application/json' | 'application/xml';
   payload?: string;
-  schema?: any;
+  schema?: unknown;
   mapping?: FieldMapping[];
   functions?: FunctionDefinition[];
   fieldAdjustments?: FieldAdjustment[];
@@ -28,7 +28,7 @@ export interface FieldMapping {
   separator?: string;
   transformation?: string;
   delimiter?: string;
-  constantValue?: any;
+  constantValue?: unknown;
   operator?: string;
   prefix?: string;
   type?: string;
@@ -65,7 +65,7 @@ export interface AddMappingRequest {
   destination?: string | string[]; // string[] for SPLIT transformation
   delimiter?: string;
   separator?: string;
-  constantValue?: any;
+  constantValue?: unknown;
   prefix?: string;
 }
 
@@ -99,13 +99,23 @@ interface PaginationParams {
   userRole: string;
 }
 
+const HTTP_UNAUTHORIZED = 401;
+const HTTP_BAD_REQUEST = 400;
+const HTTP_SERVER_ERROR = 500;
+const HTTP_NO_CONTENT = 204;
+
 export class ConfigApiService {
   private readonly baseURL: string;
+  private static readonly HTTP_UNAUTHORIZED = HTTP_UNAUTHORIZED;
+  private static readonly HTTP_BAD_REQUEST = HTTP_BAD_REQUEST;
+  private static readonly HTTP_SERVER_ERROR = HTTP_SERVER_ERROR;
+  private static readonly HTTP_NO_CONTENT = HTTP_NO_CONTENT;
+
   constructor() {
     this.baseURL = API_CONFIG.AUTH_BASE_URL;
   }
 
-  private getAuthHeaders(): Record<string, string> {
+  private static getAuthHeaders(): Record<string, string> {
     const token = localStorage.getItem('authToken');
     return {
       'Content-Type': 'application/json',
@@ -114,52 +124,44 @@ export class ConfigApiService {
     };
   }
 
-  private async handleResponse<T>(response: Response): Promise<T> {
-    if (response.status === 401) {
+  private static async handleResponse<T>(response: Response): Promise<T> {
+    if (response.status === ConfigApiService.HTTP_UNAUTHORIZED) {
       localStorage.removeItem('authToken');
       const errorData = await response
         .json()
-        .catch(() => ({ success: false, message: 'Invalid credentials' }));
+        .catch(() => ({ success: false, message: 'Invalid credentials' })) as { success: boolean; message?: string };
       throw new Error(errorData.message ?? 'Invalid credentials');
     }
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      if (response.status >= 400 && response.status < 500) {
+      const errorData = await response.json().catch(() => ({})) as { message?: string };
+      if (response.status >= ConfigApiService.HTTP_BAD_REQUEST && response.status < ConfigApiService.HTTP_SERVER_ERROR) {
         return errorData as T;
       }
       throw new Error(
         errorData.message ?? `HTTP error! status: ${response.status}`,
       );
     }
-    return await response.json();
+    return (await response.json()) as T;
   }
 
   async createConfig(data: CreateConfigRequest): Promise<ConfigResponse> {
-    try {
-      const response = await fetch(`${this.baseURL}/config`, {
-        method: 'POST',
-        headers: this.getAuthHeaders(),
-        body: JSON.stringify(data),
-      });
-      const result = await this.handleResponse<ConfigResponse>(response);
-      return result;
-    } catch (error) {
-      throw error;
-    }
+    const response = await fetch(`${this.baseURL}/config`, {
+      method: 'POST',
+      headers: ConfigApiService.getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+    const result = await ConfigApiService.handleResponse<ConfigResponse>(response);
+    return result;
   }
 
   async cloneConfig(data: CloneConfigRequest): Promise<ConfigResponse> {
-    try {
-      const response = await fetch(`${this.baseURL}/config/clone`, {
-        method: 'POST',
-        headers: this.getAuthHeaders(),
-        body: JSON.stringify(data),
-      });
-      const result = await this.handleResponse<ConfigResponse>(response);
-      return result;
-    } catch (error) {
-      throw error;
-    }
+    const response = await fetch(`${this.baseURL}/config/clone`, {
+      method: 'POST',
+      headers: ConfigApiService.getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+    const result = await ConfigApiService.handleResponse<ConfigResponse>(response);
+    return result;
   }
 
   async createConfigFromFile(
@@ -168,40 +170,36 @@ export class ConfigApiService {
     transactionType: string,
     version: string,
   ): Promise<ConfigResponse> {
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('msgFam', msgFam);
-      formData.append('transactionType', transactionType);
-      formData.append('version', version);
-      const token = localStorage.getItem('authToken');
-      const response = await fetch(`${this.baseURL}/config/upload`, {
-        method: 'POST',
-        headers: {
-          ...(token && { Authorization: `Bearer ${token}` }),
-        },
-        body: formData,
-      });
-      return await this.handleResponse<ConfigResponse>(response);
-    } catch (error) {
-      throw error;
-    }
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('msgFam', msgFam);
+    formData.append('transactionType', transactionType);
+    formData.append('version', version);
+    const token = localStorage.getItem('authToken');
+    const response = await fetch(`${this.baseURL}/config/upload`, {
+      method: 'POST',
+      headers: {
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+      body: formData,
+    });
+    return await ConfigApiService.handleResponse<ConfigResponse>(response);
   }
 
   async getConfig(id: number): Promise<ConfigResponse> {
     try {
       const response = await fetch(`${this.baseURL}/config/${id}`, {
         method: 'GET',
-        headers: this.getAuthHeaders(),
+        headers: ConfigApiService.getAuthHeaders(),
       });
-      const result = await this.handleResponse<any>(response);
-      if (result && typeof result === 'object' && 'success' in result) {
+      const result = await ConfigApiService.handleResponse<ConfigResponse | { id: number; [key: string]: unknown }>(response);
+      if (typeof result === 'object' && 'success' in result) {
         return result as ConfigResponse;
       }
-      if (result && typeof result === 'object' && 'id' in result) {
+      if (typeof result === 'object' && 'id' in result) {
         return {
           success: true,
-          config: result,
+          config: result as ConfigResponse['config'],
           message: 'Config retrieved successfully',
         };
       }
@@ -219,53 +217,48 @@ export class ConfigApiService {
   }
 
   async getAllConfigs(): Promise<{ configs: Config[] }> {
-    try {
-      const response = await fetch(`${this.baseURL}/config/0/10`, {
-        method: 'POST',
-        headers: this.getAuthHeaders(),
-        body: JSON.stringify({
-          status: 'STATUS_01_IN_PROGRESS',
-        }),
-      });
-      const responseData = await this.handleResponse<
-        { success: boolean; configs: Config[] } | Config[]
-      >(response);
-      let configsArray: Config[] = [];
-      if (Array.isArray(responseData)) {
-        configsArray = responseData;
-      } else if (
-        responseData &&
-        typeof responseData === 'object' &&
-        'configs' in responseData
-      ) {
-        configsArray = Array.isArray(responseData.configs)
-          ? responseData.configs
-          : [];
-      }
-      const result = { configs: configsArray };
-      return result;
-    } catch (error) {
-      throw error;
+    const response = await fetch(`${this.baseURL}/config/0/10`, {
+      method: 'POST',
+      headers: ConfigApiService.getAuthHeaders(),
+      body: JSON.stringify({
+        status: 'STATUS_01_IN_PROGRESS',
+      }),
+    });
+    const responseData = await ConfigApiService.handleResponse<
+      { success: boolean; configs: Config[] } | Config[]
+    >(response);
+    let configsArray: Config[] = [];
+    if (Array.isArray(responseData)) {
+      configsArray = responseData;
+    } else if (
+      typeof responseData === 'object' &&
+      'configs' in responseData
+    ) {
+      configsArray = Array.isArray(responseData.configs)
+        ? responseData.configs
+        : [];
     }
+    const result = { configs: configsArray };
+    return result;
   }
 
   async getConfigsPaginated(
     params: PaginationParams,
-    searchingFilters?: Record<any, any>,
+    searchingFilters?: Record<string, unknown>,
   ): Promise<PaginatedConfigResponse> {
     const { status, ...otherFilters } = searchingFilters ?? {};
-    let statusFilter;
+    let statusFilter = '';
     if (!status) {
       const userRole = params.userRole as keyof typeof getDemsStatusLov;
-      statusFilter =
-        getDemsStatusLov[userRole]?.map((item) => item.value)?.join(',') ?? '';
+      const lovItems = getDemsStatusLov[userRole];
+      statusFilter = lovItems.map((item) => item.value).join(',') || '';
     }
 
     const res = await fetch(
       `${this.baseURL}/config/${params.offset}/${params.limit}`,
       {
         method: 'POST',
-        headers: this.getAuthHeaders(),
+        headers: ConfigApiService.getAuthHeaders(),
         body: JSON.stringify({
           ...otherFilters,
           status: status ?? statusFilter,
@@ -279,197 +272,158 @@ export class ConfigApiService {
   }
 
   async getPendingApprovals(): Promise<{ configs: Config[] }> {
-    try {
-      const headers = this.getAuthHeaders();
-      const response = await fetch(
-        `${this.baseURL}/config/pending-approvals/10/0`,
-        {
-          method: 'POST',
-          headers,
-        },
-      );
-      const responseData = await this.handleResponse<any>(response);
-      if (
-        responseData &&
-        typeof responseData === 'object' &&
-        'configs' in responseData
-      ) {
-        return { configs: responseData.configs ?? [] };
-      } else if (Array.isArray(responseData)) {
-        return { configs: responseData };
-      } else {
-        return { configs: [] };
-      }
-    } catch (error) {
-      throw error;
+    const headers = ConfigApiService.getAuthHeaders();
+    const response = await fetch(
+      `${this.baseURL}/config/pending-approvals/10/0`,
+      {
+        method: 'POST',
+        headers,
+      },
+    );
+    const responseData = await ConfigApiService.handleResponse<
+      { success: boolean; configs: Config[] } | Config[]
+    >(response);
+    if (
+      typeof responseData === 'object' &&
+      'configs' in responseData
+    ) {
+      return { configs: Array.isArray(responseData.configs) ? responseData.configs : [] };
+    } else if (Array.isArray(responseData)) {
+      return { configs: responseData };
+    } else {
+      return { configs: [] };
     }
   }
 
   async getConfigsByTransactionType(
     transactionType: string,
   ): Promise<{ configs: Config[] }> {
-    try {
-      const response = await fetch(
-        `${this.baseURL}/config/transaction/${encodeURIComponent(transactionType)}`,
-        {
-          method: 'GET',
-          headers: this.getAuthHeaders(),
-        },
-      );
-      const configs = await this.handleResponse<Config[]>(response);
-      return { configs };
-    } catch (error) {
-      throw error;
-    }
+    const response = await fetch(
+      `${this.baseURL}/config/transaction/${encodeURIComponent(transactionType)}`,
+      {
+        method: 'GET',
+        headers: ConfigApiService.getAuthHeaders(),
+      },
+    );
+    const configs = await ConfigApiService.handleResponse<Config[]>(response);
+    return { configs };
   }
 
   async getConfigsByEndpoint(
     endpoint?: string,
   ): Promise<{ configs: Config[] }> {
-    try {
-      const url = endpoint
-        ? `${this.baseURL}/config/endpoint?endpoint=${encodeURIComponent(endpoint)}`
-        : `${this.baseURL}/config/endpoint`;
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: this.getAuthHeaders(),
-      });
-      const configs = await this.handleResponse<Config[]>(response);
-      return { configs };
-    } catch (error) {
-      throw error;
-    }
+    const url = endpoint
+      ? `${this.baseURL}/config/endpoint?endpoint=${encodeURIComponent(endpoint)}`
+      : `${this.baseURL}/config/endpoint`;
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: ConfigApiService.getAuthHeaders(),
+    });
+    const configs = await ConfigApiService.handleResponse<Config[]>(response);
+    return { configs };
   }
 
   async addMapping(
     configId: number,
     mapping: AddMappingRequest,
   ): Promise<ConfigResponse> {
-    try {
-      const response = await fetch(
-        `${this.baseURL}/config/${configId}/mapping`,
-        {
-          method: 'POST',
-          headers: this.getAuthHeaders(),
-          body: JSON.stringify(mapping),
-        },
-      );
-      return await this.handleResponse<ConfigResponse>(response);
-    } catch (error) {
-      throw error;
-    }
+    const response = await fetch(
+      `${this.baseURL}/config/${configId}/mapping`,
+      {
+        method: 'POST',
+        headers: ConfigApiService.getAuthHeaders(),
+        body: JSON.stringify(mapping),
+      },
+    );
+    return await ConfigApiService.handleResponse<ConfigResponse>(response);
   }
 
   async removeMapping(
     configId: number,
     index: number,
   ): Promise<ConfigResponse> {
-    try {
-      const response = await fetch(
-        `${this.baseURL}/config/${configId}/mapping/${index}`,
-        {
-          method: 'DELETE',
-          headers: this.getAuthHeaders(),
-        },
-      );
-      return await this.handleResponse<ConfigResponse>(response);
-    } catch (error) {
-      throw error;
-    }
+    const response = await fetch(
+      `${this.baseURL}/config/${configId}/mapping/${index}`,
+      {
+        method: 'DELETE',
+        headers: ConfigApiService.getAuthHeaders(),
+      },
+    );
+    return await ConfigApiService.handleResponse<ConfigResponse>(response);
   }
 
   async updateConfig(
     id: number,
     data: Partial<CreateConfigRequest>,
   ): Promise<ConfigResponse> {
-    try {
-      const headers = this.getAuthHeaders();
-      const response = await fetch(`${this.baseURL}/config/${id}`, {
-        method: 'PUT',
-        headers,
-        body: JSON.stringify(data),
-      });
-      const result = await this.handleResponse<ConfigResponse>(response);
-      return result;
-    } catch (error) {
-      throw error;
-    }
+    const headers = ConfigApiService.getAuthHeaders();
+    const response = await fetch(`${this.baseURL}/config/${id}`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify(data),
+    });
+    const result = await ConfigApiService.handleResponse<ConfigResponse>(response);
+    return result;
   }
 
   async updateConfigStatus(
     id: number,
     status: string,
   ): Promise<ConfigResponse> {
-    try {
-      const url = `${this.baseURL}/config/update/status/${id}?status=${status}`;
-      const headers = this.getAuthHeaders();
-      const method = 'PATCH';
-      const response = await fetch(url, {
-        method,
-        headers,
-      });
-      const result = await this.handleResponse<ConfigResponse>(response);
-      return result;
-    } catch (error) {
-      throw error;
-    }
+    const url = `${this.baseURL}/config/update/status/${id}?status=${status}`;
+    const headers = ConfigApiService.getAuthHeaders();
+    const method = 'PATCH';
+    const response = await fetch(url, {
+      method,
+      headers,
+    });
+    const result = await ConfigApiService.handleResponse<ConfigResponse>(response);
+    return result;
   }
 
   async updatePublishingStatus(
     id: number,
     publishingStatus: 'active' | 'inactive',
   ): Promise<ConfigResponse> {
-    try {
-      const url = `${this.baseURL}/config/${id}/publishing-status`;
-      const headers = this.getAuthHeaders();
-      const method = 'PATCH';
-      const response = await fetch(url, {
-        method,
-        headers,
-        body: JSON.stringify({
-          publishing_status: publishingStatus,
-        }),
-      });
-      const result = await this.handleResponse<ConfigResponse>(response);
-      return result;
-    } catch (error) {
-      throw error;
-    }
+    const url = `${this.baseURL}/config/${id}/publishing-status`;
+    const headers = ConfigApiService.getAuthHeaders();
+    const method = 'PATCH';
+    const response = await fetch(url, {
+      method,
+      headers,
+      body: JSON.stringify({
+        publishing_status: publishingStatus,
+      }),
+    });
+    const result = await ConfigApiService.handleResponse<ConfigResponse>(response);
+    return result;
   }
 
   async deleteConfig(id: number): Promise<void> {
-    try {
-      const response = await fetch(`${this.baseURL}/config/${id}`, {
-        method: 'DELETE',
-        headers: this.getAuthHeaders(),
-      });
-      if (response.status === 204) {
-        return;
-      }
-      await this.handleResponse(response);
-    } catch (error) {
-      throw error;
+    const response = await fetch(`${this.baseURL}/config/${id}`, {
+      method: 'DELETE',
+      headers: ConfigApiService.getAuthHeaders(),
+    });
+    if (response.status === ConfigApiService.HTTP_NO_CONTENT) {
+      return;
     }
+    await ConfigApiService.handleResponse(response);
   }
 
   async updateWorkflow(
     id: number,
     action: 'submit' | 'approve' | 'reject' | 'deploy' | 'export',
-    payload?: Record<string, any>,
+    payload?: Record<string, unknown>,
   ): Promise<ConfigResponse> {
-    try {
-      const url = `${this.baseURL}/config/${id}/workflow?action=${action}`;
-      const headers = this.getAuthHeaders();
-      const response = await fetch(url, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(payload ?? {}),
-      });
-      const result = await this.handleResponse<ConfigResponse>(response);
-      return result;
-    } catch (error) {
-      throw error;
-    }
+    const url = `${this.baseURL}/config/${id}/workflow?action=${action}`;
+    const headers = ConfigApiService.getAuthHeaders();
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload ?? {}),
+    });
+    const result = await ConfigApiService.handleResponse<ConfigResponse>(response);
+    return result;
   }
 
   async submitForApproval(
@@ -517,127 +471,106 @@ export class ConfigApiService {
   async getWorkflowStatus(
     id: number,
   ): Promise<{ status: string; message?: string }> {
-    try {
-      const response = await fetch(
-        `${this.baseURL}/config/${id}/workflow/status`,
-        {
-          method: 'GET',
-          headers: this.getAuthHeaders(),
-        },
-      );
-      return await this.handleResponse<{ status: string; message?: string }>(
-        response,
-      );
-    } catch (error) {
-      throw error;
-    }
+    const response = await fetch(
+      `${this.baseURL}/config/${id}/workflow/status`,
+      {
+        method: 'GET',
+        headers: ConfigApiService.getAuthHeaders(),
+      },
+    );
+    return await ConfigApiService.handleResponse<{ status: string; message?: string }>(
+      response,
+    );
   }
 
   async returnToProgress(id: number): Promise<ConfigResponse> {
-    try {
-      const response = await fetch(
-        `${this.baseURL}/config/${id}/workflow/return-to-progress`,
-        {
-          method: 'POST',
-          headers: this.getAuthHeaders(),
-        },
-      );
-      return await this.handleResponse<ConfigResponse>(response);
-    } catch (error) {
-      throw error;
-    }
+    const response = await fetch(
+      `${this.baseURL}/config/${id}/workflow/return-to-progress`,
+      {
+        method: 'POST',
+        headers: ConfigApiService.getAuthHeaders(),
+      },
+    );
+    return await ConfigApiService.handleResponse<ConfigResponse>(response);
   }
 
   async requestChanges(
     id: number,
     requestedChanges: string,
   ): Promise<ConfigResponse> {
-    try {
-      const response = await fetch(
-        `${this.baseURL}/config/${id}/workflow/request-changes`,
-        {
-          method: 'POST',
-          headers: this.getAuthHeaders(),
-          body: JSON.stringify({ requestedChanges }),
-        },
-      );
-      return await this.handleResponse<ConfigResponse>(response);
-    } catch (error) {
-      throw error;
-    }
+    const response = await fetch(
+      `${this.baseURL}/config/${id}/workflow/request-changes`,
+      {
+        method: 'POST',
+        headers: ConfigApiService.getAuthHeaders(),
+        body: JSON.stringify({ requestedChanges }),
+      },
+    );
+    return await ConfigApiService.handleResponse<ConfigResponse>(response);
   }
 
   async updateStatusToExported(
     id: number,
     comment?: string,
   ): Promise<ConfigResponse> {
-    try {
-      const requestBody = {
-        comment: comment ?? 'Status updated to exported',
-        userId: 'system',
-      };
-      const response = await fetch(
-        `${this.baseURL}/config/${id}/update-status-to-exported`,
-        {
-          method: 'POST',
-          headers: this.getAuthHeaders(),
-          body: JSON.stringify(requestBody),
-        },
-      );
-      const result = await this.handleResponse<ConfigResponse>(response);
-      return result;
-    } catch (error) {
-      throw error;
-    }
+    const requestBody = {
+      comment: comment ?? 'Status updated to exported',
+      userId: 'system',
+    };
+    const response = await fetch(
+      `${this.baseURL}/config/${id}/update-status-to-exported`,
+      {
+        method: 'POST',
+        headers: ConfigApiService.getAuthHeaders(),
+        body: JSON.stringify(requestBody),
+      },
+    );
+    const result = await ConfigApiService.handleResponse<ConfigResponse>(response);
+    return result;
   }
 
   async getConfigsByStatus(
     status: 'approved' | 'exported',
   ): Promise<{ configs: Config[] }> {
-    try {
-      const response = await fetch(`${this.baseURL}/config`, {
-        method: 'GET',
-        headers: this.getAuthHeaders(),
-      });
-      const responseData = await this.handleResponse<
-        { success: boolean; configs: Config[] } | Config[]
-      >(response);
-      let configsArray: Config[] = [];
-      if (Array.isArray(responseData)) {
-        configsArray = responseData;
-      } else if (
-        responseData &&
-        typeof responseData === 'object' &&
-        'configs' in responseData
-      ) {
-        configsArray = Array.isArray(responseData.configs)
-          ? responseData.configs
-          : [];
-      }
-      const filteredConfigs = configsArray.filter((config) => {
-        const configStatus = config.status?.toLowerCase() ?? '';
-        const targetStatus = status.toLowerCase();
-        let matches = false;
-        if (targetStatus === 'approved') {
-          matches =
-            configStatus === 'approved' ||
-            configStatus === 'status_04_approved' ||
-            configStatus.includes('approved');
-        } else if (targetStatus === 'exported') {
-          matches =
-            configStatus === 'exported' ||
-            configStatus === 'status_06_exported' ||
-            configStatus.includes('exported');
-        } else {
-          matches = configStatus === targetStatus;
-        }
-        return matches;
-      });
-      const result = { configs: filteredConfigs };
-      return result;
-    } catch (error) {
-      throw error;
+    const response = await fetch(`${this.baseURL}/config`, {
+      method: 'GET',
+      headers: ConfigApiService.getAuthHeaders(),
+    });
+    const responseData = await ConfigApiService.handleResponse<
+      { success: boolean; configs: Config[] } | Config[]
+    >(response);
+    let configsArray: Config[] = [];
+    if (Array.isArray(responseData)) {
+      configsArray = responseData;
+    } else if (
+      typeof responseData === 'object' &&
+      'configs' in responseData
+    ) {
+      configsArray = Array.isArray(responseData.configs)
+        ? responseData.configs
+        : [];
     }
+    const filteredConfigs = configsArray.filter((config) => {
+      const configStatus = config.status.toLowerCase() || '';
+      const targetStatus = status.toLowerCase();
+      if (targetStatus === 'approved') {
+        return (
+          configStatus === 'approved' ||
+          configStatus === 'status_04_approved' ||
+          configStatus.includes('approved')
+        );
+      } else if (targetStatus === 'exported') {
+        return (
+          configStatus === 'exported' ||
+          configStatus === 'status_06_exported' ||
+          configStatus.includes('exported')
+        );
+      } else {
+        return configStatus === targetStatus;
+      }
+    });
+    const result = { configs: filteredConfigs };
+    return result;
   }
 }
 
