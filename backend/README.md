@@ -892,43 +892,6 @@ Authorization: Bearer <token>
 
 #### Dynamic Data Model
 
-```bash
-# Get destination options
-GET /api/v1/tazama-data-model/destination-options
-Authorization: Bearer <token>
-
-# Create destination type
-POST /api/v1/tazama-data-model/destination-types
-Authorization: Bearer <token>
-
-{
-  "collection_type": "transaction_details",
-  "name": "Payment Transactions",
-  "destination_id": 1,
-  "tenant_id": "tenant_001"
-}
-
-# Add fields to destination type
-POST /api/v1/tazama-data-model/destination-types/:id/fields
-Authorization: Bearer <token>
-
-{
-  "fields": [
-    {
-      "name": "message_id",
-      "field_type": "string",
-      "required": true,
-      "serial_no": 1
-    },
-    {
-      "name": "amount",
-      "field_type": "number",
-      "required": true,
-      "serial_no": 2
-    }
-  ]
-}
-```
 
 ### 12.2 Error Codes
 
