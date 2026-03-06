@@ -775,7 +775,7 @@ export const JobList: React.FC<JobListProps> = (props) => {
               </DialogActions>
             </Dialog>
 
-            {userIsPublisher && (
+            {userIsApprover && (
               <>
                 {job.publishing_status === 'active' ? (
                   <Tooltip title="Deactivate" arrow placement="top">
