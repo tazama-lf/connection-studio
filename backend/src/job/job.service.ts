@@ -556,7 +556,7 @@ export class JobService {
           // Job already read from SFTP for publisher role
           const fileData = existingJob as Job;
 
-          const deployPayload: any = structuredClone(fileData);
+          const deployPayload: Job = structuredClone(fileData);
           deployPayload.publishing_status = ScheduleStatus.ACTIVE;
 
           if (type === ConfigType.PULL) {

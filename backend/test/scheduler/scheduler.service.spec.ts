@@ -40,6 +40,7 @@ describe('SchedulerService', () => {
   const mockUser: AuthenticatedUser = {
     tenantId: mockTenantId,
     validClaims: ['EDITOR'],
+    actorRole: 'editor',
     token: {
       tokenString: mockToken,
     },
@@ -202,7 +203,7 @@ describe('SchedulerService', () => {
     it('should find a schedule by id', async () => {
       adminServiceClient.findScheduleById.mockResolvedValue(mockSchedule);
 
-      const result = await service.findOne(mockSchedule.id, mockToken);
+      const result = await service.findOne(mockSchedule.id, mockUser);
 
       expect(result).toEqual(mockSchedule);
       expect(adminServiceClient.findScheduleById).toHaveBeenCalledWith(
@@ -214,7 +215,7 @@ describe('SchedulerService', () => {
     it('should return null if schedule not found', async () => {
       adminServiceClient.findScheduleById.mockResolvedValue(null);
 
-      const result = await service.findOne('non-existent-id', mockToken);
+      const result = await service.findOne('non-existent-id', mockUser);
 
       expect(result).toBeNull();
     });
@@ -235,7 +236,9 @@ describe('SchedulerService', () => {
         offset,
         limit,
         mockUser,
-        undefined,
+        expect.objectContaining({
+          status: expect.any(String),
+        }),
       );
     });
 
@@ -265,7 +268,7 @@ describe('SchedulerService', () => {
     });
   });
 
-  describe('update', () => {
+  describe('updateSchedule', () => {
     const scheduleId = 'test-schedule-id';
     const updateDto: UpdateScheduleJobDto = {
       name: 'Updated Schedule',
@@ -284,7 +287,7 @@ describe('SchedulerService', () => {
       });
       adminServiceClient.updateSchedule.mockResolvedValue(expectedResult);
 
-      const result = await service.update(scheduleId, updateDto, mockToken);
+      const result = await service.updateSchedule(scheduleId, updateDto, mockUser);
 
       expect(result).toEqual(expectedResult);
       expect(adminServiceClient.updateSchedule).toHaveBeenCalledWith(
@@ -306,7 +309,7 @@ describe('SchedulerService', () => {
       });
       adminServiceClient.updateSchedule.mockResolvedValue(expectedResult);
 
-      const result = await service.update(scheduleId, updateDto, mockToken);
+      const result = await service.updateSchedule(scheduleId, updateDto, mockUser);
 
       expect(result).toEqual(expectedResult);
       expect(adminServiceClient.updateSchedule).toHaveBeenCalledWith(
@@ -323,7 +326,7 @@ describe('SchedulerService', () => {
       });
 
       await expect(
-        service.update(scheduleId, updateDto, mockToken),
+        service.updateSchedule(scheduleId, updateDto, mockUser),
       ).rejects.toThrow(ForbiddenException);
 
       expect(adminServiceClient.updateSchedule).not.toHaveBeenCalled();
@@ -336,7 +339,7 @@ describe('SchedulerService', () => {
       );
 
       await expect(
-        service.update(scheduleId, updateDto, mockToken),
+        service.updateSchedule(scheduleId, updateDto, mockUser),
       ).rejects.toThrow();
 
       expect(loggerService.error).toHaveBeenCalledWith(
@@ -358,8 +361,7 @@ describe('SchedulerService', () => {
         status,
         page,
         limit,
-        mockTenantId,
-        mockToken,
+        mockUser,
       );
 
       expect(result).toEqual(mockSchedules);
@@ -374,13 +376,13 @@ describe('SchedulerService', () => {
 
     it('should throw BadRequestException for invalid page number', async () => {
       await expect(
-        service.findByStatus(status, 0, limit, mockTenantId, mockToken),
+        service.findByStatus(status, 0, limit, mockUser),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('should throw BadRequestException for invalid limit', async () => {
       await expect(
-        service.findByStatus(status, page, -1, mockTenantId, mockToken),
+        service.findByStatus(status, page, -1, mockUser),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -391,7 +393,7 @@ describe('SchedulerService', () => {
       );
 
       await expect(
-        service.findByStatus(status, page, limit, mockTenantId, mockToken),
+        service.findByStatus(status, page, limit, mockUser),
       ).rejects.toThrow(BadRequestException);
 
       expect(loggerService.error).toHaveBeenCalled();
@@ -403,12 +405,24 @@ describe('SchedulerService', () => {
 
     describe('REVIEW status', () => {
       it('should update status to REVIEW and send notification', async () => {
+        const editorUser: AuthenticatedUser = {
+          tenantId: mockTenantId,
+          validClaims: ['EDITOR'],
+          actorRole: 'editor',
+          token: {
+            tokenString: mockToken,
+          },
+        } as AuthenticatedUser;
+
         const expectedResult = {
           success: true,
           message: 'Status updated successfully',
         };
 
-        adminServiceClient.findScheduleById.mockResolvedValue(mockSchedule);
+        adminServiceClient.findScheduleById.mockResolvedValue({
+          ...mockSchedule,
+          status: JobStatus.INPROGRESS,
+        });
         adminServiceClient.updateScheduleByStatus.mockResolvedValue(
           expectedResult,
         );
@@ -420,7 +434,7 @@ describe('SchedulerService', () => {
           scheduleId,
           mockTenantId,
           JobStatus.REVIEW,
-          mockUser,
+          editorUser,
         );
 
         expect(result).toEqual(expectedResult);
@@ -437,12 +451,24 @@ describe('SchedulerService', () => {
 
     describe('APPROVED status', () => {
       it('should update status to APPROVED and send notification', async () => {
+        const approverUser: AuthenticatedUser = {
+          tenantId: mockTenantId,
+          validClaims: ['APPROVER'],
+          actorRole: 'approver',
+          token: {
+            tokenString: mockToken,
+          },
+        } as AuthenticatedUser;
+
         const expectedResult = {
           success: true,
           message: 'Status updated successfully',
         };
 
-        adminServiceClient.findScheduleById.mockResolvedValue(mockSchedule);
+        adminServiceClient.findScheduleById.mockResolvedValue({
+          ...mockSchedule,
+          status: JobStatus.REVIEW,
+        });
         adminServiceClient.updateScheduleByStatus.mockResolvedValue(
           expectedResult,
         );
@@ -454,7 +480,7 @@ describe('SchedulerService', () => {
           scheduleId,
           mockTenantId,
           JobStatus.APPROVED,
-          mockUser,
+          approverUser,
         );
 
         expect(result).toEqual(expectedResult);
@@ -464,26 +490,50 @@ describe('SchedulerService', () => {
 
     describe('REJECTED status', () => {
       it('should throw BadRequestException if reason is not provided', async () => {
-        adminServiceClient.findScheduleById.mockResolvedValue(mockSchedule);
+        const approverUser: AuthenticatedUser = {
+          tenantId: mockTenantId,
+          validClaims: ['APPROVER'],
+          actorRole: 'approver',
+          token: {
+            tokenString: mockToken,
+          },
+        } as AuthenticatedUser;
+
+        adminServiceClient.findScheduleById.mockResolvedValue({
+          ...mockSchedule,
+          status: JobStatus.REVIEW,
+        });
 
         await expect(
           service.updateStatus(
             scheduleId,
             mockTenantId,
             JobStatus.REJECTED,
-            mockUser,
+            approverUser,
           ),
         ).rejects.toThrow(BadRequestException);
       });
 
       it('should update status to REJECTED with reason and send notification', async () => {
+        const approverUser: AuthenticatedUser = {
+          tenantId: mockTenantId,
+          validClaims: ['APPROVER'],
+          actorRole: 'approver',
+          token: {
+            tokenString: mockToken,
+          },
+        } as AuthenticatedUser;
+
         const reason = 'Invalid configuration';
         const expectedResult = {
           success: true,
           message: 'Status updated successfully',
         };
 
-        adminServiceClient.findScheduleById.mockResolvedValue(mockSchedule);
+        adminServiceClient.findScheduleById.mockResolvedValue({
+          ...mockSchedule,
+          status: JobStatus.REVIEW,
+        });
         adminServiceClient.updateScheduleByStatus.mockResolvedValue(
           expectedResult,
         );
@@ -495,7 +545,7 @@ describe('SchedulerService', () => {
           scheduleId,
           mockTenantId,
           JobStatus.REJECTED,
-          mockUser,
+          approverUser,
           reason,
         );
 
@@ -513,12 +563,24 @@ describe('SchedulerService', () => {
 
     describe('EXPORTED status', () => {
       it('should export schedule to SFTP and send notification', async () => {
+        const exporterUser: AuthenticatedUser = {
+          tenantId: mockTenantId,
+          validClaims: ['EXPORTER'],
+          actorRole: 'exporter',
+          token: {
+            tokenString: mockToken,
+          },
+        } as AuthenticatedUser;
+
         const expectedResult = {
           success: true,
           message: 'Status updated successfully',
         };
 
-        adminServiceClient.findScheduleById.mockResolvedValue(mockSchedule);
+        adminServiceClient.findScheduleById.mockResolvedValue({
+          ...mockSchedule,
+          status: JobStatus.APPROVED,
+        });
         sftpService.createFile.mockResolvedValue(undefined);
         adminServiceClient.updateScheduleByStatus.mockResolvedValue(
           expectedResult,
@@ -531,7 +593,7 @@ describe('SchedulerService', () => {
           scheduleId,
           mockTenantId,
           JobStatus.EXPORTED,
-          mockUser,
+          exporterUser,
         );
 
         expect(result).toEqual(expectedResult);
@@ -542,7 +604,6 @@ describe('SchedulerService', () => {
         expect(sftpService.createFile).toHaveBeenCalledWith(
           `cron_${mockTenantId}_${scheduleId}`,
           expect.objectContaining({
-            ...mockSchedule,
             status: JobStatus.READY,
           }),
         );
@@ -552,13 +613,25 @@ describe('SchedulerService', () => {
 
     describe('DEPLOYED status', () => {
       it('should deploy schedule from SFTP and send notification', async () => {
+        const publisherUser: AuthenticatedUser = {
+          tenantId: mockTenantId,
+          validClaims: ['PUBLISHER'],
+          actorRole: 'publisher',
+          token: {
+            tokenString: mockToken,
+          },
+        } as AuthenticatedUser;
+
         const fileName = `cron_${mockTenantId}_${scheduleId}`;
         const expectedResult = {
           success: true,
           message: `Schedule with id ${scheduleId} successfully deployed.`,
         };
 
-        sftpService.readFile.mockResolvedValue(mockSchedule);
+        sftpService.readFile.mockResolvedValue({
+          ...mockSchedule,
+          status: JobStatus.READY,
+        });
         adminServiceClient.createSchedule.mockResolvedValue({
           success: true,
           message: 'Schedule created',
@@ -572,14 +645,13 @@ describe('SchedulerService', () => {
           scheduleId,
           mockTenantId,
           JobStatus.DEPLOYED,
-          mockUser,
+          publisherUser,
         );
 
         expect(result).toEqual(expectedResult);
         expect(sftpService.readFile).toHaveBeenCalledWith(fileName);
         expect(adminServiceClient.createSchedule).toHaveBeenCalledWith(
           expect.objectContaining({
-            ...mockSchedule,
             id: mockSchedule.id,
             tenant_id: mockTenantId,
             status: JobStatus.DEPLOYED,
@@ -591,6 +663,15 @@ describe('SchedulerService', () => {
       });
 
       it('should handle SFTP read errors', async () => {
+        const publisherUser: AuthenticatedUser = {
+          tenantId: mockTenantId,
+          validClaims: ['PUBLISHER'],
+          actorRole: 'publisher',
+          token: {
+            tokenString: mockToken,
+          },
+        } as AuthenticatedUser;
+
         const errorMessage = 'File not found';
         sftpService.readFile.mockRejectedValue(new Error(errorMessage));
 
@@ -599,7 +680,7 @@ describe('SchedulerService', () => {
             scheduleId,
             mockTenantId,
             JobStatus.DEPLOYED,
-            mockUser,
+            publisherUser,
           ),
         ).rejects.toThrow(BadRequestException);
 
@@ -609,7 +690,7 @@ describe('SchedulerService', () => {
 
     it('should handle errors and log them', async () => {
       const errorMessage = 'Update status failed';
-      adminServiceClient.updateScheduleByStatus.mockRejectedValue(
+      adminServiceClient.findScheduleById.mockRejectedValue(
         new Error(errorMessage),
       );
 

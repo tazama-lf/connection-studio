@@ -30,7 +30,7 @@ export class SchedulerService {
     private readonly sftpService: SftpService,
     private readonly adminServiceClient: AdminServiceClient,
     private readonly notificationService: NotificationService,
-  ) {}
+  ) { }
 
   async create(
     schedule: CreateScheduleJobDto,
@@ -52,9 +52,9 @@ export class SchedulerService {
       );
     } catch (error) {
       this.loggerService.error(
-        `Error While Creating Schedule : ${error.message}`,
+        `Error While Creating Schedule : ${error instanceof Error ? error.message : String(error)}`,
       );
-      throw new BadRequestException(error.message);
+      throw new BadRequestException(error instanceof Error ? error.message : String(error));
     }
   }
 
@@ -157,9 +157,9 @@ export class SchedulerService {
         attr,
         user.token.tokenString,
       );
-    } catch (err) {
-      this.loggerService.error(`Error updating schedule: ${err.message}`);
-      throw err;
+    } catch (error) {
+      this.loggerService.error(`Error updating schedule: ${error instanceof Error ? error.message : String(error)}`);
+      throw error;
     }
   }
 
@@ -202,11 +202,11 @@ export class SchedulerService {
         user.tenantId,
         user.token.tokenString,
       );
-    } catch (err) {
+    } catch (error) {
       this.loggerService.error(
-        `Error fetching records by status: ${err.message}`,
+        `Error fetching records by status: ${error instanceof Error ? error.message : String(error)}`,
       );
-      throw new BadRequestException(err.message);
+      throw new BadRequestException(error instanceof Error ? error.message : String(error));
     }
   }
 
@@ -220,17 +220,17 @@ export class SchedulerService {
     try {
       const userRole = user.actorRole.toLowerCase();
       let existingSchedule: Schedule | null = null;
-      
+
       if (userRole === 'publisher' && status === JobStatus.DEPLOYED) {
         const fileName = `cron_${tenantId}_${id}`;
-        
+
         try {
           existingSchedule = (await this.sftpService.readFile(
             fileName,
           )) as Schedule;
         } catch (error) {
           throw new BadRequestException(
-            `Cannot read schedule ${id} from SFTP: ${error.message}`,
+            `Cannot read schedule ${id} from SFTP: ${error instanceof Error ? error.message : String(error)}`,
           );
         }
       } else {
@@ -270,7 +270,7 @@ export class SchedulerService {
       if (!tier3Result.allowed) {
         throw new ForbiddenException(
           tier3Result.reason ??
-            'Not authorized to perform this status transition',
+          'Not authorized to perform this status transition',
         );
       }
 
@@ -360,15 +360,15 @@ export class SchedulerService {
           break;
         }
         case JobStatus.DEPLOYED: {
-          const fileData = existingSchedule!;
-          
+          const fileData = existingSchedule;
+
           await this.create(
             fileData,
             tenantId,
             user.token.tokenString,
             JobStatus.DEPLOYED,
           );
-          
+
           const fileName = `cron_${tenantId}_${id}`;
           await this.sftpService.deleteFile(fileName);
 
@@ -398,9 +398,9 @@ export class SchedulerService {
           message: 'Cron Job Status updated successfully',
         }
       );
-    } catch (err) {
-      this.loggerService.error(err.message);
-      throw new BadRequestException(err.message);
+    } catch (error) {
+      this.loggerService.error(error instanceof Error ? error.message : String(error));
+      throw new BadRequestException(error instanceof Error ? error.message : String(error));
     }
   }
 }
