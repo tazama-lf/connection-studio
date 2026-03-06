@@ -66,14 +66,20 @@ describe('ConfigService', () => {
     info: jest.fn(),
   };
 
-  const user = {
+  const createUser = (role: string = 'editor') => ({
     tenantId: 'tenant_001',
     userId: 'user_1',
-    validClaims: ['editor'],
+    validClaims: [role],
+    actorRole: role,
     token: {
       tokenString: 'jwt-token',
     },
-  } as any;
+  });
+
+  const user = createUser('editor');
+  const approverUser = createUser('approver');
+  const exporterUser = createUser('exporter');
+  const publisherUser = createUser('publisher');
 
   const token = 'jwt-token';
 
@@ -160,12 +166,13 @@ describe('ConfigService', () => {
   });
 
   it('approves config', async () => {
+    mockRepo.findConfigById.mockResolvedValue({ id: 1, status: ConfigStatus.UNDER_REVIEW });
     mockRepo.getupdateConfigByStatus.mockResolvedValue({ id: 1 });
 
     const res = await service.handleWorkflowAction(
       1,
       { action: 'approve', data: { comment: 'ok' } },
-      user as any,
+      approverUser as any,
       token,
     );
 
@@ -173,12 +180,13 @@ describe('ConfigService', () => {
   });
 
   it('rejects config', async () => {
+    mockRepo.findConfigById.mockResolvedValue({ id: 1, status: ConfigStatus.UNDER_REVIEW });
     mockRepo.getupdateConfigByStatus.mockResolvedValue({ id: 1 });
 
     const res = await service.handleWorkflowAction(
       1,
       { action: 'reject', data: { comment: 'no' } },
-      user as any,
+      approverUser as any,
       token,
     );
 
@@ -196,7 +204,7 @@ describe('ConfigService', () => {
     const res = await service.handleWorkflowAction(
       1,
       { action: 'export', data: {} },
-      user as any,
+      exporterUser as any,
       token,
     );
 
@@ -210,7 +218,7 @@ describe('ConfigService', () => {
       .spyOn<any, any>(service, 'getConfigOrThrow')
       .mockResolvedValue(mockConfig);
 
-    const result = await service.getConfigById(1, 'tenant_001', token);
+    const result = await service.getConfigById(1, user);
 
     expect(result).toEqual({
       success: true,
@@ -224,23 +232,22 @@ describe('ConfigService', () => {
       .mockRejectedValue(new NotFoundException('Not found'));
 
     await expect(
-      service.getConfigById(99, 'tenant_001', token),
+      service.getConfigById(99, user),
     ).rejects.toThrow(NotFoundException);
   });
   it('updates config status successfully', async () => {
     // Arrange
     jest
       .spyOn<any, any>(service, 'getConfigOrThrow')
-      .mockResolvedValue({ id: 1 });
+      .mockResolvedValue({ id: 1, status: ConfigStatus.UNDER_REVIEW });
 
     mockRepo.updateConfigStatus.mockResolvedValue(undefined);
 
     // Act
     const result = await service.updateConfigStatus(
       1,
-      'APPROVED',
-      'tenant_001',
-      'user_1',
+      ConfigStatus.APPROVED,
+      approverUser,
       token,
     );
 
@@ -253,13 +260,13 @@ describe('ConfigService', () => {
 
     expect(mockRepo.updateConfigStatus).toHaveBeenCalledWith(
       1,
-      'APPROVED',
+      ConfigStatus.APPROVED,
       token,
     );
 
     expect(result).toEqual({
       success: true,
-      message: 'Config status updated to APPROVED',
+      message: `Config status updated to ${ConfigStatus.APPROVED}`,
     });
   });
   it('throws NotFoundException when config does not exist', async () => {
@@ -274,6 +281,7 @@ describe('ConfigService', () => {
   it('submits configuration for approval and sends notification', async () => {
     const updatedConfig = { id: 1, status: ConfigStatus.UNDER_REVIEW };
 
+    mockRepo.findConfigById.mockResolvedValue({ id: 1, status: ConfigStatus.IN_PROGRESS });
     mockRepo.getupdateConfigByStatus.mockResolvedValue(updatedConfig);
 
     const dto = {
@@ -324,7 +332,7 @@ describe('ConfigService', () => {
       service.handleWorkflowAction(
         1,
         { action: 'export', data: {} },
-        user as any,
+        exporterUser as any,
         token,
       ),
     ).rejects.toThrow(BadRequestException);
@@ -333,7 +341,7 @@ describe('ConfigService', () => {
       service.handleWorkflowAction(
         1,
         { action: 'export', data: {} },
-        user as any,
+        exporterUser as any,
         token,
       ),
     ).rejects.toThrow('Failed to export config: SFTP write failed');
@@ -377,12 +385,13 @@ describe('ConfigService', () => {
       schema: {},
       mapping: {},
       functions: [],
+      status: ConfigStatus.READY_FOR_DEPLOYMENT,
     });
 
     const res = await service.handleWorkflowAction(
       1,
       { action: 'deploy', data: {} },
-      user as any,
+      publisherUser as any,
       token,
     );
 
@@ -397,7 +406,7 @@ describe('ConfigService', () => {
       service.handleWorkflowAction(
         1,
         { action: 'deploy', data: {} },
-        user as any,
+        publisherUser as any,
         token,
       ),
     ).rejects.toThrow(); // Will fail for other reasons in test context
@@ -410,7 +419,7 @@ describe('ConfigService', () => {
       service.handleWorkflowAction(
         1,
         { action: 'deploy', data: {} },
-        user as any,
+        publisherUser as any,
         token,
       ),
     ).rejects.toThrow(BadRequestException);
@@ -439,6 +448,7 @@ describe('ConfigService', () => {
       transactionType: 'pacs',
       version: '1',
       functions: [],
+      status: ConfigStatus.READY_FOR_DEPLOYMENT,
     });
 
     mockRepo.createDeployedConfig.mockRejectedValue(new Error('Insert failed'));
@@ -447,7 +457,7 @@ describe('ConfigService', () => {
       service.handleWorkflowAction(
         1,
         { action: 'deploy', data: {} },
-        user as any,
+        publisherUser as any,
         token,
       ),
     ).rejects.toThrow('Insert failed');
@@ -463,12 +473,13 @@ describe('ConfigService', () => {
           columns: [],
         },
       ],
+      status: ConfigStatus.READY_FOR_DEPLOYMENT,
     });
 
     await service.handleWorkflowAction(
       1,
       { action: 'deploy', data: {} },
-      user as any,
+      publisherUser as any,
       token,
     );
 
@@ -484,12 +495,13 @@ describe('ConfigService', () => {
         tableName: 'dm_table',
         columns: [{ name: 'id', type: 'text' }],
       },
+      status: ConfigStatus.READY_FOR_DEPLOYMENT,
     });
 
     await service.handleWorkflowAction(
       1,
       { action: 'deploy', data: {} },
-      user as any,
+      publisherUser as any,
       token,
     );
 
@@ -504,12 +516,13 @@ describe('ConfigService', () => {
       transactionType: 'txn_table',
       version: '1',
       functions: [],
+      status: ConfigStatus.READY_FOR_DEPLOYMENT,
     });
 
     await service.handleWorkflowAction(
       1,
       { action: 'deploy', data: {} },
-      user as any,
+      publisherUser as any,
       token,
     );
 
@@ -535,12 +548,13 @@ describe('ConfigService', () => {
           columns: [],
         },
       ],
+      status: ConfigStatus.READY_FOR_DEPLOYMENT,
     });
 
     await service.handleWorkflowAction(
       1,
       { action: 'deploy', data: {} },
-      user as any,
+      publisherUser as any,
       token,
     );
 
@@ -552,12 +566,13 @@ describe('ConfigService', () => {
       transactionType: 'pacs',
       version: '1',
       functions: [],
+      status: ConfigStatus.READY_FOR_DEPLOYMENT,
     });
 
     await service.handleWorkflowAction(
       1,
       { action: 'deploy', data: {} },
-      user as any,
+      publisherUser as any,
       token,
     );
 
@@ -569,18 +584,19 @@ describe('ConfigService', () => {
       transactionType: 'pacs',
       version: '1',
       functions: [],
+      status: ConfigStatus.READY_FOR_DEPLOYMENT,
     });
 
     await service.handleWorkflowAction(
       1,
       { action: 'deploy', data: { comment: 'deploy now' } },
-      user as any,
+      publisherUser as any,
       token,
     );
 
     expect(mockNotification.sendWorkflowNotification).toHaveBeenCalledWith(
       EventType.PublisherDeploy,
-      user,
+      publisherUser,
       expect.anything(),
       token,
       'deploy now',
@@ -602,7 +618,7 @@ describe('ConfigService', () => {
       service.handleWorkflowAction(
         1,
         { action: 'deploy', data: {} },
-        user as any,
+        publisherUser as any,
         token,
       ),
     ).rejects.toThrow(BadRequestException);
@@ -622,7 +638,7 @@ describe('ConfigService', () => {
       service.handleWorkflowAction(
         1,
         { action: 'export', data: {} },
-        user as any,
+        exporterUser as any,
         token,
       ),
     ).rejects.toThrow(ForbiddenException);
@@ -644,6 +660,7 @@ describe('ConfigService', () => {
           columns: [{ name: 'name', type: 'text' }],
         },
       ],
+      status: ConfigStatus.READY_FOR_DEPLOYMENT,
     });
 
     mockRepo.createDeployedConfig.mockResolvedValue(undefined);
@@ -653,7 +670,7 @@ describe('ConfigService', () => {
     await service.handleWorkflowAction(
       1,
       { action: 'deploy', data: {} },
-      user as any,
+      publisherUser as any,
       token,
     );
 
@@ -768,7 +785,7 @@ describe('ConfigService', () => {
       updated: true,
     });
 
-    const result = await service.updateConfigViaWrite(1, updateData, token);
+    const result = await service.updateConfigViaWrite(1, updateData, user);
 
     expect(mockRepo.updateConfigViaWrite).toHaveBeenCalledWith(
       1,
@@ -802,7 +819,7 @@ describe('ConfigService', () => {
   it('gets all configs', async () => {
     mockRepo.getAllConfigsWithFilters.mockResolvedValue([]);
 
-    const res = await service.getAllConfigs(0, 10, {}, token);
+    const res = await service.getAllConfigs(0, 10, {}, user);
     expect(res).toEqual([]);
   });
 });
