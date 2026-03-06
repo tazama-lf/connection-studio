@@ -45,7 +45,6 @@ export class AuditInterceptor implements NestInterceptor {
                         statusCode: response.statusCode,
                         executionTimeMs: Date.now() - startTime,
                         responseSize: JSON.stringify(responseData ?? {}).length,
-                        responseData: this.sanitizeData(responseData),
                     },
                 };
 
@@ -106,7 +105,6 @@ export class AuditInterceptor implements NestInterceptor {
                 handler,
                 controller,
                 userAgent: headers['user-agent'],
-                requestBody: this.sanitizeData(body),
                 pathParameters: params,
                 queryParameters: query,
                 timestamp: new Date().toISOString(),
@@ -324,25 +322,7 @@ export class AuditInterceptor implements NestInterceptor {
             eventType: 'UNKNOWN_EVENT',
         };
     }
-    /**
-     * Removes sensitive information from request body
-     * @private
-     */
-    private sanitizeData(body: any): any {
-        if (!body || typeof body !== 'object') {
-            return body;
-        }
 
-        // Remove sensitive fields that should never be logged
-        const { password, token, secret, key, auth, credential, ...cleanBody } = body as Record<string, unknown>;;
-
-        // Truncate large payloads to prevent storage bloat
-        const serialized = JSON.stringify(cleanBody);
-        if (serialized.length > 10000) {
-            return { _truncated: true, _originalSize: serialized.length };
-        }
-        return cleanBody;
-    }
     /**
      * Logs audit data asynchronously without blocking the main operation
      * @private
