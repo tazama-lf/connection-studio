@@ -174,6 +174,8 @@ export class ConfigService {
         status: ConfigStatus.IN_PROGRESS,
         tenantId,
         createdBy: userId,
+        related_transaction: dto.related_transaction,
+
       };
 
       const configId = await this.configRepository.createConfig(
