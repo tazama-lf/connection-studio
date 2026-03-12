@@ -24,6 +24,7 @@ import {
 import { WorkflowActionDto, SftpConfigDataDto } from './dto';
 import { EventType } from '../enums/events.enum';
 import { AuthenticatedUser } from '../auth/auth.types';
+import { AdminServiceClient } from '../services/admin-service-client.service';
 
 @Injectable()
 export class ConfigService {
@@ -37,6 +38,7 @@ export class ConfigService {
     private readonly sftpService: SftpService,
     private readonly notifyService: NotifyService,
     private readonly notificationService: NotificationService,
+    private readonly adminServiceClient: AdminServiceClient,
   ) { }
 
   private async getConfigOrThrow(
@@ -902,5 +904,22 @@ export class ConfigService {
       updatedFilters,
       user.token.tokenString,
     );
+  }
+
+  async getRelatedTransactions(
+    user: AuthenticatedUser,
+  ): Promise<{ related_transactions: string[] }> {
+    try {
+      return await this.configRepository.getRelatedTransactions(
+        user.token.tokenString,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to get related transactions: ${error.message}`,
+      );
+      throw new BadRequestException(
+        'Failed to retrieve related transactions',
+      );
+    }
   }
 }
