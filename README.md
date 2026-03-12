@@ -6,7 +6,7 @@ Tazama Connection Studio (TCS) is a comprehensive design-time configuration mana
 - A design-time configuration tool for creating FRMS monitoring rules
 - A visual schema and mapping editor with real-time validation
 - A lifecycle management system for configuration artifacts with maker-checker-publisher workflow
-- A deployment orchestrator that exports packages to DEMS (Data Execution Management Service)
+- A deployment orchestrator that exports packages to DEMS (Dynamic Event Monitoring Service)
 
 **What TCS is NOT:**
 - A runtime transaction processing engine
@@ -362,12 +362,7 @@ docker-compose down
 
 ### Development Guidelines
 
-- Follow TypeScript best practices and ESLint configurations
-- Write tests for new features and bug fixes
-- Follow conventional commit messages (feat:, fix:, docs:, etc.)
-- Keep components/services focused and maintainable
-- Update documentation for significant changes
-- Ensure all linting and tests pass before pushing
+Please refer to our [Contribution Guide](https://github.com/tazama-lf/General-Information/blob/main/Guides/Contribution-Guide.md) for detailed development guidelines, coding practices, and workflow instructions.
 
 ---
 
