@@ -903,4 +903,20 @@ export class ConfigService {
       user.token.tokenString,
     );
   }
+  async getRelatedTransactions(
+    user: AuthenticatedUser,
+  ): Promise<{ related_transactions: string[] }> {
+    try {
+      return await this.configRepository.getRelatedTransactions(
+        user.token.tokenString,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to get related transactions: ${error.message}`,
+      );
+      throw new BadRequestException(
+        'Failed to retrieve related transactions',
+      );
+    }
+  }
 }

@@ -172,4 +172,11 @@ export class ConfigRepository {
       token,
     );
   }
+  async getRelatedTransactions(
+    token: string,
+  ): Promise<{ related_transactions: string[] }> {
+    return await this.adminServiceClient.getRelatedTransactions(
+      token,
+    );
+  }
 }

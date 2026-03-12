@@ -1011,4 +1011,13 @@ export class AdminServiceClient {
       { data_model_json: dataModelJson },
     );
   }
+  async getRelatedTransactions(
+    token: string,
+  ): Promise<{ related_transactions: string[] }> {
+    return await this.executeHttpRequest(
+      'GET',
+      `${CONFIG_URL}/tcs/related-transactions`,
+      token,
+    );
+  }
 }

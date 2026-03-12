@@ -105,6 +105,18 @@ export class ConfigController {
 
     return result;
   }
+  @Get('/tcs/related-transactions')
+  @RequireAnyClaims(
+    TazamaClaims.EDITOR,
+    TazamaClaims.APPROVER,
+    TazamaClaims.PUBLISHER,
+    TazamaClaims.EXPORTER,
+  )
+  async getRelatedTransactions(
+    @User() user: AuthenticatedUser,
+  ): Promise<{ related_transactions: string[] }> {
+    return await this.configService.getRelatedTransactions(user);
+  }
 
   @Get(':id')
   @RequireAnyClaims(
