@@ -84,14 +84,14 @@ export const FUNCTION_CONFIGS: Record<AllowedFunctionName, FunctionConfig> = {
       {
         name: 'debtor-account',
         displayName: 'Debtor Account',
-        parameters: 'dbtrAcctId, TenantId, CreDtTm',
-        description: 'Parameters: dbtrAcctId, TenantId, CreDtTm',
+        parameters: 'dbtrAcctId, TenantId, creDtTm',
+        description: 'Parameters: dbtrAcctId, TenantId, creDtTm',
       },
       {
         name: 'creditor-account',
         displayName: 'Creditor Account',
-        parameters: 'cdtrAcctId, TenantId, CreDtTm',
-        description: 'Parameters: cdtrAcctId, TenantId, CreDtTm',
+        parameters: 'cdtrAcctId, TenantId, creDtTm',
+        description: 'Parameters: cdtrAcctId, TenantId, creDtTm',
       },
     ],
   },

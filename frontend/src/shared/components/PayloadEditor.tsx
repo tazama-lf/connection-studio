@@ -1360,7 +1360,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(({
               { }
               { }
               { }
-              {isEditMode && !readOnly && (
+              {!readOnly && (
                 <div className="mt-4">
                   {!showAddFieldForm ? (
                     <button
@@ -1512,7 +1512,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(({
                 </div>
               </div>
               { }
-              {isEditMode && !readOnly && (
+              {!readOnly && (
                 <div className="mb-4">
                   {!showAddFieldForm ? (
                     <button

@@ -312,7 +312,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
       const statusLabel = newStatus === 'active' ? 'activated' : 'deactivated';
       showSuccess(
         'Success',
-        `Config "${config.msgFam}" has been ${statusLabel} successfully.`,
+        `Config "${config.transactionType}" has been ${statusLabel} successfully.`,
       );
 
       fetchConfigsTemp();
@@ -639,6 +639,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
     );
   }
 
+
   return (
     <>
       {error && (
@@ -713,7 +714,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
                 fontSize: '15px',
               }}
             >
-              "{confirmDialog.config?.msgFam ?? 'this configuration'}"
+              "{confirmDialog.config?.transactionType ?? 'this configuration'}"
             </Box>
             {confirmDialog.type === 'export' && ' to SFTP'}?
           </DialogContentText>
