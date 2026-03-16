@@ -159,7 +159,7 @@ export class JobController {
   }
 
   @Patch('/update/activation/:id')
-  @RequireAnyClaims(TazamaClaims.PUBLISHER)
+  @RequireAnyClaims(TazamaClaims.PUBLISHER, TazamaClaims.APPROVER)
   @Audit()
   async updateJobActivation(
     @Param('id') id: string,
