@@ -4,7 +4,7 @@ import type { Control } from 'react-hook-form';
 export interface BaseInputFieldProps {
   name: string;
   label: string | React.ReactNode;
-  control: Control<unknown>;
+  control: Control<any>;
   placeholder?: string;
   disabled?: boolean;
   maxLength?: number;

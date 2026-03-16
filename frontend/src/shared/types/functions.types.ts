@@ -4,8 +4,7 @@ export type AllowedFunctionName =
   | 'addAccountHolder'
   | 'addEntity'
   | 'saveTransactionDetails'
-  | 'addDataModel'
-  | 'addDataModelTable';
+  | 'addDataModel';
 export interface FunctionDefinition {
   params?: unknown;
   functionName: AllowedFunctionName;
@@ -85,14 +84,14 @@ export const FUNCTION_CONFIGS: Record<AllowedFunctionName, FunctionConfig> = {
       {
         name: 'debtor-account',
         displayName: 'Debtor Account',
-        parameters: 'dbtrAcctId, TenantId',
-        description: 'Parameters: dbtrAcctId, TenantId',
+        parameters: 'dbtrAcctId, TenantId, CreDtTm',
+        description: 'Parameters: dbtrAcctId, TenantId, CreDtTm',
       },
       {
         name: 'creditor-account',
         displayName: 'Creditor Account',
-        parameters: 'cdtrAcctId, TenantId',
-        description: 'Parameters: cdtrAcctId, TenantId',
+        parameters: 'cdtrAcctId, TenantId, CreDtTm',
+        description: 'Parameters: cdtrAcctId, TenantId, CreDtTm',
       },
     ],
   },
@@ -298,5 +297,5 @@ export const FUNCTION_CONFIGS: Record<AllowedFunctionName, FunctionConfig> = {
     optionalParameters: [],
     configurations: [],
     dataModelConfiguration: [],
-  },
+  }
 };

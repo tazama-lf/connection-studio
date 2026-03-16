@@ -205,6 +205,9 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
     const prefixedParams = allParams.map((param) => {
       const trimmed = param.trim();
       const lowerParam = trimmed.toLowerCase();
+      if (trimmed.includes('.')) {
+        return trimmed;
+      }
       // Check if it's tenantId (case-insensitive)
       if (selectedFunction === 'saveTransactionDetails') {
         return `transactionDetails.${trimmed}`;
@@ -496,6 +499,7 @@ interface EndpointData {
   description: string;
   contentType: string;
   msgFam?: string;
+  relatedTransaction?: string;
 }
 
 interface EditEndpointModalProps {
@@ -1151,6 +1155,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
           | 'application/json'
           | 'application/xml',
         payload: endpointData.contentType === 'application/json' ? parsedPayload : payload,
+        related_transaction: endpointData.relatedTransaction?.trim() || undefined,
       };
 
       let finalSchema = currentSchema;
@@ -2061,6 +2066,9 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                       disabled={
                         loading ||
                         (currentStep === 'mapping' && !isMappingValid) ||
+                        (currentStep === 'functions' &&
+                          selectedFunctions.length > 0 &&
+                          validateFunctionParameters().length > 0) ||
                         (currentStep === 'simulation' &&
                           !isSimulationSuccess &&
                           !readOnly) ||

@@ -1,6 +1,7 @@
 import { XMLParser } from 'fast-xml-parser';
 import { ArrowDownToLine, Code2, FilePlus, FileText, List, Settings2, SparklesIcon, Terminal, XCircle } from 'lucide-react';
 import React, { useEffect, useState, forwardRef, useImperativeHandle } from 'react';
+import { configApi } from '../../features/config/services/configApi';
 import ReactJson from 'react-json-view';
 import * as yup from 'yup';
 import type {
@@ -35,6 +36,7 @@ interface EndpointFormData {
   description: string;
   contentType: string;
   msgFam?: string;
+  relatedTransaction?: string;
 }
 interface InferredField {
   path: string;
@@ -76,6 +78,13 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(({
   );
   const [inferredFields, setInferredFields] = useState<InferredField[]>([]);
   const [showInferredFields, setShowInferredFields] = useState(false);
+  const [relatedTransactions, setRelatedTransactions] = useState<string[]>([]);
+
+  useEffect(() => {
+    configApi.getRelatedTransactions()
+      .then((res) => { setRelatedTransactions(Array.isArray(res.data) ? res.data : []); })
+      .catch(() => { setRelatedTransactions([]); });
+  }, []);
   const [fieldGenerationError, setFieldGenerationError] = useState<
     string | null
   >(null);
@@ -999,6 +1008,37 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(({
                 >
                   <option value="application/json">application/json</option>
                   <option value="application/xml">application/xml</option>
+                </select>
+              );
+            })()}
+          </div>
+          { }
+          <div>
+            <label
+              htmlFor="related-transaction"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
+              Related Transaction
+            </label>
+            {(() => {
+              const isReadOnly = readOnly || (!isCloning && !!configId);
+              return (
+                <select
+                  id="related-transaction"
+                  value={endpointData.relatedTransaction ?? ''}
+                  onChange={(e) => { handleEndpointDataChange('relatedTransaction', e.target.value); }}
+                  className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white ${isReadOnly
+                    ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
+                    : 'bg-white border-gray-300'
+                    }`}
+                  disabled={isReadOnly}
+                >
+                  <option value="">-- Select Related Transaction --</option>
+                  {relatedTransactions.map((rt) => (
+                    <option key={rt} value={rt}>
+                      {rt}
+                    </option>
+                  ))}
                 </select>
               );
             })()}

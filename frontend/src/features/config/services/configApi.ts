@@ -13,6 +13,7 @@ export interface CreateConfigRequest {
   mapping?: FieldMapping[];
   functions?: FunctionDefinition[];
   fieldAdjustments?: FieldAdjustment[];
+  related_transaction?: string;
 }
 
 export interface CloneConfigRequest {
@@ -527,6 +528,14 @@ export class ConfigApiService {
     );
     const result = await ConfigApiService.handleResponse<ConfigResponse>(response);
     return result;
+  }
+
+  async getRelatedTransactions(): Promise<{ success: boolean; data: string[] }> {
+    const response = await fetch(`${this.baseURL}/config/tcs/related-transactions`, {
+      method: 'GET',
+      headers: ConfigApiService.getAuthHeaders(),
+    });
+    return await ConfigApiService.handleResponse<{ success: boolean; data: string[] }>(response);
   }
 
   async getConfigsByStatus(

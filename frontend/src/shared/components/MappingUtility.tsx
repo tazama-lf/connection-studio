@@ -508,30 +508,56 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       ];
     }
 
+    let rawNodes: TreeNode[] = [];
+
     // If sourceSchema is an array (from our interface)
     if (Array.isArray(sourceSchema)) {
-      return buildSourceTreeFromArray(sourceSchema);
+      rawNodes = buildSourceTreeFromArray(sourceSchema);
+    } else if (sourceSchema.properties || sourceSchema.type === 'object') {
+      // If sourceSchema is a JSON schema object
+      rawNodes = buildSourceTreeFromSchema(sourceSchema);
+    } else {
+      // Fallback
+      rawNodes = [
+        {
+          id: 'schema',
+          name: 'Schema Data',
+          path: ['schema'],
+          children: Object.keys(sourceSchema).map((key) => ({
+            id: `schema.${key}`,
+            name: key,
+            path: ['schema', key],
+            type: typeof sourceSchema[key] === 'string' ? 'string' : 'object',
+          })),
+        },
+      ];
+    }
+    const messageStructureNodes = rawNodes.filter((node) => node.id !== 'TenantId');
+    const systemReservedNodes = rawNodes.filter((node) => node.id === 'TenantId');
+
+    const sections: TreeNode[] = [];
+
+    if (messageStructureNodes.length > 0) {
+      sections.push({
+        id: 'messageStructure',
+        name: 'Message Structure',
+        path: ['messageStructure'],
+        type: 'section',
+        children: messageStructureNodes,
+      });
     }
 
-    // If sourceSchema is a JSON schema object
-    if (sourceSchema.properties || sourceSchema.type === 'object') {
-      return buildSourceTreeFromSchema(sourceSchema);
+    if (systemReservedNodes.length > 0) {
+      sections.push({
+        id: 'systemReserved',
+        name: 'System Reserved',
+        path: ['systemReserved'],
+        type: 'section',
+        children: systemReservedNodes,
+      });
     }
 
-    // Fallback
-    return [
-      {
-        id: 'schema',
-        name: 'Schema Data',
-        path: ['schema'],
-        children: Object.keys(sourceSchema).map((key) => ({
-          id: `schema.${key}`,
-          name: key,
-          path: ['schema', key],
-          type: typeof sourceSchema[key] === 'string' ? 'string' : 'object',
-        })),
-      },
-    ];
+    return sections.length > 0 ? sections : rawNodes;
   }, [sourceSchema]); // Only recalculate when sourceSchema changes
   // Helper function to convert API destination options to TreeNode format
   const convertDestinationOptionsToTree = (
@@ -1137,7 +1163,6 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
 
           const nodeType = node.id.startsWith('redis') ? 'redis' : type;
           const isRedis = node.id === 'redis';
-          const isTenantId = node.id === 'TenantId' && depth === 0;
 
           if (isSection) {
             return (
@@ -1162,12 +1187,6 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
 
           return (
             <div key={node.id} data-id="element-177">
-              {/* Add "System Reserved" heading before TenantId */}
-              {isTenantId && (
-                <div className="mb-2 mt-4">
-                  <div className="text-sm text-gray-600">System Reserved</div>
-                </div>
-              )}
               <div
                 className={`flex items-center p-1 rounded hover:bg-gray-100 ${isSelected ? 'bg-blue-100' : ''}`}
                 style={{ paddingLeft: `${depth * 20 + 4}px` }}
@@ -1301,12 +1320,6 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                     className="border border-gray-200 rounded-md p-3 h-96 overflow-auto"
                     data-id="element-197"
                   >
-                    <div
-                      className="mb-2 text-sm text-gray-500"
-                      data-id="element-198"
-                    >
-                      Message Structure
-                    </div>
                     {renderTree(
                       sourceTree,
                       expandedSourceNodes,
@@ -1824,8 +1837,9 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                 <XIcon size={20} />
               </button>
             </div>
-
-            <div className="mb-4 text-sm text-gray-600">
+            
+            {/* Commenting out for now might need it in future */}
+            {/* <div className="mb-4 text-sm text-gray-600">
               <p className="mb-2">
                 Edit the destination fields JSON structure. Add, remove, or modify fields as needed.
               </p>
@@ -1855,7 +1869,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                   <li><strong>Data Cache</strong> - Can only contain the "redis" object (no other root objects allowed)</li>
                 </ul>
               </div>
-            </div>
+            </div> */}
 
             {/* JSON Editor */}
             <div className="border border-gray-200 rounded-md p-4 bg-gray-50 mb-4" style={{ maxHeight: '500px', overflow: 'auto' }}>
@@ -1870,7 +1884,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                   displayDataTypes={true}
                   displayObjectSize={true}
                   enableClipboard={true}
-                  collapsed={1}
+                  collapsed={2}
                   style={{ fontSize: '13px', backgroundColor: 'transparent' }}
                 />
               )}
