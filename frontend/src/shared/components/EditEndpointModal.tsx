@@ -27,6 +27,7 @@ import {
   isExporter,
   isPublisher,
 } from '../../utils/common/roleUtils';
+import { dataModelApi } from '../../features/data-model';
 import { useToast } from '../providers/ToastProvider';
 import type {
   AllowedFunctionName,
@@ -97,61 +98,127 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
   >([]);
   const [dataModelForm, setDataModelForm] = useState<any>({});
   const [tableNameError, setTableNameError] = useState<string>('');
+  const [dataModelJson, setDataModelJson] = useState<Record<string, any> | null>(null);
+  const [dataModelLoading, setDataModelLoading] = useState(false);
 
-  const buildSourceOptions = (schema: any): any[] => {
-    const options: any[] = [];
-
-    if (!schema) return options;
-
-    if (Array.isArray(schema)) {
-      schema.forEach((field) => {
-        if (field.type && field.type.toLowerCase() === 'object') {
-          const cleanPath = (field.path ?? field.name ?? '').replace(
-            /\[0\]/g,
-            '.0',
-          );
-          options.push({
-            label: field.name ?? cleanPath,
-            value: cleanPath,
-            group: 'Payload',
-          });
-        }
-      });
+  useEffect(() => {
+    if (selectedFunction === 'addDataModel' && !dataModelJson) {
+      setDataModelLoading(true);
+      dataModelApi
+        .getDestinationFieldsJson()
+        .then((response) => {
+          if (response.success && response.data) {
+            setDataModelJson(response.data as Record<string, any>);
+          }
+        })
+        .catch(() => { /* silently fail */ })
+        .finally(() => setDataModelLoading(false));
     }
-    else if (schema.properties && typeof schema.properties === 'object') {
+  }, [selectedFunction]);
+
+  const flattenDataModelJson = (
+    obj: Record<string, any>,
+    parentPath = '',
+    result: { path: string; type: string; parent: string; group: 'Data Model' }[] = [],
+  ): { path: string; type: string; parent: string; group: 'Data Model' }[] => {
+    Object.entries(obj).forEach(([key, value]) => {
+      const currentPath = parentPath ? `${parentPath}.${key}` : key;
+      const isObject = value !== null && typeof value === 'object' && !Array.isArray(value);
+      const isArray = Array.isArray(value);
+      const type = isObject ? 'Object' : isArray ? 'Array' : typeof value;
+      result.push({ path: currentPath, type, parent: parentPath, group: 'Data Model' });
+      if (isObject) {
+        flattenDataModelJson(value, currentPath, result);
+      }
+    });
+    return result;
+  };
+
+  const flatDataModelFields = dataModelJson ? flattenDataModelJson(dataModelJson) : [];
+
+  const getObjectsFromFlatSchema = (
+    fields: { path: string; type: string; group: string }[],
+  ) =>
+    fields
+      .filter((f) => f.type.toLowerCase() === 'object')
+      .map((f) => ({ label: f.path, value: f.path, group: f.group }));
+
+  const jsonBOptions = () => {
+    const payloadFields: { path: string; type: string; group: string }[] = [];
+
+    if (Array.isArray(currentSchema)) {
+      currentSchema.forEach((f: any) => {
+        if (f.path) payloadFields.push({ path: f.path, type: f.type ?? '', group: 'Payload' });
+      });
+    } else if (currentSchema?.properties) {
       const traverseSchema = (props: any, parentPath = '') => {
         Object.entries(props).forEach(([key, value]: [string, any]) => {
           const path = parentPath ? `${parentPath}.${key}` : key;
-
-          if (value.type && value.type.toLowerCase() === 'object') {
-            options.push({
-              label: key,
-              value: path,
-              group: 'Payload',
-            });
-          }
-
-          if (value.properties && typeof value.properties === 'object') {
-            traverseSchema(value.properties, path);
-          }
-          else if (value.items?.properties) {
-            traverseSchema(value.items.properties, path);
-          }
+          payloadFields.push({ path, type: value.type ?? 'string', group: 'Payload' });
+          if (value.properties) traverseSchema(value.properties, path);
+          else if (value.items?.properties) traverseSchema(value.items.properties, `${path}[0]`);
         });
       };
-
-      traverseSchema(schema.properties);
+      traverseSchema(currentSchema.properties);
     }
 
-    return options;
+    return [
+      ...getObjectsFromFlatSchema(payloadFields),
+      ...getObjectsFromFlatSchema(flatDataModelFields),
+    ];
   };
 
-  const getPrimaryKeyOptions = () => [{ value: '_key', label: '_key', group: 'Default' }]
+  const getPrimaryKeyOptions = () => {
+    const defaults = [{ value: '_key', label: '_key', group: 'Default' }];
+    if (!dataModelForm?.jsonKey) return defaults;
 
-  const jsonBOptions = () => {
-    // Add Sources from currentSchema (only object types)
-    const sourceOptions = buildSourceOptions(currentSchema);
-    return sourceOptions;
+    try {
+      const parsed = JSON.parse(dataModelForm.jsonKey) as { value?: string; group?: string };
+      const selectedPath = parsed?.value ?? '';
+      const selectedGroup = parsed?.group ?? '';
+      if (!selectedPath) return defaults;
+
+      let childFields: { path: string; type: string }[] = [];
+
+      if (selectedGroup === 'Payload') {
+        if (Array.isArray(currentSchema)) {
+          childFields = currentSchema
+            .filter((f: any) => {
+              const parent: string = f.parent ?? '';
+              const normalizedParent = parent.replace(/\.(\d+)(\.|$)/g, '[$1]$2');
+              return parent === selectedPath || normalizedParent === selectedPath;
+            })
+            .map((f: any) => ({ path: f.path, type: f.type ?? '' }));
+        } else if (currentSchema?.properties) {
+          const parts = selectedPath.split('.');
+          let node: any = currentSchema;
+          for (const part of parts) {
+            if (!node) break;
+            node = node.properties?.[part] ?? node.items?.properties?.[part] ?? null;
+          }
+          if (node?.properties) {
+            Object.entries(node.properties).forEach(([key, val]: [string, any]) => {
+              childFields.push({ path: key, type: val.type ?? '' });
+            });
+          }
+        }
+      } else if (selectedGroup === 'Data Model') {
+        childFields = flatDataModelFields
+          .filter((f) => f.parent === selectedPath)
+          .map((f) => ({ path: f.path, type: f.type }));
+      }
+
+      const keyOptions = childFields
+        .filter((f) => f.type.toLowerCase() !== 'object' && f.type.toLowerCase() !== 'array')
+        .map((f) => {
+          const key = f.path.split('.').pop()?.replace(/\[\d+\]$/, '') ?? f.path;
+          return { value: key, label: key, group: 'Fields' };
+        });
+
+      return [...defaults, ...keyOptions];
+    } catch {
+      return defaults;
+    }
   };
 
   const functionConfig = FUNCTION_CONFIGS[selectedFunction];
@@ -164,21 +231,43 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
       } catch (error) {
         jsonKeyparsed = {}; // fallback
       }
+
+      const selectedPath = jsonKeyparsed?.value ?? '';
+      const selectedGroup = jsonKeyparsed?.group ?? '';
+      const datasource = selectedGroup === 'Payload' ? 'payload' : 'dataModel';
+      const primaryKeyName = dataModelForm?.primaryKey ?? '';
+      const primaryKeyPath = selectedPath && primaryKeyName
+        ? `${selectedPath}.${primaryKeyName}`
+        : primaryKeyName;
+      let primaryKeyType = 'string';
+      if (primaryKeyName && selectedPath) {
+        if (selectedGroup === 'Payload' && Array.isArray(currentSchema)) {
+          const field = (currentSchema as any[]).find(
+            (f) => f.parent === selectedPath && (f.path === primaryKeyPath || f.path?.split('.').pop() === primaryKeyName),
+          );
+          if (field?.type) primaryKeyType = field.type.toLowerCase();
+        } else if (selectedGroup === 'Data Model') {
+          const field = flatDataModelFields.find(
+            (f) => f.parent === selectedPath && f.path === primaryKeyPath,
+          );
+          if (field?.type) primaryKeyType = field.type.toLowerCase();
+        }
+      }
+
       // Build payload from dataModelForm
       const payload = {
         columns: [
           {
             name: '_key',
-            type: 'string',
-            param: dataModelForm?.primaryKey || '',
-            datasource: 'dataModel',
+            type: primaryKeyType,
+            param: primaryKeyPath,
+            datasource,
           },
           {
             name: 'data',
             type: 'jsonb',
-            param: jsonKeyparsed?.value ?? '',
-            datasource:
-              jsonKeyparsed?.group === 'Payload' ? 'payload' : 'dataModel',
+            param: selectedPath,
+            datasource,
           },
         ],
         tableName: tenantId + '_' + (dataModelForm?.tableName ?? ''),
@@ -317,6 +406,45 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
               <p className="mt-1 text-sm text-red-600">{tableNameError}</p>
             )}
           </div>
+                    {/* JSON Key Select Field with Dynamic Grouping */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Data
+            </label>
+            <select
+              value={dataModelForm?.jsonKey ?? ''}
+              onChange={(e) => {
+                setDataModelForm({ ...dataModelForm, jsonKey: e.target.value, primaryKey: '' });
+              }}
+              disabled={dataModelLoading}
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white disabled:opacity-50"
+            >
+              <option value="">Select Data</option>
+
+              {/* Dynamically generate optgroups based on unique groups in jsonBOptions */}
+              {Array.from(
+                new Set(jsonBOptions().map((opt: any) => opt.group)),
+              ).map((groupName: any) => (
+                <optgroup key={groupName} label={groupName}>
+                  {jsonBOptions()
+                    .filter((option: any) => option.group === groupName)
+                    .map((option: any) => (
+                      <option
+                        key={option.value}
+                        value={JSON.stringify({
+                          value: option.value,
+                          label: option.label,
+                          group: option.group,
+                        })}
+                      >
+                        {option.label}
+                      </option>
+                    ))}
+                </optgroup>
+              ))}
+            </select>
+          </div>
+          
 
           {/* Primary Key Select Field */}
           <div>
@@ -344,43 +472,6 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
                     .filter((option: any) => option.group === groupName)
                     .map((option: any) => (
                       <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                </optgroup>
-              ))}
-            </select>
-          </div>
-
-          {/* JSON Key Select Field with Dynamic Grouping */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Data
-            </label>
-            <select
-              value={dataModelForm?.jsonKey ?? ''}
-              onChange={(e) => { setDataModelForm({ ...dataModelForm, jsonKey: e.target.value }); }
-              }
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-            >
-              <option value="">Select Data</option>
-
-              {/* Dynamically generate optgroups based on unique groups in jsonBOptions */}
-              {Array.from(
-                new Set(jsonBOptions().map((opt: any) => opt.group)),
-              ).map((groupName: any) => (
-                <optgroup key={groupName} label={groupName}>
-                  {jsonBOptions()
-                    .filter((option: any) => option.group === groupName)
-                    .map((option: any) => (
-                      <option
-                        key={option.value}
-                        value={JSON.stringify({
-                          value: option.value,
-                          label: option.label,
-                          group: option.group,
-                        })}
-                      >
                         {option.label}
                       </option>
                     ))}
@@ -915,6 +1006,8 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
 
     // Check each function's parameters
     selectedFunctions.forEach((func, funcIndex) => {
+      if (func.columns) return;
+
       const functionConfig = FUNCTION_CONFIGS[func.functionName];
 
       if (!functionConfig) {
@@ -1946,7 +2039,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                         <div className="bg-white rounded-lg p-6 w-full max-w-2xl relative z-50 shadow-2xl">
                           <div className="flex justify-between items-center mb-4">
                             <h3 className="text-lg font-semibold">
-                              Add Function
+                              Add Function 
                             </h3>
                             <button
                               onClick={() => { setShowAddFunctionModal(false); }}
