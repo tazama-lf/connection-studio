@@ -162,21 +162,25 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
       traverseSchema(currentSchema.properties);
     }
 
+    const excludedTopLevelKeys = ['redis', 'transactiondetails'];
+    const filteredDataModelFields = flatDataModelFields.filter(
+      (f) => !excludedTopLevelKeys.includes(f.path.split('.')[0].toLowerCase()),
+    );
+
     return [
       ...getObjectsFromFlatSchema(payloadFields),
-      ...getObjectsFromFlatSchema(flatDataModelFields),
+      ...getObjectsFromFlatSchema(filteredDataModelFields),
     ];
   };
 
   const getPrimaryKeyOptions = () => {
-    const defaults = [{ value: '_key', label: '_key', group: 'Default' }];
-    if (!dataModelForm?.jsonKey) return defaults;
+    if (!dataModelForm?.jsonKey) return [];
 
     try {
       const parsed = JSON.parse(dataModelForm.jsonKey) as { value?: string; group?: string };
       const selectedPath = parsed?.value ?? '';
       const selectedGroup = parsed?.group ?? '';
-      if (!selectedPath) return defaults;
+      if (!selectedPath) return [];
 
       let childFields: { path: string; type: string }[] = [];
 
@@ -215,9 +219,9 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
           return { value: key, label: key, group: 'Fields' };
         });
 
-      return [...defaults, ...keyOptions];
+      return keyOptions;
     } catch {
-      return defaults;
+      return [];
     }
   };
 
