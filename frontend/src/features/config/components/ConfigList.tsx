@@ -608,7 +608,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
 
       const params: PaginationParams = {
         limit,
-        offset,
+        offset: offset * limit,
         userRole: userRole as string,
       };
 
@@ -624,11 +624,15 @@ export const ConfigList: React.FC<ConfigListProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [userRole, pagination, searchingFilters])
+  }, [userRole, offset, limit, searchingFilters])
+
+  useEffect(() => {
+    setOffset(0);
+  }, [searchingFilters]);
 
   useEffect(() => {
     fetchConfigsTemp();
-  }, [pagination, searchingFilters]);
+  }, [fetchConfigsTemp]);
 
   if (loading) {
     return (

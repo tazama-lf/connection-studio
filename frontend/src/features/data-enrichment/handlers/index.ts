@@ -974,7 +974,7 @@ export const loadJobs = async (
   searchingFilters: Record<string, unknown>,
 ): Promise<PaginatedJobResponse> => {
   const limit: number = itemsPerPage;
-  const offset: number = pageNumber;
+  const offset: number = pageNumber * itemsPerPage;
   const params = { limit, offset, userRole };
 
   return await dataEnrichmentJobApi.getList(params, searchingFilters);

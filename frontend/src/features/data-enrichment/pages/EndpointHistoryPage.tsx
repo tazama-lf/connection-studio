@@ -113,7 +113,6 @@ const EndpointHistoryPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const [page, setPage] = useState<number>(1);
-  const [totalPages, setTotalPages] = useState<number>(0);
   const [totalRecords, setTotalRecords] = useState<number>(0);
   const itemsPerPage = UI_CONFIG?.pagination?.defaultPageSize ?? 10;
   const [searchingFilters, setSearchingFilters] = useState<Record<string, any>>(
@@ -140,7 +139,7 @@ const EndpointHistoryPage: React.FC = () => {
       try {
         const res = await dataEnrichmentApi.getJobHistory(
           jobId,
-          offset,
+          offset * limit,
           limit,
           searchingFilters,
         );

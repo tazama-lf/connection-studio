@@ -123,8 +123,8 @@ export const useCronJobList = (): {
         setError(null);
 
         const response = await apiLoadSchedules(
-          pagination.page,
-          pagination.limit,
+          offset,
+          limit,
           userRole as string,
           searchingFilters,
         );
@@ -139,8 +139,12 @@ export const useCronJobList = (): {
         setLoadingState((s) => ({ ...s, page: false }));
       }
     },
-    [pagination, userRole, searchingFilters],
+    [offset, limit, userRole, searchingFilters],
   );
+
+  useEffect(() => {
+    setOffset(0);
+  }, [searchingFilters]);
 
   useEffect(() => {
     loadSchedules();

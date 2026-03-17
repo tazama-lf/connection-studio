@@ -53,8 +53,8 @@ const ApproverDEJobsPage: React.FC = () => {
       setError(null);
 
       const response = await loadJobs(
-        pagination.page,
-        pagination.limit,
+        offset,
+        limit,
         userRole as string,
         searchingFilters,
       );
@@ -68,11 +68,15 @@ const ApproverDEJobsPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [pagination, searchingFilters])
+  }, [offset, limit, searchingFilters, userRole])
+
+  useEffect(() => {
+    setOffset(0);
+  }, [searchingFilters]);
 
   useEffect(() => {
     void fetchDeJobs();
-  }, [fetchDeJobs, pagination, searchingFilters]);
+  }, [fetchDeJobs]);
 
   const handleJobRefresh = (): void => {
     void fetchDeJobs();
