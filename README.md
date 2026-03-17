@@ -3,10 +3,13 @@
 Tazama Connection Studio (TCS) is a comprehensive design-time configuration management platform that enables financial institutions to create, validate, and deploy transaction monitoring configurations without writing code. TCS serves as the bridge between business requirements and runtime execution by providing a full-stack solution — a visual frontend for schema definition and mapping configuration, combined with a robust backend API for lifecycle management and deployment orchestration.
 
 **What TCS is:**
-- A design-time configuration tool for creating FRMS monitoring rules
-- A visual schema and mapping editor with real-time validation
-- A lifecycle management system for configuration artifacts with maker-checker-publisher workflow
-- A deployment orchestrator that exports packages to DEMS (Dynamic Event Monitoring Service)
+- A design-time configuration management platform for creating and managing transaction schemas that can be dynamically processed at runtime
+- A visual schema and mapping editor with real-time validation for DEMS (Dynamic Event Monitoring Service) configurations
+- A data enrichment job orchestration system supporting both PUSH and PULL operations with SFTP integration
+- A CRON-based job scheduler for automated data processing and synchronization tasks
+- A lifecycle management system with maker-checker-approver-publisher workflow for configuration artifacts
+- A multi-tenant platform with role-based access control (Editor, Approver, Exporter, Publisher)
+- An audit logging system tracking all configuration changes and workflow transitions
 
 **What TCS is NOT:**
 - A runtime transaction processing engine
