@@ -152,11 +152,22 @@ export class SchedulerService {
         );
       }
 
-      return await this.adminServiceClient.updateSchedule(
+      const result = await this.adminServiceClient.updateSchedule(
         id,
         attr,
         user.token.tokenString,
       );
+
+      if (result.success && existingSchedule.status !== JobStatus.INPROGRESS) {
+        await this.adminServiceClient.updateScheduleByStatus(
+          id,
+          JobStatus.INPROGRESS,
+          user.tenantId,
+          user.token.tokenString,
+        );
+      }
+
+      return result;
     } catch (error) {
       this.loggerService.error(`Error updating schedule: ${error instanceof Error ? error.message : String(error)}`);
       throw error;

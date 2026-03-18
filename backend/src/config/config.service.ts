@@ -753,6 +753,20 @@ export class ConfigService {
       user.token.tokenString,
     );
 
+    const updatedConfig = await this.getConfigOrThrow(
+      id,
+      user.tenantId,
+      user.token.tokenString,
+    );
+
+    if (updatedConfig.status !== ConfigStatus.IN_PROGRESS) {
+      await this.configRepository.updateConfigStatus(
+        id,
+        ConfigStatus.IN_PROGRESS,
+        user.token.tokenString,
+      );
+    }
+
     return result;
   }
 

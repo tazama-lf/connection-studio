@@ -121,12 +121,24 @@ export class JobService {
       }
     }
 
-    return await this.adminServiceClient.updateJob(
+    const result = await this.adminServiceClient.updateJob(
       id,
       updatedJob,
       type,
       user.token.tokenString,
     );
+
+    if (result.success && existingJob.status !== JobStatus.INPROGRESS) {
+      await this.adminServiceClient.updateJobByStatus(
+        id,
+        JobStatus.INPROGRESS,
+        user.tenantId,
+        type,
+        user.token.tokenString,
+      );
+    }
+
+    return result;
   }
 
   async createPush(
