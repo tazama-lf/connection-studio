@@ -76,6 +76,11 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
   // Ref to track if API fetch is in progress (prevent race conditions)
   const isFetchingRef = useRef(false);
 
+  // Ref to track if the user has made local changes (add/remove).
+  // When true, incoming existingMappings prop updates are ignored so the
+  // parent cannot accidentally re-populate mappings that were just removed.
+  const hasLocalChangesRef = useRef(false);
+
   // State for managing mappings
   const [mappingError, setMappingError] = useState<string | null>(null);
   const [currentMappings, setCurrentMappings] =
@@ -93,14 +98,16 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
   const [savingDestinationJson, setSavingDestinationJson] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  // Load existing mappings on component mount
   useEffect(() => {
+    if (hasLocalChangesRef.current) return;
     setCurrentMappings(existingMappings);
     validateMappings(existingMappings);
   }, [existingMappings]);
 
-  // Fetch current mappings from backend on component mount if configId is available
+  // Fetch current mappings from backend on component mount if configId is available.
+  // Also reset the local-changes flag so switching to a different config works correctly.
   useEffect(() => {
+    hasLocalChangesRef.current = false;
     if (configId) {
       fetchCurrentMappings();
     }
@@ -342,6 +349,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       const response = await configApi.removeMapping(configId!, index);
 
       if (response.success) {
+        hasLocalChangesRef.current = true;
         const updatedMappings = currentMappings.filter((_, i) => i !== index);
         setCurrentMappings(updatedMappings);
         validateMappings(updatedMappings);
@@ -1117,6 +1125,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
         };
 
         // Update local state only after successful API call
+        hasLocalChangesRef.current = true;
         const updatedMappings = [...currentMappings, newFieldMapping];
         setCurrentMappings(updatedMappings);
         validateMappings(updatedMappings);

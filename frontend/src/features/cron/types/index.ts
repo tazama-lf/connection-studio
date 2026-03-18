@@ -16,7 +16,7 @@ export interface CronJobConfirmationDialogProps {
   jobName: string;
   actionLoading: '' | 'export' | 'approval' | 'approve';
   onClose: () => void;
-  onConfirm: (type: 'export' | 'approval' | 'approve') => void;
+  onConfirm: (type: 'export' | 'approval' | 'approve', comment?: string) => void;
 }
 
 export interface CronJobTableColumnsProps {

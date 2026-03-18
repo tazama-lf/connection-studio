@@ -253,12 +253,12 @@ export const useCronJobList = (): {
   }, [schedules]);
 
   const handleApproveConfirm = useCallback(
-    async () => {
+    async (comment?: string) => {
       if (!confirmDialog.schedule) return;
 
       try {
         setLoadingState((s) => ({ ...s, action: 'approve' }));
-        await cronHandlers.cronJobApi.updateStatus(confirmDialog.schedule.id, CRON_JOB_STATUSES.APPROVED, '');
+        await cronHandlers.cronJobApi.updateStatus(confirmDialog.schedule.id, CRON_JOB_STATUSES.APPROVED, comment ?? '');
         showSuccess('Cron job approved successfully');
         loadSchedules();
         setConfirmDialog({ open: false, type: '', schedule: null });

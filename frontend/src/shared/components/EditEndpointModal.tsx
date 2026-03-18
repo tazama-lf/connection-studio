@@ -274,7 +274,7 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
             datasource,
           },
         ],
-        tableName: tenantId + '_' + (dataModelForm?.tableName ?? ''),
+        tableName: (dataModelForm?.tableName ?? ''),
         functionName: 'addDataModelTable',
       };
 
@@ -1402,7 +1402,6 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
         createRequest.schema = finalSchema;
       }
 
-
       const actualConfigId =
         createdEndpoint?.id || existingConfig?.id || endpointId;
       const shouldCreate = !createdEndpoint && !existingConfig && isNewEndpoint;
@@ -1416,10 +1415,8 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
           functions: existingConfig?.functions,
         });
       } else {
-        saveResponse = await configApi.updateConfig(
-          actualConfigId,
-          createRequest,
-        );
+        const { payload: _omitted, ...updateRequest } = createRequest;
+        saveResponse = await configApi.updateConfig(actualConfigId, updateRequest);
       }
 
       if (saveResponse?.statusCode === 400) {
@@ -1553,7 +1550,8 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
               )}
 
             {/* Show approval comment when status is STATUS_04_APPROVED */}
-            {(isStatus(createdEndpoint?.status, 'STATUS_04_APPROVED') ||
+            {!isCloneCheck &&
+              (isStatus(createdEndpoint?.status, 'STATUS_04_APPROVED') ||
               isStatus(existingConfig?.status, 'STATUS_04_APPROVED')) &&
               (createdEndpoint?.comments || existingConfig?.comments) && (
                 <div className="my-2 mb-10 p-4 bg-green-50 border border-green-200 rounded-lg">

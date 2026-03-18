@@ -78,6 +78,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(({
   );
   const [inferredFields, setInferredFields] = useState<InferredField[]>([]);
   const [showInferredFields, setShowInferredFields] = useState(false);
+  const hasUserEditedRef = React.useRef(false);
   const [relatedTransactions, setRelatedTransactions] = useState<string[]>([]);
 
   useEffect(() => {
@@ -263,6 +264,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(({
     if (!newField.path.trim()) {
       return;
     }
+    hasUserEditedRef.current = true;
     const existsAlready = inferredFields.some(
       (f) => f.path === newField.path.trim(),
     );
@@ -329,6 +331,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(({
     }
   }, [initialEndpointData]);
   useEffect(() => {
+    if (hasUserEditedRef.current) return;
     if (existingSchemaFields && existingSchemaFields.length > 0) {
       if (
         existingSchemaFields[0] &&
@@ -1360,7 +1363,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(({
               { }
               { }
               { }
-              {!readOnly && (
+              {!readOnly && isEditMode && (
                 <div className="mt-4">
                   {!showAddFieldForm ? (
                     <button
@@ -1512,7 +1515,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(({
                 </div>
               </div>
               { }
-              {!readOnly && (
+              {!readOnly && isEditMode && (
                 <div className="mb-4">
                   {!showAddFieldForm ? (
                     <button
