@@ -50,37 +50,15 @@ services:
     depends_on:
       - sftp
 
-  deams:
-    container_name: deams
+  connection-studio-frontend:
+    container_name: connection-studio-frontend
     build:
-      context: ./deams
+      context: ./frontend
       dockerfile: Dockerfile
-    env_file:
-      - ./deams/.env
+    ports:
+      - 5173:5173
     depends_on:
-      - sftp
-
-  dems:
-    image: !reset null
-    container_name: tazama-dems-1
-    build:
-      context: https://github.com/tazama-lf/event-monitoring-service.git#dev
-      args:
-        - GH_TOKEN
-    restart: always
-    ports:
-      - 3002:3002
-
-  deapi:
-    image: !reset null
-    container_name: tazama-deapi-1
-    build:
-      context: https://github.com/tazama-lf/data-enrichment-service.git#dev
-      args:
-        - GH_TOKEN
-    restart: always
-    ports:
-      - 3001:3001
+      - connection-studio-backend
 
 volumes:
   postgres_data:
