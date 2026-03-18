@@ -332,7 +332,6 @@ export class SchedulerService {
             user,
             updated,
             user.token.tokenString,
-            reason,
           );
           break;
         }
@@ -351,7 +350,6 @@ export class SchedulerService {
             user,
             updated,
             user.token.tokenString,
-            reason,
           );
           break;
         }
