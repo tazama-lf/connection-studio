@@ -1,7 +1,6 @@
 import { AlertCircle, Calendar, CheckCircle, Database, Globe, X } from 'lucide-react';
 import React, { useState } from 'react';
 import { getStatusColor, getStatusLabel } from '../../../shared/utils/statusColors';
-import { dataEnrichmentJobApi as dataEnrichmentApi } from '../../data-enrichment/handlers';
 import type { DataEnrichmentJobResponse } from '../../data-enrichment/types';
 
 interface PublisherDEJobDetailsModalProps {
@@ -25,39 +24,11 @@ export const PublisherDEJobDetailsModal: React.FC<PublisherDEJobDetailsModalProp
   job,
   onPublishSuccess,
 }) => {
-  const [isPublishing, setIsPublishing] = useState(false);
+  const [isPublishing, ] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
   const [publishSuccess, setPublishSuccess] = useState(false);
 
   if (!isOpen || !job) return null;
-
-  const handlePublish = async () => {
-    if (!job?.id) return;
-
-    try {
-      setIsPublishing(true);
-      setPublishError(null);
-      setPublishSuccess(false);
-
-      const jobType = getJobType(job) === 'push' ? 'PUSH' : 'PULL';
-
-      // Update status to 'deployed'
-      await dataEnrichmentApi.updateJobStatus(job.id, 'deployed', jobType);
-
-      setPublishSuccess(true);
-
-      // Wait a moment to show success message
-      setTimeout(() => {
-        onPublishSuccess?.();
-        onClose();
-        setPublishSuccess(false);
-      }, 1500);
-    } catch (error) {
-      setPublishError(error instanceof Error ? error.message : 'Failed to publish DE job');
-    } finally {
-      setIsPublishing(false);
-    }
-  };
 
   const handleClose = () => {
     if (!isPublishing) {
