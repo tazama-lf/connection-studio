@@ -4,7 +4,8 @@ export type AllowedFunctionName =
   | 'addAccountHolder'
   | 'addEntity'
   | 'saveTransactionDetails'
-  | 'addDataModel';
+  | 'addDataModel'
+  | 'addDataModelTable';
 export interface FunctionDefinition {
   params?: unknown;
   functionName: AllowedFunctionName;
@@ -293,6 +294,14 @@ export const FUNCTION_CONFIGS: Record<AllowedFunctionName, FunctionConfig> = {
   addDataModel: {
     name: 'addDataModel',
     displayName: 'Add Data Model',
+    requiredParameters: [],
+    optionalParameters: [],
+    configurations: [],
+    dataModelConfiguration: [],
+  },
+  addDataModelTable: {
+    name: 'addDataModelTable',
+    displayName: 'Add Data Model Table',
     requiredParameters: [],
     optionalParameters: [],
     configurations: [],
