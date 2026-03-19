@@ -26,8 +26,6 @@ import type { ScheduleResponse , DataEnrichmentEditModalProps } from '../../type
 import * as validationSchema from '../validationSchema';
 import PullConfigForm from '../PullConfigForm';
 import PushConfigForm from '../PushConfigForm';
-
-import { DATA_ENRICHMENT_JOB_STATUSES } from '../../constants';
 const {
   defaultValues,
   pullValidationSchema,
@@ -155,17 +153,16 @@ export const DataEnrichmentEditModal: React.FC<
 
       try {
         const schedulesResp = await loadSchedules();
+        // Handle all possible paginated response shapes from the backend
         const scheduleData: any[] = Array.isArray(schedulesResp)
           ? schedulesResp
-          : (schedulesResp as any)?.data || (schedulesResp as any)?.results || (schedulesResp as any)?.items || [];
+          : (schedulesResp as any)?.schedules ||
+            (schedulesResp as any)?.data ||
+            (schedulesResp as any)?.results ||
+            (schedulesResp as any)?.items ||
+            [];
 
-        const filteredSchedules = scheduleData.filter(
-          (schedule: any) =>
-            schedule?.status === DATA_ENRICHMENT_JOB_STATUSES.APPROVED ||
-            schedule?.status === DATA_ENRICHMENT_JOB_STATUSES.EXPORTED,
-        );
-
-        setAvailableSchedules(filteredSchedules);
+        setAvailableSchedules(scheduleData);
 
         if (editMode && selectedJob?.schedule_id) {
           setValue('schedule', selectedJob.schedule_id);

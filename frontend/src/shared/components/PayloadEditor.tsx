@@ -738,53 +738,73 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(({
     return schemaFields;
   };
   const sampleJsonPayload = `{
-  "pain001": {
-    "GroupHeader": {
-      "MessageId": "MSG20251031001",
-      "CreationDateTime": "2025-10-31T15:19:24Z",
-      "NumberOfTransactions": "1",
-      "InitiatingParty": {
-        "Name": "ACME Corp"
-      }
+  "FIToFIPmtSts": {
+    "GrpHdr": {
+      "MsgId": "msg_id",
+      "CreDtTm": "2023-02-03T09:53:58.069Z"
     },
-    "PaymentInformation": {
-      "PaymentInformationId": "PMTINF20251031001",
-      "PaymentMethod": "TRF",
-      "RequestedExecutionDate": "2025-11-01",
-      "Debtor": {
-        "Name": "ACME Corp"
-      },
-      "DebtorAccount": {
-        "IBAN": "DE89370400440532013000"
-      },
-      "DebtorAgent": {
-        "BIC": "DEUTDEFF"
-      },
-      "CreditTransferTransactionInformation": [
+    "TxInfAndSts": {
+      "OrgnlInstrId": "5d158d92f70142a6ac7ffba30ac6c2db",
+      "OrgnlEndToEndId": "End_To_End_Id",
+      "TxSts": "ACCC",
+      "ChrgsInf": [
         {
-          "PaymentId": {
-            "EndToEndId": "E2E20251031001"
+          "Amt": {
+            "Amt": 3000.07,
+            "Ccy": "USD"
           },
-          "Amount": {
-            "InstructedAmount": {
-              "Currency": "EUR",
-              "Value": "1000.00"
+          "Agt": {
+            "FinInstnId": {
+              "ClrSysMmbId": {
+                "MmbId": "typolog028"
+              }
             }
+          }
+        },
+        {
+          "Amt": {
+            "Amt": 153.57,
+            "Ccy": "USD"
           },
-          "CreditorAgent": {
-            "BIC": "COBADEFF"
+          "Agt": {
+            "FinInstnId": {
+              "ClrSysMmbId": {
+                "MmbId": "typolog028"
+              }
+            }
+          }
+        },
+        {
+          "Amt": {
+            "Amt": 35,
+            "Ccy": "USD"
           },
-          "Creditor": {
-            "Name": "John Doe"
-          },
-          "CreditorAccount": {
-            "IBAN": "DE75512108001245126199"
+          "Agt": {
+            "FinInstnId": {
+              "ClrSysMmbId": {
+                "MmbId": "dfsp002"
+              }
+            }
           }
         }
-      ]
+      ],
+      "AccptncDtTm": "2023-02-03T09:53:58.069Z",
+      "InstgAgt": {
+        "FinInstnId": {
+          "ClrSysMmbId": {
+            "MmbId": "typolog028"
+          }
+        }
+      },
+      "InstdAgt": {
+        "FinInstnId": {
+          "ClrSysMmbId": {
+            "MmbId": "dfsp002"
+          }
+        }
+      }
     }
-  },
-  "TenantId":"123"
+  }
 }`;
   const sampleXmlPayload = `<?xml version="1.0" encoding="UTF-8"?>
 <Document xmlns="urn:iso:std:iso:20022:tech:xsd:pacs.008.001.11">
