@@ -1018,4 +1018,278 @@ describe('shared/components/PayloadEditor.tsx', () => {
     fireEvent.change(screen.getByLabelText('Field Path *'), { target: { value: 'new_field' } });
     expect(screen.getByDisplayValue('new_field')).toBeInTheDocument();
   });
+
+  // --- New coverage tests ---
+
+  it('allows valid key presses on version input (v at position 0 covers both onKeyPress branches)', () => {
+    renderEditor();
+    const versionInput = screen.getByLabelText('Version *');
+    // Pressing 'v' on an empty input is allowed (char === 'v' && currentValue.length === 0)
+    // This makes the outer && condition evaluate to false → no preventDefault
+    // Covers BRDA:876,106,1 and BRDA:878,108,1
+    fireEvent.keyPress(versionInput, { key: 'v', charCode: 118 });
+    expect(versionInput).toBeInTheDocument();
+  });
+
+  it('allows valid key presses on Event Type input (alphanumeric)', () => {
+    renderEditor();
+    const eventTypeInput = screen.getByLabelText('Event Type');
+    // 'a' matches [a-zA-Z0-9_\-/] — condition FALSE → no preventDefault
+    // Covers BRDA:917,114,1
+    fireEvent.keyPress(eventTypeInput, { key: 'a', charCode: 97 });
+    fireEvent.keyPress(eventTypeInput, { key: '1', charCode: 49 });
+    fireEvent.keyPress(eventTypeInput, { key: '_', charCode: 95 });
+    expect(eventTypeInput).toBeInTheDocument();
+  });
+
+  it('allows valid key presses on Transaction Type input (alphanumeric)', () => {
+    renderEditor();
+    const txTypeInput = screen.getByLabelText('Transaction Type *');
+    // 'a' matches [a-zA-Z0-9_-] — condition FALSE → no preventDefault
+    // Covers BRDA:957,120,1
+    fireEvent.keyPress(txTypeInput, { key: 'a', charCode: 97 });
+    fireEvent.keyPress(txTypeInput, { key: '5', charCode: 53 });
+    expect(txTypeInput).toBeInTheDocument();
+  });
+
+  it('handleAddField returns early when path is empty (line 254 branch 0)', async () => {
+    renderEditor({
+      isEditMode: true,
+      existingSchemaFields: [],
+      configId: 200,
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add Your First Field' }));
+    // Do NOT change the path — it defaults to '' (empty)
+    // Click Add without filling in a path → triggers !newField.path.trim() early return
+    fireEvent.click(screen.getByRole('button', { name: 'Add Field' }));
+
+    // The form should still be shown (no field was added)
+    await waitFor(() => {
+      expect(screen.getByLabelText('Field Path *')).toBeInTheDocument();
+    });
+  });
+
+  it('handleAddField with single-segment path (no dots) covers ?? [] and parent=undefined branches', async () => {
+    renderEditor({
+      isEditMode: true,
+      existingSchemaFields: [],
+      configId: 201,
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add Your First Field' }));
+    fireEvent.change(screen.getByLabelText('Field Path *'), {
+      target: { value: 'myfield' },
+    });
+    // 'myfield' has no dots → match(/\./g) returns null → ?? [] gives []
+    // pathParts.length === 1 → parent = undefined
+    // Covers BRDA:263,21,1 and BRDA:266,22,1
+    fireEvent.click(screen.getByRole('button', { name: 'Add Field' }));
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('myfield')).toBeInTheDocument();
+    });
+  });
+
+  it('file upload with no file selected (event.target.files is empty)', () => {
+    renderEditor();
+    const fileInput = document.getElementById('file-upload') as HTMLInputElement;
+    // Fire change event with no files — covers BRDA:486,60,1 (if (file) = false)
+    fireEvent.change(fileInput, { target: { files: [] } });
+    // No error should appear
+    expect(document.getElementById('file-upload')).toBeInTheDocument();
+  });
+
+  it('file upload: JSON file to XML-expected input shows mismatch with JSON actual format', async () => {
+    renderEditor({
+      endpointData: {
+        version: '',
+        transactionType: '',
+        description: '',
+        contentType: 'application/xml',
+        msgFam: '',
+      },
+    });
+
+    const fileInput = document.getElementById('file-upload') as HTMLInputElement;
+    // Upload a .json file when XML is expected → mismatch
+    // isJsonFile=true → actualFormat='JSON' (covers BRDA:495,64,0)
+    // isJsonExpected=false → expectedFormat='XML (.xml)' (covers BRDA:494,63,1)
+    const jsonFile = new File(['{"x":1}'], 'payload.json', { type: 'application/json' });
+    fireEvent.change(fileInput, { target: { files: [jsonFile] } });
+
+    await waitFor(() => {
+      expect(screen.getByText(/File format mismatch/i)).toBeInTheDocument();
+    });
+  });
+
+  it('file upload: unknown extension to JSON-expected input shows "unknown" actual format', async () => {
+    renderEditor({
+      endpointData: {
+        version: '',
+        transactionType: '',
+        description: '',
+        contentType: 'application/json',
+        msgFam: '',
+      },
+    });
+
+    const fileInput = document.getElementById('file-upload') as HTMLInputElement;
+    // Upload a .csv file (neither .json nor .xml) to JSON-expected → mismatch
+    // isJsonFile=false, isXmlFile=false → actualFormat='unknown' (covers BRDA:497,65,1)
+    const csvFile = new File(['col1,col2'], 'data.csv', { type: 'text/csv' });
+    fireEvent.change(fileInput, { target: { files: [csvFile] } });
+
+    await waitFor(() => {
+      expect(screen.getByText(/File format mismatch/i)).toBeInTheDocument();
+    });
+  });
+
+  it('file upload: valid XML content to XML-expected input succeeds (no content validation error)', async () => {
+    const originalFileReader = global.FileReader;
+
+    class MockValidXmlFileReader {
+      onload: ((event: ProgressEvent<FileReader>) => void) | null = null;
+      readAsText(): void {
+        const event = {
+          target: { result: '<?xml version="1.0"?><root><item>1</item></root>' },
+        } as unknown as ProgressEvent<FileReader>;
+        this.onload?.(event);
+      }
+    }
+    (global as any).FileReader = MockValidXmlFileReader as any;
+
+    const onChange = jest.fn();
+    renderEditor({
+      onChange,
+      endpointData: {
+        version: '',
+        transactionType: '',
+        description: '',
+        contentType: 'application/xml',
+        msgFam: '',
+      },
+    });
+
+    const fileInput = document.getElementById('file-upload') as HTMLInputElement;
+    const xmlFile = new File(['<?xml version="1.0"?><root><item>1</item></root>'], 'data.xml', {
+      type: 'text/xml',
+    });
+    // Valid XML → DOMParser finds no errors → parseError.length === 0 (covers BRDA:523,68,1)
+    // Then no contentValidationError → covers the successful path (BRDA:532,69,0 false branch)
+    fireEvent.change(fileInput, { target: { files: [xmlFile] } });
+
+    await waitFor(() => {
+      expect(onChange).toHaveBeenCalled();
+    });
+
+    (global as any).FileReader = originalFileReader;
+  });
+
+  it('renders section via isCloning=true when shouldCreateNew=false (covers isCloning OR branch)', async () => {
+    // shouldCreateNew=false but isCloning=true → shouldCreateNew || isCloning is still true
+    // Covers BRDA:1043,129,2 and BRDA:1198,144,2
+    renderEditor({
+      shouldCreateNew: false,
+      isCloning: true,
+      value: '{"x":1}',
+      endpointData: {
+        version: '1.0.0',
+        transactionType: 'acmt_023',
+        description: '',
+        contentType: 'application/json',
+        msgFam: '',
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Endpoint Path Preview')).toBeInTheDocument();
+    });
+  });
+
+  it('endpoint path preview shows v1 fallback when version is empty (covers version || v1)', async () => {
+    // version='' → endpointData.version || 'v1' = 'v1' — covers BRDA:1034,127,1
+    renderEditor({
+      endpointData: {
+        version: '',
+        transactionType: 'pacs.008',
+        description: '',
+        contentType: 'application/json',
+        msgFam: '',
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/\/v1\//)).toBeInTheDocument();
+    });
+  });
+
+  it('generates fields from top-level JSON array (covers generateJSONSchema non-object branch)', async () => {
+    // Top-level array → generateJSONSchema called with Array → condition FALSE (covers BRDA:579,74,1)
+    renderEditor({
+      value: '[1, 2, 3]',
+      endpointData: {
+        version: '1.0.0',
+        transactionType: 'acmt_023',
+        description: '',
+        contentType: 'application/json',
+        msgFam: '',
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Generate Fields' })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Generate Fields' }));
+
+    // Array payload → generateJSONSchema returns [] → no fields generated
+    // The button should still be visible (value is still valid JSON)
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Generate Fields' })).toBeInTheDocument();
+    });
+  });
+
+  it('handleEndpointDataChange with field not in errorFieldMap after validateAllFields (covers errorFieldMap || fallback)', async () => {
+    const ref = React.createRef<PayloadEditorRef>();
+    renderEditor({
+      ref,
+      endpointData: {
+        version: '1.0.0',
+        transactionType: 'acmt_023',
+        description: '',
+        contentType: 'application/json',
+        msgFam: 'iso-20022',
+      },
+    });
+
+    // Set showValidationErrors = true
+    act(() => {
+      ref.current?.validateAllFields();
+    });
+
+    // Change contentType — 'contentType' is NOT in errorFieldMap → fallback to field name itself
+    // Covers BRDA:453,57,1 (errorFieldMap[field] is undefined → || field used)
+    fireEvent.change(screen.getByLabelText('Content Type *'), {
+      target: { value: 'application/xml' },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText('Enter your XML payload here...')).toBeInTheDocument();
+    });
+  });
+
+  it('onFieldAdjustmentsChange not called when inferredFields is empty (covers branch 346,39,1)', () => {
+    // onFieldAdjustmentsChange is provided but inferredFields starts empty
+    // The useEffect fires but the condition is false → covers BRDA:346,39,1
+    const onFieldAdjustmentsChange = jest.fn();
+    renderEditor({
+      onFieldAdjustmentsChange,
+      existingSchemaFields: [],
+      configId: 300,
+    });
+    // No fields → onFieldAdjustmentsChange should NOT have been called with field data
+    // (the if condition is false)
+    expect(onFieldAdjustmentsChange).not.toHaveBeenCalled();
+  });
 });

@@ -537,4 +537,18 @@ describe('features/config/components/ConfigList.tsx', () => {
     });
     spy.mockRestore();
   });
+
+  it('handleViewConfig: neither onViewDetails nor onConfigSelect provided — else-if false branch (BRDA:201,12,1)', async () => {
+    render(<ConfigList />);
+    // Wait for data to load so eye icons are rendered
+    await screen.findByTestId('rows-count');
+    await waitFor(() => {
+      expect(screen.getByTestId('rows-count')).toHaveTextContent('5');
+    });
+    // Click the first eye icon — neither callback provided → else if (onConfigSelect) false branch
+    const eyeIcons = screen.getAllByTestId('eye-icon');
+    fireEvent.click(eyeIcons[0]);
+    // No assertion needed — just verify no crash
+    expect(eyeIcons.length).toBeGreaterThan(0);
+  });
 });

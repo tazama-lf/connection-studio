@@ -652,4 +652,61 @@ describe('validationSchema', () => {
       }),
     ).rejects.toThrow('invalid characters');
   });
+
+  it('covers empty URL value in http custom test with abortEarly false (BRDA:196)', async () => {
+    // With abortEarly:false, the custom test() runs even after required() fails
+    // so value==='' reaches the if(!value||...) guard → returns false
+    await expect(
+      pullValidationSchema.validate({
+        ...basePullPayload,
+        sourceType: 'http',
+        fileFormat: null,
+        delimiter: null,
+        pathPattern: null,
+        host: null,
+        port: null,
+        authType: null,
+        username: null,
+        password: null,
+        url: '',
+        headers: '',
+      }, { abortEarly: false }),
+    ).rejects.toThrow();
+  });
+
+  it('covers empty pathPattern value in sftp custom test with abortEarly false (BRDA:249)', async () => {
+    await expect(
+      pullValidationSchema.validate({
+        ...basePullPayload,
+        pathPattern: '',
+      }, { abortEarly: false }),
+    ).rejects.toThrow();
+  });
+
+  it('covers empty host value in sftp custom test with abortEarly false (BRDA:331)', async () => {
+    await expect(
+      pullValidationSchema.validate({
+        ...basePullPayload,
+        host: '',
+      }, { abortEarly: false }),
+    ).rejects.toThrow();
+  });
+
+  it('covers empty port value in sftp port custom test with abortEarly false (BRDA:364)', async () => {
+    await expect(
+      pullValidationSchema.validate({
+        ...basePullPayload,
+        port: '',
+      }, { abortEarly: false }),
+    ).rejects.toThrow();
+  });
+
+  it('covers empty endpointPath in push custom test with abortEarly false (BRDA:474)', async () => {
+    await expect(
+      pushValidationSchema.validate({
+        ...basePushPayload,
+        endpointPath: '',
+      }, { abortEarly: false }),
+    ).rejects.toThrow();
+  });
 });

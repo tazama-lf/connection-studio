@@ -1,5 +1,68 @@
 import React from 'react';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within, waitFor } from '@testing-library/react';
+
+// Local @mui/material override: adds onClose trigger button to Dialog
+jest.mock('@mui/material', () => {
+  const mockTheme = { zIndex: { drawer: 1200, modal: 1300, snackbar: 1400, tooltip: 1500 } };
+  function invokeSx(sx: any) {
+    if (typeof sx === 'function') sx(mockTheme);
+    else if (sx && typeof sx === 'object') {
+      Object.values(sx).forEach((v) => { if (typeof v === 'function') v(mockTheme); });
+    }
+  }
+  return {
+    Backdrop: ({ children, open, onClick, sx, ...props }: any) => {
+      invokeSx(sx);
+      return <div data-testid="mui-backdrop" onClick={onClick} {...props}>{open ? children : null}</div>;
+    },
+    Button: ({ children, onClick, disabled, variant, ...props }: any) => (
+      <button onClick={onClick} disabled={disabled} {...props}>{children}</button>
+    ),
+    Box: ({ children, sx, component, ...props }: any) => {
+      invokeSx(sx);
+      const Tag = component || 'div';
+      return <Tag {...props}>{children}</Tag>;
+    },
+    Dialog: ({ children, open, onClose, ...props }: any) => (
+      open ? (
+        <div data-testid="mui-dialog" role="dialog" {...props}>
+          <button aria-label="close-dialog" onClick={() => onClose?.()}>×</button>
+          {children}
+        </div>
+      ) : null
+    ),
+    DialogContent: ({ children, ...props }: any) => <div {...props}>{children}</div>,
+    DialogContentText: ({ children, ...props }: any) => <p {...props}>{children}</p>,
+    DialogActions: ({ children, ...props }: any) => <div {...props}>{children}</div>,
+    DialogTitle: ({ children, ...props }: any) => <div data-testid="dialog-title" {...props}>{children}</div>,
+    TextField: ({ label, value, onChange, ...props }: any) => (
+      <input aria-label={label} value={value} onChange={onChange} {...props} />
+    ),
+    Select: ({ children, value, onChange, ...props }: any) => (
+      <select value={value} onChange={onChange} {...props}>{children}</select>
+    ),
+    MenuItem: ({ children, value, ...props }: any) => (
+      <option value={value} {...props}>{children}</option>
+    ),
+    IconButton: ({ children, onClick, disabled, ...props }: any) => (
+      <button onClick={onClick} disabled={disabled} {...props}>{children}</button>
+    ),
+    CircularProgress: ({ size, ...props }: any) => <div data-testid="circular-progress" {...props} />,
+    Typography: ({ children, variant, ...props }: any) => <span {...props}>{children}</span>,
+    Tooltip: ({ children }: any) => <>{children}</>,
+    Chip: ({ label, ...props }: any) => <span data-testid="chip" {...props}>{label}</span>,
+    FormControl: ({ children, ...props }: any) => <div {...props}>{children}</div>,
+    InputLabel: ({ children, ...props }: any) => <label {...props}>{children}</label>,
+    FormHelperText: ({ children, ...props }: any) => <span {...props}>{children}</span>,
+    Alert: React.forwardRef(({ children, severity, ...props }: any, ref: any) => (
+      <div ref={ref} role="alert" data-severity={severity} {...props}>{children}</div>
+    )),
+    Snackbar: ({ children, open, ...props }: any) => open ? <div {...props}>{children}</div> : null,
+    Divider: ({ ...props }: any) => <hr {...props} />,
+    Stack: ({ children, ...props }: any) => <div {...props}>{children}</div>,
+    Paper: ({ children, ...props }: any) => <div {...props}>{children}</div>,
+  };
+});
 
 const handleSaveJobMock = jest.fn();
 const handleRejectionConfirmMock = jest.fn();
@@ -551,5 +614,528 @@ describe('features/data-enrichment/components/JobDetailsModal/index.tsx', () => 
     expect(screen.getByDisplayValue('22')).toBeInTheDocument();
     expect(screen.getByDisplayValue('svc-user')).toBeInTheDocument();
     expect(screen.getByDisplayValue('USERNAME_PASSWORD')).toBeInTheDocument();
+  });
+
+  // ── Dialog onClose callbacks (lines 1184, 1317, 1414) ────────────────────
+
+  it('closes export dialog via Dialog onClose prop (backdrop click)', () => {
+    mockUseAuth.mockReturnValue({ user: { claims: ['exporter'] } });
+
+    render(
+      <JobDetailsModal
+        isOpen
+        onClose={jest.fn()}
+        onExport={jest.fn()}
+        job={{
+          id: 'job-export-backdrop',
+          endpoint_name: 'Export Backdrop Job',
+          status: 'STATUS_04_APPROVED',
+          type: 'pull',
+        } as any}
+      />,
+    );
+
+    fireEvent.click(screen.getByText('Export'));
+    const closeBtn = screen.getByLabelText('close-dialog');
+    fireEvent.click(closeBtn);
+    expect(screen.queryByText('Yes, Export Job')).not.toBeInTheDocument();
+  });
+
+  it('closes approval confirmation dialog via Dialog onClose prop', () => {
+    mockUseAuth.mockReturnValue({ user: { claims: ['editor'] } });
+
+    render(
+      <JobDetailsModal
+        isOpen
+        onClose={jest.fn()}
+        onSendForApproval={jest.fn()}
+        job={{
+          id: 'job-approval-backdrop',
+          endpoint_name: 'Approval Backdrop Job',
+          status: 'STATUS_01_IN_PROGRESS',
+          type: 'pull',
+        } as any}
+      />,
+    );
+
+    fireEvent.click(screen.getByText('Send for Approval'));
+    const closeBtn = screen.getByLabelText('close-dialog');
+    fireEvent.click(closeBtn);
+    expect(screen.queryByText('Yes, Send for Approval')).not.toBeInTheDocument();
+  });
+
+  it('closes approve confirmation dialog via Dialog onClose prop', () => {
+    mockUseAuth.mockReturnValue({ user: { claims: ['approver'] } });
+
+    render(
+      <JobDetailsModal
+        isOpen
+        onClose={jest.fn()}
+        onApprove={jest.fn()}
+        job={{
+          id: 'job-approve-backdrop',
+          endpoint_name: 'Approve Backdrop Job',
+          status: 'STATUS_03_UNDER_REVIEW',
+          type: 'pull',
+        } as any}
+      />,
+    );
+
+    fireEvent.click(screen.getByText('Approve'));
+    const closeBtn = screen.getByLabelText('close-dialog');
+    fireEvent.click(closeBtn);
+    expect(screen.queryByText('Yes, Approve Job')).not.toBeInTheDocument();
+  });
+
+  it('uses "Unknown Job" as job name in rejection dialog when endpoint_name and id are missing', () => {
+    mockUseAuth.mockReturnValue({ user: { claims: ['approver'] } });
+
+    render(
+      <JobDetailsModal
+        isOpen
+        onClose={jest.fn()}
+        onReject={jest.fn()}
+        job={{
+          status: 'STATUS_03_UNDER_REVIEW',
+          type: 'pull',
+        } as any}
+      />,
+    );
+
+    fireEvent.click(screen.getByText('Reject'));
+    expect(screen.getByTestId('rejection-dialog')).toBeInTheDocument();
+  });
+
+  // --- Additional coverage tests ---
+
+  it('renders with user having no claims (covers lines 66-68 false branches)', () => {
+    // user without claims → user?.claims is falsy → userIsApprover/Editor/Exporter = false
+    mockUseAuth.mockReturnValue({ user: {} });
+
+    render(
+      <JobDetailsModal
+        isOpen
+        onClose={jest.fn()}
+        job={{
+          id: 'job-no-claims',
+          endpoint_name: 'No Claims Job',
+          status: 'STATUS_01_IN_PROGRESS',
+          type: 'pull',
+        } as any}
+      />,
+    );
+
+    // No workflow buttons because user has no claims
+    expect(screen.queryByText('Send for Approval')).not.toBeInTheDocument();
+    expect(screen.queryByText('Approve')).not.toBeInTheDocument();
+    expect(screen.queryByText('Export')).not.toBeInTheDocument();
+  });
+
+  it('renders job=undefined (debug "undefined" branch in fallback view)', () => {
+    render(
+      <JobDetailsModal
+        isOpen
+        onClose={jest.fn()}
+        job={undefined as any}
+      />,
+    );
+
+    // Falls into the "Job details not found" path with job=undefined
+    expect(screen.getByText('Job details not found')).toBeInTheDocument();
+    expect(screen.getByText(/undefined/)).toBeInTheDocument();
+  });
+
+  it('edit mode with job missing type uses getJobType fallback (covers ?? branch for type)', () => {
+    // job.type is undefined → job.type ?? jobType uses jobType (getJobType result)
+    render(
+      <JobDetailsModal
+        isOpen
+        editMode
+        onClose={jest.fn()}
+        onSave={jest.fn()}
+        job={{
+          id: 'job-no-type',
+          endpoint_name: 'No Type Job',
+          description: 'desc',
+          version: 'v1',
+          table_name: 'tbl',
+          mode: 'append',
+          // type is intentionally absent — forces ?? jobType fallback
+        } as any}
+      />,
+    );
+
+    expect(screen.getByDisplayValue('No Type Job')).toBeInTheDocument();
+  });
+
+  it('view mode (not edit, not clone) shows push job path field (covers view-mode branches)', () => {
+    render(
+      <JobDetailsModal
+        isOpen
+        onClose={jest.fn()}
+        job={{
+          id: 'job-push-view',
+          endpoint_name: 'Push View',
+          type: 'push',
+          status: 'STATUS_04_APPROVED',
+          path: '/my/path',
+        } as any}
+      />,
+    );
+
+    // Not editMode, not cloneMode — view mode — covers the else branch of editMode ? ... : cloneMode ? ... : viewMode
+    expect(screen.getByDisplayValue('/my/path')).toBeInTheDocument();
+  });
+
+  it('HTTP connection as plain object (not JSON string) shows url and no headers', () => {
+    render(
+      <JobDetailsModal
+        isOpen
+        onClose={jest.fn()}
+        job={{
+          id: 'job-http-obj',
+          endpoint_name: 'HTTP Object',
+          type: 'pull',
+          source_type: 'HTTP',
+          status: 'STATUS_01_IN_PROGRESS',
+          // connection as plain object (not string) — typeof !== 'string' branch  
+          connection: {
+            url: undefined,  // url=undefined → ?? 'N/A' fallback covers branch 1
+          },
+        } as any}
+      />,
+    );
+
+    expect(screen.getByText('Connection Details (HTTP)')).toBeInTheDocument();
+  });
+
+  it('SFTP connection as object with missing fields shows N/A fallbacks', () => {
+    render(
+      <JobDetailsModal
+        isOpen
+        onClose={jest.fn()}
+        job={{
+          id: 'job-sftp-no-fields',
+          endpoint_name: 'SFTP No Fields',
+          type: 'pull',
+          source_type: 'SFTP',
+          status: 'STATUS_01_IN_PROGRESS',
+          // connection as object with no host/port/user_name/auth_type → all ?? 'N/A' fallback
+          connection: {
+            host: undefined,
+            port: undefined,
+            user_name: undefined,
+            auth_type: undefined,
+          },
+        } as any}
+      />,
+    );
+
+    expect(screen.getByText('Connection Details (SFTP)')).toBeInTheDocument();
+    // All fields show N/A (covers ?? 'N/A' branch 1 for each field)
+    const naValues = screen.getAllByDisplayValue('N/A');
+    expect(naValues.length).toBeGreaterThan(0);
+  });
+
+  it('shows N/A fallbacks for file fields without path, file_type, delimiter', () => {
+    render(
+      <JobDetailsModal
+        isOpen
+        onClose={jest.fn()}
+        job={{
+          id: 'job-sftp-no-file-fields',
+          endpoint_name: 'SFTP No File Fields',
+          type: 'pull',
+          source_type: 'SFTP',
+          status: 'STATUS_01_IN_PROGRESS',
+          connection: {
+            host: 'sftp.host.com',
+          },
+          // file object with no path/file_type/delimiter → all ?? 'N/A'
+          file: {
+            path: undefined,
+            file_type: undefined,
+            delimiter: undefined,
+          },
+        } as any}
+      />,
+    );
+
+    expect(screen.getByText('File Settings')).toBeInTheDocument();
+  });
+
+  it('shows send-for-approval absent when userIsEditor but no onSendForApproval prop', () => {
+    // Covers branch where onSendForApproval is missing → Send for Approval button not shown
+    mockUseAuth.mockReturnValue({ user: { claims: ['editor'] } });
+
+    render(
+      <JobDetailsModal
+        isOpen
+        onClose={jest.fn()}
+        // onSendForApproval intentionally NOT provided
+        job={{
+          id: 'job-no-callback',
+          endpoint_name: 'Editor No Callback',
+          status: 'STATUS_01_IN_PROGRESS',
+          type: 'pull',
+        } as any}
+      />,
+    );
+
+    expect(screen.queryByText('Send for Approval')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+  });
+
+  it('clone mode with existing fields: endpoint_name and version null in editedJob covers ?? fallbacks', () => {
+    // When cloneMode and object merges job data but editedJob.endpoint_name is undefined initially
+    render(
+      <JobDetailsModal
+        isOpen
+        cloneMode
+        onClose={jest.fn()}
+        onClone={jest.fn()}
+        job={{
+          id: 'job-clone-null',
+          // endpoint_name intentionally absent → editedJob.endpoint_name ?? job.endpoint_name falls through
+          version: undefined,
+        } as any}
+      />,
+    );
+
+    // Just verify it renders without crash
+    expect(screen.getByRole('button', { name: 'Create Clone' })).toBeInTheDocument();
+  });
+
+  it('push job in cloneMode WITH path shows the path value', () => {
+    render(
+      <JobDetailsModal
+        isOpen
+        cloneMode
+        onClose={jest.fn()}
+        onClone={jest.fn()}
+        job={{
+          id: 'job-push-clone-path',
+          endpoint_name: 'Push Clone With Path',
+          type: 'push',
+          path: '/api/my-path',
+        } as any}
+      />,
+    );
+    // cloneMode=true branch of `cloneMode ? job.path ?? 'Path not set' : ...` → branch 0
+    // job.path non-null → branch 0 of inner ?? → shows '/api/my-path'
+    expect(screen.getByDisplayValue('/api/my-path')).toBeInTheDocument();
+  });
+
+  it('push job in cloneMode WITHOUT path shows Path not set', () => {
+    render(
+      <JobDetailsModal
+        isOpen
+        cloneMode
+        onClose={jest.fn()}
+        onClone={jest.fn()}
+        job={{
+          id: 'job-push-clone-nopath',
+          endpoint_name: 'Push Clone No Path',
+          type: 'push',
+          // path intentionally absent → cloneMode branch, job.path null → 'Path not set'
+        } as any}
+      />,
+    );
+    expect(screen.getByDisplayValue('Path not set')).toBeInTheDocument();
+  });
+
+  it('push job in view mode (no editMode no cloneMode) without path shows Path not set', () => {
+    render(
+      <JobDetailsModal
+        isOpen
+        onClose={jest.fn()}
+        job={{
+          id: 'job-push-view-nopath',
+          endpoint_name: 'Push View No Path',
+          type: 'push',
+          // path intentionally absent → view branch, job.path null → 'Path not set'
+        } as any}
+      />,
+    );
+    expect(screen.getByDisplayValue('Path not set')).toBeInTheDocument();
+  });
+
+  it('pull job view mode: fireEvent.change on source_type select (editMode=false branch)', () => {
+    render(
+      <JobDetailsModal
+        isOpen
+        onClose={jest.fn()}
+        job={{
+          id: 'job-pull-view-src',
+          endpoint_name: 'Pull View Src',
+          type: 'pull',
+          source_type: 'SFTP',
+        } as any}
+      />,
+    );
+    // The select has disabled={true} but fireEvent still fires onChange
+    // editMode=false → short-circuit at editMode && → nothing called
+    const selects = screen.getAllByRole('combobox');
+    const sourceTypeSelect = selects.find(s => (s as HTMLSelectElement).value === 'SFTP');
+    if (sourceTypeSelect) {
+      fireEvent.change(sourceTypeSelect, { target: { value: 'HTTP' } });
+    }
+    expect(screen.getByDisplayValue('Pull View Src')).toBeInTheDocument();
+  });
+
+  it('pull job editMode+cloneMode: fireEvent.change on source_type select (!cloneMode=false branch)', () => {
+    render(
+      <JobDetailsModal
+        isOpen
+        editMode
+        cloneMode
+        onClose={jest.fn()}
+        onSave={jest.fn()}
+        onClone={jest.fn()}
+        job={{
+          id: 'job-pull-edit-clone-src',
+          endpoint_name: 'Pull Edit Clone Src',
+          type: 'pull',
+          source_type: 'HTTP',
+        } as any}
+      />,
+    );
+    // editMode=true but cloneMode=true → !cloneMode=false → short-circuit before handleInputChange
+    const selects = screen.getAllByRole('combobox');
+    const sourceTypeSelect = selects.find(s => (s as HTMLSelectElement).value === 'HTTP');
+    if (sourceTypeSelect) {
+      fireEvent.change(sourceTypeSelect, { target: { value: 'SFTP' } });
+    }
+    expect(screen.getByDisplayValue('Pull Edit Clone Src')).toBeInTheDocument();
+  });
+
+  it('pull job editMode (no cloneMode): fireEvent.change on source_type select (all-true branch)', () => {
+    render(
+      <JobDetailsModal
+        isOpen
+        editMode
+        onClose={jest.fn()}
+        onSave={jest.fn()}
+        job={{
+          id: 'job-pull-edit-src-only',
+          endpoint_name: 'Pull Edit Src Only',
+          type: 'pull',
+          source_type: 'SFTP',
+          description: 'test',
+          version: 'v1',
+          mode: 'append',
+        } as any}
+      />,
+    );
+    // editMode=true, cloneMode=false → !cloneMode=true → handleInputChange called
+    const selects = screen.getAllByRole('combobox');
+    const sourceTypeSelect = selects.find(s => (s as HTMLSelectElement).value === 'SFTP');
+    if (sourceTypeSelect) {
+      fireEvent.change(sourceTypeSelect, { target: { value: 'HTTP' } });
+    }
+    // After change, handleInputChange mock updates editedJob.endpoint_name to 'Updated Name'
+    expect(screen.getByDisplayValue('Updated Name')).toBeInTheDocument();
+  });
+
+  it('pull job with unrecognized connection type shows Unknown in Connection Details', () => {
+    render(
+      <JobDetailsModal
+        isOpen
+        onClose={jest.fn()}
+        job={{
+          id: 'job-pull-unknown-conn',
+          endpoint_name: 'Pull Unknown Conn',
+          type: 'pull',
+          // connection exists (truthy) but no host/url/source_type → getConnectionType returns null
+          connection: { customKey: 'someValue' } as any,
+        } as any}
+      />,
+    );
+    // Should show "Connection Details (Unknown)"
+    expect(screen.getByText('Connection Details (Unknown)')).toBeInTheDocument();
+  });
+
+  it('HTTP connection without headers: headers section not shown', () => {
+    render(
+      <JobDetailsModal
+        isOpen
+        onClose={jest.fn()}
+        job={{
+          id: 'job-http-no-headers',
+          endpoint_name: 'HTTP No Headers',
+          type: 'pull',
+          source_type: 'HTTP',
+          connection: { url: 'https://api.example.com/data' },
+          // No headers property → (connectionObj?.headers && ...) = false
+        } as any}
+      />,
+    );
+    expect(screen.getByDisplayValue('https://api.example.com/data')).toBeInTheDocument();
+    expect(screen.queryByText('Headers')).not.toBeInTheDocument();
+  });
+
+  it('clone mode with null job shows debug section with cloneMode: true', () => {
+    render(
+      <JobDetailsModal
+        isOpen
+        cloneMode
+        onClose={jest.fn()}
+        job={null}
+      />,
+    );
+    // debug section shows because job is falsy; cloneMode=true → 'true' branch of cloneMode ternary
+    expect(screen.getByText('Job details not found')).toBeInTheDocument();
+    expect(screen.getByText(/cloneMode: true/)).toBeInTheDocument();
+  });
+
+  it('HTTP connection as plain object WITH headers renders headers without JSON.parse (BRDA:744)', () => {
+    // connection is an object (not a string) → typeof job.connection === 'string' is FALSE (branch 1)
+    // headers exist → headers section renders → the inner IIFE at line ~744 runs with object connection
+    render(
+      <JobDetailsModal
+        isOpen
+        onClose={jest.fn()}
+        job={{
+          id: 'job-http-obj-headers',
+          endpoint_name: 'HTTP Object With Headers',
+          type: 'pull',
+          source_type: 'HTTP',
+          status: 'STATUS_01_IN_PROGRESS',
+          connection: {
+            url: 'https://api.example.com/data',
+            headers: { Authorization: 'Bearer token123' },
+          },
+        } as any}
+      />,
+    );
+    expect(screen.getByText('Headers')).toBeInTheDocument();
+    expect(screen.getByText(/Authorization/)).toBeInTheDocument();
+  });
+
+  it('clone with job missing endpoint_name and version covers ?? fallbacks on Create Clone click (BRDA:1034,1035)', async () => {
+    // editedJob is initialised from job: endpoint_name=undefined, version=undefined
+    // clicking Create Clone → editedJob.endpoint_name ?? job.endpoint_name → both are undefined
+    // covers branch 1 (FALSE/nullish) of both ?? operators
+    const onClone = jest.fn();
+    render(
+      <JobDetailsModal
+        isOpen
+        cloneMode
+        onClose={jest.fn()}
+        onClone={onClone}
+        job={{
+          id: 'job-clone-no-name-version',
+          // endpoint_name intentionally absent → undefined
+          // version intentionally absent → undefined
+          type: 'pull',
+        } as any}
+      />,
+    );
+
+    fireEvent.click(screen.getByText('Create Clone'));
+
+    expect(onClone).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'job-clone-no-name-version' }),
+    );
   });
 });

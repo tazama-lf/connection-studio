@@ -734,4 +734,60 @@ describe('features/data-enrichment/components/JobList.tsx', () => {
       expect(screen.queryByText('Deactivate Confirmation Required!')).not.toBeInTheDocument();
     });
   });
+
+  it('renders without isLoading prop uses default false value (BRDA:79)', () => {
+    // When isLoading prop is not passed, it defaults to false and renders the table
+    const { isLoading: _omitted, ...propsWithoutLoading } = baseProps;
+    render(<JobList {...propsWithoutLoading} />);
+    expect(screen.getByTestId('custom-table')).toBeInTheDocument();
+  });
+
+  it('shows job.id fallback when endpoint_name absent in publishing status update (BRDA:182)', async () => {
+    mockUseAuth.mockReturnValue({ user: { claims: ['approver'] } });
+    const onRefresh = jest.fn();
+    render(
+      <JobList
+        {...baseProps}
+        isLoading={false}
+        onRefresh={onRefresh}
+        jobs={[{
+          id: 'no-name-job-id',
+          status: 'STATUS_06_EXPORTED',
+          created_at: '2025-01-01T00:00:00Z',
+          type: 'push',
+          publishing_status: 'in-active',
+          // No endpoint_name — forces job.id fallback in success message
+        }]}
+      />,
+    );
+    fireEvent.click(screen.getByLabelText('activate'));
+    fireEvent.click(screen.getByText('Yes, Activate Job'));
+    await waitFor(() => {
+      expect(mockShowSuccess).toHaveBeenCalledWith(
+        expect.stringContaining('no-name-job-id'),
+      );
+    });
+  });
+
+  it('editor with onEdit prop can edit STATUS_05_REJECTED jobs (BRDA:535,29,3)', () => {
+    const onEdit = jest.fn();
+    mockUseAuth.mockReturnValue({ user: { claims: ['editor'] } });
+    render(
+      <JobList
+        {...baseProps}
+        isLoading={false}
+        onEdit={onEdit}
+        jobs={[{
+          id: 'rej-1',
+          endpoint_name: 'Rejected Job',
+          status: 'STATUS_05_REJECTED',
+          created_at: '2025-01-01T00:00:00Z',
+          type: 'pull',
+          publishing_status: 'in-active',
+        }]}
+      />,
+    );
+    fireEvent.click(screen.getByLabelText('edit'));
+    expect(onEdit).toHaveBeenCalled();
+  });
 });

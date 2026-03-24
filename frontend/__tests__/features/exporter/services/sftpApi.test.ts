@@ -355,4 +355,20 @@ describe('SftpApiService', () => {
     const headers = (options as RequestInit).headers as Record<string, string>;
     expect(headers.Authorization).toBeUndefined();
   });
+
+  it('apiRequest default options parameter branch (BRDA:71,1,0) — called without options arg', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ success: true }),
+    });
+
+    // Call apiRequest without the options argument — triggers the default `= {}` branch
+    await (SftpApiService as any).apiRequest('https://example.test/default-opts');
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      'https://example.test/default-opts',
+      expect.objectContaining({ headers: expect.any(Headers) }),
+    );
+  });
 });

@@ -557,3 +557,32 @@ describe('features/exporter/components/ExportedItemDetailsModal.tsx', () => {
     });
   });
 });
+
+  it('uses foundType fallback when jobDetails has no type property (BRDA:118)', async () => {
+    // Simulate: PULL lookup succeeds but returns jobDetails without a type field
+    (dataEnrichmentJobApi.getById as jest.Mock).mockResolvedValueOnce({ id: 'job-x' });
+
+    const onPublish = jest.fn().mockResolvedValue(undefined);
+
+    render(
+      <ExportedItemDetailsModal
+        content={{
+          id: 'job-x',
+          tenant_id: 'tenant-1',
+        } as any}
+        isOpen={true}
+        onClose={jest.fn()}
+        onPublish={onPublish}
+        format="de"
+      />,
+    );
+
+    fireEvent.click(screen.getByText('Deploy'));
+    fireEvent.click(screen.getByText('Yes, Deploy'));
+
+    // jobDetails.type is undefined, so (jobDetails.type?.toUpperCase() || foundType) => foundType = 'PULL'
+    await waitFor(() => {
+      expect(onPublish).toHaveBeenCalledWith('job-x', 'de', 'PULL');
+    });
+  });
+})

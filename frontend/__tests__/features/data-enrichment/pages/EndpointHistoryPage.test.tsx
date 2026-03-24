@@ -1171,4 +1171,102 @@ describe('EndpointHistoryPage', () => {
       useStateSpy.mockRestore();
     }
   });
+
+  it('getStatusBadge: status_ prefix with <3 parts in modal (BRDA:46,2,1)', async () => {
+    // 'status_incomplete' → split('_') = ['status', 'incomplete'] → length=2 < 3 → branch 1
+    // getStatusBadge is only called in modal (activeRecord.status), not in table render
+    (dataEnrichmentJobApi.getJobHistory as jest.Mock).mockResolvedValue({
+      data: [
+        {
+          job_id: 'job-short-status',
+          endpoint_name: 'ep-short-status',
+          table_name: 'tbl',
+          counts: 1,
+          processed_counts: 0,
+          created_at: '2024-06-01T00:00:00.000Z',
+          exception: false,
+          status: 'status_incomplete',
+          publishing_status: 'active',
+        },
+      ],
+      total: 1,
+    });
+
+    await act(async () => {
+      render(<EndpointHistoryPage />);
+    });
+
+    // Click view-details to open modal; modal calls getStatusBadge('status_incomplete')
+    const viewBtn = await screen.findByLabelText('view-details-job-short-status', {}, { timeout: 8000 });
+    await act(async () => {
+      fireEvent.click(viewBtn);
+    });
+
+    // Modal shows; getStatusBadge('status_incomplete') called → parts.length=2 < 3 → branch 1
+    expect(screen.getByText('Endpoint Run Details')).toBeInTheDocument();
+  }, 15000);
+
+  it('view-details aria-label with null job_id uses empty string fallback (BRDA:321,25,1)', async () => {
+    // row with null job_id → aria-label="view-details-" (params.row?.job_id ?? '' branch 1)
+    (dataEnrichmentJobApi.getJobHistory as jest.Mock).mockResolvedValue({
+      data: [
+        {
+          job_id: null,
+          endpoint_name: 'ep-null-id',
+          table_name: 'tbl',
+          counts: 1,
+          processed_counts: 0,
+          created_at: '2024-06-01T00:00:00.000Z',
+          exception: false,
+          status: 'STATUS_04_APPROVED',
+          publishing_status: 'active',
+        },
+      ],
+      total: 1,
+    });
+
+    render(<EndpointHistoryPage />);
+
+    // When job_id is null, aria-label="view-details-" (empty string ?? fallback, branch 1)
+    await waitFor(() => {
+      expect(screen.getByLabelText('view-details-')).toBeInTheDocument();
+    });
+  });
+
+  it('jobId || undefined: no jobId in URL uses undefined (BRDA:109,5,1)', async () => {
+    // Override useLocation to return empty search (no jobId param)
+    const reactRouter = jest.requireMock('react-router') as any;
+    const origUseLocation = reactRouter.useLocation;
+    reactRouter.useLocation = () => ({ search: '' });
+
+    (dataEnrichmentJobApi.getJobHistory as jest.Mock).mockResolvedValue({ data: [], total: 0 });
+
+    try {
+      render(<EndpointHistoryPage />);
+      await waitFor(() => {
+        // getJobHistory called with undefined jobId → branch 1 covered
+        expect(dataEnrichmentJobApi.getJobHistory).toHaveBeenCalled();
+      });
+    } finally {
+      reactRouter.useLocation = origUseLocation;
+    }
+  });
+
+  it('UI_CONFIG pagination defaultPageSize ?? 10 uses 10 default (BRDA:118,6,1)', async () => {
+    // Override UI_CONFIG to have undefined defaultPageSize → ?? 10 uses 10 (branch 1)
+    const appConfig = jest.requireMock('@shared/config/app.config') as any;
+    const origConfig = appConfig.UI_CONFIG;
+    appConfig.UI_CONFIG = { pagination: {} };  // defaultPageSize is undefined
+
+    (dataEnrichmentJobApi.getJobHistory as jest.Mock).mockResolvedValue({ data: [], total: 0 });
+
+    try {
+      render(<EndpointHistoryPage />);
+      await waitFor(() => {
+        expect(dataEnrichmentJobApi.getJobHistory).toHaveBeenCalled();
+      });
+    } finally {
+      appConfig.UI_CONFIG = origConfig;
+    }
+  });
 });
