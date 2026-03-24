@@ -49,7 +49,7 @@
           "editor": {
             "STATUS_01_IN_PROGRESS": ["STATUS_02_ON_HOLD", "STATUS_03_UNDER_REVIEW"],
             "STATUS_02_ON_HOLD":     ["STATUS_01_IN_PROGRESS"],
-            "STATUS_05_REJECTED":    ["STATUS_01_IN_PROGRESS"]
+            "STATUS_05_REJECTED":    ["STATUS_01_IN_PROGRESS", "STATUS_03_UNDER_REVIEW"]
           },
           "approver": {
             "STATUS_03_UNDER_REVIEW": ["STATUS_04_APPROVED", "STATUS_05_REJECTED"]
@@ -79,7 +79,7 @@
           "editor": {
             "STATUS_01_IN_PROGRESS": ["STATUS_02_ON_HOLD", "STATUS_03_UNDER_REVIEW"],
             "STATUS_02_ON_HOLD":     ["STATUS_01_IN_PROGRESS"],
-            "STATUS_05_REJECTED":    ["STATUS_01_IN_PROGRESS"]
+            "STATUS_05_REJECTED":    ["STATUS_01_IN_PROGRESS", "STATUS_03_UNDER_REVIEW"]
           }
         }
       }
