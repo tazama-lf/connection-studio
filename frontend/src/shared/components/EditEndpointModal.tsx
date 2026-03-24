@@ -809,14 +809,31 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
         setError(null); // Clear any previous errors before moving to next step
         setCurrentStep('mapping');
         break;
-      case 'mapping':
+      case 'mapping': {
         if (!isMappingValid) {
           showError('Please complete the mapping before proceeding');
+          return;
+        }
+        const hasMsgIdMappingNext = currentMappings.some((mapping) => {
+          const destinations = Array.isArray(mapping.destination)
+            ? mapping.destination
+            : mapping.destination
+              ? [mapping.destination]
+              : [];
+          return destinations.some(
+            (dest: string) => dest.toLowerCase() === 'transactiondetails.msgid',
+          );
+        });
+        if (!hasMsgIdMappingNext) {
+          showError(
+            'Mapping for "transactionDetails.msgId" is required. Please map a source field to "transactionDetails.msgId" before proceeding.',
+          );
           return;
         }
         setError(null); // Clear any previous errors before moving to next step
         setCurrentStep('functions');
         break;
+      }
       case 'functions':
         setError(null); // Clear any previous errors before moving to next step
         setCurrentStep('simulation');
@@ -1148,13 +1165,30 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
       setError(null);
 
       switch (currentStep) {
-        case 'mapping':
+        case 'mapping': {
           if (!isMappingValid) {
             showError('Please complete the mapping before proceeding');
             return;
           }
+          const hasMsgIdMapping = currentMappings.some((mapping) => {
+            const destinations = Array.isArray(mapping.destination)
+              ? mapping.destination
+              : mapping.destination
+                ? [mapping.destination]
+                : [];
+            return destinations.some(
+              (dest: string) => dest.toLowerCase() === 'transactiondetails.msgid',
+            );
+          });
+          if (!hasMsgIdMapping) {
+            showError(
+              'Mapping for "transactionDetails.msgId" is required. Please map a source field to "transactionDetails.msgId" before proceeding.',
+            );
+            return;
+          }
           setCurrentStep('functions');
           break;
+        }
         case 'functions':
           setCurrentStep('simulation');
           break;

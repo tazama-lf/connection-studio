@@ -564,7 +564,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
                 </Tooltip>
               )}
             {(userIsApprover || userIsPublisher) &&
-              ['STATUS_04_APPROVED', 'STATUS_06_EXPORTED', 'approved', 'exported'].includes(config.status) && (
+              ['STATUS_04_APPROVED', 'STATUS_06_EXPORTED', 'STATUS_08_DEPLOYED', 'approved', 'exported', 'deployed'].includes(config.status) && (
                 <>
                   {config.publishing_status === 'active' ? (
                     <Tooltip title="Deactivate" arrow placement="top">
