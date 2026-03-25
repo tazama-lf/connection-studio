@@ -152,7 +152,7 @@ src/
 ├── router/            # Application routing configuration
 ├── test/              # Test utilities and setup
 │   ├── jest.d.ts      # Jest type definitions
-│   ├── setup.ts       # Test environment setup
+│   ├── jest.setup.ts       # Test environment setup
 │   ├── setupTests.ts  # Testing library configuration
 │   └── test-utils.tsx # Custom testing utilities
 ├── App.tsx            # Main application component
