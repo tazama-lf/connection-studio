@@ -52,7 +52,7 @@ const PublisherDEJobsPage: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      const params = { limit, offset, userRole: userRole as string };
+      const params = { limit, offset: offset * limit, userRole: userRole as string };
 
       const response = await dataEnrichmentApi.getList(
         params,
@@ -71,8 +71,12 @@ const PublisherDEJobsPage: React.FC = () => {
   };
 
   useEffect(() => {
+    setOffset(0);
+  }, [searchingFilters]);
+
+  useEffect(() => {
     fetchDeJobs();
-  }, [pagination, searchingFilters]);
+  }, [searchingFilters, offset, limit]);
 
   const handleViewJobDetails = async (jobId: string) => {
     try {

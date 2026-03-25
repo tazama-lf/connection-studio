@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Dialog,
@@ -17,6 +17,8 @@ export const CronJobConfirmationDialog: React.FC<CronJobConfirmationDialogProps>
   onClose,
   onConfirm,
 }) => {
+  const [approveComment, setApproveComment] = useState('');
+
   if (!type) return null;
 
   const getTitle = () => {
@@ -120,6 +122,43 @@ export const CronJobConfirmationDialog: React.FC<CronJobConfirmationDialogProps>
             {getWarning()}
           </DialogContentText>
         </Box>
+
+        {/* Optional approver comment - only shown for approve action */}
+        {type === 'approve' && (
+          <div style={{ marginTop: '16px' }}>
+            <label
+              htmlFor="approve-comment"
+              style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#374151',
+                marginBottom: '8px',
+              }}
+            >
+              Approver Comment{' '}
+              <span style={{ color: '#6b7280', fontWeight: 400 }}>(optional)</span>
+            </label>
+            <textarea
+              id="approve-comment"
+              value={approveComment}
+              onChange={(e) => { setApproveComment(e.target.value); }}
+              placeholder="Add an optional comment for this approval..."
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                border: '1px solid #d1d5db',
+                borderRadius: '6px',
+                fontSize: '14px',
+                lineHeight: '1.5',
+                resize: 'vertical',
+                outline: 'none',
+                boxSizing: 'border-box',
+              }}
+              rows={3}
+            />
+          </div>
+        )}
       </DialogContent>
       <DialogActions sx={{ padding: '12px 20px 16px 20px' }}>
         <Button
@@ -132,7 +171,8 @@ export const CronJobConfirmationDialog: React.FC<CronJobConfirmationDialogProps>
         <Button
           onClick={() => {
             if (type === 'export' || type === 'approval' || type === 'approve') {
-              onConfirm(type);
+              onConfirm(type, type === 'approve' ? approveComment.trim() : undefined);
+              if (type === 'approve') setApproveComment('');
             }
           }}
           variant="primary"

@@ -1049,8 +1049,7 @@ const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
             !editMode &&
             !cloneMode &&
             userIsEditor &&
-            (job.status === DATA_ENRICHMENT_JOB_STATUSES.IN_PROGRESS ||
-              job.status === DATA_ENRICHMENT_JOB_STATUSES.REJECTED) &&
+            job.status === DATA_ENRICHMENT_JOB_STATUSES.IN_PROGRESS &&
             onSendForApproval && (
               <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
                 <MuiButton

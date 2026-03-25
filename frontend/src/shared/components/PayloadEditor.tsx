@@ -1,6 +1,7 @@
 import { XMLParser } from 'fast-xml-parser';
 import { ArrowDownToLine, Code2, FilePlus, FileText, List, Settings2, SparklesIcon, Terminal, XCircle } from 'lucide-react';
 import React, { useEffect, useState, forwardRef, useImperativeHandle } from 'react';
+import { configApi } from '../../features/config/services/configApi';
 import ReactJson from 'react-json-view';
 import * as yup from 'yup';
 import type {
@@ -35,6 +36,7 @@ interface EndpointFormData {
   description: string;
   contentType: string;
   msgFam?: string;
+  relatedTransaction?: string;
 }
 interface InferredField {
   path: string;
@@ -76,6 +78,14 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(({
   );
   const [inferredFields, setInferredFields] = useState<InferredField[]>([]);
   const [showInferredFields, setShowInferredFields] = useState(false);
+  const hasUserEditedRef = React.useRef(false);
+  const [relatedTransactions, setRelatedTransactions] = useState<string[]>([]);
+
+  useEffect(() => {
+    configApi.getRelatedTransactions()
+      .then((res) => { setRelatedTransactions(Array.isArray(res.data) ? res.data : []); })
+      .catch(() => { setRelatedTransactions([]); });
+  }, []);
   const [fieldGenerationError, setFieldGenerationError] = useState<
     string | null
   >(null);
@@ -254,6 +264,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(({
     if (!newField.path.trim()) {
       return;
     }
+    hasUserEditedRef.current = true;
     const existsAlready = inferredFields.some(
       (f) => f.path === newField.path.trim(),
     );
@@ -320,6 +331,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(({
     }
   }, [initialEndpointData]);
   useEffect(() => {
+    if (hasUserEditedRef.current) return;
     if (existingSchemaFields && existingSchemaFields.length > 0) {
       if (
         existingSchemaFields[0] &&
@@ -726,53 +738,73 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(({
     return schemaFields;
   };
   const sampleJsonPayload = `{
-  "pain001": {
-    "GroupHeader": {
-      "MessageId": "MSG20251031001",
-      "CreationDateTime": "2025-10-31T15:19:24Z",
-      "NumberOfTransactions": "1",
-      "InitiatingParty": {
-        "Name": "ACME Corp"
-      }
+  "FIToFIPmtSts": {
+    "GrpHdr": {
+      "MsgId": "msg_id",
+      "CreDtTm": "2023-02-03T09:53:58.069Z"
     },
-    "PaymentInformation": {
-      "PaymentInformationId": "PMTINF20251031001",
-      "PaymentMethod": "TRF",
-      "RequestedExecutionDate": "2025-11-01",
-      "Debtor": {
-        "Name": "ACME Corp"
-      },
-      "DebtorAccount": {
-        "IBAN": "DE89370400440532013000"
-      },
-      "DebtorAgent": {
-        "BIC": "DEUTDEFF"
-      },
-      "CreditTransferTransactionInformation": [
+    "TxInfAndSts": {
+      "OrgnlInstrId": "5d158d92f70142a6ac7ffba30ac6c2db",
+      "OrgnlEndToEndId": "End_To_End_Id",
+      "TxSts": "ACCC",
+      "ChrgsInf": [
         {
-          "PaymentId": {
-            "EndToEndId": "E2E20251031001"
+          "Amt": {
+            "Amt": 3000.07,
+            "Ccy": "USD"
           },
-          "Amount": {
-            "InstructedAmount": {
-              "Currency": "EUR",
-              "Value": "1000.00"
+          "Agt": {
+            "FinInstnId": {
+              "ClrSysMmbId": {
+                "MmbId": "typolog028"
+              }
             }
+          }
+        },
+        {
+          "Amt": {
+            "Amt": 153.57,
+            "Ccy": "USD"
           },
-          "CreditorAgent": {
-            "BIC": "COBADEFF"
+          "Agt": {
+            "FinInstnId": {
+              "ClrSysMmbId": {
+                "MmbId": "typolog028"
+              }
+            }
+          }
+        },
+        {
+          "Amt": {
+            "Amt": 35,
+            "Ccy": "USD"
           },
-          "Creditor": {
-            "Name": "John Doe"
-          },
-          "CreditorAccount": {
-            "IBAN": "DE75512108001245126199"
+          "Agt": {
+            "FinInstnId": {
+              "ClrSysMmbId": {
+                "MmbId": "dfsp002"
+              }
+            }
           }
         }
-      ]
+      ],
+      "AccptncDtTm": "2023-02-03T09:53:58.069Z",
+      "InstgAgt": {
+        "FinInstnId": {
+          "ClrSysMmbId": {
+            "MmbId": "typolog028"
+          }
+        }
+      },
+      "InstdAgt": {
+        "FinInstnId": {
+          "ClrSysMmbId": {
+            "MmbId": "dfsp002"
+          }
+        }
+      }
     }
-  },
-  "TenantId":"123"
+  }
 }`;
   const sampleXmlPayload = `<?xml version="1.0" encoding="UTF-8"?>
 <Document xmlns="urn:iso:std:iso:20022:tech:xsd:pacs.008.001.11">
@@ -941,7 +973,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(({
               htmlFor="transaction-type"
               className="block text-sm font-medium text-gray-700 mb-2"
             >
-              Transaction Type *
+              Transaction Type (TxTp)*
             </label>
             {(() => {
               const isReadOnly = readOnly || (!isCloning && !!configId);
@@ -999,6 +1031,37 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(({
                 >
                   <option value="application/json">application/json</option>
                   <option value="application/xml">application/xml</option>
+                </select>
+              );
+            })()}
+          </div>
+          { }
+          <div>
+            <label
+              htmlFor="related-transaction"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
+              Related Transaction
+            </label>
+            {(() => {
+              const isReadOnly = readOnly || (!isCloning && !!configId);
+              return (
+                <select
+                  id="related-transaction"
+                  value={endpointData.relatedTransaction ?? ''}
+                  onChange={(e) => { handleEndpointDataChange('relatedTransaction', e.target.value); }}
+                  className={`block w-full px-3 py-3 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm [&:-webkit-autofill]:bg-white ${isReadOnly
+                    ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
+                    : 'bg-white border-gray-300'
+                    }`}
+                  disabled={isReadOnly}
+                >
+                  <option value="">-- Select Related Transaction --</option>
+                  {relatedTransactions.map((rt) => (
+                    <option key={rt} value={rt}>
+                      {rt}
+                    </option>
+                  ))}
                 </select>
               );
             })()}
@@ -1320,7 +1383,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(({
               { }
               { }
               { }
-              {isEditMode && !readOnly && (
+              {!readOnly && isEditMode && (
                 <div className="mt-4">
                   {!showAddFieldForm ? (
                     <button
@@ -1472,7 +1535,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(({
                 </div>
               </div>
               { }
-              {isEditMode && !readOnly && (
+              {!readOnly && isEditMode && (
                 <div className="mb-4">
                   {!showAddFieldForm ? (
                     <button

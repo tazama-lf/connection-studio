@@ -31,11 +31,19 @@ export const SimulationPanel: React.FC<SimulationPanelProps> = ({
     useState<SimulationResult | null>(null);
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>): void => {
     const file = event.target.files?.[0];
+    // Reset input so the same file can be re-selected after an error
+    event.target.value = '';
     if (file) {
+      const extension = file.name.split('.').pop()?.toLowerCase();
+      if (extension !== 'json' && extension !== 'xml') {
+        setSimulationError('Invalid file type. Only .json and .xml files are allowed.');
+        return;
+      }
       const reader = new FileReader();
       reader.onload = (e) => {
         const content = e.target?.result as string;
         setTestPayload(content);
+        setSimulationError(null);
       };
       reader.readAsText(file);
     }

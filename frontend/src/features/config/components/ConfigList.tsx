@@ -312,7 +312,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
       const statusLabel = newStatus === 'active' ? 'activated' : 'deactivated';
       showSuccess(
         'Success',
-        `Config "${config.msgFam}" has been ${statusLabel} successfully.`,
+        `Config "${config.transactionType}" has been ${statusLabel} successfully.`,
       );
 
       fetchConfigsTemp();
@@ -564,7 +564,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
                 </Tooltip>
               )}
             {(userIsApprover || userIsPublisher) &&
-              ['STATUS_04_APPROVED', 'STATUS_06_EXPORTED', 'approved', 'exported'].includes(config.status) && (
+              ['STATUS_04_APPROVED', 'STATUS_06_EXPORTED', 'STATUS_08_DEPLOYED', 'approved', 'exported', 'deployed'].includes(config.status) && (
                 <>
                   {config.publishing_status === 'active' ? (
                     <Tooltip title="Deactivate" arrow placement="top">
@@ -608,7 +608,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
 
       const params: PaginationParams = {
         limit,
-        offset,
+        offset: offset * limit,
         userRole: userRole as string,
       };
 
@@ -624,11 +624,15 @@ export const ConfigList: React.FC<ConfigListProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [userRole, pagination, searchingFilters])
+  }, [userRole, offset, limit, searchingFilters])
+
+  useEffect(() => {
+    setOffset(0);
+  }, [searchingFilters]);
 
   useEffect(() => {
     fetchConfigsTemp();
-  }, [pagination, searchingFilters]);
+  }, [fetchConfigsTemp]);
 
   if (loading) {
     return (
@@ -638,6 +642,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
       </div>
     );
   }
+
 
   return (
     <>
@@ -713,7 +718,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
                 fontSize: '15px',
               }}
             >
-              "{confirmDialog.config?.msgFam ?? 'this configuration'}"
+              "{confirmDialog.config?.transactionType ?? 'this configuration'}"
             </Box>
             {confirmDialog.type === 'export' && ' to SFTP'}?
           </DialogContentText>

@@ -131,8 +131,8 @@ export const useDataEnrichmentJobList = (): {
         setError(null);
 
         const response = await dataEnrichmentHandlers.loadJobs(
-          pagination.page,
-          pagination.limit,
+          offset,
+          limit,
           userRole as string,
           searchingFilters,
         );
@@ -158,12 +158,16 @@ export const useDataEnrichmentJobList = (): {
         setLoadingState((s) => ({ ...s, page: false as boolean }));
       }
     },
-    [userRole, searchingFilters, pagination],
+    [userRole, searchingFilters, offset, limit],
   );
 
   useEffect(() => {
+    setOffset(0);
+  }, [searchingFilters]);
+
+  useEffect(() => {
     loadJobs();
-  }, [loadJobs, pagination, searchingFilters]);
+  }, [loadJobs]);
 
   const handleView = useCallback(
     async (jobId: string) => {

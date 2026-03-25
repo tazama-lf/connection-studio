@@ -8,6 +8,7 @@ import {
   Shuffle,
   FileText,
   Edit3,
+  Info,
 } from 'lucide-react';
 import ReactJson from 'react-json-view';
 import { Button } from './Button';
@@ -76,6 +77,11 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
   // Ref to track if API fetch is in progress (prevent race conditions)
   const isFetchingRef = useRef(false);
 
+  // Ref to track if the user has made local changes (add/remove).
+  // When true, incoming existingMappings prop updates are ignored so the
+  // parent cannot accidentally re-populate mappings that were just removed.
+  const hasLocalChangesRef = useRef(false);
+
   // State for managing mappings
   const [mappingError, setMappingError] = useState<string | null>(null);
   const [currentMappings, setCurrentMappings] =
@@ -93,14 +99,16 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
   const [savingDestinationJson, setSavingDestinationJson] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  // Load existing mappings on component mount
   useEffect(() => {
+    if (hasLocalChangesRef.current) return;
     setCurrentMappings(existingMappings);
     validateMappings(existingMappings);
   }, [existingMappings]);
 
-  // Fetch current mappings from backend on component mount if configId is available
+  // Fetch current mappings from backend on component mount if configId is available.
+  // Also reset the local-changes flag so switching to a different config works correctly.
   useEffect(() => {
+    hasLocalChangesRef.current = false;
     if (configId) {
       fetchCurrentMappings();
     }
@@ -342,6 +350,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       const response = await configApi.removeMapping(configId!, index);
 
       if (response.success) {
+        hasLocalChangesRef.current = true;
         const updatedMappings = currentMappings.filter((_, i) => i !== index);
         setCurrentMappings(updatedMappings);
         validateMappings(updatedMappings);
@@ -508,30 +517,56 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       ];
     }
 
+    let rawNodes: TreeNode[] = [];
+
     // If sourceSchema is an array (from our interface)
     if (Array.isArray(sourceSchema)) {
-      return buildSourceTreeFromArray(sourceSchema);
+      rawNodes = buildSourceTreeFromArray(sourceSchema);
+    } else if (sourceSchema.properties || sourceSchema.type === 'object') {
+      // If sourceSchema is a JSON schema object
+      rawNodes = buildSourceTreeFromSchema(sourceSchema);
+    } else {
+      // Fallback
+      rawNodes = [
+        {
+          id: 'schema',
+          name: 'Schema Data',
+          path: ['schema'],
+          children: Object.keys(sourceSchema).map((key) => ({
+            id: `schema.${key}`,
+            name: key,
+            path: ['schema', key],
+            type: typeof sourceSchema[key] === 'string' ? 'string' : 'object',
+          })),
+        },
+      ];
+    }
+    const messageStructureNodes = rawNodes.filter((node) => node.id !== 'TenantId');
+    const systemReservedNodes = rawNodes.filter((node) => node.id === 'TenantId');
+
+    const sections: TreeNode[] = [];
+
+    if (messageStructureNodes.length > 0) {
+      sections.push({
+        id: 'messageStructure',
+        name: 'Message Structure',
+        path: ['messageStructure'],
+        type: 'section',
+        children: messageStructureNodes,
+      });
     }
 
-    // If sourceSchema is a JSON schema object
-    if (sourceSchema.properties || sourceSchema.type === 'object') {
-      return buildSourceTreeFromSchema(sourceSchema);
+    if (systemReservedNodes.length > 0) {
+      sections.push({
+        id: 'systemReserved',
+        name: 'System Reserved',
+        path: ['systemReserved'],
+        type: 'section',
+        children: systemReservedNodes,
+      });
     }
 
-    // Fallback
-    return [
-      {
-        id: 'schema',
-        name: 'Schema Data',
-        path: ['schema'],
-        children: Object.keys(sourceSchema).map((key) => ({
-          id: `schema.${key}`,
-          name: key,
-          path: ['schema', key],
-          type: typeof sourceSchema[key] === 'string' ? 'string' : 'object',
-        })),
-      },
-    ];
+    return sections.length > 0 ? sections : rawNodes;
   }, [sourceSchema]); // Only recalculate when sourceSchema changes
   // Helper function to convert API destination options to TreeNode format
   const convertDestinationOptionsToTree = (
@@ -1091,6 +1126,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
         };
 
         // Update local state only after successful API call
+        hasLocalChangesRef.current = true;
         const updatedMappings = [...currentMappings, newFieldMapping];
         setCurrentMappings(updatedMappings);
         validateMappings(updatedMappings);
@@ -1137,7 +1173,6 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
 
           const nodeType = node.id.startsWith('redis') ? 'redis' : type;
           const isRedis = node.id === 'redis';
-          const isTenantId = node.id === 'TenantId' && depth === 0;
 
           if (isSection) {
             return (
@@ -1162,12 +1197,6 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
 
           return (
             <div key={node.id} data-id="element-177">
-              {/* Add "System Reserved" heading before TenantId */}
-              {isTenantId && (
-                <div className="mb-2 mt-4">
-                  <div className="text-sm text-gray-600">System Reserved</div>
-                </div>
-              )}
               <div
                 className={`flex items-center p-1 rounded hover:bg-gray-100 ${isSelected ? 'bg-blue-100' : ''}`}
                 style={{ paddingLeft: `${depth * 20 + 4}px` }}
@@ -1301,12 +1330,6 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                     className="border border-gray-200 rounded-md p-3 h-96 overflow-auto"
                     data-id="element-197"
                   >
-                    <div
-                      className="mb-2 text-sm text-gray-500"
-                      data-id="element-198"
-                    >
-                      Message Structure
-                    </div>
                     {renderTree(
                       sourceTree,
                       expandedSourceNodes,
@@ -1824,8 +1847,9 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                 <XIcon size={20} />
               </button>
             </div>
-
-            <div className="mb-4 text-sm text-gray-600">
+            
+            {/* Commenting out for now might need it in future */}
+            {/* <div className="mb-4 text-sm text-gray-600">
               <p className="mb-2">
                 Edit the destination fields JSON structure. Add, remove, or modify fields as needed.
               </p>
@@ -1855,7 +1879,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                   <li><strong>Data Cache</strong> - Can only contain the "redis" object (no other root objects allowed)</li>
                 </ul>
               </div>
-            </div>
+            </div> */}
 
             {/* JSON Editor */}
             <div className="border border-gray-200 rounded-md p-4 bg-gray-50 mb-4" style={{ maxHeight: '500px', overflow: 'auto' }}>
@@ -1870,7 +1894,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                   displayDataTypes={true}
                   displayObjectSize={true}
                   enableClipboard={true}
-                  collapsed={1}
+                  collapsed={2}
                   style={{ fontSize: '13px', backgroundColor: 'transparent' }}
                 />
               )}
@@ -1936,6 +1960,44 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
           Add Mapping
         </Button>
       </div>
+      {/* Required Mappings Info Box */}
+      {!readOnly && (
+        <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+          <div className="flex items-start gap-3">
+            <Info size={18} className="text-blue-500 mt-0.5 shrink-0" />
+            <div className="space-y-3">
+              <p className="text-sm font-semibold text-blue-800">Required Mappings</p>
+              <div className="space-y-2">
+                <div className="flex items-start gap-2">
+                  <span className="mt-1 inline-block w-2 h-2 rounded-full bg-blue-400 shrink-0" />
+                  <div>
+                    <p className="text-sm text-blue-800">
+                      <span className="font-medium">Unique Message ID</span> — Every transaction must carry a globally unique identifier so it can be traced end-to-end across all systems.
+                    </p>
+                    <p className="text-xs text-blue-600 mt-0.5">
+                      Map your source field that contains the message ID to{' '}
+                      <code className="bg-blue-100 px-1 py-0.5 rounded font-mono">transactionDetails.msgId</code>.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="mt-1 inline-block w-2 h-2 rounded-full bg-blue-400 shrink-0" />
+                  <div>
+                    <p className="text-sm text-blue-800">
+                      <span className="font-medium">Message Creation Date &amp; Time</span> — The timestamp at which the message was originated is required for audit trails, sequencing, and duplicate detection.
+                    </p>
+                    <p className="text-xs text-blue-600 mt-0.5">
+                      Map your source field that contains the creation timestamp to{' '}
+                      <code className="bg-blue-100 px-1 py-0.5 rounded font-mono">transactionDetails.CreDtTm</code>.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Current Mappings Display */}
       {currentMappings.length > 0 && (
         <div className="bg-green-50 border border-green-200 rounded-md p-4">

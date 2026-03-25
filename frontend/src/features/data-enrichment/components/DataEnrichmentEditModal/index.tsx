@@ -16,8 +16,8 @@ import { useToast } from '../../../../shared/providers/ToastProvider';
 import { saveDataEnrichmentJob ,
   handleUpdateConfirm as confirmUpdate,
   handleEditSendForApprovalConfirm,
+  loadSchedules,
 } from '../../handlers';
-import { loadSchedules as loadCronSchedules } from '../../../cron/handlers';
 
 import { scrollToFirstError , getJobType } from '../../utils';
 import type { ScheduleResponse , DataEnrichmentEditModalProps } from '../../types';
@@ -26,8 +26,6 @@ import type { ScheduleResponse , DataEnrichmentEditModalProps } from '../../type
 import * as validationSchema from '../validationSchema';
 import PullConfigForm from '../PullConfigForm';
 import PushConfigForm from '../PushConfigForm';
-
-import { DATA_ENRICHMENT_JOB_STATUSES } from '../../constants';
 const {
   defaultValues,
   pullValidationSchema,
@@ -150,33 +148,32 @@ export const DataEnrichmentEditModal: React.FC<
   };
 
   useEffect(() => {
-    const loadSchedules = async () => {
+    const fetchSchedules = async () => {
       if (!isOpen) return;
 
       try {
-        
-        const pageNumber = 1;
-        const itemsPerPage = 50;
-        const userRole = 'ASSOCIATE'; 
-        const searchingFilters = {};
-        const result = await loadCronSchedules(pageNumber, itemsPerPage, userRole, searchingFilters);
-        const schedules = result?.schedules ?? result?.data ?? [];
+        const schedulesResp = await loadSchedules();
+        // Handle all possible paginated response shapes from the backend
+        const scheduleData: any[] = Array.isArray(schedulesResp)
+          ? schedulesResp
+          : (schedulesResp as any)?.schedules ||
+            (schedulesResp as any)?.data ||
+            (schedulesResp as any)?.results ||
+            (schedulesResp as any)?.items ||
+            [];
 
-        
-        const filteredSchedules = schedules?.filter(
-          (schedule: any) =>
-            schedule.status === DATA_ENRICHMENT_JOB_STATUSES.APPROVED ||
-            schedule.status === DATA_ENRICHMENT_JOB_STATUSES.EXPORTED,
-        );
+        setAvailableSchedules(scheduleData);
 
-        setAvailableSchedules(filteredSchedules ?? []);
+        if (editMode && selectedJob?.schedule_id) {
+          setValue('schedule', selectedJob.schedule_id);
+        }
       } catch (error) {
         setAvailableSchedules([]);
       }
     };
 
-    loadSchedules();
-  }, [isOpen]);
+    fetchSchedules();
+  }, [isOpen, editMode, selectedJob, setValue]);
 
   useEffect(() => {
     if (isOpen && selectedJob && editMode) {

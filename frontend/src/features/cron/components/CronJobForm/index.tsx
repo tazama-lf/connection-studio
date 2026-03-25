@@ -283,8 +283,7 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({
                 )}
 
               {viewFormData &&
-                (viewFormData?.status === CRON_JOB_STATUSES.IN_PROGRESS ||
-                  viewFormData?.status === CRON_JOB_STATUSES.REJECTED) && (
+                viewFormData?.status === CRON_JOB_STATUSES.IN_PROGRESS && (
                   <Button
                     type="button"
                     variant="contained"

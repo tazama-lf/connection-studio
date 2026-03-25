@@ -123,8 +123,8 @@ export const useCronJobList = (): {
         setError(null);
 
         const response = await apiLoadSchedules(
-          pagination.page,
-          pagination.limit,
+          offset,
+          limit,
           userRole as string,
           searchingFilters,
         );
@@ -139,8 +139,12 @@ export const useCronJobList = (): {
         setLoadingState((s) => ({ ...s, page: false }));
       }
     },
-    [pagination, userRole, searchingFilters],
+    [offset, limit, userRole, searchingFilters],
   );
+
+  useEffect(() => {
+    setOffset(0);
+  }, [searchingFilters]);
 
   useEffect(() => {
     loadSchedules();
@@ -249,12 +253,12 @@ export const useCronJobList = (): {
   }, [schedules]);
 
   const handleApproveConfirm = useCallback(
-    async () => {
+    async (comment?: string) => {
       if (!confirmDialog.schedule) return;
 
       try {
         setLoadingState((s) => ({ ...s, action: 'approve' }));
-        await cronHandlers.cronJobApi.updateStatus(confirmDialog.schedule.id, CRON_JOB_STATUSES.APPROVED, '');
+        await cronHandlers.cronJobApi.updateStatus(confirmDialog.schedule.id, CRON_JOB_STATUSES.APPROVED, comment ?? '');
         showSuccess('Cron job approved successfully');
         loadSchedules();
         setConfirmDialog({ open: false, type: '', schedule: null });

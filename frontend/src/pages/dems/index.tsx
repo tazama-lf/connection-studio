@@ -294,8 +294,9 @@ const DEMSModule: React.FC = () => {
 
       return false;
     })
+    .filter((collection) => collection.collection_id != null)
     .map((collection) => ({
-      value: collection.collection_id,
+      value: collection.collection_id as number,
       label: collection.name,
     }));
 
@@ -307,9 +308,9 @@ const DEMSModule: React.FC = () => {
     if (!collection?.children) return [];
 
     return collection.children
-      .filter((child) => child?.type === 'object')
+      .filter((child) => child?.type === 'object' && child.serial_no != null)
       .map((child) => ({
-        value: child.serial_no,
+        value: child.serial_no as number,
         label: child.name,
       }));
   };
@@ -385,12 +386,12 @@ const DEMSModule: React.FC = () => {
             </h1>
           </div>
           <div className="flex items-center space-x-2">
-            <Button
+            {/* <Button
               onClick={handleAddDestination}
               icon={<PlusIcon size={16} />}
             >
               Extend Data Model
-            </Button>
+            </Button> */}
             <Button onClick={handleAddNew} icon={<PlusIcon size={16} />}>
               Create New Connection
             </Button>

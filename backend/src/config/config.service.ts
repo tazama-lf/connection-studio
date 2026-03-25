@@ -24,6 +24,7 @@ import {
 import { WorkflowActionDto, SftpConfigDataDto } from './dto';
 import { EventType } from '../enums/events.enum';
 import { AuthenticatedUser } from '../auth/auth.types';
+import { AdminServiceClient } from '../services/admin-service-client.service';
 
 @Injectable()
 export class ConfigService {
@@ -37,6 +38,7 @@ export class ConfigService {
     private readonly sftpService: SftpService,
     private readonly notifyService: NotifyService,
     private readonly notificationService: NotificationService,
+    private readonly adminServiceClient: AdminServiceClient,
   ) { }
 
   private async getConfigOrThrow(
@@ -174,6 +176,7 @@ export class ConfigService {
         status: ConfigStatus.IN_PROGRESS,
         tenantId,
         createdBy: userId,
+        related_transaction: dto.related_transaction,
       };
 
       const configId = await this.configRepository.createConfig(
@@ -750,6 +753,33 @@ export class ConfigService {
       user.token.tokenString,
     );
 
+    const updatedConfig = await this.getConfigOrThrow(
+      id,
+      user.tenantId,
+      user.token.tokenString,
+    );
+
+    if (!updatedConfig.status) {
+      throw new BadRequestException(
+        `Config ${id} has no status defined after update`,
+      );
+    }
+
+    const editCheck = this.workflowService.canEditConfig(updatedConfig.status);
+    if (!editCheck.canEdit && updatedConfig.status !== ConfigStatus.IN_PROGRESS) {
+      throw new ForbiddenException(
+        editCheck.message ?? `Cannot update config in status "${updatedConfig.status}". ${editCheck.message || 'Please clone to create a new version.'}`,
+      );
+    }
+
+    if (updatedConfig.status !== ConfigStatus.IN_PROGRESS) {
+      await this.configRepository.updateConfigStatus(
+        id,
+        ConfigStatus.IN_PROGRESS,
+        user.token.tokenString,
+      );
+    }
+
     return result;
   }
 
@@ -902,5 +932,22 @@ export class ConfigService {
       updatedFilters,
       user.token.tokenString,
     );
+  }
+
+  async getRelatedTransactions(
+    user: AuthenticatedUser,
+  ): Promise<{ related_transactions: string[] }> {
+    try {
+      return await this.configRepository.getRelatedTransactions(
+        user.token.tokenString,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to get related transactions: ${error.message}`,
+      );
+      throw new BadRequestException(
+        'Failed to retrieve related transactions',
+      );
+    }
   }
 }

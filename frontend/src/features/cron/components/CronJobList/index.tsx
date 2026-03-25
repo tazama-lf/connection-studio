@@ -71,13 +71,13 @@ export const CronJobList: React.FC<CronJobListProps> = () => {
     },
   });
 
-  const handleConfirmAction = async (type: 'export' | 'approval' | 'approve') => {
+  const handleConfirmAction = async (type: 'export' | 'approval' | 'approve', comment?: string) => {
     if (type === 'export') {
       await handleExportConfirm();
     } else if (type === 'approval') {
       await handleApprovalConfirm();
     } else if (type === 'approve') {
-      await handleApproveConfirm();
+      await handleApproveConfirm(comment);
       setModalOpen(false);
     }
   };

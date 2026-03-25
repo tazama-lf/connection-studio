@@ -85,14 +85,14 @@ export const FUNCTION_CONFIGS: Record<AllowedFunctionName, FunctionConfig> = {
       {
         name: 'debtor-account',
         displayName: 'Debtor Account',
-        parameters: 'dbtrAcctId, TenantId',
-        description: 'Parameters: dbtrAcctId, TenantId',
+        parameters: 'dbtrAcctId, TenantId, creDtTm',
+        description: 'Parameters: dbtrAcctId, TenantId, creDtTm',
       },
       {
         name: 'creditor-account',
         displayName: 'Creditor Account',
-        parameters: 'cdtrAcctId, TenantId',
-        description: 'Parameters: cdtrAcctId, TenantId',
+        parameters: 'cdtrAcctId, TenantId, creDtTm',
+        description: 'Parameters: cdtrAcctId, TenantId, creDtTm',
       },
     ],
   },
@@ -299,4 +299,12 @@ export const FUNCTION_CONFIGS: Record<AllowedFunctionName, FunctionConfig> = {
     configurations: [],
     dataModelConfiguration: [],
   },
+  addDataModelTable: {
+    name: 'addDataModelTable',
+    displayName: 'Add Data Model Table',
+    requiredParameters: [],
+    optionalParameters: [],
+    configurations: [],
+    dataModelConfiguration: [],
+  }
 };
