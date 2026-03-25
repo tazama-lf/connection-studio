@@ -13,14 +13,8 @@ export class ConfigRepository {
     configData: Omit<Config, 'id' | 'createdAt' | 'updatedAt'>,
     token: string,
   ): Promise<number> {
-    const transformedData = {
-      ...configData,
-      relatedTransaction: configData.related_transaction,
-    };
-    delete (transformedData as any).related_transaction;
-    
     const result = await this.adminServiceClient.writeConfig(
-      transformedData as Record<string, unknown>,
+      configData as Record<string, unknown>,
       token,
     );
     if (!result.id) {
