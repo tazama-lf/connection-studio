@@ -973,7 +973,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(({
               htmlFor="transaction-type"
               className="block text-sm font-medium text-gray-700 mb-2"
             >
-              Transaction Type *
+              Transaction Type (TxTp)*
             </label>
             {(() => {
               const isReadOnly = readOnly || (!isCloning && !!configId);

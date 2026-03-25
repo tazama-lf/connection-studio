@@ -8,6 +8,7 @@ import {
   Shuffle,
   FileText,
   Edit3,
+  Info,
 } from 'lucide-react';
 import ReactJson from 'react-json-view';
 import { Button } from './Button';
@@ -1959,6 +1960,44 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
           Add Mapping
         </Button>
       </div>
+      {/* Required Mappings Info Box */}
+      {!readOnly && (
+        <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+          <div className="flex items-start gap-3">
+            <Info size={18} className="text-blue-500 mt-0.5 shrink-0" />
+            <div className="space-y-3">
+              <p className="text-sm font-semibold text-blue-800">Required Mappings</p>
+              <div className="space-y-2">
+                <div className="flex items-start gap-2">
+                  <span className="mt-1 inline-block w-2 h-2 rounded-full bg-blue-400 shrink-0" />
+                  <div>
+                    <p className="text-sm text-blue-800">
+                      <span className="font-medium">Unique Message ID</span> — Every transaction must carry a globally unique identifier so it can be traced end-to-end across all systems.
+                    </p>
+                    <p className="text-xs text-blue-600 mt-0.5">
+                      Map your source field that contains the message ID to{' '}
+                      <code className="bg-blue-100 px-1 py-0.5 rounded font-mono">transactionDetails.msgId</code>.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="mt-1 inline-block w-2 h-2 rounded-full bg-blue-400 shrink-0" />
+                  <div>
+                    <p className="text-sm text-blue-800">
+                      <span className="font-medium">Message Creation Date &amp; Time</span> — The timestamp at which the message was originated is required for audit trails, sequencing, and duplicate detection.
+                    </p>
+                    <p className="text-xs text-blue-600 mt-0.5">
+                      Map your source field that contains the creation timestamp to{' '}
+                      <code className="bg-blue-100 px-1 py-0.5 rounded font-mono">transactionDetails.CreDtTm</code>.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Current Mappings Display */}
       {currentMappings.length > 0 && (
         <div className="bg-green-50 border border-green-200 rounded-md p-4">

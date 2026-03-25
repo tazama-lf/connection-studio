@@ -348,11 +348,13 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
           }}
           className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         >
-          {Object.values(FUNCTION_CONFIGS).map((config) => (
-            <option key={config.name} value={config.name}>
-              {config.displayName}
-            </option>
-          ))}
+          {Object.values(FUNCTION_CONFIGS)
+            .filter((config) => config.name !== 'addDataModelTable')
+            .map((config) => (
+              <option key={config.name} value={config.name}>
+                {config.displayName}
+              </option>
+            ))}
         </select>
       </div>
       {functionConfig?.dataModelConfiguration &&
@@ -809,14 +811,49 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
         setError(null); // Clear any previous errors before moving to next step
         setCurrentStep('mapping');
         break;
-      case 'mapping':
+      case 'mapping': {
         if (!isMappingValid) {
           showError('Please complete the mapping before proceeding');
+          return;
+        }
+        const getDestinations = (mapping: (typeof currentMappings)[number]) =>
+          Array.isArray(mapping.destination)
+            ? mapping.destination
+            : mapping.destination
+              ? [mapping.destination]
+              : [];
+        const hasMsgIdMappingNext = currentMappings.some((mapping) =>
+          getDestinations(mapping).some(
+            (dest: string) => dest.toLowerCase() === 'transactiondetails.msgid',
+          ),
+        );
+        const hasCreDtTmMappingNext = currentMappings.some((mapping) =>
+          getDestinations(mapping).some(
+            (dest: string) => dest.toLowerCase() === 'transactiondetails.crddttm',
+          ),
+        );
+        if (!hasMsgIdMappingNext && !hasCreDtTmMappingNext) {
+          showError(
+            'Mappings for "transactionDetails.msgId" and "transactionDetails.CreDtTm" are both required. Please map source fields to these destinations before proceeding.',
+          );
+          return;
+        }
+        if (!hasMsgIdMappingNext) {
+          showError(
+            'Mapping for "transactionDetails.msgId" is required. Please map a source field to "transactionDetails.msgId" before proceeding.',
+          );
+          return;
+        }
+        if (!hasCreDtTmMappingNext) {
+          showError(
+            'Mapping for "transactionDetails.CreDtTm" is required. Please map a source field to "transactionDetails.CreDtTm" before proceeding.',
+          );
           return;
         }
         setError(null); // Clear any previous errors before moving to next step
         setCurrentStep('functions');
         break;
+      }
       case 'functions':
         setError(null); // Clear any previous errors before moving to next step
         setCurrentStep('simulation');
@@ -1148,13 +1185,49 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
       setError(null);
 
       switch (currentStep) {
-        case 'mapping':
+        case 'mapping': {
           if (!isMappingValid) {
             showError('Please complete the mapping before proceeding');
             return;
           }
+          const getDestsSaveAndNext = (mapping: (typeof currentMappings)[number]) =>
+            Array.isArray(mapping.destination)
+              ? mapping.destination
+              : mapping.destination
+                ? [mapping.destination]
+                : [];
+          const hasMsgIdMapping = currentMappings.some((mapping) =>
+            getDestsSaveAndNext(mapping).some(
+              (dest: string) => dest.toLowerCase() === 'transactiondetails.msgid',
+            ),
+          );
+          const hasCreDtTmMapping = currentMappings.some((mapping) =>
+            getDestsSaveAndNext(mapping).some(
+              (dest: string) => dest.toLowerCase() === 'transactiondetails.credttm',
+            ),
+          );
+          if (!hasMsgIdMapping && !hasCreDtTmMapping) {
+            showError(
+              'Mappings for "transactionDetails.msgId" and "transactionDetails.CreDtTm" are both required. Please map source fields to these destinations before proceeding.',
+            );
+            return;
+          }
+          if (!hasMsgIdMapping) {
+            showError(
+              'Mapping for "transactionDetails.msgId" is required. Please map a source field to "transactionDetails.msgId" before proceeding.',
+            );
+            return;
+          }
+          if (!hasCreDtTmMapping) {
+            console.log('Current mappings:', currentMappings);
+            showError(
+              'Mapping for "transactionDetails.CreDtTm" is required. Please map a source field to "transactionDetails.CreDtTm" before proceeding.',
+            );
+            return;
+          }
           setCurrentStep('functions');
           break;
+        }
         case 'functions':
           setCurrentStep('simulation');
           break;
