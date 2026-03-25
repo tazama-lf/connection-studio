@@ -759,6 +759,19 @@ export class ConfigService {
       user.token.tokenString,
     );
 
+    if (!updatedConfig.status) {
+      throw new BadRequestException(
+        `Config ${id} has no status defined after update`,
+      );
+    }
+
+    const editCheck = this.workflowService.canEditConfig(updatedConfig.status);
+    if (!editCheck.canEdit && updatedConfig.status !== ConfigStatus.IN_PROGRESS) {
+      throw new ForbiddenException(
+        editCheck.message ?? `Cannot update config in status "${updatedConfig.status}". ${editCheck.message || 'Please clone to create a new version.'}`,
+      );
+    }
+
     if (updatedConfig.status !== ConfigStatus.IN_PROGRESS) {
       await this.configRepository.updateConfigStatus(
         id,
