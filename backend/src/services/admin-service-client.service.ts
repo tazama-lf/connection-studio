@@ -990,7 +990,7 @@ export class AdminServiceClient {
   }> {
     return await this.executeHttpRequest(
       'GET',
-      `${DATA_MODEL_JSON_URL}/${tenantId}`,
+      `${DATA_MODEL_JSON_URL}`,
       token,
     );
   }
@@ -1006,7 +1006,7 @@ export class AdminServiceClient {
   }> {
     return await this.executeHttpRequest(
       'PUT',
-      `${DATA_MODEL_JSON_URL}/${tenantId}`,
+      `${DATA_MODEL_JSON_URL}`,
       token,
       { data_model_json: dataModelJson },
     );
