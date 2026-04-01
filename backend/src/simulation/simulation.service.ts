@@ -566,6 +566,7 @@ export class SimulationService {
         payload,
         config?.schema,
       );
+      
       if (config?.schema) {
         const schemaProperties = config.schema.properties;
         if (schemaProperties) {
@@ -674,16 +675,42 @@ export class SimulationService {
     const normalized: Record<string, unknown> = {};
 
     for (const [key, value] of Object.entries(obj)) {
-      if (key.startsWith('@') || key.startsWith('xmlns') || key === '$') {
+
+      if (key.startsWith('xmlns') || key === '$') {
         continue;
       }
+      
+      // Handle attributes that start with '@'
+      if (key.startsWith('@')) {
+        const attrName = key.substring(1); // Remove '@' prefix
+        const currentPath = path ? `${path}.${attrName}` : attrName;
+        
+        // Check if schema expects this attribute (without @)
+        if (schema && typeof schema === 'object' && 'properties' in schema) {
+          const schemaProps = (schema as any).properties;
+          if (schemaProps && schemaProps[attrName]) {
+            normalized[attrName] = value;
+          }
+        }
+        continue;
+      }
+      
       if (key === '#text') {
+        // Check if this object has attributes (keys starting with @)
         const hasAttributes = Object.keys(obj).some(
-          (k) => k !== '#text' && !k.startsWith('@'),
+          (k) => k.startsWith('@'),
         );
-        const hasOnlyTextAndAttributes = Object.keys(obj).every(
-          (k) => k === '#text' || k.startsWith('@') || !k.startsWith('@'),
-        );
+        
+        // If the schema expects an object with #text and attributes, include #text
+        if (schema && typeof schema === 'object' && 'properties' in schema) {
+          const schemaProps = (schema as any).properties;
+          
+          if (schemaProps && schemaProps['#text']) {
+            // Schema expects #text as a property, so include it
+            normalized['#text'] = typeof value === 'string' ? parseFloat(value) || value : value;
+            continue;
+          }
+        }
 
         const expectedType = this.getSchemaTypeAtPath(schema, path);
 
@@ -691,15 +718,17 @@ export class SimulationService {
           return value;
         }
 
-        if (Object.keys(obj).length === 1 || hasOnlyTextAndAttributes) {
+        // If this is the only key or only has #text and attributes, return the text value
+        if (Object.keys(obj).length === 1 || (hasAttributes && Object.keys(obj).every(k => k === '#text' || k.startsWith('@')))) {
           return value;
         }
+        
         normalized.textContent = value;
         continue;
       }
       const currentPath = path ? `${path}.${key}` : key;
 
-      const fieldSchema = this.getSchemaAtPath(schema, currentPath);
+      const fieldSchema = this.getSchemaAtPath(schema, key); // Use just the key, not the full path
 
       if (value && typeof value === 'object') {
         const normalizedValue = this.normalizeXmlParsedObjectWithSchema(
