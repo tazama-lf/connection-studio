@@ -1017,7 +1017,7 @@ export class AdminServiceClient {
   ): Promise<{ related_transactions: string[] }> {
     return await this.executeHttpRequest(
       'GET',
-      `${CONFIG_URL}/tcs/related-transactions`,
+      `${CONFIG_URL}/related-transactions`,
       token,
     );
   }
