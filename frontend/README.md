@@ -269,16 +269,7 @@ EXPOSE 3000
 CMD ["npm", "run", "preview"]
 ```
 
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-### Development Guidelines
-- Follow TypeScript best practices
-- Write tests for new features
-- Maintain responsive design principles
-- Update documentation for significant changes
+# For support or questions
+- Review existing issues, discussions and pull requests
+- Start a discussion in the **Discussions** tab or create an issue in the **Issues** tab in this repository
+- Join the Tazama Slack workspace and post your question in the **#get-help** channel - :point_right: Join here: https://slack.tazama.org
