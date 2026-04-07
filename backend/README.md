@@ -1158,43 +1158,7 @@ Test data sets are provided for all major transaction types:
 - `GET /health/keycloak`: Keycloak connectivity
 - `GET /health/admin-service`: Admin Service connectivity
 
-## Contribution Guidelines
-
-### Branching Strategy
-
-- `main`: Production-ready code
-- `develop`: Integration branch for features
-- `feature/*`: Individual feature development
-- `hotfix/*`: Critical production fixes
-
-### Commit Conventions
-
-```
-feat: add schema versioning support
-fix: resolve mapping validation error
-docs: update API documentation
-test: add unit tests for config module
-```
-
-### Pull Request Rules
-
-1. All tests must pass
-2. Code coverage must not decrease
-3. Documentation must be updated
-4. At least one reviewer approval required
-
-## License
-
-Apache-2.0 License. See [LICENSE](LICENSE) file for details.
-
-## Maintainers
-
-- **Technical Lead**: engineering@tazama.org
-- **Product Owner**: product@tazama.org
-- **DevOps**: devops@tazama.org
-
-For support and questions:
-
-- Create an issue in the repository
-- Join our Slack workspace: #tazama-connection-studio
-- Email support: support@tazama.org
+# For support or questions
+- Review existing issues, discussions and pull requests
+- Start a discussion in the **Discussions** tab or create an issue in the **Issues** tab in this repository
+- Join the Tazama Slack workspace and post your question in the **#get-help** channel - :point_right: Join here: https://slack.tazama.org
