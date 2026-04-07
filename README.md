@@ -318,6 +318,8 @@ SMTP_FROM_EMAIL=noreply@tazama.com
 SMTP_FROM_NAME=Tazama Connection Studio
 ```
 
+Please refer to the deployment guide here: https://github.com/tazama-lf/docs/blob/dev/Technical/Deployment-Guides/TCS-Deployment-Guide.md
+
 ### Docker Deployment
 
 #### Frontend Only
