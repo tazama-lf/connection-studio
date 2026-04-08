@@ -18,7 +18,7 @@ Tazama Connection Studio (TCS) is a comprehensive design-time configuration mana
 
 ## User Manual and Video Demonstration
 - Please refer to the user manual here: https://github.com/tazama-lf/docs/blob/dev/Guides/User%20Manuals%20for%20Downloading/Tazama%20Connection%20Studio.docx
-- Please refer to the demonstration video here: https://drive.google.com/file/d/119Jjgf__MCMxg1kbC4mr192zF2KXO6rR/view?usp=sharing
+- Please refer to the demonstration videos here: https://www.youtube.com/playlist?list=PLXwBwZnOLFQ6_iXDka8MuDnCchXCWfL7O
 - 
 ## Architecture
 
