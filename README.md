@@ -16,6 +16,10 @@ Tazama Connection Studio (TCS) is a comprehensive design-time configuration mana
 - A real-time monitoring system
 - A data storage or analytics platform
 
+## User Manual and Video Demonstration
+- Please refer to the user manual here: https://github.com/tazama-lf/docs/blob/dev/Guides/User%20Manuals%20for%20Downloading/Tazama%20Connection%20Studio.docx
+- Please refer to the demonstration videos here: https://www.youtube.com/playlist?list=PLXwBwZnOLFQ6_iXDka8MuDnCchXCWfL7O
+- 
 ## Architecture
 
 ### High-Level Flow
