@@ -3,6 +3,7 @@
 import Logo from '@assets/logo.png';
 import tazamaLogo from '@assets/tazamaLogo.svg';
 import treeImage from '@assets/treeImage.png';
+import { APACHE_LICENSE_URL } from '../../../utils/constants';
 import { yupResolver } from '@hookform/resolvers/yup';
 import {
   AppBar,
@@ -332,9 +333,20 @@ export const Login: React.FC = () => {
             <Typography
               variant="body2"
               color="text.secondary"
+              align="center"
               sx={{ mt: '130px' }}
             >
-              &copy; {new Date().getFullYear()} Tazama. Powered by Paysys Labs.
+              &copy; {new Date().getFullYear()} LF Charities, Inc. and contributors to the Tazama project
+              <br />
+              Licensed under{' '}
+              <a
+                href={APACHE_LICENSE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: 'inherit' }}
+              >
+                Apache-2.0
+              </a>
             </Typography>
           </Box>
         </Box>
