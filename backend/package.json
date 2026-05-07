@@ -41,7 +41,7 @@
     "@prisma/client": "^6.12.0",
     "@tazama-lf/audit-lib": "^1.0.8",
     "@tazama-lf/auth-lib": "^2.1.0",
-    "@tazama-lf/frms-coe-lib": "0.0.1-psl.6",
+    "@tazama-lf/frms-coe-lib": "8.0.0-rc.1",
     "@tazama-lf/frms-coe-startup-lib": "0.0.1-psl.5",
     "@tazama-lf/tcs-lib": "1.0.156",
     "@types/multer": "^2.0.0",
