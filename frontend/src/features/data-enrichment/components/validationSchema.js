@@ -362,8 +362,7 @@ export const pullValidationSchema = yup.object({
             then: (schema) => schema
                 .required('Username is required for SFTP connections')
                 .min(1, 'Username must be at least 1 character')
-                .max(50, 'Username cannot exceed 50 characters')
-                .matches(/^[a-zA-Z0-9._\s-]+$/, 'Invalid Username (alphanumeric, ., _, -, and space are allowed)'),
+                .max(50, 'Username cannot exceed 50 characters'),
             otherwise: (schema) => schema.nullable()
         }),
 
