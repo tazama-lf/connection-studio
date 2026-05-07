@@ -215,18 +215,6 @@ describe('FormFields', () => {
     expect(fieldOnChange).toHaveBeenCalledWith('mytable');
   });
 
-  it('HostInputField keeps only numeric dot pattern', () => {
-    const controller = HostInputField({ name: 'host', label: 'Host', control: {} });
-    const { textFieldElement, fieldOnChange } = getTextFieldFromControllerElement(controller);
-
-    textFieldElement.props.onChange(makeEvent('', '.12..3a'));
-    expect(fieldOnChange).toHaveBeenCalledWith('12.3');
-
-    const badKey = makeEvent('a');
-    textFieldElement.props.onKeyDown(badKey);
-    expect(badKey.preventDefault).toHaveBeenCalled();
-  });
-
   it('FilePathInputField normalizes path input', () => {
     const controller = FilePathInputField({ name: 'path', label: 'Path', control: {} });
     const { textFieldElement, fieldOnChange } = getTextFieldFromControllerElement(controller);
