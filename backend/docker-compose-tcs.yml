@@ -24,6 +24,19 @@ services:
     networks:
       - tazama_default
 
+  connection-studio-frontend:
+    container_name: connection-studio-frontend
+    build:
+      context: ./../frontend
+    env_file:
+      - ./.env
+    ports:
+      - 5173:5173
+    depends_on:
+      - connection-studio-backend
+    networks:
+      - tazama_default
+
 volumes:
   sftp_data:
 
