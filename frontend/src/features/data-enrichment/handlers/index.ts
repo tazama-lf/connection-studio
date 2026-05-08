@@ -477,7 +477,7 @@ const validatePullJobConnection = (
   setIsCloning: (cloning: boolean) => void,
 ): HttpConnection | SftpConnection | null => {
   const connectionData = job.connection;
-  
+
   if (!connectionData) {
     if (sourceType === 'SFTP') {
       showError(
@@ -491,7 +491,7 @@ const validatePullJobConnection = (
     setIsCloning(false);
     return null;
   }
-  
+
   return connectionData;
 };
 
@@ -536,7 +536,7 @@ const clonePullJob = async (
 ): Promise<DataEnrichmentJobResponse | null> => {
   const sourceType = determineSourceType(job);
   const connectionData = validatePullJobConnection(job, sourceType, showError, setIsCloning);
-  
+
   if (!connectionData) {
     return null;
   }
@@ -865,7 +865,7 @@ export const handleEditSendForApprovalConfirm = async (
   if (!job) return;
 
   try {
-    const jobType = job.type === 'push' ? 'PUSH' : 'PULL';
+    const jobType = getJobType(job) === 'push' ? 'PUSH' : 'PULL';
     await dataEnrichmentJobApi.updateStatus(
       job.id,
       DATA_ENRICHMENT_JOB_STATUSES.UNDER_REVIEW,
