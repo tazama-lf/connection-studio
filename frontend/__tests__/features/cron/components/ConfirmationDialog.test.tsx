@@ -729,9 +729,7 @@ describe('CronJobConfirmationDialog', () => {
         />,
       );
 
-      fireEvent.click(
-        screen.getByRole('button', { name: /Yes, Submit for Approval/i }),
-      );
+      fireEvent.click(screen.getByRole('button', { name: /Yes, Submit for Approval/i }));
       expect(mockOnConfirm).toHaveBeenCalledWith('approval', undefined);
     });
 
@@ -747,9 +745,7 @@ describe('CronJobConfirmationDialog', () => {
         />,
       );
 
-      fireEvent.click(
-        screen.getByRole('button', { name: /Yes, Approve Cron Job/i }),
-      );
+      fireEvent.click(screen.getByRole('button', { name: /Yes, Approve Cron Job/i }));
       expect(mockOnConfirm).toHaveBeenCalledWith('approve', '');
     });
 
