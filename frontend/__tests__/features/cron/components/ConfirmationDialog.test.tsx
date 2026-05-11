@@ -300,7 +300,7 @@ describe('CronJobConfirmationDialog', () => {
       const confirmButton = screen.getByRole('button', { name: /Yes, Export Cron Job/i });
       fireEvent.click(confirmButton);
 
-      expect(mockOnConfirm).toHaveBeenCalledWith('export');
+      expect(mockOnConfirm).toHaveBeenCalledWith('export', undefined);
       expect(mockOnConfirm).toHaveBeenCalledTimes(1);
     });
 
@@ -319,7 +319,7 @@ describe('CronJobConfirmationDialog', () => {
       const confirmButton = screen.getByRole('button', { name: /Yes, Submit for Approval/i });
       fireEvent.click(confirmButton);
 
-      expect(mockOnConfirm).toHaveBeenCalledWith('approval');
+      expect(mockOnConfirm).toHaveBeenCalledWith('approval', undefined);
       expect(mockOnConfirm).toHaveBeenCalledTimes(1);
     });
 
@@ -338,7 +338,7 @@ describe('CronJobConfirmationDialog', () => {
       const confirmButton = screen.getByRole('button', { name: /Yes, Approve Cron Job/i });
       fireEvent.click(confirmButton);
 
-      expect(mockOnConfirm).toHaveBeenCalledWith('approve');
+      expect(mockOnConfirm).toHaveBeenCalledWith('approve', '');
       expect(mockOnConfirm).toHaveBeenCalledTimes(1);
     });
 
@@ -645,7 +645,7 @@ describe('CronJobConfirmationDialog', () => {
       );
 
       fireEvent.click(screen.getByRole('button', { name: /Yes, Export/i }));
-      expect(mockOnConfirm).toHaveBeenCalledWith('export');
+      expect(mockOnConfirm).toHaveBeenCalledWith('export', undefined);
     });
 
     it('should call onConfirm with correct type for approval', () => {
@@ -661,7 +661,7 @@ describe('CronJobConfirmationDialog', () => {
       );
 
       fireEvent.click(screen.getByRole('button', { name: /Yes, Submit for Approval/i }));
-      expect(mockOnConfirm).toHaveBeenCalledWith('approval');
+      expect(mockOnConfirm).toHaveBeenCalledWith('approval', undefined);
     });
 
     it('should call onConfirm with correct type for approve', () => {
@@ -677,7 +677,7 @@ describe('CronJobConfirmationDialog', () => {
       );
 
       fireEvent.click(screen.getByRole('button', { name: /Yes, Approve Cron Job/i }));
-      expect(mockOnConfirm).toHaveBeenCalledWith('approve');
+      expect(mockOnConfirm).toHaveBeenCalledWith('approve', '');
     });
 
     it('should display all text elements for export', () => {
