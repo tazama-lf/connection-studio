@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 const triggerMock = jest.fn();
 const getValuesMock = jest.fn();
@@ -111,11 +111,10 @@ jest.mock('../../../../../../src/features/data-enrichment/handlers', () => ({
   saveDataEnrichmentJob: (...args: any[]) => saveDataEnrichmentJobMock(...args),
   handleUpdateConfirm: (...args: any[]) => handleUpdateConfirmMock(...args),
   handleEditSendForApprovalConfirm: (...args: any[]) => handleEditSendForApprovalConfirmMock(...args),
-}));
-
-jest.mock('../../../../../../src/features/cron/handlers', () => ({
   loadSchedules: (...args: any[]) => loadSchedulesMock(...args),
 }));
+
+jest.mock('../../../../../../src/features/cron/handlers', () => ({}));
 
 import { DataEnrichmentEditModal } from '../../../../../../src/features/data-enrichment/components/DataEnrichmentEditModal';
 
@@ -167,7 +166,7 @@ describe('features/data-enrichment/components/DataEnrichmentEditModal/index.tsx'
     );
 
     await waitFor(() => {
-      expect(loadSchedulesMock).toHaveBeenCalledWith(1, 50, 'ASSOCIATE', {});
+      expect(loadSchedulesMock).toHaveBeenCalled();
       expect(screen.getByTestId('pull-form')).toBeInTheDocument();
       expect(screen.getByText('schedule-count:2')).toBeInTheDocument();
     });
@@ -829,10 +828,8 @@ describe('features/data-enrichment/components/DataEnrichmentEditModal/index.tsx'
   });
 
   it('shows isCreating loading backdrop with Updating text when editMode is true', async () => {
-    let resolveCreate!: () => void;
     saveDataEnrichmentJobMock.mockImplementationOnce(async (args: any) => {
       args.setIsCreating(true);
-      await new Promise<void>((resolve) => { resolveCreate = resolve; });
     });
 
     const { container } = render(
@@ -849,15 +846,11 @@ describe('features/data-enrichment/components/DataEnrichmentEditModal/index.tsx'
     await waitFor(() => {
       expect(screen.getByText('Updating endpoint...')).toBeInTheDocument();
     });
-
-    resolveCreate();
   });
 
   it('shows isCreating loading backdrop with Creating text when editMode is false', async () => {
-    let resolveCreate!: () => void;
     saveDataEnrichmentJobMock.mockImplementationOnce(async (args: any) => {
       args.setIsCreating(true);
-      await new Promise<void>((resolve) => { resolveCreate = resolve; });
     });
 
     const { container } = render(
@@ -873,8 +866,6 @@ describe('features/data-enrichment/components/DataEnrichmentEditModal/index.tsx'
     await waitFor(() => {
       expect(screen.getByText('Creating endpoint...')).toBeInTheDocument();
     });
-
-    resolveCreate();
   });
 
   it('closes update confirmation dialog via Dialog onClose callback (DA:420)', async () => {

@@ -120,7 +120,7 @@ describe('EndpointHistoryPage', () => {
     await waitFor(() => {
       expect(dataEnrichmentJobApi.getJobHistory).toHaveBeenCalledWith(
         'job-1',
-        1,
+        10,
         10,
         {},
       );
@@ -185,7 +185,6 @@ describe('EndpointHistoryPage', () => {
       null,
       1,
       0,
-      0,
       {},
       true,
       {
@@ -247,7 +246,6 @@ describe('EndpointHistoryPage', () => {
       null,
       1,
       0,
-      0,
       {},
       true,
       {
@@ -297,7 +295,6 @@ describe('EndpointHistoryPage', () => {
       null,
       1,
       0,
-      0,
       {},
       true,
       {
@@ -345,7 +342,6 @@ describe('EndpointHistoryPage', () => {
       false,
       null,
       1,
-      0,
       0,
       {},
       true,
@@ -426,7 +422,6 @@ describe('EndpointHistoryPage', () => {
         null,
         1,
         0,
-        0,
         {},
         true,
         {
@@ -479,7 +474,6 @@ describe('EndpointHistoryPage', () => {
         null,
         1,
         0,
-        0,
         {},
         true,
         {
@@ -523,7 +517,6 @@ describe('EndpointHistoryPage', () => {
       false,
       null,
       1,
-      0,
       0,
       {},
       true,
@@ -571,7 +564,6 @@ describe('EndpointHistoryPage', () => {
         false,
         null,
         1,
-        0,
         0,
         {},
         true,
@@ -626,7 +618,6 @@ describe('EndpointHistoryPage', () => {
         null,
         1,
         0,
-        0,
         {},
         true,
         {
@@ -679,7 +670,6 @@ describe('EndpointHistoryPage', () => {
         null,
         1,
         0,
-        0,
         {},
         true,
         {
@@ -724,7 +714,6 @@ describe('EndpointHistoryPage', () => {
       null,
       1,
       0,
-      0,
       {},
       true,
       {
@@ -768,7 +757,6 @@ describe('EndpointHistoryPage', () => {
       false,
       null,
       1,
-      0,
       0,
       {},
       true,
@@ -815,7 +803,6 @@ describe('EndpointHistoryPage', () => {
       false,
       null,
       1,
-      0,
       0,
       {},
       true,
@@ -985,7 +972,6 @@ describe('EndpointHistoryPage', () => {
       null,
       1,
       0,
-      0,
       {},
       true,
       {
@@ -1035,7 +1021,6 @@ describe('EndpointHistoryPage', () => {
       false,
       null,
       1,
-      0,
       0,
       {},
       true,
