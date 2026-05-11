@@ -538,7 +538,7 @@ describe('features/data-enrichment/handlers/index.ts', () => {
     await loadJobs(3, 25, 'admin', { endpoint_name: 'abc' });
 
     expect(apiRequest).toHaveBeenCalledWith(
-      expect.stringContaining('/job/all?offset=3&limit=25'),
+      expect.stringContaining('/job/all?offset=75&limit=25'),
       expect.objectContaining({ method: 'POST' }),
     );
   });

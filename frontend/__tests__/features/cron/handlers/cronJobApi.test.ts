@@ -491,7 +491,7 @@ describe('Cron Job Handlers', () => {
       });
 
       expect(mockApiRequest).toHaveBeenCalledWith(
-        expect.stringContaining('offset=2&limit=20'),
+        expect.stringContaining('offset=40&limit=20'),
         expect.any(Object),
       );
       expect(result).toEqual(mockResponse);
@@ -510,7 +510,7 @@ describe('Cron Job Handlers', () => {
       await loadSchedules(5, 10, 'editor', {});
 
       expect(mockApiRequest).toHaveBeenCalledWith(
-        expect.stringContaining('offset=5&limit=10'),
+        expect.stringContaining('offset=50&limit=10'),
         expect.any(Object),
       );
     });
