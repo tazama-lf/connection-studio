@@ -1,11 +1,5 @@
 import React from 'react';
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 const triggerMock = jest.fn();
 const getValuesMock = jest.fn();
@@ -128,8 +122,7 @@ jest.mock('lucide-react', () => {
 jest.mock('../../../../../../src/features/data-enrichment/handlers', () => ({
   saveDataEnrichmentJob: (...args: any[]) => saveDataEnrichmentJobMock(...args),
   handleUpdateConfirm: (...args: any[]) => handleUpdateConfirmMock(...args),
-  handleEditSendForApprovalConfirm: (...args: any[]) =>
-    handleEditSendForApprovalConfirmMock(...args),
+  handleEditSendForApprovalConfirm: (...args: any[]) => handleEditSendForApprovalConfirmMock(...args),
   loadSchedules: (...args: any[]) => loadSchedulesMock(...args),
 }));
 
