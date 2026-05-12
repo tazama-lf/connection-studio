@@ -1052,7 +1052,6 @@ describe('NotificationService', () => {
       const result = await service.getUserGroupMembers(
         'token',
         'group1',
-        'role'
       );
 
       expect(result).toEqual(['user@test.com']);

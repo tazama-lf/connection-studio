@@ -2195,20 +2195,14 @@ describe('MappingUtility', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /add mapping/i }));
       await waitFor(() => {
-        expect(
-          screen.queryByText('Loading destination fields...'),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText('Loading destination fields...')).not.toBeInTheDocument();
       });
 
-      fireEvent.change(screen.getByRole('combobox'), {
-        target: { value: 'sum' },
-      });
+      fireEvent.change(screen.getByRole('combobox'), { target: { value: 'sum' } });
 
       fireEvent.click(screen.getByRole('button', { name: 'numA (number)' }));
       fireEvent.click(screen.getByRole('button', { name: 'numB (number)' }));
-      fireEvent.click(
-        screen.getByRole('button', { name: 'targetField (string)' }),
-      );
+      fireEvent.click(screen.getByRole('button', { name: 'targetField (string)' }));
 
       const addBtns = screen.getAllByRole('button', { name: 'Add Mapping' });
       expect(addBtns[addBtns.length - 1]).not.toBeDisabled();
@@ -2228,14 +2222,10 @@ describe('MappingUtility', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /add mapping/i }));
       await waitFor(() => {
-        expect(
-          screen.queryByText('Loading destination fields...'),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText('Loading destination fields...')).not.toBeInTheDocument();
       });
 
-      fireEvent.change(screen.getByRole('combobox'), {
-        target: { value: 'sum' },
-      });
+      fireEvent.change(screen.getByRole('combobox'), { target: { value: 'sum' } });
       // No sources or destinations selected -> disabled
       const addBtns = screen.getAllByRole('button', { name: 'Add Mapping' });
       expect(addBtns[addBtns.length - 1]).toBeDisabled();
@@ -2266,18 +2256,12 @@ describe('MappingUtility', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /add mapping/i }));
       await waitFor(() => {
-        expect(
-          screen.queryByText('Loading destination fields...'),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText('Loading destination fields...')).not.toBeInTheDocument();
       });
 
-      fireEvent.change(screen.getByRole('combobox'), {
-        target: { value: 'split' },
-      });
+      fireEvent.change(screen.getByRole('combobox'), { target: { value: 'split' } });
 
-      fireEvent.click(
-        screen.getByRole('button', { name: 'fullName (string)' }),
-      );
+      fireEvent.click(screen.getByRole('button', { name: 'fullName (string)' }));
 
       // Expand transactionDetails to get destination leaves
       const chevrons = screen.getAllByTestId('chevron-right-icon');
@@ -2286,17 +2270,11 @@ describe('MappingUtility', () => {
       }
 
       await waitFor(() => {
-        expect(
-          screen.getByRole('button', { name: /firstName.*string/i }),
-        ).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /firstName.*string/i })).toBeInTheDocument();
       });
 
-      fireEvent.click(
-        screen.getByRole('button', { name: /firstName.*string/i }),
-      );
-      fireEvent.click(
-        screen.getByRole('button', { name: /lastName.*string/i }),
-      );
+      fireEvent.click(screen.getByRole('button', { name: /firstName.*string/i }));
+      fireEvent.click(screen.getByRole('button', { name: /lastName.*string/i }));
 
       const addBtns = screen.getAllByRole('button', { name: 'Add Mapping' });
       expect(addBtns[addBtns.length - 1]).not.toBeDisabled();
@@ -2316,17 +2294,11 @@ describe('MappingUtility', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /add mapping/i }));
       await waitFor(() => {
-        expect(
-          screen.queryByText('Loading destination fields...'),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText('Loading destination fields...')).not.toBeInTheDocument();
       });
 
-      fireEvent.change(screen.getByRole('combobox'), {
-        target: { value: 'split' },
-      });
-      fireEvent.click(
-        screen.getByRole('button', { name: 'fullName (string)' }),
-      );
+      fireEvent.change(screen.getByRole('combobox'), { target: { value: 'split' } });
+      fireEvent.click(screen.getByRole('button', { name: 'fullName (string)' }));
 
       // Only 1 source, 0 destinations → invalid
       const addBtns = screen.getAllByRole('button', { name: 'Add Mapping' });
@@ -2338,11 +2310,7 @@ describe('MappingUtility', () => {
     it('enables Add Mapping for valid constant (1 value, 1 destination)', async () => {
       mockDataModelApi.getDestinationFieldsJson.mockResolvedValueOnce({
         success: true,
-        data: {
-          transactionDetails: { amount: 0 },
-          targetField: 'x',
-          redis: {},
-        },
+        data: { transactionDetails: { amount: 0 }, targetField: 'x', redis: {} },
       } as any);
 
       renderComponent({
@@ -2353,23 +2321,15 @@ describe('MappingUtility', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /add mapping/i }));
       await waitFor(() => {
-        expect(
-          screen.queryByText('Loading destination fields...'),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText('Loading destination fields...')).not.toBeInTheDocument();
       });
 
-      fireEvent.change(screen.getByRole('combobox'), {
-        target: { value: 'constant' },
-      });
+      fireEvent.change(screen.getByRole('combobox'), { target: { value: 'constant' } });
       fireEvent.change(
-        screen.getByPlaceholderText(
-          'Enter a constant value (string, number, etc.)',
-        ),
+        screen.getByPlaceholderText('Enter a constant value (string, number, etc.)'),
         { target: { value: 'MY_CONST' } },
       );
-      fireEvent.click(
-        screen.getByRole('button', { name: 'targetField (string)' }),
-      );
+      fireEvent.click(screen.getByRole('button', { name: 'targetField (string)' }));
 
       const addBtns = screen.getAllByRole('button', { name: 'Add Mapping' });
       expect(addBtns[addBtns.length - 1]).not.toBeDisabled();
@@ -2396,14 +2356,10 @@ describe('MappingUtility', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /add mapping/i }));
       await waitFor(() => {
-        expect(
-          screen.queryByText('Loading destination fields...'),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText('Loading destination fields...')).not.toBeInTheDocument();
       });
 
-      fireEvent.change(screen.getByRole('combobox'), {
-        target: { value: 'sum' },
-      });
+      fireEvent.change(screen.getByRole('combobox'), { target: { value: 'sum' } });
 
       fireEvent.click(screen.getByRole('button', { name: 'numA (number)' }));
       fireEvent.click(screen.getByRole('button', { name: 'numB (number)' }));
@@ -2413,9 +2369,7 @@ describe('MappingUtility', () => {
         fireEvent.click(ch.closest('button')!);
       }
       await waitFor(() => {
-        expect(
-          screen.getByRole('button', { name: /total.*number/i }),
-        ).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /total.*number/i })).toBeInTheDocument();
       });
       fireEvent.click(screen.getByRole('button', { name: /total.*number/i }));
 
@@ -2443,18 +2397,12 @@ describe('MappingUtility', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /add mapping/i }));
       await waitFor(() => {
-        expect(
-          screen.queryByText('Loading destination fields...'),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText('Loading destination fields...')).not.toBeInTheDocument();
       });
 
-      fireEvent.change(screen.getByRole('combobox'), {
-        target: { value: 'constant' },
-      });
+      fireEvent.change(screen.getByRole('combobox'), { target: { value: 'constant' } });
       fireEvent.change(
-        screen.getByPlaceholderText(
-          'Enter a constant value (string, number, etc.)',
-        ),
+        screen.getByPlaceholderText('Enter a constant value (string, number, etc.)'),
         { target: { value: '42' } },
       );
 
@@ -2464,9 +2412,7 @@ describe('MappingUtility', () => {
         fireEvent.click(ch.closest('button')!);
       }
       await waitFor(() => {
-        expect(
-          screen.getByRole('button', { name: /amount.*number/i }),
-        ).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /amount.*number/i })).toBeInTheDocument();
       });
       fireEvent.click(screen.getByRole('button', { name: /amount.*number/i }));
 
@@ -2492,35 +2438,22 @@ describe('MappingUtility', () => {
       renderComponent({
         sourceSchema: [{ name: 'f', path: 'f', type: 'string' }] as any,
         existingMappings: [
-          {
-            constantValue: 'HELLO',
-            destination: 'freeField',
-            transformation: 'CONSTANT',
-            source: '',
-          },
+          { constantValue: 'HELLO', destination: 'freeField', transformation: 'CONSTANT', source: '' },
         ] as any,
         configId: undefined,
       });
 
       fireEvent.click(screen.getByRole('button', { name: /add mapping/i }));
       await waitFor(() => {
-        expect(
-          screen.queryByText('Loading destination fields...'),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText('Loading destination fields...')).not.toBeInTheDocument();
       });
 
-      fireEvent.change(screen.getByRole('combobox'), {
-        target: { value: 'constant' },
-      });
+      fireEvent.change(screen.getByRole('combobox'), { target: { value: 'constant' } });
       fireEvent.change(
-        screen.getByPlaceholderText(
-          'Enter a constant value (string, number, etc.)',
-        ),
+        screen.getByPlaceholderText('Enter a constant value (string, number, etc.)'),
         { target: { value: 'HELLO' } },
       );
-      fireEvent.click(
-        screen.getByRole('button', { name: 'freeField (string)' }),
-      );
+      fireEvent.click(screen.getByRole('button', { name: 'freeField (string)' }));
 
       const addBtns = screen.getAllByRole('button', { name: 'Add Mapping' });
       fireEvent.click(addBtns[addBtns.length - 1]);
@@ -2545,21 +2478,12 @@ describe('MappingUtility', () => {
       } as any);
       mockDataModelApi.getDestinationFieldsJson.mockResolvedValueOnce({
         success: true,
-        data: {
-          transactionDetails: { amount: 0 },
-          targetField: 'x',
-          redis: {},
-        },
+        data: { transactionDetails: { amount: 0 }, targetField: 'x', redis: {} },
       } as any);
 
       renderComponent({
         sourceSchema: [
-          {
-            name: 'srcField',
-            path: 'srcField',
-            type: 'string',
-            isRequired: true,
-          },
+          { name: 'srcField', path: 'srcField', type: 'string', isRequired: true },
         ] as any,
         existingMappings: [],
         configId: 123,
@@ -2567,25 +2491,17 @@ describe('MappingUtility', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /add mapping/i }));
       await waitFor(() => {
-        expect(
-          screen.queryByText('Loading destination fields...'),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText('Loading destination fields...')).not.toBeInTheDocument();
       });
 
-      fireEvent.click(
-        screen.getByRole('button', { name: 'srcField (string)' }),
-      );
-      fireEvent.click(
-        screen.getByRole('button', { name: 'targetField (string)' }),
-      );
+      fireEvent.click(screen.getByRole('button', { name: 'srcField (string)' }));
+      fireEvent.click(screen.getByRole('button', { name: 'targetField (string)' }));
 
       const addBtns = screen.getAllByRole('button', { name: 'Add Mapping' });
       fireEvent.click(addBtns[addBtns.length - 1]);
 
       await waitFor(() => {
-        expect(
-          screen.getByText(/Failed to save mapping: Server error/i),
-        ).toBeInTheDocument();
+        expect(screen.getByText(/Failed to save mapping: Server error/i)).toBeInTheDocument();
       });
     });
   });
@@ -2598,21 +2514,12 @@ describe('MappingUtility', () => {
       } as any);
       mockDataModelApi.getDestinationFieldsJson.mockResolvedValueOnce({
         success: true,
-        data: {
-          transactionDetails: { amount: 0 },
-          targetField: 'x',
-          redis: {},
-        },
+        data: { transactionDetails: { amount: 0 }, targetField: 'x', redis: {} },
       } as any);
 
       renderComponent({
         sourceSchema: [
-          {
-            name: 'srcField',
-            path: 'srcField',
-            type: 'string',
-            isRequired: true,
-          },
+          { name: 'srcField', path: 'srcField', type: 'string', isRequired: true },
         ] as any,
         existingMappings: [],
         configId: 123,
@@ -2620,17 +2527,11 @@ describe('MappingUtility', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /add mapping/i }));
       await waitFor(() => {
-        expect(
-          screen.queryByText('Loading destination fields...'),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText('Loading destination fields...')).not.toBeInTheDocument();
       });
 
-      fireEvent.click(
-        screen.getByRole('button', { name: 'srcField (string)' }),
-      );
-      fireEvent.click(
-        screen.getByRole('button', { name: 'targetField (string)' }),
-      );
+      fireEvent.click(screen.getByRole('button', { name: 'srcField (string)' }));
+      fireEvent.click(screen.getByRole('button', { name: 'targetField (string)' }));
 
       const addBtns = screen.getAllByRole('button', { name: 'Add Mapping' });
       fireEvent.click(addBtns[addBtns.length - 1]);
@@ -2648,9 +2549,7 @@ describe('MappingUtility', () => {
     const openEditFieldsModal = async () => {
       fireEvent.click(screen.getByRole('button', { name: /add mapping/i }));
       await waitFor(() => {
-        expect(
-          screen.queryByText('Loading destination fields...'),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText('Loading destination fields...')).not.toBeInTheDocument();
       });
       fireEvent.click(screen.getByRole('button', { name: /edit fields/i }));
     };
@@ -2668,9 +2567,7 @@ describe('MappingUtility', () => {
       fireEvent.click(screen.getByRole('button', { name: /save changes/i }));
 
       await waitFor(() => {
-        expect(
-          mockDataModelApi.updateDestinationFieldsJson,
-        ).toHaveBeenCalledWith(
+        expect(mockDataModelApi.updateDestinationFieldsJson).toHaveBeenCalledWith(
           expect.objectContaining({
             transactionDetails: expect.any(Object),
             redis: expect.any(Object),
@@ -2708,9 +2605,7 @@ describe('MappingUtility', () => {
       fireEvent.click(screen.getByRole('button', { name: /save changes/i }));
 
       await waitFor(() => {
-        expect(
-          screen.getByText(/Validation failed on server/i),
-        ).toBeInTheDocument();
+        expect(screen.getByText(/Validation failed on server/i)).toBeInTheDocument();
       });
     });
 
@@ -2718,16 +2613,10 @@ describe('MappingUtility', () => {
       renderComponent({ configId: undefined });
       await openEditFieldsModal();
 
-      fireEvent.click(
-        screen.getByRole('button', {
-          name: /mock missing transactiondetails/i,
-        }),
-      );
+      fireEvent.click(screen.getByRole('button', { name: /mock missing transactiondetails/i }));
 
       await waitFor(() => {
-        expect(
-          screen.getByText(/transactionDetails.*must exist/i),
-        ).toBeInTheDocument();
+        expect(screen.getByText(/transactionDetails.*must exist/i)).toBeInTheDocument();
       });
     });
 
@@ -2735,9 +2624,7 @@ describe('MappingUtility', () => {
       renderComponent({ configId: undefined });
       await openEditFieldsModal();
 
-      fireEvent.click(
-        screen.getByRole('button', { name: /mock missing redis/i }),
-      );
+      fireEvent.click(screen.getByRole('button', { name: /mock missing redis/i }));
 
       await waitFor(() => {
         expect(screen.getByText(/redis.*must exist/i)).toBeInTheDocument();
@@ -2748,9 +2635,7 @@ describe('MappingUtility', () => {
       renderComponent();
       await openEditFieldsModal();
 
-      fireEvent.click(
-        screen.getByRole('button', { name: /mock redis too deep/i }),
-      );
+      fireEvent.click(screen.getByRole('button', { name: /mock redis too deep/i }));
 
       await waitFor(() => {
         expect(screen.getByText(/nesting/i)).toBeInTheDocument();
@@ -2761,9 +2646,7 @@ describe('MappingUtility', () => {
       renderComponent();
       await openEditFieldsModal();
 
-      fireEvent.click(
-        screen.getByRole('button', { name: /mock transactiondetails nested/i }),
-      );
+      fireEvent.click(screen.getByRole('button', { name: /mock transactiondetails nested/i }));
 
       await waitFor(() => {
         expect(screen.getByText(/nested objects/i)).toBeInTheDocument();
@@ -2774,9 +2657,7 @@ describe('MappingUtility', () => {
       renderComponent();
       await openEditFieldsModal();
 
-      fireEvent.click(
-        screen.getByRole('button', { name: /mock custom object too deep/i }),
-      );
+      fireEvent.click(screen.getByRole('button', { name: /mock custom object too deep/i }));
 
       await waitFor(() => {
         expect(screen.getByText(/nesting/i)).toBeInTheDocument();
@@ -2788,9 +2669,7 @@ describe('MappingUtility', () => {
       await openEditFieldsModal();
 
       // Trigger a validation error
-      fireEvent.click(
-        screen.getByRole('button', { name: /mock missing redis/i }),
-      );
+      fireEvent.click(screen.getByRole('button', { name: /mock missing redis/i }));
 
       await waitFor(() => {
         expect(screen.getByText(/redis.*must exist/i)).toBeInTheDocument();
@@ -2798,18 +2677,14 @@ describe('MappingUtility', () => {
 
       // Find the red X dismiss button for the validation error
       const allButtons = screen.getAllByRole('button');
-      const errorDismiss = allButtons.find((btn) =>
-        btn.className.includes('text-red-600'),
-      );
+      const errorDismiss = allButtons.find(btn => btn.className.includes('text-red-600'));
       if (errorDismiss) {
         fireEvent.click(errorDismiss);
       }
 
       // After dismiss, error should be gone
       await waitFor(() => {
-        expect(
-          screen.queryByText(/redis.*must exist/i),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText(/redis.*must exist/i)).not.toBeInTheDocument();
       });
     });
   });
@@ -2837,12 +2712,7 @@ describe('MappingUtility', () => {
   describe('buildSourceTreeFromArray edge cases', () => {
     it('handles array source with TenantId already present', async () => {
       const schemaWithTenant = [
-        {
-          name: 'TenantId',
-          path: 'TenantId',
-          type: 'string',
-          isRequired: true,
-        },
+        { name: 'TenantId', path: 'TenantId', type: 'string', isRequired: true },
         { name: 'amount', path: 'amount', type: 'number', isRequired: true },
       ];
 
@@ -2859,9 +2729,7 @@ describe('MappingUtility', () => {
       fireEvent.click(screen.getByRole('button', { name: /add mapping/i }));
 
       await waitFor(() => {
-        expect(
-          screen.queryByText('Loading destination fields...'),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText('Loading destination fields...')).not.toBeInTheDocument();
       });
 
       // Should show System Reserved section with TenantId
@@ -2870,18 +2738,8 @@ describe('MappingUtility', () => {
 
     it('handles deeply nested array paths with multiple [0] segments', async () => {
       const nestedSchema = [
-        {
-          name: 'code',
-          path: 'items[0].details[0].code',
-          type: 'string',
-          isRequired: true,
-        },
-        {
-          name: 'value',
-          path: 'items[0].value',
-          type: 'number',
-          isRequired: true,
-        },
+        { name: 'code', path: 'items[0].details[0].code', type: 'string', isRequired: true },
+        { name: 'value', path: 'items[0].value', type: 'number', isRequired: true },
       ];
 
       mockDataModelApi.getDestinationFieldsJson.mockResolvedValueOnce({
@@ -2897,9 +2755,7 @@ describe('MappingUtility', () => {
       fireEvent.click(screen.getByRole('button', { name: /add mapping/i }));
 
       await waitFor(() => {
-        expect(
-          screen.queryByText('Loading destination fields...'),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText('Loading destination fields...')).not.toBeInTheDocument();
       });
 
       expect(screen.getByText('Message Structure')).toBeInTheDocument();
@@ -2923,9 +2779,7 @@ describe('MappingUtility', () => {
       fireEvent.click(screen.getByRole('button', { name: /add mapping/i }));
 
       await waitFor(() => {
-        expect(
-          screen.queryByText('Loading destination fields...'),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText('Loading destination fields...')).not.toBeInTheDocument();
       });
 
       expect(screen.getByText('Add New Mapping')).toBeInTheDocument();
@@ -2944,10 +2798,7 @@ describe('MappingUtility', () => {
     });
 
     it('renders with object schema having type=object', () => {
-      const objectSchema = {
-        type: 'object',
-        properties: { field1: { type: 'string' } },
-      };
+      const objectSchema = { type: 'object', properties: { field1: { type: 'string' } } };
       renderComponent({
         sourceSchema: objectSchema as any,
         configId: undefined,
@@ -2973,11 +2824,7 @@ describe('MappingUtility', () => {
     it('displays CONSTANT mapping with numeric constantValue', () => {
       renderComponent({
         existingMappings: [
-          {
-            constantValue: 42,
-            destination: 'field',
-            transformation: 'CONSTANT',
-          },
+          { constantValue: 42, destination: 'field', transformation: 'CONSTANT' },
         ] as any,
         configId: undefined,
       });
@@ -2989,11 +2836,7 @@ describe('MappingUtility', () => {
     it('displays CONSTANT mapping with string constantValue', () => {
       renderComponent({
         existingMappings: [
-          {
-            constantValue: 'hello',
-            destination: 'field',
-            transformation: 'CONSTANT',
-          },
+          { constantValue: 'hello', destination: 'field', transformation: 'CONSTANT' },
         ] as any,
         configId: undefined,
       });
@@ -3039,12 +2882,7 @@ describe('MappingUtility', () => {
     it('displays mapping with prefix', () => {
       renderComponent({
         existingMappings: [
-          {
-            source: 'a',
-            destination: 'b',
-            transformation: 'NONE',
-            prefix: 'PRE_',
-          },
+          { source: 'a', destination: 'b', transformation: 'NONE', prefix: 'PRE_' },
         ] as any,
         configId: undefined,
       });
@@ -3072,9 +2910,7 @@ describe('MappingUtility', () => {
       fireEvent.click(screen.getByRole('button', { name: /add mapping/i }));
 
       await waitFor(() => {
-        expect(
-          screen.queryByText('Loading destination fields...'),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText('Loading destination fields...')).not.toBeInTheDocument();
       });
 
       expect(screen.getByText('Add New Mapping')).toBeInTheDocument();
@@ -3096,12 +2932,7 @@ describe('MappingUtility', () => {
       } as any);
 
       const arraySource = [
-        {
-          name: 'fullName',
-          path: 'fullName',
-          type: 'string',
-          isRequired: true,
-        },
+        { name: 'fullName', path: 'fullName', type: 'string', isRequired: true },
       ];
 
       renderComponent({
@@ -3112,21 +2943,13 @@ describe('MappingUtility', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /add mapping/i }));
       await waitFor(() => {
-        expect(
-          screen.queryByText('Loading destination fields...'),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText('Loading destination fields...')).not.toBeInTheDocument();
       });
 
-      fireEvent.change(screen.getByRole('combobox'), {
-        target: { value: 'split' },
-      });
-      fireEvent.change(screen.getByPlaceholderText(''), {
-        target: { value: '|' },
-      });
+      fireEvent.change(screen.getByRole('combobox'), { target: { value: 'split' } });
+      fireEvent.change(screen.getByPlaceholderText(''), { target: { value: '|' } });
 
-      fireEvent.click(
-        screen.getByRole('button', { name: 'fullName (string)' }),
-      );
+      fireEvent.click(screen.getByRole('button', { name: 'fullName (string)' }));
 
       // Expand transactionDetails
       const chevrons = screen.getAllByTestId('chevron-right-icon');
@@ -3134,17 +2957,11 @@ describe('MappingUtility', () => {
         fireEvent.click(ch.closest('button')!);
       }
       await waitFor(() => {
-        expect(
-          screen.getByRole('button', { name: /firstName.*string/i }),
-        ).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /firstName.*string/i })).toBeInTheDocument();
       });
 
-      fireEvent.click(
-        screen.getByRole('button', { name: /firstName.*string/i }),
-      );
-      fireEvent.click(
-        screen.getByRole('button', { name: /lastName.*string/i }),
-      );
+      fireEvent.click(screen.getByRole('button', { name: /firstName.*string/i }));
+      fireEvent.click(screen.getByRole('button', { name: /lastName.*string/i }));
 
       const addBtns = screen.getAllByRole('button', { name: 'Add Mapping' });
       fireEvent.click(addBtns[addBtns.length - 1]);
@@ -3173,11 +2990,7 @@ describe('MappingUtility', () => {
       } as any);
       mockDataModelApi.getDestinationFieldsJson.mockResolvedValueOnce({
         success: true,
-        data: {
-          transactionDetails: { amount: 0 },
-          targetField: 'x',
-          redis: {},
-        },
+        data: { transactionDetails: { amount: 0 }, targetField: 'x', redis: {} },
       } as any);
 
       renderComponent({
@@ -3188,23 +3001,15 @@ describe('MappingUtility', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /add mapping/i }));
       await waitFor(() => {
-        expect(
-          screen.queryByText('Loading destination fields...'),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText('Loading destination fields...')).not.toBeInTheDocument();
       });
 
-      fireEvent.change(screen.getByRole('combobox'), {
-        target: { value: 'constant' },
-      });
+      fireEvent.change(screen.getByRole('combobox'), { target: { value: 'constant' } });
       fireEvent.change(
-        screen.getByPlaceholderText(
-          'Enter a constant value (string, number, etc.)',
-        ),
+        screen.getByPlaceholderText('Enter a constant value (string, number, etc.)'),
         { target: { value: 'FIXED_VALUE' } },
       );
-      fireEvent.click(
-        screen.getByRole('button', { name: 'targetField (string)' }),
-      );
+      fireEvent.click(screen.getByRole('button', { name: 'targetField (string)' }));
 
       const addBtns = screen.getAllByRole('button', { name: 'Add Mapping' });
       fireEvent.click(addBtns[addBtns.length - 1]);
@@ -3242,9 +3047,7 @@ describe('MappingUtility', () => {
     const openEditFieldsModal = async () => {
       fireEvent.click(screen.getByRole('button', { name: /add mapping/i }));
       await waitFor(() => {
-        expect(
-          screen.queryByText('Loading destination fields...'),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText('Loading destination fields...')).not.toBeInTheDocument();
       });
       fireEvent.click(screen.getByRole('button', { name: /edit fields/i }));
     };
@@ -3260,9 +3063,7 @@ describe('MappingUtility', () => {
       // because handleJsonChange validates the null value
       await waitFor(() => {
         // The validation error is set, making Save button disabled
-        expect(
-          screen.getByRole('button', { name: /save changes/i }),
-        ).toBeDisabled();
+        expect(screen.getByRole('button', { name: /save changes/i })).toBeDisabled();
       });
     });
   });
@@ -3271,21 +3072,12 @@ describe('MappingUtility', () => {
     it('handles existing mapping with null destination in usedDestinations', async () => {
       mockDataModelApi.getDestinationFieldsJson.mockResolvedValueOnce({
         success: true,
-        data: {
-          transactionDetails: { amount: 0 },
-          targetField: 'x',
-          redis: {},
-        },
+        data: { transactionDetails: { amount: 0 }, targetField: 'x', redis: {} },
       } as any);
 
       renderComponent({
         sourceSchema: [
-          {
-            name: 'srcField',
-            path: 'srcField',
-            type: 'string',
-            isRequired: true,
-          },
+          { name: 'srcField', path: 'srcField', type: 'string', isRequired: true },
         ] as any,
         existingMappings: [
           { source: 'other', destination: null, transformation: 'NONE' },
@@ -3295,17 +3087,11 @@ describe('MappingUtility', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /add mapping/i }));
       await waitFor(() => {
-        expect(
-          screen.queryByText('Loading destination fields...'),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText('Loading destination fields...')).not.toBeInTheDocument();
       });
 
-      fireEvent.click(
-        screen.getByRole('button', { name: 'srcField (string)' }),
-      );
-      fireEvent.click(
-        screen.getByRole('button', { name: 'targetField (string)' }),
-      );
+      fireEvent.click(screen.getByRole('button', { name: 'srcField (string)' }));
+      fireEvent.click(screen.getByRole('button', { name: 'targetField (string)' }));
 
       const addBtns = screen.getAllByRole('button', { name: 'Add Mapping' });
       fireEvent.click(addBtns[addBtns.length - 1]);
@@ -3331,27 +3117,13 @@ describe('MappingUtility', () => {
   describe('concatenate type checking with array source', () => {
     it('validates concatenate with non-string source types', async () => {
       const mixedSource = [
-        {
-          name: 'strField',
-          path: 'strField',
-          type: 'string',
-          isRequired: true,
-        },
-        {
-          name: 'numField',
-          path: 'numField',
-          type: 'number',
-          isRequired: true,
-        },
+        { name: 'strField', path: 'strField', type: 'string', isRequired: true },
+        { name: 'numField', path: 'numField', type: 'number', isRequired: true },
       ];
 
       mockDataModelApi.getDestinationFieldsJson.mockResolvedValueOnce({
         success: true,
-        data: {
-          transactionDetails: { amount: 0 },
-          targetField: 'x',
-          redis: {},
-        },
+        data: { transactionDetails: { amount: 0 }, targetField: 'x', redis: {} },
       } as any);
 
       renderComponent({
@@ -3362,25 +3134,15 @@ describe('MappingUtility', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /add mapping/i }));
       await waitFor(() => {
-        expect(
-          screen.queryByText('Loading destination fields...'),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText('Loading destination fields...')).not.toBeInTheDocument();
       });
 
-      fireEvent.change(screen.getByRole('combobox'), {
-        target: { value: 'concatenate' },
-      });
+      fireEvent.change(screen.getByRole('combobox'), { target: { value: 'concatenate' } });
 
       // Select string + number sources - should fail type check
-      fireEvent.click(
-        screen.getByRole('button', { name: 'strField (string)' }),
-      );
-      fireEvent.click(
-        screen.getByRole('button', { name: 'numField (number)' }),
-      );
-      fireEvent.click(
-        screen.getByRole('button', { name: 'targetField (string)' }),
-      );
+      fireEvent.click(screen.getByRole('button', { name: 'strField (string)' }));
+      fireEvent.click(screen.getByRole('button', { name: 'numField (number)' }));
+      fireEvent.click(screen.getByRole('button', { name: 'targetField (string)' }));
 
       const addBtns = screen.getAllByRole('button', { name: 'Add Mapping' });
       // Should be disabled because numField is not string type
@@ -3405,20 +3167,14 @@ describe('MappingUtility', () => {
           { name: 'src', path: 'src', type: 'string', isRequired: true },
         ] as any,
         existingMappings: [
-          {
-            source: 'other',
-            destination: ['fieldA', 'fieldB'],
-            transformation: 'SPLIT',
-          },
+          { source: 'other', destination: ['fieldA', 'fieldB'], transformation: 'SPLIT' },
         ] as any,
         configId: undefined,
       });
 
       fireEvent.click(screen.getByRole('button', { name: /add mapping/i }));
       await waitFor(() => {
-        expect(
-          screen.queryByText('Loading destination fields...'),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText('Loading destination fields...')).not.toBeInTheDocument();
       });
 
       fireEvent.click(screen.getByRole('button', { name: 'src (string)' }));
@@ -3464,19 +3220,13 @@ describe('MappingUtility', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /add mapping/i }));
       await waitFor(() => {
-        expect(
-          screen.queryByText('Loading destination fields...'),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText('Loading destination fields...')).not.toBeInTheDocument();
       });
 
-      fireEvent.change(screen.getByRole('combobox'), {
-        target: { value: 'concatenate' },
-      });
+      fireEvent.change(screen.getByRole('combobox'), { target: { value: 'concatenate' } });
       fireEvent.click(screen.getByRole('button', { name: 'srcA (string)' }));
       fireEvent.click(screen.getByRole('button', { name: 'srcB (string)' }));
-      fireEvent.click(
-        screen.getByRole('button', { name: 'freeField (string)' }),
-      );
+      fireEvent.click(screen.getByRole('button', { name: 'freeField (string)' }));
 
       const addBtns = screen.getAllByRole('button', { name: 'Add Mapping' });
       fireEvent.click(addBtns[addBtns.length - 1]);
@@ -3495,9 +3245,7 @@ describe('MappingUtility', () => {
 
       // Should still render without crashing
       await waitFor(() => {
-        expect(
-          screen.getByRole('button', { name: /add mapping/i }),
-        ).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /add mapping/i })).toBeInTheDocument();
       });
     });
   });
@@ -3508,9 +3256,7 @@ describe('MappingUtility', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /add mapping/i }));
       await waitFor(() => {
-        expect(
-          screen.queryByText('Loading destination fields...'),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText('Loading destination fields...')).not.toBeInTheDocument();
       });
       fireEvent.click(screen.getByRole('button', { name: /edit fields/i }));
 
@@ -3521,9 +3267,7 @@ describe('MappingUtility', () => {
       fireEvent.click(cancelBtn[cancelBtn.length - 1]);
 
       await waitFor(() => {
-        expect(
-          screen.queryByText('Edit Destination Fields'),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText('Edit Destination Fields')).not.toBeInTheDocument();
       });
     });
   });
@@ -3589,10 +3333,7 @@ describe('MappingUtility', () => {
         },
       } as any);
 
-      const { rerender } = renderComponent({
-        configId: 123,
-        existingMappings: [],
-      });
+      const { rerender } = renderComponent({ configId: 123, existingMappings: [] });
 
       await waitFor(() => {
         expect(screen.getByText('Current Mappings (2)')).toBeInTheDocument();
@@ -3614,9 +3355,9 @@ describe('MappingUtility', () => {
           onCurrentMappingsChange={mockOnCurrentMappingsChange}
           sourceSchema={mockSourceSchema}
           configId={123}
-          existingMappings={
-            [{ source: 'x', destination: 'y', transformation: 'NONE' }] as any
-          }
+          existingMappings={[
+            { source: 'x', destination: 'y', transformation: 'NONE' },
+          ] as any}
         />,
       );
 
@@ -3630,12 +3371,7 @@ describe('MappingUtility', () => {
   describe('isCurrentMappingValid - none transformation type checks', () => {
     it('enables none mapping when source is string and destination is selected', async () => {
       const typedSource = [
-        {
-          name: 'strField',
-          path: 'strField',
-          type: 'string',
-          isRequired: true,
-        },
+        { name: 'strField', path: 'strField', type: 'string', isRequired: true },
       ];
 
       mockDataModelApi.getDestinationFieldsJson.mockResolvedValueOnce({
@@ -3654,23 +3390,17 @@ describe('MappingUtility', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /add mapping/i }));
       await waitFor(() => {
-        expect(
-          screen.queryByText('Loading destination fields...'),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText('Loading destination fields...')).not.toBeInTheDocument();
       });
 
-      fireEvent.click(
-        screen.getByRole('button', { name: 'strField (string)' }),
-      );
+      fireEvent.click(screen.getByRole('button', { name: 'strField (string)' }));
 
       const chevrons = screen.getAllByTestId('chevron-right-icon');
       for (const ch of chevrons) {
         fireEvent.click(ch.closest('button')!);
       }
       await waitFor(() => {
-        expect(
-          screen.getByRole('button', { name: /amount.*number/i }),
-        ).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /amount.*number/i })).toBeInTheDocument();
       });
       fireEvent.click(screen.getByRole('button', { name: /amount.*number/i }));
 
@@ -3681,12 +3411,7 @@ describe('MappingUtility', () => {
 
     it('enables Add Mapping for compatible integer/number types', async () => {
       const typedSource = [
-        {
-          name: 'intField',
-          path: 'intField',
-          type: 'integer',
-          isRequired: true,
-        },
+        { name: 'intField', path: 'intField', type: 'integer', isRequired: true },
       ];
 
       mockDataModelApi.getDestinationFieldsJson.mockResolvedValueOnce({
@@ -3705,23 +3430,17 @@ describe('MappingUtility', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /add mapping/i }));
       await waitFor(() => {
-        expect(
-          screen.queryByText('Loading destination fields...'),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText('Loading destination fields...')).not.toBeInTheDocument();
       });
 
-      fireEvent.click(
-        screen.getByRole('button', { name: 'intField (integer)' }),
-      );
+      fireEvent.click(screen.getByRole('button', { name: 'intField (integer)' }));
 
       const chevrons = screen.getAllByTestId('chevron-right-icon');
       for (const ch of chevrons) {
         fireEvent.click(ch.closest('button')!);
       }
       await waitFor(() => {
-        expect(
-          screen.getByRole('button', { name: /amount.*number/i }),
-        ).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /amount.*number/i })).toBeInTheDocument();
       });
       fireEvent.click(screen.getByRole('button', { name: /amount.*number/i }));
 
@@ -3753,15 +3472,11 @@ describe('MappingUtility', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /add mapping/i }));
       await waitFor(() => {
-        expect(
-          screen.queryByText('Loading destination fields...'),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText('Loading destination fields...')).not.toBeInTheDocument();
       });
 
       // Select concatenate but only 1 source → selectedSources.length < 2 → invalid
-      fireEvent.change(screen.getByRole('combobox'), {
-        target: { value: 'concatenate' },
-      });
+      fireEvent.change(screen.getByRole('combobox'), { target: { value: 'concatenate' } });
       fireEvent.click(screen.getByRole('button', { name: 'srcA (string)' }));
 
       const chevrons = screen.getAllByTestId('chevron-right-icon');
@@ -3769,9 +3484,7 @@ describe('MappingUtility', () => {
         fireEvent.click(ch.closest('button')!);
       }
       await waitFor(() => {
-        expect(
-          screen.getByRole('button', { name: /amount.*number/i }),
-        ).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /amount.*number/i })).toBeInTheDocument();
       });
       fireEvent.click(screen.getByRole('button', { name: /amount.*number/i }));
 
@@ -3783,18 +3496,8 @@ describe('MappingUtility', () => {
   describe('isCurrentMappingValid - concatenate with number source', () => {
     it('disables concatenate when source includes number type', async () => {
       const mixedSources = [
-        {
-          name: 'strField',
-          path: 'strField',
-          type: 'string',
-          isRequired: true,
-        },
-        {
-          name: 'numField',
-          path: 'numField',
-          type: 'number',
-          isRequired: true,
-        },
+        { name: 'strField', path: 'strField', type: 'string', isRequired: true },
+        { name: 'numField', path: 'numField', type: 'number', isRequired: true },
       ];
 
       mockDataModelApi.getDestinationFieldsJson.mockResolvedValueOnce({
@@ -3813,29 +3516,19 @@ describe('MappingUtility', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /add mapping/i }));
       await waitFor(() => {
-        expect(
-          screen.queryByText('Loading destination fields...'),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText('Loading destination fields...')).not.toBeInTheDocument();
       });
 
-      fireEvent.change(screen.getByRole('combobox'), {
-        target: { value: 'concatenate' },
-      });
-      fireEvent.click(
-        screen.getByRole('button', { name: 'strField (string)' }),
-      );
-      fireEvent.click(
-        screen.getByRole('button', { name: 'numField (number)' }),
-      );
+      fireEvent.change(screen.getByRole('combobox'), { target: { value: 'concatenate' } });
+      fireEvent.click(screen.getByRole('button', { name: 'strField (string)' }));
+      fireEvent.click(screen.getByRole('button', { name: 'numField (number)' }));
 
       const chevrons = screen.getAllByTestId('chevron-right-icon');
       for (const ch of chevrons) {
         fireEvent.click(ch.closest('button')!);
       }
       await waitFor(() => {
-        expect(
-          screen.getByRole('button', { name: /amount.*number/i }),
-        ).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /amount.*number/i })).toBeInTheDocument();
       });
       fireEvent.click(screen.getByRole('button', { name: /amount.*number/i }));
 
@@ -3845,18 +3538,8 @@ describe('MappingUtility', () => {
 
     it('enables concatenate when both sources are strings', async () => {
       const strSources = [
-        {
-          name: 'firstName',
-          path: 'firstName',
-          type: 'string',
-          isRequired: true,
-        },
-        {
-          name: 'lastName',
-          path: 'lastName',
-          type: 'string',
-          isRequired: true,
-        },
+        { name: 'firstName', path: 'firstName', type: 'string', isRequired: true },
+        { name: 'lastName', path: 'lastName', type: 'string', isRequired: true },
       ];
 
       mockDataModelApi.getDestinationFieldsJson.mockResolvedValueOnce({
@@ -3875,33 +3558,21 @@ describe('MappingUtility', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /add mapping/i }));
       await waitFor(() => {
-        expect(
-          screen.queryByText('Loading destination fields...'),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText('Loading destination fields...')).not.toBeInTheDocument();
       });
 
-      fireEvent.change(screen.getByRole('combobox'), {
-        target: { value: 'concatenate' },
-      });
-      fireEvent.click(
-        screen.getByRole('button', { name: 'firstName (string)' }),
-      );
-      fireEvent.click(
-        screen.getByRole('button', { name: 'lastName (string)' }),
-      );
+      fireEvent.change(screen.getByRole('combobox'), { target: { value: 'concatenate' } });
+      fireEvent.click(screen.getByRole('button', { name: 'firstName (string)' }));
+      fireEvent.click(screen.getByRole('button', { name: 'lastName (string)' }));
 
       const chevrons = screen.getAllByTestId('chevron-right-icon');
       for (const ch of chevrons) {
         fireEvent.click(ch.closest('button')!);
       }
       await waitFor(() => {
-        expect(
-          screen.getByRole('button', { name: /fullName.*string/i }),
-        ).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /fullName.*string/i })).toBeInTheDocument();
       });
-      fireEvent.click(
-        screen.getByRole('button', { name: /fullName.*string/i }),
-      );
+      fireEvent.click(screen.getByRole('button', { name: /fullName.*string/i }));
 
       const addBtns = screen.getAllByRole('button', { name: 'Add Mapping' });
       expect(addBtns[addBtns.length - 1]).not.toBeDisabled();
@@ -3911,12 +3582,7 @@ describe('MappingUtility', () => {
   describe('isCurrentMappingValid - split with number source', () => {
     it('disables split when source is number type', async () => {
       const numSource = [
-        {
-          name: 'numField',
-          path: 'numField',
-          type: 'number',
-          isRequired: true,
-        },
+        { name: 'numField', path: 'numField', type: 'number', isRequired: true },
       ];
 
       mockDataModelApi.getDestinationFieldsJson.mockResolvedValueOnce({
@@ -3935,33 +3601,21 @@ describe('MappingUtility', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /add mapping/i }));
       await waitFor(() => {
-        expect(
-          screen.queryByText('Loading destination fields...'),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText('Loading destination fields...')).not.toBeInTheDocument();
       });
 
-      fireEvent.change(screen.getByRole('combobox'), {
-        target: { value: 'split' },
-      });
-      fireEvent.click(
-        screen.getByRole('button', { name: 'numField (number)' }),
-      );
+      fireEvent.change(screen.getByRole('combobox'), { target: { value: 'split' } });
+      fireEvent.click(screen.getByRole('button', { name: 'numField (number)' }));
 
       const chevrons = screen.getAllByTestId('chevron-right-icon');
       for (const ch of chevrons) {
         fireEvent.click(ch.closest('button')!);
       }
       await waitFor(() => {
-        expect(
-          screen.getByRole('button', { name: /firstName.*string/i }),
-        ).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /firstName.*string/i })).toBeInTheDocument();
       });
-      fireEvent.click(
-        screen.getByRole('button', { name: /firstName.*string/i }),
-      );
-      fireEvent.click(
-        screen.getByRole('button', { name: /lastName.*string/i }),
-      );
+      fireEvent.click(screen.getByRole('button', { name: /firstName.*string/i }));
+      fireEvent.click(screen.getByRole('button', { name: /lastName.*string/i }));
 
       const addBtns = screen.getAllByRole('button', { name: 'Add Mapping' });
       expect(addBtns[addBtns.length - 1]).toBeDisabled();
@@ -3969,12 +3623,7 @@ describe('MappingUtility', () => {
 
     it('enables split when string source and 2 destinations selected', async () => {
       const strSource = [
-        {
-          name: 'fullName',
-          path: 'fullName',
-          type: 'string',
-          isRequired: true,
-        },
+        { name: 'fullName', path: 'fullName', type: 'string', isRequired: true },
       ];
 
       mockDataModelApi.getDestinationFieldsJson.mockResolvedValueOnce({
@@ -3993,26 +3642,18 @@ describe('MappingUtility', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /add mapping/i }));
       await waitFor(() => {
-        expect(
-          screen.queryByText('Loading destination fields...'),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText('Loading destination fields...')).not.toBeInTheDocument();
       });
 
-      fireEvent.change(screen.getByRole('combobox'), {
-        target: { value: 'split' },
-      });
-      fireEvent.click(
-        screen.getByRole('button', { name: 'fullName (string)' }),
-      );
+      fireEvent.change(screen.getByRole('combobox'), { target: { value: 'split' } });
+      fireEvent.click(screen.getByRole('button', { name: 'fullName (string)' }));
 
       const chevrons = screen.getAllByTestId('chevron-right-icon');
       for (const ch of chevrons) {
         fireEvent.click(ch.closest('button')!);
       }
       await waitFor(() => {
-        expect(
-          screen.getByRole('button', { name: /amount.*number/i }),
-        ).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /amount.*number/i })).toBeInTheDocument();
       });
       fireEvent.click(screen.getByRole('button', { name: /amount.*number/i }));
       fireEvent.click(screen.getByRole('button', { name: 'name (string)' }));
@@ -4038,9 +3679,7 @@ describe('MappingUtility', () => {
       fireEvent.click(screen.getByRole('button', { name: /add mapping/i }));
 
       await waitFor(() => {
-        expect(
-          screen.queryByText('Loading destination fields...'),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText('Loading destination fields...')).not.toBeInTheDocument();
       });
 
       expect(screen.getByText('Data Model')).toBeInTheDocument();
@@ -4072,14 +3711,10 @@ describe('MappingUtility', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /add mapping/i }));
       await waitFor(() => {
-        expect(
-          screen.queryByText('Loading destination fields...'),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText('Loading destination fields...')).not.toBeInTheDocument();
       });
 
-      fireEvent.change(screen.getByRole('combobox'), {
-        target: { value: 'concatenate' },
-      });
+      fireEvent.change(screen.getByRole('combobox'), { target: { value: 'concatenate' } });
       fireEvent.click(screen.getByRole('button', { name: 'srcA (string)' }));
       fireEvent.click(screen.getByRole('button', { name: 'srcB (string)' }));
 
@@ -4088,13 +3723,9 @@ describe('MappingUtility', () => {
         fireEvent.click(ch.closest('button')!);
       }
       await waitFor(() => {
-        expect(
-          screen.getByRole('button', { name: /fullName.*string/i }),
-        ).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /fullName.*string/i })).toBeInTheDocument();
       });
-      fireEvent.click(
-        screen.getByRole('button', { name: /fullName.*string/i }),
-      );
+      fireEvent.click(screen.getByRole('button', { name: /fullName.*string/i }));
 
       const addBtns = screen.getAllByRole('button', { name: 'Add Mapping' });
       fireEvent.click(addBtns[addBtns.length - 1]);
@@ -4135,9 +3766,7 @@ describe('MappingUtility', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /add mapping/i }));
       await waitFor(() => {
-        expect(
-          screen.queryByText('Loading destination fields...'),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText('Loading destination fields...')).not.toBeInTheDocument();
       });
 
       fireEvent.click(screen.getByRole('button', { name: 'numA (number)' }));
@@ -4147,9 +3776,7 @@ describe('MappingUtility', () => {
         fireEvent.click(ch.closest('button')!);
       }
       await waitFor(() => {
-        expect(
-          screen.getByRole('button', { name: /total.*number/i }),
-        ).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /total.*number/i })).toBeInTheDocument();
       });
       fireEvent.click(screen.getByRole('button', { name: /total.*number/i }));
 
@@ -4174,17 +3801,13 @@ describe('MappingUtility', () => {
       const destPromise = new Promise((resolve) => {
         resolveDestFields = resolve;
       });
-      mockDataModelApi.getDestinationFieldsJson.mockReturnValueOnce(
-        destPromise as any,
-      );
+      mockDataModelApi.getDestinationFieldsJson.mockReturnValueOnce(destPromise as any);
 
       renderComponent({ configId: undefined });
 
       fireEvent.click(screen.getByRole('button', { name: /add mapping/i }));
 
-      expect(
-        screen.getByText('Loading destination fields...'),
-      ).toBeInTheDocument();
+      expect(screen.getByText('Loading destination fields...')).toBeInTheDocument();
 
       resolveDestFields!({
         success: true,
@@ -4192,9 +3815,7 @@ describe('MappingUtility', () => {
       });
 
       await waitFor(() => {
-        expect(
-          screen.queryByText('Loading destination fields...'),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText('Loading destination fields...')).not.toBeInTheDocument();
       });
     });
   });
@@ -4216,9 +3837,7 @@ describe('MappingUtility', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /add mapping/i }));
       await waitFor(() => {
-        expect(
-          screen.queryByText('Loading destination fields...'),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText('Loading destination fields...')).not.toBeInTheDocument();
       });
 
       const chevrons = screen.getAllByTestId('chevron-right-icon');
@@ -4226,9 +3845,7 @@ describe('MappingUtility', () => {
         fireEvent.click(ch.closest('button')!);
       }
 
-      const cacheBtn = screen.queryByRole('button', {
-        name: /cacheKey.*string/i,
-      });
+      const cacheBtn = screen.queryByRole('button', { name: /cacheKey.*string/i });
       if (cacheBtn) {
         fireEvent.click(cacheBtn);
       }
@@ -4246,9 +3863,7 @@ describe('MappingUtility', () => {
         target: { value: 'split' },
       });
 
-      expect(
-        screen.getByRole('heading', { name: 'Split' }),
-      ).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Split' })).toBeInTheDocument();
     });
   });
 
@@ -4275,9 +3890,7 @@ describe('MappingUtility', () => {
       fireEvent.click(screen.getByRole('button', { name: /add mapping/i }));
 
       await waitFor(() => {
-        expect(
-          screen.queryByText('Loading destination fields...'),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText('Loading destination fields...')).not.toBeInTheDocument();
       });
 
       expect(screen.getByText('Data Model')).toBeInTheDocument();
@@ -4307,9 +3920,7 @@ describe('MappingUtility', () => {
       fireEvent.click(screen.getByRole('button', { name: /add mapping/i }));
 
       await waitFor(() => {
-        expect(
-          screen.queryByText('Loading destination fields...'),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText('Loading destination fields...')).not.toBeInTheDocument();
       });
 
       expect(screen.getByText('Add New Mapping')).toBeInTheDocument();
@@ -4319,12 +3930,7 @@ describe('MappingUtility', () => {
   describe('handleSaveMapping - API with number destination for direct mapping', () => {
     it('includes type: number when dest is number and saves via API', async () => {
       const numSource = [
-        {
-          name: 'numField',
-          path: 'numField',
-          type: 'number',
-          isRequired: true,
-        },
+        { name: 'numField', path: 'numField', type: 'number', isRequired: true },
       ];
 
       mockConfigApi.getConfig.mockResolvedValueOnce({
@@ -4344,23 +3950,17 @@ describe('MappingUtility', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /add mapping/i }));
       await waitFor(() => {
-        expect(
-          screen.queryByText('Loading destination fields...'),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText('Loading destination fields...')).not.toBeInTheDocument();
       });
 
-      fireEvent.click(
-        screen.getByRole('button', { name: 'numField (number)' }),
-      );
+      fireEvent.click(screen.getByRole('button', { name: 'numField (number)' }));
 
       const chevrons = screen.getAllByTestId('chevron-right-icon');
       for (const ch of chevrons) {
         fireEvent.click(ch.closest('button')!);
       }
       await waitFor(() => {
-        expect(
-          screen.getByRole('button', { name: /amount.*number/i }),
-        ).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /amount.*number/i })).toBeInTheDocument();
       });
       fireEvent.click(screen.getByRole('button', { name: /amount.*number/i }));
 
@@ -4399,9 +3999,7 @@ describe('MappingUtility', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /add mapping/i }));
       await waitFor(() => {
-        expect(
-          screen.queryByText('Loading destination fields...'),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText('Loading destination fields...')).not.toBeInTheDocument();
       });
 
       fireEvent.click(screen.getByRole('button', { name: /myField.*string/i }));
@@ -4414,7 +4012,9 @@ describe('MappingUtility', () => {
   describe('existing mapping display - edge cases', () => {
     it('handles mapping without transformation field', () => {
       renderComponent({
-        existingMappings: [{ source: 'a', destination: 'b' }] as any,
+        existingMappings: [
+          { source: 'a', destination: 'b' },
+        ] as any,
         configId: undefined,
       });
 
@@ -4450,9 +4050,7 @@ describe('MappingUtility', () => {
         expect(mockConfigApi.getConfig).toHaveBeenCalledWith(123);
       });
 
-      expect(
-        screen.getByRole('button', { name: /add mapping/i }),
-      ).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /add mapping/i })).toBeInTheDocument();
     });
   });
 
@@ -4480,9 +4078,7 @@ describe('MappingUtility', () => {
 
       // The destination tree should contain isActive as a button (top-level boolean leaf)
       await waitFor(() => {
-        expect(
-          screen.getByRole('button', { name: /isActive/i }),
-        ).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /isActive/i })).toBeInTheDocument();
       });
     });
   });
@@ -4529,9 +4125,7 @@ describe('MappingUtility', () => {
 
       // Now amount should be visible as a leaf button
       await waitFor(() => {
-        expect(
-          screen.getByRole('button', { name: /amount.*number/i }),
-        ).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /amount.*number/i })).toBeInTheDocument();
       });
       fireEvent.click(screen.getByRole('button', { name: /amount.*number/i }));
     });
@@ -4579,14 +4173,11 @@ describe('MappingUtility', () => {
       fireEvent.click(screen.getByRole('button', { name: 'last (string)' }));
 
       // Select destination (top-level leaf)
-      fireEvent.click(
-        screen.getByRole('button', { name: 'fullName (string)' }),
-      );
+      fireEvent.click(screen.getByRole('button', { name: 'fullName (string)' }));
 
       // Set delimiter via the Concatenate Delimiter input
       const delimiterLabel = screen.getByText('Concatenate Delimiter');
-      const delimiterInput =
-        delimiterLabel.parentElement!.querySelector('input')!;
+      const delimiterInput = delimiterLabel.parentElement!.querySelector('input')!;
       fireEvent.change(delimiterInput, { target: { value: '-' } });
 
       const addButtons = screen.getAllByRole('button', { name: 'Add Mapping' });
@@ -4645,9 +4236,7 @@ describe('MappingUtility', () => {
       });
 
       fireEvent.change(
-        screen.getByPlaceholderText(
-          'Enter a constant value (string, number, etc.)',
-        ),
+        screen.getByPlaceholderText('Enter a constant value (string, number, etc.)'),
         { target: { value: 'USD' } },
       );
 
@@ -4666,9 +4255,7 @@ describe('MappingUtility', () => {
     const openEditFieldsModal = async () => {
       fireEvent.click(screen.getByRole('button', { name: /add mapping/i }));
       await waitFor(() => {
-        expect(
-          screen.queryByText('Loading destination fields...'),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText('Loading destination fields...')).not.toBeInTheDocument();
       });
       fireEvent.click(screen.getByRole('button', { name: /edit fields/i }));
     };
@@ -4677,9 +4264,7 @@ describe('MappingUtility', () => {
       renderComponent();
       await openEditFieldsModal();
 
-      fireEvent.click(
-        screen.getByRole('button', { name: /mock redis too deep/i }),
-      );
+      fireEvent.click(screen.getByRole('button', { name: /mock redis too deep/i }));
 
       await waitFor(() => {
         expect(screen.getByText(/nesting/i)).toBeInTheDocument();
@@ -4690,11 +4275,7 @@ describe('MappingUtility', () => {
       renderComponent();
       await openEditFieldsModal();
 
-      fireEvent.click(
-        screen.getByRole('button', {
-          name: /mock transactiondetails nested object/i,
-        }),
-      );
+      fireEvent.click(screen.getByRole('button', { name: /mock transactiondetails nested object/i }));
 
       await waitFor(() => {
         expect(screen.getByText(/cannot contain nested/i)).toBeInTheDocument();
@@ -4705,9 +4286,7 @@ describe('MappingUtility', () => {
       renderComponent();
       await openEditFieldsModal();
 
-      fireEvent.click(
-        screen.getByRole('button', { name: /mock custom object too deep/i }),
-      );
+      fireEvent.click(screen.getByRole('button', { name: /mock custom object too deep/i }));
 
       await waitFor(() => {
         expect(screen.getByText(/nesting/i)).toBeInTheDocument();
@@ -4726,16 +4305,12 @@ describe('MappingUtility', () => {
       fireEvent.click(screen.getByRole('button', { name: /save changes/i }));
 
       await waitFor(() => {
-        expect(
-          screen.getByText(/failed to save destination fields/i),
-        ).toBeInTheDocument();
+        expect(screen.getByText(/failed to save destination fields/i)).toBeInTheDocument();
       });
     });
 
     it('handles non-Error thrown during save', async () => {
-      mockDataModelApi.updateDestinationFieldsJson.mockRejectedValueOnce(
-        'string error',
-      );
+      mockDataModelApi.updateDestinationFieldsJson.mockRejectedValueOnce('string error');
 
       renderComponent();
       await openEditFieldsModal();
@@ -4801,7 +4376,9 @@ describe('MappingUtility', () => {
     });
 
     it('validates split with non-string source type', async () => {
-      const arraySchema = [{ name: 'amount', path: 'amount', type: 'Number' }];
+      const arraySchema = [
+        { name: 'amount', path: 'amount', type: 'Number' },
+      ];
 
       mockConfigApi.getConfig.mockResolvedValueOnce({
         success: true,
@@ -4833,9 +4410,7 @@ describe('MappingUtility', () => {
 
       // Select two destinations (top-level leaves)
       fireEvent.click(screen.getByRole('button', { name: 'ccy (string)' }));
-      fireEvent.click(
-        screen.getByRole('button', { name: 'targetDest (string)' }),
-      );
+      fireEvent.click(screen.getByRole('button', { name: 'targetDest (string)' }));
 
       const addButtons = screen.getAllByRole('button', { name: 'Add Mapping' });
       expect(addButtons[addButtons.length - 1]).toBeDisabled();
@@ -4955,9 +4530,7 @@ describe('MappingUtility', () => {
 
       // Select same source and destination (top-level leaf)
       fireEvent.click(screen.getByRole('button', { name: 'f (string)' }));
-      fireEvent.click(
-        screen.getByRole('button', { name: 'targetField (string)' }),
-      );
+      fireEvent.click(screen.getByRole('button', { name: 'targetField (string)' }));
 
       const addButtons = screen.getAllByRole('button', { name: 'Add Mapping' });
       fireEvent.click(addButtons[addButtons.length - 1]);
@@ -4972,9 +4545,7 @@ describe('MappingUtility', () => {
     const openEditFieldsModal = async () => {
       fireEvent.click(screen.getByRole('button', { name: /add mapping/i }));
       await waitFor(() => {
-        expect(
-          screen.queryByText('Loading destination fields...'),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText('Loading destination fields...')).not.toBeInTheDocument();
       });
       fireEvent.click(screen.getByRole('button', { name: /edit fields/i }));
     };
@@ -4989,9 +4560,7 @@ describe('MappingUtility', () => {
       fireEvent.click(screen.getByRole('button', { name: /save changes/i }));
 
       await waitFor(() => {
-        expect(
-          screen.getByText(/invalid|missing|cannot save/i),
-        ).toBeInTheDocument();
+        expect(screen.getByText(/invalid|missing|cannot save/i)).toBeInTheDocument();
       });
     });
   });
