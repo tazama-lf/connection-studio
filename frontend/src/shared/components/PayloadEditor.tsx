@@ -95,11 +95,34 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
         msgFam: '',
       },
     );
-    const [inferredFields, setInferredFields] = useState<InferredField[]>([]);
-    const [showInferredFields, setShowInferredFields] = useState(false);
-    const hasUserEditedRef = React.useRef(false);
-    const [relatedTransactions, setRelatedTransactions] = useState<string[]>(
-      [],
+  const validateVersion = (version: string): string => {
+    try {
+      versionSchema.validateSync(version);
+      return '';
+    } catch (err) {
+      return err instanceof yup.ValidationError ? err.message : 'Invalid version format';
+    }
+  };
+  const validateTransactionType = (transactionType: string): string => {
+    try {
+      transactionTypeSchema.validateSync(transactionType);
+      return '';
+    } catch (err) {
+      return err instanceof yup.ValidationError ? err.message : 'Invalid transaction type format';
+    }
+  };
+  const validateEventType = (eventType: string): string => {
+    try {
+      eventTypeSchema.validateSync(eventType);
+      return '';
+    } catch (err) {
+      return err instanceof yup.ValidationError ? err.message : 'Invalid event type format';
+    }
+  };
+  const validateAllFields = () => {
+    const versionError = validateVersion(endpointData.version);
+    const transactionTypeError = validateTransactionType(
+      endpointData.transactionType,
     );
 
     useEffect(() => {
@@ -564,132 +587,99 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(
           event.target.value = '';
           return;
         }
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const content = e.target?.result as string;
-          let contentValidationError = '';
-          if (isJsonExpected) {
-            try {
-              JSON.parse(content);
-            } catch (error) {
-              contentValidationError =
-                'Invalid JSON file: The uploaded file contains invalid JSON format.';
-            }
-          } else if (isXmlExpected) {
-            try {
-              const parser = new DOMParser();
-              const xmlDoc = parser.parseFromString(content, 'text/xml');
-              const parseError = xmlDoc.getElementsByTagName('parsererror');
-              if (parseError.length > 0) {
-                contentValidationError =
-                  'Invalid XML file: The uploaded file contains invalid XML format.';
-              }
-            } catch (error) {
-              contentValidationError =
-                'Invalid XML file: The uploaded file contains invalid XML format.';
-            }
-          }
-          if (contentValidationError) {
-            setFieldErrors((prev) => ({
-              ...prev,
-              payload: contentValidationError,
-            }));
-            event.target.value = '';
-            return;
-          }
-          setFieldErrors((prev) => ({ ...prev, payload: '' }));
-          onChange(content);
-        };
-        reader.readAsText(file);
+        setFieldErrors((prev) => ({ ...prev, payload: '' }));
+        onChange(content);
+      };
+      reader.readAsText(file);
+    }
+  };
+  const generateSchemaFromPayload = (
+    payload: string,
+    contentType: string,
+  ): any => {
+    if (contentType === 'application/json') {
+      try {
+        const parsed = JSON.parse(payload);
+        return generateJSONSchema(parsed);
+      } catch (e) {
+        throw new Error('Invalid JSON format');
       }
-    };
-    const generateSchemaFromPayload = (
-      payload: string,
-      contentType: string,
-    ): any => {
-      if (contentType === 'application/json') {
-        try {
-          const parsed = JSON.parse(payload);
-          return generateJSONSchema(parsed);
-        } catch (e) {
-          throw new Error('Invalid JSON format');
+    } else if (contentType === 'application/xml') {
+      try {
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(payload, 'text/xml');
+        const parseError = xmlDoc.getElementsByTagName('parsererror');
+        if (parseError.length > 0) {
+          throw new Error('XML parsing error');
         }
-      } else if (contentType === 'application/xml') {
-        try {
-          const parser = new DOMParser();
-          const xmlDoc = parser.parseFromString(payload, 'text/xml');
-          const parseError = xmlDoc.getElementsByTagName('parsererror');
-          if (parseError.length > 0) {
-            throw new Error('XML parsing error');
-          }
-          const xmlparser = new XMLParser({
-            ignoreAttributes: false,
-            attributeNamePrefix: '',
-          });
-          const jsonResult = xmlparser.parse(payload);
-          return generateJSONSchema(jsonResult);
-        } catch (e) {
-          throw new Error('Invalid XML format');
-        }
-      }
-      return null;
-    };
-    const generateJSONSchema = (obj: any, path = ''): SchemaField[] => {
-      const schema: SchemaField[] = [];
-      if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
-        Object.entries(obj).forEach(([key, value]) => {
-          const fieldPath = path ? `${path}.${key}` : key;
-          let fieldType: string;
-          if (Array.isArray(value)) {
-            fieldType = 'array';
-          } else if (value && typeof value === 'object') {
-            fieldType = 'object';
-          } else {
-            fieldType = typeof value;
-          }
-          const field: SchemaField = {
-            name: key,
-            path: fieldPath,
-            type: fieldType as
-              | 'string'
-              | 'number'
-              | 'boolean'
-              | 'object'
-              | 'array',
-            isRequired: true,
-          };
-          if (
-            typeof value === 'object' &&
-            value !== null &&
-            !Array.isArray(value)
-          ) {
-            field.children = generateJSONSchema(value, fieldPath);
-          } else if (Array.isArray(value) && value.length > 0) {
-            const firstElement = value[0];
-            if (
-              typeof firstElement === 'object' &&
-              firstElement !== null &&
-              !Array.isArray(firstElement)
-            ) {
-              field.path = `${fieldPath}[0]`;
-              field.children = generateJSONSchema(
-                firstElement,
-                `${fieldPath}[0]`,
-              );
-              field.arrayElementType = 'object';
-            } else if (Array.isArray(firstElement)) {
-              field.children = [];
-              field.arrayElementType = 'array';
-            } else {
-              field.arrayElementType = typeof firstElement;
-            }
-          }
-          schema.push(field);
+        const xmlparser = new XMLParser({
+          ignoreAttributes: false,
+          attributeNamePrefix: '',
         });
+        const jsonResult = xmlparser.parse(payload);
+        return generateJSONSchema(jsonResult);
+      } catch (e) {
+        throw new Error('Invalid XML format');
       }
-      return schema;
-    };
-    const sampleJsonPayload = `{
+    }
+    return null;
+  };
+  const generateJSONSchema = (obj: any, path = ''): SchemaField[] => {
+    const schema: SchemaField[] = [];
+    if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
+      Object.entries(obj).forEach(([key, value]) => {
+        const fieldPath = path ? `${path}.${key}` : key;
+        let fieldType: string;
+        if (Array.isArray(value)) {
+          fieldType = 'array';
+        } else if (value && typeof value === 'object') {
+          fieldType = 'object';
+        } else {
+          fieldType = typeof value;
+        }
+        const field: SchemaField = {
+          name: key,
+          path: fieldPath,
+          type: fieldType as
+            | 'string'
+            | 'number'
+            | 'boolean'
+            | 'object'
+            | 'array',
+          isRequired: true,
+        };
+        if (
+          typeof value === 'object' &&
+          value !== null &&
+          !Array.isArray(value)
+        ) {
+          field.children = generateJSONSchema(value, fieldPath);
+        } else if (Array.isArray(value) && value.length > 0) {
+          const firstElement = value[0];
+          if (
+            typeof firstElement === 'object' &&
+            firstElement !== null &&
+            !Array.isArray(firstElement)
+          ) {
+            field.path = `${fieldPath}[0]`;
+            field.children = generateJSONSchema(
+              firstElement,
+              `${fieldPath}[0]`,
+            );
+            field.arrayElementType = 'object';
+          } else if (Array.isArray(firstElement)) {
+            field.children = [];
+            field.arrayElementType = 'array';
+          } else {
+            field.arrayElementType = typeof firstElement;
+          }
+        }
+        schema.push(field);
+      });
+    }
+    return schema;
+  };
+  const sampleJsonPayload = `{
   "FIToFIPmtSts": {
     "GrpHdr": {
       "MsgId": "msg_id",
