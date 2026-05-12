@@ -179,22 +179,32 @@ describe('SchedulerService', () => {
       expect(loggerService.error).toHaveBeenCalled();
     });
 
-    it('should handle errors from admin service', async () => {
-      const errorMessage = 'Admin service error';
-      adminServiceClient.createSchedule.mockRejectedValue(
-        new Error(errorMessage),
+    it('should generate a uuid when schedule has no id', async () => {
+      const expectedResult = { success: true, message: 'Schedule created' };
+      adminServiceClient.createSchedule.mockResolvedValue(expectedResult);
+      const dtoWithoutId = { name: 'Test Schedule', cron: '0 0 * * *' };
+
+      await service.create(
+        dtoWithoutId as CreateScheduleJobDto,
+        mockTenantId,
+        mockToken,
       );
 
+      expect(adminServiceClient.createSchedule).toHaveBeenCalledWith(
+        expect.objectContaining({ id: expect.any(String) }),
+        mockToken,
+      );
+    });
+
+    it('should handle non-Error thrown during create', async () => {
+      adminServiceClient.createSchedule.mockRejectedValue('plain string error');
+
       await expect(
-        service.create(
-          createScheduleDto as CreateScheduleJobDto,
-          mockTenantId,
-          mockToken,
-        ),
+        service.create(createScheduleDto as CreateScheduleJobDto, mockTenantId, mockToken),
       ).rejects.toThrow(BadRequestException);
 
       expect(loggerService.error).toHaveBeenCalledWith(
-        expect.stringContaining(errorMessage),
+        expect.stringContaining('plain string error'),
       );
     });
   });
@@ -218,6 +228,27 @@ describe('SchedulerService', () => {
       const result = await service.findOne('non-existent-id', mockUser);
 
       expect(result).toBeNull();
+    });
+
+    it('should throw ForbiddenException for invalid user role', async () => {
+      adminServiceClient.findScheduleById.mockResolvedValue(mockSchedule);
+      const invalidUser = { ...mockUser, actorRole: 'admin' };
+
+      await expect(
+        service.findOne(mockSchedule.id, invalidUser as any),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should throw ForbiddenException when schedule status not in allowedStatuses', async () => {
+      const deployedSchedule = { ...mockSchedule, status: JobStatus.DEPLOYED };
+      adminServiceClient.findScheduleById.mockResolvedValue(deployedSchedule);
+      jest
+        .spyOn(service['rbacService'], 'getTier2')
+        .mockReturnValue({ allowedStatuses: [JobStatus.INPROGRESS] } as any);
+
+      await expect(
+        service.findOne(mockSchedule.id, mockUser),
+      ).rejects.toThrow(ForbiddenException);
     });
   });
 
@@ -265,6 +296,40 @@ describe('SchedulerService', () => {
       );
 
       await expect(service.findAll(offset, limit, mockUser)).rejects.toThrow();
+    });
+
+    it('should return schedules without status filter when allowedStatuses is empty', async () => {
+      const mockSchedules = { ...mockPaginated, data: [mockSchedule] };
+      adminServiceClient.getAllSchedule.mockResolvedValue(mockSchedules);
+      jest
+        .spyOn(service['rbacService'], 'getTier2')
+        .mockReturnValue({ allowedStatuses: [] } as any);
+
+      const result = await service.findAll(offset, limit, mockUser);
+
+      expect(result).toEqual(mockSchedules);
+      expect(adminServiceClient.getAllSchedule).toHaveBeenCalledWith(
+        offset,
+        limit,
+        mockUser,
+        {},
+      );
+    });
+
+    it('should skip status filter for user with invalid role', async () => {
+      const mockSchedules = { ...mockPaginated, data: [] };
+      adminServiceClient.getAllSchedule.mockResolvedValue(mockSchedules);
+      const invalidUser = { ...mockUser, actorRole: 'admin' };
+
+      const result = await service.findAll(offset, limit, invalidUser as any);
+
+      expect(result).toEqual(mockSchedules);
+      expect(adminServiceClient.getAllSchedule).toHaveBeenCalledWith(
+        offset,
+        limit,
+        invalidUser,
+        {},
+      );
     });
   });
 
@@ -346,6 +411,98 @@ describe('SchedulerService', () => {
         expect.stringContaining(errorMessage),
       );
     });
+
+    it('should throw BadRequestException when schedule not found', async () => {
+      adminServiceClient.findScheduleById.mockResolvedValue(null);
+
+      await expect(
+        service.updateSchedule(scheduleId, updateDto, mockUser),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw ForbiddenException for non-editor role', async () => {
+      const approverUser = { ...mockUser, actorRole: 'approver' };
+      adminServiceClient.findScheduleById.mockResolvedValue({
+        ...mockSchedule,
+        status: JobStatus.REVIEW,
+      });
+      jest
+        .spyOn(service['rbacService'], 'getTier2')
+        .mockReturnValue({ allowedStatuses: [JobStatus.REVIEW] } as any);
+
+      await expect(
+        service.updateSchedule(scheduleId, updateDto, approverUser as any),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should throw ForbiddenException when tier2 check fails with reason', async () => {
+      adminServiceClient.findScheduleById.mockResolvedValue({
+        ...mockSchedule,
+        status: JobStatus.INPROGRESS,
+      });
+      jest
+        .spyOn(service['rbacService'], 'checkTier2')
+        .mockReturnValue({ allowed: false, reason: 'Not allowed' } as any);
+
+      await expect(
+        service.updateSchedule(scheduleId, updateDto, mockUser),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should throw ForbiddenException when tier2 check fails without reason', async () => {
+      adminServiceClient.findScheduleById.mockResolvedValue({
+        ...mockSchedule,
+        status: JobStatus.INPROGRESS,
+      });
+      jest
+        .spyOn(service['rbacService'], 'checkTier2')
+        .mockReturnValue({ allowed: false } as any);
+
+      await expect(
+        service.updateSchedule(scheduleId, updateDto, mockUser),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should not call updateScheduleByStatus when update result is not success', async () => {
+      adminServiceClient.findScheduleById.mockResolvedValue({
+        ...mockSchedule,
+        status: JobStatus.REJECTED,
+      });
+      adminServiceClient.updateSchedule.mockResolvedValue({
+        success: false,
+        message: 'Failed',
+      });
+
+      const result = await service.updateSchedule(scheduleId, updateDto, mockUser);
+
+      expect(result.success).toBe(false);
+      expect(adminServiceClient.updateScheduleByStatus).not.toHaveBeenCalled();
+    });
+
+    it('should call updateScheduleByStatus when result succeeds and status is not INPROGRESS', async () => {
+      adminServiceClient.findScheduleById.mockResolvedValue({
+        ...mockSchedule,
+        status: JobStatus.REJECTED,
+      });
+      adminServiceClient.updateSchedule.mockResolvedValue({
+        success: true,
+        message: 'Updated',
+      });
+      adminServiceClient.updateScheduleByStatus.mockResolvedValue({
+        success: true,
+        message: 'ok',
+      });
+
+      const result = await service.updateSchedule(scheduleId, updateDto, mockUser);
+
+      expect(result.success).toBe(true);
+      expect(adminServiceClient.updateScheduleByStatus).toHaveBeenCalledWith(
+        scheduleId,
+        JobStatus.INPROGRESS,
+        mockTenantId,
+        mockToken,
+      );
+    });
   });
 
   describe('findByStatus', () => {
@@ -397,6 +554,26 @@ describe('SchedulerService', () => {
       ).rejects.toThrow(BadRequestException);
 
       expect(loggerService.error).toHaveBeenCalled();
+    });
+
+    it('should throw BadRequestException for invalid user role', async () => {
+      const invalidUser = { ...mockUser, actorRole: 'admin' };
+
+      await expect(
+        service.findByStatus(status, page, limit, invalidUser as any),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should handle non-Error thrown by getScheduleByStatus', async () => {
+      adminServiceClient.getScheduleByStatus.mockRejectedValue('plain string');
+
+      await expect(
+        service.findByStatus(status, page, limit, mockUser),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(loggerService.error).toHaveBeenCalledWith(
+        expect.stringContaining('plain string'),
+      );
     });
   });
 
@@ -706,6 +883,136 @@ describe('SchedulerService', () => {
       expect(loggerService.error).toHaveBeenCalledWith(
         expect.stringContaining(errorMessage),
       );
+    });
+
+    it('should throw BadRequestException when findOne returns null (non-deployed path)', async () => {
+      adminServiceClient.findScheduleById.mockResolvedValue(null);
+
+      await expect(
+        service.updateStatus(scheduleId, mockTenantId, JobStatus.REVIEW, mockUser),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw BadRequestException for invalid role in updateStatus', async () => {
+      const invalidUser = { ...mockUser, actorRole: 'admin' };
+      jest.spyOn(service, 'findOne').mockResolvedValue(mockSchedule);
+
+      await expect(
+        service.updateStatus(scheduleId, mockTenantId, JobStatus.REVIEW, invalidUser as any),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw BadRequestException when tier2 not allowed in updateStatus (with reason)', async () => {
+      adminServiceClient.findScheduleById.mockResolvedValue({
+        ...mockSchedule,
+        status: JobStatus.INPROGRESS,
+      });
+      jest
+        .spyOn(service['rbacService'], 'checkTier2')
+        .mockReturnValue({ allowed: false, reason: 'Tier2 blocked' } as any);
+
+      await expect(
+        service.updateStatus(scheduleId, mockTenantId, JobStatus.REVIEW, mockUser),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw BadRequestException when tier2 not allowed with no reason (uses default)', async () => {
+      adminServiceClient.findScheduleById.mockResolvedValue({
+        ...mockSchedule,
+        status: JobStatus.INPROGRESS,
+      });
+      jest
+        .spyOn(service['rbacService'], 'checkTier2')
+        .mockReturnValue({ allowed: false } as any);
+
+      await expect(
+        service.updateStatus(scheduleId, mockTenantId, JobStatus.REVIEW, mockUser),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw BadRequestException when tier3 not allowed in updateStatus (with reason)', async () => {
+      adminServiceClient.findScheduleById.mockResolvedValue({
+        ...mockSchedule,
+        status: JobStatus.INPROGRESS,
+      });
+      jest
+        .spyOn(service['rbacService'], 'checkTier2')
+        .mockReturnValue({ allowed: true } as any);
+      jest
+        .spyOn(service['rbacService'], 'checkTier3')
+        .mockReturnValue({ allowed: false, reason: 'Tier3 blocked' } as any);
+
+      await expect(
+        service.updateStatus(scheduleId, mockTenantId, JobStatus.REVIEW, mockUser),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw BadRequestException when tier3 not allowed with no reason (uses default)', async () => {
+      adminServiceClient.findScheduleById.mockResolvedValue({
+        ...mockSchedule,
+        status: JobStatus.INPROGRESS,
+      });
+      jest
+        .spyOn(service['rbacService'], 'checkTier2')
+        .mockReturnValue({ allowed: true } as any);
+      jest
+        .spyOn(service['rbacService'], 'checkTier3')
+        .mockReturnValue({ allowed: false } as any);
+
+      await expect(
+        service.updateStatus(scheduleId, mockTenantId, JobStatus.REVIEW, mockUser),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should use default success message when updateScheduleByStatus returns null', async () => {
+      adminServiceClient.findScheduleById.mockResolvedValue({
+        ...mockSchedule,
+        status: JobStatus.INPROGRESS,
+      });
+      jest
+        .spyOn(service['rbacService'], 'checkTier2')
+        .mockReturnValue({ allowed: true } as any);
+      jest
+        .spyOn(service['rbacService'], 'checkTier3')
+        .mockReturnValue({ allowed: true } as any);
+      adminServiceClient.updateScheduleByStatus.mockResolvedValue(null as any);
+
+      const result = await service.updateStatus(
+        scheduleId,
+        mockTenantId,
+        JobStatus.INPROGRESS,
+        mockUser,
+      );
+
+      expect(result).toEqual({
+        success: true,
+        message: 'Cron Job Status updated successfully',
+      });
+    });
+
+    it('should handle non-Error thrown in updateStatus catch', async () => {
+      adminServiceClient.findScheduleById.mockRejectedValue('plain string error');
+
+      await expect(
+        service.updateStatus(scheduleId, mockTenantId, JobStatus.REVIEW, mockUser),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(loggerService.error).toHaveBeenCalledWith('plain string error');
+    });
+
+    it('should handle non-Error thrown from SFTP readFile in updateStatus', async () => {
+      const publisherUser: AuthenticatedUser = {
+        tenantId: mockTenantId,
+        validClaims: ['PUBLISHER'],
+        actorRole: 'publisher',
+        token: { tokenString: mockToken },
+      } as AuthenticatedUser;
+
+      sftpService.readFile.mockRejectedValue('sftp plain error');
+
+      await expect(
+        service.updateStatus(scheduleId, mockTenantId, JobStatus.DEPLOYED, publisherUser),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 });

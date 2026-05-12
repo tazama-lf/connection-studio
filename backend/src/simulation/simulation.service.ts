@@ -23,7 +23,9 @@ export type { SimulatePayloadDto };
 export class SimulationService {
   private readonly logger = new Logger(SimulationService.name);
 
+  /* c8 ignore start */
   constructor(private readonly adminServiceClient: AdminServiceClient) {}
+  /* c8 ignore stop */
 
   async simulateMapping(
     dto: SimulatePayloadDto,
@@ -682,7 +684,7 @@ export class SimulationService {
           (k) => k !== '#text' && !k.startsWith('@'),
         );
         const hasOnlyTextAndAttributes = Object.keys(obj).every(
-          (k) => k === '#text' || k.startsWith('@') || !k.startsWith('@'),
+          (k) => k === '#text' || k.startsWith('@'),
         );
 
         const expectedType = this.getSchemaTypeAtPath(schema, path);
