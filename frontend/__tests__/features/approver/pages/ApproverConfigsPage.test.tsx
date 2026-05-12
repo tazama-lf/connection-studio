@@ -1145,53 +1145,29 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
 
   // Helper: creates a setter mock that invokes functional updaters so anonymous
   // (prev) => prev + INCREMENT callbacks are counted as covered by Istanbul.
-  const makeFunctionalSetter = () =>
-    jest.fn().mockImplementation((v: unknown) => {
-      if (typeof v === 'function') (v as (p: unknown) => unknown)(0);
-    });
+  const makeFunctionalSetter = () => jest.fn().mockImplementation((v: unknown) => {
+    if (typeof v === 'function') (v as (p: unknown) => unknown)(0);
+  });
 
   it('handleApprove success branch covers setRefreshKey callback', async () => {
     const useStateSpy = jest.spyOn(React, 'useState');
     const refreshSetter = makeFunctionalSetter();
     const seedValues: unknown[] = [
-      null,
-      null,
+      null, null,
       { id: 5, endpointPath: '/real-test', msgFam: 'FAM_R' }, // selectedConfig
       [0, refreshSetter], // refreshKey with functional setter
-      false,
-      true,
-      false,
-      null,
-      null,
-      false,
-      null,
-      '',
-      false,
-      false,
+      false, true, false, null, null, false, null, '', false, false,
     ];
 
     useStateSpy.mockImplementation((initial: unknown) => {
       if (seedValues.length > 0) {
         const next = seedValues.shift();
-        if (
-          Array.isArray(next) &&
-          next.length === 2 &&
-          typeof next[1] === 'function'
-        ) {
-          return next as [
-            unknown,
-            React.Dispatch<React.SetStateAction<unknown>>,
-          ];
+        if (Array.isArray(next) && next.length === 2 && typeof next[1] === 'function') {
+          return next as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
         }
-        return [next, jest.fn()] as [
-          unknown,
-          React.Dispatch<React.SetStateAction<unknown>>,
-        ];
+        return [next, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
       }
-      return [initial, jest.fn()] as [
-        unknown,
-        React.Dispatch<React.SetStateAction<unknown>>,
-      ];
+      return [initial, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
     });
 
     approveConfig.mockResolvedValueOnce({ success: true });
@@ -1200,9 +1176,7 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
 
     await waitFor(() => {
       expect(approveConfig).toHaveBeenCalledWith(5);
-      expect(showSuccess).toHaveBeenCalledWith(
-        'Configuration approved successfully',
-      );
+      expect(showSuccess).toHaveBeenCalledWith('Configuration approved successfully');
       expect(refreshSetter).toHaveBeenCalled();
     });
 
@@ -1213,44 +1187,21 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
     const useStateSpy = jest.spyOn(React, 'useState');
     const refreshSetter = makeFunctionalSetter();
     const seedValues: unknown[] = [
-      null,
-      null,
+      null, null,
       { id: 6, endpointPath: '/real-config', msgFam: 'FAM_C' }, // selectedConfig
       [0, refreshSetter], // refreshKey with functional setter
-      false,
-      true,
-      false,
-      null,
-      null,
-      false,
-      null,
-      '',
-      false,
-      false,
+      false, true, false, null, null, false, null, '', false, false,
     ];
 
     useStateSpy.mockImplementation((initial: unknown) => {
       if (seedValues.length > 0) {
         const next = seedValues.shift();
-        if (
-          Array.isArray(next) &&
-          next.length === 2 &&
-          typeof next[1] === 'function'
-        ) {
-          return next as [
-            unknown,
-            React.Dispatch<React.SetStateAction<unknown>>,
-          ];
+        if (Array.isArray(next) && next.length === 2 && typeof next[1] === 'function') {
+          return next as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
         }
-        return [next, jest.fn()] as [
-          unknown,
-          React.Dispatch<React.SetStateAction<unknown>>,
-        ];
+        return [next, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
       }
-      return [initial, jest.fn()] as [
-        unknown,
-        React.Dispatch<React.SetStateAction<unknown>>,
-      ];
+      return [initial, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
     });
 
     approveConfig.mockResolvedValueOnce({ success: false, config: { id: 6 } });
@@ -1259,9 +1210,7 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
 
     await waitFor(() => {
       expect(approveConfig).toHaveBeenCalledWith(6);
-      expect(showSuccess).toHaveBeenCalledWith(
-        'Configuration approved successfully',
-      );
+      expect(showSuccess).toHaveBeenCalledWith('Configuration approved successfully');
       expect(refreshSetter).toHaveBeenCalled();
     });
 
@@ -1272,44 +1221,23 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
     const useStateSpy = jest.spyOn(React, 'useState');
     const refreshSetter = makeFunctionalSetter();
     const seedValues: unknown[] = [
-      null,
-      null,
-      null,
+      null, null, null,
       [0, refreshSetter], // refreshKey with functional setter
       true, // showRejectionDialog
-      false,
-      false,
+      false, false,
       { id: 40, endpointPath: '/real-rej', msgFam: 'FAM_RJ' }, // configToReject
-      null,
-      false,
-      null,
-      '',
-      false,
-      false,
+      null, false, null, '', false, false,
     ];
 
     useStateSpy.mockImplementation((initial: unknown) => {
       if (seedValues.length > 0) {
         const next = seedValues.shift();
-        if (
-          Array.isArray(next) &&
-          next.length === 2 &&
-          typeof next[1] === 'function'
-        ) {
-          return next as [
-            unknown,
-            React.Dispatch<React.SetStateAction<unknown>>,
-          ];
+        if (Array.isArray(next) && next.length === 2 && typeof next[1] === 'function') {
+          return next as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
         }
-        return [next, jest.fn()] as [
-          unknown,
-          React.Dispatch<React.SetStateAction<unknown>>,
-        ];
+        return [next, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
       }
-      return [initial, jest.fn()] as [
-        unknown,
-        React.Dispatch<React.SetStateAction<unknown>>,
-      ];
+      return [initial, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
     });
 
     rejectConfig.mockResolvedValueOnce({ success: true });
@@ -1318,9 +1246,7 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
 
     await waitFor(() => {
       expect(rejectConfig).toHaveBeenCalled();
-      expect(showSuccess).toHaveBeenCalledWith(
-        'Configuration rejected successfully',
-      );
+      expect(showSuccess).toHaveBeenCalledWith('Configuration rejected successfully');
       expect(refreshSetter).toHaveBeenCalled();
     });
 
@@ -1331,44 +1257,23 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
     const useStateSpy = jest.spyOn(React, 'useState');
     const refreshSetter = makeFunctionalSetter();
     const seedValues: unknown[] = [
-      null,
-      null,
-      null,
+      null, null, null,
       [0, refreshSetter], // refreshKey with functional setter
       true, // showRejectionDialog
-      false,
-      false,
+      false, false,
       { id: 41, endpointPath: '/real-cfg', msgFam: 'FAM_CF' }, // configToReject
-      null,
-      false,
-      null,
-      '',
-      false,
-      false,
+      null, false, null, '', false, false,
     ];
 
     useStateSpy.mockImplementation((initial: unknown) => {
       if (seedValues.length > 0) {
         const next = seedValues.shift();
-        if (
-          Array.isArray(next) &&
-          next.length === 2 &&
-          typeof next[1] === 'function'
-        ) {
-          return next as [
-            unknown,
-            React.Dispatch<React.SetStateAction<unknown>>,
-          ];
+        if (Array.isArray(next) && next.length === 2 && typeof next[1] === 'function') {
+          return next as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
         }
-        return [next, jest.fn()] as [
-          unknown,
-          React.Dispatch<React.SetStateAction<unknown>>,
-        ];
+        return [next, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
       }
-      return [initial, jest.fn()] as [
-        unknown,
-        React.Dispatch<React.SetStateAction<unknown>>,
-      ];
+      return [initial, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
     });
 
     rejectConfig.mockResolvedValueOnce({ success: false, config: { id: 41 } });
@@ -1376,9 +1281,7 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
     fireEvent.click(screen.getByText('confirm-rejection'));
 
     await waitFor(() => {
-      expect(showSuccess).toHaveBeenCalledWith(
-        'Configuration rejected successfully',
-      );
+      expect(showSuccess).toHaveBeenCalledWith('Configuration rejected successfully');
       expect(refreshSetter).toHaveBeenCalled();
     });
 
@@ -1388,34 +1291,18 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
   it('handleApprovalConfirm early return when configToApprove is null (line 172)', async () => {
     const useStateSpy = jest.spyOn(React, 'useState');
     const seedValues = [
-      null,
-      null,
-      null,
-      0,
-      false,
-      false,
-      false,
-      null,
-      null,
-      true, // showApprovalDialog = true
-      null, // configToApprove = null
-      '',
-      false,
-      false,
+      null, null, null, 0, false, false, false, null, null,
+      true,  // showApprovalDialog = true
+      null,  // configToApprove = null
+      '', false, false,
     ];
 
     useStateSpy.mockImplementation((initial: unknown) => {
       if (seedValues.length > 0) {
         const next = seedValues.shift();
-        return [next, jest.fn()] as [
-          unknown,
-          React.Dispatch<React.SetStateAction<unknown>>,
-        ];
+        return [next, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
       }
-      return [initial, jest.fn()] as [
-        unknown,
-        React.Dispatch<React.SetStateAction<unknown>>,
-      ];
+      return [initial, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
     });
 
     render(<ApproverConfigsPage />);
@@ -1431,42 +1318,23 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
   it('onRevertToEditor in EditEndpointModal skips when editingConfig is null (line 254 false branch)', () => {
     const useStateSpy = jest.spyOn(React, 'useState');
     const seedValues = [
-      42, // editingEndpointId = 42 (non-null, shows modal)
-      null, // editingConfig = null
-      null,
-      0,
-      false,
-      false,
-      false,
-      null,
-      null,
-      false,
-      null,
-      '',
-      false,
-      false,
+      42,    // editingEndpointId = 42 (non-null, shows modal)
+      null,  // editingConfig = null
+      null, 0, false, false, false, null, null, false, null, '', false, false,
     ];
 
     useStateSpy.mockImplementation((initial: unknown) => {
       if (seedValues.length > 0) {
         const next = seedValues.shift();
-        return [next, jest.fn()] as [
-          unknown,
-          React.Dispatch<React.SetStateAction<unknown>>,
-        ];
+        return [next, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
       }
-      return [initial, jest.fn()] as [
-        unknown,
-        React.Dispatch<React.SetStateAction<unknown>>,
-      ];
+      return [initial, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
     });
 
     render(<ApproverConfigsPage />);
     fireEvent.click(screen.getByText('revert-to-editor'));
 
-    expect(
-      screen.queryByText('confirm-change-request'),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText('confirm-change-request')).not.toBeInTheDocument();
 
     useStateSpy.mockRestore();
   });
@@ -1474,43 +1342,25 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
   it('onSendForDeployment in EditEndpointModal skips when editingConfig is null (line 259 false branch)', () => {
     const useStateSpy = jest.spyOn(React, 'useState');
     const seedValues = [
-      43, // editingEndpointId = 43 (non-null, shows modal)
-      null, // editingConfig = null
-      null,
-      0,
-      false,
-      false,
-      false,
-      null,
-      null,
-      false,
-      null,
-      '',
-      false,
-      false,
+      43,    // editingEndpointId = 43 (non-null, shows modal)
+      null,  // editingConfig = null
+      null, 0, false, false, false, null, null, false, null, '', false, false,
     ];
 
     useStateSpy.mockImplementation((initial: unknown) => {
       if (seedValues.length > 0) {
         const next = seedValues.shift();
-        return [next, jest.fn()] as [
-          unknown,
-          React.Dispatch<React.SetStateAction<unknown>>,
-        ];
+        return [next, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
       }
-      return [initial, jest.fn()] as [
-        unknown,
-        React.Dispatch<React.SetStateAction<unknown>>,
-      ];
+      return [initial, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
     });
 
     render(<ApproverConfigsPage />);
     fireEvent.click(screen.getByText('send-for-deployment'));
 
-    expect(
-      screen.queryByText('Yes, Approve Configuration'),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText('Yes, Approve Configuration')).not.toBeInTheDocument();
 
     useStateSpy.mockRestore();
   });
+
 });
