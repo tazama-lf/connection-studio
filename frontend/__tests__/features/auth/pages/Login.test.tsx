@@ -223,11 +223,9 @@ describe('features/auth/pages/Login.tsx', () => {
     submitLoginForm(container);
 
     await waitFor(() => {
-      expect(
-        screen.getByText('Invalid credentials. Please try again.'),
-      ).toBeInTheDocument();
+      expect(screen.getByText('Invalid credentials. Please try again.')).toBeInTheDocument();
     });
 
     includesSpy.mockRestore();
   });
-});
+})
