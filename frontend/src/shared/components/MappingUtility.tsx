@@ -18,7 +18,7 @@ import {
 } from '../../features/config/services/configApi';
 import {
   dataModelApi,
-  type DestinationFieldsData,
+  type DestinationFieldsData
 } from '../../features/data-model';
 import { Button } from './Button';
 
@@ -801,8 +801,9 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
     }
 
     // Convert constant value
-    const constantValue =
-      selectedTransformation === 'constant' ? selectedSources[0] : undefined;
+    const constantValue = selectedTransformation === 'constant'
+      ? selectedSources[0]
+      : undefined;
 
     // Create AddMappingRequest object for API
     const mappingRequest = {
@@ -899,11 +900,9 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
         const isSection = node.type === 'section';
 
         const fieldPath = isSection ? node.path : node.path;
-        const isSelected =
-          !isSection &&
-          selectedPaths
-            .map((path) => path.replace(/\.0\./g, '.'))
-            .includes(node.path.join('.'));
+        const isSelected = !isSection && selectedPaths
+          .map((path) => path.replace(/\.0\./g, '.'))
+          .includes(node.path.join('.'));
 
         const nodeType = node.id.startsWith('redis') ? 'redis' : type;
         const isRedis = node.id === 'redis';
@@ -916,16 +915,15 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                   {node.name}
                 </div>
               </div>
-              {hasChildren &&
-                renderTree(
-                  node.children ?? [],
-                  expanded,
-                  toggleFn,
-                  onSelect,
-                  selectedPaths,
-                  node.id === 'dataCache' ? 'redis' : type,
-                  0,
-                )}
+              {hasChildren && renderTree(
+                node.children ?? [],
+                expanded,
+                toggleFn,
+                onSelect,
+                selectedPaths,
+                node.id === 'dataCache' ? 'redis' : type,
+                0,
+              )}
             </div>
           );
         }
@@ -939,9 +937,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
             >
               {hasChildren ? (
                 <button
-                  onClick={() => {
-                    toggleFn(node.id);
-                  }}
+                  onClick={() => { toggleFn(node.id); }}
                   className="p-1 text-gray-500 hover:text-gray-700"
                   data-id="element-179"
                 >
@@ -956,8 +952,8 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
               )}
               {/* Only allow selection for leaf nodes (no children, not object/array) */}
               {!hasChildren &&
-              node.type !== 'object' &&
-              node.type !== 'array' ? (
+                node.type !== 'object' &&
+                node.type !== 'array' ? (
                 <button
                   onClick={() => {
                     onSelect(
@@ -966,7 +962,8 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                       expanded,
                       selectedPaths,
                     );
-                  }}
+                  }
+                  }
                   className="text-left flex-1 text-sm hover:text-blue-700"
                   data-id="element-185"
                 >
@@ -1149,13 +1146,14 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                       onChange={(e) => {
                         setSelectedTransformation(
                           e.target.value as
-                            | 'concatenate'
-                            | 'sum'
-                            | 'split'
-                            | 'none'
-                            | 'constant',
+                          | 'concatenate'
+                          | 'sum'
+                          | 'split'
+                          | 'none'
+                          | 'constant',
                         );
-                      }}
+                      }
+                      }
                       className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                       data-id="element-205"
                     >
@@ -1178,28 +1176,27 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                   </div>
                   {(selectedTransformation === 'split' ||
                     selectedTransformation === 'concatenate') && (
-                    <div className="mb-4">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        {selectedTransformation === 'split'
-                          ? 'Split Delimiter'
-                          : 'Concatenate Delimiter'}
-                      </label>
-                      <input
-                        type="text"
-                        value={delimiter}
-                        onChange={(e) => {
-                          setDelimiter(e.target.value.slice(0, 1));
-                        }}
-                        placeholder=""
-                        className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">
-                        {selectedTransformation === 'split'
-                          ? 'Split using character (default: space)'
-                          : 'Join using character (default: space)'}
-                      </p>
-                    </div>
-                  )}
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          {selectedTransformation === 'split'
+                            ? 'Split Delimiter'
+                            : 'Concatenate Delimiter'}
+                        </label>
+                        <input
+                          type="text"
+                          value={delimiter}
+                          onChange={(e) => { setDelimiter(e.target.value.slice(0, 1)); }
+                          }
+                          placeholder=""
+                          className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          {selectedTransformation === 'split'
+                            ? 'Split using character (default: space)'
+                            : 'Join using character (default: space)'}
+                        </p>
+                      </div>
+                    )}
                   <div
                     className="flex-1 flex items-end justify-center"
                     data-id="element-210"
@@ -1451,16 +1448,14 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
     if (!rootKeys.includes('transactionDetails')) {
       return {
         valid: false,
-        error:
-          'Required field "transactionDetails" must exist in the Data Model section and cannot be deleted.',
+        error: 'Required field "transactionDetails" must exist in the Data Model section and cannot be deleted.'
       };
     }
 
     if (!rootKeys.includes('redis')) {
       return {
         valid: false,
-        error:
-          'Required field "redis" must exist in the Data Cache section and cannot be deleted.',
+        error: 'Required field "redis" must exist in the Data Cache section and cannot be deleted.'
       };
     }
 
@@ -1470,8 +1465,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
     if (redisCount > 1) {
       return {
         valid: false,
-        error:
-          'Data Cache section can only have one parent object "redis". Multiple redis objects are not allowed.',
+        error: 'Data Cache section can only have one parent object "redis". Multiple redis objects are not allowed.'
       };
     }
 
@@ -1556,8 +1550,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
 
       try {
         setSavingDestinationJson(true);
-        const response =
-          await dataModelApi.updateDestinationFieldsJson(reorderedJson);
+        const response = await dataModelApi.updateDestinationFieldsJson(reorderedJson);
 
         if (response.success) {
           setEditableDestinationJson(reorderedJson);
