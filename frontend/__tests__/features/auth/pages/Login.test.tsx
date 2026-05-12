@@ -183,4 +183,25 @@ describe('features/auth/pages/Login.tsx', () => {
     fireEvent.mouseDown(toggleButton as Element);
     expect(screen.getByLabelText('Password')).toBeInTheDocument();
   });
-});
+
+  it('covers the ?? null-coalescing fallthrough on (includes invalid credentials)', async () => {
+    const originalIncludes = String.prototype.includes;
+    const includesSpy = jest
+      .spyOn(String.prototype, 'includes')
+      .mockImplementation(function (this: string, searchValue: string) {
+        if (searchValue === 'unauthorized') return null as unknown as boolean;
+        return originalIncludes.call(this, searchValue);
+      });
+
+    loginMock.mockRejectedValueOnce(new Error('invalid credentials'));
+
+    const { container } = render(<Login />);
+    submitLoginForm(container);
+
+    await waitFor(() => {
+      expect(screen.getByText('Invalid credentials. Please try again.')).toBeInTheDocument();
+    });
+
+    includesSpy.mockRestore();
+  });
+})
