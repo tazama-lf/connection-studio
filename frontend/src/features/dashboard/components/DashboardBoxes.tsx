@@ -8,7 +8,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../features/auth/contexts/AuthContext';
 import { ROUTES } from '../../../shared/config/routes.config'; 
 
-const BoxCard: React.FC<{
+export const BoxCard: React.FC<{
   title: string;
   subtitle: string;
   icon: React.ReactElement;
@@ -111,8 +111,8 @@ const DashboardBoxes: React.FC = () => {
 
   const resolvePath = (id: string) => {
     if (isApprover) return approverPaths[id] || defaultPaths[id];
-    if (isPublisher) return publisherPaths[id] || defaultPaths[id];
-    if (isExporter) return exporterPaths[id] || defaultPaths[id];
+    if (isPublisher) return publisherPaths[id];
+    if (isExporter) return exporterPaths[id];
     return defaultPaths[id];
   };
 
