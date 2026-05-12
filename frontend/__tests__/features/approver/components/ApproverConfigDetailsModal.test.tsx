@@ -224,5 +224,61 @@ describe('features/approver/components/ApproverConfigDetailsModal.tsx', () => {
     fireEvent.click(backdrop);
     expect(onClose).toHaveBeenCalled();
   });
+
+  it('shows approving state and disables buttons while approve is in progress', async () => {
+    let resolveApprove!: () => void;
+    const pendingApprove = new Promise<void>((resolve) => { resolveApprove = resolve; });
+    const onApprove = jest.fn().mockReturnValue(pendingApprove);
+    const onClose = jest.fn();
+
+    render(
+      <ApproverConfigDetailsModal
+        config={baseConfig}
+        isOpen={true}
+        onClose={onClose}
+        onApprove={onApprove}
+        onReject={jest.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /approve/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Approving...')).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole('button', { name: /close/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /reject/i })).toBeDisabled();
+
+    resolveApprove();
+  });
+
+  it('shows rejecting state and disables buttons while reject is in progress', async () => {
+    let resolveReject!: () => void;
+    const pendingReject = new Promise<void>((resolve) => { resolveReject = resolve; });
+    const onReject = jest.fn().mockReturnValue(pendingReject);
+    const onClose = jest.fn();
+
+    render(
+      <ApproverConfigDetailsModal
+        config={baseConfig}
+        isOpen={true}
+        onClose={onClose}
+        onApprove={jest.fn()}
+        onReject={onReject}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /reject/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Rejecting...')).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole('button', { name: /close/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /approve/i })).toBeDisabled();
+
+    resolveReject();
+  });
 });
 
