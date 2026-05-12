@@ -34,9 +34,7 @@ jest.mock('@mui/material/Box', () => ({
         : (sx ?? {});
     const bg =
       typeof resolvedSx?.backgroundColor === 'function'
-        ? resolvedSx.backgroundColor({
-            palette: { background: { paper: '#fff' } },
-          })
+        ? resolvedSx.backgroundColor({ palette: { background: { paper: '#fff' } } })
         : resolvedSx?.backgroundColor;
     return (
       <div
@@ -60,9 +58,7 @@ jest.mock('lucide-react', () => ({
   PackageIcon: () => <span data-testid="package-icon" />,
 }));
 
-import DashboardBoxes, {
-  BoxCard,
-} from '../../../../../src/features/dashboard/components/DashboardBoxes';
+import DashboardBoxes, { BoxCard } from '../../../../../src/features/dashboard/components/DashboardBoxes';
 
 describe('features/dashboard/components/DashboardBoxes.tsx', () => {
   beforeEach(() => {
