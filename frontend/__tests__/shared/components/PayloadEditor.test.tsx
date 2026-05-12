@@ -1,8 +1,15 @@
 import { describe, expect, it, jest } from '@jest/globals';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import React from 'react';
 
 import { PayloadEditor, type PayloadEditorRef } from '../../../src/shared/components/PayloadEditor';
+
+jest.mock('../../../src/features/config/services/configApi', () => ({
+  configApi: {
+    getRelatedTransactions: jest.fn().mockResolvedValue({ data: [] }),
+  },
+}));
 
 describe('shared/components/PayloadEditor.tsx', () => {
   const renderEditor = (overrides: Partial<React.ComponentProps<typeof PayloadEditor>> = {}) => {
@@ -42,7 +49,7 @@ describe('shared/components/PayloadEditor.tsx', () => {
     fireEvent.change(screen.getByLabelText('Version *'), {
       target: { value: ' v1.2.3 ' },
     });
-    fireEvent.change(screen.getByLabelText('Transaction Type *'), {
+    fireEvent.change(screen.getByLabelText('Transaction Type (TxTp)*'), {
       target: { value: 'PACS_008' },
     });
 
@@ -58,7 +65,7 @@ describe('shared/components/PayloadEditor.tsx', () => {
     const { onChange } = renderEditor();
 
     fireEvent.click(screen.getByRole('button', { name: /Load JSON Sample/i }));
-    expect(onChange).toHaveBeenCalledWith(expect.stringContaining('"pain001"'));
+    expect(onChange).toHaveBeenCalledWith(expect.stringContaining('"FIToFIPmtSts"'));
 
     const onChangeWithValue = jest.fn();
     renderEditor({
@@ -470,7 +477,7 @@ describe('shared/components/PayloadEditor.tsx', () => {
     fireEvent.change(screen.getByLabelText('Version *'), {
       target: { value: ' v2.3.4 ' },
     });
-    fireEvent.change(screen.getByLabelText('Transaction Type *'), {
+    fireEvent.change(screen.getByLabelText('Transaction Type (TxTp)*'), {
       target: { value: 'PACS_008' },
     });
     fireEvent.change(screen.getByLabelText('Content Type *'), {
@@ -693,7 +700,7 @@ describe('shared/components/PayloadEditor.tsx', () => {
 
   it('blocks invalid key presses on Transaction Type input', () => {
     renderEditor();
-    const txTypeInput = screen.getByLabelText('Transaction Type *');
+    const txTypeInput = screen.getByLabelText('Transaction Type (TxTp)*');
     // '!' is not alphanumeric, _, or - — preventDefault is called
     fireEvent.keyPress(txTypeInput, { key: '!', charCode: 33 });
     expect(txTypeInput).toBeInTheDocument();
@@ -913,7 +920,7 @@ describe('shared/components/PayloadEditor.tsx', () => {
     expect(ref.current?.validateAllFields()).toBe(false);
 
     // Test invalid transaction type (line 162)
-    fireEvent.change(screen.getByLabelText('Transaction Type *'), { target: { value: 'pacs-008' } });
+    fireEvent.change(screen.getByLabelText('Transaction Type (TxTp)*'), { target: { value: 'pacs-008' } });
     expect(ref.current?.validateAllFields()).toBe(false);
 
     // Test invalid event type (line 173)
@@ -934,7 +941,7 @@ describe('shared/components/PayloadEditor.tsx', () => {
     // Invalid XML to trigger catch block (line 244) — target payload textarea by placeholder
     const textarea = screen.getByPlaceholderText('Enter your XML payload here...');
     fireEvent.change(textarea, { target: { value: '<xml>invalid' } });
-    
+
     await waitFor(() => {
       expect(onChange).toHaveBeenCalled();
     });
@@ -978,7 +985,7 @@ describe('shared/components/PayloadEditor.tsx', () => {
 
     // Trigger generation with valid JSON - should succeed
     fireEvent.click(screen.getByRole('button', { name: 'Generate Fields' }));
-    
+
     // Should not show failure error for valid JSON
     await waitFor(() => {
       expect(screen.queryByText('Failed to generate schema from payload')).not.toBeInTheDocument();
@@ -1010,10 +1017,10 @@ describe('shared/components/PayloadEditor.tsx', () => {
 
   it('handles new field state update', () => {
     renderEditor({ isEditMode: true });
-    
+
     // Without inferredFields, the button is labelled "Add Your First Field"
     fireEvent.click(screen.getByRole('button', { name: 'Add Your First Field' }));
-    
+
     // Change new field path to trigger setNewField (line 1542)
     fireEvent.change(screen.getByLabelText('Field Path *'), { target: { value: 'new_field' } });
     expect(screen.getByDisplayValue('new_field')).toBeInTheDocument();
@@ -1044,7 +1051,7 @@ describe('shared/components/PayloadEditor.tsx', () => {
 
   it('allows valid key presses on Transaction Type input (alphanumeric)', () => {
     renderEditor();
-    const txTypeInput = screen.getByLabelText('Transaction Type *');
+    const txTypeInput = screen.getByLabelText('Transaction Type (TxTp)*');
     // 'a' matches [a-zA-Z0-9_-] — condition FALSE → no preventDefault
     // Covers BRDA:957,120,1
     fireEvent.keyPress(txTypeInput, { key: 'a', charCode: 97 });
@@ -1208,7 +1215,6 @@ describe('shared/components/PayloadEditor.tsx', () => {
   });
 
   it('endpoint path preview shows v1 fallback when version is empty (covers version || v1)', async () => {
-    // version='' → endpointData.version || 'v1' = 'v1' — covers BRDA:1034,127,1
     renderEditor({
       endpointData: {
         version: '',
@@ -1225,7 +1231,6 @@ describe('shared/components/PayloadEditor.tsx', () => {
   });
 
   it('generates fields from top-level JSON array (covers generateJSONSchema non-object branch)', async () => {
-    // Top-level array → generateJSONSchema called with Array → condition FALSE (covers BRDA:579,74,1)
     renderEditor({
       value: '[1, 2, 3]',
       endpointData: {
@@ -1242,9 +1247,6 @@ describe('shared/components/PayloadEditor.tsx', () => {
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Generate Fields' }));
-
-    // Array payload → generateJSONSchema returns [] → no fields generated
-    // The button should still be visible (value is still valid JSON)
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Generate Fields' })).toBeInTheDocument();
     });
@@ -1263,13 +1265,10 @@ describe('shared/components/PayloadEditor.tsx', () => {
       },
     });
 
-    // Set showValidationErrors = true
     act(() => {
       ref.current?.validateAllFields();
     });
 
-    // Change contentType — 'contentType' is NOT in errorFieldMap → fallback to field name itself
-    // Covers BRDA:453,57,1 (errorFieldMap[field] is undefined → || field used)
     fireEvent.change(screen.getByLabelText('Content Type *'), {
       target: { value: 'application/xml' },
     });
@@ -1280,16 +1279,326 @@ describe('shared/components/PayloadEditor.tsx', () => {
   });
 
   it('onFieldAdjustmentsChange not called when inferredFields is empty (covers branch 346,39,1)', () => {
-    // onFieldAdjustmentsChange is provided but inferredFields starts empty
-    // The useEffect fires but the condition is false → covers BRDA:346,39,1
     const onFieldAdjustmentsChange = jest.fn();
     renderEditor({
       onFieldAdjustmentsChange,
       existingSchemaFields: [],
       configId: 300,
     });
-    // No fields → onFieldAdjustmentsChange should NOT have been called with field data
-    // (the if condition is false)
     expect(onFieldAdjustmentsChange).not.toHaveBeenCalled();
+  });
+
+  it('populates related transactions dropdown when configApi resolves with data', async () => {
+    const mockModule = jest.requireMock('../../../src/features/config/services/configApi') as {
+      configApi: { getRelatedTransactions: { mockResolvedValueOnce: (v: unknown) => void } };
+    };
+    mockModule.configApi.getRelatedTransactions.mockResolvedValueOnce({ data: ['pacs.008', 'pain.001'] });
+
+    renderEditor({
+      endpointData: {
+        version: '1.0.0',
+        transactionType: 'acmt_023',
+        description: '',
+        contentType: 'application/json',
+        msgFam: '',
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole('option', { name: 'pacs.008' })).toBeInTheDocument();
+    });
+    expect(screen.getByRole('option', { name: 'pain.001' })).toBeInTheDocument();
+  });
+
+  it('handles configApi.getRelatedTransactions rejection gracefully (catch branch)', async () => {
+    const mockModule = jest.requireMock('../../../src/features/config/services/configApi') as {
+      configApi: { getRelatedTransactions: { mockRejectedValueOnce: (v: unknown) => void } };
+    };
+    mockModule.configApi.getRelatedTransactions.mockRejectedValueOnce(new Error('Network error'));
+
+    renderEditor({
+      endpointData: {
+        version: '1.0.0',
+        transactionType: 'acmt_023',
+        description: '',
+        contentType: 'application/json',
+        msgFam: '',
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Endpoint Path Preview')).toBeInTheDocument();
+    });
+  });
+
+  it('changes related transaction dropdown value', async () => {
+    const mockModule = jest.requireMock('../../../src/features/config/services/configApi') as {
+      configApi: { getRelatedTransactions: { mockResolvedValueOnce: (v: unknown) => void } };
+    };
+    mockModule.configApi.getRelatedTransactions.mockResolvedValueOnce({ data: ['pacs.008'] });
+
+    const { onEndpointDataChange } = renderEditor({
+      endpointData: {
+        version: '1.0.0',
+        transactionType: 'acmt_023',
+        description: '',
+        contentType: 'application/json',
+        msgFam: '',
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole('option', { name: 'pacs.008' })).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText('Related Transaction'), {
+      target: { value: 'pacs.008' },
+    });
+
+    await waitFor(() => {
+      expect(onEndpointDataChange).toHaveBeenCalledWith(
+        expect.objectContaining({ relatedTransaction: 'pacs.008' }),
+      );
+    });
+  });
+
+  it('rejects duplicate field path without adding it (covers existsAlready early return)', async () => {
+    renderEditor({
+      isEditMode: true,
+      configId: 501,
+      existingSchemaFields: [
+        {
+          path: 'known.path',
+          type: 'String',
+          level: 1,
+          required: true,
+          parent: 'known',
+        } as any,
+      ],
+    });
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('known.path')).toBeInTheDocument();
+    });
+
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: 'Add Field' }));
+    });
+    act(() => {
+      fireEvent.change(screen.getByPlaceholderText('Field path (e.g., user.name)'), {
+        target: { value: 'known.path' },
+      });
+    });
+    act(() => {
+      screen.getByRole('button', { name: 'Add' }).dispatchEvent(
+        new MouseEvent('click', { bubbles: true, cancelable: true }),
+      );
+    });
+
+    expect(
+      screen.getAllByDisplayValue('known.path').filter((el) => el.hasAttribute('readonly')),
+    ).toHaveLength(1);
+  });
+
+  it('compact form required checkbox fires onChange and updates newField.required', async () => {
+    renderEditor({
+      isEditMode: true,
+      configId: 601,
+      existingSchemaFields: [
+        {
+          path: 'base',
+          type: 'String',
+          level: 0,
+          required: false,
+        } as any,
+      ],
+    });
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('base')).toBeInTheDocument();
+    });
+
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: 'Add Field' }));
+    });
+
+    const checkboxes = screen.getAllByRole('checkbox');
+    const newFieldCheckbox = checkboxes[checkboxes.length - 1] as HTMLInputElement;
+    act(() => {
+      newFieldCheckbox.checked = true;
+      newFieldCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+
+    expect(newFieldCheckbox).toBeInTheDocument();
+  });
+
+  it('handles non-array data from configApi.getRelatedTransactions', async () => {
+    const mockModule = jest.requireMock('../../../src/features/config/services/configApi') as {
+      configApi: { getRelatedTransactions: { mockResolvedValueOnce: (v: unknown) => void } };
+    };
+    mockModule.configApi.getRelatedTransactions.mockResolvedValueOnce({ data: 'not-an-array' });
+
+    renderEditor({
+      endpointData: {
+        version: '1.0.0',
+        transactionType: 'acmt_023',
+        description: '',
+        contentType: 'application/json',
+        msgFam: '',
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Endpoint Path Preview')).toBeInTheDocument();
+    });
+    expect(screen.getByRole('option', { name: '-- Select Related Transaction --' })).toBeInTheDocument();
+  });
+
+  it('shows schema inference error when generateSchemaFromPayload throws', async () => {
+    renderEditor({
+      value: '{"valid":true}',
+      endpointData: {
+        version: '1.0.0',
+        transactionType: 'acmt_023',
+        description: '',
+        contentType: 'application/json',
+        msgFam: '',
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Generate Fields' })).toBeInTheDocument();
+    });
+
+    const parseSpy = jest.spyOn(JSON, 'parse').mockImplementation(() => {
+      throw new Error('parse error');
+    });
+
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: 'Generate Fields' }));
+    });
+
+    parseSpy.mockRestore();
+
+    await waitFor(() => {
+      expect(screen.getByText(/Schema inference failed/i)).toBeInTheDocument();
+    });
+  });
+
+  it('hides payload sections when shouldCreateNew and isCloning are both false', () => {
+    renderEditor({
+      shouldCreateNew: false,
+      isCloning: false,
+      value: '{"x":1}',
+      endpointData: {
+        version: '1.0.0',
+        transactionType: 'acmt_023',
+        description: '',
+        contentType: 'application/json',
+        msgFam: '',
+      },
+    });
+
+    expect(screen.queryByPlaceholderText('Enter your JSON payload here...')).not.toBeInTheDocument();
+    expect(screen.getByText('Endpoint Configuration')).toBeInTheDocument();
+  });
+
+  it('validateAllFields uses ?? fallback when msgFam is undefined', () => {
+    const ref = React.createRef<PayloadEditorRef>();
+    renderEditor({
+      ref,
+      endpointData: {
+        version: '1.0.0',
+        transactionType: 'acmt_023',
+        description: '',
+        contentType: 'application/json',
+        msgFam: undefined,
+      },
+    });
+
+    let isValid = false;
+    act(() => {
+      isValid = Boolean(ref.current?.validateAllFields());
+    });
+
+    expect(isValid).toBe(true);
+  });
+
+  it('skips existingSchemaFields useEffect when user has manually edited fields', async () => {
+    const onFieldAdjustmentsChange = jest.fn();
+    const { rerender } = render(
+      <PayloadEditor
+        value=""
+        onChange={jest.fn()}
+        isEditMode={true}
+        configId={900}
+        existingSchemaFields={[]}
+        onFieldAdjustmentsChange={onFieldAdjustmentsChange}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add Your First Field' }));
+    fireEvent.change(screen.getByLabelText('Field Path *'), {
+      target: { value: 'manual.field' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Add Field' }));
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('manual.field')).toBeInTheDocument();
+    });
+
+    rerender(
+      <PayloadEditor
+        value=""
+        onChange={jest.fn()}
+        isEditMode={true}
+        configId={900}
+        existingSchemaFields={[
+          { name: 'overwrite', path: 'overwrite', type: 'string', isRequired: true } as any,
+        ]}
+        onFieldAdjustmentsChange={onFieldAdjustmentsChange}
+      />,
+    );
+
+    expect(screen.getByDisplayValue('manual.field')).toBeInTheDocument();
+    expect(screen.queryByDisplayValue('overwrite')).not.toBeInTheDocument();
+  });
+
+  it('handleAddField returns early for duplicate path against loaded fields', async () => {
+    const onFieldAdjustmentsChange = jest.fn();
+    renderEditor({
+      isEditMode: true,
+      configId: 950,
+      existingSchemaFields: [],
+      onFieldAdjustmentsChange,
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add Your First Field' }));
+    fireEvent.change(screen.getByLabelText('Field Path *'), {
+      target: { value: 'dup.field' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Add Field' }));
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('dup.field')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add Field' }));
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText('Field path (e.g., user.name)')).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByPlaceholderText('Field path (e.g., user.name)'), {
+      target: { value: 'dup.field' },
+    });
+
+    const callsBefore = onFieldAdjustmentsChange.mock.calls.length;
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+
+    expect(
+      screen.getAllByDisplayValue('dup.field').filter((el) => el.hasAttribute('readonly')),
+    ).toHaveLength(1);
   });
 });

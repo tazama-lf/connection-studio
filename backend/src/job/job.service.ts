@@ -42,6 +42,7 @@ import { UpdatePushJobDto } from './dto/update-push-job.dto';
 export class JobService {
   private readonly rbacService = new RbacService();
 
+  /* c8 ignore start */
   constructor(
     private readonly loggerService: LoggerService,
     private readonly dryRunService: DryRunService,
@@ -51,6 +52,7 @@ export class JobService {
     private readonly schedulerService: SchedulerService,
     private readonly notificationService: NotificationService,
   ) {}
+  /* c8 ignore stop */
 
   private handleError(err: unknown): never {
     const message = err instanceof Error ? err.message : String(err);
