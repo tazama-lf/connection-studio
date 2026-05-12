@@ -155,10 +155,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(({
       versionSchema.validateSync(version);
       return '';
     } catch (err) {
-      if (err instanceof yup.ValidationError) {
-        return err.message;
-      }
-      return 'Invalid version format';
+      return err instanceof yup.ValidationError ? err.message : 'Invalid version format';
     }
   };
   const validateTransactionType = (transactionType: string): string => {
@@ -166,10 +163,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(({
       transactionTypeSchema.validateSync(transactionType);
       return '';
     } catch (err) {
-      if (err instanceof yup.ValidationError) {
-        return err.message;
-      }
-      return 'Invalid transaction type format';
+      return err instanceof yup.ValidationError ? err.message : 'Invalid transaction type format';
     }
   };
   const validateEventType = (eventType: string): string => {
@@ -177,10 +171,7 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(({
       eventTypeSchema.validateSync(eventType);
       return '';
     } catch (err) {
-      if (err instanceof yup.ValidationError) {
-        return err.message;
-      }
-      return 'Invalid event type format';
+      return err instanceof yup.ValidationError ? err.message : 'Invalid event type format';
     }
   };
   const validateAllFields = () => {
@@ -640,102 +631,6 @@ export const PayloadEditor = forwardRef<PayloadEditorRef, PayloadEditorProps>(({
       });
     }
     return schema;
-  };
-  const generateXMLSchema = (element: Element, path = ''): SchemaField[] => {
-    const schema: SchemaField[] = [];
-    const fieldPath = path ? `${path}.${element.tagName}` : element.tagName;
-    const field: SchemaField = {
-      name: element.tagName,
-      path: fieldPath,
-      type: 'object',
-      isRequired: true,
-    };
-    const children: SchemaField[] = [];
-    if (element.attributes && element.attributes.length > 0) {
-      Array.from(element.attributes).forEach((attr) => {
-        children.push({
-          name: attr.name,
-          path: `${fieldPath}.${attr.name}`,
-          type: 'string',
-          isRequired: true,
-        });
-      });
-    }
-    const childElements = Array.from(element.children);
-    if (childElements.length > 0) {
-      const elementGroups = new Map<string, Element[]>();
-      childElements.forEach((child) => {
-        const { tagName } = child;
-        if (!elementGroups.has(tagName)) {
-          elementGroups.set(tagName, []);
-        }
-        elementGroups.get(tagName)!.push(child);
-      });
-      elementGroups.forEach((elements, tagName) => {
-        if (elements.length === 1) {
-          const childSchemas = generateXMLSchema(elements[0], fieldPath);
-          children.push(...childSchemas);
-        } else {
-          const arrayField: SchemaField = {
-            name: tagName,
-            path: `${fieldPath}.${tagName}`,
-            type: 'array',
-            isRequired: true,
-            arrayElementType: 'object',
-          };
-          if (elements.length > 0) {
-            const templateSchema = generateXMLSchema(
-              elements[0],
-              `${fieldPath}.${tagName}.0`,
-            );
-            if (templateSchema.length > 0 && templateSchema[0].children) {
-              arrayField.children = templateSchema[0].children;
-            }
-          }
-          children.push(arrayField);
-        }
-      });
-    }
-    if (element.textContent?.trim() && childElements.length === 0) {
-      field.type = 'string';
-    }
-    if (children.length > 0) {
-      field.children = children;
-    }
-    schema.push(field);
-    return schema;
-  };
-  const convertInferredFieldsToSchemaFields = (
-    fields: InferredField[],
-  ): SchemaField[] => {
-    const schemaFields: SchemaField[] = [];
-    const rootFields = fields.filter((f) => f.level === 0);
-    rootFields.forEach((rootField) => {
-      const schemaField: SchemaField = {
-        name: rootField.path.split('.').pop() ?? rootField.path,
-        path: rootField.path,
-        type: rootField.type.toLowerCase() as
-          | 'string'
-          | 'number'
-          | 'boolean'
-          | 'object'
-          | 'array',
-        isRequired: rootField.required,
-      };
-      const directChildren = fields.filter(
-        (f) =>
-          f.path !== rootField.path &&
-          f.path.startsWith(rootField.path + '.') &&
-          f.level === rootField.level + 1,
-      );
-      if (directChildren.length > 0) {
-        schemaField.children = convertInferredFieldsToSchemaFields(
-          fields.filter((f) => f.path.startsWith(rootField.path + '.')),
-        );
-      }
-      schemaFields.push(schemaField);
-    });
-    return schemaFields;
   };
   const sampleJsonPayload = `{
   "FIToFIPmtSts": {

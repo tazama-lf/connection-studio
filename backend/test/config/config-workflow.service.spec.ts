@@ -183,6 +183,16 @@ describe('ConfigWorkflowService', () => {
     );
   });
 
+  it('allows approver to reject UNDER_REVIEW config', () => {
+    const result = service.canPerformAction(
+      ['approver'],
+      ConfigStatus.UNDER_REVIEW,
+      'reject',
+    );
+
+    expect(result.canPerform).toBe(true);
+  });
+
   it('blocks return_to_progress when user is not editor or not rejected', () => {
     const result = service.canPerformAction(
       ['approver'],
@@ -224,5 +234,92 @@ describe('ConfigWorkflowService', () => {
     expect(service.getActionDescription('return_to_progress')).toBe(
       'Return to Progress',
     );
+  });
+
+  it('returns unknown action name as-is for getActionDescription', () => {
+    expect(service.getActionDescription('custom_action' as any)).toBe(
+      'custom_action',
+    );
+  });
+
+  it('returns invalid transition for unknown from-status', () => {
+    const result = service.validateStatusTransition(
+      'UNKNOWN_STATUS',
+      ConfigStatus.APPROVED,
+      'approve',
+    );
+
+    expect(result.isValid).toBe(false);
+    expect(result.reason).toContain('Unknown status');
+    expect(result.allowedNextStatuses).toEqual([]);
+  });
+
+  it('allows editor to return rejected config to progress', () => {
+    const result = service.canPerformAction(
+      ['editor'],
+      ConfigStatus.REJECTED,
+      'return_to_progress',
+    );
+
+    expect(result.canPerform).toBe(true);
+  });
+
+  it('returns undefined for unknown action in getTargetStatus', () => {
+    const result = service.getTargetStatus('nonexistent');
+    expect(result).toBeUndefined();
+  });
+
+  it('allows publisher to deploy READY_FOR_DEPLOYMENT config', () => {
+    const result = service.validateUserPermissions(
+      ['publisher'],
+      ConfigStatus.READY_FOR_DEPLOYMENT,
+      'deploy',
+    );
+
+    expect(result.canDeploy).toBe(true);
+  });
+
+  it('allows editor to edit REJECTED config', () => {
+    const result = service.validateUserPermissions(
+      ['editor'],
+      ConfigStatus.REJECTED,
+      'return_to_progress',
+    );
+
+    expect(result.canEdit).toBe(true);
+  });
+
+  it('allows editing for REJECTED config', () => {
+    const result = service.canEditConfig(ConfigStatus.REJECTED);
+    expect(result.canEdit).toBe(true);
+  });
+
+  it('allows publisher to deploy APPROVED config via canPerformAction', () => {
+    const result = service.canPerformAction(
+      ['publisher'],
+      ConfigStatus.APPROVED,
+      'deploy',
+    );
+
+    expect(result.canPerform).toBe(true);
+  });
+
+  it('returns unknown action for unrecognized action with valid transition', () => {
+    // Directly test the default branch by spying on validateStatusTransition
+    jest.spyOn(service, 'validateStatusTransition').mockReturnValue({
+      isValid: true,
+      currentStatus: ConfigStatus.IN_PROGRESS,
+      targetStatus: ConfigStatus.UNDER_REVIEW,
+      allowedNextStatuses: [ConfigStatus.UNDER_REVIEW],
+    });
+
+    const result = service.canPerformAction(
+      ['editor'],
+      ConfigStatus.IN_PROGRESS,
+      'completely_unknown',
+    );
+
+    expect(result.canPerform).toBe(false);
+    expect(result.message).toBe('Unknown action');
   });
 });
