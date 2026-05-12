@@ -173,6 +173,8 @@ describe('JobService', () => {
     adminServiceClient = module.get(AdminServiceClient);
     schedulerService = module.get(SchedulerService);
     notificationService = module.get(NotificationService);
+
+    jest.spyOn(helpers, 'decrypt').mockReturnValue('decrypted-value');
   });
 
   afterEach(() => {
@@ -579,6 +581,24 @@ describe('JobService', () => {
     });
   });
 
+  describe('findAllHistory', () => {
+    it('should return job history', async () => {
+      const mockHistory = { data: [], total: 0, offset: 0, limit: 10 };
+      adminServiceClient.getAllJobsHistory = jest.fn().mockResolvedValue(mockHistory);
+
+      const result = await service.findAllHistory('0', '10', mockUser);
+      expect(result).toEqual(mockHistory);
+    });
+
+    it('should handle errors from admin service', async () => {
+      adminServiceClient.getAllJobsHistory = jest.fn().mockRejectedValue(new Error('history error'));
+
+      await expect(
+        service.findAllHistory('0', '10', mockUser),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
   describe('findAll', () => {
     const offset = '0';
     const limit = '10';
@@ -722,12 +742,20 @@ describe('JobService', () => {
       ).rejects.toThrow(BadRequestException);
     });
 
-    it('should throw BadRequestException if job not found', async () => {
+    it('should throw BadRequestException if push job not found', async () => {
       adminServiceClient.findJobById.mockResolvedValue(null);
 
       await expect(
         service.findOne(mockJobId, ConfigType.PUSH, mockUser),
-      ).rejects.toThrow(BadRequestException);
+      ).rejects.toThrow('Push Job with id job-test-id-123 not found.');
+    });
+
+    it('should throw BadRequestException if pull job not found', async () => {
+      adminServiceClient.findJobById.mockResolvedValue(null);
+
+      await expect(
+        service.findOne(mockJobId, ConfigType.PULL, mockUser),
+      ).rejects.toThrow('Pull Job with id job-test-id-123 not found.');
     });
 
     it('should handle errors from admin service', async () => {
@@ -1175,6 +1203,413 @@ describe('JobService', () => {
       ).rejects.toThrow(BadRequestException);
 
       expect(loggerService.error).toHaveBeenCalled();
+    });
+  });
+
+  // ===== handleError: non-Error value (String path) =====
+
+  describe('handleError with non-Error', () => {
+    it('should convert non-Error thrown value to string', async () => {
+      adminServiceClient.getAllJobs.mockRejectedValue('plain string error');
+
+      await expect(
+        service.findAll('0', '10', mockUser, {}),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(loggerService.error).toHaveBeenCalledWith('plain string error');
+    });
+  });
+
+  // ===== encryptSftpCredentials: no password and no private_key =====
+
+  describe('encryptSftpCredentials edge cases', () => {
+    it('returns unchanged connection when no password and no private_key', async () => {
+      const sftpConnection = {
+        host: 'sftp.example.com',
+        port: 22,
+        user_name: 'testuser',
+        auth_type: AuthType.USERNAME_PASSWORD,
+        // no password, no private_key
+      };
+
+      const pullUpdateDto = {
+        source_type: SourceType.SFTP,
+        connection: sftpConnection,
+      };
+
+      adminServiceClient.findJobById.mockResolvedValue({
+        ...mockPullJob,
+        status: JobStatus.INPROGRESS,
+      } as any);
+      schedulerService.findOne.mockResolvedValue(mockSchedule);
+      adminServiceClient.updateJob.mockResolvedValue({ success: true, message: 'ok' });
+
+      await service.updateJob(mockJobId, pullUpdateDto as any, ConfigType.PULL, mockUser);
+
+      expect(adminServiceClient.updateJob).toHaveBeenCalledWith(
+        mockJobId,
+        expect.objectContaining({ connection: expect.not.objectContaining({ password: 'encrypted-password' }) }),
+        ConfigType.PULL,
+        mockToken,
+      );
+    });
+  });
+
+  // ===== updateJob: missing branches =====
+
+  describe('updateJob additional branches', () => {
+    it('throws ForbiddenException for invalid user role', async () => {
+      const viewerUser = { ...mockUser, actorRole: 'viewer' } as AuthenticatedUser;
+      adminServiceClient.findJobById.mockResolvedValue({ ...mockPushJob, status: JobStatus.INPROGRESS } as any);
+      schedulerService.findOne.mockResolvedValue(mockSchedule);
+
+      await expect(
+        service.updateJob(mockJobId, {}, ConfigType.PUSH, viewerUser),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('uses fallback message when tier2 reason is null', async () => {
+      adminServiceClient.findJobById.mockResolvedValue({ ...mockPushJob, status: JobStatus.INPROGRESS } as any);
+      schedulerService.findOne.mockResolvedValue(mockSchedule);
+
+      jest.spyOn(service['rbacService'], 'checkTier2').mockReturnValue({ allowed: false });
+
+      await expect(
+        service.updateJob(mockJobId, {}, ConfigType.PUSH, mockUser),
+      ).rejects.toThrow('Not authorized to update this job');
+    });
+
+    it('skips updateJobByStatus when job is already INPROGRESS', async () => {
+      adminServiceClient.findJobById.mockResolvedValue({ ...mockPushJob, status: JobStatus.INPROGRESS } as any);
+      schedulerService.findOne.mockResolvedValue(mockSchedule);
+      adminServiceClient.updateJob.mockResolvedValue({ success: true, message: 'ok' });
+
+      await service.updateJob(mockJobId, {}, ConfigType.PUSH, mockUser);
+
+      expect(adminServiceClient.updateJobByStatus).not.toHaveBeenCalled();
+    });
+
+    it('does not call updateJobByStatus when update result is not successful', async () => {
+      adminServiceClient.findJobById.mockResolvedValue({ ...mockPushJob, status: JobStatus.REJECTED } as any);
+      schedulerService.findOne.mockResolvedValue(mockSchedule);
+      adminServiceClient.updateJob.mockResolvedValue({ success: false, message: 'failed' });
+
+      await service.updateJob(mockJobId, {}, ConfigType.PUSH, mockUser);
+
+      expect(adminServiceClient.updateJobByStatus).not.toHaveBeenCalled();
+    });
+
+    it('updates pull SFTP job without file path (skips validateFileType)', async () => {
+      const sftpDtoNoPath = {
+        source_type: SourceType.SFTP,
+        file: { path: '' },
+        connection: { host: 'sftp.example.com', port: 22, auth_type: AuthType.PRIVATE_KEY, private_key: 'key' },
+      };
+
+      adminServiceClient.findJobById.mockResolvedValue({ ...mockPullJob, status: JobStatus.INPROGRESS } as any);
+      schedulerService.findOne.mockResolvedValue(mockSchedule);
+      adminServiceClient.updateJob.mockResolvedValue({ success: true, message: 'ok' });
+
+      await service.updateJob(mockJobId, sftpDtoNoPath as any, ConfigType.PULL, mockUser);
+
+      expect(adminServiceClient.updateJob).toHaveBeenCalled();
+    });
+
+    it('calls updateJobByStatus when job is not INPROGRESS and update succeeds', async () => {
+      adminServiceClient.findJobById.mockResolvedValue({ ...mockPushJob, status: JobStatus.REJECTED } as any);
+      schedulerService.findOne.mockResolvedValue(mockSchedule);
+      adminServiceClient.updateJob.mockResolvedValue({ success: true, message: 'ok' });
+      adminServiceClient.updateJobByStatus.mockResolvedValue({ success: true, message: 'ok' });
+
+      await service.updateJob(mockJobId, {}, ConfigType.PUSH, mockUser);
+
+      expect(adminServiceClient.updateJobByStatus).toHaveBeenCalledWith(
+        mockJobId,
+        JobStatus.INPROGRESS,
+        mockTenantId,
+        ConfigType.PUSH,
+        mockToken,
+      );
+    });
+  });
+
+  // ===== createPull: missing branches =====
+
+  describe('createPull additional branches', () => {
+    it('generates id with v4() when job has no id', async () => {
+      const jobNoId = { ...mockPullJob, id: undefined };
+      adminServiceClient.findScheduleById.mockResolvedValue(mockSchedule);
+      dryRunService.dryRun.mockResolvedValue(undefined);
+      adminServiceClient.createPullJob.mockResolvedValue({ success: true, message: 'Created' });
+
+      const result = await service.createPull(jobNoId as any, mockUser);
+
+      expect(result.success).toBe(true);
+      expect(adminServiceClient.createPullJob).toHaveBeenCalledWith(
+        expect.objectContaining({ id: expect.any(String) }),
+        mockToken,
+      );
+    });
+
+    it('throws BadRequestException for array validation error with constraints', async () => {
+      const validationErrors = [{ constraints: { isNotEmpty: 'field must not be empty' } }];
+      adminServiceClient.findScheduleById.mockResolvedValue(mockSchedule);
+      dryRunService.dryRun.mockRejectedValue(validationErrors);
+
+      await expect(service.createPull(mockPullJob, mockUser)).rejects.toThrow(BadRequestException);
+    });
+
+    it('throws BadRequestException for array validation error without constraints', async () => {
+      const validationErrors = [{ message: 'some error' }]; // no constraints property
+      adminServiceClient.findScheduleById.mockResolvedValue(mockSchedule);
+      dryRunService.dryRun.mockRejectedValue(validationErrors);
+
+      await expect(service.createPull(mockPullJob, mockUser)).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  // ===== findByStatus: missing branches =====
+
+  describe('findByStatus additional branches', () => {
+    it('throws BadRequestException for invalid role (wrapped by handleError)', async () => {
+      const viewerUser = { ...mockUser, actorRole: 'viewer' } as AuthenticatedUser;
+
+      await expect(
+        service.findByStatus(JobStatus.APPROVED, 1, 10, viewerUser),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('throws BadRequestException when limit is 0', async () => {
+      await expect(
+        service.findByStatus(JobStatus.APPROVED, 1, 0, mockUser),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('throws BadRequestException when status not in allowedStatuses (wrapped by handleError)', async () => {
+      jest.spyOn(service['rbacService'], 'getTier2').mockReturnValue({
+        allowed: true,
+        allowedStatuses: [JobStatus.INPROGRESS],
+      });
+
+      await expect(
+        service.findByStatus(JobStatus.DEPLOYED, 1, 10, mockUser),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  // ===== updateActivation: INACTIVE =====
+
+  describe('updateActivation INACTIVE', () => {
+    it('sends PublisherDeactivate when setting INACTIVE', async () => {
+      adminServiceClient.updateJobActivation.mockResolvedValue({
+        success: true,
+        message: 'ok',
+        data: mockPushJob,
+      });
+      notifyService.notifyEnrichment.mockResolvedValue(undefined);
+      notificationService.sendWorkflowNotification.mockResolvedValue(undefined);
+
+      await service.updateActivation(mockJobId, ScheduleStatus.INACTIVE, ConfigType.PUSH, mockUser);
+
+      expect(notificationService.sendWorkflowNotification).toHaveBeenCalledWith(
+        'publisher_deactivate',
+        mockUser,
+        mockPushJob,
+        mockToken,
+      );
+    });
+  });
+
+  // ===== updateStatus: missing branches =====
+
+  describe('updateStatus additional branches', () => {
+    it('throws BadRequestException when publisher SFTP read fails with non-Error', async () => {
+      const publisherUser = { ...mockUser, actorRole: 'publisher' } as AuthenticatedUser;
+      sftpService.readFile.mockRejectedValue('SFTP string error');
+
+      await expect(
+        service.updateStatus(mockJobId, JobStatus.DEPLOYED, ConfigType.PUSH, publisherUser),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('publisher with non-DEPLOYED status goes through findOne (covers && short-circuit)', async () => {
+      const publisherUser = { ...mockUser, actorRole: 'publisher' } as AuthenticatedUser;
+      adminServiceClient.findJobById.mockResolvedValue({ ...mockPushJob, status: JobStatus.EXPORTED } as any);
+      schedulerService.findOne.mockResolvedValue(mockSchedule);
+      jest.spyOn(service['rbacService'], 'checkTier2').mockReturnValue({ allowed: true });
+      jest.spyOn(service['rbacService'], 'checkTier3').mockReturnValue({ allowed: true });
+      adminServiceClient.updateJobByStatus.mockResolvedValue({ success: true, message: 'ok' });
+
+      const result = await service.updateStatus(
+        mockJobId,
+        JobStatus.REVIEW,
+        ConfigType.PUSH,
+        publisherUser,
+      );
+
+      expect(result.success).toBe(true);
+      expect(adminServiceClient.findJobById).toHaveBeenCalled();
+    });
+
+    it('throws BadRequestException for invalid role in updateStatus (wrapped by handleError)', async () => {
+      const viewerUser = { ...mockUser, actorRole: 'viewer' } as AuthenticatedUser;
+      adminServiceClient.findJobById.mockResolvedValue({ ...mockPushJob, status: JobStatus.INPROGRESS } as any);
+      schedulerService.findOne.mockResolvedValue(mockSchedule);
+
+      await expect(
+        service.updateStatus(mockJobId, JobStatus.REVIEW, ConfigType.PUSH, viewerUser),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('uses fallback when tier2 reason is null in updateStatus', async () => {
+      adminServiceClient.findJobById.mockResolvedValue({ ...mockPushJob, status: JobStatus.INPROGRESS } as any);
+      schedulerService.findOne.mockResolvedValue(mockSchedule);
+      jest.spyOn(service['rbacService'], 'checkTier2').mockReturnValue({ allowed: false });
+
+      await expect(
+        service.updateStatus(mockJobId, JobStatus.REVIEW, ConfigType.PUSH, mockUser),
+      ).rejects.toThrow('Not authorized to update this job status');
+    });
+
+    it('uses fallback when tier3 reason is null in updateStatus', async () => {
+      adminServiceClient.findJobById.mockResolvedValue({ ...mockPushJob, status: JobStatus.INPROGRESS } as any);
+      schedulerService.findOne.mockResolvedValue(mockSchedule);
+      jest.spyOn(service['rbacService'], 'checkTier2').mockReturnValue({ allowed: true });
+      jest.spyOn(service['rbacService'], 'checkTier3').mockReturnValue({ allowed: false });
+
+      await expect(
+        service.updateStatus(mockJobId, JobStatus.REVIEW, ConfigType.PUSH, mockUser),
+      ).rejects.toThrow('Not authorized to perform this status transition');
+    });
+
+    it('hits default case and returns result for unhandled status', async () => {
+      adminServiceClient.findJobById.mockResolvedValue({ ...mockPushJob, status: JobStatus.INPROGRESS } as any);
+      schedulerService.findOne.mockResolvedValue(mockSchedule);
+      jest.spyOn(service['rbacService'], 'checkTier2').mockReturnValue({ allowed: true });
+      jest.spyOn(service['rbacService'], 'checkTier3').mockReturnValue({ allowed: true });
+      adminServiceClient.updateJobByStatus.mockResolvedValue({ success: true, message: 'ok' });
+
+      const result = await service.updateStatus(
+        mockJobId,
+        JobStatus.INPROGRESS,
+        ConfigType.PUSH,
+        mockUser,
+      );
+
+      expect(result.success).toBe(true);
+    });
+
+    it('returns fallback message when result is null (default case with null result)', async () => {
+      adminServiceClient.findJobById.mockResolvedValue({ ...mockPushJob, status: JobStatus.INPROGRESS } as any);
+      schedulerService.findOne.mockResolvedValue(mockSchedule);
+      jest.spyOn(service['rbacService'], 'checkTier2').mockReturnValue({ allowed: true });
+      jest.spyOn(service['rbacService'], 'checkTier3').mockReturnValue({ allowed: true });
+      adminServiceClient.updateJobByStatus.mockResolvedValue(null as any);
+
+      const result = await service.updateStatus(
+        mockJobId,
+        JobStatus.INPROGRESS,
+        ConfigType.PUSH,
+        mockUser,
+      );
+
+      expect(result).toEqual({ success: true, message: 'Job Status updated successfully' });
+    });
+
+    it('deploys pull job with USERNAME_PASSWORD auth and decrypts password', async () => {
+      const publisherUser = { ...mockUser, actorRole: 'publisher' } as AuthenticatedUser;
+
+      sftpService.readFile.mockResolvedValue({
+        ...mockPullJob,
+        status: JobStatus.READY,
+        connection: {
+          host: 'sftp.example.com',
+          port: 22,
+          user_name: 'testuser',
+          auth_type: AuthType.USERNAME_PASSWORD,
+          password: 'encrypted-password-value',
+        },
+      } as any);
+
+      adminServiceClient.findScheduleById.mockResolvedValue(mockSchedule);
+      dryRunService.dryRun.mockResolvedValue(undefined);
+      adminServiceClient.createPullJob.mockResolvedValue({ success: true, message: 'deployed' });
+      sftpService.deleteFile.mockResolvedValue(undefined);
+      notificationService.sendWorkflowNotification.mockResolvedValue(undefined);
+      notifyService.notifyEnrichment.mockResolvedValue(undefined);
+
+      const result = await service.updateStatus(
+        mockJobId,
+        JobStatus.DEPLOYED,
+        ConfigType.PULL,
+        publisherUser,
+      );
+
+      expect(result.success).toBe(true);
+      expect(helpers.decrypt).toHaveBeenCalledWith('encrypted-password-value');
+    });
+
+    it('deploys pull job with PRIVATE_KEY auth and decrypts private_key', async () => {
+      const publisherUser = { ...mockUser, actorRole: 'publisher' } as AuthenticatedUser;
+
+
+      sftpService.readFile.mockResolvedValue({
+        ...mockPullJob,
+        status: JobStatus.READY,
+        connection: {
+          host: 'sftp.example.com',
+          port: 22,
+          user_name: 'testuser',
+          auth_type: AuthType.PRIVATE_KEY,
+          private_key: 'encrypted-key',
+        },
+      } as any);
+
+      adminServiceClient.findScheduleById.mockResolvedValue(mockSchedule);
+      dryRunService.dryRun.mockResolvedValue(undefined);
+      adminServiceClient.createPullJob.mockResolvedValue({ success: true, message: 'deployed' });
+      sftpService.deleteFile.mockResolvedValue(undefined);
+      notificationService.sendWorkflowNotification.mockResolvedValue(undefined);
+
+      const result = await service.updateStatus(
+        mockJobId,
+        JobStatus.DEPLOYED,
+        ConfigType.PULL,
+        publisherUser,
+      );
+
+      expect(result.success).toBe(true);
+      expect(helpers.decrypt).toHaveBeenCalledWith('encrypted-key');
+    });
+
+    it('deploys pull job with private_key=undefined (&&= skipped)', async () => {
+      const publisherUser = { ...mockUser, actorRole: 'publisher' } as AuthenticatedUser;
+
+      sftpService.readFile.mockResolvedValue({
+        ...mockPullJob,
+        status: JobStatus.READY,
+        connection: {
+          host: 'sftp.example.com',
+          port: 22,
+          user_name: 'testuser',
+          auth_type: AuthType.PRIVATE_KEY,
+          private_key: undefined,
+        },
+      } as any);
+
+      adminServiceClient.findScheduleById.mockResolvedValue(mockSchedule);
+      dryRunService.dryRun.mockResolvedValue(undefined);
+      adminServiceClient.createPullJob.mockResolvedValue({ success: true, message: 'deployed' });
+      sftpService.deleteFile.mockResolvedValue(undefined);
+
+      const result = await service.updateStatus(
+        mockJobId,
+        JobStatus.DEPLOYED,
+        ConfigType.PULL,
+        publisherUser,
+      );
+
+      expect(result.success).toBe(true);
     });
   });
 });

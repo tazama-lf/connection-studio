@@ -1,7 +1,6 @@
 const AuthHeaderMock = { key: 'AuthHeader' };
 const ButtonMock = { key: 'Button' };
 const EditEndpointModalMock = { key: 'EditEndpointModal' };
-const EndpointTableMock = { key: 'EndpointTable' };
 const SearchBarMock = { key: 'SearchBar' };
 const ValidationLogsTableMock = { key: 'ValidationLogsTable' };
 const PayloadEditorMock = { key: 'PayloadEditor' };
@@ -17,7 +16,6 @@ const FileCorruptionErrorMock = { key: 'FileCorruptionError' };
 jest.mock('../../../src/shared/components/AuthHeader', () => ({ AuthHeader: AuthHeaderMock }));
 jest.mock('../../../src/shared/components/Button', () => ({ Button: ButtonMock }));
 jest.mock('../../../src/shared/components/EditEndpointModal', () => ({ __esModule: true, default: EditEndpointModalMock }));
-jest.mock('../../../src/shared/components/EndpointTable', () => ({ __esModule: true, default: EndpointTableMock }));
 jest.mock('../../../src/shared/components/SearchBar', () => ({ __esModule: true, default: SearchBarMock }));
 jest.mock('../../../src/shared/components/ValidationLogsTable', () => ({ __esModule: true, default: ValidationLogsTableMock }));
 jest.mock('../../../src/shared/components/PayloadEditor', () => ({ PayloadEditor: PayloadEditorMock }));
@@ -37,7 +35,6 @@ describe('shared/components/index.ts', () => {
     expect(SharedComponents.AuthHeader).toBe(AuthHeaderMock);
     expect(SharedComponents.Button).toBe(ButtonMock);
     expect(SharedComponents.EditEndpointModal).toBe(EditEndpointModalMock);
-    expect(SharedComponents.EndpointTable).toBe(EndpointTableMock);
     expect(SharedComponents.SearchBar).toBe(SearchBarMock);
     expect(SharedComponents.ValidationLogsTable).toBe(ValidationLogsTableMock);
     expect(SharedComponents.PayloadEditor).toBe(PayloadEditorMock);

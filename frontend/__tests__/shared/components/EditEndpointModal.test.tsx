@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 
 const mockShowSuccess = jest.fn();
@@ -78,12 +78,21 @@ jest.mock('../../../src/shared/components/PayloadEditor', () => {
                   path: 'details',
                   type: 'object',
                   isRequired: true,
+                  parent: '',
                 },
                 {
                   name: 'amount',
                   path: 'amount',
                   type: 'number',
                   isRequired: true,
+                  parent: '',
+                },
+                {
+                  name: 'id',
+                  path: 'details.id',
+                  type: 'string',
+                  isRequired: true,
+                  parent: 'details',
                 },
               ]);
             }}
@@ -129,7 +138,8 @@ jest.mock('../../../src/shared/components/MappingUtility', () => ({
           onClick={() => {
             props.onMappingChange?.(true);
             props.onCurrentMappingsChange?.([
-              { source: 'amount', destination: 'redis.amount' },
+              { source: 'amount', destination: 'transactionDetails.msgId' },
+              { source: 'createdAt', destination: 'transactionDetails.CreDtTm' },
             ]);
           }}
         >
@@ -144,6 +154,9 @@ jest.mock('../../../src/shared/components/MappingUtility', () => ({
                 source: 'fullName',
                 destination: ['redis.dbtrAcctId', 'transactionDetails.TenantId'],
               },
+              { source: 'amount', destination: 'transactionDetails.msgId' },
+              { source: 'createdAt', destination: 'transactionDetails.CreDtTm' },
+              { source: 'createdAt', destination: 'redis.creDtTm' },
             ]);
           }}
         >
@@ -151,6 +164,12 @@ jest.mock('../../../src/shared/components/MappingUtility', () => ({
         </button>
       </>
     );
+  },
+}));
+
+jest.mock('../../../src/features/data-model', () => ({
+  dataModelApi: {
+    getDestinationFieldsJson: jest.fn().mockResolvedValue({ success: false }),
   },
 }));
 
@@ -916,6 +935,11 @@ describe('EditEndpointModal', () => {
 
     const modalSelects = screen.getAllByRole('combobox');
     fireEvent.change(modalSelects[0], { target: { value: 'addDataModel' } });
+    // Flush the async dataModelApi call so dataModelLoading becomes false
+    await waitFor(() => {
+      const dataSelect = screen.getAllByRole('combobox')[1];
+      expect(dataSelect).not.toBeDisabled();
+    });
 
     const tableInput = screen.getByPlaceholderText('Enter table name');
     fireEvent.change(tableInput, { target: { value: '1bad!' } });
@@ -928,12 +952,15 @@ describe('EditEndpointModal', () => {
     fireEvent.change(tableInput, { target: { value: '_table1' } });
 
     const updatedSelects = screen.getAllByRole('combobox');
-    fireEvent.change(updatedSelects[1], { target: { value: '_key' } });
-    fireEvent.change(updatedSelects[2], {
+    // updatedSelects[0] = function select, [1] = Data select (jsonKey), [2] = Primary Key select (appears after Data)
+    fireEvent.change(updatedSelects[1], {
       target: {
         value: JSON.stringify({ value: 'details', label: 'details', group: 'Payload' }),
       },
     });
+    // After setting Data, Primary Key select appears
+    const selectsAfterData = screen.getAllByRole('combobox');
+    fireEvent.change(selectsAfterData[2], { target: { value: 'id' } });
 
     const addButtons = screen.getAllByRole('button', { name: 'Add Function' });
     fireEvent.click(addButtons[addButtons.length - 1]);
@@ -943,7 +970,7 @@ describe('EditEndpointModal', () => {
         101,
         expect.objectContaining({
           functionName: 'addDataModelTable',
-          tableName: 'tenant-1__table1',
+          tableName: '_table1',
         }),
       );
     });

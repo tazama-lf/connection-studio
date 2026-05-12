@@ -133,7 +133,6 @@ src/
 │   │   ├── AuthHeader.tsx        # Authentication header
 │   │   ├── Button.tsx            # Custom button component
 │   │   ├── ValidationLogsTable.tsx # Validation logs display
-│   │   ├── EndpointTable.tsx     # Endpoint management table
 │   │   ├── PayloadEditor.tsx     # JSON/XML payload editor
 │   │   └── ...                   # Other shared components
 │   ├── config/        # Application configuration

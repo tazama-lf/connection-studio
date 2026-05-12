@@ -1,27 +1,26 @@
-  import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Backdrop } from '@mui/material';
 import {
   ArrowRightIcon,
-  PlusIcon,
-  XIcon,
   ChevronRightIcon,
   DatabaseIcon,
-  Shuffle,
-  FileText,
   Edit3,
+  FileText,
   Info,
+  PlusIcon,
+  Shuffle,
+  XIcon,
 } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import ReactJson from 'react-json-view';
-import { Button } from './Button';
 import {
   configApi,
   type FieldMapping,
 } from '../../features/config/services/configApi';
 import {
   dataModelApi,
-  type DestinationOption,
-  type DestinationFieldsData,
+  type DestinationFieldsData
 } from '../../features/data-model';
-import { Backdrop } from '@mui/material';
+import { Button } from './Button';
 
 interface MappingUtilityProps {
   onMappingChange: (isValid: boolean) => void;
@@ -303,14 +302,14 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
     if (isFetchingRef.current) {
       return;
     }
-    
+
     try {
       isFetchingRef.current = true;
       setLoadingDestinations(true);
       setDestinationError(null);
 
       const response = await dataModelApi.getDestinationFieldsJson();
-      
+
       if (response.success && response.data) {
         setEditableDestinationJson(response.data);
       } else {
@@ -567,113 +566,8 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
     }
 
     return sections.length > 0 ? sections : rawNodes;
-  }, [sourceSchema]); // Only recalculate when sourceSchema changes
-  // Helper function to convert API destination options to TreeNode format
-  const convertDestinationOptionsToTree = (
-    options: DestinationOption[],
-  ): TreeNode[] => {
-    // Group options by collection to create a hierarchical structure
-    const collections = new Map<string, DestinationOption[]>();
+  }, [sourceSchema]);
 
-    options.forEach((option) => {
-      const existing = collections.get(option.collection) || [];
-      existing.push(option);
-      collections.set(option.collection, existing);
-    });
-
-    // Sort collections so redis appears at the end
-    const sortedCollections = Array.from(collections.entries()).sort(
-      ([a], [b]) => {
-        if (a === 'redis') return 1; // redis goes to the end
-        if (b === 'redis') return -1; // redis goes to the end
-        return a.localeCompare(b); // alphabetical for others
-      },
-    );
-
-    // Helper function to build nested tree structure from dot-separated paths
-    const buildNestedTree = (
-      collectionName: string,
-      fields: DestinationOption[],
-    ): TreeNode[] => {
-      // Create a tree structure where each node can have children
-      const rootMap = new Map<
-        string,
-        { node: TreeNode; children: Map<string, any> }
-      >();
-
-      fields.forEach((field) => {
-        // Split field path into parts (e.g., "intrBkSttlmAmt.amt" -> ["intrBkSttlmAmt", "amt"])
-        const parts = field.field ? field.field.split('.') : '';
-
-        // Always build hierarchy for all fields
-        let currentLevel = rootMap;
-        let currentPath: string[] = [collectionName];
-
-        parts && parts.forEach((part, index) => {
-          const isLeaf = index === parts.length - 1;
-          currentPath = [...currentPath, part];
-          const pathKey = parts.slice(0, index + 1).join('.');
-          const fullPath = `${collectionName}.${pathKey}`;
-
-          if (!currentLevel.has(part)) {
-            // Create new node
-            currentLevel.set(part, {
-              node: {
-                id: isLeaf ? field.value : fullPath,
-                name: part,
-                path: [...currentPath],
-                type: isLeaf
-                  ? (field.type.toLowerCase() as
-                    | 'string'
-                    | 'number'
-                    | 'boolean'
-                    | 'date'
-                    | 'object'
-                    | 'array')
-                  : 'object',
-              },
-              children: new Map(),
-            });
-          } else if (isLeaf) {
-            // Update existing node if this is the leaf (actual field definition)
-            const existing = currentLevel.get(part)!;
-            existing.node.id = field.value;
-            existing.node.type = field.type.toLowerCase() as
-              | 'string'
-              | 'number'
-              | 'boolean'
-              | 'date'
-              | 'object'
-              | 'array';
-          }
-
-          // Move to next level
-          const entry = currentLevel.get(part)!;
-          currentLevel = entry.children;
-        });
-      });
-
-      // Convert map structure to TreeNode array with children
-      const convertMapToNodes = (map: Map<string, any>): TreeNode[] => Array.from(map.values()).map(({ node, children }) => {
-          if (children.size > 0) {
-            return {
-              ...node,
-              children: convertMapToNodes(children),
-            };
-          }
-          return node;
-        });
-
-      return convertMapToNodes(rootMap);
-    };
-
-    return sortedCollections.map(([collectionName, fields]) => ({
-      id: collectionName,
-      name: collectionName.charAt(0).toUpperCase() + collectionName.slice(1),
-      path: [collectionName],
-      children: buildNestedTree(collectionName, fields),
-    }));
-  };
   const [expandedSourceNodes, setExpandedSourceNodes] = useState<string[]>([]);
   const [expandedDestNodes, setExpandedDestNodes] = useState<string[]>([]);
   const [showAddMapping, setShowAddMapping] = useState(false);
@@ -703,59 +597,6 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       return undefined;
     };
 
-    const getDestinationType = (fieldPath: string): string | undefined => {
-      const parts = fieldPath.split('.');
-      if (parts.length === 0) return undefined;
-
-      const findType = (
-        nodes: TreeNode[],
-        pathParts: string[],
-        depth = 0,
-      ): string | undefined => {
-        if (pathParts.length === 0) return undefined;
-
-        const [first, ...rest] = pathParts;
-        const node = nodes.find(
-          (n) => n.name.toLowerCase() === first.toLowerCase(),
-        );
-
-        if (!node) return undefined;
-        if (rest.length === 0) {
-          return node.type;
-        }
-        if (node.children) return findType(node.children, rest, depth + 1);
-
-        return undefined;
-      };
-
-      const result = findType(destinationTree, parts);
-      return result;
-    };
-
-    const areTypesCompatible = (
-      sourceType: string | undefined,
-      destType: string | undefined,
-    ): boolean => {
-      if (!sourceType || !destType) return true;
-
-      const normalizeType = (type: string) => {
-        if (
-          type === 'integer' ||
-          type === 'number' ||
-          type === 'double' ||
-          type === 'float'
-        )
-          {return 'number';}
-        if (type === 'text' || type === 'varchar') return 'string';
-        return type;
-      };
-
-      const normSource = normalizeType(sourceType);
-      const normDest = normalizeType(destType);
-
-      return normSource === normDest;
-    };
-
     if (selectedTransformation === 'concatenate') {
       if (selectedSources.length < 2 || selectedDestinations.length !== 1) {
         return false;
@@ -765,35 +606,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
         return !type || type === 'string' || type === 'text';
       });
 
-      const destType = getDestinationType(selectedDestinations[0]);
-      const destIsString =
-        !destType || destType === 'string' || destType === 'text';
-
-      return allStrings && destIsString;
-    } else if (selectedTransformation === 'sum') {
-      if (selectedSources.length < 2 || selectedDestinations.length !== 1) {
-        return false;
-      }
-      const allNumbers = selectedSources.every((src) => {
-        const type = getFieldType(src);
-        return (
-          !type ||
-          type === 'number' ||
-          type === 'integer' ||
-          type === 'double' ||
-          type === 'float'
-        );
-      });
-
-      const destType = getDestinationType(selectedDestinations[0]);
-      const destIsNumber =
-        !destType ||
-        destType === 'number' ||
-        destType === 'integer' ||
-        destType === 'double' ||
-        destType === 'float';
-
-      return allNumbers && destIsNumber;
+      return allStrings;
     } else if (selectedTransformation === 'split') {
       if (selectedSources.length !== 1 || selectedDestinations.length < 2) {
         return false;
@@ -802,21 +615,12 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       const sourceIsString =
         !sourceType || sourceType === 'string' || sourceType === 'text';
 
-      const allDestsString = selectedDestinations.every((dest) => {
-        const type = getDestinationType(dest);
-        return !type || type === 'string' || type === 'text';
-      });
-
-      return sourceIsString && allDestsString;
+      return sourceIsString;
     } else if (selectedTransformation === 'none') {
       if (selectedSources.length !== 1 || selectedDestinations.length !== 1) {
         return false;
       }
-      // Check type compatibility for direct mapping
-      const sourceType = getFieldType(selectedSources[0]);
-      const destType = getDestinationType(selectedDestinations[0]);
-
-      return areTypesCompatible(sourceType, destType);
+      return true;
     } else if (selectedTransformation === 'constant') {
       return selectedDestinations.length === 1;
     }
@@ -888,7 +692,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
   ) => {
     // Toggle selection for destinations
     const pathStr = path.join('.');
-    
+
     if (selectedDestinations.includes(pathStr)) {
       setSelectedDestinations(selectedDestinations.filter((p) => p !== pathStr));
     } else {
@@ -981,95 +785,9 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       return;
     }
 
-    // Validate based on transformation type
-    let validationError = '';
-
-    if (selectedTransformation === 'concatenate') {
-      if (selectedSources.length < 2) {
-        validationError = 'Concatenate requires at least 2 source fields';
-      } else if (selectedDestinations.length !== 1) {
-        validationError = 'Concatenate requires exactly 1 destination field';
-      }
-    } else if (selectedTransformation === 'sum') {
-      if (selectedSources.length < 2) {
-        validationError = 'Sum requires at least 2 source fields';
-      } else if (selectedDestinations.length !== 1) {
-        validationError = 'Sum requires exactly 1 destination field';
-      }
-    } else if (selectedTransformation === 'split') {
-      if (selectedSources.length !== 1) {
-        validationError = 'Split requires exactly 1 source field';
-      } else if (selectedDestinations.length < 2) {
-        validationError = 'Split requires at least 2 destination fields';
-      }
-    } else if (selectedTransformation === 'constant') {
-      if (selectedSources.length !== 1) {
-        validationError = 'Constant mapping requires exactly 1 constant value';
-      } else if (selectedDestinations.length !== 1) {
-        validationError =
-          'Constant mapping requires exactly 1 destination field';
-      }
-    } else if (selectedTransformation === 'none') {
-      if (selectedSources.length !== 1) {
-        validationError = 'Direct mapping requires exactly 1 source field';
-      } else if (selectedDestinations.length !== 1) {
-        validationError = 'Direct mapping requires exactly 1 destination field';
-      }
-    } else if (selectedSources.length === 0 || selectedDestinations.length === 0) {
-        validationError =
-          'Please select at least one source and one destination field';
-      }
-
-    if (validationError) {
-      setMappingError(validationError);
-      return;
-    }
-
-    // Helper to get destination type
-    const getDestinationType = (fieldPath: string): string | undefined => {
-      const parts = fieldPath.split('.');
-      if (parts.length === 0) return undefined;
-
-      const findType = (
-        nodes: TreeNode[],
-        pathParts: string[],
-        depth = 0,
-      ): string | undefined => {
-        if (pathParts.length === 0) return undefined;
-
-        const [first, ...rest] = pathParts;
-        const node = nodes.find(
-          (n) => n.name.toLowerCase() === first.toLowerCase(),
-        );
-
-        if (!node) return undefined;
-        if (rest.length === 0) {
-          return node.type;
-        }
-        if (node.children) return findType(node.children, rest, depth + 1);
-
-        return undefined;
-      };
-
-      const result = findType(destinationTree, parts);
-      return result;
-    };
-
-    // Determine if destination is number type
-    const destPath = selectedTransformation === 'split'
-      ? selectedDestinations[0]
-      : selectedDestinations[0];
-    const destType = destPath ? getDestinationType(destPath) : undefined;
-    const isNumberType = destType && (
-      destType === 'number' ||
-      destType === 'integer' ||
-      destType === 'double' ||
-      destType === 'float'
-    );
-
-    // Convert constant value to number if needed
+    // Convert constant value
     const constantValue = selectedTransformation === 'constant'
-      ? (isNumberType ? Number(selectedSources[0]) : selectedSources[0])
+      ? selectedSources[0]
       : undefined;
 
     // Create AddMappingRequest object for API
@@ -1090,7 +808,6 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
           : undefined,
       constantValue,
       prefix: prefix.trim() || undefined,
-      type: isNumberType ? 'number' : undefined,
     };
 
     // Call API to save mapping directly
@@ -1122,7 +839,6 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
           transformation: selectedTransformation.toUpperCase(),
           operator: selectedTransformation === 'sum' ? 'SUM' : undefined,
           prefix: prefix.trim() || undefined,
-          type: isNumberType ? 'number' : undefined,
         };
 
         // Update local state only after successful API call
@@ -1160,123 +876,124 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
     type: 'source' | 'destination' | 'redis' = 'source',
     depth = 0,
   ) => (
-      <div className="space-y-1" data-id="element-176">
-        {nodes.map((node, index) => {
-          const hasChildren = node.children && node.children.length > 0;
-          const isExpanded = expanded.includes(node.id);
-          const isSection = node.type === 'section';
-          
-          const fieldPath = isSection ? node.path : node.path;
-          const isSelected = !isSection && selectedPaths
-            .map((path) => path.replace(/\.0\./g, '.'))
-            .includes(node.path.join('.'));
+    <div className="space-y-1" data-id="element-176">
+      {nodes.map((node, index) => {
+        const hasChildren = node.children && node.children.length > 0;
+        const isExpanded = expanded.includes(node.id);
+        const isSection = node.type === 'section';
 
-          const nodeType = node.id.startsWith('redis') ? 'redis' : type;
-          const isRedis = node.id === 'redis';
+        const fieldPath = isSection ? node.path : node.path;
+        const isSelected = !isSection && selectedPaths
+          .map((path) => path.replace(/\.0\./g, '.'))
+          .includes(node.path.join('.'));
 
-          if (isSection) {
-            return (
-              <div key={node.id} data-id="element-section">
-                <div className={`mb-2 ${index > 0 ? 'mt-4' : ''}`}>
-                  <div className="text-sm font-semibold text-gray-700 bg-gray-100 px-2 py-1 rounded">
-                    {node.name}
-                  </div>
-                </div>
-                {hasChildren && renderTree(
-                  node.children ?? [],
-                  expanded,
-                  toggleFn,
-                  onSelect,
-                  selectedPaths,
-                  node.id === 'dataCache' ? 'redis' : type,
-                  0,
-                )}
-              </div>
-            );
-          }
+        const nodeType = node.id.startsWith('redis') ? 'redis' : type;
+        const isRedis = node.id === 'redis';
 
+        if (isSection) {
           return (
-            <div key={node.id} data-id="element-177">
-              <div
-                className={`flex items-center p-1 rounded hover:bg-gray-100 ${isSelected ? 'bg-blue-100' : ''}`}
-                style={{ paddingLeft: `${depth * 20 + 4}px` }}
-                data-id="element-178"
-              >
-                {hasChildren ? (
-                  <button
-                    onClick={() => { toggleFn(node.id); }}
-                    className="p-1 text-gray-500 hover:text-gray-700"
-                    data-id="element-179"
-                  >
-                    <ChevronRightIcon
-                      size={16}
-                      className={`transform transition-transform ${isExpanded ? 'rotate-90' : ''}`}
-                      data-id="element-180"
-                    />
-                  </button>
-                ) : (
-                  <span className="w-6" data-id="element-181"></span>
-                )}
-                {/* Only allow selection for leaf nodes (no children, not object/array) */}
-                {!hasChildren &&
-                  node.type !== 'object' &&
-                  node.type !== 'array' ? (
-                  <button
-                    onClick={() =>
-                      { onSelect(
-                        node.path,
-                        nodeType === 'redis' ? 'redis' : 'database',
-                        expanded,
-                        selectedPaths,
-                      ); }
-                    }
-                    className="text-left flex-1 text-sm hover:text-blue-700"
-                    data-id="element-185"
-                  >
-                    {node.name}
-                    {node.type && (
-                      <span
-                        className="ml-2 text-xs text-gray-500"
-                        data-id="element-186"
-                      >
-                        ({node.type})
-                      </span>
-                    )}
-                  </button>
-                ) : (
-                  <span
-                    className="text-left flex-1 text-sm cursor-not-allowed select-none"
-                    title="Select a field, not an object or array"
-                    data-id="element-185"
-                  >
-                    {node.name}
-                    {node.type && (
-                      <span
-                        className="ml-2 text-xs text-gray-500"
-                        data-id="element-186"
-                      >
-                        ({node.type})
-                      </span>
-                    )}
-                  </span>
-                )}
+            <div key={node.id} data-id="element-section">
+              <div className={`mb-2 ${index > 0 ? 'mt-4' : ''}`}>
+                <div className="text-sm font-semibold text-gray-700 bg-gray-100 px-2 py-1 rounded">
+                  {node.name}
+                </div>
               </div>
-              {hasChildren &&
-                isExpanded &&
-                renderTree(
-                  node.children ?? [],
-                  expanded,
-                  toggleFn,
-                  onSelect,
-                  selectedPaths,
-                  nodeType,
-                  depth + 1,
-                )}
+              {hasChildren && renderTree(
+                node.children ?? [],
+                expanded,
+                toggleFn,
+                onSelect,
+                selectedPaths,
+                node.id === 'dataCache' ? 'redis' : type,
+                0,
+              )}
             </div>
           );
-        })}
-      </div>
-    );
+        }
+
+        return (
+          <div key={node.id} data-id="element-177">
+            <div
+              className={`flex items-center p-1 rounded hover:bg-gray-100 ${isSelected ? 'bg-blue-100' : ''}`}
+              style={{ paddingLeft: `${depth * 20 + 4}px` }}
+              data-id="element-178"
+            >
+              {hasChildren ? (
+                <button
+                  onClick={() => { toggleFn(node.id); }}
+                  className="p-1 text-gray-500 hover:text-gray-700"
+                  data-id="element-179"
+                >
+                  <ChevronRightIcon
+                    size={16}
+                    className={`transform transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+                    data-id="element-180"
+                  />
+                </button>
+              ) : (
+                <span className="w-6" data-id="element-181"></span>
+              )}
+              {/* Only allow selection for leaf nodes (no children, not object/array) */}
+              {!hasChildren &&
+                node.type !== 'object' &&
+                node.type !== 'array' ? (
+                <button
+                  onClick={() => {
+                    onSelect(
+                      node.path,
+                      nodeType === 'redis' ? 'redis' : 'database',
+                      expanded,
+                      selectedPaths,
+                    );
+                  }
+                  }
+                  className="text-left flex-1 text-sm hover:text-blue-700"
+                  data-id="element-185"
+                >
+                  {node.name}
+                  {node.type && (
+                    <span
+                      className="ml-2 text-xs text-gray-500"
+                      data-id="element-186"
+                    >
+                      ({node.type})
+                    </span>
+                  )}
+                </button>
+              ) : (
+                <span
+                  className="text-left flex-1 text-sm cursor-not-allowed select-none"
+                  title="Select a field, not an object or array"
+                  data-id="element-185"
+                >
+                  {node.name}
+                  {node.type && (
+                    <span
+                      className="ml-2 text-xs text-gray-500"
+                      data-id="element-186"
+                    >
+                      ({node.type})
+                    </span>
+                  )}
+                </span>
+              )}
+            </div>
+            {hasChildren &&
+              isExpanded &&
+              renderTree(
+                node.children ?? [],
+                expanded,
+                toggleFn,
+                onSelect,
+                selectedPaths,
+                nodeType,
+                depth + 1,
+              )}
+          </div>
+        );
+      })}
+    </div>
+  );
   const renderAddMappingModal = () => {
     if (!showAddMapping) return null;
     return (
@@ -1405,15 +1122,16 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                     </label>
                     <select
                       value={selectedTransformation}
-                      onChange={(e) =>
-                        { setSelectedTransformation(
+                      onChange={(e) => {
+                        setSelectedTransformation(
                           e.target.value as
-                            | 'concatenate'
-                            | 'sum'
-                            | 'split'
-                            | 'none'
-                            | 'constant',
-                        ); }
+                          | 'concatenate'
+                          | 'sum'
+                          | 'split'
+                          | 'none'
+                          | 'constant',
+                        );
+                      }
                       }
                       className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                       data-id="element-205"
@@ -1446,8 +1164,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                         <input
                           type="text"
                           value={delimiter}
-                          onChange={(e) =>
-                            { setDelimiter(e.target.value.slice(0, 1)); }
+                          onChange={(e) => { setDelimiter(e.target.value.slice(0, 1)); }
                           }
                           placeholder=""
                           className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
@@ -1593,11 +1310,12 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                       destinationTree,
                       expandedDestNodes,
                       toggleDestNode,
-                      (path, type) =>
-                        { handleDestinationSelect(
+                      (path, type) => {
+                        handleDestinationSelect(
                           path,
                           type as 'database' | 'redis' | 'model',
-                        ); },
+                        );
+                      },
                       selectedDestinations,
                       'destination',
                     )
@@ -1701,24 +1419,24 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
     const rootKeys = Object.keys(json);
 
     if (!rootKeys.includes('transactionDetails')) {
-      return { 
-        valid: false, 
-        error: 'Required field "transactionDetails" must exist in the Data Model section and cannot be deleted.' 
+      return {
+        valid: false,
+        error: 'Required field "transactionDetails" must exist in the Data Model section and cannot be deleted.'
       };
     }
 
     if (!rootKeys.includes('redis')) {
-      return { 
-        valid: false, 
-        error: 'Required field "redis" must exist in the Data Cache section and cannot be deleted.' 
+      return {
+        valid: false,
+        error: 'Required field "redis" must exist in the Data Cache section and cannot be deleted.'
       };
     }
 
     const redisCount = rootKeys.filter(key => key.toLowerCase() === 'redis').length;
     if (redisCount > 1) {
-      return { 
-        valid: false, 
-        error: 'Data Cache section can only have one parent object "redis". Multiple redis objects are not allowed.' 
+      return {
+        valid: false,
+        error: 'Data Cache section can only have one parent object "redis". Multiple redis objects are not allowed.'
       };
     }
 
@@ -1744,7 +1462,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       if (key === 'transactionDetails' || key === 'redis') {
         continue;
       }
-      
+
       const depth = getMaxNestingDepth(json[key], 0);
       if (depth > MAX_NESTING_DEPTH) {
         return {
@@ -1771,10 +1489,10 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
         setValidationError(null);
       }
     };
-    
+
     const handleSaveChanges = async () => {
       const validation = validateDestinationJson(tempEditedJson);
-      
+
       if (!validation.valid) {
         setValidationError(validation.error ?? 'Invalid JSON structure');
         return;
@@ -1800,11 +1518,11 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       if (tempEditedJson.redis) {
         reorderedJson.redis = tempEditedJson.redis;
       }
-      
+
       try {
         setSavingDestinationJson(true);
         const response = await dataModelApi.updateDestinationFieldsJson(reorderedJson);
-        
+
         if (response.success) {
           setEditableDestinationJson(reorderedJson);
           setShowEditFieldsModal(false);
@@ -1820,7 +1538,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
         setSavingDestinationJson(false);
       }
     };
-    
+
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center">
         <Backdrop
@@ -1847,7 +1565,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                 <XIcon size={20} />
               </button>
             </div>
-            
+
             {/* Commenting out for now might need it in future */}
             {/* <div className="mb-4 text-sm text-gray-600">
               <p className="mb-2">
@@ -2092,7 +1810,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
           )}
         </div>
       ) : null}
-      {renderAddMappingModal()}  
+      {renderAddMappingModal()}
       {renderEditFieldsModal()}
     </div>
   );
