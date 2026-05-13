@@ -50,17 +50,24 @@ jest.mock('lucide-react', () => ({
   PackageOpen: () => <span data-testid="package-icon" />,
 }));
 
-jest.mock('../../../../../src/features/dashboard/components/NavListItemButton', () => ({
-  __esModule: true,
-  default: (props: any) => (
-    <button
-      data-testid={props['aria-label'] === 'Logout' ? 'logout-btn' : `nav-${props['aria-label']}`}
-      onClick={props.onClick}
-    >
-      {props.children}
-    </button>
-  ),
-}));
+jest.mock(
+  '../../../../../src/features/dashboard/components/NavListItemButton',
+  () => ({
+    __esModule: true,
+    default: (props: any) => (
+      <button
+        data-testid={
+          props['aria-label'] === 'Logout'
+            ? 'logout-btn'
+            : `nav-${props['aria-label']}`
+        }
+        onClick={props.onClick}
+      >
+        {props.children}
+      </button>
+    ),
+  }),
+);
 
 import SideNav from '../../../../../src/features/dashboard/components/SideNav';
 
@@ -101,7 +108,14 @@ describe('features/dashboard/components/SideNav.tsx', () => {
 
     const first = render(<SideNav open onClose={onClose} />);
 
-    fireEvent.click(screen.getByTestId('nav-Navigate to Dynamic Event Monitoring Service'.replace('Dynamic Event Monitoring Service', 'DEMS')));
+    fireEvent.click(
+      screen.getByTestId(
+        'nav-Navigate to Dynamic Event Monitoring Service'.replace(
+          'Dynamic Event Monitoring Service',
+          'DEMS',
+        ),
+      ),
+    );
     fireEvent.click(screen.getByTestId('nav-Navigate to Data Enrichment'));
     fireEvent.click(screen.getByTestId('nav-Navigate to Cron Job Management'));
     fireEvent.click(screen.getByTestId('nav-Navigate to Exported Items'));
@@ -174,7 +188,9 @@ describe('features/dashboard/components/SideNav.tsx', () => {
 
     render(<SideNav open={true} />);
     // The nav items should render (active class applied via startsWith)
-    expect(screen.getByTestId('nav-Navigate to Data Enrichment')).toBeInTheDocument();
+    expect(
+      screen.getByTestId('nav-Navigate to Data Enrichment'),
+    ).toBeInTheDocument();
   });
 
   it('uses includes match for role (partial role match in claimsLower)', () => {
@@ -215,6 +231,8 @@ describe('features/dashboard/components/SideNav.tsx', () => {
     render(<SideNav open={false} />);
 
     expect(screen.getByTestId('nav-Navigate to Dashboard')).toBeInTheDocument();
-    expect(screen.getByTestId('nav-Navigate to Exported Items')).toBeInTheDocument();
+    expect(
+      screen.getByTestId('nav-Navigate to Exported Items'),
+    ).toBeInTheDocument();
   });
 });
