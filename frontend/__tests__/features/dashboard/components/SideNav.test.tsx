@@ -101,7 +101,7 @@ describe('features/dashboard/components/SideNav.tsx', () => {
 
     const first = render(<SideNav open onClose={onClose} />);
 
-    fireEvent.click(screen.getByTestId('nav-Navigate to Dynamic Event Monitoring Service'.replace('Dynamic Event Monitoring Service','DEMS')));
+    fireEvent.click(screen.getByTestId('nav-Navigate to Dynamic Event Monitoring Service'.replace('Dynamic Event Monitoring Service', 'DEMS')));
     fireEvent.click(screen.getByTestId('nav-Navigate to Data Enrichment'));
     fireEvent.click(screen.getByTestId('nav-Navigate to Cron Job Management'));
     fireEvent.click(screen.getByTestId('nav-Navigate to Exported Items'));
@@ -203,5 +203,18 @@ describe('features/dashboard/components/SideNav.tsx', () => {
     // Without claims, no role match → uses defaultPaths
     fireEvent.click(screen.getByTestId('nav-Navigate to DEMS'));
     expect(navigateMock).toHaveBeenCalledWith('/dems');
+  });
+
+  it('covers approverPaths || fallback and item.path ?? fallback when user has both approver and publisher claims', () => {
+    useAuthMock.mockReturnValue({
+      user: { claims: ['approver', 'publisher'] },
+      logout: logoutMock,
+    });
+    useLocationMock.mockReturnValue({ pathname: '/dashboard' });
+
+    render(<SideNav open={false} />);
+
+    expect(screen.getByTestId('nav-Navigate to Dashboard')).toBeInTheDocument();
+    expect(screen.getByTestId('nav-Navigate to Exported Items')).toBeInTheDocument();
   });
 });
