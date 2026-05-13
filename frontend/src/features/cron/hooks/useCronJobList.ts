@@ -11,9 +11,13 @@ import {
 import { useAuth } from '../../auth/contexts/AuthContext';
 import { CRON_JOB_EDIT_FORM_DEFAULTS } from '../constants';
 import * as cronHandlers from '../handlers';
-import { loadSchedules as apiLoadSchedules, CRON_JOB_STATUSES } from '../handlers';
+import {
+  loadSchedules as apiLoadSchedules,
+  CRON_JOB_STATUSES,
+} from '../handlers';
 import type { ActionType, ScheduleResponse } from '../types';
 
+const INITIAL_OFFSET = 0;
 const INITIAL_TOTAL = 0;
 const PAGE_OFFSET_ADJUSTMENT = 1;
 
@@ -42,14 +46,22 @@ export const useCronJobList = (): {
   userIsApprover: boolean;
   userIsPublisher: boolean;
   userRole: string;
-  setSearchingFilters: React.Dispatch<React.SetStateAction<Record<string, unknown>>>;
-  setSelectedSchedule: React.Dispatch<React.SetStateAction<ScheduleResponse | null>>;
-  setEditForm: React.Dispatch<React.SetStateAction<typeof CRON_JOB_EDIT_FORM_DEFAULTS>>;
-  setConfirmDialog: React.Dispatch<React.SetStateAction<{
-    open: boolean;
-    type: ActionType;
-    schedule: ScheduleResponse | null;
-  }>>;
+  setSearchingFilters: React.Dispatch<
+    React.SetStateAction<Record<string, unknown>>
+  >;
+  setSelectedSchedule: React.Dispatch<
+    React.SetStateAction<ScheduleResponse | null>
+  >;
+  setEditForm: React.Dispatch<
+    React.SetStateAction<typeof CRON_JOB_EDIT_FORM_DEFAULTS>
+  >;
+  setConfirmDialog: React.Dispatch<
+    React.SetStateAction<{
+      open: boolean;
+      type: ActionType;
+      schedule: ScheduleResponse | null;
+    }>
+  >;
   loadSchedules: () => Promise<void>;
   handleView: (schedule: ScheduleResponse) => void;
   handleEdit: (schedule: ScheduleResponse) => void;
@@ -70,18 +82,19 @@ export const useCronJobList = (): {
     Record<string, unknown>
   >({});
 
-  const {
-    offset,
-    limit,
-    setOffset,
-  } = useFilters();
+  const { offset, limit, setOffset } = useFilters();
 
-  const pagination = useMemo(() => ({
+  const pagination = useMemo(
+    () => ({
       page: offset,
       limit,
       totalRecords: total,
-      setPage: (page: number) => { setOffset(page - PAGE_OFFSET_ADJUSTMENT); },
-    }), [offset, limit, total, setOffset])  
+      setPage: (page: number) => {
+        setOffset(page - PAGE_OFFSET_ADJUSTMENT);
+      },
+    }),
+    [offset, limit, total, setOffset],
+  );
 
   const [error, setError] = useState<string | null>(null);
   const [loadingState, setLoadingState] = useState<{
@@ -105,7 +118,13 @@ export const useCronJobList = (): {
     schedule: null,
   });
 
-  const { userIsEditor, userIsExporter, userIsApprover, userIsPublisher, userRole } = useMemo(() => {
+  const {
+    userIsEditor,
+    userIsExporter,
+    userIsApprover,
+    userIsPublisher,
+    userRole,
+  } = useMemo(() => {
     const claims = user?.claims ?? [];
     return {
       userIsEditor: isEditor(claims),
@@ -116,35 +135,32 @@ export const useCronJobList = (): {
     };
   }, [user?.claims]);
 
-  const loadSchedules = useCallback(
-    async () => {
-      try {
-        setLoadingState((s) => ({ ...s, page: true }));
-        setError(null);
+  const loadSchedules = useCallback(async () => {
+    try {
+      setLoadingState((s) => ({ ...s, page: true }));
+      setError(null);
 
-        const response = await apiLoadSchedules(
-          offset,
-          limit,
-          userRole as string,
-          searchingFilters,
-        );
+      const response = await apiLoadSchedules(
+        offset,
+        limit,
+        userRole as string,
+        searchingFilters,
+      );
 
-        setSchedules(response.data);
-        setTotal(response.total)
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : 'Failed to fetch schedules',
-        );
-      } finally {
-        setLoadingState((s) => ({ ...s, page: false }));
-      }
-    },
-    [offset, limit, userRole, searchingFilters],
-  );
+      setSchedules(response.data);
+      setTotal(response.total);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Failed to fetch schedules',
+      );
+    } finally {
+      setLoadingState((s) => ({ ...s, page: false }));
+    }
+  }, [offset, limit, userRole, searchingFilters]);
 
   useEffect(() => {
-    setOffset(0);
-  }, [searchingFilters]);
+    setOffset(INITIAL_OFFSET);
+  }, [searchingFilters, setOffset]);
 
   useEffect(() => {
     loadSchedules();
@@ -242,15 +258,18 @@ export const useCronJobList = (): {
     }
   }, [confirmDialog.schedule, loadSchedules, showSuccess, showError]);
 
-  const handleApproveClick = useCallback((scheduleId: string) => {
-    const schedule = schedules.find(s => s.id === scheduleId);
-    if (!schedule) return;
-    setConfirmDialog({
-      open: true,
-      type: 'approve',
-      schedule,
-    });
-  }, [schedules]);
+  const handleApproveClick = useCallback(
+    (scheduleId: string) => {
+      const schedule = schedules.find((s) => s.id === scheduleId);
+      if (!schedule) return;
+      setConfirmDialog({
+        open: true,
+        type: 'approve',
+        schedule,
+      });
+    },
+    [schedules],
+  );
 
   const handleApproveConfirm = useCallback(
     async (comment?: string) => {
@@ -258,7 +277,11 @@ export const useCronJobList = (): {
 
       try {
         setLoadingState((s) => ({ ...s, action: 'approve' }));
-        await cronHandlers.cronJobApi.updateStatus(confirmDialog.schedule.id, CRON_JOB_STATUSES.APPROVED, comment ?? '');
+        await cronHandlers.cronJobApi.updateStatus(
+          confirmDialog.schedule.id,
+          CRON_JOB_STATUSES.APPROVED,
+          comment ?? '',
+        );
         showSuccess('Cron job approved successfully');
         loadSchedules();
         setConfirmDialog({ open: false, type: '', schedule: null });
@@ -275,7 +298,11 @@ export const useCronJobList = (): {
     async (scheduleId: string, reason: string) => {
       try {
         setLoadingState((s) => ({ ...s, action: 'reject' }));
-        await cronHandlers.cronJobApi.updateStatus(scheduleId, CRON_JOB_STATUSES.REJECTED, reason);
+        await cronHandlers.cronJobApi.updateStatus(
+          scheduleId,
+          CRON_JOB_STATUSES.REJECTED,
+          reason,
+        );
         showSuccess('Cron job rejected successfully');
         loadSchedules();
       } catch {

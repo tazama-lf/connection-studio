@@ -4,7 +4,7 @@ import type { Control } from 'react-hook-form';
 export interface BaseInputFieldProps {
   name: string;
   label: string | React.ReactNode;
-  control: Control<any>;
+  control: Control<Record<string, unknown>>;
   placeholder?: string;
   disabled?: boolean;
   maxLength?: number;
@@ -15,42 +15,41 @@ export interface TextInputFieldProps extends BaseInputFieldProps {
   type?: string;
 }
 
-export interface PasswordInputFieldProps extends BaseInputFieldProps { }
+export interface PasswordInputFieldProps extends BaseInputFieldProps {}
 
-export interface DateInputFieldProps extends BaseInputFieldProps { }
+export interface DateInputFieldProps extends BaseInputFieldProps {}
 
-export interface EndpointNameInputFieldProps extends BaseInputFieldProps { }
+export interface EndpointNameInputFieldProps extends BaseInputFieldProps {}
 
-export interface VersionInputFieldProps extends BaseInputFieldProps { }
+export interface VersionInputFieldProps extends BaseInputFieldProps {}
 
-export interface AlphaNumericInputFieldProps extends BaseInputFieldProps { }
+export interface AlphaNumericInputFieldProps extends BaseInputFieldProps {}
 
 export interface MultiLineTextInputFieldProps extends BaseInputFieldProps {
   rows?: number;
 }
 
-export interface NumberInputFieldProps extends BaseInputFieldProps { }
+export interface NumberInputFieldProps extends BaseInputFieldProps {}
 
-export interface DelimiterInputFieldProps extends BaseInputFieldProps { }
+export interface DelimiterInputFieldProps extends BaseInputFieldProps {}
 
-export interface DatabaseTableInputFieldProps extends BaseInputFieldProps { }
+export interface DatabaseTableInputFieldProps extends BaseInputFieldProps {}
 
-export interface HostInputFieldProps extends BaseInputFieldProps { }
+export interface HostInputFieldProps extends BaseInputFieldProps {}
 
-export interface FilePathInputFieldProps extends BaseInputFieldProps { }
+export interface FilePathInputFieldProps extends BaseInputFieldProps {}
 
-export interface URLInputFieldProps extends BaseInputFieldProps { }
+export interface URLInputFieldProps extends BaseInputFieldProps {}
 
-export interface TransactionTypeInputFieldProps extends BaseInputFieldProps { }
+export interface TransactionTypeInputFieldProps extends BaseInputFieldProps {}
 
-export interface ApiPathInputFieldProps extends BaseInputFieldProps { }
+export interface ApiPathInputFieldProps extends BaseInputFieldProps {}
 
 export interface SelectFieldProps extends BaseInputFieldProps {
   options: Array<{ value: string | number; label: string }>;
 }
 
-export interface AlphaNumericInputFieldWithSpacesProps
-  extends BaseInputFieldProps { }
+export interface AlphaNumericInputFieldWithSpacesProps extends BaseInputFieldProps {}
 
 export declare const isSmallScreen: () => boolean;
 
