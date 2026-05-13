@@ -1,31 +1,31 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback } from 'react';
 
-type UseDebouncedSearchReturn = [
-  string,
-  string,
-  (value: string) => void
-]
+const DEFAULT_DEBOUNCE_DELAY = 500;
+
+type UseDebouncedSearchReturn = [string, string, (value: string) => void];
 
 const useDebouncedSearch = (
   initialValue = '',
-  delay = 500
+  delay = DEFAULT_DEBOUNCE_DELAY,
 ): UseDebouncedSearchReturn => {
-  const [value, setValue] = useState<string>(initialValue)
-  const [debouncedValue, setDebouncedValue] = useState<string>(initialValue)
+  const [value, setValue] = useState<string>(initialValue);
+  const [debouncedValue, setDebouncedValue] = useState<string>(initialValue);
 
   useEffect(() => {
     const handler = setTimeout(() => {
-      setDebouncedValue(value)
-    }, delay)
+      setDebouncedValue(value);
+    }, delay);
 
-    return () => { clearTimeout(handler); }
-  }, [value, delay])
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
 
   const onChange = useCallback((value: string) => {
-    setValue(value)
-  }, [])
+    setValue(value);
+  }, []);
 
-  return [value, debouncedValue, onChange]
-}
+  return [value, debouncedValue, onChange];
+};
 
-export default useDebouncedSearch
+export default useDebouncedSearch;
