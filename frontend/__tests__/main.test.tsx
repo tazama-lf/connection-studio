@@ -25,7 +25,9 @@ describe('main.tsx', () => {
       require('../src/main.tsx');
     });
 
-    expect(createRootMock).toHaveBeenCalledWith(document.getElementById('root'));
+    expect(createRootMock).toHaveBeenCalledWith(
+      document.getElementById('root'),
+    );
     expect(renderMock).toHaveBeenCalledTimes(1);
   });
 });
