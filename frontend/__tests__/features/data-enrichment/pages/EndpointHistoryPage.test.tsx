@@ -1,5 +1,11 @@
 import React from 'react';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import EndpointHistoryPage from '../../../../src/features/data-enrichment/pages/EndpointHistoryPage';
 import { dataEnrichmentJobApi } from '../../../../src/features/data-enrichment/handlers';
 
@@ -30,7 +36,7 @@ jest.mock('@shared/hooks/useFilters', () => ({
 }));
 
 jest.mock('@shared/helpers', () => ({
-  handleInputFilter: () => <input data-testid="endpointName-filter" readOnly />, 
+  handleInputFilter: () => <input data-testid="endpointName-filter" readOnly />,
 }));
 
 jest.mock('@common/Tables/CustomTable', () => ({
@@ -42,13 +48,13 @@ jest.mock('@common/Tables/CustomTable', () => ({
       { 'data-testid': 'custom-table' },
       pagination
         ? ReactModule.createElement(
-          'button',
-          {
-            key: 'go-page-3',
-            onClick: () => pagination.setPage(3),
-          },
-          'go-page-3',
-        )
+            'button',
+            {
+              key: 'go-page-3',
+              onClick: () => pagination.setPage(3),
+            },
+            'go-page-3',
+          )
         : null,
       columns.map((column: any) =>
         ReactModule.createElement(
@@ -136,7 +142,9 @@ describe('EndpointHistoryPage', () => {
 
     render(<EndpointHistoryPage />);
 
-    expect(await screen.findByText('Failed to load history')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Failed to load history'),
+    ).toBeInTheDocument();
   });
 
   it('shows fallback error text when failure has no message', async () => {
@@ -144,7 +152,9 @@ describe('EndpointHistoryPage', () => {
 
     render(<EndpointHistoryPage />);
 
-    expect(await screen.findByText('Failed to load history')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Failed to load history'),
+    ).toBeInTheDocument();
   });
 
   it('navigates back when Go Back is clicked', async () => {
@@ -164,9 +174,10 @@ describe('EndpointHistoryPage', () => {
   it('shows loading state while awaiting history response', async () => {
     let resolveHistory: ((value: unknown) => void) | null = null;
     (dataEnrichmentJobApi.getJobHistory as jest.Mock).mockImplementationOnce(
-      () => new Promise((resolve) => {
-        resolveHistory = resolve;
-      }),
+      () =>
+        new Promise((resolve) => {
+          resolveHistory = resolve;
+        }),
     );
 
     render(<EndpointHistoryPage />);
@@ -207,9 +218,15 @@ describe('EndpointHistoryPage', () => {
     useStateSpy.mockImplementation((initial: unknown) => {
       if (seededState.length > 0) {
         const next = seededState.shift();
-        return [next, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+        return [next, jest.fn()] as [
+          unknown,
+          React.Dispatch<React.SetStateAction<unknown>>,
+        ];
       }
-      return originalUseState(initial as never) as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+      return originalUseState(initial as never) as [
+        unknown,
+        React.Dispatch<React.SetStateAction<unknown>>,
+      ];
     });
 
     try {
@@ -268,9 +285,15 @@ describe('EndpointHistoryPage', () => {
     useStateSpy.mockImplementation((initial: unknown) => {
       if (seededState.length > 0) {
         const next = seededState.shift();
-        return [next, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+        return [next, jest.fn()] as [
+          unknown,
+          React.Dispatch<React.SetStateAction<unknown>>,
+        ];
       }
-      return originalUseState(initial as never) as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+      return originalUseState(initial as never) as [
+        unknown,
+        React.Dispatch<React.SetStateAction<unknown>>,
+      ];
     });
 
     try {
@@ -317,12 +340,20 @@ describe('EndpointHistoryPage', () => {
     useStateSpy.mockImplementation((initial: unknown) => {
       if (seededState.length > 0) {
         const next = seededState.shift();
-        return [next, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+        return [next, jest.fn()] as [
+          unknown,
+          React.Dispatch<React.SetStateAction<unknown>>,
+        ];
       }
-      return originalUseState(initial as never) as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+      return originalUseState(initial as never) as [
+        unknown,
+        React.Dispatch<React.SetStateAction<unknown>>,
+      ];
     });
 
-    (navigator.clipboard.writeText as jest.Mock).mockRejectedValueOnce(new Error('copy blocked'));
+    (navigator.clipboard.writeText as jest.Mock).mockRejectedValueOnce(
+      new Error('copy blocked'),
+    );
 
     try {
       render(<EndpointHistoryPage />);
@@ -337,24 +368,20 @@ describe('EndpointHistoryPage', () => {
   it('renders No data branch when modal is open without active record', () => {
     const originalUseState = React.useState;
     const useStateSpy = jest.spyOn(React, 'useState');
-    const seededState = [
-      [],
-      false,
-      null,
-      1,
-      0,
-      {},
-      true,
-      null,
-      false,
-    ];
+    const seededState = [[], false, null, 1, 0, {}, true, null, false];
 
     useStateSpy.mockImplementation((initial: unknown) => {
       if (seededState.length > 0) {
         const next = seededState.shift();
-        return [next, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+        return [next, jest.fn()] as [
+          unknown,
+          React.Dispatch<React.SetStateAction<unknown>>,
+        ];
       }
-      return originalUseState(initial as never) as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+      return originalUseState(initial as never) as [
+        unknown,
+        React.Dispatch<React.SetStateAction<unknown>>,
+      ];
     });
 
     try {
@@ -390,7 +417,11 @@ describe('EndpointHistoryPage', () => {
     });
 
     // Wait for and click the view-details button (handles re-render timing)
-    const viewBtn = await screen.findByLabelText('view-details-job-abc', {}, { timeout: 8000 });
+    const viewBtn = await screen.findByLabelText(
+      'view-details-job-abc',
+      {},
+      { timeout: 8000 },
+    );
 
     await act(async () => {
       fireEvent.click(viewBtn);
@@ -443,9 +474,15 @@ describe('EndpointHistoryPage', () => {
       useStateSpy.mockImplementation((initial: unknown) => {
         if (seededState.length > 0) {
           const next = seededState.shift();
-          return [next, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+          return [next, jest.fn()] as [
+            unknown,
+            React.Dispatch<React.SetStateAction<unknown>>,
+          ];
         }
-        return originalUseState(initial as never) as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+        return originalUseState(initial as never) as [
+          unknown,
+          React.Dispatch<React.SetStateAction<unknown>>,
+        ];
       });
 
       const { unmount } = render(<EndpointHistoryPage />);
@@ -495,9 +532,15 @@ describe('EndpointHistoryPage', () => {
       useStateSpy.mockImplementation((initial: unknown) => {
         if (seededState.length > 0) {
           const next = seededState.shift();
-          return [next, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+          return [next, jest.fn()] as [
+            unknown,
+            React.Dispatch<React.SetStateAction<unknown>>,
+          ];
         }
-        return originalUseState(initial as never) as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+        return originalUseState(initial as never) as [
+          unknown,
+          React.Dispatch<React.SetStateAction<unknown>>,
+        ];
       });
 
       const { unmount } = render(<EndpointHistoryPage />);
@@ -539,9 +582,15 @@ describe('EndpointHistoryPage', () => {
     useStateSpy.mockImplementation((initial: unknown) => {
       if (seededState.length > 0) {
         const next = seededState.shift();
-        return [next, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+        return [next, jest.fn()] as [
+          unknown,
+          React.Dispatch<React.SetStateAction<unknown>>,
+        ];
       }
-      return originalUseState(initial as never) as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+      return originalUseState(initial as never) as [
+        unknown,
+        React.Dispatch<React.SetStateAction<unknown>>,
+      ];
     });
 
     try {
@@ -586,9 +635,15 @@ describe('EndpointHistoryPage', () => {
       useStateSpy.mockImplementation((initial: unknown) => {
         if (seededState.length > 0) {
           const next = seededState.shift();
-          return [next, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+          return [next, jest.fn()] as [
+            unknown,
+            React.Dispatch<React.SetStateAction<unknown>>,
+          ];
         }
-        return originalUseState(initial as never) as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+        return originalUseState(initial as never) as [
+          unknown,
+          React.Dispatch<React.SetStateAction<unknown>>,
+        ];
       });
 
       const { unmount } = render(<EndpointHistoryPage />);
@@ -639,9 +694,15 @@ describe('EndpointHistoryPage', () => {
       useStateSpy.mockImplementation((initial: unknown) => {
         if (seededState.length > 0) {
           const next = seededState.shift();
-          return [next, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+          return [next, jest.fn()] as [
+            unknown,
+            React.Dispatch<React.SetStateAction<unknown>>,
+          ];
         }
-        return originalUseState(initial as never) as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+        return originalUseState(initial as never) as [
+          unknown,
+          React.Dispatch<React.SetStateAction<unknown>>,
+        ];
       });
 
       const { unmount } = render(<EndpointHistoryPage />);
@@ -691,9 +752,15 @@ describe('EndpointHistoryPage', () => {
       useStateSpy.mockImplementation((initial: unknown) => {
         if (seededState.length > 0) {
           const next = seededState.shift();
-          return [next, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+          return [next, jest.fn()] as [
+            unknown,
+            React.Dispatch<React.SetStateAction<unknown>>,
+          ];
         }
-        return originalUseState(initial as never) as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+        return originalUseState(initial as never) as [
+          unknown,
+          React.Dispatch<React.SetStateAction<unknown>>,
+        ];
       });
 
       const { unmount } = render(<EndpointHistoryPage />);
@@ -735,9 +802,15 @@ describe('EndpointHistoryPage', () => {
     useStateSpy.mockImplementation((initial: unknown) => {
       if (seededState.length > 0) {
         const next = seededState.shift();
-        return [next, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+        return [next, jest.fn()] as [
+          unknown,
+          React.Dispatch<React.SetStateAction<unknown>>,
+        ];
       }
-      return originalUseState(initial as never) as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+      return originalUseState(initial as never) as [
+        unknown,
+        React.Dispatch<React.SetStateAction<unknown>>,
+      ];
     });
 
     try {
@@ -779,9 +852,15 @@ describe('EndpointHistoryPage', () => {
     useStateSpy.mockImplementation((initial: unknown) => {
       if (seededState.length > 0) {
         const next = seededState.shift();
-        return [next, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+        return [next, jest.fn()] as [
+          unknown,
+          React.Dispatch<React.SetStateAction<unknown>>,
+        ];
       }
-      return originalUseState(initial as never) as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+      return originalUseState(initial as never) as [
+        unknown,
+        React.Dispatch<React.SetStateAction<unknown>>,
+      ];
     });
 
     try {
@@ -825,9 +904,15 @@ describe('EndpointHistoryPage', () => {
     useStateSpy.mockImplementation((initial: unknown) => {
       if (seededState.length > 0) {
         const next = seededState.shift();
-        return [next, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+        return [next, jest.fn()] as [
+          unknown,
+          React.Dispatch<React.SetStateAction<unknown>>,
+        ];
       }
-      return originalUseState(initial as never) as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+      return originalUseState(initial as never) as [
+        unknown,
+        React.Dispatch<React.SetStateAction<unknown>>,
+      ];
     });
 
     try {
@@ -993,9 +1078,15 @@ describe('EndpointHistoryPage', () => {
     useStateSpy.mockImplementation((initial: unknown) => {
       if (seededState.length > 0) {
         const next = seededState.shift();
-        return [next, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+        return [next, jest.fn()] as [
+          unknown,
+          React.Dispatch<React.SetStateAction<unknown>>,
+        ];
       }
-      return originalUseState(initial as never) as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+      return originalUseState(initial as never) as [
+        unknown,
+        React.Dispatch<React.SetStateAction<unknown>>,
+      ];
     });
 
     try {
@@ -1043,9 +1134,15 @@ describe('EndpointHistoryPage', () => {
     useStateSpy.mockImplementation((initial: unknown) => {
       if (seededState.length > 0) {
         const next = seededState.shift();
-        return [next, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+        return [next, jest.fn()] as [
+          unknown,
+          React.Dispatch<React.SetStateAction<unknown>>,
+        ];
       }
-      return originalUseState(initial as never) as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+      return originalUseState(initial as never) as [
+        unknown,
+        React.Dispatch<React.SetStateAction<unknown>>,
+      ];
     });
 
     try {
@@ -1076,7 +1173,18 @@ describe('EndpointHistoryPage', () => {
     const originalUseState = React.useState;
     const useStateSpy = jest.spyOn(React, 'useState');
     const seededState: unknown[] = [
-      [{ job_id: 'job-no-status', endpoint_name: 'ep-blank', table_name: 'tbl', counts: 1, processed_counts: 0, created_at: null, exception: false, status: undefined }],
+      [
+        {
+          job_id: 'job-no-status',
+          endpoint_name: 'ep-blank',
+          table_name: 'tbl',
+          counts: 1,
+          processed_counts: 0,
+          created_at: null,
+          exception: false,
+          status: undefined,
+        },
+      ],
       false,
       null,
       1,
@@ -1084,17 +1192,32 @@ describe('EndpointHistoryPage', () => {
       0,
       10,
       {},
-      true,  // modalOpen
-      { job_id: 'job-no-status', endpoint_name: 'ep-blank', table_name: 'tbl', counts: 1, processed_counts: 0, created_at: null, exception: false, status: undefined },
+      true, // modalOpen
+      {
+        job_id: 'job-no-status',
+        endpoint_name: 'ep-blank',
+        table_name: 'tbl',
+        counts: 1,
+        processed_counts: 0,
+        created_at: null,
+        exception: false,
+        status: undefined,
+      },
       false,
     ];
 
     useStateSpy.mockImplementation((initial: unknown) => {
       if (seededState.length > 0) {
         const next = seededState.shift();
-        return [next, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+        return [next, jest.fn()] as [
+          unknown,
+          React.Dispatch<React.SetStateAction<unknown>>,
+        ];
       }
-      return originalUseState(initial as never) as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+      return originalUseState(initial as never) as [
+        unknown,
+        React.Dispatch<React.SetStateAction<unknown>>,
+      ];
     });
 
     try {
@@ -1127,7 +1250,18 @@ describe('EndpointHistoryPage', () => {
     const originalUseState = React.useState;
     const useStateSpy = jest.spyOn(React, 'useState');
     const seededState: unknown[] = [
-      [{ job_id: 'job-short-prefix', endpoint_name: 'ep-short', table_name: 'tbl', counts: 1, processed_counts: 0, created_at: '2024-06-01T00:00:00.000Z', exception: false, status: 'status_incomplete' }],
+      [
+        {
+          job_id: 'job-short-prefix',
+          endpoint_name: 'ep-short',
+          table_name: 'tbl',
+          counts: 1,
+          processed_counts: 0,
+          created_at: '2024-06-01T00:00:00.000Z',
+          exception: false,
+          status: 'status_incomplete',
+        },
+      ],
       false,
       null,
       1,
@@ -1136,16 +1270,31 @@ describe('EndpointHistoryPage', () => {
       10,
       {},
       true,
-      { job_id: 'job-short-prefix', endpoint_name: 'ep-short', table_name: 'tbl', counts: 1, processed_counts: 0, created_at: '2024-06-01T00:00:00.000Z', exception: false, status: 'status_incomplete' },
+      {
+        job_id: 'job-short-prefix',
+        endpoint_name: 'ep-short',
+        table_name: 'tbl',
+        counts: 1,
+        processed_counts: 0,
+        created_at: '2024-06-01T00:00:00.000Z',
+        exception: false,
+        status: 'status_incomplete',
+      },
       false,
     ];
 
     useStateSpy.mockImplementation((initial: unknown) => {
       if (seededState.length > 0) {
         const next = seededState.shift();
-        return [next, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+        return [next, jest.fn()] as [
+          unknown,
+          React.Dispatch<React.SetStateAction<unknown>>,
+        ];
       }
-      return originalUseState(initial as never) as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+      return originalUseState(initial as never) as [
+        unknown,
+        React.Dispatch<React.SetStateAction<unknown>>,
+      ];
     });
 
     try {
@@ -1182,7 +1331,11 @@ describe('EndpointHistoryPage', () => {
     });
 
     // Click view-details to open modal; modal calls getStatusBadge('status_incomplete')
-    const viewBtn = await screen.findByLabelText('view-details-job-short-status', {}, { timeout: 8000 });
+    const viewBtn = await screen.findByLabelText(
+      'view-details-job-short-status',
+      {},
+      { timeout: 8000 },
+    );
     await act(async () => {
       fireEvent.click(viewBtn);
     });
@@ -1224,7 +1377,10 @@ describe('EndpointHistoryPage', () => {
     const origUseLocation = reactRouter.useLocation;
     reactRouter.useLocation = () => ({ search: '' });
 
-    (dataEnrichmentJobApi.getJobHistory as jest.Mock).mockResolvedValue({ data: [], total: 0 });
+    (dataEnrichmentJobApi.getJobHistory as jest.Mock).mockResolvedValue({
+      data: [],
+      total: 0,
+    });
 
     try {
       render(<EndpointHistoryPage />);
@@ -1241,9 +1397,12 @@ describe('EndpointHistoryPage', () => {
     // Override UI_CONFIG to have undefined defaultPageSize → ?? 10 uses 10 (branch 1)
     const appConfig = jest.requireMock('@shared/config/app.config') as any;
     const origConfig = appConfig.UI_CONFIG;
-    appConfig.UI_CONFIG = { pagination: {} };  // defaultPageSize is undefined
+    appConfig.UI_CONFIG = { pagination: {} }; // defaultPageSize is undefined
 
-    (dataEnrichmentJobApi.getJobHistory as jest.Mock).mockResolvedValue({ data: [], total: 0 });
+    (dataEnrichmentJobApi.getJobHistory as jest.Mock).mockResolvedValue({
+      data: [],
+      total: 0,
+    });
 
     try {
       render(<EndpointHistoryPage />);
