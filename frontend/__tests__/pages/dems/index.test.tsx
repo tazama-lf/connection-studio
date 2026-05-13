@@ -1,5 +1,11 @@
 import React from 'react';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import DEMSModule from '../../../src/pages/dems';
 
 const mockNavigate = jest.fn();
@@ -28,19 +34,44 @@ jest.mock('../../../src/features/config/components/ConfigList', () => ({
     mockConfigListRender();
     return (
       <div>
-        <button type="button" onClick={() => { props.onViewDetails(sampleConfig); }}>
+        <button
+          type="button"
+          onClick={() => {
+            props.onViewDetails(sampleConfig);
+          }}
+        >
           View Details
         </button>
-        <button type="button" onClick={() => { props.onConfigEdit(sampleConfig); }}>
+        <button
+          type="button"
+          onClick={() => {
+            props.onConfigEdit(sampleConfig);
+          }}
+        >
           Edit Config
         </button>
-        <button type="button" onClick={() => { props.onConfigClone(sampleConfig); }}>
+        <button
+          type="button"
+          onClick={() => {
+            props.onConfigClone(sampleConfig);
+          }}
+        >
           Clone Config
         </button>
-        <button type="button" onClick={() => { props.onViewHistory(sampleConfig); }}>
+        <button
+          type="button"
+          onClick={() => {
+            props.onViewHistory(sampleConfig);
+          }}
+        >
           View History
         </button>
-        <button type="button" onClick={() => { props.onRefresh(); }}>
+        <button
+          type="button"
+          onClick={() => {
+            props.onRefresh();
+          }}
+        >
           Refresh List
         </button>
       </div>
@@ -48,19 +79,21 @@ jest.mock('../../../src/features/config/components/ConfigList', () => ({
   },
 }));
 
-jest.mock('../../../src/features/config/components/VersionHistoryModal', () => ({
-  __esModule: true,
-  default: ({ isOpen, onClose }: any) => (
-    isOpen ? (
-      <div>
-        <span>VersionHistoryModal</span>
-        <button type="button" onClick={onClose}>
-          Close Version History
-        </button>
-      </div>
-    ) : null
-  ),
-}));
+jest.mock(
+  '../../../src/features/config/components/VersionHistoryModal',
+  () => ({
+    __esModule: true,
+    default: ({ isOpen, onClose }: any) =>
+      isOpen ? (
+        <div>
+          <span>VersionHistoryModal</span>
+          <button type="button" onClick={onClose}>
+            Close Version History
+          </button>
+        </div>
+      ) : null,
+  }),
+);
 
 jest.mock('../../../src/shared/components/EditEndpointModal', () => ({
   __esModule: true,
@@ -93,7 +126,9 @@ jest.mock('../../../src/shared/components/FormFields', () => {
       <Controller
         name={name}
         control={control}
-        render={({ field }: any) => <input aria-label={label || name} {...field} />}
+        render={({ field }: any) => (
+          <input aria-label={label || name} {...field} />
+        )}
       />
     ),
     SelectField: ({ name, label, control, options = [], disabled }: any) => (
@@ -104,7 +139,9 @@ jest.mock('../../../src/shared/components/FormFields', () => {
           <select aria-label={label || name} {...field} disabled={disabled}>
             <option value="">Select</option>
             {(options || []).map((opt: any) => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
             ))}
           </select>
         )}
@@ -128,7 +165,9 @@ describe('pages/dems/index.tsx', () => {
   it('renders module heading and handles go back', () => {
     render(<DEMSModule />);
 
-    expect(screen.getByText('Dynamic Event Monitoring Service')).toBeInTheDocument();
+    expect(
+      screen.getByText('Dynamic Event Monitoring Service'),
+    ).toBeInTheDocument();
     fireEvent.click(screen.getByText('Go Back'));
     expect(mockNavigate).toHaveBeenCalledWith(-1);
   });
@@ -139,51 +178,44 @@ describe('pages/dems/index.tsx', () => {
     fireEvent.click(screen.getByRole('button', { name: 'View Details' }));
     expect(screen.getByText('EditEndpointModal')).toBeInTheDocument();
     expect(screen.getByText('ReadOnly: true')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Close Endpoint Modal' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Close Endpoint Modal' }),
+    );
 
     fireEvent.click(screen.getByRole('button', { name: 'Edit Config' }));
     expect(screen.getByText('Endpoint: 42')).toBeInTheDocument();
     expect(screen.getByText('ReadOnly: false')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Endpoint Success' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Close Endpoint Modal' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Close Endpoint Modal' }),
+    );
 
     fireEvent.click(screen.getByRole('button', { name: 'Clone Config' }));
     expect(screen.getByText('CloneMode: true')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Close Endpoint Modal' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Close Endpoint Modal' }),
+    );
 
     fireEvent.click(screen.getByRole('button', { name: 'View History' }));
     expect(screen.getByText('VersionHistoryModal')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Close Version History' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Close Version History' }),
+    );
     expect(screen.queryByText('VersionHistoryModal')).not.toBeInTheDocument();
 
     const renderCallsBeforeRefresh = mockConfigListRender.mock.calls.length;
     fireEvent.click(screen.getByRole('button', { name: 'Refresh List' }));
-    expect(mockConfigListRender.mock.calls.length).toBeGreaterThan(renderCallsBeforeRefresh);
+    expect(mockConfigListRender.mock.calls.length).toBeGreaterThan(
+      renderCallsBeforeRefresh,
+    );
   });
 
   it('opens Create New Connection (handleAddNew)', () => {
     render(<DEMSModule />);
-    fireEvent.click(screen.getByRole('button', { name: 'Create New Connection' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Create New Connection' }),
+    );
     expect(screen.getByText('EditEndpointModal')).toBeInTheDocument();
     expect(screen.getByText('Endpoint: -1')).toBeInTheDocument();
   });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 });
