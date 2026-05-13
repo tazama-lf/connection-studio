@@ -8,22 +8,25 @@ const HTTP_UNAUTHORIZED = 401;
 const HTTP_FORBIDDEN = 403;
 const HTTP_SERVER_ERROR_MIN = 500;
 const MIN_NAME_LENGTH = 2;
+const MAX_NAME_LENGTH = 50;
+const MIN_ITERATIONS = 1;
+const MAX_ITERATIONS = 1000;
 
-const isResponseError = (error: unknown): error is { response: { status: number; data?: { message?: string } } } => (
+const isResponseError = (
+  error: unknown,
+): error is { response: { status: number; data?: { message?: string } } } =>
   typeof error === 'object' &&
   error !== null &&
   'response' in error &&
   typeof (error as { response?: unknown }).response === 'object' &&
   (error as { response?: unknown }).response !== null &&
-  'status' in ((error as { response: unknown }).response as object)
-);
+  'status' in ((error as { response: unknown }).response as object);
 
-const hasMessage = (error: unknown): error is { message: string } => (
+const hasMessage = (error: unknown): error is { message: string } =>
   typeof error === 'object' &&
   error !== null &&
   'message' in error &&
-  typeof (error as { message?: unknown }).message === 'string'
-);
+  typeof (error as { message?: unknown }).message === 'string';
 
 const getStatusErrorMessage = (status: number): string | null => {
   if (status === HTTP_BAD_REQUEST) {
@@ -62,7 +65,9 @@ export const getCronJobErrorMessage = (error: unknown): string => {
   return CRON_JOB_ERROR_MESSAGES.GENERAL;
 };
 
-export const formatScheduleForEdit = (schedule: ScheduleResponse): {
+export const formatScheduleForEdit = (
+  schedule: ScheduleResponse,
+): {
   id: string;
   name: string;
   cronExpression: string;
@@ -88,8 +93,14 @@ export const validationSchema = yup.object().shape({
   name: yup
     .string()
     .required('Job name is required')
-    .min(MIN_NAME_LENGTH, `Job name must be at least ${MIN_NAME_LENGTH} characters`)
-    .max(50, 'Job name must not exceed 50 characters'),
+    .min(
+      MIN_NAME_LENGTH,
+      `Job name must be at least ${MIN_NAME_LENGTH} characters`,
+    )
+    .max(
+      MAX_NAME_LENGTH,
+      `Job name must not exceed ${MAX_NAME_LENGTH} characters`,
+    ),
   cronExpression: yup.string().required('Cron expression is required'),
   iterations: yup
     .number()
@@ -104,7 +115,7 @@ export const validationSchema = yup.object().shape({
       return value;
     })
     .required('Iterations is required')
-    .min(1, 'Iterations must be at least 1')
-    .max(1000, 'Iterations must not exceed 1000')
+    .min(MIN_ITERATIONS, `Iterations must be at least ${MIN_ITERATIONS}`)
+    .max(MAX_ITERATIONS, `Iterations must not exceed ${MAX_ITERATIONS}`)
     .integer('Iterations must be a whole number'),
 });

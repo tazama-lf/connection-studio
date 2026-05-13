@@ -4,7 +4,6 @@ import { SftpError } from '../../features/exporter/services/sftpApi';
  * Utility functions for handling and displaying user-friendly error messages
  */
 
-
 const HTTP_STATUS_BAD_REQUEST = 400;
 const HTTP_STATUS_UNAUTHORIZED = 401;
 const HTTP_STATUS_FORBIDDEN = 403;
@@ -13,7 +12,6 @@ const HTTP_STATUS_CONFLICT = 409;
 const HTTP_STATUS_TOO_MANY_REQUESTS = 429;
 const HTTP_STATUS_SERVER_ERROR = 500;
 const MAX_USER_FRIENDLY_MESSAGE_LENGTH = 100;
-
 
 interface ErrorResponse {
   status?: number;
@@ -28,10 +26,7 @@ interface ErrorConfig {
   method?: string;
 }
 
-
-const isString = (value: unknown): value is string =>
-  typeof value === 'string';
-
+const isString = (value: unknown): value is string => typeof value === 'string';
 
 const hasMessage = (error: unknown): error is { message: string } =>
   typeof error === 'object' &&
@@ -39,13 +34,11 @@ const hasMessage = (error: unknown): error is { message: string } =>
   'message' in error &&
   isString((error as { message: unknown }).message);
 
-
 const hasResponse = (error: unknown): error is { response: ErrorResponse } =>
   typeof error === 'object' &&
   error !== null &&
   'response' in error &&
   typeof (error as { response: unknown }).response === 'object';
-
 
 const getErrorStatus = (error: unknown): number | undefined => {
   if (hasResponse(error)) {
@@ -53,7 +46,6 @@ const getErrorStatus = (error: unknown): number | undefined => {
   }
   return undefined;
 };
-
 
 const getErrorCode = (error: unknown): string | undefined => {
   if (
@@ -66,7 +58,6 @@ const getErrorCode = (error: unknown): string | undefined => {
   }
   return undefined;
 };
-
 
 const handleSftpError = (error: unknown): string | null => {
   if (error instanceof SftpError) {
@@ -84,7 +75,6 @@ const handleSftpError = (error: unknown): string | null => {
   return null;
 };
 
-
 const handleFileCorruptionError = (error: unknown): string | null => {
   if (hasMessage(error)) {
     const corruptionMessage = 'File or its integrity file not found';
@@ -98,7 +88,6 @@ const handleFileCorruptionError = (error: unknown): string | null => {
   return null;
 };
 
-
 const handleNetworkError = (error: unknown): string | null => {
   const code = getErrorCode(error);
   if (code === 'NETWORK_ERROR') {
@@ -109,7 +98,6 @@ const handleNetworkError = (error: unknown): string | null => {
   }
   return null;
 };
-
 
 const handleTimeoutError = (error: unknown): string | null => {
   const code = getErrorCode(error);
@@ -122,26 +110,28 @@ const handleTimeoutError = (error: unknown): string | null => {
   return null;
 };
 
+const HTTP_STATUS_MESSAGE_MAP: Record<number, string> = {
+  [HTTP_STATUS_UNAUTHORIZED]:
+    'You do not have permission to perform this action. Please contact your administrator.',
+  [HTTP_STATUS_FORBIDDEN]:
+    'You do not have permission to perform this action. Please contact your administrator.',
+  [HTTP_STATUS_NOT_FOUND]:
+    'The requested resource was not found. It may have been deleted or moved.',
+  [HTTP_STATUS_CONFLICT]:
+    'This action cannot be completed due to a conflict. The resource may have been modified by someone else.',
+  [HTTP_STATUS_TOO_MANY_REQUESTS]:
+    'Too many requests. Please wait a moment and try again.',
+};
+
 const handleHttpStatusError = (error: unknown): string | null => {
   const status = getErrorStatus(error);
   if (status === undefined) {
     return null;
   }
 
-  if (status === HTTP_STATUS_UNAUTHORIZED || status === HTTP_STATUS_FORBIDDEN) {
-    return 'You do not have permission to perform this action. Please contact your administrator.';
-  }
-
-  if (status === HTTP_STATUS_NOT_FOUND) {
-    return 'The requested resource was not found. It may have been deleted or moved.';
-  }
-
-  if (status === HTTP_STATUS_CONFLICT) {
-    return 'This action cannot be completed due to a conflict. The resource may have been modified by someone else.';
-  }
-
-  if (status === HTTP_STATUS_TOO_MANY_REQUESTS) {
-    return 'Too many requests. Please wait a moment and try again.';
+  const directMatch = HTTP_STATUS_MESSAGE_MAP[status];
+  if (directMatch) {
+    return directMatch;
   }
 
   if (status >= HTTP_STATUS_SERVER_ERROR) {
@@ -151,6 +141,64 @@ const handleHttpStatusError = (error: unknown): string | null => {
   return null;
 };
 
+interface ValidationPattern {
+  keywords: string[];
+  matchAll: boolean;
+  result: string;
+}
+
+const VALIDATION_PATTERNS: ValidationPattern[] = [
+  {
+    keywords: ['should not exist', 'id'],
+    matchAll: true,
+    result: 'Unable to save changes. Please refresh the page and try again.',
+  },
+  {
+    keywords: ['schedule_id', 'should not be empty'],
+    matchAll: true,
+    result:
+      'A schedule must be selected for this job. Please choose a schedule and try again.',
+  },
+  {
+    keywords: ['schedule_id', 'must be a UUID'],
+    matchAll: true,
+    result:
+      'Invalid schedule selected. Please choose a valid schedule and try again.',
+  },
+  {
+    keywords: ['endpoint_name', 'required'],
+    matchAll: true,
+    result:
+      'Endpoint name is required. Please provide a name for the endpoint.',
+  },
+  {
+    keywords: ['table_name', 'required'],
+    matchAll: true,
+    result: 'Table name is required. Please specify a table name.',
+  },
+  {
+    keywords: ['connection', 'url'],
+    matchAll: false,
+    result:
+      'Connection details are invalid. Please check the URL and connection settings.',
+  },
+  {
+    keywords: ['file', 'path'],
+    matchAll: false,
+    result:
+      'File configuration is invalid. Please check the file path and settings.',
+  },
+];
+
+const matchValidationPattern = (message: string): string | null => {
+  for (const pattern of VALIDATION_PATTERNS) {
+    const matches = pattern.matchAll
+      ? pattern.keywords.every((k) => message.includes(k))
+      : pattern.keywords.some((k) => message.includes(k));
+    if (matches) return pattern.result;
+  }
+  return null;
+};
 
 const handleValidationError = (error: unknown): string | null => {
   const status = getErrorStatus(error);
@@ -163,33 +211,8 @@ const handleValidationError = (error: unknown): string | null => {
     return null;
   }
 
-  if (message.includes('should not exist') && message.includes('id')) {
-    return 'Unable to save changes. Please refresh the page and try again.';
-  }
-
-  if (message.includes('schedule_id') && message.includes('should not be empty')) {
-    return 'A schedule must be selected for this job. Please choose a schedule and try again.';
-  }
-
-  if (message.includes('schedule_id') && message.includes('must be a UUID')) {
-    return 'Invalid schedule selected. Please choose a valid schedule and try again.';
-  }
-
-  if (message.includes('endpoint_name') && message.includes('required')) {
-    return 'Endpoint name is required. Please provide a name for the endpoint.';
-  }
-
-  if (message.includes('table_name') && message.includes('required')) {
-    return 'Table name is required. Please specify a table name.';
-  }
-
-  if (message.includes('connection') || message.includes('url')) {
-    return 'Connection details are invalid. Please check the URL and connection settings.';
-  }
-
-  if (message.includes('file') || message.includes('path')) {
-    return 'File configuration is invalid. Please check the file path and settings.';
-  }
+  const patternMatch = matchValidationPattern(message);
+  if (patternMatch) return patternMatch;
 
   if (
     message.length < MAX_USER_FRIENDLY_MESSAGE_LENGTH &&
@@ -200,7 +223,6 @@ const handleValidationError = (error: unknown): string | null => {
 
   return null;
 };
-
 
 const getOperationFallbackMessage = (operation: string): string => {
   switch (operation.toLowerCase()) {
@@ -237,7 +259,6 @@ export const getUserFriendlyErrorMessage = (
   error: unknown,
   operation = 'operation',
 ): string => {
-
   const handlers = [
     handleSftpError,
     handleFileCorruptionError,
@@ -254,7 +275,6 @@ export const getUserFriendlyErrorMessage = (
     }
   }
 
-
   return getOperationFallbackMessage(operation);
 };
 
@@ -263,7 +283,9 @@ export const getUserFriendlyErrorMessage = (
  * @param error - The error object
  * @returns An object with error details for logging
  */
-export const getErrorDetails = (error: unknown): {
+export const getErrorDetails = (
+  error: unknown,
+): {
   message: string;
   status?: number;
   statusText?: string;
@@ -275,10 +297,10 @@ export const getErrorDetails = (error: unknown): {
   const status = getErrorStatus(error);
   const statusText = hasResponse(error) ? error.response.statusText : undefined;
   const data = hasResponse(error) ? error.response.data : undefined;
-  
+
   let url: string | undefined;
   let method: string | undefined;
-  
+
   if (
     typeof error === 'object' &&
     error !== null &&
@@ -287,10 +309,9 @@ export const getErrorDetails = (error: unknown): {
     (error as { config: unknown }).config !== null
   ) {
     const { config } = error as { config: ErrorConfig };
-    url = config.url;
-    method = config.method;
+    ({ url, method } = config);
   }
-  
+
   return {
     message,
     status,

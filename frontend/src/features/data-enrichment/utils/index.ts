@@ -7,7 +7,7 @@ import type {
   HttpConnection,
   SftpConnection,
   FileConfig,
-  ErrorWithResponse
+  ErrorWithResponse,
 } from '../types';
 import {
   DATA_ENRICHMENT_ERROR_MESSAGES,
@@ -18,22 +18,47 @@ import {
 const DEFAULT_SFTP_PORT = 22;
 const FOCUS_DELAY_MS = 300;
 
-export const buildPushPayload = (formValues: Record<string, unknown>): Partial<CreatePushJobDto> => ({
+const HTTP_BAD_REQUEST = 400;
+const HTTP_CONFLICT = 409;
+const HTTP_UNAUTHORIZED = 401;
+const HTTP_FORBIDDEN = 403;
+const HTTP_SERVER_ERROR_MIN = 500;
+
+const MIN_ENDPOINT_NAME_LENGTH = 2;
+const MAX_ENDPOINT_NAME_LENGTH = 100;
+const MIN_DESCRIPTION_LENGTH = 10;
+const MAX_DESCRIPTION_LENGTH = 500;
+const MIN_PORT = 1;
+const MAX_PORT = 65535;
+const JSON_INDENT = 2;
+const ITERATION_SINGLE = 1;
+
+export const buildPushPayload = (
+  formValues: Record<string, unknown>,
+): Partial<CreatePushJobDto> => ({
   endpoint_name: (formValues.name as string | undefined) ?? undefined,
   path: (formValues.endpointPath as string | undefined) ?? undefined,
   description: (formValues.description as string | undefined) ?? undefined,
   table_name: (formValues.targetTable as string | undefined) ?? undefined,
   mode: formValues.ingestMode as 'append' | 'replace',
   version:
-    (formValues.version as string | undefined)?.replace(/^v?\/*/g, '').replace(/\/+$/g, '') ?? undefined,
+    (formValues.version as string | undefined)
+      ?.replace(/^v?\/*/g, '')
+      .replace(/\/+$/g, '') ?? undefined,
 });
 
-const buildHttpConnection = (formValues: Record<string, unknown>): HttpConnection => ({
+const buildHttpConnection = (
+  formValues: Record<string, unknown>,
+): HttpConnection => ({
   url: formValues.url as string,
-  headers: formValues.headers ? (JSON.parse(formValues.headers as string) as Record<string, string>) : {},
+  headers: formValues.headers
+    ? (JSON.parse(formValues.headers as string) as Record<string, string>)
+    : {},
 });
 
-const buildSftpConnection = (formValues: Record<string, unknown>): SftpConnection => ({
+const buildSftpConnection = (
+  formValues: Record<string, unknown>,
+): SftpConnection => ({
   host: formValues.host as string,
   port: Number(formValues.port as string | number) || DEFAULT_SFTP_PORT,
   auth_type:
@@ -45,15 +70,22 @@ const buildSftpConnection = (formValues: Record<string, unknown>): SftpConnectio
 });
 
 const buildFileConfig = (formValues: Record<string, unknown>): FileConfig => ({
-  path: ((formValues.pathPattern as string | undefined) ?? '/data.csv').replace(/^\/+/g, ''),
-  file_type: ((formValues.fileFormat as string | undefined)?.toUpperCase() ?? 'CSV') as FileType,
+  path: ((formValues.pathPattern as string | undefined) ?? '/data.csv').replace(
+    /^\/+/g,
+    '',
+  ),
+  file_type: ((formValues.fileFormat as string | undefined)?.toUpperCase() ??
+    'CSV') as FileType,
   delimiter: (formValues.delimiter as string | undefined) ?? ',',
 });
 
-export const buildPullPayload = (formValues: Record<string, unknown>): Partial<CreatePullJobDto> => {
+export const buildPullPayload = (
+  formValues: Record<string, unknown>,
+): Partial<CreatePullJobDto> => {
   const base = {
     endpoint_name: (formValues.name as string | undefined) ?? undefined,
-    source_type: (formValues.sourceType as string | undefined)?.toUpperCase() ?? undefined,
+    source_type:
+      (formValues.sourceType as string | undefined)?.toUpperCase() ?? undefined,
     description: (formValues.description as string | undefined) ?? undefined,
     table_name: (formValues.targetTable as string | undefined) ?? undefined,
     mode: formValues.ingestMode as 'append' | 'replace',
@@ -100,9 +132,7 @@ export const generateEndpointUrl = (
 };
 
 export const scrollToFirstError = (fieldName: string): void => {
-  const errorElement = document.querySelector(
-    `[name="${fieldName}"]`,
-  );
+  const errorElement = document.querySelector(`[name="${fieldName}"]`);
   if (errorElement) {
     const modalContent =
       errorElement.closest('.MuiDialog-paper') ??
@@ -132,14 +162,15 @@ export const scrollToFirstError = (fieldName: string): void => {
 export const getJobType = (job: DataEnrichmentJobResponse): 'push' | 'pull' => {
   if (
     job.type &&
-    (job.type.toLowerCase() === 'push' ||
-    job.type.toLowerCase() === 'pull')
+    (job.type.toLowerCase() === 'push' || job.type.toLowerCase() === 'pull')
   ) {
     return job.type.toLowerCase() as 'push' | 'pull';
   }
   return job.path && !job.source_type ? 'push' : 'pull';
 };
-export const formatDateStructured = (dateString: string | undefined): string => {
+export const formatDateStructured = (
+  dateString: string | undefined,
+): string => {
   if (!dateString) return 'N/A';
   return new Date(dateString).toLocaleString('en-US', {
     year: 'numeric',
@@ -163,7 +194,10 @@ export const determineSourceType = (
   if (job.connection) {
     if (typeof job.connection === 'string') {
       try {
-        const connectionObj = JSON.parse(job.connection) as Record<string, unknown>;
+        const connectionObj = JSON.parse(job.connection) as Record<
+          string,
+          unknown
+        >;
         if ('host' in connectionObj && connectionObj.host) {
           return 'SFTP';
         } else if ('url' in connectionObj && connectionObj.url) {
@@ -182,24 +216,42 @@ export const determineSourceType = (
   return 'HTTP';
 };
 
+const DE_STATUS_ERROR_MAP: Record<number, string> = {
+  [HTTP_BAD_REQUEST]: DATA_ENRICHMENT_ERROR_MESSAGES.INVALID_INPUT,
+  [HTTP_CONFLICT]: DATA_ENRICHMENT_ERROR_MESSAGES.DUPLICATE_NAME,
+  [HTTP_UNAUTHORIZED]: DATA_ENRICHMENT_ERROR_MESSAGES.UNAUTHORIZED,
+  [HTTP_FORBIDDEN]: DATA_ENRICHMENT_ERROR_MESSAGES.UNAUTHORIZED,
+};
+
+const getResponseStatusMessage = (err: ErrorWithResponse): string | null => {
+  const status = err.response?.status;
+  if (status === undefined) return null;
+
+  const directMatch = DE_STATUS_ERROR_MAP[status];
+  if (directMatch) return directMatch;
+
+  if (status >= HTTP_SERVER_ERROR_MIN) {
+    return DATA_ENRICHMENT_ERROR_MESSAGES.SERVER_ERROR;
+  }
+  return null;
+};
+
+const getResponseDataMessage = (err: ErrorWithResponse): string | null => {
+  if (err.response?.data?.message) {
+    const { message } = err.response.data;
+    return Array.isArray(message) ? message.join(', ') : message;
+  }
+  if (err.response?.data?.error) {
+    return err.response.data.error;
+  }
+  return null;
+};
+
 export const getDataEnrichmentErrorMessage = (error: unknown): string => {
   const err = error as ErrorWithResponse;
 
-  if (err.response?.status === 400) {
-    return DATA_ENRICHMENT_ERROR_MESSAGES.INVALID_INPUT;
-  }
-
-  if (err.response?.status === 409) {
-    return DATA_ENRICHMENT_ERROR_MESSAGES.DUPLICATE_NAME;
-  }
-
-  if (err.response?.status === 401 || err.response?.status === 403) {
-    return DATA_ENRICHMENT_ERROR_MESSAGES.UNAUTHORIZED;
-  }
-
-  if (err.response?.status !== undefined && err.response.status >= 500) {
-    return DATA_ENRICHMENT_ERROR_MESSAGES.SERVER_ERROR;
-  }
+  const statusMessage = getResponseStatusMessage(err);
+  if (statusMessage) return statusMessage;
 
   const message = err.message ?? '';
   if (message.includes('fetch') || message.includes('network')) {
@@ -210,21 +262,10 @@ export const getDataEnrichmentErrorMessage = (error: unknown): string => {
     return DATA_ENRICHMENT_ERROR_MESSAGES.SCHEDULE_DEPLOYED;
   }
 
-  if (err.response?.data?.message) {
-    const { message } = err.response.data;
-    if (Array.isArray(message)) {
-      return message.join(', ');
-    }
-    return message;
-  }
+  const dataMessage = getResponseDataMessage(err);
+  if (dataMessage) return dataMessage;
 
-  if (err.response?.data?.error) {
-    return err.response.data.error;
-  }
-
-  if (err.message) {
-    return err.message;
-  }
+  if (err.message) return err.message;
 
   return DATA_ENRICHMENT_ERROR_MESSAGES.GENERAL;
 };
@@ -294,7 +335,7 @@ export const validateFileFormat = (
 
   const allowedFormats =
     FILE_EXTENSION_FORMAT_MAP[
-    fileExtension as keyof typeof FILE_EXTENSION_FORMAT_MAP
+      fileExtension as keyof typeof FILE_EXTENSION_FORMAT_MAP
     ];
 
   if (!(allowedFormats as readonly string[]).includes(fileType)) {
@@ -312,13 +353,25 @@ export const baseJobValidationSchema = yup.object().shape({
   endpoint_name: yup
     .string()
     .required('Endpoint name is required')
-    .min(2, 'Endpoint name must be at least 2 characters')
-    .max(100, 'Endpoint name must not exceed 100 characters'),
+    .min(
+      MIN_ENDPOINT_NAME_LENGTH,
+      `Endpoint name must be at least ${MIN_ENDPOINT_NAME_LENGTH} characters`,
+    )
+    .max(
+      MAX_ENDPOINT_NAME_LENGTH,
+      `Endpoint name must not exceed ${MAX_ENDPOINT_NAME_LENGTH} characters`,
+    ),
   description: yup
     .string()
     .required('Description is required')
-    .min(10, 'Description must be at least 10 characters')
-    .max(500, 'Description must not exceed 500 characters'),
+    .min(
+      MIN_DESCRIPTION_LENGTH,
+      `Description must be at least ${MIN_DESCRIPTION_LENGTH} characters`,
+    )
+    .max(
+      MAX_DESCRIPTION_LENGTH,
+      `Description must not exceed ${MAX_DESCRIPTION_LENGTH} characters`,
+    ),
   table_name: yup
     .string()
     .required('Table name is required')
@@ -345,8 +398,8 @@ export const sftpJobValidationSchema = baseJobValidationSchema.shape({
     port: yup
       .number()
       .required('Port is required')
-      .min(1, 'Port must be between 1 and 65535')
-      .max(65535, 'Port must be between 1 and 65535'),
+      .min(MIN_PORT, `Port must be between ${MIN_PORT} and ${MAX_PORT}`)
+      .max(MAX_PORT, `Port must be between ${MIN_PORT} and ${MAX_PORT}`),
     auth_type: yup
       .string()
       .oneOf(['USERNAME_PASSWORD', 'PRIVATE_KEY'])
@@ -379,13 +432,25 @@ export const pushJobValidationSchema = yup.object().shape({
   endpoint_name: yup
     .string()
     .required('Endpoint name is required')
-    .min(2, 'Endpoint name must be at least 2 characters')
-    .max(100, 'Endpoint name must not exceed 100 characters'),
+    .min(
+      MIN_ENDPOINT_NAME_LENGTH,
+      `Endpoint name must be at least ${MIN_ENDPOINT_NAME_LENGTH} characters`,
+    )
+    .max(
+      MAX_ENDPOINT_NAME_LENGTH,
+      `Endpoint name must not exceed ${MAX_ENDPOINT_NAME_LENGTH} characters`,
+    ),
   description: yup
     .string()
     .required('Description is required')
-    .min(10, 'Description must be at least 10 characters')
-    .max(500, 'Description must not exceed 500 characters'),
+    .min(
+      MIN_DESCRIPTION_LENGTH,
+      `Description must be at least ${MIN_DESCRIPTION_LENGTH} characters`,
+    )
+    .max(
+      MAX_DESCRIPTION_LENGTH,
+      `Description must not exceed ${MAX_DESCRIPTION_LENGTH} characters`,
+    ),
   table_name: yup
     .string()
     .required('Table name is required')
@@ -397,7 +462,8 @@ export const pushJobValidationSchema = yup.object().shape({
   version: yup.string().required('Version is required'),
 });
 
-export const getIterationText = (count: number): string => count === 1 ? '1 iteration' : `${count} iterations`;
+export const getIterationText = (count: number): string =>
+  count === ITERATION_SINGLE ? '1 iteration' : `${count} iterations`;
 
 export const generateVersionedTableName = (
   originalTableName: string,
@@ -406,7 +472,9 @@ export const generateVersionedTableName = (
   return `${originalTableName}${versionSuffix}`;
 };
 
-export const getConnectionType = (job: DataEnrichmentJobResponse): 'HTTP' | 'SFTP' | null => {
+export const getConnectionType = (
+  job: DataEnrichmentJobResponse,
+): 'HTTP' | 'SFTP' | null => {
   if (job.source_type) {
     return job.source_type as 'HTTP' | 'SFTP';
   }
@@ -414,7 +482,10 @@ export const getConnectionType = (job: DataEnrichmentJobResponse): 'HTTP' | 'SFT
   if (job.connection && typeof job.connection === 'object') {
     if (typeof job.connection === 'string') {
       try {
-        const connectionObj = JSON.parse(job.connection) as Record<string, unknown>;
+        const connectionObj = JSON.parse(job.connection) as Record<
+          string,
+          unknown
+        >;
         if ('host' in connectionObj && connectionObj.host) {
           return 'SFTP';
         } else if ('url' in connectionObj && connectionObj.url) {
@@ -436,9 +507,9 @@ export const getConnectionType = (job: DataEnrichmentJobResponse): 'HTTP' | 'SFT
 export const formatJSON = (obj: unknown): string => {
   try {
     if (typeof obj === 'string') {
-      return JSON.stringify(JSON.parse(obj), null, 2);
+      return JSON.stringify(JSON.parse(obj), null, JSON_INDENT);
     }
-    return JSON.stringify(obj, null, 2);
+    return JSON.stringify(obj, null, JSON_INDENT);
   } catch {
     return typeof obj === 'string' ? obj : JSON.stringify(obj);
   }
