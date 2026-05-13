@@ -50,6 +50,12 @@ export interface SftpFileContent {
 
 export type SftpFormat = 'de' | 'cron' | 'dems';
 
+const HTTP_UNAUTHORIZED = 401;
+const HTTP_NOT_FOUND = 404;
+const JSON_EXT_LENGTH = -5;
+const STRING_START = 0;
+const UUID_CAPTURE_INDEX = 1;
+
 export class SftpApiService {
   private readonly baseURL: string;
 
@@ -72,7 +78,7 @@ export class SftpApiService {
   ): Promise<T> {
     const authHeaders = SftpApiService.getAuthHeaders();
     const requestHeaders = new Headers(authHeaders);
-    
+
     // Merge additional headers if provided
     if (options.headers) {
       const additionalHeaders = new Headers(options.headers);
@@ -86,13 +92,15 @@ export class SftpApiService {
       headers: requestHeaders,
     });
 
-    if (response.status === 401) {
+    if (response.status === HTTP_UNAUTHORIZED) {
       localStorage.removeItem('authToken');
       throw new Error('Authentication failed');
     }
 
     if (!response.ok) {
-      const errorData = (await response.json().catch(() => ({}))) as { message?: string };
+      const errorData = (await response.json().catch(() => ({}))) as {
+        message?: string;
+      };
       throw new Error(
         errorData.message ?? `HTTP error! status: ${response.status}`,
       );
@@ -102,13 +110,15 @@ export class SftpApiService {
   }
 
   private static async handleResponse<T>(response: Response): Promise<T> {
-    if (response.status === 401) {
+    if (response.status === HTTP_UNAUTHORIZED) {
       localStorage.removeItem('authToken');
       throw new SftpError('Unauthorized - please log in again', 'UNAUTHORIZED');
     }
 
     if (!response.ok) {
-      const errorData = (await response.json().catch(() => ({}))) as { message?: string };
+      const errorData = (await response.json().catch(() => ({}))) as {
+        message?: string;
+      };
 
       if (
         errorData.message === 'File or its integrity file not found' ||
@@ -121,7 +131,7 @@ export class SftpApiService {
         );
       }
 
-      if (response.status === 404) {
+      if (response.status === HTTP_NOT_FOUND) {
         throw new SftpError('File not found', 'NOT_FOUND', errorData);
       }
 
@@ -136,20 +146,19 @@ export class SftpApiService {
   }
 
   async getAllFiles(format: SftpFormat): Promise<SftpFileInfo[]> {
-    const response = await fetch(
-      `${this.baseURL}/sftp/all?format=${format}`,
-      {
-        method: 'GET',
-        headers: SftpApiService.getAuthHeaders(),
-      },
-    );
+    const response = await fetch(`${this.baseURL}/sftp/all?format=${format}`, {
+      method: 'GET',
+      headers: SftpApiService.getAuthHeaders(),
+    });
 
     const files = await SftpApiService.handleResponse<SftpFileInfo[]>(response);
     return files;
   }
 
   async readFile(name: string): Promise<SftpFileContent> {
-    const fileName = name.endsWith('.json') ? name.slice(0, -5) : name;
+    const fileName = name.endsWith('.json')
+      ? name.slice(STRING_START, JSON_EXT_LENGTH)
+      : name;
 
     const response = await fetch(
       `${this.baseURL}/sftp/read?name=${encodeURIComponent(fileName)}`,
@@ -159,14 +168,15 @@ export class SftpApiService {
       },
     );
 
-    const content = await SftpApiService.handleResponse<SftpFileContent>(response);
+    const content =
+      await SftpApiService.handleResponse<SftpFileContent>(response);
     return content;
   }
 
   static extractIdFromFilename(filename: string): string | null {
     const UUID_PATTERN = /_(?<uuid>[\w-]{36})\.json$/;
     const match = UUID_PATTERN.exec(filename);
-    return match?.[1] ?? null;
+    return match?.[UUID_CAPTURE_INDEX] ?? null;
   }
 
   static extractFormatFromFilename(filename: string): SftpFormat | null {
