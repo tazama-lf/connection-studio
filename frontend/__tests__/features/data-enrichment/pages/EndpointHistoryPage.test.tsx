@@ -368,17 +368,7 @@ describe('EndpointHistoryPage', () => {
   it('renders No data branch when modal is open without active record', () => {
     const originalUseState = React.useState;
     const useStateSpy = jest.spyOn(React, 'useState');
-    const seededState = [
-      [],
-      false,
-      null,
-      1,
-      0,
-      {},
-      true,
-      null,
-      false,
-    ];
+    const seededState = [[], false, null, 1, 0, {}, true, null, false];
 
     useStateSpy.mockImplementation((initial: unknown) => {
       if (seededState.length > 0) {
