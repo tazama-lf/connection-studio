@@ -6,29 +6,26 @@ interface DropdownMenuWithAutoDirectionProps {
   forceDirection?: 'top' | 'bottom' | 'auto';
 }
 
-export const DropdownMenuWithAutoDirection: React.FC<DropdownMenuWithAutoDirectionProps> = ({ 
-  children, 
-  onClose, 
-  forceDirection = 'auto' 
+export const DropdownMenuWithAutoDirection: React.FC<DropdownMenuWithAutoDirectionProps> = ({
+  children,
+  onClose,
+  forceDirection = 'auto'
 }) => {
   const menuRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState<'top' | 'bottom'>('bottom');
 
   useEffect(() => {
-    // If forceDirection is specified and not 'auto', use it directly
     if (forceDirection !== 'auto') {
       setPosition(forceDirection);
       return;
     }
 
-    // Check available space and set position
     if (menuRef.current) {
       const rect = menuRef.current.getBoundingClientRect();
       const viewportHeight = window.innerHeight;
       const spaceBelow = viewportHeight - rect.bottom;
       const spaceAbove = rect.top;
-      
-      // If there's less than 200px below but more space above, position above
+
       if (spaceBelow < 200 && spaceAbove > spaceBelow) {
         setPosition('top');
       } else {
@@ -38,7 +35,6 @@ export const DropdownMenuWithAutoDirection: React.FC<DropdownMenuWithAutoDirecti
   }, [forceDirection]);
 
   useEffect(() => {
-    // Outside click handler
     const handleClick = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         onClose();
@@ -51,9 +47,8 @@ export const DropdownMenuWithAutoDirection: React.FC<DropdownMenuWithAutoDirecti
   return (
     <div
       ref={menuRef}
-      className={`absolute right-0 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-[9999] ${
-        position === 'top' ? 'bottom-full mb-2' : 'top-full -mt-3'
-      }`}
+      className={`absolute right-0 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-[9999] ${position === 'top' ? 'bottom-full mb-2' : 'top-full -mt-3'
+        }`}
     >
       {children}
     </div>
