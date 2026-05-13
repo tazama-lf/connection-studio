@@ -13,7 +13,11 @@ jest.mock('@mui/material', () => ({
     if (typeof sx === 'function') {
       sx({ zIndex: { drawer: 10 } });
     }
-    return open ? <div data-testid="mui-backdrop">{children}</div> : <div data-testid="mui-backdrop" />;
+    return open ? (
+      <div data-testid="mui-backdrop">{children}</div>
+    ) : (
+      <div data-testid="mui-backdrop" />
+    );
   },
   CircularProgress: () => <div data-testid="circular-progress" />,
   Dialog: ({ children, open, onClose }: any) =>
@@ -27,7 +31,8 @@ jest.mock('@mui/material', () => ({
   DialogContent: ({ children }: any) => <div>{children}</div>,
   DialogActions: ({ children }: any) => <div>{children}</div>,
   DialogContentText: ({ children }: any) => <div>{children}</div>,
-  Box: ({ children, component }: any) => component === 'span' ? <span>{children}</span> : <div>{children}</div>,
+  Box: ({ children, component }: any) =>
+    component === 'span' ? <span>{children}</span> : <div>{children}</div>,
 }));
 
 jest.mock('react-router', () => ({
@@ -36,7 +41,11 @@ jest.mock('react-router', () => ({
 
 jest.mock('../../../../src/features/auth/contexts/AuthContext', () => ({
   useAuth: () => ({
-    user: { email: 'approver@test.com', username: 'approver', claims: ['approver'] },
+    user: {
+      email: 'approver@test.com',
+      username: 'approver',
+      claims: ['approver'],
+    },
   }),
 }));
 
@@ -54,12 +63,40 @@ jest.mock('../../../../src/features/config/services/configApi', () => ({
 jest.mock('../../../../src/features/config/components/ConfigList', () => ({
   ConfigList: (props: any) => (
     <div>
-      <button onClick={() => props.onViewDetails({ id: 1, endpointPath: '/endpoint-a', msgFam: 'FAM_A' })}>view-details</button>
-      <button onClick={() => props.onViewDetails({ id: 10, msgFam: 'FAM_ONLY' })}>view-details-no-path</button>
-      <button onClick={() => props.onViewDetails({ id: 11 })}>view-details-no-meta</button>
-      <button onClick={() => props.onApprove(1, 'Config A')}>approve-now</button>
+      <button
+        onClick={() =>
+          props.onViewDetails({
+            id: 1,
+            endpointPath: '/endpoint-a',
+            msgFam: 'FAM_A',
+          })
+        }
+      >
+        view-details
+      </button>
+      <button
+        onClick={() => props.onViewDetails({ id: 10, msgFam: 'FAM_ONLY' })}
+      >
+        view-details-no-path
+      </button>
+      <button onClick={() => props.onViewDetails({ id: 11 })}>
+        view-details-no-meta
+      </button>
+      <button onClick={() => props.onApprove(1, 'Config A')}>
+        approve-now
+      </button>
       <button onClick={() => props.onApprove(99)}>approve-no-name</button>
-      <button onClick={() => props.onReject({ id: 2, endpointPath: '/endpoint-b', msgFam: 'FAM_B' })}>request-changes</button>
+      <button
+        onClick={() =>
+          props.onReject({
+            id: 2,
+            endpointPath: '/endpoint-b',
+            msgFam: 'FAM_B',
+          })
+        }
+      >
+        request-changes
+      </button>
       <button onClick={() => props.onRefresh()}>refresh</button>
       <div>pending:{String(props.showPendingApprovals)}</div>
     </div>
@@ -68,7 +105,7 @@ jest.mock('../../../../src/features/config/components/ConfigList', () => ({
 
 jest.mock('../../../../src/shared/components/EditEndpointModal', () => ({
   __esModule: true,
-  default: (props: any) => (
+  default: (props: any) =>
     props.isOpen ? (
       <div>
         <button onClick={props.onClose}>close-edit</button>
@@ -76,42 +113,42 @@ jest.mock('../../../../src/shared/components/EditEndpointModal', () => ({
         <button onClick={props.onRevertToEditor}>revert-to-editor</button>
         <button onClick={props.onSendForDeployment}>send-for-deployment</button>
       </div>
-    ) : null
-  ),
+    ) : null,
 }));
 
 jest.mock('../../../../src/shared/components/RejectionDialog', () => ({
-  RejectionDialog: (props: any) => (
+  RejectionDialog: (props: any) =>
     props.isOpen ? (
       <div>
-        <button onClick={() => props.onConfirm('invalid payload')}>confirm-rejection</button>
+        <button onClick={() => props.onConfirm('invalid payload')}>
+          confirm-rejection
+        </button>
         <button onClick={props.onClose}>close-rejection</button>
       </div>
-    ) : null
-  ),
+    ) : null,
 }));
 
 jest.mock('../../../../src/shared/components/ChangeRequestDialog', () => ({
-  ChangeRequestDialog: (props: any) => (
+  ChangeRequestDialog: (props: any) =>
     props.isOpen ? (
       <div>
-        <button onClick={() => props.onConfirm('please update headers')}>confirm-change-request</button>
+        <button onClick={() => props.onConfirm('please update headers')}>
+          confirm-change-request
+        </button>
         <button onClick={props.onClose}>close-change-request</button>
       </div>
-    ) : null
-  ),
+    ) : null,
 }));
 
 jest.mock('../../../../src/shared/components/ConfigReviewModal', () => ({
-  ConfigReviewModal: (props: any) => (
+  ConfigReviewModal: (props: any) =>
     props.isOpen ? (
       <div>
         <button onClick={props.onApprove}>review-approve</button>
         <button onClick={props.onReject}>review-reject</button>
         <button onClick={props.onClose}>review-close</button>
       </div>
-    ) : null
-  ),
+    ) : null,
 }));
 
 describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
@@ -150,7 +187,9 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
 
     await waitFor(() => {
       expect(approveConfig).toHaveBeenCalled();
-      expect(showSuccess).toHaveBeenCalledWith('Configuration approved successfully');
+      expect(showSuccess).toHaveBeenCalledWith(
+        'Configuration approved successfully',
+      );
     });
   });
 
@@ -163,7 +202,9 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
 
     await waitFor(() => {
       expect(rejectConfig).toHaveBeenCalled();
-      expect(showSuccess).toHaveBeenCalledWith('Change request sent to editor successfully');
+      expect(showSuccess).toHaveBeenCalledWith(
+        'Change request sent to editor successfully',
+      );
     });
   });
 
@@ -180,7 +221,10 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
   });
 
   it('shows API message when approval returns unsuccessful response', async () => {
-    approveConfig.mockResolvedValueOnce({ success: false, message: 'Approval blocked' });
+    approveConfig.mockResolvedValueOnce({
+      success: false,
+      message: 'Approval blocked',
+    });
     render(<ApproverConfigsPage />);
 
     fireEvent.click(screen.getByText('approve-now'));
@@ -199,7 +243,9 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
     fireEvent.click(screen.getByText('Yes, Approve Configuration'));
 
     await waitFor(() => {
-      expect(showSuccess).toHaveBeenCalledWith('Configuration approved successfully');
+      expect(showSuccess).toHaveBeenCalledWith(
+        'Configuration approved successfully',
+      );
     });
   });
 
@@ -224,7 +270,9 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
     fireEvent.click(screen.getByText('confirm-change-request'));
 
     await waitFor(() => {
-      expect(showError).toHaveBeenCalledWith('Failed to send change request to editor');
+      expect(showError).toHaveBeenCalledWith(
+        'Failed to send change request to editor',
+      );
     });
   });
 
@@ -237,7 +285,9 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
     fireEvent.click(screen.getByText('confirm-change-request'));
 
     await waitFor(() => {
-      expect(showSuccess).toHaveBeenCalledWith('Change request sent to editor successfully');
+      expect(showSuccess).toHaveBeenCalledWith(
+        'Change request sent to editor successfully',
+      );
     });
   });
 
@@ -250,7 +300,9 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
     fireEvent.click(screen.getByText('confirm-change-request'));
 
     await waitFor(() => {
-      expect(showError).toHaveBeenCalledWith('Failed to send change request to editor');
+      expect(showError).toHaveBeenCalledWith(
+        'Failed to send change request to editor',
+      );
     });
   });
 
@@ -261,7 +313,9 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
     fireEvent.click(screen.getByText('close-change-request'));
 
     await waitFor(() => {
-      expect(screen.queryByText('confirm-change-request')).not.toBeInTheDocument();
+      expect(
+        screen.queryByText('confirm-change-request'),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -278,16 +332,19 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
 
     fireEvent.click(screen.getByText('Cancel'));
     await waitFor(() => {
-      expect(screen.queryByText('Yes, Approve Configuration')).not.toBeInTheDocument();
+      expect(
+        screen.queryByText('Yes, Approve Configuration'),
+      ).not.toBeInTheDocument();
     });
   });
 
   it('shows approving loading state while request is in flight', async () => {
     let resolveApprove: ((value: unknown) => void) | null = null;
     approveConfig.mockImplementationOnce(
-      () => new Promise((resolve) => {
-        resolveApprove = resolve;
-      }),
+      () =>
+        new Promise((resolve) => {
+          resolveApprove = resolve;
+        }),
     );
 
     render(<ApproverConfigsPage />);
@@ -300,7 +357,9 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
     resolveApprove?.({ success: true });
 
     await waitFor(() => {
-      expect(showSuccess).toHaveBeenCalledWith('Configuration approved successfully');
+      expect(showSuccess).toHaveBeenCalledWith(
+        'Configuration approved successfully',
+      );
     });
   });
 
@@ -327,9 +386,15 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
     useStateSpy.mockImplementation((initial: unknown) => {
       if (seedValues.length > 0) {
         const next = seedValues.shift();
-        return [next, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+        return [next, jest.fn()] as [
+          unknown,
+          React.Dispatch<React.SetStateAction<unknown>>,
+        ];
       }
-      return originalUseState(initial as never) as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+      return originalUseState(initial as never) as [
+        unknown,
+        React.Dispatch<React.SetStateAction<unknown>>,
+      ];
     });
 
     approveConfig.mockResolvedValueOnce({ config: { id: 9 } });
@@ -341,7 +406,9 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
 
     await waitFor(() => {
       expect(approveConfig).toHaveBeenCalledWith(9);
-      expect(showSuccess).toHaveBeenCalledWith('Configuration approved successfully');
+      expect(showSuccess).toHaveBeenCalledWith(
+        'Configuration approved successfully',
+      );
     });
 
     useStateSpy.mockRestore();
@@ -351,17 +418,34 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
     const originalUseState = React.useState;
     const useStateSpy = jest.spyOn(React, 'useState');
     const seedValues = [
-      null, null,
+      null,
+      null,
       { id: 7, endpointPath: '/seeded-2', msgFam: 'FAM_2' },
-      0, false, true, false, null, null, false, null, '', false, false,
+      0,
+      false,
+      true,
+      false,
+      null,
+      null,
+      false,
+      null,
+      '',
+      false,
+      false,
     ];
 
     useStateSpy.mockImplementation((initial: unknown) => {
       if (seedValues.length > 0) {
         const next = seedValues.shift();
-        return [next, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+        return [next, jest.fn()] as [
+          unknown,
+          React.Dispatch<React.SetStateAction<unknown>>,
+        ];
       }
-      return originalUseState(initial as never) as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+      return originalUseState(initial as never) as [
+        unknown,
+        React.Dispatch<React.SetStateAction<unknown>>,
+      ];
     });
 
     approveConfig.mockResolvedValueOnce({ success: true });
@@ -370,7 +454,9 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
 
     await waitFor(() => {
       expect(approveConfig).toHaveBeenCalledWith(7);
-      expect(showSuccess).toHaveBeenCalledWith('Configuration approved successfully');
+      expect(showSuccess).toHaveBeenCalledWith(
+        'Configuration approved successfully',
+      );
     });
 
     useStateSpy.mockRestore();
@@ -380,19 +466,34 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
     const originalUseState = React.useState;
     const useStateSpy = jest.spyOn(React, 'useState');
     const seedValues = [
-      null, null, null, 0,
-      true,  // showRejectionDialog
-      false, false,
-      { id: 3, endpointPath: '/to-reject', msgFam: 'FAM_R' },  // configToReject
-      null, false, null, '', false, false,
+      null,
+      null,
+      null,
+      0,
+      true, // showRejectionDialog
+      false,
+      false,
+      { id: 3, endpointPath: '/to-reject', msgFam: 'FAM_R' }, // configToReject
+      null,
+      false,
+      null,
+      '',
+      false,
+      false,
     ];
 
     useStateSpy.mockImplementation((initial: unknown) => {
       if (seedValues.length > 0) {
         const next = seedValues.shift();
-        return [next, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+        return [next, jest.fn()] as [
+          unknown,
+          React.Dispatch<React.SetStateAction<unknown>>,
+        ];
       }
-      return originalUseState(initial as never) as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+      return originalUseState(initial as never) as [
+        unknown,
+        React.Dispatch<React.SetStateAction<unknown>>,
+      ];
     });
 
     rejectConfig.mockResolvedValueOnce({ success: true });
@@ -401,7 +502,9 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
 
     await waitFor(() => {
       expect(rejectConfig).toHaveBeenCalled();
-      expect(showSuccess).toHaveBeenCalledWith('Configuration rejected successfully');
+      expect(showSuccess).toHaveBeenCalledWith(
+        'Configuration rejected successfully',
+      );
     });
 
     useStateSpy.mockRestore();
@@ -411,19 +514,34 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
     const originalUseState = React.useState;
     const useStateSpy = jest.spyOn(React, 'useState');
     const seedValues = [
-      null, null, null, 0,
+      null,
+      null,
+      null,
+      0,
       true,
-      false, false,
+      false,
+      false,
       { id: 4, endpointPath: '/rej-config', msgFam: 'FAM_RC' },
-      null, false, null, '', false, false,
+      null,
+      false,
+      null,
+      '',
+      false,
+      false,
     ];
 
     useStateSpy.mockImplementation((initial: unknown) => {
       if (seedValues.length > 0) {
         const next = seedValues.shift();
-        return [next, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+        return [next, jest.fn()] as [
+          unknown,
+          React.Dispatch<React.SetStateAction<unknown>>,
+        ];
       }
-      return originalUseState(initial as never) as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+      return originalUseState(initial as never) as [
+        unknown,
+        React.Dispatch<React.SetStateAction<unknown>>,
+      ];
     });
 
     rejectConfig.mockResolvedValueOnce({ success: false, config: { id: 4 } });
@@ -431,7 +549,9 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
     fireEvent.click(screen.getByText('confirm-rejection'));
 
     await waitFor(() => {
-      expect(showSuccess).toHaveBeenCalledWith('Configuration rejected successfully');
+      expect(showSuccess).toHaveBeenCalledWith(
+        'Configuration rejected successfully',
+      );
     });
 
     useStateSpy.mockRestore();
@@ -441,22 +561,40 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
     const originalUseState = React.useState;
     const useStateSpy = jest.spyOn(React, 'useState');
     const seedValues = [
-      null, null, null, 0,
+      null,
+      null,
+      null,
+      0,
       true,
-      false, false,
+      false,
+      false,
       { id: 5, endpointPath: '/rej-msg', msgFam: 'FAM_RM' },
-      null, false, null, '', false, false,
+      null,
+      false,
+      null,
+      '',
+      false,
+      false,
     ];
 
     useStateSpy.mockImplementation((initial: unknown) => {
       if (seedValues.length > 0) {
         const next = seedValues.shift();
-        return [next, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+        return [next, jest.fn()] as [
+          unknown,
+          React.Dispatch<React.SetStateAction<unknown>>,
+        ];
       }
-      return originalUseState(initial as never) as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+      return originalUseState(initial as never) as [
+        unknown,
+        React.Dispatch<React.SetStateAction<unknown>>,
+      ];
     });
 
-    rejectConfig.mockResolvedValueOnce({ success: false, message: 'Rejection blocked by policy' });
+    rejectConfig.mockResolvedValueOnce({
+      success: false,
+      message: 'Rejection blocked by policy',
+    });
     render(<ApproverConfigsPage />);
     fireEvent.click(screen.getByText('confirm-rejection'));
 
@@ -471,19 +609,34 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
     const originalUseState = React.useState;
     const useStateSpy = jest.spyOn(React, 'useState');
     const seedValues = [
-      null, null, null, 0,
+      null,
+      null,
+      null,
+      0,
       true,
-      false, false,
+      false,
+      false,
       { id: 6, endpointPath: '/rej-def', msgFam: 'FAM_RD' },
-      null, false, null, '', false, false,
+      null,
+      false,
+      null,
+      '',
+      false,
+      false,
     ];
 
     useStateSpy.mockImplementation((initial: unknown) => {
       if (seedValues.length > 0) {
         const next = seedValues.shift();
-        return [next, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+        return [next, jest.fn()] as [
+          unknown,
+          React.Dispatch<React.SetStateAction<unknown>>,
+        ];
       }
-      return originalUseState(initial as never) as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+      return originalUseState(initial as never) as [
+        unknown,
+        React.Dispatch<React.SetStateAction<unknown>>,
+      ];
     });
 
     rejectConfig.mockResolvedValueOnce({ success: false });
@@ -501,19 +654,34 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
     const originalUseState = React.useState;
     const useStateSpy = jest.spyOn(React, 'useState');
     const seedValues = [
-      null, null, null, 0,
+      null,
+      null,
+      null,
+      0,
       true,
-      false, false,
+      false,
+      false,
       { id: 7, endpointPath: '/rej-throw', msgFam: 'FAM_RT' },
-      null, false, null, '', false, false,
+      null,
+      false,
+      null,
+      '',
+      false,
+      false,
     ];
 
     useStateSpy.mockImplementation((initial: unknown) => {
       if (seedValues.length > 0) {
         const next = seedValues.shift();
-        return [next, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+        return [next, jest.fn()] as [
+          unknown,
+          React.Dispatch<React.SetStateAction<unknown>>,
+        ];
       }
-      return originalUseState(initial as never) as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+      return originalUseState(initial as never) as [
+        unknown,
+        React.Dispatch<React.SetStateAction<unknown>>,
+      ];
     });
 
     rejectConfig.mockRejectedValueOnce(new Error('rejection-api-fail'));
@@ -528,7 +696,10 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
   });
 
   it('handleChangeRequestConfirm covers message branch', async () => {
-    rejectConfig.mockResolvedValueOnce({ success: false, message: 'Please add validation' });
+    rejectConfig.mockResolvedValueOnce({
+      success: false,
+      message: 'Please add validation',
+    });
     render(<ApproverConfigsPage />);
 
     fireEvent.click(screen.getByText('view-details'));
@@ -544,19 +715,39 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
     const originalUseState = React.useState;
     const useStateSpy = jest.spyOn(React, 'useState');
     const seedValues = [
-      null, null,
+      null,
+      null,
       { id: 11, endpointPath: '/seeded-3', msgFam: 'FAM_3' },
-      0, false, true, false, null, null, false, null, '', false, false,
+      0,
+      false,
+      true,
+      false,
+      null,
+      null,
+      false,
+      null,
+      '',
+      false,
+      false,
     ];
     useStateSpy.mockImplementation((initial: unknown) => {
       if (seedValues.length > 0) {
         const next = seedValues.shift();
-        return [next, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+        return [next, jest.fn()] as [
+          unknown,
+          React.Dispatch<React.SetStateAction<unknown>>,
+        ];
       }
-      return originalUseState(initial as never) as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+      return originalUseState(initial as never) as [
+        unknown,
+        React.Dispatch<React.SetStateAction<unknown>>,
+      ];
     });
 
-    approveConfig.mockResolvedValueOnce({ success: false, message: 'Approval blocked by policy' });
+    approveConfig.mockResolvedValueOnce({
+      success: false,
+      message: 'Approval blocked by policy',
+    });
     render(<ApproverConfigsPage />);
     fireEvent.click(screen.getByText('review-approve'));
 
@@ -570,16 +761,33 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
     const originalUseState = React.useState;
     const useStateSpy = jest.spyOn(React, 'useState');
     const seedValues = [
-      null, null,
+      null,
+      null,
       { id: 12, endpointPath: '/seeded-4', msgFam: 'FAM_4' },
-      0, false, true, false, null, null, false, null, '', false, false,
+      0,
+      false,
+      true,
+      false,
+      null,
+      null,
+      false,
+      null,
+      '',
+      false,
+      false,
     ];
     useStateSpy.mockImplementation((initial: unknown) => {
       if (seedValues.length > 0) {
         const next = seedValues.shift();
-        return [next, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+        return [next, jest.fn()] as [
+          unknown,
+          React.Dispatch<React.SetStateAction<unknown>>,
+        ];
       }
-      return originalUseState(initial as never) as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+      return originalUseState(initial as never) as [
+        unknown,
+        React.Dispatch<React.SetStateAction<unknown>>,
+      ];
     });
 
     approveConfig.mockResolvedValueOnce({ success: false });
@@ -596,16 +804,33 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
     const originalUseState = React.useState;
     const useStateSpy = jest.spyOn(React, 'useState');
     const seedValues = [
-      null, null,
+      null,
+      null,
       { id: 13, endpointPath: '/seeded-5', msgFam: 'FAM_5' },
-      0, false, true, false, null, null, false, null, '', false, false,
+      0,
+      false,
+      true,
+      false,
+      null,
+      null,
+      false,
+      null,
+      '',
+      false,
+      false,
     ];
     useStateSpy.mockImplementation((initial: unknown) => {
       if (seedValues.length > 0) {
         const next = seedValues.shift();
-        return [next, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+        return [next, jest.fn()] as [
+          unknown,
+          React.Dispatch<React.SetStateAction<unknown>>,
+        ];
       }
-      return originalUseState(initial as never) as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+      return originalUseState(initial as never) as [
+        unknown,
+        React.Dispatch<React.SetStateAction<unknown>>,
+      ];
     });
 
     approveConfig.mockRejectedValueOnce(new Error('network crash'));
@@ -626,7 +851,9 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
 
     fireEvent.click(screen.getByText('Approval Dialog Close Hook'));
     await waitFor(() => {
-      expect(screen.queryByText('Yes, Approve Configuration')).not.toBeInTheDocument();
+      expect(
+        screen.queryByText('Yes, Approve Configuration'),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -634,18 +861,33 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
     const originalUseState = React.useState;
     const useStateSpy = jest.spyOn(React, 'useState');
     const seedValues = [
-      null, null, null, 0,
-      true,  // showRejectionDialog = true
-      false, false,
-      { id: 20, endpointPath: '/to-close', msgFam: 'FAM_CLOSE' },  // configToReject
-      null, false, null, '', false, false,
+      null,
+      null,
+      null,
+      0,
+      true, // showRejectionDialog = true
+      false,
+      false,
+      { id: 20, endpointPath: '/to-close', msgFam: 'FAM_CLOSE' }, // configToReject
+      null,
+      false,
+      null,
+      '',
+      false,
+      false,
     ];
     useStateSpy.mockImplementation((initial: unknown) => {
       if (seedValues.length > 0) {
         const next = seedValues.shift();
-        return [next, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+        return [next, jest.fn()] as [
+          unknown,
+          React.Dispatch<React.SetStateAction<unknown>>,
+        ];
       }
-      return originalUseState(initial as never) as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+      return originalUseState(initial as never) as [
+        unknown,
+        React.Dispatch<React.SetStateAction<unknown>>,
+      ];
     });
 
     render(<ApproverConfigsPage />);
@@ -664,22 +906,39 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
     const originalUseState = React.useState;
     const useStateSpy = jest.spyOn(React, 'useState');
     const seedValues = [
-      null, null, null, 0,
-      true,  // showRejectionDialog = true
-      false, false,
-      { id: 30, endpointPath: '/ep-user', msgFam: 'FAM_U' },  // configToReject
-      null, false, null, '', false, false,
+      null,
+      null,
+      null,
+      0,
+      true, // showRejectionDialog = true
+      false,
+      false,
+      { id: 30, endpointPath: '/ep-user', msgFam: 'FAM_U' }, // configToReject
+      null,
+      false,
+      null,
+      '',
+      false,
+      false,
     ];
     useStateSpy.mockImplementation((initial: unknown) => {
       if (seedValues.length > 0) {
         const next = seedValues.shift();
-        return [next, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+        return [next, jest.fn()] as [
+          unknown,
+          React.Dispatch<React.SetStateAction<unknown>>,
+        ];
       }
-      return originalUseState(initial as never) as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+      return originalUseState(initial as never) as [
+        unknown,
+        React.Dispatch<React.SetStateAction<unknown>>,
+      ];
     });
 
     // Re-mock useAuth with user missing email
-    jest.requireMock('../../../../src/features/auth/contexts/AuthContext').useAuth = () => ({
+    jest.requireMock(
+      '../../../../src/features/auth/contexts/AuthContext',
+    ).useAuth = () => ({
       user: { username: 'no-email-user', claims: ['approver'] },
     });
 
@@ -687,12 +946,22 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
     fireEvent.click(screen.getByText('confirm-rejection'));
 
     await waitFor(() => {
-      expect(rejectConfig).toHaveBeenCalledWith(30, 'no-email-user', 'invalid payload');
+      expect(rejectConfig).toHaveBeenCalledWith(
+        30,
+        'no-email-user',
+        'invalid payload',
+      );
     });
     useStateSpy.mockRestore();
     // Restore original auth mock
-    jest.requireMock('../../../../src/features/auth/contexts/AuthContext').useAuth = () => ({
-      user: { email: 'approver@test.com', username: 'approver', claims: ['approver'] },
+    jest.requireMock(
+      '../../../../src/features/auth/contexts/AuthContext',
+    ).useAuth = () => ({
+      user: {
+        email: 'approver@test.com',
+        username: 'approver',
+        claims: ['approver'],
+      },
     });
   });
 
@@ -702,21 +971,38 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
     const originalUseState = React.useState;
     const useStateSpy = jest.spyOn(React, 'useState');
     const seedValues = [
-      null, null, null, 0,
+      null,
+      null,
+      null,
+      0,
       true,
-      false, false,
+      false,
+      false,
       { id: 31, endpointPath: '/ep-sys', msgFam: 'FAM_S' },
-      null, false, null, '', false, false,
+      null,
+      false,
+      null,
+      '',
+      false,
+      false,
     ];
     useStateSpy.mockImplementation((initial: unknown) => {
       if (seedValues.length > 0) {
         const next = seedValues.shift();
-        return [next, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+        return [next, jest.fn()] as [
+          unknown,
+          React.Dispatch<React.SetStateAction<unknown>>,
+        ];
       }
-      return originalUseState(initial as never) as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+      return originalUseState(initial as never) as [
+        unknown,
+        React.Dispatch<React.SetStateAction<unknown>>,
+      ];
     });
 
-    jest.requireMock('../../../../src/features/auth/contexts/AuthContext').useAuth = () => ({
+    jest.requireMock(
+      '../../../../src/features/auth/contexts/AuthContext',
+    ).useAuth = () => ({
       user: { claims: ['approver'] },
     });
 
@@ -724,11 +1010,21 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
     fireEvent.click(screen.getByText('confirm-rejection'));
 
     await waitFor(() => {
-      expect(rejectConfig).toHaveBeenCalledWith(31, 'system', 'invalid payload');
+      expect(rejectConfig).toHaveBeenCalledWith(
+        31,
+        'system',
+        'invalid payload',
+      );
     });
     useStateSpy.mockRestore();
-    jest.requireMock('../../../../src/features/auth/contexts/AuthContext').useAuth = () => ({
-      user: { email: 'approver@test.com', username: 'approver', claims: ['approver'] },
+    jest.requireMock(
+      '../../../../src/features/auth/contexts/AuthContext',
+    ).useAuth = () => ({
+      user: {
+        email: 'approver@test.com',
+        username: 'approver',
+        claims: ['approver'],
+      },
     });
   });
 
@@ -779,7 +1075,9 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
   it('handleChangeRequestConfirm uses username when email is absent (BRDA:126 branch 1)', async () => {
     rejectConfig.mockResolvedValueOnce({ success: true });
 
-    jest.requireMock('../../../../src/features/auth/contexts/AuthContext').useAuth = () => ({
+    jest.requireMock(
+      '../../../../src/features/auth/contexts/AuthContext',
+    ).useAuth = () => ({
       user: { username: 'no-email-user', claims: ['approver'] },
     });
 
@@ -789,18 +1087,30 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
     fireEvent.click(screen.getByText('confirm-change-request'));
 
     await waitFor(() => {
-      expect(rejectConfig).toHaveBeenCalledWith(1, 'no-email-user', 'please update headers');
+      expect(rejectConfig).toHaveBeenCalledWith(
+        1,
+        'no-email-user',
+        'please update headers',
+      );
     });
 
-    jest.requireMock('../../../../src/features/auth/contexts/AuthContext').useAuth = () => ({
-      user: { email: 'approver@test.com', username: 'approver', claims: ['approver'] },
+    jest.requireMock(
+      '../../../../src/features/auth/contexts/AuthContext',
+    ).useAuth = () => ({
+      user: {
+        email: 'approver@test.com',
+        username: 'approver',
+        claims: ['approver'],
+      },
     });
   });
 
   it('handleChangeRequestConfirm uses system when both email and username are absent (BRDA:126 branch 2)', async () => {
     rejectConfig.mockResolvedValueOnce({ success: true });
 
-    jest.requireMock('../../../../src/features/auth/contexts/AuthContext').useAuth = () => ({
+    jest.requireMock(
+      '../../../../src/features/auth/contexts/AuthContext',
+    ).useAuth = () => ({
       user: { claims: ['approver'] },
     });
 
@@ -810,11 +1120,21 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
     fireEvent.click(screen.getByText('confirm-change-request'));
 
     await waitFor(() => {
-      expect(rejectConfig).toHaveBeenCalledWith(1, 'system', 'please update headers');
+      expect(rejectConfig).toHaveBeenCalledWith(
+        1,
+        'system',
+        'please update headers',
+      );
     });
 
-    jest.requireMock('../../../../src/features/auth/contexts/AuthContext').useAuth = () => ({
-      user: { email: 'approver@test.com', username: 'approver', claims: ['approver'] },
+    jest.requireMock(
+      '../../../../src/features/auth/contexts/AuthContext',
+    ).useAuth = () => ({
+      user: {
+        email: 'approver@test.com',
+        username: 'approver',
+        claims: ['approver'],
+      },
     });
   });
 
@@ -825,29 +1145,53 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
 
   // Helper: creates a setter mock that invokes functional updaters so anonymous
   // (prev) => prev + INCREMENT callbacks are counted as covered by Istanbul.
-  const makeFunctionalSetter = () => jest.fn().mockImplementation((v: unknown) => {
-    if (typeof v === 'function') (v as (p: unknown) => unknown)(0);
-  });
+  const makeFunctionalSetter = () =>
+    jest.fn().mockImplementation((v: unknown) => {
+      if (typeof v === 'function') (v as (p: unknown) => unknown)(0);
+    });
 
   it('handleApprove success branch covers setRefreshKey callback', async () => {
     const useStateSpy = jest.spyOn(React, 'useState');
     const refreshSetter = makeFunctionalSetter();
     const seedValues: unknown[] = [
-      null, null,
+      null,
+      null,
       { id: 5, endpointPath: '/real-test', msgFam: 'FAM_R' }, // selectedConfig
       [0, refreshSetter], // refreshKey with functional setter
-      false, true, false, null, null, false, null, '', false, false,
+      false,
+      true,
+      false,
+      null,
+      null,
+      false,
+      null,
+      '',
+      false,
+      false,
     ];
 
     useStateSpy.mockImplementation((initial: unknown) => {
       if (seedValues.length > 0) {
         const next = seedValues.shift();
-        if (Array.isArray(next) && next.length === 2 && typeof next[1] === 'function') {
-          return next as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+        if (
+          Array.isArray(next) &&
+          next.length === 2 &&
+          typeof next[1] === 'function'
+        ) {
+          return next as [
+            unknown,
+            React.Dispatch<React.SetStateAction<unknown>>,
+          ];
         }
-        return [next, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+        return [next, jest.fn()] as [
+          unknown,
+          React.Dispatch<React.SetStateAction<unknown>>,
+        ];
       }
-      return [initial, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+      return [initial, jest.fn()] as [
+        unknown,
+        React.Dispatch<React.SetStateAction<unknown>>,
+      ];
     });
 
     approveConfig.mockResolvedValueOnce({ success: true });
@@ -856,7 +1200,9 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
 
     await waitFor(() => {
       expect(approveConfig).toHaveBeenCalledWith(5);
-      expect(showSuccess).toHaveBeenCalledWith('Configuration approved successfully');
+      expect(showSuccess).toHaveBeenCalledWith(
+        'Configuration approved successfully',
+      );
       expect(refreshSetter).toHaveBeenCalled();
     });
 
@@ -867,21 +1213,44 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
     const useStateSpy = jest.spyOn(React, 'useState');
     const refreshSetter = makeFunctionalSetter();
     const seedValues: unknown[] = [
-      null, null,
+      null,
+      null,
       { id: 6, endpointPath: '/real-config', msgFam: 'FAM_C' }, // selectedConfig
       [0, refreshSetter], // refreshKey with functional setter
-      false, true, false, null, null, false, null, '', false, false,
+      false,
+      true,
+      false,
+      null,
+      null,
+      false,
+      null,
+      '',
+      false,
+      false,
     ];
 
     useStateSpy.mockImplementation((initial: unknown) => {
       if (seedValues.length > 0) {
         const next = seedValues.shift();
-        if (Array.isArray(next) && next.length === 2 && typeof next[1] === 'function') {
-          return next as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+        if (
+          Array.isArray(next) &&
+          next.length === 2 &&
+          typeof next[1] === 'function'
+        ) {
+          return next as [
+            unknown,
+            React.Dispatch<React.SetStateAction<unknown>>,
+          ];
         }
-        return [next, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+        return [next, jest.fn()] as [
+          unknown,
+          React.Dispatch<React.SetStateAction<unknown>>,
+        ];
       }
-      return [initial, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+      return [initial, jest.fn()] as [
+        unknown,
+        React.Dispatch<React.SetStateAction<unknown>>,
+      ];
     });
 
     approveConfig.mockResolvedValueOnce({ success: false, config: { id: 6 } });
@@ -890,7 +1259,9 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
 
     await waitFor(() => {
       expect(approveConfig).toHaveBeenCalledWith(6);
-      expect(showSuccess).toHaveBeenCalledWith('Configuration approved successfully');
+      expect(showSuccess).toHaveBeenCalledWith(
+        'Configuration approved successfully',
+      );
       expect(refreshSetter).toHaveBeenCalled();
     });
 
@@ -901,23 +1272,44 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
     const useStateSpy = jest.spyOn(React, 'useState');
     const refreshSetter = makeFunctionalSetter();
     const seedValues: unknown[] = [
-      null, null, null,
+      null,
+      null,
+      null,
       [0, refreshSetter], // refreshKey with functional setter
       true, // showRejectionDialog
-      false, false,
+      false,
+      false,
       { id: 40, endpointPath: '/real-rej', msgFam: 'FAM_RJ' }, // configToReject
-      null, false, null, '', false, false,
+      null,
+      false,
+      null,
+      '',
+      false,
+      false,
     ];
 
     useStateSpy.mockImplementation((initial: unknown) => {
       if (seedValues.length > 0) {
         const next = seedValues.shift();
-        if (Array.isArray(next) && next.length === 2 && typeof next[1] === 'function') {
-          return next as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+        if (
+          Array.isArray(next) &&
+          next.length === 2 &&
+          typeof next[1] === 'function'
+        ) {
+          return next as [
+            unknown,
+            React.Dispatch<React.SetStateAction<unknown>>,
+          ];
         }
-        return [next, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+        return [next, jest.fn()] as [
+          unknown,
+          React.Dispatch<React.SetStateAction<unknown>>,
+        ];
       }
-      return [initial, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+      return [initial, jest.fn()] as [
+        unknown,
+        React.Dispatch<React.SetStateAction<unknown>>,
+      ];
     });
 
     rejectConfig.mockResolvedValueOnce({ success: true });
@@ -926,7 +1318,9 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
 
     await waitFor(() => {
       expect(rejectConfig).toHaveBeenCalled();
-      expect(showSuccess).toHaveBeenCalledWith('Configuration rejected successfully');
+      expect(showSuccess).toHaveBeenCalledWith(
+        'Configuration rejected successfully',
+      );
       expect(refreshSetter).toHaveBeenCalled();
     });
 
@@ -937,23 +1331,44 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
     const useStateSpy = jest.spyOn(React, 'useState');
     const refreshSetter = makeFunctionalSetter();
     const seedValues: unknown[] = [
-      null, null, null,
+      null,
+      null,
+      null,
       [0, refreshSetter], // refreshKey with functional setter
       true, // showRejectionDialog
-      false, false,
+      false,
+      false,
       { id: 41, endpointPath: '/real-cfg', msgFam: 'FAM_CF' }, // configToReject
-      null, false, null, '', false, false,
+      null,
+      false,
+      null,
+      '',
+      false,
+      false,
     ];
 
     useStateSpy.mockImplementation((initial: unknown) => {
       if (seedValues.length > 0) {
         const next = seedValues.shift();
-        if (Array.isArray(next) && next.length === 2 && typeof next[1] === 'function') {
-          return next as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+        if (
+          Array.isArray(next) &&
+          next.length === 2 &&
+          typeof next[1] === 'function'
+        ) {
+          return next as [
+            unknown,
+            React.Dispatch<React.SetStateAction<unknown>>,
+          ];
         }
-        return [next, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+        return [next, jest.fn()] as [
+          unknown,
+          React.Dispatch<React.SetStateAction<unknown>>,
+        ];
       }
-      return [initial, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+      return [initial, jest.fn()] as [
+        unknown,
+        React.Dispatch<React.SetStateAction<unknown>>,
+      ];
     });
 
     rejectConfig.mockResolvedValueOnce({ success: false, config: { id: 41 } });
@@ -961,7 +1376,9 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
     fireEvent.click(screen.getByText('confirm-rejection'));
 
     await waitFor(() => {
-      expect(showSuccess).toHaveBeenCalledWith('Configuration rejected successfully');
+      expect(showSuccess).toHaveBeenCalledWith(
+        'Configuration rejected successfully',
+      );
       expect(refreshSetter).toHaveBeenCalled();
     });
 
@@ -971,18 +1388,34 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
   it('handleApprovalConfirm early return when configToApprove is null (line 172)', async () => {
     const useStateSpy = jest.spyOn(React, 'useState');
     const seedValues = [
-      null, null, null, 0, false, false, false, null, null,
-      true,  // showApprovalDialog = true
-      null,  // configToApprove = null
-      '', false, false,
+      null,
+      null,
+      null,
+      0,
+      false,
+      false,
+      false,
+      null,
+      null,
+      true, // showApprovalDialog = true
+      null, // configToApprove = null
+      '',
+      false,
+      false,
     ];
 
     useStateSpy.mockImplementation((initial: unknown) => {
       if (seedValues.length > 0) {
         const next = seedValues.shift();
-        return [next, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+        return [next, jest.fn()] as [
+          unknown,
+          React.Dispatch<React.SetStateAction<unknown>>,
+        ];
       }
-      return [initial, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+      return [initial, jest.fn()] as [
+        unknown,
+        React.Dispatch<React.SetStateAction<unknown>>,
+      ];
     });
 
     render(<ApproverConfigsPage />);
@@ -998,23 +1431,42 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
   it('onRevertToEditor in EditEndpointModal skips when editingConfig is null (line 254 false branch)', () => {
     const useStateSpy = jest.spyOn(React, 'useState');
     const seedValues = [
-      42,    // editingEndpointId = 42 (non-null, shows modal)
-      null,  // editingConfig = null
-      null, 0, false, false, false, null, null, false, null, '', false, false,
+      42, // editingEndpointId = 42 (non-null, shows modal)
+      null, // editingConfig = null
+      null,
+      0,
+      false,
+      false,
+      false,
+      null,
+      null,
+      false,
+      null,
+      '',
+      false,
+      false,
     ];
 
     useStateSpy.mockImplementation((initial: unknown) => {
       if (seedValues.length > 0) {
         const next = seedValues.shift();
-        return [next, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+        return [next, jest.fn()] as [
+          unknown,
+          React.Dispatch<React.SetStateAction<unknown>>,
+        ];
       }
-      return [initial, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+      return [initial, jest.fn()] as [
+        unknown,
+        React.Dispatch<React.SetStateAction<unknown>>,
+      ];
     });
 
     render(<ApproverConfigsPage />);
     fireEvent.click(screen.getByText('revert-to-editor'));
 
-    expect(screen.queryByText('confirm-change-request')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('confirm-change-request'),
+    ).not.toBeInTheDocument();
 
     useStateSpy.mockRestore();
   });
@@ -1022,25 +1474,43 @@ describe('features/approver/pages/ApproverConfigsPage.tsx', () => {
   it('onSendForDeployment in EditEndpointModal skips when editingConfig is null (line 259 false branch)', () => {
     const useStateSpy = jest.spyOn(React, 'useState');
     const seedValues = [
-      43,    // editingEndpointId = 43 (non-null, shows modal)
-      null,  // editingConfig = null
-      null, 0, false, false, false, null, null, false, null, '', false, false,
+      43, // editingEndpointId = 43 (non-null, shows modal)
+      null, // editingConfig = null
+      null,
+      0,
+      false,
+      false,
+      false,
+      null,
+      null,
+      false,
+      null,
+      '',
+      false,
+      false,
     ];
 
     useStateSpy.mockImplementation((initial: unknown) => {
       if (seedValues.length > 0) {
         const next = seedValues.shift();
-        return [next, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+        return [next, jest.fn()] as [
+          unknown,
+          React.Dispatch<React.SetStateAction<unknown>>,
+        ];
       }
-      return [initial, jest.fn()] as [unknown, React.Dispatch<React.SetStateAction<unknown>>];
+      return [initial, jest.fn()] as [
+        unknown,
+        React.Dispatch<React.SetStateAction<unknown>>,
+      ];
     });
 
     render(<ApproverConfigsPage />);
     fireEvent.click(screen.getByText('send-for-deployment'));
 
-    expect(screen.queryByText('Yes, Approve Configuration')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Yes, Approve Configuration'),
+    ).not.toBeInTheDocument();
 
     useStateSpy.mockRestore();
   });
-
 });

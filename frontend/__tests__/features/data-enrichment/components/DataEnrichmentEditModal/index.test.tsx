@@ -1,5 +1,11 @@
 import React from 'react';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 
 const triggerMock = jest.fn();
 const getValuesMock = jest.fn();
@@ -43,14 +49,18 @@ jest.mock('../../../../../../src/shared/providers/ToastProvider', () => ({
   useToast: () => ({ showSuccess: showSuccessMock, showError: showErrorMock }),
 }));
 
-jest.mock('../../../../../../src/features/data-enrichment/components/validationSchema', () => ({
-  defaultValues: {},
-  pullValidationSchema: {},
-  pushValidationSchema: {},
-}));
+jest.mock(
+  '../../../../../../src/features/data-enrichment/components/validationSchema',
+  () => ({
+    defaultValues: {},
+    pullValidationSchema: {},
+    pushValidationSchema: {},
+  }),
+);
 
 jest.mock('../../../../../../src/features/data-enrichment/utils', () => ({
-  getJobType: (job: any) => (job?.type?.toLowerCase?.() === 'push' ? 'push' : 'pull'),
+  getJobType: (job: any) =>
+    job?.type?.toLowerCase?.() === 'push' ? 'push' : 'pull',
   scrollToFirstError: (...args: any[]) => scrollToFirstErrorMock(...args),
 }));
 
@@ -83,17 +93,25 @@ jest.mock('@mui/material', () => {
   };
 });
 
-jest.mock('../../../../../../src/features/data-enrichment/components/PullConfigForm', () => ({
-  __esModule: true,
-  default: (props: any) => (
-    <div data-testid="pull-form">schedule-count:{props.availableSchedules?.length ?? 0}</div>
-  ),
-}));
+jest.mock(
+  '../../../../../../src/features/data-enrichment/components/PullConfigForm',
+  () => ({
+    __esModule: true,
+    default: (props: any) => (
+      <div data-testid="pull-form">
+        schedule-count:{props.availableSchedules?.length ?? 0}
+      </div>
+    ),
+  }),
+);
 
-jest.mock('../../../../../../src/features/data-enrichment/components/PushConfigForm', () => ({
-  __esModule: true,
-  default: () => <div data-testid="push-form" />,
-}));
+jest.mock(
+  '../../../../../../src/features/data-enrichment/components/PushConfigForm',
+  () => ({
+    __esModule: true,
+    default: () => <div data-testid="push-form" />,
+  }),
+);
 
 jest.mock('lucide-react', () => {
   const Icon = (props: any) => <svg data-testid="lucide-icon" {...props} />;
@@ -110,7 +128,8 @@ jest.mock('lucide-react', () => {
 jest.mock('../../../../../../src/features/data-enrichment/handlers', () => ({
   saveDataEnrichmentJob: (...args: any[]) => saveDataEnrichmentJobMock(...args),
   handleUpdateConfirm: (...args: any[]) => handleUpdateConfirmMock(...args),
-  handleEditSendForApprovalConfirm: (...args: any[]) => handleEditSendForApprovalConfirmMock(...args),
+  handleEditSendForApprovalConfirm: (...args: any[]) =>
+    handleEditSendForApprovalConfirmMock(...args),
   loadSchedules: (...args: any[]) => loadSchedulesMock(...args),
 }));
 
@@ -141,7 +160,9 @@ describe('features/data-enrichment/components/DataEnrichmentEditModal/index.tsx'
         isOpen={false}
         onClose={jest.fn()}
         editMode
-        selectedJob={{ id: 'job-closed', endpoint_name: 'Closed', type: 'pull' } as any}
+        selectedJob={
+          { id: 'job-closed', endpoint_name: 'Closed', type: 'pull' } as any
+        }
       />,
     );
     expect(container.firstChild).toBeNull();
@@ -161,7 +182,9 @@ describe('features/data-enrichment/components/DataEnrichmentEditModal/index.tsx'
         isOpen
         onClose={jest.fn()}
         editMode
-        selectedJob={{ id: 'job-1', endpoint_name: 'Pull Job', type: 'pull' } as any}
+        selectedJob={
+          { id: 'job-1', endpoint_name: 'Pull Job', type: 'pull' } as any
+        }
       />,
     );
 
@@ -174,7 +197,9 @@ describe('features/data-enrichment/components/DataEnrichmentEditModal/index.tsx'
 
   it('supports schedules in data property and handles schedule load failures', async () => {
     loadSchedulesMock
-      .mockResolvedValueOnce({ data: [{ id: '1', status: 'STATUS_04_APPROVED' }] })
+      .mockResolvedValueOnce({
+        data: [{ id: '1', status: 'STATUS_04_APPROVED' }],
+      })
       .mockRejectedValueOnce(new Error('load failed'));
 
     const first = render(
@@ -182,7 +207,9 @@ describe('features/data-enrichment/components/DataEnrichmentEditModal/index.tsx'
         isOpen
         onClose={jest.fn()}
         editMode
-        selectedJob={{ id: 'job-1', endpoint_name: 'Pull Job', type: 'pull' } as any}
+        selectedJob={
+          { id: 'job-1', endpoint_name: 'Pull Job', type: 'pull' } as any
+        }
       />,
     );
 
@@ -197,7 +224,9 @@ describe('features/data-enrichment/components/DataEnrichmentEditModal/index.tsx'
         isOpen
         onClose={jest.fn()}
         editMode
-        selectedJob={{ id: 'job-2', endpoint_name: 'Pull Job', type: 'pull' } as any}
+        selectedJob={
+          { id: 'job-2', endpoint_name: 'Pull Job', type: 'pull' } as any
+        }
       />,
     );
 
@@ -212,16 +241,18 @@ describe('features/data-enrichment/components/DataEnrichmentEditModal/index.tsx'
         isOpen
         onClose={jest.fn()}
         editMode
-        selectedJob={{
-          id: 'push-1',
-          endpoint_name: 'Push Job',
-          type: 'push',
-          path: 'tenant/path',
-          description: 'desc',
-          version: 'v1',
-          table_name: 'tbl',
-          mode: 'replace',
-        } as any}
+        selectedJob={
+          {
+            id: 'push-1',
+            endpoint_name: 'Push Job',
+            type: 'push',
+            path: 'tenant/path',
+            description: 'desc',
+            version: 'v1',
+            table_name: 'tbl',
+            mode: 'replace',
+          } as any
+        }
       />,
     );
 
@@ -239,24 +270,26 @@ describe('features/data-enrichment/components/DataEnrichmentEditModal/index.tsx'
         isOpen
         onClose={jest.fn()}
         editMode
-        selectedJob={{
-          id: 'pull-1',
-          endpoint_name: 'Pull Job',
-          type: 'pull',
-          source_type: 'SFTP',
-          schedule_id: 'sch-1',
-          connection: {
-            host: '10.0.0.1',
-            port: 22,
-            auth_type: 'PRIVATE_KEY',
-            user_name: 'user-a',
-          },
-          file: {
-            path: 'inbox/*.csv',
-            file_type: 'CSV',
-            delimiter: ';',
-          },
-        } as any}
+        selectedJob={
+          {
+            id: 'pull-1',
+            endpoint_name: 'Pull Job',
+            type: 'pull',
+            source_type: 'SFTP',
+            schedule_id: 'sch-1',
+            connection: {
+              host: '10.0.0.1',
+              port: 22,
+              auth_type: 'PRIVATE_KEY',
+              user_name: 'user-a',
+            },
+            file: {
+              path: 'inbox/*.csv',
+              file_type: 'CSV',
+              delimiter: ';',
+            },
+          } as any
+        }
       />,
     );
 
@@ -279,21 +312,26 @@ describe('features/data-enrichment/components/DataEnrichmentEditModal/index.tsx'
         isOpen
         onClose={jest.fn()}
         editMode
-        selectedJob={{
-          id: 'pull-2',
-          endpoint_name: 'Pull Job',
-          type: 'pull',
-          source_type: 'HTTP',
-          connection: {
-            url: 'https://example.com/data',
-            headers: { Authorization: 'Bearer token' },
-          },
-        } as any}
+        selectedJob={
+          {
+            id: 'pull-2',
+            endpoint_name: 'Pull Job',
+            type: 'pull',
+            source_type: 'HTTP',
+            connection: {
+              url: 'https://example.com/data',
+              headers: { Authorization: 'Bearer token' },
+            },
+          } as any
+        }
       />,
     );
 
     await waitFor(() => {
-      expect(setValueMock).toHaveBeenCalledWith('url', 'https://example.com/data');
+      expect(setValueMock).toHaveBeenCalledWith(
+        'url',
+        'https://example.com/data',
+      );
       expect(setValueMock).toHaveBeenCalledWith(
         'headers',
         JSON.stringify({ Authorization: 'Bearer token' }, null, 2),
@@ -307,14 +345,18 @@ describe('features/data-enrichment/components/DataEnrichmentEditModal/index.tsx'
         isOpen
         onClose={jest.fn()}
         editMode
-        selectedJob={{ id: 'job-1', endpoint_name: 'Pull Job', type: 'pull' } as any}
+        selectedJob={
+          { id: 'job-1', endpoint_name: 'Pull Job', type: 'pull' } as any
+        }
       />,
     );
 
     fireEvent.click(screen.getByText('Update'));
 
     await waitFor(() => {
-      expect(screen.getByText('Update Confirmation Required!')).toBeInTheDocument();
+      expect(
+        screen.getByText('Update Confirmation Required!'),
+      ).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByText('Yes, Update Configuration'));
@@ -335,7 +377,9 @@ describe('features/data-enrichment/components/DataEnrichmentEditModal/index.tsx'
         isOpen
         onClose={jest.fn()}
         editMode
-        selectedJob={{ id: 'job-1', endpoint_name: 'Pull Job', type: 'pull' } as any}
+        selectedJob={
+          { id: 'job-1', endpoint_name: 'Pull Job', type: 'pull' } as any
+        }
       />,
     );
 
@@ -354,7 +398,9 @@ describe('features/data-enrichment/components/DataEnrichmentEditModal/index.tsx'
         isOpen
         onClose={jest.fn()}
         editMode
-        selectedJob={{ id: 'job-1', endpoint_name: 'Pull Job', type: 'pull' } as any}
+        selectedJob={
+          { id: 'job-1', endpoint_name: 'Pull Job', type: 'pull' } as any
+        }
       />,
     );
 
@@ -396,7 +442,9 @@ describe('features/data-enrichment/components/DataEnrichmentEditModal/index.tsx'
         onClose={onClose}
         onCloseWithRefresh={onCloseWithRefresh}
         editMode
-        selectedJob={{ id: 'job-1', endpoint_name: 'Pull Job', type: 'pull' } as any}
+        selectedJob={
+          { id: 'job-1', endpoint_name: 'Pull Job', type: 'pull' } as any
+        }
       />,
     );
 
@@ -449,7 +497,9 @@ describe('features/data-enrichment/components/DataEnrichmentEditModal/index.tsx'
         isOpen
         onClose={onClose}
         editMode
-        selectedJob={{ id: 'job-1', endpoint_name: 'Pull Job', type: 'pull' } as any}
+        selectedJob={
+          { id: 'job-1', endpoint_name: 'Pull Job', type: 'pull' } as any
+        }
       />,
     );
 
@@ -481,7 +531,9 @@ describe('features/data-enrichment/components/DataEnrichmentEditModal/index.tsx'
         isOpen
         onClose={jest.fn()}
         editMode
-        selectedJob={{ id: 'job-1', endpoint_name: 'Pull Job', type: 'pull' } as any}
+        selectedJob={
+          { id: 'job-1', endpoint_name: 'Pull Job', type: 'pull' } as any
+        }
       />,
     );
 
@@ -494,7 +546,9 @@ describe('features/data-enrichment/components/DataEnrichmentEditModal/index.tsx'
     const cancelButtons = screen.getAllByText('Cancel');
     fireEvent.click(cancelButtons[cancelButtons.length - 1]);
     await waitFor(() => {
-      expect(screen.queryByText('Yes, Update Configuration')).not.toBeInTheDocument();
+      expect(
+        screen.queryByText('Yes, Update Configuration'),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -508,7 +562,9 @@ describe('features/data-enrichment/components/DataEnrichmentEditModal/index.tsx'
         isOpen
         onClose={jest.fn()}
         editMode
-        selectedJob={{ id: 'job-1', endpoint_name: 'Pull Job', type: 'pull' } as any}
+        selectedJob={
+          { id: 'job-1', endpoint_name: 'Pull Job', type: 'pull' } as any
+        }
       />,
     );
 
@@ -530,19 +586,25 @@ describe('features/data-enrichment/components/DataEnrichmentEditModal/index.tsx'
     const cancelBtns = screen.getAllByText('Cancel');
     fireEvent.click(cancelBtns[cancelBtns.length - 1]);
     await waitFor(() => {
-      expect(screen.queryByText('Yes, Send for Approval')).not.toBeInTheDocument();
+      expect(
+        screen.queryByText('Yes, Send for Approval'),
+      ).not.toBeInTheDocument();
     });
   });
 
   it('propagates Error instance message in catch block (line 122)', async () => {
-    saveDataEnrichmentJobMock.mockRejectedValueOnce(new Error('Something went wrong'));
+    saveDataEnrichmentJobMock.mockRejectedValueOnce(
+      new Error('Something went wrong'),
+    );
 
     render(
       <DataEnrichmentEditModal
         isOpen
         onClose={jest.fn()}
         editMode
-        selectedJob={{ id: 'job-1', endpoint_name: 'Pull Job', type: 'pull' } as any}
+        selectedJob={
+          { id: 'job-1', endpoint_name: 'Pull Job', type: 'pull' } as any
+        }
       />,
     );
 
@@ -554,7 +616,10 @@ describe('features/data-enrichment/components/DataEnrichmentEditModal/index.tsx'
     fireEvent.click(screen.getByText('Yes, Update Configuration'));
 
     await waitFor(() => {
-      expect(showErrorMock).toHaveBeenCalledWith('Error', 'Something went wrong');
+      expect(showErrorMock).toHaveBeenCalledWith(
+        'Error',
+        'Something went wrong',
+      );
     });
   });
 
@@ -575,7 +640,9 @@ describe('features/data-enrichment/components/DataEnrichmentEditModal/index.tsx'
         isOpen
         onClose={jest.fn()}
         editMode
-        selectedJob={{ id: 'job-1', endpoint_name: 'Pull Job', type: 'pull' } as any}
+        selectedJob={
+          { id: 'job-1', endpoint_name: 'Pull Job', type: 'pull' } as any
+        }
       />,
     );
 
@@ -600,7 +667,9 @@ describe('features/data-enrichment/components/DataEnrichmentEditModal/index.tsx'
         isOpen
         onClose={jest.fn()}
         editMode
-        selectedJob={{ id: 'job-1', endpoint_name: 'Pull Job', type: 'pull' } as any}
+        selectedJob={
+          { id: 'job-1', endpoint_name: 'Pull Job', type: 'pull' } as any
+        }
       />,
     );
 
@@ -622,7 +691,9 @@ describe('features/data-enrichment/components/DataEnrichmentEditModal/index.tsx'
         isOpen
         onClose={jest.fn()}
         editMode
-        selectedJob={{ id: 'job-1', endpoint_name: 'Pull Job', type: 'pull' } as any}
+        selectedJob={
+          { id: 'job-1', endpoint_name: 'Pull Job', type: 'pull' } as any
+        }
       />,
     );
 
@@ -638,7 +709,9 @@ describe('features/data-enrichment/components/DataEnrichmentEditModal/index.tsx'
         isOpen
         onClose={jest.fn()}
         editMode
-        selectedJob={{ id: 'job-1', endpoint_name: 'Pull Job', type: 'pull' } as any}
+        selectedJob={
+          { id: 'job-1', endpoint_name: 'Pull Job', type: 'pull' } as any
+        }
       />,
     );
 
@@ -655,7 +728,9 @@ describe('features/data-enrichment/components/DataEnrichmentEditModal/index.tsx'
         isOpen
         onClose={jest.fn()}
         editMode
-        selectedJob={{ id: 'job-1', endpoint_name: 'Pull Job', type: 'pull' } as any}
+        selectedJob={
+          { id: 'job-1', endpoint_name: 'Pull Job', type: 'pull' } as any
+        }
       />,
     );
 
@@ -666,7 +741,10 @@ describe('features/data-enrichment/components/DataEnrichmentEditModal/index.tsx'
     fireEvent.click(screen.getByText('Yes, Update Configuration'));
 
     await waitFor(() => {
-      expect(showErrorMock).toHaveBeenCalledWith('Error', 'Failed to create endpoint');
+      expect(showErrorMock).toHaveBeenCalledWith(
+        'Error',
+        'Failed to create endpoint',
+      );
     });
   });
 
@@ -678,7 +756,9 @@ describe('features/data-enrichment/components/DataEnrichmentEditModal/index.tsx'
         isOpen
         onClose={jest.fn()}
         editMode
-        selectedJob={{ id: 'job-1', endpoint_name: 'Pull Job', type: 'pull' } as any}
+        selectedJob={
+          { id: 'job-1', endpoint_name: 'Pull Job', type: 'pull' } as any
+        }
       />,
     );
 
@@ -689,7 +769,10 @@ describe('features/data-enrichment/components/DataEnrichmentEditModal/index.tsx'
     fireEvent.click(screen.getByText('Yes, Update Configuration'));
 
     await waitFor(() => {
-      expect(showErrorMock).toHaveBeenCalledWith('Error', 'Unknown error occurred');
+      expect(showErrorMock).toHaveBeenCalledWith(
+        'Error',
+        'Unknown error occurred',
+      );
     });
   });
 
@@ -700,12 +783,16 @@ describe('features/data-enrichment/components/DataEnrichmentEditModal/index.tsx'
       <DataEnrichmentEditModal
         isOpen
         onClose={jest.fn()}
-        selectedJob={{ id: 'job-1', endpoint_name: 'Pull Job', type: 'pull' } as any}
+        selectedJob={
+          { id: 'job-1', endpoint_name: 'Pull Job', type: 'pull' } as any
+        }
       />,
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId('pull-form')).toHaveTextContent('schedule-count:0');
+      expect(screen.getByTestId('pull-form')).toHaveTextContent(
+        'schedule-count:0',
+      );
     });
   });
 
@@ -721,12 +808,16 @@ describe('features/data-enrichment/components/DataEnrichmentEditModal/index.tsx'
       <DataEnrichmentEditModal
         isOpen
         onClose={jest.fn()}
-        selectedJob={{ id: 'job-1', endpoint_name: 'Pull Job', type: 'pull' } as any}
+        selectedJob={
+          { id: 'job-1', endpoint_name: 'Pull Job', type: 'pull' } as any
+        }
       />,
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId('pull-form')).toHaveTextContent('schedule-count:1');
+      expect(screen.getByTestId('pull-form')).toHaveTextContent(
+        'schedule-count:1',
+      );
     });
   });
 
@@ -736,17 +827,22 @@ describe('features/data-enrichment/components/DataEnrichmentEditModal/index.tsx'
         isOpen
         onClose={jest.fn()}
         editMode
-        selectedJob={{
-          id: 'job-push',
-          type: 'push',
-          endpoint_name: 'Push EP',
-          path: '/already-prefixed',
-        } as any}
+        selectedJob={
+          {
+            id: 'job-push',
+            type: 'push',
+            endpoint_name: 'Push EP',
+            path: '/already-prefixed',
+          } as any
+        }
       />,
     );
 
     await waitFor(() => {
-      expect(setValueMock).toHaveBeenCalledWith('endpointPath', '/already-prefixed');
+      expect(setValueMock).toHaveBeenCalledWith(
+        'endpointPath',
+        '/already-prefixed',
+      );
     });
   });
 
@@ -756,17 +852,19 @@ describe('features/data-enrichment/components/DataEnrichmentEditModal/index.tsx'
         isOpen
         onClose={jest.fn()}
         editMode
-        selectedJob={{
-          id: 'job-pk',
-          type: 'pull',
-          source_type: 'SFTP',
-          connection: {
-            auth_type: 'PRIVATE_KEY',
-          },
-          file: {
-            path: 'relative/data.csv',
-          },
-        } as any}
+        selectedJob={
+          {
+            id: 'job-pk',
+            type: 'pull',
+            source_type: 'SFTP',
+            connection: {
+              auth_type: 'PRIVATE_KEY',
+            },
+            file: {
+              path: 'relative/data.csv',
+            },
+          } as any
+        }
       />,
     );
 
@@ -776,7 +874,10 @@ describe('features/data-enrichment/components/DataEnrichmentEditModal/index.tsx'
       expect(setValueMock).toHaveBeenCalledWith('host', '');
       expect(setValueMock).toHaveBeenCalledWith('port', '');
       expect(setValueMock).toHaveBeenCalledWith('username', '');
-      expect(setValueMock).toHaveBeenCalledWith('pathPattern', '/relative/data.csv');
+      expect(setValueMock).toHaveBeenCalledWith(
+        'pathPattern',
+        '/relative/data.csv',
+      );
       expect(setValueMock).toHaveBeenCalledWith('fileFormat', 'csv');
       expect(setValueMock).toHaveBeenCalledWith('delimiter', ',');
     });
@@ -790,7 +891,9 @@ describe('features/data-enrichment/components/DataEnrichmentEditModal/index.tsx'
         isOpen
         onClose={jest.fn()}
         editMode
-        selectedJob={{ id: 'job-1', endpoint_name: 'Fallback EP', type: 'pull' } as any}
+        selectedJob={
+          { id: 'job-1', endpoint_name: 'Fallback EP', type: 'pull' } as any
+        }
       />,
     );
 
@@ -813,7 +916,9 @@ describe('features/data-enrichment/components/DataEnrichmentEditModal/index.tsx'
         isOpen
         onClose={jest.fn()}
         editMode
-        selectedJob={{ id: 'job-1', endpoint_name: 'Pull Job', type: 'pull' } as any}
+        selectedJob={
+          { id: 'job-1', endpoint_name: 'Pull Job', type: 'pull' } as any
+        }
       />,
     );
 
@@ -824,7 +929,9 @@ describe('features/data-enrichment/components/DataEnrichmentEditModal/index.tsx'
     });
 
     expect(scrollToFirstErrorMock).not.toHaveBeenCalled();
-    expect(screen.queryByText('Yes, Update Configuration')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Yes, Update Configuration'),
+    ).not.toBeInTheDocument();
   });
 
   it('shows isCreating loading backdrop with Updating text when editMode is true', async () => {
@@ -837,7 +944,9 @@ describe('features/data-enrichment/components/DataEnrichmentEditModal/index.tsx'
         isOpen
         onClose={jest.fn()}
         editMode
-        selectedJob={{ id: 'job-1', endpoint_name: 'Pull Job', type: 'pull' } as any}
+        selectedJob={
+          { id: 'job-1', endpoint_name: 'Pull Job', type: 'pull' } as any
+        }
       />,
     );
 
@@ -857,7 +966,9 @@ describe('features/data-enrichment/components/DataEnrichmentEditModal/index.tsx'
       <DataEnrichmentEditModal
         isOpen
         onClose={jest.fn()}
-        selectedJob={{ id: 'job-1', endpoint_name: 'Pull Job', type: 'pull' } as any}
+        selectedJob={
+          { id: 'job-1', endpoint_name: 'Pull Job', type: 'pull' } as any
+        }
       />,
     );
 
@@ -874,7 +985,9 @@ describe('features/data-enrichment/components/DataEnrichmentEditModal/index.tsx'
         isOpen
         onClose={jest.fn()}
         editMode
-        selectedJob={{ id: 'job-1', endpoint_name: 'Pull Job', type: 'pull' } as any}
+        selectedJob={
+          { id: 'job-1', endpoint_name: 'Pull Job', type: 'pull' } as any
+        }
       />,
     );
 
@@ -888,7 +1001,9 @@ describe('features/data-enrichment/components/DataEnrichmentEditModal/index.tsx'
     );
 
     await waitFor(() => {
-      expect(screen.queryByText('Yes, Update Configuration')).not.toBeInTheDocument();
+      expect(
+        screen.queryByText('Yes, Update Configuration'),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -902,7 +1017,9 @@ describe('features/data-enrichment/components/DataEnrichmentEditModal/index.tsx'
         isOpen
         onClose={jest.fn()}
         editMode
-        selectedJob={{ id: 'job-1', endpoint_name: 'Pull Job', type: 'pull' } as any}
+        selectedJob={
+          { id: 'job-1', endpoint_name: 'Pull Job', type: 'pull' } as any
+        }
       />,
     );
 
@@ -919,7 +1036,9 @@ describe('features/data-enrichment/components/DataEnrichmentEditModal/index.tsx'
     );
 
     await waitFor(() => {
-      expect(screen.queryByText('Yes, Send for Approval')).not.toBeInTheDocument();
+      expect(
+        screen.queryByText('Yes, Send for Approval'),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -947,12 +1066,14 @@ describe('features/data-enrichment/components/DataEnrichmentEditModal/index.tsx'
         isOpen
         onClose={jest.fn()}
         editMode
-        selectedJob={{
-          id: 'job-ftp',
-          type: 'pull',
-          source_type: 'FTP',
-          connection: {},
-        } as any}
+        selectedJob={
+          {
+            id: 'job-ftp',
+            type: 'pull',
+            source_type: 'FTP',
+            connection: {},
+          } as any
+        }
       />,
     );
 
@@ -969,12 +1090,14 @@ describe('features/data-enrichment/components/DataEnrichmentEditModal/index.tsx'
         isOpen
         onClose={jest.fn()}
         editMode
-        selectedJob={{
-          id: 'job-http-empty',
-          type: 'pull',
-          source_type: 'HTTP',
-          connection: {},
-        } as any}
+        selectedJob={
+          {
+            id: 'job-http-empty',
+            type: 'pull',
+            source_type: 'HTTP',
+            connection: {},
+          } as any
+        }
       />,
     );
 
@@ -990,13 +1113,15 @@ describe('features/data-enrichment/components/DataEnrichmentEditModal/index.tsx'
         isOpen
         onClose={jest.fn()}
         editMode
-        selectedJob={{
-          id: 'job-sftp-pwd',
-          type: 'pull',
-          source_type: 'SFTP',
-          connection: { auth_type: 'PASSWORD', host: 'srv', port: 22 },
-          file: { path: 'data.csv' },
-        } as any}
+        selectedJob={
+          {
+            id: 'job-sftp-pwd',
+            type: 'pull',
+            source_type: 'SFTP',
+            connection: { auth_type: 'PASSWORD', host: 'srv', port: 22 },
+            file: { path: 'data.csv' },
+          } as any
+        }
       />,
     );
 
@@ -1011,13 +1136,15 @@ describe('features/data-enrichment/components/DataEnrichmentEditModal/index.tsx'
         isOpen
         onClose={jest.fn()}
         editMode
-        selectedJob={{
-          id: 'job-sftp-nopath',
-          type: 'pull',
-          source_type: 'SFTP',
-          connection: { auth_type: 'PRIVATE_KEY' },
-          file: {},
-        } as any}
+        selectedJob={
+          {
+            id: 'job-sftp-nopath',
+            type: 'pull',
+            source_type: 'SFTP',
+            connection: { auth_type: 'PRIVATE_KEY' },
+            file: {},
+          } as any
+        }
       />,
     );
 
@@ -1032,18 +1159,23 @@ describe('features/data-enrichment/components/DataEnrichmentEditModal/index.tsx'
         isOpen
         onClose={jest.fn()}
         editMode
-        selectedJob={{
-          id: 'job-sftp-abs',
-          type: 'pull',
-          source_type: 'SFTP',
-          connection: { auth_type: 'PRIVATE_KEY' },
-          file: { path: '/already/absolute.csv' },
-        } as any}
+        selectedJob={
+          {
+            id: 'job-sftp-abs',
+            type: 'pull',
+            source_type: 'SFTP',
+            connection: { auth_type: 'PRIVATE_KEY' },
+            file: { path: '/already/absolute.csv' },
+          } as any
+        }
       />,
     );
 
     await waitFor(() => {
-      expect(setValueMock).toHaveBeenCalledWith('pathPattern', '/already/absolute.csv');
+      expect(setValueMock).toHaveBeenCalledWith(
+        'pathPattern',
+        '/already/absolute.csv',
+      );
     });
   });
 
@@ -1068,7 +1200,9 @@ describe('features/data-enrichment/components/DataEnrichmentEditModal/index.tsx'
       <DataEnrichmentEditModal
         isOpen
         editMode
-        selectedJob={{ id: 'job-1', endpoint_name: 'Pull Job', type: 'pull' } as any}
+        selectedJob={
+          { id: 'job-1', endpoint_name: 'Pull Job', type: 'pull' } as any
+        }
       />,
     );
 
@@ -1093,5 +1227,4 @@ describe('features/data-enrichment/components/DataEnrichmentEditModal/index.tsx'
       expect(handleEditSendForApprovalConfirmMock).toHaveBeenCalled();
     });
   });
-
 });

@@ -34,7 +34,9 @@ jest.mock('@mui/material/Box', () => ({
         : (sx ?? {});
     const bg =
       typeof resolvedSx?.backgroundColor === 'function'
-        ? resolvedSx.backgroundColor({ palette: { background: { paper: '#fff' } } })
+        ? resolvedSx.backgroundColor({
+            palette: { background: { paper: '#fff' } },
+          })
         : resolvedSx?.backgroundColor;
     return (
       <div
@@ -58,7 +60,9 @@ jest.mock('lucide-react', () => ({
   PackageIcon: () => <span data-testid="package-icon" />,
 }));
 
-import DashboardBoxes, { BoxCard } from '../../../../../src/features/dashboard/components/DashboardBoxes';
+import DashboardBoxes, {
+  BoxCard,
+} from '../../../../../src/features/dashboard/components/DashboardBoxes';
 
 describe('features/dashboard/components/DashboardBoxes.tsx', () => {
   beforeEach(() => {
@@ -104,7 +108,9 @@ describe('features/dashboard/components/DashboardBoxes.tsx', () => {
   });
 
   it('uses approver and exporter routes and supports partial-claim matching', async () => {
-    useAuthMock.mockReturnValue({ user: { claims: ['Team-APPROVER', 'ops-exporter'] } });
+    useAuthMock.mockReturnValue({
+      user: { claims: ['Team-APPROVER', 'ops-exporter'] },
+    });
     useLocationMock.mockReturnValue({ pathname: '/approver/jobs/details' });
 
     render(<DashboardBoxes />);
@@ -121,7 +127,9 @@ describe('features/dashboard/components/DashboardBoxes.tsx', () => {
   });
 
   it('handles non-element icons gracefully when React reports invalid element', () => {
-    const isValidSpy = jest.spyOn(React, 'isValidElement').mockReturnValue(false);
+    const isValidSpy = jest
+      .spyOn(React, 'isValidElement')
+      .mockReturnValue(false);
 
     useAuthMock.mockReturnValue({ user: { claims: [] } });
     render(<DashboardBoxes />);
@@ -164,7 +172,9 @@ describe('features/dashboard/components/DashboardBoxes.tsx', () => {
 
   it('shows selected state when pathname starts with card path', async () => {
     useAuthMock.mockReturnValue({ user: { claims: ['approver'] } });
-    useLocationMock.mockReturnValue({ pathname: '/approver/configs/detail/123' });
+    useLocationMock.mockReturnValue({
+      pathname: '/approver/configs/detail/123',
+    });
 
     render(<DashboardBoxes />);
 
@@ -240,7 +250,9 @@ describe('features/dashboard/components/DashboardBoxes.tsx', () => {
     // User has both approver and publisher claims
     // isApprover=true takes priority in resolvePath, approverPaths['exported'] is undefined → falls back to defaultPaths['exported']
     // isPublisher=true means exported card IS added
-    useAuthMock.mockReturnValue({ user: { claims: ['approver', 'publisher'] } });
+    useAuthMock.mockReturnValue({
+      user: { claims: ['approver', 'publisher'] },
+    });
     useLocationMock.mockReturnValue({ pathname: '/dashboard' });
 
     render(<DashboardBoxes />);
@@ -261,7 +273,9 @@ describe('features/dashboard/components/DashboardBoxes.tsx', () => {
     // resolvePath('exported'): isApprover=false, isPublisher=false (exporter is checked first? No.)
     // Actually order: isApprover → isPublisher → isExporter
     // With publisher+exporter: isPublisher fires first, publisherPaths['exported'] IS defined
-    useAuthMock.mockReturnValue({ user: { claims: ['exporter', 'publisher'] } });
+    useAuthMock.mockReturnValue({
+      user: { claims: ['exporter', 'publisher'] },
+    });
     useLocationMock.mockReturnValue({ pathname: '/dashboard' });
 
     render(<DashboardBoxes />);
@@ -292,7 +306,9 @@ describe('features/dashboard/components/DashboardBoxes.tsx', () => {
   });
 
   it('handles null claim in claims array via ?? fallback (BRDA:81)', () => {
-    useAuthMock.mockReturnValue({ user: { claims: [null, undefined, 'editor'] } });
+    useAuthMock.mockReturnValue({
+      user: { claims: [null, undefined, 'editor'] },
+    });
     render(<DashboardBoxes />);
     // claimsLower maps each c through (c ?? '').toString().toLowerCase()
     // null/undefined claims fall back to '' — render should still work
