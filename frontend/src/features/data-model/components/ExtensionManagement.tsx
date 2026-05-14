@@ -7,7 +7,7 @@ import {
   type CreateDataModelExtensionRequest,
   type UpdateDataModelExtensionRequest,
   type TazamaCollectionName,
-  type TazamaFieldType
+  type TazamaFieldType,
 } from '../services/dataModelApi';
 
 interface ExtensionFormData {
@@ -30,7 +30,7 @@ interface ExtensionManagementProps {
 }
 
 export const ExtensionManagement: React.FC<ExtensionManagementProps> = ({
-  onExtensionChange
+  onExtensionChange,
 }) => {
   const [extensions, setExtensions] = useState<DataModelExtension[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,7 +44,7 @@ export const ExtensionManagement: React.FC<ExtensionManagementProps> = ({
     description: '',
     isRequired: false,
     defaultValue: '',
-    validation: {}
+    validation: {},
   });
   const [submitting, setSubmitting] = useState(false);
 
@@ -53,7 +53,7 @@ export const ExtensionManagement: React.FC<ExtensionManagementProps> = ({
     { value: 'accounts', label: 'Accounts' },
     { value: 'account_holder', label: 'Account Holders' },
     { value: 'transactionRelationship', label: 'Transaction Relationships' },
-    { value: 'transactionHistory', label: 'Transaction History' }
+    { value: 'transactionHistory', label: 'Transaction History' },
   ];
 
   const fieldTypes: Array<{ value: TazamaFieldType; label: string }> = [
@@ -62,7 +62,7 @@ export const ExtensionManagement: React.FC<ExtensionManagementProps> = ({
     { value: 'BOOLEAN', label: 'Boolean' },
     { value: 'DATE', label: 'Date' },
     { value: 'OBJECT', label: 'Object' },
-    { value: 'ARRAY', label: 'Array' }
+    { value: 'ARRAY', label: 'Array' },
   ];
 
   useEffect(() => {
@@ -94,7 +94,7 @@ export const ExtensionManagement: React.FC<ExtensionManagementProps> = ({
       description: '',
       isRequired: false,
       defaultValue: '',
-      validation: {}
+      validation: {},
     });
   };
 
@@ -115,7 +115,10 @@ export const ExtensionManagement: React.FC<ExtensionManagementProps> = ({
         description: formData.description.trim() || undefined,
         isRequired: formData.isRequired,
         defaultValue: formData.defaultValue.trim() || undefined,
-        validation: Object.keys(formData.validation).length > 0 ? formData.validation : undefined
+        validation:
+          Object.keys(formData.validation).length > 0
+            ? formData.validation
+            : undefined,
       };
 
       const response = await dataModelApi.createExtension(request);
@@ -150,7 +153,10 @@ export const ExtensionManagement: React.FC<ExtensionManagementProps> = ({
         description: formData.description.trim() || undefined,
         isRequired: formData.isRequired,
         defaultValue: formData.defaultValue.trim() || undefined,
-        validation: Object.keys(formData.validation).length > 0 ? formData.validation : undefined
+        validation:
+          Object.keys(formData.validation).length > 0
+            ? formData.validation
+            : undefined,
       };
 
       const response = await dataModelApi.updateExtension(id, request);
@@ -172,7 +178,11 @@ export const ExtensionManagement: React.FC<ExtensionManagementProps> = ({
   };
 
   const handleDeleteExtension = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this extension? This action cannot be undone.')) {
+    if (
+      !confirm(
+        'Are you sure you want to delete this extension? This action cannot be undone.',
+      )
+    ) {
       return;
     }
 
@@ -200,7 +210,7 @@ export const ExtensionManagement: React.FC<ExtensionManagementProps> = ({
       description: extension.description || '',
       isRequired: extension.isRequired,
       defaultValue: extension.defaultValue?.toString() || '',
-      validation: extension.validation || {}
+      validation: extension.validation || {},
     });
     setEditingExtension(extension.id);
   };
@@ -212,19 +222,19 @@ export const ExtensionManagement: React.FC<ExtensionManagementProps> = ({
   };
 
   const handleFormChange = (field: keyof ExtensionFormData, value: any) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
   };
 
   const handleValidationChange = (field: string, value: any) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       validation: {
         ...prev.validation,
-        [field]: value
-      }
+        [field]: value,
+      },
     }));
   };
 
@@ -239,9 +249,13 @@ export const ExtensionManagement: React.FC<ExtensionManagementProps> = ({
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900">Data Model Extensions</h3>
+        <h3 className="text-lg font-semibold text-gray-900">
+          Data Model Extensions
+        </h3>
         <Button
-          onClick={() => { setShowCreateForm(true); }}
+          onClick={() => {
+            setShowCreateForm(true);
+          }}
           className="flex items-center gap-2"
         >
           <Plus className="w-4 h-4" />
@@ -302,7 +316,8 @@ export const ExtensionManagement: React.FC<ExtensionManagementProps> = ({
       <div className="space-y-4">
         {extensions.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
-            No extensions found. Create your first custom field to extend the data model.
+            No extensions found. Create your first custom field to extend the
+            data model.
           </div>
         ) : (
           extensions.map((extension) => (
@@ -320,7 +335,9 @@ export const ExtensionManagement: React.FC<ExtensionManagementProps> = ({
                   />
                   <div className="flex gap-2 mt-4">
                     <Button
-                      onClick={async () => { await handleUpdateExtension(extension.id); }}
+                      onClick={async () => {
+                        await handleUpdateExtension(extension.id);
+                      }}
                       disabled={submitting}
                     >
                       <Save className="w-4 h-4 mr-2" />
@@ -349,22 +366,30 @@ export const ExtensionManagement: React.FC<ExtensionManagementProps> = ({
                       )}
                     </div>
                     {extension.description && (
-                      <p className="text-gray-600 text-sm">{extension.description}</p>
+                      <p className="text-gray-600 text-sm">
+                        {extension.description}
+                      </p>
                     )}
                     <div className="text-xs text-gray-500 mt-1">
-                      Created: {new Date(extension.createdAt).toLocaleDateString()}
-                      {extension.defaultValue && ` • Default: ${extension.defaultValue}`}
+                      Created:{' '}
+                      {new Date(extension.createdAt).toLocaleDateString()}
+                      {extension.defaultValue &&
+                        ` • Default: ${extension.defaultValue}`}
                     </div>
                   </div>
                   <div className="flex gap-2">
                     <button
-                      onClick={() => { startEditExtension(extension); }}
+                      onClick={() => {
+                        startEditExtension(extension);
+                      }}
                       className="p-2 text-gray-400 hover:text-blue-600"
                     >
                       <Edit className="w-4 h-4" />
                     </button>
                     <button
-                      onClick={async () => { await handleDeleteExtension(extension.id); }}
+                      onClick={async () => {
+                        await handleDeleteExtension(extension.id);
+                      }}
                       className="p-2 text-gray-400 hover:text-red-600"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -396,7 +421,7 @@ const ExtensionForm: React.FC<ExtensionFormProps> = ({
   fieldTypes,
   onFormChange,
   onValidationChange,
-  isEditing
+  isEditing,
 }) => (
   <div className="grid grid-cols-2 gap-4">
     <div>
@@ -405,7 +430,9 @@ const ExtensionForm: React.FC<ExtensionFormProps> = ({
       </label>
       <select
         value={formData.collection}
-        onChange={(e) => { onFormChange('collection', e.target.value); }}
+        onChange={(e) => {
+          onFormChange('collection', e.target.value);
+        }}
         disabled={isEditing} // Can't change collection when editing
         className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
       >
@@ -424,7 +451,9 @@ const ExtensionForm: React.FC<ExtensionFormProps> = ({
       <input
         type="text"
         value={formData.fieldName}
-        onChange={(e) => { onFormChange('fieldName', e.target.value); }}
+        onChange={(e) => {
+          onFormChange('fieldName', e.target.value);
+        }}
         disabled={isEditing} // Can't change field name when editing
         placeholder="e.g., creditScore"
         className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
@@ -437,7 +466,9 @@ const ExtensionForm: React.FC<ExtensionFormProps> = ({
       </label>
       <select
         value={formData.fieldType}
-        onChange={(e) => { onFormChange('fieldType', e.target.value); }}
+        onChange={(e) => {
+          onFormChange('fieldType', e.target.value);
+        }}
         disabled={isEditing} // Can't change field type when editing
         className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
       >
@@ -456,7 +487,9 @@ const ExtensionForm: React.FC<ExtensionFormProps> = ({
       <input
         type="text"
         value={formData.defaultValue}
-        onChange={(e) => { onFormChange('defaultValue', e.target.value); }}
+        onChange={(e) => {
+          onFormChange('defaultValue', e.target.value);
+        }}
         placeholder="Optional"
         className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
       />
@@ -468,7 +501,9 @@ const ExtensionForm: React.FC<ExtensionFormProps> = ({
       </label>
       <textarea
         value={formData.description}
-        onChange={(e) => { onFormChange('description', e.target.value); }}
+        onChange={(e) => {
+          onFormChange('description', e.target.value);
+        }}
         placeholder="Describe what this field is for"
         rows={2}
         className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -480,10 +515,14 @@ const ExtensionForm: React.FC<ExtensionFormProps> = ({
         <input
           type="checkbox"
           checked={formData.isRequired}
-          onChange={(e) => { onFormChange('isRequired', e.target.checked); }}
+          onChange={(e) => {
+            onFormChange('isRequired', e.target.checked);
+          }}
           className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
         />
-        <span className="text-sm font-medium text-gray-700">Required field</span>
+        <span className="text-sm font-medium text-gray-700">
+          Required field
+        </span>
       </label>
     </div>
 
@@ -498,7 +537,12 @@ const ExtensionForm: React.FC<ExtensionFormProps> = ({
             <input
               type="number"
               value={formData.validation.min || ''}
-              onChange={(e) => { onValidationChange('min', e.target.value ? Number(e.target.value) : undefined); }}
+              onChange={(e) => {
+                onValidationChange(
+                  'min',
+                  e.target.value ? Number(e.target.value) : undefined,
+                );
+              }}
               placeholder="Min value"
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
@@ -507,7 +551,12 @@ const ExtensionForm: React.FC<ExtensionFormProps> = ({
             <input
               type="number"
               value={formData.validation.max || ''}
-              onChange={(e) => { onValidationChange('max', e.target.value ? Number(e.target.value) : undefined); }}
+              onChange={(e) => {
+                onValidationChange(
+                  'max',
+                  e.target.value ? Number(e.target.value) : undefined,
+                );
+              }}
               placeholder="Max value"
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
@@ -525,7 +574,9 @@ const ExtensionForm: React.FC<ExtensionFormProps> = ({
         <input
           type="text"
           value={formData.validation.pattern || ''}
-          onChange={(e) => { onValidationChange('pattern', e.target.value || undefined); }}
+          onChange={(e) => {
+            onValidationChange('pattern', e.target.value || undefined);
+          }}
           placeholder="e.g., ^[A-Z0-9]{10}$"
           className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
