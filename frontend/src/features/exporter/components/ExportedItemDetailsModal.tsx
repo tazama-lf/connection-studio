@@ -143,8 +143,6 @@ export const ExportedItemDetailsModal: React.FC<
     }
   };
 
-  if (!isOpen || !content) return null;
-
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex min-h-screen items-center justify-center p-4">
@@ -606,9 +604,7 @@ export const ExportedItemDetailsModal: React.FC<
             variant="primary"
             onClick={async () => {
               setShowDeployConfirmDialog(false);
-              setIsPublishing(true);
               await handlePublish();
-              setIsPublishing(false);
             }}
             disabled={isPublishing}
           >
