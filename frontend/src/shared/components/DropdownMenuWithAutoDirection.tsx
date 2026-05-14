@@ -6,11 +6,9 @@ interface DropdownMenuWithAutoDirectionProps {
   forceDirection?: 'top' | 'bottom' | 'auto';
 }
 
-export const DropdownMenuWithAutoDirection: React.FC<DropdownMenuWithAutoDirectionProps> = ({
-  children,
-  onClose,
-  forceDirection = 'auto'
-}) => {
+export const DropdownMenuWithAutoDirection: React.FC<
+  DropdownMenuWithAutoDirectionProps
+> = ({ children, onClose, forceDirection = 'auto' }) => {
   const menuRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState<'top' | 'bottom'>('bottom');
 
@@ -49,8 +47,9 @@ export const DropdownMenuWithAutoDirection: React.FC<DropdownMenuWithAutoDirecti
   return (
     <div
       ref={menuRef}
-      className={`absolute right-0 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-[9999] ${position === 'top' ? 'bottom-full mb-2' : 'top-full -mt-3'
-        }`}
+      className={`absolute right-0 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-[9999] ${
+        position === 'top' ? 'bottom-full mb-2' : 'top-full -mt-3'
+      }`}
     >
       {children}
     </div>
