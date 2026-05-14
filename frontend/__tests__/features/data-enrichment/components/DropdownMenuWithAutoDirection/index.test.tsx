@@ -5,9 +5,16 @@ import { DropdownMenuWithAutoDirection } from '../../../../../src/features/data-
 describe('features/data-enrichment/components/DropdownMenuWithAutoDirection/index.tsx', () => {
   const originalGetBoundingClientRect =
     HTMLElement.prototype.getBoundingClientRect;
+  const originalInnerHeight = window.innerHeight;
 
   afterEach(() => {
     HTMLElement.prototype.getBoundingClientRect = originalGetBoundingClientRect;
+    Object.defineProperty(window, 'innerHeight', {
+      configurable: true,
+      writable: true,
+      value: originalInnerHeight,
+    });
+    jest.restoreAllMocks();
   });
 
   it('has test coverage placeholder', () => {
@@ -96,7 +103,7 @@ describe('features/data-enrichment/components/DropdownMenuWithAutoDirection/inde
     const fakeRef: Record<string, unknown> = {};
     Object.defineProperty(fakeRef, 'current', {
       get: () => null,
-      set: () => {},
+      set: () => { },
       configurable: true,
     });
 
