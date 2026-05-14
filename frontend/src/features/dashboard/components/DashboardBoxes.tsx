@@ -48,7 +48,7 @@ export const BoxCard: React.FC<{
         gap: 2,
         textAlign: 'center',
         position: 'relative',
-        backgroundColor: (theme) => theme.palette.background.paper,
+        backgroundColor: color,
         border: '1px solid rgba(0,0,0,0.06)',
         transition:
           'transform 200ms cubic-bezier(.2,.8,.2,1), box-shadow 200ms ease, background-color 200ms ease',
