@@ -144,7 +144,7 @@ describe('shared/components/DropdownMenuWithAutoDirection.tsx', () => {
     const fakeRef: Record<string, unknown> = {};
     Object.defineProperty(fakeRef, 'current', {
       get: () => null,
-      set: () => {},
+      set: () => { },
       configurable: true,
     });
 
