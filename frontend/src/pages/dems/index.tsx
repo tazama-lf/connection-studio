@@ -27,10 +27,7 @@ const DEMSModule: React.FC = () => {
 
   // Disable body scroll when any modal is open
   useEffect(() => {
-    if (
-      editingEndpointId !== null ||
-      showVersionHistoryModal
-    ) {
+    if (editingEndpointId !== null || showVersionHistoryModal) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = 'unset';
@@ -97,7 +94,9 @@ const DEMSModule: React.FC = () => {
         <Button
           variant="primary"
           className="py-1 pl-2"
-          onClick={async () => { await navigate(-1); }}
+          onClick={async () => {
+            await navigate(-1);
+          }}
         >
           <ChevronLeft size={20} /> <span>Go Back</span>
         </Button>
@@ -156,10 +155,8 @@ const DEMSModule: React.FC = () => {
           config={selectedConfig}
         />
       )}
-
     </div>
   );
 };
 
 export default DEMSModule;
-
