@@ -1,9 +1,22 @@
 import React from 'react';
-import { render, screen, act, waitFor, fireEvent } from '@testing-library/react';
-import { ToastProvider, useToast } from '../../../src/shared/providers/ToastProvider';
+import {
+  render,
+  screen,
+  act,
+  waitFor,
+  fireEvent,
+} from '@testing-library/react';
+import {
+  ToastProvider,
+  useToast,
+} from '../../../src/shared/providers/ToastProvider';
 
 // Consumer component used in tests
-const ToastConsumer: React.FC<{ action?: string; title?: string; message?: string }> = ({
+const ToastConsumer: React.FC<{
+  action?: string;
+  title?: string;
+  message?: string;
+}> = ({
   action = 'success',
   title = 'Test Title',
   message = 'Test message',
@@ -63,7 +76,11 @@ describe('ToastProvider', () => {
   it('shows an error toast when showError is called', async () => {
     render(
       <ToastProvider>
-        <ToastConsumer action="error" title="Oops!" message="Something went wrong" />
+        <ToastConsumer
+          action="error"
+          title="Oops!"
+          message="Something went wrong"
+        />
       </ToastProvider>,
     );
 
@@ -122,7 +139,11 @@ describe('ToastProvider', () => {
   it('auto-removes a toast after duration elapses', async () => {
     render(
       <ToastProvider>
-        <ToastConsumer action="success" title="Temporary" message="Will vanish" />
+        <ToastConsumer
+          action="success"
+          title="Temporary"
+          message="Will vanish"
+        />
       </ToastProvider>,
     );
 
@@ -156,7 +177,11 @@ describe('useToast outside provider', () => {
   it('returns toast api when used inside ToastProvider', () => {
     const ThrowingComponent = () => {
       const toast = useToast();
-      return <div>{typeof toast.showSuccess === 'function' ? 'ready' : 'missing'}</div>;
+      return (
+        <div>
+          {typeof toast.showSuccess === 'function' ? 'ready' : 'missing'}
+        </div>
+      );
     };
 
     render(

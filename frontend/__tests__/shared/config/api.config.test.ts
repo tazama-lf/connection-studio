@@ -15,7 +15,8 @@ describe('shared/config/api.config.ts', () => {
     expect(API_CONFIG.ENDPOINTS.AUTH.PROFILE).toBe('/auth/profile');
     expect(API_CONFIG.ENDPOINTS.CONFIG.CREATE).toBe('/config');
     expect(API_CONFIG.ENDPOINTS.CONFIG.ADD_MAPPING).toContain('/mapping');
-    expect(API_CONFIG.ENDPOINTS.CONFIG.UPDATE_FUNCTION).toContain('/function/:index');
+    expect(API_CONFIG.ENDPOINTS.CONFIG.UPDATE_FUNCTION).toContain(
+      '/function/:index',
+    );
   });
 });
-

@@ -40,7 +40,13 @@ jest.mock('../../../../src/shared/components/EditEndpointModal', () => ({
   default: ({ onSendForDeployment, onClose, onSuccess }: any) => (
     <div>
       <div>EditEndpointModal</div>
-      <button onClick={() => { void onSendForDeployment().catch(() => {}); }}>Deploy Config</button>
+      <button
+        onClick={() => {
+          void onSendForDeployment().catch(() => {});
+        }}
+      >
+        Deploy Config
+      </button>
       <button onClick={onSuccess}>Success Callback</button>
       <button onClick={onClose}>Close Modal</button>
     </div>
@@ -56,7 +62,10 @@ jest.mock('../../../../src/features/config/services/configApi', () => ({
 describe('features/exporter/pages/ExporterConfigsPage.tsx', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockUseAuth.mockReturnValue({ isAuthenticated: true, user: { claims: ['exporter'] } });
+    mockUseAuth.mockReturnValue({
+      isAuthenticated: true,
+      user: { claims: ['exporter'] },
+    });
     mockIsExporter.mockReturnValue(true);
     (configApi.exportConfig as jest.Mock).mockResolvedValue({ success: true });
   });
@@ -64,8 +73,12 @@ describe('features/exporter/pages/ExporterConfigsPage.tsx', () => {
   it('renders permission message for non-exporter users', () => {
     mockIsExporter.mockReturnValue(false);
     render(<ExporterConfigsPage />);
-    expect(screen.getByText('You do not have permission to access this page.')).toBeInTheDocument();
-    expect(mockShowError).toHaveBeenCalledWith('You do not have permission to access this page');
+    expect(
+      screen.getByText('You do not have permission to access this page.'),
+    ).toBeInTheDocument();
+    expect(mockShowError).toHaveBeenCalledWith(
+      'You do not have permission to access this page',
+    );
   });
 
   it('renders permission message for unauthenticated users without side effects', () => {
@@ -74,7 +87,9 @@ describe('features/exporter/pages/ExporterConfigsPage.tsx', () => {
 
     render(<ExporterConfigsPage />);
 
-    expect(screen.getByText('You do not have permission to access this page.')).toBeInTheDocument();
+    expect(
+      screen.getByText('You do not have permission to access this page.'),
+    ).toBeInTheDocument();
     expect(mockShowError).not.toHaveBeenCalled();
   });
 
@@ -96,7 +111,10 @@ describe('features/exporter/pages/ExporterConfigsPage.tsx', () => {
     fireEvent.click(screen.getByText('Deploy Config'));
 
     await waitFor(() => {
-      expect(configApi.exportConfig).toHaveBeenCalledWith(101, 'Exported for deployment');
+      expect(configApi.exportConfig).toHaveBeenCalledWith(
+        101,
+        'Exported for deployment',
+      );
       expect(mockShowSuccess).toHaveBeenCalled();
     });
   });
@@ -110,12 +128,16 @@ describe('features/exporter/pages/ExporterConfigsPage.tsx', () => {
     fireEvent.click(screen.getByText('Deploy Config'));
 
     await waitFor(() => {
-      expect(mockShowError).toHaveBeenCalledWith('Failed to export configuration');
+      expect(mockShowError).toHaveBeenCalledWith(
+        'Failed to export configuration',
+      );
     });
   });
 
   it('shows explicit error message when export rejects with Error', async () => {
-    (configApi.exportConfig as jest.Mock).mockRejectedValueOnce(new Error('SFTP down'));
+    (configApi.exportConfig as jest.Mock).mockRejectedValueOnce(
+      new Error('SFTP down'),
+    );
 
     render(<ExporterConfigsPage />);
 

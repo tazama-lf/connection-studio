@@ -3,10 +3,7 @@ import {
   formatScheduleForEdit,
   validationSchema,
 } from '@features/cron/utils';
-import type {
-  ScheduleResponse,
-  ErrorWithResponse,
-} from '@features/cron/types';
+import type { ScheduleResponse, ErrorWithResponse } from '@features/cron/types';
 import { CRON_JOB_ERROR_MESSAGES } from '@features/cron/constants';
 
 describe('Cron Job Utils', () => {
@@ -333,7 +330,9 @@ describe('Cron Job Utils', () => {
         iterations: null,
       };
 
-      await expect(validationSchema.validate(dataWithNull)).rejects.toThrow('Iterations is required');
+      await expect(validationSchema.validate(dataWithNull)).rejects.toThrow(
+        'Iterations is required',
+      );
     });
 
     it('should handle undefined iterations value in transform', async () => {
@@ -343,7 +342,9 @@ describe('Cron Job Utils', () => {
         iterations: undefined,
       };
 
-      await expect(validationSchema.validate(dataWithUndefined)).rejects.toThrow();
+      await expect(
+        validationSchema.validate(dataWithUndefined),
+      ).rejects.toThrow();
     });
 
     it('should handle empty string iterations in transform', async () => {
@@ -353,7 +354,9 @@ describe('Cron Job Utils', () => {
         iterations: '',
       };
 
-      await expect(validationSchema.validate(dataWithEmptyString)).rejects.toThrow();
+      await expect(
+        validationSchema.validate(dataWithEmptyString),
+      ).rejects.toThrow();
     });
   });
 });

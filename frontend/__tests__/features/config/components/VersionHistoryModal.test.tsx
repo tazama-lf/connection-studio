@@ -9,7 +9,9 @@ import VersionHistoryModal from '../../../../../src/features/config/components/V
 
 describe('features/config/components/VersionHistoryModal.tsx', () => {
   it('returns null when closed', () => {
-    const { container } = render(<VersionHistoryModal isOpen={false} onClose={jest.fn()} />);
+    const { container } = render(
+      <VersionHistoryModal isOpen={false} onClose={jest.fn()} />,
+    );
     expect(container.firstChild).toBeNull();
   });
 
@@ -45,7 +47,7 @@ describe('features/config/components/VersionHistoryModal.tsx', () => {
             },
           ],
         }}
-      />
+      />,
     );
 
     expect(screen.getAllByText('v3').length).toBe(2);

@@ -1,5 +1,11 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  act,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { JobRejectionDialog } from '../../../src/shared/components/JobRejectionDialog';
 import * as ButtonModule from '../../../src/shared/components/Button';
@@ -19,12 +25,16 @@ describe('JobRejectionDialog', () => {
 
   it('renders nothing when isOpen is false', () => {
     render(<JobRejectionDialog {...defaultProps} isOpen={false} />);
-    expect(screen.queryByText('Rejection Confirmation Required!')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Rejection Confirmation Required!'),
+    ).not.toBeInTheDocument();
   });
 
   it('renders the dialog when isOpen is true', () => {
     render(<JobRejectionDialog {...defaultProps} />);
-    expect(screen.getByText('Rejection Confirmation Required!')).toBeInTheDocument();
+    expect(
+      screen.getByText('Rejection Confirmation Required!'),
+    ).toBeInTheDocument();
   });
 
   it('shows the job name in the dialog', () => {
@@ -41,7 +51,9 @@ describe('JobRejectionDialog', () => {
   it('shows reason textarea with correct placeholder', () => {
     render(<JobRejectionDialog {...defaultProps} />);
     expect(
-      screen.getByPlaceholderText(/Please provide a detailed reason for rejecting this cron job/i),
+      screen.getByPlaceholderText(
+        /Please provide a detailed reason for rejecting this cron job/i,
+      ),
     ).toBeInTheDocument();
   });
 
@@ -91,11 +103,19 @@ describe('JobRejectionDialog', () => {
     // Type a short reason (button becomes enabled)
     await userEvent.type(textarea, 'short');
     fireEvent.click(screen.getByRole('button', { name: /yes, reject/i }));
-    expect(await screen.findByText('Please provide a more detailed reason (at least 10 characters)')).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        'Please provide a more detailed reason (at least 10 characters)',
+      ),
+    ).toBeInTheDocument();
 
     // Continue typing — error should clear
     await userEvent.type(textarea, 'x');
-    expect(screen.queryByText('Please provide a more detailed reason (at least 10 characters)')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        'Please provide a more detailed reason (at least 10 characters)',
+      ),
+    ).not.toBeInTheDocument();
   });
 
   it('calls onConfirm with trimmed reason when valid reason is provided', async () => {
@@ -111,7 +131,9 @@ describe('JobRejectionDialog', () => {
     });
 
     await waitFor(() => {
-      expect(defaultProps.onConfirm).toHaveBeenCalledWith('This is a valid rejection reason');
+      expect(defaultProps.onConfirm).toHaveBeenCalledWith(
+        'This is a valid rejection reason',
+      );
     });
 
     await waitFor(() => {
@@ -128,12 +150,16 @@ describe('JobRejectionDialog', () => {
       />,
     );
     expect(screen.getByText(/"My DE Job"/)).toBeInTheDocument();
-    expect(screen.getAllByText(/data enrichment job/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/data enrichment job/i).length).toBeGreaterThan(
+      0,
+    );
   });
 
   it('shows loading spinner and Rejecting text while onConfirm is pending', async () => {
     let resolveConfirm!: () => void;
-    const pendingConfirm = new Promise<void>((res) => { resolveConfirm = res; });
+    const pendingConfirm = new Promise<void>((res) => {
+      resolveConfirm = res;
+    });
     defaultProps.onConfirm.mockReturnValue(pendingConfirm);
 
     render(<JobRejectionDialog {...defaultProps} />);
@@ -165,7 +191,7 @@ describe('JobRejectionDialog', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText('Please provide a reason for rejection')
+        screen.getByText('Please provide a reason for rejection'),
       ).toBeInTheDocument();
     });
 

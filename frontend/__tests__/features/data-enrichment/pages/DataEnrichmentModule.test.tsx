@@ -39,56 +39,79 @@ jest.mock('../../../../../src/shared/providers/ToastProvider', () => ({
   useToast: () => ({ showSuccess: showSuccessMock, showError: showErrorMock }),
 }));
 
-jest.mock('../../../../../src/features/data-enrichment/hooks/useDataEnrichmentJobList', () => ({
-  useDataEnrichmentJobList: () => hookState,
-}));
+jest.mock(
+  '../../../../../src/features/data-enrichment/hooks/useDataEnrichmentJobList',
+  () => ({
+    useDataEnrichmentJobList: () => hookState,
+  }),
+);
 
-jest.mock('../../../../../src/features/data-enrichment/components/JobList', () => (props: any) => (
-  <div>
-    <button onClick={() => props.onViewLogs('1')}>view-job</button>
-    <button onClick={() => props.onEdit({ id: '1', type: 'PULL' })}>edit-job</button>
-    <button onClick={() => props.onRefresh()}>refresh-jobs</button>
-  </div>
-));
-
-jest.mock('../../../../../src/features/data-enrichment/components/JobDetailsModal', () => (props: any) => (
-  <div data-testid="job-details-modal">
-    <button onClick={props.onClose}>close-details</button>
-    <button
-      onClick={() => {
-        void props.onSave({ id: '1', type: 'PULL' }).catch(() => {});
-      }}
-    >
-      save-details
-    </button>
-    <button
-      onClick={() => {
-        void props.onSendForApproval('1', 'PULL').catch(() => {});
-      }}
-    >
-      send-details-approval
-    </button>
-  </div>
-));
-
-jest.mock('../../../../../src/features/data-enrichment/components/DataEnrichmentFormModal', () => ({
-  DataEnrichmentFormModal: (props: any) => (
-    <div data-testid="job-form-modal">
-      <button onClick={() => props.onSave({ endpoint_name: 'Created', message: 'Created OK' })}>save-create</button>
-      <button onClick={() => props.onSave({})}>save-create-default</button>
-      <button onClick={props.onClose}>close-create</button>
+jest.mock(
+  '../../../../../src/features/data-enrichment/components/JobList',
+  () => (props: any) => (
+    <div>
+      <button onClick={() => props.onViewLogs('1')}>view-job</button>
+      <button onClick={() => props.onEdit({ id: '1', type: 'PULL' })}>
+        edit-job
+      </button>
+      <button onClick={() => props.onRefresh()}>refresh-jobs</button>
     </div>
   ),
-}));
+);
 
-jest.mock('../../../../../src/features/data-enrichment/components/DataEnrichmentEditModal', () => ({
-  DataEnrichmentEditModal: (props: any) => (
-    <div data-testid="job-edit-modal">
-      <button onClick={props.onClose}>close-edit</button>
-      <button onClick={props.onCloseWithRefresh}>close-edit-refresh</button>
+jest.mock(
+  '../../../../../src/features/data-enrichment/components/JobDetailsModal',
+  () => (props: any) => (
+    <div data-testid="job-details-modal">
+      <button onClick={props.onClose}>close-details</button>
+      <button
+        onClick={() => {
+          void props.onSave({ id: '1', type: 'PULL' }).catch(() => {});
+        }}
+      >
+        save-details
+      </button>
+      <button
+        onClick={() => {
+          void props.onSendForApproval('1', 'PULL').catch(() => {});
+        }}
+      >
+        send-details-approval
+      </button>
     </div>
   ),
-}));
+);
+
+jest.mock(
+  '../../../../../src/features/data-enrichment/components/DataEnrichmentFormModal',
+  () => ({
+    DataEnrichmentFormModal: (props: any) => (
+      <div data-testid="job-form-modal">
+        <button
+          onClick={() =>
+            props.onSave({ endpoint_name: 'Created', message: 'Created OK' })
+          }
+        >
+          save-create
+        </button>
+        <button onClick={() => props.onSave({})}>save-create-default</button>
+        <button onClick={props.onClose}>close-create</button>
+      </div>
+    ),
+  }),
+);
+
+jest.mock(
+  '../../../../../src/features/data-enrichment/components/DataEnrichmentEditModal',
+  () => ({
+    DataEnrichmentEditModal: (props: any) => (
+      <div data-testid="job-edit-modal">
+        <button onClick={props.onClose}>close-edit</button>
+        <button onClick={props.onCloseWithRefresh}>close-edit-refresh</button>
+      </div>
+    ),
+  }),
+);
 
 import DataEnrichmentModule from '../../../../../src/features/data-enrichment/pages/DataEnrichmentModule';
 
@@ -138,7 +161,9 @@ describe('features/data-enrichment/pages/DataEnrichmentModule.tsx', () => {
     hookState = { ...hookState, userIsEditor: false };
     render(<DataEnrichmentModule />);
 
-    expect(screen.queryByText('Create New Enrichment Job')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Create New Enrichment Job'),
+    ).not.toBeInTheDocument();
   });
 
   it('navigates back when Go Back is clicked', () => {
@@ -198,7 +223,9 @@ describe('features/data-enrichment/pages/DataEnrichmentModule.tsx', () => {
 
   it('refreshes and restores scroll position after successful reload', async () => {
     jest.useFakeTimers();
-    const scrollToSpy = jest.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    const scrollToSpy = jest
+      .spyOn(window, 'scrollTo')
+      .mockImplementation(() => {});
 
     Object.defineProperty(window, 'scrollY', {
       configurable: true,
@@ -226,7 +253,9 @@ describe('features/data-enrichment/pages/DataEnrichmentModule.tsx', () => {
 
   it('does not restore scroll when position is outside valid range and load fails', async () => {
     jest.useFakeTimers();
-    const scrollToSpy = jest.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    const scrollToSpy = jest
+      .spyOn(window, 'scrollTo')
+      .mockImplementation(() => {});
 
     Object.defineProperty(window, 'scrollY', {
       configurable: true,
@@ -254,7 +283,9 @@ describe('features/data-enrichment/pages/DataEnrichmentModule.tsx', () => {
 
   it('restores scroll position after failed reload when position is valid', async () => {
     jest.useFakeTimers();
-    const scrollToSpy = jest.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    const scrollToSpy = jest
+      .spyOn(window, 'scrollTo')
+      .mockImplementation(() => {});
 
     Object.defineProperty(window, 'scrollY', {
       configurable: true,
@@ -266,7 +297,9 @@ describe('features/data-enrichment/pages/DataEnrichmentModule.tsx', () => {
       value: 2000,
     });
 
-    loadJobsMock.mockRejectedValueOnce(new Error('load failed with valid position'));
+    loadJobsMock.mockRejectedValueOnce(
+      new Error('load failed with valid position'),
+    );
     render(<DataEnrichmentModule />);
 
     fireEvent.click(screen.getByText('refresh-jobs'));
@@ -286,7 +319,10 @@ describe('features/data-enrichment/pages/DataEnrichmentModule.tsx', () => {
     fireEvent.click(screen.getByText('edit-job'));
 
     await waitFor(() => {
-      expect(hookState.handleEdit).toHaveBeenCalledWith({ id: '1', type: 'PULL' });
+      expect(hookState.handleEdit).toHaveBeenCalledWith({
+        id: '1',
+        type: 'PULL',
+      });
     });
     expect(screen.getByTestId('job-details-modal')).toBeInTheDocument();
   });
@@ -302,7 +338,10 @@ describe('features/data-enrichment/pages/DataEnrichmentModule.tsx', () => {
     fireEvent.click(screen.getByText('save-details'));
 
     await waitFor(() => {
-      expect(hookState.handleSaveEdit).toHaveBeenCalledWith({ id: '1', type: 'PULL' });
+      expect(hookState.handleSaveEdit).toHaveBeenCalledWith({
+        id: '1',
+        type: 'PULL',
+      });
     });
     expect(setSelectedJobMock).toHaveBeenCalledWith(null);
     expect(setEditModeMock).toHaveBeenCalledWith(false);
@@ -326,7 +365,10 @@ describe('features/data-enrichment/pages/DataEnrichmentModule.tsx', () => {
     fireEvent.click(screen.getByText('save-details'));
 
     await waitFor(() => {
-      expect(hookState.handleSaveEdit).toHaveBeenCalledWith({ id: '1', type: 'PULL' });
+      expect(hookState.handleSaveEdit).toHaveBeenCalledWith({
+        id: '1',
+        type: 'PULL',
+      });
     });
   });
 
@@ -357,7 +399,9 @@ describe('features/data-enrichment/pages/DataEnrichmentModule.tsx', () => {
 
     fireEvent.click(screen.getByText('save-create-default'));
 
-    expect(showSuccessMock).toHaveBeenCalledWith('New endpoint has been saved successfully! You can now send it for approval.');
+    expect(showSuccessMock).toHaveBeenCalledWith(
+      'New endpoint has been saved successfully! You can now send it for approval.',
+    );
   });
 
   it('shows error when success toast throws during create handling', () => {
@@ -380,7 +424,9 @@ describe('features/data-enrichment/pages/DataEnrichmentModule.tsx', () => {
 
   it('closes edit modal with refresh callback', async () => {
     jest.useFakeTimers();
-    const scrollToSpy = jest.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    const scrollToSpy = jest
+      .spyOn(window, 'scrollTo')
+      .mockImplementation(() => {});
 
     Object.defineProperty(window, 'scrollY', {
       configurable: true,

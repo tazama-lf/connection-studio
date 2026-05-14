@@ -16,7 +16,10 @@ const ReactJson = ({
   <div data-testid="react-json-view">
     {JSON.stringify(src)}
     {onEdit && (
-      <button data-testid="rjv-edit" onClick={() => onEdit({ updated_src: src })}>
+      <button
+        data-testid="rjv-edit"
+        onClick={() => onEdit({ updated_src: src })}
+      >
         Edit JSON
       </button>
     )}
@@ -26,7 +29,10 @@ const ReactJson = ({
       </button>
     )}
     {onDelete && (
-      <button data-testid="rjv-delete" onClick={() => onDelete({ updated_src: src })}>
+      <button
+        data-testid="rjv-delete"
+        onClick={() => onDelete({ updated_src: src })}
+      >
         Delete JSON
       </button>
     )}

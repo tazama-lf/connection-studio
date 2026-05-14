@@ -11,7 +11,9 @@ describe('FileCorruptionError', () => {
   it('renders generic message when fileName is not provided', () => {
     render(<FileCorruptionError />);
     expect(
-      screen.getByText('The requested file appears to be corrupted or missing.'),
+      screen.getByText(
+        'The requested file appears to be corrupted or missing.',
+      ),
     ).toBeInTheDocument();
   });
 
@@ -23,9 +25,13 @@ describe('FileCorruptionError', () => {
   it('renders the list of corruption causes', () => {
     render(<FileCorruptionError />);
     expect(screen.getByText('Incomplete file transfer')).toBeInTheDocument();
-    expect(screen.getByText('Data integrity verification failure')).toBeInTheDocument();
+    expect(
+      screen.getByText('Data integrity verification failure'),
+    ).toBeInTheDocument();
     expect(screen.getByText('File system corruption')).toBeInTheDocument();
-    expect(screen.getByText('Network interruption during file creation')).toBeInTheDocument();
+    expect(
+      screen.getByText('Network interruption during file creation'),
+    ).toBeInTheDocument();
   });
 
   it('renders the Retry button when onRetry is provided', () => {
@@ -65,7 +71,9 @@ describe('FileCorruptionError', () => {
   });
 
   it('applies custom className', () => {
-    const { container } = render(<FileCorruptionError className="my-custom-class" />);
+    const { container } = render(
+      <FileCorruptionError className="my-custom-class" />,
+    );
     expect(container.firstChild).toHaveClass('my-custom-class');
   });
 

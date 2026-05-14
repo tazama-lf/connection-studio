@@ -29,25 +29,29 @@ jest.mock('react-router', () => ({
   useNavigate: jest.fn(),
 }));
 
-jest.mock('@shared', () => ({
-  Button: ({ children, onClick, ...props }: any) => (
-    <button onClick={onClick} {...props}>
-      {children}
-    </button>
-  ),
-  EditEndpointModal: (props: any) => {
-    capturedEditEndpointModalProps = props;
-    return (
-      <div data-testid="edit-endpoint-modal">
-        <div>Mock EditEndpointModal</div>
-        <button onClick={props.onClose}>Close Modal</button>
-        <button onClick={props.onSuccess}>Trigger Success</button>
-        <div data-testid="endpoint-id">{props.endpointId}</div>
-        <div data-testid="readonly-flag">{String(props.readOnly)}</div>
-      </div>
-    );
-  },
-}), { virtual: true });
+jest.mock(
+  '@shared',
+  () => ({
+    Button: ({ children, onClick, ...props }: any) => (
+      <button onClick={onClick} {...props}>
+        {children}
+      </button>
+    ),
+    EditEndpointModal: (props: any) => {
+      capturedEditEndpointModalProps = props;
+      return (
+        <div data-testid="edit-endpoint-modal">
+          <div>Mock EditEndpointModal</div>
+          <button onClick={props.onClose}>Close Modal</button>
+          <button onClick={props.onSuccess}>Trigger Success</button>
+          <div data-testid="endpoint-id">{props.endpointId}</div>
+          <div data-testid="readonly-flag">{String(props.readOnly)}</div>
+        </div>
+      );
+    },
+  }),
+  { virtual: true },
+);
 
 jest.mock('../../../../src/features/config/components/ConfigList', () => ({
   ConfigList: (props: any) => {
@@ -55,7 +59,9 @@ jest.mock('../../../../src/features/config/components/ConfigList', () => ({
     return (
       <div data-testid="config-list">
         <div data-testid="search-term">{props.searchTerm}</div>
-        <div data-testid="show-approved">{String(props.showApprovedConfigs)}</div>
+        <div data-testid="show-approved">
+          {String(props.showApprovedConfigs)}
+        </div>
         <button
           onClick={() =>
             props.onViewDetails({
@@ -96,7 +102,7 @@ describe('PublisherConfigsPage', () => {
     render(<PublisherConfigsPage />);
 
     expect(
-      screen.getByText('You do not have permission to access this page.')
+      screen.getByText('You do not have permission to access this page.'),
     ).toBeInTheDocument();
 
     expect(screen.queryByTestId('config-list')).not.toBeInTheDocument();
@@ -116,12 +122,12 @@ describe('PublisherConfigsPage', () => {
     render(<PublisherConfigsPage />);
 
     expect(
-      screen.getByText('You do not have permission to access this page.')
+      screen.getByText('You do not have permission to access this page.'),
     ).toBeInTheDocument();
 
     await waitFor(() => {
       expect(mockShowError).toHaveBeenCalledWith(
-        'You do not have permission to access this page'
+        'You do not have permission to access this page',
       );
     });
   });
@@ -152,10 +158,12 @@ describe('PublisherConfigsPage', () => {
     render(<PublisherConfigsPage />);
 
     expect(
-      screen.getByText('Dynamic Event Monitoring Service')
+      screen.getByText('Dynamic Event Monitoring Service'),
     ).toBeInTheDocument();
 
-    expect(screen.getByRole('button', { name: /go back/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /go back/i }),
+    ).toBeInTheDocument();
     expect(screen.getByTestId('config-list')).toBeInTheDocument();
 
     expect(capturedConfigListProps).toMatchObject({
@@ -328,7 +336,7 @@ describe('PublisherConfigsPage', () => {
     render(<PublisherConfigsPage />);
 
     expect(
-      screen.getByText('You do not have permission to access this page.')
+      screen.getByText('You do not have permission to access this page.'),
     ).toBeInTheDocument();
   });
 });

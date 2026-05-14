@@ -6,5 +6,3 @@ describe('shared/providers/index.ts', () => {
     expect(typeof AppProviders).toBe('function');
   });
 });
-
-

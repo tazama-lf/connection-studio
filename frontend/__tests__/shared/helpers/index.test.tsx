@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { handleInputFilter, handleSelectFilter } from '../../../src/shared/helpers/index';
+import {
+  handleInputFilter,
+  handleSelectFilter,
+} from '../../../src/shared/helpers/index';
 
 // ─── handleInputFilter ────────────────────────────────────────────────────────
 
@@ -54,7 +57,12 @@ describe('handleInputFilter', () => {
 
   it('calls setPage(1) when cleared', () => {
     const setPage = jest.fn();
-    render(<InputFilterWrapper searchingFilters={{ name: 'abc' }} setPage={setPage} />);
+    render(
+      <InputFilterWrapper
+        searchingFilters={{ name: 'abc' }}
+        setPage={setPage}
+      />,
+    );
     const input = screen.getByPlaceholderText('search...') as HTMLInputElement;
     fireEvent.change(input, { target: { value: '' } });
     expect(setPage).toHaveBeenCalledWith(1);
@@ -141,9 +149,7 @@ describe('handleSelectFilter', () => {
   });
 
   it('removes filter when "Show All" (empty value) is selected', () => {
-    render(
-      <SelectFilterWrapper searchingFilters={{ status: 'active' }} />,
-    );
+    render(<SelectFilterWrapper searchingFilters={{ status: 'active' }} />);
     const select = screen.getByRole('combobox');
     fireEvent.change(select, { target: { value: '' } });
     const filterValue = screen.getByTestId('filter-value').textContent ?? '';
@@ -161,7 +167,12 @@ describe('handleSelectFilter', () => {
 
   it('calls setPage(1) when Show All is selected', () => {
     const setPage = jest.fn();
-    render(<SelectFilterWrapper setPage={setPage} searchingFilters={{ status: 'active' }} />);
+    render(
+      <SelectFilterWrapper
+        setPage={setPage}
+        searchingFilters={{ status: 'active' }}
+      />,
+    );
     const select = screen.getByRole('combobox');
     fireEvent.change(select, { target: { value: '' } });
     expect(setPage).toHaveBeenCalledWith(1);

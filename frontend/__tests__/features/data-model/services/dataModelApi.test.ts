@@ -99,7 +99,9 @@ describe('DataModelApiService', () => {
         json: jest.fn().mockRejectedValue(new Error('bad json')),
       });
 
-      await expect(dataModelApi.getSchema()).rejects.toThrow('HTTP error! status: 503');
+      await expect(dataModelApi.getSchema()).rejects.toThrow(
+        'HTTP error! status: 503',
+      );
     });
   });
 
@@ -160,7 +162,9 @@ describe('DataModelApiService', () => {
         json: async () => ({ message: 'Service unavailable' }),
       });
 
-      await expect(dataModelApi.getAllExtensions()).rejects.toThrow('Service unavailable');
+      await expect(dataModelApi.getAllExtensions()).rejects.toThrow(
+        'Service unavailable',
+      );
     });
   });
 
@@ -308,7 +312,9 @@ describe('DataModelApiService', () => {
         json: async () => ({ message: 'Internal error' }),
       });
 
-      await expect(dataModelApi.deleteExtension(7)).rejects.toThrow('Internal error');
+      await expect(dataModelApi.deleteExtension(7)).rejects.toThrow(
+        'Internal error',
+      );
     });
   });
 
@@ -335,7 +341,10 @@ describe('DataModelApiService', () => {
     });
 
     it('returns invalid result for bad path', async () => {
-      const mockData = { success: false, data: { isValid: false, message: 'Path not found' } };
+      const mockData = {
+        success: false,
+        data: { isValid: false, message: 'Path not found' },
+      };
       (global.fetch as jest.Mock).mockResolvedValue({
         ok: true,
         status: 200,
@@ -367,7 +376,10 @@ describe('DataModelApiService', () => {
 
       expect(global.fetch).toHaveBeenCalledWith(
         expect.stringContaining('/tazama-data-model/destination-types'),
-        expect.objectContaining({ method: 'POST', body: JSON.stringify(request) }),
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify(request),
+        }),
       );
       expect(result).toEqual(mockData);
     });
@@ -376,7 +388,11 @@ describe('DataModelApiService', () => {
   // ─── createParentChildDestination ────────────────────────────────────────
   describe('createParentChildDestination', () => {
     it('creates parent-child destination successfully', async () => {
-      const request = { name: 'childField', field_type: 'STRING', parent_id: '1' };
+      const request = {
+        name: 'childField',
+        field_type: 'STRING',
+        parent_id: '1',
+      };
       const mockData = { success: true };
       (global.fetch as jest.Mock).mockResolvedValue({
         ok: true,
@@ -384,11 +400,19 @@ describe('DataModelApiService', () => {
         json: async () => mockData,
       });
 
-      const result = await dataModelApi.createParentChildDestination(3, request);
+      const result = await dataModelApi.createParentChildDestination(
+        3,
+        request,
+      );
 
       expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/tazama-data-model/destination-types/3/fields'),
-        expect.objectContaining({ method: 'POST', body: JSON.stringify(request) }),
+        expect.stringContaining(
+          '/tazama-data-model/destination-types/3/fields',
+        ),
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify(request),
+        }),
       );
       expect(result).toEqual(mockData);
     });
@@ -449,7 +473,8 @@ describe('DataModelApiService', () => {
 
       await dataModelApi.getSchema();
 
-      const calledHeaders = (global.fetch as jest.Mock).mock.calls[0][1].headers;
+      const calledHeaders = (global.fetch as jest.Mock).mock.calls[0][1]
+        .headers;
       expect(calledHeaders['Authorization']).toBe('Bearer dm-token');
     });
 
@@ -463,7 +488,8 @@ describe('DataModelApiService', () => {
 
       await dataModelApi.getSchema();
 
-      const calledHeaders = (global.fetch as jest.Mock).mock.calls[0][1].headers;
+      const calledHeaders = (global.fetch as jest.Mock).mock.calls[0][1]
+        .headers;
       expect(calledHeaders['Authorization']).toBeUndefined();
     });
   });

@@ -19,12 +19,20 @@ jest.mock('../../../../shared/providers/ToastProvider', () => ({
     toasts: [],
     removeToast: jest.fn(),
   }),
-  ToastProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  ToastProvider: ({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
+  ),
 }));
 
 // Mock dependencies
 jest.mock('react-js-cron', () => ({
-  Cron: ({ value, setValue }: { value: string; setValue: (val: string) => void }) => (
+  Cron: ({
+    value,
+    setValue,
+  }: {
+    value: string;
+    setValue: (val: string) => void;
+  }) => (
     <div data-testid="cron-picker">
       <button onClick={() => setValue('0 0 * * *')}>Set Daily</button>
       <span>{value}</span>
@@ -45,15 +53,21 @@ jest.mock('@features/cron/handlers', () => ({
 }));
 
 jest.mock('@shared/components/Button', () => ({
-  Button: ({ children, onClick, type, disabled, startIcon }: {
+  Button: ({
+    children,
+    onClick,
+    type,
+    disabled,
+    startIcon,
+  }: {
     children: React.ReactNode;
     onClick?: () => void;
     type?: string;
     disabled?: boolean;
     startIcon?: React.ReactNode;
   }) => (
-    <button 
-      onClick={onClick} 
+    <button
+      onClick={onClick}
       type={type as 'button' | 'submit'}
       disabled={disabled}
       data-testid={`button-${children?.toString().toLowerCase().replace(/\s+/g, '-')}`}
@@ -65,7 +79,12 @@ jest.mock('@shared/components/Button', () => ({
 }));
 
 jest.mock('../../../../shared/components/FormFields.jsx', () => ({
-  AlphaNumericInputFieldWithSpaces: ({ label, name, placeholder, disabled }: {
+  AlphaNumericInputFieldWithSpaces: ({
+    label,
+    name,
+    placeholder,
+    disabled,
+  }: {
     label: string;
     name: string;
     control?: unknown;
@@ -83,7 +102,12 @@ jest.mock('../../../../shared/components/FormFields.jsx', () => ({
       />
     </div>
   ),
-  NumberInputField: ({ label, name, placeholder, disabled }: {
+  NumberInputField: ({
+    label,
+    name,
+    placeholder,
+    disabled,
+  }: {
     label: React.ReactNode;
     name: string;
     control?: unknown;
@@ -91,7 +115,9 @@ jest.mock('../../../../shared/components/FormFields.jsx', () => ({
     disabled: boolean;
   }) => (
     <div>
-      <label htmlFor={name}>{typeof label === 'object' ? 'Retry Count' : label}</label>
+      <label htmlFor={name}>
+        {typeof label === 'object' ? 'Retry Count' : label}
+      </label>
       <input
         id={name}
         name={name}
@@ -107,7 +133,9 @@ jest.mock('../../../../shared/components/FormFields.jsx', () => ({
 jest.mock('../../../../shared/components/ValidationError', () => ({
   __esModule: true,
   default: ({ message }: { message: string }) => (
-    <div data-testid="validation-error" className="error">{message}</div>
+    <div data-testid="validation-error" className="error">
+      {message}
+    </div>
   ),
 }));
 
@@ -126,12 +154,12 @@ describe('CronJobForm', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     const mockUseAuth = jest.mocked(useAuth);
-    mockUseAuth.mockReturnValue({ 
-      user: null, 
-      isAuthenticated: false, 
-      loading: false, 
-      login: jest.fn(), 
-      logout: jest.fn() 
+    mockUseAuth.mockReturnValue({
+      user: null,
+      isAuthenticated: false,
+      loading: false,
+      login: jest.fn(),
+      logout: jest.fn(),
     });
   });
 
@@ -192,7 +220,9 @@ describe('CronJobForm', () => {
       const setDailyButton = screen.getByText('Set Daily');
       fireEvent.click(setDailyButton);
 
-      expect(screen.getByText('Mock description for 0 0 * * *')).toBeInTheDocument();
+      expect(
+        screen.getByText('Mock description for 0 0 * * *'),
+      ).toBeInTheDocument();
     });
 
     it('should show "Creating..." text when submitting', () => {
@@ -214,7 +244,10 @@ describe('CronJobForm', () => {
 
       // Without filling in required fields, button should have title attribute
       const submitButton = screen.getByText('Create Cron Job');
-      expect(submitButton).toHaveAttribute('title', 'Please fill all required fields');
+      expect(submitButton).toHaveAttribute(
+        'title',
+        'Please fill all required fields',
+      );
     });
 
     it('should render cron expression description', () => {
@@ -224,7 +257,9 @@ describe('CronJobForm', () => {
       fireEvent.click(setDailyButton);
 
       // Should show the cron description
-      expect(screen.getByText('Mock description for 0 0 * * *')).toBeInTheDocument();
+      expect(
+        screen.getByText('Mock description for 0 0 * * *'),
+      ).toBeInTheDocument();
     });
 
     it('should render validation error for cronExpression', () => {
@@ -281,7 +316,7 @@ describe('CronJobForm', () => {
       schedule_status: 'pending',
       comments: 'Test comments for view mode',
       created_at: '2024-01-01T00:00:00Z',
-};
+    };
 
     it('should render form in view mode with viewFormData', () => {
       render(<CronJobForm {...defaultProps} viewFormData={viewFormData} />);
@@ -300,25 +335,34 @@ describe('CronJobForm', () => {
       render(<CronJobForm {...defaultProps} viewFormData={viewFormData} />);
 
       expect(screen.getByText('0 0 * * *')).toBeInTheDocument();
-      expect(screen.getByText('Mock description for 0 0 * * *')).toBeInTheDocument();
+      expect(
+        screen.getByText('Mock description for 0 0 * * *'),
+      ).toBeInTheDocument();
     });
 
     it('should display comments in view mode', () => {
       render(<CronJobForm {...defaultProps} viewFormData={viewFormData} />);
 
       expect(screen.getByText('Comments')).toBeInTheDocument();
-      expect(screen.getByText('Test comments for view mode')).toBeInTheDocument();
+      expect(
+        screen.getByText('Test comments for view mode'),
+      ).toBeInTheDocument();
     });
 
     it('should not display comments section when no comments', () => {
       const dataWithoutComments = { ...viewFormData, comments: '' };
-      render(<CronJobForm {...defaultProps} viewFormData={dataWithoutComments} />);
+      render(
+        <CronJobForm {...defaultProps} viewFormData={dataWithoutComments} />,
+      );
 
       expect(screen.queryByText('Comments')).not.toBeInTheDocument();
     });
 
     it('should show "Send for Approval" button when status is IN_PROGRESS', () => {
-      const data = { ...viewFormData, status: 'STATUS_01_IN_PROGRESS' as const };
+      const data = {
+        ...viewFormData,
+        status: 'STATUS_01_IN_PROGRESS' as const,
+      };
       render(<CronJobForm {...defaultProps} viewFormData={data} />);
 
       expect(screen.getByText('Send for Approval')).toBeInTheDocument();
@@ -332,7 +376,10 @@ describe('CronJobForm', () => {
     });
 
     it('should call handleSendForApproval when "Send for Approval" is clicked', () => {
-      const data = { ...viewFormData, status: 'STATUS_01_IN_PROGRESS' as const };
+      const data = {
+        ...viewFormData,
+        status: 'STATUS_01_IN_PROGRESS' as const,
+      };
       render(<CronJobForm {...defaultProps} viewFormData={data} />);
 
       fireEvent.click(screen.getByText('Send for Approval'));
@@ -343,18 +390,20 @@ describe('CronJobForm', () => {
     it('should not show create button in view mode', () => {
       render(<CronJobForm {...defaultProps} viewFormData={viewFormData} />);
 
-      expect(screen.queryByTestId('button-create-cron-job')).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('button-create-cron-job'),
+      ).not.toBeInTheDocument();
     });
 
     it('should show Approve and Reject buttons when user is approver and status is UNDER_REVIEW', () => {
       // Mock user as approver for this test
       const mockUseAuth = jest.mocked(useAuth);
-      mockUseAuth.mockReturnValue({ 
-        user: { id: '1', username: 'approver', claims: ['approver'] }, 
-        isAuthenticated: true, 
-        loading: false, 
-        login: jest.fn(), 
-        logout: jest.fn() 
+      mockUseAuth.mockReturnValue({
+        user: { id: '1', username: 'approver', claims: ['approver'] },
+        isAuthenticated: true,
+        loading: false,
+        login: jest.fn(),
+        logout: jest.fn(),
       });
 
       const mockOnApprove = jest.fn();
@@ -380,7 +429,7 @@ describe('CronJobForm', () => {
           viewFormData={viewFormData}
           onApprove={mockOnApprove}
           onReject={mockOnReject}
-        />
+        />,
       );
 
       expect(screen.getByText('Approve')).toBeInTheDocument();
@@ -390,12 +439,12 @@ describe('CronJobForm', () => {
     it('should call onApprove when Approve button is clicked', () => {
       // Mock user as approver for this test
       const mockUseAuth = jest.mocked(useAuth);
-      mockUseAuth.mockReturnValue({ 
-        user: { id: '1', username: 'approver', claims: ['approver'] }, 
-        isAuthenticated: true, 
-        loading: false, 
-        login: jest.fn(), 
-        logout: jest.fn() 
+      mockUseAuth.mockReturnValue({
+        user: { id: '1', username: 'approver', claims: ['approver'] },
+        isAuthenticated: true,
+        loading: false,
+        login: jest.fn(),
+        logout: jest.fn(),
       });
 
       const mockOnApprove = jest.fn();
@@ -421,7 +470,7 @@ describe('CronJobForm', () => {
           viewFormData={viewFormData}
           onApprove={mockOnApprove}
           onReject={mockOnReject}
-        />
+        />,
       );
 
       fireEvent.click(screen.getByText('Approve'));
@@ -431,12 +480,12 @@ describe('CronJobForm', () => {
     it('should call onReject when Reject button is clicked', () => {
       // Mock user as approver for this test
       const mockUseAuth = jest.mocked(useAuth);
-      mockUseAuth.mockReturnValue({ 
-        user: { id: '1', username: 'approver', claims: ['approver'] }, 
-        isAuthenticated: true, 
-        loading: false, 
-        login: jest.fn(), 
-        logout: jest.fn() 
+      mockUseAuth.mockReturnValue({
+        user: { id: '1', username: 'approver', claims: ['approver'] },
+        isAuthenticated: true,
+        loading: false,
+        login: jest.fn(),
+        logout: jest.fn(),
       });
 
       const mockOnApprove = jest.fn();
@@ -462,7 +511,7 @@ describe('CronJobForm', () => {
           viewFormData={viewFormData}
           onApprove={mockOnApprove}
           onReject={mockOnReject}
-        />
+        />,
       );
 
       fireEvent.click(screen.getByText('Reject'));
@@ -472,12 +521,12 @@ describe('CronJobForm', () => {
     it('should not show Approve/Reject buttons when user is not approver', () => {
       // Mock user as non-approver for this test
       const mockUseAuth = jest.mocked(useAuth);
-      mockUseAuth.mockReturnValue({ 
-        user: { id: '1', username: 'user', claims: [] }, 
-        isAuthenticated: true, 
-        loading: false, 
-        login: jest.fn(), 
-        logout: jest.fn() 
+      mockUseAuth.mockReturnValue({
+        user: { id: '1', username: 'user', claims: [] },
+        isAuthenticated: true,
+        loading: false,
+        login: jest.fn(),
+        logout: jest.fn(),
       });
 
       const mockOnApprove = jest.fn();
@@ -503,7 +552,7 @@ describe('CronJobForm', () => {
           viewFormData={viewFormData}
           onApprove={mockOnApprove}
           onReject={mockOnReject}
-        />
+        />,
       );
 
       expect(screen.queryByText('Approve')).not.toBeInTheDocument();
@@ -513,12 +562,12 @@ describe('CronJobForm', () => {
     it('should not show Approve/Reject buttons when status is not UNDER_REVIEW', () => {
       // Mock user as approver for this test
       const mockUseAuth = jest.mocked(useAuth);
-      mockUseAuth.mockReturnValue({ 
-        user: { id: '1', username: 'approver', claims: ['approver'] }, 
-        isAuthenticated: true, 
-        loading: false, 
-        login: jest.fn(), 
-        logout: jest.fn() 
+      mockUseAuth.mockReturnValue({
+        user: { id: '1', username: 'approver', claims: ['approver'] },
+        isAuthenticated: true,
+        loading: false,
+        login: jest.fn(),
+        logout: jest.fn(),
       });
 
       const mockOnApprove = jest.fn();
@@ -544,7 +593,7 @@ describe('CronJobForm', () => {
           viewFormData={viewFormData}
           onApprove={mockOnApprove}
           onReject={mockOnReject}
-        />
+        />,
       );
 
       expect(screen.queryByText('Approve')).not.toBeInTheDocument();
@@ -570,11 +619,11 @@ describe('CronJobForm', () => {
 
     it('should render form in edit mode with editFormData', () => {
       render(
-        <CronJobForm 
-          {...defaultProps} 
+        <CronJobForm
+          {...defaultProps}
           editFormData={editFormData}
           handleSaveEdit={mockHandleSaveEdit}
-        />
+        />,
       );
 
       expect(screen.getByLabelText(/Job Name/i)).not.toBeDisabled();
@@ -583,11 +632,11 @@ describe('CronJobForm', () => {
 
     it('should render Update button in edit mode', () => {
       render(
-        <CronJobForm 
-          {...defaultProps} 
+        <CronJobForm
+          {...defaultProps}
           editFormData={editFormData}
           handleSaveEdit={mockHandleSaveEdit}
-        />
+        />,
       );
 
       expect(screen.getByText('Update')).toBeInTheDocument();
@@ -595,11 +644,11 @@ describe('CronJobForm', () => {
 
     it('should call handleSaveEdit when Update button is clicked', () => {
       render(
-        <CronJobForm 
-          {...defaultProps} 
+        <CronJobForm
+          {...defaultProps}
           editFormData={editFormData}
           handleSaveEdit={mockHandleSaveEdit}
-        />
+        />,
       );
 
       fireEvent.click(screen.getByText('Update'));
@@ -609,23 +658,25 @@ describe('CronJobForm', () => {
 
     it('should not show create button in edit mode', () => {
       render(
-        <CronJobForm 
-          {...defaultProps} 
+        <CronJobForm
+          {...defaultProps}
           editFormData={editFormData}
           handleSaveEdit={mockHandleSaveEdit}
-        />
+        />,
       );
 
-      expect(screen.queryByTestId('button-create-cron-job')).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('button-create-cron-job'),
+      ).not.toBeInTheDocument();
     });
 
     it('should not show "Send for Approval" button in edit mode', () => {
       render(
-        <CronJobForm 
-          {...defaultProps} 
+        <CronJobForm
+          {...defaultProps}
           editFormData={editFormData}
           handleSaveEdit={mockHandleSaveEdit}
-        />
+        />,
       );
 
       expect(screen.queryByText('Send for Approval')).not.toBeInTheDocument();
@@ -633,11 +684,11 @@ describe('CronJobForm', () => {
 
     it('should render Update button with title when form is invalid', () => {
       render(
-        <CronJobForm 
-          {...defaultProps} 
+        <CronJobForm
+          {...defaultProps}
           editFormData={editFormData}
           handleSaveEdit={mockHandleSaveEdit}
-        />
+        />,
       );
 
       const updateButton = screen.getByText('Update');
@@ -646,11 +697,11 @@ describe('CronJobForm', () => {
 
     it('should render cron expression field correctly in edit mode', () => {
       render(
-        <CronJobForm 
-          {...defaultProps} 
+        <CronJobForm
+          {...defaultProps}
           editFormData={editFormData}
           handleSaveEdit={mockHandleSaveEdit}
-        />
+        />,
       );
 
       // Cron expression should be displayed
@@ -661,14 +712,14 @@ describe('CronJobForm', () => {
 
     it('should have watch subscription setup when editFormData and setEditFormData are provided', () => {
       const mockSetEditFormData = jest.fn();
-      
+
       render(
-        <CronJobForm 
-          {...defaultProps} 
+        <CronJobForm
+          {...defaultProps}
           editFormData={editFormData}
           setEditFormData={mockSetEditFormData}
           handleSaveEdit={mockHandleSaveEdit}
-        />
+        />,
       );
 
       // Component should render successfully with watch setup
@@ -697,21 +748,21 @@ describe('CronJobForm', () => {
     it('should show approve and reject buttons when userIsApprover and status is UNDER_REVIEW', () => {
       // Mock user as approver for this test
       const mockUseAuth = jest.mocked(useAuth);
-      mockUseAuth.mockReturnValue({ 
-        user: { id: '1', username: 'test', claims: ['approver'] }, 
-        isAuthenticated: true, 
-        loading: false, 
-        login: jest.fn(), 
-        logout: jest.fn() 
+      mockUseAuth.mockReturnValue({
+        user: { id: '1', username: 'test', claims: ['approver'] },
+        isAuthenticated: true,
+        loading: false,
+        login: jest.fn(),
+        logout: jest.fn(),
       });
 
       render(
-        <CronJobForm 
-          {...defaultProps} 
+        <CronJobForm
+          {...defaultProps}
           viewFormData={approvalData}
           onApprove={mockOnApprove}
           onReject={mockOnReject}
-        />
+        />,
       );
 
       expect(screen.getByText('Approve')).toBeInTheDocument();
@@ -720,13 +771,13 @@ describe('CronJobForm', () => {
 
     it('should not show approve/reject buttons when user is not approver', () => {
       render(
-        <CronJobForm 
-          {...defaultProps} 
+        <CronJobForm
+          {...defaultProps}
           viewFormData={approvalData}
-        //   userIsApprover={false}
+          //   userIsApprover={false}
           onApprove={mockOnApprove}
           onReject={mockOnReject}
-        />
+        />,
       );
 
       expect(screen.queryByText('Approve')).not.toBeInTheDocument();
@@ -734,14 +785,17 @@ describe('CronJobForm', () => {
     });
 
     it('should not show approve/reject buttons when status is not UNDER_REVIEW', () => {
-      const data = { ...approvalData, status: 'STATUS_01_IN_PROGRESS' as const };
+      const data = {
+        ...approvalData,
+        status: 'STATUS_01_IN_PROGRESS' as const,
+      };
       render(
-        <CronJobForm 
-          {...defaultProps} 
+        <CronJobForm
+          {...defaultProps}
           viewFormData={data}
           onApprove={mockOnApprove}
           onReject={mockOnReject}
-        />
+        />,
       );
 
       expect(screen.queryByText('Approve')).not.toBeInTheDocument();
@@ -751,22 +805,22 @@ describe('CronJobForm', () => {
     it('should call onApprove with correct id when Approve button is clicked', () => {
       // Mock user as approver for this test
       const mockUseAuth = jest.mocked(useAuth);
-      mockUseAuth.mockReturnValue({ 
-        user: { id: '1', username: 'test-approver', claims: ['approver'] }, 
-        isAuthenticated: true, 
-        loading: false, 
-        login: jest.fn(), 
-        logout: jest.fn() 
+      mockUseAuth.mockReturnValue({
+        user: { id: '1', username: 'test-approver', claims: ['approver'] },
+        isAuthenticated: true,
+        loading: false,
+        login: jest.fn(),
+        logout: jest.fn(),
       });
 
       render(
-        <CronJobForm 
-          {...defaultProps} 
+        <CronJobForm
+          {...defaultProps}
           viewFormData={approvalData}
-        //   userIsApprover={true}
+          //   userIsApprover={true}
           onApprove={mockOnApprove}
           onReject={mockOnReject}
-        />
+        />,
       );
 
       fireEvent.click(screen.getByText('Approve'));
@@ -777,22 +831,22 @@ describe('CronJobForm', () => {
     it('should call onReject with correct id when Reject button is clicked', () => {
       // Mock user as approver for this test
       const mockUseAuth = jest.mocked(useAuth);
-      mockUseAuth.mockReturnValue({ 
-        user: { id: '1', username: 'test-approver', claims: ['approver'] }, 
-        isAuthenticated: true, 
-        loading: false, 
-        login: jest.fn(), 
-        logout: jest.fn() 
+      mockUseAuth.mockReturnValue({
+        user: { id: '1', username: 'test-approver', claims: ['approver'] },
+        isAuthenticated: true,
+        loading: false,
+        login: jest.fn(),
+        logout: jest.fn(),
       });
 
       render(
-        <CronJobForm 
-          {...defaultProps} 
+        <CronJobForm
+          {...defaultProps}
           viewFormData={approvalData}
-        //   userIsApprover={true}
+          //   userIsApprover={true}
           onApprove={mockOnApprove}
           onReject={mockOnReject}
-        />
+        />,
       );
 
       fireEvent.click(screen.getByText('Reject'));
@@ -803,21 +857,21 @@ describe('CronJobForm', () => {
     it('should show only reject button when onApprove is not provided', () => {
       // Mock user as approver for this test
       const mockUseAuth = jest.mocked(useAuth);
-      mockUseAuth.mockReturnValue({ 
-        user: { id: '1', username: 'test-approver', claims: ['approver'] }, 
-        isAuthenticated: true, 
-        loading: false, 
-        login: jest.fn(), 
-        logout: jest.fn() 
+      mockUseAuth.mockReturnValue({
+        user: { id: '1', username: 'test-approver', claims: ['approver'] },
+        isAuthenticated: true,
+        loading: false,
+        login: jest.fn(),
+        logout: jest.fn(),
       });
 
       render(
-        <CronJobForm 
-          {...defaultProps} 
+        <CronJobForm
+          {...defaultProps}
           viewFormData={approvalData}
-        //   userIsApprover={true}
+          //   userIsApprover={true}
           onReject={mockOnReject}
-        />
+        />,
       );
 
       expect(screen.queryByText('Approve')).not.toBeInTheDocument();
@@ -827,21 +881,21 @@ describe('CronJobForm', () => {
     it('should show only approve button when onReject is not provided', () => {
       // Mock user as approver for this test
       const mockUseAuth = jest.mocked(useAuth);
-      mockUseAuth.mockReturnValue({ 
-        user: { id: '1', username: 'test-approver', claims: ['approver'] }, 
-        isAuthenticated: true, 
-        loading: false, 
-        login: jest.fn(), 
-        logout: jest.fn() 
+      mockUseAuth.mockReturnValue({
+        user: { id: '1', username: 'test-approver', claims: ['approver'] },
+        isAuthenticated: true,
+        loading: false,
+        login: jest.fn(),
+        logout: jest.fn(),
       });
 
       render(
-        <CronJobForm 
-          {...defaultProps} 
+        <CronJobForm
+          {...defaultProps}
           viewFormData={approvalData}
-        //   userIsApprover={true}
+          //   userIsApprover={true}
           onApprove={mockOnApprove}
-        />
+        />,
       );
 
       expect(screen.getByText('Approve')).toBeInTheDocument();
@@ -895,7 +949,9 @@ describe('CronJobForm', () => {
     it('should not show generated expression label when no cron expression', () => {
       render(<CronJobForm {...defaultProps} />);
 
-      expect(screen.queryByText(/Generated Expression:/i)).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(/Generated Expression:/i),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -923,11 +979,11 @@ describe('CronJobForm', () => {
       };
 
       render(
-        <CronJobForm 
-          {...defaultProps} 
+        <CronJobForm
+          {...defaultProps}
           editFormData={editFormData}
           handleSaveEdit={jest.fn()}
-        />
+        />,
       );
 
       expect(screen.getByText('Update')).toBeInTheDocument();
@@ -960,7 +1016,9 @@ describe('CronJobForm', () => {
         updated_at: '2024-01-01T00:00:00Z',
       };
 
-      render(<CronJobForm {...defaultProps} viewFormData={dataWithNullComments} />);
+      render(
+        <CronJobForm {...defaultProps} viewFormData={dataWithNullComments} />,
+      );
 
       expect(screen.queryByText('Comments')).not.toBeInTheDocument();
     });
@@ -986,21 +1044,21 @@ describe('CronJobForm', () => {
 
       // Mock user as approver for this test
       const mockUseAuth = jest.mocked(useAuth);
-      mockUseAuth.mockReturnValue({ 
-        user: { id: '1', username: 'test-approver', claims: ['approver'] }, 
-        isAuthenticated: true, 
-        loading: false, 
-        login: jest.fn(), 
-        logout: jest.fn() 
+      mockUseAuth.mockReturnValue({
+        user: { id: '1', username: 'test-approver', claims: ['approver'] },
+        isAuthenticated: true,
+        loading: false,
+        login: jest.fn(),
+        logout: jest.fn(),
       });
 
       render(
-        <CronJobForm 
-          {...defaultProps} 
+        <CronJobForm
+          {...defaultProps}
           viewFormData={dataWithoutId as ScheduleResponse}
-        //   userIsApprover={true}
+          //   userIsApprover={true}
           onApprove={mockOnApprove}
-        />
+        />,
       );
 
       fireEvent.click(screen.getByText('Approve'));
@@ -1026,7 +1084,9 @@ describe('CronJobForm', () => {
         updated_at: '2024-01-01T00:00:00Z',
       };
 
-      render(<CronJobForm {...defaultProps} viewFormData={dataWithLongComments} />);
+      render(
+        <CronJobForm {...defaultProps} viewFormData={dataWithLongComments} />,
+      );
 
       // Check that the comments div contains the text
       const commentsDiv = screen.getByText('Comments').parentElement;
@@ -1064,12 +1124,12 @@ describe('CronJobForm', () => {
       };
 
       render(
-        <CronJobForm 
-          {...defaultProps} 
+        <CronJobForm
+          {...defaultProps}
           editFormData={editFormData}
           viewFormData={viewFormData}
           handleSaveEdit={jest.fn()}
-        />
+        />,
       );
 
       // Edit mode should take priority
@@ -1081,7 +1141,9 @@ describe('CronJobForm', () => {
     it('should render form with proper grid layout', () => {
       const { container } = render(<CronJobForm {...defaultProps} />);
 
-      expect(container.querySelector('[data-testid="cron-picker"]')).toBeInTheDocument();
+      expect(
+        container.querySelector('[data-testid="cron-picker"]'),
+      ).toBeInTheDocument();
       expect(screen.getByText('Create Cron Job')).toBeInTheDocument();
     });
 
@@ -1124,7 +1186,7 @@ describe('CronJobForm', () => {
       };
 
       const { rerender } = render(
-        <CronJobForm {...defaultProps} editFormData={editFormData} />
+        <CronJobForm {...defaultProps} editFormData={editFormData} />,
       );
 
       // Update editFormData
@@ -1151,7 +1213,7 @@ describe('CronJobForm', () => {
       };
 
       const { rerender } = render(
-        <CronJobForm {...defaultProps} viewFormData={viewFormData} />
+        <CronJobForm {...defaultProps} viewFormData={viewFormData} />,
       );
 
       // Update viewFormData
@@ -1181,7 +1243,7 @@ describe('CronJobForm', () => {
           {...defaultProps}
           editFormData={editFormData}
           setEditFormData={setEditFormData}
-        />
+        />,
       );
 
       // Unmount should trigger cleanup
@@ -1241,7 +1303,7 @@ describe('CronJobForm', () => {
           {...defaultProps}
           viewFormData={viewFormData}
           onReject={mockOnReject}
-        />
+        />,
       );
 
       expect(screen.getByText('Reject')).toBeInTheDocument();
@@ -1263,8 +1325,6 @@ describe('CronJobForm', () => {
       expect(submitButton).toBeInTheDocument();
     });
 
-
-
     it('should not set up watch subscription when editFormData is not provided', () => {
       const { rerender } = render(<CronJobForm {...defaultProps} />);
 
@@ -1277,12 +1337,7 @@ describe('CronJobForm', () => {
     it('should call onJobCreated after successful submit', async () => {
       const mockOnJobCreated = jest.fn();
 
-      render(
-        <CronJobForm
-          {...defaultProps}
-          onJobCreated={mockOnJobCreated}
-        />
-      );
+      render(<CronJobForm {...defaultProps} onJobCreated={mockOnJobCreated} />);
 
       // Button should be rendered
       expect(screen.getByText('Create Cron Job')).toBeInTheDocument();
@@ -1304,10 +1359,7 @@ describe('CronJobForm', () => {
       };
 
       render(
-        <CronJobForm
-          {...defaultProps}
-          viewFormData={viewDataWithoutStatus}
-        />
+        <CronJobForm {...defaultProps} viewFormData={viewDataWithoutStatus} />,
       );
 
       expect(screen.queryByText('Send for Approval')).not.toBeInTheDocument();
@@ -1343,7 +1395,7 @@ describe('CronJobForm', () => {
           {...defaultProps}
           viewFormData={viewFormData}
           onApprove={mockOnApprove}
-        />
+        />,
       );
 
       expect(screen.getByText('Approve')).toBeInTheDocument();
@@ -1371,7 +1423,7 @@ describe('CronJobForm', () => {
       };
 
       render(<CronJobForm {...defaultProps} viewFormData={viewData} />);
-      
+
       const cronElements = screen.getAllByText('*/5 * * * *');
       expect(cronElements.length).toBeGreaterThan(0);
     });
@@ -1379,13 +1431,13 @@ describe('CronJobForm', () => {
     it('should handle form with no onCancel callback', () => {
       const propsWithoutCancel = { ...defaultProps, onCancel: undefined };
       render(<CronJobForm {...propsWithoutCancel} />);
-      
+
       expect(screen.getByText('Create Cron Job')).toBeInTheDocument();
     });
 
     it('should render all form fields in create mode', () => {
       render(<CronJobForm {...defaultProps} />);
-      
+
       expect(screen.getByTestId('input-name')).toBeInTheDocument();
       expect(screen.getByTestId('input-iterations')).toBeInTheDocument();
       expect(screen.getByTestId('cron-picker')).toBeInTheDocument();
@@ -1393,15 +1445,18 @@ describe('CronJobForm', () => {
 
     it('should show correct button states in create mode', () => {
       render(<CronJobForm {...defaultProps} />);
-      
+
       const createButton = screen.getByText('Create Cron Job');
       expect(createButton).toBeInTheDocument();
-      expect(createButton).toHaveAttribute('title', 'Please fill all required fields');
+      expect(createButton).toHaveAttribute(
+        'title',
+        'Please fill all required fields',
+      );
     });
 
     it('should render form with all required sections', () => {
       render(<CronJobForm {...defaultProps} />);
-      
+
       expect(screen.getByText(/Generate Cron Expression/i)).toBeInTheDocument();
       expect(screen.getByText('Cancel')).toBeInTheDocument();
       expect(screen.getByText('Create Cron Job')).toBeInTheDocument();
@@ -1409,17 +1464,19 @@ describe('CronJobForm', () => {
 
     it('should handle cron picker interaction', () => {
       render(<CronJobForm {...defaultProps} />);
-      
+
       const dailyButton = screen.getByText('Set Daily');
       fireEvent.click(dailyButton);
-      
-      expect(screen.getByText('Mock description for 0 0 * * *')).toBeInTheDocument();
+
+      expect(
+        screen.getByText('Mock description for 0 0 * * *'),
+      ).toBeInTheDocument();
     });
 
     it('should display cancel button in all modes', () => {
       const { rerender } = render(<CronJobForm {...defaultProps} />);
       expect(screen.getByText('Cancel')).toBeInTheDocument();
-      
+
       const viewData: ScheduleResponse = {
         id: '1',
         name: 'Test',
@@ -1433,7 +1490,7 @@ describe('CronJobForm', () => {
         comments: '',
         created_at: '2024-01-01T00:00:00Z',
       };
-      
+
       rerender(<CronJobForm {...defaultProps} viewFormData={viewData} />);
       expect(screen.getByText('Cancel')).toBeInTheDocument();
     });
@@ -1445,7 +1502,7 @@ describe('CronJobForm', () => {
         handleSendForApproval: jest.fn(),
         userIsApprover: false,
       };
-      
+
       render(<CronJobForm {...minimalProps} />);
       expect(screen.getByText('Create Cron Job')).toBeInTheDocument();
     });
@@ -1453,13 +1510,13 @@ describe('CronJobForm', () => {
     it('should handle undefined onJobCreated prop', () => {
       const props = { ...defaultProps, onJobCreated: undefined };
       render(<CronJobForm {...props} />);
-      
+
       expect(screen.getByText('Create Cron Job')).toBeInTheDocument();
     });
 
     it('should render form structure correctly', () => {
       render(<CronJobForm {...defaultProps} />);
-      
+
       expect(screen.getByTestId('input-name')).toBeInTheDocument();
       expect(screen.getByTestId('input-iterations')).toBeInTheDocument();
       expect(screen.getByText('Create Cron Job')).toBeInTheDocument();
@@ -1475,7 +1532,7 @@ describe('CronJobForm', () => {
         'STATUS_05_REJECTED',
       ];
 
-      statuses.forEach(status => {
+      statuses.forEach((status) => {
         const viewData: ScheduleResponse = {
           id: '1',
           name: 'Test',
@@ -1490,7 +1547,9 @@ describe('CronJobForm', () => {
           created_at: '2024-01-01T00:00:00Z',
         };
 
-        const { unmount } = render(<CronJobForm {...defaultProps} viewFormData={viewData} />);
+        const { unmount } = render(
+          <CronJobForm {...defaultProps} viewFormData={viewData} />,
+        );
         expect(screen.getByText('Cancel')).toBeInTheDocument();
         unmount();
       });
@@ -1498,7 +1557,7 @@ describe('CronJobForm', () => {
 
     it('should render with different user approver combinations', () => {
       const mockUseAuth = jest.mocked(useAuth);
-      
+
       // Test with approver
       mockUseAuth.mockReturnValue({
         user: { id: '1', username: 'approver', claims: ['approver'] },
@@ -1528,9 +1587,9 @@ describe('CronJobForm', () => {
           viewFormData={viewData}
           onApprove={jest.fn()}
           onReject={jest.fn()}
-        />
+        />,
       );
-      
+
       expect(screen.getByText('Approve')).toBeInTheDocument();
       expect(screen.getByText('Reject')).toBeInTheDocument();
       unmount();
@@ -1550,9 +1609,9 @@ describe('CronJobForm', () => {
           viewFormData={viewData}
           onApprove={jest.fn()}
           onReject={jest.fn()}
-        />
+        />,
       );
-      
+
       expect(screen.queryByText('Approve')).not.toBeInTheDocument();
     });
 
@@ -1577,7 +1636,7 @@ describe('CronJobForm', () => {
           editFormData={editData}
           setEditFormData={jest.fn()}
           handleSaveEdit={jest.fn()}
-        />
+        />,
       );
 
       expect(screen.getByText('Update')).toBeInTheDocument();
@@ -1591,7 +1650,7 @@ describe('CronJobForm', () => {
         '0 0 1 * *',
       ];
 
-      cronExpressions.forEach(cron => {
+      cronExpressions.forEach((cron) => {
         const viewData: ScheduleResponse = {
           id: '1',
           name: 'Test',
@@ -1606,8 +1665,12 @@ describe('CronJobForm', () => {
           created_at: '2024-01-01T00:00:00Z',
         };
 
-        const { unmount } = render(<CronJobForm {...defaultProps} viewFormData={viewData} />);
-        expect(screen.getByText(`Mock description for ${cron}`)).toBeInTheDocument();
+        const { unmount } = render(
+          <CronJobForm {...defaultProps} viewFormData={viewData} />,
+        );
+        expect(
+          screen.getByText(`Mock description for ${cron}`),
+        ).toBeInTheDocument();
         unmount();
       });
     });
@@ -1615,7 +1678,7 @@ describe('CronJobForm', () => {
     it('should handle form with onJobCreated callback', () => {
       const onJobCreated = jest.fn();
       render(<CronJobForm {...defaultProps} onJobCreated={onJobCreated} />);
-      
+
       expect(screen.getByText('Create Cron Job')).toBeInTheDocument();
     });
 
@@ -1634,7 +1697,7 @@ describe('CronJobForm', () => {
     });
 
     it('should handle different iteration values', () => {
-      [1, 5, 10, 100].forEach(iterations => {
+      [1, 5, 10, 100].forEach((iterations) => {
         const viewData: ScheduleResponse = {
           id: '1',
           name: 'Test',
@@ -1649,32 +1712,38 @@ describe('CronJobForm', () => {
           created_at: '2024-01-01T00:00:00Z',
         };
 
-        const { unmount } = render(<CronJobForm {...defaultProps} viewFormData={viewData} />);
+        const { unmount } = render(
+          <CronJobForm {...defaultProps} viewFormData={viewData} />,
+        );
         expect(screen.getByText('Cancel')).toBeInTheDocument();
         unmount();
       });
     });
 
     it('should handle view mode with different comments', () => {
-      ['', 'Short comment', 'A very long comment with lots of text'].forEach(comments => {
-        const viewData: ScheduleResponse = {
-          id: '1',
-          name: 'Test',
-          cron: '0 0 * * *',
-          cronExpression: '0 0 * * *',
-          iterations: 5,
-          start_date: '2024-01-01',
-          end_date: '2024-12-31',
-          status: 'STATUS_01_IN_PROGRESS',
-          schedule_status: 'pending',
-          comments,
-          created_at: '2024-01-01T00:00:00Z',
-        };
+      ['', 'Short comment', 'A very long comment with lots of text'].forEach(
+        (comments) => {
+          const viewData: ScheduleResponse = {
+            id: '1',
+            name: 'Test',
+            cron: '0 0 * * *',
+            cronExpression: '0 0 * * *',
+            iterations: 5,
+            start_date: '2024-01-01',
+            end_date: '2024-12-31',
+            status: 'STATUS_01_IN_PROGRESS',
+            schedule_status: 'pending',
+            comments,
+            created_at: '2024-01-01T00:00:00Z',
+          };
 
-        const { unmount } = render(<CronJobForm {...defaultProps} viewFormData={viewData} />);
-        expect(screen.getByText('Cancel')).toBeInTheDocument();
-        unmount();
-      });
+          const { unmount } = render(
+            <CronJobForm {...defaultProps} viewFormData={viewData} />,
+          );
+          expect(screen.getByText('Cancel')).toBeInTheDocument();
+          unmount();
+        },
+      );
     });
 
     it('should handle approval buttons with only onApprove', () => {
@@ -1706,7 +1775,7 @@ describe('CronJobForm', () => {
           {...defaultProps}
           viewFormData={viewData}
           onApprove={jest.fn()}
-        />
+        />,
       );
 
       expect(screen.getByText('Approve')).toBeInTheDocument();
@@ -1742,7 +1811,7 @@ describe('CronJobForm', () => {
           {...defaultProps}
           viewFormData={viewData}
           onReject={jest.fn()}
-        />
+        />,
       );
 
       expect(screen.getByText('Reject')).toBeInTheDocument();
@@ -1788,7 +1857,7 @@ describe('CronJobForm', () => {
           {...defaultProps}
           editFormData={editData}
           handleSaveEdit={jest.fn()}
-        />
+        />,
       );
 
       expect(screen.getByText('Update')).toBeInTheDocument();
@@ -1796,16 +1865,18 @@ describe('CronJobForm', () => {
 
     it('should handle cron picker value updates', () => {
       render(<CronJobForm {...defaultProps} />);
-      
+
       const setDailyButton = screen.getByText('Set Daily');
       fireEvent.click(setDailyButton);
       fireEvent.click(setDailyButton); // Click multiple times
-      
-      expect(screen.getByText('Mock description for 0 0 * * *')).toBeInTheDocument();
+
+      expect(
+        screen.getByText('Mock description for 0 0 * * *'),
+      ).toBeInTheDocument();
     });
 
     it('should render with different schedule_status values', () => {
-      ['pending', 'active', 'completed'].forEach(schedule_status => {
+      ['pending', 'active', 'completed'].forEach((schedule_status) => {
         const viewData: ScheduleResponse = {
           id: '1',
           name: 'Test',
@@ -1820,7 +1891,9 @@ describe('CronJobForm', () => {
           created_at: '2024-01-01T00:00:00Z',
         };
 
-        const { unmount } = render(<CronJobForm {...defaultProps} viewFormData={viewData} />);
+        const { unmount } = render(
+          <CronJobForm {...defaultProps} viewFormData={viewData} />,
+        );
         expect(screen.getByText('Cancel')).toBeInTheDocument();
         unmount();
       });
@@ -1831,11 +1904,15 @@ describe('CronJobForm', () => {
     it('should handle onJobCreated being undefined', () => {
       const props = { ...defaultProps, onJobCreated: undefined };
       render(<CronJobForm {...props} />);
-      
-      fireEvent.change(screen.getByTestId('input-name'), { target: { value: 'Test Job' } });
-      fireEvent.change(screen.getByTestId('input-iterations'), { target: { value: '5' } });
+
+      fireEvent.change(screen.getByTestId('input-name'), {
+        target: { value: 'Test Job' },
+      });
+      fireEvent.change(screen.getByTestId('input-iterations'), {
+        target: { value: '5' },
+      });
       fireEvent.click(screen.getByText('Set Daily'));
-      
+
       fireEvent.click(screen.getByText('Create Cron Job'));
       expect(screen.getByText('Create Cron Job')).toBeInTheDocument();
     });
@@ -1854,10 +1931,14 @@ describe('CronJobForm', () => {
         comments: 'Test comments',
         created_at: '2024-01-01T00:00:00Z',
       };
-      
-      const props = { ...defaultProps, editFormData: editData, setEditFormData: undefined };
+
+      const props = {
+        ...defaultProps,
+        editFormData: editData,
+        setEditFormData: undefined,
+      };
       render(<CronJobForm {...props} />);
-      
+
       expect(screen.getByText('Update')).toBeInTheDocument();
     });
 
@@ -1871,18 +1952,22 @@ describe('CronJobForm', () => {
         status: 'STATUS_01_IN_PROGRESS',
         created_at: '2024-01-01T00:00:00Z',
       } as ScheduleResponse;
-      
+
       render(<CronJobForm {...defaultProps} viewFormData={viewData} />);
       expect(screen.getByText('Cancel')).toBeInTheDocument();
     });
 
     it('should handle empty name in schedule data', () => {
       render(<CronJobForm {...defaultProps} />);
-      
-      fireEvent.change(screen.getByTestId('input-name'), { target: { value: '  ' } });
-      fireEvent.change(screen.getByTestId('input-iterations'), { target: { value: '5' } });
+
+      fireEvent.change(screen.getByTestId('input-name'), {
+        target: { value: '  ' },
+      });
+      fireEvent.change(screen.getByTestId('input-iterations'), {
+        target: { value: '5' },
+      });
       fireEvent.click(screen.getByText('Set Daily'));
-      
+
       // Should still submit with trimmed empty name (defaults to 'Schedule')
       expect(screen.getByText('Create Cron Job')).toBeInTheDocument();
     });
@@ -1901,10 +1986,16 @@ describe('CronJobForm', () => {
         comments: '',
         created_at: '2024-01-01T00:00:00Z',
       };
-      
+
       const mockSetEditFormData = jest.fn();
-      render(<CronJobForm {...defaultProps} editFormData={editData} setEditFormData={mockSetEditFormData} />);
-      
+      render(
+        <CronJobForm
+          {...defaultProps}
+          editFormData={editData}
+          setEditFormData={mockSetEditFormData}
+        />,
+      );
+
       // No changes, so setEditFormData should not be called
       expect(mockSetEditFormData).not.toHaveBeenCalled();
     });
@@ -1912,7 +2003,7 @@ describe('CronJobForm', () => {
     it('should handle all mode combinations', () => {
       const modes = [
         { editFormData: undefined, viewFormData: undefined },
-        { 
+        {
           editFormData: {
             id: '1',
             name: 'Edit',
@@ -1923,9 +2014,9 @@ describe('CronJobForm', () => {
             status: 'STATUS_01_IN_PROGRESS',
             created_at: '2024-01-01T00:00:00Z',
           } as ScheduleResponse,
-          viewFormData: undefined 
+          viewFormData: undefined,
         },
-        { 
+        {
           editFormData: undefined,
           viewFormData: {
             id: '1',
@@ -1936,17 +2027,17 @@ describe('CronJobForm', () => {
             schedule_status: 'active',
             status: 'STATUS_01_IN_PROGRESS',
             created_at: '2024-01-01T00:00:00Z',
-          } as ScheduleResponse
+          } as ScheduleResponse,
         },
       ];
 
       modes.forEach(({ editFormData, viewFormData }) => {
         const { unmount } = render(
-          <CronJobForm 
-            {...defaultProps} 
-            editFormData={editFormData} 
-            viewFormData={viewFormData} 
-          />
+          <CronJobForm
+            {...defaultProps}
+            editFormData={editFormData}
+            viewFormData={viewFormData}
+          />,
         );
         expect(screen.getByText('Cancel')).toBeInTheDocument();
         unmount();
@@ -1967,36 +2058,46 @@ describe('CronJobForm', () => {
         comments: '',
         created_at: '2024-01-01T00:00:00Z',
       };
-      
+
       const mockSetEditFormData = jest.fn();
       render(
-        <CronJobForm {...defaultProps} editFormData={editData} setEditFormData={mockSetEditFormData} />
+        <CronJobForm
+          {...defaultProps}
+          editFormData={editData}
+          setEditFormData={mockSetEditFormData}
+        />,
       );
-      
+
       expect(screen.getByText('Update')).toBeInTheDocument();
     });
 
     it('should handle cronExpression being undefined', () => {
       render(<CronJobForm {...defaultProps} />);
-      
+
       // Initially cronExpression is undefined, so no "Generated Expression:" text
-      expect(screen.queryByText('Generated Expression:')).not.toBeInTheDocument();
-      
+      expect(
+        screen.queryByText('Generated Expression:'),
+      ).not.toBeInTheDocument();
+
       // Set a value
       fireEvent.click(screen.getByText('Set Daily'));
-      
+
       // Now it should display
       expect(screen.getByText(/Generated Expression:/)).toBeInTheDocument();
-      expect(screen.getByText('Mock description for 0 0 * * *')).toBeInTheDocument();
+      expect(
+        screen.getByText('Mock description for 0 0 * * *'),
+      ).toBeInTheDocument();
     });
 
     it('should handle cronExpression updates correctly', () => {
       render(<CronJobForm {...defaultProps} />);
-      
+
       // Set cron expression
       fireEvent.click(screen.getByText('Set Daily'));
-      
-      expect(screen.getByText('Mock description for 0 0 * * *')).toBeInTheDocument();
+
+      expect(
+        screen.getByText('Mock description for 0 0 * * *'),
+      ).toBeInTheDocument();
     });
   });
 
@@ -2027,14 +2128,21 @@ describe('CronJobForm', () => {
         created_at: '2024-01-01T00:00:00Z',
       };
 
-      render(<CronJobForm {...defaultProps} viewFormData={viewData} onApprove={mockOnApprove} onReject={mockOnReject} />);
-      
+      render(
+        <CronJobForm
+          {...defaultProps}
+          viewFormData={viewData}
+          onApprove={mockOnApprove}
+          onReject={mockOnReject}
+        />,
+      );
+
       expect(screen.getByText('Approve')).toBeInTheDocument();
       expect(screen.getByText('Reject')).toBeInTheDocument();
-      
+
       fireEvent.click(screen.getByText('Approve'));
       expect(mockOnApprove).toHaveBeenCalledWith('1');
-      
+
       fireEvent.click(screen.getByText('Reject'));
       expect(mockOnReject).toHaveBeenCalledWith('1');
     });
@@ -2064,8 +2172,14 @@ describe('CronJobForm', () => {
         created_at: '2024-01-01T00:00:00Z',
       };
 
-      render(<CronJobForm {...defaultProps} viewFormData={viewData} onApprove={mockOnApprove} />);
-      
+      render(
+        <CronJobForm
+          {...defaultProps}
+          viewFormData={viewData}
+          onApprove={mockOnApprove}
+        />,
+      );
+
       expect(screen.getByText('Approve')).toBeInTheDocument();
       expect(screen.queryByText('Reject')).not.toBeInTheDocument();
     });
@@ -2095,8 +2209,14 @@ describe('CronJobForm', () => {
         created_at: '2024-01-01T00:00:00Z',
       };
 
-      render(<CronJobForm {...defaultProps} viewFormData={viewData} onReject={mockOnReject} />);
-      
+      render(
+        <CronJobForm
+          {...defaultProps}
+          viewFormData={viewData}
+          onReject={mockOnReject}
+        />,
+      );
+
       expect(screen.getByText('Reject')).toBeInTheDocument();
       expect(screen.queryByText('Approve')).not.toBeInTheDocument();
     });
@@ -2127,8 +2247,15 @@ describe('CronJobForm', () => {
         created_at: '2024-01-01T00:00:00Z',
       };
 
-      render(<CronJobForm {...defaultProps} viewFormData={viewData} onApprove={mockOnApprove} onReject={mockOnReject} />);
-      
+      render(
+        <CronJobForm
+          {...defaultProps}
+          viewFormData={viewData}
+          onApprove={mockOnApprove}
+          onReject={mockOnReject}
+        />,
+      );
+
       expect(screen.queryByText('Approve')).not.toBeInTheDocument();
       expect(screen.queryByText('Reject')).not.toBeInTheDocument();
     });
@@ -2159,11 +2286,17 @@ describe('CronJobForm', () => {
         created_at: '2024-01-01T00:00:00Z',
       };
 
-      render(<CronJobForm {...defaultProps} viewFormData={viewData} onApprove={mockOnApprove} onReject={mockOnReject} />);
-      
+      render(
+        <CronJobForm
+          {...defaultProps}
+          viewFormData={viewData}
+          onApprove={mockOnApprove}
+          onReject={mockOnReject}
+        />,
+      );
+
       expect(screen.queryByText('Approve')).not.toBeInTheDocument();
       expect(screen.queryByText('Reject')).not.toBeInTheDocument();
     });
   });
-
 });

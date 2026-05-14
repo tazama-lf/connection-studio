@@ -20,7 +20,9 @@ jest.mock('../../../../../src/features/cron/components/CronJobForm', () => ({
       <div data-testid="cron-form">
         <button onClick={props.onJobCreated}>trigger-create</button>
         <button onClick={props.handleSaveEdit}>trigger-edit-save</button>
-        <button onClick={props.handleSendForApproval}>trigger-send-approval</button>
+        <button onClick={props.handleSendForApproval}>
+          trigger-send-approval
+        </button>
         <button onClick={props.onCancel}>trigger-cancel</button>
       </div>
     );
@@ -35,7 +37,9 @@ describe('features/cron/components/CronJobModal/index.tsx', () => {
   });
 
   it('returns null when closed', () => {
-    const { container } = render(<CronJobModal isOpen={false} onClose={jest.fn()} /> as any);
+    const { container } = render(
+      (<CronJobModal isOpen={false} onClose={jest.fn()} />) as any,
+    );
     expect(container).toBeEmptyDOMElement();
   });
 
@@ -43,7 +47,16 @@ describe('features/cron/components/CronJobModal/index.tsx', () => {
     const onClose = jest.fn();
     const onJobCreated = jest.fn();
 
-    render(<CronJobModal isOpen={true} mode="create" onClose={onClose} onJobCreated={onJobCreated} /> as any);
+    render(
+      (
+        <CronJobModal
+          isOpen={true}
+          mode="create"
+          onClose={onClose}
+          onJobCreated={onJobCreated}
+        />
+      ) as any,
+    );
 
     expect(screen.getByText('Create New Cron Job')).toBeInTheDocument();
     fireEvent.click(screen.getByText('trigger-create'));
@@ -58,14 +71,16 @@ describe('features/cron/components/CronJobModal/index.tsx', () => {
     const setEditFormData = jest.fn();
 
     render(
-      <CronJobModal
-        isOpen={true}
-        mode="edit"
-        onClose={onClose}
-        editFormData={{ id: 1 } as any}
-        setEditFormData={setEditFormData}
-        handleSaveEdit={handleSaveEdit}
-      /> as any,
+      (
+        <CronJobModal
+          isOpen={true}
+          mode="edit"
+          onClose={onClose}
+          editFormData={{ id: 1 } as any}
+          setEditFormData={setEditFormData}
+          handleSaveEdit={handleSaveEdit}
+        />
+      ) as any,
     );
 
     expect(screen.getByText('Edit Cron Job')).toBeInTheDocument();
@@ -82,15 +97,17 @@ describe('features/cron/components/CronJobModal/index.tsx', () => {
     const onReject = jest.fn();
 
     render(
-      <CronJobModal
-        isOpen={true}
-        mode="view"
-        onClose={onClose}
-        viewFormData={{ id: 1 } as any}
-        handleSendForApproval={handleSendForApproval}
-        onApprove={onApprove}
-        onReject={onReject}
-      /> as any,
+      (
+        <CronJobModal
+          isOpen={true}
+          mode="view"
+          onClose={onClose}
+          viewFormData={{ id: 1 } as any}
+          handleSendForApproval={handleSendForApproval}
+          onApprove={onApprove}
+          onReject={onReject}
+        />
+      ) as any,
     );
 
     expect(screen.getByText('View Cron Job')).toBeInTheDocument();
@@ -109,12 +126,14 @@ describe('features/cron/components/CronJobModal/index.tsx', () => {
     const onClose = jest.fn();
 
     render(
-      <CronJobModal
-        isOpen={true}
-        mode="view"
-        onClose={onClose}
-        viewFormData={{ id: 1 } as any}
-      /> as any,
+      (
+        <CronJobModal
+          isOpen={true}
+          mode="view"
+          onClose={onClose}
+          viewFormData={{ id: 1 } as any}
+        />
+      ) as any,
     );
 
     fireEvent.click(screen.getByText('trigger-send-approval'));
@@ -124,9 +143,13 @@ describe('features/cron/components/CronJobModal/index.tsx', () => {
   it('closes from header close button and cancel action', () => {
     const onClose = jest.fn();
 
-    const { container } = render(<CronJobModal isOpen={true} onClose={onClose} /> as any);
+    const { container } = render(
+      (<CronJobModal isOpen={true} onClose={onClose} />) as any,
+    );
 
-    const headerCloseButton = container.querySelector('button.text-gray-400') as HTMLButtonElement;
+    const headerCloseButton = container.querySelector(
+      'button.text-gray-400',
+    ) as HTMLButtonElement;
     fireEvent.click(headerCloseButton);
     fireEvent.click(screen.getByText('trigger-cancel'));
 
@@ -137,12 +160,14 @@ describe('features/cron/components/CronJobModal/index.tsx', () => {
     const onClose = jest.fn();
 
     render(
-      <CronJobModal
-        isOpen={true}
-        mode="edit"
-        onClose={onClose}
-        editFormData={{ id: 1 } as any}
-      /> as any,
+      (
+        <CronJobModal
+          isOpen={true}
+          mode="edit"
+          onClose={onClose}
+          editFormData={{ id: 1 } as any}
+        />
+      ) as any,
     );
 
     fireEvent.click(screen.getByText('trigger-edit-save'));

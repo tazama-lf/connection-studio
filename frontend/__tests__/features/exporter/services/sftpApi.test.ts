@@ -1,10 +1,16 @@
-import { SftpApiService, SftpError, sftpApi } from '../../../../src/features/exporter/services/sftpApi';
+import {
+  SftpApiService,
+  SftpError,
+  sftpApi,
+} from '../../../../src/features/exporter/services/sftpApi';
 
 const mockLocalStorage = global.localStorage as jest.Mocked<Storage>;
 
 describe('SftpError', () => {
   it('should create an SftpError with the correct properties', () => {
-    const error = new SftpError('test message', 'CORRUPTED_FILE', { extra: 'data' });
+    const error = new SftpError('test message', 'CORRUPTED_FILE', {
+      extra: 'data',
+    });
     expect(error.name).toBe('SftpError');
     expect(error.message).toBe('test message');
     expect(error.errorType).toBe('CORRUPTED_FILE');
@@ -125,7 +131,14 @@ describe('SftpApiService', () => {
 
   describe('readFile', () => {
     it('should read a file by name with .json extension stripped', async () => {
-      const mockContent = { id: '123', name: 'test', status: 'active', created_at: '2024-01-01', updated_at: '2024-01-01', tenant_id: 't1' };
+      const mockContent = {
+        id: '123',
+        name: 'test',
+        status: 'active',
+        created_at: '2024-01-01',
+        updated_at: '2024-01-01',
+        tenant_id: 't1',
+      };
 
       (global.fetch as jest.Mock).mockResolvedValue({
         ok: true,
@@ -143,7 +156,14 @@ describe('SftpApiService', () => {
     });
 
     it('should read a file by name without .json extension', async () => {
-      const mockContent = { id: '456', name: 'other', status: 'active', created_at: '2024-01-01', updated_at: '2024-01-01', tenant_id: 't2' };
+      const mockContent = {
+        id: '456',
+        name: 'other',
+        status: 'active',
+        created_at: '2024-01-01',
+        updated_at: '2024-01-01',
+        tenant_id: 't2',
+      };
 
       (global.fetch as jest.Mock).mockResolvedValue({
         ok: true,
@@ -175,19 +195,27 @@ describe('SftpApiService', () => {
 
   describe('extractFormatFromFilename (static)', () => {
     it('should return "cron" for _cron_ filenames', () => {
-      expect(SftpApiService.extractFormatFromFilename('file_cron_abc.json')).toBe('cron');
+      expect(
+        SftpApiService.extractFormatFromFilename('file_cron_abc.json'),
+      ).toBe('cron');
     });
 
     it('should return "de" for _de_ filenames', () => {
-      expect(SftpApiService.extractFormatFromFilename('file_de_abc.json')).toBe('de');
+      expect(SftpApiService.extractFormatFromFilename('file_de_abc.json')).toBe(
+        'de',
+      );
     });
 
     it('should return "dems" for _dems_ filenames', () => {
-      expect(SftpApiService.extractFormatFromFilename('file_dems_abc.json')).toBe('dems');
+      expect(
+        SftpApiService.extractFormatFromFilename('file_dems_abc.json'),
+      ).toBe('dems');
     });
 
     it('should return null if no format pattern found', () => {
-      expect(SftpApiService.extractFormatFromFilename('random_file.json')).toBeNull();
+      expect(
+        SftpApiService.extractFormatFromFilename('random_file.json'),
+      ).toBeNull();
     });
   });
 
@@ -263,7 +291,9 @@ describe('SftpApiService', () => {
         json: async () => ({ message: 'Server error' }),
       });
 
-      await expect(sftpApi.publishItem('id', 'cron')).rejects.toThrow('Server error');
+      await expect(sftpApi.publishItem('id', 'cron')).rejects.toThrow(
+        'Server error',
+      );
     });
 
     it('should handle PUSH type for de format', async () => {
@@ -346,7 +376,7 @@ describe('SftpApiService', () => {
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: true,
       status: 200,
-      json: async () => ([]),
+      json: async () => [],
     });
 
     await sftpApi.getAllFiles('cron');
@@ -364,7 +394,9 @@ describe('SftpApiService', () => {
     });
 
     // Call apiRequest without the options argument — triggers the default `= {}` branch
-    await (SftpApiService as any).apiRequest('https://example.test/default-opts');
+    await (SftpApiService as any).apiRequest(
+      'https://example.test/default-opts',
+    );
 
     expect(global.fetch).toHaveBeenCalledWith(
       'https://example.test/default-opts',

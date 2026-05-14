@@ -30,7 +30,9 @@ describe('shared/components/CloneConfigModal.tsx', () => {
   });
 
   it('does not render when closed', () => {
-    render(<CloneConfigModal isOpen={false} onClose={jest.fn()} config={config} />);
+    render(
+      <CloneConfigModal isOpen={false} onClose={jest.fn()} config={config} />,
+    );
     expect(screen.queryByText('Clone Pull Job')).not.toBeInTheDocument();
   });
 
@@ -85,7 +87,9 @@ describe('shared/components/CloneConfigModal.tsx', () => {
     fireEvent.click(screen.getByText('Clone Configuration'));
 
     await waitFor(() => {
-      expect(mockShowError).toHaveBeenCalledWith('Failed to clone configuration');
+      expect(mockShowError).toHaveBeenCalledWith(
+        'Failed to clone configuration',
+      );
     });
   });
 
@@ -115,7 +119,9 @@ describe('shared/components/CloneConfigModal.tsx', () => {
     fireEvent.click(screen.getByText('Clone Configuration'));
 
     await waitFor(() => {
-      expect(mockShowError).toHaveBeenCalledWith('Failed to clone configuration');
+      expect(mockShowError).toHaveBeenCalledWith(
+        'Failed to clone configuration',
+      );
     });
   });
 
@@ -124,7 +130,9 @@ describe('shared/components/CloneConfigModal.tsx', () => {
       <CloneConfigModal isOpen={true} onClose={jest.fn()} config={config} />,
     );
 
-    const endpointInput = screen.getByPlaceholderText('Enter new endpoint name');
+    const endpointInput = screen.getByPlaceholderText(
+      'Enter new endpoint name',
+    );
     expect(endpointInput).toBeInTheDocument();
 
     fireEvent.change(endpointInput, { target: { value: '/new/endpoint' } });
@@ -141,10 +149,16 @@ describe('shared/components/CloneConfigModal.tsx', () => {
     } as any;
 
     render(
-      <CloneConfigModal isOpen={true} onClose={jest.fn()} config={pushConfig} />,
+      <CloneConfigModal
+        isOpen={true}
+        onClose={jest.fn()}
+        config={pushConfig}
+      />,
     );
 
-    expect(screen.queryByPlaceholderText('Enter new endpoint name')).not.toBeInTheDocument();
+    expect(
+      screen.queryByPlaceholderText('Enter new endpoint name'),
+    ).not.toBeInTheDocument();
     expect(screen.getByText('Clone Push Job')).toBeInTheDocument();
   });
 
@@ -170,7 +184,11 @@ describe('shared/components/CloneConfigModal.tsx', () => {
     const nanVersionConfig = { ...config, version: 'beta' } as any;
 
     render(
-      <CloneConfigModal isOpen={true} onClose={jest.fn()} config={nanVersionConfig} />,
+      <CloneConfigModal
+        isOpen={true}
+        onClose={jest.fn()}
+        config={nanVersionConfig}
+      />,
     );
 
     expect(screen.getByPlaceholderText('Enter new version')).toHaveValue('2');
@@ -189,20 +207,33 @@ describe('shared/components/CloneConfigModal.tsx', () => {
   it('uses fallback version "1" when config.version is null (BRDA:30)', () => {
     const nullVersionConfig = { ...config, version: null } as any;
     render(
-      <CloneConfigModal isOpen={true} onClose={jest.fn()} config={nullVersionConfig} />,
+      <CloneConfigModal
+        isOpen={true}
+        onClose={jest.fn()}
+        config={nullVersionConfig}
+      />,
     );
     // null ?? '1' → currentVersion='1', parseInt('1')=1, nextVersion='2'
     expect(screen.getByPlaceholderText('Enter new version')).toHaveValue('2');
   });
 
   it('uses fallback empty string when config.endpointPath is null (BRDA:34)', () => {
-    const nullEndpointConfig = { ...config, endpointPath: null, transactionType: 'push' } as any;
+    const nullEndpointConfig = {
+      ...config,
+      endpointPath: null,
+      transactionType: 'push',
+    } as any;
     render(
-      <CloneConfigModal isOpen={true} onClose={jest.fn()} config={nullEndpointConfig} />,
+      <CloneConfigModal
+        isOpen={true}
+        onClose={jest.fn()}
+        config={nullEndpointConfig}
+      />,
     );
     // endpointPath null ?? '' → endpointName set to ''
     // With null endpointPath + push type, isInboundJob is false so endpoint input is not shown
-    expect(screen.queryByPlaceholderText('Enter new endpoint name')).not.toBeInTheDocument();
+    expect(
+      screen.queryByPlaceholderText('Enter new endpoint name'),
+    ).not.toBeInTheDocument();
   });
-
 });

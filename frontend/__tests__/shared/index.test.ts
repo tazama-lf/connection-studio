@@ -34,4 +34,3 @@ describe('shared/index.ts', () => {
     expect(mod.usePagination).toBeDefined();
   });
 });
-

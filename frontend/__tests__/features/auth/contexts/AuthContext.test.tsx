@@ -5,7 +5,10 @@ import {
   AuthProvider,
   useAuth,
 } from '../../../../features/auth/contexts/AuthContext';
-import { authApi, AuthApiService } from '../../../../features/auth/services/authApi';
+import {
+  authApi,
+  AuthApiService,
+} from '../../../../features/auth/services/authApi';
 
 // Mock the authApi
 jest.mock('../../../../features/auth/services/authApi', () => ({
@@ -51,7 +54,9 @@ describe('AuthContext', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    if (typeof (localStorage.getItem as any).mockImplementation === 'function') {
+    if (
+      typeof (localStorage.getItem as any).mockImplementation === 'function'
+    ) {
       (localStorage.getItem as any).mockImplementation(() => null);
       (localStorage.setItem as any).mockImplementation(() => undefined);
       (localStorage.removeItem as any).mockImplementation(() => undefined);
@@ -74,10 +79,13 @@ describe('AuthContext', () => {
   });
 
   it('restores authenticated state from localStorage when token is valid', async () => {
-    if (typeof (localStorage.getItem as any).mockImplementation === 'function') {
+    if (
+      typeof (localStorage.getItem as any).mockImplementation === 'function'
+    ) {
       (localStorage.getItem as any).mockImplementation((key: string) => {
         if (key === 'authToken') return 'valid.token.payload';
-        if (key === 'user') return JSON.stringify({ username: 'restored-user' });
+        if (key === 'user')
+          return JSON.stringify({ username: 'restored-user' });
         return null;
       });
     }
@@ -97,7 +105,9 @@ describe('AuthContext', () => {
   });
 
   it('clears invalid stored auth data when token decode fails', async () => {
-    if (typeof (localStorage.getItem as any).mockImplementation === 'function') {
+    if (
+      typeof (localStorage.getItem as any).mockImplementation === 'function'
+    ) {
       (localStorage.getItem as any).mockImplementation((key: string) => {
         if (key === 'authToken') return 'invalid-token';
         if (key === 'user') return JSON.stringify({ username: 'stale-user' });
@@ -124,7 +134,9 @@ describe('AuthContext', () => {
   });
 
   it('clears stored auth data when stored user JSON is invalid', async () => {
-    if (typeof (localStorage.getItem as any).mockImplementation === 'function') {
+    if (
+      typeof (localStorage.getItem as any).mockImplementation === 'function'
+    ) {
       (localStorage.getItem as any).mockImplementation((key: string) => {
         if (key === 'authToken') return 'valid.token.payload';
         if (key === 'user') return '{bad-json';
@@ -171,13 +183,22 @@ describe('AuthContext', () => {
     });
 
     if (typeof (localStorage.setItem as any).mock === 'object') {
-      expect(localStorage.setItem).toHaveBeenCalledWith('authToken', 'new.valid.token');
-      expect(localStorage.setItem).toHaveBeenCalledWith('user', JSON.stringify({ id: '2', username: 'new-user' }));
+      expect(localStorage.setItem).toHaveBeenCalledWith(
+        'authToken',
+        'new.valid.token',
+      );
+      expect(localStorage.setItem).toHaveBeenCalledWith(
+        'user',
+        JSON.stringify({ id: '2', username: 'new-user' }),
+      );
     }
   });
 
   it('returns to unauthenticated state when login response has no token', async () => {
-    mockedAuthApi.login.mockResolvedValue({ token: '', message: 'missing token' } as any);
+    mockedAuthApi.login.mockResolvedValue({
+      token: '',
+      message: 'missing token',
+    } as any);
 
     render(
       <AuthProvider>
@@ -194,7 +215,10 @@ describe('AuthContext', () => {
   });
 
   it('returns false when login token cannot be decoded into user data', async () => {
-    mockedAuthApi.login.mockResolvedValue({ token: 'undecodable.token', message: 'ok' } as any);
+    mockedAuthApi.login.mockResolvedValue({
+      token: 'undecodable.token',
+      message: 'ok',
+    } as any);
     mockedDecodeToken.mockReturnValue(null);
 
     render(
@@ -230,10 +254,13 @@ describe('AuthContext', () => {
   });
 
   it('logs out and clears stored auth state', async () => {
-    if (typeof (localStorage.getItem as any).mockImplementation === 'function') {
+    if (
+      typeof (localStorage.getItem as any).mockImplementation === 'function'
+    ) {
       (localStorage.getItem as any).mockImplementation((key: string) => {
         if (key === 'authToken') return 'existing.token';
-        if (key === 'user') return JSON.stringify({ username: 'existing-user' });
+        if (key === 'user')
+          return JSON.stringify({ username: 'existing-user' });
         return null;
       });
     }
@@ -266,8 +293,17 @@ describe('AuthContext', () => {
         <div>
           <div data-testid="default-auth">{isAuthenticated.toString()}</div>
           <div data-testid="default-loading">{loading.toString()}</div>
-          <button data-testid="default-login-btn" onClick={() => { void login('u', 'p'); }}>login</button>
-          <button data-testid="default-logout-btn" onClick={logout}>logout</button>
+          <button
+            data-testid="default-login-btn"
+            onClick={() => {
+              void login('u', 'p');
+            }}
+          >
+            login
+          </button>
+          <button data-testid="default-logout-btn" onClick={logout}>
+            logout
+          </button>
         </div>
       );
     };

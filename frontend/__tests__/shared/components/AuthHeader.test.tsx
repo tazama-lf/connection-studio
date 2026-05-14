@@ -56,7 +56,9 @@ describe('AuthHeader', () => {
 
   it('displays user role when user has approver claim', () => {
     // Temporarily override the mock
-    const useAuthMock = jest.requireMock('../../../features/auth/contexts/AuthContext');
+    const useAuthMock = jest.requireMock(
+      '../../../features/auth/contexts/AuthContext',
+    );
     useAuthMock.useAuth = jest.fn(() => ({
       user: { username: 'Test User', claims: ['approver'] },
       logout: mockLogout,

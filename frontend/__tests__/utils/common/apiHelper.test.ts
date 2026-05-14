@@ -3,4 +3,3 @@ describe('utils/common/apiHelper.ts', () => {
     await expect(import('@/utils/common/apiHelper')).resolves.toBeDefined();
   });
 });
-

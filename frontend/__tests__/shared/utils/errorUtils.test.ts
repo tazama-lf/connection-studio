@@ -39,7 +39,9 @@ describe('getUserFriendlyErrorMessage', () => {
     });
 
     it('should handle error message that includes the corruption text', () => {
-      const error = { message: 'Error: File or its integrity file not found somewhere' };
+      const error = {
+        message: 'Error: File or its integrity file not found somewhere',
+      };
       expect(getUserFriendlyErrorMessage(error)).toBe(
         'File appears to be corrupted or missing. The file or its integrity verification failed.',
       );
@@ -109,9 +111,7 @@ describe('getUserFriendlyErrorMessage', () => {
 
     it('should return too many requests message for 429 status', () => {
       const error = { response: { status: 429 } };
-      expect(getUserFriendlyErrorMessage(error)).toContain(
-        'Too many requests',
-      );
+      expect(getUserFriendlyErrorMessage(error)).toContain('Too many requests');
     });
 
     it('should return server error message for 500+ status', () => {
@@ -327,7 +327,9 @@ describe('getUserFriendlyErrorMessage', () => {
 
   describe('getErrorDetails', () => {
     it('should return details from error with message and response', () => {
-      const { getErrorDetails } = require('../../../src/shared/utils/errorUtils');
+      const {
+        getErrorDetails,
+      } = require('../../../src/shared/utils/errorUtils');
 
       const error = {
         message: 'Something went wrong',
@@ -349,7 +351,9 @@ describe('getUserFriendlyErrorMessage', () => {
     });
 
     it('should extract url and method from config', () => {
-      const { getErrorDetails } = require('../../../src/shared/utils/errorUtils');
+      const {
+        getErrorDetails,
+      } = require('../../../src/shared/utils/errorUtils');
 
       const error = {
         message: 'Request failed',
@@ -366,7 +370,9 @@ describe('getUserFriendlyErrorMessage', () => {
     });
 
     it('should return "Unknown error" when error has no message', () => {
-      const { getErrorDetails } = require('../../../src/shared/utils/errorUtils');
+      const {
+        getErrorDetails,
+      } = require('../../../src/shared/utils/errorUtils');
 
       const result = getErrorDetails({});
 
@@ -376,7 +382,9 @@ describe('getUserFriendlyErrorMessage', () => {
     });
 
     it('should return null for status and undefined for statusText when no response', () => {
-      const { getErrorDetails } = require('../../../src/shared/utils/errorUtils');
+      const {
+        getErrorDetails,
+      } = require('../../../src/shared/utils/errorUtils');
 
       const result = getErrorDetails({ message: 'Network error' });
 
@@ -387,7 +395,9 @@ describe('getUserFriendlyErrorMessage', () => {
     });
 
     it('should handle error with null config gracefully', () => {
-      const { getErrorDetails } = require('../../../src/shared/utils/errorUtils');
+      const {
+        getErrorDetails,
+      } = require('../../../src/shared/utils/errorUtils');
 
       const error = {
         message: 'Test error',

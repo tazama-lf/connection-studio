@@ -12,8 +12,12 @@ jest.mock('react-router-dom', () => ({
 
 jest.mock('lucide-react', () => ({
   Clock: ({ size }: any) => <svg data-testid="clock-icon" data-size={size} />,
-  Database: ({ size }: any) => <svg data-testid="database-icon" data-size={size} />,
-  Settings: ({ size }: any) => <svg data-testid="settings-icon" data-size={size} />,
+  Database: ({ size }: any) => (
+    <svg data-testid="database-icon" data-size={size} />
+  ),
+  Settings: ({ size }: any) => (
+    <svg data-testid="settings-icon" data-size={size} />
+  ),
   PackageOpen: ({ size }: any) => (
     <svg data-testid="package-open-icon" data-size={size} />
   ),
@@ -30,7 +34,7 @@ describe('PublisherModule', () => {
     render(<PublisherModule />);
 
     expect(
-      screen.getByText('Dynamic Event Monitoring Service')
+      screen.getByText('Dynamic Event Monitoring Service'),
     ).toBeInTheDocument();
     expect(screen.getByText('Data Enrichment')).toBeInTheDocument();
     expect(screen.getByText('Cron Job Management')).toBeInTheDocument();
@@ -41,21 +45,21 @@ describe('PublisherModule', () => {
     render(<PublisherModule />);
 
     expect(
-      screen.getByText('Review and publish approved configurations')
+      screen.getByText('Review and publish approved configurations'),
     ).toBeInTheDocument();
 
     expect(
-      screen.getByText('Review and publish exported data enrichment jobs')
+      screen.getByText('Review and publish exported data enrichment jobs'),
     ).toBeInTheDocument();
 
     expect(
-      screen.getByText('Review and publish exported cron job schedules')
+      screen.getByText('Review and publish exported cron job schedules'),
     ).toBeInTheDocument();
 
     expect(
       screen.getByText(
-        'Review exported items ready for publishing (Cron Jobs, DE Jobs, DEMS)'
-      )
+        'Review exported items ready for publishing (Cron Jobs, DE Jobs, DEMS)',
+      ),
     ).toBeInTheDocument();
   });
 
@@ -71,10 +75,19 @@ describe('PublisherModule', () => {
   it('passes size 24 to all icons', () => {
     render(<PublisherModule />);
 
-    expect(screen.getByTestId('settings-icon')).toHaveAttribute('data-size', '24');
-    expect(screen.getByTestId('database-icon')).toHaveAttribute('data-size', '24');
+    expect(screen.getByTestId('settings-icon')).toHaveAttribute(
+      'data-size',
+      '24',
+    );
+    expect(screen.getByTestId('database-icon')).toHaveAttribute(
+      'data-size',
+      '24',
+    );
     expect(screen.getByTestId('clock-icon')).toHaveAttribute('data-size', '24');
-    expect(screen.getByTestId('package-open-icon')).toHaveAttribute('data-size', '24');
+    expect(screen.getByTestId('package-open-icon')).toHaveAttribute(
+      'data-size',
+      '24',
+    );
   });
 
   it('renders four clickable module cards', () => {
@@ -191,7 +204,10 @@ describe('PublisherModule', () => {
     expect(mockNavigate).toHaveBeenNthCalledWith(1, '/publisher/configs');
     expect(mockNavigate).toHaveBeenNthCalledWith(2, '/publisher/de-jobs');
     expect(mockNavigate).toHaveBeenNthCalledWith(3, '/publisher/cron-jobs');
-    expect(mockNavigate).toHaveBeenNthCalledWith(4, '/publisher/exported-items');
+    expect(mockNavigate).toHaveBeenNthCalledWith(
+      4,
+      '/publisher/exported-items',
+    );
   });
 
   it('renders the main container layout', () => {

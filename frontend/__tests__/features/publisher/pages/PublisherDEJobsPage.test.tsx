@@ -59,17 +59,21 @@ jest.mock('../../../../src/features/data-enrichment/handlers', () => ({
   },
 }));
 
-jest.mock('@shared', () => ({
-  Button: ({ children, onClick, ...props }: any) => (
-    <button onClick={onClick} {...props}>
-      {children}
-    </button>
-  ),
-}), { virtual: true });
+jest.mock(
+  '@shared',
+  () => ({
+    Button: ({ children, onClick, ...props }: any) => (
+      <button onClick={onClick} {...props}>
+        {children}
+      </button>
+    ),
+  }),
+  { virtual: true },
+);
 
 jest.mock(
   '../../../../src/features/data-enrichment/components/EndpointHistoryButton',
-  () => () => <button>Endpoint History</button>
+  () => () => <button>Endpoint History</button>,
 );
 
 jest.mock(
@@ -87,7 +91,7 @@ jest.mock(
         <button onClick={props.onClose}>Close Job Details</button>
       </div>
     );
-  }
+  },
 );
 
 jest.mock(
@@ -102,7 +106,9 @@ jest.mock(
         <div data-testid="job-list-error">{props.error ?? 'no-error'}</div>
         <div data-testid="pagination-page">{props.pagination.page}</div>
         <div data-testid="pagination-limit">{props.pagination.limit}</div>
-        <div data-testid="pagination-total">{props.pagination.totalRecords}</div>
+        <div data-testid="pagination-total">
+          {props.pagination.totalRecords}
+        </div>
         <div data-testid="searching-filters">
           {JSON.stringify(props.searchingFilters)}
         </div>
@@ -122,7 +128,7 @@ jest.mock(
         </button>
       </div>
     );
-  }
+  },
 );
 
 describe('PublisherDEJobsPage', () => {
@@ -187,12 +193,16 @@ describe('PublisherDEJobsPage', () => {
   it('renders page header, action button, endpoint history button, and job list', async () => {
     render(<PublisherDEJobsPage />);
 
-    expect(screen.getByRole('button', { name: /go back/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /go back/i }),
+    ).toBeInTheDocument();
     expect(screen.getByText('Data Enrichment')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /endpoint history/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /endpoint history/i }),
+    ).toBeInTheDocument();
     expect(screen.getByTestId('tooltip')).toHaveAttribute(
       'data-title',
-      'View Endpoint Last Runs'
+      'View Endpoint Last Runs',
     );
 
     await waitFor(() => {
@@ -210,7 +220,7 @@ describe('PublisherDEJobsPage', () => {
           offset: 0,
           userRole: 'publisher',
         },
-        {}
+        {},
       );
     });
   });
@@ -227,7 +237,7 @@ describe('PublisherDEJobsPage', () => {
       expect(capturedJobListProps.onRefresh).toEqual(expect.any(Function));
       expect(capturedJobListProps.onViewLogs).toEqual(expect.any(Function));
       expect(capturedJobListProps.setSearchingFilters).toEqual(
-        expect.any(Function)
+        expect.any(Function),
       );
       expect(capturedJobListProps.pagination).toMatchObject({
         page: 0,
@@ -261,7 +271,7 @@ describe('PublisherDEJobsPage', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('job-list-error')).toHaveTextContent(
-        'Unable to fetch jobs'
+        'Unable to fetch jobs',
       );
     });
 
@@ -275,7 +285,7 @@ describe('PublisherDEJobsPage', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('job-list-error')).toHaveTextContent(
-        'Failed to fetch configurations'
+        'Failed to fetch configurations',
       );
     });
   });
@@ -298,7 +308,9 @@ describe('PublisherDEJobsPage', () => {
     render(<PublisherDEJobsPage />);
 
     await waitFor(() => {
-      expect(capturedJobListProps?.pagination?.setPage).toEqual(expect.any(Function));
+      expect(capturedJobListProps?.pagination?.setPage).toEqual(
+        expect.any(Function),
+      );
     });
 
     fireEvent.click(screen.getByRole('button', { name: /set page 3/i }));
@@ -312,7 +324,7 @@ describe('PublisherDEJobsPage', () => {
     await waitFor(() => {
       expect(mockGetList).toHaveBeenCalledWith(
         { limit: 10, offset: 0, userRole: 'publisher' },
-        {}
+        {},
       );
     });
 
@@ -324,7 +336,7 @@ describe('PublisherDEJobsPage', () => {
         {
           status: 'SUCCESS',
           endpoint: 'publisher-endpoint',
-        }
+        },
       );
     });
 
@@ -332,7 +344,7 @@ describe('PublisherDEJobsPage', () => {
       JSON.stringify({
         status: 'SUCCESS',
         endpoint: 'publisher-endpoint',
-      })
+      }),
     );
   });
 
@@ -473,7 +485,7 @@ describe('PublisherDEJobsPage', () => {
           offset: 0,
           userRole: 'admin',
         },
-        {}
+        {},
       );
     });
   });

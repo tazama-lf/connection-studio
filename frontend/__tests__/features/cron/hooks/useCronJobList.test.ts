@@ -439,7 +439,9 @@ describe('useCronJobList', () => {
     });
 
     it('should handle rejection error', async () => {
-      (cronHandlers.rejectSchedule as jest.Mock).mockRejectedValueOnce(new Error('Rejection failed'));
+      (cronHandlers.rejectSchedule as jest.Mock).mockRejectedValueOnce(
+        new Error('Rejection failed'),
+      );
       (cronHandlers.prepareScheduleForEdit as jest.Mock).mockReturnValue({
         id: mockSchedule.id,
         name: mockSchedule.name,
@@ -472,7 +474,9 @@ describe('useCronJobList', () => {
 
   describe('handleExportConfirm error', () => {
     it('should handle export error', async () => {
-      (cronHandlers.exportSchedule as jest.Mock).mockRejectedValueOnce(new Error('Export failed'));
+      (cronHandlers.exportSchedule as jest.Mock).mockRejectedValueOnce(
+        new Error('Export failed'),
+      );
 
       const { result } = renderHook(() => useCronJobList());
 
@@ -481,7 +485,11 @@ describe('useCronJobList', () => {
       });
 
       act(() => {
-        result.current.setConfirmDialog({ open: true, type: 'export', schedule: mockSchedule });
+        result.current.setConfirmDialog({
+          open: true,
+          type: 'export',
+          schedule: mockSchedule,
+        });
       });
 
       await act(async () => {
@@ -494,7 +502,9 @@ describe('useCronJobList', () => {
 
   describe('handleApprovalConfirm error', () => {
     it('should handle approval error', async () => {
-      (cronHandlers.sendForApproval as jest.Mock).mockRejectedValueOnce(new Error('Approval failed'));
+      (cronHandlers.sendForApproval as jest.Mock).mockRejectedValueOnce(
+        new Error('Approval failed'),
+      );
 
       const { result } = renderHook(() => useCronJobList());
 
@@ -503,20 +513,28 @@ describe('useCronJobList', () => {
       });
 
       act(() => {
-        result.current.setConfirmDialog({ open: true, type: 'approval', schedule: mockSchedule });
+        result.current.setConfirmDialog({
+          open: true,
+          type: 'approval',
+          schedule: mockSchedule,
+        });
       });
 
       await act(async () => {
         await result.current.handleApprovalConfirm();
       });
 
-      expect(mockShowError).toHaveBeenCalledWith('Failed to submit cron job for approval');
+      expect(mockShowError).toHaveBeenCalledWith(
+        'Failed to submit cron job for approval',
+      );
     });
   });
 
   describe('handleApproveConfirm error', () => {
     it('should handle approve error', async () => {
-      (cronHandlers.cronJobApi.updateStatus as jest.Mock).mockRejectedValueOnce(new Error('Approve failed'));
+      (cronHandlers.cronJobApi.updateStatus as jest.Mock).mockRejectedValueOnce(
+        new Error('Approve failed'),
+      );
 
       const { result } = renderHook(() => useCronJobList());
 
@@ -525,7 +543,11 @@ describe('useCronJobList', () => {
       });
 
       act(() => {
-        result.current.setConfirmDialog({ open: true, type: 'approve', schedule: mockSchedule });
+        result.current.setConfirmDialog({
+          open: true,
+          type: 'approve',
+          schedule: mockSchedule,
+        });
       });
 
       await act(async () => {
@@ -538,7 +560,9 @@ describe('useCronJobList', () => {
 
   describe('handleSaveEdit error', () => {
     it('should handle save edit error', async () => {
-      (cronHandlers.updateScheduleData as jest.Mock).mockRejectedValueOnce(new Error('Update failed'));
+      (cronHandlers.updateScheduleData as jest.Mock).mockRejectedValueOnce(
+        new Error('Update failed'),
+      );
       (cronHandlers.prepareScheduleForEdit as jest.Mock).mockReturnValue({
         id: mockSchedule.id,
         name: mockSchedule.name,
@@ -571,7 +595,9 @@ describe('useCronJobList', () => {
 
   describe('handleReject', () => {
     it('should handle reject cron job', async () => {
-      (cronHandlers.cronJobApi.updateStatus as jest.Mock).mockResolvedValueOnce({});
+      (cronHandlers.cronJobApi.updateStatus as jest.Mock).mockResolvedValueOnce(
+        {},
+      );
 
       const { result } = renderHook(() => useCronJobList());
 
@@ -583,11 +609,15 @@ describe('useCronJobList', () => {
         await result.current.handleReject('test-id', 'test reason');
       });
 
-      expect(mockShowSuccess).toHaveBeenCalledWith('Cron job rejected successfully');
+      expect(mockShowSuccess).toHaveBeenCalledWith(
+        'Cron job rejected successfully',
+      );
     });
 
     it('should handle reject error', async () => {
-      (cronHandlers.cronJobApi.updateStatus as jest.Mock).mockRejectedValueOnce(new Error('Reject failed'));
+      (cronHandlers.cronJobApi.updateStatus as jest.Mock).mockRejectedValueOnce(
+        new Error('Reject failed'),
+      );
 
       const { result } = renderHook(() => useCronJobList());
 
@@ -637,7 +667,9 @@ describe('useCronJobList', () => {
 
   describe('handleApproveConfirm success', () => {
     it('should approve cron job, reload schedules and close dialog', async () => {
-      (cronHandlers.cronJobApi.updateStatus as jest.Mock).mockResolvedValueOnce({});
+      (cronHandlers.cronJobApi.updateStatus as jest.Mock).mockResolvedValueOnce(
+        {},
+      );
 
       const { result } = renderHook(() => useCronJobList());
 
@@ -662,7 +694,9 @@ describe('useCronJobList', () => {
         cronHandlers.CRON_JOB_STATUSES.APPROVED,
         '',
       );
-      expect(mockShowSuccess).toHaveBeenCalledWith('Cron job approved successfully');
+      expect(mockShowSuccess).toHaveBeenCalledWith(
+        'Cron job approved successfully',
+      );
       expect(mockLoadSchedules).toHaveBeenCalled();
       expect(result.current.confirmDialog.open).toBe(false);
       expect(result.current.actionLoading).toBe('');
@@ -710,7 +744,11 @@ describe('useCronJobList', () => {
 
       // Set confirmDialog without schedule
       act(() => {
-        result.current.setConfirmDialog({ open: true, type: 'export', schedule: null });
+        result.current.setConfirmDialog({
+          open: true,
+          type: 'export',
+          schedule: null,
+        });
       });
 
       await act(async () => {
@@ -743,7 +781,11 @@ describe('useCronJobList', () => {
       });
 
       act(() => {
-        result.current.setConfirmDialog({ open: true, type: 'approval', schedule: null });
+        result.current.setConfirmDialog({
+          open: true,
+          type: 'approval',
+          schedule: null,
+        });
       });
 
       await act(async () => {
@@ -761,7 +803,11 @@ describe('useCronJobList', () => {
       });
 
       act(() => {
-        result.current.setConfirmDialog({ open: true, type: 'approve', schedule: null });
+        result.current.setConfirmDialog({
+          open: true,
+          type: 'approve',
+          schedule: null,
+        });
       });
 
       await act(async () => {
@@ -846,7 +892,9 @@ describe('useCronJobList', () => {
       });
 
       await waitFor(() => {
-        expect(mockLoadSchedules.mock.calls.length).toBeGreaterThan(initialCallCount);
+        expect(mockLoadSchedules.mock.calls.length).toBeGreaterThan(
+          initialCallCount,
+        );
       });
     });
 
@@ -882,7 +930,7 @@ describe('useCronJobList', () => {
   describe('Action Loading States', () => {
     it('should set action loading state during edit', async () => {
       (cronHandlers.updateScheduleData as jest.Mock).mockImplementation(
-        () => new Promise(resolve => setTimeout(resolve, 100))
+        () => new Promise((resolve) => setTimeout(resolve, 100)),
       );
       (cronHandlers.prepareScheduleForEdit as jest.Mock).mockReturnValue({
         id: mockSchedule.id,
@@ -923,7 +971,11 @@ describe('useCronJobList', () => {
       });
 
       act(() => {
-        result.current.setConfirmDialog({ open: true, type: 'export', schedule: mockSchedule });
+        result.current.setConfirmDialog({
+          open: true,
+          type: 'export',
+          schedule: mockSchedule,
+        });
       });
 
       await act(async () => {
@@ -942,7 +994,9 @@ describe('useCronJobList', () => {
         showError: mockShowError,
       });
 
-      cronHandlers.cronJobApi.updateStatus = jest.fn().mockRejectedValue(new Error('Approval failed'));
+      cronHandlers.cronJobApi.updateStatus = jest
+        .fn()
+        .mockRejectedValue(new Error('Approval failed'));
 
       const { result } = renderHook(() => useCronJobList());
 
@@ -963,7 +1017,9 @@ describe('useCronJobList', () => {
   });
 
   it('should handle non-Error exceptions from loadSchedules', async () => {
-    (cronHandlers.loadSchedules as jest.Mock).mockRejectedValueOnce('Something went wrong');
+    (cronHandlers.loadSchedules as jest.Mock).mockRejectedValueOnce(
+      'Something went wrong',
+    );
 
     const { result } = renderHook(() => useCronJobList());
 

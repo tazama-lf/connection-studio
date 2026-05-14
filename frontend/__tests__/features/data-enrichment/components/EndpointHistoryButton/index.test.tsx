@@ -8,20 +8,25 @@ jest.mock('react-router', () => ({
   useNavigate: () => navigateMock,
 }));
 
-jest.mock('@shared', () => ({
-  Button: (props: any) => (
-    <button data-testid="shared-button" onClick={props.onClick}>
-      {props.children}
-    </button>
-  ),
-}), { virtual: true });
+jest.mock(
+  '@shared',
+  () => ({
+    Button: (props: any) => (
+      <button data-testid="shared-button" onClick={props.onClick}>
+        {props.children}
+      </button>
+    ),
+  }),
+  { virtual: true },
+);
 
 jest.mock('lucide-react', () => ({
   EyeIcon: () => <span data-testid="eye-icon" />,
 }));
 
 jest.mock('../../../../../src/features/data-enrichment/handlers', () => ({
-  handleNavigateToHistory: (...args: any[]) => handleNavigateToHistoryMock(...args),
+  handleNavigateToHistory: (...args: any[]) =>
+    handleNavigateToHistoryMock(...args),
 }));
 
 jest.mock('../../../../../src/shared/config/routes.config', () => ({
@@ -48,7 +53,7 @@ describe('features/data-enrichment/components/EndpointHistoryButton/index.tsx', 
     expect(handleNavigateToHistoryMock).toHaveBeenCalledWith(
       navigateMock,
       'job-42',
-      '/history-route'
+      '/history-route',
     );
   });
 });

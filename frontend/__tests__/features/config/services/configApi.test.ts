@@ -812,9 +812,9 @@ describe('ConfigApiService', () => {
         configApi.exportConfig(5, 'ready to export'),
       ).resolves.toEqual({ success: true, message: 'ok' });
 
-      await expect(
-        configApi.deployConfig(5, 'deploying now'),
-      ).resolves.toEqual({ success: true, message: 'ok' });
+      await expect(configApi.deployConfig(5, 'deploying now')).resolves.toEqual(
+        { success: true, message: 'ok' },
+      );
 
       await expect(
         configApi.updateStatusToExported(5, 'manual export'),
@@ -1022,12 +1022,20 @@ describe('ConfigApiService', () => {
       mockFetch.mockResolvedValue({
         ok: true,
         status: 200,
-        json: async () => ({ configs: [], total: 0, limit: 10, offset: 0, pages: 0 }),
+        json: async () => ({
+          configs: [],
+          total: 0,
+          limit: 10,
+          offset: 0,
+          pages: 0,
+        }),
       } as any);
 
-      const result = await configApi.getConfigsPaginated(
-        { limit: 10, offset: 0, userRole: 'editor' },
-      );
+      const result = await configApi.getConfigsPaginated({
+        limit: 10,
+        offset: 0,
+        userRole: 'editor',
+      });
 
       expect(mockFetch).toHaveBeenCalledWith(
         'http://localhost:3000/config/0/10',

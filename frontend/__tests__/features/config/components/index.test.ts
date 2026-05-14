@@ -10,10 +10,13 @@ jest.mock('../../../../src/features/config/components/ConfigDetails', () => ({
   default: () => null,
 }));
 
-jest.mock('../../../../src/features/config/components/VersionHistoryModal', () => ({
-  __esModule: true,
-  default: () => null,
-}));
+jest.mock(
+  '../../../../src/features/config/components/VersionHistoryModal',
+  () => ({
+    __esModule: true,
+    default: () => null,
+  }),
+);
 
 describe('features/config/components/index.ts', () => {
   it('re-exports all configured component symbols', async () => {
@@ -26,4 +29,3 @@ describe('features/config/components/index.ts', () => {
     expect(mod.ConfigDetailsDefault).toBeDefined();
   });
 });
-

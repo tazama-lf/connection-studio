@@ -35,7 +35,9 @@ describe('functionsApi', () => {
         expect.stringContaining('/config/1/function'),
         expect.objectContaining({
           method: 'POST',
-          headers: expect.objectContaining({ 'Content-Type': 'application/json' }),
+          headers: expect.objectContaining({
+            'Content-Type': 'application/json',
+          }),
           body: JSON.stringify(functionData),
         }),
       );
