@@ -3,11 +3,18 @@ import { fireEvent, render } from '@testing-library/react';
 import { DropdownMenuWithAutoDirection } from '../../../src/shared/components/DropdownMenuWithAutoDirection';
 
 describe('shared/components/DropdownMenuWithAutoDirection.tsx', () => {
-  const originalGetBoundingClientRect =
-    HTMLElement.prototype.getBoundingClientRect;
+  const originalGetBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
+  const originalInnerHeight = window.innerHeight;
+
 
   afterEach(() => {
     HTMLElement.prototype.getBoundingClientRect = originalGetBoundingClientRect;
+    Object.defineProperty(window, 'innerHeight', {
+      configurable: true,
+      writable: true,
+      value: originalInnerHeight,
+    });
+    jest.restoreAllMocks();
   });
 
   it('calls onClose when clicking outside', () => {
@@ -109,7 +116,7 @@ describe('shared/components/DropdownMenuWithAutoDirection.tsx', () => {
     const fakeRef: Record<string, unknown> = {};
     Object.defineProperty(fakeRef, 'current', {
       get: () => null,
-      set: () => {},
+      set: () => { },
       configurable: true,
     });
 
