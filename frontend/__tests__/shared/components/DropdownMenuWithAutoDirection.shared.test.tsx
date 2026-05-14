@@ -3,8 +3,9 @@ import { fireEvent, render } from '@testing-library/react';
 import { DropdownMenuWithAutoDirection } from '../../../src/shared/components/DropdownMenuWithAutoDirection';
 
 describe('shared/components/DropdownMenuWithAutoDirection.tsx', () => {
-  const originalGetBoundingClientRect =
-    HTMLElement.prototype.getBoundingClientRect;
+  const originalGetBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
+  const originalInnerHeight = window.innerHeight;
+
 
   afterEach(() => {
     HTMLElement.prototype.getBoundingClientRect = originalGetBoundingClientRect;
@@ -115,7 +116,7 @@ describe('shared/components/DropdownMenuWithAutoDirection.tsx', () => {
     const fakeRef: Record<string, unknown> = {};
     Object.defineProperty(fakeRef, 'current', {
       get: () => null,
-      set: () => {},
+      set: () => { },
       configurable: true,
     });
 
