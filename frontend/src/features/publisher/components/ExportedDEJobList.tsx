@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
 import { Eye, MoreVertical, Package } from 'lucide-react';
 import type { DataEnrichmentJobResponse } from '../../data-enrichment/types';
-import { getStatusColor, getStatusLabel } from '../../../shared/utils/statusColors';
+import {
+  getStatusColor,
+  getStatusLabel,
+} from '../../../shared/utils/statusColors';
 import { DropdownMenuWithAutoDirection } from '../../../shared/components/DropdownMenuWithAutoDirection';
 
 interface ExportedDEJobListProps {
@@ -14,10 +17,13 @@ interface ExportedDEJobListProps {
 
 // Helper function to determine job type
 const getJobType = (job: DataEnrichmentJobResponse): 'push' | 'pull' => {
-  if (job.type?.toLowerCase() === 'push' || job.type?.toLowerCase() === 'pull') {
+  if (
+    job.type?.toLowerCase() === 'push' ||
+    job.type?.toLowerCase() === 'pull'
+  ) {
     return job.type.toLowerCase() as 'push' | 'pull';
   }
-  return (job.path && !job.source_type) ? 'push' : 'pull';
+  return job.path && !job.source_type ? 'push' : 'pull';
 };
 
 const ExportedDEJobList: React.FC<ExportedDEJobListProps> = ({
@@ -29,7 +35,7 @@ const ExportedDEJobList: React.FC<ExportedDEJobListProps> = ({
 }) => {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
 
-  const filteredJobs = jobs.filter(job => {
+  const filteredJobs = jobs.filter((job) => {
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
     return (
@@ -55,7 +61,9 @@ const ExportedDEJobList: React.FC<ExportedDEJobListProps> = ({
     return (
       <div className="text-center py-12 px-4">
         <Package className="mx-auto h-12 w-12 text-gray-400" />
-        <h3 className="mt-2 text-sm font-medium text-gray-900">No exported DE jobs</h3>
+        <h3 className="mt-2 text-sm font-medium text-gray-900">
+          No exported DE jobs
+        </h3>
         <p className="mt-1 text-sm text-gray-500">
           {searchQuery
             ? 'No DE jobs match your search criteria.'
@@ -95,8 +103,12 @@ const ExportedDEJobList: React.FC<ExportedDEJobListProps> = ({
             const jobType = getJobType(job);
             const isFirstRow = index === 0;
             const isLastRow = index === filteredJobs.length - 1;
-            const forceDirection = isFirstRow ? 'bottom' : isLastRow ? 'top' : 'auto';
-            
+            const forceDirection = isFirstRow
+              ? 'bottom'
+              : isLastRow
+                ? 'top'
+                : 'auto';
+
             return (
               <tr key={job.id} className="hover:bg-gray-50">
                 <td className="px-6 py-4 whitespace-nowrap">
@@ -112,11 +124,13 @@ const ExportedDEJobList: React.FC<ExportedDEJobListProps> = ({
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded ${
-                    jobType === 'push' 
-                      ? 'bg-purple-100 text-purple-700' 
-                      : 'bg-blue-100 text-blue-700'
-                  }`}>
+                  <span
+                    className={`inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded ${
+                      jobType === 'push'
+                        ? 'bg-purple-100 text-purple-700'
+                        : 'bg-blue-100 text-blue-700'
+                    }`}
+                  >
                     {jobType.toUpperCase()}
                   </span>
                 </td>
@@ -126,7 +140,9 @@ const ExportedDEJobList: React.FC<ExportedDEJobListProps> = ({
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(job.status ?? 'exported')}`}>
+                  <span
+                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(job.status ?? 'exported')}`}
+                  >
                     {getStatusLabel(job.status ?? 'exported')}
                   </span>
                 </td>
@@ -143,7 +159,11 @@ const ExportedDEJobList: React.FC<ExportedDEJobListProps> = ({
                   <div className="flex items-center justify-center space-x-2">
                     <div className="relative actions-dropdown">
                       <button
-                        onClick={() => { setOpenDropdown(openDropdown === job.id ? null : job.id); }}
+                        onClick={() => {
+                          setOpenDropdown(
+                            openDropdown === job.id ? null : job.id,
+                          );
+                        }}
                         className="p-1 hover:bg-gray-100 rounded-full transition-colors"
                         title="Actions"
                       >
@@ -153,7 +173,9 @@ const ExportedDEJobList: React.FC<ExportedDEJobListProps> = ({
                       {openDropdown === job.id && (
                         <DropdownMenuWithAutoDirection
                           forceDirection={forceDirection}
-                          onClose={() => { setOpenDropdown(null); }}
+                          onClose={() => {
+                            setOpenDropdown(null);
+                          }}
                         >
                           <button
                             onClick={() => {

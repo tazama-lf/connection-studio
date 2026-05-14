@@ -31,18 +31,19 @@ export const ExporterDEJobsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const {
-    offset,
-    limit,
-    setOffset,
-  } = useFilters();
+  const { offset, limit, setOffset } = useFilters();
 
-  const pagination = useMemo(() => ({
-    page: offset,
-    limit,
-    totalRecords,
-    setPage: (page: number) => { setOffset(page - 1); },
-  }), [offset, limit, totalRecords])
+  const pagination = useMemo(
+    () => ({
+      page: offset,
+      limit,
+      totalRecords,
+      setPage: (page: number) => {
+        setOffset(page - 1);
+      },
+    }),
+    [offset, limit, totalRecords],
+  );
 
   useEffect(() => {
     if (isAuthenticated && user?.claims && !userIsExporter) {
@@ -55,7 +56,11 @@ export const ExporterDEJobsPage: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      const params = { limit, offset: offset * limit, userRole: userRole as string };
+      const params = {
+        limit,
+        offset: offset * limit,
+        userRole: userRole as string,
+      };
 
       const response = await dataEnrichmentApi.getList(
         params,
@@ -140,7 +145,9 @@ export const ExporterDEJobsPage: React.FC = () => {
         <Button
           variant="primary"
           className="py-1 pl-2"
-          onClick={async () => { await navigate(-1); }}
+          onClick={async () => {
+            await navigate(-1);
+          }}
         >
           <ChevronLeft size={20} /> <span>Go Back</span>
         </Button>
@@ -161,7 +168,9 @@ export const ExporterDEJobsPage: React.FC = () => {
         {/* DE Jobs Table */}
         <JobList
           jobs={jobs}
-          onRefresh={async () => { await fetchDeJobs(); }}
+          onRefresh={async () => {
+            await fetchDeJobs();
+          }}
           onViewLogs={handleViewJobDetails}
           searchingFilters={searchingFilters}
           setSearchingFilters={setSearchingFilters}

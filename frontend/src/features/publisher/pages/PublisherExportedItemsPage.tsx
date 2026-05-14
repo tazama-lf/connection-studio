@@ -43,7 +43,6 @@ const PublisherExportedItemsPage: React.FC = () => {
       const files = await sftpApi.getAllFiles(activeTab as SftpFormat);
       setExportedItems(files);
     } catch (error) {
-
       let errorMessage = 'Failed to load exported items';
       if (error instanceof SftpError) {
         switch (error.errorType) {
@@ -74,11 +73,10 @@ const PublisherExportedItemsPage: React.FC = () => {
       setExportedItemDetailsLoading(true);
       setShowExportedItemDetails(true);
 
-      const content = await sftpApi.readFile(filename)
+      const content = await sftpApi.readFile(filename);
 
       setSelectedExportedItem(content);
     } catch (error) {
-
       let errorMessage = 'Failed to load exported item details';
       if (error instanceof SftpError) {
         switch (error.errorType) {
@@ -116,7 +114,6 @@ const PublisherExportedItemsPage: React.FC = () => {
       loadExportedItems();
       setShowExportedItemDetails(false);
     } catch (error) {
-
       let errorMessage = `Failed to publish ${format === 'cron' ? 'Cron job' : format === 'de' ? 'Data enrichment job' : 'DEMS Configuration'}`;
 
       if (error instanceof SftpError) {
@@ -194,12 +191,15 @@ const PublisherExportedItemsPage: React.FC = () => {
             {tabs.map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => { setActiveTab(tab.id); }}
+                onClick={() => {
+                  setActiveTab(tab.id);
+                }}
                 className={`
                   flex items-center gap-3 px-5 py-3 rounded-t-lg font-semibold text-base transition-all duration-200 cursor-pointer
-                  ${activeTab === tab.id
-                    ? 'bg-blue-50 border-b-4 border-blue-500 text-blue-700 shadow-sm'
-                    : 'bg-white border-b-4 border-transparent text-gray-500 hover:bg-gray-50 hover:text-blue-600'
+                  ${
+                    activeTab === tab.id
+                      ? 'bg-blue-50 border-b-4 border-blue-500 text-blue-700 shadow-sm'
+                      : 'bg-white border-b-4 border-transparent text-gray-500 hover:bg-gray-50 hover:text-blue-600'
                   }
                 `}
                 style={{ minWidth: 140 }}
@@ -218,7 +218,9 @@ const PublisherExportedItemsPage: React.FC = () => {
               type="text"
               placeholder={`Search ${tabs.find((t) => t.id === activeTab)?.name}...`}
               value={searchTerm}
-              onChange={(e) => { setSearchTerm(e.target.value); }}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+              }}
               className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
@@ -238,7 +240,9 @@ const PublisherExportedItemsPage: React.FC = () => {
 
       <ExportedItemDetailsModal
         isOpen={showExportedItemDetails}
-        onClose={() => { setShowExportedItemDetails(false); }}
+        onClose={() => {
+          setShowExportedItemDetails(false);
+        }}
         content={selectedExportedItem}
         isLoading={exportedItemDetailsLoading}
         onPublish={handlePublishExportedItem}

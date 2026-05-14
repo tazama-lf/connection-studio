@@ -14,7 +14,7 @@ import type {
 } from '../types';
 
 const DATA_ENRICHMENT_BASE_URL = ENV.DATA_ENRICHMENT_SERVICE_URL;
-const {API_BASE_URL} = ENV;
+const { API_BASE_URL } = ENV;
 const HTTP_UNAUTHORIZED = 401;
 const DEFAULT_PAGE = 1;
 const DEFAULT_LIMIT = 10;
@@ -61,7 +61,7 @@ const apiRequest = async <T>(
 ): Promise<T> => {
   const authHeaders = getAuthHeaders() as Record<string, string>;
   const optionsHeaders = (options.headers ?? {}) as Record<string, string>;
-  
+
   const response = await fetch(url, {
     ...options,
     headers: {
@@ -76,7 +76,9 @@ const apiRequest = async <T>(
   }
 
   if (!response.ok) {
-    const errorData = (await response.json().catch(() => ({}))) as { message?: string };
+    const errorData = (await response.json().catch(() => ({}))) as {
+      message?: string;
+    };
     throw new Error(
       errorData.message ?? `HTTP error! status: ${response.status}`,
     );
@@ -89,7 +91,7 @@ export const dataEnrichmentApi = {
   // Job endpoints
   createPullJob: async (
     data: CreatePullJobDto,
-  ): Promise<DataEnrichmentJobResponse> => 
+  ): Promise<DataEnrichmentJobResponse> =>
     await apiRequest<DataEnrichmentJobResponse>(
       `${API_BASE_URL}/job/create/pull`,
       {
@@ -100,7 +102,7 @@ export const dataEnrichmentApi = {
 
   createPushJob: async (
     data: CreatePushJobDto,
-  ): Promise<DataEnrichmentJobResponse> => 
+  ): Promise<DataEnrichmentJobResponse> =>
     await apiRequest<DataEnrichmentJobResponse>(
       `${API_BASE_URL}/job/create/push`,
       {
@@ -186,7 +188,7 @@ export const dataEnrichmentApi = {
   updatePullJob: async (
     id: string,
     updates: UpdatePullJobDto,
-  ): Promise<DataEnrichmentJobResponse> => 
+  ): Promise<DataEnrichmentJobResponse> =>
     await apiRequest<DataEnrichmentJobResponse>(
       `${API_BASE_URL}/job/update/${id}?type=pull`,
       {
@@ -199,7 +201,7 @@ export const dataEnrichmentApi = {
   updatePushJob: async (
     id: string,
     updates: UpdatePushJobDto,
-  ): Promise<DataEnrichmentJobResponse> => 
+  ): Promise<DataEnrichmentJobResponse> =>
     await apiRequest<DataEnrichmentJobResponse>(
       `${API_BASE_URL}/job/update/${id}?type=push`,
       {
@@ -212,7 +214,7 @@ export const dataEnrichmentApi = {
   deleteJob: async (
     id: string,
     type: 'pull' | 'push',
-  ): Promise<{ success: boolean; message: string }> => 
+  ): Promise<{ success: boolean; message: string }> =>
     // Backend expects lowercase 'push' or 'pull' matching ConfigType enum
     await apiRequest<{ success: boolean; message: string }>(
       `${API_BASE_URL}/job/${id}?type=${type.toLowerCase()}`,
@@ -226,16 +228,16 @@ export const dataEnrichmentApi = {
     id: string,
     updates: Partial<{
       job_status:
-      | 'STATUS_01_IN_PROGRESS'
-      | 'STATUS_02_ON_HOLD'
-      | 'STATUS_03_UNDER_REVIEW'
-      | 'STATUS_04_APPROVED'
-      | 'STATUS_05_REJECTED'
-      | 'STATUS_06_EXPORTED'
-      | 'STATUS_07_READY_FOR_DEPLOYMENT'
-      | 'STATUS_08_DEPLOYED';
+        | 'STATUS_01_IN_PROGRESS'
+        | 'STATUS_02_ON_HOLD'
+        | 'STATUS_03_UNDER_REVIEW'
+        | 'STATUS_04_APPROVED'
+        | 'STATUS_05_REJECTED'
+        | 'STATUS_06_EXPORTED'
+        | 'STATUS_07_READY_FOR_DEPLOYMENT'
+        | 'STATUS_08_DEPLOYED';
     }>,
-  ): Promise<{ success: boolean; message: string }> => 
+  ): Promise<{ success: boolean; message: string }> =>
     await apiRequest<{ success: boolean; message: string }>(
       `${API_BASE_URL}/job/${id}`,
       {
@@ -286,7 +288,11 @@ export const dataEnrichmentApi = {
     queryParams.append('status', status);
     queryParams.append('type', type.toLowerCase()); // Convert to lowercase to match backend ConfigType enum
 
-    const requestBody: { reason?: string, type: 'PULL' | 'PUSH', status: string } = { type, status };
+    const requestBody: {
+      reason?: string;
+      type: 'PULL' | 'PUSH';
+      status: string;
+    } = { type, status };
     if (reason) {
       requestBody.reason = reason;
     }
@@ -324,18 +330,15 @@ export const dataEnrichmentApi = {
   ): Promise<{ success: boolean; message: string }> => {
     const url = `${API_BASE_URL}/job/update/activation/${id}?status=${publishingStatus.toLowerCase()}&type=${type.toLowerCase()}`;
 
-    return await apiRequest<{ success: boolean; message: string }>(
-      url,
-      {
-        method: 'PATCH',
-      },
-    );
+    return await apiRequest<{ success: boolean; message: string }>(url, {
+      method: 'PATCH',
+    });
   },
 
   // Schedule endpoints
   createSchedule: async (
     data: ScheduleRequest,
-  ): Promise<ScheduleCreateResponse> => 
+  ): Promise<ScheduleCreateResponse> =>
     await apiRequest<ScheduleCreateResponse>(
       `${API_BASE_URL}/scheduler/create`,
       {
@@ -371,7 +374,12 @@ export const dataEnrichmentApi = {
     offset = DEFAULT_OFFSET,
     limit = DEFAULT_LIMIT,
     searchingFilters?: Record<string, unknown>,
-  ): Promise<{ success: boolean; data: unknown[]; total?: number; pages?: number }> => {
+  ): Promise<{
+    success: boolean;
+    data: unknown[];
+    total?: number;
+    pages?: number;
+  }> => {
     const url = `http://10.10.80.34:3000/job/history?offset=${offset}&limit=${limit}`;
 
     // Only send body if jobId is provided
@@ -391,7 +399,15 @@ export const dataEnrichmentApi = {
       throw new Error('Failed to fetch job history');
     }
 
-    const json = (await res.json()) as { success?: boolean; data?: unknown[]; jobs?: unknown[]; total?: number; count?: number; pages?: number; totalPages?: number };
+    const json = (await res.json()) as {
+      success?: boolean;
+      data?: unknown[];
+      jobs?: unknown[];
+      total?: number;
+      count?: number;
+      pages?: number;
+      totalPages?: number;
+    };
     // Ensure we return a consistent shape
     return {
       success: json.success ?? true,
@@ -401,10 +417,8 @@ export const dataEnrichmentApi = {
     };
   },
 
-  getSchedule: async (id: string): Promise<ScheduleResponse> => 
-    await apiRequest<ScheduleResponse>(
-      `${API_BASE_URL}/scheduler/${id}`,
-    ),
+  getSchedule: async (id: string): Promise<ScheduleResponse> =>
+    await apiRequest<ScheduleResponse>(`${API_BASE_URL}/scheduler/${id}`),
 
   updateSchedule: async (
     id: string,
@@ -415,7 +429,7 @@ export const dataEnrichmentApi = {
       cronExpression?: string;
       cron?: string;
     }>,
-  ): Promise<{ success: boolean; message: string }> => 
+  ): Promise<{ success: boolean; message: string }> =>
     await apiRequest<{ success: boolean; message: string }>(
       `${API_BASE_URL}/scheduler/update/${id}`,
       {
@@ -451,7 +465,7 @@ export const dataEnrichmentApi = {
   // Test endpoints for validation
   testConnection: async (
     connectionData: Partial<CreatePullJobDto | CreatePushJobDto>,
-  ): Promise<{ success: boolean; message: string }> => 
+  ): Promise<{ success: boolean; message: string }> =>
     await apiRequest<{ success: boolean; message: string }>(
       `${DATA_ENRICHMENT_BASE_URL}/job/test/connection`,
       {
@@ -468,7 +482,7 @@ export const dataEnrichmentApi = {
     invalidRows: number;
     previewRows: Array<Record<string, unknown>>;
     validationErrors: Array<{ row: number; field: string; error: string }>;
-  }> => 
+  }> =>
     await apiRequest<{
       totalRows: number;
       validRows: number;

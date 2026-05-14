@@ -7,7 +7,9 @@ import { handleNavigateToHistory } from '../../handlers';
 
 import type { EndpointHistoryButtonProps } from '../../types';
 
-export const EndpointHistoryButton: React.FC<EndpointHistoryButtonProps> = ({ jobId }) => {
+export const EndpointHistoryButton: React.FC<EndpointHistoryButtonProps> = ({
+  jobId,
+}) => {
   const navigate = useNavigate();
 
   const handleClick = () => {

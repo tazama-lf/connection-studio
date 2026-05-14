@@ -12,8 +12,6 @@ const PublisherDEMS: React.FC<PublisherDEMSProps> = ({ onBack }) => {
     // TODO: Implement with new backend API
   };
 
-
-
   return (
     <div className="min-h-screen bg-white">
       <div className="p-8">
@@ -29,7 +27,9 @@ const PublisherDEMS: React.FC<PublisherDEMSProps> = ({ onBack }) => {
           </div>
         )}
 
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">DEMS - Endpoint Deployment</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-8">
+          DEMS - Endpoint Deployment
+        </h1>
 
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-xl font-semibold mb-4">Ready for Deployment</h2>
@@ -42,15 +42,18 @@ const PublisherDEMS: React.FC<PublisherDEMSProps> = ({ onBack }) => {
                   <div className="flex justify-between items-center">
                     <div>
                       <h3 className="font-medium">{endpoint.name}</h3>
-                      <p className="text-sm text-gray-600">{endpoint.description}</p>
+                      <p className="text-sm text-gray-600">
+                        {endpoint.description}
+                      </p>
                       <span className="inline-block px-2 py-1 text-xs bg-green-100 text-green-800 rounded mt-2">
                         Approved
                       </span>
                     </div>
                     <div className="space-x-2">
-
                       <button
-                        onClick={() => { handleDeploy(endpoint); }}
+                        onClick={() => {
+                          handleDeploy(endpoint);
+                        }}
                         className="px-3 py-1 text-sm bg-green-100 text-green-800 rounded hover:bg-green-200"
                       >
                         Deploy
