@@ -9,14 +9,9 @@ import {
 import { Button } from '../../../../shared/components/Button';
 import type { CronJobConfirmationDialogProps } from '../../types';
 
-export const CronJobConfirmationDialog: React.FC<CronJobConfirmationDialogProps> = ({
-  open,
-  type,
-  jobName,
-  actionLoading,
-  onClose,
-  onConfirm,
-}) => {
+export const CronJobConfirmationDialog: React.FC<
+  CronJobConfirmationDialogProps
+> = ({ open, type, jobName, actionLoading, onClose, onConfirm }) => {
   const [approveComment, setApproveComment] = useState('');
 
   if (!type) return null;
@@ -36,12 +31,15 @@ export const CronJobConfirmationDialog: React.FC<CronJobConfirmationDialogProps>
   };
 
   const getWarning = () => {
-    if (type === 'export')
-      {return '⚠️ Important: This will update the cron job status to EXPORTED.';}
-    if (type === 'approval')
-      {return '⚠️ Important: This will submit the cron job for approval and update its status to UNDER REVIEW.';}
-    if (type === 'approve')
-      {return '⚠️ Important: This will update the cron job status to APPROVED.';}
+    if (type === 'export') {
+      return '⚠️ Important: This will update the cron job status to EXPORTED.';
+    }
+    if (type === 'approval') {
+      return '⚠️ Important: This will submit the cron job for approval and update its status to UNDER REVIEW.';
+    }
+    if (type === 'approve') {
+      return '⚠️ Important: This will update the cron job status to APPROVED.';
+    }
     return '';
   };
 
@@ -137,12 +135,16 @@ export const CronJobConfirmationDialog: React.FC<CronJobConfirmationDialogProps>
               }}
             >
               Approver Comment{' '}
-              <span style={{ color: '#6b7280', fontWeight: 400 }}>(optional)</span>
+              <span style={{ color: '#6b7280', fontWeight: 400 }}>
+                (optional)
+              </span>
             </label>
             <textarea
               id="approve-comment"
               value={approveComment}
-              onChange={(e) => { setApproveComment(e.target.value); }}
+              onChange={(e) => {
+                setApproveComment(e.target.value);
+              }}
               placeholder="Add an optional comment for this approval..."
               style={{
                 width: '100%',
@@ -170,8 +172,15 @@ export const CronJobConfirmationDialog: React.FC<CronJobConfirmationDialogProps>
         </Button>
         <Button
           onClick={() => {
-            if (type === 'export' || type === 'approval' || type === 'approve') {
-              onConfirm(type, type === 'approve' ? approveComment.trim() : undefined);
+            if (
+              type === 'export' ||
+              type === 'approval' ||
+              type === 'approve'
+            ) {
+              onConfirm(
+                type,
+                type === 'approve' ? approveComment.trim() : undefined,
+              );
               if (type === 'approve') setApproveComment('');
             }
           }}

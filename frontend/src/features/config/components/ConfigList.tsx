@@ -5,7 +5,7 @@ import {
   DialogActions,
   DialogContent,
   DialogContentText,
-  Tooltip
+  Tooltip,
 } from '@mui/material';
 import { Button } from '@shared';
 import { handleInputFilter, handleSelectFilter } from '@shared/helpers';
@@ -19,7 +19,7 @@ import {
   Play,
   ShieldCheck,
   ShieldX,
-  Upload
+  Upload,
 } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../../features/auth/contexts/AuthContext';
@@ -105,14 +105,15 @@ export const ConfigList: React.FC<ConfigListProps> = ({
 
   const userRole = getPrimaryRole(user?.claims!);
 
-  const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('en-US', {
-    month: 'numeric',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-  });
+  const formatDate = (dateString: string) =>
+    new Date(dateString).toLocaleDateString('en-US', {
+      month: 'numeric',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
 
   const getStatusBadge = (status: string) => {
     const normalizedStatus = status.toLowerCase();
@@ -192,7 +193,9 @@ export const ConfigList: React.FC<ConfigListProps> = ({
     };
 
     document.addEventListener('mousedown', handleClickOutside);
-    return () => { document.removeEventListener('mousedown', handleClickOutside); };
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, [showStatusFilter]);
 
   const handleViewConfig = (config: Config) => {
@@ -331,18 +334,19 @@ export const ConfigList: React.FC<ConfigListProps> = ({
   const [totalRecords, setTotalRecords] = useState<number>(0);
   const [searchingFilters, setSearchingFilters] = useState({});
 
-  const {
-    offset,
-    limit,
-    setOffset,
-  } = useFilters();
+  const { offset, limit, setOffset } = useFilters();
 
-  const pagination = useMemo(() => ({
-    page: offset,
-    limit,
-    totalRecords,
-    setPage: (page: number) => { setOffset(page - 1); },
-  }), [offset, limit, totalRecords])
+  const pagination = useMemo(
+    () => ({
+      page: offset,
+      limit,
+      totalRecords,
+      setPage: (page: number) => {
+        setOffset(page - 1);
+      },
+    }),
+    [offset, limit, totalRecords],
+  );
 
   const [confirmDialog, setConfirmDialog] = useState({
     open: false,
@@ -404,8 +408,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
           <Box sx={{ fontSize: '14px', fontWeight: '600' }}>Status</Box>
           {handleSelectFilter({
             fieldName: 'status',
-            options:
-              getDemsStatusLov[userRole!] ?? [],
+            options: getDemsStatusLov[userRole!] ?? [],
             searchingFilters,
             setSearchingFilters,
           })}
@@ -564,7 +567,14 @@ export const ConfigList: React.FC<ConfigListProps> = ({
                 </Tooltip>
               )}
             {(userIsApprover || userIsPublisher) &&
-              ['STATUS_04_APPROVED', 'STATUS_06_EXPORTED', 'STATUS_08_DEPLOYED', 'approved', 'exported', 'deployed'].includes(config.status) && (
+              [
+                'STATUS_04_APPROVED',
+                'STATUS_06_EXPORTED',
+                'STATUS_08_DEPLOYED',
+                'approved',
+                'exported',
+                'deployed',
+              ].includes(config.status) && (
                 <>
                   {config.publishing_status === 'active' ? (
                     <Tooltip title="Deactivate" arrow placement="top">
@@ -624,7 +634,7 @@ export const ConfigList: React.FC<ConfigListProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [userRole, offset, limit, searchingFilters])
+  }, [userRole, offset, limit, searchingFilters]);
 
   useEffect(() => {
     setOffset(0);
@@ -642,7 +652,6 @@ export const ConfigList: React.FC<ConfigListProps> = ({
       </div>
     );
   }
-
 
   return (
     <>
@@ -668,8 +677,9 @@ export const ConfigList: React.FC<ConfigListProps> = ({
 
       <Dialog
         open={confirmDialog.open}
-        onClose={() => { setConfirmDialog({ open: false, type: '', config: null }); }
-        }
+        onClose={() => {
+          setConfirmDialog({ open: false, type: '', config: null });
+        }}
         aria-labelledby="confirmation-dialog-title"
         aria-describedby="confirmation-dialog-description"
         sx={{ borderRadius: '6px' }}
@@ -754,8 +764,9 @@ export const ConfigList: React.FC<ConfigListProps> = ({
         </DialogContent>
         <DialogActions sx={{ padding: '12px 20px 16px 20px' }}>
           <Button
-            onClick={() => { setConfirmDialog({ open: false, type: '', config: null }); }
-            }
+            onClick={() => {
+              setConfirmDialog({ open: false, type: '', config: null });
+            }}
             variant="secondary"
             className="!pb-[6px] !pt-[5px]"
           >
@@ -766,8 +777,11 @@ export const ConfigList: React.FC<ConfigListProps> = ({
               if (confirmDialog.type === 'export') handleExportConfirm();
               else if (confirmDialog.type === 'pause') handlePauseConfirm();
               else if (confirmDialog.type === 'resume') handleResumeConfirm();
-              else if (confirmDialog.type === 'activate') { handleActivateConfirm(); }
-              else if (confirmDialog.type === 'deactivate') { handleDeactivateConfirm(); }
+              else if (confirmDialog.type === 'activate') {
+                handleActivateConfirm();
+              } else if (confirmDialog.type === 'deactivate') {
+                handleDeactivateConfirm();
+              }
             }}
             variant="primary"
             className="!pb-[6px] !pt-[5px]"
@@ -805,17 +819,17 @@ export const ConfigList: React.FC<ConfigListProps> = ({
                     )}
                     {actionLoading === type
                       ? (type === 'export' && 'Exporting...') ||
-                      (type === 'pause' && 'Pausing...') ||
-                      (type === 'resume' && 'Resuming...') ||
-                      (type === 'activate' && 'Activating...') ||
-                      (type === 'deactivate' && 'Deactivating...')
+                        (type === 'pause' && 'Pausing...') ||
+                        (type === 'resume' && 'Resuming...') ||
+                        (type === 'activate' && 'Activating...') ||
+                        (type === 'deactivate' && 'Deactivating...')
                       : (type === 'export' && 'Yes, Export Configuration') ||
-                      (type === 'pause' && 'Yes, Pause Configuration') ||
-                      (type === 'resume' && 'Yes, Resume Configuration') ||
-                      (type === 'activate' &&
-                        'Yes, Activate Configuration') ||
-                      (type === 'deactivate' &&
-                        'Yes, Deactivate Configuration')}
+                        (type === 'pause' && 'Yes, Pause Configuration') ||
+                        (type === 'resume' && 'Yes, Resume Configuration') ||
+                        (type === 'activate' &&
+                          'Yes, Activate Configuration') ||
+                        (type === 'deactivate' &&
+                          'Yes, Deactivate Configuration')}
                   </>
                 ),
             )}

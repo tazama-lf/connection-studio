@@ -46,7 +46,7 @@ const ApproverDEMS: React.FC<ApproverDEMSProps> = ({ onBack }) => {
         'Please provide a reason for rejection (optional):',
       );
 
-      const userId = (user?.email ?? user?.username) ?? 'system';
+      const userId = user?.email ?? user?.username ?? 'system';
       const result = await configApi.rejectConfig(
         config.id,
         userId,
@@ -136,9 +136,15 @@ const ApproverDEMS: React.FC<ApproverDEMSProps> = ({ onBack }) => {
           <ConfigList
             key={refreshKey}
             showPendingApprovals={true}
-            onViewDetails={(config: Config): void => { handleViewDetails(config); }}
-            onApprove={async (configId: number): Promise<void> => { await handleApprove(configId); }}
-            onReject={async (config: Config): Promise<void> => { await handleReject(config); }}
+            onViewDetails={(config: Config): void => {
+              handleViewDetails(config);
+            }}
+            onApprove={async (configId: number): Promise<void> => {
+              await handleApprove(configId);
+            }}
+            onReject={async (config: Config): Promise<void> => {
+              await handleReject(config);
+            }}
           />
         </div>
       </div>
@@ -149,8 +155,12 @@ const ApproverDEMS: React.FC<ApproverDEMSProps> = ({ onBack }) => {
           isOpen={showViewModal}
           onClose={handleCloseViewModal}
           config={selectedConfig}
-          onApprove={async (configId): Promise<void> => { await handleApprove(configId); }}
-          onReject={async (config): Promise<void> => { await handleReject(config); }}
+          onApprove={async (configId): Promise<void> => {
+            await handleApprove(configId);
+          }}
+          onReject={async (config): Promise<void> => {
+            await handleReject(config);
+          }}
         />
       )}
     </div>

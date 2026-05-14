@@ -32,18 +32,19 @@ const ApproverDEJobsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const {
-    offset,
-    limit,
-    setOffset,
-  } = useFilters();
+  const { offset, limit, setOffset } = useFilters();
 
-  const pagination = useMemo(() => ({
-    page: offset,
-    limit,
-    totalRecords,
-    setPage: (page: number): void => { setOffset(page - INITIAL_PAGE); },
-  }), [offset, limit, totalRecords, setOffset])
+  const pagination = useMemo(
+    () => ({
+      page: offset,
+      limit,
+      totalRecords,
+      setPage: (page: number): void => {
+        setOffset(page - INITIAL_PAGE);
+      },
+    }),
+    [offset, limit, totalRecords, setOffset],
+  );
 
   const { showSuccess, showError } = useToast();
 
@@ -68,7 +69,7 @@ const ApproverDEJobsPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [offset, limit, searchingFilters, userRole])
+  }, [offset, limit, searchingFilters, userRole]);
 
   useEffect(() => {
     setOffset(0);
@@ -128,7 +129,9 @@ const ApproverDEJobsPage: React.FC = () => {
       setShowJobDetails(true);
 
       const job = jobs.find((j) => j.id === jobId);
-      const jobType = job?.type ? (job.type.toUpperCase() as 'PULL' | 'PUSH') : undefined;
+      const jobType = job?.type
+        ? (job.type.toUpperCase() as 'PULL' | 'PUSH')
+        : undefined;
 
       const jobDetails = await dataEnrichmentApi.getById(jobId, jobType);
       setSelectedJob(jobDetails);
@@ -150,7 +153,10 @@ const ApproverDEJobsPage: React.FC = () => {
         <Button
           variant="primary"
           className="py-1 pl-2"
-          onClick={(): void => { navigate(SORT_DESCENDING); }}>
+          onClick={(): void => {
+            navigate(SORT_DESCENDING);
+          }}
+        >
           <ChevronLeft size={20} /> <span>Go Back</span>
         </Button>
         {/* Search Bar */}
@@ -170,8 +176,12 @@ const ApproverDEJobsPage: React.FC = () => {
         <div className="bg-white rounded-lg shadow">
           <JobList
             jobs={jobs}
-            onViewLogs={(jobId: string): void => { void handleViewJobDetails(jobId); }}
-            onRefresh={(): void => { handleJobRefresh(); }}
+            onViewLogs={(jobId: string): void => {
+              void handleViewJobDetails(jobId);
+            }}
+            onRefresh={(): void => {
+              handleJobRefresh();
+            }}
             pagination={pagination}
             searchingFilters={searchingFilters}
             setSearchingFilters={setSearchingFilters}
@@ -185,12 +195,26 @@ const ApproverDEJobsPage: React.FC = () => {
       {showJobDetails && selectedJob && (
         <JobDetailsModal
           isOpen={showJobDetails}
-          onClose={(): void => { handleCloseJobDetails(); }}
+          onClose={(): void => {
+            handleCloseJobDetails();
+          }}
           job={selectedJob}
           isLoading={jobDetailsLoading}
           editMode={false}
-          onApprove={(jobId: string, jobType: 'PULL' | 'PUSH', reason?: string): void => { void handleApproveJob(jobId, jobType, reason); }}
-          onReject={(jobId: string, jobType: 'PULL' | 'PUSH', reason: string): void => { void handleRejectJob(jobId, jobType, reason); }}
+          onApprove={(
+            jobId: string,
+            jobType: 'PULL' | 'PUSH',
+            reason?: string,
+          ): void => {
+            void handleApproveJob(jobId, jobType, reason);
+          }}
+          onReject={(
+            jobId: string,
+            jobType: 'PULL' | 'PUSH',
+            reason: string,
+          ): void => {
+            void handleRejectJob(jobId, jobType, reason);
+          }}
         />
       )}
     </div>

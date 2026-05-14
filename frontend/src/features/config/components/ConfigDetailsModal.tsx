@@ -1,10 +1,26 @@
 import React, { useState } from 'react';
-import { X, Calendar, Clock, Database, Globe, Settings, Download, Upload } from 'lucide-react';
+import {
+  X,
+  Calendar,
+  Clock,
+  Database,
+  Globe,
+  Settings,
+  Download,
+  Upload,
+} from 'lucide-react';
 import type { Config } from '../index';
 import { Button } from '../../../shared/components/Button';
 import { useAuth } from '../../auth/contexts/AuthContext';
-import { isApprover, isExporter, isPublisher } from '../../../utils/common/roleUtils';
-import { getStatusColor, getStatusLabel } from '../../../shared/utils/statusColors';
+import {
+  isApprover,
+  isExporter,
+  isPublisher,
+} from '../../../utils/common/roleUtils';
+import {
+  getStatusColor,
+  getStatusLabel,
+} from '../../../shared/utils/statusColors';
 
 interface ConfigDetailsModalProps {
   isOpen: boolean;
@@ -67,7 +83,7 @@ const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
 
   const handleExport = async () => {
     if (!onExport || !config) return;
-    
+
     try {
       setIsExporting(true);
       await onExport(config.id, exportNotes ?? 'Exported for deployment');
@@ -81,7 +97,7 @@ const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
 
   const handleDeploy = async () => {
     if (!onDeploy || !config) return;
-    
+
     try {
       setIsDeploying(true);
       await onDeploy(config.id, deployNotes ?? 'Deployed to production');
@@ -120,7 +136,9 @@ const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
           {isLoading ? (
             <div className="flex justify-center items-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              <span className="ml-2 text-gray-600">Loading configuration details...</span>
+              <span className="ml-2 text-gray-600">
+                Loading configuration details...
+              </span>
             </div>
           ) : config ? (
             <div className="space-y-6">
@@ -211,50 +229,89 @@ const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
 
               {/* Technical Details */}
               <div className="border border-gray-200 rounded-lg p-4">
-                <h4 className="text-sm font-medium text-gray-900 mb-4">Technical Details</h4>
+                <h4 className="text-sm font-medium text-gray-900 mb-4">
+                  Technical Details
+                </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-3">
                     <div className="flex items-start space-x-3">
-                      <Database size={18} className="text-gray-400 mt-0.5 flex-shrink-0" />
+                      <Database
+                        size={18}
+                        className="text-gray-400 mt-0.5 flex-shrink-0"
+                      />
                       <div className="flex-1 min-w-0">
-                        <span className="text-sm font-medium text-gray-700 block">Configuration ID:</span>
-                        <span className="text-sm text-gray-900 block">{config.id}</span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-start space-x-3">
-                      <Globe size={18} className="text-gray-400 mt-0.5 flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <span className="text-sm font-medium text-gray-700 block">Status:</span>
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${getConfigTypeColor(config.status)}`}>
-                          {getStatusLabel(config.status ?? 'in-progress').toUpperCase()}
+                        <span className="text-sm font-medium text-gray-700 block">
+                          Configuration ID:
+                        </span>
+                        <span className="text-sm text-gray-900 block">
+                          {config.id}
                         </span>
                       </div>
                     </div>
 
                     <div className="flex items-start space-x-3">
-                      <Settings size={18} className="text-gray-400 mt-0.5 flex-shrink-0" />
+                      <Globe
+                        size={18}
+                        className="text-gray-400 mt-0.5 flex-shrink-0"
+                      />
                       <div className="flex-1 min-w-0">
-                        <span className="text-sm font-medium text-gray-700 block">Created By:</span>
-                        <span className="text-sm text-gray-900 block">{config.createdBy ?? 'System'}</span>
+                        <span className="text-sm font-medium text-gray-700 block">
+                          Status:
+                        </span>
+                        <span
+                          className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${getConfigTypeColor(config.status)}`}
+                        >
+                          {getStatusLabel(
+                            config.status ?? 'in-progress',
+                          ).toUpperCase()}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start space-x-3">
+                      <Settings
+                        size={18}
+                        className="text-gray-400 mt-0.5 flex-shrink-0"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm font-medium text-gray-700 block">
+                          Created By:
+                        </span>
+                        <span className="text-sm text-gray-900 block">
+                          {config.createdBy ?? 'System'}
+                        </span>
                       </div>
                     </div>
                   </div>
 
                   <div className="space-y-3">
                     <div className="flex items-start space-x-3">
-                      <Calendar size={18} className="text-gray-400 mt-0.5 flex-shrink-0" />
+                      <Calendar
+                        size={18}
+                        className="text-gray-400 mt-0.5 flex-shrink-0"
+                      />
                       <div className="flex-1 min-w-0">
-                        <span className="text-sm font-medium text-gray-700 block">Created:</span>
-                        <span className="text-sm text-gray-900 block break-words">{formatDate(config.createdAt)}</span>
+                        <span className="text-sm font-medium text-gray-700 block">
+                          Created:
+                        </span>
+                        <span className="text-sm text-gray-900 block break-words">
+                          {formatDate(config.createdAt)}
+                        </span>
                       </div>
                     </div>
 
                     <div className="flex items-start space-x-3">
-                      <Clock size={18} className="text-gray-400 mt-0.5 flex-shrink-0" />
+                      <Clock
+                        size={18}
+                        className="text-gray-400 mt-0.5 flex-shrink-0"
+                      />
                       <div className="flex-1 min-w-0">
-                        <span className="text-sm font-medium text-gray-700 block">Updated:</span>
-                        <span className="text-sm text-gray-900 block break-words">{formatDate(config.updatedAt)}</span>
+                        <span className="text-sm font-medium text-gray-700 block">
+                          Updated:
+                        </span>
+                        <span className="text-sm text-gray-900 block break-words">
+                          {formatDate(config.updatedAt)}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -294,10 +351,14 @@ const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
               {/* Export Notes (for exporters) */}
               {userIsExporter && config.status === 'approved' && onExport && (
                 <div className="bg-blue-50 p-4 rounded-lg">
-                  <h4 className="text-sm font-medium text-gray-900 mb-3">Export Notes</h4>
+                  <h4 className="text-sm font-medium text-gray-900 mb-3">
+                    Export Notes
+                  </h4>
                   <textarea
                     value={exportNotes}
-                    onChange={(e) => { setExportNotes(e.target.value); }}
+                    onChange={(e) => {
+                      setExportNotes(e.target.value);
+                    }}
                     placeholder="Add notes about the export process (optional)"
                     rows={3}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -308,10 +369,14 @@ const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
               {/* Deploy Notes (for publishers) */}
               {userIsPublisher && config.status === 'exported' && onDeploy && (
                 <div className="bg-purple-50 p-4 rounded-lg">
-                  <h4 className="text-sm font-medium text-gray-900 mb-3">Deployment Notes</h4>
+                  <h4 className="text-sm font-medium text-gray-900 mb-3">
+                    Deployment Notes
+                  </h4>
                   <textarea
                     value={deployNotes}
-                    onChange={(e) => { setDeployNotes(e.target.value); }}
+                    onChange={(e) => {
+                      setDeployNotes(e.target.value);
+                    }}
                     placeholder="Add notes about the deployment process (optional)"
                     rows={3}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md resize-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
@@ -327,104 +392,126 @@ const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
         </div>
 
         {/* Action Buttons Footer - Approvers when status is under-review */}
-        {config && !isLoading && userIsApprover && (onApprove || onReject) && (() => {
-          const normalizedStatus = config.status.toLowerCase();
-          if (normalizedStatus.startsWith('status_')) {
-            const parts = normalizedStatus.split('_');
-            if (parts.length >= 3) {
-              const statusName = parts.slice(2).join('_');
-              return statusName === 'under_review';
+        {config &&
+          !isLoading &&
+          userIsApprover &&
+          (onApprove || onReject) &&
+          (() => {
+            const normalizedStatus = config.status.toLowerCase();
+            if (normalizedStatus.startsWith('status_')) {
+              const parts = normalizedStatus.split('_');
+              if (parts.length >= 3) {
+                const statusName = parts.slice(2).join('_');
+                return statusName === 'under_review';
+              }
             }
-          }
-          return normalizedStatus === 'under_review' || normalizedStatus === 'under review';
-        })() && (
-          <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
-            <Button variant="secondary" onClick={onClose}>
-              Close
-            </Button>
-            {onReject && (
-              <Button
-                variant="danger"
-                onClick={() => {
-                  onReject(config);
-                  onClose();
-                }}
-              >
-                Reject
+            return (
+              normalizedStatus === 'under_review' ||
+              normalizedStatus === 'under review'
+            );
+          })() && (
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
+              <Button variant="secondary" onClick={onClose}>
+                Close
               </Button>
-            )}
-            {onApprove && (
-              <Button
-                variant="primary"
-                onClick={() => {
-                  onApprove(config.id);
-                  onClose();
-                }}
-                className="bg-green-600 hover:bg-green-700 text-white"
-              >
-                Approve
-              </Button>
-            )}
-          </div>
-        )}
+              {onReject && (
+                <Button
+                  variant="danger"
+                  onClick={() => {
+                    onReject(config);
+                    onClose();
+                  }}
+                >
+                  Reject
+                </Button>
+              )}
+              {onApprove && (
+                <Button
+                  variant="primary"
+                  onClick={() => {
+                    onApprove(config.id);
+                    onClose();
+                  }}
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                >
+                  Approve
+                </Button>
+              )}
+            </div>
+          )}
 
         {/* Export Button Footer - Show for exporters when status is approved */}
-        {config && !isLoading && onExport && userIsExporter && config.status === 'approved' && (
-          <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3 bg-blue-50">
-            <Button variant="secondary" onClick={onClose}>
-              Close
-            </Button>
-            <Button
-              variant="primary"
-              onClick={handleExport}
-              disabled={isExporting}
-              className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              <Download className="w-4 h-4" />
-              <span>{isExporting ? 'Exporting...' : 'Export'}</span>
-            </Button>
-          </div>
-        )}
+        {config &&
+          !isLoading &&
+          onExport &&
+          userIsExporter &&
+          config.status === 'approved' && (
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3 bg-blue-50">
+              <Button variant="secondary" onClick={onClose}>
+                Close
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleExport}
+                disabled={isExporting}
+                className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                <Download className="w-4 h-4" />
+                <span>{isExporting ? 'Exporting...' : 'Export'}</span>
+              </Button>
+            </div>
+          )}
 
         {/* Deploy Button Footer - Show for publishers when status is exported */}
-        {config && !isLoading && onDeploy && userIsPublisher && config.status === 'exported' && (
-          <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3 bg-purple-50">
-            <Button variant="secondary" onClick={onClose}>
-              Close
-            </Button>
-            <Button
-              variant="primary"
-              onClick={handleDeploy}
-              disabled={isDeploying}
-              className="flex items-center space-x-2 bg-purple-600 hover:bg-purple-700 text-white"
-            >
-              <Upload className="w-4 h-4" />
-              <span>{isDeploying ? 'Deploying...' : 'Deploy'}</span>
-            </Button>
-          </div>
-        )}
+        {config &&
+          !isLoading &&
+          onDeploy &&
+          userIsPublisher &&
+          config.status === 'exported' && (
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3 bg-purple-50">
+              <Button variant="secondary" onClick={onClose}>
+                Close
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleDeploy}
+                disabled={isDeploying}
+                className="flex items-center space-x-2 bg-purple-600 hover:bg-purple-700 text-white"
+              >
+                <Upload className="w-4 h-4" />
+                <span>{isDeploying ? 'Deploying...' : 'Deploy'}</span>
+              </Button>
+            </div>
+          )}
 
         {/* Default Footer - Show when no other footer is displayed */}
-        {config && !isLoading && 
-         !(userIsApprover && (() => {
-           const normalizedStatus = config.status.toLowerCase();
-           if (normalizedStatus.startsWith('status_')) {
-             const parts = normalizedStatus.split('_');
-             if (parts.length >= 3) {
-               const statusName = parts.slice(2).join('_');
-               return statusName === 'under_review';
-             }
-           }
-           return normalizedStatus === 'under_review' || normalizedStatus === 'under review';
-         })()) &&
-         !(userIsExporter && config.status === 'approved') &&
-         !(userIsPublisher && config.status === 'exported') && (
-          <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3 bg-gray-50">
-            <Button variant="secondary" onClick={onClose}>
-              Close
-            </Button>
-          </div>
-        )}
+        {config &&
+          !isLoading &&
+          !(
+            userIsApprover &&
+            (() => {
+              const normalizedStatus = config.status.toLowerCase();
+              if (normalizedStatus.startsWith('status_')) {
+                const parts = normalizedStatus.split('_');
+                if (parts.length >= 3) {
+                  const statusName = parts.slice(2).join('_');
+                  return statusName === 'under_review';
+                }
+              }
+              return (
+                normalizedStatus === 'under_review' ||
+                normalizedStatus === 'under review'
+              );
+            })()
+          ) &&
+          !(userIsExporter && config.status === 'approved') &&
+          !(userIsPublisher && config.status === 'exported') && (
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3 bg-gray-50">
+              <Button variant="secondary" onClick={onClose}>
+                Close
+              </Button>
+            </div>
+          )}
       </div>
     </div>
   );

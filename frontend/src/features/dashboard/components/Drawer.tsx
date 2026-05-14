@@ -20,8 +20,6 @@ const openedMixin = (theme: Theme): CSSObject => ({
   zIndex: 20,
 });
 
-
-
 const closedMixin = (theme: Theme): CSSObject => ({
   transition: theme.transitions.create('width', {
     easing: theme.transitions.easing.sharp,
@@ -39,22 +37,22 @@ const closedMixin = (theme: Theme): CSSObject => ({
   zIndex: 20,
 });
 
-const Drawer = styled(MuiDrawer, { shouldForwardProp: (prop) => prop !== 'open' })(
-  ({ theme, open }) => ({
-    width: drawerWidth,
-    flexShrink: 0,
-    whiteSpace: 'nowrap',
-    boxSizing: 'border-box',
-    ...(open
-      ? {
-          ...openedMixin(theme),
-          '& .MuiDrawer-paper': openedMixin(theme),
-        }
-      : {
-          ...closedMixin(theme),
-          '& .MuiDrawer-paper': closedMixin(theme),
-        }),
-  })
-);
+const Drawer = styled(MuiDrawer, {
+  shouldForwardProp: (prop) => prop !== 'open',
+})(({ theme, open }) => ({
+  width: drawerWidth,
+  flexShrink: 0,
+  whiteSpace: 'nowrap',
+  boxSizing: 'border-box',
+  ...(open
+    ? {
+        ...openedMixin(theme),
+        '& .MuiDrawer-paper': openedMixin(theme),
+      }
+    : {
+        ...closedMixin(theme),
+        '& .MuiDrawer-paper': closedMixin(theme),
+      }),
+}));
 
 export default Drawer;

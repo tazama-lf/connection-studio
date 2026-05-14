@@ -7,7 +7,7 @@ import {
   DialogActions,
   DialogContent,
   DialogContentText,
-  Tooltip
+  Tooltip,
 } from '@mui/material';
 import { handleInputFilter, handleSelectFilter } from '@shared/helpers';
 import { getDemsStatusLov } from '@shared/lovs';
@@ -126,10 +126,11 @@ export const JobList: React.FC<JobListProps> = (props) => {
 
     if (statusDropdownOpen || dropdownOpen) {
       document.addEventListener('click', handleClickOutside);
-      return () => { document.removeEventListener('click', handleClickOutside); };
+      return () => {
+        document.removeEventListener('click', handleClickOutside);
+      };
     }
   }, [statusDropdownOpen, dropdownOpen]);
-
 
   const handleUpdateJobStatus = async (
     job: DataEnrichmentJobResponse,
@@ -202,14 +203,15 @@ export const JobList: React.FC<JobListProps> = (props) => {
     );
   }
 
-  const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('en-US', {
-    month: 'numeric',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-  });
+  const formatDate = (dateString: string) =>
+    new Date(dateString).toLocaleDateString('en-US', {
+      month: 'numeric',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
 
   const getStatusBadge = (status: string) => {
     const normalizedStatus = status.toLowerCase();
@@ -330,11 +332,10 @@ export const JobList: React.FC<JobListProps> = (props) => {
           <Box sx={{ fontSize: '14px', fontWeight: '600' }}>Status</Box>
           {handleSelectFilter({
             fieldName: 'status',
-            options:
-              getDemsStatusLov[userRole] || [],
+            options: getDemsStatusLov[userRole] || [],
             searchingFilters,
             setSearchingFilters,
-            setPage: pagination.setPage
+            setPage: pagination.setPage,
           })}
         </Box>
       ),
@@ -516,21 +517,21 @@ export const JobList: React.FC<JobListProps> = (props) => {
                 (job.status === 'STATUS_06_EXPORTED' ||
                   job.status === 'STATUS_04_APPROVED' ||
                   job.status === 'STATUS_08_DEPLOYED'))) && (
-                <Tooltip title="View Details" arrow placement="top">
-                  <EyeIcon
-                    className="w-4 h-4 mr-2  cursor-pointer"
-                    style={{ color: '#2b7fff' }}
-                    onClick={() => {
-                      if (onViewLogs) {
-                        onViewLogs(job.id);
-                      } else {
-                        alert('Opening job details...');
-                      }
-                      setDropdownOpen(null);
-                    }}
-                  />
-                </Tooltip>
-              )}
+              <Tooltip title="View Details" arrow placement="top">
+                <EyeIcon
+                  className="w-4 h-4 mr-2  cursor-pointer"
+                  style={{ color: '#2b7fff' }}
+                  onClick={() => {
+                    if (onViewLogs) {
+                      onViewLogs(job.id);
+                    } else {
+                      alert('Opening job details...');
+                    }
+                    setDropdownOpen(null);
+                  }}
+                />
+              </Tooltip>
+            )}
 
             {userIsEditor &&
               onEdit &&
@@ -569,8 +570,9 @@ export const JobList: React.FC<JobListProps> = (props) => {
 
             <Dialog
               open={showPauseConfirmDialog.open}
-              onClose={() => { setShowPauseConfirmDialog({ open: false, job: null }); }
-              }
+              onClose={() => {
+                setShowPauseConfirmDialog({ open: false, job: null });
+              }}
               aria-labelledby="pause-confirmation-dialog-title"
               aria-describedby="pause-confirmation-dialog-description"
               sx={{
@@ -646,8 +648,9 @@ export const JobList: React.FC<JobListProps> = (props) => {
               </DialogContent>
               <DialogActions sx={{ padding: '12px 20px 16px 20px' }}>
                 <Button
-                  onClick={() => { setShowPauseConfirmDialog({ open: false, job: null }); }
-                  }
+                  onClick={() => {
+                    setShowPauseConfirmDialog({ open: false, job: null });
+                  }}
                   variant="secondary"
                   className="!pb-[6px] !pt-[5px]"
                 >
@@ -673,8 +676,9 @@ export const JobList: React.FC<JobListProps> = (props) => {
 
             <Dialog
               open={showResumeConfirmDialog.open}
-              onClose={() => { setShowResumeConfirmDialog({ open: false, job: null }); }
-              }
+              onClose={() => {
+                setShowResumeConfirmDialog({ open: false, job: null });
+              }}
               aria-labelledby="resume-confirmation-dialog-title"
               aria-describedby="resume-confirmation-dialog-description"
               sx={{
@@ -750,8 +754,9 @@ export const JobList: React.FC<JobListProps> = (props) => {
               </DialogContent>
               <DialogActions sx={{ padding: '12px 20px 16px 20px' }}>
                 <Button
-                  onClick={() => { setShowResumeConfirmDialog({ open: false, job: null }); }
-                  }
+                  onClick={() => {
+                    setShowResumeConfirmDialog({ open: false, job: null });
+                  }}
                   variant="secondary"
                   className="!pb-[6px] !pt-[5px]"
                 >
@@ -775,7 +780,8 @@ export const JobList: React.FC<JobListProps> = (props) => {
               </DialogActions>
             </Dialog>
 
-            {((userIsApprover && job.status !== 'STATUS_03_UNDER_REVIEW') || userIsPublisher) && (
+            {((userIsApprover && job.status !== 'STATUS_03_UNDER_REVIEW') ||
+              userIsPublisher) && (
               <>
                 {job.publishing_status === 'active' ? (
                   <Tooltip title="Deactivate" arrow placement="top">
@@ -802,8 +808,9 @@ export const JobList: React.FC<JobListProps> = (props) => {
             )}
             <Dialog
               open={showActivateConfirmDialog.open}
-              onClose={() => { setShowActivateConfirmDialog({ open: false, job: null }); }
-              }
+              onClose={() => {
+                setShowActivateConfirmDialog({ open: false, job: null });
+              }}
               aria-labelledby="activate-confirmation-dialog-title"
               aria-describedby="activate-confirmation-dialog-description"
               sx={{
@@ -882,8 +889,9 @@ export const JobList: React.FC<JobListProps> = (props) => {
               </DialogContent>
               <DialogActions sx={{ padding: '12px 20px 16px 20px' }}>
                 <Button
-                  onClick={() => { setShowActivateConfirmDialog({ open: false, job: null }); }
-                  }
+                  onClick={() => {
+                    setShowActivateConfirmDialog({ open: false, job: null });
+                  }}
                   variant="secondary"
                   className="!pb-[6px] !pt-[5px]"
                 >
@@ -908,8 +916,9 @@ export const JobList: React.FC<JobListProps> = (props) => {
 
             <Dialog
               open={showDeactivateConfirmDialog.open}
-              onClose={() => { setShowDeactivateConfirmDialog({ open: false, job: null }); }
-              }
+              onClose={() => {
+                setShowDeactivateConfirmDialog({ open: false, job: null });
+              }}
               aria-labelledby="deactivate-confirmation-dialog-title"
               aria-describedby="deactivate-confirmation-dialog-description"
               sx={{
@@ -989,8 +998,9 @@ export const JobList: React.FC<JobListProps> = (props) => {
               </DialogContent>
               <DialogActions sx={{ padding: '12px 20px 16px 20px' }}>
                 <Button
-                  onClick={() => { setShowDeactivateConfirmDialog({ open: false, job: null }); }
-                  }
+                  onClick={() => {
+                    setShowDeactivateConfirmDialog({ open: false, job: null });
+                  }}
                   variant="secondary"
                   className="!pb-[6px] !pt-[5px]"
                 >

@@ -12,7 +12,6 @@ interface TopBarProps {
 }
 
 export default function TopBar({ open, onToggle }: TopBarProps) {
-
   return (
     <Toolbar
       sx={{

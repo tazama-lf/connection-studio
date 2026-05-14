@@ -23,7 +23,7 @@ const CRONModule: React.FC = () => {
   };
 
   const handleJobCreated = (): void => {
-    setRefreshKey(prev => prev + 1);
+    setRefreshKey((prev) => prev + 1);
   };
 
   return (
@@ -39,7 +39,7 @@ const CRONModule: React.FC = () => {
         >
           <ChevronLeft size={20} /> <span>Go Back</span>
         </Button>
-        
+
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center my-8 gap-4">
           <div className="flex items-center space-x-4">
             <h1
@@ -52,7 +52,11 @@ const CRONModule: React.FC = () => {
           </div>
 
           {isEditorRole && (
-            <Button onClick={handleCreateNew} icon={<PlusIcon size={16} />} data-testid="button-create-new">
+            <Button
+              onClick={handleCreateNew}
+              icon={<PlusIcon size={16} />}
+              data-testid="button-create-new"
+            >
               Create New Cron Job
             </Button>
           )}
