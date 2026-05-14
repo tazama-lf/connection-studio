@@ -18,7 +18,7 @@ import {
 } from '../../features/config/services/configApi';
 import {
   dataModelApi,
-  type DestinationFieldsData
+  type DestinationFieldsData,
 } from '../../features/data-model';
 import { Button } from './Button';
 
@@ -27,13 +27,13 @@ interface MappingUtilityProps {
   onMappingDataChange?: (mappingData: MappingData) => void;
   onCurrentMappingsChange?: (mappings: FieldMapping[]) => void;
   sourceSchema?:
-  | Array<{
-    name: string;
-    path: string;
-    type: string;
-    isRequired: boolean;
-  }>
-  | any; // Accept both array format and JSON schema object
+    | Array<{
+        name: string;
+        path: string;
+        type: string;
+        isRequired: boolean;
+      }>
+    | any; // Accept both array format and JSON schema object
   templateType?: string;
   configId?: number; // ID of the configuration to add mappings to
   existingMappings?: FieldMapping[]; // Existing mappings from backend
@@ -71,7 +71,11 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
   readOnly = false,
 }) => {
   // Generate unique component instance ID for debugging
-  const componentId = useMemo(() => `MappingUtility-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, []);
+  const componentId = useMemo(
+    () =>
+      `MappingUtility-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    [],
+  );
 
   // Ref to track if API fetch is in progress (prevent race conditions)
   const isFetchingRef = useRef(false);
@@ -92,8 +96,10 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
   const [destinationError, setDestinationError] = useState<string | null>(null);
 
   const [showEditFieldsModal, setShowEditFieldsModal] = useState(false);
-  const [editableDestinationJson, setEditableDestinationJson] = useState<DestinationFieldsData | null>(null);
-  const [tempEditedJson, setTempEditedJson] = useState<DestinationFieldsData | null>(null);
+  const [editableDestinationJson, setEditableDestinationJson] =
+    useState<DestinationFieldsData | null>(null);
+  const [tempEditedJson, setTempEditedJson] =
+    useState<DestinationFieldsData | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [savingDestinationJson, setSavingDestinationJson] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -133,36 +139,44 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
         const mappings = response.config.mapping || [];
 
         // Ensure all mappings have transformation field set
-        const mappingsWithTransformation = mappings.map((mapping: FieldMapping) => {
-          // If transformation is already set, keep it
-          if (mapping.transformation) {
-            return mapping;
-          }
-
-          // Infer transformation based on mapping structure
-          let inferredTransformation = 'NONE';
-
-          if (mapping.constantValue !== undefined) {
-            inferredTransformation = 'CONSTANT';
-          } else if (Array.isArray(mapping.source) && mapping.source.length > 1) {
-            // Multiple sources - check for CONCAT or SUM
-            if (mapping.separator || mapping.delimiter) {
-              inferredTransformation = 'CONCATENATE';
-            } else if (mapping.operator === 'SUM') {
-              inferredTransformation = 'SUM';
-            } else {
-              inferredTransformation = 'CONCAT'; // Default for multiple sources
+        const mappingsWithTransformation = mappings.map(
+          (mapping: FieldMapping) => {
+            // If transformation is already set, keep it
+            if (mapping.transformation) {
+              return mapping;
             }
-          } else if (Array.isArray(mapping.destination) && mapping.destination.length > 1) {
-            // Multiple destinations - SPLIT
-            inferredTransformation = 'SPLIT';
-          }
 
-          return {
-            ...mapping,
-            transformation: inferredTransformation,
-          };
-        });
+            // Infer transformation based on mapping structure
+            let inferredTransformation = 'NONE';
+
+            if (mapping.constantValue !== undefined) {
+              inferredTransformation = 'CONSTANT';
+            } else if (
+              Array.isArray(mapping.source) &&
+              mapping.source.length > 1
+            ) {
+              // Multiple sources - check for CONCAT or SUM
+              if (mapping.separator || mapping.delimiter) {
+                inferredTransformation = 'CONCATENATE';
+              } else if (mapping.operator === 'SUM') {
+                inferredTransformation = 'SUM';
+              } else {
+                inferredTransformation = 'CONCAT'; // Default for multiple sources
+              }
+            } else if (
+              Array.isArray(mapping.destination) &&
+              mapping.destination.length > 1
+            ) {
+              // Multiple destinations - SPLIT
+              inferredTransformation = 'SPLIT';
+            }
+
+            return {
+              ...mapping,
+              transformation: inferredTransformation,
+            };
+          },
+        );
 
         setCurrentMappings(mappingsWithTransformation);
         validateMappings(mappingsWithTransformation);
@@ -174,7 +188,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
 
   const convertJsonToTreeNodes = (
     json: any,
-    parentPath: string[] = []
+    parentPath: string[] = [],
   ): TreeNode[] => {
     const dataModelNodes: TreeNode[] = [];
     const dataCacheNodes: TreeNode[] = [];
@@ -195,7 +209,6 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       } else if (typeof value === 'boolean') {
         nodeType = 'boolean';
       } else if (typeof value === 'object' && value !== null) {
-
         if (Object.keys(value).length === 0) {
           nodeType = 'object';
         } else {
@@ -251,7 +264,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
 
   const convertJsonToTreeNodesRecursive = (
     json: any,
-    parentPath: string[] = []
+    parentPath: string[] = [],
   ): TreeNode[] => {
     const nodes: TreeNode[] = [];
 
@@ -444,7 +457,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
         const fieldType = isArrayContainer
           ? 'array'
           : isLastPart
-            ? field.type?.toLowerCase() ?? 'object'
+            ? (field.type?.toLowerCase() ?? 'object')
             : 'object';
 
         const node: TreeNode = {
@@ -540,8 +553,12 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
         },
       ];
     }
-    const messageStructureNodes = rawNodes.filter((node) => node.id !== 'TenantId');
-    const systemReservedNodes = rawNodes.filter((node) => node.id === 'TenantId');
+    const messageStructureNodes = rawNodes.filter(
+      (node) => node.id !== 'TenantId',
+    );
+    const systemReservedNodes = rawNodes.filter(
+      (node) => node.id === 'TenantId',
+    );
 
     const sections: TreeNode[] = [];
 
@@ -629,9 +646,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
 
   const validateMappings = (newMappings: FieldMapping[]) => {
     const isValid = newMappings.every(
-      (mapping) =>
-        mapping.source ||
-        mapping.constantValue !== undefined,
+      (mapping) => mapping.source || mapping.constantValue !== undefined,
     );
     onMappingChange(isValid);
   };
@@ -672,9 +687,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
         return cleanFieldPath === pathStr;
       });
 
-      if (
-        matchingField?.path?.includes('[0]')
-      ) {
+      if (matchingField?.path?.includes('[0]')) {
         // Use the original path with [0] notation
         finalPath = matchingField.path.replace(/\[0\]/g, '.0');
       }
@@ -694,7 +707,9 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
     const pathStr = path.join('.');
 
     if (selectedDestinations.includes(pathStr)) {
-      setSelectedDestinations(selectedDestinations.filter((p) => p !== pathStr));
+      setSelectedDestinations(
+        selectedDestinations.filter((p) => p !== pathStr),
+      );
     } else {
       setSelectedDestinations([...selectedDestinations, pathStr]);
     }
@@ -741,18 +756,18 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       // For other mappings, check source, destination, and transformation
       const existingSource = Array.isArray(existingMapping.source)
         ? existingMapping.source.filter(
-          (s): s is string => s != null && s !== '',
-        ) // Filter out null/undefined/empty
+            (s): s is string => s != null && s !== '',
+          ) // Filter out null/undefined/empty
         : [existingMapping.source].filter(
-          (s): s is string => s != null && s !== '',
-        );
+            (s): s is string => s != null && s !== '',
+          );
       const existingDestination = Array.isArray(existingMapping.destination)
         ? existingMapping.destination.filter(
-          (d): d is string => d != null && d !== '',
-        ) // Filter out null/undefined/empty
+            (d): d is string => d != null && d !== '',
+          ) // Filter out null/undefined/empty
         : [existingMapping.destination].filter(
-          (d): d is string => d != null && d !== '',
-        );
+            (d): d is string => d != null && d !== '',
+          );
 
       const currentSource = selectedSources.filter((s) => s);
       const currentDestination = selectedDestinations.filter((d) => d);
@@ -786,14 +801,14 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
     }
 
     // Convert constant value
-    const constantValue = selectedTransformation === 'constant'
-      ? selectedSources[0]
-      : undefined;
+    const constantValue =
+      selectedTransformation === 'constant' ? selectedSources[0] : undefined;
 
     // Create AddMappingRequest object for API
     const mappingRequest = {
       source:
-        selectedTransformation === 'concatenate' || selectedTransformation === 'sum'
+        selectedTransformation === 'concatenate' ||
+        selectedTransformation === 'sum'
           ? selectedSources // Array for CONCAT/SUM
           : selectedTransformation === 'constant'
             ? selectedSources[0] // Constant value
@@ -803,8 +818,9 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
           ? selectedDestinations // Array for SPLIT
           : selectedDestinations[0], // Single destination
       delimiter:
-        selectedTransformation === 'split' || selectedTransformation === 'concatenate'
-          ? delimiter ?? ' '
+        selectedTransformation === 'split' ||
+        selectedTransformation === 'concatenate'
+          ? (delimiter ?? ' ')
           : undefined,
       constantValue,
       prefix: prefix.trim() || undefined,
@@ -815,12 +831,12 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       const response = await configApi.addMapping(configId!, mappingRequest);
 
       if (response.success) {
-
         // Create FieldMapping object for local state (includes transformation info)
 
         const newFieldMapping: FieldMapping = {
           source:
-            selectedTransformation === 'concatenate' || selectedTransformation === 'sum'
+            selectedTransformation === 'concatenate' ||
+            selectedTransformation === 'sum'
               ? selectedSources // Array for CONCAT/SUM
               : selectedTransformation === 'constant'
                 ? selectedSources[0] // Constant value
@@ -830,10 +846,10 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
               ? selectedDestinations // Array for SPLIT
               : selectedDestinations[0], // Single destination
           delimiter:
-            selectedTransformation === 'split' ? delimiter ?? ' ' : undefined,
+            selectedTransformation === 'split' ? (delimiter ?? ' ') : undefined,
           separator:
             selectedTransformation === 'concatenate'
-              ? delimiter ?? ' '
+              ? (delimiter ?? ' ')
               : undefined,
           constantValue,
           transformation: selectedTransformation.toUpperCase(),
@@ -883,9 +899,11 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
         const isSection = node.type === 'section';
 
         const fieldPath = isSection ? node.path : node.path;
-        const isSelected = !isSection && selectedPaths
-          .map((path) => path.replace(/\.0\./g, '.'))
-          .includes(node.path.join('.'));
+        const isSelected =
+          !isSection &&
+          selectedPaths
+            .map((path) => path.replace(/\.0\./g, '.'))
+            .includes(node.path.join('.'));
 
         const nodeType = node.id.startsWith('redis') ? 'redis' : type;
         const isRedis = node.id === 'redis';
@@ -898,15 +916,16 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                   {node.name}
                 </div>
               </div>
-              {hasChildren && renderTree(
-                node.children ?? [],
-                expanded,
-                toggleFn,
-                onSelect,
-                selectedPaths,
-                node.id === 'dataCache' ? 'redis' : type,
-                0,
-              )}
+              {hasChildren &&
+                renderTree(
+                  node.children ?? [],
+                  expanded,
+                  toggleFn,
+                  onSelect,
+                  selectedPaths,
+                  node.id === 'dataCache' ? 'redis' : type,
+                  0,
+                )}
             </div>
           );
         }
@@ -920,7 +939,9 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
             >
               {hasChildren ? (
                 <button
-                  onClick={() => { toggleFn(node.id); }}
+                  onClick={() => {
+                    toggleFn(node.id);
+                  }}
                   className="p-1 text-gray-500 hover:text-gray-700"
                   data-id="element-179"
                 >
@@ -935,8 +956,8 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
               )}
               {/* Only allow selection for leaf nodes (no children, not object/array) */}
               {!hasChildren &&
-                node.type !== 'object' &&
-                node.type !== 'array' ? (
+              node.type !== 'object' &&
+              node.type !== 'array' ? (
                 <button
                   onClick={() => {
                     onSelect(
@@ -945,8 +966,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                       expanded,
                       selectedPaths,
                     );
-                  }
-                  }
+                  }}
                   className="text-left flex-1 text-sm hover:text-blue-700"
                   data-id="element-185"
                 >
@@ -1025,7 +1045,9 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                 Add New Mapping
               </h3>
               <button
-                onClick={() => { setShowAddMapping(false); }}
+                onClick={() => {
+                  setShowAddMapping(false);
+                }}
                 className="text-gray-500 hover:text-gray-700"
                 data-id="element-192"
               >
@@ -1085,7 +1107,9 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                     <input
                       type="text"
                       value={selectedSources[0] ?? ''}
-                      onChange={(e) => { setSelectedSources([e.target.value]); }}
+                      onChange={(e) => {
+                        setSelectedSources([e.target.value]);
+                      }}
                       placeholder="Enter a constant value (string, number, etc.)"
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
@@ -1125,14 +1149,13 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                       onChange={(e) => {
                         setSelectedTransformation(
                           e.target.value as
-                          | 'concatenate'
-                          | 'sum'
-                          | 'split'
-                          | 'none'
-                          | 'constant',
+                            | 'concatenate'
+                            | 'sum'
+                            | 'split'
+                            | 'none'
+                            | 'constant',
                         );
-                      }
-                      }
+                      }}
                       className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                       data-id="element-205"
                     >
@@ -1155,27 +1178,28 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                   </div>
                   {(selectedTransformation === 'split' ||
                     selectedTransformation === 'concatenate') && (
-                      <div className="mb-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          {selectedTransformation === 'split'
-                            ? 'Split Delimiter'
-                            : 'Concatenate Delimiter'}
-                        </label>
-                        <input
-                          type="text"
-                          value={delimiter}
-                          onChange={(e) => { setDelimiter(e.target.value.slice(0, 1)); }
-                          }
-                          placeholder=""
-                          className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                        />
-                        <p className="text-xs text-gray-500 mt-1">
-                          {selectedTransformation === 'split'
-                            ? 'Split using character (default: space)'
-                            : 'Join using character (default: space)'}
-                        </p>
-                      </div>
-                    )}
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        {selectedTransformation === 'split'
+                          ? 'Split Delimiter'
+                          : 'Concatenate Delimiter'}
+                      </label>
+                      <input
+                        type="text"
+                        value={delimiter}
+                        onChange={(e) => {
+                          setDelimiter(e.target.value.slice(0, 1));
+                        }}
+                        placeholder=""
+                        className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        {selectedTransformation === 'split'
+                          ? 'Split using character (default: space)'
+                          : 'Join using character (default: space)'}
+                      </p>
+                    </div>
+                  )}
                   <div
                     className="flex-1 flex items-end justify-center"
                     data-id="element-210"
@@ -1331,7 +1355,9 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
             {mappingError && (
               <div className="bg-red-50 border border-red-200 rounded-md p-3 mt-4 relative">
                 <button
-                  onClick={() => { setMappingError(null); }}
+                  onClick={() => {
+                    setMappingError(null);
+                  }}
                   className="cursor-pointer absolute top-1/2 -translate-y-1/2 right-2 text-red-600 hover:text-red-800"
                 >
                   <XIcon size={16} />
@@ -1347,7 +1373,9 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
               <Button
                 variant="secondary"
                 className="!pb-[6px] !pt-[4px]"
-                onClick={() => { setShowAddMapping(false); }}
+                onClick={() => {
+                  setShowAddMapping(false);
+                }}
                 data-id="element-236"
               >
                 Cancel
@@ -1396,7 +1424,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
     }
 
     let maxDepth = currentDepth;
-    keys.forEach(key => {
+    keys.forEach((key) => {
       const value = obj[key];
       if (value && typeof value === 'object' && !Array.isArray(value)) {
         if (Object.keys(value).length > 0) {
@@ -1411,7 +1439,9 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
     return maxDepth;
   };
 
-  const validateDestinationJson = (json: any): { valid: boolean; error?: string } => {
+  const validateDestinationJson = (
+    json: any,
+  ): { valid: boolean; error?: string } => {
     if (!json || typeof json !== 'object') {
       return { valid: false, error: 'Invalid JSON structure' };
     }
@@ -1421,29 +1451,35 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
     if (!rootKeys.includes('transactionDetails')) {
       return {
         valid: false,
-        error: 'Required field "transactionDetails" must exist in the Data Model section and cannot be deleted.'
+        error:
+          'Required field "transactionDetails" must exist in the Data Model section and cannot be deleted.',
       };
     }
 
     if (!rootKeys.includes('redis')) {
       return {
         valid: false,
-        error: 'Required field "redis" must exist in the Data Cache section and cannot be deleted.'
+        error:
+          'Required field "redis" must exist in the Data Cache section and cannot be deleted.',
       };
     }
 
-    const redisCount = rootKeys.filter(key => key.toLowerCase() === 'redis').length;
+    const redisCount = rootKeys.filter(
+      (key) => key.toLowerCase() === 'redis',
+    ).length;
     if (redisCount > 1) {
       return {
         valid: false,
-        error: 'Data Cache section can only have one parent object "redis". Multiple redis objects are not allowed.'
+        error:
+          'Data Cache section can only have one parent object "redis". Multiple redis objects are not allowed.',
       };
     }
 
     if (json.transactionDetails && hasNestedObjects(json.transactionDetails)) {
       return {
         valid: false,
-        error: 'Object "transactionDetails" cannot contain nested objects. Only primitive values (string, number, boolean) are allowed.'
+        error:
+          'Object "transactionDetails" cannot contain nested objects. Only primitive values (string, number, boolean) are allowed.',
       };
     }
 
@@ -1452,13 +1488,12 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       if (redisDepth > 1) {
         return {
           valid: false,
-          error: `Object "redis" has ${redisDepth} levels of nesting. Maximum allowed nesting depth for redis is 1 level (e.g., redis → instdAmt → amount).`
+          error: `Object "redis" has ${redisDepth} levels of nesting. Maximum allowed nesting depth for redis is 1 level (e.g., redis → instdAmt → amount).`,
         };
       }
     }
     const MAX_NESTING_DEPTH = 1;
     for (const key of rootKeys) {
-
       if (key === 'transactionDetails' || key === 'redis') {
         continue;
       }
@@ -1467,7 +1502,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       if (depth > MAX_NESTING_DEPTH) {
         return {
           valid: false,
-          error: `Object "${key}" has ${depth} levels of nesting. Maximum allowed nesting depth is ${MAX_NESTING_DEPTH} level. Please reduce the nesting depth.`
+          error: `Object "${key}" has ${depth} levels of nesting. Maximum allowed nesting depth is ${MAX_NESTING_DEPTH} level. Please reduce the nesting depth.`,
         };
       }
     }
@@ -1509,7 +1544,7 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
       const reorderedJson: any = {};
       const keys = Object.keys(tempEditedJson);
 
-      keys.forEach(key => {
+      keys.forEach((key) => {
         if (key !== 'redis') {
           reorderedJson[key] = tempEditedJson[key];
         }
@@ -1521,17 +1556,23 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
 
       try {
         setSavingDestinationJson(true);
-        const response = await dataModelApi.updateDestinationFieldsJson(reorderedJson);
+        const response =
+          await dataModelApi.updateDestinationFieldsJson(reorderedJson);
 
         if (response.success) {
           setEditableDestinationJson(reorderedJson);
           setShowEditFieldsModal(false);
           setTempEditedJson(null);
         } else {
-          throw new Error(response.message ?? 'Failed to save destination fields');
+          throw new Error(
+            response.message ?? 'Failed to save destination fields',
+          );
         }
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Failed to save changes. Please try again.';
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : 'Failed to save changes. Please try again.';
         setSaveError(errorMessage);
         setValidationError(errorMessage);
       } finally {
@@ -1600,7 +1641,10 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
             </div> */}
 
             {/* JSON Editor */}
-            <div className="border border-gray-200 rounded-md p-4 bg-gray-50 mb-4" style={{ maxHeight: '500px', overflow: 'auto' }}>
+            <div
+              className="border border-gray-200 rounded-md p-4 bg-gray-50 mb-4"
+              style={{ maxHeight: '500px', overflow: 'auto' }}
+            >
               {tempEditedJson && (
                 <ReactJson
                   src={tempEditedJson}
@@ -1622,12 +1666,16 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
             {validationError && (
               <div className="bg-red-50 border border-red-200 rounded-md p-3 mb-4 relative">
                 <button
-                  onClick={() => { setValidationError(null); }}
+                  onClick={() => {
+                    setValidationError(null);
+                  }}
                   className="cursor-pointer absolute top-1/2 -translate-y-1/2 right-2 text-red-600 hover:text-red-800"
                 >
                   <XIcon size={16} />
                 </button>
-                <div className="text-red-800 text-sm pr-6">{validationError}</div>
+                <div className="text-red-800 text-sm pr-6">
+                  {validationError}
+                </div>
               </div>
             )}
 
@@ -1684,17 +1732,24 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
           <div className="flex items-start gap-3">
             <Info size={18} className="text-blue-500 mt-0.5 shrink-0" />
             <div className="space-y-3">
-              <p className="text-sm font-semibold text-blue-800">Required Mappings</p>
+              <p className="text-sm font-semibold text-blue-800">
+                Required Mappings
+              </p>
               <div className="space-y-2">
                 <div className="flex items-start gap-2">
                   <span className="mt-1 inline-block w-2 h-2 rounded-full bg-blue-400 shrink-0" />
                   <div>
                     <p className="text-sm text-blue-800">
-                      <span className="font-medium">Unique Message ID</span> — Every transaction must carry a globally unique identifier so it can be traced end-to-end across all systems.
+                      <span className="font-medium">Unique Message ID</span> —
+                      Every transaction must carry a globally unique identifier
+                      so it can be traced end-to-end across all systems.
                     </p>
                     <p className="text-xs text-blue-600 mt-0.5">
                       Map your source field that contains the message ID to{' '}
-                      <code className="bg-blue-100 px-1 py-0.5 rounded font-mono">transactionDetails.msgId</code>.
+                      <code className="bg-blue-100 px-1 py-0.5 rounded font-mono">
+                        transactionDetails.msgId
+                      </code>
+                      .
                     </p>
                   </div>
                 </div>
@@ -1702,11 +1757,20 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                   <span className="mt-1 inline-block w-2 h-2 rounded-full bg-blue-400 shrink-0" />
                   <div>
                     <p className="text-sm text-blue-800">
-                      <span className="font-medium">Message Creation Date &amp; Time</span> — The timestamp at which the message was originated is required for audit trails, sequencing, and duplicate detection.
+                      <span className="font-medium">
+                        Message Creation Date &amp; Time
+                      </span>{' '}
+                      — The timestamp at which the message was originated is
+                      required for audit trails, sequencing, and duplicate
+                      detection.
                     </p>
                     <p className="text-xs text-blue-600 mt-0.5">
-                      Map your source field that contains the creation timestamp to{' '}
-                      <code className="bg-blue-100 px-1 py-0.5 rounded font-mono">transactionDetails.CreDtTm</code>.
+                      Map your source field that contains the creation timestamp
+                      to{' '}
+                      <code className="bg-blue-100 px-1 py-0.5 rounded font-mono">
+                        transactionDetails.CreDtTm
+                      </code>
+                      .
                     </p>
                   </div>
                 </div>
@@ -1766,7 +1830,9 @@ export const MappingUtility: React.FC<MappingUtilityProps> = ({
                 <Button
                   variant="secondary"
                   size="sm"
-                  onClick={async () => { await removeMappingFromBackend(index); }}
+                  onClick={async () => {
+                    await removeMappingFromBackend(index);
+                  }}
                   disabled={readOnly}
                   className="text-red-500 hover:bg-red-500 hover:text-white"
                 >

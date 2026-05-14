@@ -30,7 +30,10 @@ export interface LoadingState<TAction extends string = string> {
 /**
  * Generic confirmation dialog state
  */
-export interface ConfirmDialogState<TResource, TAction extends string = string> {
+export interface ConfirmDialogState<
+  TResource,
+  TAction extends string = string,
+> {
   open: boolean;
   type: TAction | '';
   resource: TResource | null;
@@ -58,7 +61,7 @@ export interface ResourceApiHandlers<TResource> {
     page: number,
     itemsPerPage: number,
     userRole: string,
-    filters: Record<string, unknown>
+    filters: Record<string, unknown>,
   ) => Promise<{
     data?: TResource[];
     jobs?: TResource[];
@@ -73,13 +76,21 @@ export interface ResourceApiHandlers<TResource> {
   /**
    * Update resource status
    */
-  updateStatus?: (id: string, status: string, type?: string, reason?: string) => Promise<void>;
+  updateStatus?: (
+    id: string,
+    status: string,
+    type?: string,
+    reason?: string,
+  ) => Promise<void>;
 }
 
 /**
  * Configuration options for useResourceList hook
  */
-export interface UseResourceListOptions<TResource, TAction extends string = string> {
+export interface UseResourceListOptions<
+  TResource,
+  TAction extends string = string,
+> {
   /**
    * API handlers for resource operations
    */
@@ -91,7 +102,9 @@ export interface UseResourceListOptions<TResource, TAction extends string = stri
   /**
    * Error messages for different actions
    */
-  errorMessages?: Partial<Record<TAction | 'updated' | 'deleted' | 'load', string>>;
+  errorMessages?: Partial<
+    Record<TAction | 'updated' | 'deleted' | 'load', string>
+  >;
   /**
    * Optional initial filters
    */
@@ -105,7 +118,10 @@ export interface UseResourceListOptions<TResource, TAction extends string = stri
 /**
  * Return type for useResourceList hook
  */
-export interface UseResourceListReturn<TResource, TAction extends string = string> {
+export interface UseResourceListReturn<
+  TResource,
+  TAction extends string = string,
+> {
   /** List of resources */
   resources: TResource[];
   /** Pagination state */
@@ -131,13 +147,17 @@ export interface UseResourceListReturn<TResource, TAction extends string = strin
   /** Set current page */
   setPage: (page: number) => void;
   /** Update search filters */
-  setSearchingFilters: React.Dispatch<React.SetStateAction<Record<string, unknown>>>;
+  setSearchingFilters: React.Dispatch<
+    React.SetStateAction<Record<string, unknown>>
+  >;
   /** Set selected resource */
   setSelectedResource: React.Dispatch<React.SetStateAction<TResource | null>>;
   /** Set edit mode */
   setEditMode: React.Dispatch<React.SetStateAction<boolean>>;
   /** Set confirmation dialog */
-  setConfirmDialog: React.Dispatch<React.SetStateAction<ConfirmDialogState<TResource, TAction>>>;
+  setConfirmDialog: React.Dispatch<
+    React.SetStateAction<ConfirmDialogState<TResource, TAction>>
+  >;
   /** Reload resources */
   loadResources: (pageNumber?: number) => Promise<void>;
   /** View resource details */
@@ -148,14 +168,14 @@ export interface UseResourceListReturn<TResource, TAction extends string = strin
 
 /**
  * useResourceList - Generic hook for resource list management
- * 
+ *
  * Consolidates common patterns for managing lists of resources with:
  * - Pagination
  * - Role-based permissions
  * - Loading states
  * - Error handling
  * - CRUD operations
- * 
+ *
  * @example
  * ```tsx
  * const {
@@ -176,8 +196,11 @@ export interface UseResourceListReturn<TResource, TAction extends string = strin
  * });
  * ```
  */
-export function useResourceList<TResource extends { id: string; status?: string; type?: string }, TAction extends string = string>(
-  options: UseResourceListOptions<TResource, TAction>
+export function useResourceList<
+  TResource extends { id: string; status?: string; type?: string },
+  TAction extends string = string,
+>(
+  options: UseResourceListOptions<TResource, TAction>,
 ): UseResourceListReturn<TResource, TAction> {
   const {
     apiHandlers,
@@ -185,7 +208,9 @@ export function useResourceList<TResource extends { id: string; status?: string;
     itemsPerPage: customItemsPerPage,
   } = options;
 
-  const errorMessages: Partial<Record<TAction | 'updated' | 'deleted' | 'load', string>> = options.errorMessages ?? {};
+  const errorMessages: Partial<
+    Record<TAction | 'updated' | 'deleted' | 'load', string>
+  > = options.errorMessages ?? {};
 
   const [resources, setResources] = useState<TResource[]>([]);
   const [pagination, setPagination] = useState<PaginationState>({
@@ -193,15 +218,20 @@ export function useResourceList<TResource extends { id: string; status?: string;
     totalPages: 0,
     totalRecords: 0,
   });
-  const [searchingFilters, setSearchingFilters] = useState<Record<string, unknown>>(initialFilters);
+  const [searchingFilters, setSearchingFilters] =
+    useState<Record<string, unknown>>(initialFilters);
   const [error, setError] = useState<string | null>(null);
   const [loadingState, setLoadingState] = useState<LoadingState<TAction>>({
     page: true,
     action: '',
   });
-  const [selectedResource, setSelectedResource] = useState<TResource | null>(null);
+  const [selectedResource, setSelectedResource] = useState<TResource | null>(
+    null,
+  );
   const [editMode, setEditMode] = useState(false);
-  const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState<TResource, TAction>>({
+  const [confirmDialog, setConfirmDialog] = useState<
+    ConfirmDialogState<TResource, TAction>
+  >({
     open: false,
     type: '',
     resource: null,
@@ -210,7 +240,8 @@ export function useResourceList<TResource extends { id: string; status?: string;
   const { showError } = useToast();
   const { user } = useAuth();
 
-  const itemsPerPage = customItemsPerPage ?? UI_CONFIG.pagination.defaultPageSize;
+  const itemsPerPage =
+    customItemsPerPage ?? UI_CONFIG.pagination.defaultPageSize;
 
   /**
    * Memoized role-based permissions
@@ -226,7 +257,10 @@ export function useResourceList<TResource extends { id: string; status?: string;
     };
   }, [user]);
 
-  function getErrorMessage(err: unknown, fallback = 'An error occurred'): string {
+  function getErrorMessage(
+    err: unknown,
+    fallback = 'An error occurred',
+  ): string {
     if (err instanceof Error) return err.message;
     if (typeof err === 'string') return err;
     return fallback;
@@ -245,11 +279,12 @@ export function useResourceList<TResource extends { id: string; status?: string;
           pageNumber,
           itemsPerPage,
           permissions.userRole ?? '',
-          searchingFilters
+          searchingFilters,
         );
 
         // Handle different response structures
-        const resourceData = response.data ?? response.jobs ?? response.items ?? [];
+        const resourceData =
+          response.data ?? response.jobs ?? response.items ?? [];
 
         setResources(resourceData);
         setPagination({
@@ -258,7 +293,10 @@ export function useResourceList<TResource extends { id: string; status?: string;
           totalRecords: response.total,
         });
       } catch (err) {
-        const message = getErrorMessage(err, errorMessages.load ?? 'Failed to load resources');
+        const message = getErrorMessage(
+          err,
+          errorMessages.load ?? 'Failed to load resources',
+        );
         setError(message);
       } finally {
         setLoadingState((s) => ({ ...s, page: false }));
@@ -271,7 +309,7 @@ export function useResourceList<TResource extends { id: string; status?: string;
       searchingFilters,
       pagination.page,
       errorMessages.load,
-    ]
+    ],
   );
 
   /**
@@ -301,7 +339,7 @@ export function useResourceList<TResource extends { id: string; status?: string;
         setLoadingState((s) => ({ ...s, page: false }));
       }
     },
-    [apiHandlers, showError]
+    [apiHandlers, showError],
   );
 
   /**
@@ -318,7 +356,10 @@ export function useResourceList<TResource extends { id: string; status?: string;
       try {
         setLoadingState((s) => ({ ...s, page: true }));
         const resourceType = resource.type?.toUpperCase();
-        const resourceDetails = await apiHandlers.getById(resource.id, resourceType);
+        const resourceDetails = await apiHandlers.getById(
+          resource.id,
+          resourceType,
+        );
         setSelectedResource(resourceDetails);
         setEditMode(true);
       } catch (err) {
@@ -327,7 +368,7 @@ export function useResourceList<TResource extends { id: string; status?: string;
         setLoadingState((s) => ({ ...s, page: false }));
       }
     },
-    [apiHandlers, showError]
+    [apiHandlers, showError],
   );
 
   /**
