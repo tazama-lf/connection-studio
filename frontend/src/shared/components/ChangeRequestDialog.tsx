@@ -15,11 +15,11 @@ export const ChangeRequestDialog: React.FC<ChangeRequestDialogProps> = ({
   onConfirm,
   configName,
 }) => (
-    <JobRejectionDialog
-      isOpen={isOpen}
-      onClose={onClose}
-      onConfirm={onConfirm}
-      jobName={configName}
-      jobType="Data Enrichment Job"
-    />
-  );
+  <JobRejectionDialog
+    isOpen={isOpen}
+    onClose={onClose}
+    onConfirm={onConfirm}
+    jobName={configName}
+    jobType="Data Enrichment Job"
+  />
+);
