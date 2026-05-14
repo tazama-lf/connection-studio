@@ -257,6 +257,9 @@ describe('features/approver/components/ApproverConfigDetailsModal.tsx', () => {
     expect(screen.getByRole('button', { name: /reject/i })).toBeDisabled();
 
     resolveApprove();
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /approve/i })).toBeEnabled();
+    });
   });
 
   it('shows rejecting state and disables buttons while reject is in progress', async () => {
@@ -287,5 +290,8 @@ describe('features/approver/components/ApproverConfigDetailsModal.tsx', () => {
     expect(screen.getByRole('button', { name: /approve/i })).toBeDisabled();
 
     resolveReject();
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /reject/i })).toBeEnabled();
+    });
   });
 });
