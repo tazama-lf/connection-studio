@@ -39,9 +39,7 @@ describe('JobApprovalDialog', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     expect(screen.getByText('Approval Confirmation')).toBeInTheDocument();
     expect(screen.getByText('"Test Job"')).toBeInTheDocument();
-    expect(
-      screen.getByText(/this will approve the schedule/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/this will approve the schedule/i)).toBeInTheDocument();
   });
 
   it('renders comment textarea with placeholder', () => {
@@ -65,11 +63,7 @@ describe('JobApprovalDialog', () => {
     const onConfirm = jest.fn().mockResolvedValue(undefined);
     const onClose = jest.fn();
     render(
-      <JobApprovalDialog
-        {...defaultProps}
-        onConfirm={onConfirm}
-        onClose={onClose}
-      />,
+      <JobApprovalDialog {...defaultProps} onConfirm={onConfirm} onClose={onClose} />,
     );
 
     fireEvent.change(screen.getByLabelText(/approver comment/i), {
@@ -98,10 +92,7 @@ describe('JobApprovalDialog', () => {
   it('shows loading state during approval', async () => {
     let resolveConfirm!: () => void;
     const onConfirm = jest.fn(
-      () =>
-        new Promise<void>((resolve) => {
-          resolveConfirm = resolve;
-        }),
+      () => new Promise<void>((resolve) => { resolveConfirm = resolve; }),
     );
 
     render(<JobApprovalDialog {...defaultProps} onConfirm={onConfirm} />);
@@ -123,19 +114,12 @@ describe('JobApprovalDialog', () => {
     // To test the finally block, we use a sync callback that doesn't reject
     let resolveConfirm!: () => void;
     const onConfirm = jest.fn(
-      () =>
-        new Promise<void>((resolve) => {
-          resolveConfirm = resolve;
-        }),
+      () => new Promise<void>((resolve) => { resolveConfirm = resolve; }),
     );
     const onClose = jest.fn();
 
     render(
-      <JobApprovalDialog
-        {...defaultProps}
-        onConfirm={onConfirm}
-        onClose={onClose}
-      />,
+      <JobApprovalDialog {...defaultProps} onConfirm={onConfirm} onClose={onClose} />,
     );
 
     fireEvent.change(screen.getByLabelText(/approver comment/i), {
