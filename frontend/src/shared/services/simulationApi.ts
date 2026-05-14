@@ -64,7 +64,7 @@ export class SimulationApiService {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     };
-  }
+  };
 
   private static async handleResponse<T>(response: Response): Promise<T> {
     if (!response.ok) {
@@ -74,15 +74,21 @@ export class SimulationApiService {
         throw new Error('Unauthorized - Token expired');
       }
 
-      const errorData = await response.json().catch((): ErrorResponse => ({})) as ErrorResponse;
-      if (response.status >= HTTP_STATUS_BAD_REQUEST && response.status < HTTP_STATUS_SERVER_ERROR) {
+      const errorData = (await response
+        .json()
+        .catch((): ErrorResponse => ({}))) as ErrorResponse;
+      if (
+        response.status >= HTTP_STATUS_BAD_REQUEST &&
+        response.status < HTTP_STATUS_SERVER_ERROR
+      ) {
         return errorData as T;
       }
-      const message = errorData.message ?? `HTTP error! status: ${response.status}`;
+      const message =
+        errorData.message ?? `HTTP error! status: ${response.status}`;
       throw new Error(message);
     }
 
-    return await response.json() as T;
+    return (await response.json()) as T;
   }
 
   /**
@@ -95,7 +101,9 @@ export class SimulationApiService {
       body: JSON.stringify(data),
     });
 
-    return await SimulationApiService.handleResponse<SimulationResult>(response);
+    return await SimulationApiService.handleResponse<SimulationResult>(
+      response,
+    );
   }
 
   /**
@@ -111,7 +119,9 @@ export class SimulationApiService {
       body: JSON.stringify(data),
     });
 
-    return await SimulationApiService.handleResponse<ValidationResult>(response);
+    return await SimulationApiService.handleResponse<ValidationResult>(
+      response,
+    );
   }
 }
 

@@ -7,14 +7,11 @@ interface AuthHeaderProps {
   title: string;
   showBackButton?: boolean;
 }
- const AuthHeader: React.FC<AuthHeaderProps> = ({
+const AuthHeader: React.FC<AuthHeaderProps> = ({
   title,
-  showBackButton = false
+  showBackButton = false,
 }) => {
-  const {
-    user,
-    logout
-  } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
   const handleLogout = () => {
     logout();
@@ -24,19 +21,37 @@ interface AuthHeaderProps {
     navigate(-1);
   };
 
-  return <header className="bg-white shadow" data-id="element-20">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4" data-id="element-21">
+  return (
+    <header className="bg-white shadow" data-id="element-20">
+      <div
+        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4"
+        data-id="element-21"
+      >
         <div className="flex justify-between items-center" data-id="element-22">
           <div className="flex items-center" data-id="element-23">
-            {showBackButton && <Button variant="secondary" size="sm" className="mr-4" onClick={handleBack} icon={<ChevronLeftIcon size={16} data-id="element-25" />} data-id="element-24">
+            {showBackButton && (
+              <Button
+                variant="secondary"
+                size="sm"
+                className="mr-4"
+                onClick={handleBack}
+                icon={<ChevronLeftIcon size={16} data-id="element-25" />}
+                data-id="element-24"
+              >
                 Back
-              </Button>}
+              </Button>
+            )}
             <img
               className="h-8 w-auto mr-3"
               src="/logo.png"
               alt="Tazama Logo"
             />
-            <h1 className="text-2xl font-bold text-gray-800" data-id="element-26">{title}</h1>
+            <h1
+              className="text-2xl font-bold text-gray-800"
+              data-id="element-26"
+            >
+              {title}
+            </h1>
           </div>
           {user && (
             <div className="flex items-center space-x-4">
@@ -48,20 +63,27 @@ interface AuthHeaderProps {
                     <span>
                       {(() => {
                         const roleMapping = {
-                          'approver': 'Approver',
-                          'editor': 'Editor',
-                          'publisher': 'Publisher',
-                          'exporter': 'Exporter'
+                          approver: 'Approver',
+                          editor: 'Editor',
+                          publisher: 'Publisher',
+                          exporter: 'Exporter',
                         };
-                        
+
                         const userRoles = user.claims
-                          .filter(claim => roleMapping[claim as keyof typeof roleMapping])
-                          .map(claim => roleMapping[claim as keyof typeof roleMapping]);
-                        
-                        return userRoles.length > 0 ? userRoles.join(', ') : 'User';
+                          .filter(
+                            (claim) =>
+                              roleMapping[claim as keyof typeof roleMapping],
+                          )
+                          .map(
+                            (claim) =>
+                              roleMapping[claim as keyof typeof roleMapping],
+                          );
+
+                        return userRoles.length > 0
+                          ? userRoles.join(', ')
+                          : 'User';
                       })()}
                     </span>
-                           
                   </>
                 )}
               </div>
@@ -77,7 +99,8 @@ interface AuthHeaderProps {
           )}
         </div>
       </div>
-    </header>;
+    </header>
+  );
 };
 
 export { AuthHeader };

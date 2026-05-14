@@ -1,5 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { CheckCircleIcon, XCircleIcon, AlertTriangleIcon, InfoIcon, XIcon } from 'lucide-react';
+import {
+  CheckCircleIcon,
+  XCircleIcon,
+  AlertTriangleIcon,
+  InfoIcon,
+  XIcon,
+} from 'lucide-react';
 
 export interface Toast {
   id: string;
@@ -31,7 +37,7 @@ const ToastComponent: React.FC<ToastComponentProps> = ({ toast, onRemove }) => {
     }
   };
 
-  const getBgColor = () : string => {
+  const getBgColor = (): string => {
     switch (toast.type) {
       case 'success':
         return 'bg-green-50 border-green-200';
@@ -44,7 +50,7 @@ const ToastComponent: React.FC<ToastComponentProps> = ({ toast, onRemove }) => {
     }
   };
 
-  const getTitleColor = () : string => {
+  const getTitleColor = (): string => {
     switch (toast.type) {
       case 'success':
         return 'text-green-800';
@@ -57,7 +63,7 @@ const ToastComponent: React.FC<ToastComponentProps> = ({ toast, onRemove }) => {
     }
   };
 
-  const getMessageColor = ()  : string=> {
+  const getMessageColor = (): string => {
     switch (toast.type) {
       case 'success':
         return 'text-green-700';
@@ -78,10 +84,12 @@ const ToastComponent: React.FC<ToastComponentProps> = ({ toast, onRemove }) => {
       handleRemove();
     }, duration);
 
-    return () => { clearTimeout(timer); };
+    return () => {
+      clearTimeout(timer);
+    };
   }, []);
 
-  const handleRemove = () : void => {
+  const handleRemove = (): void => {
     setIsExiting(true);
     setTimeout(() => {
       onRemove(toast.id);
@@ -98,9 +106,7 @@ const ToastComponent: React.FC<ToastComponentProps> = ({ toast, onRemove }) => {
     >
       <div className="p-4">
         <div className="flex items-start">
-          <div className="flex-shrink-0">
-            {getIcon()}
-          </div>
+          <div className="flex-shrink-0">{getIcon()}</div>
           <div className="ml-3 w-0 flex-1">
             <p className={`text-sm font-medium ${getTitleColor()}`}>
               {toast.title}

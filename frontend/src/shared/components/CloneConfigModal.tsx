@@ -16,7 +16,7 @@ export const CloneConfigModal: React.FC<CloneConfigModalProps> = ({
   isOpen,
   onClose,
   config,
-  onSuccess
+  onSuccess,
 }) => {
   const [newVersion, setNewVersion] = useState('');
   const [newEndpointName, setNewEndpointName] = useState('');
@@ -29,7 +29,9 @@ export const CloneConfigModal: React.FC<CloneConfigModalProps> = ({
       // Initialize with suggested values
       const currentVersion = config.version ?? '1';
       const versionNumber = parseInt(currentVersion);
-      const nextVersion = isNaN(versionNumber) ? '2' : (versionNumber + 1).toString();
+      const nextVersion = isNaN(versionNumber)
+        ? '2'
+        : (versionNumber + 1).toString();
       setNewVersion(nextVersion);
       setNewEndpointName(config.endpointPath ?? '');
     } else {
@@ -50,20 +52,25 @@ export const CloneConfigModal: React.FC<CloneConfigModalProps> = ({
         sourceConfigId: config.id,
         newTransactionType: config.transactionType,
         newVersion: newVersion.trim(),
-        newMsgFam: config.msgFam
+        newMsgFam: config.msgFam,
       };
 
       const result = await configApi.cloneConfig(cloneData);
-      
+
       if (result.success) {
-        showSuccess(`Configuration cloned successfully as version ${newVersion}`);
+        showSuccess(
+          `Configuration cloned successfully as version ${newVersion}`,
+        );
         onSuccess?.();
         onClose();
       } else {
         showError(result.message ?? 'Failed to clone configuration');
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to clone configuration';
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'Failed to clone configuration';
       showError(errorMessage);
     } finally {
       setIsCloning(false);
@@ -73,7 +80,9 @@ export const CloneConfigModal: React.FC<CloneConfigModalProps> = ({
   if (!isOpen || !config) return null;
 
   // Determine clone type based on config type (this is a simplified approach)
-  const isInboundJob = config.endpointPath?.includes('/inbound/') || config.transactionType?.toLowerCase().includes('pull');
+  const isInboundJob =
+    config.endpointPath?.includes('/inbound/') ||
+    config.transactionType?.toLowerCase().includes('pull');
   const cloneType = isInboundJob ? 'Pull Job' : 'Push Job';
 
   return (
@@ -104,11 +113,19 @@ export const CloneConfigModal: React.FC<CloneConfigModalProps> = ({
           <div className="p-6 space-y-4">
             {/* Source Config Info */}
             <div className="bg-gray-50 p-3 rounded border">
-              <p className="text-sm font-medium text-gray-700">Source Configuration</p>
+              <p className="text-sm font-medium text-gray-700">
+                Source Configuration
+              </p>
               <p className="text-sm text-gray-600">ID: {config.id}</p>
-              <p className="text-sm text-gray-600">Type: {config.transactionType}</p>
-              <p className="text-sm text-gray-600">Current Version: {config.version}</p>
-              <p className="text-sm text-gray-600">Endpoint: {config.endpointPath}</p>
+              <p className="text-sm text-gray-600">
+                Type: {config.transactionType}
+              </p>
+              <p className="text-sm text-gray-600">
+                Current Version: {config.version}
+              </p>
+              <p className="text-sm text-gray-600">
+                Endpoint: {config.endpointPath}
+              </p>
             </div>
 
             {/* New Version Field - Always Required */}
@@ -119,7 +136,9 @@ export const CloneConfigModal: React.FC<CloneConfigModalProps> = ({
               <input
                 type="text"
                 value={newVersion}
-                onChange={(e) => { setNewVersion(e.target.value); }}
+                onChange={(e) => {
+                  setNewVersion(e.target.value);
+                }}
                 placeholder="Enter new version"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 disabled={isCloning}
@@ -135,7 +154,9 @@ export const CloneConfigModal: React.FC<CloneConfigModalProps> = ({
                 <input
                   type="text"
                   value={newEndpointName}
-                  onChange={(e) => { setNewEndpointName(e.target.value); }}
+                  onChange={(e) => {
+                    setNewEndpointName(e.target.value);
+                  }}
                   placeholder="Enter new endpoint name"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   disabled={isCloning}
@@ -145,18 +166,19 @@ export const CloneConfigModal: React.FC<CloneConfigModalProps> = ({
 
             {/* Read-only Fields Info */}
             <div className="text-sm text-gray-500">
-              <p>• Transaction Type, Message Family, and other fields will be copied from the source configuration</p>
-              <p>• The cloned configuration will start with IN_PROGRESS status</p>
+              <p>
+                • Transaction Type, Message Family, and other fields will be
+                copied from the source configuration
+              </p>
+              <p>
+                • The cloned configuration will start with IN_PROGRESS status
+              </p>
             </div>
           </div>
 
           {/* Footer */}
           <div className="flex items-center justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50">
-            <Button
-              onClick={onClose}
-              variant="secondary"
-              disabled={isCloning}
-            >
+            <Button onClick={onClose} variant="secondary" disabled={isCloning}>
               Cancel
             </Button>
             <Button
