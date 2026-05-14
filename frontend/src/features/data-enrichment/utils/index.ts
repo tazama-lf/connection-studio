@@ -71,12 +71,15 @@ const buildSftpConnection = (
 
 const buildFileConfig = (formValues: Record<string, unknown>): FileConfig => ({
   path: ((formValues.pathPattern as string | undefined) ?? '/data.csv').replace(
-    /^\/+/g,
+    /^\//g,
     '',
   ),
   file_type: ((formValues.fileFormat as string | undefined)?.toUpperCase() ??
     'CSV') as FileType,
-  delimiter: (formValues.delimiter as string | undefined) ?? ',',
+  delimiter:
+    ((formValues.delimiter as string | undefined) ?? '').trim() !== ''
+      ? (formValues.delimiter as string)
+      : ',',
 });
 
 export const buildPullPayload = (
@@ -115,7 +118,7 @@ export const generateEndpointUrl = (
   endpointPath?: string,
 ): string => {
   const cleanVersion =
-    version?.replace(/^v?\/*/g, '').replace(/\/+$/g, '') ?? '';
+    version?.replace(/^v?\/*/g, '').replace(/\/$/g, '') ?? '';
 
   const cleanPath = endpointPath?.startsWith('/')
     ? endpointPath
@@ -335,7 +338,7 @@ export const validateFileFormat = (
 
   const allowedFormats =
     FILE_EXTENSION_FORMAT_MAP[
-      fileExtension as keyof typeof FILE_EXTENSION_FORMAT_MAP
+    fileExtension as keyof typeof FILE_EXTENSION_FORMAT_MAP
     ];
 
   if (!(allowedFormats as readonly string[]).includes(fileType)) {
