@@ -114,7 +114,7 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
           }
         })
         .catch(() => {
-          console.error('Failed to fetch data model fields');
+          /* silently fail */
         })
         .finally(() => setDataModelLoading(false));
     }
@@ -410,7 +410,7 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
         </select>
       </div>
       {functionConfig?.dataModelConfiguration &&
-        selectedFunction === 'addDataModel' ? (
+      selectedFunction === 'addDataModel' ? (
         <div className="space-y-4 pt-1 border-gray-200">
           <h3 className="text-sm font-medium text-gray-700">
             Data Model Configuration
@@ -457,8 +457,9 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
                 }
               }}
               placeholder="Enter table name"
-              className={`w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${tableNameError ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                }`}
+              className={`w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                tableNameError ? 'border-red-300 bg-red-50' : 'border-gray-300'
+              }`}
             />
             {tableNameError && (
               <p className="mt-1 text-sm text-red-600">{tableNameError}</p>
@@ -550,10 +551,11 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
               {functionConfig.configurations.map((config) => (
                 <div
                   key={config.name}
-                  className={`p-4 border rounded-lg cursor-pointer transition-colors ${selectedConfiguration === config.name
+                  className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                    selectedConfiguration === config.name
                       ? 'border-blue-500 bg-blue-50'
                       : 'border-gray-300 hover:border-gray-400'
-                    }`}
+                  }`}
                   onClick={() => {
                     setSelectedConfiguration(config.name);
                   }}
@@ -591,10 +593,11 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
                   {functionConfig.optionalParameters.map((param) => (
                     <div
                       key={param.name}
-                      className={`p-3 border rounded-lg cursor-pointer transition-colors ${selectedOptionalParams.includes(param.name)
+                      className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                        selectedOptionalParams.includes(param.name)
                           ? 'border-blue-500 bg-blue-50'
                           : 'border-gray-300 hover:border-gray-400'
-                        }`}
+                      }`}
                       onClick={() => {
                         handleOptionalParamToggle(param.name);
                       }}
@@ -1036,7 +1039,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
         if (!mappedDestinations.has(paramLower)) {
           errors.push(
             `❌ Function "${functionConfig.displayName}": Parameter "${param}" is not mapped. ` +
-            `Please create a mapping with destination "${param}" in the Mapping step.`,
+              `Please create a mapping with destination "${param}" in the Mapping step.`,
           );
         }
       });
@@ -1823,30 +1826,31 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                           const unmappedParams =
                             func.params && func.params.length > 0
                               ? func.params.filter((param: string) => {
-                                // Compare full parameter name (with prefix) for exact matching
-                                const paramLower = param.toLowerCase();
-                                // Also check without prefix for the parameter name itself (for runtime context)
-                                const paramWithoutPrefix = param
-                                  .replace(
-                                    /^(redis\.|transactionDetails\.|dataCache\.|transaction\.|cache\.)/i,
-                                    '',
-                                  )
-                                  .toLowerCase();
-                                return (
-                                  !runtimeContextFields.includes(
-                                    paramWithoutPrefix,
-                                  ) && !mappedDestinations.has(paramLower)
-                                );
-                              })
+                                  // Compare full parameter name (with prefix) for exact matching
+                                  const paramLower = param.toLowerCase();
+                                  // Also check without prefix for the parameter name itself (for runtime context)
+                                  const paramWithoutPrefix = param
+                                    .replace(
+                                      /^(redis\.|transactionDetails\.|dataCache\.|transaction\.|cache\.)/i,
+                                      '',
+                                    )
+                                    .toLowerCase();
+                                  return (
+                                    !runtimeContextFields.includes(
+                                      paramWithoutPrefix,
+                                    ) && !mappedDestinations.has(paramLower)
+                                  );
+                                })
                               : [];
 
                           return (
                             <div
                               key={index}
-                              className={`p-4 rounded-lg border flex justify-between items-center ${unmappedParams?.length > 0
+                              className={`p-4 rounded-lg border flex justify-between items-center ${
+                                unmappedParams?.length > 0
                                   ? 'bg-red-50 border-red-200'
                                   : 'bg-gray-50 border-gray-200'
-                                }`}
+                              }`}
                             >
                               <div className="flex-1">
                                 <div className="flex items-center gap-2">
@@ -1868,62 +1872,62 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                                   Parameters:{' '}
                                   {func?.params && func.params.length > 0
                                     ? func.params
-                                      .map((param: string) => {
-                                        // Check with full parameter name (including prefix)
-                                        const paramLower =
-                                          param.toLowerCase();
-                                        const paramWithoutPrefix = param
-                                          .replace(
-                                            /^(redis\.|transactionDetails\.|dataCache\.|transaction\.|cache\.)/i,
-                                            '',
-                                          )
-                                          .toLowerCase();
-                                        const isMapped =
-                                          runtimeContextFields.includes(
-                                            paramWithoutPrefix,
-                                          ) ||
-                                          mappedDestinations.has(paramLower);
-                                        const isRuntime =
-                                          runtimeContextFields.includes(
-                                            paramWithoutPrefix,
+                                        .map((param: string) => {
+                                          // Check with full parameter name (including prefix)
+                                          const paramLower =
+                                            param.toLowerCase();
+                                          const paramWithoutPrefix = param
+                                            .replace(
+                                              /^(redis\.|transactionDetails\.|dataCache\.|transaction\.|cache\.)/i,
+                                              '',
+                                            )
+                                            .toLowerCase();
+                                          const isMapped =
+                                            runtimeContextFields.includes(
+                                              paramWithoutPrefix,
+                                            ) ||
+                                            mappedDestinations.has(paramLower);
+                                          const isRuntime =
+                                            runtimeContextFields.includes(
+                                              paramWithoutPrefix,
+                                            );
+                                          return (
+                                            <span
+                                              key={param}
+                                              className={
+                                                isRuntime
+                                                  ? 'text-blue-600'
+                                                  : isMapped
+                                                    ? 'text-green-600'
+                                                    : 'text-red-600 font-medium'
+                                              }
+                                              title={
+                                                isRuntime
+                                                  ? 'Runtime context field'
+                                                  : isMapped
+                                                    ? 'Mapped'
+                                                    : 'Not mapped - please create a mapping for this parameter'
+                                              }
+                                            >
+                                              {param}
+                                            </span>
                                           );
-                                        return (
-                                          <span
-                                            key={param}
-                                            className={
-                                              isRuntime
-                                                ? 'text-blue-600'
-                                                : isMapped
-                                                  ? 'text-green-600'
-                                                  : 'text-red-600 font-medium'
-                                            }
-                                            title={
-                                              isRuntime
-                                                ? 'Runtime context field'
-                                                : isMapped
-                                                  ? 'Mapped'
-                                                  : 'Not mapped - please create a mapping for this parameter'
-                                            }
-                                          >
-                                            {param}
-                                          </span>
-                                        );
-                                      })
-                                      .reduce(
-                                        (prev: any, curr: any) =>
-                                          [prev, ', ', curr] as any,
-                                      )
-                                    : func?.columns && func.columns.length > 0
-                                      ? func.columns
-                                        .map((column) => (
-                                          <span className="text-green-600">
-                                            {column.param}
-                                          </span>
-                                        ))
+                                        })
                                         .reduce(
-                                          (prev, curr) =>
+                                          (prev: any, curr: any) =>
                                             [prev, ', ', curr] as any,
                                         )
+                                    : func?.columns && func.columns.length > 0
+                                      ? func.columns
+                                          .map((column) => (
+                                            <span className="text-green-600">
+                                              {column.param}
+                                            </span>
+                                          ))
+                                          .reduce(
+                                            (prev, curr) =>
+                                              [prev, ', ', curr] as any,
+                                          )
                                       : 'No parameters'}
                                 </p>
                                 {unmappedParams?.length > 0 && (
@@ -2013,8 +2017,8 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                     endpointId={createdEndpoint?.id || existingConfig?.id}
                     contentType={
                       endpointData.contentType as
-                      | 'application/json'
-                      | 'application/xml'
+                        | 'application/json'
+                        | 'application/xml'
                     }
                     onSimulationComplete={setIsSimulationSuccess}
                     readOnly={readOnly}
@@ -2063,99 +2067,99 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
               !isExporter(user?.claims || []) &&
               !isPublisher(user?.claims || [])
             ) && (
-                <div
-                  className="flex items-center space-x-4"
-                  data-id="element-746"
-                >
-                  {currentStep !== 'payload' && (
-                    <MuiButton
-                      variant="outlined"
-                      sx={{ marginRight: '10px' }}
-                      onClick={() => {
-                        const currentIndex = steps.findIndex(
-                          (s) => s.id === currentStep,
-                        );
-                        if (currentIndex > 0) {
-                          // Clear any previous step-specific errors when navigating backward
-                          setError(null);
-                          setCurrentStep(steps[currentIndex - 1].id as any);
-                        }
-                      }}
-                      data-id="element-745"
-                    >
-                      Back
-                    </MuiButton>
-                  )}
-                  {!readOnly && (
-                    <MuiButton
-                      variant="contained"
-                      sx={{ background: '#2b7fff' }}
-                      onClick={async () => {
-                        await handleSaveAndNext();
-                      }}
-                      disabled={
-                        loading ||
-                        (currentStep === 'mapping' && !isMappingValid) ||
-                        (currentStep === 'functions' &&
-                          selectedFunctions.length > 0 &&
-                          validateFunctionParameters().length > 0) ||
-                        (currentStep === 'simulation' &&
-                          !isSimulationSuccess &&
-                          !readOnly) ||
-                        (currentStep !== 'payload' &&
-                          !createdEndpoint &&
-                          !existingConfig) ||
-                        (currentStep === 'deploy' &&
-                          !isApprover(user?.claims || []) &&
-                          !isExporter(user?.claims || []) &&
-                          (isStatus(
+              <div
+                className="flex items-center space-x-4"
+                data-id="element-746"
+              >
+                {currentStep !== 'payload' && (
+                  <MuiButton
+                    variant="outlined"
+                    sx={{ marginRight: '10px' }}
+                    onClick={() => {
+                      const currentIndex = steps.findIndex(
+                        (s) => s.id === currentStep,
+                      );
+                      if (currentIndex > 0) {
+                        // Clear any previous step-specific errors when navigating backward
+                        setError(null);
+                        setCurrentStep(steps[currentIndex - 1].id as any);
+                      }
+                    }}
+                    data-id="element-745"
+                  >
+                    Back
+                  </MuiButton>
+                )}
+                {!readOnly && (
+                  <MuiButton
+                    variant="contained"
+                    sx={{ background: '#2b7fff' }}
+                    onClick={async () => {
+                      await handleSaveAndNext();
+                    }}
+                    disabled={
+                      loading ||
+                      (currentStep === 'mapping' && !isMappingValid) ||
+                      (currentStep === 'functions' &&
+                        selectedFunctions.length > 0 &&
+                        validateFunctionParameters().length > 0) ||
+                      (currentStep === 'simulation' &&
+                        !isSimulationSuccess &&
+                        !readOnly) ||
+                      (currentStep !== 'payload' &&
+                        !createdEndpoint &&
+                        !existingConfig) ||
+                      (currentStep === 'deploy' &&
+                        !isApprover(user?.claims || []) &&
+                        !isExporter(user?.claims || []) &&
+                        (isStatus(
+                          createdEndpoint?.status,
+                          'STATUS_03_UNDER_REVIEW',
+                        ) ||
+                          isStatus(
                             createdEndpoint?.status,
+                            'STATUS_04_APPROVED',
+                          ) ||
+                          isStatus(
+                            existingConfig?.status,
                             'STATUS_03_UNDER_REVIEW',
                           ) ||
-                            isStatus(
-                              createdEndpoint?.status,
-                              'STATUS_04_APPROVED',
-                            ) ||
-                            isStatus(
-                              existingConfig?.status,
-                              'STATUS_03_UNDER_REVIEW',
-                            ) ||
-                            isStatus(
-                              existingConfig?.status,
-                              'STATUS_04_APPROVED',
-                            )) &&
-                          !isCloneCheck) ||
-                        (currentStep === 'deploy' &&
-                          isApprover(user?.claims || []) &&
-                          (isStatus(createdEndpoint?.status, '') ||
-                            isStatus(
-                              existingConfig?.status,
-                              'STATUS_04_APPROVED',
-                            ))) ||
-                        (currentStep === 'deploy' &&
-                          isExporter(user?.claims || []) &&
+                          isStatus(
+                            existingConfig?.status,
+                            'STATUS_04_APPROVED',
+                          )) &&
+                        !isCloneCheck) ||
+                      (currentStep === 'deploy' &&
+                        isApprover(user?.claims || []) &&
+                        (isStatus(createdEndpoint?.status, '') ||
+                          isStatus(
+                            existingConfig?.status,
+                            'STATUS_04_APPROVED',
+                          ))) ||
+                      (currentStep === 'deploy' &&
+                        isExporter(user?.claims || []) &&
+                        !isStatus(
+                          createdEndpoint?.status,
+                          'STATUS_04_APPROVED',
+                        ) &&
+                        !isStatus(existingConfig?.status, 'STATUS_04_APPROVED'))
+                    }
+                    data-id="element-749"
+                  >
+                    {loading
+                      ? 'Processing...'
+                      : currentStep === 'deploy'
+                        ? isApprover(user?.claims || []) &&
                           !isStatus(
                             createdEndpoint?.status,
                             'STATUS_04_APPROVED',
                           ) &&
-                          !isStatus(existingConfig?.status, 'STATUS_04_APPROVED'))
-                      }
-                      data-id="element-749"
-                    >
-                      {loading
-                        ? 'Processing...'
-                        : currentStep === 'deploy'
-                          ? isApprover(user?.claims || []) &&
-                            !isStatus(
-                              createdEndpoint?.status,
-                              'STATUS_04_APPROVED',
-                            ) &&
-                            !isStatus(
-                              existingConfig?.status,
-                              'STATUS_04_APPROVED',
-                            )
-                            ? 'Send for Deployment'
-                            : isExporter(user?.claims || []) &&
+                          !isStatus(
+                            existingConfig?.status,
+                            'STATUS_04_APPROVED',
+                          )
+                          ? 'Send for Deployment'
+                          : isExporter(user?.claims || []) &&
                               (isStatus(
                                 createdEndpoint?.status,
                                 'STATUS_04_APPROVED',
@@ -2164,85 +2168,85 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                                   existingConfig?.status,
                                   'STATUS_04_APPROVED',
                                 ))
-                              ? 'Export'
-                              : !isApprover(user?.claims || []) &&
+                            ? 'Export'
+                            : !isApprover(user?.claims || []) &&
                                 !isExporter(user?.claims || [])
-                                ? 'Send for Approval'
-                                : 'Configuration Approved'
-                          : 'Save and Next'}
-                    </MuiButton>
-                  )}
-                  {/* Show Next button for approvers, editors, and exporters in read-only mode on all steps */}
-                  {readOnly &&
-                    (isApprover(user?.claims || []) ||
-                      isEditor(user?.claims || []) ||
-                      isExporter(user?.claims || []) ||
-                      isPublisher(user?.claims || [])) && (
-                      <>
-                        {(() => {
-                          const currentIndex = steps.findIndex(
-                            (s) => s.id === currentStep,
-                          );
-                          return (
-                            <>
-                              {currentIndex < steps.length - 1 && (
-                                <MuiButton
-                                  variant="contained"
-                                  onClick={handleNext}
-                                  sx={{ background: '#2b7fff' }}
-                                >
-                                  Next
-                                </MuiButton>
+                              ? 'Send for Approval'
+                              : 'Configuration Approved'
+                        : 'Save and Next'}
+                  </MuiButton>
+                )}
+                {/* Show Next button for approvers, editors, and exporters in read-only mode on all steps */}
+                {readOnly &&
+                  (isApprover(user?.claims || []) ||
+                    isEditor(user?.claims || []) ||
+                    isExporter(user?.claims || []) ||
+                    isPublisher(user?.claims || [])) && (
+                    <>
+                      {(() => {
+                        const currentIndex = steps.findIndex(
+                          (s) => s.id === currentStep,
+                        );
+                        return (
+                          <>
+                            {currentIndex < steps.length - 1 && (
+                              <MuiButton
+                                variant="contained"
+                                onClick={handleNext}
+                                sx={{ background: '#2b7fff' }}
+                              >
+                                Next
+                              </MuiButton>
+                            )}
+                            {/* Show approver action buttons on the last step (deployment) */}
+                            {isApprover(user?.claims || []) &&
+                              currentStep === 'deploy' && (
+                                <>
+                                  {onRevertToEditor &&
+                                    !isStatus(
+                                      createdEndpoint?.status,
+                                      'STATUS_04_APPROVED',
+                                    ) &&
+                                    !isStatus(
+                                      existingConfig?.status,
+                                      'STATUS_06_EXPORTED',
+                                    ) && (
+                                      <MuiButton
+                                        type="button"
+                                        variant="contained"
+                                        sx={{
+                                          marginRight: '10px',
+                                          backgroundColor: '#ff474d',
+                                        }}
+                                        startIcon={<XCircle size={16} />}
+                                        onClick={onRevertToEditor}
+                                      >
+                                        Reject
+                                      </MuiButton>
+                                    )}
+                                  {onSendForDeployment &&
+                                    !isStatus(
+                                      createdEndpoint?.status,
+                                      'STATUS_04_APPROVED',
+                                    ) &&
+                                    !isStatus(
+                                      existingConfig?.status,
+                                      'STATUS_06_EXPORTED',
+                                    ) && (
+                                      <MuiButton
+                                        onClick={onSendForDeployment}
+                                        type="button"
+                                        variant="contained"
+                                        sx={{ backgroundColor: '#33ad74' }}
+                                        startIcon={<Check size={16} />}
+                                      >
+                                        Approve
+                                      </MuiButton>
+                                    )}
+                                </>
                               )}
-                              {/* Show approver action buttons on the last step (deployment) */}
-                              {isApprover(user?.claims || []) &&
-                                currentStep === 'deploy' && (
-                                  <>
-                                    {onRevertToEditor &&
-                                      !isStatus(
-                                        createdEndpoint?.status,
-                                        'STATUS_04_APPROVED',
-                                      ) &&
-                                      !isStatus(
-                                        existingConfig?.status,
-                                        'STATUS_06_EXPORTED',
-                                      ) && (
-                                        <MuiButton
-                                          type="button"
-                                          variant="contained"
-                                          sx={{
-                                            marginRight: '10px',
-                                            backgroundColor: '#ff474d',
-                                          }}
-                                          startIcon={<XCircle size={16} />}
-                                          onClick={onRevertToEditor}
-                                        >
-                                          Reject
-                                        </MuiButton>
-                                      )}
-                                    {onSendForDeployment &&
-                                      !isStatus(
-                                        createdEndpoint?.status,
-                                        'STATUS_04_APPROVED',
-                                      ) &&
-                                      !isStatus(
-                                        existingConfig?.status,
-                                        'STATUS_06_EXPORTED',
-                                      ) && (
-                                        <MuiButton
-                                          onClick={onSendForDeployment}
-                                          type="button"
-                                          variant="contained"
-                                          sx={{ backgroundColor: '#33ad74' }}
-                                          startIcon={<Check size={16} />}
-                                        >
-                                          Approve
-                                        </MuiButton>
-                                      )}
-                                  </>
-                                )}
-                              {/* Show export button for exporters on the last step */}
-                              {/* {isExporter(user?.claims || []) && currentStep === 'deploy' && (
+                            {/* Show export button for exporters on the last step */}
+                            {/* {isExporter(user?.claims || []) && currentStep === 'deploy' && (
                           <>
                             {onSendForDeployment && (isStatus(createdEndpoint?.status, 'STATUS_04_APPROVED') || isStatus(existingConfig?.status, 'STATUS_08_DEPLOYED')) && (
                               <Button
@@ -2255,51 +2259,51 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                             )}
                           </>
                         )} */}
-                              {/* Show submit for approval button for editors on the last step */}
-                              {isEditor(user?.claims || []) &&
-                                currentStep === 'deploy' && (
-                                  <>
-                                    {/* Show Submit for Approval button for draft configs or when config is ready for submission */}
-                                    {((!isStatus(
+                            {/* Show submit for approval button for editors on the last step */}
+                            {isEditor(user?.claims || []) &&
+                              currentStep === 'deploy' && (
+                                <>
+                                  {/* Show Submit for Approval button for draft configs or when config is ready for submission */}
+                                  {((!isStatus(
+                                    createdEndpoint?.status,
+                                    'STATUS_03_UNDER_REVIEW',
+                                  ) &&
+                                    !isStatus(
                                       createdEndpoint?.status,
+                                      'STATUS_04_APPROVED',
+                                    )) ||
+                                    (!isStatus(
+                                      existingConfig?.status,
                                       'STATUS_03_UNDER_REVIEW',
                                     ) &&
                                       !isStatus(
-                                        createdEndpoint?.status,
+                                        existingConfig?.status,
                                         'STATUS_04_APPROVED',
                                       )) ||
-                                      (!isStatus(
-                                        existingConfig?.status,
-                                        'STATUS_03_UNDER_REVIEW',
-                                      ) &&
-                                        !isStatus(
-                                          existingConfig?.status,
-                                          'STATUS_04_APPROVED',
-                                        )) ||
-                                      (!createdEndpoint?.status &&
-                                        !existingConfig?.status)) && (
-                                        <Button
-                                          variant="primary"
-                                          onClick={async () => {
-                                            await handleSaveAndNext();
-                                          }}
-                                          disabled={loading}
-                                          className="!pb-[6px] !pt-[5px] bg-[#2b7fff] text-white"
-                                        >
-                                          {loading
-                                            ? 'Processing...'
-                                            : 'Submit for Approval'}
-                                        </Button>
-                                      )}
-                                  </>
-                                )}
-                            </>
-                          );
-                        })()}
-                      </>
-                    )}
-                </div>
-              )}
+                                    (!createdEndpoint?.status &&
+                                      !existingConfig?.status)) && (
+                                    <Button
+                                      variant="primary"
+                                      onClick={async () => {
+                                        await handleSaveAndNext();
+                                      }}
+                                      disabled={loading}
+                                      className="!pb-[6px] !pt-[5px] bg-[#2b7fff] text-white"
+                                    >
+                                      {loading
+                                        ? 'Processing...'
+                                        : 'Submit for Approval'}
+                                    </Button>
+                                  )}
+                                </>
+                              )}
+                          </>
+                        );
+                      })()}
+                    </>
+                  )}
+              </div>
+            )}
           </div>
         </div>
       </Backdrop>
