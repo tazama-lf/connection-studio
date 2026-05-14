@@ -27,10 +27,7 @@ const DEMSModule: React.FC = () => {
 
   // Disable body scroll when any modal is open
   useEffect(() => {
-    if (
-      editingEndpointId !== null ||
-      showVersionHistoryModal
-    ) {
+    if (editingEndpointId !== null || showVersionHistoryModal) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = 'unset';
@@ -158,10 +155,8 @@ const DEMSModule: React.FC = () => {
           config={selectedConfig}
         />
       )}
-
     </div>
   );
 };
 
 export default DEMSModule;
-
