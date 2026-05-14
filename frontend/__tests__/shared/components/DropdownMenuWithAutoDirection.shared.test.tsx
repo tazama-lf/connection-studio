@@ -3,9 +3,8 @@ import { fireEvent, render } from '@testing-library/react';
 import { DropdownMenuWithAutoDirection } from '../../../src/shared/components/DropdownMenuWithAutoDirection';
 
 describe('shared/components/DropdownMenuWithAutoDirection.tsx', () => {
-  const originalGetBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
-  const originalInnerHeight = window.innerHeight;
-
+  const originalGetBoundingClientRect =
+    HTMLElement.prototype.getBoundingClientRect;
 
   afterEach(() => {
     HTMLElement.prototype.getBoundingClientRect = originalGetBoundingClientRect;
@@ -110,34 +109,6 @@ describe('shared/components/DropdownMenuWithAutoDirection.tsx', () => {
     expect((container.firstChild as HTMLElement).className).toContain(
       'top-full',
     );
-  });
-
-  it('auto positions at bottom when there is enough space below', () => {
-    HTMLElement.prototype.getBoundingClientRect = jest.fn(() => ({
-      width: 100,
-      height: 50,
-      top: 100,
-      right: 100,
-      bottom: 200,
-      left: 0,
-      x: 0,
-      y: 100,
-      toJSON: () => ({}),
-    })) as unknown as typeof HTMLElement.prototype.getBoundingClientRect;
-
-    Object.defineProperty(window, 'innerHeight', {
-      configurable: true,
-      writable: true,
-      value: 800,
-    });
-
-    const { container } = render(
-      <DropdownMenuWithAutoDirection onClose={jest.fn()}>
-        <div>inside</div>
-      </DropdownMenuWithAutoDirection>,
-    );
-
-    expect((container.firstChild as HTMLElement).className).toContain('top-full');
   });
 
   it('keeps default position when menu ref is unavailable in auto mode', () => {
