@@ -565,7 +565,12 @@ const clonePullJob = async (
   setIsCloning: (cloning: boolean) => void,
 ): Promise<DataEnrichmentJobResponse | null> => {
   const sourceType = determineSourceType(job);
-  const connectionData = validatePullJobConnection(job, sourceType, showError, setIsCloning);
+  const connectionData = validatePullJobConnection(
+    job,
+    sourceType,
+    showError,
+    setIsCloning,
+  );
 
   if (!connectionData) {
     return null;
