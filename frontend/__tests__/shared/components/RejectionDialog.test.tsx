@@ -16,12 +16,16 @@ describe('RejectionDialog', () => {
 
   it('renders the dialog when open', () => {
     render(<RejectionDialog {...baseProps} />);
-    expect(screen.getByText('Rejection Confirmation Required!')).toBeInTheDocument();
+    expect(
+      screen.getByText('Rejection Confirmation Required!'),
+    ).toBeInTheDocument();
   });
 
   it('does not render when closed', () => {
     render(<RejectionDialog {...baseProps} isOpen={false} />);
-    expect(screen.queryByText('Rejection Confirmation Required!')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Rejection Confirmation Required!'),
+    ).not.toBeInTheDocument();
   });
 
   it('shows the config name', () => {

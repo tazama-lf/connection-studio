@@ -36,19 +36,27 @@ describe('SimulationPanel', () => {
       <SimulationPanel endpointId={10} onSimulationComplete={jest.fn()} />,
     );
 
-    expect(screen.getByRole('button', { name: 'Run Simulation' })).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Run Simulation' }),
+    ).toBeDisabled();
   });
 
   it('shows validation error for invalid JSON payload', async () => {
     const onSimulationComplete = jest.fn();
 
     render(
-      <SimulationPanel endpointId={10} onSimulationComplete={onSimulationComplete} />,
+      <SimulationPanel
+        endpointId={10}
+        onSimulationComplete={onSimulationComplete}
+      />,
     );
 
-    fireEvent.change(screen.getByPlaceholderText(/Enter or upload a test payload/i), {
-      target: { value: '{ invalid json' },
-    });
+    fireEvent.change(
+      screen.getByPlaceholderText(/Enter or upload a test payload/i),
+      {
+        target: { value: '{ invalid json' },
+      },
+    );
 
     fireEvent.click(screen.getByRole('button', { name: 'Run Simulation' }));
 
@@ -80,12 +88,18 @@ describe('SimulationPanel', () => {
     });
 
     render(
-      <SimulationPanel endpointId={10} onSimulationComplete={onSimulationComplete} />,
+      <SimulationPanel
+        endpointId={10}
+        onSimulationComplete={onSimulationComplete}
+      />,
     );
 
-    fireEvent.change(screen.getByPlaceholderText(/Enter or upload a test payload/i), {
-      target: { value: '{"name":"john"}' },
-    });
+    fireEvent.change(
+      screen.getByPlaceholderText(/Enter or upload a test payload/i),
+      {
+        target: { value: '{"name":"john"}' },
+      },
+    );
 
     fireEvent.click(screen.getByRole('button', { name: 'Run Simulation' }));
 
@@ -130,9 +144,12 @@ describe('SimulationPanel', () => {
       />,
     );
 
-    fireEvent.change(screen.getByPlaceholderText(/Enter or upload a test payload/i), {
-      target: { value: '<root><amount>5</amount></root>' },
-    });
+    fireEvent.change(
+      screen.getByPlaceholderText(/Enter or upload a test payload/i),
+      {
+        target: { value: '<root><amount>5</amount></root>' },
+      },
+    );
 
     fireEvent.click(screen.getByRole('button', { name: 'Run Simulation' }));
 
@@ -155,9 +172,12 @@ describe('SimulationPanel', () => {
       <SimulationPanel endpointId={22} onSimulationComplete={jest.fn()} />,
     );
 
-    fireEvent.change(screen.getByPlaceholderText(/Enter or upload a test payload/i), {
-      target: { value: '{"x":1}' },
-    });
+    fireEvent.change(
+      screen.getByPlaceholderText(/Enter or upload a test payload/i),
+      {
+        target: { value: '{"x":1}' },
+      },
+    );
 
     fireEvent.click(screen.getByRole('button', { name: 'Run Simulation' }));
 
@@ -166,21 +186,35 @@ describe('SimulationPanel', () => {
 
   it('enforces readOnly for non-approver users', () => {
     render(
-      <SimulationPanel endpointId={30} readOnly={true} onSimulationComplete={jest.fn()} />,
+      <SimulationPanel
+        endpointId={30}
+        readOnly={true}
+        onSimulationComplete={jest.fn()}
+      />,
     );
 
-    expect(screen.getByPlaceholderText(/Enter or upload a test payload/i)).toHaveAttribute('readonly');
-    expect(screen.getByRole('button', { name: 'Run Simulation' })).toBeDisabled();
+    expect(
+      screen.getByPlaceholderText(/Enter or upload a test payload/i),
+    ).toHaveAttribute('readonly');
+    expect(
+      screen.getByRole('button', { name: 'Run Simulation' }),
+    ).toBeDisabled();
   });
 
   it('allows approver user even when readOnly is true', () => {
     mockedIsApprover.mockReturnValue(true);
 
     render(
-      <SimulationPanel endpointId={30} readOnly={true} onSimulationComplete={jest.fn()} />,
+      <SimulationPanel
+        endpointId={30}
+        readOnly={true}
+        onSimulationComplete={jest.fn()}
+      />,
     );
 
-    expect(screen.getByPlaceholderText(/Enter or upload a test payload/i)).not.toHaveAttribute('readonly');
+    expect(
+      screen.getByPlaceholderText(/Enter or upload a test payload/i),
+    ).not.toHaveAttribute('readonly');
   });
 
   it('loads payload content when a file is uploaded', async () => {
@@ -190,15 +224,24 @@ describe('SimulationPanel', () => {
       <SimulationPanel endpointId={10} onSimulationComplete={jest.fn()} />,
     );
 
-    const fileInput = document.getElementById('test-payload-upload') as HTMLInputElement;
+    const fileInput = document.getElementById(
+      'test-payload-upload',
+    ) as HTMLInputElement;
     expect(fileInput).toBeTruthy();
 
-    const mockFile = new File([fileContent], 'payload.json', { type: 'application/json' });
-
-    const readAsTextSpy = jest.spyOn(FileReader.prototype, 'readAsText').mockImplementation(function(this: FileReader) {
-      Object.defineProperty(this, 'result', { value: fileContent, configurable: true });
-      this.onload?.({ target: this } as ProgressEvent<FileReader>);
+    const mockFile = new File([fileContent], 'payload.json', {
+      type: 'application/json',
     });
+
+    const readAsTextSpy = jest
+      .spyOn(FileReader.prototype, 'readAsText')
+      .mockImplementation(function (this: FileReader) {
+        Object.defineProperty(this, 'result', {
+          value: fileContent,
+          configurable: true,
+        });
+        this.onload?.({ target: this } as ProgressEvent<FileReader>);
+      });
 
     Object.defineProperty(fileInput, 'files', {
       value: [mockFile],
@@ -221,7 +264,9 @@ describe('SimulationPanel', () => {
       <SimulationPanel endpointId={10} onSimulationComplete={jest.fn()} />,
     );
 
-    const fileInput = document.getElementById('test-payload-upload') as HTMLInputElement;
+    const fileInput = document.getElementById(
+      'test-payload-upload',
+    ) as HTMLInputElement;
     // Fire change event with no files
     Object.defineProperty(fileInput, 'files', {
       value: [],
@@ -236,8 +281,12 @@ describe('SimulationPanel', () => {
       <SimulationPanel endpointId={10} onSimulationComplete={jest.fn()} />,
     );
 
-    const fileInput = document.getElementById('test-payload-upload') as HTMLInputElement;
-    const clickSpy = jest.spyOn(fileInput, 'click').mockImplementation(() => {});
+    const fileInput = document.getElementById(
+      'test-payload-upload',
+    ) as HTMLInputElement;
+    const clickSpy = jest
+      .spyOn(fileInput, 'click')
+      .mockImplementation(() => {});
 
     fireEvent.click(screen.getByRole('button', { name: /Import Test File/i }));
 
@@ -248,22 +297,33 @@ describe('SimulationPanel', () => {
   it('handles null user (claims ?? [] fallback)', () => {
     mockedUseAuth.mockReturnValue({ user: null });
     mockedIsApprover.mockReturnValue(false);
-    render(<SimulationPanel endpointId={10} onSimulationComplete={jest.fn()} />);
-    expect(screen.getByRole('button', { name: 'Run Simulation' })).toBeDisabled();
+    render(
+      <SimulationPanel endpointId={10} onSimulationComplete={jest.fn()} />,
+    );
+    expect(
+      screen.getByRole('button', { name: 'Run Simulation' }),
+    ).toBeDisabled();
   });
 
   it('shows unknown simulation error when API rejects with non-Error', async () => {
     mockedRunSimulation.mockRejectedValueOnce('string-error');
 
-    render(<SimulationPanel endpointId={22} onSimulationComplete={jest.fn()} />);
+    render(
+      <SimulationPanel endpointId={22} onSimulationComplete={jest.fn()} />,
+    );
 
-    fireEvent.change(screen.getByPlaceholderText(/Enter or upload a test payload/i), {
-      target: { value: '{"x":1}' },
-    });
+    fireEvent.change(
+      screen.getByPlaceholderText(/Enter or upload a test payload/i),
+      {
+        target: { value: '{"x":1}' },
+      },
+    );
 
     fireEvent.click(screen.getByRole('button', { name: 'Run Simulation' }));
 
-    expect(await screen.findByText('Unknown simulation error')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Unknown simulation error'),
+    ).toBeInTheDocument();
   });
 
   it('renders stage with FAILED status and error with path field', async () => {
@@ -273,14 +333,24 @@ describe('SimulationPanel', () => {
       stages: [{ name: 'Stage1', status: 'FAILED' }],
       tcsResult: {},
       transformedPayload: {},
-      summary: { passedStages: 0, totalStages: 1, failedStages: 1, mappingsApplied: 0 },
+      summary: {
+        passedStages: 0,
+        totalStages: 1,
+        failedStages: 1,
+        mappingsApplied: 0,
+      },
     });
 
-    render(<SimulationPanel endpointId={10} onSimulationComplete={jest.fn()} />);
+    render(
+      <SimulationPanel endpointId={10} onSimulationComplete={jest.fn()} />,
+    );
 
-    fireEvent.change(screen.getByPlaceholderText(/Enter or upload a test payload/i), {
-      target: { value: '{"x":1}' },
-    });
+    fireEvent.change(
+      screen.getByPlaceholderText(/Enter or upload a test payload/i),
+      {
+        target: { value: '{"x":1}' },
+      },
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Run Simulation' }));
 
     await waitFor(() => {
@@ -296,14 +366,24 @@ describe('SimulationPanel', () => {
       stages: [{ name: 'Stage X', status: 'SKIPPED' }],
       tcsResult: {},
       transformedPayload: {},
-      summary: { passedStages: 1, totalStages: 1, failedStages: 0, mappingsApplied: 0 },
+      summary: {
+        passedStages: 1,
+        totalStages: 1,
+        failedStages: 0,
+        mappingsApplied: 0,
+      },
     });
 
-    render(<SimulationPanel endpointId={10} onSimulationComplete={jest.fn()} />);
+    render(
+      <SimulationPanel endpointId={10} onSimulationComplete={jest.fn()} />,
+    );
 
-    fireEvent.change(screen.getByPlaceholderText(/Enter or upload a test payload/i), {
-      target: { value: '{"x":1}' },
-    });
+    fireEvent.change(
+      screen.getByPlaceholderText(/Enter or upload a test payload/i),
+      {
+        target: { value: '{"x":1}' },
+      },
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Run Simulation' }));
 
     await waitFor(() => {
@@ -319,14 +399,24 @@ describe('SimulationPanel', () => {
       stages: [],
       tcsResult: {},
       transformedPayload: {},
-      summary: { passedStages: 0, totalStages: 0, failedStages: 0, mappingsApplied: 0 },
+      summary: {
+        passedStages: 0,
+        totalStages: 0,
+        failedStages: 0,
+        mappingsApplied: 0,
+      },
     });
 
-    render(<SimulationPanel endpointId={10} onSimulationComplete={jest.fn()} />);
+    render(
+      <SimulationPanel endpointId={10} onSimulationComplete={jest.fn()} />,
+    );
 
-    fireEvent.change(screen.getByPlaceholderText(/Enter or upload a test payload/i), {
-      target: { value: '{"x":1}' },
-    });
+    fireEvent.change(
+      screen.getByPlaceholderText(/Enter or upload a test payload/i),
+      {
+        target: { value: '{"x":1}' },
+      },
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Run Simulation' }));
 
     await waitFor(() => {
@@ -344,7 +434,12 @@ describe('SimulationPanel', () => {
       stages: [],
       tcsResult: {},
       transformedPayload: {},
-      summary: { passedStages: 1, totalStages: 1, failedStages: 0, mappingsApplied: 0 },
+      summary: {
+        passedStages: 1,
+        totalStages: 1,
+        failedStages: 0,
+        mappingsApplied: 0,
+      },
     });
 
     render(
@@ -352,12 +447,15 @@ describe('SimulationPanel', () => {
         endpointId={10}
         onSimulationComplete={jest.fn()}
         readOnly={true}
-      />
+      />,
     );
 
-    fireEvent.change(screen.getByPlaceholderText(/Enter or upload a test payload/i), {
-      target: { value: '{"x":1}' },
-    });
+    fireEvent.change(
+      screen.getByPlaceholderText(/Enter or upload a test payload/i),
+      {
+        target: { value: '{"x":1}' },
+      },
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Run Simulation' }));
 
     await waitFor(() => {
@@ -372,7 +470,12 @@ describe('SimulationPanel', () => {
       stages: [],
       tcsResult: {},
       transformedPayload: {},
-      summary: { passedStages: 1, totalStages: 1, failedStages: 0, mappingsApplied: 0 },
+      summary: {
+        passedStages: 1,
+        totalStages: 1,
+        failedStages: 0,
+        mappingsApplied: 0,
+      },
     });
 
     render(
@@ -380,12 +483,15 @@ describe('SimulationPanel', () => {
         endpointId={10}
         contentType="application/xml"
         onSimulationComplete={jest.fn()}
-      />
+      />,
     );
 
-    fireEvent.change(screen.getByPlaceholderText(/Enter or upload a test payload/i), {
-      target: { value: '<root><item>1</item></root>' },
-    });
+    fireEvent.change(
+      screen.getByPlaceholderText(/Enter or upload a test payload/i),
+      {
+        target: { value: '<root><item>1</item></root>' },
+      },
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Run Simulation' }));
 
     await waitFor(() => {
@@ -394,7 +500,7 @@ describe('SimulationPanel', () => {
           configId: 10,
           payloadType: 'json',
           testPayload: expect.stringContaining('root'),
-        })
+        }),
       );
     });
   });
@@ -409,11 +515,16 @@ describe('SimulationPanel', () => {
       summary: {},
     });
 
-    render(<SimulationPanel endpointId={10} onSimulationComplete={jest.fn()} />);
+    render(
+      <SimulationPanel endpointId={10} onSimulationComplete={jest.fn()} />,
+    );
 
-    fireEvent.change(screen.getByPlaceholderText(/Enter or upload a test payload/i), {
-      target: { value: '{"x":1}' },
-    });
+    fireEvent.change(
+      screen.getByPlaceholderText(/Enter or upload a test payload/i),
+      {
+        target: { value: '{"x":1}' },
+      },
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Run Simulation' }));
 
     await waitFor(() => {
@@ -438,7 +549,7 @@ describe('SimulationPanel', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText('No endpoint ID provided for simulation')
+        screen.getByText('No endpoint ID provided for simulation'),
       ).toBeInTheDocument();
     });
 
@@ -453,13 +564,15 @@ describe('SimulationPanel', () => {
       ));
 
     render(
-      <SimulationPanel endpointId={10} onSimulationComplete={jest.fn()} />
+      <SimulationPanel endpointId={10} onSimulationComplete={jest.fn()} />,
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Run Simulation' }));
 
     await waitFor(() => {
-      expect(screen.getByText('Please enter a test payload')).toBeInTheDocument();
+      expect(
+        screen.getByText('Please enter a test payload'),
+      ).toBeInTheDocument();
     });
 
     buttonSpy.mockRestore();

@@ -31,42 +31,82 @@ describe('ToastComponent - rendering', () => {
   });
 
   it('renders success type', () => {
-    render(<ToastComponent toast={{ ...baseToast, type: 'success' }} onRemove={jest.fn()} />);
+    render(
+      <ToastComponent
+        toast={{ ...baseToast, type: 'success' }}
+        onRemove={jest.fn()}
+      />,
+    );
     expect(screen.getByText('Success Title')).toBeInTheDocument();
   });
 
   it('renders error type', () => {
-    render(<ToastComponent toast={{ ...baseToast, type: 'error', title: 'Error!' }} onRemove={jest.fn()} />);
+    render(
+      <ToastComponent
+        toast={{ ...baseToast, type: 'error', title: 'Error!' }}
+        onRemove={jest.fn()}
+      />,
+    );
     expect(screen.getByText('Error!')).toBeInTheDocument();
   });
 
   it('renders warning type', () => {
-    render(<ToastComponent toast={{ ...baseToast, type: 'warning', title: 'Warning!' }} onRemove={jest.fn()} />);
+    render(
+      <ToastComponent
+        toast={{ ...baseToast, type: 'warning', title: 'Warning!' }}
+        onRemove={jest.fn()}
+      />,
+    );
     expect(screen.getByText('Warning!')).toBeInTheDocument();
   });
 
   it('renders info type', () => {
-    render(<ToastComponent toast={{ ...baseToast, type: 'info', title: 'Info!' }} onRemove={jest.fn()} />);
+    render(
+      <ToastComponent
+        toast={{ ...baseToast, type: 'info', title: 'Info!' }}
+        onRemove={jest.fn()}
+      />,
+    );
     expect(screen.getByText('Info!')).toBeInTheDocument();
   });
 
   it('applies green background for success', () => {
-    const { container } = render(<ToastComponent toast={{ ...baseToast, type: 'success' }} onRemove={jest.fn()} />);
+    const { container } = render(
+      <ToastComponent
+        toast={{ ...baseToast, type: 'success' }}
+        onRemove={jest.fn()}
+      />,
+    );
     expect(container.innerHTML).toContain('bg-green-50');
   });
 
   it('applies red background for error', () => {
-    const { container } = render(<ToastComponent toast={{ ...baseToast, type: 'error' }} onRemove={jest.fn()} />);
+    const { container } = render(
+      <ToastComponent
+        toast={{ ...baseToast, type: 'error' }}
+        onRemove={jest.fn()}
+      />,
+    );
     expect(container.innerHTML).toContain('bg-red-50');
   });
 
   it('applies yellow background for warning', () => {
-    const { container } = render(<ToastComponent toast={{ ...baseToast, type: 'warning' }} onRemove={jest.fn()} />);
+    const { container } = render(
+      <ToastComponent
+        toast={{ ...baseToast, type: 'warning' }}
+        onRemove={jest.fn()}
+      />,
+    );
     expect(container.innerHTML).toContain('bg-yellow-50');
   });
 
   it('applies blue background for info', () => {
-    const { container } = render(<ToastComponent toast={{ ...baseToast, type: 'info' }} onRemove={jest.fn()} />);
+    const { container } = render(
+      <ToastComponent
+        toast={{ ...baseToast, type: 'info' }}
+        onRemove={jest.fn()}
+      />,
+    );
     expect(container.innerHTML).toContain('bg-blue-50');
   });
 

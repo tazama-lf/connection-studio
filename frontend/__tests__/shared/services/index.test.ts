@@ -3,4 +3,3 @@ describe('shared/services/index.ts', () => {
     await expect(import('@/shared/services/index')).resolves.toBeDefined();
   });
 });
-

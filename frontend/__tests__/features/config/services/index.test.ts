@@ -12,4 +12,3 @@ describe('features/config/services/index.ts', () => {
     expect(typeof namedExports.ConfigApiService).toBe('function');
   });
 });
-

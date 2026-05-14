@@ -1,8 +1,13 @@
-import { getConnectionType, formatJSON } from '@/features/data-enrichment/utils/index';
+import {
+  getConnectionType,
+  formatJSON,
+} from '@/features/data-enrichment/utils/index';
 
 describe('features/data-enrichment/utils/index.ts', () => {
   it('module loads', async () => {
-    await expect(import('@/features/data-enrichment/utils/index')).resolves.toBeDefined();
+    await expect(
+      import('@/features/data-enrichment/utils/index'),
+    ).resolves.toBeDefined();
   });
 
   describe('getConnectionType', () => {
@@ -57,5 +62,3 @@ describe('features/data-enrichment/utils/index.ts', () => {
     });
   });
 });
-
-

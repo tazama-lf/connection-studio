@@ -36,4 +36,3 @@ describe('features/cron/constants/index.ts', () => {
     expect(CRON_JOB_ERROR_MESSAGES.NETWORK_ERROR).toMatch(/connect/i);
   });
 });
-

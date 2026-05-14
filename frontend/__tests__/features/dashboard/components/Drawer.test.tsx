@@ -16,17 +16,16 @@ const theme = {
   },
 };
 
-jest.mock('@mui/material/Drawer', () => (props: any) => <div data-testid="mui-drawer" {...props} />);
+jest.mock('@mui/material/Drawer', () => (props: any) => (
+  <div data-testid="mui-drawer" {...props} />
+));
 
 jest.mock('@mui/material/styles', () => ({
-  styled:
-    (_Base: any, opts: any) =>
-    (styleFn: any) =>
-    (props: any) => {
-      capturedOptions = opts;
-      styleCalls.push(styleFn({ ...props, theme }));
-      return <div data-testid="styled-drawer" {...props} />;
-    },
+  styled: (_Base: any, opts: any) => (styleFn: any) => (props: any) => {
+    capturedOptions = opts;
+    styleCalls.push(styleFn({ ...props, theme }));
+    return <div data-testid="styled-drawer" {...props} />;
+  },
 }));
 
 import Drawer from '../../../../src/features/dashboard/components/Drawer';
@@ -47,7 +46,9 @@ describe('features/dashboard/components/Drawer.tsx', () => {
 
     const latest = styleCalls.at(-1) || {};
     expect(latest['& .MuiDrawer-paper'].width).toBe('calc(56px + 1px)');
-    expect(latest['& .MuiDrawer-paper']['up-sm'].width).toBe('calc(64px + 1px)');
+    expect(latest['& .MuiDrawer-paper']['up-sm'].width).toBe(
+      'calc(64px + 1px)',
+    );
   });
 
   it('filters open prop using shouldForwardProp', () => {

@@ -5,7 +5,8 @@ jest.mock('../../../../src/features/dashboard/Dashboard', () => ({
 
 describe('features/dashboard/pages/Dashboard.tsx', () => {
   it('re-exports dashboard page default from parent module', async () => {
-    const pageMod = await import('../../../../src/features/dashboard/pages/Dashboard');
+    const pageMod =
+      await import('../../../../src/features/dashboard/pages/Dashboard');
 
     expect(pageMod.default).toBe('DashboardStub');
   });

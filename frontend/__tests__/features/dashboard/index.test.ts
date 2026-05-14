@@ -10,4 +10,3 @@ describe('features/dashboard/index.ts', () => {
     expect(mod.Dashboard).toBe('DashboardPageStub');
   });
 });
-

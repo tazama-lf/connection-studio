@@ -33,7 +33,9 @@ jest.mock('@mui/x-data-grid', () => ({
 
 describe('common/Tables/Pagination/index.tsx', () => {
   it('renders pagination using grid page count and maps page index changes', () => {
-    render(<Pagination page={1} onPageChange={onPageChange} className="pager" />);
+    render(
+      <Pagination page={1} onPageChange={onPageChange} className="pager" />,
+    );
 
     const pagination = screen.getByTestId('mui-pagination');
     expect(pagination).toHaveAttribute('data-count', '8');

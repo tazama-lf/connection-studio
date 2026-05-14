@@ -27,4 +27,3 @@ describe('shared/config/app.config.ts', () => {
     expect(FEATURE_FLAGS.enableCRONJobs).toBe(true);
   });
 });
-

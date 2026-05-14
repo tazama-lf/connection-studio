@@ -9,27 +9,37 @@ describe('features/cron/utils/index.ts', () => {
   describe('getCronJobErrorMessage', () => {
     it('should return status-based message for 400 error', () => {
       const error = { response: { status: 400 } };
-      expect(getCronJobErrorMessage(error)).toBe(CRON_JOB_ERROR_MESSAGES.INVALID_INPUT);
+      expect(getCronJobErrorMessage(error)).toBe(
+        CRON_JOB_ERROR_MESSAGES.INVALID_INPUT,
+      );
     });
 
     it('should return status-based message for 409 conflict error', () => {
       const error = { response: { status: 409 } };
-      expect(getCronJobErrorMessage(error)).toBe(CRON_JOB_ERROR_MESSAGES.DUPLICATE_NAME);
+      expect(getCronJobErrorMessage(error)).toBe(
+        CRON_JOB_ERROR_MESSAGES.DUPLICATE_NAME,
+      );
     });
 
     it('should return status-based message for 401 unauthorized error', () => {
       const error = { response: { status: 401 } };
-      expect(getCronJobErrorMessage(error)).toBe(CRON_JOB_ERROR_MESSAGES.UNAUTHORIZED);
+      expect(getCronJobErrorMessage(error)).toBe(
+        CRON_JOB_ERROR_MESSAGES.UNAUTHORIZED,
+      );
     });
 
     it('should return status-based message for 403 forbidden error', () => {
       const error = { response: { status: 403 } };
-      expect(getCronJobErrorMessage(error)).toBe(CRON_JOB_ERROR_MESSAGES.UNAUTHORIZED);
+      expect(getCronJobErrorMessage(error)).toBe(
+        CRON_JOB_ERROR_MESSAGES.UNAUTHORIZED,
+      );
     });
 
     it('should return status-based message for 500+ server error', () => {
       const error = { response: { status: 502 } };
-      expect(getCronJobErrorMessage(error)).toBe(CRON_JOB_ERROR_MESSAGES.SERVER_ERROR);
+      expect(getCronJobErrorMessage(error)).toBe(
+        CRON_JOB_ERROR_MESSAGES.SERVER_ERROR,
+      );
     });
 
     it('should return custom message from response.data.message when available', () => {
@@ -44,12 +54,16 @@ describe('features/cron/utils/index.ts', () => {
 
     it('should return message from error.message for fetch errors', () => {
       const error = { message: 'Failed to fetch' };
-      expect(getCronJobErrorMessage(error)).toBe(CRON_JOB_ERROR_MESSAGES.NETWORK_ERROR);
+      expect(getCronJobErrorMessage(error)).toBe(
+        CRON_JOB_ERROR_MESSAGES.NETWORK_ERROR,
+      );
     });
 
     it('should return message from error.message for network errors', () => {
       const error = { message: 'network timeout' }; // Use lowercase 'network'
-      expect(getCronJobErrorMessage(error)).toBe(CRON_JOB_ERROR_MESSAGES.NETWORK_ERROR);
+      expect(getCronJobErrorMessage(error)).toBe(
+        CRON_JOB_ERROR_MESSAGES.NETWORK_ERROR,
+      );
     });
 
     it('should return error message directly if no fetch/network keywords', () => {
@@ -58,14 +72,20 @@ describe('features/cron/utils/index.ts', () => {
     });
 
     it('should return GENERAL message for unknown error type', () => {
-      expect(getCronJobErrorMessage(null)).toBe(CRON_JOB_ERROR_MESSAGES.GENERAL);
-      expect(getCronJobErrorMessage(undefined)).toBe(CRON_JOB_ERROR_MESSAGES.GENERAL);
+      expect(getCronJobErrorMessage(null)).toBe(
+        CRON_JOB_ERROR_MESSAGES.GENERAL,
+      );
+      expect(getCronJobErrorMessage(undefined)).toBe(
+        CRON_JOB_ERROR_MESSAGES.GENERAL,
+      );
       expect(getCronJobErrorMessage({})).toBe(CRON_JOB_ERROR_MESSAGES.GENERAL);
     });
 
     it('should handle error without message field at response.data', () => {
       const error = { response: { status: 499, data: {} } };
-      expect(getCronJobErrorMessage(error)).toBe(CRON_JOB_ERROR_MESSAGES.GENERAL);
+      expect(getCronJobErrorMessage(error)).toBe(
+        CRON_JOB_ERROR_MESSAGES.GENERAL,
+      );
     });
   });
 
@@ -152,7 +172,9 @@ describe('features/cron/utils/index.ts', () => {
         iterations: 10,
       };
 
-      await expect(validationSchema.validate(validData)).resolves.toEqual(validData);
+      await expect(validationSchema.validate(validData)).resolves.toEqual(
+        validData,
+      );
     });
 
     it('should reject empty name', async () => {
@@ -162,7 +184,9 @@ describe('features/cron/utils/index.ts', () => {
         iterations: 10,
       };
 
-      await expect(validationSchema.validate(invalidData)).rejects.toThrow('Job name is required');
+      await expect(validationSchema.validate(invalidData)).rejects.toThrow(
+        'Job name is required',
+      );
     });
 
     it('should reject name shorter than 2 characters', async () => {
@@ -173,7 +197,7 @@ describe('features/cron/utils/index.ts', () => {
       };
 
       await expect(validationSchema.validate(invalidData)).rejects.toThrow(
-        'Job name must be at least 2 characters'
+        'Job name must be at least 2 characters',
       );
     });
 
@@ -185,7 +209,7 @@ describe('features/cron/utils/index.ts', () => {
       };
 
       await expect(validationSchema.validate(invalidData)).rejects.toThrow(
-        'Job name must not exceed 50 characters'
+        'Job name must not exceed 50 characters',
       );
     });
 
@@ -196,7 +220,9 @@ describe('features/cron/utils/index.ts', () => {
         iterations: 10,
       };
 
-      await expect(validationSchema.validate(invalidData)).rejects.toThrow('Cron expression is required');
+      await expect(validationSchema.validate(invalidData)).rejects.toThrow(
+        'Cron expression is required',
+      );
     });
 
     it('should reject missing iterations', async () => {
@@ -206,7 +232,9 @@ describe('features/cron/utils/index.ts', () => {
         iterations: undefined,
       };
 
-      await expect(validationSchema.validate(invalidData)).rejects.toThrow('Iterations is required');
+      await expect(validationSchema.validate(invalidData)).rejects.toThrow(
+        'Iterations is required',
+      );
     });
 
     it('should reject iterations less than 1', async () => {
@@ -217,7 +245,7 @@ describe('features/cron/utils/index.ts', () => {
       };
 
       await expect(validationSchema.validate(invalidData)).rejects.toThrow(
-        'Iterations must be at least 1'
+        'Iterations must be at least 1',
       );
     });
 
@@ -229,7 +257,7 @@ describe('features/cron/utils/index.ts', () => {
       };
 
       await expect(validationSchema.validate(invalidData)).rejects.toThrow(
-        'Iterations must not exceed 1000'
+        'Iterations must not exceed 1000',
       );
     });
 
@@ -241,7 +269,7 @@ describe('features/cron/utils/index.ts', () => {
       };
 
       await expect(validationSchema.validate(invalidData)).rejects.toThrow(
-        'Iterations must be a whole number'
+        'Iterations must be a whole number',
       );
     });
 
@@ -252,7 +280,9 @@ describe('features/cron/utils/index.ts', () => {
         iterations: '' as any,
       };
 
-      await expect(validationSchema.validate(invalidData)).rejects.toThrow('Iterations is required');
+      await expect(validationSchema.validate(invalidData)).rejects.toThrow(
+        'Iterations is required',
+      );
     });
 
     it('should transform null iterations to undefined', async () => {
@@ -262,9 +292,9 @@ describe('features/cron/utils/index.ts', () => {
         iterations: null as any,
       };
 
-      await expect(validationSchema.validate(invalidData)).rejects.toThrow('Iterations is required');
+      await expect(validationSchema.validate(invalidData)).rejects.toThrow(
+        'Iterations is required',
+      );
     });
   });
 });
-
-

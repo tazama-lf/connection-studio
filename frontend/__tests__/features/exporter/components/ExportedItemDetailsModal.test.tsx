@@ -558,31 +558,99 @@ describe('features/exporter/components/ExportedItemDetailsModal.tsx', () => {
   });
 });
 
-  it('uses foundType fallback when jobDetails has no type property (BRDA:118)', async () => {
-    // Simulate: PULL lookup succeeds but returns jobDetails without a type field
-    (dataEnrichmentJobApi.getById as jest.Mock).mockResolvedValueOnce({ id: 'job-x' });
+it('uses foundType fallback when jobDetails has no type property (BRDA:118)', async () => {
+  (dataEnrichmentJobApi.getById as jest.Mock).mockResolvedValueOnce({ id: 'job-x' });
 
-    const onPublish = jest.fn().mockResolvedValue(undefined);
+  const onPublish = jest.fn().mockResolvedValue(undefined);
 
-    render(
-      <ExportedItemDetailsModal
-        content={{
-          id: 'job-x',
-          tenant_id: 'tenant-1',
-        } as any}
-        isOpen={true}
-        onClose={jest.fn()}
-        onPublish={onPublish}
-        format="de"
-      />,
-    );
+  render(
+    <ExportedItemDetailsModal
+      content={{
+        id: 'job-x',
+        tenant_id: 'tenant-1',
+      } as any}
+      isOpen={true}
+      onClose={jest.fn()}
+      onPublish={onPublish}
+      format="de"
+    />,
+  );
 
-    fireEvent.click(screen.getByText('Deploy'));
-    fireEvent.click(screen.getByText('Yes, Deploy'));
+  fireEvent.click(screen.getByText('Deploy'));
+  fireEvent.click(screen.getByText('Yes, Deploy'));
 
-    // jobDetails.type is undefined, so (jobDetails.type?.toUpperCase() || foundType) => foundType = 'PULL'
-    await waitFor(() => {
-      expect(onPublish).toHaveBeenCalledWith('job-x', 'de', 'PULL');
-    });
+  // jobDetails.type is undefined, so (jobDetails.type?.toUpperCase() || foundType) => foundType = 'PULL'
+  await waitFor(() => {
+    expect(onPublish).toHaveBeenCalledWith('job-x', 'de', 'PULL');
   });
-})
+});
+
+it('covers else-if content.type branch (lines 83-85) via dynamic getter', async () => {
+  let callCount = 0;
+  const content = Object.defineProperty(
+    { id: 'job-getter', tenant_id: 'tenant-1', name: 'getter-job' },
+    'type',
+    {
+      get() {
+        callCount++;
+        return callCount <= 5 ? undefined : 'PUSH';
+      },
+      configurable: true,
+      enumerable: true,
+    },
+  ) as any;
+
+  const onPublish = jest.fn().mockResolvedValue(undefined);
+
+  render(
+    <ExportedItemDetailsModal
+      content={content}
+      isOpen={true}
+      onClose={jest.fn()}
+      onPublish={onPublish}
+      format="de"
+    />,
+  );
+
+  fireEvent.click(screen.getByText('Deploy'));
+  fireEvent.click(screen.getByText('Yes, Deploy'));
+
+  await waitFor(() => {
+    expect(onPublish).toHaveBeenCalledWith('job-getter', 'de', 'PUSH');
+  });
+});
+
+it('covers line 84 false branch: typeStr is not PUSH or PULL', async () => {
+  let callCount = 0;
+  const content = Object.defineProperty(
+    { id: 'job-unknown-type', tenant_id: 'tenant-1', name: 'unknown-job' },
+    'type',
+    {
+      get() {
+        callCount++;
+        return callCount <= 5 ? undefined : 'UNKNOWN';
+      },
+      configurable: true,
+      enumerable: true,
+    },
+  ) as any;
+
+  const onPublish = jest.fn().mockResolvedValue(undefined);
+
+  render(
+    <ExportedItemDetailsModal
+      content={content}
+      isOpen={true}
+      onClose={jest.fn()}
+      onPublish={onPublish}
+      format="de"
+    />,
+  );
+
+  fireEvent.click(screen.getByText('Deploy'));
+  fireEvent.click(screen.getByText('Yes, Deploy'));
+
+  await waitFor(() => {
+    expect(onPublish).toHaveBeenCalled();
+  });
+});

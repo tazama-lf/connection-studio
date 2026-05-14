@@ -48,7 +48,9 @@ describe('apiHelper', () => {
         json: async () => ({ data: 'result' }),
       });
 
-      const result = await apiRequest<{ data: string }>('http://localhost:3000/api/test');
+      const result = await apiRequest<{ data: string }>(
+        'http://localhost:3000/api/test',
+      );
 
       expect(global.fetch).toHaveBeenCalledWith(
         'http://localhost:3000/api/test',
@@ -108,7 +110,9 @@ describe('apiHelper', () => {
       (global.fetch as jest.Mock).mockResolvedValue({
         ok: false,
         status: 503,
-        json: async () => { throw new Error('invalid json'); },
+        json: async () => {
+          throw new Error('invalid json');
+        },
       });
 
       await expect(
@@ -150,7 +154,9 @@ describe('apiHelper', () => {
         json: async () => responseData,
       });
 
-      const result = await apiRequest<typeof responseData>('http://localhost/api');
+      const result = await apiRequest<typeof responseData>(
+        'http://localhost/api',
+      );
 
       expect(result).toEqual(responseData);
     });

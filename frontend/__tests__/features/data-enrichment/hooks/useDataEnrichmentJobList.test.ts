@@ -153,9 +153,7 @@ describe('useDataEnrichmentJobList', () => {
   });
 
   it('maps non error object', async () => {
-    jest
-      .mocked(dataEnrichmentHandlers.loadJobs)
-      .mockRejectedValueOnce('bad');
+    jest.mocked(dataEnrichmentHandlers.loadJobs).mockRejectedValueOnce('bad');
 
     const { result } = renderHook(() => useDataEnrichmentJobList());
 
@@ -322,7 +320,10 @@ describe('useDataEnrichmentJobList', () => {
     });
 
     await act(async () => {
-      await result.current.handleSaveEdit({ type: 'pull', connection: undefined } as any);
+      await result.current.handleSaveEdit({
+        type: 'pull',
+        connection: undefined,
+      } as any);
     });
 
     expect(dataEnrichmentHandlers.submitPullJob).toHaveBeenCalled();
@@ -420,7 +421,9 @@ describe('useDataEnrichmentJobList - additional branch coverage', () => {
     }));
 
     const { result } = renderHook(() => useDataEnrichmentJobList());
-    await waitFor(() => expect(dataEnrichmentHandlers.loadJobs).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(dataEnrichmentHandlers.loadJobs).toHaveBeenCalled(),
+    );
     // Hook should still render without crashing
     expect(result.current).toBeDefined();
   });
@@ -498,9 +501,11 @@ describe('useDataEnrichmentJobList - additional branch coverage', () => {
       // source_type, connection, schedule_id intentionally omitted
     } as any;
 
-    jest.mocked(dataEnrichmentHandlers.loadJobs)
+    jest
+      .mocked(dataEnrichmentHandlers.loadJobs)
       .mockResolvedValue({ data: [sparseJob], total: 1 } as any);
-    jest.mocked(dataEnrichmentHandlers.dataEnrichmentJobApi.getById)
+    jest
+      .mocked(dataEnrichmentHandlers.dataEnrichmentJobApi.getById)
       .mockResolvedValue(sparseJob);
 
     const { result } = renderHook(() => useDataEnrichmentJobList());

@@ -20,14 +20,18 @@ describe('ensurePromise', () => {
   });
 
   it('should propagate Error instances from the inner function', async () => {
-    const errorFn = () => { throw new Error('Something failed'); };
+    const errorFn = () => {
+      throw new Error('Something failed');
+    };
     const wrapped = ensurePromise(errorFn);
 
     await expect(wrapped()).rejects.toThrow('Something failed');
   });
 
   it('should wrap non-Error throws in an Error', async () => {
-    const throwString = () => { throw 'raw string error'; };
+    const throwString = () => {
+      throw 'raw string error';
+    };
     const wrapped = ensurePromise(throwString);
 
     await expect(wrapped()).rejects.toThrow('raw string error');

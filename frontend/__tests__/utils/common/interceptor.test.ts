@@ -3,4 +3,3 @@ describe('utils/common/interceptor.ts', () => {
     await expect(import('@/utils/common/interceptor')).resolves.toBeDefined();
   });
 });
-

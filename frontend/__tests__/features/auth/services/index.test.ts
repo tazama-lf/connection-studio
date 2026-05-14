@@ -11,4 +11,3 @@ describe('features/auth/services/index.ts', () => {
     expect(authServices.AuthApiService).toBe(AuthApiService);
   });
 });
-

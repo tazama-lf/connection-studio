@@ -1,4 +1,7 @@
-import { SimulationApiService, simulationApi } from '../../../src/shared/services/simulationApi';
+import {
+  SimulationApiService,
+  simulationApi,
+} from '../../../src/shared/services/simulationApi';
 
 const mockLocalStorage = global.localStorage as jest.Mocked<Storage>;
 
@@ -62,9 +65,9 @@ describe('SimulationApiService', () => {
         json: async () => ({ message: 'Unauthorized' }),
       });
 
-      await expect(simulationApi.runSimulation(simulateRequest)).rejects.toThrow(
-        'Unauthorized - Token expired',
-      );
+      await expect(
+        simulationApi.runSimulation(simulateRequest),
+      ).rejects.toThrow('Unauthorized - Token expired');
       expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('authToken');
       expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('user');
     });
@@ -89,21 +92,23 @@ describe('SimulationApiService', () => {
         json: async () => ({ message: 'Internal Error' }),
       });
 
-      await expect(simulationApi.runSimulation(simulateRequest)).rejects.toThrow(
-        'Internal Error',
-      );
+      await expect(
+        simulationApi.runSimulation(simulateRequest),
+      ).rejects.toThrow('Internal Error');
     });
 
     it('should throw generic error for 5xx when json parse fails', async () => {
       (global.fetch as jest.Mock).mockResolvedValue({
         ok: false,
         status: 503,
-        json: async () => { throw new Error('bad json'); },
+        json: async () => {
+          throw new Error('bad json');
+        },
       });
 
-      await expect(simulationApi.runSimulation(simulateRequest)).rejects.toThrow(
-        'HTTP error! status: 503',
-      );
+      await expect(
+        simulationApi.runSimulation(simulateRequest),
+      ).rejects.toThrow('HTTP error! status: 503');
     });
   });
 
@@ -139,7 +144,10 @@ describe('SimulationApiService', () => {
     });
 
     it('should return validation errors for 400 response', async () => {
-      const errorData = { valid: false, errors: [{ field: 'amount', message: 'required' }] };
+      const errorData = {
+        valid: false,
+        errors: [{ field: 'amount', message: 'required' }],
+      };
 
       (global.fetch as jest.Mock).mockResolvedValue({
         ok: false,

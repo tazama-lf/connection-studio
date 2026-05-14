@@ -1,4 +1,7 @@
-import { authApi, AuthApiService } from '../../../../src/features/auth/services/authApi';
+import {
+  authApi,
+  AuthApiService,
+} from '../../../../src/features/auth/services/authApi';
 
 // Mock fetch globally
 global.fetch = jest.fn();
@@ -107,7 +110,9 @@ describe('AuthApiService', () => {
         json: async () => ({ error: 'Unauthorized' }),
       } as Response);
 
-      await expect(authApi.getProfile()).rejects.toThrow('Unauthorized - Token expired');
+      await expect(authApi.getProfile()).rejects.toThrow(
+        'Unauthorized - Token expired',
+      );
       expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('authToken');
       expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('user');
     });
@@ -119,11 +124,15 @@ describe('AuthApiService', () => {
         json: async () => ({ error: 'Server Error' }),
       } as Response);
 
-      await expect(authApi.getProfile()).rejects.toThrow('HTTP error! status: 500');
+      await expect(authApi.getProfile()).rejects.toThrow(
+        'HTTP error! status: 500',
+      );
     });
 
     it('should map undefined-property runtime errors to network error', async () => {
-      mockFetch.mockRejectedValue(new Error('Cannot read properties of undefined (reading status)'));
+      mockFetch.mockRejectedValue(
+        new Error('Cannot read properties of undefined (reading status)'),
+      );
 
       await expect(authApi.getProfile()).rejects.toThrow('Network error');
     });
@@ -248,5 +257,4 @@ describe('AuthApiService', () => {
       expect(result?.username).toBe('outeruser');
     });
   });
-
 });

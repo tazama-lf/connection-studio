@@ -44,10 +44,14 @@ jest.mock('../../src/features/dashboard/pages/Dashboard', () => ({
   },
 }));
 
-jest.mock('@pages/dems', () => ({
-  __esModule: true,
-  default: () => <div>DEMS Page</div>,
-}), { virtual: true });
+jest.mock(
+  '@pages/dems',
+  () => ({
+    __esModule: true,
+    default: () => <div>DEMS Page</div>,
+  }),
+  { virtual: true },
+);
 
 jest.mock('../../src/features/approver/pages/ApproverConfigsPage', () => ({
   __esModule: true,
@@ -84,25 +88,34 @@ jest.mock('../../src/features/publisher/pages/PublisherConfigsPage', () => ({
   default: () => <div>Publisher Configs Page</div>,
 }));
 
-jest.mock('../../src/features/publisher/pages/PublisherExportedItemsPage', () => ({
-  __esModule: true,
-  default: () => <div>Publisher Exported Items Page</div>,
-}));
+jest.mock(
+  '../../src/features/publisher/pages/PublisherExportedItemsPage',
+  () => ({
+    __esModule: true,
+    default: () => <div>Publisher Exported Items Page</div>,
+  }),
+);
 
 jest.mock('../../src/features/cron/pages/index', () => ({
   __esModule: true,
   default: () => <div>Cron Page</div>,
 }));
 
-jest.mock('../../src/features/data-enrichment/pages/DataEnrichmentModule', () => ({
-  __esModule: true,
-  default: () => <div>Data Enrichment Page</div>,
-}));
+jest.mock(
+  '../../src/features/data-enrichment/pages/DataEnrichmentModule',
+  () => ({
+    __esModule: true,
+    default: () => <div>Data Enrichment Page</div>,
+  }),
+);
 
-jest.mock('../../src/features/data-enrichment/pages/EndpointHistoryPage', () => ({
-  __esModule: true,
-  default: () => <div>Endpoint History Page</div>,
-}));
+jest.mock(
+  '../../src/features/data-enrichment/pages/EndpointHistoryPage',
+  () => ({
+    __esModule: true,
+    default: () => <div>Endpoint History Page</div>,
+  }),
+);
 
 jest.mock('../../src/pages/NotFoundPage', () => ({
   __esModule: true,
@@ -363,7 +376,11 @@ describe('router/index.tsx', () => {
   });
 
   it('redirects unauthenticated users to login for approver routes', () => {
-    mockUseAuth.mockReturnValue({ loading: false, isAuthenticated: false, user: null });
+    mockUseAuth.mockReturnValue({
+      loading: false,
+      isAuthenticated: false,
+      user: null,
+    });
 
     render(
       <MemoryRouter initialEntries={['/approver/configs']}>
@@ -375,7 +392,11 @@ describe('router/index.tsx', () => {
   });
 
   it('redirects unauthenticated users to login for publisher routes', () => {
-    mockUseAuth.mockReturnValue({ loading: false, isAuthenticated: false, user: null });
+    mockUseAuth.mockReturnValue({
+      loading: false,
+      isAuthenticated: false,
+      user: null,
+    });
 
     render(
       <MemoryRouter initialEntries={['/publisher/configs']}>
@@ -405,7 +426,11 @@ describe('router/index.tsx', () => {
   });
 
   it('redirects unauthenticated users to login for exporter routes', () => {
-    mockUseAuth.mockReturnValue({ loading: false, isAuthenticated: false, user: null });
+    mockUseAuth.mockReturnValue({
+      loading: false,
+      isAuthenticated: false,
+      user: null,
+    });
 
     render(
       <MemoryRouter initialEntries={['/exporter/configs']}>
@@ -417,7 +442,11 @@ describe('router/index.tsx', () => {
   });
 
   it('redirects unauthenticated users to login for editor routes', () => {
-    mockUseAuth.mockReturnValue({ loading: false, isAuthenticated: false, user: null });
+    mockUseAuth.mockReturnValue({
+      loading: false,
+      isAuthenticated: false,
+      user: null,
+    });
 
     render(
       <MemoryRouter initialEntries={['/data-enrichment']}>
@@ -542,7 +571,9 @@ describe('router/index.tsx', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText('Publisher Exported Items Page')).toBeInTheDocument();
+    expect(
+      screen.getByText('Publisher Exported Items Page'),
+    ).toBeInTheDocument();
   });
 
   it('allows publisher users to access endpoint history route', () => {
@@ -627,9 +658,21 @@ describe('router/index.tsx', () => {
   it('redirects to login in ApproverRoute when inner auth check fails', () => {
     // AppRoutes (loading) → pass-through, ProtectedRoute sees authenticated → passes, ApproverRoute sees unauthenticated → redirects
     mockUseAuth
-      .mockReturnValueOnce({ loading: false, isAuthenticated: true, user: { claims: ['approver'] } })
-      .mockReturnValueOnce({ loading: false, isAuthenticated: true, user: { claims: ['approver'] } })
-      .mockReturnValueOnce({ loading: false, isAuthenticated: false, user: null });
+      .mockReturnValueOnce({
+        loading: false,
+        isAuthenticated: true,
+        user: { claims: ['approver'] },
+      })
+      .mockReturnValueOnce({
+        loading: false,
+        isAuthenticated: true,
+        user: { claims: ['approver'] },
+      })
+      .mockReturnValueOnce({
+        loading: false,
+        isAuthenticated: false,
+        user: null,
+      });
 
     render(
       <MemoryRouter initialEntries={['/approver/configs']}>
@@ -642,9 +685,21 @@ describe('router/index.tsx', () => {
 
   it('redirects to login in PublisherRoute when inner auth check fails', () => {
     mockUseAuth
-      .mockReturnValueOnce({ loading: false, isAuthenticated: true, user: { claims: ['publisher'] } })
-      .mockReturnValueOnce({ loading: false, isAuthenticated: true, user: { claims: ['publisher'] } })
-      .mockReturnValueOnce({ loading: false, isAuthenticated: false, user: null });
+      .mockReturnValueOnce({
+        loading: false,
+        isAuthenticated: true,
+        user: { claims: ['publisher'] },
+      })
+      .mockReturnValueOnce({
+        loading: false,
+        isAuthenticated: true,
+        user: { claims: ['publisher'] },
+      })
+      .mockReturnValueOnce({
+        loading: false,
+        isAuthenticated: false,
+        user: null,
+      });
     mockIsPublisher.mockReturnValue(true);
 
     render(
@@ -658,9 +713,21 @@ describe('router/index.tsx', () => {
 
   it('redirects to login in ExporterRoute when inner auth check fails', () => {
     mockUseAuth
-      .mockReturnValueOnce({ loading: false, isAuthenticated: true, user: { claims: ['exporter'] } })
-      .mockReturnValueOnce({ loading: false, isAuthenticated: true, user: { claims: ['exporter'] } })
-      .mockReturnValueOnce({ loading: false, isAuthenticated: false, user: null });
+      .mockReturnValueOnce({
+        loading: false,
+        isAuthenticated: true,
+        user: { claims: ['exporter'] },
+      })
+      .mockReturnValueOnce({
+        loading: false,
+        isAuthenticated: true,
+        user: { claims: ['exporter'] },
+      })
+      .mockReturnValueOnce({
+        loading: false,
+        isAuthenticated: false,
+        user: null,
+      });
     mockIsExporter.mockReturnValue(true);
 
     render(
@@ -674,9 +741,21 @@ describe('router/index.tsx', () => {
 
   it('redirects to login in EditorRoute when inner auth check fails', () => {
     mockUseAuth
-      .mockReturnValueOnce({ loading: false, isAuthenticated: true, user: { claims: ['editor'] } })
-      .mockReturnValueOnce({ loading: false, isAuthenticated: true, user: { claims: ['editor'] } })
-      .mockReturnValueOnce({ loading: false, isAuthenticated: false, user: null });
+      .mockReturnValueOnce({
+        loading: false,
+        isAuthenticated: true,
+        user: { claims: ['editor'] },
+      })
+      .mockReturnValueOnce({
+        loading: false,
+        isAuthenticated: true,
+        user: { claims: ['editor'] },
+      })
+      .mockReturnValueOnce({
+        loading: false,
+        isAuthenticated: false,
+        user: null,
+      });
     mockIsEditor.mockReturnValue(true);
 
     render(

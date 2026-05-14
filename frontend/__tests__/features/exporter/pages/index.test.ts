@@ -3,10 +3,13 @@ jest.mock('../../../../src/features/exporter/pages/ExporterModule', () => ({
   default: 'ExporterModuleMock',
 }));
 
-jest.mock('../../../../src/features/exporter/pages/ExporterConfigsPage', () => ({
-  __esModule: true,
-  default: 'ExporterConfigsPageMock',
-}));
+jest.mock(
+  '../../../../src/features/exporter/pages/ExporterConfigsPage',
+  () => ({
+    __esModule: true,
+    default: 'ExporterConfigsPageMock',
+  }),
+);
 
 jest.mock('../../../../src/features/exporter/pages/ExporterDEJobsPage', () => ({
   __esModule: true,

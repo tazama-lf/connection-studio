@@ -67,7 +67,9 @@ describe('shared/components/ConfigReviewModal.tsx', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('Failed to load configuration details.')).toBeInTheDocument();
+      expect(
+        screen.getByText('Failed to load configuration details.'),
+      ).toBeInTheDocument();
     });
   });
 
@@ -87,7 +89,10 @@ describe('shared/components/ConfigReviewModal.tsx', () => {
           { transformation: 'MAP' },
         ],
         functions: [
-          { functionName: 'fn1', columns: [{ param: 'col1' }, { param: 'col2' }] },
+          {
+            functionName: 'fn1',
+            columns: [{ param: 'col1' }, { param: 'col2' }],
+          },
           { functionName: 'fn2', params: ['paramA', 'paramB'] },
           { functionName: 'fn3' },
         ],
@@ -169,7 +174,9 @@ describe('shared/components/ConfigReviewModal.tsx', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('Failed to load configuration details.')).toBeInTheDocument();
+      expect(
+        screen.getByText('Failed to load configuration details.'),
+      ).toBeInTheDocument();
     });
   });
 });

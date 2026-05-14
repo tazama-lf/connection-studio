@@ -3,4 +3,3 @@ describe('utils/common/roleUtils.ts', () => {
     await expect(import('@/utils/common/roleUtils')).resolves.toBeDefined();
   });
 });
-

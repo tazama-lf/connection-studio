@@ -28,7 +28,11 @@ describe('features/exporter/components/ExporterJobList.tsx', () => {
   it('shows empty state for unmatched search and supports refresh', () => {
     const onRefresh = jest.fn();
     render(
-      <ExporterJobList jobs={jobs} searchQuery="unknown" onRefresh={onRefresh} />,
+      <ExporterJobList
+        jobs={jobs}
+        searchQuery="unknown"
+        onRefresh={onRefresh}
+      />,
     );
 
     expect(screen.getByText('No jobs match your search')).toBeInTheDocument();
@@ -42,7 +46,9 @@ describe('features/exporter/components/ExporterJobList.tsx', () => {
       <ExporterJobList jobs={jobs} onViewDetails={onViewDetails} />,
     );
 
-    const actionButton = container.querySelector('.actions-dropdown button') as HTMLButtonElement;
+    const actionButton = container.querySelector(
+      '.actions-dropdown button',
+    ) as HTMLButtonElement;
     fireEvent.click(actionButton);
 
     fireEvent.click(screen.getByText('View'));
@@ -52,14 +58,39 @@ describe('features/exporter/components/ExporterJobList.tsx', () => {
   it('shows empty state without search query (lines 73-76 false branches)', () => {
     render(<ExporterJobList jobs={[]} />);
     expect(screen.getByText('No approved jobs yet')).toBeInTheDocument();
-    expect(screen.getByText('Approved data enrichment jobs will appear here when they are ready for export')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Approved data enrichment jobs will appear here when they are ready for export',
+      ),
+    ).toBeInTheDocument();
   });
 
   it('renders multiple jobs covering forceDirection and PUSH type branches', () => {
     const multipleJobs = [
-      { id: 'j1', endpoint_name: 'a', type: 'PUSH', table_name: null, status: null, created_at: null },
-      { id: 'j2', endpoint_name: 'b', type: undefined, table_name: 'tbl', status: 'approved', created_at: '2024-01-01T00:00:00Z' },
-      { id: 'j3', endpoint_name: 'c', type: 'PULL', table_name: 'tbl2', status: 'approved', created_at: '2024-01-01T00:00:00Z' },
+      {
+        id: 'j1',
+        endpoint_name: 'a',
+        type: 'PUSH',
+        table_name: null,
+        status: null,
+        created_at: null,
+      },
+      {
+        id: 'j2',
+        endpoint_name: 'b',
+        type: undefined,
+        table_name: 'tbl',
+        status: 'approved',
+        created_at: '2024-01-01T00:00:00Z',
+      },
+      {
+        id: 'j3',
+        endpoint_name: 'c',
+        type: 'PULL',
+        table_name: 'tbl2',
+        status: 'approved',
+        created_at: '2024-01-01T00:00:00Z',
+      },
     ] as any;
 
     const { container } = render(<ExporterJobList jobs={multipleJobs} />);
@@ -72,7 +103,9 @@ describe('features/exporter/components/ExporterJobList.tsx', () => {
     const { container } = render(<ExporterJobList jobs={jobs} />);
 
     // Open the dropdown
-    const actionButton = container.querySelector('.actions-dropdown button') as HTMLButtonElement;
+    const actionButton = container.querySelector(
+      '.actions-dropdown button',
+    ) as HTMLButtonElement;
     fireEvent.click(actionButton);
     expect(screen.getByText('View')).toBeInTheDocument();
 
@@ -85,12 +118,16 @@ describe('features/exporter/components/ExporterJobList.tsx', () => {
     const { container } = render(<ExporterJobList jobs={jobs} />);
 
     // Open the dropdown
-    const actionButton = container.querySelector('.actions-dropdown button') as HTMLButtonElement;
+    const actionButton = container.querySelector(
+      '.actions-dropdown button',
+    ) as HTMLButtonElement;
     fireEvent.click(actionButton);
     expect(screen.getByText('View')).toBeInTheDocument();
 
     // Click inside .actions-dropdown - stays open (early return)
-    const dropdown = container.querySelector('.actions-dropdown') as HTMLElement;
+    const dropdown = container.querySelector(
+      '.actions-dropdown',
+    ) as HTMLElement;
     fireEvent.click(dropdown);
     expect(screen.getByText('View')).toBeInTheDocument();
   });
@@ -98,7 +135,9 @@ describe('features/exporter/components/ExporterJobList.tsx', () => {
   it('toggles dropdown closed when clicking button again (line 171 branch)', () => {
     const { container } = render(<ExporterJobList jobs={jobs} />);
 
-    const actionButton = container.querySelector('.actions-dropdown button') as HTMLButtonElement;
+    const actionButton = container.querySelector(
+      '.actions-dropdown button',
+    ) as HTMLButtonElement;
     // Open dropdown
     fireEvent.click(actionButton);
     expect(screen.getByText('View')).toBeInTheDocument();

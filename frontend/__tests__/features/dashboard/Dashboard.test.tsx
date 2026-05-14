@@ -13,44 +13,56 @@ jest.mock('../../../../src/features/auth/contexts/AuthContext', () => ({
   useAuth: () => useAuthMock(),
 }));
 
-jest.mock('../../../../src/features/dashboard/components/TopBar', () => (props: any) => (
-  <button onClick={props.onToggle}>toggle</button>
-));
+jest.mock(
+  '../../../../src/features/dashboard/components/TopBar',
+  () => (props: any) => <button onClick={props.onToggle}>toggle</button>,
+);
 
-jest.mock('../../../../src/features/dashboard/components/SideNav', () => (props: any) => (
-  <div data-testid="sidenav">
-    {String(props.open)}
-    <button onClick={props.onClose}>close-nav</button>
-  </div>
-));
+jest.mock(
+  '../../../../src/features/dashboard/components/SideNav',
+  () => (props: any) => (
+    <div data-testid="sidenav">
+      {String(props.open)}
+      <button onClick={props.onClose}>close-nav</button>
+    </div>
+  ),
+);
 
-jest.mock('../../../../src/features/dashboard/components/Drawer', () => (props: any) => (
-  <div data-testid="drawer">{String(props.open)}{props.children}</div>
-));
+jest.mock(
+  '../../../../src/features/dashboard/components/Drawer',
+  () => (props: any) => (
+    <div data-testid="drawer">
+      {String(props.open)}
+      {props.children}
+    </div>
+  ),
+);
 
-jest.mock('../../../../src/features/dashboard/components/DashboardBoxes', () => () => (
-  <div data-testid="dashboard-boxes" />
-));
+jest.mock(
+  '../../../../src/features/dashboard/components/DashboardBoxes',
+  () => () => <div data-testid="dashboard-boxes" />,
+);
 
 jest.mock('@mui/material/styles', () => ({
-  styled:
-    (Comp: any) =>
-    (styles?: any) =>
-    (props: any) => {
-      if (typeof styles === 'function') {
-        styles({
-          theme: {
-            spacing: () => '0px',
-            breakpoints: { up: () => '@media' },
-          },
-        });
-      }
-      return <Comp {...props} />;
-    },
+  styled: (Comp: any) => (styles?: any) => (props: any) => {
+    if (typeof styles === 'function') {
+      styles({
+        theme: {
+          spacing: () => '0px',
+          breakpoints: { up: () => '@media' },
+        },
+      });
+    }
+    return <Comp {...props} />;
+  },
 }));
 
-jest.mock('@mui/material/AppBar', () => (props: any) => <div>{props.children}</div>);
-jest.mock('@mui/material/CssBaseline', () => () => <div data-testid="css-baseline" />);
+jest.mock('@mui/material/AppBar', () => (props: any) => (
+  <div>{props.children}</div>
+));
+jest.mock('@mui/material/CssBaseline', () => () => (
+  <div data-testid="css-baseline" />
+));
 jest.mock('@mui/material/Box', () => (props: any) => {
   if (typeof props.sx === 'function') {
     props.sx({

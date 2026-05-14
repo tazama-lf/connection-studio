@@ -15,4 +15,3 @@ describe('shared/config/index.ts', () => {
     expect(configIndex.ROUTES.DASHBOARD).toBe('/dashboard');
   });
 });
-

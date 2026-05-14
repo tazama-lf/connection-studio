@@ -55,16 +55,21 @@ jest.mock('../../../../../../src/features/auth', () => ({
   useAuth: () => ({ user: { tenantId: 'tenant-x' } }),
 }));
 
-jest.mock('../../../../../../src/features/data-enrichment/components/validationSchema', () => ({
-  authenticationTypeOptions: [{ label: 'Password', value: 'password' }],
-  defaultValues: {},
-  fileFormatOptions: [{ label: 'CSV', value: 'csv' }],
-  getAssociatedScheduleOptions: () => [{ label: 'Schedule 1', value: 'sch-1' }],
-  ingestModeOptions: [{ label: 'Append', value: 'append' }],
-  pullValidationSchema: {},
-  pushValidationSchema: {},
-  sourceTypeOptions: [{ label: 'SFTP', value: 'sftp' }],
-}));
+jest.mock(
+  '../../../../../../src/features/data-enrichment/components/validationSchema',
+  () => ({
+    authenticationTypeOptions: [{ label: 'Password', value: 'password' }],
+    defaultValues: {},
+    fileFormatOptions: [{ label: 'CSV', value: 'csv' }],
+    getAssociatedScheduleOptions: () => [
+      { label: 'Schedule 1', value: 'sch-1' },
+    ],
+    ingestModeOptions: [{ label: 'Append', value: 'append' }],
+    pullValidationSchema: {},
+    pushValidationSchema: {},
+    sourceTypeOptions: [{ label: 'SFTP', value: 'sftp' }],
+  }),
+);
 
 jest.mock('@mui/material', () => {
   const Div = (props: any) => <div {...props}>{props.children}</div>;
@@ -83,7 +88,9 @@ jest.mock('@mui/material', () => {
 });
 
 jest.mock('../../../../../../src/shared/components/FormFields', () => {
-  const Field = (name: string) => (props: any) => <div data-testid={`${name}-${props.name}`} />;
+  const Field = (name: string) => (props: any) => (
+    <div data-testid={`${name}-${props.name}`} />
+  );
   return {
     ApiPathInputField: Field('api-path'),
     DatabaseTableInputField: Field('db-table'),
@@ -161,7 +168,11 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
 
   it('returns null when closed', () => {
     const { container } = render(
-      <DataEnrichmentFormModal isOpen={false} onClose={jest.fn()} onSave={jest.fn()} />,
+      <DataEnrichmentFormModal
+        isOpen={false}
+        onClose={jest.fn()}
+        onSave={jest.fn()}
+      />,
     );
     expect(container.firstChild).toBeNull();
   });
@@ -169,13 +180,24 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
   it('renders selection screen, continues to config, then creates endpoint from summary', async () => {
     const onSave = jest.fn();
     const onClose = jest.fn();
-    render(<DataEnrichmentFormModal isOpen onClose={onClose} onSave={onSave} jobType="pull" />);
+    render(
+      <DataEnrichmentFormModal
+        isOpen
+        onClose={onClose}
+        onSave={onSave}
+        jobType="pull"
+      />,
+    );
 
-    expect(screen.getByText('Please Select Configuration Type')).toBeInTheDocument();
+    expect(
+      screen.getByText('Please Select Configuration Type'),
+    ).toBeInTheDocument();
     fireEvent.click(screen.getByText('Continue'));
 
     await waitFor(() => {
-      expect(screen.getByText('Pull Configuration (SFTP/HTTPS)')).toBeInTheDocument();
+      expect(
+        screen.getByText('Pull Configuration (SFTP/HTTPS)'),
+      ).toBeInTheDocument();
       expect(screen.getByTestId('endpoint-name-name')).toBeInTheDocument();
     });
 
@@ -225,12 +247,21 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
 
   it('clears schedule state when schedule load fails', async () => {
     scheduleGetAllMock.mockRejectedValueOnce(new Error('schedule-load-fail'));
-    render(<DataEnrichmentFormModal isOpen onClose={jest.fn()} onSave={jest.fn()} jobType="pull" />);
+    render(
+      <DataEnrichmentFormModal
+        isOpen
+        onClose={jest.fn()}
+        onSave={jest.fn()}
+        jobType="pull"
+      />,
+    );
     await waitFor(() => {
       expect(scheduleGetAllMock).toHaveBeenCalled();
     });
     // Component renders without schedule options (graceful failure)
-    expect(screen.getByText('Please Select Configuration Type')).toBeInTheDocument();
+    expect(
+      screen.getByText('Please Select Configuration Type'),
+    ).toBeInTheDocument();
   });
 
   it('generateEndpointUrl covers early return when both version and endpointPath are empty', async () => {
@@ -238,11 +269,20 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
     formValues = { ...formValues, version: '', endpointPath: '' };
 
     const onSave = jest.fn();
-    render(<DataEnrichmentFormModal isOpen onClose={jest.fn()} onSave={onSave} jobType="pull" />);
+    render(
+      <DataEnrichmentFormModal
+        isOpen
+        onClose={jest.fn()}
+        onSave={onSave}
+        jobType="pull"
+      />,
+    );
     fireEvent.click(screen.getByText('Continue'));
 
     await waitFor(() => {
-      expect(screen.getByText('Pull Configuration (SFTP/HTTPS)')).toBeInTheDocument();
+      expect(
+        screen.getByText('Pull Configuration (SFTP/HTTPS)'),
+      ).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByText('Save and Next'));
@@ -256,13 +296,26 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
 
   it('generateEndpointUrl covers path without leading slash', async () => {
     const originalFormValues = { ...formValues };
-    formValues = { ...formValues, version: 'v2', endpointPath: 'no-slash-path' };
+    formValues = {
+      ...formValues,
+      version: 'v2',
+      endpointPath: 'no-slash-path',
+    };
 
-    render(<DataEnrichmentFormModal isOpen onClose={jest.fn()} onSave={jest.fn()} jobType="pull" />);
+    render(
+      <DataEnrichmentFormModal
+        isOpen
+        onClose={jest.fn()}
+        onSave={jest.fn()}
+        jobType="pull"
+      />,
+    );
     fireEvent.click(screen.getByText('Continue'));
 
     await waitFor(() => {
-      expect(screen.getByText('Pull Configuration (SFTP/HTTPS)')).toBeInTheDocument();
+      expect(
+        screen.getByText('Pull Configuration (SFTP/HTTPS)'),
+      ).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByText('Save and Next'));
@@ -277,11 +330,20 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
     const originalFormValues = { ...formValues };
     formValues = { ...formValues, version: '', endpointPath: '/my/data' };
 
-    render(<DataEnrichmentFormModal isOpen onClose={jest.fn()} onSave={jest.fn()} jobType="pull" />);
+    render(
+      <DataEnrichmentFormModal
+        isOpen
+        onClose={jest.fn()}
+        onSave={jest.fn()}
+        jobType="pull"
+      />,
+    );
     fireEvent.click(screen.getByText('Continue'));
 
     await waitFor(() => {
-      expect(screen.getByText('Pull Configuration (SFTP/HTTPS)')).toBeInTheDocument();
+      expect(
+        screen.getByText('Pull Configuration (SFTP/HTTPS)'),
+      ).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByText('Save and Next'));
@@ -298,10 +360,14 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
     );
 
     // Selection screen is shown first
-    expect(screen.getByText('Please Select Configuration Type')).toBeInTheDocument();
+    expect(
+      screen.getByText('Please Select Configuration Type'),
+    ).toBeInTheDocument();
 
     // Find the push radio input (name="configurationType", value="push")
-    const pushRadio = container.querySelector('input[name="configurationType"][value="push"]') as HTMLInputElement;
+    const pushRadio = container.querySelector(
+      'input[name="configurationType"][value="push"]',
+    ) as HTMLInputElement;
     if (pushRadio) {
       // name=configurationType, value=push → covers BRDA:1135 TRUE branch (name==='configurationType')
       fireEvent.click(pushRadio);
@@ -309,7 +375,9 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
     }
 
     // Find the pull radio input (name="configurationType", value="pull")
-    const pullRadio = container.querySelector('input[name="configurationType"][value="pull"]') as HTMLInputElement;
+    const pullRadio = container.querySelector(
+      'input[name="configurationType"][value="pull"]',
+    ) as HTMLInputElement;
     if (pullRadio) {
       // name=configurationType, value=pull → also covers the configurationType branch
       fireEvent.click(pullRadio);
@@ -317,34 +385,69 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
     }
 
     // Still on selection screen
-    expect(screen.getByText('Please Select Configuration Type')).toBeInTheDocument();
+    expect(
+      screen.getByText('Please Select Configuration Type'),
+    ).toBeInTheDocument();
   });
 
   it('scheduleApi response with .data property triggers data fallback branch', async () => {
-    scheduleGetAllMock.mockResolvedValue({ data: [{ status: 'APPROVED', id: 'sch-1' }] });
-    render(<DataEnrichmentFormModal isOpen onClose={jest.fn()} onSave={jest.fn()} jobType="pull" />);
+    scheduleGetAllMock.mockResolvedValue({
+      data: [{ status: 'APPROVED', id: 'sch-1' }],
+    });
+    render(
+      <DataEnrichmentFormModal
+        isOpen
+        onClose={jest.fn()}
+        onSave={jest.fn()}
+        jobType="pull"
+      />,
+    );
     await waitFor(() => {
       expect(scheduleGetAllMock).toHaveBeenCalled();
     });
-    expect(screen.getByText('Please Select Configuration Type')).toBeInTheDocument();
+    expect(
+      screen.getByText('Please Select Configuration Type'),
+    ).toBeInTheDocument();
   });
 
   it('scheduleApi response with .results property triggers results fallback branch', async () => {
-    scheduleGetAllMock.mockResolvedValue({ results: [{ status: 'APPROVED', id: 'sch-1' }] });
-    render(<DataEnrichmentFormModal isOpen onClose={jest.fn()} onSave={jest.fn()} jobType="pull" />);
+    scheduleGetAllMock.mockResolvedValue({
+      results: [{ status: 'APPROVED', id: 'sch-1' }],
+    });
+    render(
+      <DataEnrichmentFormModal
+        isOpen
+        onClose={jest.fn()}
+        onSave={jest.fn()}
+        jobType="pull"
+      />,
+    );
     await waitFor(() => {
       expect(scheduleGetAllMock).toHaveBeenCalled();
     });
-    expect(screen.getByText('Please Select Configuration Type')).toBeInTheDocument();
+    expect(
+      screen.getByText('Please Select Configuration Type'),
+    ).toBeInTheDocument();
   });
 
   it('scheduleApi response with .items property triggers items fallback branch', async () => {
-    scheduleGetAllMock.mockResolvedValue({ items: [{ status: 'APPROVED', id: 'sch-1' }] });
-    render(<DataEnrichmentFormModal isOpen onClose={jest.fn()} onSave={jest.fn()} jobType="pull" />);
+    scheduleGetAllMock.mockResolvedValue({
+      items: [{ status: 'APPROVED', id: 'sch-1' }],
+    });
+    render(
+      <DataEnrichmentFormModal
+        isOpen
+        onClose={jest.fn()}
+        onSave={jest.fn()}
+        jobType="pull"
+      />,
+    );
     await waitFor(() => {
       expect(scheduleGetAllMock).toHaveBeenCalled();
     });
-    expect(screen.getByText('Please Select Configuration Type')).toBeInTheDocument();
+    expect(
+      screen.getByText('Please Select Configuration Type'),
+    ).toBeInTheDocument();
   });
 
   it('loadJobData with isPushJob=true sets push config type (job has path but no source_type)', async () => {
@@ -355,7 +458,13 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
       description: undefined, // also covers description || '' fallback
     });
     render(
-      <DataEnrichmentFormModal isOpen onClose={jest.fn()} onSave={jest.fn()} editMode jobId="456" />,
+      <DataEnrichmentFormModal
+        isOpen
+        onClose={jest.fn()}
+        onSave={jest.fn()}
+        editMode
+        jobId="456"
+      />,
     );
     await waitFor(() => {
       expect(getByIdMock).toHaveBeenCalledWith('456', undefined);
@@ -369,7 +478,13 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
       source_type: 'sftp',
     });
     render(
-      <DataEnrichmentFormModal isOpen onClose={jest.fn()} onSave={jest.fn()} editMode jobId="789" />,
+      <DataEnrichmentFormModal
+        isOpen
+        onClose={jest.fn()}
+        onSave={jest.fn()}
+        editMode
+        jobId="789"
+      />,
     );
     await waitFor(() => {
       expect(getByIdMock).toHaveBeenCalledWith('789', undefined);
@@ -380,7 +495,12 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
     const onSave = jest.fn();
     createPushJobMock.mockResolvedValue({}); // no message → fallback success message
     render(
-      <DataEnrichmentFormModal isOpen onClose={jest.fn()} onSave={onSave} jobType="push" />,
+      <DataEnrichmentFormModal
+        isOpen
+        onClose={jest.fn()}
+        onSave={onSave}
+        jobType="push"
+      />,
     );
 
     // Click push card to ensure push is selected
@@ -388,7 +508,9 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
     fireEvent.click(screen.getByText('Continue'));
 
     await waitFor(() => {
-      expect(screen.getByText('Push Configuration (REST API)')).toBeInTheDocument();
+      expect(
+        screen.getByText('Push Configuration (REST API)'),
+      ).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByText('Save and Next'));
@@ -405,16 +527,28 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
 
   it('creates pull job with http sourceType (watch sourceType=http)', async () => {
     const originalFormValues = { ...formValues };
-    formValues = { ...formValues, sourceType: 'http', url: 'https://api.test', headers: '{"x":"1"}' };
+    formValues = {
+      ...formValues,
+      sourceType: 'http',
+      url: 'https://api.test',
+      headers: '{"x":"1"}',
+    };
 
     const onSave = jest.fn();
     render(
-      <DataEnrichmentFormModal isOpen onClose={jest.fn()} onSave={onSave} jobType="pull" />,
+      <DataEnrichmentFormModal
+        isOpen
+        onClose={jest.fn()}
+        onSave={onSave}
+        jobType="pull"
+      />,
     );
 
     fireEvent.click(screen.getByText('Continue'));
     await waitFor(() => {
-      expect(screen.getByText('Pull Configuration (SFTP/HTTPS)')).toBeInTheDocument();
+      expect(
+        screen.getByText('Pull Configuration (SFTP/HTTPS)'),
+      ).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByText('Save and Next'));
@@ -444,12 +578,19 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
 
     const onSave = jest.fn();
     render(
-      <DataEnrichmentFormModal isOpen onClose={jest.fn()} onSave={onSave} jobType="pull" />,
+      <DataEnrichmentFormModal
+        isOpen
+        onClose={jest.fn()}
+        onSave={onSave}
+        jobType="pull"
+      />,
     );
 
     fireEvent.click(screen.getByText('Continue'));
     await waitFor(() => {
-      expect(screen.getByText('Pull Configuration (SFTP/HTTPS)')).toBeInTheDocument();
+      expect(
+        screen.getByText('Pull Configuration (SFTP/HTTPS)'),
+      ).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByText('Save and Next'));
@@ -472,12 +613,19 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
     createPullJobMock.mockRejectedValue({ message: 'api-error-msg' });
 
     render(
-      <DataEnrichmentFormModal isOpen onClose={jest.fn()} onSave={jest.fn()} jobType="pull" />,
+      <DataEnrichmentFormModal
+        isOpen
+        onClose={jest.fn()}
+        onSave={jest.fn()}
+        jobType="pull"
+      />,
     );
 
     fireEvent.click(screen.getByText('Continue'));
     await waitFor(() => {
-      expect(screen.getByText('Pull Configuration (SFTP/HTTPS)')).toBeInTheDocument();
+      expect(
+        screen.getByText('Pull Configuration (SFTP/HTTPS)'),
+      ).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByText('Save and Next'));
@@ -495,12 +643,19 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
     createPullJobMock.mockRejectedValue({ error: 'fallback-error' });
 
     render(
-      <DataEnrichmentFormModal isOpen onClose={jest.fn()} onSave={jest.fn()} jobType="pull" />,
+      <DataEnrichmentFormModal
+        isOpen
+        onClose={jest.fn()}
+        onSave={jest.fn()}
+        jobType="pull"
+      />,
     );
 
     fireEvent.click(screen.getByText('Continue'));
     await waitFor(() => {
-      expect(screen.getByText('Pull Configuration (SFTP/HTTPS)')).toBeInTheDocument();
+      expect(
+        screen.getByText('Pull Configuration (SFTP/HTTPS)'),
+      ).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByText('Save and Next'));
@@ -519,21 +674,30 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
     formValues = { ...formValues, version: 'v1.0.0', endpointPath: '/data' };
 
     render(
-      <DataEnrichmentFormModal isOpen onClose={jest.fn()} onSave={jest.fn()} jobType="push" />,
+      <DataEnrichmentFormModal
+        isOpen
+        onClose={jest.fn()}
+        onSave={jest.fn()}
+        jobType="push"
+      />,
     );
 
     fireEvent.click(screen.getByText('PUSH'));
     fireEvent.click(screen.getByText('Continue'));
 
     await waitFor(() => {
-      expect(screen.getByText('Push Configuration (REST API)')).toBeInTheDocument();
+      expect(
+        screen.getByText('Push Configuration (REST API)'),
+      ).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByText('Save and Next'));
     await waitFor(() => {
       expect(screen.getByText('Ready to Create Endpoint')).toBeInTheDocument();
       // Push summary has "Push Configuration (REST API)" string
-      expect(screen.getByText('Push Configuration (REST API)')).toBeInTheDocument();
+      expect(
+        screen.getByText('Push Configuration (REST API)'),
+      ).toBeInTheDocument();
     });
 
     formValues = originalFormValues;
@@ -549,12 +713,19 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
     };
 
     render(
-      <DataEnrichmentFormModal isOpen onClose={jest.fn()} onSave={jest.fn()} jobType="pull" />,
+      <DataEnrichmentFormModal
+        isOpen
+        onClose={jest.fn()}
+        onSave={jest.fn()}
+        jobType="pull"
+      />,
     );
 
     fireEvent.click(screen.getByText('Continue'));
     await waitFor(() => {
-      expect(screen.getByText('Pull Configuration (SFTP/HTTPS)')).toBeInTheDocument();
+      expect(
+        screen.getByText('Pull Configuration (SFTP/HTTPS)'),
+      ).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByText('Save and Next'));
@@ -571,13 +742,19 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
     );
 
     // Click to trigger React's event system, then fire change with name=sourceType to cover http branch
-    const pushRadio = container.querySelector('input[name="configurationType"][value="push"]') as HTMLInputElement;
+    const pushRadio = container.querySelector(
+      'input[name="configurationType"][value="push"]',
+    ) as HTMLInputElement;
     if (pushRadio) {
       fireEvent.click(pushRadio);
-      fireEvent.change(pushRadio, { target: { name: 'sourceType', value: 'http', checked: false } });
+      fireEvent.change(pushRadio, {
+        target: { name: 'sourceType', value: 'http', checked: false },
+      });
     }
 
-    expect(screen.getByText('Please Select Configuration Type')).toBeInTheDocument();
+    expect(
+      screen.getByText('Please Select Configuration Type'),
+    ).toBeInTheDocument();
   });
 
   it('handleInputChange sourceType=sftp sets authType=password via radio', () => {
@@ -586,13 +763,19 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
     );
 
     // Click to trigger React's event system, then fire change with name=sourceType to cover sftp branch
-    const pushRadio = container.querySelector('input[name="configurationType"][value="push"]') as HTMLInputElement;
+    const pushRadio = container.querySelector(
+      'input[name="configurationType"][value="push"]',
+    ) as HTMLInputElement;
     if (pushRadio) {
       fireEvent.click(pushRadio);
-      fireEvent.change(pushRadio, { target: { name: 'sourceType', value: 'sftp', checked: false } });
+      fireEvent.change(pushRadio, {
+        target: { name: 'sourceType', value: 'sftp', checked: false },
+      });
     }
 
-    expect(screen.getByText('Please Select Configuration Type')).toBeInTheDocument();
+    expect(
+      screen.getByText('Please Select Configuration Type'),
+    ).toBeInTheDocument();
   });
 
   it('pull update creates update payload instead of create (editMode with jobId)', async () => {
@@ -600,7 +783,14 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
     formValues = { ...formValues, sourceType: 'sftp', authType: 'password' };
 
     render(
-      <DataEnrichmentFormModal isOpen onClose={jest.fn()} onSave={onSave} editMode jobId="job-101" jobType="pull" />,
+      <DataEnrichmentFormModal
+        isOpen
+        onClose={jest.fn()}
+        onSave={onSave}
+        editMode
+        jobId="job-101"
+        jobType="pull"
+      />,
     );
 
     await waitFor(() => {
@@ -610,7 +800,9 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
     fireEvent.click(screen.getByText('Continue'));
 
     await waitFor(() => {
-      expect(screen.getByText('Pull Configuration (SFTP/HTTPS)')).toBeInTheDocument();
+      expect(
+        screen.getByText('Pull Configuration (SFTP/HTTPS)'),
+      ).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByText('Save and Next'));
@@ -620,37 +812,64 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
 
     fireEvent.click(screen.getByText('Create Endpoint'));
     await waitFor(() => {
-      expect(updatePullJobMock).toHaveBeenCalledWith('job-101', expect.any(Object));
+      expect(updatePullJobMock).toHaveBeenCalledWith(
+        'job-101',
+        expect.any(Object),
+      );
       expect(onSave).toHaveBeenCalled();
     });
   });
 
   it('renders without jobType (defaults to pull configuration type)', () => {
     // No jobType prop → jobType || 'pull' defaults to pull (line 58)
-    render(<DataEnrichmentFormModal isOpen onClose={jest.fn()} onSave={jest.fn()} />);
-    expect(screen.getByText('Please Select Configuration Type')).toBeInTheDocument();
+    render(
+      <DataEnrichmentFormModal isOpen onClose={jest.fn()} onSave={jest.fn()} />,
+    );
+    expect(
+      screen.getByText('Please Select Configuration Type'),
+    ).toBeInTheDocument();
   });
 
   it('Back button from config step resets to selection screen', async () => {
-    render(<DataEnrichmentFormModal isOpen onClose={jest.fn()} onSave={jest.fn()} jobType="pull" />);
+    render(
+      <DataEnrichmentFormModal
+        isOpen
+        onClose={jest.fn()}
+        onSave={jest.fn()}
+        jobType="pull"
+      />,
+    );
 
     fireEvent.click(screen.getByText('Continue'));
     await waitFor(() => {
-      expect(screen.getByText('Pull Configuration (SFTP/HTTPS)')).toBeInTheDocument();
+      expect(
+        screen.getByText('Pull Configuration (SFTP/HTTPS)'),
+      ).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByText('Back'));
     await waitFor(() => {
-      expect(screen.getByText('Please Select Configuration Type')).toBeInTheDocument();
+      expect(
+        screen.getByText('Please Select Configuration Type'),
+      ).toBeInTheDocument();
     });
   });
 
   it('Back to Config button from summary returns to config step', async () => {
-    render(<DataEnrichmentFormModal isOpen onClose={jest.fn()} onSave={jest.fn()} jobType="pull" />);
+    render(
+      <DataEnrichmentFormModal
+        isOpen
+        onClose={jest.fn()}
+        onSave={jest.fn()}
+        jobType="pull"
+      />,
+    );
 
     fireEvent.click(screen.getByText('Continue'));
     await waitFor(() => {
-      expect(screen.getByText('Pull Configuration (SFTP/HTTPS)')).toBeInTheDocument();
+      expect(
+        screen.getByText('Pull Configuration (SFTP/HTTPS)'),
+      ).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByText('Save and Next'));
@@ -660,7 +879,9 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
 
     fireEvent.click(screen.getByText('Back to Config'));
     await waitFor(() => {
-      expect(screen.getByText('Pull Configuration (SFTP/HTTPS)')).toBeInTheDocument();
+      expect(
+        screen.getByText('Pull Configuration (SFTP/HTTPS)'),
+      ).toBeInTheDocument();
     });
   });
 
@@ -668,11 +889,22 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
     const originalFormValues = { ...formValues };
     formValues = { ...formValues, ingestMode: 'replace' };
 
-    render(<DataEnrichmentFormModal isOpen onClose={jest.fn()} onSave={jest.fn()} jobType="pull" />);
+    render(
+      <DataEnrichmentFormModal
+        isOpen
+        onClose={jest.fn()}
+        onSave={jest.fn()}
+        jobType="pull"
+      />,
+    );
 
     fireEvent.click(screen.getByText('Continue'));
     await waitFor(() => {
-      expect(screen.getByText('Replace mode archives the current dataset and creates a new version with the uploaded data.')).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          'Replace mode archives the current dataset and creates a new version with the uploaded data.',
+        ),
+      ).toBeInTheDocument();
     });
 
     formValues = originalFormValues;
@@ -682,11 +914,20 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
     const originalFormValues = { ...formValues };
     formValues = { ...formValues, sourceType: 'sftp', fileFormat: 'json' };
 
-    render(<DataEnrichmentFormModal isOpen onClose={jest.fn()} onSave={jest.fn()} jobType="pull" />);
+    render(
+      <DataEnrichmentFormModal
+        isOpen
+        onClose={jest.fn()}
+        onSave={jest.fn()}
+        jobType="pull"
+      />,
+    );
 
     fireEvent.click(screen.getByText('Continue'));
     await waitFor(() => {
-      expect(screen.getByText('Pull Configuration (SFTP/HTTPS)')).toBeInTheDocument();
+      expect(
+        screen.getByText('Pull Configuration (SFTP/HTTPS)'),
+      ).toBeInTheDocument();
     });
 
     // fileFormat=json → no delimiter field (watch('fileFormat') === 'csv' is false)
@@ -699,11 +940,20 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
     const originalFormValues = { ...formValues };
     formValues = { ...formValues, sourceType: 'sftp', authType: 'key' };
 
-    render(<DataEnrichmentFormModal isOpen onClose={jest.fn()} onSave={jest.fn()} jobType="pull" />);
+    render(
+      <DataEnrichmentFormModal
+        isOpen
+        onClose={jest.fn()}
+        onSave={jest.fn()}
+        jobType="pull"
+      />,
+    );
 
     fireEvent.click(screen.getByText('Continue'));
     await waitFor(() => {
-      expect(screen.getByText('Pull Configuration (SFTP/HTTPS)')).toBeInTheDocument();
+      expect(
+        screen.getByText('Pull Configuration (SFTP/HTTPS)'),
+      ).toBeInTheDocument();
     });
 
     // With authType=key, the multiline (private key) field renders instead of password field
@@ -724,7 +974,14 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
       schedule: { message: 'Schedule is required' },
     };
 
-    render(<DataEnrichmentFormModal isOpen onClose={jest.fn()} onSave={jest.fn()} jobType="pull" />);
+    render(
+      <DataEnrichmentFormModal
+        isOpen
+        onClose={jest.fn()}
+        onSave={jest.fn()}
+        jobType="pull"
+      />,
+    );
     fireEvent.click(screen.getByText('Continue'));
     // ValidationError components should render for each error
     const validationErrors = screen.getAllByTestId('validation-error');
@@ -741,7 +998,14 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
       ingestMode: { message: 'Mode required' },
     };
 
-    render(<DataEnrichmentFormModal isOpen onClose={jest.fn()} onSave={jest.fn()} jobType="push" />);
+    render(
+      <DataEnrichmentFormModal
+        isOpen
+        onClose={jest.fn()}
+        onSave={jest.fn()}
+        jobType="push"
+      />,
+    );
     fireEvent.click(screen.getByText('Continue'));
     const validationErrors = screen.getAllByTestId('validation-error');
     expect(validationErrors.length).toBeGreaterThan(0);
@@ -760,9 +1024,21 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
     };
 
     const originalFormValues = { ...formValues };
-    formValues = { ...formValues, sourceType: 'sftp', authType: 'password', fileFormat: 'csv' };
+    formValues = {
+      ...formValues,
+      sourceType: 'sftp',
+      authType: 'password',
+      fileFormat: 'csv',
+    };
 
-    render(<DataEnrichmentFormModal isOpen onClose={jest.fn()} onSave={jest.fn()} jobType="pull" />);
+    render(
+      <DataEnrichmentFormModal
+        isOpen
+        onClose={jest.fn()}
+        onSave={jest.fn()}
+        jobType="pull"
+      />,
+    );
     fireEvent.click(screen.getByText('Continue'));
     const validationErrors = screen.getAllByTestId('validation-error');
     expect(validationErrors.length).toBeGreaterThan(0);
@@ -783,7 +1059,14 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
     const originalFormValues = { ...formValues };
     formValues = { ...formValues, sourceType: 'http' };
 
-    render(<DataEnrichmentFormModal isOpen onClose={jest.fn()} onSave={jest.fn()} jobType="pull" />);
+    render(
+      <DataEnrichmentFormModal
+        isOpen
+        onClose={jest.fn()}
+        onSave={jest.fn()}
+        jobType="pull"
+      />,
+    );
     fireEvent.click(screen.getByText('Continue'));
     const validationErrors = screen.getAllByTestId('validation-error');
     expect(validationErrors.length).toBeGreaterThan(0);
@@ -795,30 +1078,66 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
 
   it('handles schedule API response with .data property', async () => {
     scheduleGetAllMock.mockResolvedValue({ data: [] });
-    render(<DataEnrichmentFormModal isOpen onClose={jest.fn()} onSave={jest.fn()} jobType="pull" />);
+    render(
+      <DataEnrichmentFormModal
+        isOpen
+        onClose={jest.fn()}
+        onSave={jest.fn()}
+        jobType="pull"
+      />,
+    );
     await waitFor(() => expect(scheduleGetAllMock).toHaveBeenCalled());
-    expect(screen.getByText('Please Select Configuration Type')).toBeInTheDocument();
+    expect(
+      screen.getByText('Please Select Configuration Type'),
+    ).toBeInTheDocument();
   });
 
   it('handles schedule API response with .results property', async () => {
     scheduleGetAllMock.mockResolvedValue({ results: [] });
-    render(<DataEnrichmentFormModal isOpen onClose={jest.fn()} onSave={jest.fn()} jobType="pull" />);
+    render(
+      <DataEnrichmentFormModal
+        isOpen
+        onClose={jest.fn()}
+        onSave={jest.fn()}
+        jobType="pull"
+      />,
+    );
     await waitFor(() => expect(scheduleGetAllMock).toHaveBeenCalled());
-    expect(screen.getByText('Please Select Configuration Type')).toBeInTheDocument();
+    expect(
+      screen.getByText('Please Select Configuration Type'),
+    ).toBeInTheDocument();
   });
 
   it('handles schedule API response with .items property', async () => {
     scheduleGetAllMock.mockResolvedValue({ items: [] });
-    render(<DataEnrichmentFormModal isOpen onClose={jest.fn()} onSave={jest.fn()} jobType="pull" />);
+    render(
+      <DataEnrichmentFormModal
+        isOpen
+        onClose={jest.fn()}
+        onSave={jest.fn()}
+        jobType="pull"
+      />,
+    );
     await waitFor(() => expect(scheduleGetAllMock).toHaveBeenCalled());
-    expect(screen.getByText('Please Select Configuration Type')).toBeInTheDocument();
+    expect(
+      screen.getByText('Please Select Configuration Type'),
+    ).toBeInTheDocument();
   });
 
   it('handles schedule API response with no recognized property (uses empty array)', async () => {
     scheduleGetAllMock.mockResolvedValue({});
-    render(<DataEnrichmentFormModal isOpen onClose={jest.fn()} onSave={jest.fn()} jobType="pull" />);
+    render(
+      <DataEnrichmentFormModal
+        isOpen
+        onClose={jest.fn()}
+        onSave={jest.fn()}
+        jobType="pull"
+      />,
+    );
     await waitFor(() => expect(scheduleGetAllMock).toHaveBeenCalled());
-    expect(screen.getByText('Please Select Configuration Type')).toBeInTheDocument();
+    expect(
+      screen.getByText('Please Select Configuration Type'),
+    ).toBeInTheDocument();
   });
 
   // ── Summary view with empty URL (|| 'N/A' branch) ─────────────────────────
@@ -827,11 +1146,24 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
     const originalFormValues = { ...formValues };
     formValues = { ...formValues, sourceType: 'http', url: '' };
 
-    render(<DataEnrichmentFormModal isOpen onClose={jest.fn()} onSave={jest.fn()} jobType="pull" />);
+    render(
+      <DataEnrichmentFormModal
+        isOpen
+        onClose={jest.fn()}
+        onSave={jest.fn()}
+        jobType="pull"
+      />,
+    );
     fireEvent.click(screen.getByText('Continue'));
-    await waitFor(() => expect(screen.getByText('Pull Configuration (SFTP/HTTPS)')).toBeInTheDocument());
+    await waitFor(() =>
+      expect(
+        screen.getByText('Pull Configuration (SFTP/HTTPS)'),
+      ).toBeInTheDocument(),
+    );
     fireEvent.click(screen.getByText('Save and Next'));
-    await waitFor(() => expect(screen.getByText('Ready to Create Endpoint')).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText('Ready to Create Endpoint')).toBeInTheDocument(),
+    );
     // 'N/A' should appear in the summary for the empty url field
     expect(screen.getAllByText('N/A').length).toBeGreaterThan(0);
 
@@ -842,14 +1174,32 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
 
   it('creates HTTP pull endpoint without headers (empty headers branch)', async () => {
     const originalFormValues = { ...formValues };
-    formValues = { ...formValues, sourceType: 'http', url: 'https://example.com', headers: '' };
+    formValues = {
+      ...formValues,
+      sourceType: 'http',
+      url: 'https://example.com',
+      headers: '',
+    };
     createPullJobMock.mockResolvedValue({ message: 'created-ok' });
 
-    render(<DataEnrichmentFormModal isOpen onClose={jest.fn()} onSave={jest.fn()} jobType="pull" />);
+    render(
+      <DataEnrichmentFormModal
+        isOpen
+        onClose={jest.fn()}
+        onSave={jest.fn()}
+        jobType="pull"
+      />,
+    );
     fireEvent.click(screen.getByText('Continue'));
-    await waitFor(() => expect(screen.getByText('Pull Configuration (SFTP/HTTPS)')).toBeInTheDocument());
+    await waitFor(() =>
+      expect(
+        screen.getByText('Pull Configuration (SFTP/HTTPS)'),
+      ).toBeInTheDocument(),
+    );
     fireEvent.click(screen.getByText('Save and Next'));
-    await waitFor(() => expect(screen.getByText('Ready to Create Endpoint')).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText('Ready to Create Endpoint')).toBeInTheDocument(),
+    );
     fireEvent.click(screen.getByText('Create Endpoint'));
     await waitFor(() => expect(createPullJobMock).toHaveBeenCalled());
 
@@ -868,15 +1218,28 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
       sourceType: 'sftp',
       authType: 'key',
       password: 'my-private-key\\nmore-key',
-      port: '',  // empty port → null
+      port: '', // empty port → null
     };
     createPullJobMock.mockResolvedValue({ message: 'created-sftp-key' });
 
-    render(<DataEnrichmentFormModal isOpen onClose={jest.fn()} onSave={jest.fn()} jobType="pull" />);
+    render(
+      <DataEnrichmentFormModal
+        isOpen
+        onClose={jest.fn()}
+        onSave={jest.fn()}
+        jobType="pull"
+      />,
+    );
     fireEvent.click(screen.getByText('Continue'));
-    await waitFor(() => expect(screen.getByText('Pull Configuration (SFTP/HTTPS)')).toBeInTheDocument());
+    await waitFor(() =>
+      expect(
+        screen.getByText('Pull Configuration (SFTP/HTTPS)'),
+      ).toBeInTheDocument(),
+    );
     fireEvent.click(screen.getByText('Save and Next'));
-    await waitFor(() => expect(screen.getByText('Ready to Create Endpoint')).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText('Ready to Create Endpoint')).toBeInTheDocument(),
+    );
     fireEvent.click(screen.getByText('Create Endpoint'));
     await waitFor(() => expect(createPullJobMock).toHaveBeenCalled());
 
@@ -893,10 +1256,19 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
     const originalFormValues = { ...formValues };
     formValues = { ...formValues, version: '', endpointPath: '' };
 
-    render(<DataEnrichmentFormModal isOpen onClose={jest.fn()} onSave={jest.fn()} jobType="push" />);
+    render(
+      <DataEnrichmentFormModal
+        isOpen
+        onClose={jest.fn()}
+        onSave={jest.fn()}
+        jobType="push"
+      />,
+    );
     fireEvent.click(screen.getByText('Continue'));
     // Just ensure the component renders without errors
-    expect(screen.getByText('Push Configuration (REST API)')).toBeInTheDocument();
+    expect(
+      screen.getByText('Push Configuration (REST API)'),
+    ).toBeInTheDocument();
 
     formValues = originalFormValues;
   });
@@ -905,9 +1277,18 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
     const originalFormValues = { ...formValues };
     formValues = { ...formValues, version: 'v1.0', endpointPath: '' };
 
-    render(<DataEnrichmentFormModal isOpen onClose={jest.fn()} onSave={jest.fn()} jobType="push" />);
+    render(
+      <DataEnrichmentFormModal
+        isOpen
+        onClose={jest.fn()}
+        onSave={jest.fn()}
+        jobType="push"
+      />,
+    );
     fireEvent.click(screen.getByText('Continue'));
-    expect(screen.getByText('Push Configuration (REST API)')).toBeInTheDocument();
+    expect(
+      screen.getByText('Push Configuration (REST API)'),
+    ).toBeInTheDocument();
 
     formValues = originalFormValues;
   });
@@ -936,9 +1317,21 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
     };
 
     const originalFormValues = { ...formValues };
-    formValues = { ...formValues, sourceType: 'sftp', authType: 'password', fileFormat: 'csv' };
+    formValues = {
+      ...formValues,
+      sourceType: 'sftp',
+      authType: 'password',
+      fileFormat: 'csv',
+    };
 
-    render(<DataEnrichmentFormModal isOpen onClose={jest.fn()} onSave={jest.fn()} jobType="pull" />);
+    render(
+      <DataEnrichmentFormModal
+        isOpen
+        onClose={jest.fn()}
+        onSave={jest.fn()}
+        jobType="pull"
+      />,
+    );
     fireEvent.click(screen.getByText('Continue'));
     // ValidationError renders for all these errors but message='' (|| '' fallback covered)
     const validationErrors = screen.getAllByTestId('validation-error');
@@ -957,7 +1350,14 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
     const originalFormValues = { ...formValues };
     formValues = { ...formValues, sourceType: 'http' };
 
-    render(<DataEnrichmentFormModal isOpen onClose={jest.fn()} onSave={jest.fn()} jobType="pull" />);
+    render(
+      <DataEnrichmentFormModal
+        isOpen
+        onClose={jest.fn()}
+        onSave={jest.fn()}
+        jobType="pull"
+      />,
+    );
     fireEvent.click(screen.getByText('Continue'));
     const validationErrors = screen.getAllByTestId('validation-error');
     expect(validationErrors.length).toBeGreaterThan(0);
@@ -971,23 +1371,37 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
     );
 
     await waitFor(() => {
-      expect(screen.getByText('Please Select Configuration Type')).toBeInTheDocument();
+      expect(
+        screen.getByText('Please Select Configuration Type'),
+      ).toBeInTheDocument();
     });
 
     // Search the whole document for the radio inputs (they may be in a portal or outside container)
-    const configRadio = document.querySelector('input[type="radio"][name="configurationType"]');
+    const configRadio = document.querySelector(
+      'input[type="radio"][name="configurationType"]',
+    );
     if (configRadio) {
       // covers: name === 'configurationType' branch (BRDA:1135)
-      fireEvent.change(configRadio, { target: { name: 'configurationType', value: 'push' } });
+      fireEvent.change(configRadio, {
+        target: { name: 'configurationType', value: 'push' },
+      });
       // covers: name === 'sourceType', value === 'http' branch (BRDA:1140, 1143)
-      fireEvent.change(configRadio, { target: { name: 'sourceType', value: 'http' } });
+      fireEvent.change(configRadio, {
+        target: { name: 'sourceType', value: 'http' },
+      });
       // covers: name === 'sourceType', value === 'sftp' branch (BRDA:1153)
-      fireEvent.change(configRadio, { target: { name: 'sourceType', value: 'sftp' } });
+      fireEvent.change(configRadio, {
+        target: { name: 'sourceType', value: 'sftp' },
+      });
       // covers: else branch (BRDA:1161)
-      fireEvent.change(configRadio, { target: { name: 'otherField', value: 'someVal' } });
+      fireEvent.change(configRadio, {
+        target: { name: 'otherField', value: 'someVal' },
+      });
     }
 
-    expect(screen.getByText('Please Select Configuration Type')).toBeInTheDocument();
+    expect(
+      screen.getByText('Please Select Configuration Type'),
+    ).toBeInTheDocument();
   });
 
   it('createPullJob with no backend message covers || fallback for non-editMode (BRDA:1273)', async () => {
@@ -995,11 +1409,24 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
     createPullJobMock.mockResolvedValue({});
     const onSave = jest.fn();
 
-    render(<DataEnrichmentFormModal isOpen onClose={jest.fn()} onSave={onSave} jobType="pull" />);
+    render(
+      <DataEnrichmentFormModal
+        isOpen
+        onClose={jest.fn()}
+        onSave={onSave}
+        jobType="pull"
+      />,
+    );
     fireEvent.click(screen.getByText('Continue'));
-    await waitFor(() => expect(screen.getByText('Pull Configuration (SFTP/HTTPS)')).toBeInTheDocument());
+    await waitFor(() =>
+      expect(
+        screen.getByText('Pull Configuration (SFTP/HTTPS)'),
+      ).toBeInTheDocument(),
+    );
     fireEvent.click(screen.getByText('Save and Next'));
-    await waitFor(() => expect(screen.getByText('Ready to Create Endpoint')).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText('Ready to Create Endpoint')).toBeInTheDocument(),
+    );
     fireEvent.click(screen.getByText('Create Endpoint'));
     await waitFor(() => expect(onSave).toHaveBeenCalled());
   });
@@ -1009,14 +1436,27 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
     const onSave = jest.fn();
 
     render(
-      <DataEnrichmentFormModal isOpen onClose={jest.fn()} onSave={onSave} editMode jobId="job-42" jobType="pull" />
+      <DataEnrichmentFormModal
+        isOpen
+        onClose={jest.fn()}
+        onSave={onSave}
+        editMode
+        jobId="job-42"
+        jobType="pull"
+      />,
     );
 
     await waitFor(() => expect(getByIdMock).toHaveBeenCalled());
     fireEvent.click(screen.getByText('Continue'));
-    await waitFor(() => expect(screen.getByText('Pull Configuration (SFTP/HTTPS)')).toBeInTheDocument());
+    await waitFor(() =>
+      expect(
+        screen.getByText('Pull Configuration (SFTP/HTTPS)'),
+      ).toBeInTheDocument(),
+    );
     fireEvent.click(screen.getByText('Save and Next'));
-    await waitFor(() => expect(screen.getByText('Ready to Create Endpoint')).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText('Ready to Create Endpoint')).toBeInTheDocument(),
+    );
     fireEvent.click(screen.getByText('Create Endpoint'));
     await waitFor(() => expect(updatePullJobMock).toHaveBeenCalled());
   });

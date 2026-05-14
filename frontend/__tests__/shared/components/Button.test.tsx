@@ -4,7 +4,9 @@ import { Button } from '../../../shared/components/Button';
 describe('Button', () => {
   it('renders children correctly', () => {
     render(<Button>Click me</Button>);
-    expect(screen.getByRole('button', { name: /click me/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /click me/i }),
+    ).toBeInTheDocument();
   });
 
   it('applies primary variant by default', () => {
@@ -63,7 +65,11 @@ describe('Button', () => {
 
   it('does not call onClick when disabled', () => {
     const handleClick = jest.fn();
-    render(<Button onClick={handleClick} disabled>Disabled</Button>);
+    render(
+      <Button onClick={handleClick} disabled>
+        Disabled
+      </Button>,
+    );
     const button = screen.getByRole('button', { name: /disabled/i });
     fireEvent.click(button);
     expect(handleClick).not.toHaveBeenCalled();

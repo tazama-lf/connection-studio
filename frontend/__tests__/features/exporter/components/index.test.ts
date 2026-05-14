@@ -62,5 +62,3 @@ describe('features/exporter/components/index.ts', () => {
     expect(ExportedItemDetailsModalDefault).toBe(ExportedItemDetailsModal);
   });
 });
-
-

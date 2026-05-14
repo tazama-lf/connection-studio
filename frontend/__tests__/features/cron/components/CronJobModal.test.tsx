@@ -5,8 +5,8 @@ import type { ScheduleResponse } from '@features/cron/types';
 
 // Mock dependencies
 jest.mock('@features/cron/components/CronJobForm', () => ({
-  CronJobForm: ({ 
-    onJobCreated, 
+  CronJobForm: ({
+    onJobCreated,
     onCancel,
     viewFormData,
     editFormData,
@@ -18,12 +18,18 @@ jest.mock('@features/cron/components/CronJobForm', () => ({
     <div data-testid="cron-job-form">
       {viewFormData && <div data-testid="view-mode">View Mode</div>}
       {editFormData && <div data-testid="edit-mode">Edit Mode</div>}
-      {!viewFormData && !editFormData && <div data-testid="create-mode">Create Mode</div>}
+      {!viewFormData && !editFormData && (
+        <div data-testid="create-mode">Create Mode</div>
+      )}
       {onJobCreated && <button onClick={onJobCreated}>Submit Form</button>}
       {onCancel && <button onClick={onCancel}>Cancel Form</button>}
-      {handleSendForApproval && <button onClick={handleSendForApproval}>Send for Approval</button>}
+      {handleSendForApproval && (
+        <button onClick={handleSendForApproval}>Send for Approval</button>
+      )}
       {handleSaveEdit && <button onClick={handleSaveEdit}>Save Edit</button>}
-      {onApprove && <button onClick={() => onApprove('test-id')}>Approve</button>}
+      {onApprove && (
+        <button onClick={() => onApprove('test-id')}>Approve</button>
+      )}
       {onReject && <button onClick={() => onReject('test-id')}>Reject</button>}
     </div>
   ),
@@ -69,7 +75,7 @@ describe('CronJobModal', () => {
           isOpen={false}
           onClose={mockOnClose}
           onJobCreated={mockOnJobCreated}
-        />
+        />,
       );
 
       expect(container.firstChild).toBeNull();
@@ -83,7 +89,7 @@ describe('CronJobModal', () => {
           isOpen={true}
           onClose={mockOnClose}
           onJobCreated={mockOnJobCreated}
-        />
+        />,
       );
 
       expect(screen.getByText('Create New Cron Job')).toBeInTheDocument();
@@ -97,7 +103,7 @@ describe('CronJobModal', () => {
           onClose={mockOnClose}
           mode="create"
           onJobCreated={mockOnJobCreated}
-        />
+        />,
       );
 
       expect(screen.getByText('Create New Cron Job')).toBeInTheDocument();
@@ -111,7 +117,7 @@ describe('CronJobModal', () => {
           onClose={mockOnClose}
           mode="create"
           onJobCreated={mockOnJobCreated}
-        />
+        />,
       );
 
       expect(screen.getByText('Submit Form')).toBeInTheDocument();
@@ -129,7 +135,7 @@ describe('CronJobModal', () => {
           editFormData={mockEditFormData}
           setEditFormData={mockSetEditFormData}
           handleSaveEdit={mockHandleSaveEdit}
-        />
+        />,
       );
 
       expect(screen.getByText('Edit Cron Job')).toBeInTheDocument();
@@ -145,7 +151,7 @@ describe('CronJobModal', () => {
           editFormData={mockEditFormData}
           setEditFormData={mockSetEditFormData}
           handleSaveEdit={mockHandleSaveEdit}
-        />
+        />,
       );
 
       expect(screen.getByText('Save Edit')).toBeInTheDocument();
@@ -164,7 +170,7 @@ describe('CronJobModal', () => {
           handleSendForApproval={mockHandleSendForApproval}
           onApprove={mockOnApprove}
           onReject={mockOnReject}
-        />
+        />,
       );
 
       expect(screen.getByText('View Cron Job')).toBeInTheDocument();
@@ -181,7 +187,7 @@ describe('CronJobModal', () => {
           handleSendForApproval={mockHandleSendForApproval}
           onApprove={mockOnApprove}
           onReject={mockOnReject}
-        />
+        />,
       );
 
       expect(screen.getByText('Send for Approval')).toBeInTheDocument();
@@ -198,7 +204,7 @@ describe('CronJobModal', () => {
           isOpen={true}
           onClose={mockOnClose}
           onJobCreated={mockOnJobCreated}
-        />
+        />,
       );
 
       const closeButton = container.querySelector('button svg');
@@ -211,7 +217,7 @@ describe('CronJobModal', () => {
           isOpen={true}
           onClose={mockOnClose}
           onJobCreated={mockOnJobCreated}
-        />
+        />,
       );
 
       const modalContent = container.querySelector('.bg-white.shadow-2xl');
@@ -224,7 +230,7 @@ describe('CronJobModal', () => {
           isOpen={true}
           onClose={mockOnClose}
           onJobCreated={mockOnJobCreated}
-        />
+        />,
       );
 
       const backdrop = container.querySelector('[data-testid="mui-backdrop"]');
@@ -240,7 +246,7 @@ describe('CronJobModal', () => {
           onClose={mockOnClose}
           mode="create"
           onJobCreated={mockOnJobCreated}
-        />
+        />,
       );
 
       const closeButton = container.querySelector('.text-gray-400');
@@ -257,7 +263,7 @@ describe('CronJobModal', () => {
           onClose={mockOnClose}
           mode="create"
           onJobCreated={mockOnJobCreated}
-        />
+        />,
       );
 
       fireEvent.click(screen.getByText('Cancel Form'));
@@ -271,7 +277,7 @@ describe('CronJobModal', () => {
           onClose={mockOnClose}
           mode="create"
           onJobCreated={mockOnJobCreated}
-        />
+        />,
       );
 
       fireEvent.click(screen.getByText('Submit Form'));
@@ -291,7 +297,7 @@ describe('CronJobModal', () => {
           editFormData={mockEditFormData}
           setEditFormData={mockSetEditFormData}
           handleSaveEdit={mockHandleSaveEdit}
-        />
+        />,
       );
 
       fireEvent.click(screen.getByText('Save Edit'));
@@ -309,7 +315,7 @@ describe('CronJobModal', () => {
           editFormData={mockEditFormData}
           setEditFormData={mockSetEditFormData}
           handleSaveEdit={mockHandleSaveEdit}
-        />
+        />,
       );
 
       fireEvent.click(screen.getByText('Cancel Form'));
@@ -326,7 +332,7 @@ describe('CronJobModal', () => {
           mode="view"
           viewFormData={mockViewFormData}
           handleSendForApproval={mockHandleSendForApproval}
-        />
+        />,
       );
 
       fireEvent.click(screen.getByText('Send for Approval'));
@@ -343,7 +349,7 @@ describe('CronJobModal', () => {
           mode="view"
           viewFormData={mockViewFormData}
           onApprove={mockOnApprove}
-        />
+        />,
       );
 
       fireEvent.click(screen.getByText('Approve'));
@@ -358,7 +364,7 @@ describe('CronJobModal', () => {
           mode="view"
           viewFormData={mockViewFormData}
           onReject={mockOnReject}
-        />
+        />,
       );
 
       fireEvent.click(screen.getByText('Reject'));
@@ -370,11 +376,7 @@ describe('CronJobModal', () => {
     it('should not throw error when onJobCreated is not provided', () => {
       expect(() => {
         render(
-          <CronJobModal
-            isOpen={true}
-            onClose={mockOnClose}
-            mode="create"
-          />
+          <CronJobModal isOpen={true} onClose={mockOnClose} mode="create" />,
         );
       }).not.toThrow();
     });
@@ -387,7 +389,7 @@ describe('CronJobModal', () => {
             onClose={mockOnClose}
             mode="edit"
             editFormData={mockEditFormData}
-          />
+          />,
         );
       }).not.toThrow();
     });
@@ -400,31 +402,19 @@ describe('CronJobModal', () => {
             onClose={mockOnClose}
             mode="view"
             viewFormData={mockViewFormData}
-          />
+          />,
         );
       }).not.toThrow();
     });
 
     it('should handle missing viewFormData in view mode', () => {
-      render(
-        <CronJobModal
-          isOpen={true}
-          onClose={mockOnClose}
-          mode="view"
-        />
-      );
+      render(<CronJobModal isOpen={true} onClose={mockOnClose} mode="view" />);
 
       expect(screen.getByText('View Cron Job')).toBeInTheDocument();
     });
 
     it('should handle missing editFormData in edit mode', () => {
-      render(
-        <CronJobModal
-          isOpen={true}
-          onClose={mockOnClose}
-          mode="edit"
-        />
-      );
+      render(<CronJobModal isOpen={true} onClose={mockOnClose} mode="edit" />);
 
       expect(screen.getByText('Edit Cron Job')).toBeInTheDocument();
     });
@@ -438,7 +428,7 @@ describe('CronJobModal', () => {
           mode="view"
           viewFormData={mockViewFormData}
           handleSendForApproval={mockHandleSendForApproval}
-        />
+        />,
       );
 
       // In view mode CronJobModal passes handleJobCreated as handleSendForApproval to CronJobForm,

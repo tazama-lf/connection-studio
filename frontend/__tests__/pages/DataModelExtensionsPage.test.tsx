@@ -3,7 +3,11 @@ import { render, screen } from '@testing-library/react';
 import { DataModelExtensionsPage } from '../../src/pages/DataModelExtensionsPage';
 
 jest.mock('../../../src/features/data-model', () => ({
-  ExtensionManagement: ({ onExtensionChange }: { onExtensionChange: () => void }) => (
+  ExtensionManagement: ({
+    onExtensionChange,
+  }: {
+    onExtensionChange: () => void;
+  }) => (
     <div data-testid="extension-management">
       ExtensionManagement Mock
       <button onClick={onExtensionChange}>trigger-extension-change</button>
@@ -35,7 +39,9 @@ describe('DataModelExtensionsPage', () => {
 
   it('renders the "How Data Model Extensions Work" section', () => {
     render(<DataModelExtensionsPage />);
-    expect(screen.getByText('How Data Model Extensions Work')).toBeInTheDocument();
+    expect(
+      screen.getByText('How Data Model Extensions Work'),
+    ).toBeInTheDocument();
   });
 
   it('renders extension feature bullets', () => {

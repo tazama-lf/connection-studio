@@ -33,21 +33,29 @@ jest.mock('../../../../src/utils/common/roleUtils', () => ({
   getPrimaryRole: (...args: any[]) => mockGetPrimaryRole(...args),
 }));
 
-jest.mock('../../../../src/features/data-enrichment/components/JobList', () => ({
-  JobList: ({ onViewLogs, jobs, onRefresh }: any) => (
-    <div>
-      <div>job-count:{jobs.length}</div>
-      <button onClick={() => onViewLogs('job-1')}>View Logs</button>
-      <button onClick={() => onRefresh()}>Refresh</button>
-    </div>
-  ),
-}));
+jest.mock(
+  '../../../../src/features/data-enrichment/components/JobList',
+  () => ({
+    JobList: ({ onViewLogs, jobs, onRefresh }: any) => (
+      <div>
+        <div>job-count:{jobs.length}</div>
+        <button onClick={() => onViewLogs('job-1')}>View Logs</button>
+        <button onClick={() => onRefresh()}>Refresh</button>
+      </div>
+    ),
+  }),
+);
 
-jest.mock('../../../../src/features/data-enrichment/components/JobDetailsModal', () => ({
-  __esModule: true,
-  default: ({ isOpen, onExport }: any) =>
-    isOpen ? <button onClick={() => onExport('job-1', 'PULL')}>Export Job</button> : null,
-}));
+jest.mock(
+  '../../../../src/features/data-enrichment/components/JobDetailsModal',
+  () => ({
+    __esModule: true,
+    default: ({ isOpen, onExport }: any) =>
+      isOpen ? (
+        <button onClick={() => onExport('job-1', 'PULL')}>Export Job</button>
+      ) : null,
+  }),
+);
 
 jest.mock('../../../../src/features/data-enrichment/handlers', () => ({
   dataEnrichmentJobApi: {
@@ -60,21 +68,31 @@ jest.mock('../../../../src/features/data-enrichment/handlers', () => ({
 describe('features/exporter/pages/ExporterDEJobsPage.tsx', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockUseAuth.mockReturnValue({ isAuthenticated: true, user: { claims: ['exporter'] } });
+    mockUseAuth.mockReturnValue({
+      isAuthenticated: true,
+      user: { claims: ['exporter'] },
+    });
     mockIsExporter.mockReturnValue(true);
     mockGetPrimaryRole.mockReturnValue('admin');
     (dataEnrichmentJobApi.getList as jest.Mock).mockResolvedValue({
       data: [{ id: 'job-1', type: 'pull' }],
       total: 1,
     });
-    (dataEnrichmentJobApi.getById as jest.Mock).mockResolvedValue({ id: 'job-1', type: 'pull' });
-    (dataEnrichmentJobApi.updateStatus as jest.Mock).mockResolvedValue({ success: true });
+    (dataEnrichmentJobApi.getById as jest.Mock).mockResolvedValue({
+      id: 'job-1',
+      type: 'pull',
+    });
+    (dataEnrichmentJobApi.updateStatus as jest.Mock).mockResolvedValue({
+      success: true,
+    });
   });
 
   it('renders permission message when user is not exporter', () => {
     mockIsExporter.mockReturnValue(false);
     render(<ExporterDEJobsPage />);
-    expect(screen.getByText('You do not have permission to access this page.')).toBeInTheDocument();
+    expect(
+      screen.getByText('You do not have permission to access this page.'),
+    ).toBeInTheDocument();
   });
 
   it('loads jobs, opens details and exports job', async () => {
@@ -88,7 +106,10 @@ describe('features/exporter/pages/ExporterDEJobsPage.tsx', () => {
     fireEvent.click(screen.getByText('View Logs'));
 
     await waitFor(() => {
-      expect(dataEnrichmentJobApi.getById).toHaveBeenCalledWith('job-1', 'PULL');
+      expect(dataEnrichmentJobApi.getById).toHaveBeenCalledWith(
+        'job-1',
+        'PULL',
+      );
     });
 
     fireEvent.click(screen.getByText('Export Job'));
@@ -99,12 +120,16 @@ describe('features/exporter/pages/ExporterDEJobsPage.tsx', () => {
         'STATUS_06_EXPORTED',
         'PULL',
       );
-      expect(mockShowSuccess).toHaveBeenCalledWith('Job exported successfully!');
+      expect(mockShowSuccess).toHaveBeenCalledWith(
+        'Job exported successfully!',
+      );
     });
   });
 
   it('shows error when fetchDeJobs fails (lines 69-70)', async () => {
-    (dataEnrichmentJobApi.getList as jest.Mock).mockRejectedValue(new Error('Network error'));
+    (dataEnrichmentJobApi.getList as jest.Mock).mockRejectedValue(
+      new Error('Network error'),
+    );
 
     render(<ExporterDEJobsPage />);
 
@@ -115,7 +140,9 @@ describe('features/exporter/pages/ExporterDEJobsPage.tsx', () => {
   });
 
   it('shows error when fetchDeJobs fails with non-Error (line 69 else branch)', async () => {
-    (dataEnrichmentJobApi.getList as jest.Mock).mockRejectedValue('string error');
+    (dataEnrichmentJobApi.getList as jest.Mock).mockRejectedValue(
+      'string error',
+    );
 
     render(<ExporterDEJobsPage />);
 
@@ -125,7 +152,9 @@ describe('features/exporter/pages/ExporterDEJobsPage.tsx', () => {
   });
 
   it('shows error when handleViewJobDetails fails (line 91)', async () => {
-    (dataEnrichmentJobApi.getById as jest.Mock).mockRejectedValue(new Error('Fetch failed'));
+    (dataEnrichmentJobApi.getById as jest.Mock).mockRejectedValue(
+      new Error('Fetch failed'),
+    );
 
     render(<ExporterDEJobsPage />);
 
@@ -141,7 +170,9 @@ describe('features/exporter/pages/ExporterDEJobsPage.tsx', () => {
   });
 
   it('shows error when handleExportJob fails (line 115)', async () => {
-    (dataEnrichmentJobApi.updateStatus as jest.Mock).mockRejectedValue(new Error('Export failed'));
+    (dataEnrichmentJobApi.updateStatus as jest.Mock).mockRejectedValue(
+      new Error('Export failed'),
+    );
 
     render(<ExporterDEJobsPage />);
 
@@ -158,7 +189,9 @@ describe('features/exporter/pages/ExporterDEJobsPage.tsx', () => {
     fireEvent.click(screen.getByText('Export Job'));
 
     await waitFor(() => {
-      expect(mockShowError).toHaveBeenCalledWith('Failed to export job. Please try again.');
+      expect(mockShowError).toHaveBeenCalledWith(
+        'Failed to export job. Please try again.',
+      );
     });
   });
 
@@ -194,7 +227,9 @@ describe('features/exporter/pages/ExporterDEJobsPage.tsx', () => {
     mockUseAuth.mockReturnValue({ isAuthenticated: false, user: null });
     render(<ExporterDEJobsPage />);
     // With no claims, userIsExporter = false, so permission page is shown
-    expect(screen.getByText('You do not have permission to access this page.')).toBeInTheDocument();
+    expect(
+      screen.getByText('You do not have permission to access this page.'),
+    ).toBeInTheDocument();
   });
 
   it('isAuthenticated && user?.claims && !userIsExporter - covers claim branches (BRDA:48)', async () => {
@@ -202,15 +237,22 @@ describe('features/exporter/pages/ExporterDEJobsPage.tsx', () => {
     mockUseAuth.mockReturnValue({ isAuthenticated: true, user: {} });
     mockIsExporter.mockReturnValue(false);
     render(<ExporterDEJobsPage />);
-    expect(screen.getByText('You do not have permission to access this page.')).toBeInTheDocument();
+    expect(
+      screen.getByText('You do not have permission to access this page.'),
+    ).toBeInTheDocument();
   });
 
   it('isExporter false branch false (not authenticated) skips showError (BRDA:48)', async () => {
-    mockUseAuth.mockReturnValue({ isAuthenticated: false, user: { claims: ['exporter'] } });
+    mockUseAuth.mockReturnValue({
+      isAuthenticated: false,
+      user: { claims: ['exporter'] },
+    });
     mockIsExporter.mockReturnValue(true);
     render(<ExporterDEJobsPage />);
     // Not authenticated → permission page shown without showError
-    expect(screen.getByText('You do not have permission to access this page.')).toBeInTheDocument();
+    expect(
+      screen.getByText('You do not have permission to access this page.'),
+    ).toBeInTheDocument();
     expect(mockShowError).not.toHaveBeenCalled();
   });
 
@@ -225,9 +267,13 @@ describe('features/exporter/pages/ExporterDEJobsPage.tsx', () => {
   it('handleExportJob onSuccess fetch triggers (BRDA:119 second branch)', async () => {
     // Export success → re-fetchDeJobs → getList called twice
     render(<ExporterDEJobsPage />);
-    await waitFor(() => expect(screen.getByText('View Logs')).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText('View Logs')).toBeInTheDocument(),
+    );
     fireEvent.click(screen.getByText('View Logs'));
-    await waitFor(() => expect(screen.getByText('Export Job')).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText('Export Job')).toBeInTheDocument(),
+    );
     fireEvent.click(screen.getByText('Export Job'));
     await waitFor(() => {
       expect(dataEnrichmentJobApi.getList).toHaveBeenCalledTimes(2);

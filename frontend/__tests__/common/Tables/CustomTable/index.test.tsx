@@ -42,13 +42,19 @@ jest.mock('@mui/x-data-grid', () => ({
 
 jest.mock('../../../../src/common/Tables/CustomTable/Table.styles', () => ({
   PaginationBold: ({ children }: any) => <strong>{children}</strong>,
-  PaginationContainer: ({ children }: any) => <div data-testid="pagination-container">{children}</div>,
-  PaginationText: ({ children }: any) => <div data-testid="pagination-text">{children}</div>,
+  PaginationContainer: ({ children }: any) => (
+    <div data-testid="pagination-container">{children}</div>
+  ),
+  PaginationText: ({ children }: any) => (
+    <div data-testid="pagination-text">{children}</div>
+  ),
   StyledDataGrid: (props: any) => {
     latestDataGridProps = props;
     return <div data-testid="data-grid" />;
   },
-  TableOuter: ({ children }: any) => <div data-testid="table-outer">{children}</div>,
+  TableOuter: ({ children }: any) => (
+    <div data-testid="table-outer">{children}</div>
+  ),
   TableWrapper: ({ children, ...props }: any) => {
     latestTableWrapperProps = props;
     return <div data-testid="table-wrapper">{children}</div>;
@@ -92,11 +98,7 @@ describe('common/Tables/CustomTable/index.tsx', () => {
 
   it('uses uniqueId for getRowId and handles pagination change', () => {
     render(
-      <CustomTable
-        {...baseProps}
-        uniqueId="uuid"
-        rows={[{ uuid: 'row-1' }]}
-      />
+      <CustomTable {...baseProps} uniqueId="uuid" rows={[{ uuid: 'row-1' }]} />,
     );
 
     expect(latestDataGridProps.getRowId({ uuid: 'row-9' })).toBe('row-9');

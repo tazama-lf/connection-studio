@@ -1,5 +1,11 @@
 import React from 'react';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import ConfigDetails from '../../../../src/features/config/components/ConfigDetails';
 
 const createDeferred = <T,>() => {
@@ -105,13 +111,7 @@ describe('features/config/components/ConfigDetails.tsx', () => {
 
   it('fetches config by id and saves updates successfully', async () => {
     const onClose = jest.fn();
-    render(
-      <ConfigDetails
-        isOpen={true}
-        configId={42}
-        onClose={onClose}
-      />,
-    );
+    render(<ConfigDetails isOpen={true} configId={42} onClose={onClose} />);
 
     await waitFor(() => {
       expect(getConfig).toHaveBeenCalledWith(42);
@@ -126,7 +126,9 @@ describe('features/config/components/ConfigDetails.tsx', () => {
 
     await waitFor(() => {
       expect(updateConfig).toHaveBeenCalled();
-      expect(screen.getByText('Configuration updated successfully!')).toBeInTheDocument();
+      expect(
+        screen.getByText('Configuration updated successfully!'),
+      ).toBeInTheDocument();
     });
 
     act(() => {
@@ -150,23 +152,24 @@ describe('features/config/components/ConfigDetails.tsx', () => {
     fireEvent.click(screen.getByText('Save Changes'));
 
     await waitFor(() => {
-      expect(screen.getByText('Failed to update configuration')).toBeInTheDocument();
+      expect(
+        screen.getByText('Failed to update configuration'),
+      ).toBeInTheDocument();
     });
   });
 
   it('shows loading state while config fetch is pending', async () => {
-    const deferred = createDeferred<{ success: boolean; config: typeof baseConfig }>();
+    const deferred = createDeferred<{
+      success: boolean;
+      config: typeof baseConfig;
+    }>();
     getConfig.mockReturnValueOnce(deferred.promise);
 
-    render(
-      <ConfigDetails
-        isOpen={true}
-        configId={42}
-        onClose={jest.fn()}
-      />,
-    );
+    render(<ConfigDetails isOpen={true} configId={42} onClose={jest.fn()} />);
 
-    expect(screen.getByText('Loading configuration details...')).toBeInTheDocument();
+    expect(
+      screen.getByText('Loading configuration details...'),
+    ).toBeInTheDocument();
 
     deferred.resolve({ success: true, config: baseConfig });
     await waitFor(() => {
@@ -177,32 +180,24 @@ describe('features/config/components/ConfigDetails.tsx', () => {
   it('shows error when fetch response is unsuccessful', async () => {
     getConfig.mockResolvedValueOnce({ success: false, config: null });
 
-    render(
-      <ConfigDetails
-        isOpen={true}
-        configId={42}
-        onClose={jest.fn()}
-      />,
-    );
+    render(<ConfigDetails isOpen={true} configId={42} onClose={jest.fn()} />);
 
     await waitFor(() => {
-      expect(screen.getByText('Failed to load configuration details')).toBeInTheDocument();
+      expect(
+        screen.getByText('Failed to load configuration details'),
+      ).toBeInTheDocument();
     });
   });
 
   it('shows error when fetch throws', async () => {
     getConfig.mockRejectedValueOnce(new Error('network error'));
 
-    render(
-      <ConfigDetails
-        isOpen={true}
-        configId={42}
-        onClose={jest.fn()}
-      />,
-    );
+    render(<ConfigDetails isOpen={true} configId={42} onClose={jest.fn()} />);
 
     await waitFor(() => {
-      expect(screen.getByText('Error loading configuration details')).toBeInTheDocument();
+      expect(
+        screen.getByText('Error loading configuration details'),
+      ).toBeInTheDocument();
     });
   });
 
@@ -251,7 +246,10 @@ describe('features/config/components/ConfigDetails.tsx', () => {
   });
 
   it('updates all editable fields and preserves mapping in save payload', async () => {
-    const deferred = createDeferred<{ success: boolean; config: typeof baseConfig }>();
+    const deferred = createDeferred<{
+      success: boolean;
+      config: typeof baseConfig;
+    }>();
     updateConfig.mockReturnValueOnce(deferred.promise);
 
     render(
@@ -264,13 +262,23 @@ describe('features/config/components/ConfigDetails.tsx', () => {
 
     fireEvent.click(screen.getByText('Edit Configuration'));
 
-    fireEvent.change(screen.getByDisplayValue('pacs.008'), { target: { value: 'camt.053' } });
-    fireEvent.change(screen.getByDisplayValue('payment'), { target: { value: 'reversal' } });
-    fireEvent.change(screen.getByDisplayValue('v1'), { target: { value: 'v2' } });
+    fireEvent.change(screen.getByDisplayValue('pacs.008'), {
+      target: { value: 'camt.053' },
+    });
+    fireEvent.change(screen.getByDisplayValue('payment'), {
+      target: { value: 'reversal' },
+    });
+    fireEvent.change(screen.getByDisplayValue('v1'), {
+      target: { value: 'v2' },
+    });
     const [contentTypeSelect, statusSelect] = screen.getAllByRole('combobox');
-    fireEvent.change(contentTypeSelect, { target: { value: 'application/xml' } });
+    fireEvent.change(contentTypeSelect, {
+      target: { value: 'application/xml' },
+    });
     fireEvent.change(statusSelect, { target: { value: 'inactive' } });
-    fireEvent.change(screen.getByDisplayValue('/api/payments'), { target: { value: '/api/reversals' } });
+    fireEvent.change(screen.getByDisplayValue('/api/payments'), {
+      target: { value: '/api/reversals' },
+    });
 
     fireEvent.click(screen.getByText('Save Changes'));
 
@@ -285,9 +293,14 @@ describe('features/config/components/ConfigDetails.tsx', () => {
       mapping: baseConfig.mapping,
     });
 
-    deferred.resolve({ success: true, config: { ...baseConfig, msgFam: 'camt.053' } });
+    deferred.resolve({
+      success: true,
+      config: { ...baseConfig, msgFam: 'camt.053' },
+    });
     await waitFor(() => {
-      expect(screen.getByText('Configuration updated successfully!')).toBeInTheDocument();
+      expect(
+        screen.getByText('Configuration updated successfully!'),
+      ).toBeInTheDocument();
     });
   });
 
@@ -310,7 +323,9 @@ describe('features/config/components/ConfigDetails.tsx', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText('Failed to update configuration')).toBeInTheDocument();
+      expect(
+        screen.getByText('Failed to update configuration'),
+      ).toBeInTheDocument();
     });
   });
 
@@ -339,11 +354,7 @@ describe('features/config/components/ConfigDetails.tsx', () => {
     const second = { ...baseConfig, id: 52, endpointPath: '/api/second' };
 
     const { rerender } = render(
-      <ConfigDetails
-        isOpen={true}
-        config={first as any}
-        onClose={jest.fn()}
-      />,
+      <ConfigDetails isOpen={true} config={first as any} onClose={jest.fn()} />,
     );
 
     expect(screen.getByText('/api/first')).toBeInTheDocument();
@@ -362,9 +373,7 @@ describe('features/config/components/ConfigDetails.tsx', () => {
   });
 
   it('does not fetch config when neither configId nor initialConfig is provided', () => {
-    render(
-      <ConfigDetails isOpen={true} onClose={jest.fn()} />,
-    );
+    render(<ConfigDetails isOpen={true} onClose={jest.fn()} />);
 
     expect(getConfig).not.toHaveBeenCalled();
   });

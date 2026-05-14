@@ -82,19 +82,39 @@ describe('features/data-enrichment/components/JobList/JobList.styles.ts', () => 
         React.createElement(ActionsWrapper, null, 'ActionsWrapper'),
         React.createElement(ActionIcon, { color: '#2563eb' }, 'Action'),
         React.createElement(DialogBodyText, null, 'DialogBodyText'),
-        React.createElement(Highlight, { fg: '#2563eb', bg: '#eff6ff' }, 'Highlight'),
+        React.createElement(
+          Highlight,
+          { fg: '#2563eb', bg: '#eff6ff' },
+          'Highlight',
+        ),
         React.createElement(HighlightText, null, 'HighlightTextDefaultColor'),
-        React.createElement(HighlightText, { color: '#111111' }, 'HighlightTextCustomColor'),
+        React.createElement(
+          HighlightText,
+          { color: '#111111' },
+          'HighlightTextCustomColor',
+        ),
         React.createElement(InfoBox, null, 'InfoBoxDefault'),
-        React.createElement(InfoBox, { bg: '#111111', border: '#222222' }, 'InfoBoxCustom'),
+        React.createElement(
+          InfoBox,
+          { bg: '#111111', border: '#222222' },
+          'InfoBoxCustom',
+        ),
         React.createElement(InfoText, { color: '#33AD74' }, 'Info'),
         React.createElement(InfoText, null, 'InfoDefaultColor'),
-        React.createElement(StyledDialog, { open: true }, React.createElement('div', null, 'StyledDialog')),
+        React.createElement(
+          StyledDialog,
+          { open: true },
+          React.createElement('div', null, 'StyledDialog'),
+        ),
         React.createElement(DialogHeader, null, 'DialogHeader'),
         React.createElement(DialogBody, null, 'DialogBody'),
         React.createElement(DescriptionText, null, 'DescriptionText'),
         React.createElement(DialogFooter, null, 'DialogFooter'),
-        React.createElement(PauseDialog, { open: true }, React.createElement('div', null, 'PauseDialog')),
+        React.createElement(
+          PauseDialog,
+          { open: true },
+          React.createElement('div', null, 'PauseDialog'),
+        ),
         React.createElement(PauseDialogHeader, null, 'PauseDialogHeader'),
         React.createElement(PauseDialogContent, null, 'PauseDialogContent'),
         React.createElement(PauseDescription, null, 'PauseDescription'),
@@ -102,7 +122,11 @@ describe('features/data-enrichment/components/JobList/JobList.styles.ts', () => 
         React.createElement(PauseWarningBox, null, 'PauseWarningBox'),
         React.createElement(PauseWarningText, null, 'PauseWarningText'),
         React.createElement(PauseDialogActions, null, 'PauseDialogActions'),
-        React.createElement(ConfirmDialog, { open: true }, React.createElement('div', null, 'ConfirmDialog')),
+        React.createElement(
+          ConfirmDialog,
+          { open: true },
+          React.createElement('div', null, 'ConfirmDialog'),
+        ),
         React.createElement(ConfirmContent, null, 'ConfirmContent'),
         React.createElement(ConfirmText, null, 'ConfirmText'),
         React.createElement(ConfirmActions, null, 'ConfirmActions'),
@@ -143,4 +167,3 @@ describe('features/data-enrichment/components/JobList/JobList.styles.ts', () => 
     expect(screen.getByText('ConfirmActions')).toBeInTheDocument();
   });
 });
-

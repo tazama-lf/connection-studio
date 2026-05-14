@@ -1,5 +1,11 @@
 import React from 'react';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 
 const useCronJobListMock = jest.fn();
 const cronJobTableColumnsMock = jest.fn();
@@ -15,49 +21,72 @@ jest.mock('@common/Tables/CustomTable', () => (props: any) => (
   <div data-testid="custom-table">rows:{props.rows.length}</div>
 ));
 
-jest.mock('@shared/components/ui/Loader', () => () => <div data-testid="loader">loading</div>);
+jest.mock('@shared/components/ui/Loader', () => () => (
+  <div data-testid="loader">loading</div>
+));
 
-jest.mock('../../../../../src/features/cron/components/CronJobTableColumns', () => ({
-  CronJobTableColumns: (args: any) => {
-    lastColumnsArgs = args;
-    cronJobTableColumnsMock(args);
-    return [];
+jest.mock(
+  '../../../../../src/features/cron/components/CronJobTableColumns',
+  () => ({
+    CronJobTableColumns: (args: any) => {
+      lastColumnsArgs = args;
+      cronJobTableColumnsMock(args);
+      return [];
+    },
+  }),
+);
+
+jest.mock(
+  '../../../../../src/features/cron/components/CronJobModal',
+  () => (props: any) => {
+    lastModalProps = props;
+    return props.isOpen ? (
+      <div data-testid="cron-modal">
+        <button onClick={props.onClose}>modal-close</button>
+        <button onClick={props.onReject}>modal-reject</button>
+        <button
+          onClick={() =>
+            props.setEditFormData?.({
+              id: 9,
+              name: 'edit-name',
+              iterations: 3,
+            })
+          }
+        >
+          modal-set-edit-data
+        </button>
+      </div>
+    ) : null;
   },
-}));
-
-jest.mock('../../../../../src/features/cron/components/CronJobModal', () => (props: any) => {
-  lastModalProps = props;
-  return props.isOpen ? (
-    <div data-testid="cron-modal">
-      <button onClick={props.onClose}>modal-close</button>
-      <button onClick={props.onReject}>modal-reject</button>
-      <button onClick={() => props.setEditFormData?.({
-        id: 9,
-        name: 'edit-name',
-        iterations: 3,
-      })}>modal-set-edit-data</button>
-    </div>
-  ) : null;
-});
+);
 
 jest.mock('../../../../../src/shared/components/JobRejectionDialog', () => ({
-  JobRejectionDialog: (props: any) => props.isOpen ? (
-    <div data-testid="reject-dialog">
-      <div data-testid="reject-job-name">{props.jobName}</div>
-      <button onClick={props.onClose}>reject-close</button>
-      <button onClick={() => props.onConfirm('needs fixes')}>reject-confirm</button>
-    </div>
-  ) : null,
+  JobRejectionDialog: (props: any) =>
+    props.isOpen ? (
+      <div data-testid="reject-dialog">
+        <div data-testid="reject-job-name">{props.jobName}</div>
+        <button onClick={props.onClose}>reject-close</button>
+        <button onClick={() => props.onConfirm('needs fixes')}>
+          reject-confirm
+        </button>
+      </div>
+    ) : null,
 }));
 
-jest.mock('../../../../../src/features/cron/components/ConfirmationDialog', () => (props: any) => props.open ? (
-  <div data-testid="confirm-dialog">
-    <div data-testid="confirm-job-name">{props.jobName}</div>
-    <div data-testid="confirm-action-loading">{props.actionLoading}</div>
-    <button onClick={props.onClose}>confirm-close</button>
-    <button onClick={() => props.onConfirm(props.type)}>confirm-action</button>
-  </div>
-) : null);
+jest.mock(
+  '../../../../../src/features/cron/components/ConfirmationDialog',
+  () => (props: any) =>
+    props.open ? (
+      <div data-testid="confirm-dialog">
+        <div data-testid="confirm-job-name">{props.jobName}</div>
+        <div data-testid="confirm-action-loading">{props.actionLoading}</div>
+        <button onClick={props.onClose}>confirm-close</button>
+        <button onClick={() => props.onConfirm(props.type)}>
+          confirm-action
+        </button>
+      </div>
+    ) : null,
+);
 
 import CronJobList from '../../../../../src/features/cron/components/CronJobList';
 
@@ -99,7 +128,9 @@ describe('features/cron/components/CronJobList/index.tsx', () => {
   });
 
   it('renders loader during loading/actionLoading and shows error banner', () => {
-    useCronJobListMock.mockReturnValue(buildHookData({ loading: true, error: 'bad things' }));
+    useCronJobListMock.mockReturnValue(
+      buildHookData({ loading: true, error: 'bad things' }),
+    );
 
     render(<CronJobList />);
 
@@ -175,7 +206,9 @@ describe('features/cron/components/CronJobList/index.tsx', () => {
 
     fireEvent.click(screen.getByText('reject-confirm'));
     await waitFor(() => {
-      expect(hookData.handleRejectionConfirm).toHaveBeenCalledWith('needs fixes');
+      expect(hookData.handleRejectionConfirm).toHaveBeenCalledWith(
+        'needs fixes',
+      );
     });
 
     fireEvent.click(screen.getByText('confirm-action'));
@@ -184,7 +217,11 @@ describe('features/cron/components/CronJobList/index.tsx', () => {
     });
 
     fireEvent.click(screen.getByText('confirm-close'));
-    expect(hookData.setConfirmDialog).toHaveBeenCalledWith({ open: false, type: '', schedule: null });
+    expect(hookData.setConfirmDialog).toHaveBeenCalledWith({
+      open: false,
+      type: '',
+      schedule: null,
+    });
   });
 
   it('runs export confirmation action branch', async () => {
@@ -238,8 +275,12 @@ describe('features/cron/components/CronJobList/index.tsx', () => {
     });
     fireEvent.click(screen.getByText('modal-reject'));
 
-    expect(screen.getByTestId('reject-job-name')).toHaveTextContent('Unknown Schedule');
-    expect(screen.getByTestId('confirm-job-name')).toHaveTextContent('this cron job');
+    expect(screen.getByTestId('reject-job-name')).toHaveTextContent(
+      'Unknown Schedule',
+    );
+    expect(screen.getByTestId('confirm-job-name')).toHaveTextContent(
+      'this cron job',
+    );
     expect(screen.getByTestId('confirm-action-loading')).toHaveTextContent('');
   });
 
@@ -251,6 +292,8 @@ describe('features/cron/components/CronJobList/index.tsx', () => {
     useCronJobListMock.mockReturnValue(hookData);
 
     render(<CronJobList />);
-    expect(screen.getByTestId('confirm-action-loading')).toHaveTextContent('export');
+    expect(screen.getByTestId('confirm-action-loading')).toHaveTextContent(
+      'export',
+    );
   });
 });

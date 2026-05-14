@@ -21,8 +21,12 @@ describe('shared/components/EndpointHistoryModal.tsx', () => {
     const user = userEvent.setup();
     const onClose = jest.fn();
 
-    const { container } = render(<EndpointHistoryModal endpointId={1} onClose={onClose} />);
-    const backdrop = container.querySelector('.absolute.inset-0.backdrop-blur-sm.backdrop-saturate-150');
+    const { container } = render(
+      <EndpointHistoryModal endpointId={1} onClose={onClose} />,
+    );
+    const backdrop = container.querySelector(
+      '.absolute.inset-0.backdrop-blur-sm.backdrop-saturate-150',
+    );
     expect(backdrop).toBeTruthy();
 
     await user.click(backdrop as Element);

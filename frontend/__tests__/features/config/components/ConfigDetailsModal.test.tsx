@@ -44,12 +44,28 @@ describe('features/config/components/ConfigDetailsModal.tsx', () => {
   it('returns null when closed and shows loading branch when open', () => {
     useAuthMock.mockReturnValue({ user: { claims: [] } });
     const { rerender, queryByText } = render(
-      <ConfigDetailsModal isOpen={false} onClose={jest.fn()} config={baseConfig} isLoading={false} />,
+      <ConfigDetailsModal
+        isOpen={false}
+        onClose={jest.fn()}
+        config={baseConfig}
+        isLoading={false}
+      />,
     );
-    expect(queryByText('Configuration Details: /payments')).not.toBeInTheDocument();
+    expect(
+      queryByText('Configuration Details: /payments'),
+    ).not.toBeInTheDocument();
 
-    rerender(<ConfigDetailsModal isOpen onClose={jest.fn()} config={baseConfig} isLoading />);
-    expect(screen.getByText('Loading configuration details...')).toBeInTheDocument();
+    rerender(
+      <ConfigDetailsModal
+        isOpen
+        onClose={jest.fn()}
+        config={baseConfig}
+        isLoading
+      />,
+    );
+    expect(
+      screen.getByText('Loading configuration details...'),
+    ).toBeInTheDocument();
   });
 
   it('supports approver approve/reject footer on under-review status', () => {
@@ -125,7 +141,9 @@ describe('features/config/components/ConfigDetailsModal.tsx', () => {
       />,
     );
 
-    const textarea = screen.getByPlaceholderText('Add notes about the deployment process (optional)');
+    const textarea = screen.getByPlaceholderText(
+      'Add notes about the deployment process (optional)',
+    );
     fireEvent.change(textarea, { target: { value: 'deploy note text' } });
 
     fireEvent.click(screen.getByText('Deploy'));
@@ -176,19 +194,21 @@ describe('features/config/components/ConfigDetailsModal.tsx', () => {
       <ConfigDetailsModal
         isOpen
         onClose={jest.fn()}
-        config={{
-          id: 1,
-          status: 'draft',
-          endpointPath: null,
-          transactionType: null,
-          msgFam: null,
-          version: null,
-          contentType: null,
-          tenantId: null,
-          createdBy: null,
-          mapping: null,
-          schema: null,
-        } as any}
+        config={
+          {
+            id: 1,
+            status: 'draft',
+            endpointPath: null,
+            transactionType: null,
+            msgFam: null,
+            version: null,
+            contentType: null,
+            tenantId: null,
+            createdBy: null,
+            mapping: null,
+            schema: null,
+          } as any
+        }
       />,
     );
 
@@ -261,15 +281,11 @@ describe('features/config/components/ConfigDetailsModal.tsx', () => {
   it('shows config-not-found message when config is null', () => {
     useAuthMock.mockReturnValue({ user: { claims: [] } });
 
-    render(
-      <ConfigDetailsModal
-        isOpen
-        onClose={jest.fn()}
-        config={null}
-      />,
-    );
+    render(<ConfigDetailsModal isOpen onClose={jest.fn()} config={null} />);
 
-    expect(screen.getByText('Configuration details not found')).toBeInTheDocument();
+    expect(
+      screen.getByText('Configuration details not found'),
+    ).toBeInTheDocument();
   });
 
   it('handles user without claims (userIs* all false)', () => {
@@ -332,7 +348,9 @@ describe('features/config/components/ConfigDetailsModal.tsx', () => {
       />,
     );
 
-    const textarea = screen.getByPlaceholderText('Add notes about the export process (optional)');
+    const textarea = screen.getByPlaceholderText(
+      'Add notes about the export process (optional)',
+    );
     fireEvent.change(textarea, { target: { value: 'export note text' } });
 
     fireEvent.click(screen.getByText('Export'));

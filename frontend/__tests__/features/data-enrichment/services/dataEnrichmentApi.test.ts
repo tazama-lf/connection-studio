@@ -184,12 +184,18 @@ describe('dataEnrichmentApi', () => {
       json: jest.fn().mockResolvedValue({ success: true }),
     });
 
-    await dataEnrichmentApi.updateJob('job-legacy', { job_status: 'STATUS_01_IN_PROGRESS' });
+    await dataEnrichmentApi.updateJob('job-legacy', {
+      job_status: 'STATUS_01_IN_PROGRESS',
+    });
     let [url, options] = (global.fetch as jest.Mock).mock.calls[0];
     expect(url).toContain('/job/job-legacy');
     expect((options as RequestInit).method).toBe('PATCH');
 
-    await dataEnrichmentApi.updateJobStatus('job-status', 'STATUS_04_APPROVED', 'PULL');
+    await dataEnrichmentApi.updateJobStatus(
+      'job-status',
+      'STATUS_04_APPROVED',
+      'PULL',
+    );
     [url, options] = (global.fetch as jest.Mock).mock.calls[1];
     expect(url).toContain('type=pull');
     expect((options as RequestInit).body).toBeUndefined();
@@ -203,7 +209,11 @@ describe('dataEnrichmentApi', () => {
     });
 
     await dataEnrichmentApi.updateJobActivation('job-a', true, 'PUSH');
-    await dataEnrichmentApi.updatePublishingStatus('job-b', 'in-active', 'PULL');
+    await dataEnrichmentApi.updatePublishingStatus(
+      'job-b',
+      'in-active',
+      'PULL',
+    );
 
     const firstUrl = (global.fetch as jest.Mock).mock.calls[0][0];
     const secondUrl = (global.fetch as jest.Mock).mock.calls[1][0];
@@ -227,14 +237,21 @@ describe('dataEnrichmentApi', () => {
       iterations: 3,
       cronExpression: '0 * * * *',
     } as any);
-    await dataEnrichmentApi.updateScheduleStatus('sched-3', 'STATUS_04_APPROVED');
+    await dataEnrichmentApi.updateScheduleStatus(
+      'sched-3',
+      'STATUS_04_APPROVED',
+    );
 
-    const urls = (global.fetch as jest.Mock).mock.calls.map((c) => c[0]).join(' ');
+    const urls = (global.fetch as jest.Mock).mock.calls
+      .map((c) => c[0])
+      .join(' ');
     expect(urls).toContain('/scheduler/create');
     expect(urls).toContain('/scheduler/all?offset=0&limit=50');
     expect(urls).toContain('/scheduler/sched-1');
     expect(urls).toContain('/scheduler/update/sched-2');
-    expect(urls).toContain('/scheduler/update/status/sched-3?status=STATUS_04_APPROVED');
+    expect(urls).toContain(
+      '/scheduler/update/status/sched-3?status=STATUS_04_APPROVED',
+    );
   });
 
   it('includes job_id in getJobHistory request body when provided', async () => {
@@ -244,7 +261,9 @@ describe('dataEnrichmentApi', () => {
       json: jest.fn().mockResolvedValue({ success: true, data: [] }),
     });
 
-    await dataEnrichmentApi.getJobHistory('job-x', 1, 25, { endpointName: 'ep' });
+    await dataEnrichmentApi.getJobHistory('job-x', 1, 25, {
+      endpointName: 'ep',
+    });
 
     const [, options] = (global.fetch as jest.Mock).mock.calls[0];
     const body = JSON.parse((options as RequestInit).body as string);
@@ -263,8 +282,12 @@ describe('dataEnrichmentApi', () => {
     await dataEnrichmentApi.previewData({ source_type: 'HTTP' } as any);
 
     const urls = (global.fetch as jest.Mock).mock.calls.map((c) => c[0]);
-    expect(urls.some((u: string) => u.includes('/job/test/connection'))).toBe(true);
-    expect(urls.some((u: string) => u.includes('/job/preview/data'))).toBe(true);
+    expect(urls.some((u: string) => u.includes('/job/test/connection'))).toBe(
+      true,
+    );
+    expect(urls.some((u: string) => u.includes('/job/preview/data'))).toBe(
+      true,
+    );
   });
 
   it('getCronJobList applies default status and throws on bad response', async () => {
@@ -274,19 +297,29 @@ describe('dataEnrichmentApi', () => {
       json: jest.fn().mockResolvedValue({ success: true, data: [], total: 0 }),
     });
 
-    await dataEnrichmentApi.getCronJobList({ offset: 0, limit: 10, userRole: 'admin' } as any, {
-      endpoint_name: 'cron-a',
-    });
+    await dataEnrichmentApi.getCronJobList(
+      { offset: 0, limit: 10, userRole: 'admin' } as any,
+      {
+        endpoint_name: 'cron-a',
+      },
+    );
 
     const [, options] = (global.fetch as jest.Mock).mock.calls[0];
     const body = JSON.parse((options as RequestInit).body as string);
     expect(body.status).toBe('STATUS_04_APPROVED,STATUS_06_EXPORTED');
     expect(body.endpoint_name).toBe('cron-a');
 
-    (global.fetch as jest.Mock).mockResolvedValueOnce({ ok: false, status: 500, json: jest.fn() });
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      json: jest.fn(),
+    });
 
     await expect(
-      dataEnrichmentApi.getCronJobList({ offset: 0, limit: 10, userRole: 'admin' } as any, {}),
+      dataEnrichmentApi.getCronJobList(
+        { offset: 0, limit: 10, userRole: 'admin' } as any,
+        {},
+      ),
     ).rejects.toThrow('Failed to fetch paginated schedules');
   });
 
@@ -297,7 +330,9 @@ describe('dataEnrichmentApi', () => {
       json: jest.fn().mockResolvedValue({ message: 'Server error' }),
     });
 
-    await expect(dataEnrichmentApi.createPullJob({} as any)).rejects.toThrow('Server error');
+    await expect(dataEnrichmentApi.createPullJob({} as any)).rejects.toThrow(
+      'Server error',
+    );
   });
 
   it('throws when getAllJobs response is not ok (line 137)', async () => {
@@ -308,7 +343,10 @@ describe('dataEnrichmentApi', () => {
     });
 
     await expect(
-      dataEnrichmentApi.getAllJobs({ offset: 0, limit: 10, userRole: 'admin' } as any, {}),
+      dataEnrichmentApi.getAllJobs(
+        { offset: 0, limit: 10, userRole: 'admin' } as any,
+        {},
+      ),
     ).rejects.toThrow('Failed to fetch data enrichment jobs');
   });
 
@@ -319,7 +357,9 @@ describe('dataEnrichmentApi', () => {
       json: jest.fn().mockResolvedValue({ id: 'pull-1' }),
     });
 
-    await dataEnrichmentApi.updatePullJob('pull-1', { endpoint_name: 'x' } as any);
+    await dataEnrichmentApi.updatePullJob('pull-1', {
+      endpoint_name: 'x',
+    } as any);
 
     const [url, options] = (global.fetch as jest.Mock).mock.calls[0];
     expect(url).toContain('/job/update/pull-1?type=pull');
@@ -333,7 +373,9 @@ describe('dataEnrichmentApi', () => {
       json: jest.fn().mockResolvedValue({ id: 'push-1' }),
     });
 
-    await dataEnrichmentApi.updatePushJob('push-1', { endpoint_name: 'y' } as any);
+    await dataEnrichmentApi.updatePushJob('push-1', {
+      endpoint_name: 'y',
+    } as any);
 
     const [url, options] = (global.fetch as jest.Mock).mock.calls[0];
     expect(url).toContain('/job/update/push-1?type=push');
@@ -366,7 +408,11 @@ describe('dataEnrichmentApi', () => {
       status: 200,
       json: jest.fn().mockResolvedValue({ success: true }),
     });
-    await dataEnrichmentApi.updateJobStatus('job-x', 'STATUS_04_APPROVED', 'PUSH');
+    await dataEnrichmentApi.updateJobStatus(
+      'job-x',
+      'STATUS_04_APPROVED',
+      'PUSH',
+    );
     const [, options] = (global.fetch as jest.Mock).mock.calls[0];
     // reason is undefined → body should be undefined
     expect((options as RequestInit).body).toBeUndefined();
@@ -423,7 +469,9 @@ describe('dataEnrichmentApi', () => {
       status: 200,
       json: jest.fn().mockResolvedValue({ success: true }),
     });
-    await dataEnrichmentApi.updateSchedule('sched-x', { cron: '*/5 * * * *' } as any);
+    await dataEnrichmentApi.updateSchedule('sched-x', {
+      cron: '*/5 * * * *',
+    } as any);
     const [, options] = (global.fetch as jest.Mock).mock.calls[0];
     const body = JSON.parse((options as RequestInit).body as string);
     expect(body.cron).toBe('*/5 * * * *');
@@ -491,7 +539,10 @@ describe('dataEnrichmentApi', () => {
     });
     await dataEnrichmentApi.getJob('x');
     const [, options] = (global.fetch as jest.Mock).mock.calls[0];
-    expect((options as RequestInit & { headers?: Record<string, string> }).headers?.Authorization).toBeUndefined();
+    expect(
+      (options as RequestInit & { headers?: Record<string, string> }).headers
+        ?.Authorization,
+    ).toBeUndefined();
   });
 
   it('apiRequest .catch(() => ({})) when response.json() rejects', async () => {
@@ -513,7 +564,11 @@ describe('dataEnrichmentApi', () => {
       json: jest.fn().mockResolvedValue({ success: true, data: [], total: 0 }),
     });
 
-    await dataEnrichmentApi.getAllJobs({ offset: 0, limit: 10, userRole: 'admin' } as any);
+    await dataEnrichmentApi.getAllJobs({
+      offset: 0,
+      limit: 10,
+      userRole: 'admin',
+    } as any);
 
     const [, options] = (global.fetch as jest.Mock).mock.calls[0];
     const body = JSON.parse((options as RequestInit).body as string);
@@ -528,7 +583,11 @@ describe('dataEnrichmentApi', () => {
     });
 
     await expect(
-      dataEnrichmentApi.updateStatus('job-no-reason', 'STATUS_04_APPROVED', 'PUSH'),
+      dataEnrichmentApi.updateStatus(
+        'job-no-reason',
+        'STATUS_04_APPROVED',
+        'PUSH',
+      ),
     ).rejects.toThrow('fail');
   });
 
@@ -539,11 +598,14 @@ describe('dataEnrichmentApi', () => {
       json: jest.fn().mockResolvedValue({ success: true, data: [], total: 0 }),
     });
 
-    await dataEnrichmentApi.getCronJobList({ offset: 0, limit: 10, userRole: 'admin' } as any);
+    await dataEnrichmentApi.getCronJobList({
+      offset: 0,
+      limit: 10,
+      userRole: 'admin',
+    } as any);
 
     const [, options] = (global.fetch as jest.Mock).mock.calls[0];
     const body = JSON.parse((options as RequestInit).body as string);
     expect(body.status).toBe('STATUS_04_APPROVED,STATUS_06_EXPORTED');
   });
 });
-

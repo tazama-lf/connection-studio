@@ -4,17 +4,16 @@ import { render, screen } from '@testing-library/react';
 const styleCalls: Array<Record<string, unknown>> = [];
 let capturedOptions: any;
 
-jest.mock('@mui/material/ListItemButton', () => (props: any) => <button data-testid="list-item" {...props} />);
+jest.mock('@mui/material/ListItemButton', () => (props: any) => (
+  <button data-testid="list-item" {...props} />
+));
 
 jest.mock('@mui/material/styles', () => ({
-  styled:
-    (_Base: any, opts: any) =>
-    (styleFn: any) =>
-    (props: any) => {
-      capturedOptions = opts;
-      styleCalls.push(styleFn(props));
-      return <button data-testid="nav-item" {...props} />;
-    },
+  styled: (_Base: any, opts: any) => (styleFn: any) => (props: any) => {
+    capturedOptions = opts;
+    styleCalls.push(styleFn(props));
+    return <button data-testid="nav-item" {...props} />;
+  },
 }));
 
 import NavListItemButton from '../../../../src/features/dashboard/components/NavListItemButton';

@@ -1,10 +1,14 @@
 jest.mock('@/features/auth/pages/Login', () => ({
   __esModule: true,
-  default: function MockLogin() { return null; },
+  default: function MockLogin() {
+    return null;
+  },
 }));
 
 jest.mock('@/features/auth/contexts/AuthContext', () => ({
-  AuthProvider: function MockAuthProvider({ children }: { children: unknown }) { return children ?? null; },
+  AuthProvider: function MockAuthProvider({ children }: { children: unknown }) {
+    return children ?? null;
+  },
   useAuth: jest.fn(),
 }));
 
@@ -19,4 +23,3 @@ describe('features/auth/index.ts', () => {
     expect(authIndex.useAuth).toBe(useAuth);
   });
 });
-

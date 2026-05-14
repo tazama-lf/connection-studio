@@ -28,7 +28,7 @@ jest.mock(
         </div>
       );
     },
-  })
+  }),
 );
 
 import DataEnrichmentJobForm from '../../../../../src/features/data-enrichment/components/DataEnrichmentJobForm';
@@ -45,7 +45,7 @@ describe('features/data-enrichment/components/DataEnrichmentJobForm/index.tsx', 
       <DataEnrichmentJobForm
         onJobCreated={onJobCreated}
         editFormData={{ id: '123', type: 'pull' } as any}
-      />
+      />,
     );
 
     expect(screen.getByTestId('modal-open-state')).toHaveTextContent('true');

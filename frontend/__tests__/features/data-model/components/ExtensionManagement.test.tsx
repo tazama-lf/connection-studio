@@ -58,7 +58,9 @@ describe('ExtensionManagement', () => {
 
     render(<ExtensionManagement />);
 
-    expect(await screen.findByText('Failed to load extensions')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Failed to load extensions'),
+    ).toBeInTheDocument();
   });
 
   it('shows load exception error message when fetch throws', async () => {
@@ -66,7 +68,9 @@ describe('ExtensionManagement', () => {
 
     render(<ExtensionManagement />);
 
-    expect(await screen.findByText('Error loading extensions')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Error loading extensions'),
+    ).toBeInTheDocument();
   });
 
   it('creates a new extension and calls change callback', async () => {
@@ -79,15 +83,20 @@ describe('ExtensionManagement', () => {
 
     render(<ExtensionManagement onExtensionChange={onExtensionChange} />);
 
-    fireEvent.click(await screen.findByRole('button', { name: /Add Extension/i }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: /Add Extension/i }),
+    );
 
     fireEvent.change(screen.getByPlaceholderText('e.g., creditScore'), {
       target: { value: '  customField  ' },
     });
 
-    fireEvent.change(screen.getByPlaceholderText('Describe what this field is for'), {
-      target: { value: '  field description  ' },
-    });
+    fireEvent.change(
+      screen.getByPlaceholderText('Describe what this field is for'),
+      {
+        target: { value: '  field description  ' },
+      },
+    );
 
     fireEvent.click(screen.getByRole('button', { name: 'Create Extension' }));
 
@@ -108,18 +117,27 @@ describe('ExtensionManagement', () => {
   it('disables create button when field name is empty', async () => {
     render(<ExtensionManagement />);
 
-    fireEvent.click(await screen.findByRole('button', { name: /Add Extension/i }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: /Add Extension/i }),
+    );
 
-    expect(screen.getByRole('button', { name: 'Create Extension' })).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Create Extension' }),
+    ).toBeDisabled();
     expect(mockedApi.createExtension).not.toHaveBeenCalled();
   });
 
   it('shows create API failure message', async () => {
-    mockedApi.createExtension.mockResolvedValueOnce({ success: false, message: 'Create failed' });
+    mockedApi.createExtension.mockResolvedValueOnce({
+      success: false,
+      message: 'Create failed',
+    });
 
     render(<ExtensionManagement />);
 
-    fireEvent.click(await screen.findByRole('button', { name: /Add Extension/i }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: /Add Extension/i }),
+    );
     fireEvent.change(screen.getByPlaceholderText('e.g., creditScore'), {
       target: { value: 'customField' },
     });
@@ -143,9 +161,12 @@ describe('ExtensionManagement', () => {
     const buttons = screen.getAllByRole('button');
     fireEvent.click(buttons[1]);
 
-    fireEvent.change(screen.getByPlaceholderText('Describe what this field is for'), {
-      target: { value: '  updated description  ' },
-    });
+    fireEvent.change(
+      screen.getByPlaceholderText('Describe what this field is for'),
+      {
+        target: { value: '  updated description  ' },
+      },
+    );
     fireEvent.click(screen.getByRole('button', { name: /Save Changes/i }));
 
     await waitFor(() => {
@@ -166,7 +187,10 @@ describe('ExtensionManagement', () => {
       success: true,
       extensions: [sampleExtension],
     });
-    mockedApi.updateExtension.mockResolvedValueOnce({ success: false, message: 'Update failed' });
+    mockedApi.updateExtension.mockResolvedValueOnce({
+      success: false,
+      message: 'Update failed',
+    });
 
     render(<ExtensionManagement />);
 
@@ -228,7 +252,10 @@ describe('ExtensionManagement', () => {
       success: true,
       extensions: [sampleExtension],
     });
-    mockedApi.deleteExtension.mockResolvedValueOnce({ success: false, message: 'Delete failed' });
+    mockedApi.deleteExtension.mockResolvedValueOnce({
+      success: false,
+      message: 'Delete failed',
+    });
 
     render(<ExtensionManagement />);
 
@@ -245,7 +272,10 @@ describe('ExtensionManagement', () => {
   it('shows loading state before extensions are fetched', async () => {
     let resolve: (value: any) => void;
     mockedApi.getAllExtensions.mockImplementationOnce(
-      () => new Promise((r) => { resolve = r; }),
+      () =>
+        new Promise((r) => {
+          resolve = r;
+        }),
     );
 
     render(<ExtensionManagement />);
@@ -280,21 +310,31 @@ describe('ExtensionManagement', () => {
   it('closes create form when Cancel is clicked', async () => {
     render(<ExtensionManagement />);
 
-    fireEvent.click(await screen.findByRole('button', { name: /Add Extension/i }));
-    expect(screen.getByPlaceholderText('e.g., creditScore')).toBeInTheDocument();
+    fireEvent.click(
+      await screen.findByRole('button', { name: /Add Extension/i }),
+    );
+    expect(
+      screen.getByPlaceholderText('e.g., creditScore'),
+    ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
     await waitFor(() => {
-      expect(screen.queryByPlaceholderText('e.g., creditScore')).not.toBeInTheDocument();
+      expect(
+        screen.queryByPlaceholderText('e.g., creditScore'),
+      ).not.toBeInTheDocument();
     });
   });
 
   it('closes create form when X button is clicked', async () => {
     render(<ExtensionManagement />);
 
-    fireEvent.click(await screen.findByRole('button', { name: /Add Extension/i }));
-    expect(screen.getByPlaceholderText('e.g., creditScore')).toBeInTheDocument();
+    fireEvent.click(
+      await screen.findByRole('button', { name: /Add Extension/i }),
+    );
+    expect(
+      screen.getByPlaceholderText('e.g., creditScore'),
+    ).toBeInTheDocument();
 
     // X button is button index 1 after Add Extension
     const buttons = screen.getAllByRole('button');
@@ -303,14 +343,18 @@ describe('ExtensionManagement', () => {
     fireEvent.click(xButton);
 
     await waitFor(() => {
-      expect(screen.queryByPlaceholderText('e.g., creditScore')).not.toBeInTheDocument();
+      expect(
+        screen.queryByPlaceholderText('e.g., creditScore'),
+      ).not.toBeInTheDocument();
     });
   });
 
   it('handles form field changes (defaultValue, collection, isRequired)', async () => {
     render(<ExtensionManagement />);
 
-    fireEvent.click(await screen.findByRole('button', { name: /Add Extension/i }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: /Add Extension/i }),
+    );
 
     // Change collection dropdown
     const selects = screen.getAllByRole('combobox');
@@ -336,7 +380,9 @@ describe('ExtensionManagement', () => {
   it('shows NUMBER validation fields when fieldType is NUMBER', async () => {
     render(<ExtensionManagement />);
 
-    fireEvent.click(await screen.findByRole('button', { name: /Add Extension/i }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: /Add Extension/i }),
+    );
 
     // Change fieldType to NUMBER
     const fieldTypeSelect = screen.getAllByRole('combobox')[1]; // [0]=collection, [1]=fieldType
@@ -359,7 +405,9 @@ describe('ExtensionManagement', () => {
   it('shows STRING pattern field and allows pattern input', async () => {
     render(<ExtensionManagement />);
 
-    fireEvent.click(await screen.findByRole('button', { name: /Add Extension/i }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: /Add Extension/i }),
+    );
 
     // Default fieldType is STRING, so pattern input should be visible
     const patternInput = screen.getByPlaceholderText('e.g., ^[A-Z0-9]{10}$');
@@ -376,13 +424,17 @@ describe('ExtensionManagement', () => {
 
     render(<ExtensionManagement />);
 
-    fireEvent.click(await screen.findByRole('button', { name: /Add Extension/i }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: /Add Extension/i }),
+    );
     fireEvent.change(screen.getByPlaceholderText('e.g., creditScore'), {
       target: { value: 'field1' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Create Extension' }));
 
-    expect(await screen.findByText('Error creating extension: Network fail')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Error creating extension: Network fail'),
+    ).toBeInTheDocument();
   });
 
   it('handles create extension throw with non-Error value', async () => {
@@ -390,13 +442,17 @@ describe('ExtensionManagement', () => {
 
     render(<ExtensionManagement />);
 
-    fireEvent.click(await screen.findByRole('button', { name: /Add Extension/i }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: /Add Extension/i }),
+    );
     fireEvent.change(screen.getByPlaceholderText('e.g., creditScore'), {
       target: { value: 'field2' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Create Extension' }));
 
-    expect(await screen.findByText('Error creating extension: Unknown error')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Error creating extension: Unknown error'),
+    ).toBeInTheDocument();
   });
 
   it('handles update extension throw', async () => {
@@ -415,17 +471,21 @@ describe('ExtensionManagement', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Save Changes/i }));
 
-    expect(await screen.findByText('Error updating extension')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Error updating extension'),
+    ).toBeInTheDocument();
   });
 
   it('calls onExtensionChange when delete succeeds', async () => {
     const confirmSpy = jest.spyOn(window, 'confirm').mockReturnValue(true);
     const onExtensionChange = jest.fn();
 
-    mockedApi.getAllExtensions.mockResolvedValueOnce({
-      success: true,
-      extensions: [sampleExtension],
-    }).mockResolvedValueOnce({ success: true, extensions: [] });
+    mockedApi.getAllExtensions
+      .mockResolvedValueOnce({
+        success: true,
+        extensions: [sampleExtension],
+      })
+      .mockResolvedValueOnce({ success: true, extensions: [] });
     mockedApi.deleteExtension.mockResolvedValueOnce({ success: true });
 
     render(<ExtensionManagement onExtensionChange={onExtensionChange} />);
@@ -458,13 +518,19 @@ describe('ExtensionManagement', () => {
     const buttons = screen.getAllByRole('button');
     fireEvent.click(buttons[2]);
 
-    expect(await screen.findByText('Error deleting extension')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Error deleting extension'),
+    ).toBeInTheDocument();
 
     confirmSpy.mockRestore();
   });
 
   it('renders extension with description, default value shown', async () => {
-    const extWithDesc = { ...sampleExtension, description: 'A useful field', defaultValue: '42' };
+    const extWithDesc = {
+      ...sampleExtension,
+      description: 'A useful field',
+      defaultValue: '42',
+    };
     mockedApi.getAllExtensions.mockResolvedValueOnce({
       success: true,
       extensions: [extWithDesc],
@@ -521,7 +587,9 @@ describe('ExtensionManagement', () => {
     // No onExtensionChange prop — hits if(onExtensionChange) false branch
     render(<ExtensionManagement />);
 
-    fireEvent.click(await screen.findByRole('button', { name: /Add Extension/i }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: /Add Extension/i }),
+    );
     fireEvent.change(screen.getByPlaceholderText('e.g., creditScore'), {
       target: { value: 'fieldNoCallback' },
     });
@@ -538,13 +606,17 @@ describe('ExtensionManagement', () => {
 
     render(<ExtensionManagement />);
 
-    fireEvent.click(await screen.findByRole('button', { name: /Add Extension/i }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: /Add Extension/i }),
+    );
     fireEvent.change(screen.getByPlaceholderText('e.g., creditScore'), {
       target: { value: 'myField' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Create Extension' }));
 
-    expect(await screen.findByText('Failed to create extension')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Failed to create extension'),
+    ).toBeInTheDocument();
   });
 
   it('creates extension with NUMBER fieldType and validation object (non-empty validation branch)', async () => {
@@ -555,14 +627,20 @@ describe('ExtensionManagement', () => {
 
     render(<ExtensionManagement />);
 
-    fireEvent.click(await screen.findByRole('button', { name: /Add Extension/i }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: /Add Extension/i }),
+    );
 
     // Switch to NUMBER type so validation inputs appear
     const fieldTypeSelect = screen.getAllByRole('combobox')[1];
     fireEvent.change(fieldTypeSelect, { target: { value: 'NUMBER' } });
 
-    fireEvent.change(screen.getByPlaceholderText('Min value'), { target: { value: '1' } });
-    fireEvent.change(screen.getByPlaceholderText('Max value'), { target: { value: '99' } });
+    fireEvent.change(screen.getByPlaceholderText('Min value'), {
+      target: { value: '1' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('Max value'), {
+      target: { value: '99' },
+    });
 
     fireEvent.change(screen.getByPlaceholderText('e.g., creditScore'), {
       target: { value: 'scoreField' },
@@ -592,7 +670,9 @@ describe('ExtensionManagement', () => {
     fireEvent.click(buttons[1]);
     fireEvent.click(screen.getByRole('button', { name: /Save Changes/i }));
 
-    expect(await screen.findByText('Failed to update extension')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Failed to update extension'),
+    ).toBeInTheDocument();
   });
 
   it('updates extension without onExtensionChange callback (false branch)', async () => {
@@ -626,7 +706,10 @@ describe('ExtensionManagement', () => {
       extensions: [extNoOptionals],
     });
     mockedApi.updateExtension.mockResolvedValueOnce({ success: true });
-    mockedApi.getAllExtensions.mockResolvedValueOnce({ success: true, extensions: [] });
+    mockedApi.getAllExtensions.mockResolvedValueOnce({
+      success: true,
+      extensions: [],
+    });
 
     render(<ExtensionManagement />);
 
@@ -669,7 +752,9 @@ describe('ExtensionManagement', () => {
     const buttons = screen.getAllByRole('button');
     fireEvent.click(buttons[2]);
 
-    expect(await screen.findByText('Failed to delete extension')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Failed to delete extension'),
+    ).toBeInTheDocument();
 
     confirmSpy.mockRestore();
   });

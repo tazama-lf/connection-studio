@@ -334,7 +334,9 @@ describe('getDataEnrichmentErrorMessage', () => {
 
   it('returns SERVER_ERROR for 500+ status', () => {
     const err = { response: { status: 500 } };
-    expect(getDataEnrichmentErrorMessage(err)).toContain('temporarily unavailable');
+    expect(getDataEnrichmentErrorMessage(err)).toContain(
+      'temporarily unavailable',
+    );
   });
 
   it('returns NETWORK_ERROR for fetch/network messages', () => {
@@ -353,8 +355,14 @@ describe('getDataEnrichmentErrorMessage', () => {
   });
 
   it('joins array message from response.data.message', () => {
-    const err = { response: { data: { message: ['Field A is invalid', 'Field B is required'] } } };
-    expect(getDataEnrichmentErrorMessage(err)).toBe('Field A is invalid, Field B is required');
+    const err = {
+      response: {
+        data: { message: ['Field A is invalid', 'Field B is required'] },
+      },
+    };
+    expect(getDataEnrichmentErrorMessage(err)).toBe(
+      'Field A is invalid, Field B is required',
+    );
   });
 
   it('returns response.data.error when available', () => {
@@ -385,7 +393,11 @@ describe('formatJobForEdit', () => {
   } as DataEnrichmentJobResponse;
 
   it('returns push data when type is push', () => {
-    const result = formatJobForEdit({ ...baseJob, type: 'push', path: '/data' }) as any;
+    const result = formatJobForEdit({
+      ...baseJob,
+      type: 'push',
+      path: '/data',
+    }) as any;
     expect(result.path).toBe('/data');
     expect(result.endpoint_name).toBe('My Job');
   });
@@ -416,12 +428,18 @@ describe('formatJobForEdit', () => {
 
   it('uses empty string for missing path in push job', () => {
     const pushJob = { ...baseJob, type: 'push', path: undefined };
-    const result = formatJobForEdit(pushJob as DataEnrichmentJobResponse) as any;
+    const result = formatJobForEdit(
+      pushJob as DataEnrichmentJobResponse,
+    ) as any;
     expect(result.path).toBe('');
   });
 
   it('uses empty string for missing schedule_id in pull job', () => {
-    const pullJob = { ...baseJob, type: 'pull', schedule_id: undefined } as DataEnrichmentJobResponse;
+    const pullJob = {
+      ...baseJob,
+      type: 'pull',
+      schedule_id: undefined,
+    } as DataEnrichmentJobResponse;
     const result = formatJobForEdit(pullJob) as any;
     expect(result.schedule_id).toBe('');
   });
@@ -675,12 +693,16 @@ describe('scrollToFirstError', () => {
 
 describe('determineSourceType with string connection', () => {
   it('returns SFTP when connection is a JSON string with host', () => {
-    const job = { connection: JSON.stringify({ host: 'sftp.example.com' }) } as any;
+    const job = {
+      connection: JSON.stringify({ host: 'sftp.example.com' }),
+    } as any;
     expect(determineSourceType(job)).toBe('SFTP');
   });
 
   it('returns HTTP when connection is a JSON string with url', () => {
-    const job = { connection: JSON.stringify({ url: 'https://api.example.com' }) } as any;
+    const job = {
+      connection: JSON.stringify({ url: 'https://api.example.com' }),
+    } as any;
     expect(determineSourceType(job)).toBe('HTTP');
   });
 

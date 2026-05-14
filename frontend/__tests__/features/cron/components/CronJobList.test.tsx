@@ -11,28 +11,31 @@ jest.mock('@common/Tables/CustomTable', () => ({
   default: ({ columns, rows, pagination }: any) => (
     <div data-testid="custom-table">
       <div data-testid="table-rows">{rows.length} rows</div>
-      {pagination && typeof pagination === 'object' && pagination.totalRecords > 0 && (
-        <div data-testid="pagination-info">
-          <span>Showing</span>
-          {' 1 '}
-          <span>to</span>
-          {' '}
-          <span>of</span>
-          {' '}
-          <span>{pagination.totalRecords} results</span>
-        </div>
-      )}
+      {pagination &&
+        typeof pagination === 'object' &&
+        pagination.totalRecords > 0 && (
+          <div data-testid="pagination-info">
+            <span>Showing</span>
+            {' 1 '}
+            <span>to</span> <span>of</span>{' '}
+            <span>{pagination.totalRecords} results</span>
+          </div>
+        )}
     </div>
   ),
 }));
 jest.mock('@features/cron/components/CronJobModal', () => ({
   __esModule: true,
-  default: ({ isOpen, onClose, mode }: any) => 
-    isOpen ? <div data-testid="cron-job-modal"><button onClick={onClose}>Close</button></div> : null,
+  default: ({ isOpen, onClose, mode }: any) =>
+    isOpen ? (
+      <div data-testid="cron-job-modal">
+        <button onClick={onClose}>Close</button>
+      </div>
+    ) : null,
 }));
 jest.mock('@features/cron/components/ConfirmationDialog', () => ({
   __esModule: true,
-  default: ({ open, onClose, onConfirm, type }: any) => 
+  default: ({ open, onClose, onConfirm, type }: any) =>
     open ? (
       <div data-testid="confirmation-dialog">
         <button onClick={onClose}>Cancel</button>
@@ -41,7 +44,7 @@ jest.mock('@features/cron/components/ConfirmationDialog', () => ({
     ) : null,
 }));
 jest.mock('@shared/components/JobRejectionDialog', () => ({
-  JobRejectionDialog: ({ isOpen, onClose, onConfirm }: any) => 
+  JobRejectionDialog: ({ isOpen, onClose, onConfirm }: any) =>
     isOpen ? (
       <div data-testid="rejection-dialog">
         <button onClick={onClose}>Cancel</button>
@@ -170,7 +173,11 @@ describe('CronJobList', () => {
     it('should show confirmation dialog when open', () => {
       (useCronJobList as jest.Mock).mockReturnValue({
         ...mockUseCronJobList,
-        confirmDialog: { open: true, type: 'export', schedule: mockSchedules[0] },
+        confirmDialog: {
+          open: true,
+          type: 'export',
+          schedule: mockSchedules[0],
+        },
       });
 
       render(<CronJobList />);
@@ -181,7 +188,11 @@ describe('CronJobList', () => {
       const mockHandleExportConfirm = jest.fn();
       (useCronJobList as jest.Mock).mockReturnValue({
         ...mockUseCronJobList,
-        confirmDialog: { open: true, type: 'export', schedule: mockSchedules[0] },
+        confirmDialog: {
+          open: true,
+          type: 'export',
+          schedule: mockSchedules[0],
+        },
         handleExportConfirm: mockHandleExportConfirm,
       });
 
@@ -194,7 +205,11 @@ describe('CronJobList', () => {
       const mockHandleApprovalConfirm = jest.fn();
       (useCronJobList as jest.Mock).mockReturnValue({
         ...mockUseCronJobList,
-        confirmDialog: { open: true, type: 'approval', schedule: mockSchedules[0] },
+        confirmDialog: {
+          open: true,
+          type: 'approval',
+          schedule: mockSchedules[0],
+        },
         handleApprovalConfirm: mockHandleApprovalConfirm,
       });
 
@@ -207,7 +222,11 @@ describe('CronJobList', () => {
       const mockHandleApproveConfirm = jest.fn();
       (useCronJobList as jest.Mock).mockReturnValue({
         ...mockUseCronJobList,
-        confirmDialog: { open: true, type: 'approve', schedule: mockSchedules[0] },
+        confirmDialog: {
+          open: true,
+          type: 'approve',
+          schedule: mockSchedules[0],
+        },
         handleApproveConfirm: mockHandleApproveConfirm,
       });
 
@@ -226,7 +245,7 @@ describe('CronJobList', () => {
       });
 
       render(<CronJobList />);
-      
+
       // Mock showing rejection dialog would require triggering it through the modal
       // For now, we test the handler is wired correctly
       expect(mockHandleRejectionConfirm).toBeDefined();
@@ -298,12 +317,12 @@ describe('CronJobList', () => {
 
       const { rerender } = render(<CronJobList />);
       expect(screen.queryByTestId('rejection-dialog')).not.toBeInTheDocument();
-      
+
       // Simulate showing rejection dialog
       (useCronJobList as jest.Mock).mockReturnValue({
         ...mockUseCronJobList,
       });
-      
+
       rerender(<CronJobList />);
       expect(screen.queryByTestId('rejection-dialog')).not.toBeInTheDocument();
     });
@@ -341,13 +360,21 @@ describe('CronJobList', () => {
       const mockSetConfirmDialog = jest.fn();
       (useCronJobList as jest.Mock).mockReturnValue({
         ...mockUseCronJobList,
-        confirmDialog: { open: true, type: 'export', schedule: mockSchedules[0] },
+        confirmDialog: {
+          open: true,
+          type: 'export',
+          schedule: mockSchedules[0],
+        },
         setConfirmDialog: mockSetConfirmDialog,
       });
 
       render(<CronJobList />);
       fireEvent.click(screen.getByText('Cancel'));
-      expect(mockSetConfirmDialog).toHaveBeenCalledWith({ open: false, type: '', schedule: null });
+      expect(mockSetConfirmDialog).toHaveBeenCalledWith({
+        open: false,
+        type: '',
+        schedule: null,
+      });
     });
 
     it('should show proper action loading states', () => {
@@ -357,7 +384,11 @@ describe('CronJobList', () => {
         (useCronJobList as jest.Mock).mockReturnValue({
           ...mockUseCronJobList,
           actionLoading: actionType,
-          confirmDialog: { open: true, type: actionType, schedule: mockSchedules[0] },
+          confirmDialog: {
+            open: true,
+            type: actionType,
+            schedule: mockSchedules[0],
+          },
         });
 
         const { unmount } = render(<CronJobList />);
@@ -369,7 +400,11 @@ describe('CronJobList', () => {
     it('should handle empty schedule name in confirmation dialog', () => {
       (useCronJobList as jest.Mock).mockReturnValue({
         ...mockUseCronJobList,
-        confirmDialog: { open: true, type: 'export', schedule: { ...mockSchedules[0], name: '' } },
+        confirmDialog: {
+          open: true,
+          type: 'export',
+          schedule: { ...mockSchedules[0], name: '' },
+        },
       });
 
       render(<CronJobList />);
@@ -414,7 +449,11 @@ describe('CronJobList', () => {
       // Tests the FALSE branch of else-if (type === 'approve') in handleConfirmAction
       (useCronJobList as jest.Mock).mockReturnValue({
         ...mockUseCronJobList,
-        confirmDialog: { open: true, type: '' as any, schedule: mockSchedules[0] },
+        confirmDialog: {
+          open: true,
+          type: '' as any,
+          schedule: mockSchedules[0],
+        },
       });
 
       render(<CronJobList />);
@@ -425,5 +464,4 @@ describe('CronJobList', () => {
       expect(mockUseCronJobList.handleApproveConfirm).not.toHaveBeenCalled();
     });
   });
-
 });

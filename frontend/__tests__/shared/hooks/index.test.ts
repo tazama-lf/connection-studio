@@ -25,5 +25,3 @@ describe('shared/hooks/index.ts', () => {
     expect(true).toBe(true);
   });
 });
-
-

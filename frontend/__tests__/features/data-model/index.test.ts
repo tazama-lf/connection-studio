@@ -8,4 +8,3 @@ describe('features/data-model/index.ts', () => {
     expect(dataModelIndex.ExtensionManagement).toBe(ExtensionManagement);
   });
 });
-

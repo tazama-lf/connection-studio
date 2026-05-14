@@ -3,7 +3,8 @@ import { render } from '@testing-library/react';
 import { DropdownMenuWithAutoDirection } from '../../../src/features/data-enrichment/components/DropdownMenuWithAutoDirection';
 
 describe('DropdownMenuWithAutoDirection', () => {
-  const originalGetBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
+  const originalGetBoundingClientRect =
+    HTMLElement.prototype.getBoundingClientRect;
 
   beforeEach(() => {
     Object.defineProperty(window, 'innerHeight', {

@@ -22,7 +22,14 @@ jest.mock('@features/auth/contexts/AuthContext', () => ({
 }));
 
 jest.mock('@shared/components/Button', () => ({
-  Button: ({ children, onClick, icon, className, variant, 'data-testid': dataTestId }: {
+  Button: ({
+    children,
+    onClick,
+    icon,
+    className,
+    variant,
+    'data-testid': dataTestId,
+  }: {
     children: React.ReactNode;
     onClick?: () => void;
     icon?: React.ReactNode;
@@ -31,8 +38,8 @@ jest.mock('@shared/components/Button', () => ({
     'data-testid'?: string;
   }) => {
     return (
-      <button 
-        onClick={onClick} 
+      <button
+        onClick={onClick}
         className={className}
         data-variant={variant}
         data-testid={dataTestId}
@@ -53,19 +60,28 @@ jest.mock('@features/cron/components/CronJobList', () => ({
 }));
 
 jest.mock('@features/cron/components/CronJobModal', () => ({
-  CronJobModal: ({ isOpen, onClose, onJobCreated }: {
+  CronJobModal: ({
+    isOpen,
+    onClose,
+    onJobCreated,
+  }: {
     isOpen: boolean;
     onClose: () => void;
     onJobCreated: () => void;
-  }) => isOpen ? (
-    <div data-testid="cron-job-modal">
-      <button onClick={onClose}>Close Modal</button>
-      <button onClick={() => {
-        onJobCreated?.();
-        onClose?.();
-      }}>Job Created</button>
-    </div>
-  ) : null,
+  }) =>
+    isOpen ? (
+      <div data-testid="cron-job-modal">
+        <button onClick={onClose}>Close Modal</button>
+        <button
+          onClick={() => {
+            onJobCreated?.();
+            onClose?.();
+          }}
+        >
+          Job Created
+        </button>
+      </div>
+    ) : null,
 }));
 
 describe('CRONModule Page', () => {
@@ -135,7 +151,9 @@ describe('CRONModule Page', () => {
     it('should render list in a shadow container', () => {
       const { container } = renderWithRouter(<CRONModule />);
 
-      const listContainer = container.querySelector('.bg-white.rounded-lg.shadow');
+      const listContainer = container.querySelector(
+        '.bg-white.rounded-lg.shadow',
+      );
       expect(listContainer).toBeInTheDocument();
     });
   });
@@ -270,7 +288,9 @@ describe('CRONModule Page', () => {
     it('should render flexible layout for header elements', () => {
       const { container } = renderWithRouter(<CRONModule />);
 
-      const headerFlex = container.querySelector('.flex.flex-col.md\\:flex-row');
+      const headerFlex = container.querySelector(
+        '.flex.flex-col.md\\:flex-row',
+      );
       expect(headerFlex).toBeInTheDocument();
     });
 

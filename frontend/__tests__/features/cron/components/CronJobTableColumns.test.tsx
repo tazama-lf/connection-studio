@@ -22,13 +22,31 @@ jest.mock('@shared/lovs', () => ({
 
 jest.mock('@shared/helpers', () => ({
   handleInputFilter: ({ fieldName }: { fieldName: string }) => (
-    <input data-testid={`filter-input-${fieldName}`} placeholder={`Filter ${fieldName}`} />
+    <input
+      data-testid={`filter-input-${fieldName}`}
+      placeholder={`Filter ${fieldName}`}
+    />
   ),
-  handleSelectFilter: ({ fieldName, options }: { fieldName: string; options: unknown[] }) => (
+  handleSelectFilter: ({
+    fieldName,
+    options,
+  }: {
+    fieldName: string;
+    options: unknown[];
+  }) => (
     <select data-testid={`filter-select-${fieldName}`}>
       {options.map((opt: unknown, idx: number) => (
-        <option key={idx} value={typeof opt === 'object' && opt !== null && 'value' in opt ? String(opt.value) : String(opt)}>
-          {typeof opt === 'object' && opt !== null && 'label' in opt ? String(opt.label) : String(opt)}
+        <option
+          key={idx}
+          value={
+            typeof opt === 'object' && opt !== null && 'value' in opt
+              ? String(opt.value)
+              : String(opt)
+          }
+        >
+          {typeof opt === 'object' && opt !== null && 'label' in opt
+            ? String(opt.label)
+            : String(opt)}
         </option>
       ))}
     </select>
@@ -42,10 +60,10 @@ jest.mock('@utils/common/helper', () => ({
 jest.mock('@utils/common/functions', () => ({
   getStatusBadge: (status: string) => {
     const badges: Record<string, string> = {
-      'STATUS_01_IN_PROGRESS': 'bg-blue-100 text-blue-800',
-      'STATUS_03_UNDER_REVIEW': 'bg-yellow-100 text-yellow-800',
-      'STATUS_04_APPROVED': 'bg-green-100 text-green-800',
-      'STATUS_05_REJECTED': 'bg-red-100 text-red-800',
+      STATUS_01_IN_PROGRESS: 'bg-blue-100 text-blue-800',
+      STATUS_03_UNDER_REVIEW: 'bg-yellow-100 text-yellow-800',
+      STATUS_04_APPROVED: 'bg-green-100 text-green-800',
+      STATUS_05_REJECTED: 'bg-red-100 text-red-800',
     };
     return badges[status] || 'bg-gray-100 text-gray-800';
   },
@@ -93,15 +111,15 @@ describe('CronJobTableColumns', () => {
   describe('Column Configuration', () => {
     it('should return array of column definitions', () => {
       const columns = CronJobTableColumns(defaultProps);
-      
+
       expect(Array.isArray(columns)).toBe(true);
       expect(columns.length).toBe(4);
     });
 
     it('should have name column with correct configuration', () => {
       const columns = CronJobTableColumns(defaultProps);
-      const nameColumn = columns.find(col => col.field === 'name');
-      
+      const nameColumn = columns.find((col) => col.field === 'name');
+
       expect(nameColumn).toBeDefined();
       expect(nameColumn?.headerName).toBe('Name');
       expect(nameColumn?.flex).toBe(1);
@@ -111,8 +129,8 @@ describe('CronJobTableColumns', () => {
 
     it('should have status column with correct configuration', () => {
       const columns = CronJobTableColumns(defaultProps);
-      const statusColumn = columns.find(col => col.field === 'status');
-      
+      const statusColumn = columns.find((col) => col.field === 'status');
+
       expect(statusColumn).toBeDefined();
       expect(statusColumn?.headerName).toBe('Status');
       expect(statusColumn?.minWidth).toBe(260);
@@ -121,8 +139,8 @@ describe('CronJobTableColumns', () => {
 
     it('should have created_at column with correct configuration', () => {
       const columns = CronJobTableColumns(defaultProps);
-      const createdColumn = columns.find(col => col.field === 'created_at');
-      
+      const createdColumn = columns.find((col) => col.field === 'created_at');
+
       expect(createdColumn).toBeDefined();
       expect(createdColumn?.headerName).toBe('Created Time');
       expect(createdColumn?.minWidth).toBe(260);
@@ -131,8 +149,8 @@ describe('CronJobTableColumns', () => {
 
     it('should have actions column with correct configuration', () => {
       const columns = CronJobTableColumns(defaultProps);
-      const actionsColumn = columns.find(col => col.field === 'actions');
-      
+      const actionsColumn = columns.find((col) => col.field === 'actions');
+
       expect(actionsColumn).toBeDefined();
       expect(actionsColumn?.headerName).toBe('Actions');
       expect(actionsColumn?.minWidth).toBe(280);
@@ -143,24 +161,28 @@ describe('CronJobTableColumns', () => {
   describe('Name Column', () => {
     it('should render name filter in header', () => {
       const columns = CronJobTableColumns(defaultProps);
-      const nameColumn = columns.find(col => col.field === 'name');
-      
-      const { container } = render(<div>{nameColumn?.renderHeader?.({} as any)}</div>);
-      
+      const nameColumn = columns.find((col) => col.field === 'name');
+
+      const { container } = render(
+        <div>{nameColumn?.renderHeader?.({} as any)}</div>,
+      );
+
       expect(screen.getByTestId('filter-input-name')).toBeInTheDocument();
       expect(screen.getByText('Name')).toBeInTheDocument();
     });
 
     it('should render name cell with schedule name', () => {
       const columns = CronJobTableColumns(defaultProps);
-      const nameColumn = columns.find(col => col.field === 'name');
-      
+      const nameColumn = columns.find((col) => col.field === 'name');
+
       const params: GridRenderCellParams<ScheduleResponse> = {
         row: mockSchedule,
       } as GridRenderCellParams<ScheduleResponse>;
-      
-      const { container } = render(<div>{nameColumn?.renderCell?.(params)}</div>);
-      
+
+      const { container } = render(
+        <div>{nameColumn?.renderCell?.(params)}</div>,
+      );
+
       expect(screen.getByText('Test Schedule')).toBeInTheDocument();
     });
   });
@@ -168,10 +190,12 @@ describe('CronJobTableColumns', () => {
   describe('Status Column', () => {
     it('should render status filter in header with correct options for admin', () => {
       const columns = CronJobTableColumns(defaultProps);
-      const statusColumn = columns.find(col => col.field === 'status');
-      
-      const { container } = render(<div>{statusColumn?.renderHeader?.({} as any)}</div>);
-      
+      const statusColumn = columns.find((col) => col.field === 'status');
+
+      const { container } = render(
+        <div>{statusColumn?.renderHeader?.({} as any)}</div>,
+      );
+
       expect(screen.getByTestId('filter-select-status')).toBeInTheDocument();
       expect(screen.getByText('Status')).toBeInTheDocument();
     });
@@ -181,23 +205,27 @@ describe('CronJobTableColumns', () => {
         ...defaultProps,
         userRole: 'editor',
       });
-      const statusColumn = columns.find(col => col.field === 'status');
-      
-      const { container } = render(<div>{statusColumn?.renderHeader?.({} as any)}</div>);
-      
+      const statusColumn = columns.find((col) => col.field === 'status');
+
+      const { container } = render(
+        <div>{statusColumn?.renderHeader?.({} as any)}</div>,
+      );
+
       expect(screen.getByTestId('filter-select-status')).toBeInTheDocument();
     });
 
     it('should render status cell with badge styling', () => {
       const columns = CronJobTableColumns(defaultProps);
-      const statusColumn = columns.find(col => col.field === 'status');
-      
+      const statusColumn = columns.find((col) => col.field === 'status');
+
       const params: GridRenderCellParams<ScheduleResponse> = {
         row: mockSchedule,
       } as GridRenderCellParams<ScheduleResponse>;
-      
-      const { container } = render(<div>{statusColumn?.renderCell?.(params)}</div>);
-      
+
+      const { container } = render(
+        <div>{statusColumn?.renderCell?.(params)}</div>,
+      );
+
       expect(screen.getByText('STATUS_01_IN_PROGRESS')).toBeInTheDocument();
       const badge = container.querySelector('.bg-blue-100');
       expect(badge).toBeInTheDocument();
@@ -205,28 +233,32 @@ describe('CronJobTableColumns', () => {
 
     it('should render status indicator dot', () => {
       const columns = CronJobTableColumns(defaultProps);
-      const statusColumn = columns.find(col => col.field === 'status');
-      
+      const statusColumn = columns.find((col) => col.field === 'status');
+
       const params: GridRenderCellParams<ScheduleResponse> = {
         row: mockSchedule,
       } as GridRenderCellParams<ScheduleResponse>;
-      
-      const { container } = render(<div>{statusColumn?.renderCell?.(params)}</div>);
-      
+
+      const { container } = render(
+        <div>{statusColumn?.renderCell?.(params)}</div>,
+      );
+
       const dot = container.querySelector('.w-2.h-2.rounded-full');
       expect(dot).toBeInTheDocument();
     });
 
     it('should handle null status gracefully', () => {
       const columns = CronJobTableColumns(defaultProps);
-      const statusColumn = columns.find(col => col.field === 'status');
-      
+      const statusColumn = columns.find((col) => col.field === 'status');
+
       const params: GridRenderCellParams<ScheduleResponse> = {
         row: { ...mockSchedule, status: null as unknown as string },
       } as GridRenderCellParams<ScheduleResponse>;
-      
-      const { container } = render(<div>{statusColumn?.renderCell?.(params)}</div>);
-      
+
+      const { container } = render(
+        <div>{statusColumn?.renderCell?.(params)}</div>,
+      );
+
       expect(container).toBeInTheDocument();
     });
   });
@@ -234,36 +266,42 @@ describe('CronJobTableColumns', () => {
   describe('Created At Column', () => {
     it('should render header without filter', () => {
       const columns = CronJobTableColumns(defaultProps);
-      const createdColumn = columns.find(col => col.field === 'created_at');
-      
-      const { container } = render(<div>{createdColumn?.renderHeader?.({} as any)}</div>);
-      
+      const createdColumn = columns.find((col) => col.field === 'created_at');
+
+      const { container } = render(
+        <div>{createdColumn?.renderHeader?.({} as any)}</div>,
+      );
+
       expect(screen.getByText('Created At')).toBeInTheDocument();
     });
 
     it('should render formatted date in cell', () => {
       const columns = CronJobTableColumns(defaultProps);
-      const createdColumn = columns.find(col => col.field === 'created_at');
-      
+      const createdColumn = columns.find((col) => col.field === 'created_at');
+
       const params: GridRenderCellParams<ScheduleResponse> = {
         row: mockSchedule,
       } as GridRenderCellParams<ScheduleResponse>;
-      
-      const { container } = render(<div>{createdColumn?.renderCell?.(params)}</div>);
-      
+
+      const { container } = render(
+        <div>{createdColumn?.renderCell?.(params)}</div>,
+      );
+
       expect(screen.getByText('1/1/2024')).toBeInTheDocument();
     });
 
     it('should render calendar icon in cell', () => {
       const columns = CronJobTableColumns(defaultProps);
-      const createdColumn = columns.find(col => col.field === 'created_at');
-      
+      const createdColumn = columns.find((col) => col.field === 'created_at');
+
       const params: GridRenderCellParams<ScheduleResponse> = {
         row: mockSchedule,
       } as GridRenderCellParams<ScheduleResponse>;
-      
-      const { container } = render(<div>{createdColumn?.renderCell?.(params)}</div>);
-      
+
+      const { container } = render(
+        <div>{createdColumn?.renderCell?.(params)}</div>,
+      );
+
       const svg = container.querySelector('svg');
       expect(svg).toBeInTheDocument();
     });
@@ -272,37 +310,43 @@ describe('CronJobTableColumns', () => {
   describe('Actions Column', () => {
     it('should render header', () => {
       const columns = CronJobTableColumns(defaultProps);
-      const actionsColumn = columns.find(col => col.field === 'actions');
-      
-      const { container } = render(<div>{actionsColumn?.renderHeader?.({} as any)}</div>);
-      
+      const actionsColumn = columns.find((col) => col.field === 'actions');
+
+      const { container } = render(
+        <div>{actionsColumn?.renderHeader?.({} as any)}</div>,
+      );
+
       expect(screen.getByText('Actions')).toBeInTheDocument();
     });
 
     it('should always render view icon', () => {
       const columns = CronJobTableColumns(defaultProps);
-      const actionsColumn = columns.find(col => col.field === 'actions');
-      
+      const actionsColumn = columns.find((col) => col.field === 'actions');
+
       const params: GridRenderCellParams<ScheduleResponse> = {
         row: mockSchedule,
       } as GridRenderCellParams<ScheduleResponse>;
-      
-      const { container } = render(<div>{actionsColumn?.renderCell?.(params)}</div>);
-      
+
+      const { container } = render(
+        <div>{actionsColumn?.renderCell?.(params)}</div>,
+      );
+
       const viewIcon = container.querySelector('[data-testid="lucide-eye"]');
       expect(viewIcon).toBeDefined();
     });
 
     it('should call onView when view icon is clicked', () => {
       const columns = CronJobTableColumns(defaultProps);
-      const actionsColumn = columns.find(col => col.field === 'actions');
-      
+      const actionsColumn = columns.find((col) => col.field === 'actions');
+
       const params: GridRenderCellParams<ScheduleResponse> = {
         row: mockSchedule,
       } as GridRenderCellParams<ScheduleResponse>;
-      
-      const { container } = render(<div>{actionsColumn?.renderCell?.(params)}</div>);
-      
+
+      const { container } = render(
+        <div>{actionsColumn?.renderCell?.(params)}</div>,
+      );
+
       const viewButton = container.querySelector('.cursor-pointer');
       if (viewButton) {
         fireEvent.click(viewButton);
@@ -315,14 +359,16 @@ describe('CronJobTableColumns', () => {
         ...defaultProps,
         userIsEditor: true,
       });
-      const actionsColumn = columns.find(col => col.field === 'actions');
-      
+      const actionsColumn = columns.find((col) => col.field === 'actions');
+
       const params: GridRenderCellParams<ScheduleResponse> = {
         row: { ...mockSchedule, status: 'STATUS_01_IN_PROGRESS' },
       } as GridRenderCellParams<ScheduleResponse>;
-      
-      const { container } = render(<div>{actionsColumn?.renderCell?.(params)}</div>);
-      
+
+      const { container } = render(
+        <div>{actionsColumn?.renderCell?.(params)}</div>,
+      );
+
       const editIcon = container.querySelector('[data-testid="lucide-pencil"]');
       expect(editIcon).toBeDefined();
     });
@@ -332,14 +378,16 @@ describe('CronJobTableColumns', () => {
         ...defaultProps,
         userIsEditor: true,
       });
-      const actionsColumn = columns.find(col => col.field === 'actions');
-      
+      const actionsColumn = columns.find((col) => col.field === 'actions');
+
       const params: GridRenderCellParams<ScheduleResponse> = {
         row: { ...mockSchedule, status: 'STATUS_05_REJECTED' },
       } as GridRenderCellParams<ScheduleResponse>;
-      
-      const { container } = render(<div>{actionsColumn?.renderCell?.(params)}</div>);
-      
+
+      const { container } = render(
+        <div>{actionsColumn?.renderCell?.(params)}</div>,
+      );
+
       const editIcon = container.querySelector('[data-testid="lucide-pencil"]');
       expect(editIcon).toBeDefined();
     });
@@ -349,14 +397,16 @@ describe('CronJobTableColumns', () => {
         ...defaultProps,
         userIsEditor: false,
       });
-      const actionsColumn = columns.find(col => col.field === 'actions');
-      
+      const actionsColumn = columns.find((col) => col.field === 'actions');
+
       const params: GridRenderCellParams<ScheduleResponse> = {
         row: { ...mockSchedule, status: 'STATUS_01_IN_PROGRESS' },
       } as GridRenderCellParams<ScheduleResponse>;
-      
-      const { container } = render(<div>{actionsColumn?.renderCell?.(params)}</div>);
-      
+
+      const { container } = render(
+        <div>{actionsColumn?.renderCell?.(params)}</div>,
+      );
+
       const editIcon = container.querySelector('[data-testid="lucide-pencil"]');
       expect(editIcon).toBeNull();
     });
@@ -366,33 +416,40 @@ describe('CronJobTableColumns', () => {
         ...defaultProps,
         userIsEditor: true,
       });
-      const actionsColumn = columns.find(col => col.field === 'actions');
-      
+      const actionsColumn = columns.find((col) => col.field === 'actions');
+
       const params: GridRenderCellParams<ScheduleResponse> = {
         row: { ...mockSchedule, status: 'STATUS_04_APPROVED' },
       } as GridRenderCellParams<ScheduleResponse>;
-      
-      const { container } = render(<div>{actionsColumn?.renderCell?.(params)}</div>);
-      
+
+      const { container } = render(
+        <div>{actionsColumn?.renderCell?.(params)}</div>,
+      );
+
       const editIcon = container.querySelector('[data-testid="lucide-pencil"]');
       expect(editIcon).toBeNull();
     });
 
     it('should call onEdit when edit icon is clicked', () => {
       const columns = CronJobTableColumns(defaultProps);
-      const actionsColumn = columns.find(col => col.field === 'actions');
-      
+      const actionsColumn = columns.find((col) => col.field === 'actions');
+
       const params: GridRenderCellParams<ScheduleResponse> = {
         row: { ...mockSchedule, status: 'STATUS_01_IN_PROGRESS' },
       } as GridRenderCellParams<ScheduleResponse>;
-      
-      const { container } = render(<div>{actionsColumn?.renderCell?.(params)}</div>);
-      
+
+      const { container } = render(
+        <div>{actionsColumn?.renderCell?.(params)}</div>,
+      );
+
       const icons = container.querySelectorAll('.cursor-pointer');
       // Second icon should be edit (first is view)
       if (icons[1]) {
         fireEvent.click(icons[1]);
-        expect(mockOnEdit).toHaveBeenCalledWith({ ...mockSchedule, status: 'STATUS_01_IN_PROGRESS' });
+        expect(mockOnEdit).toHaveBeenCalledWith({
+          ...mockSchedule,
+          status: 'STATUS_01_IN_PROGRESS',
+        });
       }
     });
 
@@ -401,15 +458,19 @@ describe('CronJobTableColumns', () => {
         ...defaultProps,
         userIsExporter: true,
       });
-      const actionsColumn = columns.find(col => col.field === 'actions');
-      
+      const actionsColumn = columns.find((col) => col.field === 'actions');
+
       const params: GridRenderCellParams<ScheduleResponse> = {
         row: { ...mockSchedule, status: 'STATUS_04_APPROVED' },
       } as GridRenderCellParams<ScheduleResponse>;
-      
-      const { container } = render(<div>{actionsColumn?.renderCell?.(params)}</div>);
-      
-      const exportIcon = container.querySelector('[data-testid="lucide-upload"]');
+
+      const { container } = render(
+        <div>{actionsColumn?.renderCell?.(params)}</div>,
+      );
+
+      const exportIcon = container.querySelector(
+        '[data-testid="lucide-upload"]',
+      );
       expect(exportIcon).toBeDefined();
     });
 
@@ -418,15 +479,19 @@ describe('CronJobTableColumns', () => {
         ...defaultProps,
         userIsExporter: false,
       });
-      const actionsColumn = columns.find(col => col.field === 'actions');
-      
+      const actionsColumn = columns.find((col) => col.field === 'actions');
+
       const params: GridRenderCellParams<ScheduleResponse> = {
         row: { ...mockSchedule, status: 'STATUS_04_APPROVED' },
       } as GridRenderCellParams<ScheduleResponse>;
-      
-      const { container } = render(<div>{actionsColumn?.renderCell?.(params)}</div>);
-      
-      const exportIcon = container.querySelector('[data-testid="lucide-upload"]');
+
+      const { container } = render(
+        <div>{actionsColumn?.renderCell?.(params)}</div>,
+      );
+
+      const exportIcon = container.querySelector(
+        '[data-testid="lucide-upload"]',
+      );
       expect(exportIcon).toBeNull();
     });
 
@@ -435,33 +500,42 @@ describe('CronJobTableColumns', () => {
         ...defaultProps,
         userIsExporter: true,
       });
-      const actionsColumn = columns.find(col => col.field === 'actions');
-      
+      const actionsColumn = columns.find((col) => col.field === 'actions');
+
       const params: GridRenderCellParams<ScheduleResponse> = {
         row: { ...mockSchedule, status: 'STATUS_01_IN_PROGRESS' },
       } as GridRenderCellParams<ScheduleResponse>;
-      
-      const { container } = render(<div>{actionsColumn?.renderCell?.(params)}</div>);
-      
-      const exportIcon = container.querySelector('[data-testid="lucide-upload"]');
+
+      const { container } = render(
+        <div>{actionsColumn?.renderCell?.(params)}</div>,
+      );
+
+      const exportIcon = container.querySelector(
+        '[data-testid="lucide-upload"]',
+      );
       expect(exportIcon).toBeNull();
     });
 
     it('should call onExport when export icon is clicked', () => {
       const columns = CronJobTableColumns(defaultProps);
-      const actionsColumn = columns.find(col => col.field === 'actions');
-      
+      const actionsColumn = columns.find((col) => col.field === 'actions');
+
       const params: GridRenderCellParams<ScheduleResponse> = {
         row: { ...mockSchedule, status: 'STATUS_04_APPROVED' },
       } as GridRenderCellParams<ScheduleResponse>;
-      
-      const { container } = render(<div>{actionsColumn?.renderCell?.(params)}</div>);
-      
+
+      const { container } = render(
+        <div>{actionsColumn?.renderCell?.(params)}</div>,
+      );
+
       const icons = container.querySelectorAll('.cursor-pointer');
       // Export icon should be second (view is first)
       if (icons[1]) {
         fireEvent.click(icons[1]);
-        expect(mockOnExport).toHaveBeenCalledWith({ ...mockSchedule, status: 'STATUS_04_APPROVED' });
+        expect(mockOnExport).toHaveBeenCalledWith({
+          ...mockSchedule,
+          status: 'STATUS_04_APPROVED',
+        });
       }
     });
   });
@@ -469,8 +543,8 @@ describe('CronJobTableColumns', () => {
   describe('User Role Filtering', () => {
     it('should filter out status_02_on_hold from options', () => {
       const columns = CronJobTableColumns(defaultProps);
-      const statusColumn = columns.find(col => col.field === 'status');
-      
+      const statusColumn = columns.find((col) => col.field === 'status');
+
       // This tests the filter logic in the component
       expect(statusColumn).toBeDefined();
     });
@@ -480,7 +554,7 @@ describe('CronJobTableColumns', () => {
         ...defaultProps,
         userRole: 'unknown_role',
       });
-      
+
       expect(columns.length).toBe(4);
     });
   });
@@ -488,8 +562,8 @@ describe('CronJobTableColumns', () => {
   describe('Edge Cases', () => {
     it('should handle missing renderCell functions', () => {
       const columns = CronJobTableColumns(defaultProps);
-      
-      columns.forEach(column => {
+
+      columns.forEach((column) => {
         if (column.renderCell) {
           expect(typeof column.renderCell).toBe('function');
         }
@@ -498,8 +572,8 @@ describe('CronJobTableColumns', () => {
 
     it('should handle missing renderHeader functions', () => {
       const columns = CronJobTableColumns(defaultProps);
-      
-      columns.forEach(column => {
+
+      columns.forEach((column) => {
         if (column.renderHeader) {
           expect(typeof column.renderHeader).toBe('function');
         }
@@ -512,14 +586,16 @@ describe('CronJobTableColumns', () => {
         userIsEditor: false,
         userIsExporter: false,
       });
-      const actionsColumn = columns.find(col => col.field === 'actions');
-      
+      const actionsColumn = columns.find((col) => col.field === 'actions');
+
       const params: GridRenderCellParams<ScheduleResponse> = {
         row: mockSchedule,
       } as GridRenderCellParams<ScheduleResponse>;
-      
-      const { container } = render(<div>{actionsColumn?.renderCell?.(params)}</div>);
-      
+
+      const { container } = render(
+        <div>{actionsColumn?.renderCell?.(params)}</div>,
+      );
+
       // Should still render view icon
       const icons = container.querySelectorAll('svg');
       expect(icons.length).toBeGreaterThanOrEqual(1);
@@ -531,14 +607,16 @@ describe('CronJobTableColumns', () => {
         userIsEditor: true,
         userIsExporter: true,
       });
-      const actionsColumn = columns.find(col => col.field === 'actions');
-      
+      const actionsColumn = columns.find((col) => col.field === 'actions');
+
       const params: GridRenderCellParams<ScheduleResponse> = {
         row: { ...mockSchedule, status: 'STATUS_01_IN_PROGRESS' },
       } as GridRenderCellParams<ScheduleResponse>;
-      
-      const { container } = render(<div>{actionsColumn?.renderCell?.(params)}</div>);
-      
+
+      const { container } = render(
+        <div>{actionsColumn?.renderCell?.(params)}</div>,
+      );
+
       // Should render view + edit icons (not export since status is IN_PROGRESS)
       const icons = container.querySelectorAll('svg');
       expect(icons.length).toBeGreaterThanOrEqual(2);
@@ -549,14 +627,13 @@ describe('CronJobTableColumns', () => {
         ...defaultProps,
         userRole: 'editor',
       };
-      
+
       const columns = CronJobTableColumns(props);
-      const statusColumn = columns.find(col => col.field === 'status');
-      
+      const statusColumn = columns.find((col) => col.field === 'status');
+
       // Render the header which contains the filter
       const header = statusColumn?.renderHeader?.({} as any);
       expect(header).toBeDefined();
     });
   });
 });
-

@@ -3,4 +3,3 @@ describe('features/cron/types/index.ts', () => {
     await expect(import('@/features/cron/types/index')).resolves.toBeDefined();
   });
 });
-

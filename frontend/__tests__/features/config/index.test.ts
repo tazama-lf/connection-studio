@@ -16,4 +16,3 @@ describe('features/config/index.ts', () => {
     expect(mod.ConfigList).toBeDefined();
   });
 });
-

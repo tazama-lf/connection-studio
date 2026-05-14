@@ -44,8 +44,12 @@ describe('features/approver/pages/ApproverModule.tsx', () => {
 
     render(<ApproverModule />);
 
-    expect(screen.getByText('You do not have permission to access this page.')).toBeInTheDocument();
-    expect(showErrorMock).toHaveBeenCalledWith('You do not have permission to access the Approver Dashboard');
+    expect(
+      screen.getByText('You do not have permission to access this page.'),
+    ).toBeInTheDocument();
+    expect(showErrorMock).toHaveBeenCalledWith(
+      'You do not have permission to access the Approver Dashboard',
+    );
   });
 
   it('renders module cards for approver and navigates on click', () => {
@@ -72,7 +76,9 @@ describe('features/approver/pages/ApproverModule.tsx', () => {
 
     render(<ApproverModule />);
 
-    expect(screen.getByText('You do not have permission to access this page.')).toBeInTheDocument();
+    expect(
+      screen.getByText('You do not have permission to access this page.'),
+    ).toBeInTheDocument();
     expect(showErrorMock).not.toHaveBeenCalled();
   });
 });

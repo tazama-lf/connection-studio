@@ -6,6 +6,8 @@ describe('features/functions index exports', () => {
     expect(functionsFeature.addFunction).toBe(services.addFunction);
     expect(functionsFeature.updateFunction).toBe(services.updateFunction);
     expect(functionsFeature.deleteFunction).toBe(services.deleteFunction);
-    expect(functionsFeature.getConfigWithFunctions).toBe(services.getConfigWithFunctions);
+    expect(functionsFeature.getConfigWithFunctions).toBe(
+      services.getConfigWithFunctions,
+    );
   });
 });
