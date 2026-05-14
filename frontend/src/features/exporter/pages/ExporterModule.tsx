@@ -9,7 +9,7 @@ export const ExporterModule: React.FC = () => {
   const navigate = useNavigate();
   const { showError } = useToast();
   const { user, isAuthenticated } = useAuth();
-  
+
   // Role check
   const userIsExporter = user?.claims ? isExporter(user.claims) : false;
 
@@ -45,7 +45,7 @@ export const ExporterModule: React.FC = () => {
       icon: <Clock size={24} />,
       color: 'bg-blue-100 text-blue-600',
       path: '/exporter/cron-jobs',
-    }
+    },
   ];
 
   if (!isAuthenticated || !userIsExporter) {
@@ -53,7 +53,9 @@ export const ExporterModule: React.FC = () => {
       <div className="min-h-screen bg-white">
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center">
-            <p className="text-gray-600">You do not have permission to access this page.</p>
+            <p className="text-gray-600">
+              You do not have permission to access this page.
+            </p>
           </div>
         </main>
       </div>
@@ -62,7 +64,6 @@ export const ExporterModule: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-white">
-      
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Module Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
@@ -70,7 +71,9 @@ export const ExporterModule: React.FC = () => {
             <div
               key={module.id}
               className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 cursor-pointer hover:shadow-md hover:border-blue-300 transition-all duration-200"
-              onClick={async () => { await navigate(module.path); }}
+              onClick={async () => {
+                await navigate(module.path);
+              }}
             >
               <div className="flex items-start">
                 <div className={`p-3 rounded-lg ${module.color}`}>

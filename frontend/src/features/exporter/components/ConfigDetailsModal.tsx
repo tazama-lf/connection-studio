@@ -2,7 +2,10 @@ import React, { useState } from 'react';
 import { X, Download } from 'lucide-react';
 import type { Config } from '../../config';
 import { Button } from '../../../shared/components/Button';
-import { getStatusColor, getStatusLabel } from '../../../shared/utils/statusColors';
+import {
+  getStatusColor,
+  getStatusLabel,
+} from '../../../shared/utils/statusColors';
 
 interface ConfigDetailsModalProps {
   config: Config | null;
@@ -57,7 +60,9 @@ export const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
           <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
             <div className="flex items-center space-x-2">
               <span className="text-sm font-medium text-gray-700">Status:</span>
-              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(config.status ?? 'approved')}`}>
+              <span
+                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(config.status ?? 'approved')}`}
+              >
                 {getStatusLabel(config.status ?? 'approved')}
               </span>
             </div>
@@ -90,25 +95,43 @@ export const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
                 <div className="space-y-2">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <span className="text-xs font-medium text-gray-600">Message Family:</span>
-                      <p className="text-sm text-gray-900">{config.msgFam ?? 'N/A'}</p>
+                      <span className="text-xs font-medium text-gray-600">
+                        Message Family:
+                      </span>
+                      <p className="text-sm text-gray-900">
+                        {config.msgFam ?? 'N/A'}
+                      </p>
                     </div>
                     <div>
-                      <span className="text-xs font-medium text-gray-600">Version:</span>
-                      <p className="text-sm text-gray-900">{config.version ?? 'N/A'}</p>
+                      <span className="text-xs font-medium text-gray-600">
+                        Version:
+                      </span>
+                      <p className="text-sm text-gray-900">
+                        {config.version ?? 'N/A'}
+                      </p>
                     </div>
                     <div>
-                      <span className="text-xs font-medium text-gray-600">Endpoint Path:</span>
-                      <p className="text-sm text-gray-900 font-mono">{config.endpointPath ?? 'N/A'}</p>
+                      <span className="text-xs font-medium text-gray-600">
+                        Endpoint Path:
+                      </span>
+                      <p className="text-sm text-gray-900 font-mono">
+                        {config.endpointPath ?? 'N/A'}
+                      </p>
                     </div>
                     <div>
-                      <span className="text-xs font-medium text-gray-600">Content Type:</span>
-                      <p className="text-sm text-gray-900">{config.contentType ?? 'N/A'}</p>
+                      <span className="text-xs font-medium text-gray-600">
+                        Content Type:
+                      </span>
+                      <p className="text-sm text-gray-900">
+                        {config.contentType ?? 'N/A'}
+                      </p>
                     </div>
                   </div>
                   {config.mapping && config.mapping.length > 0 && (
                     <div className="mt-4">
-                      <span className="text-xs font-medium text-gray-600">Field Mappings:</span>
+                      <span className="text-xs font-medium text-gray-600">
+                        Field Mappings:
+                      </span>
                       <pre className="text-xs text-gray-900 mt-1 whitespace-pre-wrap break-words">
                         {JSON.stringify(config.mapping, null, 2)}
                       </pre>
@@ -116,7 +139,9 @@ export const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
                   )}
                   {config.schema && (
                     <div className="mt-4">
-                      <span className="text-xs font-medium text-gray-600">Schema:</span>
+                      <span className="text-xs font-medium text-gray-600">
+                        Schema:
+                      </span>
                       <pre className="text-xs text-gray-900 mt-1 whitespace-pre-wrap break-words">
                         {JSON.stringify(config.schema, null, 2)}
                       </pre>
@@ -134,13 +159,13 @@ export const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
                 <p className="text-sm text-gray-900">
                   {config.createdAt
                     ? new Date(config.createdAt).toLocaleString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric',
-                      hour: 'numeric',
-                      minute: '2-digit',
-                      hour12: true,
-                    })
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true,
+                      })
                     : 'N/A'}
                 </p>
               </div>
@@ -152,20 +177,20 @@ export const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
                 <p className="text-sm text-gray-900">
                   {config.updatedAt
                     ? new Date(config.updatedAt).toLocaleString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric',
-                      hour: 'numeric',
-                      minute: '2-digit',
-                      hour12: true,
-                    })
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true,
+                      })
                     : 'N/A'}
                 </p>
               </div>
             </div>
           </div>
 
-         <div className="flex items-center justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50">
+          <div className="flex items-center justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50">
             <Button
               onClick={onClose}
               variant="secondary"

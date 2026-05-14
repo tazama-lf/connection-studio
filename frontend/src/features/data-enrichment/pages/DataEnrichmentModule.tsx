@@ -33,7 +33,7 @@ const DataEnrichmentModule: React.FC = () => {
     handleSaveEdit,
     handleSendForApproval,
   } = useDataEnrichmentJobList();
-  
+
   const [showJobForm, setShowJobForm] = useState(false);
   const [showJobDetails, setShowJobDetails] = useState(false);
 
@@ -98,12 +98,14 @@ const DataEnrichmentModule: React.FC = () => {
       await handleSaveEdit(updatedJob);
       handleCloseJobDetails();
     } catch (error) {
-
       throw error;
     }
   };
 
-  const handleSendJobForApproval = async (jobId: string, jobType: 'PULL' | 'PUSH') => {
+  const handleSendJobForApproval = async (
+    jobId: string,
+    jobType: 'PULL' | 'PUSH',
+  ) => {
     try {
       await handleSendForApproval(jobId, jobType);
       handleCloseJobDetails();
@@ -118,11 +120,12 @@ const DataEnrichmentModule: React.FC = () => {
         <Button
           variant="primary"
           className="py-1 pl-2"
-          onClick={async () => { await navigate(-1); }}
+          onClick={async () => {
+            await navigate(-1);
+          }}
         >
           <ChevronLeft size={20} /> <span>Go Back</span>
         </Button>
-
 
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center my-8 gap-4">
           <div className="flex items-center space-x-4">
@@ -138,13 +141,14 @@ const DataEnrichmentModule: React.FC = () => {
             <Button
               variant="primary"
               icon={<Plus size={16} />}
-              onClick={() => { setShowJobForm(true); }}
+              onClick={() => {
+                setShowJobForm(true);
+              }}
             >
               Create New Enrichment Job
             </Button>
           )}
         </div>
-
 
         {userIsApprover && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
@@ -184,7 +188,9 @@ const DataEnrichmentModule: React.FC = () => {
                   variant="secondary"
                   size="sm"
                   onClick={() => {
-                    setSearchingFilters({ status: DATA_ENRICHMENT_JOB_STATUSES.IN_PROGRESS });
+                    setSearchingFilters({
+                      status: DATA_ENRICHMENT_JOB_STATUSES.IN_PROGRESS,
+                    });
                   }}
                 >
                   View Pending Jobs
@@ -193,7 +199,6 @@ const DataEnrichmentModule: React.FC = () => {
             </div>
           </div>
         )}
-
 
         <JobList
           jobs={jobs}
@@ -208,16 +213,16 @@ const DataEnrichmentModule: React.FC = () => {
           loading={loading}
         />
 
-
         {showJobForm && (
           <DataEnrichmentFormModal
             isOpen={showJobForm}
-            onClose={() => { setShowJobForm(false); }}
+            onClose={() => {
+              setShowJobForm(false);
+            }}
             onSave={handleCreateJob}
             editMode={false}
           />
         )}
-
 
         {showJobDetails && !editMode && (
           <JobDetailsModal
@@ -230,8 +235,6 @@ const DataEnrichmentModule: React.FC = () => {
             onSendForApproval={handleSendJobForApproval}
           />
         )}
-
-
 
         {editMode && (
           <DataEnrichmentEditModal
