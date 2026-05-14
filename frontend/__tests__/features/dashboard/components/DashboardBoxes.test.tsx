@@ -35,8 +35,8 @@ jest.mock('@mui/material/Box', () => ({
     const bg =
       typeof resolvedSx?.backgroundColor === 'function'
         ? resolvedSx.backgroundColor({
-            palette: { background: { paper: '#fff' } },
-          })
+          palette: { background: { paper: '#fff' } },
+        })
         : resolvedSx?.backgroundColor;
     return (
       <div
@@ -315,10 +315,12 @@ describe('features/dashboard/components/DashboardBoxes.tsx', () => {
 
   it('unmounts cleanly, triggering useEffect cleanup to clearTimeout', () => {
     jest.useFakeTimers();
+    const clearTimeoutSpy = jest.spyOn(global, 'clearTimeout');
     useAuthMock.mockReturnValue({ user: { claims: [] } });
     const { unmount } = render(<DashboardBoxes />);
-    // Unmounting before the 40 ms fires calls the useEffect cleanup (() => clearTimeout(t))
     unmount();
+    expect(clearTimeoutSpy).toHaveBeenCalled();
+    clearTimeoutSpy.mockRestore();
     jest.useRealTimers();
   });
 
@@ -331,6 +333,8 @@ describe('features/dashboard/components/DashboardBoxes.tsx', () => {
       />,
     );
     expect(screen.getByText('Test')).toBeInTheDocument();
+    const card = document.querySelector('[data-bg]');
+    expect(card?.getAttribute('data-bg')).toBe('#7c3aed');
   });
 
   it('BoxCard: uses default selected (false) when selected prop is omitted', () => {
