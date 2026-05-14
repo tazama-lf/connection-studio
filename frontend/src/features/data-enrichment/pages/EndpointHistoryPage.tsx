@@ -25,12 +25,11 @@ import {
   ListOrdered,
   Table,
   User,
-  X
+  X,
 } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { dataEnrichmentJobApi as dataEnrichmentApi } from '../handlers';
-
 
 import { UI_CONFIG } from '@shared/config/app.config';
 import { handleInputFilter } from '@shared/helpers';
@@ -119,18 +118,19 @@ const EndpointHistoryPage: React.FC = () => {
     {},
   );
 
-  const {
-    offset,
-    limit,
-    setOffset,
-  } = useFilters();
+  const { offset, limit, setOffset } = useFilters();
 
-  const pagination = useMemo(() => ({
-    page: offset,
-    limit,
-    totalRecords,
-    setPage: (page: number) => { setOffset(page - 1); },
-  }), [offset, limit, totalRecords])
+  const pagination = useMemo(
+    () => ({
+      page: offset,
+      limit,
+      totalRecords,
+      setPage: (page: number) => {
+        setOffset(page - 1);
+      },
+    }),
+    [offset, limit, totalRecords],
+  );
 
   useEffect(() => {
     const load = async () => {
@@ -157,11 +157,9 @@ const EndpointHistoryPage: React.FC = () => {
     load();
   }, [jobId, page, itemsPerPage, searchingFilters, pagination]);
 
-
   useEffect(() => {
     setPage(1);
   }, [jobId]);
-
 
   useEffect(() => {
     setPage(1);
@@ -207,7 +205,9 @@ const EndpointHistoryPage: React.FC = () => {
   const columns = [
     ...visibleColumns.map((key) => ({
       field: key,
-      headerName: prettifyHeader(key === 'processed_counts' ? 'processed' : key),
+      headerName: prettifyHeader(
+        key === 'processed_counts' ? 'processed' : key,
+      ),
       headerAlign: 'center',
       align: 'center',
       sortable: false,
@@ -227,55 +227,53 @@ const EndpointHistoryPage: React.FC = () => {
       renderHeader:
         key === 'endpoint_name'
           ? () => (
-            <Box
-              sx={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: '8px',
-                width: '100%',
-                py: '12px',
-              }}
-            >
-              <Box sx={{ fontSize: '14px', fontWeight: '600' }}>
-                Endpoint Name
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '8px',
+                  width: '100%',
+                  py: '12px',
+                }}
+              >
+                <Box sx={{ fontSize: '14px', fontWeight: '600' }}>
+                  Endpoint Name
+                </Box>
+                {handleInputFilter({
+                  fieldName: 'endpointName',
+                  searchingFilters,
+                  setSearchingFilters,
+                })}
               </Box>
-              {handleInputFilter({
-                fieldName: 'endpointName',
-                searchingFilters,
-                setSearchingFilters,
-              })}
-            </Box>
-          )
+            )
           : () => (
-            <Box
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '100%',
-                height: '100%',
-                py: '12px',
-              }}
-            >
-              <Box sx={{ fontSize: '14px', fontWeight: '600' }}>
-                {prettifyHeader(key === 'processed_counts' ? 'processed' : key)}
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '100%',
+                  height: '100%',
+                  py: '12px',
+                }}
+              >
+                <Box sx={{ fontSize: '14px', fontWeight: '600' }}>
+                  {prettifyHeader(
+                    key === 'processed_counts' ? 'processed' : key,
+                  )}
+                </Box>
               </Box>
-            </Box>
-          ),
+            ),
       renderCell: (params: any) =>
         key === 'exception' ? (
-          <span
-
-          >
+          <span>
             <span className=""></span>
             {params.value ? 'Yes' : 'No'}
           </span>
         ) : key === 'created_at' ? (
           wrapCell(
-            params.value
-              ? new Date(params.value).toLocaleString()
-              : 'N/A'
+            params.value ? new Date(params.value).toLocaleString() : 'N/A',
           )
         ) : (
           wrapCell(params.value)
@@ -318,7 +316,9 @@ const EndpointHistoryPage: React.FC = () => {
           <Tooltip title="View Details" arrow placement="top">
             <IconButton
               aria-label={`view-details-${params.row?.job_id ?? ''}`}
-              onClick={() => { handleView(params.row); }}
+              onClick={() => {
+                handleView(params.row);
+              }}
               size="small"
               sx={{ alignSelf: 'center' }}
             >
@@ -339,7 +339,9 @@ const EndpointHistoryPage: React.FC = () => {
           <Button
             variant="primary"
             className="py-1 pl-2"
-            onClick={async () => { await navigate(-1); }}
+            onClick={async () => {
+              await navigate(-1);
+            }}
           >
             <ChevronLeft size={20} /> <span>Go Back</span>
           </Button>
@@ -371,7 +373,9 @@ const EndpointHistoryPage: React.FC = () => {
 
       <Dialog
         open={modalOpen}
-        onClose={() => { setModalOpen(false); }}
+        onClose={() => {
+          setModalOpen(false);
+        }}
         maxWidth="md"
         fullWidth
       >
@@ -387,7 +391,9 @@ const EndpointHistoryPage: React.FC = () => {
           <span>Endpoint Run Details</span>
           <IconButton
             aria-label="close"
-            onClick={() => { setModalOpen(false); }}
+            onClick={() => {
+              setModalOpen(false);
+            }}
             size="small"
             sx={{ ml: 2 }}
           >
@@ -437,8 +443,10 @@ const EndpointHistoryPage: React.FC = () => {
                             String(activeRecord.job_id ?? ''),
                           );
                           setCopied(true);
-                          setTimeout(() => { setCopied(false); }, 1500);
-                        } catch (e) { }
+                          setTimeout(() => {
+                            setCopied(false);
+                          }, 1500);
+                        } catch (e) {}
                       }}
                       aria-label="copy-job-id"
                     >
@@ -616,11 +624,12 @@ const EndpointHistoryPage: React.FC = () => {
                   <Box sx={{ mt: 0.5 }}>
                     <span
                       className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold
-                        ${activeRecord.publishing_status === 'active'
-                          ? 'bg-green-50 text-green-600 border border-green-200'
-                          : activeRecord.publishing_status === 'in-active'
-                            ? 'bg-red-50 text-red-600 border border-red-200'
-                            : getStatusBadge(activeRecord.publishing_status)
+                        ${
+                          activeRecord.publishing_status === 'active'
+                            ? 'bg-green-50 text-green-600 border border-green-200'
+                            : activeRecord.publishing_status === 'in-active'
+                              ? 'bg-red-50 text-red-600 border border-red-200'
+                              : getStatusBadge(activeRecord.publishing_status)
                         }
                       `}
                     >
@@ -685,10 +694,7 @@ const EndpointHistoryPage: React.FC = () => {
             <div>No data</div>
           )}
         </DialogContent>
-
       </Dialog>
-
-
     </>
   );
 };

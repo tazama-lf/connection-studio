@@ -2,28 +2,24 @@ import React, { useRef, useEffect, useState } from 'react';
 
 import type { DropdownMenuWithAutoDirectionProps } from '../../types';
 
-export const DropdownMenuWithAutoDirection: React.FC<DropdownMenuWithAutoDirectionProps> = ({ 
-  children, 
-  forceDirection = 'auto' 
-}) => {
+export const DropdownMenuWithAutoDirection: React.FC<
+  DropdownMenuWithAutoDirectionProps
+> = ({ children, forceDirection = 'auto' }) => {
   const menuRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState<'top' | 'bottom'>('bottom');
 
   useEffect(() => {
-    
     if (forceDirection !== 'auto') {
       setPosition(forceDirection);
       return;
     }
 
-    
     if (menuRef.current) {
       const rect = menuRef.current.getBoundingClientRect();
       const viewportHeight = window.innerHeight;
       const spaceBelow = viewportHeight - rect.bottom;
       const spaceAbove = rect.top;
-      
-      
+
       if (spaceBelow < 200 && spaceAbove > spaceBelow) {
         setPosition('top');
       } else {
