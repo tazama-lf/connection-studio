@@ -111,8 +111,8 @@ const DashboardBoxes: React.FC = () => {
 
   const resolvePath = (id: string) => {
     if (isApprover) return approverPaths[id] || defaultPaths[id];
-    if (isPublisher) return publisherPaths[id];
-    if (isExporter) return exporterPaths[id];
+    if (isPublisher) return publisherPaths[id] || defaultPaths[id];
+    if (isExporter) return exporterPaths[id] || defaultPaths[id];
     return defaultPaths[id];
   };
 
