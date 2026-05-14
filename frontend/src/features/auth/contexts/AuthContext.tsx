@@ -13,8 +13,12 @@ const AuthContext = createContext<AuthContextType>({
   isAuthenticated: false,
   user: null,
   loading: false,
-  async login(): Promise<boolean> { return false; },
-  logout(): void { /* default implementation */ }
+  async login(): Promise<boolean> {
+    return false;
+  },
+  logout(): void {
+    /* default implementation */
+  },
 });
 
 function useAuth(): AuthContextType {
@@ -33,12 +37,12 @@ const AuthProvider: React.FC<{
     const initializeAuth = (): void => {
       const storedToken = localStorage.getItem('authToken');
       const storedUser = localStorage.getItem('user');
-      
+
       if (storedToken && storedUser) {
         try {
           // Validate the token by decoding it
           const tokenUserData = AuthApiService.decodeToken(storedToken);
-          
+
           if (tokenUserData) {
             const userData = JSON.parse(storedUser);
             setUser(userData);
@@ -58,25 +62,28 @@ const AuthProvider: React.FC<{
     initializeAuth();
   }, []);
 
-  const login = async (username: string, password: string): Promise<boolean> => {
+  const login = async (
+    username: string,
+    password: string,
+  ): Promise<boolean> => {
     try {
       setLoading(true);
-      
+
       // Clear any existing auth state before login
       localStorage.removeItem('authToken');
       localStorage.removeItem('user');
       setUser(null);
       setIsAuthenticated(false);
-      
+
       const response = await authApi.login({ username, password });
-      
+
       if (response.token) {
         // Store the token
         localStorage.setItem('authToken', response.token);
-        
+
         // Decode the token to get user information
         const userData = AuthApiService.decodeToken(response.token);
-        
+
         if (userData) {
           setUser(userData);
           setIsAuthenticated(true);
@@ -84,7 +91,7 @@ const AuthProvider: React.FC<{
           return true;
         }
       }
-      
+
       return false;
     } catch (error) {
       // Re-throw the error so Login component can catch it and display appropriate message
@@ -102,13 +109,15 @@ const AuthProvider: React.FC<{
   };
 
   return (
-    <AuthContext.Provider value={{
-      isAuthenticated,
-      user,
-      loading,
-      login,
-      logout
-    }}>
+    <AuthContext.Provider
+      value={{
+        isAuthenticated,
+        user,
+        loading,
+        login,
+        logout,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

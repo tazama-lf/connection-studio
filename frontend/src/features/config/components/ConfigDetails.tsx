@@ -1,5 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { XIcon, DatabaseIcon, MapPinIcon, SettingsIcon, CodeIcon, CalendarIcon, UserIcon, EditIcon, SaveIcon } from 'lucide-react';
+import {
+  XIcon,
+  DatabaseIcon,
+  MapPinIcon,
+  SettingsIcon,
+  CodeIcon,
+  CalendarIcon,
+  UserIcon,
+  EditIcon,
+  SaveIcon,
+} from 'lucide-react';
 import { configApi } from '../services/configApi';
 import { Button } from '../../../shared/components/Button';
 
@@ -32,7 +42,7 @@ export const ConfigDetails: React.FC<ConfigDetailsProps> = ({
   config: initialConfig,
   isOpen,
   onClose,
-  onEdit
+  onEdit,
 }) => {
   const [config, setConfig] = useState<Config | null>(initialConfig ?? null);
   const [loading, setLoading] = useState(false);
@@ -49,9 +59,9 @@ export const ConfigDetails: React.FC<ConfigDetailsProps> = ({
         try {
           setLoading(true);
           setError(null);
-          
+
           const response = await configApi.getConfig(configId);
-          
+
           if (response.success && response.config) {
             setConfig(response.config);
           } else {
@@ -80,7 +90,7 @@ export const ConfigDetails: React.FC<ConfigDetailsProps> = ({
         endpointPath: config.endpointPath,
         version: config.version,
         contentType: config.contentType,
-        status: config.status
+        status: config.status,
       });
       setIsEditMode(true);
     }
@@ -88,31 +98,34 @@ export const ConfigDetails: React.FC<ConfigDetailsProps> = ({
 
   const handleSave = async () => {
     if (!config || !editForm) return;
-    
+
     try {
       setSaving(true);
       setError(null);
-      
+
       // Create update payload with correct types for API
       // IMPORTANT: Preserve existing mapping when updating form fields only
       const updatePayload: any = {
         msgFam: editForm.msgFam,
         transactionType: editForm.transactionType,
         version: editForm.version,
-        contentType: editForm.contentType as 'application/json' | 'application/xml' | undefined,
+        contentType: editForm.contentType as
+          | 'application/json'
+          | 'application/xml'
+          | undefined,
         endpointPath: editForm.endpointPath,
         status: editForm.status,
         // Preserve the existing mapping to prevent it from being cleared
         mapping: config.mapping,
       };
-      
+
       const response = await configApi.updateConfig(config.id, updatePayload);
-      
+
       if (response.success && response.config) {
         setConfig(response.config);
         setIsEditMode(false);
         setSuccessMessage('Configuration updated successfully!');
-        
+
         // Clear success message and close modal after a brief delay
         setTimeout(() => {
           setSuccessMessage(null);
@@ -136,18 +149,19 @@ export const ConfigDetails: React.FC<ConfigDetailsProps> = ({
   };
 
   const handleFormChange = (field: string, value: string) => {
-    setEditForm(prev => ({
+    setEditForm((prev) => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
   };
 
-  const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('en-US', {
+  const formatDate = (dateString: string) =>
+    new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
     });
 
   const formatJSON = (obj: any) => {
@@ -189,7 +203,9 @@ export const ConfigDetails: React.FC<ConfigDetailsProps> = ({
           {loading && (
             <div className="flex items-center justify-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              <span className="ml-2 text-gray-600">Loading configuration details...</span>
+              <span className="ml-2 text-gray-600">
+                Loading configuration details...
+              </span>
             </div>
           )}
 
@@ -214,26 +230,36 @@ export const ConfigDetails: React.FC<ConfigDetailsProps> = ({
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Event Type</label>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Event Type
+                    </label>
                     {isEditMode ? (
                       <input
                         type="text"
                         value={editForm.msgFam ?? ''}
-                        onChange={(e) => { handleFormChange('msgFam', e.target.value); }}
+                        onChange={(e) => {
+                          handleFormChange('msgFam', e.target.value);
+                        }}
                         className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                         placeholder="Event Type"
                       />
                     ) : (
-                      <p className="mt-1 text-sm text-gray-900">{config.msgFam ?? 'Not specified'}</p>
+                      <p className="mt-1 text-sm text-gray-900">
+                        {config.msgFam ?? 'Not specified'}
+                      </p>
                     )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Transaction Type</label>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Transaction Type
+                    </label>
                     {isEditMode ? (
                       <input
                         type="text"
                         value={editForm.transactionType ?? ''}
-                        onChange={(e) => { handleFormChange('transactionType', e.target.value); }}
+                        onChange={(e) => {
+                          handleFormChange('transactionType', e.target.value);
+                        }}
                         className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                         placeholder="Transaction Type"
                       />
@@ -246,40 +272,58 @@ export const ConfigDetails: React.FC<ConfigDetailsProps> = ({
                     )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Version</label>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Version
+                    </label>
                     {isEditMode ? (
                       <input
                         type="text"
                         value={editForm.version ?? ''}
-                        onChange={(e) => { handleFormChange('version', e.target.value); }}
+                        onChange={(e) => {
+                          handleFormChange('version', e.target.value);
+                        }}
                         className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                         placeholder="Version"
                       />
                     ) : (
-                      <p className="mt-1 text-sm text-gray-900">{config.version}</p>
+                      <p className="mt-1 text-sm text-gray-900">
+                        {config.version}
+                      </p>
                     )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Content Type</label>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Content Type
+                    </label>
                     {isEditMode ? (
                       <select
                         value={editForm.contentType ?? ''}
-                        onChange={(e) => { handleFormChange('contentType', e.target.value); }}
+                        onChange={(e) => {
+                          handleFormChange('contentType', e.target.value);
+                        }}
                         className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                       >
-                        <option value="application/json">application/json</option>
+                        <option value="application/json">
+                          application/json
+                        </option>
                         <option value="application/xml">application/xml</option>
                       </select>
                     ) : (
-                      <p className="mt-1 text-sm text-gray-900">{config.contentType}</p>
+                      <p className="mt-1 text-sm text-gray-900">
+                        {config.contentType}
+                      </p>
                     )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Status</label>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Status
+                    </label>
                     {isEditMode ? (
                       <select
                         value={editForm.status ?? ''}
-                        onChange={(e) => { handleFormChange('status', e.target.value); }}
+                        onChange={(e) => {
+                          handleFormChange('status', e.target.value);
+                        }}
                         className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                       >
                         <option value="draft">Draft</option>
@@ -288,19 +332,27 @@ export const ConfigDetails: React.FC<ConfigDetailsProps> = ({
                       </select>
                     ) : (
                       <p className="mt-1 text-sm text-gray-900">
-                        <span className={`px-2 py-1 rounded-full text-xs ${
-                          config.status === 'active' ? 'bg-green-100 text-green-800' :
-                          config.status === 'draft' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
+                        <span
+                          className={`px-2 py-1 rounded-full text-xs ${
+                            config.status === 'active'
+                              ? 'bg-green-100 text-green-800'
+                              : config.status === 'draft'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : 'bg-gray-100 text-gray-800'
+                          }`}
+                        >
                           {config.status}
                         </span>
                       </p>
                     )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Tenant ID</label>
-                    <p className="mt-1 text-sm text-gray-900">{config.tenantId}</p>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Tenant ID
+                    </label>
+                    <p className="mt-1 text-sm text-gray-900">
+                      {config.tenantId}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -312,12 +364,16 @@ export const ConfigDetails: React.FC<ConfigDetailsProps> = ({
                   Endpoint Information
                 </h3>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Endpoint Path</label>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Endpoint Path
+                  </label>
                   {isEditMode ? (
                     <input
                       type="text"
                       value={editForm.endpointPath ?? ''}
-                      onChange={(e) => { handleFormChange('endpointPath', e.target.value); }}
+                      onChange={(e) => {
+                        handleFormChange('endpointPath', e.target.value);
+                      }}
                       className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm font-mono"
                       placeholder="/api/endpoint/path"
                     />
@@ -357,7 +413,9 @@ export const ConfigDetails: React.FC<ConfigDetailsProps> = ({
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-2">
                             <code className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                              {Array.isArray(mapping.source) ? mapping.source.join(' + ') : mapping?.source}
+                              {Array.isArray(mapping.source)
+                                ? mapping.source.join(' + ')
+                                : mapping?.source}
                             </code>
                             <span className="text-gray-400">→</span>
                             <code className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
@@ -388,15 +446,25 @@ export const ConfigDetails: React.FC<ConfigDetailsProps> = ({
                       <UserIcon className="h-4 w-4 mr-1" />
                       Created By
                     </label>
-                    <p className="mt-1 text-sm text-gray-900">{config.createdBy}</p>
+                    <p className="mt-1 text-sm text-gray-900">
+                      {config.createdBy}
+                    </p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Created At</label>
-                    <p className="mt-1 text-sm text-gray-900">{formatDate(config.createdAt)}</p>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Created At
+                    </label>
+                    <p className="mt-1 text-sm text-gray-900">
+                      {formatDate(config.createdAt)}
+                    </p>
                   </div>
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700">Last Updated</label>
-                    <p className="mt-1 text-sm text-gray-900">{formatDate(config.updatedAt)}</p>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Last Updated
+                    </label>
+                    <p className="mt-1 text-sm text-gray-900">
+                      {formatDate(config.updatedAt)}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -409,10 +477,18 @@ export const ConfigDetails: React.FC<ConfigDetailsProps> = ({
           <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
             {isEditMode ? (
               <>
-                <Button variant="secondary" onClick={handleCancel} disabled={saving}>
+                <Button
+                  variant="secondary"
+                  onClick={handleCancel}
+                  disabled={saving}
+                >
                   Cancel
                 </Button>
-                <Button variant="primary" onClick={handleSave} disabled={saving}>
+                <Button
+                  variant="primary"
+                  onClick={handleSave}
+                  disabled={saving}
+                >
                   {saving ? (
                     <>
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>

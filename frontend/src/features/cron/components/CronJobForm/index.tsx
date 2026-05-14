@@ -14,10 +14,21 @@ import { isApprover } from '@utils/common/roleUtils';
 import { useAuth } from '@features/auth';
 import cronstrue from 'cronstrue';
 import { Check, XCircle } from 'lucide-react';
-import type { CronJobFormProps, ScheduleRequest, ScheduleResponse } from '../../types';
+import type {
+  CronJobFormProps,
+  ScheduleRequest,
+  ScheduleResponse,
+} from '../../types';
 import { validationSchema } from '../../utils';
-import { submitCronJob, getErrorMessage, CRON_JOB_SUCCESS_MESSAGES } from '../../handlers';
-import { CRON_JOB_FORM_DEFAULTS, CRON_JOB_STATUSES } from '@features/cron/constants';
+import {
+  submitCronJob,
+  getErrorMessage,
+  CRON_JOB_SUCCESS_MESSAGES,
+} from '../../handlers';
+import {
+  CRON_JOB_FORM_DEFAULTS,
+  CRON_JOB_STATUSES,
+} from '@features/cron/constants';
 
 const defaultValues = CRON_JOB_FORM_DEFAULTS;
 
@@ -77,7 +88,9 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({
         }
       });
 
-      return () => { subscription.unsubscribe(); };
+      return () => {
+        subscription.unsubscribe();
+      };
     }
   }, [editFormData, setEditFormData, watch]);
 
@@ -134,9 +147,9 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({
                 {!viewFormData && (
                   <Cron
                     value={cronExpression}
-                    setValue={(value: string) =>
-                      { setValue('cronExpression', value); }
-                    }
+                    setValue={(value: string) => {
+                      setValue('cronExpression', value);
+                    }}
                     allowedDropdowns={[
                       'period',
                       'months',
@@ -262,7 +275,9 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({
                         variant="contained"
                         sx={{ marginRight: '10px', backgroundColor: '#ff474d' }}
                         startIcon={<XCircle size={16} />}
-                        onClick={() => { onReject(viewFormData.id); }}
+                        onClick={() => {
+                          onReject(viewFormData.id);
+                        }}
                       >
                         Reject
                       </Button>
@@ -274,7 +289,9 @@ export const CronJobForm: React.FC<CronJobFormProps> = ({
                         variant="contained"
                         sx={{ backgroundColor: '#33ad74' }}
                         startIcon={<Check size={16} />}
-                        onClick={() => { onApprove(viewFormData.id); }}
+                        onClick={() => {
+                          onApprove(viewFormData.id);
+                        }}
                       >
                         Approve
                       </Button>

@@ -128,14 +128,22 @@ export class ConfigApiService {
   private static async handleResponse<T>(response: Response): Promise<T> {
     if (response.status === ConfigApiService.HTTP_UNAUTHORIZED) {
       localStorage.removeItem('authToken');
-      const errorData = await response
+      const errorData = (await response
         .json()
-        .catch(() => ({ success: false, message: 'Invalid credentials' })) as { success: boolean; message?: string };
+        .catch(() => ({ success: false, message: 'Invalid credentials' }))) as {
+        success: boolean;
+        message?: string;
+      };
       throw new Error(errorData.message ?? 'Invalid credentials');
     }
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({})) as { message?: string };
-      if (response.status >= ConfigApiService.HTTP_BAD_REQUEST && response.status < ConfigApiService.HTTP_SERVER_ERROR) {
+      const errorData = (await response.json().catch(() => ({}))) as {
+        message?: string;
+      };
+      if (
+        response.status >= ConfigApiService.HTTP_BAD_REQUEST &&
+        response.status < ConfigApiService.HTTP_SERVER_ERROR
+      ) {
         return errorData as T;
       }
       throw new Error(
@@ -151,7 +159,8 @@ export class ConfigApiService {
       headers: ConfigApiService.getAuthHeaders(),
       body: JSON.stringify(data),
     });
-    const result = await ConfigApiService.handleResponse<ConfigResponse>(response);
+    const result =
+      await ConfigApiService.handleResponse<ConfigResponse>(response);
     return result;
   }
 
@@ -161,7 +170,8 @@ export class ConfigApiService {
       headers: ConfigApiService.getAuthHeaders(),
       body: JSON.stringify(data),
     });
-    const result = await ConfigApiService.handleResponse<ConfigResponse>(response);
+    const result =
+      await ConfigApiService.handleResponse<ConfigResponse>(response);
     return result;
   }
 
@@ -193,7 +203,9 @@ export class ConfigApiService {
         method: 'GET',
         headers: ConfigApiService.getAuthHeaders(),
       });
-      const result = await ConfigApiService.handleResponse<ConfigResponse | { id: number; [key: string]: unknown }>(response);
+      const result = await ConfigApiService.handleResponse<
+        ConfigResponse | { id: number; [key: string]: unknown }
+      >(response);
       if (typeof result === 'object' && 'success' in result) {
         return result as ConfigResponse;
       }
@@ -231,10 +243,7 @@ export class ConfigApiService {
     let configsArray: Config[] = [];
     if (Array.isArray(responseData)) {
       configsArray = responseData;
-    } else if (
-      typeof responseData === 'object' &&
-      'configs' in responseData
-    ) {
+    } else if (typeof responseData === 'object' && 'configs' in responseData) {
       configsArray = Array.isArray(responseData.configs)
         ? responseData.configs
         : [];
@@ -284,11 +293,12 @@ export class ConfigApiService {
     const responseData = await ConfigApiService.handleResponse<
       { success: boolean; configs: Config[] } | Config[]
     >(response);
-    if (
-      typeof responseData === 'object' &&
-      'configs' in responseData
-    ) {
-      return { configs: Array.isArray(responseData.configs) ? responseData.configs : [] };
+    if (typeof responseData === 'object' && 'configs' in responseData) {
+      return {
+        configs: Array.isArray(responseData.configs)
+          ? responseData.configs
+          : [],
+      };
     } else if (Array.isArray(responseData)) {
       return { configs: responseData };
     } else {
@@ -328,14 +338,11 @@ export class ConfigApiService {
     configId: number,
     mapping: AddMappingRequest,
   ): Promise<ConfigResponse> {
-    const response = await fetch(
-      `${this.baseURL}/config/${configId}/mapping`,
-      {
-        method: 'POST',
-        headers: ConfigApiService.getAuthHeaders(),
-        body: JSON.stringify(mapping),
-      },
-    );
+    const response = await fetch(`${this.baseURL}/config/${configId}/mapping`, {
+      method: 'POST',
+      headers: ConfigApiService.getAuthHeaders(),
+      body: JSON.stringify(mapping),
+    });
     return await ConfigApiService.handleResponse<ConfigResponse>(response);
   }
 
@@ -363,7 +370,8 @@ export class ConfigApiService {
       headers,
       body: JSON.stringify(data),
     });
-    const result = await ConfigApiService.handleResponse<ConfigResponse>(response);
+    const result =
+      await ConfigApiService.handleResponse<ConfigResponse>(response);
     return result;
   }
 
@@ -378,7 +386,8 @@ export class ConfigApiService {
       method,
       headers,
     });
-    const result = await ConfigApiService.handleResponse<ConfigResponse>(response);
+    const result =
+      await ConfigApiService.handleResponse<ConfigResponse>(response);
     return result;
   }
 
@@ -396,7 +405,8 @@ export class ConfigApiService {
         publishing_status: publishingStatus,
       }),
     });
-    const result = await ConfigApiService.handleResponse<ConfigResponse>(response);
+    const result =
+      await ConfigApiService.handleResponse<ConfigResponse>(response);
     return result;
   }
 
@@ -423,7 +433,8 @@ export class ConfigApiService {
       headers,
       body: JSON.stringify(payload ?? {}),
     });
-    const result = await ConfigApiService.handleResponse<ConfigResponse>(response);
+    const result =
+      await ConfigApiService.handleResponse<ConfigResponse>(response);
     return result;
   }
 
@@ -479,9 +490,10 @@ export class ConfigApiService {
         headers: ConfigApiService.getAuthHeaders(),
       },
     );
-    return await ConfigApiService.handleResponse<{ status: string; message?: string }>(
-      response,
-    );
+    return await ConfigApiService.handleResponse<{
+      status: string;
+      message?: string;
+    }>(response);
   }
 
   async returnToProgress(id: number): Promise<ConfigResponse> {
@@ -526,16 +538,26 @@ export class ConfigApiService {
         body: JSON.stringify(requestBody),
       },
     );
-    const result = await ConfigApiService.handleResponse<ConfigResponse>(response);
+    const result =
+      await ConfigApiService.handleResponse<ConfigResponse>(response);
     return result;
   }
 
-  async getRelatedTransactions(): Promise<{ success: boolean; data: string[] }> {
-    const response = await fetch(`${this.baseURL}/config/tcs/related-transactions`, {
-      method: 'GET',
-      headers: ConfigApiService.getAuthHeaders(),
-    });
-    return await ConfigApiService.handleResponse<{ success: boolean; data: string[] }>(response);
+  async getRelatedTransactions(): Promise<{
+    success: boolean;
+    data: string[];
+  }> {
+    const response = await fetch(
+      `${this.baseURL}/config/tcs/related-transactions`,
+      {
+        method: 'GET',
+        headers: ConfigApiService.getAuthHeaders(),
+      },
+    );
+    return await ConfigApiService.handleResponse<{
+      success: boolean;
+      data: string[];
+    }>(response);
   }
 
   async getConfigsByStatus(
@@ -551,10 +573,7 @@ export class ConfigApiService {
     let configsArray: Config[] = [];
     if (Array.isArray(responseData)) {
       configsArray = responseData;
-    } else if (
-      typeof responseData === 'object' &&
-      'configs' in responseData
-    ) {
+    } else if (typeof responseData === 'object' && 'configs' in responseData) {
       configsArray = Array.isArray(responseData.configs)
         ? responseData.configs
         : [];

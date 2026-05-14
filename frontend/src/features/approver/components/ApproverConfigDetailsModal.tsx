@@ -2,7 +2,10 @@ import React, { useState } from 'react';
 import { X, CheckCircle, XCircle } from 'lucide-react';
 import type { Config } from '../../config';
 import { Button } from '../../../shared/components/Button';
-import { getStatusColor, getStatusLabel } from '../../../shared/utils/statusColors';
+import {
+  getStatusColor,
+  getStatusLabel,
+} from '../../../shared/utils/statusColors';
 
 interface ApproverConfigDetailsModalProps {
   config: Config | null;
@@ -12,13 +15,9 @@ interface ApproverConfigDetailsModalProps {
   onReject: (config: Config) => Promise<void>;
 }
 
-export const ApproverConfigDetailsModal: React.FC<ApproverConfigDetailsModalProps> = ({
-  config,
-  isOpen,
-  onClose,
-  onApprove,
-  onReject,
-}) => {
+export const ApproverConfigDetailsModal: React.FC<
+  ApproverConfigDetailsModalProps
+> = ({ config, isOpen, onClose, onApprove, onReject }) => {
   const [isApproving, setIsApproving] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
 
@@ -77,7 +76,9 @@ export const ApproverConfigDetailsModal: React.FC<ApproverConfigDetailsModalProp
             {/* Status Badge */}
             <div className="flex items-center space-x-2">
               <span className="text-sm font-medium text-gray-700">Status:</span>
-              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(config.status ?? 'pending')}`}>
+              <span
+                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(config.status ?? 'pending')}`}
+              >
                 <span className="w-2 h-2 rounded-full bg-current mr-2"></span>
                 {getStatusLabel(config.status ?? 'pending')}
               </span>
@@ -113,25 +114,43 @@ export const ApproverConfigDetailsModal: React.FC<ApproverConfigDetailsModalProp
                 <div className="space-y-2">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <span className="text-xs font-medium text-gray-600">Message Family:</span>
-                      <p className="text-sm text-gray-900">{config.msgFam ?? 'N/A'}</p>
+                      <span className="text-xs font-medium text-gray-600">
+                        Message Family:
+                      </span>
+                      <p className="text-sm text-gray-900">
+                        {config.msgFam ?? 'N/A'}
+                      </p>
                     </div>
                     <div>
-                      <span className="text-xs font-medium text-gray-600">Version:</span>
-                      <p className="text-sm text-gray-900">{config.version ?? 'N/A'}</p>
+                      <span className="text-xs font-medium text-gray-600">
+                        Version:
+                      </span>
+                      <p className="text-sm text-gray-900">
+                        {config.version ?? 'N/A'}
+                      </p>
                     </div>
                     <div>
-                      <span className="text-xs font-medium text-gray-600">Endpoint Path:</span>
-                      <p className="text-sm text-gray-900 font-mono">{config.endpointPath ?? 'N/A'}</p>
+                      <span className="text-xs font-medium text-gray-600">
+                        Endpoint Path:
+                      </span>
+                      <p className="text-sm text-gray-900 font-mono">
+                        {config.endpointPath ?? 'N/A'}
+                      </p>
                     </div>
                     <div>
-                      <span className="text-xs font-medium text-gray-600">Content Type:</span>
-                      <p className="text-sm text-gray-900">{config.contentType ?? 'N/A'}</p>
+                      <span className="text-xs font-medium text-gray-600">
+                        Content Type:
+                      </span>
+                      <p className="text-sm text-gray-900">
+                        {config.contentType ?? 'N/A'}
+                      </p>
                     </div>
                   </div>
                   {config.mapping && config.mapping.length > 0 && (
                     <div className="mt-4">
-                      <span className="text-xs font-medium text-gray-600">Field Mappings:</span>
+                      <span className="text-xs font-medium text-gray-600">
+                        Field Mappings:
+                      </span>
                       <pre className="text-xs text-gray-900 mt-1 whitespace-pre-wrap break-words">
                         {JSON.stringify(config.mapping, null, 2)}
                       </pre>
@@ -139,7 +158,9 @@ export const ApproverConfigDetailsModal: React.FC<ApproverConfigDetailsModalProp
                   )}
                   {config.schema && (
                     <div className="mt-4">
-                      <span className="text-xs font-medium text-gray-600">Schema:</span>
+                      <span className="text-xs font-medium text-gray-600">
+                        Schema:
+                      </span>
                       <pre className="text-xs text-gray-900 mt-1 whitespace-pre-wrap break-words">
                         {JSON.stringify(config.schema, null, 2)}
                       </pre>
@@ -158,13 +179,13 @@ export const ApproverConfigDetailsModal: React.FC<ApproverConfigDetailsModalProp
                 <p className="text-sm text-gray-900">
                   {config.createdAt
                     ? new Date(config.createdAt).toLocaleString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric',
-                      hour: 'numeric',
-                      minute: '2-digit',
-                      hour12: true,
-                    })
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true,
+                      })
                     : 'N/A'}
                 </p>
               </div>
@@ -176,13 +197,13 @@ export const ApproverConfigDetailsModal: React.FC<ApproverConfigDetailsModalProp
                 <p className="text-sm text-gray-900">
                   {config.updatedAt
                     ? new Date(config.updatedAt).toLocaleString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric',
-                      hour: 'numeric',
-                      minute: '2-digit',
-                      hour12: true,
-                    })
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true,
+                      })
                     : 'N/A'}
                 </p>
               </div>

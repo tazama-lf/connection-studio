@@ -51,13 +51,13 @@ const CustomTable: React.FC<CustomTableProps> = ({
 
   const totalPages = Math.max(
     1,
-    Math.ceil(pagination.totalRecords / pagination.limit)
+    Math.ceil(pagination.totalRecords / pagination.limit),
   );
 
   const from = pagination.page * pagination.limit + 1;
   const to = Math.min(
     (pagination.page + 1) * pagination.limit,
-    pagination.totalRecords
+    pagination.totalRecords,
   );
 
   return (
@@ -93,7 +93,9 @@ const CustomTable: React.FC<CustomTableProps> = ({
             <Pagination
               page={pagination.page + 1}
               count={totalPages}
-              onChange={(_, newPage) => { pagination.setPage(newPage); }}
+              onChange={(_, newPage) => {
+                pagination.setPage(newPage);
+              }}
               variant="outlined"
             />
           </PaginationContainer>

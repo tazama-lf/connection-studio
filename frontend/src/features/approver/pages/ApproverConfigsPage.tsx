@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
-  Backdrop, CircularProgress,
+  Backdrop,
+  CircularProgress,
   Dialog,
   DialogContent,
   DialogContentText,
@@ -95,7 +96,7 @@ const ApproverConfigsPage: React.FC = () => {
     if (!configToReject) return;
     setRejectionLoading(true);
     try {
-      const userId = (user?.email ?? user?.username) ?? 'system';
+      const userId = user?.email ?? user?.username ?? 'system';
       const response = await configApi.rejectConfig(
         configToReject.id,
         userId,
@@ -119,11 +120,13 @@ const ApproverConfigsPage: React.FC = () => {
     }
   };
 
-  const handleChangeRequestConfirm = async (requestedChanges: string): Promise<void> => {
+  const handleChangeRequestConfirm = async (
+    requestedChanges: string,
+  ): Promise<void> => {
     if (!configToRequestChanges) return;
 
     try {
-      const userId = (user?.email ?? user?.username) ?? 'system';
+      const userId = user?.email ?? user?.username ?? 'system';
       const response = await configApi.rejectConfig(
         configToRequestChanges.id,
         userId,
@@ -212,7 +215,9 @@ const ApproverConfigsPage: React.FC = () => {
         <Button
           variant="primary"
           className="py-1 pl-2"
-          onClick={(): void => { navigate(SORT_DESCENDING); }}
+          onClick={(): void => {
+            navigate(SORT_DESCENDING);
+          }}
         >
           <ChevronLeft size={20} /> <span>Go Back</span>
         </Button>
@@ -259,7 +264,10 @@ const ApproverConfigsPage: React.FC = () => {
             if (editingConfig) {
               setConfigToApprove({
                 id: editingEndpointId,
-                name: editingConfig.endpointPath ?? editingConfig.msgFam ?? `Config #${editingEndpointId}`,
+                name:
+                  editingConfig.endpointPath ??
+                  editingConfig.msgFam ??
+                  `Config #${editingEndpointId}`,
               });
               setShowApprovalDialog(true);
             }
@@ -276,11 +284,16 @@ const ApproverConfigsPage: React.FC = () => {
               setShowRejectionDialog(false);
               setConfigToReject(null);
             }}
-            onConfirm={(reason: string): void => { void handleRejectConfirm(reason); }}
+            onConfirm={(reason: string): void => {
+              void handleRejectConfirm(reason);
+            }}
             configName={configToReject.endpointPath}
           />
           <Backdrop
-            sx={(theme) => ({ color: '#fff', zIndex: theme.zIndex.drawer + 100 })}
+            sx={(theme) => ({
+              color: '#fff',
+              zIndex: theme.zIndex.drawer + 100,
+            })}
             open={rejectionLoading}
           >
             <CircularProgress color="inherit" />
@@ -297,8 +310,12 @@ const ApproverConfigsPage: React.FC = () => {
             setSelectedConfig(null);
           }}
           config={selectedConfig}
-          onApprove={(): void => { void handleApprove(selectedConfig.id); }}
-          onReject={(): void => { handleRejectClick(selectedConfig); }}
+          onApprove={(): void => {
+            void handleApprove(selectedConfig.id);
+          }}
+          onReject={(): void => {
+            handleRejectClick(selectedConfig);
+          }}
         />
       )}
 
@@ -310,7 +327,9 @@ const ApproverConfigsPage: React.FC = () => {
             setShowChangeRequestDialog(false);
             setConfigToRequestChanges(null);
           }}
-          onConfirm={(requestedChanges: string): void => { void handleChangeRequestConfirm(requestedChanges); }}
+          onConfirm={(requestedChanges: string): void => {
+            void handleChangeRequestConfirm(requestedChanges);
+          }}
           configName={configToRequestChanges.endpointPath}
         />
       )}
@@ -395,7 +414,9 @@ const ApproverConfigsPage: React.FC = () => {
             <textarea
               id="approval-comment"
               value={approvalComment}
-              onChange={(e): void => { setApprovalComment(e.target.value); }}
+              onChange={(e): void => {
+                setApprovalComment(e.target.value);
+              }}
               placeholder="Add a comment for this approval (optional)"
               maxLength={MAX_COMMENT_LENGTH}
               rows={3}
@@ -425,7 +446,9 @@ const ApproverConfigsPage: React.FC = () => {
             Cancel
           </Button>
           <Button
-            onClick={(): void => { void handleApprovalConfirm(); }}
+            onClick={(): void => {
+              void handleApprovalConfirm();
+            }}
             variant="primary"
             className="!pb-[6px] !pt-[5px] bg-[#2b7fff]"
             disabled={approvalLoading}

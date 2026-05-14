@@ -3,7 +3,7 @@ import { styled } from '@mui/material/styles';
 import MuiAppBar from '@mui/material/AppBar';
 import CssBaseline from '@mui/material/CssBaseline';
 import Box from '@mui/material/Box';
-import { Outlet , useLocation } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 
 import TopBar from './components/TopBar';
 import SideNav from './components/SideNav';
@@ -45,7 +45,12 @@ export default function Dashboard() {
         <TopBar open={open} onToggle={handleToggleMenu} />
       </AppBar>
       <Drawer variant="permanent" open={open}>
-        <SideNav open={open} onClose={() => { setOpen(false); }} />
+        <SideNav
+          open={open}
+          onClose={() => {
+            setOpen(false);
+          }}
+        />
       </Drawer>
       <Box
         component="main"
