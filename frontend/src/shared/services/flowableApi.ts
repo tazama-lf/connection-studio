@@ -52,26 +52,39 @@ export class FlowableApiService {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     };
-  }
+  };
 
-  private static readonly handleResponse = async <T>(response: Response): Promise<T> => {
+  private static readonly isBrowser = (): boolean => typeof window !== 'undefined';
+
+  private static readonly handleResponse = async <T>(
+    response: Response,
+  ): Promise<T> => {
     if (response.status === HTTP_STATUS_UNAUTHORIZED) {
       localStorage.removeItem('authToken');
-      if (typeof window !== 'undefined') {
+      if (FlowableApiService.isBrowser()) {
         window.location.href = '/login';
       }
       const errorData = (await response
         .json()
-        .catch(() => ({ success: false, message: 'Unauthorized' }))) as { success: boolean; message: string };
+        .catch(() => ({ success: false, message: 'Unauthorized' }))) as {
+        success: boolean;
+        message: string;
+      };
       return errorData as T;
     }
 
     if (!response.ok) {
-      const errorData = (await response.json().catch(() => ({}))) as { message?: string };
-      if (response.status >= HTTP_STATUS_BAD_REQUEST && response.status < HTTP_STATUS_SERVER_ERROR) {
+      const errorData = (await response.json().catch(() => ({}))) as {
+        message?: string;
+      };
+      if (
+        response.status >= HTTP_STATUS_BAD_REQUEST &&
+        response.status < HTTP_STATUS_SERVER_ERROR
+      ) {
         return errorData as T;
       }
-      const message = errorData.message ?? `HTTP error! status: ${response.status}`;
+      const message =
+        errorData.message ?? `HTTP error! status: ${response.status}`;
       throw new Error(message);
     }
 

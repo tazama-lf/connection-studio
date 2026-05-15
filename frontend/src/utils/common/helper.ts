@@ -1,6 +1,6 @@
-export default function ensurePromise<T extends (...args: unknown[]) => unknown>(
-  fn: T
-): (...args: Parameters<T>) => Promise<Awaited<ReturnType<T>>> {
+export default function ensurePromise<
+  T extends (...args: unknown[]) => unknown,
+>(fn: T): (...args: Parameters<T>) => Promise<Awaited<ReturnType<T>>> {
   return async (...args: Parameters<T>): Promise<Awaited<ReturnType<T>>> => {
     try {
       const result = await fn(...args);
@@ -14,10 +14,7 @@ export default function ensurePromise<T extends (...args: unknown[]) => unknown>
   };
 }
 
-
-export const formatDate = (
-  dateString: string | null | undefined
-): string => {
+export const formatDate = (dateString: string | null | undefined): string => {
   if (!dateString) return 'N/A';
 
   try {

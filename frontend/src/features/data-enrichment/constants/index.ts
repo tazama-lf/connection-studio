@@ -1,35 +1,3 @@
-export const DATA_ENRICHMENT_FORM_DEFAULTS = {
-  endpoint_name: '',
-  description: '',
-  table_name: '',
-  mode: 'append' as const,
-  version: '1.0.0',
-  source_type: 'HTTP' as const,
-  config_type: 'Pull' as const,
-};
-
-export const DATA_ENRICHMENT_HTTP_DEFAULTS = {
-  url: '',
-  headers: {
-    'content-type': 'application/json',
-  },
-};
-
-export const DATA_ENRICHMENT_SFTP_DEFAULTS = {
-  host: '',
-  port: 22,
-  auth_type: 'USERNAME_PASSWORD' as const,
-  user_name: '',
-  password: '',
-  private_key: '',
-};
-
-export const DATA_ENRICHMENT_FILE_DEFAULTS = {
-  path: '',
-  file_type: 'CSV' as const,
-  delimiter: ',',
-};
-
 export const DATA_ENRICHMENT_ERROR_MESSAGES = {
   GENERAL:
     'We encountered an issue while creating your data enrichment job. Please try again.',
@@ -74,9 +42,6 @@ export const DATA_ENRICHMENT_JOB_STATUSES = {
   READY_FOR_DEPLOYMENT: 'STATUS_07_READY_FOR_DEPLOYMENT',
   DEPLOYED: 'STATUS_08_DEPLOYED',
 } as const;
-
-export type DataEnrichmentJobStatus =
-  (typeof DATA_ENRICHMENT_JOB_STATUSES)[keyof typeof DATA_ENRICHMENT_JOB_STATUSES];
 
 export const FILE_EXTENSION_FORMAT_MAP = {
   csv: ['CSV'] as const,

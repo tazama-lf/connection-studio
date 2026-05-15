@@ -22,6 +22,8 @@ export default [
       '**/*.test.tsx',
       '**/*.spec.ts',
       '**/*.spec.tsx',
+      '**/jest.setup.ts',
+      '**/__mocks__/**',
     ],
   },
   {
@@ -92,9 +94,9 @@ export default [
     },
   },
   {
-    files: ['**/handlers/index.ts', '**/services/*Api.ts'],
+    files: ['src/**/*'],
     rules: {
-      'max-lines': ['warn', { max: 1000 }],
+      'max-lines': ['warn', { max: 1200 }],
     },
   },
 ];

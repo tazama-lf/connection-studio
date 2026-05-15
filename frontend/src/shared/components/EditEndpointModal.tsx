@@ -50,7 +50,6 @@ import type { StepIconProps } from '@mui/material/StepIcon';
 import StepLabel from '@mui/material/StepLabel';
 import Stepper from '@mui/material/Stepper';
 
-
 // Custom Step Icon Component
 const CustomStepIcon = (props: StepIconProps) => {
   const { active, completed, icon } = props;
@@ -98,7 +97,10 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
   >([]);
   const [dataModelForm, setDataModelForm] = useState<any>({});
   const [tableNameError, setTableNameError] = useState<string>('');
-  const [dataModelJson, setDataModelJson] = useState<Record<string, any> | null>(null);
+  const [dataModelJson, setDataModelJson] = useState<Record<
+    string,
+    any
+  > | null>(null);
   const [dataModelLoading, setDataModelLoading] = useState(false);
 
   useEffect(() => {
@@ -111,7 +113,9 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
             setDataModelJson(response.data as Record<string, any>);
           }
         })
-        .catch(() => { /* silently fail */ })
+        .catch(() => {
+          console.error('Failed to fetch data model fields');
+        })
         .finally(() => setDataModelLoading(false));
     }
   }, [selectedFunction]);
@@ -119,14 +123,25 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
   const flattenDataModelJson = (
     obj: Record<string, any>,
     parentPath = '',
-    result: { path: string; type: string; parent: string; group: 'Data Model' }[] = [],
+    result: {
+      path: string;
+      type: string;
+      parent: string;
+      group: 'Data Model';
+    }[] = [],
   ): { path: string; type: string; parent: string; group: 'Data Model' }[] => {
     Object.entries(obj).forEach(([key, value]) => {
       const currentPath = parentPath ? `${parentPath}.${key}` : key;
-      const isObject = value !== null && typeof value === 'object' && !Array.isArray(value);
+      const isObject =
+        value !== null && typeof value === 'object' && !Array.isArray(value);
       const isArray = Array.isArray(value);
       const type = isObject ? 'Object' : isArray ? 'Array' : typeof value;
-      result.push({ path: currentPath, type, parent: parentPath, group: 'Data Model' });
+      result.push({
+        path: currentPath,
+        type,
+        parent: parentPath,
+        group: 'Data Model',
+      });
       if (isObject) {
         flattenDataModelJson(value, currentPath, result);
       }
@@ -134,7 +149,9 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
     return result;
   };
 
-  const flatDataModelFields = dataModelJson ? flattenDataModelJson(dataModelJson) : [];
+  const flatDataModelFields = dataModelJson
+    ? flattenDataModelJson(dataModelJson)
+    : [];
 
   const getObjectsFromFlatSchema = (
     fields: { path: string; type: string; group: string }[],
@@ -148,15 +165,25 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
 
     if (Array.isArray(currentSchema)) {
       currentSchema.forEach((f: any) => {
-        if (f.path) payloadFields.push({ path: f.path, type: f.type ?? '', group: 'Payload' });
+        if (f.path)
+          payloadFields.push({
+            path: f.path,
+            type: f.type ?? '',
+            group: 'Payload',
+          });
       });
     } else if (currentSchema?.properties) {
       const traverseSchema = (props: any, parentPath = '') => {
         Object.entries(props).forEach(([key, value]: [string, any]) => {
           const path = parentPath ? `${parentPath}.${key}` : key;
-          payloadFields.push({ path, type: value.type ?? 'string', group: 'Payload' });
+          payloadFields.push({
+            path,
+            type: value.type ?? 'string',
+            group: 'Payload',
+          });
           if (value.properties) traverseSchema(value.properties, path);
-          else if (value.items?.properties) traverseSchema(value.items.properties, `${path}[0]`);
+          else if (value.items?.properties)
+            traverseSchema(value.items.properties, `${path}[0]`);
         });
       };
       traverseSchema(currentSchema.properties);
@@ -177,7 +204,10 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
     if (!dataModelForm?.jsonKey) return [];
 
     try {
-      const parsed = JSON.parse(dataModelForm.jsonKey) as { value?: string; group?: string };
+      const parsed = JSON.parse(dataModelForm.jsonKey) as {
+        value?: string;
+        group?: string;
+      };
       const selectedPath = parsed?.value ?? '';
       const selectedGroup = parsed?.group ?? '';
       if (!selectedPath) return [];
@@ -189,8 +219,13 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
           childFields = currentSchema
             .filter((f: any) => {
               const parent: string = f.parent ?? '';
-              const normalizedParent = parent.replace(/\.(\d+)(\.|$)/g, '[$1]$2');
-              return parent === selectedPath || normalizedParent === selectedPath;
+              const normalizedParent = parent.replace(
+                /\.(\d+)(\.|$)/g,
+                '[$1]$2',
+              );
+              return (
+                parent === selectedPath || normalizedParent === selectedPath
+              );
             })
             .map((f: any) => ({ path: f.path, type: f.type ?? '' }));
         } else if (currentSchema?.properties) {
@@ -198,12 +233,15 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
           let node: any = currentSchema;
           for (const part of parts) {
             if (!node) break;
-            node = node.properties?.[part] ?? node.items?.properties?.[part] ?? null;
+            node =
+              node.properties?.[part] ?? node.items?.properties?.[part] ?? null;
           }
           if (node?.properties) {
-            Object.entries(node.properties).forEach(([key, val]: [string, any]) => {
-              childFields.push({ path: key, type: val.type ?? '' });
-            });
+            Object.entries(node.properties).forEach(
+              ([key, val]: [string, any]) => {
+                childFields.push({ path: key, type: val.type ?? '' });
+              },
+            );
           }
         }
       } else if (selectedGroup === 'Data Model') {
@@ -213,9 +251,17 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
       }
 
       const keyOptions = childFields
-        .filter((f) => f.type.toLowerCase() !== 'object' && f.type.toLowerCase() !== 'array')
+        .filter(
+          (f) =>
+            f.type.toLowerCase() !== 'object' &&
+            f.type.toLowerCase() !== 'array',
+        )
         .map((f) => {
-          const key = f.path.split('.').pop()?.replace(/\[\d+\]$/, '') ?? f.path;
+          const key =
+            f.path
+              .split('.')
+              .pop()
+              ?.replace(/\[\d+\]$/, '') ?? f.path;
           return { value: key, label: key, group: 'Fields' };
         });
 
@@ -240,14 +286,18 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
       const selectedGroup = jsonKeyparsed?.group ?? '';
       const datasource = selectedGroup === 'Payload' ? 'payload' : 'dataModel';
       const primaryKeyName = dataModelForm?.primaryKey ?? '';
-      const primaryKeyPath = selectedPath && primaryKeyName
-        ? `${selectedPath}.${primaryKeyName}`
-        : primaryKeyName;
+      const primaryKeyPath =
+        selectedPath && primaryKeyName
+          ? `${selectedPath}.${primaryKeyName}`
+          : primaryKeyName;
       let primaryKeyType = 'string';
       if (primaryKeyName && selectedPath) {
         if (selectedGroup === 'Payload' && Array.isArray(currentSchema)) {
           const field = (currentSchema as any[]).find(
-            (f) => f.parent === selectedPath && (f.path === primaryKeyPath || f.path?.split('.').pop() === primaryKeyName),
+            (f) =>
+              f.parent === selectedPath &&
+              (f.path === primaryKeyPath ||
+                f.path?.split('.').pop() === primaryKeyName),
           );
           if (field?.type) primaryKeyType = field.type.toLowerCase();
         } else if (selectedGroup === 'Data Model') {
@@ -274,7 +324,7 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
             datasource,
           },
         ],
-        tableName: (dataModelForm?.tableName ?? ''),
+        tableName: dataModelForm?.tableName ?? '',
         functionName: 'addDataModelTable',
       };
 
@@ -330,7 +380,9 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
       dataModelForm?.tableName &&
       dataModelForm?.primaryKey &&
       dataModelForm?.jsonKey
-    ) { return true; }
+    ) {
+      return true;
+    }
   };
 
   return (
@@ -385,7 +437,7 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
                   .required('Table name is required')
                   .matches(
                     /^[a-z_][a-z0-9_]*$/,
-                    'Table name must start with a lowercase letter or underscore and contain only lowercase letters, numbers, and underscores'
+                    'Table name must start with a lowercase letter or underscore and contain only lowercase letters, numbers, and underscores',
                   );
 
                 try {
@@ -412,7 +464,7 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
               <p className="mt-1 text-sm text-red-600">{tableNameError}</p>
             )}
           </div>
-                    {/* JSON Key Select Field with Dynamic Grouping */}
+          {/* JSON Key Select Field with Dynamic Grouping */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Data
@@ -420,7 +472,11 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
             <select
               value={dataModelForm?.jsonKey ?? ''}
               onChange={(e) => {
-                setDataModelForm({ ...dataModelForm, jsonKey: e.target.value, primaryKey: '' });
+                setDataModelForm({
+                  ...dataModelForm,
+                  jsonKey: e.target.value,
+                  primaryKey: '',
+                });
               }}
               disabled={dataModelLoading}
               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white disabled:opacity-50"
@@ -450,7 +506,6 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
               ))}
             </select>
           </div>
-          
 
           {/* Primary Key Select Field */}
           <div>
@@ -464,8 +519,7 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
                   ...dataModelForm,
                   primaryKey: e.target.value,
                 });
-              }
-              }
+              }}
               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
             >
               <option value="">Select Primary Key</option>
@@ -497,10 +551,12 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
                 <div
                   key={config.name}
                   className={`p-4 border rounded-lg cursor-pointer transition-colors ${selectedConfiguration === config.name
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-300 hover:border-gray-400'
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-300 hover:border-gray-400'
                     }`}
-                  onClick={() => { setSelectedConfiguration(config.name); }}
+                  onClick={() => {
+                    setSelectedConfiguration(config.name);
+                  }}
                 >
                   <div className="flex items-center space-x-2">
                     <input
@@ -508,7 +564,9 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
                       name="configuration"
                       value={config.name}
                       checked={selectedConfiguration === config.name}
-                      onChange={() => { setSelectedConfiguration(config.name); }}
+                      onChange={() => {
+                        setSelectedConfiguration(config.name);
+                      }}
                       className="text-blue-600"
                     />
                     <div>
@@ -534,16 +592,20 @@ const FunctionSelectionForm: React.FC<FunctionSelectionFormProps> = ({
                     <div
                       key={param.name}
                       className={`p-3 border rounded-lg cursor-pointer transition-colors ${selectedOptionalParams.includes(param.name)
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-300 hover:border-gray-400'
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-300 hover:border-gray-400'
                         }`}
-                      onClick={() => { handleOptionalParamToggle(param.name); }}
+                      onClick={() => {
+                        handleOptionalParamToggle(param.name);
+                      }}
                     >
                       <div className="flex items-center space-x-2">
                         <input
                           type="checkbox"
                           checked={selectedOptionalParams.includes(param.name)}
-                          onChange={() => { handleOptionalParamToggle(param.name); }}
+                          onChange={() => {
+                            handleOptionalParamToggle(param.name);
+                          }}
                           className="text-blue-600 rounded"
                         />
                         <div>
@@ -789,88 +851,6 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
     loadExistingConfig();
   }, [endpointId, isNewEndpoint, isOpen]);
 
-  const isPayloadStepValid = () => (
-    payload &&
-    endpointData.version &&
-    endpointData.transactionType &&
-    endpointData.contentType
-  );
-
-  // Navigation-only functions (don't save, just move between steps)
-  const handleNextStep = () => {
-    // Clear any previous step-specific errors when navigating
-    setError(null);
-
-    switch (currentStep) {
-      case 'payload':
-        // Check if payload step is saved and valid
-        if (!createdEndpoint && isNewEndpoint) {
-          showError('Please save the payload first before proceeding');
-          return;
-        }
-        setError(null); // Clear any previous errors before moving to next step
-        setCurrentStep('mapping');
-        break;
-      case 'mapping': {
-        if (!isMappingValid) {
-          showError('Please complete the mapping before proceeding');
-          return;
-        }
-        const getDestinations = (mapping: (typeof currentMappings)[number]) =>
-          Array.isArray(mapping.destination)
-            ? mapping.destination
-            : mapping.destination
-              ? [mapping.destination]
-              : [];
-        const hasMsgIdMappingNext = currentMappings.some((mapping) =>
-          getDestinations(mapping).some(
-            (dest: string) => dest.toLowerCase() === 'transactiondetails.msgid',
-          ),
-        );
-        const hasCreDtTmMappingNext = currentMappings.some((mapping) =>
-          getDestinations(mapping).some(
-            (dest: string) => dest.toLowerCase() === 'transactiondetails.crddttm',
-          ),
-        );
-        if (!hasMsgIdMappingNext && !hasCreDtTmMappingNext) {
-          showError(
-            'Mappings for "transactionDetails.msgId" and "transactionDetails.CreDtTm" are both required. Please map source fields to these destinations before proceeding.',
-          );
-          return;
-        }
-        if (!hasMsgIdMappingNext) {
-          showError(
-            'Mapping for "transactionDetails.msgId" is required. Please map a source field to "transactionDetails.msgId" before proceeding.',
-          );
-          return;
-        }
-        if (!hasCreDtTmMappingNext) {
-          showError(
-            'Mapping for "transactionDetails.CreDtTm" is required. Please map a source field to "transactionDetails.CreDtTm" before proceeding.',
-          );
-          return;
-        }
-        setError(null); // Clear any previous errors before moving to next step
-        setCurrentStep('functions');
-        break;
-      }
-      case 'functions':
-        setError(null); // Clear any previous errors before moving to next step
-        setCurrentStep('simulation');
-        break;
-      case 'simulation':
-        if (!isSimulationSuccess && !readOnly) {
-          showError('Please run and pass simulation before proceeding');
-          return;
-        }
-        setError(null); // Clear any previous errors before moving to next step
-        setCurrentStep('deploy');
-        break;
-      default:
-        break;
-    }
-  };
-
   // Functions step handlers
   const handleAddFunction = async (
     functionData: any,
@@ -884,11 +864,11 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
     // Check if saveTransactionDetails already exists - only allow once
     if (functionData.functionName === 'saveTransactionDetails') {
       const existingSaveTransaction = selectedFunctions.find(
-        (func) => func.functionName === 'saveTransactionDetails'
+        (func) => func.functionName === 'saveTransactionDetails',
       );
       if (existingSaveTransaction) {
         showError(
-          'Save Transaction Details can only be added once. If you need different optional parameters, please remove the existing function first and add it again'
+          'Save Transaction Details can only be added once. If you need different optional parameters, please remove the existing function first and add it again',
         );
         return;
       }
@@ -924,10 +904,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
     try {
       setLoading(true);
       const configId = createdEndpoint?.id || existingConfig?.id;
-      const response = await addFunction(
-        configId,
-        functionData,
-      );
+      const response = await addFunction(configId, functionData);
       if (response.success) {
         // Add to local state only after successful API call
         const newFunction: FunctionDefinition = {
@@ -958,10 +935,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
     try {
       setLoading(true);
       const configId = createdEndpoint?.id || existingConfig?.id;
-      const response = await deleteFunction(
-        configId,
-        index,
-      );
+      const response = await deleteFunction(configId, index);
       if (response.success) {
         // Update local state
         const updatedFunctions = selectedFunctions.filter(
@@ -992,23 +966,6 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
     }
   };
 
-  const handleProceedFromFunctions = () => {
-    // Only validate if not in readOnly mode (i.e., only for editors, not approvers/viewers)
-    if (!readOnly) {
-      const validationErrors = validateFunctionParameters();
-
-      if (validationErrors.length > 0) {
-        // Show all validation errors
-        const errorMessage = validationErrors.join('\n');
-        setError(errorMessage);
-        return;
-      }
-    }
-
-    setError(null); // Clear any previous errors before moving to next step
-    setCurrentStep('simulation');
-  };
-
   // Validate that all function parameters have corresponding mappings
   const validateFunctionParameters = (): string[] => {
     const errors: string[] = [];
@@ -1037,8 +994,9 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
       if (mapping.destination) {
         // Handle both single destination and array of destinations
         if (Array.isArray(mapping.destination)) {
-          mapping.destination.forEach((dest: string) => { processDestination(dest); },
-          );
+          mapping.destination.forEach((dest: string) => {
+            processDestination(dest);
+          });
         } else {
           processDestination(mapping.destination);
         }
@@ -1190,7 +1148,9 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
             showError('Please complete the mapping before proceeding');
             return;
           }
-          const getDestsSaveAndNext = (mapping: (typeof currentMappings)[number]) =>
+          const getDestsSaveAndNext = (
+            mapping: (typeof currentMappings)[number],
+          ) =>
             Array.isArray(mapping.destination)
               ? mapping.destination
               : mapping.destination
@@ -1198,12 +1158,14 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                 : [];
           const hasMsgIdMapping = currentMappings.some((mapping) =>
             getDestsSaveAndNext(mapping).some(
-              (dest: string) => dest.toLowerCase() === 'transactiondetails.msgid',
+              (dest: string) =>
+                dest.toLowerCase() === 'transactiondetails.msgid',
             ),
           );
           const hasCreDtTmMapping = currentMappings.some((mapping) =>
             getDestsSaveAndNext(mapping).some(
-              (dest: string) => dest.toLowerCase() === 'transactiondetails.credttm',
+              (dest: string) =>
+                dest.toLowerCase() === 'transactiondetails.credttm',
             ),
           );
           if (!hasMsgIdMapping && !hasCreDtTmMapping) {
@@ -1266,8 +1228,6 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
       validationErrors.push('Payload is required');
     }
 
-
-
     if (endpointData.contentType === 'application/json') {
       try {
         if (typeof payload === 'string') {
@@ -1294,7 +1254,6 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
       );
     }
 
-
     if (validationErrors.length > 0) {
       const errorMessage = validationErrors.join('. ');
       setError(errorMessage);
@@ -1312,10 +1271,8 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
     setLoading(true);
     setError(null);
 
-
     try {
       let saveResponse: ConfigResponse;
-
 
       const createRequest: CreateConfigRequest = {
         msgFam: endpointData.msgFam?.trim() || undefined,
@@ -1324,16 +1281,17 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
         contentType: endpointData.contentType as
           | 'application/json'
           | 'application/xml',
-        payload: endpointData.contentType === 'application/json' ? parsedPayload : payload,
-        related_transaction: endpointData.relatedTransaction?.trim() || undefined,
+        payload:
+          endpointData.contentType === 'application/json'
+            ? parsedPayload
+            : payload,
+        related_transaction:
+          endpointData.relatedTransaction?.trim() || undefined,
       };
 
       let finalSchema = currentSchema;
 
       if (finalSchema && Array.isArray(finalSchema)) {
-
-
-
         if (finalSchema.length === 0) {
           setError(
             'Schema fields were lost. Please go back to step 1, regenerate fields from your payload, and try again.',
@@ -1349,120 +1307,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
 
       if (!existingConfig?.schema && payload.trim()) {
         try {
-          // Import the schema generation logic (simplified version)
-          // const generateSchemaFromPayload = (payloadText: string, contentType: string) => {
-          //   if (contentType === 'application/json') {
-          //     try {
-          //       const parsed = JSON.parse(payloadText);
-          //       const generateJSONSchema = (obj: any, path = ''): any[] => {
-          //         const schema: any[] = [];
-          //         if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
-          //           Object.entries(obj).forEach(([key, value]) => {
-          //             const fieldPath = path ? `${path}.${key}` : key;
-          //             let fieldType: string;
-          //             if (Array.isArray(value)) {
-          //               fieldType = 'array';
-          //             } else if (value && typeof value === 'object') {
-          //               fieldType = 'object';
-          //             } else {
-          //               fieldType = typeof value;
-          //             }
-          //             const field: any = {
-          //               name: key,
-          //               path: fieldPath,
-          //               type: fieldType,
-          //               isRequired: true
-          //             };
-          //             // Handle nested objects
-          //             if (fieldType === 'object' && value !== null) {
-          //               field.children = generateJSONSchema(value, fieldPath);
-          //             }
-          //             // Handle arrays - check first element for structure
-          //             if (fieldType === 'array' && Array.isArray(value) && value.length > 0) {
-          //               const firstElement = value[0];
-          //               if (firstElement && typeof firstElement === 'object' && !Array.isArray(firstElement)) {
-          //                 // Array of objects - generate schema for array items
-          //                 field.children = generateJSONSchema(firstElement, `${fieldPath}[0]`);
-          //               }
-          //             }
-          //             schema.push(field);
-          //           });
-          //         }
-          //         return schema;
-          //       };
-          //       return generateJSONSchema(parsed);
-          //     } catch (e) {
-          //       throw new Error('Invalid JSON format');
-          //     }
-          //   }
-          //   return null;
-          // };
-          // const schemaFields = generateSchemaFromPayload(payload, endpointData.contentType);
-          // if (schemaFields) {
-          //   // Convert to JSON schema format - FIXED: proper recursive handling
-          //   const convertToJSONSchema = (fields: any[]): any => {
-          //     const schema: any = {
-          //       type: 'object',
-          //       properties: {},
-          //       required: [],
-          //       additionalProperties: false
-          //     };
-          //     fields.forEach(field => {
-          //       const fieldName = field.name;
-          //       if (field.type === 'object' && field.children && field.children.length > 0) {
-          //         // Recursively convert children for nested objects
-          //         const nestedSchema = convertToJSONSchema(field.children);
-          //         schema.properties[fieldName] = nestedSchema;
-          //         if (field.isRequired) {
-          //           schema.required.push(fieldName);
-          //         }
-          //       } else if (field.type === 'object') {
-          //         // Empty object without children
-          //         schema.properties[fieldName] = {
-          //           type: 'object',
-          //           additionalProperties: false
-          //         };
-          //         if (field.isRequired) {
-          //           schema.required.push(fieldName);
-          //         }
-          //       } else if (field.type === 'array' && field.children && field.children.length > 0) {
-          //         // Handle array with object items
-          //         const itemsSchema = convertToJSONSchema(field.children);
-          //         schema.properties[fieldName] = {
-          //           type: 'array',
-          //           items: itemsSchema
-          //         };
-          //         if (field.isRequired) {
-          //           schema.required.push(fieldName);
-          //         }
-          //       } else if (field.type === 'array') {
-          //         // Array without specific item type (primitive array)
-          //         schema.properties[fieldName] = {
-          //           type: 'array',
-          //           items: { type: 'string' }
-          //         };
-          //         if (field.isRequired) {
-          //           schema.required.push(fieldName);
-          //         }
-          //       } else {
-          //         // Simple field types (string, number, boolean)
-          //         let jsonType = 'string';
-          //         if (field.type === 'number') jsonType = 'number';
-          //         else if (field.type === 'boolean') jsonType = 'boolean';
-          //         schema.properties[fieldName] = {
-          //           type: jsonType
-          //         };
-          //         if (field.isRequired) {
-          //           schema.required.push(fieldName);
-          //         }
-          //       }
-          //     });
-          //     return schema;
-          //   };
-          //   finalSchema = convertToJSONSchema(schemaFields);
-          // }
         } catch (error) {
-
           finalSchema = existingConfig?.schema;
         }
       }
@@ -1489,7 +1334,10 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
         });
       } else {
         const { payload: _omitted, ...updateRequest } = createRequest;
-        saveResponse = await configApi.updateConfig(actualConfigId, updateRequest);
+        saveResponse = await configApi.updateConfig(
+          actualConfigId,
+          updateRequest,
+        );
       }
 
       if (saveResponse?.statusCode === 400) {
@@ -1625,7 +1473,7 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
             {/* Show approval comment when status is STATUS_04_APPROVED */}
             {!isCloneCheck &&
               (isStatus(createdEndpoint?.status, 'STATUS_04_APPROVED') ||
-              isStatus(existingConfig?.status, 'STATUS_04_APPROVED')) &&
+                isStatus(existingConfig?.status, 'STATUS_04_APPROVED')) &&
               (createdEndpoint?.comments || existingConfig?.comments) && (
                 <div className="my-2 mb-10 p-4 bg-green-50 border border-green-200 rounded-lg">
                   <div className="flex items-start gap-3">
@@ -1723,7 +1571,6 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                     payloadError={error}
                     setPayloadError={setError}
                     existingSchemaFields={(() => {
-
                       if (currentSchema) {
                         if (Array.isArray(currentSchema)) {
                           return currentSchema;
@@ -1742,7 +1589,9 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                         ajvSchema: any,
                         parentPath = '',
                       ): any[] => {
-                        if (!ajvSchema || typeof ajvSchema !== 'object') { return []; }
+                        if (!ajvSchema || typeof ajvSchema !== 'object') {
+                          return [];
+                        }
 
                         const schemaFields: any[] = [];
 
@@ -1918,7 +1767,9 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                     {!readOnly && (
                       <div className="flex justify-end">
                         <Button
-                          onClick={() => { setShowAddFunctionModal(true); }}
+                          onClick={() => {
+                            setShowAddFunctionModal(true);
+                          }}
                           variant="secondary"
                           size="sm"
                           icon={<PlusIcon size={16} />}
@@ -1960,8 +1811,9 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
 
                             if (mapping.destination) {
                               if (Array.isArray(mapping.destination)) {
-                                mapping.destination.forEach((dest: string) => { processDestination(dest); },
-                                );
+                                mapping.destination.forEach((dest: string) => {
+                                  processDestination(dest);
+                                });
                               } else {
                                 processDestination(mapping.destination);
                               }
@@ -1974,10 +1826,12 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                                 // Compare full parameter name (with prefix) for exact matching
                                 const paramLower = param.toLowerCase();
                                 // Also check without prefix for the parameter name itself (for runtime context)
-                                const paramWithoutPrefix = param.replace(
-                                  /^(redis\.|transactionDetails\.|dataCache\.|transaction\.|cache\.)/i,
-                                  '',
-                                ).toLowerCase();
+                                const paramWithoutPrefix = param
+                                  .replace(
+                                    /^(redis\.|transactionDetails\.|dataCache\.|transaction\.|cache\.)/i,
+                                    '',
+                                  )
+                                  .toLowerCase();
                                 return (
                                   !runtimeContextFields.includes(
                                     paramWithoutPrefix,
@@ -1990,8 +1844,8 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                             <div
                               key={index}
                               className={`p-4 rounded-lg border flex justify-between items-center ${unmappedParams?.length > 0
-                                ? 'bg-red-50 border-red-200'
-                                : 'bg-gray-50 border-gray-200'
+                                  ? 'bg-red-50 border-red-200'
+                                  : 'bg-gray-50 border-gray-200'
                                 }`}
                             >
                               <div className="flex-1">
@@ -2016,12 +1870,14 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                                     ? func.params
                                       .map((param: string) => {
                                         // Check with full parameter name (including prefix)
-                                        const paramLower = param.toLowerCase();
-                                        const paramWithoutPrefix =
-                                          param.replace(
+                                        const paramLower =
+                                          param.toLowerCase();
+                                        const paramWithoutPrefix = param
+                                          .replace(
                                             /^(redis\.|transactionDetails\.|dataCache\.|transaction\.|cache\.)/i,
                                             '',
-                                          ).toLowerCase();
+                                          )
+                                          .toLowerCase();
                                         const isMapped =
                                           runtimeContextFields.includes(
                                             paramWithoutPrefix,
@@ -2082,7 +1938,9 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                                 <Button
                                   variant="secondary"
                                   size="sm"
-                                  onClick={async () => { await handleRemoveFunction(index); }}
+                                  onClick={async () => {
+                                    await handleRemoveFunction(index);
+                                  }}
                                   className="text-red-500 hover:bg-red-500 hover:text-white"
                                 >
                                   Remove
@@ -2114,10 +1972,12 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                         <div className="bg-white rounded-lg p-6 w-full max-w-2xl relative z-50 shadow-2xl">
                           <div className="flex justify-between items-center mb-4">
                             <h3 className="text-lg font-semibold">
-                              Add Function 
+                              Add Function
                             </h3>
                             <button
-                              onClick={() => { setShowAddFunctionModal(false); }}
+                              onClick={() => {
+                                setShowAddFunctionModal(false);
+                              }}
                               className="text-gray-500 hover:text-gray-700"
                             >
                               <XIcon className="w-5 h-5" />
@@ -2126,7 +1986,9 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
 
                           <FunctionSelectionForm
                             onAddFunction={handleAddFunction}
-                            onClose={() => { setShowAddFunctionModal(false); }}
+                            onClose={() => {
+                              setShowAddFunctionModal(false);
+                            }}
                             currentSchema={currentSchema}
                           />
                         </div>
@@ -2418,8 +2280,9 @@ const EditEndpointModal: React.FC<EditEndpointModalProps> = ({
                                         !existingConfig?.status)) && (
                                         <Button
                                           variant="primary"
-                                          onClick={async () => { await handleSaveAndNext(); }
-                                          }
+                                          onClick={async () => {
+                                            await handleSaveAndNext();
+                                          }}
                                           disabled={loading}
                                           className="!pb-[6px] !pt-[5px] bg-[#2b7fff] text-white"
                                         >

@@ -37,26 +37,14 @@ export const TextInputField = ({
                     disabled={disabled}
                     variant="filled"
                     value={value}
-                    onKeyDown={(event) => {
-                        if (type === "text") {
-                            const key = event.key;
-                            if (["Backspace", "Enter", "Tab"].includes(key)) return;
-                            if (!/^[a-zA-Z ]$/.test(key)) event.preventDefault();
-                        }
-                    }}
                     onChange={(event) => {
-                        let newValue = event.target.value;
-                        if (type === "text") {
-                            newValue = newValue.replace(/[^A-Za-z ]/g, ""); // Remove numbers dynamically
-                        }
-                        onChange(newValue); // Update the field value in the form state
+                        onChange(event.target.value);
                     }}
                     fullWidth
                     placeholder={input_type === "date" ? "" : placeholder}
                     InputProps={{
                         disableUnderline: true,
-                        inputMode: "text", // Ensures a text-based keyboard on mobile
-                        pattern: "[A-Za-z ]*", // Restricts input to alphabets and spaces only
+                        inputMode: "text",
                         sx: {
                             border: "1px solid silver",
                             borderRadius: "7px",
@@ -926,14 +914,9 @@ export const HostInputField = ({
     label,
     control,
     placeholder = "192.168.1.1",
-    maxLength = 15,
+    maxLength = 255,
     disabled,
 }) => {
-    // Valid characters for IP addresses: digits and dots only
-    const isValidIPChar = (char) => {
-        return /^[0-9.]$/.test(char);
-    };
-
     return (
         <Controller
             name={name}
@@ -948,34 +931,8 @@ export const HostInputField = ({
                     disabled={disabled}
                     variant="filled"
                     value={value}
-                    onKeyDown={(event) => {
-                        const key = event.key;
-                        // Allow control keys
-                        if (["Backspace", "Delete", "Tab", "Enter", "ArrowLeft", "ArrowRight", "Home", "End"].includes(key)) return;
-
-                        // Prevent spaces and invalid IP characters
-                        if (key === ' ' || !isValidIPChar(key)) {
-                            event.preventDefault();
-                        }
-                    }}
                     onChange={(event) => {
-                        let newValue = event.target.value;
-
-                        // Remove spaces and invalid IP characters (only allow digits and dots)
-                        newValue = newValue.replace(/[^0-9\.]/g, "");
-
-                        // Prevent consecutive dots
-                        newValue = newValue.replace(/\.{2,}/g, ".");
-
-                        // Prevent starting with dot
-                        if (newValue.startsWith('.')) {
-                            newValue = newValue.substring(1);
-                        }
-
-                        // Prevent ending with dot (but allow during typing)
-                        // This is handled by validation, not input filtering
-
-                        onChange(newValue);
+                        onChange(event.target.value);
                     }}
                     fullWidth
                     placeholder={placeholder}

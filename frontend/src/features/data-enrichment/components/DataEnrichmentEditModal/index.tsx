@@ -162,7 +162,11 @@ export const DataEnrichmentEditModal: React.FC<
             (schedulesResp as any)?.items ||
             [];
 
-        setAvailableSchedules(scheduleData);
+        const approvedStatuses = ['STATUS_04_APPROVED', 'STATUS_06_EXPORTED'];
+        const filtered = scheduleData.filter((s: any) =>
+          approvedStatuses.includes(s.status),
+        );
+        setAvailableSchedules(filtered);
 
         if (editMode && selectedJob?.schedule_id) {
           setValue('schedule', selectedJob.schedule_id);

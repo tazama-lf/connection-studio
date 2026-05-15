@@ -500,6 +500,21 @@ describe('DryRunService', () => {
       );
     });
 
+    it('should use default comma delimiter when delimiter is not set for CSV', async () => {
+      const csvData = 'name,age\nJohn,30';
+      mockSftpClient.get.mockResolvedValue(Buffer.from(csvData));
+      (iconv.decode as jest.Mock).mockReturnValue(csvData);
+
+      const result = await service.transformFileToJSON(mockSftpClient, {
+        path: '/data/test.csv',
+        file_type: FileType.CSV,
+        // no delimiter property — triggers the ?? ',' fallback
+      } as any);
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toHaveProperty('name', 'John');
+    });
+
     it('should use custom delimiter for CSV', async () => {
       const customCsvData = 'name;age;city\nJohn;30;NYC';
       mockSftpClient.get.mockResolvedValue(Buffer.from(customCsvData));

@@ -1,5 +1,9 @@
 import { API_CONFIG } from '../../../shared/config/api.config';
 
+const HTTP_UNAUTHORIZED = 401;
+const HTTP_CLIENT_ERROR_MIN = 400;
+const HTTP_CLIENT_ERROR_MAX = 500;
+
 export type TazamaCollectionName =
   | 'entities'
   | 'accounts'
@@ -135,7 +139,7 @@ class DataModelApiService {
   }
 
   private static async handleResponse<T>(response: Response): Promise<T> {
-    if (response.status === 401) {
+    if (response.status === HTTP_UNAUTHORIZED) {
       localStorage.removeItem('authToken');
       localStorage.removeItem('user');
       const errorData = (await response
@@ -145,8 +149,13 @@ class DataModelApiService {
     }
 
     if (!response.ok) {
-      const errorData = (await response.json().catch(() => ({}))) as { message?: string };
-      if (response.status >= 400 && response.status < 500) {
+      const errorData = (await response.json().catch(() => ({}))) as {
+        message?: string;
+      };
+      if (
+        response.status >= HTTP_CLIENT_ERROR_MIN &&
+        response.status < HTTP_CLIENT_ERROR_MAX
+      ) {
         return errorData as T;
       }
       throw new Error(
@@ -175,7 +184,9 @@ class DataModelApiService {
         headers: DataModelApiService.getAuthHeaders(),
       },
     );
-    return await DataModelApiService.handleResponse<DataModelApiResponse<string[]>>(response);
+    return await DataModelApiService.handleResponse<
+      DataModelApiResponse<string[]>
+    >(response);
   }
 
   async getAllExtensions(): Promise<
@@ -185,9 +196,9 @@ class DataModelApiService {
       method: 'GET',
       headers: DataModelApiService.getAuthHeaders(),
     });
-    return await DataModelApiService.handleResponse<DataModelApiResponse<DataModelExtension[]>>(
-      response,
-    );
+    return await DataModelApiService.handleResponse<
+      DataModelApiResponse<DataModelExtension[]>
+    >(response);
   }
 
   async getExtensionsByCollection(
@@ -200,9 +211,9 @@ class DataModelApiService {
         headers: DataModelApiService.getAuthHeaders(),
       },
     );
-    return await DataModelApiService.handleResponse<DataModelApiResponse<DataModelExtension[]>>(
-      response,
-    );
+    return await DataModelApiService.handleResponse<
+      DataModelApiResponse<DataModelExtension[]>
+    >(response);
   }
 
   async getExtensionById(
@@ -215,9 +226,9 @@ class DataModelApiService {
         headers: DataModelApiService.getAuthHeaders(),
       },
     );
-    return await DataModelApiService.handleResponse<DataModelApiResponse<DataModelExtension>>(
-      response,
-    );
+    return await DataModelApiService.handleResponse<
+      DataModelApiResponse<DataModelExtension>
+    >(response);
   }
 
   async createExtension(
@@ -234,9 +245,9 @@ class DataModelApiService {
       throw new Error(`HTTP ${response.status}: ${errorText}`);
     }
 
-    return await DataModelApiService.handleResponse<DataModelApiResponse<DataModelExtension>>(
-      response,
-    );
+    return await DataModelApiService.handleResponse<
+      DataModelApiResponse<DataModelExtension>
+    >(response);
   }
 
   async updateExtension(
@@ -251,9 +262,9 @@ class DataModelApiService {
         body: JSON.stringify(request),
       },
     );
-    return await DataModelApiService.handleResponse<DataModelApiResponse<DataModelExtension>>(
-      response,
-    );
+    return await DataModelApiService.handleResponse<
+      DataModelApiResponse<DataModelExtension>
+    >(response);
   }
 
   async deleteExtension(id: number): Promise<DataModelApiResponse> {
@@ -264,7 +275,9 @@ class DataModelApiService {
         headers: DataModelApiService.getAuthHeaders(),
       },
     );
-    return await DataModelApiService.handleResponse<DataModelApiResponse>(response);
+    return await DataModelApiService.handleResponse<DataModelApiResponse>(
+      response,
+    );
   }
 
   async validateDestination(
@@ -297,7 +310,9 @@ class DataModelApiService {
         body: JSON.stringify(request),
       },
     );
-    return await DataModelApiService.handleResponse<DataModelApiResponse>(response);
+    return await DataModelApiService.handleResponse<DataModelApiResponse>(
+      response,
+    );
   }
 
   async createParentChildDestination(
@@ -316,19 +331,18 @@ class DataModelApiService {
         body: JSON.stringify(request),
       },
     );
-    return await DataModelApiService.handleResponse<DataModelApiResponse>(response);
+    return await DataModelApiService.handleResponse<DataModelApiResponse>(
+      response,
+    );
   }
 
   async getDestinationFieldsJson(): Promise<
     DataModelApiResponse & { data?: DestinationFieldsData }
   > {
-    const response = await fetch(
-      `${this.baseURL}/tazama-data-model/json`,
-      {
-        method: 'GET',
-        headers: DataModelApiService.getAuthHeaders(),
-      },
-    );
+    const response = await fetch(`${this.baseURL}/tazama-data-model/json`, {
+      method: 'GET',
+      headers: DataModelApiService.getAuthHeaders(),
+    });
     return await DataModelApiService.handleResponse<
       DataModelApiResponse & { data?: DestinationFieldsData }
     >(response);
@@ -337,15 +351,14 @@ class DataModelApiService {
   async updateDestinationFieldsJson(
     data: DestinationFieldsData,
   ): Promise<DataModelApiResponse> {
-    const response = await fetch(
-      `${this.baseURL}/tazama-data-model/json`,
-      {
-        method: 'PUT',
-        headers: DataModelApiService.getAuthHeaders(),
-        body: JSON.stringify({ data_model_json: data }),
-      },
+    const response = await fetch(`${this.baseURL}/tazama-data-model/json`, {
+      method: 'PUT',
+      headers: DataModelApiService.getAuthHeaders(),
+      body: JSON.stringify({ data_model_json: data }),
+    });
+    return await DataModelApiService.handleResponse<DataModelApiResponse>(
+      response,
     );
-    return await DataModelApiService.handleResponse<DataModelApiResponse>(response);
   }
 }
 
