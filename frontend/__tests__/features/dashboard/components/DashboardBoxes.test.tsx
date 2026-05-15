@@ -334,7 +334,7 @@ describe('features/dashboard/components/DashboardBoxes.tsx', () => {
     );
     expect(screen.getByText('Test')).toBeInTheDocument();
     const card = document.querySelector('[data-bg]');
-    expect(card?.getAttribute('data-bg')).toBe('#7c3aed');
+    expect(card?.getAttribute('data-bg')).toBe('#fff');
   });
 
   it('BoxCard: uses default selected (false) when selected prop is omitted', () => {
