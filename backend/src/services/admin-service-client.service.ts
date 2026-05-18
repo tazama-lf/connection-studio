@@ -127,9 +127,9 @@ export class AdminServiceClient {
 
       const message =
         data &&
-          typeof data === 'object' &&
-          'message' in data &&
-          typeof data.message === 'string'
+        typeof data === 'object' &&
+        'message' in data &&
+        typeof data.message === 'string'
           ? data.message
           : 'Admin service returned an error response';
 
@@ -219,9 +219,9 @@ export class AdminServiceClient {
 
         const message =
           data &&
-            typeof data === 'object' &&
-            'message' in data &&
-            typeof data.message === 'string'
+          typeof data === 'object' &&
+          'message' in data &&
+          typeof data.message === 'string'
             ? data.message
             : typeof data === 'string'
               ? data
@@ -301,8 +301,9 @@ export class AdminServiceClient {
     filters?: Record<string, unknown>,
   ): Promise<PaginatedResult<Job>> {
     try {
-
-      this.logger.log(`Getting all jobs request with limit ${limit} and offset ${offset}`)
+      this.logger.log(
+        `Getting all jobs request with limit ${limit} and offset ${offset}`,
+      );
 
       const response = await firstValueFrom(
         this.httpService.post(
@@ -988,11 +989,7 @@ export class AdminServiceClient {
     data: Record<string, unknown> | null;
     message?: string;
   }> {
-    return await this.executeHttpRequest(
-      'GET',
-      `${DATA_MODEL_JSON_URL}`,
-      token,
-    );
+    return await this.executeHttpRequest('GET', DATA_MODEL_JSON_URL, token);
   }
 
   async putDataModelJson(
@@ -1004,12 +1001,9 @@ export class AdminServiceClient {
     message: string;
     data: { tenant_id: string; updated_at: string };
   }> {
-    return await this.executeHttpRequest(
-      'PUT',
-      `${DATA_MODEL_JSON_URL}`,
-      token,
-      { data_model_json: dataModelJson },
-    );
+    return await this.executeHttpRequest('PUT', DATA_MODEL_JSON_URL, token, {
+      data_model_json: dataModelJson,
+    });
   }
 
   async getRelatedTransactions(
