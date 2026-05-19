@@ -369,22 +369,18 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
       'input[name="configurationType"][value="push"]',
     ) as HTMLInputElement;
     if (pushRadio) {
-      // name=configurationType, value=push → covers BRDA:1135 TRUE branch (name==='configurationType')
       fireEvent.click(pushRadio);
       fireEvent.change(pushRadio, { target: { checked: true, value: 'push' } });
     }
 
-    // Find the pull radio input (name="configurationType", value="pull")
     const pullRadio = container.querySelector(
       'input[name="configurationType"][value="pull"]',
     ) as HTMLInputElement;
     if (pullRadio) {
-      // name=configurationType, value=pull → also covers the configurationType branch
       fireEvent.click(pullRadio);
       fireEvent.change(pullRadio, { target: { checked: true, value: 'pull' } });
     }
 
-    // Still on selection screen
     expect(
       screen.getByText('Please Select Configuration Type'),
     ).toBeInTheDocument();
@@ -454,8 +450,7 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
     getByIdMock.mockResolvedValue({
       endpoint_name: 'PushJob',
       path: '/api/data',
-      // no source_type → isPushJob = true
-      description: undefined, // also covers description || '' fallback
+      description: undefined,
     });
     render(
       <DataEnrichmentFormModal
@@ -493,7 +488,7 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
 
   it('creates push job and shows success from non-message response', async () => {
     const onSave = jest.fn();
-    createPushJobMock.mockResolvedValue({}); // no message → fallback success message
+    createPushJobMock.mockResolvedValue({});
     render(
       <DataEnrichmentFormModal
         isOpen
@@ -503,7 +498,6 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
       />,
     );
 
-    // Click push card to ensure push is selected
     fireEvent.click(screen.getByText('PUSH'));
     fireEvent.click(screen.getByText('Continue'));
 
@@ -559,7 +553,6 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
     fireEvent.click(screen.getByText('Create Endpoint'));
     await waitFor(() => {
       expect(createPullJobMock).toHaveBeenCalled();
-      // pull with http uses http connection payload
       const payload = createPullJobMock.mock.calls[0][0];
       expect(payload.source_type).toBe('HTTP');
     });
@@ -694,7 +687,6 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
     fireEvent.click(screen.getByText('Save and Next'));
     await waitFor(() => {
       expect(screen.getByText('Ready to Create Endpoint')).toBeInTheDocument();
-      // Push summary has "Push Configuration (REST API)" string
       expect(
         screen.getByText('Push Configuration (REST API)'),
       ).toBeInTheDocument();
@@ -741,7 +733,6 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
       <DataEnrichmentFormModal isOpen onClose={jest.fn()} onSave={jest.fn()} />,
     );
 
-    // Click to trigger React's event system, then fire change with name=sourceType to cover http branch
     const pushRadio = container.querySelector(
       'input[name="configurationType"][value="push"]',
     ) as HTMLInputElement;
@@ -762,7 +753,6 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
       <DataEnrichmentFormModal isOpen onClose={jest.fn()} onSave={jest.fn()} />,
     );
 
-    // Click to trigger React's event system, then fire change with name=sourceType to cover sftp branch
     const pushRadio = container.querySelector(
       'input[name="configurationType"][value="push"]',
     ) as HTMLInputElement;
@@ -821,7 +811,6 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
   });
 
   it('renders without jobType (defaults to pull configuration type)', () => {
-    // No jobType prop → jobType || 'pull' defaults to pull (line 58)
     render(
       <DataEnrichmentFormModal isOpen onClose={jest.fn()} onSave={jest.fn()} />,
     );
@@ -956,14 +945,11 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
       ).toBeInTheDocument();
     });
 
-    // With authType=key, the multiline (private key) field renders instead of password field
-    // The mock renders data-testid="multiline-password"
     expect(screen.getByTestId('multiline-password')).toBeInTheDocument();
 
     formValues = originalFormValues;
   });
 
-  // ── Error display tests (covers errors?.X && <ValidationError/> branches) ──
 
   it('shows ValidationError for name field when form has errors (pull config)', () => {
     formErrors = {
@@ -983,7 +969,6 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
       />,
     );
     fireEvent.click(screen.getByText('Continue'));
-    // ValidationError components should render for each error
     const validationErrors = screen.getAllByTestId('validation-error');
     expect(validationErrors.length).toBeGreaterThan(0);
   });

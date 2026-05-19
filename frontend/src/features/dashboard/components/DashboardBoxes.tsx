@@ -28,106 +28,106 @@ export const BoxCard: React.FC<{
   onClick,
   selected = false,
 }) => {
-  const iconBg = alpha(color, 0.06);
-  const iconBorder = alpha(color, 0.18);
-  const hoverIconBg = alpha(color, 0.12);
-  const hoverIconBorder = alpha(color, 0.36);
-  const cardHoverBg = alpha(color, 0.03);
+    const iconBg = alpha(color, 0.06);
+    const iconBorder = alpha(color, 0.18);
+    const hoverIconBg = alpha(color, 0.12);
+    const hoverIconBorder = alpha(color, 0.36);
+    const cardHoverBg = alpha(color, 0.03);
 
-  return (
-    <Paper
-      elevation={1}
-      sx={{
-        p: 4,
-        pt: 5,
-        pb: 4,
-        borderRadius: 3,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: 2,
-        textAlign: 'center',
-        position: 'relative',
-        backgroundColor: color,
-        border: '1px solid rgba(0,0,0,0.06)',
-        transition:
-          'transform 200ms cubic-bezier(.2,.8,.2,1), box-shadow 200ms ease, background-color 200ms ease',
-        '&:hover': {
-          transform: 'translateY(-8px)',
-          boxShadow: '0 18px 40px rgba(14,22,36,0.08)',
-          cursor: onClick ? 'pointer' : 'default',
-          backgroundColor: cardHoverBg,
-        },
-        '&:hover .box-icon': {
-          transform: 'translateY(-4px) scale(1.04)',
-          backgroundColor: hoverIconBg,
-          borderColor: hoverIconBorder,
-          boxShadow: '0 14px 30px rgba(14,22,36,0.06)',
-        },
-      }}
-      onClick={onClick}
-    >
-      {selected && (
+    return (
+      <Paper
+        elevation={1}
+        sx={{
+          p: 4,
+          pt: 5,
+          pb: 4,
+          borderRadius: 3,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 2,
+          textAlign: 'center',
+          position: 'relative',
+          backgroundColor: (theme: any) => theme.palette.background.paper,
+          border: '1px solid rgba(0,0,0,0.06)',
+          transition:
+            'transform 200ms cubic-bezier(.2,.8,.2,1), box-shadow 200ms ease, background-color 200ms ease',
+          '&:hover': {
+            transform: 'translateY(-8px)',
+            boxShadow: '0 18px 40px rgba(14,22,36,0.08)',
+            cursor: onClick ? 'pointer' : 'default',
+            backgroundColor: cardHoverBg,
+          },
+          '&:hover .box-icon': {
+            transform: 'translateY(-4px) scale(1.04)',
+            backgroundColor: hoverIconBg,
+            borderColor: hoverIconBorder,
+            boxShadow: '0 14px 30px rgba(14,22,36,0.06)',
+          },
+        }}
+        onClick={onClick}
+      >
+        {selected && (
+          <Box
+            sx={{
+              position: 'absolute',
+              top: 12,
+              right: 12,
+              width: 28,
+              height: 28,
+              borderRadius: '50%',
+              bgcolor: alpha(color, 0.12),
+              border: `2px solid ${alpha(color, 0.28)}`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Box
+              sx={{ width: 10, height: 10, bgcolor: color, borderRadius: '50%' }}
+            />
+          </Box>
+        )}
+
         <Box
+          className="box-icon"
           sx={{
-            position: 'absolute',
-            top: 12,
-            right: 12,
-            width: 28,
-            height: 28,
-            borderRadius: '50%',
-            bgcolor: alpha(color, 0.12),
-            border: `2px solid ${alpha(color, 0.28)}`,
+            width: 84,
+            height: 84,
+            borderRadius: 2,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            bgcolor: iconBg,
+            border: `1px solid ${iconBorder}`,
+            transition:
+              'transform 200ms ease, box-shadow 200ms ease, background-color 200ms ease, border-color 200ms ease',
+            boxShadow: '0 10px 30px rgba(14,22,36,0.04)',
           }}
         >
-          <Box
-            sx={{ width: 10, height: 10, bgcolor: color, borderRadius: '50%' }}
-          />
+          {React.isValidElement(icon)
+            ? React.cloneElement(icon as any, { size: 34, color })
+            : icon}
         </Box>
-      )}
 
-      <Box
-        className="box-icon"
-        sx={{
-          width: 84,
-          height: 84,
-          borderRadius: 2,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          bgcolor: iconBg,
-          border: `1px solid ${iconBorder}`,
-          transition:
-            'transform 200ms ease, box-shadow 200ms ease, background-color 200ms ease, border-color 200ms ease',
-          boxShadow: '0 10px 30px rgba(14,22,36,0.04)',
-        }}
-      >
-        {React.isValidElement(icon)
-          ? React.cloneElement(icon as any, { size: 34, color })
-          : icon}
-      </Box>
-
-      <Box sx={{ mt: 1.5 }}>
-        <Typography
-          variant="h6"
-          sx={{ fontWeight: 700, letterSpacing: '-0.01em', mb: 0.5 }}
-        >
-          {title}
-        </Typography>
-        <Typography
-          variant="body2"
-          color="text.secondary"
-          sx={{ maxWidth: 320 }}
-        >
-          {subtitle}
-        </Typography>
-      </Box>
-    </Paper>
-  );
-};
+        <Box sx={{ mt: 1.5 }}>
+          <Typography
+            variant="h6"
+            sx={{ fontWeight: 700, letterSpacing: '-0.01em', mb: 0.5 }}
+          >
+            {title}
+          </Typography>
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ maxWidth: 320 }}
+          >
+            {subtitle}
+          </Typography>
+        </Box>
+      </Paper>
+    );
+  };
 
 const DashboardBoxes: React.FC = () => {
   const navigate = useNavigate();
@@ -169,8 +169,8 @@ const DashboardBoxes: React.FC = () => {
 
   const resolvePath = (id: string) => {
     if (isApprover) return approverPaths[id] || defaultPaths[id];
-    if (isPublisher) return publisherPaths[id] || defaultPaths[id];
-    if (isExporter) return exporterPaths[id] || defaultPaths[id];
+    if (isPublisher) return publisherPaths[id];
+    if (isExporter) return exporterPaths[id];
     return defaultPaths[id];
   };
 

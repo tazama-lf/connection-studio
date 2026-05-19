@@ -154,7 +154,6 @@ export const pullValidationSchema = yup.object({
                         try {
                             parsed = JSON.parse(trimmedValue);
                         } catch (initialError) {
-
                             const normalizedValue = normalizeJSON(trimmedValue);
                             parsed = JSON.parse(normalizedValue);
                         }
@@ -173,8 +172,8 @@ export const pullValidationSchema = yup.object({
 
                         return true;
                     } catch (error) {
-
-                        if (error.message.includes('Unexpected end of JSON input')) {
+                        // Check for incomplete JSON (missing closing brackets, quotes, or unterminated strings)
+                        if (error.message.includes('Unexpected end of JSON input') || error.message.includes('Unterminated string')) {
                             return this.createError({ message: 'Incomplete JSON - missing closing brackets or quotes' });
                         } else if (error.message.includes('Unexpected token')) {
                             return this.createError({ message: 'Invalid JSON syntax. Examples: {"key": "value"} or {key: value} or {\'key\': \'value\'}' });
@@ -205,34 +204,22 @@ export const pullValidationSchema = yup.object({
                             return this.createError({ message: 'URL must use HTTP or HTTPS protocol' });
                         }
 
-
-                        if (!url.hostname) {
-                            return this.createError({ message: 'URL must have a valid hostname' });
-                        }
-
                         return true;
                     } catch (error) {
 
-                        const errorMsg = error.message.toLowerCase();
+                        const ipPattern = /^https?:\/\/(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/;
+                        const ipMatch = trimmedValue.match(ipPattern);
 
-                        if (errorMsg.includes('invalid url')) {
+                        if (ipMatch) {
+                            const octets = [ipMatch[1], ipMatch[2], ipMatch[3], ipMatch[4]];
+                            const invalidOctets = octets.filter(octet => parseInt(octet) > 255);
 
-                            const ipPattern = /^https?:\/\/(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/;
-                            const ipMatch = trimmedValue.match(ipPattern);
-
-                            if (ipMatch) {
-                                const octets = [ipMatch[1], ipMatch[2], ipMatch[3], ipMatch[4]];
-                                const invalidOctets = octets.filter(octet => parseInt(octet) > 255);
-
-                                if (invalidOctets.length > 0) {
-                                    return this.createError({ message: `Invalid IP address: ${invalidOctets.join(', ')} exceed 255. Valid range is 0-255 for each part.` });
-                                }
+                            if (invalidOctets.length > 0) {
+                                return this.createError({ message: `Invalid IP address: ${invalidOctets.join(', ')} exceed 255. Valid range is 0-255 for each part.` });
                             }
-
-                            return this.createError({ message: 'Invalid URL format. Examples: https://api.example.com' });
                         }
 
-                        return this.createError({ message: `Invalid URL: ${error.message}` });
+                        return this.createError({ message: 'Invalid URL format. Examples: https://api.example.com' });
                     }
                 })
                 .max(500, 'URL cannot exceed 500 characters'),
@@ -472,16 +459,6 @@ export const pushValidationSchema = yup.object({
                 return this.createError({ message: 'API path cannot end with "/" (e.g: use /customer/data instead of /customer/data/)' });
             }
 
-
-            const segments = trimmedValue.split('/').filter(segment => segment !== '');
-            for (const segment of segments) {
-                if (segment.length === 0) {
-                    return this.createError({ message: 'API path cannot have empty segments' });
-                }
-                if (!/^[a-zA-Z0-9_.-]+$/.test(segment)) {
-                    return this.createError({ message: `Invalid path segment "${segment}". Use only letters, numbers, _, -, .` });
-                }
-            }
 
             return true;
         })

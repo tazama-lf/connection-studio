@@ -831,7 +831,6 @@ describe('CronJobConfirmationDialog', () => {
         />,
       );
 
-      // Should return null and not render anything
       expect(
         screen.queryByTestId('confirmation-dialog'),
       ).not.toBeInTheDocument();
@@ -849,7 +848,6 @@ describe('CronJobConfirmationDialog', () => {
         />,
       );
 
-      // Dialog should not render with unknown type (returns null)
       expect(
         screen.queryByTestId('confirmation-dialog'),
       ).not.toBeInTheDocument();
@@ -890,6 +888,298 @@ describe('CronJobConfirmationDialog', () => {
       const buttons = screen.getAllByRole('button');
       const confirmButton = buttons[1];
       expect(confirmButton).toBeDisabled();
+    });
+  });
+
+  describe('Approve Comment Textarea', () => {
+    it('should display textarea only when type is "approve"', () => {
+      render(
+        <CronJobConfirmationDialog
+          open={true}
+          type="approve"
+          jobName="test-job"
+          actionLoading=""
+          onClose={mockOnClose}
+          onConfirm={mockOnConfirm}
+        />,
+      );
+
+      const textarea = screen.getByPlaceholderText(
+        /Add an optional comment for this approval.../i,
+      );
+      expect(textarea).toBeInTheDocument();
+      expect(screen.getByText(/Approver Comment/i)).toBeInTheDocument();
+      expect(screen.getByText(/\(optional\)/i)).toBeInTheDocument();
+    });
+
+    it('should NOT display textarea when type is "export"', () => {
+      render(
+        <CronJobConfirmationDialog
+          open={true}
+          type="export"
+          jobName="test-job"
+          actionLoading=""
+          onClose={mockOnClose}
+          onConfirm={mockOnConfirm}
+        />,
+      );
+
+      const textarea = screen.queryByPlaceholderText(
+        /Add an optional comment for this approval.../i,
+      );
+      expect(textarea).not.toBeInTheDocument();
+    });
+
+    it('should NOT display textarea when type is "approval"', () => {
+      render(
+        <CronJobConfirmationDialog
+          open={true}
+          type="approval"
+          jobName="test-job"
+          actionLoading=""
+          onClose={mockOnClose}
+          onConfirm={mockOnConfirm}
+        />,
+      );
+
+      const textarea = screen.queryByPlaceholderText(
+        /Add an optional comment for this approval.../i,
+      );
+      expect(textarea).not.toBeInTheDocument();
+    });
+
+    it('should update textarea value when user types (covers line 146)', () => {
+      render(
+        <CronJobConfirmationDialog
+          open={true}
+          type="approve"
+          jobName="test-job"
+          actionLoading=""
+          onClose={mockOnClose}
+          onConfirm={mockOnConfirm}
+        />,
+      );
+
+      const textarea = screen.getByPlaceholderText(
+        /Add an optional comment for this approval.../i,
+      ) as HTMLTextAreaElement;
+
+      expect(textarea.value).toBe('');
+
+      fireEvent.change(textarea, {
+        target: { value: 'This looks good, approved!' },
+      });
+
+      expect(textarea.value).toBe('This looks good, approved!');
+    });
+
+    it('should pass trimmed comment to onConfirm when approve button is clicked', () => {
+      render(
+        <CronJobConfirmationDialog
+          open={true}
+          type="approve"
+          jobName="test-job"
+          actionLoading=""
+          onClose={mockOnClose}
+          onConfirm={mockOnConfirm}
+        />,
+      );
+
+      const textarea = screen.getByPlaceholderText(
+        /Add an optional comment for this approval.../i,
+      ) as HTMLTextAreaElement;
+
+      fireEvent.change(textarea, {
+        target: { value: '  Great work, approved!  ' },
+      });
+
+      const confirmButton = screen.getByRole('button', {
+        name: /Yes, Approve Cron Job/i,
+      });
+      fireEvent.click(confirmButton);
+
+      expect(mockOnConfirm).toHaveBeenCalledWith(
+        'approve',
+        'Great work, approved!',
+      );
+    });
+
+    it('should pass empty string when comment is only whitespace', () => {
+      render(
+        <CronJobConfirmationDialog
+          open={true}
+          type="approve"
+          jobName="test-job"
+          actionLoading=""
+          onClose={mockOnClose}
+          onConfirm={mockOnConfirm}
+        />,
+      );
+
+      const textarea = screen.getByPlaceholderText(
+        /Add an optional comment for this approval.../i,
+      ) as HTMLTextAreaElement;
+
+      fireEvent.change(textarea, { target: { value: '   ' } });
+
+      const confirmButton = screen.getByRole('button', {
+        name: /Yes, Approve Cron Job/i,
+      });
+      fireEvent.click(confirmButton);
+
+      expect(mockOnConfirm).toHaveBeenCalledWith('approve', '');
+    });
+
+    it('should clear comment after successful approval', () => {
+      render(
+        <CronJobConfirmationDialog
+          open={true}
+          type="approve"
+          jobName="test-job"
+          actionLoading=""
+          onClose={mockOnClose}
+          onConfirm={mockOnConfirm}
+        />,
+      );
+
+      const textarea = screen.getByPlaceholderText(
+        /Add an optional comment for this approval.../i,
+      ) as HTMLTextAreaElement;
+
+      fireEvent.change(textarea, {
+        target: { value: 'Approved with conditions' },
+      });
+      expect(textarea.value).toBe('Approved with conditions');
+
+      const confirmButton = screen.getByRole('button', {
+        name: /Yes, Approve Cron Job/i,
+      });
+      fireEvent.click(confirmButton);
+
+      expect(textarea.value).toBe('');
+    });
+
+    it('should handle multiple comment changes before approval', () => {
+      render(
+        <CronJobConfirmationDialog
+          open={true}
+          type="approve"
+          jobName="test-job"
+          actionLoading=""
+          onClose={mockOnClose}
+          onConfirm={mockOnConfirm}
+        />,
+      );
+
+      const textarea = screen.getByPlaceholderText(
+        /Add an optional comment for this approval.../i,
+      ) as HTMLTextAreaElement;
+
+      fireEvent.change(textarea, { target: { value: 'First comment' } });
+      expect(textarea.value).toBe('First comment');
+
+      fireEvent.change(textarea, { target: { value: 'Updated comment' } });
+      expect(textarea.value).toBe('Updated comment');
+
+      fireEvent.change(textarea, { target: { value: 'Final comment' } });
+      expect(textarea.value).toBe('Final comment');
+
+      const confirmButton = screen.getByRole('button', {
+        name: /Yes, Approve Cron Job/i,
+      });
+      fireEvent.click(confirmButton);
+
+      expect(mockOnConfirm).toHaveBeenCalledWith('approve', 'Final comment');
+    });
+
+    it('should preserve comment when dialog is closed without confirming', () => {
+      render(
+        <CronJobConfirmationDialog
+          open={true}
+          type="approve"
+          jobName="test-job"
+          actionLoading=""
+          onClose={mockOnClose}
+          onConfirm={mockOnConfirm}
+        />,
+      );
+
+      const textarea = screen.getByPlaceholderText(
+        /Add an optional comment for this approval.../i,
+      ) as HTMLTextAreaElement;
+
+      fireEvent.change(textarea, { target: { value: 'Some comment' } });
+      expect(textarea.value).toBe('Some comment');
+
+      const cancelButton = screen.getByRole('button', { name: /Cancel/i });
+      fireEvent.click(cancelButton);
+
+      expect(mockOnConfirm).not.toHaveBeenCalled();
+      expect(mockOnClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('should handle long comments', () => {
+      render(
+        <CronJobConfirmationDialog
+          open={true}
+          type="approve"
+          jobName="test-job"
+          actionLoading=""
+          onClose={mockOnClose}
+          onConfirm={mockOnConfirm}
+        />,
+      );
+
+      const textarea = screen.getByPlaceholderText(
+        /Add an optional comment for this approval.../i,
+      ) as HTMLTextAreaElement;
+
+      const longComment =
+        'This is a very long approval comment that contains detailed information about why this cron job is being approved, including technical details, business justification, and any conditions or requirements that need to be met.';
+
+      fireEvent.change(textarea, { target: { value: longComment } });
+      expect(textarea.value).toBe(longComment);
+
+      const confirmButton = screen.getByRole('button', {
+        name: /Yes, Approve Cron Job/i,
+      });
+      fireEvent.click(confirmButton);
+
+      expect(mockOnConfirm).toHaveBeenCalledWith('approve', longComment);
+    });
+
+    it('should handle special characters in comment', () => {
+      render(
+        <CronJobConfirmationDialog
+          open={true}
+          type="approve"
+          jobName="test-job"
+          actionLoading=""
+          onClose={mockOnClose}
+          onConfirm={mockOnConfirm}
+        />,
+      );
+
+      const textarea = screen.getByPlaceholderText(
+        /Add an optional comment for this approval.../i,
+      ) as HTMLTextAreaElement;
+
+      const commentWithSpecialChars = 'Approved! @user #123 $config & setup';
+
+      fireEvent.change(textarea, {
+        target: { value: commentWithSpecialChars },
+      });
+      expect(textarea.value).toBe(commentWithSpecialChars);
+
+      const confirmButton = screen.getByRole('button', {
+        name: /Yes, Approve Cron Job/i,
+      });
+      fireEvent.click(confirmButton);
+
+      expect(mockOnConfirm).toHaveBeenCalledWith(
+        'approve',
+        commentWithSpecialChars,
+      );
     });
   });
 });

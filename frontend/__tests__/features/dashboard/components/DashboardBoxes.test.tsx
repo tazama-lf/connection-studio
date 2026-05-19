@@ -60,9 +60,19 @@ jest.mock('lucide-react', () => ({
   PackageIcon: () => <span data-testid="package-icon" />,
 }));
 
+const mockRoutes = {
+  DEMS: '/dems',
+  DATA_ENRICHMENT: 'data-enrichment',
+  CRON: '/cron',
+};
+
+jest.mock('../../../../../src/shared/config/routes.config', () => ({
+  ROUTES: mockRoutes,
+}));
+
 import DashboardBoxes, {
   BoxCard,
-} from '../../../../../src/features/dashboard/components/DashboardBoxes';
+} from '../../../../src/features/dashboard/components/DashboardBoxes';
 
 describe('features/dashboard/components/DashboardBoxes.tsx', () => {
   beforeEach(() => {
@@ -155,7 +165,6 @@ describe('features/dashboard/components/DashboardBoxes.tsx', () => {
       expect(navigateMock).toHaveBeenCalledWith('/exporter/cron-jobs');
     });
 
-    // Exported Items card should NOT appear for exporter
     expect(screen.queryByText('Exported Items')).not.toBeInTheDocument();
   });
 
@@ -165,8 +174,6 @@ describe('features/dashboard/components/DashboardBoxes.tsx', () => {
 
     render(<DashboardBoxes />);
 
-    // DEMS card path is /publisher/configs which matches exactly, so selected=true for it
-    // Other cards have selected=false
     expect(screen.getByText('Dynamic Event Monitoring')).toBeInTheDocument();
   });
 
@@ -178,7 +185,6 @@ describe('features/dashboard/components/DashboardBoxes.tsx', () => {
 
     render(<DashboardBoxes />);
 
-    // /approver/configs/detail/123 starts with /approver/configs — DEMS card selected
     expect(screen.getByText('Dynamic Event Monitoring')).toBeInTheDocument();
   });
 
@@ -187,7 +193,6 @@ describe('features/dashboard/components/DashboardBoxes.tsx', () => {
     useAuthMock.mockReturnValue({ user: { claims: [] } });
     render(<DashboardBoxes />);
 
-    // Before setTimeout(40ms) fires, mounted=false → opacity=0, transform=translateY(12px)
     const boxes = document.querySelectorAll('[data-opacity]');
     boxes.forEach((box) => {
       expect(box.getAttribute('data-opacity')).toBe('0');
@@ -219,7 +224,6 @@ describe('features/dashboard/components/DashboardBoxes.tsx', () => {
     useAuthMock.mockReturnValue({ user: { claims: [] } });
     render(<DashboardBoxes />);
 
-    // Cards always have onClick handler, so hover cursor should be 'pointer'
     const papers = document.querySelectorAll('[data-hover-cursor]');
     papers.forEach((paper) => {
       expect(paper.getAttribute('data-hover-cursor')).toBe('pointer');
@@ -230,8 +234,6 @@ describe('features/dashboard/components/DashboardBoxes.tsx', () => {
     useAuthMock.mockReturnValue({ user: { claims: ['exporter'] } });
     useLocationMock.mockReturnValue({ pathname: '/dashboard' });
 
-    // exported id not in exporterPaths → uses defaultPaths fallback (undefined for 'exported')
-    // but publisher card is not added for exporter, so this just confirms normal render
     render(<DashboardBoxes />);
     expect(screen.queryByText('Exported Items')).not.toBeInTheDocument();
     expect(screen.getByText('Dynamic Event Monitoring')).toBeInTheDocument();
@@ -241,15 +243,11 @@ describe('features/dashboard/components/DashboardBoxes.tsx', () => {
     useAuthMock.mockReturnValue({ user: null });
     render(<DashboardBoxes />);
 
-    // claims = [], claimsLower = [], so uses defaultPaths
     expect(screen.getByText('Dynamic Event Monitoring')).toBeInTheDocument();
     expect(screen.queryByText('Exported Items')).not.toBeInTheDocument();
   });
 
   it('approver+publisher: resolvePath exported falls back to defaultPaths (approverPaths has no exported)', async () => {
-    // User has both approver and publisher claims
-    // isApprover=true takes priority in resolvePath, approverPaths['exported'] is undefined → falls back to defaultPaths['exported']
-    // isPublisher=true means exported card IS added
     useAuthMock.mockReturnValue({
       user: { claims: ['approver', 'publisher'] },
     });
@@ -257,10 +255,8 @@ describe('features/dashboard/components/DashboardBoxes.tsx', () => {
 
     render(<DashboardBoxes />);
 
-    // Exported Items card is added because isPublisher=true
     expect(screen.getByText('Exported Items')).toBeInTheDocument();
 
-    // Clicking it navigates to undefined (defaultPaths['exported'] is undefined) — but crucially the || branch fires
     fireEvent.click(screen.getByText('Exported Items'));
     await waitFor(() => {
       expect(navigateMock).toHaveBeenCalled();
@@ -268,11 +264,6 @@ describe('features/dashboard/components/DashboardBoxes.tsx', () => {
   });
 
   it('exporter+publisher: resolvePath falls through to exporterPaths which lacks exported key', async () => {
-    // exporter claim takes priority over publisher in isExporter check
-    // isPublisher is still true → exported card added
-    // resolvePath('exported'): isApprover=false, isPublisher=false (exporter is checked first? No.)
-    // Actually order: isApprover → isPublisher → isExporter
-    // With publisher+exporter: isPublisher fires first, publisherPaths['exported'] IS defined
     useAuthMock.mockReturnValue({
       user: { claims: ['exporter', 'publisher'] },
     });
@@ -281,7 +272,6 @@ describe('features/dashboard/components/DashboardBoxes.tsx', () => {
     render(<DashboardBoxes />);
     expect(screen.getByText('Exported Items')).toBeInTheDocument();
 
-    // isPublisher=true fires before isExporter in resolvePath, publisherPaths['exported'] exists
     fireEvent.click(screen.getByText('Exported Items'));
     await waitFor(() => {
       expect(navigateMock).toHaveBeenCalledWith('/publisher/exported-items');
@@ -289,16 +279,12 @@ describe('features/dashboard/components/DashboardBoxes.tsx', () => {
   });
 
   it('exporter+approver: exporterPaths fallback fires when approver+exporter resolve exported id', async () => {
-    // approver claim is listed before exporter → isApprover=true, isExporter=true
-    // publisher card NOT added (isPublisher=false)
-    // so just verify no exported card for non-publisher
     useAuthMock.mockReturnValue({ user: { claims: ['approver', 'exporter'] } });
     useLocationMock.mockReturnValue({ pathname: '/dashboard' });
 
     render(<DashboardBoxes />);
     expect(screen.queryByText('Exported Items')).not.toBeInTheDocument();
 
-    // navigate for dems/de/cron uses approver paths (isApprover first)
     fireEvent.click(screen.getByText('Dynamic Event Monitoring'));
     await waitFor(() => {
       expect(navigateMock).toHaveBeenCalledWith('/approver/configs');
@@ -346,7 +332,6 @@ describe('features/dashboard/components/DashboardBoxes.tsx', () => {
         color="#abc"
       />,
     );
-    // No selected indicator rendered (selected=false by default)
     expect(screen.getByText('Test')).toBeInTheDocument();
   });
 
@@ -374,5 +359,172 @@ describe('features/dashboard/components/DashboardBoxes.tsx', () => {
       />,
     );
     expect(screen.getByText('Selected')).toBeInTheDocument();
+  });
+
+  it('publisher-only user exercises all publisher paths thoroughly', async () => {
+    useAuthMock.mockReturnValue({ user: { claims: ['publisher'] } });
+    useLocationMock.mockReturnValue({ pathname: '/publisher/configs' });
+
+    render(<DashboardBoxes />);
+
+    expect(screen.getByText('Dynamic Event Monitoring')).toBeInTheDocument();
+    expect(screen.getByText('Data Enrichment')).toBeInTheDocument();
+    expect(screen.getByText('Cron Job Management')).toBeInTheDocument();
+    expect(screen.getByText('Exported Items')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Dynamic Event Monitoring'));
+    await waitFor(() => {
+      expect(navigateMock).toHaveBeenCalledWith('/publisher/configs');
+    });
+
+    fireEvent.click(screen.getByText('Data Enrichment'));
+    await waitFor(() => {
+      expect(navigateMock).toHaveBeenCalledWith('/publisher/de-jobs');
+    });
+
+    fireEvent.click(screen.getByText('Cron Job Management'));
+    await waitFor(() => {
+      expect(navigateMock).toHaveBeenCalledWith('/publisher/cron-jobs');
+    });
+
+    fireEvent.click(screen.getByText('Exported Items'));
+    await waitFor(() => {
+      expect(navigateMock).toHaveBeenCalledWith('/publisher/exported-items');
+    });
+  });
+
+  it('exporter-only user exercises all exporter paths and fallback logic', async () => {
+    useAuthMock.mockReturnValue({ user: { claims: ['exporter'] } });
+    useLocationMock.mockReturnValue({ pathname: '/exporter/jobs' });
+
+    render(<DashboardBoxes />);
+
+    expect(screen.getByText('Dynamic Event Monitoring')).toBeInTheDocument();
+    expect(screen.getByText('Data Enrichment')).toBeInTheDocument();
+    expect(screen.getByText('Cron Job Management')).toBeInTheDocument();
+    expect(screen.queryByText('Exported Items')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Dynamic Event Monitoring'));
+    await waitFor(() => {
+      expect(navigateMock).toHaveBeenCalledWith('/exporter/configs');
+    });
+
+    fireEvent.click(screen.getByText('Data Enrichment'));
+    await waitFor(() => {
+      expect(navigateMock).toHaveBeenCalledWith('/exporter/jobs');
+    });
+
+    fireEvent.click(screen.getByText('Cron Job Management'));
+    await waitFor(() => {
+      expect(navigateMock).toHaveBeenCalledWith('/exporter/cron-jobs');
+    });
+  });
+
+  it('publisher with undefined user.claims falls back to empty array', async () => {
+    useAuthMock.mockReturnValue({ user: { claims: undefined } });
+    useLocationMock.mockReturnValue({ pathname: '/dems' });
+
+    render(<DashboardBoxes />);
+
+    expect(screen.getByText('Dynamic Event Monitoring')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Dynamic Event Monitoring'));
+    await waitFor(() => {
+      expect(navigateMock).toHaveBeenCalledWith('/dems');
+    });
+  });
+
+  it('case-insensitive claim matching works for PUBLISHER uppercase', async () => {
+    useAuthMock.mockReturnValue({ user: { claims: ['PUBLISHER'] } });
+    useLocationMock.mockReturnValue({ pathname: '/publisher/configs' });
+
+    render(<DashboardBoxes />);
+
+    expect(screen.getByText('Exported Items')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Exported Items'));
+    await waitFor(() => {
+      expect(navigateMock).toHaveBeenCalledWith('/publisher/exported-items');
+    });
+  });
+
+  it('case-insensitive claim matching works for EXPORTER uppercase', async () => {
+    useAuthMock.mockReturnValue({ user: { claims: ['EXPORTER'] } });
+    useLocationMock.mockReturnValue({ pathname: '/exporter/configs' });
+
+    render(<DashboardBoxes />);
+
+    fireEvent.click(screen.getByText('Dynamic Event Monitoring'));
+    await waitFor(() => {
+      expect(navigateMock).toHaveBeenCalledWith('/exporter/configs');
+    });
+  });
+
+  it('test fallback path resolution for exporter when exporterPaths key might be missing', async () => {
+    useAuthMock.mockReturnValue({ user: { claims: ['team-exporter-role'] } });
+    useLocationMock.mockReturnValue({ pathname: '/dashboard' });
+
+    const { rerender } = render(<DashboardBoxes />);
+
+    expect(screen.getByText('Dynamic Event Monitoring')).toBeInTheDocument();
+
+    useLocationMock.mockReturnValue({ pathname: '/exporter/configs' });
+    rerender(<DashboardBoxes />);
+
+    expect(screen.getByText('Dynamic Event Monitoring')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Data Enrichment'));
+    await waitFor(() => {
+      expect(navigateMock).toHaveBeenCalledWith('/exporter/jobs');
+    });
+  });
+
+  it('test fallback path resolution for publisher by re-rendering with different states', async () => {
+    useAuthMock.mockReturnValue({ user: { claims: ['org-publisher'] } });
+    useLocationMock.mockReturnValue({ pathname: '/dashboard' });
+
+    const { rerender } = render(<DashboardBoxes />);
+
+    expect(screen.getByText('Exported Items')).toBeInTheDocument();
+
+    useLocationMock.mockReturnValue({ pathname: '/publisher/configs' });
+    rerender(<DashboardBoxes />);
+
+    useLocationMock.mockReturnValue({ pathname: '/publisher/exported-items' });
+    rerender(<DashboardBoxes />);
+
+    expect(screen.getByText('Exported Items')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Exported Items'));
+    await waitFor(() => {
+      expect(navigateMock).toHaveBeenCalledWith('/publisher/exported-items');
+    });
+  });
+
+  it('exporter-publisher combo exercises both path resolution branches', async () => {
+    useAuthMock.mockReturnValue({ user: { claims: ['exporter', 'publisher'] } });
+    useLocationMock.mockReturnValue({ pathname: '/publisher/de-jobs' });
+
+    render(<DashboardBoxes />);
+
+    expect(screen.getByText('Exported Items')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Dynamic Event Monitoring'));
+    await waitFor(() => {
+      expect(navigateMock).toHaveBeenCalledWith('/publisher/configs');
+    });
+
+    fireEvent.click(screen.getByText('Data Enrichment'));
+    await waitFor(() => {
+      expect(navigateMock).toHaveBeenCalledWith('/publisher/de-jobs');
+    });
+
+    fireEvent.click(screen.getByText('Cron Job Management'));
+    await waitFor(() => {
+      expect(navigateMock).toHaveBeenCalledWith('/publisher/cron-jobs');
+    });
+
+    fireEvent.click(screen.getByText('Exported Items'));
+    await waitFor(() => {
+      expect(navigateMock).toHaveBeenCalledWith('/publisher/exported-items');
+    });
   });
 });
