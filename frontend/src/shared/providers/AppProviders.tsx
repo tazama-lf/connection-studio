@@ -8,11 +8,9 @@ interface AppProvidersProps {
 }
 
 export const AppProviders: React.FC<AppProvidersProps> = ({ children }) => (
-    <BrowserRouter>
-      <ToastProvider>
-        <AuthProvider>
-          {children}
-        </AuthProvider>
-      </ToastProvider>
-    </BrowserRouter>
-  );
+  <BrowserRouter>
+    <ToastProvider>
+      <AuthProvider>{children}</AuthProvider>
+    </ToastProvider>
+  </BrowserRouter>
+);

@@ -29,14 +29,18 @@ export const SimulationPanel: React.FC<SimulationPanelProps> = ({
   const [simulationError, setSimulationError] = useState<string | null>(null);
   const [simulationResult, setSimulationResult] =
     useState<SimulationResult | null>(null);
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>): void => {
+  const handleFileUpload = (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ): void => {
     const file = event.target.files?.[0];
     // Reset input so the same file can be re-selected after an error
     event.target.value = '';
     if (file) {
       const extension = file.name.split('.').pop()?.toLowerCase();
       if (extension !== 'json' && extension !== 'xml') {
-        setSimulationError('Invalid file type. Only .json and .xml files are allowed.');
+        setSimulationError(
+          'Invalid file type. Only .json and .xml files are allowed.',
+        );
         return;
       }
       const reader = new FileReader();
@@ -70,7 +74,9 @@ export const SimulationPanel: React.FC<SimulationPanelProps> = ({
         }
       } catch (parseError: unknown) {
         throw new Error(
-          parseError instanceof Error ? parseError.message : 'Invalid JSON format'
+          parseError instanceof Error
+            ? parseError.message
+            : 'Invalid JSON format',
         );
       }
 
@@ -151,7 +157,9 @@ export const SimulationPanel: React.FC<SimulationPanelProps> = ({
         <div className=" rounded-md relative bg-white" data-id="element-710">
           <textarea
             value={testPayload}
-            onChange={(e) => { setTestPayload(e.target.value); }}
+            onChange={(e) => {
+              setTestPayload(e.target.value);
+            }}
             className="w-full h-[400px] p-4 font-mono text-sm bg-white focus:outline-none border rounded-md resize-none scrollbar-hide"
             spellCheck="false"
             placeholder="Enter or upload a test payload to simulate the transformation..."
@@ -170,7 +178,9 @@ export const SimulationPanel: React.FC<SimulationPanelProps> = ({
           <Button
             variant="primary"
             size="sm"
-            onClick={async (): Promise<void> => { await runSimulation(); }}
+            onClick={async (): Promise<void> => {
+              await runSimulation();
+            }}
             disabled={
               !testPayload.trim() ||
               isRunning ||
@@ -235,7 +245,7 @@ export const SimulationPanel: React.FC<SimulationPanelProps> = ({
               </div>
             </div>
 
-            {(simulationResult.stages && simulationResult.stages.length > 0) && (
+            {simulationResult.stages && simulationResult.stages.length > 0 && (
               <div className="mt-3 space-y-2">
                 <h5 className="text-sm font-medium text-gray-700">
                   Validation Stages:

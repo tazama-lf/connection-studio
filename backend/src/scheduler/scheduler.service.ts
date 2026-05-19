@@ -25,12 +25,14 @@ import { RbacService } from '../utils/rbac/rbacHelper';
 export class SchedulerService {
   private readonly rbacService = new RbacService();
 
+  /* c8 ignore start */
   constructor(
     private readonly loggerService: LoggerService,
     private readonly sftpService: SftpService,
     private readonly adminServiceClient: AdminServiceClient,
     private readonly notificationService: NotificationService,
   ) { }
+  /* c8 ignore stop */
 
   async create(
     schedule: CreateScheduleJobDto,

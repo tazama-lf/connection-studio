@@ -15,6 +15,11 @@ export const API_CONFIG = {
   retries: 3,
 } as const;
 
+const PAGE_SIZE_XS = 5;
+const PAGE_SIZE_SM = 10;
+const PAGE_SIZE_MD = 20;
+const PAGE_SIZE_LG = 50;
+
 // UI configuration
 export const UI_CONFIG = {
   themes: {
@@ -26,7 +31,7 @@ export const UI_CONFIG = {
   },
   pagination: {
     defaultPageSize: 10,
-    pageSizeOptions: [5, 10, 20, 50],
+    pageSizeOptions: [PAGE_SIZE_XS, PAGE_SIZE_SM, PAGE_SIZE_MD, PAGE_SIZE_LG],
   },
   modals: {
     defaultWidth: 'max-w-4xl',

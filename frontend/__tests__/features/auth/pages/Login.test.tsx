@@ -50,9 +50,13 @@ jest.mock('@mui/material', () => ({
     }
     return <div {...rest}>{children}</div>;
   },
-  Button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
+  Button: ({ children, ...props }: any) => (
+    <button {...props}>{children}</button>
+  ),
   CssBaseline: () => null,
-  IconButton: ({ children, ...props }: any) => <button {...props}>{children}</button>,
+  IconButton: ({ children, ...props }: any) => (
+    <button {...props}>{children}</button>
+  ),
   InputAdornment: ({ children }: any) => <span>{children}</span>,
   TextField: ({ label, id, type = 'text', slotProps, ...props }: any) => (
     <label>
@@ -63,7 +67,9 @@ jest.mock('@mui/material', () => ({
     </label>
   ),
   Toolbar: ({ children }: any) => <div>{children}</div>,
-  Typography: ({ children, ...props }: any) => <span {...props}>{children}</span>,
+  Typography: ({ children, ...props }: any) => (
+    <span {...props}>{children}</span>
+  ),
 }));
 
 jest.mock('@assets/logo.png', () => 'logo.png');
@@ -96,7 +102,9 @@ describe('features/auth/pages/Login.tsx', () => {
 
   it('submits valid credentials and navigates to dashboard', async () => {
     loginMock.mockResolvedValue(true);
-    (localStorage.getItem as jest.Mock | undefined)?.mockReturnValue?.('token-123');
+    (localStorage.getItem as jest.Mock | undefined)?.mockReturnValue?.(
+      'token-123',
+    );
     decodeTokenMock.mockReturnValue({ sub: 'user' });
 
     const { container } = render(<Login />);
@@ -106,7 +114,9 @@ describe('features/auth/pages/Login.tsx', () => {
     await waitFor(() => {
       expect(loginMock).toHaveBeenCalledWith('user@example.com', 'secret123');
       expect(decodeTokenMock).toHaveBeenCalledWith('token-123');
-      expect(navigateMock).toHaveBeenCalledWith('/dashboard', { replace: true });
+      expect(navigateMock).toHaveBeenCalledWith('/dashboard', {
+        replace: true,
+      });
     });
   });
 
@@ -120,7 +130,9 @@ describe('features/auth/pages/Login.tsx', () => {
     await waitFor(() => {
       expect(loginMock).toHaveBeenCalledWith('user@example.com', 'secret123');
       expect(decodeTokenMock).not.toHaveBeenCalled();
-      expect(navigateMock).toHaveBeenCalledWith('/dashboard', { replace: true });
+      expect(navigateMock).toHaveBeenCalledWith('/dashboard', {
+        replace: true,
+      });
     });
   });
 
@@ -132,7 +144,9 @@ describe('features/auth/pages/Login.tsx', () => {
     submitLoginForm(container);
 
     await waitFor(() => {
-      expect(screen.getByText('Invalid credentials. Please try again.')).toBeInTheDocument();
+      expect(
+        screen.getByText('Invalid credentials. Please try again.'),
+      ).toBeInTheDocument();
     });
 
     loginMock.mockRejectedValueOnce(new Error('network down'));
@@ -141,7 +155,11 @@ describe('features/auth/pages/Login.tsx', () => {
     submitLoginForm(container);
 
     await waitFor(() => {
-      expect(screen.getByText('Login failed. Please check your connection and try again.')).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          'Login failed. Please check your connection and try again.',
+        ),
+      ).toBeInTheDocument();
     });
   });
 
@@ -153,7 +171,9 @@ describe('features/auth/pages/Login.tsx', () => {
     submitLoginForm(container);
 
     await waitFor(() => {
-      expect(screen.getByText('Invalid credentials. Please try again.')).toBeInTheDocument();
+      expect(
+        screen.getByText('Invalid credentials. Please try again.'),
+      ).toBeInTheDocument();
     });
   });
 
@@ -165,7 +185,11 @@ describe('features/auth/pages/Login.tsx', () => {
     submitLoginForm(container);
 
     await waitFor(() => {
-      expect(screen.getByText('Login failed. Please check your connection and try again.')).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          'Login failed. Please check your connection and try again.',
+        ),
+      ).toBeInTheDocument();
     });
   });
 
@@ -182,5 +206,28 @@ describe('features/auth/pages/Login.tsx', () => {
     fireEvent.click(toggleButton as Element);
     fireEvent.mouseDown(toggleButton as Element);
     expect(screen.getByLabelText('Password')).toBeInTheDocument();
+  });
+
+  it('covers the ?? null-coalescing fallthrough on (includes invalid credentials)', async () => {
+    const originalIncludes = String.prototype.includes;
+    const includesSpy = jest
+      .spyOn(String.prototype, 'includes')
+      .mockImplementation(function (this: string, searchValue: string) {
+        if (searchValue === 'unauthorized') return null as unknown as boolean;
+        return originalIncludes.call(this, searchValue);
+      });
+
+    loginMock.mockRejectedValueOnce(new Error('invalid credentials'));
+
+    const { container } = render(<Login />);
+    submitLoginForm(container);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Invalid credentials. Please try again.'),
+      ).toBeInTheDocument();
+    });
+
+    includesSpy.mockRestore();
   });
 });

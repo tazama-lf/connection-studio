@@ -27,7 +27,10 @@ export const convertInferredFieldsToJsonSchema = (
     return null;
   }
 
-  const buildSchema = (fieldsSubset: InferredField[], parentPath = ''): JsonSchema => {
+  const buildSchema = (
+    fieldsSubset: InferredField[],
+    parentPath = '',
+  ): JsonSchema => {
     const properties: Record<string, JsonSchemaProperty> = {};
     const required: string[] = [];
 
@@ -53,8 +56,12 @@ export const convertInferredFieldsToJsonSchema = (
         parentPath === ''
           ? field.path.replace(/\[0\]$/, '')
           : field.path.startsWith(parentPath + '.')
-            ? field.path.substring(parentPath.length + DOT_LENGTH).replace(/\[0\]$/, '')
-            : field.path.substring(parentPath.length + ARRAY_SUFFIX_LENGTH).replace(/\[0\]$/, '');
+            ? field.path
+                .substring(parentPath.length + DOT_LENGTH)
+                .replace(/\[0\]$/, '')
+            : field.path
+                .substring(parentPath.length + ARRAY_SUFFIX_LENGTH)
+                .replace(/\[0\]$/, '');
 
       const isArray = field.path.endsWith('[0]') || field.type === 'Array';
 

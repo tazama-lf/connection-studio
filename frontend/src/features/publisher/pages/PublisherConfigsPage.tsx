@@ -76,7 +76,9 @@ export const PublisherConfigsPage: React.FC = () => {
         <Button
           variant="primary"
           className="py-1 pl-2"
-          onClick={async () => { await navigate(-1); }}
+          onClick={async () => {
+            await navigate(-1);
+          }}
         >
           <ChevronLeft size={20} /> <span>Go Back</span>
         </Button>

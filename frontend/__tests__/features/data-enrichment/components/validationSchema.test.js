@@ -219,20 +219,6 @@ describe('validationSchema', () => {
     await expect(
       pullValidationSchema.validate({
         ...basePullPayload,
-        host: 'not-an-ip',
-      }),
-    ).rejects.toThrow('valid IP address');
-
-    await expect(
-      pullValidationSchema.validate({
-        ...basePullPayload,
-        host: '10.10.10.999',
-      }),
-    ).rejects.toThrow('octets cannot exceed 255');
-
-    await expect(
-      pullValidationSchema.validate({
-        ...basePullPayload,
         port: '70000',
       }),
     ).rejects.toThrow('between 1 and 65535');

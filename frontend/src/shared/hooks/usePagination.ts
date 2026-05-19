@@ -1,5 +1,8 @@
 import { useState } from 'react';
 
+const DEFAULT_OFFSET = 0;
+const DEFAULT_LIMIT = 10;
+
 interface UsePaginationOptions {
   defaultOffset?: number;
   defaultLimit?: number;
@@ -20,8 +23,8 @@ interface UsePaginationReturn {
 }
 
 export const usePagination = ({
-  defaultOffset = 0,
-  defaultLimit = 10,
+  defaultOffset = DEFAULT_OFFSET,
+  defaultLimit = DEFAULT_LIMIT,
 }: UsePaginationOptions = {}): UsePaginationReturn => {
   const [offset, setOffset] = useState<number>(defaultOffset);
   const [limit, setLimit] = useState<number>(defaultLimit);

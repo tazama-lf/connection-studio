@@ -52,7 +52,10 @@ export const cronJobApi = {
       },
     ),
 
-  getAll: async (offset = DEFAULT_SCHEDULE_OFFSET, limit = DEFAULT_SCHEDULE_LIMIT): Promise<ScheduleResponse[]> => {
+  getAll: async (
+    offset = DEFAULT_SCHEDULE_OFFSET,
+    limit = DEFAULT_SCHEDULE_LIMIT,
+  ): Promise<ScheduleResponse[]> => {
     const queryParams = new URLSearchParams();
     queryParams.append('offset', offset.toString());
     queryParams.append('limit', limit.toString());
@@ -110,7 +113,9 @@ export const cronJobApi = {
   },
 };
 
-export const submitCronJob = async (data: unknown): Promise<ScheduleCreateResponse> => {
+export const submitCronJob = async (
+  data: unknown,
+): Promise<ScheduleCreateResponse> => {
   const formData = data as ScheduleRequest & { cronExpression?: string };
   const scheduleData: ScheduleRequest = {
     name: formData.name.trim(),
@@ -121,22 +126,31 @@ export const submitCronJob = async (data: unknown): Promise<ScheduleCreateRespon
   return await cronJobApi.create(scheduleData);
 };
 
-export const rejectSchedule = async (scheduleId: string, reason?: string): Promise<{ success: boolean; message: string }> =>
+export const rejectSchedule = async (
+  scheduleId: string,
+  reason?: string,
+): Promise<{ success: boolean; message: string }> =>
   await cronJobApi.updateStatus(scheduleId, CRON_JOB_STATUSES.REJECTED, reason);
 
-export const exportSchedule = async (scheduleId: string): Promise<{ success: boolean; message: string }> =>
+export const exportSchedule = async (
+  scheduleId: string,
+): Promise<{ success: boolean; message: string }> =>
   await cronJobApi.updateStatus(scheduleId, CRON_JOB_STATUSES.EXPORTED);
 
 export const updateScheduleData = async (
   scheduleId: string,
   payload: { name: string; cron: string; iterations: number },
-): Promise<{ success: boolean; message: string }> => await cronJobApi.update(scheduleId, payload);
+): Promise<{ success: boolean; message: string }> =>
+  await cronJobApi.update(scheduleId, payload);
 
-export const sendForApproval = async (scheduleId: string): Promise<{ success: boolean; message: string }> =>
+export const sendForApproval = async (
+  scheduleId: string,
+): Promise<{ success: boolean; message: string }> =>
   await cronJobApi.updateStatus(scheduleId, CRON_JOB_STATUSES.UNDER_REVIEW);
 
-export const prepareScheduleForEdit = (schedule: ScheduleResponse): ReturnType<typeof formatScheduleForEdit> =>
-  formatScheduleForEdit(schedule);
+export const prepareScheduleForEdit = (
+  schedule: ScheduleResponse,
+): ReturnType<typeof formatScheduleForEdit> => formatScheduleForEdit(schedule);
 
 export const getErrorMessage = (error: unknown): string =>
   getCronJobErrorMessage(error);

@@ -54,6 +54,15 @@ const config: Config.InitialOptions = {
     '/database/',
   ],
 
+   coverageThreshold: {
+    global: {
+      branches: 95,
+      functions: 95,
+      lines: 95,
+      statements: 95
+    },
+  },
+
   verbose: true,
 };
 

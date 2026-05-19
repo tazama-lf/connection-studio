@@ -151,7 +151,9 @@ export const ExportedItemsList: React.FC<ExportedItemsListProps> = (props) => {
 
     if (dropdownOpen) {
       document.addEventListener('click', handleClickOutside);
-      return () => { document.removeEventListener('click', handleClickOutside); };
+      return () => {
+        document.removeEventListener('click', handleClickOutside);
+      };
     }
   }, [dropdownOpen]);
 
@@ -162,7 +164,8 @@ export const ExportedItemsList: React.FC<ExportedItemsListProps> = (props) => {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
-  const formatDate = (timestamp: number): string => new Date(timestamp).toLocaleString('en-US', {
+  const formatDate = (timestamp: number): string =>
+    new Date(timestamp).toLocaleString('en-US', {
       month: 'numeric',
       day: 'numeric',
       year: 'numeric',

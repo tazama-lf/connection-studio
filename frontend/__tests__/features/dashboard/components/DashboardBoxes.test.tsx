@@ -20,47 +20,37 @@ jest.mock('@mui/material/styles', () => ({
 
 jest.mock('@mui/material/Box', () => ({
   __esModule: true,
+  // Single combined mock: all @mui/material/* sub-paths resolve to the same
+  // module via moduleNameMapper. Only the LAST jest.mock factory wins, so we
+  // provide one factory that handles Box, Paper, and Typography use-cases:
+  //  - function-style sx (outer Box, line 140) → call it to get resolved sx
+  //  - object sx with backgroundColor as function (Paper, line 39) → call it
+  //  - data attributes required by existing tests
   default: (props: any) => {
+    const { sx, children, onClick, className } = props;
     const resolvedSx =
-      typeof props.sx === 'function'
-        ? props.sx({ palette: { background: { paper: '#fff', default: '#f8f8f8' } } })
-        : props.sx;
-
+      typeof sx === 'function'
+        ? sx({ palette: { background: { paper: '#fff', default: '#f8f8f8' } } })
+        : (sx ?? {});
+    const bg =
+      typeof resolvedSx?.backgroundColor === 'function'
+        ? resolvedSx.backgroundColor({
+          palette: { background: { paper: '#fff' } },
+        })
+        : resolvedSx?.backgroundColor;
     return (
       <div
-        className={props.className}
-        onClick={props.onClick}
+        className={className}
+        onClick={onClick}
         data-opacity={resolvedSx?.opacity}
         data-transform={resolvedSx?.transform}
-      >
-        {props.children}
-      </div>
-    );
-  },
-}));
-jest.mock('@mui/material/Paper', () => ({
-  __esModule: true,
-  default: (props: any) => {
-    const resolvedSx = props.sx ?? {};
-    const backgroundColor =
-      typeof resolvedSx.backgroundColor === 'function'
-        ? resolvedSx.backgroundColor({ palette: { background: { paper: '#fff' } } })
-        : resolvedSx.backgroundColor;
-
-    return (
-      <div
-        onClick={props.onClick}
         data-hover-cursor={resolvedSx?.['&:hover']?.cursor}
-        data-bg={backgroundColor}
+        data-bg={bg}
       >
-        {props.children}
+        {children}
       </div>
     );
   },
-}));
-jest.mock('@mui/material/Typography', () => ({
-  __esModule: true,
-  default: (props: any) => <span {...props}>{props.children}</span>,
 }));
 
 jest.mock('lucide-react', () => ({
@@ -70,7 +60,9 @@ jest.mock('lucide-react', () => ({
   PackageIcon: () => <span data-testid="package-icon" />,
 }));
 
-import DashboardBoxes from '../../../../../src/features/dashboard/components/DashboardBoxes';
+import DashboardBoxes, {
+  BoxCard,
+} from '../../../../../src/features/dashboard/components/DashboardBoxes';
 
 describe('features/dashboard/components/DashboardBoxes.tsx', () => {
   beforeEach(() => {
@@ -116,7 +108,9 @@ describe('features/dashboard/components/DashboardBoxes.tsx', () => {
   });
 
   it('uses approver and exporter routes and supports partial-claim matching', async () => {
-    useAuthMock.mockReturnValue({ user: { claims: ['Team-APPROVER', 'ops-exporter'] } });
+    useAuthMock.mockReturnValue({
+      user: { claims: ['Team-APPROVER', 'ops-exporter'] },
+    });
     useLocationMock.mockReturnValue({ pathname: '/approver/jobs/details' });
 
     render(<DashboardBoxes />);
@@ -133,7 +127,9 @@ describe('features/dashboard/components/DashboardBoxes.tsx', () => {
   });
 
   it('handles non-element icons gracefully when React reports invalid element', () => {
-    const isValidSpy = jest.spyOn(React, 'isValidElement').mockReturnValue(false);
+    const isValidSpy = jest
+      .spyOn(React, 'isValidElement')
+      .mockReturnValue(false);
 
     useAuthMock.mockReturnValue({ user: { claims: [] } });
     render(<DashboardBoxes />);
@@ -176,7 +172,9 @@ describe('features/dashboard/components/DashboardBoxes.tsx', () => {
 
   it('shows selected state when pathname starts with card path', async () => {
     useAuthMock.mockReturnValue({ user: { claims: ['approver'] } });
-    useLocationMock.mockReturnValue({ pathname: '/approver/configs/detail/123' });
+    useLocationMock.mockReturnValue({
+      pathname: '/approver/configs/detail/123',
+    });
 
     render(<DashboardBoxes />);
 
@@ -252,7 +250,9 @@ describe('features/dashboard/components/DashboardBoxes.tsx', () => {
     // User has both approver and publisher claims
     // isApprover=true takes priority in resolvePath, approverPaths['exported'] is undefined → falls back to defaultPaths['exported']
     // isPublisher=true means exported card IS added
-    useAuthMock.mockReturnValue({ user: { claims: ['approver', 'publisher'] } });
+    useAuthMock.mockReturnValue({
+      user: { claims: ['approver', 'publisher'] },
+    });
     useLocationMock.mockReturnValue({ pathname: '/dashboard' });
 
     render(<DashboardBoxes />);
@@ -273,7 +273,9 @@ describe('features/dashboard/components/DashboardBoxes.tsx', () => {
     // resolvePath('exported'): isApprover=false, isPublisher=false (exporter is checked first? No.)
     // Actually order: isApprover → isPublisher → isExporter
     // With publisher+exporter: isPublisher fires first, publisherPaths['exported'] IS defined
-    useAuthMock.mockReturnValue({ user: { claims: ['exporter', 'publisher'] } });
+    useAuthMock.mockReturnValue({
+      user: { claims: ['exporter', 'publisher'] },
+    });
     useLocationMock.mockReturnValue({ pathname: '/dashboard' });
 
     render(<DashboardBoxes />);
@@ -304,10 +306,73 @@ describe('features/dashboard/components/DashboardBoxes.tsx', () => {
   });
 
   it('handles null claim in claims array via ?? fallback (BRDA:81)', () => {
-    useAuthMock.mockReturnValue({ user: { claims: [null, undefined, 'editor'] } });
+    useAuthMock.mockReturnValue({
+      user: { claims: [null, undefined, 'editor'] },
+    });
     render(<DashboardBoxes />);
-    // claimsLower maps each c through (c ?? '').toString().toLowerCase()
-    // null/undefined claims fall back to '' — render should still work
     expect(screen.getByText('Dynamic Event Monitoring')).toBeInTheDocument();
+  });
+
+  it('unmounts cleanly, triggering useEffect cleanup to clearTimeout', () => {
+    jest.useFakeTimers();
+    const clearTimeoutSpy = jest.spyOn(global, 'clearTimeout');
+    useAuthMock.mockReturnValue({ user: { claims: [] } });
+    const { unmount } = render(<DashboardBoxes />);
+    unmount();
+    expect(clearTimeoutSpy).toHaveBeenCalled();
+    clearTimeoutSpy.mockRestore();
+    jest.useRealTimers();
+  });
+
+  it('BoxCard: uses default color (#7c3aed) when color prop is omitted', () => {
+    render(
+      <BoxCard
+        title="Test"
+        subtitle="Sub"
+        icon={<span data-testid="icon" />}
+      />,
+    );
+    expect(screen.getByText('Test')).toBeInTheDocument();
+    const card = document.querySelector('[data-bg]');
+    expect(card?.getAttribute('data-bg')).toBe('#fff');
+  });
+
+  it('BoxCard: uses default selected (false) when selected prop is omitted', () => {
+    render(
+      <BoxCard
+        title="Test"
+        subtitle="Sub"
+        icon={<span data-testid="icon" />}
+        color="#abc"
+      />,
+    );
+    // No selected indicator rendered (selected=false by default)
+    expect(screen.getByText('Test')).toBeInTheDocument();
+  });
+
+  it('BoxCard: cursor is "default" when onClick prop is omitted', () => {
+    render(
+      <BoxCard
+        title="NoClick"
+        subtitle="Sub"
+        icon={<span data-testid="icon" />}
+        color="#abc"
+      />,
+    );
+    const card = document.querySelector('[data-hover-cursor]');
+    expect(card?.getAttribute('data-hover-cursor')).toBe('default');
+  });
+
+  it('BoxCard: renders selected indicator dot when selected is true', () => {
+    render(
+      <BoxCard
+        title="Selected"
+        subtitle="Sub"
+        icon={<span data-testid="icon" />}
+        color="#abc"
+        selected={true}
+      />,
+    );
+    expect(screen.getByText('Selected')).toBeInTheDocument();
   });
 });

@@ -3,7 +3,7 @@ import { dataModelApi } from '../features/data-model';
 
 /**
  * Debug Component for Extension Creation
- * 
+ *
  * This component helps debug data model extension creation issues
  * by providing detailed logging and error reporting.
  */
@@ -16,32 +16,35 @@ export const ExtensionDebugPage: React.FC = () => {
     setResult('');
 
     try {
-
       const testRequest = {
         collection: 'entities' as const,
         fieldName: 'testField_' + Date.now(),
         fieldType: 'STRING' as const,
         description: 'Test field for debugging',
         isRequired: false,
-        defaultValue: 'test_default'
+        defaultValue: 'test_default',
       };
-
 
       const response = await dataModelApi.createExtension(testRequest);
 
       if (response.success) {
-        setResult('SUCCESS: Extension created successfully!\n\n' +
-          `Response: ${JSON.stringify(response, null, 2)}`);
+        setResult(
+          'SUCCESS: Extension created successfully!\n\n' +
+            `Response: ${JSON.stringify(response, null, 2)}`,
+        );
       } else {
-        setResult('FAILED: Extension creation failed!\n\n' +
-          `Error: ${response.message}\n\n` +
-          `Response: ${JSON.stringify(response, null, 2)}`);
+        setResult(
+          'FAILED: Extension creation failed!\n\n' +
+            `Error: ${response.message}\n\n` +
+            `Response: ${JSON.stringify(response, null, 2)}`,
+        );
       }
-
     } catch (error) {
-      setResult('ERROR: Exception during extension creation!\n\n' +
-        `Error: ${error instanceof Error ? error.message : String(error)}\n\n` +
-        `Stack: ${error instanceof Error ? error.stack : 'No stack trace'}`);
+      setResult(
+        'ERROR: Exception during extension creation!\n\n' +
+          `Error: ${error instanceof Error ? error.message : String(error)}\n\n` +
+          `Stack: ${error instanceof Error ? error.stack : 'No stack trace'}`,
+      );
     } finally {
       setLoading(false);
     }
@@ -55,19 +58,24 @@ export const ExtensionDebugPage: React.FC = () => {
       const response = await dataModelApi.getAllExtensions();
 
       if (response.success) {
-        setResult('API CONNECTION OK\n\n' +
-          `Found ${response.extensions?.length || 0} existing extensions\n\n` +
-          `Response: ${JSON.stringify(response, null, 2)}`);
+        setResult(
+          'API CONNECTION OK\n\n' +
+            `Found ${response.extensions?.length || 0} existing extensions\n\n` +
+            `Response: ${JSON.stringify(response, null, 2)}`,
+        );
       } else {
-        setResult('API CONNECTION ISSUE\n\n' +
-          `Error: ${response.message}\n\n` +
-          `Response: ${JSON.stringify(response, null, 2)}`);
+        setResult(
+          'API CONNECTION ISSUE\n\n' +
+            `Error: ${response.message}\n\n` +
+            `Response: ${JSON.stringify(response, null, 2)}`,
+        );
       }
-
     } catch (error) {
-      setResult('CONNECTION ERROR\n\n' +
-        `Error: ${error instanceof Error ? error.message : String(error)}\n\n` +
-        `Stack: ${error instanceof Error ? error.stack : 'No stack trace'}`);
+      setResult(
+        'CONNECTION ERROR\n\n' +
+          `Error: ${error instanceof Error ? error.message : String(error)}\n\n` +
+          `Stack: ${error instanceof Error ? error.stack : 'No stack trace'}`,
+      );
     } finally {
       setLoading(false);
     }
@@ -99,8 +107,14 @@ export const ExtensionDebugPage: React.FC = () => {
         </div>
 
         <div className="text-sm text-gray-600 space-y-1">
-          <p>• <strong>Test API Connection:</strong> Checks if the data model API is responding correctly</p>
-          <p>• <strong>Test Extension Creation:</strong> Attempts to create a test extension and reports detailed results</p>
+          <p>
+            • <strong>Test API Connection:</strong> Checks if the data model API
+            is responding correctly
+          </p>
+          <p>
+            • <strong>Test Extension Creation:</strong> Attempts to create a
+            test extension and reports detailed results
+          </p>
           <p>• Check the browser console for detailed logs</p>
         </div>
       </div>
@@ -115,13 +129,20 @@ export const ExtensionDebugPage: React.FC = () => {
       )}
 
       <div className="mt-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-        <h3 className="text-md font-semibold text-yellow-800 mb-2">Debug Instructions:</h3>
+        <h3 className="text-md font-semibold text-yellow-800 mb-2">
+          Debug Instructions:
+        </h3>
         <div className="text-yellow-700 text-sm space-y-1">
           <p>1. Open browser Developer Tools (F12) and go to Console tab</p>
-          <p>2. Click "Test API Connection" first to verify basic connectivity</p>
+          <p>
+            2. Click "Test API Connection" first to verify basic connectivity
+          </p>
           <p>3. Click "Test Extension Creation" to debug the specific issue</p>
           <p>4. Check console logs for detailed request/response information</p>
-          <p>5. Share the console logs and results above with the development team</p>
+          <p>
+            5. Share the console logs and results above with the development
+            team
+          </p>
         </div>
       </div>
     </div>

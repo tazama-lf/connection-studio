@@ -7,6 +7,9 @@ import {
   DialogActions,
 } from '@mui/material';
 
+const SPACING_SM = 2;
+const SPACING_MD = 2.5;
+
 export const HeaderWrapper = styled(Box)(() => ({
   display: 'flex',
   flexDirection: 'column',
@@ -88,8 +91,6 @@ export const DialogFooter = styled(DialogActions)(() => ({
   padding: '12px 20px 16px',
 }));
 
-
-
 export const StyledDialog = styled(Dialog)(({ theme }) => ({
   '& .MuiPaper-root': {
     borderRadius: 6,
@@ -102,12 +103,12 @@ export const DialogHeader = styled(Box)(({ theme }) => ({
   color: '#3B3B3B',
   fontSize: 20,
   fontWeight: 700,
-  padding: theme.spacing(2, 2.5),
+  padding: theme.spacing(SPACING_SM, SPACING_MD),
   borderBottom: '1px solid #CECECE',
 }));
 
 export const DialogBody = styled(DialogContent)(({ theme }) => ({
-  padding: theme.spacing(2.5),
+  padding: theme.spacing(SPACING_MD),
 }));
 
 export const DescriptionText = styled(DialogContentText)({
@@ -127,21 +128,24 @@ export const HighlightText = styled(Box)<{ color?: string }>(({ color }) => ({
   fontSize: 15,
 }));
 
-export const InfoBox = styled(Box)<{ bg?: string, border?: string }>(({ bg, border }) => ({
-  backgroundColor: bg ?? '#F0FDF4',
-  border: `1px solid ${border ?? '#BBF7D0'}`,
-  borderRadius: 8,
-  padding: '12px 16px',
-  marginTop: 16,
-}));
+export const InfoBox = styled(Box)<{ bg?: string; border?: string }>(
+  ({ bg, border }) => ({
+    backgroundColor: bg ?? '#F0FDF4',
+    border: `1px solid ${border ?? '#BBF7D0'}`,
+    borderRadius: 8,
+    padding: '12px 16px',
+    marginTop: 16,
+  }),
+);
 
-export const InfoText = styled(DialogContentText)<{ color?: string }>(({ color }) => ({
-  fontSize: 16,
-  color: color ?? '#33AD74',
-  margin: 0,
-  fontWeight: 500,
-}));
-
+export const InfoText = styled(DialogContentText)<{ color?: string }>(
+  ({ color }) => ({
+    fontSize: 16,
+    color: color ?? '#33AD74',
+    margin: 0,
+    fontWeight: 500,
+  }),
+);
 
 export const PauseDialog = styled(Dialog)({
   '& .MuiPaper-root': {
@@ -199,7 +203,6 @@ export const PauseDialogActions = styled(DialogActions)({
   padding: '12px 20px 16px 20px',
 });
 
-
 export const ConfirmDialog = styled(Dialog)({
   '& .MuiPaper-root': {
     borderRadius: 12,
@@ -207,7 +210,6 @@ export const ConfirmDialog = styled(Dialog)({
     boxShadow: 'none',
   },
 });
-
 
 export const ConfirmContent = styled(DialogContent)({
   padding: '20px 20px',

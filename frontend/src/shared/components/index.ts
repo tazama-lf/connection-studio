@@ -2,7 +2,6 @@
 export { AuthHeader } from './AuthHeader';
 export { Button } from './Button';
 export { default as EditEndpointModal } from './EditEndpointModal';
-export { default as EndpointTable } from './EndpointTable';
 export { default as SearchBar } from './SearchBar';
 export { default as ValidationLogsTable } from './ValidationLogsTable';
 export { PayloadEditor } from './PayloadEditor';

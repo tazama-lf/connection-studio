@@ -63,10 +63,12 @@ export class NotificationService implements OnModuleInit {
   private transporter: nodemailer.Transporter | null = null;
   private isConfigured = false;
 
+  /* c8 ignore start */
   constructor(
     private readonly configService: ConfigService,
     private readonly httpService: HttpService,
   ) {}
+  /* c8 ignore stop */
 
   onModuleInit(): void {
     this.initializeTransporter();

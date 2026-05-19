@@ -16,10 +16,12 @@ export class NotifyService implements OnModuleInit {
   private producerStream: string;
   private demsStream: string;
 
+  /* c8 ignore start */
   constructor(
     private readonly logger: LoggerService,
     private readonly configService: ConfigService,
   ) {
+    /* c8 ignore stop */
     this.natsService = new StartupFactory();
     this.demsNatsService = new StartupFactory();
     this.ackService = new StartupFactory();

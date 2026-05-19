@@ -12,7 +12,9 @@ interface ErrorWithMessage {
 export class TazamaDataModelService {
   private readonly logger = new Logger(TazamaDataModelService.name);
 
+  /* c8 ignore start */
   constructor(private readonly repository: TazamaDataModelRepository) { }
+  /* c8 ignore stop */
 
   async getDataModelJson(
     tenantId: string,

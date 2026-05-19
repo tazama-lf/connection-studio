@@ -14,6 +14,7 @@ import { DATA_ENRICHMENT_JOB_STATUSES } from '../constants';
 import * as dataEnrichmentHandlers from '../handlers';
 import type { DataEnrichmentJobResponse } from '../types';
 
+const INITIAL_OFFSET = 0;
 const INITIAL_TOTAL_RECORDS = 0;
 const PAGE_OFFSET_ADJUSTMENT = 1;
 
@@ -35,46 +36,68 @@ export const useDataEnrichmentJobList = (): {
   };
   error: string | null;
   loading: boolean;
-  actionLoading: 'export' | 'approval' | 'activate' | 'deactivate' | 'edit' | '';
+  actionLoading:
+    | 'export'
+    | 'approval'
+    | 'activate'
+    | 'deactivate'
+    | 'edit'
+    | '';
   userIsEditor: boolean;
   userIsApprover: boolean;
   userIsExporter: boolean;
   userIsPublisher: boolean;
   userRole: UserRole | null;
-  setSearchingFilters: React.Dispatch<React.SetStateAction<Record<string, unknown>>>;
-  setSelectedJob: React.Dispatch<React.SetStateAction<DataEnrichmentJobResponse | null>>;
+  setSearchingFilters: React.Dispatch<
+    React.SetStateAction<Record<string, unknown>>
+  >;
+  setSelectedJob: React.Dispatch<
+    React.SetStateAction<DataEnrichmentJobResponse | null>
+  >;
   setEditMode: React.Dispatch<React.SetStateAction<boolean>>;
-  setConfirmDialog: React.Dispatch<React.SetStateAction<{
-    open: boolean;
-    type: 'export' | 'approval' | 'activate' | 'deactivate' | '';
-    job: DataEnrichmentJobResponse | null;
-  }>>;
+  setConfirmDialog: React.Dispatch<
+    React.SetStateAction<{
+      open: boolean;
+      type: 'export' | 'approval' | 'activate' | 'deactivate' | '';
+      job: DataEnrichmentJobResponse | null;
+    }>
+  >;
   loadJobs: () => Promise<void>;
   handleView: (jobId: string) => Promise<void>;
   handleEdit: (job: DataEnrichmentJobResponse) => Promise<void>;
-  handleSaveEdit: (updatedJob: Partial<DataEnrichmentJobResponse>) => Promise<void>;
-  handleSendForApproval: (jobId: string, jobType: 'PULL' | 'PUSH') => Promise<void>;
+  handleSaveEdit: (
+    updatedJob: Partial<DataEnrichmentJobResponse>,
+  ) => Promise<void>;
+  handleSendForApproval: (
+    jobId: string,
+    jobType: 'PULL' | 'PUSH',
+  ) => Promise<void>;
   handleApprove: (jobId: string, jobType: 'PULL' | 'PUSH') => Promise<void>;
-  handleReject: (jobId: string, jobType: 'PULL' | 'PUSH', reason?: string) => Promise<void>;
+  handleReject: (
+    jobId: string,
+    jobType: 'PULL' | 'PUSH',
+    reason?: string,
+  ) => Promise<void>;
   handleExport: (jobId: string, jobType: 'PULL' | 'PUSH') => Promise<void>;
   handleActivate: (jobId: string, jobType: 'PULL' | 'PUSH') => Promise<void>;
   handleDeactivate: (jobId: string, jobType: 'PULL' | 'PUSH') => Promise<void>;
 } => {
   const [jobs, setJobs] = useState<DataEnrichmentJobResponse[]>([]);
-  const [total, setTotal] = useState(INITIAL_TOTAL_RECORDS)
+  const [total, setTotal] = useState(INITIAL_TOTAL_RECORDS);
 
-  const {
-    offset,
-    limit,
-    setOffset,
-  } = useFilters();
+  const { offset, limit, setOffset } = useFilters();
 
-  const pagination = useMemo(() => ({
-    page: offset,
-    limit,
-    totalRecords: total,
-    setPage: (page: number) => { setOffset(page - PAGE_OFFSET_ADJUSTMENT); },
-  }), [offset, limit, total, setOffset])
+  const pagination = useMemo(
+    () => ({
+      page: offset,
+      limit,
+      totalRecords: total,
+      setPage: (page: number) => {
+        setOffset(page - PAGE_OFFSET_ADJUSTMENT);
+      },
+    }),
+    [offset, limit, total, setOffset],
+  );
 
   const [searchingFilters, setSearchingFilters] = useState<
     Record<string, unknown>
@@ -124,46 +147,43 @@ export const useDataEnrichmentJobList = (): {
     };
   }, [user]);
 
-  const loadJobs = useCallback(
-    async () => {
-      try {
-        setLoadingState((s) => ({ ...s, page: true as boolean }));
-        setError(null);
+  const loadJobs = useCallback(async () => {
+    try {
+      setLoadingState((s) => ({ ...s, page: true as boolean }));
+      setError(null);
 
-        const response = await dataEnrichmentHandlers.loadJobs(
-          offset,
-          limit,
-          userRole as string,
-          searchingFilters,
-        );
+      const response = await dataEnrichmentHandlers.loadJobs(
+        offset,
+        limit,
+        userRole as string,
+        searchingFilters,
+      );
 
-        setJobs(response.data);
-        setTotal(response.total)
-      } catch (err) {
-        let message = 'Failed to fetch jobs.';
-        if (err instanceof Error) {
-          const { message: errorMessage } = err;
-          if (
-            errorMessage.includes('500') ||
-            errorMessage.includes('HTTP error')
-          ) {
-            message =
-              'Server error: Unable to load jobs. Please try again later.';
-          } else {
-            message = errorMessage;
-          }
+      setJobs(response.data);
+      setTotal(response.total);
+    } catch (err) {
+      let message = 'Failed to fetch jobs.';
+      if (err instanceof Error) {
+        const { message: errorMessage } = err;
+        if (
+          errorMessage.includes('500') ||
+          errorMessage.includes('HTTP error')
+        ) {
+          message =
+            'Server error: Unable to load jobs. Please try again later.';
+        } else {
+          message = errorMessage;
         }
-        setError(message);
-      } finally {
-        setLoadingState((s) => ({ ...s, page: false as boolean }));
       }
-    },
-    [userRole, searchingFilters, offset, limit],
-  );
+      setError(message);
+    } finally {
+      setLoadingState((s) => ({ ...s, page: false as boolean }));
+    }
+  }, [userRole, searchingFilters, offset, limit]);
 
   useEffect(() => {
-    setOffset(0);
-  }, [searchingFilters]);
+    setOffset(INITIAL_OFFSET);
+  }, [searchingFilters, setOffset]);
 
   useEffect(() => {
     loadJobs();
@@ -231,7 +251,10 @@ export const useDataEnrichmentJobList = (): {
   );
 
   const buildPushJobData = useCallback(
-    (updatedJob: Partial<DataEnrichmentJobResponse>, selectedJob: DataEnrichmentJobResponse) => ({
+    (
+      updatedJob: Partial<DataEnrichmentJobResponse>,
+      selectedJob: DataEnrichmentJobResponse,
+    ) => ({
       endpoint_name: updatedJob.endpoint_name ?? selectedJob.endpoint_name,
       description: updatedJob.description ?? selectedJob.description,
       version: updatedJob.version ?? selectedJob.version,
@@ -243,14 +266,18 @@ export const useDataEnrichmentJobList = (): {
   );
 
   const buildPullJobData = useCallback(
-    (updatedJob: Partial<DataEnrichmentJobResponse>, selectedJob: DataEnrichmentJobResponse) => ({
+    (
+      updatedJob: Partial<DataEnrichmentJobResponse>,
+      selectedJob: DataEnrichmentJobResponse,
+    ) => ({
       endpoint_name: updatedJob.endpoint_name ?? selectedJob.endpoint_name,
       description: updatedJob.description ?? selectedJob.description,
       version: updatedJob.version ?? selectedJob.version,
       source_type: updatedJob.source_type ?? selectedJob.source_type ?? 'HTTP',
       table_name: updatedJob.table_name ?? selectedJob.table_name,
       mode: updatedJob.mode ?? selectedJob.mode,
-      connection: updatedJob.connection ?? selectedJob.connection ?? { url: '', headers: {} },
+      connection: updatedJob.connection ??
+        selectedJob.connection ?? { url: '', headers: {} },
       schedule_id: updatedJob.schedule_id ?? selectedJob.schedule_id ?? '',
       file: updatedJob.file ?? selectedJob.file,
     }),
@@ -264,7 +291,11 @@ export const useDataEnrichmentJobList = (): {
       try {
         setLoadingState((s) => ({ ...s, action: 'edit' }));
 
-        const jobType = (updatedJob.type ?? selectedJob.type ?? 'pull').toLowerCase() as 'pull' | 'push';
+        const jobType = (
+          updatedJob.type ??
+          selectedJob.type ??
+          'pull'
+        ).toLowerCase() as 'pull' | 'push';
 
         if (jobType === 'push') {
           const pushData = buildPushJobData(updatedJob, selectedJob);
@@ -274,7 +305,9 @@ export const useDataEnrichmentJobList = (): {
           await dataEnrichmentHandlers.submitPullJob(pullData);
         }
 
-        showSuccess(dataEnrichmentHandlers.DATA_ENRICHMENT_SUCCESS_MESSAGES.UPDATED);
+        showSuccess(
+          dataEnrichmentHandlers.DATA_ENRICHMENT_SUCCESS_MESSAGES.UPDATED,
+        );
         loadJobs();
       } catch (err) {
         showError('Failed to update job');
@@ -282,7 +315,14 @@ export const useDataEnrichmentJobList = (): {
         setLoadingState((s) => ({ ...s, action: '' }));
       }
     },
-    [selectedJob, loadJobs, showSuccess, showError, buildPushJobData, buildPullJobData],
+    [
+      selectedJob,
+      loadJobs,
+      showSuccess,
+      showError,
+      buildPushJobData,
+      buildPullJobData,
+    ],
   );
 
   const handleSendForApproval = useCallback(

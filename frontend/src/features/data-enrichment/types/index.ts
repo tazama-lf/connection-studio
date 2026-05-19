@@ -157,7 +157,9 @@ export interface JobListProps {
   totalRecords?: number;
   itemsPerPage?: number;
   searchingFilters?: Record<string, unknown>;
-  setSearchingFilters?: React.Dispatch<React.SetStateAction<Record<string, unknown>>>;
+  setSearchingFilters?: React.Dispatch<
+    React.SetStateAction<Record<string, unknown>>
+  >;
   error?: string | null;
   loading?: boolean;
 }

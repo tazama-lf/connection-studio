@@ -132,6 +132,19 @@ describe('NotifyService', () => {
 
       await expect(service.onModuleInit()).rejects.toThrow(error);
     });
+
+    it('should handle non-Error thrown during initialization', async () => {
+      mockNatsService.initProducer.mockRejectedValue('plain string error');
+
+      await expect(service.onModuleInit()).rejects.toBe('plain string error');
+
+      expect(loggerService.error).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining('Unknown error'),
+        }),
+        'NotificationController',
+      );
+    });
   });
 
   describe('handleAckMessage', () => {
@@ -197,6 +210,19 @@ describe('NotifyService', () => {
       mockNatsService.handleResponse.mockRejectedValue(error);
 
       await service.notifyEnrichment(mockId, mockType);
+    });
+
+    it('should handle non-Error thrown in notifyEnrichment', async () => {
+      mockNatsService.handleResponse.mockRejectedValue('plain string error');
+
+      await service.notifyEnrichment(mockId, mockType);
+
+      expect(loggerService.error).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining('Unknown error'),
+        }),
+        'NotificationController',
+      );
     });
 
     it('should stringify payload correctly', async () => {

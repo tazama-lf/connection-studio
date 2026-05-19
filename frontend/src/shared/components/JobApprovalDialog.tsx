@@ -109,7 +109,8 @@ export const JobApprovalDialog: React.FC<JobApprovalDialogProps> = ({
               fontWeight: '500',
             }}
           >
-            ✅ This will approve the {jobType.toLowerCase()} and move it to the next stage.
+            ✅ This will approve the {jobType.toLowerCase()} and move it to the
+            next stage.
           </DialogContentText>
         </Box>
 
@@ -126,12 +127,16 @@ export const JobApprovalDialog: React.FC<JobApprovalDialogProps> = ({
             }}
           >
             Approver Comment{' '}
-            <span style={{ color: '#6b7280', fontWeight: 400 }}>(optional)</span>
+            <span style={{ color: '#6b7280', fontWeight: 400 }}>
+              (optional)
+            </span>
           </label>
           <textarea
             id="approval-comment"
             value={comment}
-            onChange={(e) => { setComment(e.target.value); }}
+            onChange={(e) => {
+              setComment(e.target.value);
+            }}
             placeholder={`Add an optional comment for this ${jobType.toLowerCase()} approval...`}
             style={{
               width: '100%',

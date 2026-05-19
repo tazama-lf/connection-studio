@@ -15,80 +15,77 @@ export type JobWorkflowStatus =
 
 export type ScheduleStatus = 'active' | 'in-active' | 'pending_approval';
 
+const STATUS_PREFIX_PART_COUNT = 3;
+const STATUS_NAME_START_INDEX = 2;
+
+const extractStatusName = (status: string): string => {
+  const normalizedStatus = status.toLowerCase().trim();
+  if (normalizedStatus.startsWith('status_')) {
+    const parts = normalizedStatus.split('_');
+    if (parts.length >= STATUS_PREFIX_PART_COUNT) {
+      return parts.slice(STATUS_NAME_START_INDEX).join('_');
+    }
+  }
+  return normalizedStatus;
+};
+
+const DEFAULT_COLOR = 'bg-gray-100 text-gray-800';
+
+const STATUS_COLOR_MAP: Record<string, string> = {
+  in_progress: 'bg-blue-100 text-blue-800',
+  'in progress': 'bg-blue-100 text-blue-800',
+  draft: 'bg-blue-100 text-blue-800',
+  suspended: 'bg-orange-100 text-orange-800',
+  under_review: 'bg-yellow-100 text-yellow-800',
+  'under review': 'bg-yellow-100 text-yellow-800',
+  pending: 'bg-yellow-100 text-yellow-800',
+  pending_approval: 'bg-yellow-100 text-yellow-800',
+  'pending approval': 'bg-yellow-100 text-yellow-800',
+  approved: 'bg-green-100 text-green-800',
+  active: 'bg-green-100 text-green-800',
+  rejected: 'bg-red-100 text-red-800',
+  failed: 'bg-red-100 text-red-800',
+  exported: 'bg-indigo-100 text-indigo-800',
+  ready_for_deployment: 'bg-indigo-100 text-indigo-800',
+  'ready for deployment': 'bg-indigo-100 text-indigo-800',
+  ready: 'bg-indigo-100 text-indigo-800',
+  deployed: 'bg-teal-100 text-teal-800',
+  published: 'bg-teal-100 text-teal-800',
+  changes_requested: 'bg-purple-100 text-purple-800',
+  'changes requested': 'bg-purple-100 text-purple-800',
+  'in-active': DEFAULT_COLOR,
+  inactive: DEFAULT_COLOR,
+  disabled: DEFAULT_COLOR,
+};
+
 /**
  * Get standardized Tailwind CSS classes for workflow statuses
  * Used for configs, jobs, cron jobs, etc.
  */
 export const getStatusColor = (status: string | undefined): string => {
-  if (!status) return 'bg-gray-100 text-gray-800';
+  if (!status) return DEFAULT_COLOR;
+  return STATUS_COLOR_MAP[extractStatusName(status)] ?? DEFAULT_COLOR;
+};
 
-  const normalizedStatus = status.toLowerCase().trim();
-
-  // Handle STATUS_XX_NAME format from database - extract the name part
-  let statusName = normalizedStatus;
-  if (normalizedStatus.startsWith('status_')) {
-    const parts = normalizedStatus.split('_');
-    if (parts.length >= 3) {
-      statusName = parts.slice(2).join('_'); // Get everything after STATUS_XX_
-    }
-  }
-
-  switch (statusName) {
-    // In Progress - Blue
-    case 'in_progress':
-    case 'in progress':
-    case 'draft':
-      return 'bg-blue-100 text-blue-800';
-
-    // Suspended - Orange
-    case 'suspended':
-      return 'bg-orange-100 text-orange-800';
-
-    // Under Review / Pending - Yellow
-    case 'under_review':
-    case 'under review':
-    case 'pending':
-    case 'pending_approval':
-    case 'pending approval':
-      return 'bg-yellow-100 text-yellow-800';
-
-    // Approved - Green
-    case 'approved':
-    case 'active':
-      return 'bg-green-100 text-green-800';
-
-    // Rejected / Failed - Red
-    case 'rejected':
-    case 'failed':
-      return 'bg-red-100 text-red-800';
-
-    // Exported / Ready for Deployment - Indigo
-    case 'exported':
-    case 'ready_for_deployment':
-    case 'ready for deployment':
-    case 'ready':
-      return 'bg-indigo-100 text-indigo-800';
-
-    // Deployed - Teal
-    case 'deployed':
-    case 'published':
-      return 'bg-teal-100 text-teal-800';
-
-    // Changes Requested - Purple
-    case 'changes_requested':
-    case 'changes requested':
-      return 'bg-purple-100 text-purple-800';
-
-    // Inactive - Gray
-    case 'in-active':
-    case 'inactive':
-    case 'disabled':
-      return 'bg-gray-100 text-gray-800';
-
-    // Default fallback
-    default:
-      return 'bg-gray-100 text-gray-800';
-  }
+const STATUS_LABEL_MAP: Record<string, string> = {
+  in_progress: 'IN PROGRESS',
+  'in progress': 'IN PROGRESS',
+  suspended: 'SUSPENDED',
+  under_review: 'UNDER REVIEW',
+  'under review': 'UNDER REVIEW',
+  pending_approval: 'PENDING APPROVAL',
+  'pending approval': 'PENDING APPROVAL',
+  approved: 'APPROVED',
+  rejected: 'REJECTED',
+  exported: 'READY FOR DEPLOYMENT',
+  ready_for_deployment: 'READY FOR DEPLOYMENT',
+  'ready for deployment': 'READY FOR DEPLOYMENT',
+  ready: 'READY FOR DEPLOYMENT',
+  deployed: 'DEPLOYED',
+  changes_requested: 'CHANGES REQUESTED',
+  'changes requested': 'CHANGES REQUESTED',
+  'in-active': 'INACTIVE',
+  inactive: 'INACTIVE',
 };
 
 /**
@@ -96,50 +93,7 @@ export const getStatusColor = (status: string | undefined): string => {
  */
 export const getStatusLabel = (status: string | undefined): string => {
   if (!status) return 'UNKNOWN';
-
-  const normalizedStatus = status.toLowerCase().trim();
-
-  // Handle STATUS_XX_NAME format from database - extract the name part
-  let statusName = normalizedStatus;
-  if (normalizedStatus.startsWith('status_')) {
-    const parts = normalizedStatus.split('_');
-    if (parts.length >= 3) {
-      statusName = parts.slice(2).join('_'); // Get everything after STATUS_XX_
-    }
-  }
-
-  switch (statusName) {
-    case 'in_progress':
-    case 'in progress':
-      return 'IN PROGRESS';
-    case 'suspended':
-      return 'SUSPENDED';
-    case 'under_review':
-    case 'under review':
-      return 'UNDER REVIEW';
-    case 'pending_approval':
-    case 'pending approval':
-      return 'PENDING APPROVAL';
-    case 'approved':
-      return 'APPROVED';
-    case 'rejected':
-      return 'REJECTED';
-    case 'exported':
-    case 'ready_for_deployment':
-    case 'ready for deployment':
-    case 'ready':
-      return 'READY FOR DEPLOYMENT';
-    case 'deployed':
-      return 'DEPLOYED';
-    case 'changes_requested':
-    case 'changes requested':
-      return 'CHANGES REQUESTED';
-    case 'in-active':
-    case 'inactive':
-      return 'INACTIVE';
-    default:
-      return status.toUpperCase();
-  }
+  return STATUS_LABEL_MAP[extractStatusName(status)] ?? status.toUpperCase();
 };
 
 /**
@@ -147,18 +101,7 @@ export const getStatusLabel = (status: string | undefined): string => {
  */
 export const normalizeStatus = (status: string | undefined): string => {
   if (!status) return '';
-
-  const normalizedStatus = status.toLowerCase().trim();
-
-  // Handle STATUS_XX_NAME format from database - extract the name part
-  if (normalizedStatus.startsWith('status_')) {
-    const parts = normalizedStatus.split('_');
-    if (parts.length >= 3) {
-      return parts.slice(2).join('_'); // Get everything after STATUS_XX_
-    }
-  }
-
-  return normalizedStatus;
+  return extractStatusName(status);
 };
 
 /**

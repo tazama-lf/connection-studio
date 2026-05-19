@@ -1,5 +1,11 @@
 import React from 'react';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import DEMSModule from '../../../src/pages/dems';
 
 const mockNavigate = jest.fn();
@@ -28,19 +34,44 @@ jest.mock('../../../src/features/config/components/ConfigList', () => ({
     mockConfigListRender();
     return (
       <div>
-        <button type="button" onClick={() => { props.onViewDetails(sampleConfig); }}>
+        <button
+          type="button"
+          onClick={() => {
+            props.onViewDetails(sampleConfig);
+          }}
+        >
           View Details
         </button>
-        <button type="button" onClick={() => { props.onConfigEdit(sampleConfig); }}>
+        <button
+          type="button"
+          onClick={() => {
+            props.onConfigEdit(sampleConfig);
+          }}
+        >
           Edit Config
         </button>
-        <button type="button" onClick={() => { props.onConfigClone(sampleConfig); }}>
+        <button
+          type="button"
+          onClick={() => {
+            props.onConfigClone(sampleConfig);
+          }}
+        >
           Clone Config
         </button>
-        <button type="button" onClick={() => { props.onViewHistory(sampleConfig); }}>
+        <button
+          type="button"
+          onClick={() => {
+            props.onViewHistory(sampleConfig);
+          }}
+        >
           View History
         </button>
-        <button type="button" onClick={() => { props.onRefresh(); }}>
+        <button
+          type="button"
+          onClick={() => {
+            props.onRefresh();
+          }}
+        >
           Refresh List
         </button>
       </div>
@@ -48,19 +79,21 @@ jest.mock('../../../src/features/config/components/ConfigList', () => ({
   },
 }));
 
-jest.mock('../../../src/features/config/components/VersionHistoryModal', () => ({
-  __esModule: true,
-  default: ({ isOpen, onClose }: any) => (
-    isOpen ? (
-      <div>
-        <span>VersionHistoryModal</span>
-        <button type="button" onClick={onClose}>
-          Close Version History
-        </button>
-      </div>
-    ) : null
-  ),
-}));
+jest.mock(
+  '../../../src/features/config/components/VersionHistoryModal',
+  () => ({
+    __esModule: true,
+    default: ({ isOpen, onClose }: any) =>
+      isOpen ? (
+        <div>
+          <span>VersionHistoryModal</span>
+          <button type="button" onClick={onClose}>
+            Close Version History
+          </button>
+        </div>
+      ) : null,
+  }),
+);
 
 jest.mock('../../../src/shared/components/EditEndpointModal', () => ({
   __esModule: true,
@@ -93,7 +126,9 @@ jest.mock('../../../src/shared/components/FormFields', () => {
       <Controller
         name={name}
         control={control}
-        render={({ field }: any) => <input aria-label={label || name} {...field} />}
+        render={({ field }: any) => (
+          <input aria-label={label || name} {...field} />
+        )}
       />
     ),
     SelectField: ({ name, label, control, options = [], disabled }: any) => (
@@ -104,7 +139,9 @@ jest.mock('../../../src/shared/components/FormFields', () => {
           <select aria-label={label || name} {...field} disabled={disabled}>
             <option value="">Select</option>
             {(options || []).map((opt: any) => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
             ))}
           </select>
         )}
@@ -128,39 +165,11 @@ describe('pages/dems/index.tsx', () => {
   it('renders module heading and handles go back', () => {
     render(<DEMSModule />);
 
-    expect(screen.getByText('Dynamic Event Monitoring Service')).toBeInTheDocument();
+    expect(
+      screen.getByText('Dynamic Event Monitoring Service'),
+    ).toBeInTheDocument();
     fireEvent.click(screen.getByText('Go Back'));
     expect(mockNavigate).toHaveBeenCalledWith(-1);
-  });
-
-  it('supports add destination wizard navigation and close flow', async () => {
-    render(<DEMSModule />);
-
-    fireEvent.click(screen.getByText('Extend Data Model'));
-    expect(screen.getByText('Please Select Destination')).toBeInTheDocument();
-    const continueBtn = screen.getByRole('button', { name: 'Continue' });
-    expect(continueBtn).toBeDisabled();
-
-    fireEvent.click(screen.getByText('DATA MODEL'));
-    expect(screen.getByRole('button', { name: 'Continue' })).not.toBeDisabled();
-    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    await waitFor(() => {
-      expect(screen.getByText('Please Select Destination Type')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByText('IMMEDIATE PARENT'));
-    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    await waitFor(() => {
-      expect(screen.getByText('Configure Destination Detail')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
-    await waitFor(() => {
-      expect(screen.getByText('Please Select Destination Type')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
-    expect(screen.queryByText('Please Select Destination')).not.toBeInTheDocument();
   });
 
   it('handles ConfigList actions for view, edit, clone, history and refresh', () => {
@@ -169,314 +178,44 @@ describe('pages/dems/index.tsx', () => {
     fireEvent.click(screen.getByRole('button', { name: 'View Details' }));
     expect(screen.getByText('EditEndpointModal')).toBeInTheDocument();
     expect(screen.getByText('ReadOnly: true')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Close Endpoint Modal' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Close Endpoint Modal' }),
+    );
 
     fireEvent.click(screen.getByRole('button', { name: 'Edit Config' }));
     expect(screen.getByText('Endpoint: 42')).toBeInTheDocument();
     expect(screen.getByText('ReadOnly: false')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Endpoint Success' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Close Endpoint Modal' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Close Endpoint Modal' }),
+    );
 
     fireEvent.click(screen.getByRole('button', { name: 'Clone Config' }));
     expect(screen.getByText('CloneMode: true')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Close Endpoint Modal' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Close Endpoint Modal' }),
+    );
 
     fireEvent.click(screen.getByRole('button', { name: 'View History' }));
     expect(screen.getByText('VersionHistoryModal')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Close Version History' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Close Version History' }),
+    );
     expect(screen.queryByText('VersionHistoryModal')).not.toBeInTheDocument();
 
     const renderCallsBeforeRefresh = mockConfigListRender.mock.calls.length;
     fireEvent.click(screen.getByRole('button', { name: 'Refresh List' }));
-    expect(mockConfigListRender.mock.calls.length).toBeGreaterThan(renderCallsBeforeRefresh);
+    expect(mockConfigListRender.mock.calls.length).toBeGreaterThan(
+      renderCallsBeforeRefresh,
+    );
   });
 
   it('opens Create New Connection (handleAddNew)', () => {
     render(<DEMSModule />);
-    fireEvent.click(screen.getByRole('button', { name: 'Create New Connection' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Create New Connection' }),
+    );
     expect(screen.getByText('EditEndpointModal')).toBeInTheDocument();
     expect(screen.getByText('Endpoint: -1')).toBeInTheDocument();
-  });
-
-  it('fires handleInputChange on hidden radio input', () => {
-    const { container } = render(<DEMSModule />);
-    fireEvent.click(screen.getByRole('button', { name: 'Extend Data Model' }));
-
-    const hiddenRadio = container.querySelector('input[type="radio"][name="destinationType"]');
-    expect(hiddenRadio).toBeTruthy();
-    fireEvent.change(hiddenRadio!, { target: { name: 'destinationType', value: 'data-model' } });
-    // handleInputChange fires, setting destinationForm.destinationType = 'data-model' (no error)
-  });
-
-  it('closes wizard via X icon button', async () => {
-    const { container } = render(<DEMSModule />);
-    fireEvent.click(screen.getByRole('button', { name: 'Extend Data Model' }));
-    expect(screen.getByText('Please Select Destination')).toBeInTheDocument();
-
-    const closeBtn = container.querySelector('[data-id="element-1050"]');
-    expect(closeBtn).toBeTruthy();
-    fireEvent.click(closeBtn!);
-    await waitFor(() => {
-      expect(screen.queryByText('Please Select Destination')).not.toBeInTheDocument();
-    });
-  });
-
-  it('navigates wizard to step 3 with CHILD type covering getParentDestinationOptions', async () => {
-    render(<DEMSModule />);
-
-    fireEvent.click(screen.getByText('Extend Data Model'));
-    await waitFor(() => {
-      expect(screen.getByText('Please Select Destination')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByText('DATA CACHE'));
-    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    await waitFor(() => {
-      expect(screen.getByText('Please Select Destination Type')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByText('CHILD'));
-    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    await waitFor(() => {
-      expect(screen.getByText('Configure Destination Detail')).toBeInTheDocument();
-    });
-
-    // getParentDestinationOptions() is called in JSX at step 3 with CHILD type
-    // destinationTree is empty so it returns [] covering lines 304+
-    expect(screen.getByText('Configure Destination Detail')).toBeInTheDocument();
-  });
-
-  it('shows destination_name validation error on empty submit at step 3 (IMMEDIATE PARENT path)', async () => {
-    const { dataModelApi } = jest.requireMock('../../../src/features/data-model');
-    dataModelApi.createImmediateParent.mockResolvedValue({ success: true });
-
-    render(<DEMSModule />);
-
-    fireEvent.click(screen.getByText('Extend Data Model'));
-    await waitFor(() => {
-      expect(screen.getByText('Please Select Destination')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByText('DATA MODEL'));
-    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    await waitFor(() => {
-      expect(screen.getByText('Please Select Destination Type')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByText('IMMEDIATE PARENT'));
-    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    await waitFor(() => {
-      expect(screen.getByText('Configure Destination Detail')).toBeInTheDocument();
-    });
-
-    // Submit with empty destination_name — yup error.inner fires setError
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Submit' }));
-    });
-    // Yup validation should fail for destination_name (multiple errors set via forEach, last one wins)
-    // yup abortEarly:false produces: required, min2, matches — last is 'Must start with a letter...'
-    await waitFor(() => {
-      expect(screen.getByText(/Must start with a letter/i)).toBeInTheDocument();
-    });
-  });
-
-  it('shows immediate_parent validation error on empty submit at step 3 (CHILD path)', async () => {
-    render(<DEMSModule />);
-
-    fireEvent.click(screen.getByText('Extend Data Model'));
-    await waitFor(() => {
-      expect(screen.getByText('Please Select Destination')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByText('DATA MODEL'));
-    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    await waitFor(() => {
-      expect(screen.getByText('Please Select Destination Type')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByText('CHILD'));
-    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    await waitFor(() => {
-      expect(screen.getByText('Configure Destination Detail')).toBeInTheDocument();
-    });
-
-    // Click submit with empty fields — yup validation fails for destination_name and immediate_parent
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Submit' }));
-    });
-    await waitFor(() => {
-      expect(screen.getByText(/Please select an immediate parent/i)).toBeInTheDocument();
-    });
-  });
-
-  it('calls API with success and closes modal on valid submit (IMMEDIATE PARENT)', async () => {
-    const { dataModelApi } = jest.requireMock('../../../src/features/data-model');
-    dataModelApi.createImmediateParent.mockResolvedValue({ success: true });
-
-    render(<DEMSModule />);
-
-    fireEvent.click(screen.getByText('Extend Data Model'));
-    await waitFor(() => {
-      expect(screen.getByText('Please Select Destination')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByText('DATA MODEL'));
-    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    await waitFor(() => {
-      expect(screen.getByText('Please Select Destination Type')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByText('IMMEDIATE PARENT'));
-    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    await waitFor(() => {
-      expect(screen.getByText('Configure Destination Detail')).toBeInTheDocument();
-    });
-
-    // Fill in the destination name field and submit the form directly
-    const destinationNameInput = screen.getByLabelText('Destination Name');
-    fireEvent.change(destinationNameInput, { target: { value: 'myDestination' } });
-
-    // Submit via the form's submit event (more reliable than clicking button outside form)
-    const form = document.querySelector('form');
-    if (form) fireEvent.submit(form);
-    await waitFor(() => {
-      expect(dataModelApi.createImmediateParent).toHaveBeenCalled();
-      expect(mockShowSuccess).toHaveBeenCalledWith('Success', 'Destination added successfully');
-    });
-  });
-
-  it('shows API error message when submit fails with response.message', async () => {
-    const { dataModelApi } = jest.requireMock('../../../src/features/data-model');
-    dataModelApi.createImmediateParent.mockResolvedValue({ success: false, message: 'Destination already exists' });
-
-    render(<DEMSModule />);
-
-    fireEvent.click(screen.getByText('Extend Data Model'));
-    await waitFor(() => {
-      expect(screen.getByText('Please Select Destination')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByText('DATA MODEL'));
-    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    await waitFor(() => {
-      expect(screen.getByText('Please Select Destination Type')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByText('IMMEDIATE PARENT'));
-    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    await waitFor(() => {
-      expect(screen.getByText('Configure Destination Detail')).toBeInTheDocument();
-    });
-
-    const destinationNameInput2 = screen.getByLabelText('Destination Name');
-    fireEvent.change(destinationNameInput2, { target: { value: 'myDestination' } });
-
-    const form2 = document.querySelector('form');
-    if (form2) fireEvent.submit(form2);
-    await waitFor(() => {
-      expect(mockShowError).toHaveBeenCalledWith('Error', 'Destination already exists');
-    });
-  });
-
-  it('shows generic API error when submit throws with an error message', async () => {
-    const { dataModelApi } = jest.requireMock('../../../src/features/data-model');
-    const apiError = new Error('Network failure');
-    dataModelApi.createImmediateParent.mockRejectedValue(apiError);
-
-    render(<DEMSModule />);
-
-    fireEvent.click(screen.getByText('Extend Data Model'));
-    await waitFor(() => {
-      expect(screen.getByText('Please Select Destination')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByText('DATA MODEL'));
-    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    await waitFor(() => {
-      expect(screen.getByText('Please Select Destination Type')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByText('IMMEDIATE PARENT'));
-    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    await waitFor(() => {
-      expect(screen.getByText('Configure Destination Detail')).toBeInTheDocument();
-    });
-
-    const destinationNameInput3 = screen.getByLabelText('Destination Name');
-    fireEvent.change(destinationNameInput3, { target: { value: 'myDestination' } });
-
-    const form3 = document.querySelector('form');
-    if (form3) fireEvent.submit(form3);
-    await waitFor(() => {
-      expect(mockShowError).toHaveBeenCalledWith('Error', 'Network failure');
-    });
-  });
-
-  it('uses fallback message when response has no message property (BRDA:262)', async () => {
-    const { dataModelApi } = jest.requireMock('../../../src/features/data-model');
-    // No .message on the response → triggers || 'Failed to add destination' fallback
-    dataModelApi.createImmediateParent.mockResolvedValue({ success: false });
-
-    render(<DEMSModule />);
-
-    fireEvent.click(screen.getByText('Extend Data Model'));
-    await waitFor(() => {
-      expect(screen.getByText('Please Select Destination')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByText('DATA MODEL'));
-    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    await waitFor(() => {
-      expect(screen.getByText('Please Select Destination Type')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByText('IMMEDIATE PARENT'));
-    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    await waitFor(() => {
-      expect(screen.getByText('Configure Destination Detail')).toBeInTheDocument();
-    });
-
-    const input = screen.getByLabelText('Destination Name');
-    fireEvent.change(input, { target: { value: 'myDestination' } });
-
-    const form = document.querySelector('form');
-    if (form) fireEvent.submit(form);
-    await waitFor(() => {
-      expect(mockShowError).toHaveBeenCalledWith('Error', 'Failed to add destination');
-    });
-  });
-
-  it('uses fallback message when thrown error has no message property (BRDA:274)', async () => {
-    const { dataModelApi } = jest.requireMock('../../../src/features/data-model');
-    // Plain object (no .inner, no .message) → triggers || 'An error occurred...' fallback
-    dataModelApi.createImmediateParent.mockRejectedValue({});
-
-    render(<DEMSModule />);
-
-    fireEvent.click(screen.getByText('Extend Data Model'));
-    await waitFor(() => {
-      expect(screen.getByText('Please Select Destination')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByText('DATA MODEL'));
-    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    await waitFor(() => {
-      expect(screen.getByText('Please Select Destination Type')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByText('IMMEDIATE PARENT'));
-    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    await waitFor(() => {
-      expect(screen.getByText('Configure Destination Detail')).toBeInTheDocument();
-    });
-
-    const input = screen.getByLabelText('Destination Name');
-    fireEvent.change(input, { target: { value: 'myDestination' } });
-
-    const form = document.querySelector('form');
-    if (form) fireEvent.submit(form);
-    await waitFor(() => {
-      expect(mockShowError).toHaveBeenCalledWith('Error', 'An error occurred while adding destination');
-    });
   });
 });

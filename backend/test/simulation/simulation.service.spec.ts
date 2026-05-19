@@ -18,7 +18,6 @@ jest.mock('@tazama-lf/tcs-lib', () => ({
 jest.mock('xml2js', () => ({
   parseString: jest.fn((xml, callback) => {
     try {
-      // Simple XML parsing simulation
       if (xml.includes('<invalid><xml>')) {
         callback(new Error('Invalid XML'), null);
       } else if (xml.includes('Invalid character entity')) {
@@ -31,6 +30,9 @@ jest.mock('xml2js', () => ({
       callback(error, null);
     }
   }),
+  Parser: jest.fn().mockImplementation(() => ({
+    parseStringPromise: jest.fn().mockResolvedValue({ root: { element: ['value'] } }),
+  })),
 }));
 
 describe('SimulationService', () => {
@@ -44,10 +46,13 @@ describe('SimulationService', () => {
   };
 
   beforeEach(async () => {
-    // Reset all mocks before each test
     jest.clearAllMocks();
 
-    // Setup default mock implementations
+    const xml2js = require('xml2js');
+    xml2js.Parser.mockImplementation(() => ({
+      parseStringPromise: jest.fn().mockResolvedValue({ root: { element: ['value'] } }),
+    }));
+
     adminServiceClientMock.getConfigById.mockResolvedValue({
       id: 1,
       payloads: [
@@ -233,6 +238,11 @@ describe('SimulationService', () => {
   });
 
   it('should handle XML parsing errors', async () => {
+    const xml2js = require('xml2js');
+    xml2js.Parser.mockImplementationOnce(() => ({
+      parseStringPromise: jest.fn().mockRejectedValueOnce(new Error('Invalid XML')),
+    }));
+
     const dto: SimulatePayloadDto = {
       endpointId: 1,
       payloadType: 'application/xml',
@@ -4156,6 +4166,11 @@ describe('SimulationService', () => {
     });
 
     it('should cover XML parsing error with cause', async () => {
+      const xml2js = require('xml2js');
+      xml2js.Parser.mockImplementationOnce(() => ({
+        parseStringPromise: jest.fn().mockRejectedValueOnce(new Error('Unexpected close tag')),
+      }));
+
       const config = {
         tenantId: 'tenant123',
         endpointId: 123,
@@ -4471,6 +4486,247 @@ describe('SimulationService', () => {
       );
       expect(Array.isArray(result)).toBe(true);
       expect(result.length).toBe(3);
+    });
+
+    it('should set textContent when #text has non-attribute sibling keys and schema type is not string', () => {
+      const xmlObj = {
+        '#text': 'mixed content',
+        child: { nested: 'value' },
+      };
+      const schema = {
+        type: 'object',
+        properties: {
+          field: { type: 'object' },
+        },
+      };
+
+      const result = (service as any).normalizeXmlParsedObjectWithSchema(
+        xmlObj,
+        schema,
+        'field',
+      );
+      expect(result).toBeDefined();
+      expect(result.textContent).toBe('mixed content');
+      expect(result.child).toBeDefined();
+    });
+
+    it('should stringify non-string XML payload before parsing', async () => {
+      const mockConfig = {
+        id: 1,
+        tenantId: 'tenant-1',
+        schema: { type: 'object' },
+        payloads: [{ contentType: 'application/xml', schema: { type: 'object' } }],
+        mapping: [],
+      };
+
+      adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
+
+      const dto: SimulatePayloadDto = {
+        endpointId: 1,
+        payloadType: 'application/xml',
+        payload: { root: { element: 'value' } } as any,
+      };
+
+      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      expect(result).toBeDefined();
+    });
+
+    it('should handle processMappings throwing a non-Error (string) with loggerService message', async () => {
+      const { processMappings } = require('@tazama-lf/tcs-lib');
+      processMappings.mockRejectedValueOnce('loggerService is not defined');
+
+      const mockConfig = {
+        id: 1,
+        tenantId: 'tenant-1',
+        schema: { type: 'object' },
+        payloads: [{ contentType: 'application/json', schema: { type: 'object' } }],
+        mapping: [
+          {
+            ruleId: 'rule-001',
+            id: 'mapping-001',
+            cfg: '1.0',
+            sources: ['field1'],
+            destination: 'result.data',
+          },
+        ],
+        endpointPath: 'test-endpoint',
+      };
+
+      adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
+
+      const dto: SimulatePayloadDto = {
+        endpointId: 1,
+        payloadType: 'application/json',
+        payload: { field1: 'value1' },
+      };
+
+      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      expect(result).toBeDefined();
+
+      processMappings.mockResolvedValue({ dataCache: {}, endToEndId: '', status: 'success' });
+    });
+
+    it('should handle processMappings throwing a non-Error (string) without loggerService message', async () => {
+      const { processMappings } = require('@tazama-lf/tcs-lib');
+      processMappings.mockRejectedValueOnce('Some unexpected string error');
+
+      const mockConfig = {
+        id: 1,
+        tenantId: 'tenant-1',
+        schema: { type: 'object' },
+        payloads: [{ contentType: 'application/json', schema: { type: 'object' } }],
+        mapping: [
+          {
+            ruleId: 'rule-001',
+            id: 'mapping-001',
+            cfg: '1.0',
+            sources: ['field1'],
+            destination: 'result.data',
+          },
+        ],
+        endpointPath: 'test-endpoint',
+      };
+
+      adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
+
+      const dto: SimulatePayloadDto = {
+        endpointId: 1,
+        payloadType: 'application/json',
+        payload: { field1: 'value1' },
+      };
+
+      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      expect(result.status).toBe('FAILED');
+
+      processMappings.mockResolvedValue({ dataCache: {}, endToEndId: '', status: 'success' });
+    });
+
+    it('should handle mappingsApplied being undefined in TCS stage details', async () => {
+      const { processMappings } = require('@tazama-lf/tcs-lib');
+      processMappings.mockResolvedValueOnce({
+        dataCache: { result: 'value' },
+        transactionRelationship: {},
+        endToEndId: 'e2e-001',
+      });
+
+      const mockConfig = {
+        id: 1,
+        tenantId: 'tenant-1',
+        schema: { type: 'object' },
+        payloads: [{ contentType: 'application/json', schema: { type: 'object' } }],
+        mapping: [
+          {
+            ruleId: 'rule-001',
+            id: 'mapping-001',
+            cfg: '1.0',
+            sources: ['field1'],
+            destination: 'result.data',
+          },
+        ],
+        endpointPath: 'test-endpoint',
+      };
+
+      adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
+
+      const dto: SimulatePayloadDto = {
+        endpointId: 1,
+        payloadType: 'application/json',
+        payload: { field1: 'value1' },
+      };
+
+      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      expect(result).toBeDefined();
+    });
+
+    it('should handle XML parsing throwing a non-Error value', async () => {
+      const xml2js = require('xml2js');
+      xml2js.Parser.mockImplementationOnce(() => ({
+        parseStringPromise: jest.fn().mockRejectedValueOnce('non-error string failure'),
+      }));
+
+      const mockConfig = {
+        id: 1,
+        tenantId: 'tenant-1',
+        schema: { type: 'object' },
+        payloads: [{ contentType: 'application/xml', schema: { type: 'object' } }],
+        mapping: [],
+      };
+
+      adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
+
+      const dto: SimulatePayloadDto = {
+        endpointId: 1,
+        payloadType: 'application/xml',
+        payload: '<root><element>value</element></root>',
+      };
+
+      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      expect(result.status).toBe('FAILED');
+    });
+
+    it('should return obj when normalizeXmlParsedObjectWithSchema called with falsy value', () => {
+      const result1 = (service as any).normalizeXmlParsedObjectWithSchema(null, {}, '');
+      expect(result1).toBeNull();
+
+      const result2 = (service as any).normalizeXmlParsedObjectWithSchema(0, {}, '');
+      expect(result2).toBe(0);
+
+      const result3 = (service as any).normalizeXmlParsedObjectWithSchema('', {}, '');
+      expect(result3).toBe('');
+    });
+
+    it('should handle unsupported payload type', async () => {
+      const mockConfig = {
+        id: 1,
+        tenantId: 'tenant-1',
+        schema: { type: 'object' },
+        payloads: [{ contentType: 'application/pdf', schema: { type: 'object' } }],
+        mapping: [],
+      };
+
+      adminServiceClientMock.getConfigById.mockResolvedValue(mockConfig);
+
+      const dto: any = {
+        endpointId: 1,
+        payloadType: 'application/pdf',
+        payload: '%PDF-1.4 binary content',
+      };
+
+      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      expect(result.status).toBe('FAILED');
+    });
+
+    it('should return null from getSchemaTypeAtPath when type is null', () => {
+      const schema = {
+        type: 'object',
+        properties: {
+          field: { type: null },
+        },
+      };
+      const result = (service as any).getSchemaTypeAtPath(schema, 'field');
+      expect(result).toBeNull();
+    });
+
+    it('should return null from getSchemaTypeAtPath when type is undefined', () => {
+      const schema = {
+        type: 'object',
+        properties: {
+          field: { properties: { inner: { type: 'string' } } },
+        },
+      };
+      const result = (service as any).getSchemaTypeAtPath(schema, 'field');
+      expect(result).toBeNull();
+    });
+
+    it('should return null from getSchemaAtPath when schema is null', () => {
+      const result = (service as any).getSchemaAtPath(null, 'some.path');
+      expect(result).toBeNull();
+    });
+
+    it('should return null from getSchemaAtPath when path is empty string', () => {
+      const schema = { type: 'object', properties: { field: { type: 'string' } } };
+      const result = (service as any).getSchemaAtPath(schema, '');
+      expect(result).toBeNull();
     });
   });
 });

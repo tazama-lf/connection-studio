@@ -31,19 +31,19 @@ const PublisherDEJobsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const { offset, limit, setOffset } = useFilters();
 
-  const {
-    offset,
-    limit,
-    setOffset,
-  } = useFilters();
-
-  const pagination = useMemo(() => ({
-    page: offset,
-    limit,
-    totalRecords,
-    setPage: (page: number) => { setOffset(page - 1); },
-  }), [offset, limit, totalRecords])
+  const pagination = useMemo(
+    () => ({
+      page: offset,
+      limit,
+      totalRecords,
+      setPage: (page: number) => {
+        setOffset(page - 1);
+      },
+    }),
+    [offset, limit, totalRecords],
+  );
 
   const { showError } = useToast();
 
@@ -52,7 +52,11 @@ const PublisherDEJobsPage: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      const params = { limit, offset: offset * limit, userRole: userRole as string };
+      const params = {
+        limit,
+        offset: offset * limit,
+        userRole: userRole as string,
+      };
 
       const response = await dataEnrichmentApi.getList(
         params,
@@ -106,7 +110,9 @@ const PublisherDEJobsPage: React.FC = () => {
         <Button
           variant="primary"
           className="py-1 pl-2"
-          onClick={async () => { await navigate(-1); }}
+          onClick={async () => {
+            await navigate(-1);
+          }}
         >
           <ChevronLeft size={20} /> <span>Go Back</span>
         </Button>
@@ -133,7 +139,9 @@ const PublisherDEJobsPage: React.FC = () => {
 
         <JobList
           jobs={jobs}
-          onRefresh={async () => { await fetchDeJobs(); }}
+          onRefresh={async () => {
+            await fetchDeJobs();
+          }}
           onViewLogs={handleViewJobDetails}
           pagination={pagination}
           searchingFilters={searchingFilters}
@@ -157,7 +165,7 @@ const PublisherDEJobsPage: React.FC = () => {
         onClose={handleCloseJobDetails}
         job={selectedJob}
         isLoading={jobDetailsLoading}
-      // onExport={handleExportJob}
+        // onExport={handleExportJob}
       />
     </div>
   );

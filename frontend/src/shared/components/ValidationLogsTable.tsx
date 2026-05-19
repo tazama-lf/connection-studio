@@ -21,7 +21,9 @@ interface ValidationLogsTableProps {
   logs?: ValidationLog[];
 }
 
-const ValidationLogsTable: React.FC<ValidationLogsTableProps> = ({ logs = [] }) => {
+const ValidationLogsTable: React.FC<ValidationLogsTableProps> = ({
+  logs = [],
+}) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [timeFilter, setTimeFilter] = useState('ALL');
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
@@ -34,14 +36,20 @@ const ValidationLogsTable: React.FC<ValidationLogsTableProps> = ({ logs = [] }) 
       status: 'ERROR',
       errorCount: 3,
       errors: [
-        { message: 'Invalid transaction amount: must be positive', type: 'error' },
-        { message: 'Transaction ID format invalid: expected format XX999999', type: 'error' },
-        { message: 'Missing required field: currency', type: 'error' }
+        {
+          message: 'Invalid transaction amount: must be positive',
+          type: 'error',
+        },
+        {
+          message: 'Transaction ID format invalid: expected format XX999999',
+          type: 'error',
+        },
+        { message: 'Missing required field: currency', type: 'error' },
       ],
       payload: {
-        'transactionId': '123',
-        'amount': -100
-      }
+        transactionId: '123',
+        amount: -100,
+      },
     },
     {
       id: 2,
@@ -51,21 +59,24 @@ const ValidationLogsTable: React.FC<ValidationLogsTableProps> = ({ logs = [] }) 
       errorCount: 2,
       errors: [
         { message: 'Account balance approaching limit', type: 'warning' },
-        { message: 'Deprecated field usage detected', type: 'warning' }
+        { message: 'Deprecated field usage detected', type: 'warning' },
       ],
       payload: {
-        'accountId': 'ACC123',
-        'balance': 95000,
-        'currency': 'USD'
-      }
-    }
+        accountId: 'ACC123',
+        balance: 95000,
+        currency: 'USD',
+      },
+    },
   ];
 
   const displayLogs = logs.length > 0 ? logs : defaultLogs;
 
-  const filteredLogs = displayLogs.filter(log =>
-    log.endpoint.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    log.errors?.some(error => error.message.toLowerCase().includes(searchTerm.toLowerCase()))
+  const filteredLogs = displayLogs.filter(
+    (log) =>
+      log.endpoint.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      log.errors?.some((error) =>
+        error.message.toLowerCase().includes(searchTerm.toLowerCase()),
+      ),
   );
 
   const getStatusBadge = (status: string): string => {
@@ -114,12 +125,24 @@ const ValidationLogsTable: React.FC<ValidationLogsTableProps> = ({ logs = [] }) 
             type="text"
             placeholder="Search endpoints or errors..."
             value={searchTerm}
-            onChange={(e) => { setSearchTerm(e.target.value); }}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+            }}
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
           <div className="absolute left-3 top-2.5">
-            <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            <svg
+              className="w-5 h-5 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
             </svg>
           </div>
         </div>
@@ -129,11 +152,14 @@ const ValidationLogsTable: React.FC<ValidationLogsTableProps> = ({ logs = [] }) 
             {timeFilterButtons.map((filter) => (
               <button
                 key={filter}
-                onClick={() => { setTimeFilter(filter); }}
-                className={`px-3 py-1 text-sm font-medium rounded transition-colors ${timeFilter === filter
-                  ? 'bg-blue-600 text-white'
-                  : 'text-gray-600 hover:text-gray-900'
-                  }`}
+                onClick={() => {
+                  setTimeFilter(filter);
+                }}
+                className={`px-3 py-1 text-sm font-medium rounded transition-colors ${
+                  timeFilter === filter
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
               >
                 {filter}
               </button>
@@ -164,7 +190,9 @@ const ValidationLogsTable: React.FC<ValidationLogsTableProps> = ({ logs = [] }) 
           <tbody className="bg-white">
             {filteredLogs.map((log, index) => (
               <React.Fragment key={log.id}>
-                <tr className={`border-b border-gray-200 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
+                <tr
+                  className={`border-b border-gray-200 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
+                >
                   <td className="px-6 py-4 text-sm text-gray-600 flex items-center">
                     <ClockIcon size={16} className="mr-2 text-gray-400" />
                     {log.timestamp}
@@ -173,21 +201,26 @@ const ValidationLogsTable: React.FC<ValidationLogsTableProps> = ({ logs = [] }) 
                     {log.endpoint}
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-medium ${getStatusBadge(log.status)}`}>
+                    <span
+                      className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-medium ${getStatusBadge(log.status)}`}
+                    >
                       {log.status}
                     </span>
                   </td>
                   <td className="px-6 py-4">
                     {log.errorCount && log.errorCount > 0 && (
                       <button
-                        onClick={() => { toggleRowExpansion(log.id); }}
+                        onClick={() => {
+                          toggleRowExpansion(log.id);
+                        }}
                         className="inline-flex items-center text-blue-600 hover:text-blue-800 text-sm font-medium"
                       >
                         {log.errorCount} error{log.errorCount > 1 ? 's' : ''}
                         <ChevronDownIcon
                           size={16}
-                          className={`ml-1 transform transition-transform ${expandedRows.has(log.id) ? 'rotate-180' : ''
-                            }`}
+                          className={`ml-1 transform transition-transform ${
+                            expandedRows.has(log.id) ? 'rotate-180' : ''
+                          }`}
                         />
                       </button>
                     )}
@@ -197,19 +230,29 @@ const ValidationLogsTable: React.FC<ValidationLogsTableProps> = ({ logs = [] }) 
                 {/* Expanded Error Details */}
                 {expandedRows.has(log.id) && (
                   <tr>
-                    <td colSpan={4} className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+                    <td
+                      colSpan={4}
+                      className="px-6 py-4 bg-gray-50 border-b border-gray-200"
+                    >
                       <div className="space-y-4">
                         {/* Error Stack */}
                         {log.errors && log.errors.length > 0 && (
                           <div>
-                            <h4 className="text-sm font-medium text-gray-900 mb-2">Error Stack</h4>
+                            <h4 className="text-sm font-medium text-gray-900 mb-2">
+                              Error Stack
+                            </h4>
                             <div className="space-y-2">
                               {log.errors.map((error, errorIndex) => (
-                                <div key={errorIndex} className="flex items-start">
+                                <div
+                                  key={errorIndex}
+                                  className="flex items-start"
+                                >
                                   <div className="w-4 h-4 rounded-full bg-red-100 border-2 border-red-500 mr-3 mt-0.5 flex-shrink-0">
                                     <div className="w-1.5 h-1.5 bg-red-500 rounded-full mx-auto mt-0.5"></div>
                                   </div>
-                                  <span className="text-sm text-red-700">{error.message}</span>
+                                  <span className="text-sm text-red-700">
+                                    {error.message}
+                                  </span>
                                 </div>
                               ))}
                             </div>
@@ -219,7 +262,9 @@ const ValidationLogsTable: React.FC<ValidationLogsTableProps> = ({ logs = [] }) 
                         {/* Failed Payload */}
                         {log.payload && (
                           <div>
-                            <h4 className="text-sm font-medium text-gray-900 mb-2">Failed Payload</h4>
+                            <h4 className="text-sm font-medium text-gray-900 mb-2">
+                              Failed Payload
+                            </h4>
                             <div className="bg-gray-900 rounded-lg p-4 overflow-x-auto">
                               <pre className="text-sm text-white font-mono">
                                 {JSON.stringify(log.payload, null, 2)}

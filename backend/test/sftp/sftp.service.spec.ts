@@ -204,6 +204,33 @@ describe('SftpService', () => {
         error,
       );
     });
+
+    it('should handle producer connection errors', async () => {
+      configService.get.mockImplementation((key: string) => {
+        const config: Record<string, any> = {
+          SFTP_HOST_CONSUMER: 'consumer.sftp.com',
+          SFTP_PORT_CONSUMER: 22,
+          SFTP_USERNAME_CONSUMER: 'consumer-user',
+          SFTP_PASSWORD_CONSUMER: 'consumer-pass',
+          SFTP_HOST_PRODUCER: 'producer.sftp.com',
+          SFTP_PORT_PRODUCER: 22,
+          SFTP_USERNAME_PRODUCER: 'producer-user',
+          SFTP_PASSWORD_PRODUCER: 'producer-pass',
+        };
+        return config[key];
+      });
+
+      const error = new Error('Producer connection failed');
+      mockConsumerSftp.connect.mockResolvedValue(undefined);
+      mockProducerSftp.connect.mockRejectedValue(error);
+
+      await service.onModuleInit();
+
+      expect(loggerService.error).toHaveBeenCalledWith(
+        'Failed to connect to PRODUCER SFTP',
+        error,
+      );
+    });
   });
 
   describe('onModuleDestroy', () => {
@@ -431,6 +458,19 @@ describe('SftpService', () => {
       );
     });
 
+    it('should throw BadRequestException if integrity check fails', async () => {
+      mockProducerSftp.exists.mockResolvedValue(true);
+      mockProducerSftp.get
+        .mockResolvedValueOnce(mockBuffer)
+        .mockResolvedValueOnce(Buffer.from('wrong-hash', 'utf8'));
+
+      jest.spyOn(service as any, 'computeSHA256').mockReturnValue(mockHash);
+
+      await expect(service.readFile(mockFileName)).rejects.toThrow(
+        `Integrity validation failed for ${mockFileName}`,
+      );
+    });
+
     it('should throw InternalServerErrorException for unexpected errors', async () => {
       mockProducerSftp.exists.mockResolvedValue(true);
       mockProducerSftp.get.mockRejectedValue(new Error('Unexpected error'));
@@ -492,6 +532,19 @@ describe('SftpService', () => {
 
       await expect(service.deleteFile(mockFileName)).rejects.toThrow(
         BadRequestException,
+      );
+    });
+
+    it('should handle non-Error thrown during deleteFile', async () => {
+      mockProducerSftp.exists.mockResolvedValue(true);
+      mockProducerSftp.delete.mockRejectedValue({ code: 'ENOENT' });
+
+      await expect(service.deleteFile(mockFileName)).rejects.toMatchObject(
+        { code: 'ENOENT' },
+      );
+
+      expect(loggerService.error).toHaveBeenCalledWith(
+        expect.stringContaining('ENOENT'),
       );
     });
   });
@@ -587,6 +640,18 @@ describe('SftpService', () => {
 
       expect(loggerService.error).toHaveBeenCalledWith(
         expect.stringContaining('Failed to list files'),
+      );
+    });
+
+    it('should handle non-Error thrown when listing files', async () => {
+      mockProducerSftp.list.mockRejectedValue({ code: 'ENOTFOUND' });
+
+      await expect(
+        service.listFiles('/upload', 'de', mockTenantId),
+      ).rejects.toMatchObject({ code: 'ENOTFOUND' });
+
+      expect(loggerService.error).toHaveBeenCalledWith(
+        expect.stringContaining('ENOTFOUND'),
       );
     });
   });

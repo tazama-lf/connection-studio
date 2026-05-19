@@ -1,6 +1,16 @@
-import { AlertCircle, Calendar, CheckCircle, Database, Globe, X } from 'lucide-react';
+import {
+  AlertCircle,
+  Calendar,
+  CheckCircle,
+  Database,
+  Globe,
+  X,
+} from 'lucide-react';
 import React, { useState } from 'react';
-import { getStatusColor, getStatusLabel } from '../../../shared/utils/statusColors';
+import {
+  getStatusColor,
+  getStatusLabel,
+} from '../../../shared/utils/statusColors';
 import type { DataEnrichmentJobResponse } from '../../data-enrichment/types';
 
 interface PublisherDEJobDetailsModalProps {
@@ -12,19 +22,19 @@ interface PublisherDEJobDetailsModalProps {
 
 // Helper function to determine job type
 const getJobType = (job: DataEnrichmentJobResponse): 'push' | 'pull' => {
-  if (job.type?.toLowerCase() === 'push' || job.type?.toLowerCase() === 'pull') {
+  if (
+    job.type?.toLowerCase() === 'push' ||
+    job.type?.toLowerCase() === 'pull'
+  ) {
     return job.type.toLowerCase() as 'push' | 'pull';
   }
-  return (job.path && !job.source_type) ? 'push' : 'pull';
+  return job.path && !job.source_type ? 'push' : 'pull';
 };
 
-export const PublisherDEJobDetailsModal: React.FC<PublisherDEJobDetailsModalProps> = ({
-  isOpen,
-  onClose,
-  job,
-  onPublishSuccess,
-}) => {
-  const [isPublishing, ] = useState(false);
+export const PublisherDEJobDetailsModal: React.FC<
+  PublisherDEJobDetailsModalProps
+> = ({ isOpen, onClose, job, onPublishSuccess }) => {
+  const [isPublishing] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
   const [publishSuccess, setPublishSuccess] = useState(false);
 
@@ -39,9 +49,11 @@ export const PublisherDEJobDetailsModal: React.FC<PublisherDEJobDetailsModalProp
   };
 
   const jobType = getJobType(job);
-  const endpointPath = jobType === 'push'
-    ? (job.path || `/tenant-${job.endpoint_name?.substring(0, 6)}/${job.table_name || 'data'}`)
-    : `/tenant-${job.endpoint_name?.substring(0, 6) || '001'}/${job.table_name || job.endpoint_name}`;
+  const endpointPath =
+    jobType === 'push'
+      ? job.path ||
+        `/tenant-${job.endpoint_name?.substring(0, 6)}/${job.table_name || 'data'}`
+      : `/tenant-${job.endpoint_name?.substring(0, 6) || '001'}/${job.table_name || job.endpoint_name}`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -56,8 +68,12 @@ export const PublisherDEJobDetailsModal: React.FC<PublisherDEJobDetailsModalProp
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900">Data Enrichment Job Details</h2>
-            <p className="text-sm text-gray-500 mt-1">View published DE job details</p>
+            <h2 className="text-xl font-semibold text-gray-900">
+              Data Enrichment Job Details
+            </h2>
+            <p className="text-sm text-gray-500 mt-1">
+              View published DE job details
+            </p>
           </div>
           <button
             onClick={handleClose}
@@ -75,7 +91,9 @@ export const PublisherDEJobDetailsModal: React.FC<PublisherDEJobDetailsModalProp
             <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg flex items-start">
               <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 mr-3 flex-shrink-0" />
               <div>
-                <h4 className="text-sm font-medium text-green-900">Published Successfully</h4>
+                <h4 className="text-sm font-medium text-green-900">
+                  Published Successfully
+                </h4>
                 <p className="text-sm text-green-700 mt-1">
                   The DE job has been published and marked as deployed.
                 </p>
@@ -88,7 +106,9 @@ export const PublisherDEJobDetailsModal: React.FC<PublisherDEJobDetailsModalProp
             <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start">
               <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 mr-3 flex-shrink-0" />
               <div>
-                <h4 className="text-sm font-medium text-red-900">Publish Failed</h4>
+                <h4 className="text-sm font-medium text-red-900">
+                  Publish Failed
+                </h4>
                 <p className="text-sm text-red-700 mt-1">{publishError}</p>
               </div>
             </div>
@@ -98,7 +118,9 @@ export const PublisherDEJobDetailsModal: React.FC<PublisherDEJobDetailsModalProp
           <div className="space-y-6">
             {/* Status Badge */}
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Status</h3>
+              <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+                Status
+              </h3>
               <span className={getStatusColor(job.status || 'exported')}>
                 {getStatusLabel(job.status || 'exported')}
               </span>
@@ -121,7 +143,9 @@ export const PublisherDEJobDetailsModal: React.FC<PublisherDEJobDetailsModalProp
                 Endpoint Path
               </label>
               <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                <code className="text-blue-600 font-mono text-sm">{endpointPath}</code>
+                <code className="text-blue-600 font-mono text-sm">
+                  {endpointPath}
+                </code>
               </div>
             </div>
 
@@ -131,10 +155,13 @@ export const PublisherDEJobDetailsModal: React.FC<PublisherDEJobDetailsModalProp
                 Configuration Type
               </label>
               <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                <span className={`inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded ${jobType === 'push'
-                    ? 'bg-purple-100 text-purple-700'
-                    : 'bg-blue-100 text-blue-700'
-                  }`}>
+                <span
+                  className={`inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded ${
+                    jobType === 'push'
+                      ? 'bg-purple-100 text-purple-700'
+                      : 'bg-blue-100 text-blue-700'
+                  }`}
+                >
                   {jobType.toUpperCase()}
                 </span>
               </div>
@@ -161,14 +188,13 @@ export const PublisherDEJobDetailsModal: React.FC<PublisherDEJobDetailsModalProp
                 <p className="text-gray-900">
                   {job.created_at
                     ? new Date(job.created_at).toLocaleString('en-US', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })
-                    : 'N/A'
-                  }
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })
+                    : 'N/A'}
                 </p>
               </div>
             </div>

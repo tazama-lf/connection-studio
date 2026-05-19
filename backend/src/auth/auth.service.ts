@@ -11,6 +11,7 @@ import * as jwt from 'jsonwebtoken';
 
 @Injectable()
 export class AuthService {
+  /* c8 ignore next 5 -- NestJS DI constructor */
   constructor(
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,

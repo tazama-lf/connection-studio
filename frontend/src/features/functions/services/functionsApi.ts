@@ -37,7 +37,7 @@ export async function addFunction(
     );
   }
 
-  return await response.json() as FunctionResponseDto;
+  return (await response.json()) as FunctionResponseDto;
 }
 
 /**
@@ -63,7 +63,7 @@ export async function updateFunction(
     throw new Error(`HTTP error! status: ${response.status}`);
   }
 
-  return await response.json() as FunctionResponseDto;
+  return (await response.json()) as FunctionResponseDto;
 }
 
 /**
@@ -87,13 +87,15 @@ export async function deleteFunction(
     throw new Error(`HTTP error! status: ${response.status}`);
   }
 
-  return await response.json() as FunctionResponseDto;
+  return (await response.json()) as FunctionResponseDto;
 }
 
 /**
  * Get configuration with functions
  */
-export async function getConfigWithFunctions(configId: number): Promise<Config> {
+export async function getConfigWithFunctions(
+  configId: number,
+): Promise<Config> {
   const url = `${API_CONFIG.API_BASE_URL}${API_CONFIG.ENDPOINTS.CONFIG.GET_BY_ID.replace(':id', configId.toString())}`;
   const response = await fetch(url, {
     method: 'GET',
@@ -104,5 +106,5 @@ export async function getConfigWithFunctions(configId: number): Promise<Config> 
     throw new Error(`HTTP error! status: ${response.status}`);
   }
 
-  return await response.json() as Config;
+  return (await response.json()) as Config;
 }

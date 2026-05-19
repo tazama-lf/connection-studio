@@ -196,7 +196,7 @@ export const ApproverConfigDetailsModal: React.FC<ApproverConfigDetailsModalProp
                 onClose();
               }}
               variant="secondary"
-              disabled={isApproving ?? isRejecting}
+              disabled={isApproving || isRejecting}
             >
               Close
             </Button>
@@ -205,7 +205,7 @@ export const ApproverConfigDetailsModal: React.FC<ApproverConfigDetailsModalProp
                 handleReject();
               }}
               variant="danger"
-              disabled={isApproving ?? isRejecting}
+              disabled={isApproving || isRejecting}
               className="flex items-center space-x-2"
             >
               <XCircle className="w-4 h-4" />
@@ -216,7 +216,7 @@ export const ApproverConfigDetailsModal: React.FC<ApproverConfigDetailsModalProp
                 handleApprove();
               }}
               variant="primary"
-              disabled={isApproving ?? isRejecting}
+              disabled={isApproving || isRejecting}
               className="flex items-center space-x-2"
             >
               <CheckCircle className="w-4 h-4" />

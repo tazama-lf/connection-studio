@@ -306,5 +306,5 @@ export const FUNCTION_CONFIGS: Record<AllowedFunctionName, FunctionConfig> = {
     optionalParameters: [],
     configurations: [],
     dataModelConfiguration: [],
-  }
+  },
 };

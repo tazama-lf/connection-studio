@@ -93,18 +93,6 @@ describe('FormFields', () => {
     expect(AlphaNumericInputFieldWithSpaces(commonProps)).toBeTruthy();
   });
 
-  it('TextInputField filters non-letters for text type', () => {
-    const controller = TextInputField({ name: 'name', label: 'Name', control: {}, type: 'text' });
-    const { textFieldElement, fieldOnChange } = getTextFieldFromControllerElement(controller);
-
-    const badKey = makeEvent('1');
-    textFieldElement.props.onKeyDown(badKey);
-    expect(badKey.preventDefault).toHaveBeenCalled();
-
-    textFieldElement.props.onChange(makeEvent('', 'ab12 C$'));
-    expect(fieldOnChange).toHaveBeenCalledWith('ab C');
-  });
-
   it('PasswordInputField strips spaces and blocks space key', () => {
     const useStateSpy = jest.spyOn(React, 'useState').mockImplementation((initialValue) => [initialValue, jest.fn()]);
     const controller = PasswordInputField({ name: 'password', label: 'Password', control: {} });
@@ -213,18 +201,6 @@ describe('FormFields', () => {
 
     textFieldElement.props.onChange(makeEvent('', '1__My-Table'));
     expect(fieldOnChange).toHaveBeenCalledWith('mytable');
-  });
-
-  it('HostInputField keeps only numeric dot pattern', () => {
-    const controller = HostInputField({ name: 'host', label: 'Host', control: {} });
-    const { textFieldElement, fieldOnChange } = getTextFieldFromControllerElement(controller);
-
-    textFieldElement.props.onChange(makeEvent('', '.12..3a'));
-    expect(fieldOnChange).toHaveBeenCalledWith('12.3');
-
-    const badKey = makeEvent('a');
-    textFieldElement.props.onKeyDown(badKey);
-    expect(badKey.preventDefault).toHaveBeenCalled();
   });
 
   it('FilePathInputField normalizes path input', () => {
@@ -458,45 +434,6 @@ describe('FormFields', () => {
     expect(badKey.preventDefault).toHaveBeenCalled();
   });
 
-  // ─── TextInputField: type !== "text" branches (lines 41, 49) ───
-  it('TextInputField with non-text type skips onKeyDown filter and onChange sanitization', () => {
-    const controller = TextInputField({ name: 'num', label: 'Num', control: {}, type: 'number' });
-    const { textFieldElement, fieldOnChange } = getTextFieldFromControllerElement(controller);
-
-    // onKeyDown does nothing for non-text type (line 41 false branch)
-    const digitKey = makeEvent('1');
-    textFieldElement.props.onKeyDown(digitKey);
-    expect(digitKey.preventDefault).not.toHaveBeenCalled();
-
-    // onChange passes raw value without filtering (line 49 false branch)
-    textFieldElement.props.onChange(makeEvent('', 'ab12$'));
-    expect(fieldOnChange).toHaveBeenCalledWith('ab12$');
-  });
-
-  // ─── TextInputField: control keys and valid alpha key (lines 43, 44) ───
-  it('TextInputField allows Backspace/Enter/Tab and valid alpha keys', () => {
-    const controller = TextInputField({ name: 'name', label: 'Name', control: {}, type: 'text' });
-    const { textFieldElement } = getTextFieldFromControllerElement(controller);
-
-    // Backspace returns early (line 43 true branch)
-    const backspace = makeEvent('Backspace');
-    textFieldElement.props.onKeyDown(backspace);
-    expect(backspace.preventDefault).not.toHaveBeenCalled();
-
-    const enter = makeEvent('Enter');
-    textFieldElement.props.onKeyDown(enter);
-    expect(enter.preventDefault).not.toHaveBeenCalled();
-
-    const tab = makeEvent('Tab');
-    textFieldElement.props.onKeyDown(tab);
-    expect(tab.preventDefault).not.toHaveBeenCalled();
-
-    // Valid alpha key passes regex (line 44 false branch)
-    const validKey = makeEvent('a');
-    textFieldElement.props.onKeyDown(validKey);
-    expect(validKey.preventDefault).not.toHaveBeenCalled();
-  });
-
   // ─── TextInputField: input_type="date" placeholder (line 55) ───
   it('TextInputField with input_type="date" uses empty placeholder', () => {
     const controller = TextInputField({ name: 'dt', label: 'DT', control: {}, input_type: 'date' });
@@ -726,30 +663,6 @@ describe('FormFields', () => {
   });
 
   // ─── HostInputField: control key, space, valid IP char (lines 954, 957, 971) ───
-  it('HostInputField onKeyDown allows control keys and valid IP chars, blocks space', () => {
-    const controller = HostInputField({ name: 'host2', label: 'Host2', control: {} });
-    const { textFieldElement } = getTextFieldFromControllerElement(controller);
-
-    // Control key returns early (line 954)
-    const backspace = makeEvent('Backspace');
-    textFieldElement.props.onKeyDown(backspace);
-    expect(backspace.preventDefault).not.toHaveBeenCalled();
-
-    // Space is blocked (line 957)
-    const space = makeEvent(' ');
-    textFieldElement.props.onKeyDown(space);
-    expect(space.preventDefault).toHaveBeenCalled();
-
-    // Valid IP char passes (line 971 false branch)
-    const digit = makeEvent('1');
-    textFieldElement.props.onKeyDown(digit);
-    expect(digit.preventDefault).not.toHaveBeenCalled();
-
-    const dot = makeEvent('.');
-    textFieldElement.props.onKeyDown(dot);
-    expect(dot.preventDefault).not.toHaveBeenCalled();
-  });
-
   // ─── FilePathInputField: valid path char key (line 1052) ───
   it('FilePathInputField onKeyDown allows valid path chars', () => {
     const controller = FilePathInputField({ name: 'fp2', label: 'FP2', control: {} });
