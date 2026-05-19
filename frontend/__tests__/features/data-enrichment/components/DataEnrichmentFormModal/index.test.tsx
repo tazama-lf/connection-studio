@@ -367,12 +367,10 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
     // Find the push radio input (name="configurationType", value="push")
     const pushRadio = container.querySelector(
       'input[name="configurationType"][value="push"]',
-    ) as HTMLInputElement;
-    if (pushRadio) {
-      // name=configurationType, value=push → covers BRDA:1135 TRUE branch (name==='configurationType')
-      fireEvent.click(pushRadio);
-      fireEvent.change(pushRadio, { target: { checked: true, value: 'push' } });
-    }
+    ) as HTMLInputElement | null;
+    expect(pushRadio).toBeTruthy();
+    fireEvent.click(pushRadio!);
+    fireEvent.change(pushRadio!, { target: { checked: true, value: 'push' } });
 
     // Find the pull radio input (name="configurationType", value="pull")
     const pullRadio = container.querySelector(
