@@ -375,12 +375,11 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
     // Find the pull radio input (name="configurationType", value="pull")
     const pullRadio = container.querySelector(
       'input[name="configurationType"][value="pull"]',
-    ) as HTMLInputElement;
-    if (pullRadio) {
-      // name=configurationType, value=pull → also covers the configurationType branch
-      fireEvent.click(pullRadio);
-      fireEvent.change(pullRadio, { target: { checked: true, value: 'pull' } });
-    }
+    ) as HTMLInputElement | null;
+    expect(pullRadio).toBeTruthy();
+    // name=configurationType, value=pull → also covers the configurationType branch
+    fireEvent.click(pullRadio!);
+    fireEvent.change(pullRadio!, { target: { checked: true, value: 'pull' } });
 
     // Still on selection screen
     expect(
@@ -742,13 +741,12 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
     // Click to trigger React's event system, then fire change with name=sourceType to cover http branch
     const pushRadio = container.querySelector(
       'input[name="configurationType"][value="push"]',
-    ) as HTMLInputElement;
-    if (pushRadio) {
-      fireEvent.click(pushRadio);
-      fireEvent.change(pushRadio, {
-        target: { name: 'sourceType', value: 'http', checked: false },
-      });
-    }
+    ) as HTMLInputElement | null;
+    expect(pushRadio).toBeTruthy();
+    fireEvent.click(pushRadio!);
+    fireEvent.change(pushRadio!, {
+      target: { name: 'sourceType', value: 'http', checked: false },
+    });
 
     expect(
       screen.getByText('Please Select Configuration Type'),
@@ -763,13 +761,10 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
     // Click to trigger React's event system, then fire change with name=sourceType to cover sftp branch
     const pushRadio = container.querySelector(
       'input[name="configurationType"][value="push"]',
-    ) as HTMLInputElement;
-    if (pushRadio) {
-      fireEvent.click(pushRadio);
-      fireEvent.change(pushRadio, {
-        target: { name: 'sourceType', value: 'sftp', checked: false },
-      });
-    }
+    ) as HTMLInputElement | null;
+    expect(pushRadio).toBeTruthy();
+    fireEvent.click(pushRadio!);
+    fireEvent.change(pushRadio!, { target: { checked: true, value: 'push' } });
 
     expect(
       screen.getByText('Please Select Configuration Type'),
@@ -1378,24 +1373,23 @@ describe('features/data-enrichment/components/DataEnrichmentFormModal/index.tsx'
     const configRadio = document.querySelector(
       'input[type="radio"][name="configurationType"]',
     );
-    if (configRadio) {
-      // covers: name === 'configurationType' branch (BRDA:1135)
-      fireEvent.change(configRadio, {
-        target: { name: 'configurationType', value: 'push' },
-      });
-      // covers: name === 'sourceType', value === 'http' branch (BRDA:1140, 1143)
-      fireEvent.change(configRadio, {
-        target: { name: 'sourceType', value: 'http' },
-      });
-      // covers: name === 'sourceType', value === 'sftp' branch (BRDA:1153)
-      fireEvent.change(configRadio, {
-        target: { name: 'sourceType', value: 'sftp' },
-      });
-      // covers: else branch (BRDA:1161)
-      fireEvent.change(configRadio, {
-        target: { name: 'otherField', value: 'someVal' },
-      });
-    }
+    expect(configRadio).toBeTruthy();
+    // covers: name === 'configurationType' branch (BRDA:1135)
+    fireEvent.change(configRadio!, {
+      target: { name: 'configurationType', value: 'push' },
+    });
+    // covers: name === 'sourceType', value === 'http' branch (BRDA:1140, 1143)
+    fireEvent.change(configRadio!, {
+      target: { name: 'sourceType', value: 'http' },
+    });
+    // covers: name === 'sourceType', value === 'sftp' branch (BRDA:1153)
+    fireEvent.change(configRadio!, {
+      target: { name: 'sourceType', value: 'sftp' },
+    });
+    // covers: else branch (BRDA:1161)
+    fireEvent.change(configRadio!, {
+      target: { name: 'otherField', value: 'someVal' },
+    });
 
     expect(
       screen.getByText('Please Select Configuration Type'),
