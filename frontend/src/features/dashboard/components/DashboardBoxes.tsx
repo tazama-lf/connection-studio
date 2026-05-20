@@ -7,6 +7,7 @@ import { alpha } from '@mui/material/styles';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../features/auth/contexts/AuthContext';
 import { ROUTES } from '../../../shared/config/routes.config';
+import { theme } from 'antd';
 
 export const BoxCard: React.FC<{
   title: string;
@@ -36,7 +37,7 @@ export const BoxCard: React.FC<{
         gap: 2,
         textAlign: 'center',
         position: 'relative',
-        backgroundColor: color,
+        backgroundColor: (theme) => theme.palette.background.paper,
         border: '1px solid rgba(0,0,0,0.06)',
         transition: 'transform 200ms cubic-bezier(.2,.8,.2,1), box-shadow 200ms ease, background-color 200ms ease',
         '&:hover': {
