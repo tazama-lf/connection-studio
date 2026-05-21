@@ -1595,4 +1595,73 @@ describe('shared/components/DataEnrichmentFormModal', () => {
       );
     });
   });
+
+  it('pull sftp handleSave uses comma fallback when delimiter is empty string', async () => {
+    formValues = {
+      ...formValues,
+      sourceType: 'sftp',
+      authType: 'password',
+      delimiter: '',
+    };
+
+    render(
+      <DataEnrichmentFormModal
+        isOpen={true}
+        onClose={jest.fn()}
+        onSave={jest.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    await waitFor(() => {
+      expect(
+        screen.getByText('Pull Configuration (SFTP/HTTPS)'),
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save and Next' }));
+    await waitFor(() => {
+      expect(screen.getByText('Ready to Create Endpoint')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create Endpoint' }));
+
+    await waitFor(() => {
+      expect(createPullJobMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          file: expect.objectContaining({ delimiter: ',' }),
+        }),
+      );
+    });
+  });
+
+  it('handleSave shows "Unknown error occurred" when error object has neither message nor error property', async () => {
+    createPullJobMock.mockRejectedValueOnce({ code: 500 });
+
+    render(
+      <DataEnrichmentFormModal
+        isOpen={true}
+        onClose={jest.fn()}
+        onSave={jest.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    await waitFor(() => {
+      expect(
+        screen.getByText('Pull Configuration (SFTP/HTTPS)'),
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save and Next' }));
+    await waitFor(() => {
+      expect(screen.getByText('Ready to Create Endpoint')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create Endpoint' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Unknown error occurred')).toBeInTheDocument();
+    });
+  });
 });
