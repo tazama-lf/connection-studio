@@ -1280,4 +1280,38 @@ describe('features/data-enrichment/components/JobDetailsModal/index.tsx', () => 
       expect.objectContaining({ id: 'job-clone-no-name-version' }),
     );
   });
+
+  it('covers HTTP URL and headers-check catch blocks when JSON.parse throws on inner field IIFE calls', () => {
+    const originalParse = JSON.parse.bind(JSON);
+    const connectionStr = '{"url":"http://example.com"}';
+    let parsedOnce = false;
+
+    jest.spyOn(JSON, 'parse').mockImplementation((text: any) => {
+      if (text === connectionStr) {
+        if (parsedOnce) throw new SyntaxError('Simulated parse error');
+        parsedOnce = true;
+      }
+      return originalParse(text);
+    });
+
+    render(
+      <JobDetailsModal
+        isOpen
+        onClose={jest.fn()}
+        job={{
+          id: 'job-http-inner-catch',
+          endpoint_name: 'HTTP Inner Catch',
+          type: 'pull',
+          source_type: 'HTTP',
+          connection: connectionStr,
+        } as any}
+      />,
+    );
+
+    expect(
+      screen.getByDisplayValue('Error parsing connection'),
+    ).toBeInTheDocument();
+
+    jest.restoreAllMocks();
+  });
 });
