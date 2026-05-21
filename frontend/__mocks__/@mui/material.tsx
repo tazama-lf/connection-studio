@@ -79,6 +79,7 @@ export const Tooltip = ({ children, title, ...props }: any) => <>{children}</>;
 export const Dialog = ({ children, open, onClose, ...props }: any) =>
   open ? (
     <div data-testid="mui-dialog" role="dialog" {...props}>
+      <span data-testid="dialog-on-close" onClick={() => onClose?.()} />
       {children}
     </div>
   ) : null;
@@ -340,67 +341,7 @@ export const useTheme = () => ({
 
 const DefaultMuiComponent = ({ children, ...props }: any) => (
   <div {...props}>{children}</div>
-);
-
-export default {
-  Backdrop,
-  Button,
-  CircularProgress,
-  TextField,
-  Select,
-  MenuItem,
-  Typography,
-  Box,
-  Stack,
-  Paper,
-  IconButton,
-  Tooltip,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogContentText,
-  DialogActions,
-  Divider,
-  Chip,
-  FormControl,
-  InputLabel,
-  FormHelperText,
-  Alert,
-  Snackbar,
-  Switch,
-  Radio,
-  RadioGroup,
-  FormControlLabel,
-  Checkbox,
-  LinearProgress,
-  Autocomplete,
-  Grid,
-  ListItem,
-  List,
-  ListItemText,
-  ListItemButton,
-  Collapse,
-  Menu,
-  Popover,
-  Tabs,
-  Tab,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Container,
-  Avatar,
-  Badge,
-  InputAdornment,
-  OutlinedInput,
-  useTheme,
-  ThemeProvider,
-  createTheme,
-  CssBaseline,
-  GlobalStyles,
-};
+)
 
 export const ThemeProvider = ({ children }: any) => <>{children}</>;
 export const createTheme = (options?: any) => options || {};
@@ -593,7 +534,6 @@ export const TablePagination = ({
   ...props
 }: any) => <div {...props} />;
 
-// Styled system
 export const styled = (Component: any) => (styles?: any) => Component;
 export const createStyles = (styles: any) => styles;
 export const alpha = (color: string, opacity: number) => color;
