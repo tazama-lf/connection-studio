@@ -378,6 +378,11 @@ describe('getDataEnrichmentErrorMessage', () => {
   it('returns GENERAL message for empty error', () => {
     expect(getDataEnrichmentErrorMessage({})).toContain('encountered an issue');
   });
+
+  it('returns GENERAL for unrecognized 4xx status with no message or data', () => {
+    const err = { response: { status: 404 } };
+    expect(getDataEnrichmentErrorMessage(err)).toContain('encountered an issue');
+  });
 });
 
 // ─── formatJobForEdit ─────────────────────────────────────────────────────────

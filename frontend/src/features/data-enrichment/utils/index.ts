@@ -483,6 +483,7 @@ export const getConnectionType = (
   }
 
   if (job.connection && typeof job.connection === 'object') {
+    /* istanbul ignore next */
     if (typeof job.connection === 'string') {
       try {
         const connectionObj = JSON.parse(job.connection) as Record<

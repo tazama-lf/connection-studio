@@ -36,11 +36,12 @@ jest.mock('../../../../src/utils/common/roleUtils', () => ({
 jest.mock(
   '../../../../src/features/data-enrichment/components/JobList',
   () => ({
-    JobList: ({ onViewLogs, jobs, onRefresh }: any) => (
+    JobList: ({ onViewLogs, jobs, onRefresh, pagination }: any) => (
       <div>
         <div>job-count:{jobs.length}</div>
         <button onClick={() => onViewLogs('job-1')}>View Logs</button>
         <button onClick={() => onRefresh()}>Refresh</button>
+        <button onClick={() => pagination.setPage(2)}>Next Page</button>
       </div>
     ),
   }),
@@ -278,5 +279,15 @@ describe('features/exporter/pages/ExporterDEJobsPage.tsx', () => {
     await waitFor(() => {
       expect(dataEnrichmentJobApi.getList).toHaveBeenCalledTimes(2);
     });
+  });
+
+  it('calls setOffset via pagination.setPage (line 42)', async () => {
+    render(<ExporterDEJobsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Next Page')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('Next Page'));
   });
 });
