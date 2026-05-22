@@ -1,7 +1,10 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import PublisherDEJobDetailsModal from '../../../../src/features/publisher/components/PublisherDEJobDetailsModal';
-import { getStatusColor, getStatusLabel } from '../../../../src/shared/utils/statusColors';
+import {
+  getStatusColor,
+  getStatusLabel,
+} from '../../../../src/shared/utils/statusColors';
 
 jest.mock('../../../../src/shared/utils/statusColors', () => ({
   getStatusColor: jest.fn(() => 'status-badge'),
@@ -19,22 +22,38 @@ describe('features/publisher/components/PublisherDEJobDetailsModal.tsx', () => {
 
   it('does not render when closed', () => {
     render(
-      <PublisherDEJobDetailsModal isOpen={false} onClose={jest.fn()} job={baseJob} />,
+      <PublisherDEJobDetailsModal
+        isOpen={false}
+        onClose={jest.fn()}
+        job={baseJob}
+      />,
     );
-    expect(screen.queryByText('Data Enrichment Job Details')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Data Enrichment Job Details'),
+    ).not.toBeInTheDocument();
   });
 
   it('does not render when job is null', () => {
     render(
-      <PublisherDEJobDetailsModal isOpen={true} onClose={jest.fn()} job={null} />,
+      <PublisherDEJobDetailsModal
+        isOpen={true}
+        onClose={jest.fn()}
+        job={null}
+      />,
     );
-    expect(screen.queryByText('Data Enrichment Job Details')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Data Enrichment Job Details'),
+    ).not.toBeInTheDocument();
   });
 
   it('renders details and closes modal', () => {
     const onClose = jest.fn();
     render(
-      <PublisherDEJobDetailsModal isOpen={true} onClose={onClose} job={baseJob} />,
+      <PublisherDEJobDetailsModal
+        isOpen={true}
+        onClose={onClose}
+        job={baseJob}
+      />,
     );
 
     expect(screen.getByText('Data Enrichment Job Details')).toBeInTheDocument();
@@ -49,12 +68,14 @@ describe('features/publisher/components/PublisherDEJobDetailsModal.tsx', () => {
       <PublisherDEJobDetailsModal
         isOpen={true}
         onClose={jest.fn()}
-        job={{
-          ...baseJob,
-          type: 'PUSH',
-          path: '/custom/push/path',
-          status: 'deployed',
-        } as any}
+        job={
+          {
+            ...baseJob,
+            type: 'PUSH',
+            path: '/custom/push/path',
+            status: 'deployed',
+          } as any
+        }
       />,
     );
 
@@ -67,11 +88,13 @@ describe('features/publisher/components/PublisherDEJobDetailsModal.tsx', () => {
       <PublisherDEJobDetailsModal
         isOpen={true}
         onClose={jest.fn()}
-        job={{
-          ...baseJob,
-          type: 'PULL',
-          source_type: 'sftp',
-        } as any}
+        job={
+          {
+            ...baseJob,
+            type: 'PULL',
+            source_type: 'sftp',
+          } as any
+        }
       />,
     );
 
@@ -84,14 +107,16 @@ describe('features/publisher/components/PublisherDEJobDetailsModal.tsx', () => {
       <PublisherDEJobDetailsModal
         isOpen={true}
         onClose={jest.fn()}
-        job={{
-          ...baseJob,
-          type: 'PUSH',
-          path: '',
-          source_type: undefined,
-          endpoint_name: 'alpha-endpoint',
-          table_name: undefined,
-        } as any}
+        job={
+          {
+            ...baseJob,
+            type: 'PUSH',
+            path: '',
+            source_type: undefined,
+            endpoint_name: 'alpha-endpoint',
+            table_name: undefined,
+          } as any
+        }
       />,
     );
 
@@ -104,13 +129,15 @@ describe('features/publisher/components/PublisherDEJobDetailsModal.tsx', () => {
       <PublisherDEJobDetailsModal
         isOpen={true}
         onClose={jest.fn()}
-        job={{
-          ...baseJob,
-          type: undefined,
-          path: '/tenant-path/inferred',
-          source_type: undefined,
-          table_name: undefined,
-        } as any}
+        job={
+          {
+            ...baseJob,
+            type: undefined,
+            path: '/tenant-path/inferred',
+            source_type: undefined,
+            table_name: undefined,
+          } as any
+        }
       />,
     );
 
@@ -124,16 +151,18 @@ describe('features/publisher/components/PublisherDEJobDetailsModal.tsx', () => {
       <PublisherDEJobDetailsModal
         isOpen={true}
         onClose={jest.fn()}
-        job={{
-          ...baseJob,
-          endpoint_name: undefined,
-          table_name: undefined,
-          type: undefined,
-          path: '',
-          source_type: 'sftp',
-          created_at: undefined,
-          status: undefined,
-        } as any}
+        job={
+          {
+            ...baseJob,
+            endpoint_name: undefined,
+            table_name: undefined,
+            type: undefined,
+            path: '',
+            source_type: 'sftp',
+            created_at: undefined,
+            status: undefined,
+          } as any
+        }
       />,
     );
 
@@ -153,10 +182,16 @@ describe('features/publisher/components/PublisherDEJobDetailsModal.tsx', () => {
 
     const onClose = jest.fn();
     const { container } = render(
-      <PublisherDEJobDetailsModal isOpen={true} onClose={onClose} job={baseJob} />,
+      <PublisherDEJobDetailsModal
+        isOpen={true}
+        onClose={onClose}
+        job={baseJob}
+      />,
     );
 
-    const backdrop = container.querySelector('[class*="bg-black"]') as HTMLElement;
+    const backdrop = container.querySelector(
+      '[class*="bg-black"]',
+    ) as HTMLElement;
     fireEvent.click(backdrop);
     fireEvent.click(screen.getByText('Close'));
 
@@ -173,7 +208,11 @@ describe('features/publisher/components/PublisherDEJobDetailsModal.tsx', () => {
 
     const onClose = jest.fn();
     const { container } = render(
-      <PublisherDEJobDetailsModal isOpen={true} onClose={onClose} job={baseJob} />,
+      <PublisherDEJobDetailsModal
+        isOpen={true}
+        onClose={onClose}
+        job={baseJob}
+      />,
     );
 
     expect(screen.getByText('Published Successfully')).toBeInTheDocument();
@@ -192,7 +231,11 @@ describe('features/publisher/components/PublisherDEJobDetailsModal.tsx', () => {
       .mockImplementationOnce(() => [false, jest.fn()] as any);
 
     render(
-      <PublisherDEJobDetailsModal isOpen={true} onClose={jest.fn()} job={baseJob} />,
+      <PublisherDEJobDetailsModal
+        isOpen={true}
+        onClose={jest.fn()}
+        job={baseJob}
+      />,
     );
 
     expect(screen.getByText('Publish Failed')).toBeInTheDocument();

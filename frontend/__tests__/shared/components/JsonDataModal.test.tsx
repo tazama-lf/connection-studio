@@ -25,7 +25,12 @@ describe('JsonDataModal', () => {
 
   it('renders custom title when provided', () => {
     render(
-      <JsonDataModal isOpen={true} onClose={onClose} data={mockData} title="My Config" />,
+      <JsonDataModal
+        isOpen={true}
+        onClose={onClose}
+        data={mockData}
+        title="My Config"
+      />,
     );
     expect(screen.getByText('My Config')).toBeInTheDocument();
   });
@@ -59,7 +64,9 @@ describe('JsonDataModal', () => {
 
   it('calls onClose when backdrop is clicked', () => {
     render(<JsonDataModal isOpen={true} onClose={onClose} data={mockData} />);
-    const backdrop = document.querySelector('[aria-hidden="true"]') as HTMLElement;
+    const backdrop = document.querySelector(
+      '[aria-hidden="true"]',
+    ) as HTMLElement;
     fireEvent.click(backdrop);
     expect(onClose).toHaveBeenCalledTimes(1);
   });

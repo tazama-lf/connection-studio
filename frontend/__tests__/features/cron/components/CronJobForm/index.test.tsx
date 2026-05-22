@@ -66,7 +66,11 @@ jest.mock('../../../../../src/shared/components/FormFields.jsx', () => ({
     <input aria-label={name} disabled={disabled} defaultValue="1" />
   ),
   AlphaNumericInputFieldWithSpaces: ({ label, disabled }: any) => (
-    <input aria-label={typeof label === 'string' ? label : 'job-name'} disabled={disabled} defaultValue="Nightly Batch" />
+    <input
+      aria-label={typeof label === 'string' ? label : 'job-name'}
+      disabled={disabled}
+      defaultValue="Nightly Batch"
+    />
   ),
 }));
 
@@ -143,7 +147,9 @@ describe('features/cron/components/CronJobForm/index.tsx', () => {
     fireEvent.submit(container.querySelector('[component="form"]') as Element);
 
     await waitFor(() => {
-      expect(showErrorMock).toHaveBeenCalledWith('Unable to create cron schedule');
+      expect(showErrorMock).toHaveBeenCalledWith(
+        'Unable to create cron schedule',
+      );
     });
   });
 
@@ -162,8 +168,12 @@ describe('features/cron/components/CronJobForm/index.tsx', () => {
     const { unmount } = render(
       <CronJobForm
         onCancel={jest.fn()}
-        editFormData={{ id: 'e-1', name: 'edit-name', cronExpression: '0 5 * * *' } as any}
-        viewFormData={{ id: 'v-1', name: 'view-name', cron: '*/5 * * * *' } as any}
+        editFormData={
+          { id: 'e-1', name: 'edit-name', cronExpression: '0 5 * * *' } as any
+        }
+        viewFormData={
+          { id: 'v-1', name: 'view-name', cron: '*/5 * * * *' } as any
+        }
         setEditFormData={setEditFormDataMock}
       />,
     );
@@ -172,7 +182,11 @@ describe('features/cron/components/CronJobForm/index.tsx', () => {
       expect.objectContaining({ id: 'e-1', name: 'edit-name' }),
     );
     expect(resetMock).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'v-1', name: 'view-name', cronExpression: '*/5 * * * *' }),
+      expect.objectContaining({
+        id: 'v-1',
+        name: 'view-name',
+        cronExpression: '*/5 * * * *',
+      }),
     );
     expect(setEditFormDataMock).toHaveBeenCalledWith(
       expect.objectContaining({ name: 'Updated Schedule Name' }),
@@ -205,10 +219,12 @@ describe('features/cron/components/CronJobForm/index.tsx', () => {
     render(
       <CronJobForm
         onCancel={jest.fn()}
-        viewFormData={{ id: 'sched-1', status: 'STATUS_03_UNDER_REVIEW' } as any}
+        viewFormData={
+          { id: 'sched-1', status: 'STATUS_03_UNDER_REVIEW' } as any
+        }
         onApprove={onApprove}
         onReject={onReject}
-      />, 
+      />,
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Reject' }));
@@ -225,13 +241,15 @@ describe('features/cron/components/CronJobForm/index.tsx', () => {
       <CronJobForm
         onCancel={jest.fn()}
         handleSendForApproval={handleSendForApproval}
-        viewFormData={{
-          id: 'sched-2',
-          status: 'STATUS_05_REJECTED',
-          comments: 'Please update cron settings',
-          cron: '0 1 * * *',
-        } as any}
-      />, 
+        viewFormData={
+          {
+            id: 'sched-2',
+            status: 'STATUS_05_REJECTED',
+            comments: 'Please update cron settings',
+            cron: '0 1 * * *',
+          } as any
+        }
+      />,
     );
 
     expect(screen.getByText('Comments')).toBeInTheDocument();
@@ -250,7 +268,7 @@ describe('features/cron/components/CronJobForm/index.tsx', () => {
         onCancel={onCancel}
         editFormData={{ id: 'sched-3', status: 'STATUS_01_IN_PROGRESS' } as any}
         handleSaveEdit={handleSaveEdit}
-      />, 
+      />,
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Update' }));
@@ -290,7 +308,9 @@ describe('features/cron/components/CronJobForm/index.tsx', () => {
 
     expect(screen.getByText('Invalid input')).toBeInTheDocument();
     expect(screen.getByText('Invalid cron expression')).toBeInTheDocument();
-    expect(screen.getByText('Invalid number of iterations')).toBeInTheDocument();
+    expect(
+      screen.getByText('Invalid number of iterations'),
+    ).toBeInTheDocument();
     mockErrors = origErrors;
   });
 });

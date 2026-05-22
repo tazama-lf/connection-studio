@@ -1,4 +1,10 @@
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  act,
+} from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { CronJobList } from '@features/cron/components/CronJobList';
 import { useCronJobList } from '@features/cron/hooks/useCronJobList';
@@ -18,32 +24,49 @@ jest.mock('@common/Tables/CustomTable', () => ({
 }));
 jest.mock('@features/cron/components/CronJobModal', () => ({
   __esModule: true,
-  default: ({ isOpen, onClose, mode, onReject }: any) => 
+  default: ({ isOpen, onClose, mode, onReject }: any) =>
     isOpen ? (
       <div data-testid="cron-job-modal">
         <div>{mode} mode</div>
-        <button onClick={onClose} data-testid="modal-close">Close</button>
-        {onReject && <button onClick={() => onReject()} data-testid="modal-reject">Reject</button>}
+        <button onClick={onClose} data-testid="modal-close">
+          Close
+        </button>
+        {onReject && (
+          <button onClick={() => onReject()} data-testid="modal-reject">
+            Reject
+          </button>
+        )}
       </div>
     ) : null,
 }));
 jest.mock('@features/cron/components/ConfirmationDialog', () => ({
   __esModule: true,
-  default: ({ open, onClose, onConfirm, type }: any) => 
+  default: ({ open, onClose, onConfirm, type }: any) =>
     open ? (
       <div data-testid="confirmation-dialog">
         <div>{type} confirmation</div>
-        <button onClick={onClose} data-testid="dialog-cancel">Cancel</button>
-        <button onClick={() => onConfirm(type)} data-testid="dialog-confirm">Confirm</button>
+        <button onClick={onClose} data-testid="dialog-cancel">
+          Cancel
+        </button>
+        <button onClick={() => onConfirm(type)} data-testid="dialog-confirm">
+          Confirm
+        </button>
       </div>
     ) : null,
 }));
 jest.mock('@shared/components/JobRejectionDialog', () => ({
-  JobRejectionDialog: ({ isOpen, onClose, onConfirm }: any) => 
+  JobRejectionDialog: ({ isOpen, onClose, onConfirm }: any) =>
     isOpen ? (
       <div data-testid="rejection-dialog">
-        <button onClick={onClose} data-testid="rejection-cancel">Cancel</button>
-        <button onClick={() => onConfirm('test reason')} data-testid="rejection-confirm">Confirm Rejection</button>
+        <button onClick={onClose} data-testid="rejection-cancel">
+          Cancel
+        </button>
+        <button
+          onClick={() => onConfirm('test reason')}
+          data-testid="rejection-confirm"
+        >
+          Confirm Rejection
+        </button>
       </div>
     ) : null,
 }));
@@ -109,17 +132,19 @@ describe('CronJobList Integration Tests', () => {
   describe('Component Callbacks', () => {
     it('should create and execute onView callback', () => {
       render(<CronJobList />);
-      
+
       const callbacks = (global as any).testCallbacks;
       expect(callbacks.onView).toBeDefined();
-      
+
       // Execute the onView callback
       act(() => {
         callbacks.onView(mockSchedules[0]);
       });
-      
-      expect(mockUseCronJobList.handleView).toHaveBeenCalledWith(mockSchedules[0]);
-      
+
+      expect(mockUseCronJobList.handleView).toHaveBeenCalledWith(
+        mockSchedules[0],
+      );
+
       // Modal should open in view mode
       expect(screen.getByTestId('cron-job-modal')).toBeInTheDocument();
       expect(screen.getByText('view mode')).toBeInTheDocument();
@@ -127,17 +152,19 @@ describe('CronJobList Integration Tests', () => {
 
     it('should create and execute onEdit callback', () => {
       render(<CronJobList />);
-      
+
       const callbacks = (global as any).testCallbacks;
       expect(callbacks.onEdit).toBeDefined();
-      
+
       // Execute the onEdit callback
       act(() => {
         callbacks.onEdit(mockSchedules[0]);
       });
-      
-      expect(mockUseCronJobList.handleEdit).toHaveBeenCalledWith(mockSchedules[0]);
-      
+
+      expect(mockUseCronJobList.handleEdit).toHaveBeenCalledWith(
+        mockSchedules[0],
+      );
+
       // Modal should open in edit mode
       expect(screen.getByTestId('cron-job-modal')).toBeInTheDocument();
       expect(screen.getByText('edit mode')).toBeInTheDocument();
@@ -145,15 +172,15 @@ describe('CronJobList Integration Tests', () => {
 
     it('should create and execute onExport callback', () => {
       render(<CronJobList />);
-      
+
       const callbacks = (global as any).testCallbacks;
       expect(callbacks.onExport).toBeDefined();
-      
+
       // Execute the onExport callback
       act(() => {
         callbacks.onExport(mockSchedules[0]);
       });
-      
+
       expect(mockUseCronJobList.setConfirmDialog).toHaveBeenCalledWith({
         open: true,
         type: 'export',
@@ -165,61 +192,63 @@ describe('CronJobList Integration Tests', () => {
   describe('Modal State Management', () => {
     it('should close modal when close button is clicked', () => {
       render(<CronJobList />);
-      
+
       // Open modal via onView callback
       const callbacks = (global as any).testCallbacks;
       act(() => {
         callbacks.onView(mockSchedules[0]);
       });
-      
+
       expect(screen.getByTestId('cron-job-modal')).toBeInTheDocument();
-      
+
       // Click close button
       const closeButton = screen.getByTestId('modal-close');
       fireEvent.click(closeButton);
-      
+
       // Modal should be closed
       expect(screen.queryByTestId('cron-job-modal')).not.toBeInTheDocument();
     });
 
     it('should open rejection dialog from modal', () => {
       render(<CronJobList />);
-      
+
       // Open modal in view mode
       const callbacks = (global as any).testCallbacks;
       act(() => {
         callbacks.onView(mockSchedules[0]);
       });
-      
+
       // Click reject button in modal
       const rejectButton = screen.getByTestId('modal-reject');
       fireEvent.click(rejectButton);
-      
+
       // Rejection dialog should open
       expect(screen.getByTestId('rejection-dialog')).toBeInTheDocument();
     });
 
     it('should handle rejection confirmation and close both dialogs', async () => {
       render(<CronJobList />);
-      
+
       // Open modal
       const callbacks = (global as any).testCallbacks;
       act(() => {
         callbacks.onView(mockSchedules[0]);
       });
-      
+
       // Open rejection dialog
       fireEvent.click(screen.getByTestId('modal-reject'));
-      
+
       // Confirm rejection
       const confirmButton = screen.getByTestId('rejection-confirm');
       fireEvent.click(confirmButton);
-      
+
       // handleRejectionConfirmWithClose should be called
       await waitFor(() => {
-        expect(mockUseCronJobList.handleRejectionConfirm).toHaveBeenCalledWith('test reason');
+        expect(mockUseCronJobList.handleRejectionConfirm).toHaveBeenCalledWith(
+          'test reason',
+        );
       });
-      
+
       // Both dialogs should be closed
       expect(screen.queryByTestId('rejection-dialog')).not.toBeInTheDocument();
       expect(screen.queryByTestId('cron-job-modal')).not.toBeInTheDocument();
@@ -230,14 +259,18 @@ describe('CronJobList Integration Tests', () => {
     it('should handle export confirmation', async () => {
       (useCronJobList as jest.Mock).mockReturnValue({
         ...mockUseCronJobList,
-        confirmDialog: { open: true, type: 'export', schedule: mockSchedules[0] },
+        confirmDialog: {
+          open: true,
+          type: 'export',
+          schedule: mockSchedules[0],
+        },
       });
 
       render(<CronJobList />);
-      
+
       const confirmButton = screen.getByTestId('dialog-confirm');
       fireEvent.click(confirmButton);
-      
+
       await waitFor(() => {
         expect(mockUseCronJobList.handleExportConfirm).toHaveBeenCalled();
       });
@@ -246,14 +279,18 @@ describe('CronJobList Integration Tests', () => {
     it('should handle approval confirmation', async () => {
       (useCronJobList as jest.Mock).mockReturnValue({
         ...mockUseCronJobList,
-        confirmDialog: { open: true, type: 'approval', schedule: mockSchedules[0] },
+        confirmDialog: {
+          open: true,
+          type: 'approval',
+          schedule: mockSchedules[0],
+        },
       });
 
       render(<CronJobList />);
-      
+
       const confirmButton = screen.getByTestId('dialog-confirm');
       fireEvent.click(confirmButton);
-      
+
       await waitFor(() => {
         expect(mockUseCronJobList.handleApprovalConfirm).toHaveBeenCalled();
       });
@@ -262,14 +299,18 @@ describe('CronJobList Integration Tests', () => {
     it('should handle approve confirmation and close modal', async () => {
       (useCronJobList as jest.Mock).mockReturnValue({
         ...mockUseCronJobList,
-        confirmDialog: { open: true, type: 'approve', schedule: mockSchedules[0] },
+        confirmDialog: {
+          open: true,
+          type: 'approve',
+          schedule: mockSchedules[0],
+        },
       });
 
       render(<CronJobList />);
-      
+
       const confirmButton = screen.getByTestId('dialog-confirm');
       fireEvent.click(confirmButton);
-      
+
       await waitFor(() => {
         expect(mockUseCronJobList.handleApproveConfirm).toHaveBeenCalled();
       });
@@ -296,12 +337,12 @@ describe('CronJobList Integration Tests', () => {
       });
 
       render(<CronJobList />);
-      
+
       const callbacks = (global as any).testCallbacks;
       act(() => {
         callbacks.onEdit(mockSchedules[0]);
       });
-      
+
       expect(screen.getByTestId('cron-job-modal')).toBeInTheDocument();
       expect(screen.getByText('edit mode')).toBeInTheDocument();
     });
@@ -313,12 +354,12 @@ describe('CronJobList Integration Tests', () => {
       });
 
       render(<CronJobList />);
-      
+
       const callbacks = (global as any).testCallbacks;
       act(() => {
         callbacks.onView(mockSchedules[0]);
       });
-      
+
       expect(screen.getByTestId('cron-job-modal')).toBeInTheDocument();
       expect(screen.getByText('view mode')).toBeInTheDocument();
     });

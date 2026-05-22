@@ -42,7 +42,9 @@ describe('DeploymentConfirmation', () => {
       />,
     );
 
-    expect(await screen.findByText('Configuration Approved')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Configuration Approved'),
+    ).toBeInTheDocument();
     expect(screen.getAllByText('/fallback/path').length).toBeGreaterThan(0);
     expect(screen.getByText('pacs.008')).toBeInTheDocument();
     expect(screen.getByText(/Field Mappings \(1\)/)).toBeInTheDocument();
@@ -56,8 +58,12 @@ describe('DeploymentConfirmation', () => {
       />,
     );
 
-    expect(await screen.findByText('Error Loading Configuration')).toBeInTheDocument();
-    expect(screen.getByText('No configuration ID provided')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Error Loading Configuration'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('No configuration ID provided'),
+    ).toBeInTheDocument();
   });
 
   it('loads data from API when configId is provided', async () => {
@@ -100,8 +106,12 @@ describe('DeploymentConfirmation', () => {
       />,
     );
 
-    expect(await screen.findByText('Configuration Approved')).toBeInTheDocument();
-    expect(screen.queryByText('Authentication required. Please log in again.')).not.toBeInTheDocument();
+    expect(
+      await screen.findByText('Configuration Approved'),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('Authentication required. Please log in again.'),
+    ).not.toBeInTheDocument();
   });
 
   it('shows authentication error when no fallback data exists', async () => {
@@ -111,26 +121,26 @@ describe('DeploymentConfirmation', () => {
     });
 
     render(
-      <DeploymentConfirmation
-        configId={1}
-        endpointPath="/external/path"
-      />,
+      <DeploymentConfirmation configId={1} endpointPath="/external/path" />,
     );
 
-    expect(await screen.findByText('Authentication required. Please log in again.')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Authentication required. Please log in again.'),
+    ).toBeInTheDocument();
   });
 
   it('shows network failure error when API throws and no fallback exists', async () => {
     mockedGetConfig.mockRejectedValueOnce(new Error('Network down'));
 
     render(
-      <DeploymentConfirmation
-        configId={1}
-        endpointPath="/external/path"
-      />,
+      <DeploymentConfirmation configId={1} endpointPath="/external/path" />,
     );
 
-    expect(await screen.findByText('Failed to load configuration data: Network down')).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        'Failed to load configuration data: Network down',
+      ),
+    ).toBeInTheDocument();
   });
 
   it('uses fallback when API throws and fallback data is present', async () => {
@@ -144,7 +154,9 @@ describe('DeploymentConfirmation', () => {
       />,
     );
 
-    expect(await screen.findByText('Configuration Approved')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Configuration Approved'),
+    ).toBeInTheDocument();
     expect(screen.queryByText('API crashed')).not.toBeInTheDocument();
   });
 
@@ -152,14 +164,13 @@ describe('DeploymentConfirmation', () => {
     mockedGetConfig.mockRejectedValueOnce('string error');
 
     render(
-      <DeploymentConfirmation
-        configId={1}
-        endpointPath="/external/path"
-      />,
+      <DeploymentConfirmation configId={1} endpointPath="/external/path" />,
     );
 
     expect(
-      await screen.findByText(/Failed to load configuration data: Unknown error/),
+      await screen.findByText(
+        /Failed to load configuration data: Unknown error/,
+      ),
     ).toBeInTheDocument();
   });
 
@@ -170,10 +181,7 @@ describe('DeploymentConfirmation', () => {
     });
 
     render(
-      <DeploymentConfirmation
-        configId={1}
-        endpointPath="/external/path"
-      />,
+      <DeploymentConfirmation configId={1} endpointPath="/external/path" />,
     );
 
     expect(await screen.findByText('Server error 500')).toBeInTheDocument();
@@ -194,13 +202,12 @@ describe('DeploymentConfirmation', () => {
 
     try {
       render(
-        <DeploymentConfirmation
-          configId={99}
-          endpointPath="/test/path"
-        />,
+        <DeploymentConfirmation configId={99} endpointPath="/test/path" />,
       );
 
-      expect(screen.getByText('No configuration data available')).toBeInTheDocument();
+      expect(
+        screen.getByText('No configuration data available'),
+      ).toBeInTheDocument();
     } finally {
       useStateSpy.mockRestore();
     }
@@ -261,13 +268,12 @@ describe('DeploymentConfirmation', () => {
     });
 
     render(
-      <DeploymentConfirmation
-        configId={1}
-        endpointPath="/external/path"
-      />,
+      <DeploymentConfirmation configId={1} endpointPath="/external/path" />,
     );
 
-    expect(await screen.findByText('Failed to load configuration data')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Failed to load configuration data'),
+    ).toBeInTheDocument();
   });
 
   it('renders with configData missing several optional fields (uses fallback props)', async () => {
@@ -308,7 +314,9 @@ describe('DeploymentConfirmation', () => {
       />,
     );
 
-    expect(await screen.findByText('Configuration Approved')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Configuration Approved'),
+    ).toBeInTheDocument();
   });
 
   it('does not render schema section when neither schema nor payload is present', async () => {
@@ -318,7 +326,9 @@ describe('DeploymentConfirmation', () => {
       transactionType: 'debit',
       version: '1.0',
       contentType: 'application/json',
-      mapping: [{ transformation: 'DIRECT', source: 'src', destination: 'dst' }],
+      mapping: [
+        { transformation: 'DIRECT', source: 'src', destination: 'dst' },
+      ],
       // no schema, no payload
     };
 
@@ -329,7 +339,9 @@ describe('DeploymentConfirmation', () => {
       />,
     );
 
-    expect(await screen.findByText('Configuration Approved')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Configuration Approved'),
+    ).toBeInTheDocument();
   });
 
   it('renders mappings with array source/destination and constantValue', async () => {
@@ -358,7 +370,9 @@ describe('DeploymentConfirmation', () => {
       />,
     );
 
-    expect(await screen.findByText('Configuration Approved')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Configuration Approved'),
+    ).toBeInTheDocument();
     expect(screen.getByText('DIRECT')).toBeInTheDocument();
     expect(screen.getByText('src1, src2')).toBeInTheDocument();
     expect(screen.getByText('dst1, dst2')).toBeInTheDocument();

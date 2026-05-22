@@ -1,5 +1,11 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  act,
+} from '@testing-library/react';
 import { ExtensionDebugPage } from '../../src/pages/ExtensionDebugPage';
 
 jest.mock('../../src/features/data-model', () => ({
@@ -7,9 +13,11 @@ jest.mock('../../src/features/data-model', () => ({
     getAllExtensions: jest.fn(),
     createExtension: jest.fn(),
   },
-  ExtensionManagement: ({ onExtensionChange }: { onExtensionChange: () => void }) => (
-    <div data-testid="extension-management">ExtensionManagement</div>
-  ),
+  ExtensionManagement: ({
+    onExtensionChange,
+  }: {
+    onExtensionChange: () => void;
+  }) => <div data-testid="extension-management">ExtensionManagement</div>,
 }));
 
 import { dataModelApi } from '../../src/features/data-model';
@@ -26,7 +34,9 @@ describe('ExtensionDebugPage', () => {
 
   it('renders the debug page heading', () => {
     render(<ExtensionDebugPage />);
-    expect(screen.getByText('Extension Creation Debug Tool')).toBeInTheDocument();
+    expect(
+      screen.getByText('Extension Creation Debug Tool'),
+    ).toBeInTheDocument();
   });
 
   it('renders both test buttons', () => {
@@ -74,7 +84,9 @@ describe('ExtensionDebugPage', () => {
   });
 
   it('shows error when API connection test throws', async () => {
-    mockDataModelApi.getAllExtensions.mockRejectedValue(new Error('Network failure'));
+    mockDataModelApi.getAllExtensions.mockRejectedValue(
+      new Error('Network failure'),
+    );
 
     render(<ExtensionDebugPage />);
     await act(async () => {
@@ -114,7 +126,9 @@ describe('ExtensionDebugPage', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/SUCCESS: Extension created successfully!/)).toBeInTheDocument();
+      expect(
+        screen.getByText(/SUCCESS: Extension created successfully!/),
+      ).toBeInTheDocument();
     });
   });
 
@@ -130,7 +144,9 @@ describe('ExtensionDebugPage', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/FAILED: Extension creation failed!/)).toBeInTheDocument();
+      expect(
+        screen.getByText(/FAILED: Extension creation failed!/),
+      ).toBeInTheDocument();
       expect(screen.getByText(/Duplicate field/)).toBeInTheDocument();
     });
   });
@@ -144,7 +160,9 @@ describe('ExtensionDebugPage', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/ERROR: Exception during extension creation!/)).toBeInTheDocument();
+      expect(
+        screen.getByText(/ERROR: Exception during extension creation!/),
+      ).toBeInTheDocument();
       expect(screen.getByText(/Timeout/)).toBeInTheDocument();
     });
   });
@@ -158,7 +176,9 @@ describe('ExtensionDebugPage', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/ERROR: Exception during extension creation!/)).toBeInTheDocument();
+      expect(
+        screen.getByText(/ERROR: Exception during extension creation!/),
+      ).toBeInTheDocument();
       expect(screen.getByText(/timeout-string-error/)).toBeInTheDocument();
       expect(screen.getByText(/No stack trace/)).toBeInTheDocument();
     });
@@ -167,7 +187,9 @@ describe('ExtensionDebugPage', () => {
   it('disables buttons while loading', async () => {
     let resolvePromise!: (val: any) => void;
     mockDataModelApi.getAllExtensions.mockReturnValue(
-      new Promise((res) => { resolvePromise = res; }),
+      new Promise((res) => {
+        resolvePromise = res;
+      }),
     );
 
     render(<ExtensionDebugPage />);

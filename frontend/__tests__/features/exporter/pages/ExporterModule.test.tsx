@@ -44,8 +44,12 @@ describe('features/exporter/pages/ExporterModule.tsx', () => {
 
     render(<ExporterModule />);
 
-    expect(screen.getByText('You do not have permission to access this page.')).toBeInTheDocument();
-    expect(showErrorMock).toHaveBeenCalledWith('You do not have permission to access the Exporter Dashboard');
+    expect(
+      screen.getByText('You do not have permission to access this page.'),
+    ).toBeInTheDocument();
+    expect(showErrorMock).toHaveBeenCalledWith(
+      'You do not have permission to access the Exporter Dashboard',
+    );
   });
 
   it('renders exporter modules and navigates on card click', async () => {
@@ -72,7 +76,9 @@ describe('features/exporter/pages/ExporterModule.tsx', () => {
 
     render(<ExporterModule />);
 
-    expect(screen.getByText('You do not have permission to access this page.')).toBeInTheDocument();
+    expect(
+      screen.getByText('You do not have permission to access this page.'),
+    ).toBeInTheDocument();
     expect(showErrorMock).not.toHaveBeenCalled();
   });
 });

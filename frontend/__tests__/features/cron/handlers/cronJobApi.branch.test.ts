@@ -7,7 +7,10 @@ import {
   updateScheduleData,
   loadSchedules,
 } from '@features/cron/handlers';
-import type { ScheduleRequest, PaginatedScheduleResponse } from '@features/cron/types';
+import type {
+  ScheduleRequest,
+  PaginatedScheduleResponse,
+} from '@features/cron/types';
 
 // Mock apiRequest
 jest.mock('@utils/common/apiHelper', () => ({
@@ -207,7 +210,11 @@ describe('Cron Job Handlers Branch Coverage', () => {
 
   describe('loadSchedules branches', () => {
     it('should load schedules with default parameters', async () => {
-      const mockResponse = { data: [], total: 0, pages: 0 } as PaginatedScheduleResponse;
+      const mockResponse = {
+        data: [],
+        total: 0,
+        pages: 0,
+      } as PaginatedScheduleResponse;
       (apiRequest as jest.Mock).mockResolvedValue(mockResponse);
 
       const result = await loadSchedules(1, 10, 'editor', {});
@@ -228,7 +235,11 @@ describe('Cron Job Handlers Branch Coverage', () => {
     });
 
     it('should load schedules with limit', async () => {
-      const mockResponse = { data: [], total: 0, pages: 0 } as PaginatedScheduleResponse;
+      const mockResponse = {
+        data: [],
+        total: 0,
+        pages: 0,
+      } as PaginatedScheduleResponse;
       (apiRequest as jest.Mock).mockResolvedValue(mockResponse);
 
       const result = await loadSchedules(1, 20, 'editor', {});
@@ -236,7 +247,11 @@ describe('Cron Job Handlers Branch Coverage', () => {
     });
 
     it('should load schedules with status filter in searchingFilters', async () => {
-      const mockResponse = { data: [], total: 0, pages: 0 } as PaginatedScheduleResponse;
+      const mockResponse = {
+        data: [],
+        total: 0,
+        pages: 0,
+      } as PaginatedScheduleResponse;
       (apiRequest as jest.Mock).mockResolvedValue(mockResponse);
 
       const filters = { status: 'active' };
@@ -245,7 +260,11 @@ describe('Cron Job Handlers Branch Coverage', () => {
     });
 
     it('should load schedules without status filter to use userRole-based filter', async () => {
-      const mockResponse = { data: [], total: 0, pages: 0 } as PaginatedScheduleResponse;
+      const mockResponse = {
+        data: [],
+        total: 0,
+        pages: 0,
+      } as PaginatedScheduleResponse;
       (apiRequest as jest.Mock).mockResolvedValue(mockResponse);
 
       const filters = { search: 'test' };
@@ -254,7 +273,11 @@ describe('Cron Job Handlers Branch Coverage', () => {
     });
 
     it('should load schedules with empty filters', async () => {
-      const mockResponse = { data: [], total: 0, pages: 0 } as PaginatedScheduleResponse;
+      const mockResponse = {
+        data: [],
+        total: 0,
+        pages: 0,
+      } as PaginatedScheduleResponse;
       (apiRequest as jest.Mock).mockResolvedValue(mockResponse);
 
       const result = await loadSchedules(1, 10, 'approver', {});
@@ -262,7 +285,11 @@ describe('Cron Job Handlers Branch Coverage', () => {
     });
 
     it('should load schedules with filters', async () => {
-      const mockResponse = { data: [], total: 0, pages: 0 } as PaginatedScheduleResponse;
+      const mockResponse = {
+        data: [],
+        total: 0,
+        pages: 0,
+      } as PaginatedScheduleResponse;
       (apiRequest as jest.Mock).mockResolvedValue(mockResponse);
 
       const filters = { status: 'active', search: 'test' };
@@ -368,7 +395,9 @@ describe('Cron Job Handlers Branch Coverage', () => {
     });
 
     it('should handle 500 Internal Server Error', async () => {
-      (apiRequest as jest.Mock).mockRejectedValue(new Error('Internal Server Error'));
+      (apiRequest as jest.Mock).mockRejectedValue(
+        new Error('Internal Server Error'),
+      );
 
       await expect(loadSchedules(1, 10, 'user', {})).rejects.toThrow();
     });

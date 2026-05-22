@@ -18,27 +18,39 @@ describe('statusColors', () => {
 
     // STATUS_XX_NAME format
     it('should return blue for STATUS_01_IN_PROGRESS', () => {
-      expect(getStatusColor('STATUS_01_IN_PROGRESS')).toBe('bg-blue-100 text-blue-800');
+      expect(getStatusColor('STATUS_01_IN_PROGRESS')).toBe(
+        'bg-blue-100 text-blue-800',
+      );
     });
 
     it('should return yellow for STATUS_03_UNDER_REVIEW', () => {
-      expect(getStatusColor('STATUS_03_UNDER_REVIEW')).toBe('bg-yellow-100 text-yellow-800');
+      expect(getStatusColor('STATUS_03_UNDER_REVIEW')).toBe(
+        'bg-yellow-100 text-yellow-800',
+      );
     });
 
     it('should return green for STATUS_04_APPROVED', () => {
-      expect(getStatusColor('STATUS_04_APPROVED')).toBe('bg-green-100 text-green-800');
+      expect(getStatusColor('STATUS_04_APPROVED')).toBe(
+        'bg-green-100 text-green-800',
+      );
     });
 
     it('should return red for STATUS_05_REJECTED', () => {
-      expect(getStatusColor('STATUS_05_REJECTED')).toBe('bg-red-100 text-red-800');
+      expect(getStatusColor('STATUS_05_REJECTED')).toBe(
+        'bg-red-100 text-red-800',
+      );
     });
 
     it('should return indigo for STATUS_06_EXPORTED', () => {
-      expect(getStatusColor('STATUS_06_EXPORTED')).toBe('bg-indigo-100 text-indigo-800');
+      expect(getStatusColor('STATUS_06_EXPORTED')).toBe(
+        'bg-indigo-100 text-indigo-800',
+      );
     });
 
     it('should return teal for STATUS_08_DEPLOYED', () => {
-      expect(getStatusColor('STATUS_08_DEPLOYED')).toBe('bg-teal-100 text-teal-800');
+      expect(getStatusColor('STATUS_08_DEPLOYED')).toBe(
+        'bg-teal-100 text-teal-800',
+      );
     });
 
     it('should return orange for suspended', () => {
@@ -58,11 +70,15 @@ describe('statusColors', () => {
     });
 
     it('should return yellow for under_review', () => {
-      expect(getStatusColor('under_review')).toBe('bg-yellow-100 text-yellow-800');
+      expect(getStatusColor('under_review')).toBe(
+        'bg-yellow-100 text-yellow-800',
+      );
     });
 
     it('should return yellow for under review', () => {
-      expect(getStatusColor('under review')).toBe('bg-yellow-100 text-yellow-800');
+      expect(getStatusColor('under review')).toBe(
+        'bg-yellow-100 text-yellow-800',
+      );
     });
 
     it('should return yellow for pending', () => {
@@ -70,11 +86,15 @@ describe('statusColors', () => {
     });
 
     it('should return yellow for pending_approval', () => {
-      expect(getStatusColor('pending_approval')).toBe('bg-yellow-100 text-yellow-800');
+      expect(getStatusColor('pending_approval')).toBe(
+        'bg-yellow-100 text-yellow-800',
+      );
     });
 
     it('should return yellow for pending approval', () => {
-      expect(getStatusColor('pending approval')).toBe('bg-yellow-100 text-yellow-800');
+      expect(getStatusColor('pending approval')).toBe(
+        'bg-yellow-100 text-yellow-800',
+      );
     });
 
     it('should return green for approved', () => {
@@ -98,11 +118,15 @@ describe('statusColors', () => {
     });
 
     it('should return indigo for ready_for_deployment', () => {
-      expect(getStatusColor('ready_for_deployment')).toBe('bg-indigo-100 text-indigo-800');
+      expect(getStatusColor('ready_for_deployment')).toBe(
+        'bg-indigo-100 text-indigo-800',
+      );
     });
 
     it('should return indigo for ready for deployment', () => {
-      expect(getStatusColor('ready for deployment')).toBe('bg-indigo-100 text-indigo-800');
+      expect(getStatusColor('ready for deployment')).toBe(
+        'bg-indigo-100 text-indigo-800',
+      );
     });
 
     it('should return indigo for ready', () => {
@@ -118,11 +142,15 @@ describe('statusColors', () => {
     });
 
     it('should return purple for changes_requested', () => {
-      expect(getStatusColor('changes_requested')).toBe('bg-purple-100 text-purple-800');
+      expect(getStatusColor('changes_requested')).toBe(
+        'bg-purple-100 text-purple-800',
+      );
     });
 
     it('should return purple for changes requested', () => {
-      expect(getStatusColor('changes requested')).toBe('bg-purple-100 text-purple-800');
+      expect(getStatusColor('changes requested')).toBe(
+        'bg-purple-100 text-purple-800',
+      );
     });
 
     it('should return gray for in-active', () => {
@@ -142,7 +170,9 @@ describe('statusColors', () => {
     });
 
     it('should trim whitespace from status', () => {
-      expect(getStatusColor('  approved  ')).toBe('bg-green-100 text-green-800');
+      expect(getStatusColor('  approved  ')).toBe(
+        'bg-green-100 text-green-800',
+      );
     });
 
     it('should fallback to gray for malformed STATUS prefix without name segment', () => {
@@ -204,11 +234,15 @@ describe('statusColors', () => {
     });
 
     it('should return READY FOR DEPLOYMENT for ready_for_deployment', () => {
-      expect(getStatusLabel('ready_for_deployment')).toBe('READY FOR DEPLOYMENT');
+      expect(getStatusLabel('ready_for_deployment')).toBe(
+        'READY FOR DEPLOYMENT',
+      );
     });
 
     it('should return READY FOR DEPLOYMENT for ready for deployment', () => {
-      expect(getStatusLabel('ready for deployment')).toBe('READY FOR DEPLOYMENT');
+      expect(getStatusLabel('ready for deployment')).toBe(
+        'READY FOR DEPLOYMENT',
+      );
     });
 
     it('should return READY FOR DEPLOYMENT for ready', () => {

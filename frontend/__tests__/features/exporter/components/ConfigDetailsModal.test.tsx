@@ -120,9 +120,13 @@ describe('features/exporter/components/ConfigDetailsModal.tsx', () => {
     expect(screen.queryByText('Schema:')).not.toBeInTheDocument();
     expect(screen.getAllByText('N/A').length).toBeGreaterThan(4);
 
-    const headerCloseButton = container.querySelector('button.text-gray-400') as HTMLButtonElement;
+    const headerCloseButton = container.querySelector(
+      'button.text-gray-400',
+    ) as HTMLButtonElement;
     fireEvent.click(headerCloseButton);
-    const backdrop = container.querySelector('.fixed.inset-0.bg-black') as HTMLDivElement;
+    const backdrop = container.querySelector(
+      '.fixed.inset-0.bg-black',
+    ) as HTMLDivElement;
     fireEvent.click(backdrop);
 
     expect(onClose).toHaveBeenCalledTimes(2);

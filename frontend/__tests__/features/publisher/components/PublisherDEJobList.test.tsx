@@ -10,14 +10,17 @@ jest.mock('../../../../src/shared/utils/statusColors', () => ({
   getStatusLabel: (status: string) => statusLabelMock(status),
 }));
 
-jest.mock('../../../../src/shared/components/DropdownMenuWithAutoDirection', () => ({
-  DropdownMenuWithAutoDirection: (props: any) => (
-    <div data-testid={`dropdown-${props.forceDirection}`}>
-      <button onClick={props.onClose}>close-dropdown</button>
-      {props.children}
-    </div>
-  ),
-}));
+jest.mock(
+  '../../../../src/shared/components/DropdownMenuWithAutoDirection',
+  () => ({
+    DropdownMenuWithAutoDirection: (props: any) => (
+      <div data-testid={`dropdown-${props.forceDirection}`}>
+        <button onClick={props.onClose}>close-dropdown</button>
+        {props.children}
+      </div>
+    ),
+  }),
+);
 
 describe('features/publisher/components/PublisherDEJobList.tsx', () => {
   beforeEach(() => {
@@ -45,18 +48,42 @@ describe('features/publisher/components/PublisherDEJobList.tsx', () => {
   });
 
   it('shows no-match state when search filters out all jobs', () => {
-    render(<PublisherDEJobList jobs={[activeJob]} searchQuery="missing-value" />);
-    expect(screen.getByText('No DE jobs match your search')).toBeInTheDocument();
+    render(
+      <PublisherDEJobList jobs={[activeJob]} searchQuery="missing-value" />,
+    );
+    expect(
+      screen.getByText('No DE jobs match your search'),
+    ).toBeInTheDocument();
   });
 
   it('filters by endpoint, table name, and type', () => {
     const jobs = [
-      { ...activeJob, id: 'endpoint-match', endpoint_name: 'alpha-endpoint', table_name: 'x_table', type: 'pull' },
-      { ...activeJob, id: 'table-match', endpoint_name: 'beta', table_name: 'table-search', type: 'pull' },
-      { ...activeJob, id: 'type-match', endpoint_name: 'gamma', table_name: 'misc', type: 'push' },
+      {
+        ...activeJob,
+        id: 'endpoint-match',
+        endpoint_name: 'alpha-endpoint',
+        table_name: 'x_table',
+        type: 'pull',
+      },
+      {
+        ...activeJob,
+        id: 'table-match',
+        endpoint_name: 'beta',
+        table_name: 'table-search',
+        type: 'pull',
+      },
+      {
+        ...activeJob,
+        id: 'type-match',
+        endpoint_name: 'gamma',
+        table_name: 'misc',
+        type: 'push',
+      },
     ] as any;
 
-    const { rerender } = render(<PublisherDEJobList jobs={jobs} searchQuery="alpha" />);
+    const { rerender } = render(
+      <PublisherDEJobList jobs={jobs} searchQuery="alpha" />,
+    );
     expect(screen.getByText('/tenant-alpha-/x_table')).toBeInTheDocument();
 
     rerender(<PublisherDEJobList jobs={jobs} searchQuery="table-search" />);
@@ -105,10 +132,23 @@ describe('features/publisher/components/PublisherDEJobList.tsx', () => {
       publishing_status: 'in-active',
     };
 
-    render(<PublisherDEJobList jobs={[fallbackPull, pullWithNullTable, pushWithoutPath, pushWithPath] as any} />);
+    render(
+      <PublisherDEJobList
+        jobs={
+          [
+            fallbackPull,
+            pullWithNullTable,
+            pushWithoutPath,
+            pushWithPath,
+          ] as any
+        }
+      />,
+    );
 
     expect(screen.getByText('/tenant-001/')).toBeInTheDocument();
-    expect(screen.getByText('/tenant-pull-e/pull-endpoint')).toBeInTheDocument();
+    expect(
+      screen.getByText('/tenant-pull-e/pull-endpoint'),
+    ).toBeInTheDocument();
     expect(screen.getByText('/tenant-push-e/data')).toBeInTheDocument();
     expect(screen.getByText('/custom/path')).toBeInTheDocument();
 
@@ -130,8 +170,19 @@ describe('features/publisher/components/PublisherDEJobList.tsx', () => {
 
     const jobs = [
       { ...activeJob, id: 'top-row', publishing_status: 'active' },
-      { ...activeJob, id: 'middle-row', publishing_status: 'in-active', type: undefined, config_type: 'PUSH' },
-      { ...activeJob, id: 'last-row', publishing_status: 'in-active', type: 'pull' },
+      {
+        ...activeJob,
+        id: 'middle-row',
+        publishing_status: 'in-active',
+        type: undefined,
+        config_type: 'PUSH',
+      },
+      {
+        ...activeJob,
+        id: 'last-row',
+        publishing_status: 'in-active',
+        type: 'pull',
+      },
     ] as any;
 
     render(
@@ -162,7 +213,9 @@ describe('features/publisher/components/PublisherDEJobList.tsx', () => {
     fireEvent.click(actionButtons[2]);
     expect(screen.getByTestId('dropdown-top')).toBeInTheDocument();
 
-    const insideElement = document.querySelector('.actions-dropdown') as HTMLElement;
+    const insideElement = document.querySelector(
+      '.actions-dropdown',
+    ) as HTMLElement;
     fireEvent.click(insideElement);
     expect(screen.getByTestId('dropdown-top')).toBeInTheDocument();
 

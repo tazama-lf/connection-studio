@@ -15,7 +15,13 @@ describe('SearchBar', () => {
   });
 
   it('renders a custom placeholder', () => {
-    render(<SearchBar searchTerm="" setSearchTerm={jest.fn()} placeholder="Find items..." />);
+    render(
+      <SearchBar
+        searchTerm=""
+        setSearchTerm={jest.fn()}
+        placeholder="Find items..."
+      />,
+    );
     expect(screen.getByPlaceholderText('Find items...')).toBeInTheDocument();
   });
 

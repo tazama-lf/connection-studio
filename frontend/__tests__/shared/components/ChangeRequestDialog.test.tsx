@@ -16,12 +16,16 @@ describe('ChangeRequestDialog', () => {
 
   it('renders dialog when open', () => {
     render(<ChangeRequestDialog {...baseProps} />);
-    expect(screen.getByText('Rejection Confirmation Required!')).toBeInTheDocument();
+    expect(
+      screen.getByText('Rejection Confirmation Required!'),
+    ).toBeInTheDocument();
   });
 
   it('does not render when closed', () => {
     render(<ChangeRequestDialog {...baseProps} isOpen={false} />);
-    expect(screen.queryByText('Rejection Confirmation Required!')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Rejection Confirmation Required!'),
+    ).not.toBeInTheDocument();
   });
 
   it('shows the configName in the dialog', () => {

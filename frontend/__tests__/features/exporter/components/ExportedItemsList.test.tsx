@@ -46,7 +46,11 @@ describe('features/exporter/components/ExportedItemsList.tsx', () => {
   it('renders file and calls onViewDetails', () => {
     const onViewDetails = jest.fn();
     render(
-      <ExportedItemsList files={files} onViewDetails={onViewDetails} format="de" />,
+      <ExportedItemsList
+        files={files}
+        onViewDetails={onViewDetails}
+        format="de"
+      />,
     );
 
     expect(screen.getByText('file-1.json')).toBeInTheDocument();
@@ -207,7 +211,9 @@ describe('features/exporter/components/ExportedItemsList.tsx', () => {
 
     expect(addListenerSpy).toHaveBeenCalledWith('click', expect.any(Function));
 
-    const clickHandler = addListenerSpy.mock.calls.find((call) => call[0] === 'click')?.[1] as EventListener;
+    const clickHandler = addListenerSpy.mock.calls.find(
+      (call) => call[0] === 'click',
+    )?.[1] as EventListener;
     clickHandler({ target: document.createElement('div') } as unknown as Event);
 
     const inside = document.createElement('div');
@@ -215,7 +221,10 @@ describe('features/exporter/components/ExportedItemsList.tsx', () => {
     clickHandler({ target: inside } as unknown as Event);
 
     unmount();
-    expect(removeListenerSpy).toHaveBeenCalledWith('click', expect.any(Function));
+    expect(removeListenerSpy).toHaveBeenCalledWith(
+      'click',
+      expect.any(Function),
+    );
 
     addListenerSpy.mockRestore();
     removeListenerSpy.mockRestore();
@@ -240,14 +249,20 @@ describe('features/exporter/components/ExportedItemsList.tsx', () => {
 
     expect(screen.getByText('No exported cron jobs yet')).toBeInTheDocument();
     expect(
-      screen.getByText('Exported cron jobs will appear here when they are ready for deployment'),
+      screen.getByText(
+        'Exported cron jobs will appear here when they are ready for deployment',
+      ),
     ).toBeInTheDocument();
 
     rerender(<ExportedItemsList files={[]} format="dems" />);
 
-    expect(screen.getByText('No exported dems configurations yet')).toBeInTheDocument();
     expect(
-      screen.getByText('Exported dems configurations will appear here when they are ready for deployment'),
+      screen.getByText('No exported dems configurations yet'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Exported dems configurations will appear here when they are ready for deployment',
+      ),
     ).toBeInTheDocument();
   });
 
@@ -272,8 +287,8 @@ describe('features/exporter/components/ExportedItemsList.tsx', () => {
         files={demsFiles}
         format="dems"
         searchQuery="match-by-name"
-      />,)
-    ;
+      />,
+    );
 
     await waitFor(() => {
       expect(screen.getByText('/unrelated-endpoint')).toBeInTheDocument();

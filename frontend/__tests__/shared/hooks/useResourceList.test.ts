@@ -127,7 +127,9 @@ describe('useResourceList', () => {
 
   it('handleView fetches details when getById exists', async () => {
     const load = jest.fn().mockResolvedValue({ data: [], pages: 0, total: 0 });
-    const getById = jest.fn().mockResolvedValue({ id: '22', name: 'Fetched item' });
+    const getById = jest
+      .fn()
+      .mockResolvedValue({ id: '22', name: 'Fetched item' });
     const options = { apiHandlers: { load, getById } };
 
     const { result } = renderHook(() => useResourceList<TestResource>(options));
@@ -137,7 +139,10 @@ describe('useResourceList', () => {
     });
 
     expect(getById).toHaveBeenCalledWith('22', 'PULL');
-    expect(result.current.selectedResource).toEqual({ id: '22', name: 'Fetched item' });
+    expect(result.current.selectedResource).toEqual({
+      id: '22',
+      name: 'Fetched item',
+    });
     expect(result.current.editMode).toBe(false);
   });
 
@@ -166,7 +171,9 @@ describe('useResourceList', () => {
       await result.current.handleView('22', 'PULL');
     });
 
-    expect(mockShowError).toHaveBeenCalledWith('Failed to load resource details');
+    expect(mockShowError).toHaveBeenCalledWith(
+      'Failed to load resource details',
+    );
   });
 
   it('handleEdit sets edit mode directly when getById is missing', async () => {
@@ -186,7 +193,9 @@ describe('useResourceList', () => {
 
   it('handleEdit fetches details using uppercase type when getById exists', async () => {
     const load = jest.fn().mockResolvedValue({ data: [], pages: 0, total: 0 });
-    const getById = jest.fn().mockResolvedValue({ id: '10', name: 'Fetched for edit' });
+    const getById = jest
+      .fn()
+      .mockResolvedValue({ id: '10', name: 'Fetched for edit' });
     const options = { apiHandlers: { load, getById } };
 
     const { result } = renderHook(() => useResourceList<TestResource>(options));
@@ -197,13 +206,18 @@ describe('useResourceList', () => {
     });
 
     expect(getById).toHaveBeenCalledWith('10', 'PULL');
-    expect(result.current.selectedResource).toEqual({ id: '10', name: 'Fetched for edit' });
+    expect(result.current.selectedResource).toEqual({
+      id: '10',
+      name: 'Fetched for edit',
+    });
     expect(result.current.editMode).toBe(true);
   });
 
   it('handleEdit passes undefined type when resource type is missing', async () => {
     const load = jest.fn().mockResolvedValue({ data: [], pages: 0, total: 0 });
-    const getById = jest.fn().mockResolvedValue({ id: '11', name: 'Fetched without type' });
+    const getById = jest
+      .fn()
+      .mockResolvedValue({ id: '11', name: 'Fetched without type' });
     const options = { apiHandlers: { load, getById } };
 
     const { result } = renderHook(() => useResourceList<TestResource>(options));
@@ -213,7 +227,10 @@ describe('useResourceList', () => {
     });
 
     expect(getById).toHaveBeenCalledWith('11', undefined);
-    expect(result.current.selectedResource).toEqual({ id: '11', name: 'Fetched without type' });
+    expect(result.current.selectedResource).toEqual({
+      id: '11',
+      name: 'Fetched without type',
+    });
     expect(result.current.editMode).toBe(true);
   });
 
@@ -229,7 +246,9 @@ describe('useResourceList', () => {
       await result.current.handleEdit(resource);
     });
 
-    expect(mockShowError).toHaveBeenCalledWith('Failed to load resource details for edit');
+    expect(mockShowError).toHaveBeenCalledWith(
+      'Failed to load resource details for edit',
+    );
   });
 
   it('setPage updates current page', () => {
@@ -322,7 +341,11 @@ describe('useResourceList', () => {
     expect(result.current.confirmDialog).toEqual(newDialog);
 
     act(() => {
-      result.current.setConfirmDialog({ open: false, type: '', resource: null });
+      result.current.setConfirmDialog({
+        open: false,
+        type: '',
+        resource: null,
+      });
     });
 
     expect(result.current.confirmDialog.open).toBe(false);
@@ -340,6 +363,9 @@ describe('useResourceList', () => {
       result.current.setSearchingFilters({ name: 'test', status: 'active' });
     });
 
-    expect(result.current.searchingFilters).toEqual({ name: 'test', status: 'active' });
+    expect(result.current.searchingFilters).toEqual({
+      name: 'test',
+      status: 'active',
+    });
   });
 });

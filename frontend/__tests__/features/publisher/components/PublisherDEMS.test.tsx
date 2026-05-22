@@ -12,9 +12,13 @@ describe('features/publisher/components/PublisherDEMS.tsx', () => {
     render(<PublisherDEMS onBack={onBack} />);
 
     expect(screen.getByText('DEMS - Endpoint Deployment')).toBeInTheDocument();
-    expect(screen.getByText('No endpoints ready for deployment')).toBeInTheDocument();
+    expect(
+      screen.getByText('No endpoints ready for deployment'),
+    ).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: /Back to Dashboard/i }));
+    await user.click(
+      screen.getByRole('button', { name: /Back to Dashboard/i }),
+    );
     expect(onBack).toHaveBeenCalledTimes(1);
   });
 

@@ -33,7 +33,9 @@ describe('features/exporter/components/ExporterConfigList.tsx', () => {
       />,
     );
 
-    expect(screen.getByText('No configurations match your search')).toBeInTheDocument();
+    expect(
+      screen.getByText('No configurations match your search'),
+    ).toBeInTheDocument();
     fireEvent.click(screen.getByText('Refresh'));
     expect(onRefresh).toHaveBeenCalled();
   });
@@ -44,7 +46,9 @@ describe('features/exporter/components/ExporterConfigList.tsx', () => {
       <ExporterConfigList configs={configs} onViewDetails={onViewDetails} />,
     );
 
-    const actionButton = container.querySelector('.actions-dropdown button') as HTMLButtonElement;
+    const actionButton = container.querySelector(
+      '.actions-dropdown button',
+    ) as HTMLButtonElement;
     fireEvent.click(actionButton);
 
     fireEvent.click(screen.getByText('View'));
@@ -56,7 +60,9 @@ describe('features/exporter/components/ExporterConfigList.tsx', () => {
       <ExporterConfigList configs={configs} onViewDetails={jest.fn()} />,
     );
 
-    const actionButton = container.querySelector('.actions-dropdown button') as HTMLButtonElement;
+    const actionButton = container.querySelector(
+      '.actions-dropdown button',
+    ) as HTMLButtonElement;
     fireEvent.click(actionButton);
     expect(screen.getByText('View')).toBeInTheDocument();
 
@@ -66,20 +72,46 @@ describe('features/exporter/components/ExporterConfigList.tsx', () => {
 
   it('shows empty state when configs are empty without search query', () => {
     render(<ExporterConfigList configs={[]} />);
-    expect(screen.getByText('No approved configurations yet')).toBeInTheDocument();
-    expect(screen.getByText('Approved configurations will appear here when they are ready for export')).toBeInTheDocument();
+    expect(
+      screen.getByText('No approved configurations yet'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Approved configurations will appear here when they are ready for export',
+      ),
+    ).toBeInTheDocument();
   });
 
   it('renders without onRefresh when configs are empty and no search query', () => {
     render(<ExporterConfigList configs={[]} />);
-    expect(screen.queryByRole('button', { name: /refresh/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /refresh/i }),
+    ).not.toBeInTheDocument();
   });
 
   it('renders multiple configs with forceDirection (middle row = auto, last row = top)', () => {
     const multipleConfigs = [
-      { id: 1, endpointPath: '/path1', transactionType: 'credit', status: 'approved', createdAt: '2024-01-01T00:00:00.000Z' },
-      { id: 2, endpointPath: '/path2', transactionType: null, status: null, createdAt: null },
-      { id: 3, endpointPath: '/path3', transactionType: 'debit', status: 'approved', createdAt: '2024-03-01T00:00:00.000Z' },
+      {
+        id: 1,
+        endpointPath: '/path1',
+        transactionType: 'credit',
+        status: 'approved',
+        createdAt: '2024-01-01T00:00:00.000Z',
+      },
+      {
+        id: 2,
+        endpointPath: '/path2',
+        transactionType: null,
+        status: null,
+        createdAt: null,
+      },
+      {
+        id: 3,
+        endpointPath: '/path3',
+        transactionType: 'debit',
+        status: 'approved',
+        createdAt: '2024-03-01T00:00:00.000Z',
+      },
     ] as any;
 
     render(<ExporterConfigList configs={multipleConfigs} />);
@@ -96,7 +128,9 @@ describe('features/exporter/components/ExporterConfigList.tsx', () => {
       <ExporterConfigList configs={configs} onViewDetails={jest.fn()} />,
     );
 
-    const actionButton = container.querySelector('.actions-dropdown button') as HTMLButtonElement;
+    const actionButton = container.querySelector(
+      '.actions-dropdown button',
+    ) as HTMLButtonElement;
     // Open
     fireEvent.click(actionButton);
     expect(screen.getByText('View')).toBeInTheDocument();

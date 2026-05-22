@@ -3,8 +3,12 @@ import { render, screen } from '@testing-library/react';
 
 const useAuthMock = jest.fn();
 
-jest.mock('@mui/material/Typography', () => (props: any) => <span>{props.children}</span>);
-jest.mock('@mui/material/Box', () => (props: any) => <div>{props.children}</div>);
+jest.mock('@mui/material/Typography', () => (props: any) => (
+  <span>{props.children}</span>
+));
+jest.mock('@mui/material/Box', () => (props: any) => (
+  <div>{props.children}</div>
+));
 
 jest.mock('../../../../src/features/auth/contexts/AuthContext', () => ({
   useAuth: () => useAuthMock(),

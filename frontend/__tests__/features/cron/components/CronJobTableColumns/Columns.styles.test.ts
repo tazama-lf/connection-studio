@@ -4,19 +4,20 @@ const optionsSeen: any[] = [];
 const styleFns: Array<(p: any) => any> = [];
 
 jest.mock('@mui/material/styles', () => ({
-  styled:
-    (_Comp: any, options?: any) =>
-    (styleArg: any) => {
-      optionsSeen.push(options);
-      if (typeof styleArg === 'function') {
-        styleFns.push(styleArg);
-        styleArg({});
-      }
-      return (_props: any) => React.createElement('div', null);
-    },
+  styled: (_Comp: any, options?: any) => (styleArg: any) => {
+    optionsSeen.push(options);
+    if (typeof styleArg === 'function') {
+      styleFns.push(styleArg);
+      styleArg({});
+    }
+    return (_props: any) => React.createElement('div', null);
+  },
 }));
 
-    jest.mock('@mui/material/Box', () => ({ __esModule: true, default: (_props: any) => React.createElement('div', null) }));
+jest.mock('@mui/material/Box', () => ({
+  __esModule: true,
+  default: (_props: any) => React.createElement('div', null),
+}));
 
 import * as Styles from '../../../../../../src/features/cron/components/CronJobTableColumns/Columns.styles';
 
@@ -46,4 +47,3 @@ describe('features/cron/components/CronJobTableColumns/Columns.styles.ts', () =>
     expect(optionsSeen.length).toBeGreaterThan(0);
   });
 });
-

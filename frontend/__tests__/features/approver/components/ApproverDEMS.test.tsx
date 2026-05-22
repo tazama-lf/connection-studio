@@ -53,22 +53,29 @@ jest.mock('../../../../src/features/config/components/ConfigList', () => ({
   },
 }));
 
-jest.mock('../../../../src/features/approver/components/ApproverConfigDetailsModal', () => ({
-  ApproverConfigDetailsModal: (props: any) => (
-    <div data-testid="approver-modal">
-      <div data-testid="modal-open">{String(props.isOpen)}</div>
-      <div data-testid="modal-config-id">{props.config?.id ?? 'none'}</div>
-      <button data-testid="modal-close" onClick={props.onClose}>modal-close</button>
-      <button data-testid="modal-approve" onClick={() => props.onApprove(10)}>modal-approve</button>
-      <button
-        data-testid="modal-reject"
-        onClick={() => props.onReject({ id: 11, name: 'Modal Reject' })}
-      >
-        modal-reject
-      </button>
-    </div>
-  ),
-}));
+jest.mock(
+  '../../../../src/features/approver/components/ApproverConfigDetailsModal',
+  () => ({
+    ApproverConfigDetailsModal: (props: any) => (
+      <div data-testid="approver-modal">
+        <div data-testid="modal-open">{String(props.isOpen)}</div>
+        <div data-testid="modal-config-id">{props.config?.id ?? 'none'}</div>
+        <button data-testid="modal-close" onClick={props.onClose}>
+          modal-close
+        </button>
+        <button data-testid="modal-approve" onClick={() => props.onApprove(10)}>
+          modal-approve
+        </button>
+        <button
+          data-testid="modal-reject"
+          onClick={() => props.onReject({ id: 11, name: 'Modal Reject' })}
+        >
+          modal-reject
+        </button>
+      </div>
+    ),
+  }),
+);
 
 import ApproverDEMS from '../../../../src/features/approver/components/ApproverDEMS';
 
@@ -76,7 +83,9 @@ describe('features/approver/components/ApproverDEMS.tsx', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     capturedConfigListProps.length = 0;
-    useAuthMock.mockReturnValue({ user: { email: 'approver@tazama.io', username: 'approver-user' } });
+    useAuthMock.mockReturnValue({
+      user: { email: 'approver@tazama.io', username: 'approver-user' },
+    });
     (global as any).prompt = jest.fn(() => 'reason from prompt');
   });
 
@@ -84,7 +93,9 @@ describe('features/approver/components/ApproverDEMS.tsx', () => {
     const onBack = jest.fn();
     render(<ApproverDEMS onBack={onBack} />);
 
-    expect(screen.getAllByText('Dynamic Event Monitoring Service').length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText('Dynamic Event Monitoring Service').length,
+    ).toBeGreaterThan(0);
     expect(screen.getByText('Pending Approvals')).toBeInTheDocument();
     expect(screen.getByTestId('config-list')).toBeInTheDocument();
 
@@ -101,10 +112,15 @@ describe('features/approver/components/ApproverDEMS.tsx', () => {
     approveConfigMock.mockResolvedValueOnce({ success: true });
     fireEvent.click(screen.getByTestId('approve-btn'));
     await waitFor(() => {
-      expect(showSuccessMock).toHaveBeenCalledWith('Configuration approved successfully and sent for deployment');
+      expect(showSuccessMock).toHaveBeenCalledWith(
+        'Configuration approved successfully and sent for deployment',
+      );
     });
 
-    approveConfigMock.mockResolvedValueOnce({ success: false, message: 'approve-message' });
+    approveConfigMock.mockResolvedValueOnce({
+      success: false,
+      message: 'approve-message',
+    });
     fireEvent.click(screen.getByTestId('approve-btn'));
     await waitFor(() => {
       expect(showErrorMock).toHaveBeenCalledWith('approve-message');
@@ -113,13 +129,17 @@ describe('features/approver/components/ApproverDEMS.tsx', () => {
     approveConfigMock.mockResolvedValueOnce({ success: false });
     fireEvent.click(screen.getByTestId('approve-btn'));
     await waitFor(() => {
-      expect(showErrorMock).toHaveBeenCalledWith('Failed to approve configuration');
+      expect(showErrorMock).toHaveBeenCalledWith(
+        'Failed to approve configuration',
+      );
     });
 
     approveConfigMock.mockRejectedValueOnce(new Error('approve-crash'));
     fireEvent.click(screen.getByTestId('approve-btn'));
     await waitFor(() => {
-      expect(showErrorMock).toHaveBeenCalledWith('Failed to approve configuration. Please try again.');
+      expect(showErrorMock).toHaveBeenCalledWith(
+        'Failed to approve configuration. Please try again.',
+      );
     });
   });
 
@@ -130,20 +150,33 @@ describe('features/approver/components/ApproverDEMS.tsx', () => {
     rejectConfigMock.mockResolvedValueOnce({ success: true });
     fireEvent.click(screen.getByTestId('reject-btn'));
     await waitFor(() => {
-      expect(showSuccessMock).toHaveBeenCalledWith('Configuration rejected and returned to editor for changes');
+      expect(showSuccessMock).toHaveBeenCalledWith(
+        'Configuration rejected and returned to editor for changes',
+      );
     });
-    expect(rejectConfigMock).toHaveBeenCalledWith(8, 'approver@tazama.io', 'reason from prompt');
+    expect(rejectConfigMock).toHaveBeenCalledWith(
+      8,
+      'approver@tazama.io',
+      'reason from prompt',
+    );
 
     first.unmount();
     (global as any).prompt = jest.fn(() => null);
     useAuthMock.mockReturnValue({ user: { username: 'fallback-user' } });
     const second = render(<ApproverDEMS onBack={onBack} />);
-    rejectConfigMock.mockResolvedValueOnce({ success: false, message: 'reject-message' });
+    rejectConfigMock.mockResolvedValueOnce({
+      success: false,
+      message: 'reject-message',
+    });
     fireEvent.click(screen.getByTestId('reject-btn'));
     await waitFor(() => {
       expect(showErrorMock).toHaveBeenCalledWith('reject-message');
     });
-    expect(rejectConfigMock).toHaveBeenCalledWith(8, 'fallback-user', 'Configuration rejected by approver');
+    expect(rejectConfigMock).toHaveBeenCalledWith(
+      8,
+      'fallback-user',
+      'Configuration rejected by approver',
+    );
 
     second.unmount();
     useAuthMock.mockReturnValue({ user: null });
@@ -152,14 +185,22 @@ describe('features/approver/components/ApproverDEMS.tsx', () => {
     rejectConfigMock.mockResolvedValueOnce({ success: false });
     fireEvent.click(screen.getByTestId('reject-btn'));
     await waitFor(() => {
-      expect(showErrorMock).toHaveBeenCalledWith('Failed to reject configuration');
+      expect(showErrorMock).toHaveBeenCalledWith(
+        'Failed to reject configuration',
+      );
     });
-    expect(rejectConfigMock).toHaveBeenCalledWith(8, 'system', 'Configuration rejected by approver');
+    expect(rejectConfigMock).toHaveBeenCalledWith(
+      8,
+      'system',
+      'Configuration rejected by approver',
+    );
 
     rejectConfigMock.mockRejectedValueOnce(new Error('reject-crash'));
     fireEvent.click(screen.getByTestId('reject-btn'));
     await waitFor(() => {
-      expect(showErrorMock).toHaveBeenCalledWith('Failed to reject configuration. Please try again.');
+      expect(showErrorMock).toHaveBeenCalledWith(
+        'Failed to reject configuration. Please try again.',
+      );
     });
   });
 
@@ -180,7 +221,11 @@ describe('features/approver/components/ApproverDEMS.tsx', () => {
     rejectConfigMock.mockResolvedValueOnce({ success: true });
     fireEvent.click(screen.getByTestId('modal-reject'));
     await waitFor(() => {
-      expect(rejectConfigMock).toHaveBeenCalledWith(11, 'approver@tazama.io', 'reason from prompt');
+      expect(rejectConfigMock).toHaveBeenCalledWith(
+        11,
+        'approver@tazama.io',
+        'reason from prompt',
+      );
     });
 
     fireEvent.click(screen.getByTestId('modal-close'));

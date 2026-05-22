@@ -38,7 +38,8 @@ jest.mock('../../../../../../src/utils/common/roleUtils', () => ({
 
 jest.mock('../../../../../../src/features/data-enrichment/handlers', () => ({
   handleUpdateJobStatus: (...args: any[]) => updateJobStatusMock(...args),
-  handleTogglePublishingStatus: (...args: any[]) => togglePublishingMock(...args),
+  handleTogglePublishingStatus: (...args: any[]) =>
+    togglePublishingMock(...args),
 }));
 
 jest.mock('lucide-react', () => {
@@ -62,12 +63,17 @@ jest.mock('@common/Tables/CustomTable', () => (props: any) => (
   <div data-testid="custom-table">
     <div>rows:{props.rows.length}</div>
     {props.columns.map((column: any) => (
-      <div key={`header-${column.field}`}>{column.renderHeader ? column.renderHeader() : null}</div>
+      <div key={`header-${column.field}`}>
+        {column.renderHeader ? column.renderHeader() : null}
+      </div>
     ))}
     {props.rows.map((row: any) => (
       <div key={`row-${row.id}`} data-testid={`row-${row.id}`}>
         {props.columns.map((column: any) => (
-          <div key={`${row.id}-${column.field}`} data-testid={`cell-${row.id}-${column.field}`}>
+          <div
+            key={`${row.id}-${column.field}`}
+            data-testid={`cell-${row.id}-${column.field}`}
+          >
             {column.renderCell ? column.renderCell({ row }) : row[column.field]}
           </div>
         ))}
@@ -161,7 +167,9 @@ describe('features/data-enrichment/components/JobList/index.tsx', () => {
 
     await waitFor(() => {
       expect(baseProps.onViewLogs).toHaveBeenCalledWith('job-1');
-      expect(baseProps.onEdit).toHaveBeenCalledWith(expect.objectContaining({ id: 'job-1' }));
+      expect(baseProps.onEdit).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'job-1' }),
+      );
     });
   });
 
@@ -169,7 +177,9 @@ describe('features/data-enrichment/components/JobList/index.tsx', () => {
     render(<JobList {...baseProps} />);
 
     fireEvent.click(screen.getByLabelText('pause-icon'));
-    expect(screen.getByText('Pause Confirmation Required!')).toBeInTheDocument();
+    expect(
+      screen.getByText('Pause Confirmation Required!'),
+    ).toBeInTheDocument();
 
     fireEvent.click(screen.getByText('Yes, Pause Job'));
 
@@ -200,7 +210,9 @@ describe('features/data-enrichment/components/JobList/index.tsx', () => {
     );
 
     fireEvent.click(screen.getByLabelText('play-icon'));
-    expect(screen.getByText('Resume Confirmation Required!')).toBeInTheDocument();
+    expect(
+      screen.getByText('Resume Confirmation Required!'),
+    ).toBeInTheDocument();
 
     fireEvent.click(screen.getByText('Yes, Resume Job'));
 
@@ -234,7 +246,9 @@ describe('features/data-enrichment/components/JobList/index.tsx', () => {
     );
 
     fireEvent.click(screen.getByLabelText('activate-icon'));
-    expect(screen.getByText('Activate Confirmation Required!')).toBeInTheDocument();
+    expect(
+      screen.getByText('Activate Confirmation Required!'),
+    ).toBeInTheDocument();
 
     fireEvent.click(screen.getByText('Yes, Activate Job'));
 
@@ -261,7 +275,9 @@ describe('features/data-enrichment/components/JobList/index.tsx', () => {
     );
 
     fireEvent.click(screen.getByLabelText('deactivate-icon'));
-    expect(screen.getByText('Deactivate Confirmation Required!')).toBeInTheDocument();
+    expect(
+      screen.getByText('Deactivate Confirmation Required!'),
+    ).toBeInTheDocument();
 
     fireEvent.click(screen.getByText('Yes, Deactivate Job'));
 
@@ -292,33 +308,47 @@ describe('features/data-enrichment/components/JobList/index.tsx', () => {
     );
 
     fireEvent.click(screen.getByLabelText('deactivate-icon'));
-    expect(screen.getByText('Deactivate Confirmation Required!')).toBeInTheDocument();
+    expect(
+      screen.getByText('Deactivate Confirmation Required!'),
+    ).toBeInTheDocument();
 
     fireEvent.click(screen.getByText('Cancel'));
-    expect(screen.queryByText('Deactivate Confirmation Required!')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Deactivate Confirmation Required!'),
+    ).not.toBeInTheDocument();
   });
 
   it('closes pause dialog via Cancel button (line 396)', () => {
     render(<JobList {...baseProps} />);
 
     fireEvent.click(screen.getByLabelText('pause-icon'));
-    expect(screen.getByText('Pause Confirmation Required!')).toBeInTheDocument();
+    expect(
+      screen.getByText('Pause Confirmation Required!'),
+    ).toBeInTheDocument();
     fireEvent.click(screen.getByText('Cancel'));
-    expect(screen.queryByText('Pause Confirmation Required!')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Pause Confirmation Required!'),
+    ).not.toBeInTheDocument();
   });
 
   it('closes resume dialog via Cancel button (line 459)', () => {
     render(
       <JobList
         {...baseProps}
-        jobs={[{ ...baseProps.jobs[0], id: 'job-r', status: 'STATUS_02_ON_HOLD' }]}
+        jobs={[
+          { ...baseProps.jobs[0], id: 'job-r', status: 'STATUS_02_ON_HOLD' },
+        ]}
       />,
     );
 
     fireEvent.click(screen.getByLabelText('play-icon'));
-    expect(screen.getByText('Resume Confirmation Required!')).toBeInTheDocument();
+    expect(
+      screen.getByText('Resume Confirmation Required!'),
+    ).toBeInTheDocument();
     fireEvent.click(screen.getByText('Cancel'));
-    expect(screen.queryByText('Resume Confirmation Required!')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Resume Confirmation Required!'),
+    ).not.toBeInTheDocument();
   });
 
   it('closes activate dialog via Cancel button (line 518)', () => {
@@ -326,14 +356,25 @@ describe('features/data-enrichment/components/JobList/index.tsx', () => {
     render(
       <JobList
         {...baseProps}
-        jobs={[{ ...baseProps.jobs[0], id: 'pub-c', publishing_status: 'in-active', type: 'push' }]}
+        jobs={[
+          {
+            ...baseProps.jobs[0],
+            id: 'pub-c',
+            publishing_status: 'in-active',
+            type: 'push',
+          },
+        ]}
       />,
     );
 
     fireEvent.click(screen.getByLabelText('activate-icon'));
-    expect(screen.getByText('Activate Confirmation Required!')).toBeInTheDocument();
+    expect(
+      screen.getByText('Activate Confirmation Required!'),
+    ).toBeInTheDocument();
     fireEvent.click(screen.getByText('Cancel'));
-    expect(screen.queryByText('Activate Confirmation Required!')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Activate Confirmation Required!'),
+    ).not.toBeInTheDocument();
   });
 
   it('invokes onRefresh callback after updateJobStatus (line 123)', async () => {
@@ -366,7 +407,9 @@ describe('features/data-enrichment/components/JobList/index.tsx', () => {
       <JobList
         {...baseProps}
         onRefresh={onRefreshMock}
-        jobs={[{ ...baseProps.jobs[0], id: 'pub-r', publishing_status: 'active' }]}
+        jobs={[
+          { ...baseProps.jobs[0], id: 'pub-r', publishing_status: 'active' },
+        ]}
       />,
     );
 
@@ -410,7 +453,9 @@ describe('features/data-enrichment/components/JobList/index.tsx', () => {
     render(
       <JobList
         {...propsWithoutRefresh}
-        jobs={[{ ...baseProps.jobs[0], id: 'pub-norr', publishing_status: 'active' }]}
+        jobs={[
+          { ...baseProps.jobs[0], id: 'pub-norr', publishing_status: 'active' },
+        ]}
       />,
     );
 

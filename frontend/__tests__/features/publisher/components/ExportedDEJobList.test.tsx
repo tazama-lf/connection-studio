@@ -14,12 +14,15 @@ jest.mock('../../../../src/shared/utils/statusColors', () => ({
   getStatusLabel: (status: string) => `label-${status}`,
 }));
 
-jest.mock('../../../../src/shared/components/DropdownMenuWithAutoDirection', () => ({
-  DropdownMenuWithAutoDirection: (props: any) => {
-    dropdownPropsHistory.push(props);
-    return <div data-testid="dropdown-menu">{props.children}</div>;
-  },
-}));
+jest.mock(
+  '../../../../src/shared/components/DropdownMenuWithAutoDirection',
+  () => ({
+    DropdownMenuWithAutoDirection: (props: any) => {
+      dropdownPropsHistory.push(props);
+      return <div data-testid="dropdown-menu">{props.children}</div>;
+    },
+  }),
+);
 
 import ExportedDEJobList from '../../../../src/features/publisher/components/ExportedDEJobList';
 
@@ -76,17 +79,25 @@ describe('features/publisher/components/ExportedDEJobList.tsx', () => {
 
   it('renders empty states with and without search query', () => {
     const { rerender } = render(<ExportedDEJobList jobs={[]} />);
-    expect(screen.getByText('There are no DE jobs ready for deployment.')).toBeInTheDocument();
+    expect(
+      screen.getByText('There are no DE jobs ready for deployment.'),
+    ).toBeInTheDocument();
 
     rerender(<ExportedDEJobList jobs={[]} searchQuery="abc" />);
-    expect(screen.getByText('No DE jobs match your search criteria.')).toBeInTheDocument();
+    expect(
+      screen.getByText('No DE jobs match your search criteria.'),
+    ).toBeInTheDocument();
   });
 
   it('renders rows, filters search, opens dropdown, and calls view action', () => {
     const onViewDetails = jest.fn();
 
     const { rerender } = render(
-      <ExportedDEJobList jobs={jobs} onViewDetails={onViewDetails} searchQuery="payments" />
+      <ExportedDEJobList
+        jobs={jobs}
+        onViewDetails={onViewDetails}
+        searchQuery="payments"
+      />,
     );
 
     expect(screen.getByText('Payments Endpoint')).toBeInTheDocument();

@@ -3,4 +3,3 @@ describe('shared/types/backend.types.ts', () => {
     await expect(import('@/shared/types/backend.types')).resolves.toBeDefined();
   });
 });
-

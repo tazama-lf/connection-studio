@@ -1,4 +1,7 @@
-import { FlowableApiService, flowableApi } from '../../../src/shared/services/flowableApi';
+import {
+  FlowableApiService,
+  flowableApi,
+} from '../../../src/shared/services/flowableApi';
 
 const mockLocalStorage = global.localStorage as jest.Mocked<Storage>;
 
@@ -14,7 +17,7 @@ describe('FlowableApiService', () => {
       const mockResponse = {
         success: true,
         message: 'Tasks fetched',
-        tasks: [{ id: '1', name: 'Approve Config' } ],
+        tasks: [{ id: '1', name: 'Approve Config' }],
       };
 
       (global.fetch as jest.Mock).mockResolvedValue({
@@ -29,7 +32,9 @@ describe('FlowableApiService', () => {
         expect.stringContaining('/flowable/tasks/approver'),
         expect.objectContaining({
           method: 'GET',
-          headers: expect.objectContaining({ Authorization: 'Bearer test-token' }),
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token',
+          }),
         }),
       );
       expect(result).toEqual(mockResponse);
@@ -54,7 +59,9 @@ describe('FlowableApiService', () => {
       (global.fetch as jest.Mock).mockResolvedValue({
         ok: false,
         status: 401,
-        json: async () => { throw new Error('JSON parse error'); },
+        json: async () => {
+          throw new Error('JSON parse error');
+        },
       });
 
       const result = await flowableApi.getTasksForRole('editor');
@@ -92,7 +99,9 @@ describe('FlowableApiService', () => {
       (global.fetch as jest.Mock).mockResolvedValue({
         ok: false,
         status: 503,
-        json: async () => { throw new Error('bad json'); },
+        json: async () => {
+          throw new Error('bad json');
+        },
       });
 
       await expect(flowableApi.getTasksForRole('approver')).rejects.toThrow(
@@ -173,11 +182,11 @@ describe('FlowableApiService', () => {
     });
   });
 
-  describe('401 error handling - window undefined branch', () => {
-    it('should handle 401 when window is undefined', async () => {
-      const originalWindow = global.window;
-      // @ts-ignore
-      delete (global as any).window;
+  describe('401 error handling - browser check branch', () => {
+    it('should skip window redirect when isBrowser returns false (server-side)', async () => {
+      jest
+        .spyOn(FlowableApiService as any, 'isBrowser')
+        .mockReturnValueOnce(false);
 
       const errorData = { success: false, message: 'Unauthorized' };
 
@@ -191,9 +200,6 @@ describe('FlowableApiService', () => {
 
       expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('authToken');
       expect(result).toEqual(errorData);
-
-      // Restore window
-      (global as any).window = originalWindow;
     });
   });
 });

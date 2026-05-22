@@ -3,7 +3,10 @@ import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import PublisherExportedItemsPage from '../../../../src/features/publisher/pages/PublisherExportedItemsPage';
 import { useToast } from '../../../../src/shared/providers/ToastProvider';
-import { sftpApi, SftpError } from '../../../../src/features/exporter/services/sftpApi';
+import {
+  sftpApi,
+  SftpError,
+} from '../../../../src/features/exporter/services/sftpApi';
 
 const mockShowError = jest.fn();
 const mockShowSuccess = jest.fn();
@@ -81,7 +84,7 @@ jest.mock(
         </div>
       );
     },
-  })
+  }),
 );
 
 jest.mock(
@@ -97,15 +100,13 @@ jest.mock(
           <div>Mock ExportedItemDetailsModal</div>
           <div data-testid="modal-loading">{String(props.isLoading)}</div>
           <div data-testid="modal-format">{props.format}</div>
-          <div data-testid="modal-content-id">{props.content?.id ?? 'no-content'}</div>
+          <div data-testid="modal-content-id">
+            {props.content?.id ?? 'no-content'}
+          </div>
           <button onClick={props.onClose}>Close Exported Item Modal</button>
           <button
             onClick={() =>
-              props.onPublish(
-                'publish-id-1',
-                props.format,
-                'PULL'
-              )
+              props.onPublish('publish-id-1', props.format, 'PULL')
             }
           >
             Publish Item
@@ -113,7 +114,7 @@ jest.mock(
         </div>
       );
     },
-  })
+  }),
 );
 
 describe('PublisherExportedItemsPage', () => {
@@ -162,14 +163,14 @@ describe('PublisherExportedItemsPage', () => {
     render(<PublisherExportedItemsPage />);
 
     expect(screen.getByRole('button', { name: /dems/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /cron jobs/i })).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: /data enrichment jobs/i })
+      screen.getByRole('button', { name: /cron jobs/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /data enrichment jobs/i }),
     ).toBeInTheDocument();
 
-    expect(
-      screen.getByPlaceholderText('Search DEMS...')
-    ).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Search DEMS...')).toBeInTheDocument();
 
     await waitFor(() => {
       expect(mockGetAllFiles).toHaveBeenCalledWith('dems');
@@ -188,10 +189,10 @@ describe('PublisherExportedItemsPage', () => {
       expect(capturedExportedItemsListProps.searchQuery).toBe('');
       expect(capturedExportedItemsListProps.format).toBe('dems');
       expect(capturedExportedItemsListProps.onViewDetails).toEqual(
-        expect.any(Function)
+        expect.any(Function),
       );
       expect(capturedExportedItemsListProps.onRefresh).toEqual(
-        expect.any(Function)
+        expect.any(Function),
       );
     });
 
@@ -225,7 +226,7 @@ describe('PublisherExportedItemsPage', () => {
     });
 
     expect(
-      screen.getByPlaceholderText('Search Cron Jobs...')
+      screen.getByPlaceholderText('Search Cron Jobs...'),
     ).toBeInTheDocument();
     expect(screen.getByTestId('active-format')).toHaveTextContent('cron');
   });
@@ -233,14 +234,16 @@ describe('PublisherExportedItemsPage', () => {
   it('switches to data enrichment tab and reloads files with de format', async () => {
     render(<PublisherExportedItemsPage />);
 
-    fireEvent.click(screen.getByRole('button', { name: /data enrichment jobs/i }));
+    fireEvent.click(
+      screen.getByRole('button', { name: /data enrichment jobs/i }),
+    );
 
     await waitFor(() => {
       expect(mockGetAllFiles).toHaveBeenLastCalledWith('de');
     });
 
     expect(
-      screen.getByPlaceholderText('Search Data Enrichment Jobs...')
+      screen.getByPlaceholderText('Search Data Enrichment Jobs...'),
     ).toBeInTheDocument();
     expect(screen.getByTestId('active-format')).toHaveTextContent('de');
   });
@@ -269,7 +272,9 @@ describe('PublisherExportedItemsPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /view file details/i }));
 
-    expect(screen.getByTestId('exported-item-details-modal')).toBeInTheDocument();
+    expect(
+      screen.getByTestId('exported-item-details-modal'),
+    ).toBeInTheDocument();
     expect(screen.getByTestId('modal-loading')).toHaveTextContent('true');
 
     await waitFor(() => {
@@ -278,7 +283,9 @@ describe('PublisherExportedItemsPage', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('modal-loading')).toHaveTextContent('false');
-      expect(screen.getByTestId('modal-content-id')).toHaveTextContent('content-1');
+      expect(screen.getByTestId('modal-content-id')).toHaveTextContent(
+        'content-1',
+      );
       expect(screen.getByTestId('modal-format')).toHaveTextContent('dems');
     });
 
@@ -304,16 +311,18 @@ describe('PublisherExportedItemsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /view file details/i }));
 
     await waitFor(() => {
-      expect(screen.getByTestId('exported-item-details-modal')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('exported-item-details-modal'),
+      ).toBeInTheDocument();
     });
 
     fireEvent.click(
-      screen.getByRole('button', { name: /close exported item modal/i })
+      screen.getByRole('button', { name: /close exported item modal/i }),
     );
 
     await waitFor(() => {
       expect(
-        screen.queryByTestId('exported-item-details-modal')
+        screen.queryByTestId('exported-item-details-modal'),
       ).not.toBeInTheDocument();
     });
   });
@@ -328,18 +337,24 @@ describe('PublisherExportedItemsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /view file details/i }));
 
     await waitFor(() => {
-      expect(screen.getByTestId('modal-content-id')).toHaveTextContent('content-1');
+      expect(screen.getByTestId('modal-content-id')).toHaveTextContent(
+        'content-1',
+      );
     });
 
     fireEvent.click(screen.getByRole('button', { name: /publish item/i }));
 
     await waitFor(() => {
-      expect(mockPublishItem).toHaveBeenCalledWith('publish-id-1', 'dems', 'PULL');
+      expect(mockPublishItem).toHaveBeenCalledWith(
+        'publish-id-1',
+        'dems',
+        'PULL',
+      );
     });
 
     await waitFor(() => {
       expect(mockShowSuccess).toHaveBeenCalledWith(
-        'DEMS Configuration published successfully'
+        'DEMS Configuration published successfully',
       );
     });
 
@@ -349,7 +364,7 @@ describe('PublisherExportedItemsPage', () => {
 
     await waitFor(() => {
       expect(
-        screen.queryByTestId('exported-item-details-modal')
+        screen.queryByTestId('exported-item-details-modal'),
       ).not.toBeInTheDocument();
     });
   });
@@ -366,14 +381,16 @@ describe('PublisherExportedItemsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /view file details/i }));
 
     await waitFor(() => {
-      expect(screen.getByTestId('exported-item-details-modal')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('exported-item-details-modal'),
+      ).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole('button', { name: /publish item/i }));
 
     await waitFor(() => {
       expect(mockShowSuccess).toHaveBeenCalledWith(
-        'Cron job published successfully'
+        'Cron job published successfully',
       );
     });
   });
@@ -381,7 +398,9 @@ describe('PublisherExportedItemsPage', () => {
   it('shows data enrichment-specific success message when publishing de item', async () => {
     render(<PublisherExportedItemsPage />);
 
-    fireEvent.click(screen.getByRole('button', { name: /data enrichment jobs/i }));
+    fireEvent.click(
+      screen.getByRole('button', { name: /data enrichment jobs/i }),
+    );
 
     await waitFor(() => {
       expect(screen.getByTestId('active-format')).toHaveTextContent('de');
@@ -390,14 +409,16 @@ describe('PublisherExportedItemsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /view file details/i }));
 
     await waitFor(() => {
-      expect(screen.getByTestId('exported-item-details-modal')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('exported-item-details-modal'),
+      ).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole('button', { name: /publish item/i }));
 
     await waitFor(() => {
       expect(mockShowSuccess).toHaveBeenCalledWith(
-        'Data enrichment job published successfully'
+        'Data enrichment job published successfully',
       );
     });
   });
@@ -408,7 +429,9 @@ describe('PublisherExportedItemsPage', () => {
     render(<PublisherExportedItemsPage />);
 
     await waitFor(() => {
-      expect(mockShowError).toHaveBeenCalledWith('Failed to load exported items');
+      expect(mockShowError).toHaveBeenCalledWith(
+        'Failed to load exported items',
+      );
     });
 
     expect(screen.getByTestId('files-count')).toHaveTextContent('0');
@@ -417,14 +440,14 @@ describe('PublisherExportedItemsPage', () => {
 
   it('shows corrupted file error when getAllFiles throws CORRUPTED_FILE', async () => {
     mockGetAllFiles.mockRejectedValueOnce(
-      new SftpError('bad file', 'CORRUPTED_FILE')
+      new SftpError('bad file', 'CORRUPTED_FILE'),
     );
 
     render(<PublisherExportedItemsPage />);
 
     await waitFor(() => {
       expect(mockShowError).toHaveBeenCalledWith(
-        'Some files appear to be corrupted or missing integrity verification'
+        'Some files appear to be corrupted or missing integrity verification',
       );
     });
 
@@ -433,35 +456,35 @@ describe('PublisherExportedItemsPage', () => {
 
   it('shows not found error when getAllFiles throws NOT_FOUND', async () => {
     mockGetAllFiles.mockRejectedValueOnce(
-      new SftpError('missing dir', 'NOT_FOUND')
+      new SftpError('missing dir', 'NOT_FOUND'),
     );
 
     render(<PublisherExportedItemsPage />);
 
     await waitFor(() => {
       expect(mockShowError).toHaveBeenCalledWith(
-        'SFTP directory not found or inaccessible'
+        'SFTP directory not found or inaccessible',
       );
     });
   });
 
   it('shows unauthorized error when getAllFiles throws UNAUTHORIZED', async () => {
     mockGetAllFiles.mockRejectedValueOnce(
-      new SftpError('forbidden', 'UNAUTHORIZED')
+      new SftpError('forbidden', 'UNAUTHORIZED'),
     );
 
     render(<PublisherExportedItemsPage />);
 
     await waitFor(() => {
       expect(mockShowError).toHaveBeenCalledWith(
-        'Unauthorized access to SFTP server'
+        'Unauthorized access to SFTP server',
       );
     });
   });
 
   it('shows custom SftpError message for unknown getAllFiles SftpError type', async () => {
     mockGetAllFiles.mockRejectedValueOnce(
-      new SftpError('custom list failure', 'GENERAL')
+      new SftpError('custom list failure', 'GENERAL'),
     );
 
     render(<PublisherExportedItemsPage />);
@@ -473,7 +496,7 @@ describe('PublisherExportedItemsPage', () => {
 
   it('shows corrupted file error and closes modal when readFile throws CORRUPTED_FILE', async () => {
     mockReadFile.mockRejectedValueOnce(
-      new SftpError('corrupted', 'CORRUPTED_FILE')
+      new SftpError('corrupted', 'CORRUPTED_FILE'),
     );
 
     render(<PublisherExportedItemsPage />);
@@ -486,21 +509,19 @@ describe('PublisherExportedItemsPage', () => {
 
     await waitFor(() => {
       expect(mockShowError).toHaveBeenCalledWith(
-        'File "file-1.json" is corrupted or has failed integrity verification. The file may be incomplete or damaged.'
+        'File "file-1.json" is corrupted or has failed integrity verification. The file may be incomplete or damaged.',
       );
     });
 
     await waitFor(() => {
       expect(
-        screen.queryByTestId('exported-item-details-modal')
+        screen.queryByTestId('exported-item-details-modal'),
       ).not.toBeInTheDocument();
     });
   });
 
   it('shows not found error when readFile throws NOT_FOUND', async () => {
-    mockReadFile.mockRejectedValueOnce(
-      new SftpError('missing', 'NOT_FOUND')
-    );
+    mockReadFile.mockRejectedValueOnce(new SftpError('missing', 'NOT_FOUND'));
 
     render(<PublisherExportedItemsPage />);
 
@@ -512,14 +533,14 @@ describe('PublisherExportedItemsPage', () => {
 
     await waitFor(() => {
       expect(mockShowError).toHaveBeenCalledWith(
-        'File "file-1.json" not found on the SFTP server'
+        'File "file-1.json" not found on the SFTP server',
       );
     });
   });
 
   it('shows unauthorized error when readFile throws UNAUTHORIZED', async () => {
     mockReadFile.mockRejectedValueOnce(
-      new SftpError('forbidden', 'UNAUTHORIZED')
+      new SftpError('forbidden', 'UNAUTHORIZED'),
     );
 
     render(<PublisherExportedItemsPage />);
@@ -532,14 +553,14 @@ describe('PublisherExportedItemsPage', () => {
 
     await waitFor(() => {
       expect(mockShowError).toHaveBeenCalledWith(
-        'Unauthorized access to read the file'
+        'Unauthorized access to read the file',
       );
     });
   });
 
   it('shows formatted unknown SftpError message when readFile fails', async () => {
     mockReadFile.mockRejectedValueOnce(
-      new SftpError('broken parse', 'UNKNOWN_ERROR')
+      new SftpError('broken parse', 'UNKNOWN_ERROR'),
     );
 
     render(<PublisherExportedItemsPage />);
@@ -552,7 +573,7 @@ describe('PublisherExportedItemsPage', () => {
 
     await waitFor(() => {
       expect(mockShowError).toHaveBeenCalledWith(
-        'Failed to read file "file-1.json": broken parse'
+        'Failed to read file "file-1.json": broken parse',
       );
     });
   });
@@ -570,14 +591,14 @@ describe('PublisherExportedItemsPage', () => {
 
     await waitFor(() => {
       expect(mockShowError).toHaveBeenCalledWith(
-        'Failed to load exported item details'
+        'Failed to load exported item details',
       );
     });
   });
 
   it('shows corrupted publish error when publishItem throws CORRUPTED_FILE', async () => {
     mockPublishItem.mockRejectedValueOnce(
-      new SftpError('bad publish', 'CORRUPTED_FILE')
+      new SftpError('bad publish', 'CORRUPTED_FILE'),
     );
 
     render(<PublisherExportedItemsPage />);
@@ -585,21 +606,23 @@ describe('PublisherExportedItemsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /view file details/i }));
 
     await waitFor(() => {
-      expect(screen.getByTestId('exported-item-details-modal')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('exported-item-details-modal'),
+      ).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole('button', { name: /publish item/i }));
 
     await waitFor(() => {
       expect(mockShowError).toHaveBeenCalledWith(
-        'Cannot publish: File is corrupted or has failed integrity verification'
+        'Cannot publish: File is corrupted or has failed integrity verification',
       );
     });
   });
 
   it('shows not found publish error when publishItem throws NOT_FOUND', async () => {
     mockPublishItem.mockRejectedValueOnce(
-      new SftpError('missing publish', 'NOT_FOUND')
+      new SftpError('missing publish', 'NOT_FOUND'),
     );
 
     render(<PublisherExportedItemsPage />);
@@ -607,21 +630,23 @@ describe('PublisherExportedItemsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /view file details/i }));
 
     await waitFor(() => {
-      expect(screen.getByTestId('exported-item-details-modal')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('exported-item-details-modal'),
+      ).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole('button', { name: /publish item/i }));
 
     await waitFor(() => {
       expect(mockShowError).toHaveBeenCalledWith(
-        'Cannot publish: Item not found or has been removed'
+        'Cannot publish: Item not found or has been removed',
       );
     });
   });
 
   it('shows unauthorized publish error when publishItem throws UNAUTHORIZED', async () => {
     mockPublishItem.mockRejectedValueOnce(
-      new SftpError('forbidden publish', 'UNAUTHORIZED')
+      new SftpError('forbidden publish', 'UNAUTHORIZED'),
     );
 
     render(<PublisherExportedItemsPage />);
@@ -629,21 +654,23 @@ describe('PublisherExportedItemsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /view file details/i }));
 
     await waitFor(() => {
-      expect(screen.getByTestId('exported-item-details-modal')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('exported-item-details-modal'),
+      ).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole('button', { name: /publish item/i }));
 
     await waitFor(() => {
       expect(mockShowError).toHaveBeenCalledWith(
-        'Unauthorized to publish this item'
+        'Unauthorized to publish this item',
       );
     });
   });
 
   it('shows default SftpError publish message for unknown error type', async () => {
     mockPublishItem.mockRejectedValueOnce(
-      new SftpError('publisher backend unavailable', 'GENERAL')
+      new SftpError('publisher backend unavailable', 'GENERAL'),
     );
 
     render(<PublisherExportedItemsPage />);
@@ -651,21 +678,23 @@ describe('PublisherExportedItemsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /view file details/i }));
 
     await waitFor(() => {
-      expect(screen.getByTestId('exported-item-details-modal')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('exported-item-details-modal'),
+      ).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole('button', { name: /publish item/i }));
 
     await waitFor(() => {
       expect(mockShowError).toHaveBeenCalledWith(
-        'Failed to publish: publisher backend unavailable'
+        'Failed to publish: publisher backend unavailable',
       );
     });
   });
 
   it('shows dry run failed SFTP validation message when publishItem throws matching Error', async () => {
     mockPublishItem.mockRejectedValueOnce(
-      new Error('Dry run failed because SFTP validation failed')
+      new Error('Dry run failed because SFTP validation failed'),
     );
 
     render(<PublisherExportedItemsPage />);
@@ -673,21 +702,23 @@ describe('PublisherExportedItemsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /view file details/i }));
 
     await waitFor(() => {
-      expect(screen.getByTestId('exported-item-details-modal')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('exported-item-details-modal'),
+      ).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole('button', { name: /publish item/i }));
 
     await waitFor(() => {
       expect(mockShowError).toHaveBeenCalledWith(
-        'Cannot publish: SFTP connection validation failed. Please check SFTP credentials and connectivity.'
+        'Cannot publish: SFTP connection validation failed. Please check SFTP credentials and connectivity.',
       );
     });
   });
 
   it('shows SFTP server connection failed message when publishItem throws matching Error', async () => {
     mockPublishItem.mockRejectedValueOnce(
-      new Error('SFTP connection failed during publish')
+      new Error('SFTP connection failed during publish'),
     );
 
     render(<PublisherExportedItemsPage />);
@@ -695,21 +726,23 @@ describe('PublisherExportedItemsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /view file details/i }));
 
     await waitFor(() => {
-      expect(screen.getByTestId('exported-item-details-modal')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('exported-item-details-modal'),
+      ).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole('button', { name: /publish item/i }));
 
     await waitFor(() => {
       expect(mockShowError).toHaveBeenCalledWith(
-        'Cannot publish: SFTP server connection failed. Please verify SFTP server settings.'
+        'Cannot publish: SFTP server connection failed. Please verify SFTP server settings.',
       );
     });
   });
 
   it('shows SFTP authentication failed message when publishItem throws matching Error', async () => {
     mockPublishItem.mockRejectedValueOnce(
-      new Error('Authentication methods failed')
+      new Error('Authentication methods failed'),
     );
 
     render(<PublisherExportedItemsPage />);
@@ -717,58 +750,60 @@ describe('PublisherExportedItemsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /view file details/i }));
 
     await waitFor(() => {
-      expect(screen.getByTestId('exported-item-details-modal')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('exported-item-details-modal'),
+      ).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole('button', { name: /publish item/i }));
 
     await waitFor(() => {
       expect(mockShowError).toHaveBeenCalledWith(
-        'Cannot publish: SFTP authentication failed. Please check username, password, and key settings.'
+        'Cannot publish: SFTP authentication failed. Please check username, password, and key settings.',
       );
     });
   });
 
   it('shows missing job type message when publishItem throws matching Error', async () => {
-    mockPublishItem.mockRejectedValueOnce(
-      new Error('Job type is required')
-    );
+    mockPublishItem.mockRejectedValueOnce(new Error('Job type is required'));
 
     render(<PublisherExportedItemsPage />);
 
     fireEvent.click(screen.getByRole('button', { name: /view file details/i }));
 
     await waitFor(() => {
-      expect(screen.getByTestId('exported-item-details-modal')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('exported-item-details-modal'),
+      ).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole('button', { name: /publish item/i }));
 
     await waitFor(() => {
       expect(mockShowError).toHaveBeenCalledWith(
-        'Cannot publish: Job type information is missing. Please ensure the job configuration is complete.'
+        'Cannot publish: Job type information is missing. Please ensure the job configuration is complete.',
       );
     });
   });
 
   it('shows generic Error message when publishItem throws a normal Error', async () => {
-    mockPublishItem.mockRejectedValueOnce(
-      new Error('random publish failure')
-    );
+    mockPublishItem.mockRejectedValueOnce(new Error('random publish failure'));
 
     render(<PublisherExportedItemsPage />);
 
     fireEvent.click(screen.getByRole('button', { name: /view file details/i }));
 
     await waitFor(() => {
-      expect(screen.getByTestId('exported-item-details-modal')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('exported-item-details-modal'),
+      ).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole('button', { name: /publish item/i }));
 
     await waitFor(() => {
       expect(mockShowError).toHaveBeenCalledWith(
-        'Publish failed: random publish failure'
+        'Publish failed: random publish failure',
       );
     });
   });
@@ -781,14 +816,16 @@ describe('PublisherExportedItemsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /view file details/i }));
 
     await waitFor(() => {
-      expect(screen.getByTestId('exported-item-details-modal')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('exported-item-details-modal'),
+      ).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole('button', { name: /publish item/i }));
 
     await waitFor(() => {
       expect(mockShowError).toHaveBeenCalledWith(
-        'An unexpected error occurred during publishing. Please try again.'
+        'An unexpected error occurred during publishing. Please try again.',
       );
     });
   });
@@ -805,12 +842,16 @@ describe('PublisherExportedItemsPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /view file details/i }));
     await waitFor(() => {
-      expect(screen.getByTestId('exported-item-details-modal')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('exported-item-details-modal'),
+      ).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole('button', { name: /publish item/i }));
     await waitFor(() => {
-      expect(mockShowError).toHaveBeenCalledWith('Publish failed: cron publish failure');
+      expect(mockShowError).toHaveBeenCalledWith(
+        'Publish failed: cron publish failure',
+      );
     });
   });
 
@@ -819,19 +860,25 @@ describe('PublisherExportedItemsPage', () => {
 
     render(<PublisherExportedItemsPage />);
 
-    fireEvent.click(screen.getByRole('button', { name: /data enrichment jobs/i }));
+    fireEvent.click(
+      screen.getByRole('button', { name: /data enrichment jobs/i }),
+    );
     await waitFor(() => {
       expect(screen.getByTestId('active-format')).toHaveTextContent('de');
     });
 
     fireEvent.click(screen.getByRole('button', { name: /view file details/i }));
     await waitFor(() => {
-      expect(screen.getByTestId('exported-item-details-modal')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('exported-item-details-modal'),
+      ).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole('button', { name: /publish item/i }));
     await waitFor(() => {
-      expect(mockShowError).toHaveBeenCalledWith('Publish failed: de publish failure');
+      expect(mockShowError).toHaveBeenCalledWith(
+        'Publish failed: de publish failure',
+      );
     });
   });
 });

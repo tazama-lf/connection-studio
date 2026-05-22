@@ -28,7 +28,9 @@ describe('shared/components/DropdownMenuWithAutoDirection.tsx', () => {
       </div>,
     );
 
-    fireEvent.mouseDown(document.querySelector('[data-testid="outside"]') as Element);
+    fireEvent.mouseDown(
+      document.querySelector('[data-testid="outside"]') as Element,
+    );
     expect(onClose).toHaveBeenCalled();
   });
 
@@ -51,7 +53,9 @@ describe('shared/components/DropdownMenuWithAutoDirection.tsx', () => {
       </DropdownMenuWithAutoDirection>,
     );
 
-    expect((container.firstChild as HTMLElement).className).toContain('bottom-full');
+    expect((container.firstChild as HTMLElement).className).toContain(
+      'bottom-full',
+    );
   });
 
   it('auto positions based on available space', () => {
@@ -73,7 +77,9 @@ describe('shared/components/DropdownMenuWithAutoDirection.tsx', () => {
       </DropdownMenuWithAutoDirection>,
     );
 
-    expect((container.firstChild as HTMLElement).className).toContain('bottom-full');
+    expect((container.firstChild as HTMLElement).className).toContain(
+      'bottom-full',
+    );
   });
 
   it('auto positions at bottom when there is enough space below', () => {
@@ -101,7 +107,9 @@ describe('shared/components/DropdownMenuWithAutoDirection.tsx', () => {
       </DropdownMenuWithAutoDirection>,
     );
 
-    expect((container.firstChild as HTMLElement).className).toContain('top-full');
+    expect((container.firstChild as HTMLElement).className).toContain(
+      'top-full',
+    );
   });
 
   it('keeps default position when menu ref is unavailable in auto mode', () => {
@@ -122,7 +130,9 @@ describe('shared/components/DropdownMenuWithAutoDirection.tsx', () => {
       </DropdownMenuWithAutoDirection>,
     );
 
-    expect((container.firstChild as HTMLElement).className).toContain('top-full');
+    expect((container.firstChild as HTMLElement).className).toContain(
+      'top-full',
+    );
     useRefSpy.mockRestore();
   });
 });

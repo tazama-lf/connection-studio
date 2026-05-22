@@ -3,12 +3,16 @@ import { fireEvent, render, screen } from '@testing-library/react';
 
 jest.mock('lucide-react', () => ({
   DownloadIcon: () => <span data-testid="download-icon" />,
-  ChevronDownIcon: (props: any) => <span data-testid="chevron-icon" {...props} />,
+  ChevronDownIcon: (props: any) => (
+    <span data-testid="chevron-icon" {...props} />
+  ),
   ClockIcon: () => <span data-testid="clock-icon" />,
 }));
 
 jest.mock('../../../src/shared/components/Button', () => ({
-  Button: (props: any) => <button onClick={props.onClick}>{props.children}</button>,
+  Button: (props: any) => (
+    <button onClick={props.onClick}>{props.children}</button>
+  ),
 }));
 
 import ValidationLogsTable from '../../../src/shared/components/ValidationLogsTable';
@@ -21,9 +25,12 @@ describe('shared/components/ValidationLogsTable.tsx', () => {
     expect(screen.getByText('/transactions/pacs.008')).toBeInTheDocument();
     expect(screen.getByText('/accounts/acmt.023')).toBeInTheDocument();
 
-    fireEvent.change(screen.getByPlaceholderText('Search endpoints or errors...'), {
-      target: { value: 'currency' },
-    });
+    fireEvent.change(
+      screen.getByPlaceholderText('Search endpoints or errors...'),
+      {
+        target: { value: 'currency' },
+      },
+    );
     expect(screen.getByText('/transactions/pacs.008')).toBeInTheDocument();
 
     fireEvent.click(screen.getByText('3 errors'));
