@@ -91,7 +91,7 @@ const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
 
     try {
       setIsExporting(true);
-      await onExport(config.id, exportNotes || 'Exported for deployment');
+      await onExport(config.id, exportNotes);
       onClose();
     } catch (error) {
       // Error handled by parent component
@@ -105,7 +105,7 @@ const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
 
     try {
       setIsDeploying(true);
-      await onDeploy(config.id, deployNotes || 'Deployed to production');
+      await onDeploy(config.id, deployNotes);
       onClose();
     } catch (error) {
       // Error handled by parent component
@@ -266,7 +266,9 @@ const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
                         <span
                           className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${getConfigTypeColor(config.status)}`}
                         >
-                          {getStatusLabel(config.status).toUpperCase()}
+                          {(
+                            getStatusLabel(config.status) || 'IN-PROGRESS'
+                          ).toUpperCase()}
                         </span>
                       </div>
                     </div>
