@@ -9,6 +9,7 @@ const mockGetPrimaryRole = jest.fn();
 const mockShowError = jest.fn();
 const mockShowSuccess = jest.fn();
 const mockNavigate = jest.fn();
+const mockSetOffset = jest.fn();
 
 jest.mock('react-router', () => ({
   ...jest.requireActual('react-router'),
@@ -17,7 +18,7 @@ jest.mock('react-router', () => ({
 
 jest.mock('@shared/hooks/useFilters', () => ({
   __esModule: true,
-  default: () => ({ offset: 1, limit: 10, setOffset: jest.fn() }),
+  default: () => ({ offset: 1, limit: 10, setOffset: mockSetOffset }),
 }));
 
 jest.mock('../../../../src/features/auth/contexts/AuthContext', () => ({
@@ -289,5 +290,6 @@ describe('features/exporter/pages/ExporterDEJobsPage.tsx', () => {
     });
 
     fireEvent.click(screen.getByText('Next Page'));
+    expect(mockSetOffset).toHaveBeenCalledWith(1);
   });
 });

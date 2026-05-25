@@ -48,13 +48,13 @@ jest.mock('@common/Tables/CustomTable', () => ({
       { 'data-testid': 'custom-table' },
       pagination
         ? ReactModule.createElement(
-          'button',
-          {
-            key: 'go-page-3',
-            onClick: () => pagination.setPage(3),
-          },
-          'go-page-3',
-        )
+            'button',
+            {
+              key: 'go-page-3',
+              onClick: () => pagination.setPage(3),
+            },
+            'go-page-3',
+          )
         : null,
       columns.map((column: any) =>
         ReactModule.createElement(
@@ -1060,7 +1060,7 @@ describe('EndpointHistoryPage', () => {
       {},
       true,
       {
-        job_id: null, // null → String(null ?? '') = '' 
+        job_id: null, // null → String(null ?? '') = ''
         endpoint_name: 'ep',
         table_name: 'tbl',
         counts: 0,
@@ -1461,6 +1461,7 @@ describe('EndpointHistoryPage', () => {
 
     const originalUseState = React.useState;
     const useStateSpy = jest.spyOn(React, 'useState');
+    const setCopiedMock = jest.fn();
 
     const seededState = [
       [],
@@ -1489,7 +1490,8 @@ describe('EndpointHistoryPage', () => {
     useStateSpy.mockImplementation((initial: unknown) => {
       if (seededState.length > 0) {
         const next = seededState.shift();
-        return [next, jest.fn()] as [
+        const setter = seededState.length === 0 ? setCopiedMock : jest.fn();
+        return [next, setter] as [
           unknown,
           React.Dispatch<React.SetStateAction<unknown>>,
         ];
@@ -1514,6 +1516,7 @@ describe('EndpointHistoryPage', () => {
       act(() => {
         jest.runAllTimers();
       });
+      expect(setCopiedMock).toHaveBeenCalledWith(false);
     } finally {
       useStateSpy.mockRestore();
       jest.useRealTimers();

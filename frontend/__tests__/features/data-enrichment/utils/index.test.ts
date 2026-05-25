@@ -35,6 +35,30 @@ describe('features/data-enrichment/utils/index.ts', () => {
       const job = {} as any;
       expect(getConnectionType(job)).toBeNull();
     });
+
+    it('returns SFTP when connection is a JSON string with host', () => {
+      const job = {
+        connection: JSON.stringify({ host: 'sftp.example.com' }),
+      } as any;
+      expect(getConnectionType(job)).toBe('SFTP');
+    });
+
+    it('returns HTTP when connection is a JSON string with url', () => {
+      const job = {
+        connection: JSON.stringify({ url: 'https://example.com' }),
+      } as any;
+      expect(getConnectionType(job)).toBe('HTTP');
+    });
+
+    it('returns null when connection is an unparseable string', () => {
+      const job = { connection: 'not-valid-json' } as any;
+      expect(getConnectionType(job)).toBeNull();
+    });
+
+    it('returns null when connection is a JSON string without host or url', () => {
+      const job = { connection: JSON.stringify({ customKey: 'val' }) } as any;
+      expect(getConnectionType(job)).toBeNull();
+    });
   });
 
   describe('formatJSON', () => {

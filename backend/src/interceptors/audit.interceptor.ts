@@ -391,21 +391,24 @@ export class AuditInterceptor implements NestInterceptor {
       correlationId,
       eventPhase,
     };
-    this.logger.log(`Audit log input: ${JSON.stringify(auditInput, null, 2)}`);
+
+    const auditSummary = {
+      eventType: auditData.eventType,
+      eventPhase,
+      correlationId,
+      timestamp: auditData.actionPerformed?.timestamp,
+    };
+    this.logger.log(`Audit event: ${JSON.stringify(auditSummary)}`);
 
     this.auditService.log(auditInput).catch((error: unknown) => {
       const errorMessage =
-        error instanceof Error ? error.message : JSON.stringify(error);
-      this.logger.error(
-        `Audit logging failed for ${auditData.eventType} by ${auditData.actorName}`,
-        {
-          error: errorMessage,
-          eventPhase,
-          correlationId,
-        },
-      );
-      // Log full error stack or additional details
-      this.logger.error('Full error details:', error);
+        error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error('Audit logging failed', {
+        eventType: auditData.eventType,
+        eventPhase,
+        correlationId,
+        error: errorMessage,
+      });
     });
   }
 }

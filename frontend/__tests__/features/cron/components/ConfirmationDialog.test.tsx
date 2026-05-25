@@ -1116,6 +1116,7 @@ describe('CronJobConfirmationDialog', () => {
 
       expect(mockOnConfirm).not.toHaveBeenCalled();
       expect(mockOnClose).toHaveBeenCalledTimes(1);
+      expect(textarea.value).toBe('Some comment');
     });
 
     it('should handle long comments', () => {

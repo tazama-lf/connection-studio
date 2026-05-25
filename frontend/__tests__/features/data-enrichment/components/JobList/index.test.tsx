@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 
 const updateJobStatusMock = jest.fn();
 const togglePublishingMock = jest.fn();
@@ -10,8 +16,17 @@ jest.mock(
   '../../../../../../src/features/data-enrichment/components/JobList/JobList.styles',
   () => {
     const React = require('react');
-    const Div = ({ children, sx, pull, bg, border, color, fg, component, ...props }: any) =>
-      React.createElement(component || 'div', props, children);
+    const Div = ({
+      children,
+      sx,
+      pull,
+      bg,
+      border,
+      color,
+      fg,
+      component,
+      ...props
+    }: any) => React.createElement(component || 'div', props, children);
     const DialogWithClose = ({
       children,
       open,
@@ -22,7 +37,11 @@ jest.mock(
     }: any) =>
       React.createElement(
         'div',
-        { role: 'dialog', ...props, style: open ? undefined : { display: 'none' } },
+        {
+          role: 'dialog',
+          ...props,
+          style: open ? undefined : { display: 'none' },
+        },
         open
           ? React.createElement(
               'button',
@@ -604,7 +623,11 @@ describe('features/data-enrichment/components/JobList/index.tsx', () => {
       <JobList
         {...baseProps}
         jobs={[
-          { ...baseProps.jobs[0], id: 'job-resume-close', status: 'STATUS_02_ON_HOLD' },
+          {
+            ...baseProps.jobs[0],
+            id: 'job-resume-close',
+            status: 'STATUS_02_ON_HOLD',
+          },
         ]}
       />,
     );
@@ -675,38 +698,33 @@ describe('features/data-enrichment/components/JobList/index.tsx', () => {
 
   it('hits || [] fallback when getDemsStatusLov key is undefined (line 186)', async () => {
     const lovs = jest.requireMock('@shared/lovs') as any;
+    const originalEditor = lovs.getDemsStatusLov.editor;
     lovs.getDemsStatusLov.editor = undefined;
+    try {
+      mockUseAuth.mockReturnValue({ user: { claims: [] } }); // → userRole = 'editor'
+      render(<JobList {...baseProps} />);
 
-    mockUseAuth.mockReturnValue({ user: { claims: [] } }); // → userRole = 'editor'
-    render(<JobList {...baseProps} />);
-
-    // Restore mock so other tests are not affected
-    lovs.getDemsStatusLov.editor = [
-      { label: 'Draft', value: 'STATUS_01_IN_PROGRESS' },
-    ];
-
-    await waitFor(() => {
-      expect(handleSelectFilterMock).toHaveBeenCalledWith(
-        expect.objectContaining({
-          fieldName: 'status',
-          options: [], // the || [] fallback
-        }),
-      );
-    });
+      await waitFor(() => {
+        expect(handleSelectFilterMock).toHaveBeenCalledWith(
+          expect.objectContaining({
+            fieldName: 'status',
+            options: [],
+          }),
+        );
+      });
+    } finally {
+      lovs.getDemsStatusLov.editor = originalEditor;
+    }
   });
 
   it('skips updateJobStatus when showPauseConfirmDialog.job is null (line 416 false branch)', async () => {
     render(<JobList {...baseProps} />);
-
-    // PauseDialog starts closed (display:none); its job is null in initial state.
-    // Use hidden:true to reach the button inside the hidden dialog.
     const yesBtn = screen.getByRole('button', {
       name: 'Yes, Pause Job',
       hidden: true,
     });
     fireEvent.click(yesBtn);
 
-    // The false branch of `if (showPauseConfirmDialog.job)` is taken → no call.
     await waitFor(() => {
       expect(updateJobStatusMock).not.toHaveBeenCalled();
     });

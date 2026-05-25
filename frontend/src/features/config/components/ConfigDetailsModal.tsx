@@ -1,26 +1,23 @@
-import React, { useState } from 'react';
 import {
-  X,
   Calendar,
   Clock,
   Database,
+  Download,
   Globe,
   Settings,
-  Download,
   Upload,
+  X,
 } from 'lucide-react';
-import type { Config } from '../index';
+import React, { useState } from 'react';
 import { Button } from '../../../shared/components/Button';
-import { useAuth } from '../../auth/contexts/AuthContext';
+import { getStatusLabel } from '../../../shared/utils/statusColors';
 import {
   isApprover,
   isExporter,
   isPublisher,
 } from '../../../utils/common/roleUtils';
-import {
-  getStatusColor,
-  getStatusLabel,
-} from '../../../shared/utils/statusColors';
+import { useAuth } from '../../auth/contexts/AuthContext';
+import type { Config } from '../index';
 
 interface ConfigDetailsModalProps {
   isOpen: boolean;
@@ -48,6 +45,14 @@ const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
   const userIsExporter = user?.claims ? isExporter(user.claims) : false;
   const userIsPublisher = user?.claims ? isPublisher(user.claims) : false;
 
+  const normalizedConfigStatus = (config?.status ?? '').toLowerCase();
+  const statusIsApproved =
+    normalizedConfigStatus === 'approved' ||
+    normalizedConfigStatus.endsWith('_approved');
+  const statusIsExported =
+    normalizedConfigStatus === 'exported' ||
+    normalizedConfigStatus.endsWith('_exported');
+
   const [exportNotes, setExportNotes] = useState('');
   const [deployNotes, setDeployNotes] = useState('');
   const [isExporting, setIsExporting] = useState(false);
@@ -57,7 +62,7 @@ const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
     return null;
   }
 
-  const formatDate = (dateString: string | undefined) => {
+  const formatDate = (dateString: string | undefined): string => {
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleString('en-US', {
       year: 'numeric',
@@ -68,7 +73,7 @@ const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
     });
   };
 
-  const getConfigTypeColor = (status: string | undefined) => {
+  const getConfigTypeColor = (status: string | undefined): string => {
     switch (status?.toLowerCase()) {
       case 'approved':
         return 'bg-green-100 text-green-800 border border-green-200';
@@ -81,12 +86,12 @@ const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
     }
   };
 
-  const handleExport = async () => {
+  const handleExport = async (): Promise<void> => {
     if (!onExport || !config) return;
 
     try {
       setIsExporting(true);
-      await onExport(config.id, exportNotes ?? 'Exported for deployment');
+      await onExport(config.id, exportNotes || 'Exported for deployment');
       onClose();
     } catch (error) {
       // Error handled by parent component
@@ -95,12 +100,12 @@ const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
     }
   };
 
-  const handleDeploy = async () => {
+  const handleDeploy = async (): Promise<void> => {
     if (!onDeploy || !config) return;
 
     try {
       setIsDeploying(true);
-      await onDeploy(config.id, deployNotes ?? 'Deployed to production');
+      await onDeploy(config.id, deployNotes || 'Deployed to production');
       onClose();
     } catch (error) {
       // Error handled by parent component
@@ -150,7 +155,7 @@ const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
                   </label>
                   <input
                     type="text"
-                    value={config.endpointPath ?? 'N/A'}
+                    value={config.endpointPath}
                     readOnly
                     className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900"
                   />
@@ -162,7 +167,7 @@ const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
                   </label>
                   <input
                     type="text"
-                    value={config.transactionType ?? 'N/A'}
+                    value={config.transactionType}
                     readOnly
                     className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900"
                   />
@@ -174,7 +179,7 @@ const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
                   </label>
                   <input
                     type="text"
-                    value={config.msgFam ?? 'N/A'}
+                    value={config.msgFam}
                     readOnly
                     className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900"
                   />
@@ -186,7 +191,7 @@ const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
                   </label>
                   <input
                     type="text"
-                    value={config.version ?? 'v1'}
+                    value={config.version}
                     readOnly
                     className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900"
                   />
@@ -207,7 +212,7 @@ const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
                     </label>
                     <input
                       type="text"
-                      value={config.contentType ?? 'application/json'}
+                      value={config.contentType}
                       readOnly
                       className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900"
                     />
@@ -219,7 +224,7 @@ const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
                     </label>
                     <input
                       type="text"
-                      value={config.tenantId ?? 'default'}
+                      value={config.tenantId}
                       readOnly
                       className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900"
                     />
@@ -261,9 +266,7 @@ const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
                         <span
                           className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${getConfigTypeColor(config.status)}`}
                         >
-                          {getStatusLabel(
-                            config.status ?? 'in-progress',
-                          ).toUpperCase()}
+                          {getStatusLabel(config.status).toUpperCase()}
                         </span>
                       </div>
                     </div>
@@ -278,7 +281,7 @@ const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
                           Created By:
                         </span>
                         <span className="text-sm text-gray-900 block">
-                          {config.createdBy ?? 'System'}
+                          {config.createdBy}
                         </span>
                       </div>
                     </div>
@@ -349,7 +352,7 @@ const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
               )}
 
               {/* Export Notes (for exporters) */}
-              {userIsExporter && config.status === 'approved' && onExport && (
+              {userIsExporter && statusIsApproved && onExport && (
                 <div className="bg-blue-50 p-4 rounded-lg">
                   <h4 className="text-sm font-medium text-gray-900 mb-3">
                     Export Notes
@@ -367,7 +370,7 @@ const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
               )}
 
               {/* Deploy Notes (for publishers) */}
-              {userIsPublisher && config.status === 'exported' && onDeploy && (
+              {userIsPublisher && statusIsExported && onDeploy && (
                 <div className="bg-purple-50 p-4 rounded-lg">
                   <h4 className="text-sm font-medium text-gray-900 mb-3">
                     Deployment Notes
@@ -395,7 +398,7 @@ const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
         {config &&
           !isLoading &&
           userIsApprover &&
-          (onApprove || onReject) &&
+          (onApprove ?? onReject) &&
           (() => {
             const normalizedStatus = config.status.toLowerCase();
             if (normalizedStatus.startsWith('status_')) {
@@ -445,14 +448,16 @@ const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
           !isLoading &&
           onExport &&
           userIsExporter &&
-          config.status === 'approved' && (
+          statusIsApproved && (
             <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3 bg-blue-50">
               <Button variant="secondary" onClick={onClose}>
                 Close
               </Button>
               <Button
                 variant="primary"
-                onClick={handleExport}
+                onClick={() => {
+                  void handleExport();
+                }}
                 disabled={isExporting}
                 className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white"
               >
@@ -467,14 +472,16 @@ const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
           !isLoading &&
           onDeploy &&
           userIsPublisher &&
-          config.status === 'exported' && (
+          statusIsExported && (
             <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3 bg-purple-50">
               <Button variant="secondary" onClick={onClose}>
                 Close
               </Button>
               <Button
                 variant="primary"
-                onClick={handleDeploy}
+                onClick={() => {
+                  void handleDeploy();
+                }}
                 disabled={isDeploying}
                 className="flex items-center space-x-2 bg-purple-600 hover:bg-purple-700 text-white"
               >
@@ -504,8 +511,8 @@ const ConfigDetailsModal: React.FC<ConfigDetailsModalProps> = ({
               );
             })()
           ) &&
-          !(userIsExporter && config.status === 'approved') &&
-          !(userIsPublisher && config.status === 'exported') && (
+          !(userIsExporter && statusIsApproved) &&
+          !(userIsPublisher && statusIsExported) && (
             <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3 bg-gray-50">
               <Button variant="secondary" onClick={onClose}>
                 Close

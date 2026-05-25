@@ -140,12 +140,6 @@ export class ConfigApiService {
       const errorData = (await response.json().catch(() => ({}))) as {
         message?: string;
       };
-      if (
-        response.status >= ConfigApiService.HTTP_BAD_REQUEST &&
-        response.status < ConfigApiService.HTTP_SERVER_ERROR
-      ) {
-        return errorData as T;
-      }
       throw new Error(
         errorData.message ?? `HTTP error! status: ${response.status}`,
       );
@@ -370,6 +364,13 @@ export class ConfigApiService {
       headers,
       body: JSON.stringify(data),
     });
+    if (
+      !response.ok &&
+      response.status !== ConfigApiService.HTTP_UNAUTHORIZED &&
+      response.status < 500
+    ) {
+      return (await response.json().catch(() => ({}))) as ConfigResponse;
+    }
     const result =
       await ConfigApiService.handleResponse<ConfigResponse>(response);
     return result;

@@ -2385,7 +2385,7 @@ describe('MappingUtility', () => {
       redis: {},
     };
 
-    it('enables Add Mapping for valid split (1 source, 2+ destinations)', async () => {
+    it('enables Add Mapping for valid split (1 source, 2 destinations)', async () => {
       mockDataModelApi.getDestinationFieldsJson.mockResolvedValueOnce({
         success: true,
         data: destJson,
@@ -3504,7 +3504,7 @@ describe('MappingUtility', () => {
         target: { value: 'concatenate' },
       });
 
-      // Select string + number sources - should fail type check
+      // Select string  number sources - should fail type check
       fireEvent.click(
         screen.getByRole('button', { name: 'strField (string)' }),
       );
@@ -5215,9 +5215,7 @@ describe('MappingUtility', () => {
 
   describe('branch coverage - buildSourceTreeFromArray edge cases', () => {
     it('handles field with no path and no name (unknown fallback)', async () => {
-      const unknownSchema = [
-        { type: 'string', isRequired: true },
-      ];
+      const unknownSchema = [{ type: 'string', isRequired: true }];
 
       mockDataModelApi.getDestinationFieldsJson.mockResolvedValueOnce({
         success: true,
@@ -5296,7 +5294,12 @@ describe('MappingUtility', () => {
 
     it('handles array source where path part is not in [0] notation', async () => {
       const regularPathSchema = [
-        { name: 'simple', path: 'simple.field', type: 'string', isRequired: true },
+        {
+          name: 'simple',
+          path: 'simple.field',
+          type: 'string',
+          isRequired: true,
+        },
       ];
 
       mockDataModelApi.getDestinationFieldsJson.mockResolvedValueOnce({
@@ -5366,16 +5369,19 @@ describe('MappingUtility', () => {
       });
 
       // Select and deselect
-      fireEvent.click(
-        screen.getByRole('button', { name: /myField.*string/i }),
-      );
+      fireEvent.click(screen.getByRole('button', { name: /myField.*string/i }));
 
       expect(screen.getByText('Add New Mapping')).toBeInTheDocument();
     });
 
     it('handles array source field with no [0] in path (no notation conversion)', async () => {
       const arraySchema = [
-        { name: 'simpleField', path: 'simpleField', type: 'string', isRequired: true },
+        {
+          name: 'simpleField',
+          path: 'simpleField',
+          type: 'string',
+          isRequired: true,
+        },
       ];
 
       mockDataModelApi.getDestinationFieldsJson.mockResolvedValueOnce({
@@ -5407,7 +5413,12 @@ describe('MappingUtility', () => {
   describe('branch coverage - handleSaveMapping duplicate detection', () => {
     it('detects duplicate direct mapping with matching source, dest, and transformation', async () => {
       const simpleSource = [
-        { name: 'srcField', path: 'srcField', type: 'string', isRequired: true },
+        {
+          name: 'srcField',
+          path: 'srcField',
+          type: 'string',
+          isRequired: true,
+        },
       ];
 
       mockDataModelApi.getDestinationFieldsJson.mockResolvedValueOnce({
@@ -5648,9 +5659,7 @@ describe('MappingUtility', () => {
       renderComponent();
       await openEditFieldsModal();
 
-      fireEvent.click(
-        screen.getByRole('button', { name: /mock no redis/i }),
-      );
+      fireEvent.click(screen.getByRole('button', { name: /mock no redis/i }));
 
       await waitFor(() => {
         expect(
@@ -5669,14 +5678,19 @@ describe('MappingUtility', () => {
 
       // Empty redis is valid (depth 0)
       await waitFor(() => {
-        expect(
-          screen.queryByText(/nesting/i),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText(/nesting/i)).not.toBeInTheDocument();
       });
     });
   });
 
   describe('branch coverage - hasNestedObjects with arrays', () => {
+    let useStateSpy: jest.SpyInstance | undefined;
+
+    afterEach(() => {
+      useStateSpy?.mockRestore();
+      useStateSpy = undefined;
+    });
+
     const openEditFieldsModal = async () => {
       fireEvent.click(screen.getByRole('button', { name: /add mapping/i }));
       await waitFor(() => {
@@ -5688,14 +5702,16 @@ describe('MappingUtility', () => {
     };
 
     it('validates transactionDetails with array value (not treated as nested object)', async () => {
-      // hasNestedObjects should return false for arrays
-      jest.spyOn(React, 'useState');
+      useStateSpy = jest.spyOn(React, 'useState');
 
       renderComponent();
       await openEditFieldsModal();
 
-      // The Mock Edit JSON button creates valid JSON with transactionDetails containing primitives
-      fireEvent.click(screen.getByRole('button', { name: /mock edit json/i }));
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: /mock transactiondetails array value/i,
+        }),
+      );
 
       await waitFor(() => {
         expect(
@@ -5870,7 +5886,12 @@ describe('MappingUtility', () => {
     it('renders second section with top margin', async () => {
       const schemaWithSections = [
         { name: 'fieldA', path: 'fieldA', type: 'string', isRequired: true },
-        { name: 'TenantId', path: 'TenantId', type: 'string', isRequired: true },
+        {
+          name: 'TenantId',
+          path: 'TenantId',
+          type: 'string',
+          isRequired: true,
+        },
       ];
 
       mockDataModelApi.getDestinationFieldsJson.mockResolvedValueOnce({
@@ -5903,7 +5924,12 @@ describe('MappingUtility', () => {
   describe('branch coverage - prefix in mappingRequest', () => {
     it('saves mapping with non-empty prefix', async () => {
       const simpleSource = [
-        { name: 'srcField', path: 'srcField', type: 'string', isRequired: true },
+        {
+          name: 'srcField',
+          path: 'srcField',
+          type: 'string',
+          isRequired: true,
+        },
       ];
 
       mockConfigApi.getConfig.mockResolvedValueOnce({
@@ -5957,8 +5983,18 @@ describe('MappingUtility', () => {
   describe('branch coverage - isCurrentMappingValid getFieldType path matching', () => {
     it('matches source field via clean path with [0] notation in concatenate mode', async () => {
       const arraySource = [
-        { name: 'items.code', path: 'items[0].code', type: 'string', isRequired: true },
-        { name: 'items.name', path: 'items[0].name', type: 'string', isRequired: true },
+        {
+          name: 'items.code',
+          path: 'items[0].code',
+          type: 'string',
+          isRequired: true,
+        },
+        {
+          name: 'items.name',
+          path: 'items[0].name',
+          type: 'string',
+          isRequired: true,
+        },
       ];
 
       mockDataModelApi.getDestinationFieldsJson.mockResolvedValueOnce({
@@ -6036,12 +6072,8 @@ describe('MappingUtility', () => {
         target: { value: 'concatenate' },
       });
 
-      fireEvent.click(
-        screen.getByRole('button', { name: /srcA.*string/i }),
-      );
-      fireEvent.click(
-        screen.getByRole('button', { name: /srcB.*string/i }),
-      );
+      fireEvent.click(screen.getByRole('button', { name: /srcA.*string/i }));
+      fireEvent.click(screen.getByRole('button', { name: /srcB.*string/i }));
       fireEvent.click(
         screen.getByRole('button', { name: 'targetField (string)' }),
       );
@@ -6222,9 +6254,7 @@ describe('MappingUtility', () => {
 
       // Select source and a destination that's NOT in the existing split destinations
       fireEvent.click(screen.getByRole('button', { name: 'srcA (string)' }));
-      fireEvent.click(
-        screen.getByRole('button', { name: 'fieldC (string)' }),
-      );
+      fireEvent.click(screen.getByRole('button', { name: 'fieldC (string)' }));
 
       const addBtns = screen.getAllByRole('button', { name: 'Add Mapping' });
       fireEvent.click(addBtns[addBtns.length - 1]);
@@ -6239,7 +6269,12 @@ describe('MappingUtility', () => {
   describe('branch coverage - handleSaveMapping with split local state creation', () => {
     it('creates split mapping local state with delimiter after API success', async () => {
       const simpleSource = [
-        { name: 'fullName', path: 'fullName', type: 'string', isRequired: true },
+        {
+          name: 'fullName',
+          path: 'fullName',
+          type: 'string',
+          isRequired: true,
+        },
       ];
 
       mockConfigApi.getConfig.mockResolvedValueOnce({
@@ -6391,9 +6426,7 @@ describe('MappingUtility', () => {
         success: true,
         config: {
           id: 123,
-          mapping: [
-            { source: 'a', destination: 'b', transformation: 'NONE' },
-          ],
+          mapping: [{ source: 'a', destination: 'b', transformation: 'NONE' }],
         },
       } as any);
 
@@ -6614,21 +6647,31 @@ describe('MappingUtility', () => {
       });
     });
 
-    it('shows fallback validation error when error property is missing', async () => {
-      // This tests the validation.error ?? 'Invalid JSON structure' fallback
-      // Since validateDestinationJson always returns error string, this branch
-      // is only hit if validateDestinationJson were modified. But we test
-      // the handleJsonChange path which calls validateDestinationJson and uses ??
+    it('handleJsonChange clears a prior validation error when edited JSON becomes valid', async () => {
       renderComponent();
       await openEditFieldsModal();
 
-      // Set transactionDetails as array - this passes validation
+      // First: trigger a validation error by editing to invalid JSON
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: /mock transactiondetails nested object/i,
+        }),
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(/cannot contain nested objects/i),
+        ).toBeInTheDocument();
+      });
+
+      // Then: edit back to valid JSON (transactionDetails with an array value passes validation)
       fireEvent.click(
         screen.getByRole('button', {
           name: /mock transactiondetails array value/i,
         }),
       );
 
+      // The error should be cleared (handleJsonChange else-branch: setValidationError(null))
       await waitFor(() => {
         expect(
           screen.queryByText(/cannot contain nested objects/i),
@@ -6685,9 +6728,7 @@ describe('MappingUtility', () => {
         ).not.toBeInTheDocument();
       });
 
-      fireEvent.click(
-        screen.getByRole('button', { name: 'src (string)' }),
-      );
+      fireEvent.click(screen.getByRole('button', { name: 'src (string)' }));
       fireEvent.click(
         screen.getByRole('button', { name: 'targetDest (string)' }),
       );
@@ -6705,9 +6746,7 @@ describe('MappingUtility', () => {
         <MappingUtility
           onMappingChange={mockOnMappingChange}
           sourceSchema={
-            [
-              { name: 'a', path: 'a', type: 'string', isRequired: true },
-            ] as any
+            [{ name: 'a', path: 'a', type: 'string', isRequired: true }] as any
           }
           configId={123}
           existingMappings={
@@ -6779,9 +6818,7 @@ describe('MappingUtility', () => {
         ),
         { target: { value: 'SAME' } },
       );
-      fireEvent.click(
-        screen.getByRole('button', { name: 'dstB (string)' }),
-      );
+      fireEvent.click(screen.getByRole('button', { name: 'dstB (string)' }));
 
       const addBtns = screen.getAllByRole('button', { name: 'Add Mapping' });
       fireEvent.click(addBtns[addBtns.length - 1]);
@@ -6826,12 +6863,8 @@ describe('MappingUtility', () => {
         ).not.toBeInTheDocument();
       });
 
-      fireEvent.click(
-        screen.getByRole('button', { name: 'src (string)' }),
-      );
-      fireEvent.click(
-        screen.getByRole('button', { name: 'newDest (string)' }),
-      );
+      fireEvent.click(screen.getByRole('button', { name: 'src (string)' }));
+      fireEvent.click(screen.getByRole('button', { name: 'newDest (string)' }));
 
       const addBtns = screen.getAllByRole('button', { name: 'Add Mapping' });
       fireEvent.click(addBtns[addBtns.length - 1]);
@@ -6867,9 +6900,7 @@ describe('MappingUtility', () => {
         ).not.toBeInTheDocument();
       });
 
-      fireEvent.click(
-        screen.getByRole('button', { name: 'myField (string)' }),
-      );
+      fireEvent.click(screen.getByRole('button', { name: 'myField (string)' }));
 
       const selectedTexts = screen.getAllByText(/myField/);
       expect(selectedTexts.length).toBeGreaterThan(1);
@@ -6913,12 +6944,8 @@ describe('MappingUtility', () => {
       });
 
       // Select 2 source fields
-      fireEvent.click(
-        screen.getByRole('button', { name: 'field2 (string)' }),
-      );
-      fireEvent.click(
-        screen.getByRole('button', { name: 'field3 (string)' }),
-      );
+      fireEvent.click(screen.getByRole('button', { name: 'field2 (string)' }));
+      fireEvent.click(screen.getByRole('button', { name: 'field3 (string)' }));
 
       // Select 1 destination
       const chevrons = screen.getAllByTestId('chevron-right-icon');
@@ -6930,11 +6957,9 @@ describe('MappingUtility', () => {
           screen.getByRole('button', { name: /result.*string/i }),
         ).toBeInTheDocument();
       });
-      fireEvent.click(
-        screen.getByRole('button', { name: /result.*string/i }),
-      );
+      fireEvent.click(screen.getByRole('button', { name: /result.*string/i }));
 
-      // The Add Mapping button should be enabled (concatenate with 2 string sources + 1 dest)
+      // The Add Mapping button should be enabled (concatenate with 2 string sources  1 dest)
       const addBtns = screen.getAllByRole('button', { name: 'Add Mapping' });
       const addBtn = addBtns[addBtns.length - 1];
       expect(addBtn).not.toBeDisabled();
@@ -6991,12 +7016,8 @@ describe('MappingUtility', () => {
         ).toBeInTheDocument();
       });
 
-      fireEvent.click(
-        screen.getByRole('button', { name: /city.*string/i }),
-      );
-      fireEvent.click(
-        screen.getByRole('button', { name: /state.*string/i }),
-      );
+      fireEvent.click(screen.getByRole('button', { name: /city.*string/i }));
+      fireEvent.click(screen.getByRole('button', { name: /state.*string/i }));
 
       const addBtns = screen.getAllByRole('button', { name: 'Add Mapping' });
       fireEvent.click(addBtns[addBtns.length - 1]);
