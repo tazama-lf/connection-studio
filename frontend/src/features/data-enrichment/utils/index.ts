@@ -77,9 +77,9 @@ const buildFileConfig = (formValues: Record<string, unknown>): FileConfig => ({
   file_type: ((formValues.fileFormat as string | undefined)?.toUpperCase() ??
     'CSV') as FileType,
   delimiter:
-    ((formValues.delimiter as string | undefined) ?? '').trim() !== ''
-      ? (formValues.delimiter as string)
-      : ',',
+    ((formValues.delimiter as string | undefined) ?? '').trim() === ''
+      ? ','
+      : (formValues.delimiter as string),
 });
 
 export const buildPullPayload = (
