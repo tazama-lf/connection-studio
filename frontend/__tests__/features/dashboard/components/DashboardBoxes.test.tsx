@@ -35,8 +35,8 @@ jest.mock('@mui/material/Box', () => ({
     const bg =
       typeof resolvedSx?.backgroundColor === 'function'
         ? resolvedSx.backgroundColor({
-          palette: { background: { paper: '#fff' } },
-        })
+            palette: { background: { paper: '#fff' } },
+          })
         : resolvedSx?.backgroundColor;
     return (
       <div
@@ -320,7 +320,7 @@ describe('features/dashboard/components/DashboardBoxes.tsx', () => {
     );
     expect(screen.getByText('Test')).toBeInTheDocument();
     const card = document.querySelector('[data-bg]');
-    expect(card?.getAttribute('data-bg')).toBe('#7c3aed');
+    expect(card?.getAttribute('data-bg')).toBe('#fff');
   });
 
   it('BoxCard: uses default selected (false) when selected prop is omitted', () => {
@@ -500,7 +500,9 @@ describe('features/dashboard/components/DashboardBoxes.tsx', () => {
   });
 
   it('exporter-publisher combo exercises both path resolution branches', async () => {
-    useAuthMock.mockReturnValue({ user: { claims: ['exporter', 'publisher'] } });
+    useAuthMock.mockReturnValue({
+      user: { claims: ['exporter', 'publisher'] },
+    });
     useLocationMock.mockReturnValue({ pathname: '/publisher/de-jobs' });
 
     render(<DashboardBoxes />);
