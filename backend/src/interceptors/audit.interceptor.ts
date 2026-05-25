@@ -196,18 +196,18 @@ export class AuditInterceptor implements NestInterceptor {
   ): string | undefined {
     const responseData = (response as { body?: unknown }).body;
     if (!responseData || typeof responseData !== 'object') return undefined;
-    return (
-      responseData.id ??
-      responseData.endpointId ??
-      responseData.tenantId ??
-      responseData.tenant_id ??
-      responseData.schedule_id ??
-      responseData.job_id ??
-      responseData.jobId ??
-      responseData.config_id ??
-      responseData.configId ??
-      responseData.schedule_id
-    );
+    const data = responseData as Record<string, unknown>;
+    const value =
+      data.id ??
+      data.endpointId ??
+      data.tenantId ??
+      data.tenant_id ??
+      data.schedule_id ??
+      data.job_id ??
+      data.jobId ??
+      data.config_id ??
+      data.configId;
+    return typeof value === 'string' ? value : undefined;
   }
 
   /**

@@ -1,6 +1,5 @@
 {
   "scripts": {
-    "lint:eslint": "npm run backend:lint:eslint && npm run frontend:lint:eslint",
     "backend:lint:eslint": "cd backend && npm ci && npm run lint",
     "frontend:lint:eslint": "cd frontend && npm ci && npm run lint",
     "test": "npm run backend:test && npm run frontend:test",
@@ -8,9 +7,21 @@
     "frontend:test": "cd frontend && npm ci --legacy-peer-deps && npm run test",
     "build": "npm run backend:build",
     "backend:build": "cd backend && npm ci && npm run build",
-    "prepare": "husky"
+    "fix": "npm run fix:prettier && npm run fix:eslint",
+    "fix:eslint": "eslint --fix \"**/*.ts\"",
+    "fix:prettier": "prettier --write \"**/*.ts\"",
+    "prepare": "husky",
+    "lint": "cd backend && npm run lint:eslint && npm run lint:prettier",
+    "lint:eslint": "eslint \"**/*.ts\"",
+    "lint:prettier": "prettier --check \"**/*.ts\""
   },
   "devDependencies": {
     "husky": "^9.1.7"
+  },
+  "lint-staged": {
+    "**/*.{js,ts}": [
+      "cd backend && npm run fix:eslint",
+      "prettier --write"
+    ]
   }
 }
