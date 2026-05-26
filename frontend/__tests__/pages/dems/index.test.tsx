@@ -218,4 +218,30 @@ describe('pages/dems/index.tsx', () => {
     expect(screen.getByText('EditEndpointModal')).toBeInTheDocument();
     expect(screen.getByText('Endpoint: -1')).toBeInTheDocument();
   });
+
+  it('renders ValidationLogsTable when showValidationLogs is true ', () => {
+    const originalUseState = React.useState;
+    const useStateSpy = jest.spyOn(React, 'useState');
+    const seededState = [null, true, false, null, 0, false, false, false];
+    useStateSpy.mockImplementation((initial: unknown) => {
+      if (seededState.length > 0) {
+        const next = seededState.shift();
+        return [next, jest.fn()] as [
+          unknown,
+          React.Dispatch<React.SetStateAction<unknown>>,
+        ];
+      }
+      return originalUseState(initial as never) as [
+        unknown,
+        React.Dispatch<React.SetStateAction<unknown>>,
+      ];
+    });
+
+    try {
+      render(<DEMSModule />);
+      expect(screen.getByText('ValidationLogsTable')).toBeInTheDocument();
+    } finally {
+      useStateSpy.mockRestore();
+    }
+  });
 });

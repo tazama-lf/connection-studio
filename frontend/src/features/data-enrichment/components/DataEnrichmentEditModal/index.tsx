@@ -13,24 +13,25 @@ import { DownloadIcon, Loader2, Save, UploadIcon, XIcon } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useToast } from '../../../../shared/providers/ToastProvider';
-import { saveDataEnrichmentJob ,
+import {
+  saveDataEnrichmentJob,
   handleUpdateConfirm as confirmUpdate,
   handleEditSendForApprovalConfirm,
   loadSchedules,
 } from '../../handlers';
 
-import { scrollToFirstError , getJobType } from '../../utils';
-import type { ScheduleResponse , DataEnrichmentEditModalProps } from '../../types';
+import { scrollToFirstError, getJobType } from '../../utils';
+import type {
+  ScheduleResponse,
+  DataEnrichmentEditModalProps,
+} from '../../types';
 
 // @ts-ignore - JS module without types
 import * as validationSchema from '../validationSchema';
 import PullConfigForm from '../PullConfigForm';
 import PushConfigForm from '../PushConfigForm';
-const {
-  defaultValues,
-  pullValidationSchema,
-  pushValidationSchema,
-} = (validationSchema as any) ?? {};
+const { defaultValues, pullValidationSchema, pushValidationSchema } =
+  (validationSchema as any) ?? {};
 
 export const DataEnrichmentEditModal: React.FC<
   DataEnrichmentEditModalProps
@@ -42,7 +43,6 @@ export const DataEnrichmentEditModal: React.FC<
   editMode = false,
   selectedJob,
 }) => {
-  
   const [availableSchedules, setAvailableSchedules] = useState<
     ScheduleResponse[]
   >([]);
@@ -51,7 +51,7 @@ export const DataEnrichmentEditModal: React.FC<
   const [showUpdateConfirmDialog, setShowUpdateConfirmDialog] = useState(false);
   const [showApprovalConfirmDialog, setShowApprovalConfirmDialog] =
     useState(false);
-  
+
   const [showSendForApproval, setShowSendForApproval] = useState(false);
   const { showSuccess, showError } = useToast();
 
@@ -73,15 +73,12 @@ export const DataEnrichmentEditModal: React.FC<
     mode: 'onChange',
   });
 
-
   const shouldScrollToErrorRef = useRef(false);
 
-  
   const onError = () => {
     shouldScrollToErrorRef.current = true;
   };
 
-  
   useEffect(() => {
     if (shouldScrollToErrorRef.current && Object.keys(errors).length > 0) {
       shouldScrollToErrorRef.current = false;
@@ -89,7 +86,6 @@ export const DataEnrichmentEditModal: React.FC<
     }
   }, [errors]);
 
-  
   const fileFormat = watch('fileFormat');
   useEffect(() => {
     const pathPattern = getValues('pathPattern');
@@ -97,8 +93,6 @@ export const DataEnrichmentEditModal: React.FC<
       trigger('pathPattern');
     }
   }, [fileFormat, trigger, getValues]);
-
-
 
   const handleSave = async () => {
     try {
@@ -120,26 +114,33 @@ export const DataEnrichmentEditModal: React.FC<
         errorMessage = error.message;
       } else if (error && typeof error === 'object') {
         const apiError = error as any;
-        errorMessage = apiError.message ?? apiError.error ?? 'Unknown error occurred';
+        errorMessage =
+          apiError.message ?? apiError.error ?? 'Unknown error occurred';
       }
       showError('Error', errorMessage);
     }
   };
 
   const handleUpdateConfirm = () => {
-    confirmUpdate(async () => { await handleSave(); }, setShowUpdateConfirmDialog);
+    confirmUpdate(async () => {
+      await handleSave();
+    }, setShowUpdateConfirmDialog);
   };
 
   const handleSendForApprovalConfirm = async () => {
     await handleEditSendForApprovalConfirm(
       selectedJob,
-      (msg) => { showSuccess('Success', msg); },
-      (msg) => { showError('Error', msg); },
+      (msg) => {
+        showSuccess('Success', msg);
+      },
+      (msg) => {
+        showError('Error', msg);
+      },
       () => {
         if (onCloseWithRefresh) onCloseWithRefresh();
         else if (onClose) onClose();
       },
-      setShowApprovalConfirmDialog
+      setShowApprovalConfirmDialog,
     );
   };
 
@@ -192,24 +193,19 @@ export const DataEnrichmentEditModal: React.FC<
       };
 
       if (jobType === 'push') {
-        
         let endpointPath = selectedJob.path;
 
-        
         if (endpointPath && !endpointPath.startsWith('/')) {
           endpointPath = '/' + endpointPath;
         }
         initialValues.endpointPath = endpointPath;
       } else {
-        
         initialValues.sourceType =
-          selectedJob.source_type?.toLowerCase() ?? 'sftp'; 
+          selectedJob.source_type?.toLowerCase() ?? 'sftp';
         initialValues.schedule = selectedJob.schedule_id ?? '';
 
-        
         if (selectedJob.connection) {
           if (selectedJob.source_type === 'SFTP') {
-            
             initialValues.host = selectedJob.connection.host ?? '';
             initialValues.port = selectedJob.connection.port?.toString() ?? '';
             initialValues.authType =
@@ -217,9 +213,7 @@ export const DataEnrichmentEditModal: React.FC<
                 ? 'key'
                 : 'password';
             initialValues.username = selectedJob.connection.user_name ?? '';
-            
           } else if (selectedJob.source_type === 'HTTP') {
-            
             initialValues.url = selectedJob.connection.url ?? '';
             initialValues.headers = selectedJob.connection.headers
               ? JSON.stringify(selectedJob.connection.headers, null, 2)
@@ -227,31 +221,32 @@ export const DataEnrichmentEditModal: React.FC<
           }
         }
 
-        
         if (selectedJob.file) {
           let pathPattern = selectedJob.file.path ?? '';
 
-          
           if (pathPattern && !pathPattern.startsWith('/')) {
             pathPattern = '/' + pathPattern;
           }
           initialValues.pathPattern = pathPattern;
           initialValues.fileFormat =
-            selectedJob.file.file_type?.toLowerCase() ?? 'csv'; 
+            selectedJob.file.file_type?.toLowerCase() ?? 'csv';
           initialValues.delimiter = selectedJob.file.delimiter ?? ',';
         }
       }
 
-      
       Object.entries(initialValues).forEach(([key, value]) => {
         setValue(key, value);
       });
-
-      }
+    }
   }, [isOpen, selectedJob, editMode, setValue]);
 
   const RenderPullConfigForm = () => (
-    <PullConfigForm control={control} watch={watch} errors={errors} availableSchedules={availableSchedules} />
+    <PullConfigForm
+      control={control}
+      watch={watch}
+      errors={errors}
+      availableSchedules={availableSchedules}
+    />
   );
 
   const renderPushConfigForm = () => (
@@ -277,7 +272,6 @@ export const DataEnrichmentEditModal: React.FC<
           className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden relative z-10 shadow-2xl"
           data-id="element-1047"
         >
-          
           <div
             className="flex justify-between items-center px-6 py-4 border-b border-gray-200"
             data-id="element-1048"
@@ -297,7 +291,6 @@ export const DataEnrichmentEditModal: React.FC<
           </div>
 
           <>
-            
             <Box
               sx={{
                 padding: '16px 24px',
@@ -326,8 +319,6 @@ export const DataEnrichmentEditModal: React.FC<
                   : 'Configure REST API endpoint for data ingestion'}
               </p>
             </Box>
-
-            
 
             <form
               onSubmit={handleSubmit(onSubmit, onError)}
@@ -382,7 +373,9 @@ export const DataEnrichmentEditModal: React.FC<
                       type="button"
                       variant="contained"
                       sx={{ backgroundColor: '#2b7fff', ml: 2 }}
-                      onClick={() => { setShowApprovalConfirmDialog(true); }}
+                      onClick={() => {
+                        setShowApprovalConfirmDialog(true);
+                      }}
                       startIcon={<UploadIcon size={16} />}
                       disabled={false}
                     >
@@ -396,7 +389,6 @@ export const DataEnrichmentEditModal: React.FC<
         </div>
       </Backdrop>
 
-      
       {isCreating && (
         <Backdrop
           sx={(theme) => ({
@@ -415,10 +407,11 @@ export const DataEnrichmentEditModal: React.FC<
         </Backdrop>
       )}
 
-      
       <Dialog
         open={showUpdateConfirmDialog}
-        onClose={() => { setShowUpdateConfirmDialog(false); }}
+        onClose={() => {
+          setShowUpdateConfirmDialog(false);
+        }}
         aria-labelledby="update-confirmation-dialog-title"
         aria-describedby="update-confirmation-dialog-description"
         sx={{ borderRadius: '6px' }}
@@ -485,7 +478,9 @@ export const DataEnrichmentEditModal: React.FC<
         </DialogContent>
         <DialogActions sx={{ padding: '12px 20px 16px 20px' }}>
           <Button
-            onClick={() => { setShowUpdateConfirmDialog(false); }}
+            onClick={() => {
+              setShowUpdateConfirmDialog(false);
+            }}
             variant="outlined"
             className="pb-1.5! pt-[5px]!"
             size="small"
@@ -505,10 +500,11 @@ export const DataEnrichmentEditModal: React.FC<
         </DialogActions>
       </Dialog>
 
-      
       <Dialog
         open={showApprovalConfirmDialog}
-        onClose={() => { setShowApprovalConfirmDialog(false); }}
+        onClose={() => {
+          setShowApprovalConfirmDialog(false);
+        }}
         aria-labelledby="approval-confirmation-dialog-title"
         aria-describedby="approval-confirmation-dialog-description"
         sx={{ borderRadius: '6px' }}
@@ -575,7 +571,9 @@ export const DataEnrichmentEditModal: React.FC<
         </DialogContent>
         <DialogActions sx={{ padding: '12px 20px 16px 20px' }}>
           <Button
-            onClick={() => { setShowApprovalConfirmDialog(false); }}
+            onClick={() => {
+              setShowApprovalConfirmDialog(false);
+            }}
             variant="outlined"
             className="pb-1.5! pt-[5px]!"
             disabled={isCreating}

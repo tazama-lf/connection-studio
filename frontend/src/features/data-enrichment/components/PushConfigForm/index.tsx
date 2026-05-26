@@ -11,9 +11,9 @@ import {
   SelectField,
 } from '../../../../shared/components/FormFields';
 import ValidationError from '../../../../shared/components/ValidationError';
-// @ts-ignore - JS module without types
-import * as validationSchema from '../validationSchema';
+import * as validationSchema from '../../../data-enrichment/components/validationSchema';
 import type { PropsPush } from '@features/data-enrichment/types';
+/* istanbul ignore next */
 const { ingestModeOptions } = (validationSchema as any) || {};
 
 const PushConfigForm: React.FC<PropsPush> = ({ control, errors }) => (

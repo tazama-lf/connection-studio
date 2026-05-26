@@ -16,7 +16,10 @@ export interface CronJobConfirmationDialogProps {
   jobName: string;
   actionLoading: '' | 'export' | 'approval' | 'approve';
   onClose: () => void;
-  onConfirm: (type: 'export' | 'approval' | 'approve', comment?: string) => void;
+  onConfirm: (
+    type: 'export' | 'approval' | 'approve',
+    comment?: string,
+  ) => void;
 }
 
 export interface CronJobTableColumnsProps {
@@ -83,7 +86,13 @@ export interface ErrorWithResponse {
 
 export type TabType = 'create' | 'manage';
 
-export type ActionType = '' | 'export' | 'approval' | 'edit' | 'approve' | 'reject';
+export type ActionType =
+  | ''
+  | 'export'
+  | 'approval'
+  | 'edit'
+  | 'approve'
+  | 'reject';
 
 export interface CronTabNavigationProps {
   activeTab: TabType;

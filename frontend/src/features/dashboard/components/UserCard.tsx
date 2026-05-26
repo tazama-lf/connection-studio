@@ -9,10 +9,10 @@ export default function UserCard() {
   const primaryRole = React.useMemo(() => {
     if (!user?.claims || user.claims.length === 0) return null;
     const roleMapping: Record<string, string> = {
-      'approver': 'Approver',
-      'editor': 'Editor',
-      'publisher': 'Publisher',
-      'exporter': 'Exporter'
+      approver: 'Approver',
+      editor: 'Editor',
+      publisher: 'Publisher',
+      exporter: 'Exporter',
     };
     const userRoles = user.claims
       .filter((claim: string) => !!roleMapping[claim])
@@ -21,8 +21,12 @@ export default function UserCard() {
   }, [user]);
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 1 }}>
-      <Typography variant="body2" sx={{ fontWeight: 700 }}>{user?.username}</Typography>
-      <Typography variant="body2" sx={{ color: 'text.secondary' }}>{primaryRole ? `- ${primaryRole}` : ''}</Typography>
+      <Typography variant="body2" sx={{ fontWeight: 700 }}>
+        {user?.username}
+      </Typography>
+      <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+        {primaryRole ? `- ${primaryRole}` : ''}
+      </Typography>
     </Box>
   );
 }

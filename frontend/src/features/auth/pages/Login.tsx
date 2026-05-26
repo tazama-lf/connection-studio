@@ -35,14 +35,23 @@ const schema = yup
     username: yup
       .string()
       .required('This Field is Required')
-      .max(MAX_EMAIL_LENGTH, `Email must not exceed ${MAX_EMAIL_LENGTH} characters`)
+      .max(
+        MAX_EMAIL_LENGTH,
+        `Email must not exceed ${MAX_EMAIL_LENGTH} characters`,
+      )
       // .matches(/^([a-zA-Z0-9_\-\.]+)@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.)|(([a-zA-Z0-9\-]+\.)+))([a-zA-Z]{2,4}|[0-9]{1,3})(\]?)$/, 'A valid email address is required.')
       .email('A valid email address is required.'),
     password: yup
       .string()
       .required('This Field is Required')
-      .min(MIN_PASSWORD_LENGTH, `Must be at least ${MIN_PASSWORD_LENGTH} characters`)
-      .max(MAX_PASSWORD_LENGTH, `Password must not exceed ${MAX_PASSWORD_LENGTH} characters`),
+      .min(
+        MIN_PASSWORD_LENGTH,
+        `Must be at least ${MIN_PASSWORD_LENGTH} characters`,
+      )
+      .max(
+        MAX_PASSWORD_LENGTH,
+        `Password must not exceed ${MAX_PASSWORD_LENGTH} characters`,
+      ),
   })
   .required();
 
@@ -63,7 +72,9 @@ export const Login: React.FC = () => {
     resolver: yupResolver(schema),
   });
 
-  const handleClickShowPassword = (): void => { setShowPassword((prev) => !prev); };
+  const handleClickShowPassword = (): void => {
+    setShowPassword((prev) => !prev);
+  };
   const handleMouseDownPassword = (
     event: React.MouseEvent<HTMLButtonElement>,
   ): void => {
@@ -204,7 +215,9 @@ export const Login: React.FC = () => {
 
             <Box
               component="form"
-              onSubmit={(e): void => { void handleSubmit(onSubmit)(e); }}
+              onSubmit={(e): void => {
+                void handleSubmit(onSubmit)(e);
+              }}
               noValidate
               sx={{
                 mt: 3,
@@ -213,14 +226,16 @@ export const Login: React.FC = () => {
               }}
             >
               {error && (
-                <Box sx={{ 
-                  mb: 2, 
-                  p: 2, 
-                  bgcolor: '#fee', 
-                  color: '#c33',
-                  borderRadius: 1,
-                  fontSize: '14px'
-                }}>
+                <Box
+                  sx={{
+                    mb: 2,
+                    p: 2,
+                    bgcolor: '#fee',
+                    color: '#c33',
+                    borderRadius: 1,
+                    fontSize: '14px',
+                  }}
+                >
                   {error}
                 </Box>
               )}
@@ -280,18 +295,18 @@ export const Login: React.FC = () => {
                     endAdornment: (
                       <InputAdornment position="end">
                         <IconButton
-                        onClick={handleClickShowPassword}
-                        onMouseDown={handleMouseDownPassword}
-                        edge="end"
-                      >
-                        {showPassword ? (
-                          <AiOutlineEyeInvisible />
-                        ) : (
-                          <AiOutlineEye />
-                        )}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
+                          onClick={handleClickShowPassword}
+                          onMouseDown={handleMouseDownPassword}
+                          edge="end"
+                        >
+                          {showPassword ? (
+                            <AiOutlineEyeInvisible />
+                          ) : (
+                            <AiOutlineEye />
+                          )}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
                   },
                 }}
                 {...register('password')}
@@ -336,7 +351,8 @@ export const Login: React.FC = () => {
               align="center"
               sx={{ mt: '130px' }}
             >
-              &copy; {new Date().getFullYear()} LF Charities, Inc. and contributors to the Tazama project
+              &copy; {new Date().getFullYear()} LF Charities, Inc. and
+              contributors to the Tazama project
               <br />
               Licensed under{' '}
               <a

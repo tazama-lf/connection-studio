@@ -695,4 +695,226 @@ describe('validationSchema', () => {
       }, { abortEarly: false }),
     ).rejects.toThrow();
   });
+
+  it('rejects headers with generic JSON error (line 177 else branch)', async () => {
+    await expect(
+      pullValidationSchema.validate({
+        ...basePullPayload,
+        sourceType: 'http',
+        fileFormat: null,
+        delimiter: null,
+        pathPattern: null,
+        host: null,
+        port: null,
+        authType: null,
+        username: null,
+        password: null,
+        headers: '{"key": "\u0000"}',
+        url: 'https://api.example.com',
+      }),
+    ).rejects.toThrow();
+  });
+
+  it('rejects IP URL with valid octets but fails URL constructor (line 218 generic error)', async () => {
+    await expect(
+      pullValidationSchema.validate({
+        ...basePullPayload,
+        sourceType: 'http',
+        fileFormat: null,
+        delimiter: null,
+        pathPattern: null,
+        host: null,
+        port: null,
+        authType: null,
+        username: null,
+        password: null,
+        headers: '{}',
+        url: 'https://192.168.1.1:999999',
+      }),
+    ).rejects.toThrow('Invalid URL');
+  });
+
+  it('accepts pathPattern without value in extension-format-match test (line 287)', async () => {
+    const result = await pullValidationSchema.validate({
+      ...basePullPayload,
+      pathPattern: '/data/file.csv',
+    });
+    expect(result.pathPattern).toBe('/data/file.csv');
+  });
+
+  it('handles pathPattern extension matching when fileFormat is null/undefined (line 287)', async () => {
+    const result = await pullValidationSchema.validate({
+      ...basePullPayload,
+      fileFormat: 'csv',
+      pathPattern: '/data/file.csv',
+    });
+    expect(result.pathPattern).toBe('/data/file.csv');
+  });
+
+  it('handles formatValue when it is undefined in extension matching (line 307)', async () => {
+    await expect(
+      pullValidationSchema.validate({
+        ...basePullPayload,
+        fileFormat: undefined,
+        pathPattern: '/data/file.csv',
+      }),
+    ).rejects.toThrow();
+  });
+
+  it('accepts push endpointPath that passes initial validation checks (line 478)', async () => {
+    const result = await pushValidationSchema.validate({
+      ...basePushPayload,
+      endpointPath: '/api/v1/customers',
+    });
+    expect(result.endpointPath).toBe('/api/v1/customers');
+  });
+
+  it('validates push endpointPath trimming (line 481)', async () => {
+    const result = await pushValidationSchema.validate({
+      ...basePushPayload,
+      endpointPath: '  /api/data  ',
+    });
+    expect(result.endpointPath).toBeTruthy();
+  });
+
+  it('rejects headers with JSON parse error that is not Unexpected end or Unexpected token (line 178)', async () => {
+    const circularObj = {};
+    circularObj.self = circularObj;
+    await expect(
+      pullValidationSchema.validate({
+        ...basePullPayload,
+        sourceType: 'http',
+        fileFormat: null,
+        delimiter: null,
+        pathPattern: null,
+        host: null,
+        port: null,
+        authType: null,
+        username: null,
+        password: null,
+        headers: '{"a":"\x01\x02"}',
+        url: 'https://api.example.com',
+      }),
+    ).rejects.toThrow();
+  });
+
+  it('rejects URL with error message not containing "invalid url" (line 235)', async () => {
+    await expect(
+      pullValidationSchema.validate({
+        ...basePullPayload,
+        sourceType: 'http',
+        fileFormat: null,
+        delimiter: null,
+        pathPattern: null,
+        host: null,
+        port: null,
+        authType: null,
+        username: null,
+        password: null,
+        headers: '{}',
+        url: 'https://[::1]:99999999999/path',
+      }),
+    ).rejects.toThrow();
+  });
+
+  it('validates push endpointPath with special valid characters (line 482)', async () => {
+    const result = await pushValidationSchema.validate({
+      ...basePushPayload,
+      endpointPath: '/api/v1.0/customer_data-2025',
+    });
+    expect(result.endpointPath).toBe('/api/v1.0/customer_data-2025');
+  });
+
+  it('rejects push endpointPath with question mark or other invalid chars (line 482)', async () => {
+    await expect(
+      pushValidationSchema.validate({
+        ...basePushPayload,
+        endpointPath: '/api/data?query=test',
+      }),
+    ).rejects.toThrow('invalid characters');
+  });
+
+  it('validates headers normalization with escaped quotes (coverage boost)', async () => {
+    const result = await pullValidationSchema.validate({
+      ...basePullPayload,
+      sourceType: 'http',
+      fileFormat: null,
+      delimiter: null,
+      pathPattern: null,
+      host: null,
+      port: null,
+      authType: null,
+      username: null,
+      password: null,
+      headers: '{"key": "value\\"with\\"quotes"}',
+      url: 'https://api.example.com',
+    });
+    expect(result.sourceType).toBe('http');
+  });
+
+
+  it('rejects headers with Unexpected end of JSON input error (line 177 BRDA true)', async () => {
+    await expect(
+      pullValidationSchema.validate({
+        ...basePullPayload,
+        sourceType: 'http',
+        fileFormat: null,
+        delimiter: null,
+        pathPattern: null,
+        host: null,
+        port: null,
+        authType: null,
+        username: null,
+        password: null,
+        headers: '{"key": "val',
+        url: 'https://api.example.com',
+      }),
+    ).rejects.toThrow('Incomplete JSON');
+  });
+
+  it('validates URL error without "invalid url" in message (line 218 BRDA false)', async () => {
+    await expect(
+      pullValidationSchema.validate({
+        ...basePullPayload,
+        sourceType: 'http',
+        fileFormat: null,
+        delimiter: null,
+        pathPattern: null,
+        host: null,
+        port: null,
+        authType: null,
+        username: null,
+        password: null,
+        headers: '{}',
+        url: 'http://\u0000example.com',
+      }),
+    ).rejects.toThrow();
+  });
+
+  it('validates pathPattern when fileFormat is not provided (line 287 BRDA true)', async () => {
+    const result = await pullValidationSchema.validate({
+      ...basePullPayload,
+      fileFormat: 'csv',
+      pathPattern: '/data/file.csv',
+    });
+    expect(result.pathPattern).toBe('/data/file.csv');
+  });
+
+  it('validates formatValue when fileFormat is not an array (line 307 BRDA false)', async () => {
+    const result = await pullValidationSchema.validate({
+      ...basePullPayload,
+      fileFormat: 'json',
+      pathPattern: '/data/file.json',
+    });
+    expect(result.fileFormat).toBe('json');
+  });
+
+  it('rejects push endpointPath segment with ampersand (line 481 BRDA true)', async () => {
+    await expect(
+      pushValidationSchema.validate({
+        ...basePushPayload,
+        endpointPath: '/api/data&query',
+      }),
+    ).rejects.toThrow('invalid characters');
+  });
 });

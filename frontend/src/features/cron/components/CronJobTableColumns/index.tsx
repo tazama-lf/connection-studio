@@ -33,15 +33,16 @@ export const CronJobTableColumns = ({
   onEdit,
   onExport,
 }: CronJobTableColumnsProps): Array<GridColDef<ScheduleResponse>> => {
-  const statusOptions =
-    (getDemsStatusLov[userRole as keyof typeof getDemsStatusLov] ?? []).filter(
-      (opt) =>
-        ![opt?.value, opt?.label, opt]
-          .filter(Boolean)
-          .some(
-            (v) => typeof v === 'string' && v.toLowerCase() === STATUS_ON_HOLD
-          )
-    );
+  const statusOptions = (
+    getDemsStatusLov[userRole as keyof typeof getDemsStatusLov] ?? []
+  ).filter(
+    (opt) =>
+      ![opt?.value, opt?.label, opt]
+        .filter(Boolean)
+        .some(
+          (v) => typeof v === 'string' && v.toLowerCase() === STATUS_ON_HOLD,
+        ),
+  );
 
   return [
     {
@@ -88,7 +89,7 @@ export const CronJobTableColumns = ({
       renderCell: ({ row }) => (
         <span
           className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${getStatusBadge(
-            row.status ?? ''
+            row.status ?? '',
           )}`}
         >
           <span className="w-2 h-2 rounded-full bg-current mr-2" />
@@ -139,29 +140,44 @@ export const CronJobTableColumns = ({
         <ActionsContainer>
           <Tooltip title="View Details" arrow>
             <ViewIconStyle>
-              <EyeIcon size={16} onClick={() => { onView(row); }} />
+              <EyeIcon
+                size={16}
+                onClick={() => {
+                  onView(row);
+                }}
+              />
             </ViewIconStyle>
           </Tooltip>
 
           {userIsEditor &&
-            [CRON_JOB_STATUSES.IN_PROGRESS, CRON_JOB_STATUSES.REJECTED].includes(
-              row.status
-            ) && (
+            [
+              CRON_JOB_STATUSES.IN_PROGRESS,
+              CRON_JOB_STATUSES.REJECTED,
+            ].includes(row.status) && (
               <Tooltip title="Edit Cron Job" arrow>
                 <EditIconStyle>
-                  <EditIcon size={16} onClick={() => { onEdit(row); }} />
+                  <EditIcon
+                    size={16}
+                    onClick={() => {
+                      onEdit(row);
+                    }}
+                  />
                 </EditIconStyle>
               </Tooltip>
             )}
 
-          {userIsExporter &&
-            row.status === CRON_JOB_STATUSES.APPROVED && (
-              <Tooltip title="Export Configuration" arrow>
-                <ExportIconStyle>
-                  <Upload size={16} onClick={() => { onExport(row); }} />
-                </ExportIconStyle>
-              </Tooltip>
-            )}
+          {userIsExporter && row.status === CRON_JOB_STATUSES.APPROVED && (
+            <Tooltip title="Export Configuration" arrow>
+              <ExportIconStyle>
+                <Upload
+                  size={16}
+                  onClick={() => {
+                    onExport(row);
+                  }}
+                />
+              </ExportIconStyle>
+            </Tooltip>
+          )}
         </ActionsContainer>
       ),
     },

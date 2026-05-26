@@ -65,7 +65,11 @@ jest.mock('../../../../../../src/features/data-enrichment/utils', () => ({
 }));
 
 jest.mock('@mui/material', () => {
-  const Div = (props: any) => <div {...props}>{props.children}</div>;
+  const mockTheme = { zIndex: { drawer: 1200 } };
+  const Div = (props: any) => {
+    if (typeof props.sx === 'function') props.sx(mockTheme);
+    return <div {...props}>{props.children}</div>;
+  };
   const Button = (props: any) => (
     <button onClick={props.onClick} type={props.type} disabled={props.disabled}>
       {props.children}

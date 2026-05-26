@@ -1060,7 +1060,7 @@ describe('EndpointHistoryPage', () => {
       {},
       true,
       {
-        job_id: null, // null → String(null ?? '') = '' (BRDA:438,30,1)
+        job_id: null, // null → String(null ?? '') = ''
         endpoint_name: 'ep',
         table_name: 'tbl',
         counts: 0,
@@ -1106,7 +1106,7 @@ describe('EndpointHistoryPage', () => {
     const originalUseState = React.useState;
     const useStateSpy = jest.spyOn(React, 'useState');
 
-    // Seed copied=true to hit the BRDA:432 true branch (Copied!)
+    // Seed copied=true to hit theanch (Copied!)
     const seededState = [
       [],
       false,
@@ -1306,7 +1306,7 @@ describe('EndpointHistoryPage', () => {
     }
   });
 
-  it('getStatusBadge: status_ prefix with <3 parts in modal (BRDA:46,2,1)', async () => {
+  it('getStatusBadge: status_ prefix with <3 parts in modal ', async () => {
     // 'status_incomplete' → split('_') = ['status', 'incomplete'] → length=2 < 3 → branch 1
     // getStatusBadge is only called in modal (activeRecord.status), not in table render
     (dataEnrichmentJobApi.getJobHistory as jest.Mock).mockResolvedValue({
@@ -1344,7 +1344,7 @@ describe('EndpointHistoryPage', () => {
     expect(screen.getByText('Endpoint Run Details')).toBeInTheDocument();
   }, 15000);
 
-  it('view-details aria-label with null job_id uses empty string fallback (BRDA:321,25,1)', async () => {
+  it('view-details aria-label with null job_id uses empty string fallback', async () => {
     // row with null job_id → aria-label="view-details-" (params.row?.job_id ?? '' branch 1)
     (dataEnrichmentJobApi.getJobHistory as jest.Mock).mockResolvedValue({
       data: [
@@ -1371,7 +1371,7 @@ describe('EndpointHistoryPage', () => {
     });
   });
 
-  it('jobId || undefined: no jobId in URL uses undefined (BRDA:109,5,1)', async () => {
+  it('jobId || undefined: no jobId in URL uses undefined', async () => {
     // Override useLocation to return empty search (no jobId param)
     const reactRouter = jest.requireMock('react-router') as any;
     const origUseLocation = reactRouter.useLocation;
@@ -1393,7 +1393,7 @@ describe('EndpointHistoryPage', () => {
     }
   });
 
-  it('UI_CONFIG pagination defaultPageSize ?? 10 uses 10 default (BRDA:118,6,1)', async () => {
+  it('UI_CONFIG pagination defaultPageSize ?? 10 uses 10 default', async () => {
     // Override UI_CONFIG to have undefined defaultPageSize → ?? 10 uses 10 (branch 1)
     const appConfig = jest.requireMock('@shared/config/app.config') as any;
     const origConfig = appConfig.UI_CONFIG;
@@ -1411,6 +1411,115 @@ describe('EndpointHistoryPage', () => {
       });
     } finally {
       appConfig.UI_CONFIG = origConfig;
+    }
+  });
+
+  it('covers Dialog onClose callback that calls setModalOpen(false)', async () => {
+    (dataEnrichmentJobApi.getJobHistory as jest.Mock).mockResolvedValue({
+      data: [
+        {
+          job_id: 'job-onclose',
+          endpoint_name: 'ep-onclose',
+          table_name: 'tbl',
+          counts: 1,
+          processed_counts: 1,
+          created_at: '2024-01-01T00:00:00Z',
+          exception: false,
+          status: 'STATUS_04_APPROVED',
+          publishing_status: 'active',
+          tenant_id: 'tenant',
+          version: 'v1',
+        },
+      ],
+      total: 1,
+    });
+
+    await act(async () => {
+      render(<EndpointHistoryPage />);
+    });
+
+    const viewBtn = await screen.findByLabelText(
+      'view-details-job-onclose',
+      {},
+      { timeout: 8000 },
+    );
+    await act(async () => {
+      fireEvent.click(viewBtn);
+    });
+
+    expect(screen.getByText('Endpoint Run Details')).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('dialog-on-close'));
+    });
+
+    expect(screen.queryByText('Endpoint Run Details')).not.toBeInTheDocument();
+  }, 15000);
+
+  it('covers setTimeout setCopied(false) callback', async () => {
+    jest.useFakeTimers();
+
+    const originalUseState = React.useState;
+    const useStateSpy = jest.spyOn(React, 'useState');
+    const setCopiedMock = jest.fn();
+
+    const seededState = [
+      [],
+      false,
+      null,
+      1,
+      0,
+      {},
+      true,
+      {
+        job_id: 'job-timer',
+        endpoint_name: 'ep',
+        table_name: 'tbl',
+        counts: 1,
+        processed_counts: 1,
+        created_at: null,
+        exception: false,
+        status: 'active',
+        publishing_status: 'active',
+        tenant_id: 'tenant',
+        version: 'v1',
+      },
+      false,
+    ];
+
+    useStateSpy.mockImplementation((initial: unknown) => {
+      if (seededState.length > 0) {
+        const next = seededState.shift();
+        const setter = seededState.length === 0 ? setCopiedMock : jest.fn();
+        return [next, setter] as [
+          unknown,
+          React.Dispatch<React.SetStateAction<unknown>>,
+        ];
+      }
+      return originalUseState(initial as never) as [
+        unknown,
+        React.Dispatch<React.SetStateAction<unknown>>,
+      ];
+    });
+
+    try {
+      render(<EndpointHistoryPage />);
+
+      fireEvent.click(screen.getByLabelText('copy-job-id'));
+
+      // Flush microtasks so clipboard promise resolves and setTimeout is scheduled
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      // Advance fake timers to fire the setTimeout callback (line 447: setCopied(false))
+      act(() => {
+        jest.runAllTimers();
+      });
+      expect(setCopiedMock).toHaveBeenCalledWith(false);
+    } finally {
+      useStateSpy.mockRestore();
+      jest.useRealTimers();
     }
   });
 });

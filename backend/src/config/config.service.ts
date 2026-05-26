@@ -39,7 +39,7 @@ export class ConfigService {
     private readonly notifyService: NotifyService,
     private readonly notificationService: NotificationService,
     private readonly adminServiceClient: AdminServiceClient,
-  ) { }
+  ) {}
 
   private async getConfigOrThrow(
     id: number,
@@ -63,7 +63,6 @@ export class ConfigService {
     user: AuthenticatedUser,
     token: string,
   ): Promise<ConfigResponseDto> {
-
     const config = await this.getConfigOrThrow(id, user.tenantId, token);
 
     if (!config.status) {
@@ -260,7 +259,7 @@ export class ConfigService {
     token: string,
   ): Promise<ConfigResponseDto> {
     const { action } = actionDto;
-    
+
     const userRole = user.actorRole.toLowerCase();
     if (
       !userRole ||
@@ -274,12 +273,12 @@ export class ConfigService {
     if (userRole === 'publisher' && action === 'deploy') {
       const { tenantId } = user;
       const fileName = `dems_${tenantId}_${id}`;
-      
+
       try {
         const configData = (await this.sftpService.readFile(
           fileName,
         )) as unknown as SftpConfigDataDto;
-        
+
         config = configData as unknown as Config;
       } catch (error) {
         throw new BadRequestException(
@@ -322,7 +321,7 @@ export class ConfigService {
     if (!tier2Check.allowed) {
       throw new ForbiddenException(
         tier2Check.reason ??
-        `Role "${userRole}" cannot act on config in status "${config.status}"`,
+          `Role "${userRole}" cannot act on config in status "${config.status}"`,
       );
     }
 
@@ -336,7 +335,7 @@ export class ConfigService {
     if (!tier3Check.allowed) {
       throw new ForbiddenException(
         tier3Check.reason ??
-        `Role "${userRole}" cannot transition from "${config.status}" to "${targetStatus}"`,
+          `Role "${userRole}" cannot transition from "${config.status}" to "${targetStatus}"`,
       );
     }
 
@@ -368,7 +367,6 @@ export class ConfigService {
       }
 
       case 'approve': {
-
         const approvalDto = actionDto.data;
         const updatedConfig =
           await this.configRepository.getupdateConfigByStatus(
@@ -653,7 +651,6 @@ export class ConfigService {
     user: AuthenticatedUser,
     token: string,
   ): Promise<ConfigResponseDto> {
-
     const result = (await this.configRepository.updatePublishingStatus(
       id,
       publishingStatus,
@@ -728,7 +725,7 @@ export class ConfigService {
       if (!tier2Check.allowed) {
         throw new ForbiddenException(
           tier2Check.reason ??
-          `Role "${userRole}" cannot act on config in status "${config.status}"`,
+            `Role "${userRole}" cannot act on config in status "${config.status}"`,
         );
       }
 
@@ -742,7 +739,7 @@ export class ConfigService {
       if (!tier3Check.allowed) {
         throw new ForbiddenException(
           tier3Check.reason ??
-          `Role "${userRole}" cannot transition from "${config.status}" to "${updateData.status}"`,
+            `Role "${userRole}" cannot transition from "${config.status}" to "${updateData.status}"`,
         );
       }
     }
@@ -766,9 +763,13 @@ export class ConfigService {
     }
 
     const editCheck = this.workflowService.canEditConfig(updatedConfig.status);
-    if (!editCheck.canEdit && updatedConfig.status !== ConfigStatus.IN_PROGRESS) {
+    if (
+      !editCheck.canEdit &&
+      updatedConfig.status !== ConfigStatus.IN_PROGRESS
+    ) {
       throw new ForbiddenException(
-        editCheck.message ?? `Cannot update config in status "${updatedConfig.status}". ${editCheck.message || 'Please clone to create a new version.'}`,
+        editCheck.message ??
+          `Cannot update config in status "${updatedConfig.status}". Please clone to create a new version.`,
       );
     }
 
@@ -802,11 +803,7 @@ export class ConfigService {
     index: number,
     token: string,
   ): Promise<unknown> {
-    const result = await this.configRepository.removeMapping(
-      id,
-      index,
-      token,
-    );
+    const result = await this.configRepository.removeMapping(id, index, token);
 
     return result;
   }
@@ -830,11 +827,7 @@ export class ConfigService {
     index: number,
     token: string,
   ): Promise<unknown> {
-    const result = await this.configRepository.removeFunction(
-      id,
-      index,
-      token,
-    );
+    const result = await this.configRepository.removeFunction(id, index, token);
 
     return result;
   }
@@ -942,12 +935,8 @@ export class ConfigService {
         user.token.tokenString,
       );
     } catch (error) {
-      this.logger.error(
-        `Failed to get related transactions: ${error.message}`,
-      );
-      throw new BadRequestException(
-        'Failed to retrieve related transactions',
-      );
+      this.logger.error(`Failed to get related transactions: ${error.message}`);
+      throw new BadRequestException('Failed to retrieve related transactions');
     }
   }
 }

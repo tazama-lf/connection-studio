@@ -307,7 +307,8 @@ export class JobService {
         throw new BadRequestException('id is required.');
       }
 
-      const tableName = type === ConfigType.PUSH ? 'tcs_push_jobs' : 'tcs_pull_jobs';
+      const tableName =
+        type === ConfigType.PUSH ? 'tcs_push_jobs' : 'tcs_pull_jobs';
 
       const record = await this.adminServiceClient.findJobById(
         id,
@@ -428,7 +429,7 @@ export class JobService {
       const userRole = user.actorRole.toLowerCase();
       const safeTenantId = escapeRegex(user.tenantId);
       const fileName = `de_${safeTenantId}_${id}`;
-      
+
       let existingJob: Job & { schedule_name?: string };
 
       if (userRole === 'publisher' && status === JobStatus.DEPLOYED) {
@@ -570,7 +571,8 @@ export class JobService {
           // Job already read from SFTP for publisher role
           const fileData = existingJob as Job & { schedule_name?: string };
 
-          const deployPayload: Job & { schedule_name?: string } = structuredClone(fileData);
+          const deployPayload: Job & { schedule_name?: string } =
+            structuredClone(fileData);
           deployPayload.publishing_status = ScheduleStatus.ACTIVE;
 
           if (type === ConfigType.PULL) {

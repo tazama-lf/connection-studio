@@ -77,9 +77,9 @@ const buildFileConfig = (formValues: Record<string, unknown>): FileConfig => ({
   file_type: ((formValues.fileFormat as string | undefined)?.toUpperCase() ??
     'CSV') as FileType,
   delimiter:
-    ((formValues.delimiter as string | undefined) ?? '').trim() !== ''
-      ? (formValues.delimiter as string)
-      : ',',
+    ((formValues.delimiter as string | undefined) ?? '').trim() === ''
+      ? ','
+      : (formValues.delimiter as string),
 });
 
 export const buildPullPayload = (
@@ -338,7 +338,7 @@ export const validateFileFormat = (
 
   const allowedFormats =
     FILE_EXTENSION_FORMAT_MAP[
-    fileExtension as keyof typeof FILE_EXTENSION_FORMAT_MAP
+      fileExtension as keyof typeof FILE_EXTENSION_FORMAT_MAP
     ];
 
   if (!(allowedFormats as readonly string[]).includes(fileType)) {
@@ -482,7 +482,7 @@ export const getConnectionType = (
     return job.source_type as 'HTTP' | 'SFTP';
   }
 
-  if (job.connection && typeof job.connection === 'object') {
+  if (job.connection) {
     if (typeof job.connection === 'string') {
       try {
         const connectionObj = JSON.parse(job.connection) as Record<
@@ -497,10 +497,12 @@ export const getConnectionType = (
       } catch (e) {
         return null;
       }
-    } else if ('host' in job.connection && job.connection.host) {
-      return 'SFTP';
-    } else if ('url' in job.connection && job.connection.url) {
-      return 'HTTP';
+    } else if (typeof job.connection === 'object') {
+      if ('host' in job.connection && job.connection.host) {
+        return 'SFTP';
+      } else if ('url' in job.connection && job.connection.url) {
+        return 'HTTP';
+      }
     }
   }
 

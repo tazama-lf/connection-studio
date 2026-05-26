@@ -3,14 +3,14 @@ import { GridToolbarQuickFilter } from '@mui/x-data-grid';
 import React from 'react';
 
 export function Search(): React.ReactElement {
-    return (
-        <Box
-            sx={{
-                p: 0.5,
-                pb: 0,
-            }}
-        >
-            <GridToolbarQuickFilter />
-        </Box>
-    );
+  return (
+    <Box
+      sx={{
+        p: 0.5,
+        pb: 0,
+      }}
+    >
+      <GridToolbarQuickFilter />
+    </Box>
+  );
 }

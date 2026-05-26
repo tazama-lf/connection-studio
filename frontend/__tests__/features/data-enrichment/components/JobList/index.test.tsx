@@ -1,11 +1,87 @@
-import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 
 const updateJobStatusMock = jest.fn();
 const togglePublishingMock = jest.fn();
 const mockUseAuth = jest.fn();
 const handleInputFilterMock = jest.fn(() => null);
 const handleSelectFilterMock = jest.fn(() => null);
+
+jest.mock(
+  '../../../../../../src/features/data-enrichment/components/JobList/JobList.styles',
+  () => {
+    const React = require('react');
+    const Div = ({
+      children,
+      sx,
+      pull,
+      bg,
+      border,
+      color,
+      fg,
+      component,
+      ...props
+    }: any) => React.createElement(component || 'div', props, children);
+    const DialogWithClose = ({
+      children,
+      open,
+      onClose,
+      sx,
+      slotProps,
+      ...props
+    }: any) =>
+      React.createElement(
+        'div',
+        {
+          role: 'dialog',
+          ...props,
+          style: open ? undefined : { display: 'none' },
+        },
+        open
+          ? React.createElement(
+              'button',
+              { 'aria-label': 'close-dialog', onClick: () => onClose?.() },
+              '\u00d7',
+            )
+          : null,
+        children,
+      );
+    return {
+      ActionIcon: Div,
+      ActionsWrapper: Div,
+      CellText: Div,
+      ConfirmActions: Div,
+      ConfirmContent: Div,
+      ConfirmDialog: DialogWithClose,
+      ConfirmText: Div,
+      DateCell: Div,
+      DateIcon: Div,
+      DescriptionText: Div,
+      DialogBody: Div,
+      DialogHeader: Div,
+      HeaderTitle: Div,
+      HeaderWrapper: Div,
+      HighlightText: Div,
+      InfoBox: Div,
+      InfoText: Div,
+      PauseDescription: Div,
+      PauseDialog: DialogWithClose,
+      PauseDialogActions: Div,
+      PauseDialogContent: Div,
+      PauseDialogHeader: Div,
+      PauseHighlight: Div,
+      PauseWarningBox: Div,
+      PauseWarningText: Div,
+      StyledDialog: DialogWithClose,
+      TypeCell: Div,
+    };
+  },
+);
 
 jest.mock('../../../../../../src/features/auth/contexts/AuthContext', () => ({
   useAuth: () => mockUseAuth(),
@@ -82,7 +158,7 @@ jest.mock('@common/Tables/CustomTable', () => (props: any) => (
   </div>
 ));
 
-import JobList from '../../../../../../src/features/data-enrichment/components/JobList/index';
+import JobList from '../../../../../src/features/data-enrichment/components/JobList/index';
 
 const baseProps: any = {
   jobs: [
@@ -312,10 +388,10 @@ describe('features/data-enrichment/components/JobList/index.tsx', () => {
       screen.getByText('Deactivate Confirmation Required!'),
     ).toBeInTheDocument();
 
-    fireEvent.click(screen.getByText('Cancel'));
+    fireEvent.click(within(screen.getByRole('dialog')).getByText('Cancel'));
     expect(
       screen.queryByText('Deactivate Confirmation Required!'),
-    ).not.toBeInTheDocument();
+    ).not.toBeVisible();
   });
 
   it('closes pause dialog via Cancel button (line 396)', () => {
@@ -325,10 +401,10 @@ describe('features/data-enrichment/components/JobList/index.tsx', () => {
     expect(
       screen.getByText('Pause Confirmation Required!'),
     ).toBeInTheDocument();
-    fireEvent.click(screen.getByText('Cancel'));
+    fireEvent.click(within(screen.getByRole('dialog')).getByText('Cancel'));
     expect(
       screen.queryByText('Pause Confirmation Required!'),
-    ).not.toBeInTheDocument();
+    ).not.toBeVisible();
   });
 
   it('closes resume dialog via Cancel button (line 459)', () => {
@@ -345,10 +421,10 @@ describe('features/data-enrichment/components/JobList/index.tsx', () => {
     expect(
       screen.getByText('Resume Confirmation Required!'),
     ).toBeInTheDocument();
-    fireEvent.click(screen.getByText('Cancel'));
+    fireEvent.click(within(screen.getByRole('dialog')).getByText('Cancel'));
     expect(
       screen.queryByText('Resume Confirmation Required!'),
-    ).not.toBeInTheDocument();
+    ).not.toBeVisible();
   });
 
   it('closes activate dialog via Cancel button (line 518)', () => {
@@ -371,10 +447,10 @@ describe('features/data-enrichment/components/JobList/index.tsx', () => {
     expect(
       screen.getByText('Activate Confirmation Required!'),
     ).toBeInTheDocument();
-    fireEvent.click(screen.getByText('Cancel'));
+    fireEvent.click(within(screen.getByRole('dialog')).getByText('Cancel'));
     expect(
       screen.queryByText('Activate Confirmation Required!'),
-    ).not.toBeInTheDocument();
+    ).not.toBeVisible();
   });
 
   it('invokes onRefresh callback after updateJobStatus (line 123)', async () => {
@@ -525,6 +601,132 @@ describe('features/data-enrichment/components/JobList/index.tsx', () => {
           options: [{ label: 'Exported', value: 'STATUS_06_EXPORTED' }],
         }),
       );
+    });
+  });
+
+  it('triggers PauseDialog onClose callback (line 375)', () => {
+    render(<JobList {...baseProps} />);
+
+    fireEvent.click(screen.getByLabelText('pause-icon'));
+    expect(
+      screen.getByText('Pause Confirmation Required!'),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText('close-dialog'));
+    expect(
+      screen.queryByText('Pause Confirmation Required!'),
+    ).not.toBeVisible();
+  });
+
+  it('triggers StyledDialog (Resume) onClose callback (line 435)', () => {
+    render(
+      <JobList
+        {...baseProps}
+        jobs={[
+          {
+            ...baseProps.jobs[0],
+            id: 'job-resume-close',
+            status: 'STATUS_02_ON_HOLD',
+          },
+        ]}
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText('play-icon'));
+    expect(
+      screen.getByText('Resume Confirmation Required!'),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText('close-dialog'));
+    expect(
+      screen.queryByText('Resume Confirmation Required!'),
+    ).not.toBeVisible();
+  });
+
+  it('triggers Activate ConfirmDialog onClose callback (line 493)', () => {
+    mockUseAuth.mockReturnValue({ user: { claims: ['publisher'] } });
+    render(
+      <JobList
+        {...baseProps}
+        jobs={[
+          {
+            ...baseProps.jobs[0],
+            id: 'job-activate-close',
+            publishing_status: 'in-active',
+            type: 'push',
+          },
+        ]}
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText('activate-icon'));
+    expect(
+      screen.getByText('Activate Confirmation Required!'),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText('close-dialog'));
+    expect(
+      screen.queryByText('Activate Confirmation Required!'),
+    ).not.toBeVisible();
+  });
+
+  it('triggers Deactivate ConfirmDialog onClose callback (line 551)', () => {
+    mockUseAuth.mockReturnValue({ user: { claims: ['publisher'] } });
+    render(
+      <JobList
+        {...baseProps}
+        jobs={[
+          {
+            ...baseProps.jobs[0],
+            id: 'job-deactivate-close',
+            publishing_status: 'active',
+          },
+        ]}
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText('deactivate-icon'));
+    expect(
+      screen.getByText('Deactivate Confirmation Required!'),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText('close-dialog'));
+    expect(
+      screen.queryByText('Deactivate Confirmation Required!'),
+    ).not.toBeVisible();
+  });
+
+  it('hits || [] fallback when getDemsStatusLov key is undefined (line 186)', async () => {
+    const lovs = jest.requireMock('@shared/lovs') as any;
+    const originalEditor = lovs.getDemsStatusLov.editor;
+    lovs.getDemsStatusLov.editor = undefined;
+    try {
+      mockUseAuth.mockReturnValue({ user: { claims: [] } }); // → userRole = 'editor'
+      render(<JobList {...baseProps} />);
+
+      await waitFor(() => {
+        expect(handleSelectFilterMock).toHaveBeenCalledWith(
+          expect.objectContaining({
+            fieldName: 'status',
+            options: [],
+          }),
+        );
+      });
+    } finally {
+      lovs.getDemsStatusLov.editor = originalEditor;
+    }
+  });
+
+  it('skips updateJobStatus when showPauseConfirmDialog.job is null (line 416 false branch)', async () => {
+    render(<JobList {...baseProps} />);
+    const yesBtn = screen.getByRole('button', {
+      name: 'Yes, Pause Job',
+      hidden: true,
+    });
+    fireEvent.click(yesBtn);
+
+    await waitFor(() => {
+      expect(updateJobStatusMock).not.toHaveBeenCalled();
     });
   });
 });

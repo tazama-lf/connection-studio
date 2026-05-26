@@ -79,7 +79,9 @@ export const CronJobModal: React.FC<CronJobModalProps> = ({
               viewFormData={mode === 'view' ? viewFormData : undefined}
               editFormData={mode === 'edit' ? editFormData : undefined}
               setEditFormData={mode === 'edit' ? setEditFormData : undefined}
-              handleSendForApproval={mode === 'view' ? handleJobCreated : undefined}
+              handleSendForApproval={
+                mode === 'view' ? handleJobCreated : undefined
+              }
               handleSaveEdit={mode === 'edit' ? handleJobCreated : undefined}
               onApprove={mode === 'view' ? onApprove : undefined}
               onReject={mode === 'view' ? onReject : undefined}

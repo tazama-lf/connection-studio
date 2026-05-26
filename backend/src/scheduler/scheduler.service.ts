@@ -31,7 +31,7 @@ export class SchedulerService {
     private readonly sftpService: SftpService,
     private readonly adminServiceClient: AdminServiceClient,
     private readonly notificationService: NotificationService,
-  ) { }
+  ) {}
   /* c8 ignore stop */
 
   async create(
@@ -56,7 +56,9 @@ export class SchedulerService {
       this.loggerService.error(
         `Error While Creating Schedule : ${error instanceof Error ? error.message : String(error)}`,
       );
-      throw new BadRequestException(error instanceof Error ? error.message : String(error));
+      throw new BadRequestException(
+        error instanceof Error ? error.message : String(error),
+      );
     }
   }
 
@@ -171,7 +173,9 @@ export class SchedulerService {
 
       return result;
     } catch (error) {
-      this.loggerService.error(`Error updating schedule: ${error instanceof Error ? error.message : String(error)}`);
+      this.loggerService.error(
+        `Error updating schedule: ${error instanceof Error ? error.message : String(error)}`,
+      );
       throw error;
     }
   }
@@ -219,7 +223,9 @@ export class SchedulerService {
       this.loggerService.error(
         `Error fetching records by status: ${error instanceof Error ? error.message : String(error)}`,
       );
-      throw new BadRequestException(error instanceof Error ? error.message : String(error));
+      throw new BadRequestException(
+        error instanceof Error ? error.message : String(error),
+      );
     }
   }
 
@@ -283,7 +289,7 @@ export class SchedulerService {
       if (!tier3Result.allowed) {
         throw new ForbiddenException(
           tier3Result.reason ??
-          'Not authorized to perform this status transition',
+            'Not authorized to perform this status transition',
         );
       }
 
@@ -412,8 +418,12 @@ export class SchedulerService {
         }
       );
     } catch (error) {
-      this.loggerService.error(error instanceof Error ? error.message : String(error));
-      throw new BadRequestException(error instanceof Error ? error.message : String(error));
+      this.loggerService.error(
+        error instanceof Error ? error.message : String(error),
+      );
+      throw new BadRequestException(
+        error instanceof Error ? error.message : String(error),
+      );
     }
   }
 }
