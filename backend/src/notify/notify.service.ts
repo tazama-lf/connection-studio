@@ -115,18 +115,18 @@ export class NotifyService implements OnModuleInit {
     _tenantId: string,
     publishingStatus: 'active' | 'inactive',
   ): Promise<void> {
-    const adminServiceUrl =
-      this.configService.get<string>('ADMIN_SERVICE_URL') ?? '';
-    const url = `${adminServiceUrl}/config-notify/${configId}`;
+    const demsUrl =
+      this.configService.get<string>('DEMS_URL') ?? '';
+    const url = `${demsUrl}/config-notify/${configId}`;
 
     try {
       this.logger.log(
-        `Sending HTTP notification to DEMS: POST ${url}`,
+        `Sending HTTP notification to DEMS: PATCH ${url}`,
         'NotifyService',
       );
 
       await firstValueFrom(
-        this.httpService.post(url, { publishing_status: publishingStatus }),
+        this.httpService.patch(url, { publishing_status: publishingStatus }),
       );
 
       this.logger.log(
