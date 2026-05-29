@@ -25,6 +25,7 @@ import { NotificationService } from '../notification/notification.service';
 import { NotifyService } from '../notify/notify.service';
 import { SchedulerService } from '../scheduler/scheduler.service';
 import { AdminServiceClient } from '../services/admin-service-client.service';
+import { DeApiClient } from '../services/deapi-client.service';
 import { SftpService } from '../sftp/sftp.service';
 import { RbacService } from '../utils/rbac/rbacHelper';
 import {
@@ -51,6 +52,7 @@ export class JobService {
     private readonly adminServiceClient: AdminServiceClient,
     private readonly schedulerService: SchedulerService,
     private readonly notificationService: NotificationService,
+    private readonly deApiClient: DeApiClient,
   ) {}
   /* c8 ignore stop */
 
@@ -173,7 +175,12 @@ export class JobService {
       }
 
       if (status === JobStatus.DEPLOYED) {
-        await this.notifyService.notifyEnrichment(id, ConfigType.PUSH);
+        // await this.notifyService.notifyEnrichment(id, ConfigType.PUSH);
+        await this.deApiClient.notifyJob(
+          id,
+          user.token.tokenString,
+          ConfigType.PUSH,
+        );
       }
 
       return result;
@@ -228,7 +235,12 @@ export class JobService {
       );
 
       if (status === JobStatus.DEPLOYED) {
-        await this.notifyService.notifyEnrichment(newId, ConfigType.PULL);
+        // await this.notifyService.notifyEnrichment(newId, ConfigType.PULL);
+        await this.deApiClient.notifyJob(
+          newId,
+          user.token.tokenString,
+          ConfigType.PULL,
+        );
       }
 
       return result;
@@ -398,7 +410,8 @@ export class JobService {
         );
 
       if (success) {
-        await this.notifyService.notifyEnrichment(id, type);
+        // await this.notifyService.notifyEnrichment(id, type);
+        await this.deApiClient.notifyJob(id, user.token.tokenString, type);
         await this.notificationService.sendWorkflowNotification(
           status === ScheduleStatus.ACTIVE
             ? EventType.PublisherActivate
@@ -569,7 +582,7 @@ export class JobService {
 
         case JobStatus.DEPLOYED: {
           // Job already read from SFTP for publisher role
-          const fileData = existingJob as Job & { schedule_name?: string };
+          const fileData = existingJob;
 
           const deployPayload: Job & { schedule_name?: string } =
             structuredClone(fileData);
