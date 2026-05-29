@@ -4,37 +4,15 @@ import { ConfigService } from '@nestjs/config';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { ConfigType } from '@tazama-lf/tcs-lib';
 import { NotifyService } from '../../src/notify/notify.service';
-import { StartupFactory } from '@tazama-lf/frms-coe-startup-lib';
 import { of, throwError } from 'rxjs';
-
-jest.mock('@tazama-lf/frms-coe-startup-lib');
 
 describe('NotifyService', () => {
   let service: NotifyService;
   let configService: jest.Mocked<ConfigService>;
   let loggerService: jest.Mocked<LoggerService>;
   let httpService: jest.Mocked<HttpService>;
-  let mockNatsService: any;
-  let mockAckService: any;
 
   beforeEach(async () => {
-    mockNatsService = {
-      initProducer: jest.fn().mockResolvedValue(undefined),
-      handleResponse: jest.fn().mockResolvedValue(undefined),
-    };
-
-    mockAckService = {
-      init: jest.fn().mockResolvedValue(undefined),
-    };
-
-    (
-      StartupFactory as jest.MockedClass<typeof StartupFactory>
-    ).mockImplementation(() => {
-      const instances = [mockNatsService, mockAckService];
-      const instance = instances.shift();
-      return instance as any;
-    });
-
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         NotifyService,
@@ -56,6 +34,7 @@ describe('NotifyService', () => {
           provide: HttpService,
           useValue: {
             post: jest.fn(),
+            patch: jest.fn(),
           },
         },
       ],
@@ -65,9 +44,6 @@ describe('NotifyService', () => {
     configService = module.get(ConfigService) as jest.Mocked<ConfigService>;
     loggerService = module.get(LoggerService) as jest.Mocked<LoggerService>;
     httpService = module.get(HttpService) as jest.Mocked<HttpService>;
-
-    (service as any).natsService = mockNatsService;
-    (service as any).ackService = mockAckService;
   });
 
   afterEach(() => {
@@ -78,153 +54,91 @@ describe('NotifyService', () => {
     expect(service).toBeDefined();
   });
 
-  describe('onModuleInit', () => {
-    beforeEach(() => {
-      configService.get.mockImplementation(
-        (key: string, defaultValue?: string) => {
-          const config: Record<string, string> = {
-            CONSUMER_STREAM: 'config.notification.response',
-            PRODUCER_STREAM: 'config.notification',
-          };
-          return config[key] || defaultValue;
-        },
-      );
-    });
-
-    it('should initialize all services successfully', async () => {
-      await service.onModuleInit();
-
-      expect(configService.get).toHaveBeenCalledWith(
-        'CONSUMER_STREAM',
-        'config.notification.response',
-      );
-      expect(configService.get).toHaveBeenCalledWith(
-        'PRODUCER_STREAM',
-        'config.notification',
-      );
-    });
-
-    it('should use default values if config is not provided', async () => {
-      configService.get.mockReturnValue(undefined);
-
-      await service.onModuleInit();
-    });
-
-    it('should handle NATS producer initialization errors', async () => {
-      const error = new Error('NATS connection failed');
-      mockNatsService.initProducer.mockRejectedValue(error);
-
-      await expect(service.onModuleInit()).rejects.toThrow(error);
-    });
-
-    it('should handle ACK service initialization errors', async () => {
-      const error = new Error('ACK service failed');
-      mockAckService.init.mockRejectedValue(error);
-
-      await expect(service.onModuleInit()).rejects.toThrow(error);
-    });
-
-    it('should handle non-Error thrown during initialization', async () => {
-      mockNatsService.initProducer.mockRejectedValue('plain string error');
-
-      await expect(service.onModuleInit()).rejects.toBe('plain string error');
-
-      expect(loggerService.error).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: expect.stringContaining('Unknown error'),
-        }),
-        'NotificationController',
-      );
-    });
-  });
-
-  describe('handleAckMessage', () => {
-    it('should handle ACK message and log it', async () => {
-      const mockReqObj = { transactionId: '123', status: 'SUCCESS' };
-      const mockHandleResponse = jest.fn().mockResolvedValue(undefined);
-
-      await (service as any).handleAckMessage(mockReqObj, mockHandleResponse);
-
-      expect(mockHandleResponse).toHaveBeenCalledWith({
-        status: 'ACK_RECEIVED',
-        timestamp: expect.any(String),
-      });
-    });
-
-    it('should handle empty ACK message', async () => {
-      const mockHandleResponse = jest.fn().mockResolvedValue(undefined);
-
-      await (service as any).handleAckMessage({}, mockHandleResponse);
-
-      expect(mockHandleResponse).toHaveBeenCalled();
-    });
-
-    it('should include valid ISO timestamp in response', async () => {
-      const mockHandleResponse = jest.fn().mockResolvedValue(undefined);
-
-      await (service as any).handleAckMessage({}, mockHandleResponse);
-
-      const responseArg = mockHandleResponse.mock.calls[0][0];
-      expect(responseArg.timestamp).toBeDefined();
-      expect(() => new Date(responseArg.timestamp)).not.toThrow();
-    });
-  });
-
   describe('notifyEnrichment', () => {
     const mockId = 'endpoint-123';
     const mockType = ConfigType.PUSH;
+    const mockToken = 'mock-jwt-token';
+    const deapiUrl = 'http://deapi:3001';
 
-    it('should send notification to data enrichment service', async () => {
-      await service.notifyEnrichment(mockId, mockType);
+    beforeEach(() => {
+      configService.get.mockImplementation((key: string) => {
+        if (key === 'DEAPI_URL') return deapiUrl;
+        return undefined;
+      });
+      httpService.post.mockReturnValue(of({ data: {}, status: 200 } as any));
+    });
 
-      expect(mockNatsService.handleResponse).toHaveBeenCalledWith({
-        dataPayload: JSON.stringify({
-          endpointId: mockId,
-          configType: mockType,
-        }),
+    it('should POST to the correct URL with type query param', async () => {
+      await service.notifyEnrichment(mockId, mockType, mockToken);
+
+      expect(httpService.post).toHaveBeenCalledWith(
+        `${deapiUrl}/job-notify/${mockId}?type=${mockType}`,
+        null,
+        { headers: { Authorization: `Bearer ${mockToken}` } },
+      );
+    });
+
+    it('should not double-prefix Bearer if token already has it', async () => {
+      await service.notifyEnrichment(mockId, mockType, `Bearer ${mockToken}`);
+
+      expect(httpService.post).toHaveBeenCalledWith(expect.any(String), null, {
+        headers: { Authorization: `Bearer ${mockToken}` },
       });
     });
 
     it('should send notification for PULL config type', async () => {
-      await service.notifyEnrichment(mockId, ConfigType.PULL);
+      await service.notifyEnrichment(mockId, ConfigType.PULL, mockToken);
 
-      expect(mockNatsService.handleResponse).toHaveBeenCalledWith({
-        dataPayload: JSON.stringify({
-          endpointId: mockId,
-          configType: ConfigType.PULL,
+      expect(httpService.post).toHaveBeenCalledWith(
+        `${deapiUrl}/job-notify/${mockId}?type=${ConfigType.PULL}`,
+        null,
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: expect.any(String),
+          }),
         }),
-      });
+      );
     });
 
-    it('should handle NATS service errors', async () => {
-      const error = new Error('NATS publish failed');
-      mockNatsService.handleResponse.mockRejectedValue(error);
+    it('should handle HTTP errors without throwing', async () => {
+      httpService.post.mockReturnValue(
+        throwError(() => new Error('HTTP request failed')),
+      );
 
-      await service.notifyEnrichment(mockId, mockType);
+      await expect(
+        service.notifyEnrichment(mockId, mockType, mockToken),
+      ).resolves.not.toThrow();
+
+      expect(loggerService.error).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining('HTTP request failed'),
+        }),
+        'NotifyService',
+      );
     });
 
     it('should handle non-Error thrown in notifyEnrichment', async () => {
-      mockNatsService.handleResponse.mockRejectedValue('plain string error');
+      httpService.post.mockReturnValue(throwError(() => 'plain string error'));
 
-      await service.notifyEnrichment(mockId, mockType);
+      await service.notifyEnrichment(mockId, mockType, mockToken);
 
       expect(loggerService.error).toHaveBeenCalledWith(
         expect.objectContaining({
           message: expect.stringContaining('Unknown error'),
         }),
-        'NotificationController',
+        'NotifyService',
       );
     });
 
-    it('should stringify payload correctly', async () => {
-      await service.notifyEnrichment(mockId, mockType);
+    it('should fall back to empty base URL when DEAPI_URL is not set', async () => {
+      configService.get.mockReturnValue(undefined);
 
-      const callArg = mockNatsService.handleResponse.mock.calls[0][0];
-      expect(callArg.dataPayload).toBe(
-        JSON.stringify({
-          endpointId: mockId,
-          configType: mockType,
-        }),
+      await service.notifyEnrichment(mockId, mockType, mockToken);
+
+      expect(httpService.post).toHaveBeenCalledWith(
+        `/job-notify/${mockId}?type=${mockType}`,
+        null,
+        expect.any(Object),
       );
     });
   });
@@ -232,35 +146,35 @@ describe('NotifyService', () => {
   describe('notifyDems', () => {
     const mockConfigId = 'config-123';
     const mockTenantId = 'tenant-456';
-    const adminServiceUrl = 'http://admin-service:3000';
+    const demsUrl = 'http://dems:3002';
 
     beforeEach(() => {
       configService.get.mockImplementation((key: string) => {
-        if (key === 'ADMIN_SERVICE_URL') return adminServiceUrl;
+        if (key === 'DEMS_URL') return demsUrl;
         return undefined;
       });
-      httpService.post.mockReturnValue(of({ data: {}, status: 200 } as any));
+      httpService.patch.mockReturnValue(of({ data: {}, status: 200 } as any));
     });
 
-    it('should POST to the correct URL with active status', async () => {
+    it('should PATCH to the correct URL with active status', async () => {
       await service.notifyDems(mockConfigId, mockTenantId, 'active');
 
-      expect(httpService.post).toHaveBeenCalledWith(
-        `${adminServiceUrl}/config-notify/${mockConfigId}`,
+      expect(httpService.patch).toHaveBeenCalledWith(
+        `${demsUrl}/config-notify/${mockConfigId}`,
         { publishing_status: 'active' },
       );
     });
 
-    it('should POST to the correct URL with inactive status', async () => {
+    it('should PATCH to the correct URL with inactive status', async () => {
       await service.notifyDems(mockConfigId, mockTenantId, 'inactive');
 
-      expect(httpService.post).toHaveBeenCalledWith(
-        `${adminServiceUrl}/config-notify/${mockConfigId}`,
+      expect(httpService.patch).toHaveBeenCalledWith(
+        `${demsUrl}/config-notify/${mockConfigId}`,
         { publishing_status: 'inactive' },
       );
     });
 
-    it('should log success after posting', async () => {
+    it('should log success after patching', async () => {
       await service.notifyDems(mockConfigId, mockTenantId, 'active');
 
       expect(loggerService.log).toHaveBeenCalledWith(
@@ -270,7 +184,7 @@ describe('NotifyService', () => {
     });
 
     it('should handle HTTP errors without throwing', async () => {
-      httpService.post.mockReturnValue(
+      httpService.patch.mockReturnValue(
         throwError(() => new Error('HTTP request failed')),
       );
 
@@ -287,9 +201,7 @@ describe('NotifyService', () => {
     });
 
     it('should handle non-Error HTTP failures', async () => {
-      httpService.post.mockReturnValue(
-        throwError(() => 'plain string error'),
-      );
+      httpService.patch.mockReturnValue(throwError(() => 'plain string error'));
 
       await service.notifyDems(mockConfigId, mockTenantId, 'active');
 
@@ -301,57 +213,33 @@ describe('NotifyService', () => {
       );
     });
 
-    it('should fall back to empty string when ADMIN_SERVICE_URL is not set', async () => {
+    it('should fall back to empty string when DEMS_URL is not set', async () => {
       configService.get.mockReturnValue(undefined);
 
       await service.notifyDems(mockConfigId, mockTenantId, 'active');
 
-      expect(httpService.post).toHaveBeenCalledWith(
+      expect(httpService.patch).toHaveBeenCalledWith(
         `/config-notify/${mockConfigId}`,
         { publishing_status: 'active' },
       );
     });
   });
 
-  describe('Stream Configuration', () => {
-    it('should use configured stream values', async () => {
-      const customStreams = {
-        CONSUMER_STREAM: 'custom.consumer.stream',
-        PRODUCER_STREAM: 'custom.producer.stream',
-      };
-
-      configService.get.mockImplementation(
-        (key: string, defaultValue?: string) => {
-          return (
-            customStreams[key as keyof typeof customStreams] || defaultValue
-          );
-        },
-      );
-
-      await service.onModuleInit();
-      expect(mockAckService.init).toHaveBeenCalledWith(
-        expect.any(Function),
-        loggerService,
-        ['custom.consumer.stream'],
-        'tcs.ack.response',
-      );
-    });
-  });
-
   describe('Error Handling', () => {
-    it('should not throw errors in notifyEnrichment even if NATS fails', async () => {
-      mockNatsService.handleResponse.mockRejectedValue(
-        new Error('NATS failed'),
+    it('should not throw errors in notifyEnrichment even if HTTP fails', async () => {
+      configService.get.mockReturnValue('http://deapi:3001');
+      httpService.post.mockReturnValue(
+        throwError(() => new Error('HTTP failed')),
       );
 
       await expect(
-        service.notifyEnrichment('test-id', ConfigType.PUSH),
+        service.notifyEnrichment('test-id', ConfigType.PUSH, 'mock-token'),
       ).resolves.not.toThrow();
     });
 
     it('should not throw errors in notifyDems even if HTTP fails', async () => {
-      configService.get.mockReturnValue('http://admin-service:3000');
-      httpService.post.mockReturnValue(
+      configService.get.mockReturnValue('http://dems:3002');
+      httpService.patch.mockReturnValue(
         throwError(() => new Error('HTTP failed')),
       );
 

@@ -304,14 +304,9 @@ SFTP_PORT_PRODUCER=22
 SFTP_USERNAME_PRODUCER=user
 SFTP_PASSWORD_PRODUCER=encrypted_password
 
-# Message Broker
-SERVER_URL=nats://nats-server:4222
-STARTUP_TYPE=nats
-PRODUCER_STREAM=config.notification
-CONSUMER_STREAM=config.notification
-
 # Admin Service
 ADMIN_SERVICE_URL=http://admin-service:3105
+DEAPI_URL=http://deapi-service:3001
 
 # Email Notifications
 SMTP_HOST=smtp.gmail.com

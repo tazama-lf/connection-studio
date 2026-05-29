@@ -16,7 +16,6 @@ import { AuthenticatedUser } from '../../src/auth/auth.types';
 import { DryRunService } from '../../src/dry-run/dry-run.service';
 import { NotifyService } from '../../src/notify/notify.service';
 import { AdminServiceClient } from '../../src/services/admin-service-client.service';
-import { DeApiClient } from '../../src/services/deapi-client.service';
 import { SftpService } from '../../src/sftp/sftp.service';
 import { CreatePushJobDto } from '../../src/job/dto/create-push-job.dto';
 import { JobService } from '../../src/job/job.service';
@@ -35,7 +34,6 @@ describe('JobService', () => {
   let adminServiceClient: jest.Mocked<AdminServiceClient>;
   let schedulerService: jest.Mocked<SchedulerService>;
   let notificationService: jest.Mocked<NotificationService>;
-  let deApiClient: jest.Mocked<DeApiClient>;
 
   const mockToken = 'mock-jwt-token';
   const mockTenantId = 'tenant_abc';
@@ -164,12 +162,6 @@ describe('JobService', () => {
             sendWorkflowNotification: jest.fn(),
           },
         },
-        {
-          provide: DeApiClient,
-          useValue: {
-            notifyJob: jest.fn(),
-          },
-        },
       ],
     }).compile();
 
@@ -181,7 +173,6 @@ describe('JobService', () => {
     adminServiceClient = module.get(AdminServiceClient);
     schedulerService = module.get(SchedulerService);
     notificationService = module.get(NotificationService);
-    deApiClient = module.get(DeApiClient);
 
     jest.spyOn(helpers, 'decrypt').mockReturnValue('decrypted-value');
   });
@@ -434,7 +425,6 @@ describe('JobService', () => {
         success: true,
         message: 'Job Created Successfully',
       });
-      deApiClient.notifyJob.mockResolvedValue(undefined);
 
       const result = await service.createPush(
         deployedJob as CreatePushJobDto,
@@ -443,11 +433,10 @@ describe('JobService', () => {
       );
 
       expect(result.success).toBe(true);
-      expect(notifyService.notifyEnrichment).not.toHaveBeenCalled();
-      expect(deApiClient.notifyJob).toHaveBeenCalledWith(
+      expect(notifyService.notifyEnrichment).toHaveBeenCalledWith(
         mockJobId,
-        mockToken,
         ConfigType.PUSH,
+        mockToken,
       );
     });
 
@@ -565,7 +554,6 @@ describe('JobService', () => {
         success: true,
         message: 'Job Created Successfully',
       });
-      deApiClient.notifyJob.mockResolvedValue(undefined);
 
       const result = await service.createPull(
         deployedJob,
@@ -574,11 +562,10 @@ describe('JobService', () => {
       );
 
       expect(result.success).toBe(true);
-      expect(notifyService.notifyEnrichment).not.toHaveBeenCalled();
-      expect(deApiClient.notifyJob).toHaveBeenCalledWith(
+      expect(notifyService.notifyEnrichment).toHaveBeenCalledWith(
         mockJobId,
-        mockToken,
         ConfigType.PULL,
+        mockToken,
       );
     });
 
@@ -835,7 +822,6 @@ describe('JobService', () => {
         data: mockPushJob,
       });
       notificationService.sendWorkflowNotification.mockResolvedValue(undefined);
-      deApiClient.notifyJob.mockResolvedValue(undefined);
 
       const result = await service.updateActivation(
         mockJobId,
@@ -854,11 +840,10 @@ describe('JobService', () => {
         ConfigType.PUSH,
         mockToken,
       );
-      expect(notifyService.notifyEnrichment).not.toHaveBeenCalled();
-      expect(deApiClient.notifyJob).toHaveBeenCalledWith(
+      expect(notifyService.notifyEnrichment).toHaveBeenCalledWith(
         mockJobId,
-        mockToken,
         ConfigType.PUSH,
+        mockToken,
       );
       expect(notificationService.sendWorkflowNotification).toHaveBeenCalled();
     });
@@ -870,7 +855,6 @@ describe('JobService', () => {
         data: mockPullJob,
       });
       notificationService.sendWorkflowNotification.mockResolvedValue(undefined);
-      deApiClient.notifyJob.mockResolvedValue(undefined);
 
       const result = await service.updateActivation(
         mockJobId,
@@ -889,11 +873,10 @@ describe('JobService', () => {
         ConfigType.PULL,
         mockToken,
       );
-      expect(notifyService.notifyEnrichment).not.toHaveBeenCalled();
-      expect(deApiClient.notifyJob).toHaveBeenCalledWith(
+      expect(notifyService.notifyEnrichment).toHaveBeenCalledWith(
         mockJobId,
-        mockToken,
         ConfigType.PULL,
+        mockToken,
       );
     });
 
@@ -912,7 +895,6 @@ describe('JobService', () => {
       );
 
       expect(notifyService.notifyEnrichment).not.toHaveBeenCalled();
-      expect(deApiClient.notifyJob).not.toHaveBeenCalled();
       expect(
         notificationService.sendWorkflowNotification,
       ).not.toHaveBeenCalled();
@@ -1157,7 +1139,6 @@ describe('JobService', () => {
           undefined,
         );
         notifyService.notifyEnrichment.mockResolvedValue(undefined);
-        deApiClient.notifyJob.mockResolvedValue(undefined);
 
         const result = await service.updateStatus(
           mockJobId,
@@ -1170,11 +1151,6 @@ describe('JobService', () => {
         expect(sftpService.readFile).toHaveBeenCalledWith(fileName);
         expect(sftpService.deleteFile).toHaveBeenCalledWith(fileName);
         expect(notificationService.sendWorkflowNotification).toHaveBeenCalled();
-        expect(deApiClient.notifyJob).toHaveBeenCalledWith(
-          mockJobId,
-          mockToken,
-          ConfigType.PUSH,
-        );
       });
 
       it('should deploy a pull job from SFTP and send notification', async () => {
@@ -1202,7 +1178,6 @@ describe('JobService', () => {
           undefined,
         );
         notifyService.notifyEnrichment.mockResolvedValue(undefined);
-        deApiClient.notifyJob.mockResolvedValue(undefined);
 
         const result = await service.updateStatus(
           mockJobId,
@@ -1215,11 +1190,6 @@ describe('JobService', () => {
         expect(sftpService.readFile).toHaveBeenCalledWith(fileName);
         expect(sftpService.deleteFile).toHaveBeenCalledWith(fileName);
         expect(notificationService.sendWorkflowNotification).toHaveBeenCalled();
-        expect(deApiClient.notifyJob).toHaveBeenCalledWith(
-          mockJobId,
-          mockToken,
-          ConfigType.PULL,
-        );
       });
     });
 
@@ -1514,7 +1484,6 @@ describe('JobService', () => {
       });
       notifyService.notifyEnrichment.mockResolvedValue(undefined);
       notificationService.sendWorkflowNotification.mockResolvedValue(undefined);
-      deApiClient.notifyJob.mockResolvedValue(undefined);
 
       await service.updateActivation(
         mockJobId,
@@ -1729,7 +1698,6 @@ describe('JobService', () => {
       sftpService.deleteFile.mockResolvedValue(undefined);
       notificationService.sendWorkflowNotification.mockResolvedValue(undefined);
       notifyService.notifyEnrichment.mockResolvedValue(undefined);
-      deApiClient.notifyJob.mockResolvedValue(undefined);
 
       const result = await service.updateStatus(
         mockJobId,
@@ -1768,7 +1736,6 @@ describe('JobService', () => {
       });
       sftpService.deleteFile.mockResolvedValue(undefined);
       notificationService.sendWorkflowNotification.mockResolvedValue(undefined);
-      deApiClient.notifyJob.mockResolvedValue(undefined);
 
       const result = await service.updateStatus(
         mockJobId,
@@ -1806,7 +1773,6 @@ describe('JobService', () => {
         message: 'deployed',
       });
       sftpService.deleteFile.mockResolvedValue(undefined);
-      deApiClient.notifyJob.mockResolvedValue(undefined);
 
       const result = await service.updateStatus(
         mockJobId,
