@@ -12,4 +12,5 @@ import { AuditInterceptor } from '../interceptors/audit.interceptor';
  * This decorator applies the AuditInterceptor to capture and log
  * critical user actions for compliance and security monitoring.
  */
-export const Audit = (): ReturnType<typeof UseInterceptors> => UseInterceptors(AuditInterceptor);
+export const Audit = (): ReturnType<typeof UseInterceptors> =>
+  UseInterceptors(AuditInterceptor);

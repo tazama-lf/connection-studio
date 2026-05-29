@@ -28,7 +28,7 @@ import { Audit } from 'src/decorators/audit.decorator';
 @Controller('scheduler')
 @UseGuards(TazamaAuthGuard)
 export class SchedulerController {
-  constructor(private readonly schedulerService: SchedulerService) { }
+  constructor(private readonly schedulerService: SchedulerService) {}
 
   @Post('/create')
   @RequireAnyClaims(TazamaClaims.EDITOR)

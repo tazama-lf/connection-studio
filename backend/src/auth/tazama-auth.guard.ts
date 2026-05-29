@@ -55,10 +55,7 @@ export class TazamaAuthGuard implements CanActivate {
 
     const decoded = this.extractTokenPayload(token);
 
-    let innerDecoded: Record<string, unknown> = decoded as Record<
-      string,
-      unknown
-    >;
+    let innerDecoded: Record<string, unknown> = decoded;
     try {
       const innerToken =
         ((decoded as Record<string, unknown>).tokenString as

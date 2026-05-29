@@ -1,11 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { AdminServiceClient } from '../services/admin-service-client.service';
 
-
 @Injectable()
 export class TazamaDataModelRepository {
-  constructor(private readonly adminServiceClient: AdminServiceClient) { }
-
+  constructor(private readonly adminServiceClient: AdminServiceClient) {}
 
   async getDataModelJson(
     tenantId: string,

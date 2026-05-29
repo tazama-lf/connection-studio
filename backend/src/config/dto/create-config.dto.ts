@@ -56,7 +56,7 @@ export class CreateConfigDto {
   @IsArray()
   @IsOptional()
   functions?: Array<Record<string, unknown>>;
-   @IsString()
+  @IsString()
   @IsOptional()
-  related_transaction?: string
+  related_transaction?: string;
 }

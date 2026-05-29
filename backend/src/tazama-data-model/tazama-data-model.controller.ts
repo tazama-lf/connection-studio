@@ -1,11 +1,4 @@
-import {
-  Controller,
-  Get,
-  Put,
-  Body,
-  Logger,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Put, Body, Logger, UseGuards } from '@nestjs/common';
 import { TazamaAuthGuard } from '../auth/tazama-auth.guard';
 import { RequireAnyClaims, TazamaClaims } from '../auth/auth.decorator';
 import { User } from '../auth/user.decorator';
@@ -14,7 +7,6 @@ import type { AuthenticatedUser } from '../auth/auth.types';
 import { TazamaDataModelService } from './tazama-data-model.service';
 import { Audit } from 'src/decorators/audit.decorator';
 
-
 @Controller('tazama-data-model')
 @UseGuards(TazamaAuthGuard)
 export class TazamaDataModelController {
@@ -22,7 +14,7 @@ export class TazamaDataModelController {
 
   constructor(
     private readonly tazamaDataModelService: TazamaDataModelService,
-  ) { }
+  ) {}
   @Get('json')
   @RequireAnyClaims(
     TazamaClaims.EDITOR,

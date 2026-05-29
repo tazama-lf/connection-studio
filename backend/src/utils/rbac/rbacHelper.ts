@@ -48,11 +48,17 @@ export class RbacService {
     return value in this.roles;
   }
 
-  private getEndpointConfig(endpointKey: EndpointKey): EndpointConfig | undefined {
+  private getEndpointConfig(
+    endpointKey: EndpointKey,
+  ): EndpointConfig | undefined {
     return this.endpoints[endpointKey] as unknown as EndpointConfig | undefined;
   }
 
-  checkTier2({ role, endpointKey, currentStatus }: Omit<CheckContext, 'targetStatus'>): CheckResult {
+  checkTier2({
+    role,
+    endpointKey,
+    currentStatus,
+  }: Omit<CheckContext, 'targetStatus'>): CheckResult {
     const endpoint = this.getEndpointConfig(endpointKey);
     const tier2 = endpoint?.tier2;
 
@@ -78,9 +84,17 @@ export class RbacService {
     return { allowed: true };
   }
 
-  checkTier3({ role, endpointKey, currentStatus, targetStatus }: CheckContext): CheckResult {
+  checkTier3({
+    role,
+    endpointKey,
+    currentStatus,
+    targetStatus,
+  }: CheckContext): CheckResult {
     if (!targetStatus) {
-      return { allowed: false, reason: 'targetStatus is required for a Tier 3 check' };
+      return {
+        allowed: false,
+        reason: 'targetStatus is required for a Tier 3 check',
+      };
     }
 
     const endpoint = this.getEndpointConfig(endpointKey);

@@ -511,7 +511,10 @@ describe('NotificationService', () => {
         tenantId: 'tenant1',
       };
 
-      const result = await service.sendChangesRequested('editor@test.com', context);
+      const result = await service.sendChangesRequested(
+        'editor@test.com',
+        context,
+      );
 
       expect(result).toBe(true);
     });
@@ -934,7 +937,11 @@ describe('NotificationService', () => {
         tenantId: 'tenant1',
         actorEmail: 'actor@test.com',
         actorName: 'Actor',
-        actionEntity: { source_type: 'PUSH', endpoint_name: '', version: '' } as any,
+        actionEntity: {
+          source_type: 'PUSH',
+          endpoint_name: '',
+          version: '',
+        } as any,
         authToken: 'token',
         groupName: 'group1',
       });
@@ -965,7 +972,9 @@ describe('NotificationService', () => {
       jest
         .spyOn(service, 'fetchRecipientEmails')
         // eslint-disable-next-line @typescript-eslint/no-throw-literal
-        .mockImplementation(() => { throw 'plain string'; });
+        .mockImplementation(() => {
+          throw 'plain string';
+        });
 
       const result = await service.sendGenericWorkflowNotification({
         event: EventType.EditorSubmit,
@@ -1052,7 +1061,7 @@ describe('NotificationService', () => {
       const result = await service.getUserGroupMembers(
         'token',
         'group1',
-        'role'
+        'role',
       );
 
       expect(result).toEqual(['user@test.com']);
@@ -1213,7 +1222,10 @@ describe('NotificationService', () => {
 
       const result = await service.sendPublishingStatusNotification({
         configId: 1,
-        config: { transactionType: 'Test', version: '1.0' } as unknown as Config,
+        config: {
+          transactionType: 'Test',
+          version: '1.0',
+        } as unknown as Config,
         tenantId: 'tenant1',
         publishingStatus: 'inactive',
         actorEmail: 'actor@test.com',
@@ -1238,7 +1250,10 @@ describe('NotificationService', () => {
 
       const result = await service.sendPublishingStatusNotification({
         configId: 1,
-        config: { transactionType: 'Test', version: '1.0' } as unknown as Config,
+        config: {
+          transactionType: 'Test',
+          version: '1.0',
+        } as unknown as Config,
         tenantId: 'tenant1',
         publishingStatus: 'active',
         actorEmail: 'actor@test.com',

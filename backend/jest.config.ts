@@ -54,12 +54,12 @@ const config: Config.InitialOptions = {
     '/database/',
   ],
 
-   coverageThreshold: {
+  coverageThreshold: {
     global: {
       branches: 95,
       functions: 95,
       lines: 95,
-      statements: 95
+      statements: 95,
     },
   },
 

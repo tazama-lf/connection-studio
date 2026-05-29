@@ -60,8 +60,7 @@ describe('ConfigService', () => {
     sendWorkflowNotification: jest.fn(),
   };
 
-  const mockAdminServiceClient = {
-  };
+  const mockAdminServiceClient = {};
 
   const mockAuditLogger = {
     log: jest.fn(),
@@ -171,7 +170,10 @@ describe('ConfigService', () => {
   });
 
   it('approves config', async () => {
-    mockRepo.findConfigById.mockResolvedValue({ id: 1, status: ConfigStatus.UNDER_REVIEW });
+    mockRepo.findConfigById.mockResolvedValue({
+      id: 1,
+      status: ConfigStatus.UNDER_REVIEW,
+    });
     mockRepo.getupdateConfigByStatus.mockResolvedValue({ id: 1 });
 
     const res = await service.handleWorkflowAction(
@@ -185,7 +187,10 @@ describe('ConfigService', () => {
   });
 
   it('rejects config', async () => {
-    mockRepo.findConfigById.mockResolvedValue({ id: 1, status: ConfigStatus.UNDER_REVIEW });
+    mockRepo.findConfigById.mockResolvedValue({
+      id: 1,
+      status: ConfigStatus.UNDER_REVIEW,
+    });
     mockRepo.getupdateConfigByStatus.mockResolvedValue({ id: 1 });
 
     const res = await service.handleWorkflowAction(
@@ -236,9 +241,9 @@ describe('ConfigService', () => {
       .spyOn<any, any>(service, 'getConfigOrThrow')
       .mockRejectedValue(new NotFoundException('Not found'));
 
-    await expect(
-      service.getConfigById(99, user),
-    ).rejects.toThrow(NotFoundException);
+    await expect(service.getConfigById(99, user)).rejects.toThrow(
+      NotFoundException,
+    );
   });
   it('updates config status successfully', async () => {
     // Arrange
@@ -286,7 +291,10 @@ describe('ConfigService', () => {
   it('submits configuration for approval and sends notification', async () => {
     const updatedConfig = { id: 1, status: ConfigStatus.UNDER_REVIEW };
 
-    mockRepo.findConfigById.mockResolvedValue({ id: 1, status: ConfigStatus.IN_PROGRESS });
+    mockRepo.findConfigById.mockResolvedValue({
+      id: 1,
+      status: ConfigStatus.IN_PROGRESS,
+    });
     mockRepo.getupdateConfigByStatus.mockResolvedValue(updatedConfig);
 
     const dto = {
@@ -880,11 +888,15 @@ describe('ConfigService', () => {
   // ===== createConfig edge case =====
 
   it('throws NotFoundException when created config cannot be retrieved', async () => {
-    mockRepo.findConfigByMsgFamVersionAndTransactionType.mockResolvedValue(null);
+    mockRepo.findConfigByMsgFamVersionAndTransactionType.mockResolvedValue(
+      null,
+    );
     mockUtils.generateEndpointPath.mockReturnValue('/path');
     mockRepo.createConfig.mockResolvedValue(42);
     mockRepo.findConfigById.mockResolvedValue(null);
-    mockUtils.buildUserErrorMessage.mockReturnValue('Could not retrieve config');
+    mockUtils.buildUserErrorMessage.mockReturnValue(
+      'Could not retrieve config',
+    );
 
     const res = await service.createConfig(
       {
@@ -1150,7 +1162,9 @@ describe('ConfigService', () => {
       .spyOn(service['rbacService'], 'checkTier3')
       .mockReturnValue({ allowed: true });
 
-    mockRepo.updateConfigViaWrite = jest.fn().mockResolvedValue({ success: true });
+    mockRepo.updateConfigViaWrite = jest
+      .fn()
+      .mockResolvedValue({ success: true });
     mockWorkflow.canEditConfig = jest.fn().mockReturnValue({ canEdit: true });
 
     const result = await service.updateConfigViaWrite(1, updateData, user);
@@ -1210,7 +1224,9 @@ describe('ConfigService', () => {
   it('throws BadRequestException when config has no status after updateConfigViaWrite', async () => {
     const updateData = { schema: {} };
 
-    mockRepo.updateConfigViaWrite = jest.fn().mockResolvedValue({ success: true });
+    mockRepo.updateConfigViaWrite = jest
+      .fn()
+      .mockResolvedValue({ success: true });
     mockRepo.findConfigById.mockResolvedValue({ id: 1 });
 
     await expect(
@@ -1221,7 +1237,9 @@ describe('ConfigService', () => {
   it('throws ForbiddenException when canEditConfig returns false after updateConfigViaWrite', async () => {
     const updateData = { schema: {} };
 
-    mockRepo.updateConfigViaWrite = jest.fn().mockResolvedValue({ success: true });
+    mockRepo.updateConfigViaWrite = jest
+      .fn()
+      .mockResolvedValue({ success: true });
     mockRepo.findConfigById.mockResolvedValue({
       id: 1,
       status: ConfigStatus.APPROVED,
@@ -1239,7 +1257,9 @@ describe('ConfigService', () => {
   it('resets status to IN_PROGRESS when config is in REJECTED status after write', async () => {
     const updateData = { schema: {} };
 
-    mockRepo.updateConfigViaWrite = jest.fn().mockResolvedValue({ success: true });
+    mockRepo.updateConfigViaWrite = jest
+      .fn()
+      .mockResolvedValue({ success: true });
     mockRepo.findConfigById.mockResolvedValue({
       id: 1,
       status: ConfigStatus.REJECTED,
@@ -1277,9 +1297,9 @@ describe('ConfigService', () => {
 
     const badUser = createUser('viewer');
 
-    await expect(
-      service.getConfigById(1, badUser),
-    ).rejects.toThrow(ForbiddenException);
+    await expect(service.getConfigById(1, badUser)).rejects.toThrow(
+      ForbiddenException,
+    );
   });
 
   it('throws ForbiddenException when RBAC denies getConfigById by status', async () => {
@@ -1288,13 +1308,14 @@ describe('ConfigService', () => {
       status: ConfigStatus.DEPLOYED,
     });
 
-    jest
-      .spyOn(service['rbacService'], 'getTier2')
-      .mockReturnValue({ allowed: true, allowedStatuses: [ConfigStatus.IN_PROGRESS] });
+    jest.spyOn(service['rbacService'], 'getTier2').mockReturnValue({
+      allowed: true,
+      allowedStatuses: [ConfigStatus.IN_PROGRESS],
+    });
 
-    await expect(
-      service.getConfigById(1, user),
-    ).rejects.toThrow(ForbiddenException);
+    await expect(service.getConfigById(1, user)).rejects.toThrow(
+      ForbiddenException,
+    );
   });
 
   it('returns config when RBAC allows getConfigById by status', async () => {
@@ -1303,9 +1324,10 @@ describe('ConfigService', () => {
       status: ConfigStatus.IN_PROGRESS,
     });
 
-    jest
-      .spyOn(service['rbacService'], 'getTier2')
-      .mockReturnValue({ allowed: true, allowedStatuses: [ConfigStatus.IN_PROGRESS] });
+    jest.spyOn(service['rbacService'], 'getTier2').mockReturnValue({
+      allowed: true,
+      allowedStatuses: [ConfigStatus.IN_PROGRESS],
+    });
 
     const result = await service.getConfigById(1, user);
 
@@ -1316,9 +1338,10 @@ describe('ConfigService', () => {
   // ===== getConfigStatus =====
 
   it('returns allowed statuses for valid role', () => {
-    jest
-      .spyOn(service['rbacService'], 'getTier2')
-      .mockReturnValue({ allowed: true, allowedStatuses: ['IN_PROGRESS', 'UNDER_REVIEW'] });
+    jest.spyOn(service['rbacService'], 'getTier2').mockReturnValue({
+      allowed: true,
+      allowedStatuses: ['IN_PROGRESS', 'UNDER_REVIEW'],
+    });
 
     const result = service.getConfigStatus(user);
     expect(result).toEqual(['IN_PROGRESS', 'UNDER_REVIEW']);
@@ -1333,9 +1356,10 @@ describe('ConfigService', () => {
   // ===== getAllConfigs RBAC filtering =====
 
   it('applies RBAC status filter when no status filter is provided', async () => {
-    jest
-      .spyOn(service['rbacService'], 'getTier2')
-      .mockReturnValue({ allowed: true, allowedStatuses: ['IN_PROGRESS', 'UNDER_REVIEW'] });
+    jest.spyOn(service['rbacService'], 'getTier2').mockReturnValue({
+      allowed: true,
+      allowedStatuses: ['IN_PROGRESS', 'UNDER_REVIEW'],
+    });
 
     mockRepo.getAllConfigsWithFilters.mockResolvedValue([]);
 
@@ -1378,9 +1402,9 @@ describe('ConfigService', () => {
       .fn()
       .mockRejectedValue(new Error('DB error'));
 
-    await expect(
-      service.getRelatedTransactions(user),
-    ).rejects.toThrow(BadRequestException);
+    await expect(service.getRelatedTransactions(user)).rejects.toThrow(
+      BadRequestException,
+    );
   });
 
   // ===== workflow edge case =====
@@ -1773,7 +1797,9 @@ describe('ConfigService', () => {
   it('uses fallback message when canEditConfig message is empty', async () => {
     const updateData = { schema: {} };
 
-    mockRepo.updateConfigViaWrite = jest.fn().mockResolvedValue({ success: true });
+    mockRepo.updateConfigViaWrite = jest
+      .fn()
+      .mockResolvedValue({ success: true });
     mockRepo.findConfigById.mockResolvedValue({
       id: 1,
       status: ConfigStatus.APPROVED,
@@ -1788,7 +1814,9 @@ describe('ConfigService', () => {
   // ===== createConfig: msgFam defaults =====
 
   it('creates config with default msgFam when not provided', async () => {
-    mockRepo.findConfigByMsgFamVersionAndTransactionType.mockResolvedValue(null);
+    mockRepo.findConfigByMsgFamVersionAndTransactionType.mockResolvedValue(
+      null,
+    );
     mockUtils.generateEndpointPath.mockReturnValue('/path');
     mockRepo.createConfig.mockResolvedValue(1);
     mockRepo.findConfigById.mockResolvedValue({ id: 1 });

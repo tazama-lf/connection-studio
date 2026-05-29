@@ -31,7 +31,9 @@ jest.mock('xml2js', () => ({
     }
   }),
   Parser: jest.fn().mockImplementation(() => ({
-    parseStringPromise: jest.fn().mockResolvedValue({ root: { element: ['value'] } }),
+    parseStringPromise: jest
+      .fn()
+      .mockResolvedValue({ root: { element: ['value'] } }),
   })),
 }));
 
@@ -50,7 +52,9 @@ describe('SimulationService', () => {
 
     const xml2js = require('xml2js');
     xml2js.Parser.mockImplementation(() => ({
-      parseStringPromise: jest.fn().mockResolvedValue({ root: { element: ['value'] } }),
+      parseStringPromise: jest
+        .fn()
+        .mockResolvedValue({ root: { element: ['value'] } }),
     }));
 
     adminServiceClientMock.getConfigById.mockResolvedValue({
@@ -240,7 +244,9 @@ describe('SimulationService', () => {
   it('should handle XML parsing errors', async () => {
     const xml2js = require('xml2js');
     xml2js.Parser.mockImplementationOnce(() => ({
-      parseStringPromise: jest.fn().mockRejectedValueOnce(new Error('Invalid XML')),
+      parseStringPromise: jest
+        .fn()
+        .mockRejectedValueOnce(new Error('Invalid XML')),
     }));
 
     const dto: SimulatePayloadDto = {
@@ -4168,7 +4174,9 @@ describe('SimulationService', () => {
     it('should cover XML parsing error with cause', async () => {
       const xml2js = require('xml2js');
       xml2js.Parser.mockImplementationOnce(() => ({
-        parseStringPromise: jest.fn().mockRejectedValueOnce(new Error('Unexpected close tag')),
+        parseStringPromise: jest
+          .fn()
+          .mockRejectedValueOnce(new Error('Unexpected close tag')),
       }));
 
       const config = {
@@ -4515,7 +4523,9 @@ describe('SimulationService', () => {
         id: 1,
         tenantId: 'tenant-1',
         schema: { type: 'object' },
-        payloads: [{ contentType: 'application/xml', schema: { type: 'object' } }],
+        payloads: [
+          { contentType: 'application/xml', schema: { type: 'object' } },
+        ],
         mapping: [],
       };
 
@@ -4527,7 +4537,12 @@ describe('SimulationService', () => {
         payload: { root: { element: 'value' } } as any,
       };
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
       expect(result).toBeDefined();
     });
 
@@ -4539,7 +4554,9 @@ describe('SimulationService', () => {
         id: 1,
         tenantId: 'tenant-1',
         schema: { type: 'object' },
-        payloads: [{ contentType: 'application/json', schema: { type: 'object' } }],
+        payloads: [
+          { contentType: 'application/json', schema: { type: 'object' } },
+        ],
         mapping: [
           {
             ruleId: 'rule-001',
@@ -4560,10 +4577,19 @@ describe('SimulationService', () => {
         payload: { field1: 'value1' },
       };
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
       expect(result).toBeDefined();
 
-      processMappings.mockResolvedValue({ dataCache: {}, endToEndId: '', status: 'success' });
+      processMappings.mockResolvedValue({
+        dataCache: {},
+        endToEndId: '',
+        status: 'success',
+      });
     });
 
     it('should handle processMappings throwing a non-Error (string) without loggerService message', async () => {
@@ -4574,7 +4600,9 @@ describe('SimulationService', () => {
         id: 1,
         tenantId: 'tenant-1',
         schema: { type: 'object' },
-        payloads: [{ contentType: 'application/json', schema: { type: 'object' } }],
+        payloads: [
+          { contentType: 'application/json', schema: { type: 'object' } },
+        ],
         mapping: [
           {
             ruleId: 'rule-001',
@@ -4595,10 +4623,19 @@ describe('SimulationService', () => {
         payload: { field1: 'value1' },
       };
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
       expect(result.status).toBe('FAILED');
 
-      processMappings.mockResolvedValue({ dataCache: {}, endToEndId: '', status: 'success' });
+      processMappings.mockResolvedValue({
+        dataCache: {},
+        endToEndId: '',
+        status: 'success',
+      });
     });
 
     it('should handle mappingsApplied being undefined in TCS stage details', async () => {
@@ -4613,7 +4650,9 @@ describe('SimulationService', () => {
         id: 1,
         tenantId: 'tenant-1',
         schema: { type: 'object' },
-        payloads: [{ contentType: 'application/json', schema: { type: 'object' } }],
+        payloads: [
+          { contentType: 'application/json', schema: { type: 'object' } },
+        ],
         mapping: [
           {
             ruleId: 'rule-001',
@@ -4634,21 +4673,30 @@ describe('SimulationService', () => {
         payload: { field1: 'value1' },
       };
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
       expect(result).toBeDefined();
     });
 
     it('should handle XML parsing throwing a non-Error value', async () => {
       const xml2js = require('xml2js');
       xml2js.Parser.mockImplementationOnce(() => ({
-        parseStringPromise: jest.fn().mockRejectedValueOnce('non-error string failure'),
+        parseStringPromise: jest
+          .fn()
+          .mockRejectedValueOnce('non-error string failure'),
       }));
 
       const mockConfig = {
         id: 1,
         tenantId: 'tenant-1',
         schema: { type: 'object' },
-        payloads: [{ contentType: 'application/xml', schema: { type: 'object' } }],
+        payloads: [
+          { contentType: 'application/xml', schema: { type: 'object' } },
+        ],
         mapping: [],
       };
 
@@ -4660,18 +4708,35 @@ describe('SimulationService', () => {
         payload: '<root><element>value</element></root>',
       };
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
       expect(result.status).toBe('FAILED');
     });
 
     it('should return obj when normalizeXmlParsedObjectWithSchema called with falsy value', () => {
-      const result1 = (service as any).normalizeXmlParsedObjectWithSchema(null, {}, '');
+      const result1 = (service as any).normalizeXmlParsedObjectWithSchema(
+        null,
+        {},
+        '',
+      );
       expect(result1).toBeNull();
 
-      const result2 = (service as any).normalizeXmlParsedObjectWithSchema(0, {}, '');
+      const result2 = (service as any).normalizeXmlParsedObjectWithSchema(
+        0,
+        {},
+        '',
+      );
       expect(result2).toBe(0);
 
-      const result3 = (service as any).normalizeXmlParsedObjectWithSchema('', {}, '');
+      const result3 = (service as any).normalizeXmlParsedObjectWithSchema(
+        '',
+        {},
+        '',
+      );
       expect(result3).toBe('');
     });
 
@@ -4680,7 +4745,9 @@ describe('SimulationService', () => {
         id: 1,
         tenantId: 'tenant-1',
         schema: { type: 'object' },
-        payloads: [{ contentType: 'application/pdf', schema: { type: 'object' } }],
+        payloads: [
+          { contentType: 'application/pdf', schema: { type: 'object' } },
+        ],
         mapping: [],
       };
 
@@ -4692,7 +4759,12 @@ describe('SimulationService', () => {
         payload: '%PDF-1.4 binary content',
       };
 
-      const result = await service.simulateMapping(dto, 'tenant-1', 'user1', 'token');
+      const result = await service.simulateMapping(
+        dto,
+        'tenant-1',
+        'user1',
+        'token',
+      );
       expect(result.status).toBe('FAILED');
     });
 
@@ -4724,7 +4796,10 @@ describe('SimulationService', () => {
     });
 
     it('should return null from getSchemaAtPath when path is empty string', () => {
-      const schema = { type: 'object', properties: { field: { type: 'string' } } };
+      const schema = {
+        type: 'object',
+        properties: { field: { type: 'string' } },
+      };
       const result = (service as any).getSchemaAtPath(schema, '');
       expect(result).toBeNull();
     });
