@@ -1,3 +1,4 @@
+import { HttpService } from '@nestjs/axios';
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
@@ -6,24 +7,23 @@ import {
   type IStartupService,
 } from '@tazama-lf/frms-coe-startup-lib';
 import { ConfigType } from '@tazama-lf/tcs-lib';
+import { firstValueFrom } from 'rxjs';
 
 @Injectable()
 export class NotifyService implements OnModuleInit {
   private readonly natsService: IStartupService;
-  private readonly demsNatsService: IStartupService;
   private readonly ackService: IStartupService;
   private consumerStream: string;
   private producerStream: string;
-  private demsStream: string;
 
   /* c8 ignore start */
   constructor(
     private readonly logger: LoggerService,
     private readonly configService: ConfigService,
+    private readonly httpService: HttpService,
   ) {
     /* c8 ignore stop */
     this.natsService = new StartupFactory();
-    this.demsNatsService = new StartupFactory();
     this.ackService = new StartupFactory();
   }
 
@@ -37,10 +37,6 @@ export class NotifyService implements OnModuleInit {
         'PRODUCER_STREAM',
         'config.notification',
       );
-      this.demsStream = this.configService.get<string>(
-        'DEMS_STREAM',
-        'dems.notify',
-      );
 
       this.logger.log(
         `Consumer Stream: ${this.consumerStream}`,
@@ -50,18 +46,11 @@ export class NotifyService implements OnModuleInit {
         `Producer Stream: ${this.producerStream}`,
         'NotifyService',
       );
-      this.logger.log(`DEMS Stream: ${this.demsStream}`, 'NotifyService');
 
       await this.natsService.initProducer(this.logger, this.producerStream);
       this.logger.log(
         'NATS producer initialized - sending to config.notification',
         'NotificationController',
-      );
-
-      await this.demsNatsService.initProducer(this.logger, this.demsStream);
-      this.logger.log(
-        `DEMS NATS producer initialized - sending to ${this.demsStream}`,
-        'NotifyService',
       );
 
       await this.ackService.init(
@@ -121,21 +110,28 @@ export class NotifyService implements OnModuleInit {
     }
   }
 
-  async notifyDems(configId: string, _tenantId: string): Promise<void> {
+  async notifyDems(
+    configId: string,
+    _tenantId: string,
+    publishingStatus: 'active' | 'inactive',
+  ): Promise<void> {
+    const adminServiceUrl =
+      this.configService.get<string>('ADMIN_SERVICE_URL') ?? '';
+    const url = `${adminServiceUrl}/config-notify/${configId}`;
+
     try {
       this.logger.log(
-        `Sending notification to DEMS stream: ${this.demsStream}`,
+        `Sending HTTP notification to DEMS: POST ${url}`,
+        'NotifyService',
       );
 
-      await this.demsNatsService.handleResponse(
-        {
-          transactionID: configId,
-        },
-        ['dems.notify'],
+      await firstValueFrom(
+        this.httpService.post(url, { publishing_status: publishingStatus }),
       );
 
       this.logger.log(
-        `Config activation notification (ID: ${configId}) sent to DEMS stream ${this.demsStream}`,
+        `Config activation notification (ID: ${configId}) sent to ${url}`,
+        'NotifyService',
       );
     } catch (error) {
       this.logger.error(
