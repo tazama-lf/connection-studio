@@ -1,9 +1,11 @@
+import { HttpService } from '@nestjs/axios';
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { ConfigType } from '@tazama-lf/tcs-lib';
 import { NotifyService } from '../../src/notify/notify.service';
 import { StartupFactory } from '@tazama-lf/frms-coe-startup-lib';
+import { of, throwError } from 'rxjs';
 
 jest.mock('@tazama-lf/frms-coe-startup-lib');
 
@@ -11,17 +13,12 @@ describe('NotifyService', () => {
   let service: NotifyService;
   let configService: jest.Mocked<ConfigService>;
   let loggerService: jest.Mocked<LoggerService>;
+  let httpService: jest.Mocked<HttpService>;
   let mockNatsService: any;
-  let mockDemsNatsService: any;
   let mockAckService: any;
 
   beforeEach(async () => {
     mockNatsService = {
-      initProducer: jest.fn().mockResolvedValue(undefined),
-      handleResponse: jest.fn().mockResolvedValue(undefined),
-    };
-
-    mockDemsNatsService = {
       initProducer: jest.fn().mockResolvedValue(undefined),
       handleResponse: jest.fn().mockResolvedValue(undefined),
     };
@@ -33,7 +30,7 @@ describe('NotifyService', () => {
     (
       StartupFactory as jest.MockedClass<typeof StartupFactory>
     ).mockImplementation(() => {
-      const instances = [mockNatsService, mockDemsNatsService, mockAckService];
+      const instances = [mockNatsService, mockAckService];
       const instance = instances.shift();
       return instance as any;
     });
@@ -55,15 +52,21 @@ describe('NotifyService', () => {
             get: jest.fn(),
           },
         },
+        {
+          provide: HttpService,
+          useValue: {
+            post: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
     service = module.get<NotifyService>(NotifyService);
     configService = module.get(ConfigService) as jest.Mocked<ConfigService>;
     loggerService = module.get(LoggerService) as jest.Mocked<LoggerService>;
+    httpService = module.get(HttpService) as jest.Mocked<HttpService>;
 
     (service as any).natsService = mockNatsService;
-    (service as any).demsNatsService = mockDemsNatsService;
     (service as any).ackService = mockAckService;
   });
 
@@ -82,7 +85,6 @@ describe('NotifyService', () => {
           const config: Record<string, string> = {
             CONSUMER_STREAM: 'config.notification.response',
             PRODUCER_STREAM: 'config.notification',
-            DEMS_STREAM: 'dems.notify',
           };
           return config[key] || defaultValue;
         },
@@ -100,10 +102,6 @@ describe('NotifyService', () => {
         'PRODUCER_STREAM',
         'config.notification',
       );
-      expect(configService.get).toHaveBeenCalledWith(
-        'DEMS_STREAM',
-        'dems.notify',
-      );
     });
 
     it('should use default values if config is not provided', async () => {
@@ -115,13 +113,6 @@ describe('NotifyService', () => {
     it('should handle NATS producer initialization errors', async () => {
       const error = new Error('NATS connection failed');
       mockNatsService.initProducer.mockRejectedValue(error);
-
-      await expect(service.onModuleInit()).rejects.toThrow(error);
-    });
-
-    it('should handle DEMS NATS producer initialization errors', async () => {
-      const error = new Error('DEMS NATS connection failed');
-      mockDemsNatsService.initProducer.mockRejectedValue(error);
 
       await expect(service.onModuleInit()).rejects.toThrow(error);
     });
@@ -241,39 +232,83 @@ describe('NotifyService', () => {
   describe('notifyDems', () => {
     const mockConfigId = 'config-123';
     const mockTenantId = 'tenant-456';
+    const adminServiceUrl = 'http://admin-service:3000';
 
     beforeEach(() => {
-      (service as any).demsStream = 'dems.notify';
+      configService.get.mockImplementation((key: string) => {
+        if (key === 'ADMIN_SERVICE_URL') return adminServiceUrl;
+        return undefined;
+      });
+      httpService.post.mockReturnValue(of({ data: {}, status: 200 } as any));
     });
 
-    it('should send notification to DEMS', async () => {
-      await service.notifyDems(mockConfigId, mockTenantId);
+    it('should POST to the correct URL with active status', async () => {
+      await service.notifyDems(mockConfigId, mockTenantId, 'active');
 
-      expect(mockDemsNatsService.handleResponse).toHaveBeenCalledWith(
-        { transactionID: mockConfigId },
-        ['dems.notify'],
+      expect(httpService.post).toHaveBeenCalledWith(
+        `${adminServiceUrl}/config-notify/${mockConfigId}`,
+        { publishing_status: 'active' },
       );
     });
 
-    it('should handle DEMS NATS service errors', async () => {
-      const error = new Error('DEMS NATS publish failed');
-      mockDemsNatsService.handleResponse.mockRejectedValue(error);
+    it('should POST to the correct URL with inactive status', async () => {
+      await service.notifyDems(mockConfigId, mockTenantId, 'inactive');
 
-      await service.notifyDems(mockConfigId, mockTenantId);
+      expect(httpService.post).toHaveBeenCalledWith(
+        `${adminServiceUrl}/config-notify/${mockConfigId}`,
+        { publishing_status: 'inactive' },
+      );
     });
 
-    it('should handle unknown DEMS errors', async () => {
-      mockDemsNatsService.handleResponse.mockRejectedValue('Unknown error');
+    it('should log success after posting', async () => {
+      await service.notifyDems(mockConfigId, mockTenantId, 'active');
 
-      await service.notifyDems(mockConfigId, mockTenantId);
+      expect(loggerService.log).toHaveBeenCalledWith(
+        expect.stringContaining(mockConfigId),
+        'NotifyService',
+      );
     });
 
-    it('should send correct payload structure', async () => {
-      await service.notifyDems(mockConfigId, mockTenantId);
+    it('should handle HTTP errors without throwing', async () => {
+      httpService.post.mockReturnValue(
+        throwError(() => new Error('HTTP request failed')),
+      );
 
-      expect(mockDemsNatsService.handleResponse).toHaveBeenCalledWith(
-        { transactionID: mockConfigId },
-        ['dems.notify'],
+      await expect(
+        service.notifyDems(mockConfigId, mockTenantId, 'active'),
+      ).resolves.not.toThrow();
+
+      expect(loggerService.error).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining('HTTP request failed'),
+        }),
+        'NotifyService',
+      );
+    });
+
+    it('should handle non-Error HTTP failures', async () => {
+      httpService.post.mockReturnValue(
+        throwError(() => 'plain string error'),
+      );
+
+      await service.notifyDems(mockConfigId, mockTenantId, 'active');
+
+      expect(loggerService.error).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining('Unknown error'),
+        }),
+        'NotifyService',
+      );
+    });
+
+    it('should fall back to empty string when ADMIN_SERVICE_URL is not set', async () => {
+      configService.get.mockReturnValue(undefined);
+
+      await service.notifyDems(mockConfigId, mockTenantId, 'active');
+
+      expect(httpService.post).toHaveBeenCalledWith(
+        `/config-notify/${mockConfigId}`,
+        { publishing_status: 'active' },
       );
     });
   });
@@ -283,7 +318,6 @@ describe('NotifyService', () => {
       const customStreams = {
         CONSUMER_STREAM: 'custom.consumer.stream',
         PRODUCER_STREAM: 'custom.producer.stream',
-        DEMS_STREAM: 'custom.dems.stream',
       };
 
       configService.get.mockImplementation(
@@ -315,13 +349,14 @@ describe('NotifyService', () => {
       ).resolves.not.toThrow();
     });
 
-    it('should not throw errors in notifyDems even if NATS fails', async () => {
-      mockDemsNatsService.handleResponse.mockRejectedValue(
-        new Error('DEMS NATS failed'),
+    it('should not throw errors in notifyDems even if HTTP fails', async () => {
+      configService.get.mockReturnValue('http://admin-service:3000');
+      httpService.post.mockReturnValue(
+        throwError(() => new Error('HTTP failed')),
       );
 
       await expect(
-        service.notifyDems('config-id', 'tenant-id'),
+        service.notifyDems('config-id', 'tenant-id', 'active'),
       ).resolves.not.toThrow();
     });
   });
