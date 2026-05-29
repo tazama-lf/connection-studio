@@ -307,6 +307,7 @@ SFTP_PASSWORD_PRODUCER=encrypted_password
 # Admin Service
 ADMIN_SERVICE_URL=http://admin-service:3105
 DEAPI_URL=http://deapi-service:3001
+DEMS_URL=http://dems-service:3002
 
 # Email Notifications
 SMTP_HOST=smtp.gmail.com

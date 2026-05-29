@@ -5,7 +5,12 @@ import { LoggerModule } from 'src/logger-service/logger-service.module';
 
 @Module({
   providers: [NotifyService],
-  imports: [LoggerModule, HttpModule],
+  imports: [
+    LoggerModule,
+    HttpModule.register({
+      timeout: 5000,
+    }),
+  ],
   exports: [NotifyService],
 })
 export class NotifyModule {}
