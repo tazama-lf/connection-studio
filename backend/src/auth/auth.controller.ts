@@ -7,21 +7,32 @@ import {
   InternalServerErrorException,
   HttpCode,
   ValidationPipe,
+  UseGuards,
 } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { Audit } from 'src/decorators/audit.decorator';
+import { RequireClaims, TazamaClaims } from './auth.decorator';
+import { TazamaAuthGuard } from './tazama-auth.guard';
 
 @Controller('auth')
+@UseGuards(TazamaAuthGuard)
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly logger: LoggerService,
   ) {}
+
   @Post('login')
   @Audit()
   @HttpCode(200)
+  @RequireClaims(
+    TazamaClaims.EDITOR,
+    TazamaClaims.APPROVER,
+    TazamaClaims.EXPORTER,
+    TazamaClaims.PUBLISHER,
+  )
   async login(
     @Body(new ValidationPipe({ whitelist: true, transform: true }))
     body: LoginDto,
