@@ -25,14 +25,14 @@ export class AuthController {
   ) {}
 
   @Post('login')
-  @Audit()
-  @HttpCode(200)
   @RequireClaims(
     TazamaClaims.EDITOR,
     TazamaClaims.APPROVER,
     TazamaClaims.EXPORTER,
     TazamaClaims.PUBLISHER,
   )
+  @Audit()
+  @HttpCode(200)
   async login(
     @Body(new ValidationPipe({ whitelist: true, transform: true }))
     body: LoginDto,
