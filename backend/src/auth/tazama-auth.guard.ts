@@ -55,10 +55,7 @@ export class TazamaAuthGuard implements CanActivate {
 
     const decoded = this.extractTokenPayload(token);
 
-    let innerDecoded: Record<string, unknown> = decoded as Record<
-      string,
-      unknown
-    >;
+    let innerDecoded: Record<string, unknown> = decoded;
     try {
       const innerToken =
         ((decoded as Record<string, unknown>).tokenString as
@@ -74,18 +71,26 @@ export class TazamaAuthGuard implements CanActivate {
 
     const actorEmail = innerDecoded.preferred_username as string | undefined;
 
-    const actorName = innerDecoded.preferred_username as string | undefined;
+    const actorName = innerDecoded.name as string | undefined;
 
     const realmAccess = innerDecoded.realm_access as
       | { roles?: string[] }
       | undefined;
     const realmRoles = realmAccess?.roles;
-    const actorRole =
-      realmRoles?.find((role: string) =>
-        ['editor', 'approver', 'publisher', 'exporter'].includes(
-          role.toLowerCase(),
-        ),
-      ) ?? valid[0];
+
+    const supportedRoles = new Set([
+      'editor',
+      'approver',
+      'publisher',
+      'exporter',
+    ]);
+
+    const actorRole = realmRoles?.find((role: string) =>
+      supportedRoles.has(role.toLowerCase()),
+    );
+    if (!actorRole) {
+      throw new UnauthorizedException('No supported RBAC role found in token');
+    }
 
     const sourceIP =
       request.ip ??

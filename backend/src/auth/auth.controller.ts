@@ -1,23 +1,19 @@
 import {
-  Controller,
-  Post,
   Body,
-  UnauthorizedException,
-  ServiceUnavailableException,
-  InternalServerErrorException,
+  Controller,
   HttpCode,
+  InternalServerErrorException,
+  Post,
+  ServiceUnavailableException,
+  UnauthorizedException,
   ValidationPipe,
-  UseGuards,
 } from '@nestjs/common';
 import { LoggerService } from '@tazama-lf/frms-coe-lib';
+import { Audit } from 'src/decorators/audit.decorator';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
-import { Audit } from 'src/decorators/audit.decorator';
-import { RequireClaims, TazamaClaims } from './auth.decorator';
-import { TazamaAuthGuard } from './tazama-auth.guard';
 
 @Controller('auth')
-@UseGuards(TazamaAuthGuard)
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
@@ -25,12 +21,6 @@ export class AuthController {
   ) {}
 
   @Post('login')
-  @RequireClaims(
-    TazamaClaims.EDITOR,
-    TazamaClaims.APPROVER,
-    TazamaClaims.EXPORTER,
-    TazamaClaims.PUBLISHER,
-  )
   @Audit()
   @HttpCode(200)
   async login(
