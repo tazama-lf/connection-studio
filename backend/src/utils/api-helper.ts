@@ -65,7 +65,7 @@ function handleError(error: unknown): never {
     message: string;
   };
   if (err.response) {
-    const { data } = err.response;
+    const { status, data } = err.response;
     const message =
       data &&
       typeof data === 'object' &&
@@ -73,7 +73,7 @@ function handleError(error: unknown): never {
       typeof data.message === 'string'
         ? data.message
         : 'DEAPI service returned an error response';
-    throw new HttpException(message, HttpStatus.BAD_GATEWAY);
+    throw new HttpException(message, status || HttpStatus.BAD_GATEWAY);
   }
 
   if (err.request) {
