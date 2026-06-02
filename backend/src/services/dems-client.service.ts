@@ -37,12 +37,16 @@ export class DemsClient {
         'DemsClient',
       );
     } catch (error) {
+      const errorMessage = new Error(
+        `Failed to send DEMS notification: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
+
       this.logger.error(
-        new Error(
-          `Failed to send DEMS notification: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        ),
+        errorMessage,
         'DemsClient',
       );
+      throw errorMessage;
+      
     }
   }
 }
