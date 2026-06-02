@@ -6,13 +6,17 @@ import { firstValueFrom } from 'rxjs';
 @Injectable()
 export class DeApiClient {
   private readonly logger = new Logger(DeApiClient.name);
-  private readonly deApiUrl: string;
+  private readonly deApiUrl: string | undefined;
 
   constructor(
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
   ) {
-    this.deApiUrl = this.configService.get<string>('DEAPI_URL') ?? '';
+    this.deApiUrl = this.configService.get<string>('DEAPI_URL');
+    if (!this.deApiUrl) {
+      this.logger.error('DEAPI_URL is not configured');
+      throw new Error('DEAPI_URL configuration is required');
+    }
   }
 
   private getAuthHeaders(token: string): Record<string, string> {
@@ -107,9 +111,10 @@ export class DeApiClient {
   }
 
   async notifyJob(id: string, token: string, type: string): Promise<unknown> {
+    const params = new URLSearchParams({ type });
     return await this.executeHttpRequest(
       'POST',
-      `/job-notify/${id}?type=${type}`,
+      `/job-notify/${id}?${params.toString()}`,
       token,
     );
   }
