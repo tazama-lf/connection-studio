@@ -4,7 +4,7 @@ import { ConfigRepository } from '../../src/config/config.repository';
 import { ConfigWorkflowService } from '../../src/config/config-workflow.service';
 import { ConfigUtilsService } from '../../src/config/config-utils.service';
 import { SftpService } from '../../src/sftp/sftp.service';
-import { NotifyService } from '../../src/notify/notify.service';
+import { DemsClient } from '../../src/services/dems-client.service';
 import { NotificationService } from '../../src/notification/notification.service';
 import {
   NotFoundException,
@@ -94,7 +94,7 @@ describe('ConfigService', () => {
         { provide: ConfigWorkflowService, useValue: mockWorkflow },
         { provide: ConfigUtilsService, useValue: mockUtils },
         { provide: SftpService, useValue: mockSftp },
-        { provide: NotifyService, useValue: mockNotify },
+        { provide: DemsClient, useValue: mockNotify },
         { provide: NotificationService, useValue: mockNotification },
         { provide: AdminServiceClient, useValue: mockAdminServiceClient },
         { provide: 'AUDIT_LOGGER', useValue: mockAuditLogger },
