@@ -10,7 +10,6 @@ import { AdminServiceClient } from '../services/admin-service-client.service';
 import { DemsClient } from '../services/dems-client.service';
 import { SftpModule } from '../sftp/sftp.module';
 import { NotificationModule } from '../notification/notification.module';
-import { NotifyModule } from '../notify/notify.module';
 
 @Module({
   imports: [
@@ -18,7 +17,6 @@ import { NotifyModule } from '../notify/notify.module';
     TazamaDataModelModule,
     SftpModule,
     NotificationModule,
-    NotifyModule,
   ],
   controllers: [ConfigController],
   providers: [
